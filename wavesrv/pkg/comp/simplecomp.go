@@ -10,8 +10,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 )
 
 var globalLock = &sync.Mutex{}

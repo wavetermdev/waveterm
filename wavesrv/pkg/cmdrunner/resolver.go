@@ -36,6 +36,7 @@ type ResolvedRemote struct {
 	MShell      *remote.MShellProc
 	RState      remote.RemoteRuntimeState
 	RemoteCopy  *sstore.RemoteType
+	ShellType   string
 	StatePtr    *sstore.ShellStatePtr
 	FeState     map[string]string
 }
@@ -472,6 +473,7 @@ func ResolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 		RemoteCopy:  &rcopy,
 		StatePtr:    nil,
 		FeState:     nil,
+		ShellType:   "",
 	}
 	if sessionId != "" && screenId != "" {
 		ri, err := sstore.GetRemoteInstance(ctx, sessionId, screenId, *rptr)
@@ -480,11 +482,13 @@ func ResolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 			// continue with state set to nil
 		} else {
 			if ri == nil {
-				rtn.StatePtr = msh.GetDefaultStatePtr()
-				rtn.FeState = msh.GetDefaultFeState()
+				rtn.ShellType = msh.GetShellPref()
+				rtn.StatePtr = msh.GetDefaultStatePtr(rtn.ShellType)
+				rtn.FeState = msh.GetDefaultFeState(rtn.ShellType)
 			} else {
 				rtn.StatePtr = &sstore.ShellStatePtr{BaseHash: ri.StateBaseHash, DiffHashArr: ri.StateDiffHashArr}
 				rtn.FeState = ri.FeState
+				rtn.ShellType = ri.ShellType
 			}
 		}
 	}

@@ -7,15 +7,25 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"slices"
+
+	"github.com/wavetermdev/waveterm/waveshell/pkg/binpack"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
-const MapDiffVersion = 0
+const MapDiffVersion_0 = 0
+const MapDiffVersion = 1
 
 // 0-bytes are not allowed in entries or keys (same as bash)
 
 type MapDiffType struct {
-	ToAdd    map[string]string
+	ToAdd    map[string][]byte
 	ToRemove []string
+}
+
+func (diff *MapDiffType) Clear() {
+	diff.ToAdd = nil
+	diff.ToRemove = nil
 }
 
 func (diff MapDiffType) Dump() {
@@ -28,12 +38,12 @@ func (diff MapDiffType) Dump() {
 	}
 }
 
-func makeMapDiff(oldMap map[string]string, newMap map[string]string) MapDiffType {
+func makeMapDiff(oldMap map[string][]byte, newMap map[string][]byte) MapDiffType {
 	var rtn MapDiffType
-	rtn.ToAdd = make(map[string]string)
+	rtn.ToAdd = make(map[string][]byte)
 	for name, newVal := range newMap {
 		oldVal, found := oldMap[name]
-		if !found || oldVal != newVal {
+		if !found || !bytes.Equal(oldVal, newVal) {
 			rtn.ToAdd[name] = newVal
 			continue
 		}
@@ -47,8 +57,8 @@ func makeMapDiff(oldMap map[string]string, newMap map[string]string) MapDiffType
 	return rtn
 }
 
-func (diff MapDiffType) apply(oldMap map[string]string) map[string]string {
-	rtn := make(map[string]string)
+func (diff MapDiffType) apply(oldMap map[string][]byte) map[string][]byte {
+	rtn := make(map[string][]byte)
 	for name, val := range oldMap {
 		rtn[name] = val
 	}
@@ -61,15 +71,16 @@ func (diff MapDiffType) apply(oldMap map[string]string) map[string]string {
 	return rtn
 }
 
-func (diff MapDiffType) Encode() []byte {
+// this is kept for reference
+func (diff MapDiffType) Encode_v0() []byte {
 	var buf bytes.Buffer
 	viBuf := make([]byte, binary.MaxVarintLen64)
-	putUVarint(&buf, viBuf, MapDiffVersion)
+	putUVarint(&buf, viBuf, MapDiffVersion_0)
 	putUVarint(&buf, viBuf, len(diff.ToAdd))
 	for key, val := range diff.ToAdd {
 		buf.WriteString(key)
 		buf.WriteByte(0)
-		buf.WriteString(val)
+		buf.Write(val)
 		buf.WriteByte(0)
 	}
 	for _, val := range diff.ToRemove {
@@ -79,13 +90,75 @@ func (diff MapDiffType) Encode() []byte {
 	return buf.Bytes()
 }
 
+// we sort map keys and remove values to make the diff deterministic
+func (diff MapDiffType) Encode() []byte {
+	var buf bytes.Buffer
+	binpack.PackUInt(&buf, MapDiffVersion)
+	binpack.PackUInt(&buf, uint64(len(diff.ToAdd)))
+	addKeys := utilfn.GetOrderedMapKeys(diff.ToAdd)
+	for _, key := range addKeys {
+		val := diff.ToAdd[key]
+		binpack.PackValue(&buf, []byte(key))
+		binpack.PackValue(&buf, val)
+	}
+	slices.Sort(diff.ToRemove)
+	binpack.PackUInt(&buf, uint64(len(diff.ToRemove)))
+	for _, val := range diff.ToRemove {
+		binpack.PackValue(&buf, []byte(val))
+	}
+	return buf.Bytes()
+}
+
 func (diff *MapDiffType) Decode(diffBytes []byte) error {
+	diff.Clear()
+	r := bytes.NewBuffer(diffBytes)
+	version, err := binpack.UnpackUInt(r)
+	if err != nil {
+		return fmt.Errorf("invalid diff, cannot read version: %v", err)
+	}
+	if version == MapDiffVersion_0 {
+		return diff.Decode_v0(diffBytes)
+	}
+	if version != MapDiffVersion {
+		return fmt.Errorf("invalid diff, bad version: %d", version)
+	}
+	addLen, err := binpack.UnpackUIntAsInt(r)
+	if err != nil {
+		return fmt.Errorf("invalid diff, cannot read add length: %v", err)
+	}
+	diff.ToAdd = make(map[string][]byte)
+	for i := 0; i < addLen; i++ {
+		key, err := binpack.UnpackValue(r)
+		if err != nil {
+			return fmt.Errorf("invalid diff, cannot read add key %d: %v", i, err)
+		}
+		val, err := binpack.UnpackValue(r)
+		if err != nil {
+			return fmt.Errorf("invalid diff, cannot read add val %d: %v", i, err)
+		}
+		diff.ToAdd[string(key)] = val
+	}
+	removeLen, err := binpack.UnpackUIntAsInt(r)
+	if err != nil {
+		return fmt.Errorf("invalid diff, cannot read remove length: %v", err)
+	}
+	for i := 0; i < removeLen; i++ {
+		val, err := binpack.UnpackValue(r)
+		if err != nil {
+			return fmt.Errorf("invalid diff, cannot read remove val %d: %v", i, err)
+		}
+		diff.ToRemove = append(diff.ToRemove, string(val))
+	}
+	return nil
+}
+
+func (diff *MapDiffType) Decode_v0(diffBytes []byte) error {
 	r := bytes.NewBuffer(diffBytes)
 	version, err := binary.ReadUvarint(r)
 	if err != nil {
 		return fmt.Errorf("invalid diff, cannot read version: %v", err)
 	}
-	if version != MapDiffVersion {
+	if version != MapDiffVersion_0 {
 		return fmt.Errorf("invalid diff, bad version: %d", version)
 	}
 	mapLen64, err := binary.ReadUvarint(r)
@@ -99,9 +172,9 @@ func (diff *MapDiffType) Decode(diffBytes []byte) error {
 	}
 	mapFields := fields[0 : 2*mapLen]
 	removeFields := fields[2*mapLen:]
-	diff.ToAdd = make(map[string]string)
+	diff.ToAdd = make(map[string][]byte)
 	for i := 0; i < len(mapFields); i += 2 {
-		diff.ToAdd[string(mapFields[i])] = string(mapFields[i+1])
+		diff.ToAdd[string(mapFields[i])] = mapFields[i+1]
 	}
 	for _, removeVal := range removeFields {
 		if len(removeVal) == 0 {
@@ -112,7 +185,7 @@ func (diff *MapDiffType) Decode(diffBytes []byte) error {
 	return nil
 }
 
-func MakeMapDiff(m1 map[string]string, m2 map[string]string) []byte {
+func MakeMapDiff(m1 map[string][]byte, m2 map[string][]byte) []byte {
 	diff := makeMapDiff(m1, m2)
 	if len(diff.ToAdd) == 0 && len(diff.ToRemove) == 0 {
 		return nil
@@ -120,7 +193,7 @@ func MakeMapDiff(m1 map[string]string, m2 map[string]string) []byte {
 	return diff.Encode()
 }
 
-func ApplyMapDiff(oldMap map[string]string, diffBytes []byte) (map[string]string, error) {
+func ApplyMapDiff(oldMap map[string][]byte, diffBytes []byte) (map[string][]byte, error) {
 	if len(diffBytes) == 0 {
 		return oldMap, nil
 	}

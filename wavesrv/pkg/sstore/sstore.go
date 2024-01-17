@@ -25,7 +25,7 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 
@@ -46,6 +46,10 @@ const LocalRemoteAlias = "local"
 
 const DefaultCwd = "~"
 const APITokenSentinel = "--apitoken--"
+
+// defined here and not in packet.go since this value should never
+// be passed to waveshell (it should always get resolved prior to sending a run packet)
+const ShellTypePref_Detect = "detect"
 
 const (
 	LineTypeCmd    = "cmd"
@@ -694,6 +698,7 @@ type RemoteInstance struct {
 	RemoteOwnerId    string            `json:"remoteownerid"`
 	RemoteId         string            `json:"remoteid"`
 	FeState          map[string]string `json:"festate"`
+	ShellType        string            `json:"shelltype"`
 	StateBaseHash    string            `json:"-"`
 	StateDiffHashArr []string          `json:"-"`
 
@@ -741,14 +746,18 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 	}
 	rtn := make(map[string]string)
 	rtn["cwd"] = state.Cwd
-	envMap := shexec.EnvMapFromState(state)
+	envMap := shellenv.EnvMapFromState(state)
 	if envMap["VIRTUAL_ENV"] != "" {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
 	}
 	for key, val := range envMap {
-		if strings.HasPrefix(key, "PROMPTVAR_") && rtn[key] != "" {
+		if strings.HasPrefix(key, "PROMPTVAR_") && envMap[key] != "" {
 			rtn[key] = val
 		}
+	}
+	_, _, err := packet.ParseShellStateVersion(state.Version)
+	if err != nil {
+		rtn["invalidstate"] = "1"
 	}
 	return rtn
 }
@@ -763,6 +772,7 @@ func (ri *RemoteInstance) FromMap(m map[string]interface{}) bool {
 	quickSetJson(&ri.FeState, m, "festate")
 	quickSetStr(&ri.StateBaseHash, m, "statebasehash")
 	quickSetJsonArr(&ri.StateDiffHashArr, m, "statediffhasharr")
+	quickSetStr(&ri.ShellType, m, "shelltype")
 	return true
 }
 
@@ -777,6 +787,7 @@ func (ri *RemoteInstance) ToMap() map[string]interface{} {
 	rtn["festate"] = quickJson(ri.FeState)
 	rtn["statebasehash"] = ri.StateBaseHash
 	rtn["statediffhasharr"] = quickJsonArr(ri.StateDiffHashArr)
+	rtn["shelltype"] = ri.ShellType
 	return rtn
 }
 
@@ -1014,6 +1025,9 @@ type RemoteRuntimeState struct {
 	Local               bool              `json:"local,omitempty"`
 	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
 	CanComplete         bool              `json:"cancomplete,omitempty"`
+	ActiveShells        []string          `json:"activeshells,omitempty"`
+	ShellPref           string            `json:"shellpref,omitempty"`
+	DefaultShellType    string            `json:"defaultshelltype,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -1068,8 +1082,9 @@ type RemoteType struct {
 	SSHOpts      *SSHOpts          `json:"sshopts"`
 	StateVars    map[string]string `json:"statevars"`
 	SSHConfigSrc string            `json:"sshconfigsrc"`
+	ShellPref    string            `json:"shellpref"` // bash, zsh, or detect
 
-	// OpenAI fields
+	// OpenAI fields (unused)
 	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
 }
 
@@ -1125,6 +1140,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["statevars"] = quickJson(r.StateVars)
 	rtn["sshconfigsrc"] = r.SSHConfigSrc
 	rtn["openaiopts"] = quickJson(r.OpenAIOpts)
+	rtn["shellpref"] = r.ShellPref
 	return rtn
 }
 
@@ -1146,6 +1162,7 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetJson(&r.StateVars, m, "statevars")
 	quickSetStr(&r.SSHConfigSrc, m, "sshconfigsrc")
 	quickSetJson(&r.OpenAIOpts, m, "openaiopts")
+	quickSetStr(&r.ShellPref, m, "shellpref")
 	return true
 }
 
@@ -1308,6 +1325,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		SSHOpts:             &SSHOpts{Local: true},
 		Local:               true,
 		SSHConfigSrc:        SSHConfigSrcTypeManual,
+		ShellPref:           ShellTypePref_Detect,
 	}
 	err = UpsertRemote(ctx, localRemote)
 	if err != nil {
@@ -1327,6 +1345,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		RemoteOpts:          &RemoteOptsType{Color: "red"},
 		Local:               true,
 		SSHConfigSrc:        SSHConfigSrcTypeManual,
+		ShellPref:           ShellTypePref_Detect,
 	}
 	err = UpsertRemote(ctx, sudoRemote)
 	if err != nil {

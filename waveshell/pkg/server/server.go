@@ -20,13 +20,26 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 const MaxFileDataPacketSize = 16 * 1024
 const WriteFileContextTimeout = 30 * time.Second
 const cleanLoopTime = 5 * time.Second
 const MaxWriteFileContextData = 100
+
+type shellStateMapKey struct {
+	ShellType string
+	Hash      string
+}
+
+type ShellStateMap struct {
+	Lock            *sync.Mutex
+	StateMap        map[shellStateMapKey]*packet.ShellState // shelltype+hash -> state
+	CurrentStateMap map[string]string                       // shelltype -> hash
+}
 
 // TODO create unblockable packet-sender (backed by an array) for clientproc
 type MServer struct {
@@ -35,9 +48,8 @@ type MServer struct {
 	Sender              *packet.PacketSender
 	ClientMap           map[base.CommandKey]*shexec.ClientProc
 	Debug               bool
-	StateMap            map[string]*packet.ShellState // sha1->state
-	CurrentState        string                        // sha1
-	WriteErrorCh        chan bool                     // closed if there is a I/O write error
+	StateMap            *ShellStateMap
+	WriteErrorCh        chan bool // closed if there is a I/O write error
 	WriteErrorChOnce    *sync.Once
 	WriteFileContextMap map[string]*WriteFileContext
 	Done                bool
@@ -146,11 +158,15 @@ func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 }
 
 func runSingleCompGen(cwd string, compType string, prefix string) ([]string, bool, error) {
+	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if err != nil {
+		return nil, false, err
+	}
 	if !packet.IsValidCompGenType(compType) {
 		return nil, false, fmt.Errorf("invalid compgen type '%s'", compType)
 	}
 	compGenCmdStr := fmt.Sprintf("cd %s; compgen -A %s -- %s | sort | uniq | head -n %d", shellescape.Quote(cwd), shellescape.Quote(compType), shellescape.Quote(prefix), packet.MaxCompGenValues+1)
-	ecmd := exec.Command(shexec.GetLocalBashPath(), "-c", compGenCmdStr)
+	ecmd := exec.Command(sapi.GetLocalShellPath(), "-c", compGenCmdStr)
 	outputBytes, err := ecmd.Output()
 	if err != nil {
 		return nil, false, fmt.Errorf("compgen error: %w", err)
@@ -230,26 +246,19 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 	return
 }
 
-func (m *MServer) setCurrentState(state *packet.ShellState) {
-	if state == nil {
-		return
-	}
-	hval, _ := state.EncodeAndHash()
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-	m.StateMap[hval] = state
-	m.CurrentState = hval
-}
-
-func (m *MServer) reinit(reqId string) {
-	initPk, err := shexec.MakeServerInitPacket()
+func (m *MServer) reinit(reqId string, shellType string) {
+	ssPk, err := shexec.MakeShellStatePacket(shellType)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
 		return
 	}
-	m.setCurrentState(initPk.State)
-	initPk.RespId = reqId
-	m.Sender.SendPacket(initPk)
+	err = m.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
+	if err != nil {
+		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error setting current state: %w", err))
+		return
+	}
+	ssPk.RespId = reqId
+	m.Sender.SendPacket(ssPk)
 }
 
 func makeTemp(path string, mode fs.FileMode) (*os.File, error) {
@@ -564,8 +573,8 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 		go m.runCompGen(compPk)
 		return
 	}
-	if _, ok := pk.(*packet.ReInitPacketType); ok {
-		go m.reinit(reqId)
+	if reinitPk, ok := pk.(*packet.ReInitPacketType); ok {
+		go m.reinit(reqId, reinitPk.ShellType)
 		return
 	}
 	if streamPk, ok := pk.(*packet.StreamFilePacketType); ok {
@@ -581,13 +590,7 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 	return
 }
 
-func (m *MServer) getCurrentState() (string, *packet.ShellState) {
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-	return m.CurrentState, m.StateMap[m.CurrentState]
-}
-
-func (m *MServer) clientPacketCallback(pk packet.PacketType) {
+func (m *MServer) clientPacketCallback(shellType string, pk packet.PacketType) {
 	if pk.GetType() != packet.CmdDonePacketStr {
 		return
 	}
@@ -595,16 +598,25 @@ func (m *MServer) clientPacketCallback(pk packet.PacketType) {
 	if donePk.FinalState == nil {
 		return
 	}
-	stateHash, curState := m.getCurrentState()
+	stateHash, curState := m.StateMap.GetCurrentState(shellType)
 	if curState == nil {
 		return
 	}
-	diff, err := shexec.MakeShellStateDiff(*curState, stateHash, *donePk.FinalState)
+	sapi, err := shellapi.MakeShellApi(curState.GetShellType())
+	if err != nil {
+		return
+	}
+	diff, err := sapi.MakeShellStateDiff(curState, stateHash, donePk.FinalState)
 	if err != nil {
 		return
 	}
 	donePk.FinalState = nil
-	donePk.FinalStateDiff = &diff
+	donePk.FinalStateDiff = diff
+}
+
+func (m *MServer) isShellInitialized(shellType string) bool {
+	_, curState := m.StateMap.GetCurrentState(shellType)
+	return curState != nil
 }
 
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
@@ -612,7 +624,29 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
 		return
 	}
-	ecmd, err := shexec.SSHOpts{}.MakeMShellSingleCmd(true)
+	if runPacket.ShellType == "" {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require shell type"))
+		return
+	}
+	_, curInitState := m.StateMap.GetCurrentState(runPacket.ShellType)
+	if curInitState == nil {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("shell type %q is not initialized", runPacket.ShellType))
+		return
+	}
+	if runPacket.State == nil {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require state"))
+		return
+	}
+	_, _, err := packet.ParseShellStateVersion(runPacket.State.Version)
+	if err != nil {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("invalid shellstate version: %w", err))
+		return
+	}
+	if !packet.StateVersionsCompatible(runPacket.State.Version, curInitState.Version) {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("shellstate version %q is not compatible with current shell version %q", runPacket.State.Version, curInitState.Version))
+		return
+	}
+	ecmd, err := shexec.MakeMShellSingleCmd()
 	if err != nil {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
 		return
@@ -640,7 +674,9 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 			cproc.Close()
 		}()
 		shexec.SendRunPacketAndRunData(context.Background(), cproc.Input, runPacket)
-		cproc.ProxySingleOutput(runPacket.CK, m.Sender, m.clientPacketCallback)
+		cproc.ProxySingleOutput(runPacket.CK, m.Sender, func(pk packet.PacketType) {
+			m.clientPacketCallback(runPacket.ShellType, pk)
+		})
 	}()
 }
 
@@ -699,7 +735,7 @@ func RunServer() (int, error) {
 	server := &MServer{
 		Lock:                &sync.Mutex{},
 		ClientMap:           make(map[base.CommandKey]*shexec.ClientProc),
-		StateMap:            make(map[string]*packet.ShellState),
+		StateMap:            MakeShellStateMap(),
 		Debug:               debug,
 		WriteErrorCh:        make(chan bool),
 		WriteErrorChOnce:    &sync.Once{},
@@ -725,7 +761,6 @@ func RunServer() (int, error) {
 	if err != nil {
 		return 1, err
 	}
-	server.setCurrentState(initPacket.State)
 	server.Sender.SendPacket(initPacket)
 	ticker := time.NewTicker(1 * time.Minute)
 	go func() {
@@ -747,4 +782,61 @@ func RunServer() (int, error) {
 		break
 	}
 	return 0, nil
+}
+
+func MakeShellStateMap() *ShellStateMap {
+	return &ShellStateMap{
+		Lock:            &sync.Mutex{},
+		StateMap:        make(map[shellStateMapKey]*packet.ShellState),
+		CurrentStateMap: make(map[string]string),
+	}
+}
+
+func (sm *ShellStateMap) GetCurrentState(shellType string) (string, *packet.ShellState) {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	hval := sm.CurrentStateMap[shellType]
+	return hval, sm.StateMap[shellStateMapKey{ShellType: shellType, Hash: hval}]
+}
+
+func (sm *ShellStateMap) SetCurrentState(shellType string, state *packet.ShellState) error {
+	if state == nil {
+		return fmt.Errorf("cannot set nil state")
+	}
+	if shellType != state.GetShellType() {
+		return fmt.Errorf("shell type mismatch: %s != %s", shellType, state.GetShellType())
+	}
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	hval, _ := state.EncodeAndHash()
+	key := shellStateMapKey{ShellType: shellType, Hash: hval}
+	sm.StateMap[key] = state
+	sm.CurrentStateMap[shellType] = hval
+	return nil
+}
+
+func (sm *ShellStateMap) GetStateByHash(shellType string, hash string) *packet.ShellState {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	return sm.StateMap[shellStateMapKey{ShellType: shellType, Hash: hash}]
+}
+
+func (sm *ShellStateMap) Clear() {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	sm.StateMap = make(map[shellStateMapKey]*packet.ShellState)
+	sm.CurrentStateMap = make(map[string]string)
+}
+
+func (sm *ShellStateMap) GetShells() []string {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	return utilfn.GetMapKeys(sm.CurrentStateMap)
+}
+
+func (sm *ShellStateMap) HasShell(shellType string) bool {
+	sm.Lock.Lock()
+	defer sm.Lock.Unlock()
+	_, found := sm.CurrentStateMap[shellType]
+	return found
 }

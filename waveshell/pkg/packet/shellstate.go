@@ -30,7 +30,7 @@ type ShellState struct {
 }
 
 type ShellStateDiff struct {
-	Version     string   `json:"version"` // [type] [semver]
+	Version     string   `json:"version"` // [type] [semver] (note this should *always* be set even if the same as base)
 	BaseHash    string   `json:"basehash"`
 	DiffHashArr []string `json:"diffhasharr,omitempty"`
 	Cwd         string   `json:"cwd,omitempty"`
@@ -39,6 +39,66 @@ type ShellStateDiff struct {
 	FuncsDiff   []byte   `json:"funcsdiff,omitempty"`     // linediff
 	Error       string   `json:"error,omitempty"`
 	HashVal     string   `json:"-"`
+}
+
+func (state ShellState) GetShellType() string {
+	shell, _, _ := ParseShellStateVersion(state.Version)
+	return shell
+}
+
+// returns (shell, version, error)
+func ParseShellStateVersion(fullVersionStr string) (string, string, error) {
+	if fullVersionStr == "" {
+		return "", "", fmt.Errorf("empty shellstate version")
+	}
+	fields := strings.Split(fullVersionStr, " ")
+	if len(fields) != 2 {
+		return "", "", fmt.Errorf("invalid shellstate version format: %q", fullVersionStr)
+	}
+	shell := fields[0]
+	version := fields[1]
+	if shell != ShellType_zsh && shell != ShellType_bash {
+		return "", "", fmt.Errorf("invalid shellstate shell type: %q", fullVersionStr)
+	}
+	if !semver.IsValid(version) {
+		return "", "", fmt.Errorf("invalid shellstate semver: %q", fullVersionStr)
+	}
+	return shell, version, nil
+}
+
+// we're going to allow different versions (as long as shelltype is the same)
+// before we required version numbers to match exactly which was too restrictive
+func StateVersionsCompatible(v1 string, v2 string) bool {
+	if v1 == v2 {
+		return true
+	}
+	shell1, version1, err := ParseShellStateVersion(v1)
+	if err != nil {
+		return false
+	}
+	shell2, version2, err := ParseShellStateVersion(v2)
+	if err != nil {
+		return false
+	}
+	if shell1 != shell2 {
+		return false
+	}
+	if semver.Major(version1) != semver.Major(version2) {
+		return false
+	}
+	return true
+}
+
+func (diff ShellStateDiff) GetShellType() string {
+	shell, _, _ := ParseShellStateVersion(diff.Version)
+	return shell
+}
+
+func (state ShellState) GetLineDiffSplitString() string {
+	if state.GetShellType() == ShellType_zsh {
+		return "\x00"
+	}
+	return "\n"
 }
 
 func (state ShellState) IsEmpty() bool {
@@ -55,7 +115,7 @@ func sha1Hash(data []byte) string {
 // returns (SHA1, encoded-state)
 func (state ShellState) EncodeAndHash() (string, []byte) {
 	var buf bytes.Buffer
-	binpack.PackInt(&buf, ShellStatePackVersion)
+	binpack.PackUInt(&buf, ShellStatePackVersion)
 	binpack.PackValue(&buf, []byte(state.Version))
 	binpack.PackValue(&buf, []byte(state.Cwd))
 	binpack.PackValue(&buf, state.ShellVars)
@@ -66,7 +126,7 @@ func (state ShellState) EncodeAndHash() (string, []byte) {
 }
 
 // returns a string like "v4" ("" is an unparseable version)
-func GetBashMajorVersion(versionStr string) string {
+func GetMajorVersion(versionStr string) string {
 	if versionStr == "" {
 		return ""
 	}
@@ -94,7 +154,7 @@ func (state *ShellState) DecodeShellState(barr []byte) error {
 	state.HashVal = sha1Hash(barr)
 	buf := bytes.NewBuffer(barr)
 	u := binpack.MakeUnpacker(buf)
-	version := u.UnpackInt("ShellState pack version")
+	version := u.UnpackUInt("ShellState pack version")
 	if version != ShellStatePackVersion {
 		return fmt.Errorf("invalid ShellState pack version: %d", version)
 	}
@@ -118,7 +178,7 @@ func (state *ShellState) UnmarshalJSON(jsonBytes []byte) error {
 
 func (sdiff ShellStateDiff) EncodeAndHash() (string, []byte) {
 	var buf bytes.Buffer
-	binpack.PackInt(&buf, ShellStateDiffPackVersion)
+	binpack.PackUInt(&buf, ShellStateDiffPackVersion)
 	binpack.PackValue(&buf, []byte(sdiff.Version))
 	binpack.PackValue(&buf, []byte(sdiff.BaseHash))
 	binpack.PackStrArr(&buf, sdiff.DiffHashArr)
@@ -139,7 +199,7 @@ func (sdiff *ShellStateDiff) DecodeShellStateDiff(barr []byte) error {
 	sdiff.HashVal = sha1Hash(barr)
 	buf := bytes.NewBuffer(barr)
 	u := binpack.MakeUnpacker(buf)
-	version := u.UnpackInt("ShellState pack version")
+	version := u.UnpackUInt("ShellState pack version")
 	if version != ShellStateDiffPackVersion {
 		return fmt.Errorf("invalid ShellStateDiff pack version: %d", version)
 	}

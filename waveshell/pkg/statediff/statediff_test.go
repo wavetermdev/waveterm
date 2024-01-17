@@ -4,8 +4,12 @@
 package statediff
 
 import (
+	"encoding/binary"
 	"fmt"
+	"strings"
 	"testing"
+
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 const Str1 = `
@@ -38,8 +42,8 @@ banana2
 coconut
 `
 
-func testLineDiff(t *testing.T, str1 string, str2 string) {
-	diffBytes := MakeLineDiff(str1, str2)
+func testLineDiff(t *testing.T, str1 string, str2 string, splitString string) {
+	diffBytes := MakeLineDiff(str1, str2, splitString)
 	fmt.Printf("diff-len: %d\n", len(diffBytes))
 	out, err := ApplyLineDiff(str1, diffBytes)
 	if err != nil {
@@ -57,35 +61,86 @@ func testLineDiff(t *testing.T, str1 string, str2 string) {
 }
 
 func TestLineDiff(t *testing.T) {
-	testLineDiff(t, Str1, Str2)
-	testLineDiff(t, Str2, Str3)
-	testLineDiff(t, Str1, Str3)
-	testLineDiff(t, Str3, Str1)
-	testLineDiff(t, Str3, Str4)
+	testLineDiff(t, Str1, Str2, "\n")
+	testLineDiff(t, Str2, Str3, "\n")
+	testLineDiff(t, Str1, Str3, "\n")
+	testLineDiff(t, Str3, Str1, "\n")
+	testLineDiff(t, Str3, Str4, "\n")
 }
 
-func strMapsEqual(m1 map[string]string, m2 map[string]string) bool {
-	if len(m1) != len(m2) {
-		return false
+func TestLineDiff0(t *testing.T) {
+	var str1Arr []string = []string{"a", "b", "c", "d", "e"}
+	var str2Arr []string = []string{"a", "e"}
+	str1 := strings.Join(str1Arr, "\x00")
+	str2 := strings.Join(str2Arr, "\x00")
+	diffBytes := MakeLineDiff(str1, str2, "\x00")
+	fmt.Printf("diff-len: %d\n", len(diffBytes))
+	out, err := ApplyLineDiff(str1, diffBytes)
+	if err != nil {
+		t.Errorf("error in diff: %v", err)
+		return
 	}
-	for key, val := range m1 {
-		val2, ok := m2[key]
-		if !ok || val != val2 {
-			return false
-		}
+	if out != str2 {
+		t.Errorf("bad diff output")
 	}
-	for key, val := range m2 {
-		val2, ok := m1[key]
-		if !ok || val != val2 {
-			return false
-		}
+	diffBytes = MakeLineDiff(str2, str1, "\x00")
+	fmt.Printf("diff-len: %d\n", len(diffBytes))
+	out, err = ApplyLineDiff(str2, diffBytes)
+	if err != nil {
+		t.Errorf("error in diff: %v", err)
+		return
 	}
-	return true
+	if out != str1 {
+		t.Errorf("bad diff output")
+	}
+
+	diffBytes = MakeLineDiff(str1, str1, "\x00")
+	if len(diffBytes) != 0 {
+		t.Errorf("bad diff output (len should be 0)")
+	}
+	var diffVar LineDiffType
+	diffVar.Decode(diffBytes)
+	if len(diffVar.Lines) != 0 || len(diffVar.NewData) != 0 || diffVar.Version != LineDiffVersion {
+		t.Errorf("bad diff output (for decoding nil)")
+	}
+}
+
+func TestLineDiffVersion0(t *testing.T) {
+	var str1Arr []string = []string{"a", "b", "c", "d", "e"}
+	var str2Arr []string = []string{"a", "e"}
+	str1 := strings.Join(str1Arr, "\n")
+	str2 := strings.Join(str2Arr, "\n")
+
+	var diff LineDiffType
+	diff.Version = 0
+	diff.SplitString = "\n"
+	diff.Lines = []SingleLineEntry{{LineVal: 1, Run: 1}, {LineVal: 5, Run: 1}}
+	encDiff0 := diff.Encode_v0()
+
+	var decDiff LineDiffType
+	err := decDiff.Decode(encDiff0)
+	if err != nil {
+		t.Errorf("error decoding diff: %v\n", err)
+	}
+	if decDiff.Version != 0 {
+		t.Errorf("bad version")
+	}
+	if decDiff.SplitString != "\n" {
+		t.Errorf("bad split string")
+	}
+	out, err := ApplyLineDiff(str1, encDiff0)
+	if err != nil {
+		t.Errorf("error in diff: %v", err)
+		return
+	}
+	if out != str2 {
+		t.Errorf("bad diff output")
+	}
 }
 
 func TestMapDiff(t *testing.T) {
-	m1 := map[string]string{"a": "5", "b": "hello", "c": "mike"}
-	m2 := map[string]string{"a": "5", "b": "goodbye", "d": "more"}
+	m1 := map[string][]byte{"a": []byte("5"), "b": []byte("hello"), "c": []byte("mike")}
+	m2 := map[string][]byte{"a": []byte("5"), "b": []byte("goodbye"), "d": []byte("more")}
 	diffBytes := MakeMapDiff(m1, m2)
 	fmt.Printf("mapdifflen: %d\n", len(diffBytes))
 	var diff MapDiffType
@@ -95,8 +150,38 @@ func TestMapDiff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error applying map diff: %v", err)
 	}
-	if !strMapsEqual(m2, mcheck) {
+	if !utilfn.ByteMapsEqual(m2, mcheck) {
 		t.Errorf("maps not equal")
 	}
-	fmt.Printf("%v\n", mcheck)
+
+	// try v0
+	mdiff := makeMapDiff(m1, m2)
+	diffBytes = mdiff.Encode_v0()
+	mcheck, err = ApplyMapDiff(m1, diffBytes)
+	if err != nil {
+		t.Fatalf("error applying map diff: %v", err)
+	}
+	if !utilfn.ByteMapsEqual(m2, mcheck) {
+		t.Errorf("maps not equal")
+	}
+
+	diffBytes = MakeMapDiff(m1, m1)
+	if len(diffBytes) != 0 {
+		t.Errorf("bad diff output (len should be 0)")
+	}
+	mcheck, err = ApplyMapDiff(m1, diffBytes)
+	if err != nil {
+		t.Fatalf("error applying map diff: %v", err)
+	}
+	if !utilfn.ByteMapsEqual(m1, mcheck) {
+		t.Errorf("maps not equal")
+	}
+}
+
+func TestVarint(t *testing.T) {
+	viBuf := make([]byte, 10)
+	viLen := binary.PutVarint(viBuf, 1)
+	fmt.Printf("%#v\n", viBuf[0:viLen])
+	viLen = binary.PutUvarint(viBuf, 1)
+	fmt.Printf("%#v\n", viBuf[0:viLen])
 }

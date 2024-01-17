@@ -206,7 +206,6 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         );
         if (remote.local) {
             installNowButton = <></>;
-            updateAuthButton = <></>;
             cancelInstallButton = <></>;
         }
         if (remote.sshconfigsrc == "sshconfig-import") {
@@ -351,6 +350,10 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                         <div className="settings-field">
                             <div className="settings-label">Connect Mode</div>
                             <div className="settings-input">{remote.connectmode}</div>
+                        </div>
+                        <div className="settings-field">
+                            <div className="settings-label">Shell Pref</div>
+                            <div className="settings-input">{remote.shellpref}</div>
                         </div>
                         {this.renderInstallStatus(remote)}
                         <div className="flex-spacer" style={{ minHeight: 20 }} />

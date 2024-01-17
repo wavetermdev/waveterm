@@ -1213,6 +1213,7 @@ class Session {
                 remoteid: rptr.remoteid,
                 name: rptr.name,
                 festate: remote.defaultfestate,
+                shelltype: remote.defaultshelltype,
             };
         }
         return null;
@@ -4565,6 +4566,10 @@ class CommandRunner {
             kwargs["type"] = htype;
         }
         GlobalModel.submitCommand("history", null, null, kwargs, true);
+    }
+
+    resetShellState() {
+        GlobalModel.submitCommand("reset", null, null, null, true);
     }
 
     historyPurgeLines(lines: string[]): Promise<CommandRtnType> {

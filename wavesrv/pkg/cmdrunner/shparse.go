@@ -9,10 +9,10 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
 )
@@ -141,6 +141,12 @@ func onlyRawArgs(metaCmd string, metaSubCmd string) bool {
 	return CmdParseOverrides[metaCmd] == CmdParseTypeRaw
 }
 
+var waveValidIdentifierRe = regexp.MustCompile("^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+func isValidWaveParamName(name string) bool {
+	return waveValidIdentifierRe.MatchString(name)
+}
+
 func setBracketArgs(argMap map[string]string, bracketStr string) error {
 	bracketStr = strings.TrimSpace(bracketStr)
 	if bracketStr == "" {
@@ -160,7 +166,7 @@ func setBracketArgs(argMap map[string]string, bracketStr string) error {
 			varName = litStr[0:eqIdx]
 			varVal = litStr[eqIdx+1:]
 		}
-		if !shexec.IsValidBashIdentifier(varName) {
+		if !isValidWaveParamName(varName) {
 			wordErr = fmt.Errorf("invalid identifier %s in bracket args", utilfn.ShellQuote(varName, true, 20))
 			return false
 		}
@@ -183,14 +189,29 @@ var literalRtnStateCommands = []string{
 	".",
 	"source",
 	"unset",
+	"unsetopt",
 	"cd",
 	"alias",
 	"unalias",
 	"deactivate",
 	"eval",
 	"asdf",
+	"sdk",
 	"nvm",
 	"virtualenv",
+	"builtin",
+	"typeset",
+	"declare",
+	"float",
+	"functions",
+	"integer",
+	"local",
+	"readonly",
+	"unfunction",
+	"shopt",
+	"enable",
+	"disable",
+	"function",
 }
 
 func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {
@@ -235,14 +256,13 @@ func isRtnStateCmd(cmd syntax.Command) bool {
 		if arg0 != "" && utilfn.ContainsStr(literalRtnStateCommands, arg0) {
 			return true
 		}
+		arg1 := getCallExprLitArg(callExpr, 1)
 		if arg0 == "git" {
-			arg1 := getCallExprLitArg(callExpr, 1)
 			if arg1 == "checkout" || arg1 == "switch" {
 				return true
 			}
 		}
 		if arg0 == "conda" {
-			arg1 := getCallExprLitArg(callExpr, 1)
 			if arg1 == "activate" || arg1 == "deactivate" {
 				return true
 			}
@@ -253,12 +273,30 @@ func isRtnStateCmd(cmd syntax.Command) bool {
 	return false
 }
 
+func checkSimpleRtnStateCmd(cmdStr string) bool {
+	cmdStr = strings.TrimSpace(cmdStr)
+	if strings.HasPrefix(cmdStr, "function ") {
+		return true
+	}
+	firstSpace := strings.Index(cmdStr, " ")
+	if firstSpace != -1 {
+		firstWord := strings.TrimSpace(cmdStr[:firstSpace])
+		if strings.HasSuffix(firstWord, "()") {
+			return true
+		}
+	}
+	return false
+}
+
 // detects: export, declare, ., source, X=1, unset
 func IsReturnStateCommand(cmdStr string) bool {
 	cmdReader := strings.NewReader(cmdStr)
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
 	file, err := parser.Parse(cmdReader, "cmd")
 	if err != nil {
+		if checkSimpleRtnStateCmd(cmdStr) {
+			return true
+		}
 		return false
 	}
 	for _, stmt := range file.Stmts {
@@ -353,7 +391,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("parsing metacmd, position %v", err)
 	}
 	envMap := make(map[string]string) // later we can add vars like session, screen, remote, and user
-	cfg := shexec.GetParserConfig(envMap)
+	cfg := shellapi.GetParserConfig(envMap)
 	// process arguments
 	for idx, w := range words {
 		literalVal, err := expand.Literal(cfg, w)

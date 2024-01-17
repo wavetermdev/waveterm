@@ -44,9 +44,9 @@ func PackStrArr(w io.Writer, strs []string) error {
 	return PackValue(w, barr)
 }
 
-func PackInt(w io.Writer, ival int) error {
+func PackUInt(w io.Writer, ival uint64) error {
 	viBuf := make([]byte, binary.MaxVarintLen64)
-	l := binary.PutUvarint(viBuf, uint64(ival))
+	l := binary.PutUvarint(viBuf, ival)
 	_, err := w.Write(viBuf[0:l])
 	return err
 }
@@ -80,8 +80,16 @@ func UnpackStrArr(r FullByteReader) ([]string, error) {
 	return strs, nil
 }
 
-func UnpackInt(r io.ByteReader) (int, error) {
-	ival64, err := binary.ReadVarint(r)
+func UnpackUInt(r io.ByteReader) (uint64, error) {
+	ival64, err := binary.ReadUvarint(r)
+	if err != nil {
+		return 0, err
+	}
+	return ival64, nil
+}
+
+func UnpackUIntAsInt(r io.ByteReader) (int, error) {
+	ival64, err := UnpackUInt(r)
 	if err != nil {
 		return 0, err
 	}
@@ -99,15 +107,15 @@ func (u *Unpacker) UnpackValue(name string) []byte {
 	return rtn
 }
 
-func (u *Unpacker) UnpackInt(name string) int {
+func (u *Unpacker) UnpackUInt(name string) int {
 	if u.Err != nil {
 		return 0
 	}
-	rtn, err := UnpackInt(u.R)
+	rtn, err := UnpackUInt(u.R)
 	if err != nil {
 		u.Err = fmt.Errorf("cannot unpack %s: %v", name, err)
 	}
-	return rtn
+	return int(rtn)
 }
 
 func (u *Unpacker) UnpackStrArr(name string) []string {
