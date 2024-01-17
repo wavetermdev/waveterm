@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { RemoteType, StatusIndicatorLevel } from "../../types/types";
+import type { RemoteType } from "../../types/types";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
 
@@ -28,7 +28,6 @@ import { sortAndFilterRemotes, isBlank, openLink } from "../../util/util";
 import * as constants from "../appconst";
 
 import "./sidebar.less";
-import { StatusIndicator } from "../common/common";
 
 dayjs.extend(localizedFormat);
 
