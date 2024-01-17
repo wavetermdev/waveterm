@@ -713,14 +713,14 @@ class InlineSettingsTextEdit extends React.Component<
     }
 
     @boundMethod
-    handleKeyDown(e: any): void {
-        if (e.code == "Enter") {
+    handleKeyDown(e: any): void { 
+        if (GlobalModel.checkKeyPressed(e, "Enter")) {
             e.preventDefault();
             e.stopPropagation();
             this.confirmChange();
             return;
-        }
-        if (e.code == "Escape") {
+        } 
+        if (GlobalModel.checkKeyPressed(e, "Escape")) {
             e.preventDefault();
             e.stopPropagation();
             this.cancelChange();

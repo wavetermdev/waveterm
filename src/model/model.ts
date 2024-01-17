@@ -17,6 +17,7 @@ import {
     genMergeSimpleData,
     boundInt,
     isModKeyPress,
+    hasNoModifiers,
 } from "../util/util";
 import { TermWrap } from "../plugins/terminal/term";
 import { PluginModel } from "../plugins/plugins";
@@ -212,6 +213,15 @@ type ElectronApi = {
     contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
     onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
     getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
+};
+
+type KeyPressType = {
+    modifierShift: boolean;
+    modifierControl: boolean;
+    modifierCommand: boolean;
+    modifierOption: boolean;
+    anyModifier: boolean;
+    key: string;
 };
 
 function getApi(): ElectronApi {
@@ -805,47 +815,63 @@ class Screen {
      * @param indicator The value of the status indicator. One of "none", "error", "success", "output".
      */
     setStatusIndicator(indicator: StatusIndicatorLevel): void {
-        mobx.action(() => {        
+        mobx.action(() => {
             this.statusIndicator.set(indicator);
         })();
     }
 
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
-        if (e.code == "ArrowUp") {
+        if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
             termWrap.terminal.scrollLines(-1);
             return;
         }
-        if (e.code == "ArrowDown") {
+        if (GlobalModel.checkKeyPressed(e, "ArrowDown")) {
             termWrap.terminal.scrollLines(1);
             return;
         }
-        if (e.code == "PageUp") {
+        if (GlobalModel.checkKeyPressed(e, "PageUp")) {
             termWrap.terminal.scrollPages(-1);
             return;
         }
-        if (e.code == "PageDown") {
+        if (GlobalModel.checkKeyPressed(e, "PageDown")) {
             termWrap.terminal.scrollPages(1);
             return;
         }
     }
 
     isTermCapturedKey(e: any): boolean {
-        let keys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown"];
-        if (keys.includes(e.code) && keyHasNoMods(e)) {
+        if (
+            GlobalModel.checkKeyPressed(e, "ArrowUp") ||
+            GlobalModel.checkKeyPressed(e, "ArrowDown") ||
+            GlobalModel.checkKeyPressed(e, "PageUp") ||
+            GlobalModel.checkKeyPressed(e, "PageDown")
+        ) {
             return true;
         }
         return false;
     }
 
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
-        if (e.type == "keypress" && e.code == "KeyC" && e.shiftKey && e.ctrlKey) {
+        if (
+            e.type == "keypress" &&
+            GlobalModel.checkKeyPressed(
+                e,
+                GlobalModel.KeyPressModifierShift + ":" + GlobalModel.KeyPressModifierControl + ":" + "c"
+            )
+        ) {
             e.stopPropagation();
             e.preventDefault();
             let sel = termWrap.terminal.getSelection();
             navigator.clipboard.writeText(sel);
             return false;
         }
-        if (e.type == "keypress" && e.code == "KeyV" && e.shiftKey && e.ctrlKey) {
+        if (
+            e.type == "keypress" &&
+            GlobalModel.checkKeyPressed(
+                e,
+                GlobalModel.KeyPressModifierShift + ":" + GlobalModel.KeyPressModifierControl + ":" + "v"
+            )
+        ) {
             e.stopPropagation();
             e.preventDefault();
             let p = navigator.clipboard.readText();
@@ -2556,7 +2582,7 @@ class HistoryViewModel {
     }
 
     handleDocKeyDown(e: any): void {
-        if (e.code == "Escape") {
+        if (GlobalModel.checkKeyPressed(e, "Escape")) {
             e.preventDefault();
             this.closeView();
             return;
@@ -2797,7 +2823,7 @@ class BookmarksModel {
     }
 
     handleDocKeyDown(e: any): void {
-        if (e.code == "Escape") {
+        if (GlobalModel.checkKeyPressed(e, "Escape")) {
             e.preventDefault();
             if (this.editingBookmark.get() != null) {
                 this.cancelEdit();
@@ -2809,7 +2835,7 @@ class BookmarksModel {
         if (this.editingBookmark.get() != null) {
             return;
         }
-        if (e.code == "Backspace" || e.code == "Delete") {
+        if (GlobalModel.checkKeyPressed(e, "Backspace") || GlobalModel.checkKeyPressed(e, "Delete")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -2817,7 +2843,13 @@ class BookmarksModel {
             this.handleDeleteBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "ArrowUp" || e.code == "ArrowDown" || e.code == "PageUp" || e.code == "PageDown") {
+
+        if (
+            GlobalModel.checkKeyPressed(e, "ArrowUp") ||
+            GlobalModel.checkKeyPressed(e, "ArrowDown") ||
+            GlobalModel.checkKeyPressed(e, "PageUp") ||
+            GlobalModel.checkKeyPressed(e, "PageDown")
+        ) {
             e.preventDefault();
             if (this.bookmarks.length == 0) {
                 return;
@@ -2841,14 +2873,14 @@ class BookmarksModel {
             })();
             return;
         }
-        if (e.code == "Enter") {
+        if (GlobalModel.checkKeyPressed(e, "Enter")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
             this.useBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "KeyE") {
+        if (GlobalModel.checkKeyPressed(e, "e")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -2856,7 +2888,7 @@ class BookmarksModel {
             this.handleEditBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "KeyC") {
+        if (GlobalModel.checkKeyPressed(e, "c")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -3375,6 +3407,11 @@ class Model {
         name: "model-showLinks",
     });
     packetSeqNum: number = 0;
+    KeyPressModifierShift = "Shift";
+    KeyPressModifierControl = "Ctrl";
+    KeyPressModifierCommand = "Cmd";
+    KeyPressModifierOption = "Opt";
+    KeyPressAnyModifier = "AnyMod";
 
     constructor() {
         this.clientId = getApi().getId();
@@ -3589,12 +3626,12 @@ class Model {
             return;
         }
         if (this.alertMessage.get() != null) {
-            if (e.code == "Escape") {
+            if (GlobalModel.checkKeyPressed(e, "Escape")) {
                 e.preventDefault();
                 this.cancelAlert();
                 return;
             }
-            if (e.code == "Enter") {
+            if (GlobalModel.checkKeyPressed(e, "Enter")) {
                 e.preventDefault();
                 this.confirmAlert();
                 return;
@@ -3617,7 +3654,7 @@ class Model {
             this.historyViewModel.handleDocKeyDown(e);
             return;
         }
-        if (e.code == "Escape") {
+        if (GlobalModel.checkKeyPressed(e, "Escape")) {
             e.preventDefault();
             if (this.activeMainView.get() == "webshare") {
                 this.showSessionView();
@@ -3633,15 +3670,13 @@ class Model {
             }
             return;
         }
-        if (e.code == "KeyB" && e.getModifierState("Meta")) {
+        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":b")) {
             e.preventDefault();
             GlobalCommandRunner.bookmarksView();
         }
         if (
             this.activeMainView.get() == "session" &&
-            e.code == "KeyS" &&
-            e.getModifierState("Meta") &&
-            e.getModifierState("Control")
+            this.checkKeyPressed(e, this.KeyPressModifierCommand + ":" + this.KeyPressModifierControl + ":" + "s")
         ) {
             e.preventDefault();
             let activeScreen = this.getActiveScreen();
@@ -3654,7 +3689,7 @@ class Model {
                 }
             }
         }
-        if (e.code == "KeyD" && e.getModifierState("Meta")) {
+        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":d")) {
             let ranDelete = this.deleteActiveLine();
             if (ranDelete) {
                 e.preventDefault();
@@ -4056,7 +4091,9 @@ class Model {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
         if ("screenstatusindicator" in update) {
-            this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(update.screenstatusindicator.status);
+            this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(
+                update.screenstatusindicator.status
+            );
         }
         // console.log("run-update>", Date.now(), interactive, update);
     }

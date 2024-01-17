@@ -206,8 +206,8 @@ class HistoryView extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    searchKeyDown(e: any) {
-        if (e.code == "Enter") {
+    searchKeyDown(e: any) { 
+        if (GlobalModel.checkKeyPressed(e, "Enter")) {
             e.preventDefault();
             GlobalModel.historyViewModel.submitSearch();
             return;
