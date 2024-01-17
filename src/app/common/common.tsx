@@ -1258,16 +1258,16 @@ class StatusIndicator extends React.Component<StatusIndicatorProps> {
             let statusIndicatorClass = null;
             switch (statusIndicatorLevel) {
                 case StatusIndicatorLevel.Output:
-                    statusIndicatorClass = "fa-spinner-third output spin";
+                    statusIndicatorClass = "output";
                     break;
                 case StatusIndicatorLevel.Success:
-                    statusIndicatorClass = "fa-circle-small success";
+                    statusIndicatorClass = "success";
                     break;
                 case StatusIndicatorLevel.Error:
-                    statusIndicatorClass = "fa-circle-small error";
+                    statusIndicatorClass = "error";
                     break;
             }
-            statusIndicator = <div className={`fa-sharp fa-solid status-indicator ${statusIndicatorClass}`}></div>;
+            statusIndicator = <div className={`fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}></div>;
         }
         return statusIndicator;
     }
