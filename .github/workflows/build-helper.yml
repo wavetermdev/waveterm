@@ -89,7 +89,7 @@ jobs:
                 mv out/make/zip/linux/x64/Wave-linux-x64-$WAVETERM_VERSION.zip buildtemp/waveterm-linux-x64-v$WAVETERM_VERSION.zip
             - uses: actions/upload-artifact@v4
               with:
-                name: waveterm-build-linux-x64
+                name: waveterm-builds
                 path: buildtemp
                 retention-days: 2
 

@@ -188,9 +188,9 @@ func bashParseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarB
 	declareStr := string(declareBytes)
 	r := bytes.NewReader(declareBytes)
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
-	file, err := parser.Parse(r, "aliases")
+	file, err := parser.Parse(r, "bash-declare-output")
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot parse bash declare output: %w", err)
 	}
 	var firstParseErr error
 	declMap := make(map[string]*DeclareDeclType)
@@ -293,7 +293,7 @@ func bashAssocArrayVarToMap(d *DeclareDeclType) (map[string]string, error) {
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
 	file, err := parser.Parse(r, "assocdecl")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing bash assoc-array value: %w", err)
 	}
 	if len(file.Stmts) != 1 {
 		return nil, fmt.Errorf("invalid assoc-array parse (multiple stmts)")
