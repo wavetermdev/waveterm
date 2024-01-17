@@ -27,10 +27,7 @@ import (
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/comp"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
@@ -40,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
 	"golang.org/x/mod/semver"
 )
 
@@ -245,7 +243,6 @@ func init() {
 	registerCmdFn("chat", OpenAICommand)
 
 	registerCmdFn("_killserver", KillServerCommand)
-	registerCmdFn("_dumpstate", DumpStateCommand)
 
 	registerCmdFn("set", SetCommand)
 
@@ -1203,8 +1200,9 @@ type RemoteEditArgs struct {
 	ConnectMode   string
 	Alias         string
 	AutoInstall   bool
+	SSHPassword   string
+	SSHKeyFile    string
 	Color         string
-	ShellPref     string
 	EditMap       map[string]interface{}
 }
 
@@ -1288,16 +1286,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 			return nil, fmt.Errorf("invalid alias format")
 		}
 	}
-	var shellPref string
-	if isNew {
-		shellPref = sstore.ShellTypePref_Detect
-	}
-	if pk.Kwargs["shellpref"] != "" {
-		shellPref = pk.Kwargs["shellpref"]
-	}
-	if shellPref != "" && shellPref != packet.ShellType_bash && shellPref != packet.ShellType_zsh && shellPref != sstore.ShellTypePref_Detect {
-		return nil, fmt.Errorf("invalid shellpref %q, must be %s", shellPref, formatStrs([]string{packet.ShellType_bash, packet.ShellType_zsh, sstore.ShellTypePref_Detect}, "or", false))
-	}
 	var connectMode string
 	if isNew {
 		connectMode = sstore.ConnectModeAuto
@@ -1352,9 +1340,6 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		}
 		editMap[sstore.RemoteField_SSHPassword] = sshPassword
 	}
-	if _, found := pk.Kwargs["shellpref"]; found {
-		editMap[sstore.RemoteField_ShellPref] = shellPref
-	}
 
 	return &RemoteEditArgs{
 		SSHOpts:       sshOpts,
@@ -1362,9 +1347,10 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 		Alias:         alias,
 		AutoInstall:   true,
 		CanonicalName: canonicalName,
+		SSHKeyFile:    keyFile,
+		SSHPassword:   sshPassword,
 		Color:         color,
 		EditMap:       editMap,
-		ShellPref:     shellPref,
 	}, nil
 }
 
@@ -1389,7 +1375,6 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		AutoInstall:         editArgs.AutoInstall,
 		SSHOpts:             editArgs.SSHOpts,
 		SSHConfigSrc:        sstore.SSHConfigSrcTypeManual,
-		ShellPref:           editArgs.ShellPref,
 	}
 	if editArgs.Color != "" {
 		r.RemoteOpts = &sstore.RemoteOptsType{Color: editArgs.Color}
@@ -1896,7 +1881,7 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 		if riBaseMap[remoteId] {
 			continue
 		}
-		feState := msh.GetDefaultFeState(msh.GetShellPref())
+		feState := msh.GetDefaultFeState()
 		if feState == nil {
 			continue
 		}
@@ -2395,7 +2380,7 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 		CmdStr:    cmdStr,
 		RawCmdStr: cmdStr,
 		Remote:    ids.Remote.RemotePtr,
-		TermOpts:  sstore.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize},
+		TermOpts:  sstore.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize},
 		Status:    sstore.CmdStatusDone,
 		RunOut:    nil,
 	}
@@ -2992,31 +2977,23 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 }
 
 func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
-	shellType := ids.Remote.ShellType
-	if pk.Kwargs["shell"] != "" {
-		shellArg := pk.Kwargs["shell"]
-		if shellArg != packet.ShellType_bash && shellArg != packet.ShellType_zsh {
-			return nil, fmt.Errorf("/reset invalid shell type %q", shellArg)
-		}
-		shellType = shellArg
-	}
-	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType)
+	initPk, err := ids.Remote.MShell.ReInit(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if ssPk == nil || ssPk.State == nil {
+	if initPk == nil || initPk.State == nil {
 		return nil, fmt.Errorf("invalid initpk received from remote (no remote state)")
 	}
-	feState := sstore.FeStateFromShellState(ssPk.State)
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, ssPk.State, nil)
+	feState := sstore.FeStateFromShellState(initPk.State)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, initPk.State, nil)
 	if err != nil {
 		return nil, err
 	}
-	outputStr := fmt.Sprintf("reset remote state (shell:%s)", ssPk.State.GetShellType())
+	outputStr := "reset remote state"
 	cmd, err := makeStaticCmd(ctx, "reset", ids, pk.GetRawStr(), []byte(outputStr))
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -4220,20 +4197,6 @@ func KillServerCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 	}()
 	return nil, nil
-}
-
-func DumpStateCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
-	if err != nil {
-		return nil, err
-	}
-	currentState, err := sstore.GetFullState(ctx, *ids.Remote.StatePtr)
-	if err != nil {
-		return nil, fmt.Errorf("error getting state: %v", err)
-	}
-	feState := sstore.FeStateFromShellState(currentState)
-	shellenv.DumpVarMapFromState(currentState)
-	return sstore.InfoMsgUpdate("current connection state sent to log.  festate: %s", dbutil.QuickJson(feState)), nil
 }
 
 func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
