@@ -73,11 +73,6 @@ jobs:
             - run: |
                 go work use ./scripthaus;
                 cd scripthaus;
-                pwd;
-                ls -l;
-                cat go.mod;
-                ls -l cmd/main.go;
-                go version;
                 go get ./...;
                 CGO_ENABLED=1 go build -o ../scripthaus cmd/main.go
             - uses: actions/setup-node@v4
@@ -85,7 +80,7 @@ jobs:
                 node-version: ${{env.NODE_VERSION}}
                 cache: 'yarn'
             - run: yarn --frozen-lockfile
-            - run: scripthaus run build-package-linux
+            - run: ./scripthaus run build-package-linux
             - uses: actions/upload-artifact@v3
               with:
                 name: waveterm-build-linux-x64
