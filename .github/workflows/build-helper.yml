@@ -87,6 +87,12 @@ jobs:
                 path: buildtemp
             - run: |
                 mv out/make/zip/linux/x64/Wave-linux-x64-$WAVETERM_VERSION.zip buildtemp/waveterm-linux-x64-v$WAVETERM_VERSION.zip
+            - run: (cd buildtemp; zip ../waveterm-builds.zip *)
+            - run: aws s3 cp waveterm-builds.zip s3://waveterm-github-artifacts/
+              env:
+                AWS_ACCESS_KEY_ID: ${{ secrets.S3_USERID }}
+                AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRETKEY }}
+                AWS_DEFAULT_REGION: us-west-2
             - uses: actions/upload-artifact@v4
               with:
                 name: waveterm-builds
