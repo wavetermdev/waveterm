@@ -52,6 +52,8 @@ var ZshIgnoreVars = map[string]bool{
 	"TTY":                  true,
 	"epochtime":            true,
 	"langinfo":             true,
+	"keymaps":              true,
+	"widgets":              true,
 
 	"aliases":              true,
 	"dis_aliases":          true,
