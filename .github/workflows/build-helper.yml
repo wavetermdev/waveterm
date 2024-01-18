@@ -91,13 +91,13 @@ jobs:
             - run: date
             - run: aws s3 ls s3://waveterm-github-artifacts/
               env:
-                AWS_ACCESS_KEY_ID: ${{ secrets.S3_USERID }}
-                AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRETKEY }}
+                AWS_ACCESS_KEY_ID: "${{ secrets.S3_USERID }}"
+                AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRETKEY }}"
                 AWS_DEFAULT_REGION: us-west-2
             - run: aws s3 cp waveterm-builds.zip s3://waveterm-github-artifacts/
               env:
-                AWS_ACCESS_KEY_ID: ${{ secrets.S3_USERID }}
-                AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRETKEY }}
+                AWS_ACCESS_KEY_ID: "${{ secrets.S3_USERID }}"
+                AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRETKEY }}"
                 AWS_DEFAULT_REGION: us-west-2
             - uses: actions/upload-artifact@v4
               with:
