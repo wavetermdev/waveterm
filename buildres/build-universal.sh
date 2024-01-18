@@ -3,10 +3,19 @@
 # assumes we have Wave-darwin-x64-[version].zip and Wave-darwin-arm64-[version].zip in current directory
 VERSION=0.6.0
 rm -rf temp
+rm -rf builds
 mkdir temp
 mkdir temp/x64
-X64_ZIP="Wave-darwin-x64-$VERSION.zip"
-ARM64_ZIP="Wave-darwin-arm64-$VERSION.zip"
+aws s3 cp s3://waveterm-github-artifacts/waveterm-builds.zip .
+BUILDS_ZIP=waveterm-builds.zip
+if ! [ -f $BUILDS_ZIP ]; then
+    echo "no $BUILDS_ZIP found";
+    exit 1;
+fi
+echo "unzipping $BUILDS_ZIP"
+unzip -q $BUILDS_ZIP -d builds
+X64_ZIP="builds/Wave-darwin-x64-$VERSION.zip"
+ARM64_ZIP="builds/Wave-darwin-arm64-$VERSION.zip"
 if ! [ -f $X64_ZIP ]; then
     echo "no $X64_ZIP found";
     exit 1;
@@ -48,4 +57,6 @@ DMG_NAME="waveterm-macos-universal-${DMG_VERSION}.dmg"
   $DMG_NAME \
   "temp/Wave.app"
 echo "success, created $DMG_NAME"
+mv $DMG_NAME builds/
+rm builds/Wave-darwin-*.zip
 spctl -a -vvv -t install temp/Wave.app/
