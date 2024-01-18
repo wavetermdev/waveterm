@@ -4056,7 +4056,7 @@ class Model {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
         if ("screenstatusindicator" in update) {
-            this.getScreenById_single(update.screenstatusindicator.screenid).setStatusIndicator(update.screenstatusindicator.status);
+            this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(update.screenstatusindicator.status);
         }
         // console.log("run-update>", Date.now(), interactive, update);
     }
