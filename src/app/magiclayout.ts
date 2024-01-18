@@ -22,7 +22,7 @@ let MagicLayout = {
     TermDescendersHeight: 3,
     TermWidthBuffer: 15,
 
-    TabWidth: 175,
+    TabWidth: 154,
 
     ScreenSidebarWidthPadding: 5,
     ScreenSidebarMinWidth: 200,

@@ -21,7 +21,6 @@ class ScreenTabs extends React.Component<
     { showingScreens: Screen[]; scrollIntoViewTimeout: number }
 > {
     tabsRef: React.RefObject<any> = React.createRef();
-    tabRefs: { [screenId: string]: React.RefObject<any> } = {};
     lastActiveScreenId: string = null;
     dragEndTimeout = null;
     scrollIntoViewTimeoutId = null;
@@ -167,16 +166,6 @@ class ScreenTabs extends React.Component<
             event.preventDefault();
         }
         // For touchpad events, do nothing and let the browser handle it
-    }
-
-    @boundMethod
-    openScreenSettings(e: any, screen: Screen): void {
-        e.preventDefault();
-        e.stopPropagation();
-        mobx.action(() => {
-            GlobalModel.screenSettingsModal.set({ sessionId: screen.sessionId, screenId: screen.screenId });
-        })();
-        GlobalModel.modalsModel.pushModal(constants.SCREEN_SETTINGS);
     }
 
     render() {
