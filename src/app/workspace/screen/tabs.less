@@ -266,9 +266,10 @@
             max-width: 14em;
             align-items: center;
             cursor: pointer;
+            padding: 0 4px 0 0;
 
             .front-icon {
-                margin: 0 5px 0 6px;
+                margin: 0 5px 0 8px;
                 .svg-icon svg {
                     width: 14px;
                     height: 14px;
@@ -296,6 +297,8 @@
 
             // Only one of these will be visible at a time
             .end-icon {
+                // This makes the calculations below easier since we don't need to account for the right margin on the parent tab.
+                margin: 0 -4px 0 0;
                 .end-icon-inner {
                     & > div {
                         text-align: center;
