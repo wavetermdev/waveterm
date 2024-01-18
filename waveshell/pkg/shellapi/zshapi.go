@@ -216,6 +216,9 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		if ZshIgnoreVars[varDecl.Name] {
 			continue
 		}
+		if varDecl.IsReadOnly() {
+			continue
+		}
 		if ZshUniqueArrayVars[varDecl.Name] && !varDecl.IsUniqueArray() {
 			varDecl.AddFlag("U")
 		}
