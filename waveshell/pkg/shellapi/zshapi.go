@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/alessio/shellescape"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
@@ -105,6 +106,7 @@ var localZshMajorVersion = ""
 
 // sentinel value for functions that should be autoloaded
 const ZshFnAutoLoad = "autoload"
+const ZshAutoloadFnBody = "builtin autoload -XU"
 
 type ZshParamKey struct {
 	// paramtype cannot contain spaces
@@ -204,6 +206,19 @@ func makeZshTypesetStmt(varDecl *shellenv.DeclareDeclType) string {
 	}
 }
 
+func isZshSafeNameStr(name string) bool {
+	for _, ch := range name {
+		if ch == '_' {
+			continue
+		}
+		if unicode.IsLetter(ch) || unicode.IsDigit(ch) {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
 func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	var rcBuf bytes.Buffer
 	rcBuf.WriteString(z.GetBaseShellOpts() + "\n")
@@ -214,9 +229,6 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	var postDecls []*shellenv.DeclareDeclType
 	for _, varDecl := range varDecls {
 		if ZshIgnoreVars[varDecl.Name] {
-			continue
-		}
-		if varDecl.IsReadOnly() {
 			continue
 		}
 		if ZshUniqueArrayVars[varDecl.Name] && !varDecl.IsUniqueArray() {
@@ -230,7 +242,19 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		if stmt == "" {
 			continue
 		}
-		rcBuf.WriteString(makeZshTypesetStmt(varDecl))
+		if varDecl.IsReadOnly() {
+			// we can't reset read-only variables
+			// so we check if it is a "safe" name, and then we can write a conditional
+			//     that only sets it if it hasn't already been set.
+			if !isZshSafeNameStr(varDecl.Name) {
+				continue
+			}
+			rcBuf.WriteString(fmt.Sprintf("if (( ! ${+%s} )); then\n", varDecl.Name))
+			rcBuf.WriteString(makeZshTypesetStmt(varDecl))
+			rcBuf.WriteString("\nfi")
+		} else {
+			rcBuf.WriteString(makeZshTypesetStmt(varDecl))
+		}
 		rcBuf.WriteString("\n")
 	}
 	if shellenv.FindVarDecl(varDecls, "ZDOTDIR") == nil {
@@ -518,6 +542,8 @@ func ParseZshFunctions(fpathArr []string, fnBytes []byte, partSeparator []byte) 
 	for fnKey := range fnBody {
 		source := fnSource[fnKey.ParamName]
 		if isSourceFileInFpath(fpathArr, source) {
+			fnBody[fnKey] = ZshFnAutoLoad
+		} else if strings.TrimSpace(fnBody[fnKey]) == ZshAutoloadFnBody {
 			fnBody[fnKey] = ZshFnAutoLoad
 		}
 	}

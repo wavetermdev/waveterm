@@ -50,6 +50,7 @@ const ShellVarName = "SHELL"
 const SigKillWaitTime = 2 * time.Second
 const RtnStateFdNum = 20
 const ReturnStateReadWaitTime = 2 * time.Second
+const ForceDebugRcFile = false
 
 const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
@@ -821,7 +822,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		rcFileStr += trapCmdStr
 	}
 	shellVarMap := shellenv.ShellVarMapFromState(state)
-	if base.HasDebugFlag(shellVarMap, base.DebugFlag_LogRcFile) {
+	if base.HasDebugFlag(shellVarMap, base.DebugFlag_LogRcFile) || ForceDebugRcFile {
 		debugRcFileName := base.GetDebugRcFileName()
 		err := os.WriteFile(debugRcFileName, []byte(rcFileStr), 0600)
 		if err != nil {

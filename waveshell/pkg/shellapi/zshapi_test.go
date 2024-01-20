@@ -27,3 +27,21 @@ func TestParseZshDecl(t *testing.T) {
 	declStr = `typeset -x -g -aT FOO foo=( 1 2 3 )`
 	testSingleDecl(declStr)
 }
+
+func TestZshSafeDeclName(t *testing.T) {
+	if !isZshSafeNameStr("foo") {
+		t.Errorf("foo should be safe")
+	}
+	if isZshSafeNameStr("foo bar") {
+		t.Errorf("foo bar should not be safe")
+	}
+	if !isZshSafeNameStr("foo_bar") {
+		t.Errorf("foo_bar should be safe")
+	}
+	if !isZshSafeNameStr("été") {
+		t.Errorf("été should be be safe")
+	}
+	if isZshSafeNameStr("hello\x01z") {
+		t.Errorf("should not be safe")
+	}
+}
