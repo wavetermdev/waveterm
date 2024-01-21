@@ -23,14 +23,19 @@
     &.collapsed {
         width: 6em;
         min-width: 6em;
-        .arrow-container, .collapse-button {
+        .arrow-container,
+        .collapse-button {
             transform: rotate(180deg);
             margin-top: 20px;
         }
         .contents {
             margin-top: 26px;
-            
-            .top, .workspaces-item, .middle, .bottom, .separator {
+
+            .top,
+            .workspaces-item,
+            .middle,
+            .bottom,
+            .separator {
                 pointer-events: none;
                 opacity: 0;
                 visibility: hidden;
@@ -82,7 +87,7 @@
         .spacer {
             flex-grow: 1;
         }
-        
+
         img {
             width: 100px;
         }
@@ -90,7 +95,7 @@
         .collapse-button {
             transition: transform 0.3s ease-in-out;
             margin-right: 14px;
-            
+
             svg {
                 margin-top: 3px;
                 width: 1.5em;
@@ -327,4 +332,33 @@
             font-size: 16px;
         }
     }
+}
+
+.sidebar {
+    /* Existing styles */
+    position: relative; /* Ensure relative positioning */
+}
+
+.sidebar::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 10px;
+    bottom: 7px;
+    width: 5px; /* Width of the draggable area */
+    cursor: col-resize;
+    background-color: transparent; /* Visual indicator color */
+}
+
+.sidebar.divider-hovered::after,
+.sidebar.divider-dragging::after {
+    background-color: transparent;
+}
+
+.sidebar.e-resize::after {
+    cursor: e-resize;
+}
+
+.sidebar.w-resize::after {
+    cursor: w-resize;
 }

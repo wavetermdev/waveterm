@@ -805,7 +805,7 @@ class Screen {
      * @param indicator The value of the status indicator. One of "none", "error", "success", "output".
      */
     setStatusIndicator(indicator: StatusIndicatorLevel): void {
-        mobx.action(() => {        
+        mobx.action(() => {
             this.statusIndicator.set(indicator);
         })();
     }
@@ -2604,6 +2604,169 @@ class ClientSettingsViewModel {
     }
 }
 
+class SidebarModel {
+    width: OV<number> = mobx.observable.box(300, {
+        name: "SidebarModel-defaultWidth",
+    });
+    // Left side of screen by default
+    collapseSnapPoint: OV<number> = mobx.observable.box(125, {
+        name: "SidebarModel-negxSnapPoint",
+    });
+    // Left side of screen by default
+    expandSnapPoint: OV<number> = mobx.observable.box(170, {
+        name: "SidebarModel-expandSnapPoint",
+    });
+    minWidth: OV<number> = mobx.observable.box(75, {
+        name: "SidebarModel-minWidth",
+    });
+    maxWidth: OV<number> = mobx.observable.box(300, {
+        name: "SidebarModel-maxWidth",
+    });
+    // Disable snapping by default
+    withSnap: OV<boolean> = mobx.observable.box(false, {
+        name: "SidebarModel-withSnap",
+    });
+    isDragging: OV<boolean> = mobx.observable.box(false, {
+        name: "SidebarModel-isDragging",
+    });
+    isSnappedToMin: OV<boolean> = mobx.observable.box(false, {
+        name: "SidebarModel-isSnappedToMin",
+    });
+    isHovered: OV<boolean> = mobx.observable.box(false, {
+        name: "SidebarModel-isHovered",
+    });
+    isRightSidebar: OV<boolean> = mobx.observable.box(false, {
+        name: "SidebarModel-isRightSidebar",
+    });
+    sidebarRef: React.RefObject<HTMLDivElement>;
+
+    constructor(props?) {
+        if (props == null) {
+            return;
+        }
+
+        mobx.action(() => {
+            this.width.set(props.width);
+            this.collapseSnapPoint.set(props.negxSnapPoint);
+            this.expandSnapPoint.set(props.posxSnapPoint);
+            this.minWidth.set(props.minWidth);
+            this.withSnap.set(props.withSnap);
+            this.isRightSidebar.set(props.isRightSidebar);
+        })();
+    }
+
+    @boundMethod
+    handleDrag(event, info) {
+        const delta = this.isRightSidebar.get() ? -info.delta.x : info.delta.x;
+        const draggingTowardsExpansion = delta > 0;
+
+        let newWidth = this.width.get() + delta;
+
+        if (!draggingTowardsExpansion && newWidth < this.collapseSnapPoint.get() && !this.isSnappedToMin.get()) {
+            mobx.action(() => {
+                this.isSnappedToMin.set(true);
+            })();
+            newWidth = this.minWidth.get();
+        }
+
+        if (draggingTowardsExpansion && newWidth > this.expandSnapPoint.get() && this.isSnappedToMin.get()) {
+            mobx.action(() => {
+                this.isSnappedToMin.set(false);
+            })();
+            newWidth = this.maxWidth.get();
+        }
+
+        if (
+            (draggingTowardsExpansion && newWidth <= this.maxWidth.get()) ||
+            (!draggingTowardsExpansion && newWidth >= this.minWidth.get())
+        ) {
+            mobx.action(() => {
+                this.width.set(newWidth);
+            })();
+        }
+    }
+
+    @boundMethod
+    handleDragStart() {
+        mobx.action(() => {
+            this.isDragging.set(true);
+        })();
+    }
+
+    @boundMethod
+    handleDoubleClick(event) {
+        if (!this.sidebarRef.current) {
+            return;
+        }
+
+        const sidebarRect = this.sidebarRef.current.getBoundingClientRect();
+        let isClickedNearEdge = false;
+
+        if (this.isRightSidebar.get()) {
+            // For right sidebar, check if click is near the left edge
+            if (event.clientX <= sidebarRect.left + 10 && event.clientX >= sidebarRect.left) {
+                isClickedNearEdge = true;
+            }
+        } else {
+            // For left sidebar, check if click is near the right edge
+            if (event.clientX >= sidebarRect.right - 10 && event.clientX <= sidebarRect.right) {
+                isClickedNearEdge = true;
+            }
+        }
+
+        if (isClickedNearEdge) {
+            const currentWidth = this.width.get();
+            if (currentWidth === this.minWidth.get()) {
+                this.width.set(this.maxWidth.get());
+            } else if (currentWidth == this.maxWidth.get()) {
+                this.width.set(this.minWidth.get());
+            } else {
+                this.width.set(this.maxWidth.get());
+            }
+        }
+    }
+
+    @boundMethod
+    handleMouseMove(event) {
+        if (!this.sidebarRef.current) {
+            return;
+        }
+
+        const sidebarRect = this.sidebarRef.current.getBoundingClientRect();
+        let isNearEdge = false;
+
+        if (this.isRightSidebar.get()) {
+            // For right sidebar, check if mouse is near the left edge
+            if (event.clientX <= sidebarRect.left + 10 && event.clientX >= sidebarRect.left) {
+                isNearEdge = true;
+            }
+        } else {
+            // For left sidebar, check if mouse is near the right edge
+            if (event.clientX >= sidebarRect.right - 10 && event.clientX <= sidebarRect.right) {
+                isNearEdge = true;
+            }
+        }
+
+        mobx.action(() => {
+            this.isHovered.set(isNearEdge);
+        })();
+    }
+
+    @boundMethod
+    handleMouseLeave() {
+        mobx.action(() => {
+            this.isHovered.set(false);
+        })();
+    }
+
+    @boundMethod
+    handleDragEnd() {
+        mobx.action(() => {
+            this.isDragging.set(false);
+        })();
+    }
+}
+
 class BookmarksModel {
     bookmarks: OArr<BookmarkType> = mobx.observable.array([], {
         name: "Bookmarks",
@@ -3326,6 +3489,7 @@ class Model {
         name: "remotesLoaded",
     });
     screenLines: OMap<string, ScreenLines> = mobx.observable.map({}, { name: "screenLines", deep: false }); // key = "sessionid/screenid" (screenlines)
+    sidebarModels: OMap<string, SidebarModel> = mobx.observable.map({}, { name: "sidebarModels", deep: false });
     termUsedRowsCache: Record<string, number> = {}; // key = "screenid/lineid"
     debugCmds: number = 0;
     debugScreen: OV<boolean> = mobx.observable.box(false);
@@ -4056,7 +4220,9 @@ class Model {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
         if ("screenstatusindicator" in update) {
-            this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(update.screenstatusindicator.status);
+            this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(
+                update.screenstatusindicator.status
+            );
         }
         // console.log("run-update>", Date.now(), interactive, update);
     }
@@ -5061,5 +5227,6 @@ export {
     SpecialLineContainer,
     ForwardLineContainer,
     VERSION,
+    SidebarModel,
 };
 export type { LineContainerModel };

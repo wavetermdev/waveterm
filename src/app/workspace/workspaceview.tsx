@@ -27,20 +27,29 @@ class WorkspaceView extends React.Component<{}, {}> {
         if (session == null) {
             return (
                 <div className="session-view">
-                    <div className="center-message"><div>(no active workspace)</div></div>
+                    <div className="center-message">
+                        <div>(no active workspace)</div>
+                    </div>
                 </div>
             );
         }
         let activeScreen = session.getActiveScreen();
         let cmdInputHeight = model.inputModel.cmdInputHeight.get();
         if (cmdInputHeight == 0) {
-            cmdInputHeight = MagicLayout.CmdInputHeight;  // this is the base size of cmdInput (measured using devtools)
+            cmdInputHeight = MagicLayout.CmdInputHeight; // this is the base size of cmdInput (measured using devtools)
         }
-        cmdInputHeight += MagicLayout.CmdInputBottom;  // reference to .cmd-input, bottom: 12px
+        cmdInputHeight += MagicLayout.CmdInputBottom; // reference to .cmd-input, bottom: 12px
         let isHidden = GlobalModel.activeMainView.get() != "session";
+        let mainSidebarModel = GlobalModel.sidebarModels.get("main");
 
         return (
-            <div className={cn("session-view", { "is-hidden": isHidden })} data-sessionid={session.sessionId}>
+            <div
+                className={cn("session-view", { "is-hidden": isHidden })}
+                data-sessionid={session.sessionId}
+                style={{
+                    width: `calc(100% - ${mainSidebarModel.width.get()}px)`,
+                }}
+            >
                 <ScreenTabs key={"tabs-" + session.sessionId} session={session} />
                 <ErrorBoundary>
                     <ScreenView key={"screenview-" + session.sessionId} session={session} screen={activeScreen} />
