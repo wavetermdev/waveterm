@@ -10,23 +10,6 @@
     backdrop-filter: blur(4px);
     z-index: 20;
 
-    &::after {
-        content: "";
-        position: absolute;
-        right: -4px;
-        top: 10px;
-        bottom: 7px;
-        width: 5px;
-        cursor: col-resize;
-        background-color: transparent;
-    }
-
-    &.divider-hovered::after,
-    &.divider-dragging::after {
-        background-color: transparent;
-        cursor: col-resize;
-    }
-
     .title-bar-drag {
         -webkit-app-region: drag;
         height: 20px;
@@ -171,10 +154,12 @@
         opacity: 1;
         visibility: visible;
         transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
+        display: flex;
         .sessionName {
             width: 12rem;
             display: inline-block;
             vertical-align: middle;
+            max-width: 100%;
         }
         .icon {
             margin: -2px 8px 0px 4px;

@@ -156,6 +156,7 @@ svg.icon {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: inline-block;
 }
 
 .dropdown,
@@ -625,13 +626,13 @@ a.a-block {
 
 .spin {
     animation: infiniteRotate 2s linear infinite;
-    
+
     @keyframes infiniteRotate {
         from {
-            transform:rotate(0deg);
+            transform: rotate(0deg);
         }
         to {
-            transform:rotate(360deg);
+            transform: rotate(360deg);
         }
     }
 }

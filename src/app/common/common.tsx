@@ -11,7 +11,7 @@ import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import { RemoteType, StatusIndicatorLevel } from "../../types/types";
 import ReactDOM from "react-dom";
-import { GlobalModel } from "../../model/model";
+import { GlobalModel, SidebarModel } from "../../model/model";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -1247,8 +1247,8 @@ class Modal extends React.Component<ModalProps> {
 }
 
 interface StatusIndicatorProps {
-    level: StatusIndicatorLevel
-    className?: string
+    level: StatusIndicatorLevel;
+    className?: string;
 }
 
 class StatusIndicator extends React.Component<StatusIndicatorProps> {
@@ -1268,9 +1268,109 @@ class StatusIndicator extends React.Component<StatusIndicatorProps> {
                     statusIndicatorClass = "error";
                     break;
             }
-            statusIndicator = <div className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}></div>;
+            statusIndicator = (
+                <div
+                    className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}
+                ></div>
+            );
         }
         return statusIndicator;
+    }
+}
+
+interface ResizableSidebarProps {
+    parentRef: React.RefObject<HTMLElement>;
+    sidebarModel: SidebarModel;
+    position?: "left" | "right";
+    className?: string;
+    children?: React.ReactNode;
+}
+
+@mobxReact.observer
+class ResizableSidebar extends React.Component<ResizableSidebarProps> {
+    resizeStartWidth: number = 0;
+    startX: number = 0;
+    pos: string;
+    isDragging: boolean = false;
+
+    constructor(props: ResizableSidebarProps) {
+        super(props);
+        this.pos = props.position || "left";
+    }
+
+    startResizing = (mouseDownEvent: React.MouseEvent<HTMLDivElement>) => {
+        const { parentRef, sidebarModel } = this.props;
+        const parentRect = parentRef.current?.getBoundingClientRect();
+
+        if (!parentRect) return;
+
+        if (this.pos === "right") {
+            this.startX = parentRect.right - mouseDownEvent.clientX;
+        } else {
+            this.startX = mouseDownEvent.clientX - parentRect.left;
+        }
+
+        this.resizeStartWidth = sidebarModel.width.get();
+        document.addEventListener("mousemove", this.onMouseMove);
+        document.addEventListener("mouseup", this.stopResizing);
+
+        document.body.style.cursor = "col-resize";
+        this.isDragging = true;
+    };
+
+    onMouseMove = (mouseMoveEvent: MouseEvent) => {
+        if (!this.isDragging) return;
+
+        const { parentRef, sidebarModel } = this.props;
+        const parentRect = parentRef.current?.getBoundingClientRect();
+
+        if (!parentRect) return;
+
+        let delta, newWidth;
+
+        if (this.pos === "right") {
+            delta = parentRect.right - mouseMoveEvent.clientX - this.startX;
+        } else {
+            delta = mouseMoveEvent.clientX - parentRect.left - this.startX;
+        }
+
+        newWidth = this.resizeStartWidth + delta;
+
+        sidebarModel.setWidth(newWidth);
+    };
+
+    stopResizing = () => {
+        document.removeEventListener("mousemove", this.onMouseMove);
+        document.removeEventListener("mouseup", this.stopResizing);
+        document.body.style.cursor = "";
+        this.isDragging = false;
+    };
+
+    handleDoubleClick = () => {
+        this.props.sidebarModel.toggleCollapse();
+    };
+
+    render() {
+        const { className, children, sidebarModel } = this.props;
+        console.log("this.pos", this.pos);
+        return (
+            <div className={cn("sidebar", className, this.pos)} style={{ width: `${sidebarModel.width.get()}px` }}>
+                <div className="sidebar-content">{children}</div>
+                <div
+                    className="sidebar-handle"
+                    style={{
+                        position: "absolute",
+                        top: 0,
+                        [this.pos === "left" ? "right" : "left"]: 0,
+                        bottom: 0,
+                        width: "5px",
+                        cursor: "col-resize",
+                    }}
+                    onMouseDown={this.startResizing}
+                    onDoubleClick={this.handleDoubleClick}
+                ></div>
+            </div>
+        );
     }
 }
 
@@ -1296,4 +1396,5 @@ export {
     Status,
     Modal,
     StatusIndicator,
+    ResizableSidebar,
 };

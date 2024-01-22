@@ -26,22 +26,20 @@ import { ReactComponent as ActionsIcon } from "../assets/icons/tab/actions.svg";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, VERSION, SidebarModel } from "../../model/model";
 import { sortAndFilterRemotes, isBlank, openLink } from "../../util/util";
+import { ResizableSidebar } from "../common/common";
 import * as constants from "../appconst";
 
 import "./sidebar.less";
 
 dayjs.extend(localizedFormat);
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
-class MainSideBar extends React.Component<{}, {}> {
+class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLElement> }, {}> {
     collapsed: mobx.IObservableValue<boolean> = mobx.observable.box(false);
     sidebarRef = React.createRef<HTMLDivElement>();
     mainSidebarModel = new SidebarModel();
 
     componentDidMount(): void {
-        this.mainSidebarModel.sidebarRef = this.sidebarRef;
         mobx.action(() => {
             GlobalModel.sidebarModels.set("main", this.mainSidebarModel);
         })();
@@ -213,22 +211,10 @@ class MainSideBar extends React.Component<{}, {}> {
         }
 
         return (
-            <motion.div
-                ref={this.sidebarRef}
-                drag="x"
-                onDrag={this.mainSidebarModel.handleDrag}
-                onDragStart={this.mainSidebarModel.handleDragStart}
-                onDragEnd={this.mainSidebarModel.handleDragEnd}
-                onDoubleClick={this.mainSidebarModel.handleDoubleClick}
-                style={{ width: `${this.mainSidebarModel.width.get()}px` }}
-                className={cn("main-sidebar", {
-                    collapsed: isCollapsed,
-                    "divider-dragging": this.mainSidebarModel.isDragging.get(),
-                    "divider-hovered": this.mainSidebarModel.isHovered.get(),
-                })}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0} // No elastic dragging
-                dragMomentum={false}
+            <ResizableSidebar
+                className="main-sidebar"
+                sidebarModel={this.mainSidebarModel}
+                parentRef={this.props.parentRef}
             >
                 <div className="title-bar-drag" />
                 <div className="contents">
@@ -256,10 +242,10 @@ class MainSideBar extends React.Component<{}, {}> {
                             <span className="hotkey">&#x2318;H</span>
                         </div>
                         {/* <div className="item hoverEffect unselectable" onClick={this.handleBookmarksClick}>
-                             <FavoritesIcon className="icon" />
-                             Favorites
-                             <span className="hotkey">&#x2318;B</span>
-                             </div>  */}
+						 <FavoritesIcon className="icon" />
+						 Favorites
+						 <span className="hotkey">&#x2318;B</span>
+						 </div>  */}
                         <div className="item hoverEffect unselectable" onClick={this.handleConnectionsClick}>
                             <ConnectionsIcon className="icon" />
                             Connections
@@ -311,7 +297,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </div>
-            </motion.div>
+            </ResizableSidebar>
         );
     }
 }

@@ -30,6 +30,7 @@ type OV<V> = mobx.IObservableValue<V>;
 @mobxReact.observer
 class App extends React.Component<{}, {}> {
     dcWait: OV<boolean> = mobx.observable.box(false, { name: "dcWait" });
+    mainContentRef: React.RefObject<HTMLDivElement> = React.createRef();
 
     constructor(props: any) {
         super(props);
@@ -82,8 +83,8 @@ class App extends React.Component<{}, {}> {
             }
             return (
                 <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
-                    <div className="main-content">
-                        <MainSideBar />
+                    <div ref={this.mainContentRef} className="main-content">
+                        <MainSideBar parentRef={this.mainContentRef} />
                         <div className="session-view" />
                     </div>
                     <If condition={dcWait}>
@@ -102,8 +103,8 @@ class App extends React.Component<{}, {}> {
         }
         return (
             <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
-                <div className="main-content">
-                    <MainSideBar />
+                <div ref={this.mainContentRef} className="main-content">
+                    <MainSideBar parentRef={this.mainContentRef} />
                     <ErrorBoundary>
                         <PluginsView />
                         <WorkspaceView />

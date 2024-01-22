@@ -2606,15 +2606,7 @@ class ClientSettingsViewModel {
 
 class SidebarModel {
     width: OV<number> = mobx.observable.box(300, {
-        name: "SidebarModel-defaultWidth",
-    });
-    // Left side of screen by default
-    collapseSnapPoint: OV<number> = mobx.observable.box(125, {
-        name: "SidebarModel-negxSnapPoint",
-    });
-    // Left side of screen by default
-    expandSnapPoint: OV<number> = mobx.observable.box(250, {
-        name: "SidebarModel-expandSnapPoint",
+        name: "SidebarModel-width",
     });
     minWidth: OV<number> = mobx.observable.box(75, {
         name: "SidebarModel-minWidth",
@@ -2622,23 +2614,9 @@ class SidebarModel {
     maxWidth: OV<number> = mobx.observable.box(300, {
         name: "SidebarModel-maxWidth",
     });
-    // Disable snapping by default
-    withSnap: OV<boolean> = mobx.observable.box(false, {
-        name: "SidebarModel-withSnap",
+    isCollapsed: OV<boolean> = mobx.observable.box(false, {
+        name: "SidebarModel-isCollapsed",
     });
-    isDragging: OV<boolean> = mobx.observable.box(false, {
-        name: "SidebarModel-isDragging",
-    });
-    isSnappedToMin: OV<boolean> = mobx.observable.box(false, {
-        name: "SidebarModel-isSnappedToMin",
-    });
-    isHovered: OV<boolean> = mobx.observable.box(false, {
-        name: "SidebarModel-isHovered",
-    });
-    isRightSidebar: OV<boolean> = mobx.observable.box(false, {
-        name: "SidebarModel-isRightSidebar",
-    });
-    sidebarRef: React.RefObject<HTMLDivElement>;
 
     constructor(props?) {
         if (props == null) {
@@ -2647,89 +2625,37 @@ class SidebarModel {
 
         mobx.action(() => {
             this.width.set(props.width);
-            this.collapseSnapPoint.set(props.negxSnapPoint);
-            this.expandSnapPoint.set(props.posxSnapPoint);
             this.minWidth.set(props.minWidth);
-            this.withSnap.set(props.withSnap);
-            this.isRightSidebar.set(props.isRightSidebar);
+            this.maxWidth.set(props.maxWidth);
         })();
     }
 
-    @boundMethod
-    handleDrag(event, info) {
-        const delta = this.isRightSidebar.get() ? -info.delta.x : info.delta.x;
-        const draggingTowardsExpansion = delta > 0;
+    setWidth(width: number) {
+        let newWidth = width;
 
-        let newWidth = this.width.get() + delta;
+        mobx.action(() => {
+            const width = Math.max(this.minWidth.get(), Math.min(newWidth, this.maxWidth.get()));
+            this.width.set(width);
 
-        if (!draggingTowardsExpansion && newWidth < this.collapseSnapPoint.get() && !this.isSnappedToMin.get()) {
-            mobx.action(() => {
-                this.isSnappedToMin.set(true);
-            })();
-            newWidth = this.minWidth.get();
-        }
-
-        if (draggingTowardsExpansion && newWidth > this.expandSnapPoint.get() && this.isSnappedToMin.get()) {
-            mobx.action(() => {
-                this.isSnappedToMin.set(false);
-            })();
-            newWidth = this.maxWidth.get();
-        }
-
-        if (
-            (draggingTowardsExpansion && newWidth <= this.maxWidth.get()) ||
-            (!draggingTowardsExpansion && newWidth >= this.minWidth.get())
-        ) {
-            mobx.action(() => {
-                this.width.set(newWidth);
-            })();
-        }
+            if (width == this.minWidth.get()) {
+                this.isCollapsed.set(true);
+            }
+            if (width == this.maxWidth.get()) {
+                this.isCollapsed.set(false);
+            }
+        })();
     }
 
-    @boundMethod
-    handleDoubleClick(event) {
-        if (!this.sidebarRef.current) {
-            return;
-        }
+    toggleCollapse() {
+        mobx.action(() => {
+            const isCollapsed = this.isCollapsed.get();
+            this.isCollapsed.set(!isCollapsed);
 
-        const sidebarRect = this.sidebarRef.current.getBoundingClientRect();
-        let isClickedNearEdge = false;
-
-        if (this.isRightSidebar.get()) {
-            // For right sidebar, check if click is near the left edge
-            if (event.clientX <= sidebarRect.left + 10 && event.clientX >= sidebarRect.left) {
-                isClickedNearEdge = true;
-            }
-        } else {
-            // For left sidebar, check if click is near the right edge
-            if (event.clientX >= sidebarRect.right && event.clientX <= sidebarRect.right + 10) {
-                isClickedNearEdge = true;
-            }
-        }
-
-        if (isClickedNearEdge) {
-            const currentWidth = this.width.get();
-            if (currentWidth === this.minWidth.get()) {
+            if (isCollapsed) {
                 this.width.set(this.maxWidth.get());
-            } else if (currentWidth == this.maxWidth.get()) {
-                this.width.set(this.minWidth.get());
             } else {
-                this.width.set(this.maxWidth.get());
+                this.width.set(this.minWidth.get());
             }
-        }
-    }
-
-    @boundMethod
-    handleDragStart() {
-        mobx.action(() => {
-            this.isDragging.set(true);
-        })();
-    }
-
-    @boundMethod
-    handleDragEnd() {
-        mobx.action(() => {
-            this.isDragging.set(false);
         })();
     }
 }
