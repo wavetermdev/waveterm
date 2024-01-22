@@ -189,10 +189,13 @@ let menuTemplate = [
     },
     {
         label: "File",
-        submenu: [{ role: "close" }, { role: "forceReload" }],
+        submenu: [{ role: "close" },],
     },
     {
         role: "editMenu",
+    },
+    {
+        role: "viewMenu",
     },
     {
         role: "windowMenu",
