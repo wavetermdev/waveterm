@@ -868,7 +868,12 @@ class Markdown extends React.Component<
     {}
 > {
     CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number): any {
-        let codeText = codeSelect ? props.node.children[0].children[0].value : props.children;
+        let codeText:string ="";
+        try {
+            codeText = props.node.children[0].children[0].value;
+        } catch (e) { 
+            console.log("code block text not parsed correctly")
+        }
         if (codeText) {
             codeText = codeText.replace(/\n$/, ""); // remove trailing newline
         }
