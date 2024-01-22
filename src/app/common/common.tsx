@@ -1246,6 +1246,33 @@ class Modal extends React.Component<ModalProps> {
     }
 }
 
+interface EndIconProps {
+    children?: React.ReactNode;
+}
+
+class EndIcon extends React.Component<EndIconProps> {
+    render() {
+        return <div className="end-icon">
+            <div className="end-icon-inner">
+                {this.props.children}
+            </div>
+        </div>;
+    }
+
+}
+
+interface ActionsIconProps {
+    onclick: React.MouseEventHandler<HTMLDivElement>;
+}
+
+class ActionsIcon extends React.Component<ActionsIconProps> {
+    render() {
+        return <div onClick={this.props.onclick} title="Actions" className="actions-icon">
+            <div className="icon hoverEffect fa-sharp fa-solid fa-1x fa-ellipsis-vertical"></div>
+        </div>;
+    }
+}
+
 interface StatusIndicatorProps {
     level: StatusIndicatorLevel
     className?: string
@@ -1296,4 +1323,6 @@ export {
     Status,
     Modal,
     StatusIndicator,
+    EndIcon,
+    ActionsIcon,
 };
