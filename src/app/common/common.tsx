@@ -12,6 +12,7 @@ import { If } from "tsx-control-statements/components";
 import { RemoteType, StatusIndicatorLevel } from "../../types/types";
 import ReactDOM from "react-dom";
 import { GlobalModel } from "../../model/model";
+import * as appconst from "../appconst";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -1247,8 +1248,8 @@ class Modal extends React.Component<ModalProps> {
 }
 
 interface StatusIndicatorProps {
-    level: StatusIndicatorLevel
-    className?: string
+    level: StatusIndicatorLevel;
+    className?: string;
 }
 
 class StatusIndicator extends React.Component<StatusIndicatorProps> {
@@ -1268,10 +1269,35 @@ class StatusIndicator extends React.Component<StatusIndicatorProps> {
                     statusIndicatorClass = "error";
                     break;
             }
-            statusIndicator = <div className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}></div>;
+            statusIndicator = (
+                <div
+                    className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}
+                ></div>
+            );
         }
         return statusIndicator;
     }
+}
+
+function ShowWaveShellInstallPrompt(callbackFn: () => void) {
+    let message: string = `
+In order to use Wave's advanced features like unified history and persistent sessions, Wave installs a small, open-source helper program called WaveShell on your remote machine.  WaveShell does not open any external ports and only communicates with your *local* Wave terminal instance over ssh.  For more information please see [the docs](https://docs.waveterm.dev/reference/waveshell).        
+        `;
+    message = message.trim();
+    let prtn = GlobalModel.showAlert({
+        message: message,
+        confirm: true,
+        markdown: true,
+        confirmflag: appconst.ConfirmKey_HideShellPrompt,
+    });
+    prtn.then((confirm) => {
+        if (!confirm) {
+            return;
+        }
+        if (callbackFn) {
+            callbackFn();
+        }
+    });
 }
 
 export {
@@ -1296,4 +1322,5 @@ export {
     Status,
     Modal,
     StatusIndicator,
+    ShowWaveShellInstallPrompt,
 };

@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
 import * as T from "../../../types/types";
-import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "../common";
+import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, ShowWaveShellInstallPrompt } from "../common";
 import * as util from "../../../util/util";
 import * as appconst from "../../appconst";
 
@@ -69,23 +69,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleOk(): void {
-        this.showShellPrompt(this.submitRemote);
-    }
-
-    @boundMethod
-    showShellPrompt(cb: () => void): void {
-        let prtn = GlobalModel.showAlert({
-            message:
-                "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
-            confirm: true,
-            confirmflag: appconst.ConfirmKey_HideShellPrompt,
-        });
-        prtn.then((confirm) => {
-            if (!confirm) {
-                return;
-            }
-            cb();
-        });
+        ShowWaveShellInstallPrompt(this.submitRemote);
     }
 
     @boundMethod

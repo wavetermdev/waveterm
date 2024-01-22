@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, RemotesModel, GlobalCommandRunner } from "../../model/model";
-import { Button, IconButton, Status } from "../common/common";
+import { Button, IconButton, Status, ShowWaveShellInstallPrompt } from "../common/common";
 import * as T from "../../types/types";
 import * as util from "../../util/util";
 import * as appconst from "../appconst";
@@ -81,23 +81,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
 
     @boundMethod
     handleImportSshConfig(): void {
-        this.showShellPrompt(this.importSshConfig);
-    }
-
-    @boundMethod
-    showShellPrompt(cb: () => void): void {
-        let prtn = GlobalModel.showAlert({
-            message:
-                "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
-            confirm: true,
-            confirmflag: appconst.ConfirmKey_HideShellPrompt,
-        });
-        prtn.then((confirm) => {
-            if (!confirm) {
-                return;
-            }
-            cb();
-        });
+        ShowWaveShellInstallPrompt(this.importSshConfig);
     }
 
     @boundMethod
