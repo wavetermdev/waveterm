@@ -1352,7 +1352,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     render() {
         const { className, children, sidebarModel } = this.props;
-        console.log("this.pos", this.pos);
         return (
             <div className={cn("sidebar", className, this.pos)} style={{ width: `${sidebarModel.width.get()}px` }}>
                 <div className="sidebar-content">{children}</div>
