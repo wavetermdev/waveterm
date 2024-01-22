@@ -47,9 +47,7 @@ class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLEleme
 
     @boundMethod
     toggleCollapsed() {
-        mobx.action(() => {
-            this.collapsed.set(!this.collapsed.get());
-        })();
+        this.mainSidebarModel.toggleCollapse();
     }
 
     handleSessionClick(sessionId: string) {
