@@ -868,11 +868,11 @@ class Markdown extends React.Component<
     {}
 > {
     CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number): any {
-        let codeText:string ="";
+        let codeText: string = "";
         try {
             codeText = props.node.children[0].children[0].value;
-        } catch (e) { 
-            console.log("code block text not parsed correctly")
+        } catch (e) {
+            console.log("code block text not parsed correctly");
         }
         if (codeText) {
             codeText = codeText.replace(/\n$/, ""); // remove trailing newline
@@ -1252,8 +1252,8 @@ class Modal extends React.Component<ModalProps> {
 }
 
 interface StatusIndicatorProps {
-    level: StatusIndicatorLevel
-    className?: string
+    level: StatusIndicatorLevel;
+    className?: string;
 }
 
 class StatusIndicator extends React.Component<StatusIndicatorProps> {
@@ -1273,7 +1273,11 @@ class StatusIndicator extends React.Component<StatusIndicatorProps> {
                     statusIndicatorClass = "error";
                     break;
             }
-            statusIndicator = <div className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}></div>;
+            statusIndicator = (
+                <div
+                    className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}
+                ></div>
+            );
         }
         return statusIndicator;
     }
