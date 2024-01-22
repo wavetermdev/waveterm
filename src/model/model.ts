@@ -2613,7 +2613,7 @@ class SidebarModel {
         name: "SidebarModel-negxSnapPoint",
     });
     // Left side of screen by default
-    expandSnapPoint: OV<number> = mobx.observable.box(170, {
+    expandSnapPoint: OV<number> = mobx.observable.box(250, {
         name: "SidebarModel-expandSnapPoint",
     });
     minWidth: OV<number> = mobx.observable.box(75, {
@@ -2687,13 +2687,6 @@ class SidebarModel {
     }
 
     @boundMethod
-    handleDragStart() {
-        mobx.action(() => {
-            this.isDragging.set(true);
-        })();
-    }
-
-    @boundMethod
     handleDoubleClick(event) {
         if (!this.sidebarRef.current) {
             return;
@@ -2709,7 +2702,7 @@ class SidebarModel {
             }
         } else {
             // For left sidebar, check if click is near the right edge
-            if (event.clientX >= sidebarRect.right - 10 && event.clientX <= sidebarRect.right) {
+            if (event.clientX >= sidebarRect.right && event.clientX <= sidebarRect.right + 10) {
                 isClickedNearEdge = true;
             }
         }
@@ -2727,35 +2720,9 @@ class SidebarModel {
     }
 
     @boundMethod
-    handleMouseMove(event) {
-        if (!this.sidebarRef.current) {
-            return;
-        }
-
-        const sidebarRect = this.sidebarRef.current.getBoundingClientRect();
-        let isNearEdge = false;
-
-        if (this.isRightSidebar.get()) {
-            // For right sidebar, check if mouse is near the left edge
-            if (event.clientX <= sidebarRect.left + 10 && event.clientX >= sidebarRect.left) {
-                isNearEdge = true;
-            }
-        } else {
-            // For left sidebar, check if mouse is near the right edge
-            if (event.clientX >= sidebarRect.right - 10 && event.clientX <= sidebarRect.right) {
-                isNearEdge = true;
-            }
-        }
-
+    handleDragStart() {
         mobx.action(() => {
-            this.isHovered.set(isNearEdge);
-        })();
-    }
-
-    @boundMethod
-    handleMouseLeave() {
-        mobx.action(() => {
-            this.isHovered.set(false);
+            this.isDragging.set(true);
         })();
     }
 

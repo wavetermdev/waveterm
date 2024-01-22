@@ -2,14 +2,30 @@
 
 .main-sidebar {
     padding: 0;
-    min-width: 20rem;
-    max-width: 20rem;
     display: flex;
     flex-direction: column;
     position: relative;
     font-size: 12.5px;
     line-height: 20px;
     backdrop-filter: blur(4px);
+    z-index: 20;
+
+    &::after {
+        content: "";
+        position: absolute;
+        right: -4px;
+        top: 10px;
+        bottom: 7px;
+        width: 5px;
+        cursor: col-resize;
+        background-color: transparent;
+    }
+
+    &.divider-hovered::after,
+    &.divider-dragging::after {
+        background-color: transparent;
+        cursor: col-resize;
+    }
 
     .title-bar-drag {
         -webkit-app-region: drag;
@@ -332,33 +348,4 @@
             font-size: 16px;
         }
     }
-}
-
-.sidebar {
-    /* Existing styles */
-    position: relative; /* Ensure relative positioning */
-}
-
-.sidebar::after {
-    content: "";
-    position: absolute;
-    right: 0;
-    top: 10px;
-    bottom: 7px;
-    width: 5px; /* Width of the draggable area */
-    cursor: col-resize;
-    background-color: transparent; /* Visual indicator color */
-}
-
-.sidebar.divider-hovered::after,
-.sidebar.divider-dragging::after {
-    background-color: transparent;
-}
-
-.sidebar.e-resize::after {
-    cursor: e-resize;
-}
-
-.sidebar.w-resize::after {
-    cursor: w-resize;
 }

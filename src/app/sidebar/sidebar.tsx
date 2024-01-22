@@ -187,8 +187,6 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     render() {
-        // console.log("MainSidebarModel", new MainSidebarModel());
-
         let model = GlobalModel;
         let activeSessionId = model.activeSessionId.get();
         let activeScreen = model.getActiveScreen();
@@ -213,91 +211,6 @@ class MainSideBar extends React.Component<{}, {}> {
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
-        // return (
-        //     <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
-        //         <div className="title-bar-drag" />
-        //         <div className="contents">
-        //             <div className="logo">
-        //                 <If condition={isCollapsed}>
-        //                     <div className="logo-container" onClick={this.toggleCollapsed}>
-        //                         <img src="public/logos/wave-logo.png" />
-        //                     </div>
-        //                 </If>
-        //                 <If condition={!isCollapsed}>
-        //                     <div className="logo-container">
-        //                         <img src="public/logos/wave-dark.png" />
-        //                     </div>
-        //                     <div className="spacer" />
-        //                     <div className="collapse-button" onClick={this.toggleCollapsed}>
-        //                         <LeftChevronIcon className="icon" />
-        //                     </div>
-        //                 </If>
-        //             </div>
-        //             <div className="separator" />
-        //             <div className="top">
-        //                 <div className="item hoverEffect unselectable" onClick={this.handleHistoryClick}>
-        //                     <HistoryIcon className="icon" />
-        //                     History
-        //                     <span className="hotkey">&#x2318;H</span>
-        //                 </div>
-        //                 {/* <div className="item hoverEffect unselectable" onClick={this.handleBookmarksClick}>
-        //                     <FavoritesIcon className="icon" />
-        //                     Favorites
-        //                     <span className="hotkey">&#x2318;B</span>
-        //                     </div>  */}
-        //                 <div className="item hoverEffect unselectable" onClick={this.handleConnectionsClick}>
-        //                     <ConnectionsIcon className="icon" />
-        //                     Connections
-        //                 </div>
-        //             </div>
-        //             <div className="separator" />
-        //             <div className="item workspaces-item unselectable">
-        //                 <WorkspacesIcon className="icon" />
-        //                 Workspaces
-        //                 <div className="add_workspace hoverEffect" onClick={this.handleNewSession}>
-        //                     <AddIcon />
-        //                 </div>
-        //             </div>
-        //             <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
-        //             <div className="bottom">
-        //                 <If condition={needsUpdate}>
-        //                     <div
-        //                         className="item hoverEffect unselectable updateBanner"
-        //                         onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
-        //                     >
-        //                         <i className="fa-sharp fa-regular fa-circle-up icon" />
-        //                         Update Available
-        //                     </div>
-        //                 </If>
-        //                 <If condition={GlobalModel.isDev}>
-        //                     <div className="item hoverEffect unselectable" onClick={this.handlePluginsClick}>
-        //                         <AppsIcon className="icon" />
-        //                         Apps
-        //                         <span className="hotkey">&#x2318;A</span>
-        //                     </div>
-        //                 </If>
-        //                 <div className="item hoverEffect unselectable" onClick={this.handleSettingsClick}>
-        //                     <SettingsIcon className="icon" />
-        //                     Settings
-        //                 </div>
-        //                 <div
-        //                     className="item hoverEffect unselectable"
-        //                     onClick={() => openLink("https://docs.waveterm.dev")}
-        //                 >
-        //                     <HelpIcon className="icon" />
-        //                     Documentation
-        //                 </div>
-        //                 <div
-        //                     className="item hoverEffect unselectable"
-        //                     onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
-        //                 >
-        //                     <DiscordIcon className="icon discord" />
-        //                     Discord
-        //                 </div>
-        //             </div>
-        //         </div>
-        //     </div>
-        // );
 
         return (
             <motion.div
@@ -306,11 +219,10 @@ class MainSideBar extends React.Component<{}, {}> {
                 onDrag={this.mainSidebarModel.handleDrag}
                 onDragStart={this.mainSidebarModel.handleDragStart}
                 onDragEnd={this.mainSidebarModel.handleDragEnd}
-                onMouseMove={this.mainSidebarModel.handleMouseMove}
-                onMouseLeave={this.mainSidebarModel.handleMouseLeave}
                 onDoubleClick={this.mainSidebarModel.handleDoubleClick}
                 style={{ width: `${this.mainSidebarModel.width.get()}px` }}
-                className={cn(`sidebar col-resize`, {
+                className={cn("main-sidebar", {
+                    collapsed: isCollapsed,
                     "divider-dragging": this.mainSidebarModel.isDragging.get(),
                     "divider-hovered": this.mainSidebarModel.isHovered.get(),
                 })}
@@ -318,19 +230,87 @@ class MainSideBar extends React.Component<{}, {}> {
                 dragElastic={0} // No elastic dragging
                 dragMomentum={false}
             >
-                <div className="menu-item">
-                    <i className="fa-sharp fa-solid fa-house-chimney"></i>
-                    {this.mainSidebarModel.width.get() > this.mainSidebarModel.collapseSnapPoint.get() && (
-                        <span>Home</span>
-                    )}
+                <div className="title-bar-drag" />
+                <div className="contents">
+                    <div className="logo">
+                        <If condition={isCollapsed}>
+                            <div className="logo-container" onClick={this.toggleCollapsed}>
+                                <img src="public/logos/wave-logo.png" />
+                            </div>
+                        </If>
+                        <If condition={!isCollapsed}>
+                            <div className="logo-container">
+                                <img src="public/logos/wave-dark.png" />
+                            </div>
+                            <div className="spacer" />
+                            <div className="collapse-button" onClick={this.toggleCollapsed}>
+                                <LeftChevronIcon className="icon" />
+                            </div>
+                        </If>
+                    </div>
+                    <div className="separator" />
+                    <div className="top">
+                        <div className="item hoverEffect unselectable" onClick={this.handleHistoryClick}>
+                            <HistoryIcon className="icon" />
+                            History
+                            <span className="hotkey">&#x2318;H</span>
+                        </div>
+                        {/* <div className="item hoverEffect unselectable" onClick={this.handleBookmarksClick}>
+                             <FavoritesIcon className="icon" />
+                             Favorites
+                             <span className="hotkey">&#x2318;B</span>
+                             </div>  */}
+                        <div className="item hoverEffect unselectable" onClick={this.handleConnectionsClick}>
+                            <ConnectionsIcon className="icon" />
+                            Connections
+                        </div>
+                    </div>
+                    <div className="separator" />
+                    <div className="item workspaces-item unselectable">
+                        <WorkspacesIcon className="icon" />
+                        Workspaces
+                        <div className="add_workspace hoverEffect" onClick={this.handleNewSession}>
+                            <AddIcon />
+                        </div>
+                    </div>
+                    <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
+                    <div className="bottom">
+                        <If condition={needsUpdate}>
+                            <div
+                                className="item hoverEffect unselectable updateBanner"
+                                onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                            >
+                                <i className="fa-sharp fa-regular fa-circle-up icon" />
+                                Update Available
+                            </div>
+                        </If>
+                        <If condition={GlobalModel.isDev}>
+                            <div className="item hoverEffect unselectable" onClick={this.handlePluginsClick}>
+                                <AppsIcon className="icon" />
+                                Apps
+                                <span className="hotkey">&#x2318;A</span>
+                            </div>
+                        </If>
+                        <div className="item hoverEffect unselectable" onClick={this.handleSettingsClick}>
+                            <SettingsIcon className="icon" />
+                            Settings
+                        </div>
+                        <div
+                            className="item hoverEffect unselectable"
+                            onClick={() => openLink("https://docs.waveterm.dev")}
+                        >
+                            <HelpIcon className="icon" />
+                            Documentation
+                        </div>
+                        <div
+                            className="item hoverEffect unselectable"
+                            onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
+                        >
+                            <DiscordIcon className="icon discord" />
+                            Discord
+                        </div>
+                    </div>
                 </div>
-                <div className="menu-item">
-                    <i className="fa-sharp fa-solid fa-magnifying-glass"></i>
-                    {this.mainSidebarModel.width.get() > this.mainSidebarModel.collapseSnapPoint.get() && (
-                        <span>Search</span>
-                    )}
-                </div>
-                {/* More menu items */}
             </motion.div>
         );
     }
