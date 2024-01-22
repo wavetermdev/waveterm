@@ -84,7 +84,7 @@ class ScreenTab extends React.Component<
 
         let settings = (
             <div onClick={(e) => this.openScreenSettings(e, screen)} title="Actions" className="tab-gear">
-                <div className="icon hoverEffect fa-sharp fa-solid fa-ellipsis-vertical"></div>
+                <div className="icon hoverEffect fa-sharp fa-solid fa-1x fa-ellipsis-vertical"></div>
             </div>
         );
         let archived = screen.archived.get() ? (
