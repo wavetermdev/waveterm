@@ -2,16 +2,17 @@ import * as React from "react";
 import * as electron from "electron";
 
 type KeyPressDecl = {
-    mods: Record<ModKeyStrs, boolean>;
+    mods: {
+        Cmd?: boolean;
+        Option?: boolean;
+        Shift?: boolean;
+        Ctrl?: boolean;
+    };
     key: string;
 };
 
 function parseKeyDescription(keyDescription: string): KeyPressDecl {
     let rtn = { key: "", mods: {} } as KeyPressDecl;
-    rtn.mods.Cmd = false;
-    rtn.mods.Ctrl = false;
-    rtn.mods.Option = false;
-    rtn.mods.Shift = false;
     let keys = keyDescription.replace(/[()]/g, "").split(":");
     for (let key of keys) {
         if (key == "Cmd") {
