@@ -155,19 +155,26 @@
         visibility: visible;
         transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
         display: flex;
+        align-items: center;
+        justify-content: space-between;
+        .sidebar-label {
+            margin-right: auto;
+        }
         .sessionName {
             width: 12rem;
             display: inline-block;
             vertical-align: middle;
             max-width: 100%;
+            margin-right: auto;
         }
         .icon {
-            margin: -2px 8px 0px 4px;
+            margin: 2px 8px 0px 4px;
             width: 16px;
             height: 16px;
             display: inline-block;
             vertical-align: middle;
             border-radius: 50%;
+            font-size: 1.2em;
         }
         .actions.icon {
             margin-left: 8px;
@@ -177,6 +184,7 @@
             margin-right: 6px;
             visibility: hidden;
             letter-spacing: 6px;
+            margin-left: auto;
         }
         .disabled .hotkey {
             display: none;

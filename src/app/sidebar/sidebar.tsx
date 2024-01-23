@@ -235,8 +235,8 @@ class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLEleme
                     <div className="separator" />
                     <div className="top">
                         <div className="item hoverEffect unselectable" onClick={this.handleHistoryClick}>
-                            <HistoryIcon className="icon" />
-                            History
+                            <i className="icon fa-sharp fa-solid fa-clock-rotate-left"></i>
+                            <span className="truncate sidebar-label">History</span>
                             <span className="hotkey">&#x2318;H</span>
                         </div>
                         {/* <div className="item hoverEffect unselectable" onClick={this.handleBookmarksClick}>
@@ -245,14 +245,14 @@ class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLEleme
 						 <span className="hotkey">&#x2318;B</span>
 						 </div>  */}
                         <div className="item hoverEffect unselectable" onClick={this.handleConnectionsClick}>
-                            <ConnectionsIcon className="icon" />
-                            Connections
+                            <i className="icon fa-sharp fa-regular fa-globe"></i>
+                            <span className="truncate sidebar-label">Connections</span>
                         </div>
                     </div>
                     <div className="separator" />
                     <div className="item workspaces-item unselectable">
-                        <WorkspacesIcon className="icon" />
-                        Workspaces
+                        <i className="icon fa-sharp fa-solid fa-grid-2"></i>
+                        <span className="truncate sidebar-label">Workspaces</span>
                         <div className="add_workspace hoverEffect" onClick={this.handleNewSession}>
                             <AddIcon />
                         </div>
@@ -265,33 +265,33 @@ class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLEleme
                                 onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
                             >
                                 <i className="fa-sharp fa-regular fa-circle-up icon" />
-                                Update Available
+                                <span className="truncate sidebar-label">Update Available</span>
                             </div>
                         </If>
                         <If condition={GlobalModel.isDev}>
                             <div className="item hoverEffect unselectable" onClick={this.handlePluginsClick}>
-                                <AppsIcon className="icon" />
-                                Apps
+                                <i className="icon fa-sharp fa-regular fa-grid-2"></i>
+                                <span className="truncate sidebar-label">Apps</span>
                                 <span className="hotkey">&#x2318;A</span>
                             </div>
                         </If>
                         <div className="item hoverEffect unselectable" onClick={this.handleSettingsClick}>
-                            <SettingsIcon className="icon" />
-                            Settings
+                            <i className="icon fa-sharp fa-regular fa-gear"></i>
+                            <span className="truncate sidebar-label">Settings</span>
                         </div>
                         <div
                             className="item hoverEffect unselectable"
                             onClick={() => openLink("https://docs.waveterm.dev")}
                         >
-                            <HelpIcon className="icon" />
-                            Documentation
+                            <i className="icon fa-sharp fa-regular fa-circle-question"></i>
+                            <span className="truncate sidebar-label">Documentation</span>
                         </div>
                         <div
                             className="item hoverEffect unselectable"
                             onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
                         >
-                            <DiscordIcon className="icon discord" />
-                            Discord
+                            <i className="icon fa-brands fa-discord"></i>
+                            <span className="truncate sidebar-label">Discord</span>
                         </div>
                     </div>
                 </div>
