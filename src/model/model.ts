@@ -82,6 +82,7 @@ import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { MagicLayout } from "../app/magiclayout";
 import { modalsRegistry } from "../app/common/modals/registry";
 import * as appconst from "../app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -821,30 +822,32 @@ class Screen {
     }
 
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
-        if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "ArrowUp")) {
             termWrap.terminal.scrollLines(-1);
             return;
         }
-        if (GlobalModel.checkKeyPressed(e, "ArrowDown")) {
+        if (checkKeyPressed(waveEvent, "ArrowDown")) {
             termWrap.terminal.scrollLines(1);
             return;
         }
-        if (GlobalModel.checkKeyPressed(e, "PageUp")) {
+        if (checkKeyPressed(waveEvent, "PageUp")) {
             termWrap.terminal.scrollPages(-1);
             return;
         }
-        if (GlobalModel.checkKeyPressed(e, "PageDown")) {
+        if (checkKeyPressed(waveEvent, "PageDown")) {
             termWrap.terminal.scrollPages(1);
             return;
         }
     }
 
     isTermCapturedKey(e: any): boolean {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (
-            GlobalModel.checkKeyPressed(e, "ArrowUp") ||
-            GlobalModel.checkKeyPressed(e, "ArrowDown") ||
-            GlobalModel.checkKeyPressed(e, "PageUp") ||
-            GlobalModel.checkKeyPressed(e, "PageDown")
+            checkKeyPressed(waveEvent, "ArrowUp") ||
+            checkKeyPressed(waveEvent, "ArrowDown") ||
+            checkKeyPressed(waveEvent, "PageUp") ||
+            checkKeyPressed(waveEvent, "PageDown")
         ) {
             return true;
         }
@@ -852,13 +855,8 @@ class Screen {
     }
 
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
-        if (
-            e.type == "keypress" &&
-            GlobalModel.checkKeyPressed(
-                e,
-                GlobalModel.KeyPressModifierShift + ":" + GlobalModel.KeyPressModifierControl + ":" + "c"
-            )
-        ) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
             e.stopPropagation();
             e.preventDefault();
             let sel = termWrap.terminal.getSelection();
@@ -868,6 +866,7 @@ class Screen {
 <<<<<<< HEAD
 =======
 
+<<<<<<< HEAD
 >>>>>>> f331918 (addressed rebase artifacts)
         if (
             GlobalModel.checkKeyPressed(
@@ -875,6 +874,9 @@ class Screen {
                 GlobalModel.KeyPressModifierShift + ":" + GlobalModel.KeyPressModifierControl + ":" + "v"
             )
         ) {
+=======
+        if ((e.type = "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:v"))) {
+>>>>>>> ebc65da (fixed keybindings)
             e.stopPropagation();
             e.preventDefault();
             let p = navigator.clipboard.readText();
@@ -2585,7 +2587,8 @@ class HistoryViewModel {
     }
 
     handleDocKeyDown(e: any): void {
-        if (GlobalModel.checkKeyPressed(e, "Escape")) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             this.closeView();
             return;
@@ -2826,7 +2829,8 @@ class BookmarksModel {
     }
 
     handleDocKeyDown(e: any): void {
-        if (GlobalModel.checkKeyPressed(e, "Escape")) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             if (this.editingBookmark.get() != null) {
                 this.cancelEdit();
@@ -2838,7 +2842,7 @@ class BookmarksModel {
         if (this.editingBookmark.get() != null) {
             return;
         }
-        if (GlobalModel.checkKeyPressed(e, "Backspace") || GlobalModel.checkKeyPressed(e, "Delete")) {
+        if (checkKeyPressed(waveEvent, "Backspace") || checkKeyPressed(waveEvent, "Delete")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -2848,10 +2852,10 @@ class BookmarksModel {
         }
 
         if (
-            GlobalModel.checkKeyPressed(e, "ArrowUp") ||
-            GlobalModel.checkKeyPressed(e, "ArrowDown") ||
-            GlobalModel.checkKeyPressed(e, "PageUp") ||
-            GlobalModel.checkKeyPressed(e, "PageDown")
+            checkKeyPressed(waveEvent, "ArrowUp") ||
+            checkKeyPressed(waveEvent, "ArrowDown") ||
+            checkKeyPressed(waveEvent, "PageUp") ||
+            checkKeyPressed(waveEvent, "PageDown")
         ) {
             e.preventDefault();
             if (this.bookmarks.length == 0) {
@@ -2876,14 +2880,14 @@ class BookmarksModel {
             })();
             return;
         }
-        if (GlobalModel.checkKeyPressed(e, "Enter")) {
+        if (checkKeyPressed(waveEvent, "Enter")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
             this.useBookmark(this.activeBookmark.get());
             return;
         }
-        if (GlobalModel.checkKeyPressed(e, "e")) {
+        if (checkKeyPressed(waveEvent, "e")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -2891,7 +2895,7 @@ class BookmarksModel {
             this.handleEditBookmark(this.activeBookmark.get());
             return;
         }
-        if (GlobalModel.checkKeyPressed(e, "c")) {
+        if (checkKeyPressed(waveEvent, "c")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -3597,6 +3601,7 @@ class Model {
 <<<<<<< HEAD
 =======
 
+<<<<<<< HEAD
     parseKeyDescription(description: string): Error | KeyPressType {
         let rtn: KeyPressType = {
             modifierCommand: false,
@@ -3660,6 +3665,8 @@ class Model {
     }
 >>>>>>> f331918 (addressed rebase artifacts)
 
+=======
+>>>>>>> ebc65da (fixed keybindings)
     setTermFontSize(fontSize: number) {
         if (fontSize < MinFontSize) {
             fontSize = MinFontSize;
@@ -3690,16 +3697,17 @@ class Model {
     }
 
     docKeyDownHandler(e: KeyboardEvent) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (isModKeyPress(e)) {
             return;
         }
         if (this.alertMessage.get() != null) {
-            if (GlobalModel.checkKeyPressed(e, "Escape")) {
+            if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
                 this.cancelAlert();
                 return;
             }
-            if (GlobalModel.checkKeyPressed(e, "Enter")) {
+            if (checkKeyPressed(waveEvent, "Enter")) {
                 e.preventDefault();
                 this.confirmAlert();
                 return;
@@ -3722,7 +3730,7 @@ class Model {
             this.historyViewModel.handleDocKeyDown(e);
             return;
         }
-        if (GlobalModel.checkKeyPressed(e, "Escape")) {
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             if (this.activeMainView.get() == "webshare") {
                 this.showSessionView();
@@ -3738,10 +3746,11 @@ class Model {
             }
             return;
         }
-        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":b")) {
+        if (checkKeyPressed(waveEvent, "Cmd:b")) {
             e.preventDefault();
             GlobalCommandRunner.bookmarksView();
         }
+<<<<<<< HEAD
         if (
             this.activeMainView.get() == "session" &&
 <<<<<<< HEAD
@@ -3750,6 +3759,9 @@ class Model {
             this.checkKeyPressed(e, this.KeyPressModifierCommand + ":" + this.KeyPressModifierControl + ":" + "s")
 >>>>>>> f331918 (addressed rebase artifacts)
         ) {
+=======
+        if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
+>>>>>>> ebc65da (fixed keybindings)
             e.preventDefault();
             let activeScreen = this.getActiveScreen();
             if (activeScreen != null) {
@@ -3761,7 +3773,7 @@ class Model {
                 }
             }
         }
-        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":d")) {
+        if (checkKeyPressed(waveEvent, "Cmd:d")) {
             let ranDelete = this.deleteActiveLine();
             if (ranDelete) {
                 e.preventDefault();

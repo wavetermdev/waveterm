@@ -15,6 +15,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "../line/linecomps";
 import { CmdStrCode } from "../common/common";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
 
 import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg";
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
@@ -211,7 +212,8 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     searchKeyDown(e: any) {
-        if (GlobalModel.checkKeyPressed(e, "Enter")) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Enter")) {
             e.preventDefault();
             GlobalModel.historyViewModel.submitSearch();
             return;

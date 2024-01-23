@@ -29,6 +29,9 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
                 if (/[A-Z]/.test(key.charAt(0))) {
                     // this key is an upper case A - Z - we should apply the shift key, even if it wasn't specified
                     rtn.mods.Shift = true;
+                } else if (key == " ") {
+                    rtn.key = "Space";
+                    // we allow " " and "Space" to be mapped to Space key
                 }
             }
         }
@@ -57,6 +60,9 @@ function checkKeyPressed(event: WaveKeyboardEvent, description: string): boolean
         // "Shift:e" as well as "Shift:E" or "E"
         eventKey = eventKey.toLocaleLowerCase();
         descKey = descKey.toLocaleLowerCase();
+    } else if (eventKey == " ") {
+        eventKey = "Space";
+        // a space key is shown as " ", we want users to be able to set space key as "Space" or " ", whichever they prefer
     }
     if (descKey != eventKey) {
         return false;
