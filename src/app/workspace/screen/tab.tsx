@@ -120,7 +120,7 @@ class ScreenTab extends React.Component<
                 <EndIcon>
                     <StatusIndicator level={statusIndicatorLevel}/>
                     {tabIndex}
-                    <ActionsIcon onclick={(e) => this.openScreenSettings(e, screen)} />
+                    <ActionsIcon onClick={(e) => this.openScreenSettings(e, screen)} />
                 </EndIcon>
             </Reorder.Item>
         );
