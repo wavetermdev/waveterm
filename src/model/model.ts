@@ -865,8 +865,11 @@ class Screen {
             navigator.clipboard.writeText(sel);
             return false;
         }
+<<<<<<< HEAD
+=======
+
+>>>>>>> f331918 (addressed rebase artifacts)
         if (
-            e.type == "keypress" &&
             GlobalModel.checkKeyPressed(
                 e,
                 GlobalModel.KeyPressModifierShift + ":" + GlobalModel.KeyPressModifierControl + ":" + "v"
@@ -3591,6 +3594,71 @@ class Model {
         }
         return ProdServerEndpoint;
     }
+<<<<<<< HEAD
+=======
+
+    parseKeyDescription(description: string): Error | KeyPressType {
+        let rtn: KeyPressType = {
+            modifierCommand: false,
+            modifierControl: false,
+            modifierOption: false,
+            modifierShift: false,
+            anyModifier: false,
+            key: "",
+        };
+        let keys = description.split(":");
+        let keyFound = false;
+        for (let key of keys) {
+            if (key == this.KeyPressModifierCommand) {
+                rtn.modifierCommand = true;
+            } else if (key == this.KeyPressModifierShift) {
+                rtn.modifierShift = true;
+            } else if (key == this.KeyPressModifierControl) {
+                rtn.modifierControl = true;
+            } else if (key == this.KeyPressModifierOption) {
+                rtn.modifierOption = true;
+            } else if (key == this.KeyPressAnyModifier) {
+                rtn.anyModifier = true;
+            } else {
+                if (keyFound) {
+                    return Error("invalid key description: multiple keys found");
+                }
+                keyFound = true;
+                // to lower case makes it so shift + e -> "e" rather than "E"
+                rtn.key = key.toLowerCase();
+            }
+        }
+        return rtn;
+    }
+
+    checkKeyPressed(event: any, description: string) {
+        let key = event.key.toLowerCase();
+        let keyPress = this.parseKeyDescription(description);
+        if (keyPress instanceof Error) {
+            return false;
+        }
+        if (keyPress.anyModifier && hasNoModifiers(event)) {
+            return false;
+        }
+        if (keyPress.modifierControl && !event.getModifierState("Control")) {
+            return false;
+        }
+        if (keyPress.modifierCommand && !event.getModifierState("Meta")) {
+            return false;
+        }
+        if (keyPress.modifierShift && !event.getModifierState("Shift")) {
+            return false;
+        }
+        if (keyPress.modifierOption && !event.getModifierState("Alt")) {
+            return false;
+        }
+        if (keyPress.key != key) {
+            return false;
+        }
+
+        return true;
+    }
+>>>>>>> f331918 (addressed rebase artifacts)
 
     setTermFontSize(fontSize: number) {
         if (fontSize < MinFontSize) {
@@ -3676,7 +3744,11 @@ class Model {
         }
         if (
             this.activeMainView.get() == "session" &&
+<<<<<<< HEAD
             this.checkKeyPressed(e, this.KeyPressModifierCommand + "|" + this.KeyPressModifierControl + ":" + "s")
+=======
+            this.checkKeyPressed(e, this.KeyPressModifierCommand + ":" + this.KeyPressModifierControl + ":" + "s")
+>>>>>>> f331918 (addressed rebase artifacts)
         ) {
             e.preventDefault();
             let activeScreen = this.getActiveScreen();
