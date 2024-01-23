@@ -280,7 +280,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             if (GlobalModel.checkKeyPressed(e, "ArrowUp") || GlobalModel.checkKeyPressed(e, "ArrowDown")) {
                 if (!inputModel.isHistoryLoaded()) {
                     if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
-                    if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
                         this.lastHistoryUpDown = true;
                         inputModel.loadHistory(false, 1, "screen");
                     }
@@ -288,7 +287,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
                 // invisible history movement
                 let linePos = this.getLinePos(e.target);
-                if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
                 if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
                     if (!lastHist && linePos.linePos > 1) {
                         // regular arrow
@@ -299,7 +297,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     this.lastHistoryUpDown = true;
                     return;
                 }
-                if (GlobalModel.checkKeyPressed(e, "ArrowDown")) {
                 if (GlobalModel.checkKeyPressed(e, "ArrowDown")) {
                     if (!lastHist && linePos.linePos < linePos.numLines) {
                         // regular arrow
@@ -317,7 +314,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 if (infoScroll) {
                     let div = document.querySelector(".cmd-input-info");
                     let amt = pageSize(div);
-                    scrollDiv(div, GlobalModel.checkKeyPressed(e, "PageUp") ? -amt : amt);
                     scrollDiv(div, GlobalModel.checkKeyPressed(e, "PageUp") ? -amt : amt);
                 }
             }
