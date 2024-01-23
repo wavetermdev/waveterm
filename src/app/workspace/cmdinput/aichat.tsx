@@ -77,7 +77,6 @@ class AIChat extends React.Component<{}, {}> {
             let inputModel = model.inputModel;
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             let resetCodeSelect = !ctrlMod;
-            console.log("Aichat event: " + e.key);
             let waveEvent = adaptFromReactOrNativeKeyEvent(e);
             if (checkKeyPressed(waveEvent, "Enter")) {
                 e.preventDefault();
