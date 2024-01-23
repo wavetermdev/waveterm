@@ -24,6 +24,7 @@ import (
 	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
 	"github.com/google/uuid"
+	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/mpio"
@@ -31,6 +32,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -474,6 +476,76 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string, sapi shellapi.ShellApi)
 		ecmd := exec.Command(sapi.GetRemoteShellPath(), "-c", sshCmd)
 		return ecmd
 	}
+}
+
+func (opts SSHOpts) ConnectToClient() (*ssh.Client, error) {
+	ssh_config.ReloadConfigs()
+	configIdentity, _ := ssh_config.GetStrict(opts.SSHHost, "IdentityFile")
+	var identityFile string
+	if opts.SSHIdentity != "" {
+		identityFile = opts.SSHIdentity
+	} else {
+		identityFile = configIdentity
+	}
+
+	var authMethods []ssh.AuthMethod
+	var hostKeyCallback ssh.HostKeyCallback
+	if identityFile != "" {
+		sshKeyFile, err := os.ReadFile(base.ExpandHomeDir(identityFile))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read ssh key file. err: %+v", err)
+		}
+		signer, err := ssh.ParsePrivateKey(sshKeyFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse private ssh key. err: %+v", err)
+		}
+		/*
+			publicKey, err := ssh.ParsePublicKey(sshKeyFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse public ssh key. err: %+v", err)
+			}
+		*/
+		authMethods = append(authMethods, ssh.PublicKeys(signer))
+		hostKeyCallback = ssh.InsecureIgnoreHostKey()
+	} else {
+		hostKeyCallback = ssh.InsecureIgnoreHostKey()
+	}
+	configUser, _ := ssh_config.GetStrict(opts.SSHHost, "User")
+	configHostName, _ := ssh_config.GetStrict(opts.SSHHost, "HostName")
+	configPort, _ := ssh_config.GetStrict(opts.SSHHost, "Port")
+	var username string
+	if opts.SSHUser != "" {
+		username = opts.SSHUser
+	} else if configUser != "" {
+		username = configUser
+	} else {
+		user, err := user.Current()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user for ssh: %+v", err)
+		}
+		username = user.Username
+	}
+	var hostName string
+	if configHostName != "" {
+		hostName = configHostName
+	} else {
+		hostName = opts.SSHHost
+	}
+	clientConfig := &ssh.ClientConfig{
+		User:            username,
+		Auth:            authMethods,
+		HostKeyCallback: hostKeyCallback,
+	}
+	var port string
+	if opts.SSHPort != 0 && opts.SSHPort != 22 {
+		port = strconv.Itoa(opts.SSHPort)
+	} else if configPort != "" && configPort != "22" {
+		port = configPort
+	} else {
+		port = "22"
+	}
+	networkAddr := hostName + ":" + port
+	return ssh.Dial("tcp", networkAddr, clientConfig)
 }
 
 func (opts SSHOpts) MakeMShellSSHOpts() string {
