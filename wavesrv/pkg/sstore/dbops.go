@@ -1495,8 +1495,6 @@ func DeleteScreenLines(ctx context.Context, screenId string) (*ModelUpdate, erro
 		tx.Exec(query, screenId)
 		query = `UPDATE history SET lineid = '', linenum = 0 WHERE screenid = ?`
 		tx.Exec(query, screenId)
-		query = `UPDATE screen SET nextlinenum = 1 WHERE screenid = ?`
-		tx.Exec(query, screenId)
 		return nil
 	})
 	if txErr != nil {
