@@ -235,6 +235,7 @@ type ActivityUpdate struct {
 	BookmarksView int
 	NumConns      int
 	WebShareLimit int
+	ReinitErrors  int
 	BuildTime     string
 }
 
@@ -247,6 +248,7 @@ type ActivityType struct {
 	ClientVersion string        `json:"clientversion"`
 	ClientArch    string        `json:"clientarch"`
 	BuildTime     string        `json:"buildtime"`
+	DefaultShell  string        `json:"defaultshell"`
 	OSRelease     string        `json:"osrelease"`
 }
 
@@ -260,6 +262,7 @@ type TelemetryData struct {
 	BookmarksView int `json:"bookmarksview,omitempty"`
 	NumConns      int `json:"numconns"`
 	WebShareLimit int `json:"websharelimit,omitempty"`
+	ReinitErrors  int `json:"reiniterrors,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {

@@ -2180,6 +2180,7 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.ClickShared += update.ClickShared
 		tdata.HistoryView += update.HistoryView
 		tdata.BookmarksView += update.BookmarksView
+		tdata.ReinitErrors += update.ReinitErrors
 		if update.NumConns > 0 {
 			tdata.NumConns = update.NumConns
 		}
