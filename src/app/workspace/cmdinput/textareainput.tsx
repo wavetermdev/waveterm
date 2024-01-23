@@ -182,9 +182,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             this.lastTab = GlobalModel.checkKeyPressed(e, "Tab");
             let lastHist = this.lastHistoryUpDown;
             this.lastHistoryUpDown = false;
- 
-            if (GlobalModel.checkKeyPressed(e, "Tab")) {
- 
+
             if (GlobalModel.checkKeyPressed(e, "Tab")) {
                 e.preventDefault();
                 if (lastTab) {
@@ -206,9 +204,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     );
                     return;
                 }
-            } 
-            if (GlobalModel.checkKeyPressed(e, "Enter")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, "Enter")) {
                 e.preventDefault();
                 if (!ctrlMod) {
@@ -228,9 +224,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
                 GlobalModel.inputModel.setCurLine(e.target.value);
                 return;
-            } 
-            if (GlobalModel.checkKeyPressed(e, "Escape")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, "Escape")) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -241,66 +235,48 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
                 inputModel.closeAIAssistantChat();
                 return;
-            } 
-            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":e")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":e")) {
                 e.preventDefault();
                 e.stopPropagation();
                 let inputModel = GlobalModel.inputModel;
                 inputModel.toggleExpandInput();
-            } 
-            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":c")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":c")) {
                 e.preventDefault();
                 inputModel.resetInput();
                 return;
-            } 
-            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":u")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":u")) {
                 e.preventDefault();
                 this.controlU();
                 return;
-            } 
-            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":p")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":p")) {
                 e.preventDefault();
                 this.controlP();
                 return;
-            } 
-            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":n")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":n")) {
                 e.preventDefault();
                 this.controlN();
                 return;
-            } 
-            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":w")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":w")) {
                 e.preventDefault();
                 this.controlW();
                 return;
-            } 
-            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":y")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":y")) {
                 e.preventDefault();
                 this.controlY();
                 return;
-            } 
-            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":r")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":r")) {
                 e.preventDefault();
                 inputModel.openHistory();
                 return;
-            } 
-            if (GlobalModel.checkKeyPressed(e, "ArrowUp") || GlobalModel.checkKeyPressed(e, "ArrowDown")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, "ArrowUp") || GlobalModel.checkKeyPressed(e, "ArrowDown")) {
                 if (!inputModel.isHistoryLoaded()) {
                     if (GlobalModel.checkKeyPressed(e, "ArrowUp")) {
@@ -334,9 +310,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     this.lastHistoryUpDown = true;
                     return;
                 }
-            } 
-            if (GlobalModel.checkKeyPressed(e, "PageUp") || GlobalModel.checkKeyPressed(e, "PageDown")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, "PageUp") || GlobalModel.checkKeyPressed(e, "PageDown")) {
                 e.preventDefault();
                 let infoScroll = inputModel.hasScrollingInfoMsg();
@@ -346,9 +320,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     scrollDiv(div, GlobalModel.checkKeyPressed(e, "PageUp") ? -amt : amt);
                     scrollDiv(div, GlobalModel.checkKeyPressed(e, "PageUp") ? -amt : amt);
                 }
-            } 
-            if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ": ")) {
-            } 
+            }
             if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ": ")) {
                 e.preventDefault();
                 inputModel.openAIAssistantChat();
@@ -371,37 +343,37 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
 
     @boundMethod
     onHistoryKeyDown(e: any) {
-        let inputModel = GlobalModel.inputModel; 
-        if (GlobalModel.checkKeyPressed(e, "Escape")) {
-        let inputModel = GlobalModel.inputModel; 
+        let inputModel = GlobalModel.inputModel;
         if (GlobalModel.checkKeyPressed(e, "Escape")) {
             e.preventDefault();
             inputModel.resetHistory();
             return;
-        } 
-        if (GlobalModel.checkKeyPressed(e, "Enter")) {
-        } 
+        }
         if (GlobalModel.checkKeyPressed(e, "Enter")) {
             e.preventDefault();
             inputModel.grabSelectedHistoryItem();
             return;
-        } 
-        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":g")) {
-        } 
+        }
         if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":g")) {
             e.preventDefault();
             inputModel.resetInput();
             return;
-        } 
-        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":c")) {
-        } 
+        }
         if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":c")) {
             e.preventDefault();
             inputModel.resetInput();
             return;
         }
         if (
-            GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":" + GlobalModel.KeyPressModifierControl + ":" + GlobalModel.KeyPressModifierShift + ":r")
+            GlobalModel.checkKeyPressed(
+                e,
+                GlobalModel.KeyPressModifierCommand +
+                    "|" +
+                    GlobalModel.KeyPressModifierControl +
+                    "|" +
+                    GlobalModel.KeyPressModifierShift +
+                    ":r"
+            )
         ) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
@@ -414,8 +386,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             }
             inputModel.setHistoryQueryOpts(opts);
             return;
-        } 
-        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierCommand + ":" + GlobalModel.KeyPressModifierControl + ":s")) {
+        }
+        if (
+            GlobalModel.checkKeyPressed(
+                e,
+                GlobalModel.KeyPressModifierCommand + "|" + GlobalModel.KeyPressModifierControl + ":s"
+            )
+        ) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
             let htype = opts.queryType;
@@ -428,38 +405,28 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             }
             inputModel.setHistoryType(htype);
             return;
-        } 
-        if (GlobalModel.checkKeyPressed(e, "Tab")) {
-        } 
+        }
         if (GlobalModel.checkKeyPressed(e, "Tab")) {
             e.preventDefault();
             return;
-        } 
-        if (GlobalModel.checkKeyPressed(e, "ArrowUp") || GlobalModel.checkKeyPressed(e, "ArrowDown")) {
-        } 
+        }
         if (GlobalModel.checkKeyPressed(e, "ArrowUp") || GlobalModel.checkKeyPressed(e, "ArrowDown")) {
             e.preventDefault();
             inputModel.moveHistorySelection(GlobalModel.checkKeyPressed(e, "ArrowUp") ? 1 : -1);
             inputModel.moveHistorySelection(GlobalModel.checkKeyPressed(e, "ArrowUp") ? 1 : -1);
             return;
-        } 
-        if (GlobalModel.checkKeyPressed(e, "PageUp") || GlobalModel.checkKeyPressed(e, "PageDown")) {
-        } 
+        }
         if (GlobalModel.checkKeyPressed(e, "PageUp") || GlobalModel.checkKeyPressed(e, "PageDown")) {
             e.preventDefault();
             inputModel.moveHistorySelection(GlobalModel.checkKeyPressed(e, "PageUp") ? 10 : -10);
             inputModel.moveHistorySelection(GlobalModel.checkKeyPressed(e, "PageUp") ? 10 : -10);
             return;
-        } 
-        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":p")) {
-        } 
+        }
         if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":p")) {
             e.preventDefault();
             inputModel.moveHistorySelection(1);
             return;
-        } 
-        if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":n")) {
-        } 
+        }
         if (GlobalModel.checkKeyPressed(e, GlobalModel.KeyPressModifierControl + ":n")) {
             e.preventDefault();
             inputModel.moveHistorySelection(-1);
