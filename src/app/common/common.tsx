@@ -829,10 +829,7 @@ function CodeRenderer(props: any): any {
 }
 
 @mobxReact.observer
-class CodeBlockMarkdown extends React.Component<
-    { children: React.ReactNode; codeSelectSelectedIndex?: number },
-    {}
-> {
+class CodeBlockMarkdown extends React.Component<{ children: React.ReactNode; codeSelectSelectedIndex?: number }, {}> {
     blockIndex: number;
     blockRef: React.RefObject<HTMLPreElement>;
 
@@ -868,16 +865,11 @@ class Markdown extends React.Component<
 > {
     CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number): any {
         if (codeSelect) {
-            return (
-                <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex}>
-                    {props.children}
-                </CodeBlockMarkdown>
-            );
+            return <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex}>{props.children}</CodeBlockMarkdown>;
         } else {
             let clickHandler = (e: React.MouseEvent<HTMLElement>) => {
                 let blockText = e.target.innerText;
-                console.log("Block Text: ", blockText)
-                if(blockText) {
+                if (blockText) {
                     blockText = blockText.replace(/\n$/, ""); // remove trailing newline
                     navigator.clipboard.writeText(blockText);
                 }
