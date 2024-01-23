@@ -2171,7 +2171,7 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 			if len(tzName) > MaxTzNameLen {
 				tzName = tzName[0:MaxTzNameLen]
 			}
-			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.WaveVersion, scbase.ClientArch(), scbase.BuildTime, scbase.MacOSRelease())
+			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.WaveVersion, scbase.ClientArch(), scbase.BuildTime, scbase.UnameKernelRelease())
 		}
 		tdata.NumCommands += update.NumCommands
 		tdata.FgMinutes += update.FgMinutes

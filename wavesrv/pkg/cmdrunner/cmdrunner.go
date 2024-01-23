@@ -4504,7 +4504,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "db-version", dbVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))
-	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.MacOSRelease()))
+	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.UnameKernelRelease()))
 	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("client info"),

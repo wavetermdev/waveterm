@@ -351,11 +351,11 @@ func ClientArch() string {
 	return fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
 }
 
-var releaseRegex = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+var releaseRegex = regexp.MustCompile(`^(\d+\.\d+\.\d+)`)
 var osReleaseOnce = &sync.Once{}
 var osRelease string
 
-func macOSRelease() string {
+func unameKernelRelease() string {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	out, err := exec.CommandContext(ctx, "uname", "-r").CombinedOutput()
@@ -364,16 +364,17 @@ func macOSRelease() string {
 		return "-"
 	}
 	releaseStr := strings.TrimSpace(string(out))
-	if !releaseRegex.MatchString(releaseStr) {
+	m := releaseRegex.FindStringSubmatch(releaseStr)
+	if m == nil || len(m) < 2 {
 		log.Printf("invalid uname -r output: [%s]\n", releaseStr)
 		return "-"
 	}
-	return releaseStr
+	return m[1]
 }
 
-func MacOSRelease() string {
+func UnameKernelRelease() string {
 	osReleaseOnce.Do(func() {
-		osRelease = macOSRelease()
+		osRelease = unameKernelRelease()
 	})
 	return osRelease
 }
