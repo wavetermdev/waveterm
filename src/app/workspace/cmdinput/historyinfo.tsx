@@ -29,43 +29,17 @@ function truncateWithTDots(str: string, maxLen: number): string {
 }
 
 @mobxReact.observer
-class HistoryInfo extends React.Component<{}, {}> {
-    lastClickHNum: string = null;
-    lastClickTs: number = 0;
-    containingText: mobx.IObservableValue<string> = mobx.observable.box("");
-
-    componentDidMount() {
-        let inputModel = GlobalModel.inputModel;
-        let hitem = inputModel.getHistorySelectedItem();
-        if (hitem == null) {
-            hitem = inputModel.getFirstHistoryItem();
-        }
-        if (hitem != null) {
-            inputModel.scrollHistoryItemIntoView(hitem.historynum);
-        }
-    }
-
-    @boundMethod
-    handleItemClick(hitem: HistoryItem) {
-        let inputModel = GlobalModel.inputModel;
-        let selItem = inputModel.getHistorySelectedItem();
-        if (this.lastClickHNum == hitem.historynum && selItem != null && selItem.historynum == hitem.historynum) {
-            inputModel.grabSelectedHistoryItem();
-            return;
-        }
-        inputModel.giveFocus();
-        inputModel.setHistorySelectionNum(hitem.historynum);
-        let now = Date.now();
-        this.lastClickHNum = hitem.historynum;
-        this.lastClickTs = now;
-        setTimeout(() => {
-            if (this.lastClickTs == now) {
-                this.lastClickHNum = null;
-                this.lastClickTs = 0;
-            }
-        }, 3000);
-    }
-
+class HItem extends React.Component<
+    {
+        hitem: HistoryItem;
+        isSelected: boolean;
+        opts: HistoryQueryOpts;
+        snames: Record<string, string>;
+        scrNames: Record<string, string>;
+        onClick: (hitem: HistoryItem) => void;
+    },
+    {}
+> {
     renderRemote(hitem: HistoryItem): any {
         if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
             return sprintf("%-15s ", "");
@@ -142,13 +116,8 @@ class HistoryInfo extends React.Component<{}, {}> {
         return "-";
     }
 
-    renderHItem(
-        hitem: HistoryItem,
-        opts: HistoryQueryOpts,
-        isSelected: boolean,
-        snames: Record<string, string>,
-        scrNames: Record<string, string>
-    ): any {
+    render() {
+        let { hitem, isSelected, opts, snames, scrNames } = this.props;
         let lines = hitem.cmdstr.split("\n");
         let line: string = "";
         let idx = 0;
@@ -163,7 +132,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                     { "history-haderror": hitem.haderror },
                     "hnum-" + hitem.historynum
                 )}
-                onClick={() => this.handleItemClick(hitem)}
+                onClick={() => this.props.onClick(hitem)}
             >
                 <div className="history-line">
                     {infoText} {lines[0]}
@@ -176,10 +145,49 @@ class HistoryInfo extends React.Component<{}, {}> {
             </div>
         );
     }
+}
+
+@mobxReact.observer
+class HistoryInfo extends React.Component<{}, {}> {
+    lastClickHNum: string = null;
+    lastClickTs: number = 0;
+    containingText: mobx.IObservableValue<string> = mobx.observable.box("");
+
+    componentDidMount() {
+        let inputModel = GlobalModel.inputModel;
+        let hitem = inputModel.getHistorySelectedItem();
+        if (hitem == null) {
+            hitem = inputModel.getFirstHistoryItem();
+        }
+        if (hitem != null) {
+            inputModel.scrollHistoryItemIntoView(hitem.historynum);
+        }
+    }
 
     @boundMethod
     handleClose() {
         GlobalModel.inputModel.toggleInfoMsg();
+    }
+
+    @boundMethod
+    handleItemClick(hitem: HistoryItem) {
+        let inputModel = GlobalModel.inputModel;
+        let selItem = inputModel.getHistorySelectedItem();
+        if (this.lastClickHNum == hitem.historynum && selItem != null && selItem.historynum == hitem.historynum) {
+            inputModel.grabSelectedHistoryItem();
+            return;
+        }
+        inputModel.giveFocus();
+        inputModel.setHistorySelectionNum(hitem.historynum);
+        let now = Date.now();
+        this.lastClickHNum = hitem.historynum;
+        this.lastClickTs = now;
+        setTimeout(() => {
+            if (this.lastClickTs == now) {
+                this.lastClickHNum = null;
+                this.lastClickTs = 0;
+            }
+        }, 3000);
     }
 
     render() {
@@ -224,7 +232,15 @@ class HistoryInfo extends React.Component<{}, {}> {
                     <If condition={hitems.length == 0}>[no history]</If>
                     <If condition={hitems.length > 0}>
                         <For each="hitem" index="idx" of={hitems}>
-                            {this.renderHItem(hitem, opts, hitem == selItem, snames, scrNames)}
+                            <HItem
+                                key={hitem.historyid}
+                                hitem={hitem}
+                                isSelected={hitem == selItem}
+                                opts={opts}
+                                snames={snames}
+                                scrNames={scrNames}
+                                onClick={this.handleItemClick}
+                            ></HItem>
                         </For>
                     </If>
                 </div>

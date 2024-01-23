@@ -869,7 +869,7 @@ class Markdown extends React.Component<
             return <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex}>{props.children}</CodeBlockMarkdown>;
         } else {
             let clickHandler = (e: React.MouseEvent<HTMLElement>) => {
-                let blockText = e.target.innerText;
+                let blockText = (e.target as HTMLElement).innerText;
                 if (blockText) {
                     blockText = blockText.replace(/\n$/, ""); // remove trailing newline
                     navigator.clipboard.writeText(blockText);
