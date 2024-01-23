@@ -17,7 +17,6 @@ import {
     genMergeSimpleData,
     boundInt,
     isModKeyPress,
-    hasNoModifiers,
 } from "../util/util";
 import { TermWrap } from "../plugins/terminal/term";
 import { PluginModel } from "../plugins/plugins";
@@ -214,15 +213,6 @@ type ElectronApi = {
     contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
     onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
     getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
-};
-
-type KeyPressType = {
-    modifierShift: boolean;
-    modifierControl: boolean;
-    modifierCommand: boolean;
-    modifierOption: boolean;
-    anyModifier: boolean;
-    key: string;
 };
 
 function getApi(): ElectronApi {
@@ -863,20 +853,7 @@ class Screen {
             navigator.clipboard.writeText(sel);
             return false;
         }
-<<<<<<< HEAD
-=======
-
-<<<<<<< HEAD
->>>>>>> f331918 (addressed rebase artifacts)
-        if (
-            GlobalModel.checkKeyPressed(
-                e,
-                GlobalModel.KeyPressModifierShift + ":" + GlobalModel.KeyPressModifierControl + ":" + "v"
-            )
-        ) {
-=======
         if ((e.type = "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:v"))) {
->>>>>>> ebc65da (fixed keybindings)
             e.stopPropagation();
             e.preventDefault();
             let p = navigator.clipboard.readText();
@@ -3414,11 +3391,6 @@ class Model {
         name: "model-showLinks",
     });
     packetSeqNum: number = 0;
-    KeyPressModifierShift = "Shift";
-    KeyPressModifierControl = "Ctrl";
-    KeyPressModifierCommand = "Cmd";
-    KeyPressModifierOption = "Opt";
-    KeyPressAnyModifier = "AnyMod";
 
     constructor() {
         this.clientId = getApi().getId();
@@ -3598,75 +3570,7 @@ class Model {
         }
         return ProdServerEndpoint;
     }
-<<<<<<< HEAD
-=======
 
-<<<<<<< HEAD
-    parseKeyDescription(description: string): Error | KeyPressType {
-        let rtn: KeyPressType = {
-            modifierCommand: false,
-            modifierControl: false,
-            modifierOption: false,
-            modifierShift: false,
-            anyModifier: false,
-            key: "",
-        };
-        let keys = description.split(":");
-        let keyFound = false;
-        for (let key of keys) {
-            if (key == this.KeyPressModifierCommand) {
-                rtn.modifierCommand = true;
-            } else if (key == this.KeyPressModifierShift) {
-                rtn.modifierShift = true;
-            } else if (key == this.KeyPressModifierControl) {
-                rtn.modifierControl = true;
-            } else if (key == this.KeyPressModifierOption) {
-                rtn.modifierOption = true;
-            } else if (key == this.KeyPressAnyModifier) {
-                rtn.anyModifier = true;
-            } else {
-                if (keyFound) {
-                    return Error("invalid key description: multiple keys found");
-                }
-                keyFound = true;
-                // to lower case makes it so shift + e -> "e" rather than "E"
-                rtn.key = key.toLowerCase();
-            }
-        }
-        return rtn;
-    }
-
-    checkKeyPressed(event: any, description: string) {
-        let key = event.key.toLowerCase();
-        let keyPress = this.parseKeyDescription(description);
-        if (keyPress instanceof Error) {
-            return false;
-        }
-        if (keyPress.anyModifier && hasNoModifiers(event)) {
-            return false;
-        }
-        if (keyPress.modifierControl && !event.getModifierState("Control")) {
-            return false;
-        }
-        if (keyPress.modifierCommand && !event.getModifierState("Meta")) {
-            return false;
-        }
-        if (keyPress.modifierShift && !event.getModifierState("Shift")) {
-            return false;
-        }
-        if (keyPress.modifierOption && !event.getModifierState("Alt")) {
-            return false;
-        }
-        if (keyPress.key != key) {
-            return false;
-        }
-
-        return true;
-    }
->>>>>>> f331918 (addressed rebase artifacts)
-
-=======
->>>>>>> ebc65da (fixed keybindings)
     setTermFontSize(fontSize: number) {
         if (fontSize < MinFontSize) {
             fontSize = MinFontSize;
@@ -3750,18 +3654,7 @@ class Model {
             e.preventDefault();
             GlobalCommandRunner.bookmarksView();
         }
-<<<<<<< HEAD
-        if (
-            this.activeMainView.get() == "session" &&
-<<<<<<< HEAD
-            this.checkKeyPressed(e, this.KeyPressModifierCommand + "|" + this.KeyPressModifierControl + ":" + "s")
-=======
-            this.checkKeyPressed(e, this.KeyPressModifierCommand + ":" + this.KeyPressModifierControl + ":" + "s")
->>>>>>> f331918 (addressed rebase artifacts)
-        ) {
-=======
         if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
->>>>>>> ebc65da (fixed keybindings)
             e.preventDefault();
             let activeScreen = this.getActiveScreen();
             if (activeScreen != null) {
