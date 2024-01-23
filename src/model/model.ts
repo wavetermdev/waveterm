@@ -2608,26 +2608,19 @@ class SidebarModel {
     width: OV<number> = mobx.observable.box(300, {
         name: "SidebarModel-width",
     });
-    minWidth: OV<number> = mobx.observable.box(75, {
-        name: "SidebarModel-minWidth",
-    });
-    maxWidth: OV<number> = mobx.observable.box(300, {
-        name: "SidebarModel-maxWidth",
-    });
     isCollapsed: OV<boolean> = mobx.observable.box(false, {
         name: "SidebarModel-isCollapsed",
     });
+    minWidth: OV<number>;
+    maxWidth: OV<number>;
 
     constructor(props?) {
-        if (props == null) {
-            return;
-        }
-
-        mobx.action(() => {
-            this.width.set(props.width);
-            this.minWidth.set(props.minWidth);
-            this.maxWidth.set(props.maxWidth);
-        })();
+        this.minWidth = mobx.observable.box(props?.minWidth || 75, {
+            name: "SidebarModel-minWidth",
+        });
+        this.maxWidth = mobx.observable.box(props?.maxWidth || 300, {
+            name: "SidebarModel-maxWidth",
+        });
     }
 
     setWidth(width: number) {
@@ -2637,12 +2630,7 @@ class SidebarModel {
             const width = Math.max(this.minWidth.get(), Math.min(newWidth, this.maxWidth.get()));
             this.width.set(width);
 
-            if (width == this.minWidth.get()) {
-                this.isCollapsed.set(true);
-            }
-            if (width == this.maxWidth.get()) {
-                this.isCollapsed.set(false);
-            }
+            this.isCollapsed.set(width == this.minWidth.get());
         })();
     }
 

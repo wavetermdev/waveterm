@@ -1298,16 +1298,18 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         this.pos = props.position || "left";
     }
 
-    startResizing = (mouseDownEvent: React.MouseEvent<HTMLDivElement>) => {
+    startResizing = (event: React.MouseEvent<HTMLDivElement>) => {
+        event.preventDefault();
+
         const { parentRef, sidebarModel } = this.props;
         const parentRect = parentRef.current?.getBoundingClientRect();
 
         if (!parentRect) return;
 
         if (this.pos === "right") {
-            this.startX = parentRect.right - mouseDownEvent.clientX;
+            this.startX = parentRect.right - event.clientX;
         } else {
-            this.startX = mouseDownEvent.clientX - parentRect.left;
+            this.startX = event.clientX - parentRect.left;
         }
 
         this.resizeStartWidth = sidebarModel.width.get();
@@ -1318,7 +1320,9 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         this.isDragging = true;
     };
 
-    onMouseMove = (mouseMoveEvent: MouseEvent) => {
+    onMouseMove = (event: MouseEvent) => {
+        event.preventDefault();
+
         if (!this.isDragging) return;
 
         const { parentRef, sidebarModel } = this.props;
@@ -1329,9 +1333,9 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         let delta, newWidth;
 
         if (this.pos === "right") {
-            delta = parentRect.right - mouseMoveEvent.clientX - this.startX;
+            delta = parentRect.right - event.clientX - this.startX;
         } else {
-            delta = mouseMoveEvent.clientX - parentRect.left - this.startX;
+            delta = event.clientX - parentRect.left - this.startX;
         }
 
         newWidth = this.resizeStartWidth + delta;
