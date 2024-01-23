@@ -830,7 +830,7 @@ function CodeRenderer(props: any): any {
 
 @mobxReact.observer
 class CodeBlockMarkdown extends React.Component<
-    { children: React.ReactNode; blockText: string; codeSelectSelectedIndex?: number },
+    { children: React.ReactNode; codeSelectSelectedIndex?: number },
     {}
 > {
     blockIndex: number;
@@ -843,7 +843,6 @@ class CodeBlockMarkdown extends React.Component<
     }
 
     render() {
-        let codeText = this.props.blockText;
         let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
         let inputModel = GlobalModel.inputModel;
         clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
@@ -868,24 +867,20 @@ class Markdown extends React.Component<
     {}
 > {
     CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number): any {
-        let codeText: string = "";
-        try {
-            codeText = props.node.children[0].children[0].value;
-        } catch (e) {
-            console.log("code block text not parsed correctly");
-        }
-        if (codeText) {
-            codeText = codeText.replace(/\n$/, ""); // remove trailing newline
-        }
         if (codeSelect) {
             return (
-                <CodeBlockMarkdown blockText={codeText} codeSelectSelectedIndex={codeSelectIndex}>
+                <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex}>
                     {props.children}
                 </CodeBlockMarkdown>
             );
         } else {
             let clickHandler = (e: React.MouseEvent<HTMLElement>) => {
-                navigator.clipboard.writeText(codeText);
+                let blockText = e.target.innerText;
+                console.log("Block Text: ", blockText)
+                if(blockText) {
+                    blockText = blockText.replace(/\n$/, ""); // remove trailing newline
+                    navigator.clipboard.writeText(blockText);
+                }
             };
             return <pre onClick={(event) => clickHandler(event)}>{props.children}</pre>;
         }
