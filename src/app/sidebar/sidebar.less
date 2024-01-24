@@ -83,12 +83,13 @@
         display: flex;
         flex-direction: row;
 
-        .spacer {
-            flex-grow: 1;
+        .logo-container {
+            flex-shrink: 0;
+            width: 100px;
         }
 
-        img {
-            width: 100px;
+        .spacer {
+            flex-grow: 1;
         }
 
         .collapse-button {
@@ -130,6 +131,7 @@
                 text-align: right;
                 width: 2em;
                 display: inline-block;
+                flex-shrink: 0;
             }
             .hotkey {
                 float: left !important;
@@ -175,6 +177,7 @@
             vertical-align: middle;
             border-radius: 50%;
             font-size: 1.2em;
+            flex-shrink: 0;
         }
         .actions.icon {
             margin-left: 8px;
