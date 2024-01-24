@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
@@ -164,7 +165,8 @@ func SendTelemetry(ctx context.Context, force bool) error {
 	}
 	log.Printf("[pcloud] sending telemetry data\n")
 	dayStr := sstore.GetCurDayStr()
-	input := TelemetryInputType{UserId: clientData.UserId, ClientId: clientData.ClientId, CurDay: dayStr, Activity: activity}
+	defaultShellType := shellapi.DetectLocalShellType()
+	input := TelemetryInputType{UserId: clientData.UserId, ClientId: clientData.ClientId, CurDay: dayStr, DefaultShell: defaultShellType, Activity: activity}
 	req, err := makeAnonPostReq(ctx, TelemetryUrl, input)
 	if err != nil {
 		return err
