@@ -11,6 +11,13 @@ type KeyPressDecl = {
     key: string;
 };
 
+var PLATFORM: string;
+const PlatformMacOS: string = "darwin";
+
+function setKeyUtilPlatform(platform: string) {
+    PLATFORM = platform;
+}
+
 function parseKeyDescription(keyDescription: string): KeyPressDecl {
     let rtn = { key: "", mods: {} } as KeyPressDecl;
     let keys = keyDescription.replace(/[()]/g, "").split(":");
@@ -108,10 +115,14 @@ interface WaveKeyboardEvent {
 
 function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEvent): WaveKeyboardEvent {
     let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
-    rtn.alt = event.altKey;
     rtn.control = event.ctrlKey;
     rtn.shift = event.shiftKey;
-    rtn.cmd = event.metaKey;
+    if (PLATFORM == PlatformMacOS) {
+        rtn.cmd = event.metaKey;
+        rtn.alt = event.altKey;
+    } else {
+        rtn.cmd = event.altKey;
+    }
     rtn.code = event.code;
     rtn.key = event.key;
     rtn.location = event.location;
@@ -123,9 +134,13 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
 function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
     rtn.type = event.type;
-    rtn.alt = event.alt;
     rtn.control = event.control;
-    rtn.cmd = event.meta;
+    if (PLATFORM == PlatformMacOS) {
+        rtn.cmd = event.meta;
+        rtn.alt = event.alt;
+    } else {
+        rtn.cmd = event.alt;
+    }
     rtn.shift = event.shift;
     rtn.repeat = event.isAutoRepeat;
     rtn.location = event.location;
@@ -134,5 +149,5 @@ function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     return rtn;
 }
 
-export { adaptFromElectronKeyEvent, adaptFromReactOrNativeKeyEvent, checkKeyPressed };
+export { adaptFromElectronKeyEvent, adaptFromReactOrNativeKeyEvent, checkKeyPressed, setKeyUtilPlatform };
 export type { WaveKeyboardEvent };

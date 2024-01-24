@@ -81,7 +81,7 @@ import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { MagicLayout } from "../app/magiclayout";
 import { modalsRegistry } from "../app/common/modals/registry";
 import * as appconst from "../app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -3457,7 +3457,12 @@ class Model {
             return this.platform;
         }
         this.platform = getApi().getPlatform();
+        setKeyUtilPlatform(this.platform);
         return this.platform;
+    }
+
+    testGlobalModel() {
+        return "";
     }
 
     needsTos(): boolean {
