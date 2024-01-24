@@ -873,10 +873,7 @@ func main() {
 	}
 
 	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
-	err = sstore.UpdateCurrentActivity(context.Background(), sstore.ActivityUpdate{NumConns: remote.NumRemotes()}) // set at least one record into activity
-	if err != nil {
-		log.Printf("[error] updating activity: %v\n", err)
-	}
+	sstore.UpdateActivityWrap(context.Background(), sstore.ActivityUpdate{NumConns: remote.NumRemotes()}, "numconns") // set at least one record into activity
 	installSignalHandlers()
 	go telemetryLoop()
 	go stdinReadWatch()

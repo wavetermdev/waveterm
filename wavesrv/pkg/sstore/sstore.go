@@ -226,17 +226,18 @@ type ClientWinSizeType struct {
 }
 
 type ActivityUpdate struct {
-	FgMinutes     int
-	ActiveMinutes int
-	OpenMinutes   int
-	NumCommands   int
-	ClickShared   int
-	HistoryView   int
-	BookmarksView int
-	NumConns      int
-	WebShareLimit int
-	ReinitErrors  int
-	BuildTime     string
+	FgMinutes        int
+	ActiveMinutes    int
+	OpenMinutes      int
+	NumCommands      int
+	ClickShared      int
+	HistoryView      int
+	BookmarksView    int
+	NumConns         int
+	WebShareLimit    int
+	ReinitBashErrors int
+	ReinitZshErrors  int
+	BuildTime        string
 }
 
 type ActivityType struct {
@@ -253,16 +254,17 @@ type ActivityType struct {
 }
 
 type TelemetryData struct {
-	NumCommands   int `json:"numcommands"`
-	ActiveMinutes int `json:"activeminutes"`
-	FgMinutes     int `json:"fgminutes"`
-	OpenMinutes   int `json:"openminutes"`
-	ClickShared   int `json:"clickshared,omitempty"`
-	HistoryView   int `json:"historyview,omitempty"`
-	BookmarksView int `json:"bookmarksview,omitempty"`
-	NumConns      int `json:"numconns"`
-	WebShareLimit int `json:"websharelimit,omitempty"`
-	ReinitErrors  int `json:"reiniterrors,omitempty"`
+	NumCommands      int `json:"numcommands"`
+	ActiveMinutes    int `json:"activeminutes"`
+	FgMinutes        int `json:"fgminutes"`
+	OpenMinutes      int `json:"openminutes"`
+	ClickShared      int `json:"clickshared,omitempty"`
+	HistoryView      int `json:"historyview,omitempty"`
+	BookmarksView    int `json:"bookmarksview,omitempty"`
+	NumConns         int `json:"numconns"`
+	WebShareLimit    int `json:"websharelimit,omitempty"`
+	ReinitBashErrors int `json:"reinitbasherrors,omitempty"`
+	ReinitZshErrors  int `json:"reinitzsherrors,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
