@@ -1292,6 +1292,8 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     startX: number = 0;
     pos: string;
     isDragging: boolean = false;
+    prevDelta: number = 0;
+    prevDragDirection: string = null;
 
     constructor(props: ResizableSidebarProps) {
         super(props);
@@ -1340,7 +1342,37 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
         newWidth = this.resizeStartWidth + delta;
 
-        sidebarModel.setWidth(newWidth);
+        const maxWidth = sidebarModel.maxWidth.get();
+        const minWidth = sidebarModel.minWidth.get();
+        const snapPoint = minWidth + sidebarModel.snapThreshold.get();
+        const dragResistance = sidebarModel.dragResistance.get();
+        let dragDirection;
+
+        if (delta - this.prevDelta > 0) {
+            dragDirection = "+";
+        } else if (delta - this.prevDelta == 0) {
+            if (this.prevDragDirection == "+") {
+                dragDirection = "+";
+            } else {
+                dragDirection = "-";
+            }
+        } else {
+            dragDirection = "-";
+        }
+
+        this.prevDelta = delta;
+        this.prevDragDirection = dragDirection;
+
+        if (newWidth - dragResistance > minWidth && newWidth < snapPoint && dragDirection == "+") {
+            newWidth = snapPoint;
+            sidebarModel.setWidth(newWidth);
+        } else if (newWidth + dragResistance < snapPoint && dragDirection == "-") {
+            newWidth = minWidth;
+            sidebarModel.setWidth(newWidth);
+        } else if (newWidth > snapPoint) {
+            newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+            sidebarModel.setWidth(newWidth);
+        }
     };
 
     stopResizing = () => {

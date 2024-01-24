@@ -2613,6 +2613,9 @@ class SidebarModel {
     });
     minWidth: OV<number>;
     maxWidth: OV<number>;
+    enableSnap: OV<boolean>;
+    snapThreshold: OV<number>;
+    dragResistance: OV<number>;
 
     constructor(props?) {
         this.minWidth = mobx.observable.box(props?.minWidth || 75, {
@@ -2621,13 +2624,19 @@ class SidebarModel {
         this.maxWidth = mobx.observable.box(props?.maxWidth || 300, {
             name: "SidebarModel-maxWidth",
         });
+        this.enableSnap = mobx.observable.box(props?.maxWidth || true, {
+            name: "SidebarModel-enableSnap",
+        });
+        this.snapThreshold = mobx.observable.box(props?.snapThreshold || 90, {
+            name: "SidebarModel-snapThreshold",
+        });
+        this.dragResistance = mobx.observable.box(props?.dragResistance || 50, {
+            name: "SidebarModel-dragResistance",
+        });
     }
 
     setWidth(width: number) {
-        let newWidth = width;
-
         mobx.action(() => {
-            const width = Math.max(this.minWidth.get(), Math.min(newWidth, this.maxWidth.get()));
             this.width.set(width);
 
             this.isCollapsed.set(width == this.minWidth.get());
