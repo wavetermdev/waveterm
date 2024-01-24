@@ -1056,6 +1056,7 @@ func getNextId(ids []string, delId string) string {
 }
 
 func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*ModelUpdate, error) {
+	SetActiveSessionId(ctx, sessionId)
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
 		if !tx.Exists(query, sessionId, screenId) {
