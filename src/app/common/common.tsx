@@ -1370,7 +1370,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             newWidth = minWidth;
             sidebarModel.setWidth(newWidth);
         } else if (newWidth > snapPoint) {
-            newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
             sidebarModel.setWidth(newWidth);
         }
     };

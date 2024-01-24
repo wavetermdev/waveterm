@@ -2637,7 +2637,8 @@ class SidebarModel {
 
     setWidth(width: number) {
         mobx.action(() => {
-            this.width.set(width);
+            const newWidth = Math.max(this.minWidth.get(), Math.min(width, this.maxWidth.get()));
+            this.width.set(newWidth);
 
             this.isCollapsed.set(width == this.minWidth.get());
         })();
