@@ -114,7 +114,7 @@ class ScreenTab extends React.Component<
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
                 onDragEnd={this.handleDragEnd}
             >
-                <div className="front-icon">{this.renderTabIcon(screen)}</div>
+                <CenteredIcon className="front-icon">{this.renderTabIcon(screen)}</CenteredIcon>
                 <div className="tab-name truncate">
                     {archived}
                     {webShared}
