@@ -853,7 +853,7 @@ class Screen {
             navigator.clipboard.writeText(sel);
             return false;
         }
-        if ((e.type = "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:v"))) {
+        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
             e.stopPropagation();
             e.preventDefault();
             let p = navigator.clipboard.readText();
@@ -3414,6 +3414,7 @@ class Model {
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
         });
+        this.platform = this.getPlatform();
         this.termFontSize = mobx.computed(() => {
             let cdata = this.clientData.get();
             if (cdata == null || cdata.feopts == null || cdata.feopts.termfontsize == null) {

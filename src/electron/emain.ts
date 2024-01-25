@@ -12,7 +12,8 @@ import * as winston from "winston";
 import * as util from "util";
 import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
-import { checkKeyPressed, adaptFromElectronKeyEvent } from "../util/keyutil";
+import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
+import { platform } from "os";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
@@ -245,6 +246,7 @@ function shFrameNavHandler(event: any, url: any) {
 
 function createMainWindow(clientData) {
     let bounds = calcBounds(clientData);
+    setKeyUtilPlatform(platform());
     let win = new electron.BrowserWindow({
         x: bounds.x,
         y: bounds.y,
