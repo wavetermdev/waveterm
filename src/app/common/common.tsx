@@ -1241,29 +1241,6 @@ class Modal extends React.Component<ModalProps> {
     }
 }
 
-interface ListItemProps {
-    className?: string;
-    key?: React.Key | null;
-    onClick?: React.MouseEventHandler<HTMLDivElement>;
-    itemContent: string | React.ReactNode;
-    frontIcon?: React.ReactNode;
-    endIcon?: React.ReactNode;
-}
-
-class ListItem extends React.Component<ListItemProps> {
-    render() {
-        const { className, key, onClick, itemContent, frontIcon, endIcon } = this.props;
-
-        return (
-            <div key={key} className={cn("wave-list-item", className)} onClick={onClick}>
-                {frontIcon && <FrontIcon>{frontIcon}</FrontIcon>}
-                <div className="wave-list-item-content truncate">{itemContent}</div>
-                {endIcon && <EndIcon>{endIcon}</EndIcon>}
-            </div>
-        );
-    }
-}
-
 interface PositionalIconProps {
     children?: React.ReactNode;
 }
@@ -1381,7 +1358,6 @@ export {
     LinkButton,
     Status,
     Modal,
-    ListItem,
     FrontIcon,
     EndIcon,
     ActionsIcon,
