@@ -3380,7 +3380,7 @@ class Model {
         name: "remotesLoaded",
     });
     screenLines: OMap<string, ScreenLines> = mobx.observable.map({}, { name: "screenLines", deep: false }); // key = "sessionid/screenid" (screenlines)
-    sidebarModels: OMap<string, SidebarModel> = mobx.observable.map({}, { name: "sidebarModels", deep: false });
+    sidebarModels: OMap<"main", SidebarModel> = mobx.observable.map({}, { name: "sidebarModels", deep: false });
     termUsedRowsCache: Record<string, number> = {}; // key = "screenid/lineid"
     debugCmds: number = 0;
     debugScreen: OV<boolean> = mobx.observable.box(false);
@@ -4384,6 +4384,7 @@ class Model {
         if (!addToHistory && pk.kwargs) {
             pk.kwargs["nohist"] = "1";
         }
+        console.log("cmdStr", cmdStr);
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -4974,6 +4975,11 @@ class CommandRunner {
         let kwargs = { nohist: "1" };
         let valueStr = value ? "1" : "0";
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
+    }
+
+    clientSetCollapseSidebar(name: string, collapse: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1", name, collapse: collapse ? "1" : "0" };
+        return GlobalModel.submitCommand("client", "setcollapsesidebar", null, kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

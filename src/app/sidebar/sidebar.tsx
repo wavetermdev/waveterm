@@ -208,6 +208,8 @@ class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLEleme
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
 
+        console.log("clientData", clientData);
+
         return (
             <ResizableSidebar
                 className={cn("main-sidebar", { collapsed: isCollapsed })}

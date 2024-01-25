@@ -295,7 +295,7 @@ enum StatusIndicatorLevel {
 type ScreenStatusIndicatorUpdateType = {
     screenid: string;
     status: StatusIndicatorLevel;
-}
+};
 
 type ModelUpdateType = {
     interactive: boolean;
@@ -516,6 +516,7 @@ type ClientOptsType = {
     noreleasecheck: boolean;
     acceptedtos: number;
     confirmflags: ConfirmFlagsType;
+    sidebarcollapsed: boolean;
 };
 
 type ReleaseInfoType = {
@@ -801,6 +802,4 @@ export type {
     ScreenStatusIndicatorUpdateType,
 };
 
-export {
-    StatusIndicatorLevel,
-};
+export { StatusIndicatorLevel };

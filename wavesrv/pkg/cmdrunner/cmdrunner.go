@@ -92,6 +92,7 @@ var TabIcons = []string{"square", "sparkle", "fire", "ghost", "cloud", "compass"
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 var ConfirmFlags = []string{"hideshellprompt"}
+var SidebarNames = []string{"main"}
 
 var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal", "chat"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
@@ -217,6 +218,7 @@ func init() {
 	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
 	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
 	registerCmdFn("client:setconfirmflag", ClientConfirmFlagCommand)
+	registerCmdFn("client:setsidebarcollapse", ClientCollapseSidebarCommand)
 
 	registerCmdFn("sidebar:open", SidebarOpenCommand)
 	registerCmdFn("sidebar:close", SidebarCloseCommand)
@@ -4311,6 +4313,54 @@ func ClientConfirmFlagCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 
 	// Set the confirm flag
 	clientData.ClientOpts.ConfirmFlags[confirmKey] = value
+
+	err = sstore.SetClientOpts(ctx, clientData.ClientOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client data: %v", err)
+	}
+
+	// Retrieve updated client data
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+
+	update := &sstore.ModelUpdate{
+		ClientData: clientData,
+	}
+
+	return update, nil
+}
+
+func ClientCollapseSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	sidebarName, ok := pk.Kwargs["name"]
+	if !ok {
+		return nil, fmt.Errorf("name key not provided")
+	}
+
+	_, ok = pk.Kwargs["collapse"]
+	if !ok {
+		return nil, fmt.Errorf("collapse key not provided")
+	}
+
+	collapseValue := resolveBool(pk.Kwargs["collapse"], false)
+	validName := utilfn.ContainsStr(SidebarNames, sidebarName)
+	if !validName {
+		return nil, fmt.Errorf("invalid sidebar name: %s", sidebarName)
+	}
+
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+
+	// Initialize SidebarCollapsed if it's nil
+	if clientData.ClientOpts.SidebarCollapsed == nil {
+		clientData.ClientOpts.SidebarCollapsed = make(map[string]bool)
+	}
+
+	// Set the sidebar collapse state
+	clientData.ClientOpts.SidebarCollapsed[sidebarName] = collapseValue
 
 	err = sstore.SetClientOpts(ctx, clientData.ClientOpts)
 	if err != nil {
