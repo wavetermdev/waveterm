@@ -218,7 +218,7 @@ func init() {
 	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
 	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
 	registerCmdFn("client:setconfirmflag", ClientConfirmFlagCommand)
-	registerCmdFn("client:setsidebarcollapse", ClientCollapseSidebarCommand)
+	registerCmdFn("client:setcollapsesidebar", ClientCollapseSidebarCommand)
 
 	registerCmdFn("sidebar:open", SidebarOpenCommand)
 	registerCmdFn("sidebar:close", SidebarCloseCommand)
