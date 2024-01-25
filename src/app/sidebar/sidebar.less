@@ -1,5 +1,5 @@
 @import "../../app/common/themes/themes.less";
-@import "../../app/common/common.less";
+@import "../../app/common/icons/icons.less";
 
 .main-sidebar {
     padding: 0;
@@ -159,6 +159,10 @@
         flex-direction: row;
         align-items: center;
 
+        .front-icon {
+            .positional-icon-visible;
+        }
+
         .item-contents {
             flex-grow: 1;
         }
@@ -166,34 +170,22 @@
             width: 16px;
             height: 16px;
         }
-        .actions.icon {
-            margin-left: 8px;
-        }
         .hotkey {
             float: right;
             margin-right: 6px;
-            display: @positional-icon-hidden;
             letter-spacing: 6px;
         }
-        .disabled .hotkey {
-            display: @positional-icon-hidden;
-        }
-        .actions {
-            display: @positional-icon-hidden;
-        }
-        .status-indicator {
-            display: @positional-icon-visible;
-        }
         &:hover {
-            .hotkey {
-                display: @positional-icon-visible;
+            :not(.disabled) .hotkey {
+                .positional-icon-visible;
             }
             .actions {
-                display: @positional-icon-visible;
+                .positional-icon-visible;
             }
-            .status-indicator {
-                display: @positional-icon-hidden;
-            }
+        }
+
+        &:not(:hover) .status-indicator {
+            .positional-icon-visible;
         }
         .add_workspace {
             float: right;

@@ -275,33 +275,24 @@
             .end-icons {
                 // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
                 margin: 0 -8px 0 0;
-                .status-indicator {
-                    &:extend(.visible);
-                }
+                
                 .tab-index {
                     font-size: 12.5px;
                 }
             }
+        }
 
-            &:hover {
-                .actions {
-                    &:extend(.visible);
-                }
+        &:not(:hover) .status-indicator{
+            .positional-icon-visible;
+        }
+
+        &:hover {
+            .screen-tab:not(:hover) .tab-index {
+                .positional-icon-visible;
             }
-        }
-
-        &:not(:hover) .screen-tab .status-indicator{
-            &:extend(.visible);
-        }
-
-        &:hover .screen-tab {
-            .tab-index {
-                &:extend(.visible);
+            .screen-tab:hover .actions {
+                .positional-icon-visible;
             }
-        }
-
-        &:hover .screen-tab:not(:hover) .tab-index {
-            &:extend(.visible);
         }
     }
 

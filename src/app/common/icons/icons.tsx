@@ -18,16 +18,6 @@ export class FrontIcon extends React.Component<PositionalIconProps> {
     }
 }
 
-export class EndIcon extends React.Component<PositionalIconProps> {
-    render() {
-        return (
-            <div className={cn("end-icon", "positional-icon", this.props.className)}>
-                <div className="positional-icon-inner">{this.props.children}</div>
-            </div>
-        );
-    }
-}
-
 export class CenteredIcon extends React.Component<PositionalIconProps> {
     render() {
         return (
@@ -75,10 +65,8 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
                     break;
             }
             statusIndicator = (
-                <CenteredIcon className={cn(this.props.className, statusIndicatorClass, "status-indicator")}>
-                    <div
-                        className={`fa-sharp fa-solid fa-circle-small`}
-                    ></div>
+                <CenteredIcon className={cn(this.props.className, "status-indicator")}>
+                    <div className={cn(statusIndicatorClass, "fa-sharp", "fa-solid", "fa-circle-small")}></div>
                 </CenteredIcon>
             );
         }
