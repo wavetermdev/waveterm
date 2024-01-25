@@ -33,23 +33,48 @@ import "./sidebar.less";
 
 dayjs.extend(localizedFormat);
 
+interface MainSideBarProps {
+    parentRef: React.RefObject<HTMLElement>;
+}
+
 @mobxReact.observer
-class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLElement> }, {}> {
-    collapsed: mobx.IObservableValue<boolean> = mobx.observable.box(false);
+class MainSideBar extends React.Component<MainSideBarProps, {}> {
     sidebarRef = React.createRef<HTMLDivElement>();
     mainSidebarModel = new SidebarModel({
         name: "main",
     });
+    disposeClientDataReaction = null;
+    clientData = null;
+    isCollapsed = false;
 
-    componentDidMount(): void {
+    constructor(props) {
+        super(props);
+
         mobx.action(() => {
             GlobalModel.sidebarModels.set("main", this.mainSidebarModel);
         })();
     }
 
     @boundMethod
+    componentDidUpdate(): void {
+        let isCollapsed = GlobalModel.clientData.get().clientopts.sidebarcollapsed?.main;
+        if (isCollapsed != null && isCollapsed != this.isCollapsed) {
+            this.isCollapsed = isCollapsed;
+            if (isCollapsed) {
+                this.mainSidebarModel.collapse();
+            } else {
+                this.mainSidebarModel.expand();
+            }
+        }
+    }
+
+    @boundMethod
     toggleCollapsed() {
-        this.mainSidebarModel.toggleCollapse();
+        if (this.isCollapsed) {
+            this.mainSidebarModel.expand();
+        } else {
+            this.mainSidebarModel.collapse();
+        }
     }
 
     handleSessionClick(sessionId: string) {
@@ -203,14 +228,12 @@ class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLEleme
                 sessionList.push(session);
             }
         }
-        let isCollapsed = this.mainSidebarModel.isCollapsed.get();
+        let isCollapsed = this.isCollapsed;
         let clientData = GlobalModel.clientData.get();
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
-
-        console.log("clientData", clientData);
 
         return (
             <ResizableSidebar

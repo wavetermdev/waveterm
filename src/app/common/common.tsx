@@ -1386,11 +1386,18 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     };
 
     handleDoubleClick = () => {
-        this.props.sidebarModel.toggleCollapse();
+        const { sidebarModel } = this.props;
+        const isCollapsed = sidebarModel.isCollapsed.get();
+        if (isCollapsed) {
+            sidebarModel.expand();
+        } else {
+            sidebarModel.collapse();
+        }
     };
 
     render() {
         const { className, children, sidebarModel } = this.props;
+
         return (
             <div className={cn("sidebar", className, this.pos)} style={{ width: `${sidebarModel.width.get()}px` }}>
                 <div className="sidebar-content">{children}</div>

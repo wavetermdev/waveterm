@@ -2615,10 +2615,11 @@ interface SidebarModelProps {
 }
 
 class SidebarModel {
-    width: OV<number> = mobx.observable.box(240, {
+    defaultWidth: number = 240;
+    width: OV<number> = mobx.observable.box(this.defaultWidth, {
         name: "SidebarModel-width",
     });
-    isCollapsed: OV<boolean> = mobx.observable.box(false, {
+    isCollapsed: OV<boolean> = mobx.observable.box(true, {
         name: "SidebarModel-isCollapsed",
     });
     minWidth: OV<number>;
@@ -2659,18 +2660,19 @@ class SidebarModel {
         })();
     }
 
-    toggleCollapse() {
+    collapse() {
         mobx.action(() => {
-            const isCollapsed = this.isCollapsed.get();
-
-            this.isCollapsed.set(!isCollapsed);
+            this.isCollapsed.set(true);
             this.saveCollapsedState();
+            this.width.set(this.minWidth.get());
+        })();
+    }
 
-            if (isCollapsed) {
-                this.width.set(this.maxWidth.get());
-            } else {
-                this.width.set(this.minWidth.get());
-            }
+    expand() {
+        mobx.action(() => {
+            this.isCollapsed.set(false);
+            this.saveCollapsedState();
+            this.width.set(this.defaultWidth);
         })();
     }
 
