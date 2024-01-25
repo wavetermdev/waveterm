@@ -2605,7 +2605,7 @@ class ClientSettingsViewModel {
 }
 
 class SidebarModel {
-    width: OV<number> = mobx.observable.box(300, {
+    width: OV<number> = mobx.observable.box(240, {
         name: "SidebarModel-width",
     });
     isCollapsed: OV<boolean> = mobx.observable.box(false, {

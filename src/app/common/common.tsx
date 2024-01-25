@@ -1342,7 +1342,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
         newWidth = this.resizeStartWidth + delta;
 
-        const maxWidth = sidebarModel.maxWidth.get();
         const minWidth = sidebarModel.minWidth.get();
         const snapPoint = minWidth + sidebarModel.snapThreshold.get();
         const dragResistance = sidebarModel.dragResistance.get();
