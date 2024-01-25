@@ -27,10 +27,6 @@
                 rgba(88, 193, 66, 0) 86.79%
             );
         }
-
-        .icon i {
-            color: @tab-green;
-        }
     }
 
     &.color-orange {
@@ -242,14 +238,7 @@
 
     .screen-tabs-container-inner {
         overflow-x: scroll;
-        &::-webkit-scrollbar-thumb,
-        &::-webkit-scrollbar-track {
-            display: none;
-        }
-
-        &:hover::-webkit-scrollbar-thumb {
-            display: block;
-        }
+        
     }
 
     .screen-tabs {
@@ -295,38 +284,22 @@
 
             // Only one of these will be visible at a time
             .end-icon {
-                // This makes the calculations below easier since we don't need to account for the right margin on the parent tab.
+                // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
                 margin: 0 -8px 0 0;
-                .end-icon-inner {
-                    & > div {
-                        text-align: center;
-                        align-items: center;
-                        & > * {
-                            margin: auto auto;
-                        }
-                        width: 20px;
-                    }
-                }
                 .status-indicator {
                     display: block;
-                    // The status indicator is a little shorter than the text; this raises it up a bit so it's more centered vertically
-                    padding-bottom: 1px;
-                    margin-top: -1px;
                 }
-                .tab-gear {
+                .actions {
                     display: none;
-                    .icon {
-                        border-radius: 50%;
-                    }
                 }
                 .tab-index {
                     display: none;
-                    font-size: 0.9em;
+                    font-size: 12.5px;
                 }
             }
 
             &:hover {
-                .tab-gear {
+                .actions {
                     display: block;
                 }
             }
@@ -357,7 +330,6 @@
         height: 37px;
 
         .icon {
-            height: 2rem;
             height: 2rem;
             border-radius: 50%;
             padding: 0.4em;

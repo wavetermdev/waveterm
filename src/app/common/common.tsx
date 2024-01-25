@@ -117,7 +117,7 @@ class Checkbox extends React.Component<
     constructor(props) {
         super(props);
         this.state = {
-            checkedInternal: this.props.checked !== undefined ? this.props.checked : Boolean(this.props.defaultChecked),
+            checkedInternal: this.props.checked ?? Boolean(this.props.defaultChecked),
         };
         this.generatedId = `checkbox-${Checkbox.idCounter++}`;
     }
@@ -287,15 +287,15 @@ class Button extends React.Component<ButtonProps> {
     }
 
     render() {
-        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style } = this.props;
+        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style, autoFocus, className } = this.props;
 
         return (
             <button
-                className={cn("wave-button", theme, variant, color, { disabled: disabled })}
+                className={cn("wave-button", theme, variant, color, { disabled: disabled }, className)}
                 onClick={this.handleClick}
                 disabled={disabled}
                 style={style}
-                autoFocus={this.props.autoFocus}
+                autoFocus={autoFocus}
             >
                 {leftIcon && <span className="icon-left">{leftIcon}</span>}
                 {children}
@@ -868,7 +868,7 @@ class Markdown extends React.Component<
         if (codeSelect) {
             return <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex}>{props.children}</CodeBlockMarkdown>;
         } else {
-            let clickHandler = (e: React.MouseEvent<HTMLElement>) => {
+            const clickHandler = (e: React.MouseEvent<HTMLElement>) => {
                 let blockText = (e.target as HTMLElement).innerText;
                 if (blockText) {
                     blockText = blockText.replace(/\n$/, ""); // remove trailing newline
@@ -896,7 +896,9 @@ class Markdown extends React.Component<
         };
         return (
             <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>
-                <ReactMarkdown children={text} remarkPlugins={[remarkGfm]} components={markdownComponents} />
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {text}
+                </ReactMarkdown>
             </div>
         );
     }
@@ -1239,6 +1241,49 @@ class Modal extends React.Component<ModalProps> {
     }
 }
 
+interface PositionalIconProps {
+    children?: React.ReactNode;
+}
+
+class FrontIcon extends React.Component<PositionalIconProps> {
+    render() {
+        return (
+            <div className="front-icon positional-icon">
+                <div className="positional-icon-inner">
+                    {this.props.children}
+                </div>
+            </div>
+        );
+    }
+}
+
+class EndIcon extends React.Component<PositionalIconProps> {
+    render() {
+        return (
+            <div className="end-icon positional-icon">
+                <div className="positional-icon-inner">
+                    {this.props.children}
+                </div>
+            </div>
+        );
+    }
+
+}
+
+interface ActionsIconProps {
+    onClick: React.MouseEventHandler<HTMLDivElement>;
+}
+
+class ActionsIcon extends React.Component<ActionsIconProps> {
+    render() {
+        return (
+            <div onClick={this.props.onClick} title="Actions" className="actions">
+                <div className="icon hoverEffect fa-sharp fa-solid fa-1x fa-ellipsis-vertical"></div>
+            </div>
+        );
+    }
+}
+
 interface StatusIndicatorProps {
     level: StatusIndicatorLevel;
     className?: string;
@@ -1313,6 +1358,9 @@ export {
     LinkButton,
     Status,
     Modal,
+    FrontIcon,
+    EndIcon,
+    ActionsIcon,
     StatusIndicator,
     ShowWaveShellInstallPrompt,
 };

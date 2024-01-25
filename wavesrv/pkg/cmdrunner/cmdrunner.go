@@ -2974,6 +2974,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
+
 	update := &sstore.ModelUpdate{
 		ActiveSessionId: ritem.Id,
 		Info: &sstore.InfoMsgType{
@@ -2981,6 +2982,22 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 			TimeoutMs: 2000,
 		},
 	}
+
+	// Reset the status indicator for the new active screen
+	session, err := sstore.GetSessionById(ctx, ritem.Id)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get session: %w", err)
+	}
+	if session == nil {
+		return nil, fmt.Errorf("session not found")
+	}
+	err = sstore.ResetStatusIndicator_Update(update, session.ActiveScreenId)
+	if err != nil {
+		log.Printf("error resetting status indicator: %v\n", err)
+	}
+
+	log.Printf("session command update:  %v\n", update)
+
 	return update, nil
 }
 

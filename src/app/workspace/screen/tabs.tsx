@@ -9,7 +9,6 @@ import { boundMethod } from "autobind-decorator";
 import { For } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, Session, Screen } from "../../../model/model";
 import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
-import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
 import { ScreenTab } from "./tab";
 
@@ -181,7 +180,7 @@ class ScreenTabs extends React.Component<
         return (
             <div className="screen-tabs-container">
                 {/* Inner container ensures that hovering over the scrollbar doesn't trigger the hover effect on the tabs. This prevents weird flickering of the icons when the mouse is moved over the scrollbar. */}
-                <div className="screen-tabs-container-inner">
+                <div className="screen-tabs-container-inner hideScrollbarUntillHover">
                     <Reorder.Group
                         className="screen-tabs"
                         ref={this.tabsRef}
