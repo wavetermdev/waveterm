@@ -1,4 +1,5 @@
 @import "../../../app/common/themes/themes.less";
+@import "../../../app/common/icons/icons.less";
 
 #main .screen-tabs .screen-tab {
     border-top: 1px solid transparent;
@@ -271,40 +272,36 @@
             }
 
             // Only one of these will be visible at a time
-            .end-icon {
+            .end-icons {
                 // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
                 margin: 0 -8px 0 0;
                 .status-indicator {
-                    display: block;
-                }
-                .actions {
-                    display: none;
+                    &:extend(.visible);
                 }
                 .tab-index {
-                    display: none;
                     font-size: 12.5px;
                 }
             }
 
             &:hover {
                 .actions {
-                    display: block;
+                    &:extend(.visible);
                 }
             }
         }
 
+        &:not(:hover) .screen-tab .status-indicator{
+            &:extend(.visible);
+        }
+
         &:hover .screen-tab {
             .tab-index {
-                display: block;
-            }
-
-            .status-indicator {
-                display: none;
+                &:extend(.visible);
             }
         }
 
-        &:hover .screen-tab:hover .tab-index {
-            display: none;
+        &:hover .screen-tab:not(:hover) .tab-index {
+            &:extend(.visible);
         }
     }
 

@@ -1241,81 +1241,6 @@ class Modal extends React.Component<ModalProps> {
     }
 }
 
-interface PositionalIconProps {
-    children?: React.ReactNode;
-}
-
-class FrontIcon extends React.Component<PositionalIconProps> {
-    render() {
-        return (
-            <div className="front-icon positional-icon">
-                <div className="positional-icon-inner">
-                    {this.props.children}
-                </div>
-            </div>
-        );
-    }
-}
-
-class EndIcon extends React.Component<PositionalIconProps> {
-    render() {
-        return (
-            <div className="end-icon positional-icon">
-                <div className="positional-icon-inner">
-                    {this.props.children}
-                </div>
-            </div>
-        );
-    }
-
-}
-
-interface ActionsIconProps {
-    onClick: React.MouseEventHandler<HTMLDivElement>;
-}
-
-class ActionsIcon extends React.Component<ActionsIconProps> {
-    render() {
-        return (
-            <div onClick={this.props.onClick} title="Actions" className="actions">
-                <div className="icon hoverEffect fa-sharp fa-solid fa-1x fa-ellipsis-vertical"></div>
-            </div>
-        );
-    }
-}
-
-interface StatusIndicatorProps {
-    level: StatusIndicatorLevel;
-    className?: string;
-}
-
-class StatusIndicator extends React.Component<StatusIndicatorProps> {
-    render() {
-        const statusIndicatorLevel = this.props.level;
-        let statusIndicator = null;
-        if (statusIndicatorLevel != StatusIndicatorLevel.None) {
-            let statusIndicatorClass = null;
-            switch (statusIndicatorLevel) {
-                case StatusIndicatorLevel.Output:
-                    statusIndicatorClass = "output";
-                    break;
-                case StatusIndicatorLevel.Success:
-                    statusIndicatorClass = "success";
-                    break;
-                case StatusIndicatorLevel.Error:
-                    statusIndicatorClass = "error";
-                    break;
-            }
-            statusIndicator = (
-                <div
-                    className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}
-                ></div>
-            );
-        }
-        return statusIndicator;
-    }
-}
-
 function ShowWaveShellInstallPrompt(callbackFn: () => void) {
     let message: string = `
 In order to use Wave's advanced features like unified history and persistent sessions, Wave installs a small, open-source helper program called WaveShell on your remote machine.  WaveShell does not open any external ports and only communicates with your *local* Wave terminal instance over ssh.  For more information please see [the docs](https://docs.waveterm.dev/reference/waveshell).        
@@ -1358,9 +1283,5 @@ export {
     LinkButton,
     Status,
     Modal,
-    FrontIcon,
-    EndIcon,
-    ActionsIcon,
-    StatusIndicator,
     ShowWaveShellInstallPrompt,
 };

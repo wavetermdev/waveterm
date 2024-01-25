@@ -7,7 +7,8 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
-import { ActionsIcon, EndIcon, StatusIndicator, renderCmdText } from "../../common/common";
+import { EndIcon, ActionsIcon, StatusIndicator, CenteredIcon } from "../../common/icons/icons";
+import { renderCmdText } from "../../common/common";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
@@ -79,7 +80,11 @@ class ScreenTab extends React.Component<
 
         let tabIndex = null;
         if (index + 1 <= 9) {
-            tabIndex = <div className="tab-index">{renderCmdText(String(index + 1))}</div>;
+            tabIndex = (
+                <CenteredIcon className="tab-index">
+                    <div>{renderCmdText(String(index + 1))}</div>
+                </CenteredIcon>
+            );
         }
         let archived = screen.archived.get() ? (
             <i title="archived" className="fa-sharp fa-solid fa-box-archive" />
@@ -109,19 +114,17 @@ class ScreenTab extends React.Component<
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
                 onDragEnd={this.handleDragEnd}
             >
-                <div className="front-icon">
-                    {this.renderTabIcon(screen)}
-                </div>
+                <div className="front-icon">{this.renderTabIcon(screen)}</div>
                 <div className="tab-name truncate">
                     {archived}
                     {webShared}
                     {screen.name.get()}
                 </div>
-                <EndIcon>
-                    <StatusIndicator level={statusIndicatorLevel}/>
+                <div className="end-icons">
+                    <StatusIndicator level={statusIndicatorLevel} />
                     {tabIndex}
                     <ActionsIcon onClick={(e) => this.openScreenSettings(e, screen)} />
-                </EndIcon>
+                </div>
             </Reorder.Item>
         );
     }

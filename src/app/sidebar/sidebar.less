@@ -1,4 +1,5 @@
 @import "../../app/common/themes/themes.less";
+@import "../../app/common/common.less";
 
 .main-sidebar {
     padding: 0;
@@ -171,24 +172,27 @@
         .hotkey {
             float: right;
             margin-right: 6px;
-            display: none;
+            display: @positional-icon-hidden;
             letter-spacing: 6px;
         }
         .disabled .hotkey {
-            display: none;
+            display: @positional-icon-hidden;
         }
         .actions {
-            display: none;
+            display: @positional-icon-hidden;
+        }
+        .status-indicator {
+            display: @positional-icon-visible;
         }
         &:hover {
             .hotkey {
-                display: block;
+                display: @positional-icon-visible;
             }
             .actions {
-                display: block;
+                display: @positional-icon-visible;
             }
             .status-indicator {
-                display: none;
+                display: @positional-icon-hidden;
             }
         }
         .add_workspace {
