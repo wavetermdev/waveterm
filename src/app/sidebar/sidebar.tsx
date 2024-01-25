@@ -37,7 +37,9 @@ dayjs.extend(localizedFormat);
 class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLElement> }, {}> {
     collapsed: mobx.IObservableValue<boolean> = mobx.observable.box(false);
     sidebarRef = React.createRef<HTMLDivElement>();
-    mainSidebarModel = new SidebarModel();
+    mainSidebarModel = new SidebarModel({
+        name: "main",
+    });
 
     componentDidMount(): void {
         mobx.action(() => {

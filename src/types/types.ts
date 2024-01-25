@@ -721,6 +721,8 @@ type StrWithPos = {
     pos: number;
 };
 
+type SidebarNameType = "main";
+
 export type {
     SessionDataType,
     LineStateType,
@@ -800,6 +802,7 @@ export type {
     CmdInputTextPacketType,
     OpenAICmdInfoChatMessageType,
     ScreenStatusIndicatorUpdateType,
+    SidebarNameType,
 };
 
 export { StatusIndicatorLevel };

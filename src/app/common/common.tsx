@@ -1341,34 +1341,39 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         }
 
         newWidth = this.resizeStartWidth + delta;
+        const enableSnap = sidebarModel.enableSnap.get();
 
-        const minWidth = sidebarModel.minWidth.get();
-        const snapPoint = minWidth + sidebarModel.snapThreshold.get();
-        const dragResistance = sidebarModel.dragResistance.get();
-        let dragDirection;
+        if (enableSnap) {
+            const minWidth = sidebarModel.minWidth.get();
+            const snapPoint = minWidth + sidebarModel.snapThreshold.get();
+            const dragResistance = sidebarModel.dragResistance.get();
+            let dragDirection;
 
-        if (delta - this.prevDelta > 0) {
-            dragDirection = "+";
-        } else if (delta - this.prevDelta == 0) {
-            if (this.prevDragDirection == "+") {
+            if (delta - this.prevDelta > 0) {
                 dragDirection = "+";
+            } else if (delta - this.prevDelta == 0) {
+                if (this.prevDragDirection == "+") {
+                    dragDirection = "+";
+                } else {
+                    dragDirection = "-";
+                }
             } else {
                 dragDirection = "-";
             }
+
+            this.prevDelta = delta;
+            this.prevDragDirection = dragDirection;
+
+            if (newWidth - dragResistance > minWidth && newWidth < snapPoint && dragDirection == "+") {
+                newWidth = snapPoint;
+                sidebarModel.setWidth(newWidth);
+            } else if (newWidth + dragResistance < snapPoint && dragDirection == "-") {
+                newWidth = minWidth;
+                sidebarModel.setWidth(newWidth);
+            } else if (newWidth > snapPoint) {
+                sidebarModel.setWidth(newWidth);
+            }
         } else {
-            dragDirection = "-";
-        }
-
-        this.prevDelta = delta;
-        this.prevDragDirection = dragDirection;
-
-        if (newWidth - dragResistance > minWidth && newWidth < snapPoint && dragDirection == "+") {
-            newWidth = snapPoint;
-            sidebarModel.setWidth(newWidth);
-        } else if (newWidth + dragResistance < snapPoint && dragDirection == "-") {
-            newWidth = minWidth;
-            sidebarModel.setWidth(newWidth);
-        } else if (newWidth > snapPoint) {
             sidebarModel.setWidth(newWidth);
         }
     };

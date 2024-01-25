@@ -7,6 +7,7 @@ import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
 import { boundMethod } from "autobind-decorator";
 import { debounce } from "throttle-debounce";
+import * as mobxReact from "mobx-react";
 import {
     handleJsonFetchResponse,
     base64ToString,
@@ -2604,6 +2605,15 @@ class ClientSettingsViewModel {
     }
 }
 
+interface SidebarModelProps {
+    name: T.SidebarNameType;
+    minWidth?: number;
+    maxWidth?: number;
+    enableSnap?: boolean;
+    snapThreshold?: number;
+    dragResistance?: number;
+}
+
 class SidebarModel {
     width: OV<number> = mobx.observable.box(240, {
         name: "SidebarModel-width",
@@ -2616,15 +2626,19 @@ class SidebarModel {
     enableSnap: OV<boolean>;
     snapThreshold: OV<number>;
     dragResistance: OV<number>;
+    name: OV<T.SidebarNameType>;
 
-    constructor(props?) {
+    constructor(props: SidebarModelProps) {
+        this.name = mobx.observable.box(props.name, {
+            name: "SidebarModel-name",
+        });
         this.minWidth = mobx.observable.box(props?.minWidth || 75, {
             name: "SidebarModel-minWidth",
         });
         this.maxWidth = mobx.observable.box(props?.maxWidth || 300, {
             name: "SidebarModel-maxWidth",
         });
-        this.enableSnap = mobx.observable.box(props?.maxWidth || true, {
+        this.enableSnap = mobx.observable.box(props?.enableSnap || true, {
             name: "SidebarModel-enableSnap",
         });
         this.snapThreshold = mobx.observable.box(props?.snapThreshold || 90, {
@@ -2641,13 +2655,16 @@ class SidebarModel {
             this.width.set(newWidth);
 
             this.isCollapsed.set(width == this.minWidth.get());
+            this.saveCollapsedState();
         })();
     }
 
     toggleCollapse() {
         mobx.action(() => {
             const isCollapsed = this.isCollapsed.get();
+
             this.isCollapsed.set(!isCollapsed);
+            this.saveCollapsedState();
 
             if (isCollapsed) {
                 this.width.set(this.maxWidth.get());
@@ -2655,6 +2672,12 @@ class SidebarModel {
                 this.width.set(this.minWidth.get());
             }
         })();
+    }
+
+    saveCollapsedState() {
+        const isCollapsed = this.isCollapsed.get();
+        const name = this.name.get();
+        GlobalCommandRunner.clientSetCollapseSidebar(name, isCollapsed);
     }
 }
 
@@ -3380,7 +3403,10 @@ class Model {
         name: "remotesLoaded",
     });
     screenLines: OMap<string, ScreenLines> = mobx.observable.map({}, { name: "screenLines", deep: false }); // key = "sessionid/screenid" (screenlines)
-    sidebarModels: OMap<"main", SidebarModel> = mobx.observable.map({}, { name: "sidebarModels", deep: false });
+    sidebarModels: OMap<T.SidebarNameType, SidebarModel> = mobx.observable.map(
+        {},
+        { name: "sidebarModels", deep: false }
+    );
     termUsedRowsCache: Record<string, number> = {}; // key = "screenid/lineid"
     debugCmds: number = 0;
     debugScreen: OV<boolean> = mobx.observable.box(false);
@@ -4977,7 +5003,7 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
-    clientSetCollapseSidebar(name: string, collapse: boolean): Promise<CommandRtnType> {
+    clientSetCollapseSidebar(name: T.SidebarNameType, collapse: boolean): Promise<CommandRtnType> {
         let kwargs = { nohist: "1", name, collapse: collapse ? "1" : "0" };
         return GlobalModel.submitCommand("client", "setcollapsesidebar", null, kwargs, false);
     }
