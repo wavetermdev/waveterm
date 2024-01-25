@@ -19,10 +19,11 @@ type NoTelemetryInputType struct {
 }
 
 type TelemetryInputType struct {
-	UserId   string                 `json:"userid"`
-	ClientId string                 `json:"clientid"`
-	CurDay   string                 `json:"curday"`
-	Activity []*sstore.ActivityType `json:"activity"`
+	UserId       string                 `json:"userid"`
+	ClientId     string                 `json:"clientid"`
+	CurDay       string                 `json:"curday"`
+	DefaultShell string                 `json:"defaultshell"`
+	Activity     []*sstore.ActivityType `json:"activity"`
 }
 
 type WebShareUpdateType struct {

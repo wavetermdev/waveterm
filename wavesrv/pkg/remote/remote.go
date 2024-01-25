@@ -1117,6 +1117,16 @@ func getStateVarsFromInitPk(initPk *packet.InitPacketType) map[string]string {
 	return rtn
 }
 
+func makeReinitErrorUpdate(shellType string) sstore.ActivityUpdate {
+	rtn := sstore.ActivityUpdate{}
+	if shellType == packet.ShellType_bash {
+		rtn.ReinitBashErrors = 1
+	} else if shellType == packet.ShellType_zsh {
+		rtn.ReinitZshErrors = 1
+	}
+	return rtn
+}
+
 func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.ShellStatePacketType, error) {
 	if !msh.IsConnected() {
 		return nil, fmt.Errorf("cannot reinit, remote is not connected")
@@ -1136,12 +1146,14 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 	}
 	ssPk, ok := resp.(*packet.ShellStatePacketType)
 	if !ok {
+		sstore.UpdateActivityWrap(ctx, makeReinitErrorUpdate(shellType), "reiniterror")
 		if respPk, ok := resp.(*packet.ResponsePacketType); ok && respPk.Error != "" {
 			return nil, fmt.Errorf("error reinitializing remote: %s", respPk.Error)
 		}
 		return nil, fmt.Errorf("invalid reinit response (not an shellstate packet): %T", resp)
 	}
 	if ssPk.State == nil {
+		sstore.UpdateActivityWrap(ctx, makeReinitErrorUpdate(shellType), "reiniterror")
 		return nil, fmt.Errorf("invalid reinit response shellstate packet does not contain remote state")
 	}
 	// TODO: maybe we don't need to save statebase here.  should be possible to save it on demand
