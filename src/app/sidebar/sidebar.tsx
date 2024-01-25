@@ -201,7 +201,7 @@ class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLEleme
                 sessionList.push(session);
             }
         }
-        let isCollapsed = this.collapsed.get();
+        let isCollapsed = this.mainSidebarModel.isCollapsed.get();
         let clientData = GlobalModel.clientData.get();
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
@@ -210,7 +210,7 @@ class MainSideBar extends React.Component<{ parentRef: React.RefObject<HTMLEleme
 
         return (
             <ResizableSidebar
-                className="main-sidebar"
+                className={cn("main-sidebar", { collapsed: isCollapsed })}
                 sidebarModel={this.mainSidebarModel}
                 parentRef={this.props.parentRef}
             >
