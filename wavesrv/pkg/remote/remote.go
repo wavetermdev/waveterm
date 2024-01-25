@@ -1338,13 +1338,17 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 		var client *ssh.Client
 		client, err = ConnectToClient(remoteCopy.SSHOpts)
 		if err != nil {
-			msh.WriteToPtyBuffer("*error, ssh cannot connect to client: %v\n", err)
+			statusErr := fmt.Errorf("ssh cannot connect to client: %w", err)
+			msh.WriteToPtyBuffer("*error, %s\n", statusErr.Error())
+			msh.setErrorStatus(statusErr)
 			return
 		}
 		var session *ssh.Session
 		session, err = client.NewSession()
 		if err != nil {
-			msh.WriteToPtyBuffer("*error, ssh cannot create session: %v\n", err)
+			statusErr := fmt.Errorf("ssh cannot create session: %w", err)
+			msh.WriteToPtyBuffer("*error, %s\n", statusErr.Error())
+			msh.setErrorStatus(statusErr)
 			return
 		}
 		cproc, initPk, err = shexec.MakeClientProc(makeClientCtx, shexec.SessionWrap{Session: session, StartCmd: MakeServerRunOnlyCommandStr()})
