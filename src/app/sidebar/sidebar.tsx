@@ -20,7 +20,6 @@ import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
 import { ReactComponent as ConnectionsIcon } from "../assets/icons/connections.svg";
 import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
 import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
-import { ReactComponent as ActionsIcon } from "../assets/icons/tab/actions.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, VERSION } from "../../model/model";
@@ -28,7 +27,7 @@ import { isBlank, openLink } from "../../util/util";
 import * as constants from "../appconst";
 
 import "./sidebar.less";
-import { EndIcon, FrontIcon } from "../common/common";
+import { ActionsIcon, EndIcon, FrontIcon, StatusIndicator } from "../common/common";
 
 dayjs.extend(localizedFormat);
 
@@ -123,7 +122,6 @@ class MainSideBar extends React.Component<{}, {}> {
     @boundMethod
     handlePlaybookClick(): void {
         console.log("playbook click");
-        return;
     }
 
     @boundMethod
@@ -183,6 +181,8 @@ class MainSideBar extends React.Component<{}, {}> {
         }
         return sessionList.map((session, index) => {
             const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
+            const sessionScreens = GlobalModel.getSessionScreens(session.sessionId);
+            const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
             return (
                 <SideBarItem
                     key={index}
@@ -190,8 +190,8 @@ class MainSideBar extends React.Component<{}, {}> {
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
                     endIcon={[
+                        <StatusIndicator level={sessionIndicator} />,
                         <ActionsIcon
-                            className="icon hoverEffect actions"
                             onClick={(e) => this.openSessionSettings(e, session)}
                         />,
                     ]}

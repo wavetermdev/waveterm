@@ -1474,7 +1474,7 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 // Sets the in-memory status indicator for the given screenId to the given value and adds it to the ModelUpdate. By default, the active screen will be ignored when updating status. To force a status update for the active screen, set force=true.
 func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, screenId string, level StatusIndicatorLevel, force bool) error {
 	var newStatus StatusIndicatorLevel
-
+	log.Printf("SetStatusIndicatorLevel_Update: screenId=%v, level=%v, force=%v\n", screenId, level, force)
 	if force {
 		// Force the update and set the new status to the given level, regardless of the current status or the active screen
 		ScreenMemSetIndicatorLevel(screenId, level)
