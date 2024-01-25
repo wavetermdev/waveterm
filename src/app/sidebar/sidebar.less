@@ -148,7 +148,6 @@
         margin: 0 6px;
         border-radius: 4px;
         opacity: 1;
-        visibility: visible;
         transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
         width: inherit;
         max-width: inherit;
@@ -157,15 +156,8 @@
         flex-direction: row;
         align-items: center;
 
-
-
         .item-contents {
             flex-grow: 1;
-        }
-        .sessionName {
-            width: 12rem;
-            display: inline-block;
-            vertical-align: middle;
         }
         .icon {
             margin: -2px 8px 0px 4px;
@@ -181,20 +173,25 @@
         .hotkey {
             float: right;
             margin-right: 6px;
-            visibility: hidden;
+            display: none;
             letter-spacing: 6px;
         }
         .disabled .hotkey {
             display: none;
         }
-        &:hover .hotkey {
-            visibility: visible;
-        }
         .actions {
-            visibility: hidden;
+            display: none;
         }
-        &:hover .actions {
-            visibility: visible;
+        &:hover { 
+            .hotkey {
+                display: block;
+            }
+            .actions {
+                display: block;
+            }
+            .status-indicator {
+                display: none;
+            }
         }
         .add_workspace {
             float: right;

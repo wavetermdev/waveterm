@@ -2991,7 +2991,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if session == nil {
 		return nil, fmt.Errorf("session not found")
 	}
-	err = sstore.ResetStatusIndicator_Update(update, session.SessionId)
+	err = sstore.ResetStatusIndicator_Update(update, session.ActiveScreenId)
 	if err != nil {
 		log.Printf("error resetting status indicator: %v\n", err)
 	}

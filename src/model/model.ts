@@ -4021,6 +4021,7 @@ class Model {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
         if ("screenstatusindicator" in update) {
+            console.log("screenstatusindicator", update.screenstatusindicator);
             this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(
                 update.screenstatusindicator.status
             );
