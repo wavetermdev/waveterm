@@ -20,6 +20,7 @@ import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, VERSION } from "../../model/model";
 import { isBlank, openLink } from "../../util/util";
+import { isBlank, openLink } from "../../util/util";
 import * as constants from "../appconst";
 
 import "./sidebar.less";
@@ -187,6 +188,8 @@ class MainSideBar extends React.Component<{}, {}> {
             const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
             const sessionScreens = GlobalModel.getSessionScreens(session.sessionId);
             const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
+            const sessionScreens = GlobalModel.getSessionScreens(session.sessionId);
+            const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
             return (
                 <SideBarItem
                     className={`${isActive ? "active" : ""}`}
@@ -266,6 +269,7 @@ class MainSideBar extends React.Component<{}, {}> {
                                 frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
                                 contents="Update Available"
                                 onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                            />
                             />
                         </If>
                         <If condition={GlobalModel.isDev}>
