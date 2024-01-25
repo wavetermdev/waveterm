@@ -150,6 +150,18 @@
         opacity: 1;
         visibility: visible;
         transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
+        width: inherit;
+        max-width: inherit;
+        min-width: inherit;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+
+
+        .item-contents {
+            flex-grow: 1;
+        }
         .sessionName {
             width: 12rem;
             display: inline-block;
