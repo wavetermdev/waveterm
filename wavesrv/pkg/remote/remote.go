@@ -1250,7 +1250,7 @@ func (msh *MShellProc) LaunchWithSshLib(interactive bool) {
 	if remoteCopy.ConnectMode != sstore.ConnectModeManual && remoteCopy.SSHOpts.SSHPassword == "" && !interactive {
 		sshOpts.BatchMode = true
 	}
-	client, err := sshOpts.ConnectToClient()
+	client, err := ConnectToClient(remoteCopy.SSHOpts)
 	if err != nil {
 		msh.WriteToPtyBuffer("*error, ssh cannot connect to client: %v\n", err)
 	}
@@ -1418,16 +1418,16 @@ func (msh *MShellProc) Launch(interactive bool) {
 		cproc, initPk, err = shexec.MakeClientProc(makeClientCtx, shexec.CmdWrap{Cmd: ecmd})
 	} else {
 		var client *ssh.Client
-		client, err = sshOpts.ConnectToClient()
-		es := fmt.Sprintf("err: %v\n", err)
-		os.WriteFile("/Users/oneirocosm/.waveterm-dev/temp.txt", []byte(es), 0644)
+		client, err = ConnectToClient(remoteCopy.SSHOpts)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error, ssh cannot connect to client: %v\n", err)
+			return
 		}
 		var session *ssh.Session
 		session, err = client.NewSession()
 		if err != nil {
 			msh.WriteToPtyBuffer("*error, ssh cannot create session: %v\n", err)
+			return
 		}
 		cproc, initPk, err = shexec.MakeClientProc(makeClientCtx, shexec.SessionWrap{Session: session, StartCmd: MakeServerRunOnlyCommandStr()})
 	}
