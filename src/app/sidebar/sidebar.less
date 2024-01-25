@@ -23,14 +23,19 @@
     &.collapsed {
         width: 6em;
         min-width: 6em;
-        .arrow-container, .collapse-button {
+        .arrow-container,
+        .collapse-button {
             transform: rotate(180deg);
             margin-top: 20px;
         }
         .contents {
             margin-top: 26px;
-            
-            .top, .workspaces-item, .middle, .bottom, .separator {
+
+            .top,
+            .workspaces-item,
+            .middle,
+            .bottom,
+            .separator {
                 pointer-events: none;
                 opacity: 0;
                 visibility: hidden;
@@ -82,7 +87,7 @@
         .spacer {
             flex-grow: 1;
         }
-        
+
         img {
             width: 100px;
         }
@@ -90,7 +95,7 @@
         .collapse-button {
             transition: transform 0.3s ease-in-out;
             margin-right: 14px;
-            
+
             svg {
                 margin-top: 3px;
                 width: 1.5em;
@@ -165,7 +170,6 @@
             height: 16px;
             display: inline-block;
             vertical-align: middle;
-            border-radius: 50%;
         }
         .actions.icon {
             margin-left: 8px;
@@ -182,7 +186,7 @@
         .actions {
             display: none;
         }
-        &:hover { 
+        &:hover {
             .hotkey {
                 display: block;
             }
@@ -199,12 +203,19 @@
             height: 1.5rem;
             padding: 2px;
             margin-right: 6px;
-            border-radius: 50%;
             transition: transform 0.3s ease-in-out;
             vertical-align: middle;
             svg {
                 fill: @base-color;
             }
+        }
+
+        .front-icon {
+            font-size: 15px;
+        }
+
+        .fa-discord {
+            font-size: 13px;
         }
     }
 

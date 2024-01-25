@@ -714,18 +714,19 @@ class InlineSettingsTextEdit extends React.Component<
 
     @boundMethod
     handleKeyDown(e: any): void {
-        switch (e.code) {
-            case "Enter":
-                e.preventDefault();
-                e.stopPropagation();
-                this.confirmChange();
-                break;
-            case "Escape":
-                e.preventDefault();
-                e.stopPropagation();
-                this.cancelChange();
-                break;
+        if (e.code == "Enter") {
+            e.preventDefault();
+            e.stopPropagation();
+            this.confirmChange();
+            return;
         }
+        if (e.code == "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            this.cancelChange();
+            return;
+        }
+        return;
     }
 
     @boundMethod

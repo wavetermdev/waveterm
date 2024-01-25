@@ -806,19 +806,21 @@ class Screen {
     }
 
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
-        switch (e.code) {
-            case "ArrowUp":
-                termWrap.terminal.scrollLines(-1);
-                break;
-            case "ArrowDown":
-                termWrap.terminal.scrollLines(1);
-                break;
-            case "PageUp":
-                termWrap.terminal.scrollPages(-1);
-                break;
-            case "PageDown":
-                termWrap.terminal.scrollPages(1);
-                break;
+        if (e.code == "ArrowUp") {
+            termWrap.terminal.scrollLines(-1);
+            return;
+        }
+        if (e.code == "ArrowDown") {
+            termWrap.terminal.scrollLines(1);
+            return;
+        }
+        if (e.code == "PageUp") {
+            termWrap.terminal.scrollPages(-1);
+            return;
+        }
+        if (e.code == "PageDown") {
+            termWrap.terminal.scrollPages(1);
+            return;
         }
     }
 

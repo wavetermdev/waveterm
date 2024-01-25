@@ -12,12 +12,7 @@ import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
 
 import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
-import { ReactComponent as HelpIcon } from "../assets/icons/help.svg";
-import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
-import { ReactComponent as DiscordIcon } from "../assets/icons/discord.svg";
-import { ReactComponent as HistoryIcon } from "../assets/icons/history.svg";
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
-import { ReactComponent as ConnectionsIcon } from "../assets/icons/connections.svg";
 import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
 import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
 
@@ -231,14 +226,14 @@ class MainSideBar extends React.Component<{}, {}> {
                     <div className="separator" />
                     <div className="top">
                         <SideBarItem
-                            frontIcon={<HistoryIcon className="icon" />}
+                            frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
                             contents="History"
                             endIcon={[<span className="hotkey">&#x2318;H</span>]}
                             onClick={this.handleHistoryClick}
                         />
                         {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
                         <SideBarItem
-                            frontIcon={<ConnectionsIcon className="icon" />}
+                            frontIcon={<i className="fa-sharp fa-regular fa-globe icon "/>}
                             contents="Connections"
                             onClick={this.handleConnectionsClick}
                         />
@@ -272,17 +267,17 @@ class MainSideBar extends React.Component<{}, {}> {
                             />
                         </If>
                         <SideBarItem
-                            frontIcon={<SettingsIcon className="icon" />}
+                            frontIcon={<i className="fa-sharp fa-regular fa-gear icon"/>}
                             contents="Settings"
                             onClick={this.handleSettingsClick}
                         />
                         <SideBarItem
-                            frontIcon={<HelpIcon className="icon" />}
+                            frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
                             contents="Documentation"
                             onClick={() => openLink("https://docs.waveterm.dev")}
                         />
                         <SideBarItem
-                            frontIcon={<DiscordIcon className="icon discord" />}
+                            frontIcon={<i className="fa-brands fa-discord icon" />}
                             contents="Discord"
                             onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
                         />
