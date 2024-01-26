@@ -1300,7 +1300,8 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         this.pos = props.position || "left";
     }
 
-    startResizing = (event: React.MouseEvent<HTMLDivElement>) => {
+    @boundMethod
+    startResizing(event: React.MouseEvent<HTMLDivElement>) {
         event.preventDefault();
 
         const { parentRef, sidebarModel } = this.props;
@@ -1320,9 +1321,10 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
         document.body.style.cursor = "col-resize";
         this.isDragging = true;
-    };
+    }
 
-    onMouseMove = (event: MouseEvent) => {
+    @boundMethod
+    onMouseMove(event: MouseEvent) {
         event.preventDefault();
 
         if (!this.isDragging) return;
@@ -1376,16 +1378,18 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         } else {
             sidebarModel.setWidth(newWidth);
         }
-    };
+    }
 
-    getPersistData = () => {
+    @boundMethod
+    getPersistData() {
         const { sidebarModel } = this.props;
         const width = sidebarModel.width.get();
         const isCollapsed = sidebarModel.isCollapsed.get();
         return { width, isCollapsed };
-    };
+    }
 
-    stopResizing = () => {
+    @boundMethod
+    stopResizing() {
         const { width, isCollapsed } = this.getPersistData();
         this.props.sidebarModel.persist(width, isCollapsed);
 
@@ -1393,9 +1397,10 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         document.removeEventListener("mouseup", this.stopResizing);
         document.body.style.cursor = "";
         this.isDragging = false;
-    };
+    }
 
-    handleDoubleClick = () => {
+    @boundMethod
+    handleDoubleClick() {
         const { sidebarModel } = this.props;
         const isCollapsed = sidebarModel.isCollapsed.get();
         if (isCollapsed) {
@@ -1406,7 +1411,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
         const { width, isCollapsed: newIsCollapsed } = this.getPersistData();
         this.props.sidebarModel.persist(width, newIsCollapsed);
-    };
+    }
 
     render() {
         const { className, children, sidebarModel } = this.props;
