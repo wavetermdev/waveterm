@@ -251,6 +251,7 @@ type CmdDataType = {
     runout: any[];
     rtnstate: boolean;
     remove?: boolean;
+    restarted?: boolean;
 };
 
 type PtyDataUpdateType = {

@@ -879,6 +879,14 @@ func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, m
 	return UpdateWithCurrentOpenAICmdInfoChat(screenId)
 }
 
+func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdPid int, remotePid int) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE cmd SET status = ?, exitcode = ?, cmdpid = ?, remotepid = ?, durationms = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, CmdStatusRunning, 0, cmdPid, remotePid, 0, ck.GetGroupId(), lineIdFromCK(ck))
+		return nil
+	})
+}
+
 func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) (*ModelUpdate, error) {
 	if donePk == nil {
 		return nil, fmt.Errorf("invalid cmddone packet")
@@ -2089,6 +2097,19 @@ func SetLineArchivedById(ctx context.Context, screenId string, lineId string, ar
 		return nil
 	})
 	return txErr
+}
+
+func GetScreenSelectedLineId(ctx context.Context, screenId string) (string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		query := `SELECT selectedline FROM screen WHERE screenid = ?`
+		sline := tx.GetInt(query, screenId)
+		if sline <= 0 {
+			return "", nil
+		}
+		query = `SELECT lineid FROM line WHERE screenid = ? AND linenum = ?`
+		lineId := tx.GetString(query, screenId, sline)
+		return lineId, nil
+	})
 }
 
 // returns updated screen (only if updated)

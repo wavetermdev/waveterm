@@ -1124,7 +1124,8 @@ type CmdType struct {
 	RunOut       []packet.PacketType `json:"runout,omitempty"`
 	RtnState     bool                `json:"rtnstate,omitempty"`
 	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
-	Remove       bool                `json:"remove,omitempty"`
+	Remove       bool                `json:"remove,omitempty"`    // not persisted to DB
+	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {
