@@ -10,6 +10,7 @@ import { GlobalModel, GlobalCommandRunner } from "../../model/model";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
 
 import "./code.less";
 
@@ -152,17 +153,18 @@ class SourceCodeRenderer extends React.Component<
         this.setInitialLanguage(editor);
         this.setEditorHeight();
         editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
-            if (e.code === "KeyS" && e.metaKey && this.state.isSave) {
+            let waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
+            if (checkKeyPressed(waveEvent, "Cmd:s") && this.state.isSave) {
                 e.preventDefault();
                 e.stopPropagation();
                 this.doSave();
             }
-            if (e.code === "KeyD" && e.metaKey) {
+            if (checkKeyPressed(waveEvent, "Cmd:d")) {
                 e.preventDefault();
                 e.stopPropagation();
                 this.doClose();
             }
-            if (e.code === "KeyP" && e.metaKey) {
+            if (checkKeyPressed(waveEvent, "Cmd:p")) {
                 e.preventDefault();
                 e.stopPropagation();
                 this.togglePreview();
