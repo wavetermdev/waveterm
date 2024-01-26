@@ -2659,35 +2659,39 @@ class SidebarModel {
             const newWidth = Math.max(this.minWidth.get(), Math.min(width, this.maxWidth.get()));
             this.width.set(newWidth);
 
-            const isCollapsed = width == this.minWidth.get();
-            this.prevExpandedWidth.set(width);
-            this.saveCollapsedState(isCollapsed);
+            const isCollapsed = newWidth == this.minWidth.get();
+            if (isCollapsed) {
+                this.prevExpandedWidth.set(width);
+            }
+            this.persist(isCollapsed, newWidth);
             this.isCollapsed.set(isCollapsed);
         })();
     }
 
     collapse() {
         mobx.action(() => {
-            this.saveCollapsedState(true);
+            const width = this.minWidth.get();
+            this.persist(true, width);
             this.isCollapsed.set(true);
-            this.width.set(this.minWidth.get());
+            this.width.set(width);
         })();
     }
 
-    expand() {
+    expand(width?: number) {
         mobx.action(() => {
-            this.saveCollapsedState(false);
+            const newWidth = width || this.prevExpandedWidth.get();
+            this.persist(false, newWidth);
             this.isCollapsed.set(false);
-            this.width.set(this.prevExpandedWidth.get());
+            this.width.set(newWidth);
         })();
     }
 
-    saveCollapsedState(newIsCollapsed: boolean) {
+    persist(newIsCollapsed: boolean, width: number) {
         const isCollapsed = this.isCollapsed.get();
         const name = this.name.get();
 
         if (newIsCollapsed != isCollapsed) {
-            GlobalCommandRunner.clientSetCollapseSidebar(name, newIsCollapsed);
+            GlobalCommandRunner.clientSetSidebar(name, width, newIsCollapsed);
         }
     }
 }
@@ -5014,9 +5018,9 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
-    clientSetCollapseSidebar(name: T.SidebarNameType, collapse: boolean): Promise<CommandRtnType> {
-        let kwargs = { nohist: "1", name, collapse: collapse ? "1" : "0" };
-        return GlobalModel.submitCommand("client", "setcollapsesidebar", null, kwargs, false);
+    clientSetSidebar(name: T.SidebarNameType, width: number, collapsed: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1", name, width: `${width}`, collapsed: collapsed ? "1" : "0" };
+        return GlobalModel.submitCommand("client", "setsidebar", null, kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

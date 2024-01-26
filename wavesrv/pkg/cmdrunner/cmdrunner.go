@@ -218,7 +218,7 @@ func init() {
 	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
 	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
 	registerCmdFn("client:setconfirmflag", ClientConfirmFlagCommand)
-	registerCmdFn("client:setcollapsesidebar", ClientCollapseSidebarCommand)
+	registerCmdFn("client:setsidebar", ClientSetSidebarCommand)
 
 	registerCmdFn("sidebar:open", SidebarOpenCommand)
 	registerCmdFn("sidebar:close", SidebarCloseCommand)
@@ -4332,36 +4332,57 @@ func ClientConfirmFlagCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	return update, nil
 }
 
-func ClientCollapseSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
-	sidebarName, ok := pk.Kwargs["name"]
-	if !ok {
-		return nil, fmt.Errorf("name key not provided")
-	}
-
-	_, ok = pk.Kwargs["collapse"]
-	if !ok {
-		return nil, fmt.Errorf("collapse key not provided")
-	}
-
-	collapseValue := resolveBool(pk.Kwargs["collapse"], false)
-	validName := utilfn.ContainsStr(SidebarNames, sidebarName)
-	if !validName {
-		return nil, fmt.Errorf("invalid sidebar name: %s", sidebarName)
-	}
-
+func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
 
-	// Initialize SidebarCollapsed if it's nil
-	if clientData.ClientOpts.SidebarCollapsed == nil {
-		clientData.ClientOpts.SidebarCollapsed = make(map[string]bool)
+	// Validate sidebar name
+	sidebarName, ok := pk.Kwargs["name"]
+	if !ok {
+		return nil, fmt.Errorf("name key not provided")
+	}
+	validName := utilfn.ContainsStr(SidebarNames, sidebarName)
+	if !validName {
+		return nil, fmt.Errorf("invalid sidebar name: %s", sidebarName)
 	}
 
-	// Set the sidebar collapse state
-	clientData.ClientOpts.SidebarCollapsed[sidebarName] = collapseValue
+	// Handle collapsed
+	collapsed, ok := pk.Kwargs["collapsed"]
+	if !ok {
+		return nil, fmt.Errorf("collapse key not provided")
+	}
+	collapsedValue := resolveBool(collapsed, false)
 
+	// Handle width
+	var width int
+	if w, exists := pk.Kwargs["width"]; exists {
+		width, err = resolveNonNegInt(w, 0)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving width: %v", err)
+		}
+	} else if clientData.ClientOpts.Sidebar != nil {
+		sidebarValue, exists := clientData.ClientOpts.Sidebar[sidebarName]
+		if exists && sidebarValue != (sstore.SidebarValueType{}) {
+			width = sidebarValue.Width
+		}
+	}
+
+	// Initialize SidebarCollapsed if it's nil
+	if clientData.ClientOpts.Sidebar == nil {
+		clientData.ClientOpts.Sidebar = make(map[string]sstore.SidebarValueType)
+	}
+
+	// Set the sidebar values
+	var sv sstore.SidebarValueType
+	sv.Collapsed = collapsedValue
+	if width != 0 {
+		sv.Width = width
+	}
+	clientData.ClientOpts.Sidebar[sidebarName] = sv
+
+	// Update client data
 	err = sstore.SetClientOpts(ctx, clientData.ClientOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error updating client data: %v", err)

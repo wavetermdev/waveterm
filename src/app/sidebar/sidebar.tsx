@@ -40,14 +40,14 @@ interface MainSideBarProps {
 @mobxReact.observer
 class MainSideBar extends React.Component<MainSideBarProps, {}> {
     sidebarRef = React.createRef<HTMLDivElement>();
-    mainSidebarModel = new SidebarModel({
-        name: "main",
-    });
+    mainSidebarModel = null;
     clientData = null;
     collapseStateFromClientData = null;
 
     constructor(props) {
         super(props);
+
+        this.mainSidebarModel = new SidebarModel({ name: "main" });
 
         mobx.action(() => {
             GlobalModel.sidebarModels.set("main", this.mainSidebarModel);
@@ -58,14 +58,21 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     componentDidUpdate(): void {
         // Force to use collapse from client data on first load
         if (this.collapseStateFromClientData == null) {
-            const sidebar = GlobalModel.clientData.get()?.clientopts?.sidebarcollapsed;
+            const sidebar = GlobalModel.clientData.get()?.clientopts?.sidebar;
             if (sidebar != null) {
                 this.collapseStateFromClientData = true;
-                const isCollapsed = sidebar.main;
-                this.mainSidebarModel.isCollapsed.set(isCollapsed);
-                if (isCollapsed) {
-                    const minWidth = this.mainSidebarModel.minWidth.get();
-                    this.mainSidebarModel.width.set(minWidth);
+                const { collapsed, width } = sidebar.main;
+                if (collapsed) {
+                    this.mainSidebarModel.collapse();
+
+                    console.log(
+                        "sidebar.main:isCollapsed",
+                        collapsed,
+                        this.mainSidebarModel.width.get(),
+                        this.mainSidebarModel.name.get()
+                    );
+                } else {
+                    this.mainSidebarModel.expand(width);
                 }
             }
         }
@@ -237,6 +244,9 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
+
+        console.log("this.mainSidebarModel.minWidth.get()", this.mainSidebarModel.minWidth.get());
+        console.log("isCollapsed", isCollapsed);
 
         return (
             <ResizableSidebar

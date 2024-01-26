@@ -270,12 +270,17 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 	return quickScanJson(tdata, val)
 }
 
+type SidebarValueType struct {
+	Collapsed bool `json:"collapsed"`
+	Width     int  `json:"width"`
+}
+
 type ClientOptsType struct {
-	NoTelemetry      bool            `json:"notelemetry,omitempty"`
-	NoReleaseCheck   bool            `json:"noreleasecheck,omitempty"`
-	AcceptedTos      int64           `json:"acceptedtos,omitempty"`
-	ConfirmFlags     map[string]bool `json:"confirmflags,omitempty"`
-	SidebarCollapsed map[string]bool `json:"sidebarcollapsed,omitempty"`
+	NoTelemetry    bool                        `json:"notelemetry,omitempty"`
+	NoReleaseCheck bool                        `json:"noreleasecheck,omitempty"`
+	AcceptedTos    int64                       `json:"acceptedtos,omitempty"`
+	ConfirmFlags   map[string]bool             `json:"confirmflags,omitempty"`
+	Sidebar        map[string]SidebarValueType `json:"sidebar,omitempty"`
 }
 
 type FeOptsType struct {
