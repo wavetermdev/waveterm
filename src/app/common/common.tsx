@@ -1378,7 +1378,17 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         }
     };
 
+    getPersistData = () => {
+        const { sidebarModel } = this.props;
+        const width = sidebarModel.width.get();
+        const isCollapsed = sidebarModel.isCollapsed.get();
+        return { width, isCollapsed };
+    };
+
     stopResizing = () => {
+        const { width, isCollapsed } = this.getPersistData();
+        this.props.sidebarModel.persist(width, isCollapsed);
+
         document.removeEventListener("mousemove", this.onMouseMove);
         document.removeEventListener("mouseup", this.stopResizing);
         document.body.style.cursor = "";
@@ -1393,6 +1403,9 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         } else {
             sidebarModel.collapse();
         }
+
+        const { width, isCollapsed: newIsCollapsed } = this.getPersistData();
+        this.props.sidebarModel.persist(width, newIsCollapsed);
     };
 
     render() {

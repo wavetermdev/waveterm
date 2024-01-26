@@ -2663,7 +2663,6 @@ class SidebarModel {
             if (isCollapsed) {
                 this.prevExpandedWidth.set(width);
             }
-            this.persist(isCollapsed, newWidth);
             this.isCollapsed.set(isCollapsed);
         })();
     }
@@ -2671,7 +2670,6 @@ class SidebarModel {
     collapse() {
         mobx.action(() => {
             const width = this.minWidth.get();
-            this.persist(true, width);
             this.isCollapsed.set(true);
             this.width.set(width);
         })();
@@ -2680,19 +2678,14 @@ class SidebarModel {
     expand(width?: number) {
         mobx.action(() => {
             const newWidth = width || this.prevExpandedWidth.get();
-            this.persist(false, newWidth);
             this.isCollapsed.set(false);
             this.width.set(newWidth);
         })();
     }
 
-    persist(newIsCollapsed: boolean, width: number) {
-        const isCollapsed = this.isCollapsed.get();
+    persist(width: number, isCollapsed: boolean) {
         const name = this.name.get();
-
-        if (newIsCollapsed != isCollapsed) {
-            GlobalCommandRunner.clientSetSidebar(name, width, newIsCollapsed);
-        }
+        GlobalCommandRunner.clientSetSidebar(name, width, isCollapsed);
     }
 }
 

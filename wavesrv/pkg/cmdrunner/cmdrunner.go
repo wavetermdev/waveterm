@@ -4351,7 +4351,7 @@ func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	// Handle collapsed
 	collapsed, ok := pk.Kwargs["collapsed"]
 	if !ok {
-		return nil, fmt.Errorf("collapse key not provided")
+		return nil, fmt.Errorf("collapsed key not provided")
 	}
 	collapsedValue := resolveBool(collapsed, false)
 
