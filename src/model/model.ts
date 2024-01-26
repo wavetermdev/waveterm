@@ -2683,8 +2683,10 @@ class SidebarModel {
         })();
     }
 
-    persist(width: number, isCollapsed: boolean) {
+    persist() {
         const name = this.name.get();
+        const width = this.width.get();
+        const isCollapsed = this.isCollapsed.get();
         GlobalCommandRunner.clientSetSidebar(name, width, isCollapsed);
     }
 }

@@ -1381,17 +1381,8 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     }
 
     @boundMethod
-    getPersistData() {
-        const { sidebarModel } = this.props;
-        const width = sidebarModel.width.get();
-        const isCollapsed = sidebarModel.isCollapsed.get();
-        return { width, isCollapsed };
-    }
-
-    @boundMethod
     stopResizing() {
-        const { width, isCollapsed } = this.getPersistData();
-        this.props.sidebarModel.persist(width, isCollapsed);
+        this.props.sidebarModel.persist();
 
         document.removeEventListener("mousemove", this.onMouseMove);
         document.removeEventListener("mouseup", this.stopResizing);
@@ -1400,7 +1391,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     }
 
     @boundMethod
-    handleDoubleClick() {
+    handleToggleCollapse() {
         const { sidebarModel } = this.props;
         const isCollapsed = sidebarModel.isCollapsed.get();
         if (isCollapsed) {
@@ -1408,9 +1399,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         } else {
             sidebarModel.collapse();
         }
-
-        const { width, isCollapsed: newIsCollapsed } = this.getPersistData();
-        this.props.sidebarModel.persist(width, newIsCollapsed);
+        this.props.sidebarModel.persist();
     }
 
     render() {
@@ -1430,7 +1419,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
                         cursor: "col-resize",
                     }}
                     onMouseDown={this.startResizing}
-                    onDoubleClick={this.handleDoubleClick}
+                    onDoubleClick={this.handleToggleCollapse}
                 ></div>
             </div>
         );

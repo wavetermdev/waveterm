@@ -64,13 +64,6 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                 const { collapsed, width } = sidebar.main;
                 if (collapsed) {
                     this.mainSidebarModel.collapse();
-
-                    console.log(
-                        "sidebar.main:isCollapsed",
-                        collapsed,
-                        this.mainSidebarModel.width.get(),
-                        this.mainSidebarModel.name.get()
-                    );
                 } else {
                     this.mainSidebarModel.expand(width);
                 }
@@ -85,6 +78,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         } else {
             this.mainSidebarModel.collapse();
         }
+        this.mainSidebarModel.persist();
     }
 
     handleSessionClick(sessionId: string) {
