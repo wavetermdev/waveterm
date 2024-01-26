@@ -2619,6 +2619,10 @@ class SidebarModel {
     width: OV<number> = mobx.observable.box(this.defaultWidth, {
         name: "SidebarModel-width",
     });
+    prevExpandedWidth: OV<number> = mobx.observable.box(this.defaultWidth, {
+        name: "SidebarModel-prevExpandedWidth",
+    });
+
     isCollapsed: OV<boolean> = mobx.observable.box(true, {
         name: "SidebarModel-isCollapsed",
     });
@@ -2655,31 +2659,36 @@ class SidebarModel {
             const newWidth = Math.max(this.minWidth.get(), Math.min(width, this.maxWidth.get()));
             this.width.set(newWidth);
 
-            this.isCollapsed.set(width == this.minWidth.get());
-            this.saveCollapsedState();
+            const isCollapsed = width == this.minWidth.get();
+            this.prevExpandedWidth.set(width);
+            this.saveCollapsedState(isCollapsed);
+            this.isCollapsed.set(isCollapsed);
         })();
     }
 
     collapse() {
         mobx.action(() => {
+            this.saveCollapsedState(true);
             this.isCollapsed.set(true);
-            this.saveCollapsedState();
             this.width.set(this.minWidth.get());
         })();
     }
 
     expand() {
         mobx.action(() => {
+            this.saveCollapsedState(false);
             this.isCollapsed.set(false);
-            this.saveCollapsedState();
-            this.width.set(this.defaultWidth);
+            this.width.set(this.prevExpandedWidth.get());
         })();
     }
 
-    saveCollapsedState() {
+    saveCollapsedState(newIsCollapsed: boolean) {
         const isCollapsed = this.isCollapsed.get();
         const name = this.name.get();
-        GlobalCommandRunner.clientSetCollapseSidebar(name, isCollapsed);
+
+        if (newIsCollapsed != isCollapsed) {
+            GlobalCommandRunner.clientSetCollapseSidebar(name, newIsCollapsed);
+        }
     }
 }
 

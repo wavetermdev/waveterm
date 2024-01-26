@@ -43,9 +43,8 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     mainSidebarModel = new SidebarModel({
         name: "main",
     });
-    disposeClientDataReaction = null;
     clientData = null;
-    isCollapsed = false;
+    collapseStateFromClientData = null;
 
     constructor(props) {
         super(props);
@@ -57,20 +56,24 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
 
     @boundMethod
     componentDidUpdate(): void {
-        let isCollapsed = GlobalModel.clientData.get().clientopts.sidebarcollapsed?.main;
-        if (isCollapsed != null && isCollapsed != this.isCollapsed) {
-            this.isCollapsed = isCollapsed;
-            if (isCollapsed) {
-                this.mainSidebarModel.collapse();
-            } else {
-                this.mainSidebarModel.expand();
+        // Force to use collapse from client data on first load
+        if (this.collapseStateFromClientData == null) {
+            const sidebar = GlobalModel.clientData.get()?.clientopts?.sidebarcollapsed;
+            if (sidebar != null) {
+                this.collapseStateFromClientData = true;
+                const isCollapsed = sidebar.main;
+                this.mainSidebarModel.isCollapsed.set(isCollapsed);
+                if (isCollapsed) {
+                    const minWidth = this.mainSidebarModel.minWidth.get();
+                    this.mainSidebarModel.width.set(minWidth);
+                }
             }
         }
     }
 
     @boundMethod
     toggleCollapsed() {
-        if (this.isCollapsed) {
+        if (this.mainSidebarModel.isCollapsed.get()) {
             this.mainSidebarModel.expand();
         } else {
             this.mainSidebarModel.collapse();
@@ -228,7 +231,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                 sessionList.push(session);
             }
         }
-        let isCollapsed = this.isCollapsed;
+        let isCollapsed = this.mainSidebarModel.isCollapsed.get();
         let clientData = GlobalModel.clientData.get();
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
