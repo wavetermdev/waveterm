@@ -200,6 +200,7 @@ type ElectronApi = {
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
     onHCmd: (callback: (mods: KeyModsType) => void) => void;
     onPCmd: (callback: (mods: KeyModsType) => void) => void;
+    onRCmd: (callback: (mods: KeyModsType) => void) => void;
     onWCmd: (callback: (mods: KeyModsType) => void) => void;
     onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
@@ -3403,6 +3404,7 @@ class Model {
         getApi().onHCmd(this.onHCmd.bind(this));
         getApi().onPCmd(this.onPCmd.bind(this));
         getApi().onWCmd(this.onWCmd.bind(this));
+        getApi().onRCmd(this.onRCmd.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -3674,6 +3676,9 @@ class Model {
     }
 
     onWCmd(e: any, mods: KeyModsType) {
+        if (this.activeMainView.get() != "session") {
+            return;
+        }
         let activeScreen = this.getActiveScreen();
         if (activeScreen == null) {
             return;
@@ -3688,6 +3693,27 @@ class Model {
             }
             GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
         });
+    }
+
+    onRCmd(e: any, mods: KeyModsType) {
+        if (this.activeMainView.get() != "session") {
+            return;
+        }
+        let activeScreen = this.getActiveScreen();
+        if (activeScreen == null) {
+            return;
+        }
+        if (mods.shift) {
+            // restart last line
+            GlobalCommandRunner.lineRestart("E", true);
+        } else {
+            // restart selected line
+            let selectedLine = activeScreen.selectedLine.get();
+            if (selectedLine == null || selectedLine == 0) {
+                return;
+            }
+            GlobalCommandRunner.lineRestart(String(selectedLine), true);
+        }
     }
 
     clearModals(): boolean {

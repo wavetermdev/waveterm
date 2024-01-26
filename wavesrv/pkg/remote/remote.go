@@ -1628,12 +1628,8 @@ func replaceHomePath(pathStr string, homeDir string) string {
 func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	for runningCk := range msh.RunningCmds {
-		if runningCk == ck {
-			return true
-		}
-	}
-	return false
+	_, ok := msh.RunningCmds[ck]
+	return ok
 }
 
 func (msh *MShellProc) SendInput(dataPk *packet.DataPacketType) error {
@@ -1644,6 +1640,30 @@ func (msh *MShellProc) SendInput(dataPk *packet.DataPacketType) error {
 		return fmt.Errorf("cannot send input, cmd is not running")
 	}
 	return msh.ServerProc.Input.SendPacket(dataPk)
+}
+
+func (msh *MShellProc) KillRunningCommandAndWait(ctx context.Context, ck base.CommandKey) error {
+	if !msh.IsCmdRunning(ck) {
+		return nil
+	}
+	siPk := packet.MakeSpecialInputPacket()
+	siPk.CK = ck
+	siPk.SigName = "SIGTERM"
+	err := msh.SendSpecialInput(siPk)
+	if err != nil {
+		return fmt.Errorf("error trying to kill running cmd: %w", err)
+	}
+	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if !msh.IsCmdRunning(ck) {
+			return nil
+		}
+		// TODO fix busy wait (sync with msh.RunningCmds)
+		// not a huge deal though since this is not processor intensive and not widely used
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func (msh *MShellProc) SendSpecialInput(siPk *packet.SpecialInputPacketType) error {

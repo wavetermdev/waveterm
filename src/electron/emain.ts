@@ -36,7 +36,7 @@ ensureDir(waveHome);
 // these are either "darwin/amd64" or "darwin/arm64"
 // normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
 let unamePlatform = process.platform;
-let unameArch = process.arch;
+let unameArch: string = process.arch;
 if (unameArch == "x64") {
     unameArch = "amd64";
 }
@@ -190,14 +190,20 @@ let menuTemplate = [
         ],
     },
     {
-        label: "File",
-        submenu: [{ role: "close" }],
-    },
-    {
         role: "editMenu",
     },
     {
         role: "viewMenu",
+        submenu: [
+            { role: "reload", accelerator: "Option+R" },
+            { role: "toggleDevTools" },
+            { type: "separator" },
+            { role: "resetZoom" },
+            { role: "zoomIn" },
+            { role: "zoomOut" },
+            { type: "separator" },
+            { role: "togglefullscreen" },
+        ],
     },
     {
         role: "windowMenu",
@@ -284,14 +290,11 @@ function createMainWindow(clientData) {
             } else {
                 win.webContents.toggleDevTools();
             }
-
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:r")) {
-            if (input.shift) {
-                e.preventDefault();
-                win.reload();
-            }
+            e.preventDefault();
+            win.webContents.send("r-cmd", mods);
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:l")) {

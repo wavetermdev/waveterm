@@ -763,29 +763,37 @@ func GetScreenById(ctx context.Context, screenId string) (*ScreenType, error) {
 	})
 }
 
+// special "E" returns last unarchived line, "EA" returns last line (even if archived)
 func FindLineIdByArg(ctx context.Context, screenId string, lineArg string) (string, error) {
-	var lineId string
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		if lineArg == "E" {
+			query := `SELECT lineid FROM line WHERE screenid = ? AND NOT archived ORDER BY linenum DESC LIMIT 1`
+			lineId := tx.GetString(query, screenId)
+			return lineId, nil
+		}
+		if lineArg == "EA" {
+			query := `SELECT lineid FROM line WHERE screenid = ? ORDER BY linenum DESC LIMIT 1`
+			lineId := tx.GetString(query, screenId)
+			return lineId, nil
+		}
 		lineNum, err := strconv.Atoi(lineArg)
 		if err == nil {
 			// valid linenum
 			query := `SELECT lineid FROM line WHERE screenid = ? AND linenum = ?`
-			lineId = tx.GetString(query, screenId, lineNum)
+			lineId := tx.GetString(query, screenId, lineNum)
+			return lineId, nil
 		} else if len(lineArg) == 8 {
 			// prefix id string match
 			query := `SELECT lineid FROM line WHERE screenid = ? AND substr(lineid, 1, 8) = ?`
-			lineId = tx.GetString(query, screenId, lineArg)
+			lineId := tx.GetString(query, screenId, lineArg)
+			return lineId, nil
 		} else {
 			// id match
 			query := `SELECT lineid FROM line WHERE screenid = ? AND lineid = ?`
-			lineId = tx.GetString(query, screenId, lineArg)
+			lineId := tx.GetString(query, screenId, lineArg)
+			return lineId, nil
 		}
-		return nil
 	})
-	if txErr != nil {
-		return "", txErr
-	}
-	return lineId, nil
 }
 
 func GetLineCmdByLineId(ctx context.Context, screenId string, lineId string) (*LineType, *CmdType, error) {
@@ -1498,12 +1506,16 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 func DeleteScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error) {
 	var lineIds []string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT lineid FROM line WHERE screenid = ?`
-		lineIds = tx.SelectStrings(query, screenId)
-		query = `DELETE FROM line WHERE screenid = ?`
-		tx.Exec(query, screenId)
-		query = `UPDATE history SET lineid = '', linenum = 0 WHERE screenid = ?`
-		tx.Exec(query, screenId)
+		query := `SELECT lineid FROM line 
+		          WHERE screenid = ?
+		            AND NOT EXISTS (SELECT lineid FROM cmd c WHERE c.screenid = ? AND c.lineid = line.lineid AND c.status IN ('running', 'detached'))`
+		lineIds = tx.SelectStrings(query, screenId, screenId)
+		query = `DELETE FROM line 
+				 WHERE screenid = ? AND lineid IN (SELECT value FROM json_each(?))`
+		tx.Exec(query, screenId, quickJsonArr(lineIds))
+		query = `UPDATE history SET lineid = '', linenum = 0 
+		         WHERE screenid = ? AND lineid IN (SELECT value FROM json_each(?))`
+		tx.Exec(query, screenId, quickJsonArr(lineIds))
 		return nil
 	})
 	if txErr != nil {
