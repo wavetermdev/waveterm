@@ -2632,6 +2632,9 @@ class SidebarModel {
     snapThreshold: OV<number>;
     dragResistance: OV<number>;
     name: OV<T.SidebarNameType>;
+    isDragging: OV<boolean> = mobx.observable.box(false, {
+        name: "SidebarModel-isDragging",
+    });
 
     constructor(props: SidebarModelProps) {
         this.name = mobx.observable.box(props.name, {
@@ -2652,6 +2655,15 @@ class SidebarModel {
         this.dragResistance = mobx.observable.box(props?.dragResistance || 50, {
             name: "SidebarModel-dragResistance",
         });
+
+        mobx.reaction(
+            () => this.isDragging.get(),
+            (isDragging) => {
+                if (!isDragging) {
+                    this.persist();
+                }
+            }
+        );
     }
 
     setWidth(width: number) {
@@ -2673,6 +2685,8 @@ class SidebarModel {
             this.isCollapsed.set(true);
             this.width.set(width);
         })();
+
+        this.persist();
     }
 
     expand(width?: number) {
@@ -2681,6 +2695,8 @@ class SidebarModel {
             this.isCollapsed.set(false);
             this.width.set(newWidth);
         })();
+
+        this.persist();
     }
 
     persist() {

@@ -78,7 +78,6 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         } else {
             this.mainSidebarModel.collapse();
         }
-        this.mainSidebarModel.persist();
     }
 
     handleSessionClick(sessionId: string) {
@@ -135,7 +134,6 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
 
     @boundMethod
     handlePlaybookClick(): void {
-        console.log("playbook click");
         return;
     }
 
@@ -238,9 +236,6 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
-
-        console.log("this.mainSidebarModel.minWidth.get()", this.mainSidebarModel.minWidth.get());
-        console.log("isCollapsed", isCollapsed);
 
         return (
             <ResizableSidebar

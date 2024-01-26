@@ -1291,7 +1291,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     resizeStartWidth: number = 0;
     startX: number = 0;
     pos: string;
-    isDragging: boolean = false;
     prevDelta: number = 0;
     prevDragDirection: string = null;
 
@@ -1320,19 +1319,19 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         document.addEventListener("mouseup", this.stopResizing);
 
         document.body.style.cursor = "col-resize";
-        this.isDragging = true;
+        mobx.action(() => {
+            sidebarModel.isDragging.set(true);
+        })();
     }
 
     @boundMethod
     onMouseMove(event: MouseEvent) {
         event.preventDefault();
 
-        if (!this.isDragging) return;
-
         const { parentRef, sidebarModel } = this.props;
         const parentRect = parentRef.current?.getBoundingClientRect();
 
-        if (!parentRect) return;
+        if (!sidebarModel.isDragging.get() || !parentRect) return;
 
         let delta, newWidth;
 
@@ -1382,12 +1381,13 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     stopResizing() {
-        this.props.sidebarModel.persist();
+        mobx.action(() => {
+            this.props.sidebarModel.isDragging.set(false);
+        })();
 
         document.removeEventListener("mousemove", this.onMouseMove);
         document.removeEventListener("mouseup", this.stopResizing);
         document.body.style.cursor = "";
-        this.isDragging = false;
     }
 
     @boundMethod
@@ -1399,7 +1399,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         } else {
             sidebarModel.collapse();
         }
-        this.props.sidebarModel.persist();
     }
 
     render() {
