@@ -1,4 +1,5 @@
 @import "../../app/common/themes/themes.less";
+@import "../../app/common/icons/icons.less";
 
 .main-sidebar {
     padding: 0;
@@ -23,6 +24,7 @@
     &.collapsed {
         width: 6em;
         min-width: 6em;
+
         .arrow-container,
         .collapse-button {
             transform: rotate(180deg);
@@ -125,12 +127,9 @@
                     0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
             }
             .index {
-                margin: 0 1.5em 0 -0.5rem;
                 font-size: 0.8em;
-                vertical-align: middle;
-                text-align: right;
+                text-align: center;
                 width: 2em;
-                display: inline-block;
             }
             .hotkey {
                 float: left !important;
@@ -150,7 +149,7 @@
 
     .item {
         padding: 5px;
-        margin: 0 6px;
+        margin-left: 6px;
         border-radius: 4px;
         opacity: 1;
         transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
@@ -161,50 +160,43 @@
         flex-direction: row;
         align-items: center;
 
+        .front-icon {
+            .positional-icon-visible;
+        }
+
+        .end-icons {
+            height: 20px;
+        }
+
         .item-contents {
             flex-grow: 1;
         }
         .icon {
-            margin: -2px 8px 0px 4px;
             width: 16px;
             height: 16px;
-            display: inline-block;
-            vertical-align: middle;
-        }
-        .actions.icon {
-            margin-left: 8px;
         }
         .hotkey {
             float: right;
             margin-right: 6px;
-            display: none;
             letter-spacing: 6px;
         }
-        .disabled .hotkey {
-            display: none;
-        }
-        .actions {
-            display: none;
-        }
         &:hover {
-            .hotkey {
-                display: block;
+            :not(.disabled) .hotkey {
+                .positional-icon-visible;
             }
             .actions {
-                display: block;
+                .positional-icon-visible;
             }
-            .status-indicator {
-                display: none;
-            }
+        }
+
+        &:not(:hover) .status-indicator {
+            .positional-icon-visible;
         }
         .add_workspace {
             float: right;
-            width: 1.5rem;
-            height: 1.5rem;
             padding: 2px;
             margin-right: 6px;
             transition: transform 0.3s ease-in-out;
-            vertical-align: middle;
             svg {
                 fill: @base-color;
             }
