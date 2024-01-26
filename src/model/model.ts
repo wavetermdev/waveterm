@@ -4133,12 +4133,28 @@ class Model {
         return session.getActiveScreen();
     }
 
+    handleCmdRestart(cmd: CmdDataType) {
+        if (cmd == null || !cmd.restarted) {
+            return;
+        }
+        let screen = this.screenMap.get(cmd.screenid);
+        if (screen == null) {
+            return;
+        }
+        let termWrap = screen.getTermWrap(cmd.lineid);
+        if (termWrap == null) {
+            return;
+        }
+        termWrap.reload(0);
+    }
+
     addLineCmd(line: LineType, cmd: CmdDataType, interactive: boolean) {
         let slines = this.getScreenLinesById(line.screenid);
         if (slines == null) {
             return;
         }
         slines.addLineCmd(line, cmd, interactive);
+        this.handleCmdRestart(cmd);
     }
 
     updateCmd(cmd: CmdDataType) {
@@ -4146,6 +4162,7 @@ class Model {
         if (slines != null) {
             slines.updateCmd(cmd);
         }
+        this.handleCmdRestart(cmd);
     }
 
     isInfoUpdate(update: UpdateMessage): boolean {
@@ -4581,6 +4598,10 @@ class CommandRunner {
 
     lineDelete(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
         return GlobalModel.submitCommand("line", "delete", [lineArg], { nohist: "1" }, interactive);
+    }
+
+    lineRestart(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("line", "restart", [lineArg], { nohist: "1" }, interactive);
     }
 
     lineSet(lineArg: string, opts: { renderer?: string }): Promise<CommandRtnType> {

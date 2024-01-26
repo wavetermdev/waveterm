@@ -361,6 +361,12 @@ class LineCmd extends React.Component<
     }
 
     @boundMethod
+    clickRestart() {
+        let { line } = this.props;
+        GlobalCommandRunner.lineRestart(line.lineid, true);
+    }
+
+    @boundMethod
     clickMinimize() {
         mobx.action(() => {
             this.isMinimized.set(!this.isMinimized.get());
@@ -664,6 +670,9 @@ class LineCmd extends React.Component<
                     <div key="meta" className="meta-wrap">
                         {this.renderMeta1(cmd)}
                         <If condition={!hidePrompt}>{this.renderCmdText(cmd)}</If>
+                    </div>
+                    <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
+                        <i className="fa-sharp fa-regular fa-arrows-rotate"/>
                     </div>
                     <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
                         <i className="fa-sharp fa-regular fa-trash" />

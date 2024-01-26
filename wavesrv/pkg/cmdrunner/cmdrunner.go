@@ -3383,7 +3383,7 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	}
 	if cmd.Status == sstore.CmdStatusRunning || cmd.Status == sstore.CmdStatusDetached {
 		// TODO kill cmd, wait, and then restart
-		return nil, fmt.Errorf("cannot restart line (cmd is already running)")
+		return nil, fmt.Errorf("cannot restart line (cmd is still running)")
 	}
 	ids.Remote.MShell.ResetDataPos(base.MakeCommandKey(ids.ScreenId, lineId))
 	err = sstore.ClearCmdPtyFile(ctx, ids.ScreenId, lineId)
