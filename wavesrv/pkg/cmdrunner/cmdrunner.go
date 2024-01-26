@@ -3430,7 +3430,33 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		Cmd:         cmd,
 		Interactive: pk.Interactive,
 	}
+	screen, focusErr := focusScreenLine(ctx, ids.ScreenId, line.LineNum)
+	if focusErr != nil {
+		// not a fatal error, so just log
+		log.Printf("error focusing screen line: %v\n", focusErr)
+	}
+	if screen != nil {
+		update.Screens = []*sstore.ScreenType{screen}
+	}
 	return update, nil
+}
+
+func focusScreenLine(ctx context.Context, screenId string, lineNum int64) (*sstore.ScreenType, error) {
+	screen, err := sstore.GetScreenById(ctx, screenId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting screen: %v", err)
+	}
+	if screen == nil {
+		return nil, fmt.Errorf("screen not found")
+	}
+	updateMap := make(map[string]interface{})
+	updateMap[sstore.ScreenField_SelectedLine] = lineNum
+	updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusCmd
+	screen, err = sstore.UpdateScreen(ctx, screenId, updateMap)
+	if err != nil {
+		return nil, fmt.Errorf("error updating screen: %v", err)
+	}
+	return screen, nil
 }
 
 func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
