@@ -15,6 +15,7 @@ import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
 import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
 import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
+import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, VERSION } from "../../model/model";
@@ -22,7 +23,7 @@ import { isBlank, openLink } from "../../util/util";
 import * as constants from "../appconst";
 
 import "./sidebar.less";
-import { ActionsIcon, EndIcon, FrontIcon, StatusIndicator } from "../common/common";
+import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "../common/icons/icons";
 
 dayjs.extend(localizedFormat);
 
@@ -31,22 +32,30 @@ type OV<V> = mobx.IObservableValue<V>;
 class SideBarItem extends React.Component<{
     frontIcon: React.ReactNode;
     contents: React.ReactNode | string;
-    endIcon?: React.ReactNode[];
+    endIcons?: React.ReactNode[];
     className?: string;
-    key?: React.Key;
     onClick?: React.MouseEventHandler<HTMLDivElement>;
 }> {
     render() {
         return (
             <div
-                key={this.props.key}
                 className={cn("item", "unselectable", "hoverEffect", this.props.className)}
                 onClick={this.props.onClick}
             >
                 <FrontIcon>{this.props.frontIcon}</FrontIcon>
                 <div className="item-contents truncate">{this.props.contents}</div>
-                <EndIcon>{this.props.endIcon}</EndIcon>
+                <div className="end-icons">{this.props.endIcons}</div>
             </div>
+        );
+    }
+}
+
+class HotKeyIcon extends React.Component<{ hotkey: string }> {
+    render() {
+        return (
+            <CenteredIcon className="hotkey">
+                <span>&#x2318;{this.props.hotkey}</span>
+            </CenteredIcon>
         );
     }
 }
@@ -180,15 +189,12 @@ class MainSideBar extends React.Component<{}, {}> {
             const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
             return (
                 <SideBarItem
-                    key={index}
                     className={`${isActive ? "active" : ""}`}
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
-                    endIcon={[
-                        <StatusIndicator level={sessionIndicator} />,
-                        <ActionsIcon
-                            onClick={(e) => this.openSessionSettings(e, session)}
-                        />,
+                    endIcons={[
+                        <StatusIndicator key="statusindicator" level={sessionIndicator} />,
+                        <ActionsIcon key="actions" onClick={(e) => this.openSessionSettings(e, session)} />,
                     ]}
                     onClick={() => this.handleSessionClick(session.sessionId)}
                 />
@@ -228,12 +234,12 @@ class MainSideBar extends React.Component<{}, {}> {
                         <SideBarItem
                             frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
                             contents="History"
-                            endIcon={[<span className="hotkey">&#x2318;H</span>]}
+                            endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
                             onClick={this.handleHistoryClick}
                         />
                         {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
                         <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-globe icon "/>}
+                            frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
                             contents="Connections"
                             onClick={this.handleConnectionsClick}
                         />
@@ -242,8 +248,12 @@ class MainSideBar extends React.Component<{}, {}> {
                     <SideBarItem
                         frontIcon={<WorkspacesIcon className="icon" />}
                         contents="Workspaces"
-                        endIcon={[
-                            <div className="add_workspace hoverEffect" onClick={this.handleNewSession}>
+                        endIcons={[
+                            <div
+                                key="add_workspace"
+                                className="add_workspace hoverEffect"
+                                onClick={this.handleNewSession}
+                            >
                                 <AddIcon />
                             </div>,
                         ]}
@@ -263,11 +273,11 @@ class MainSideBar extends React.Component<{}, {}> {
                                 frontIcon={<AppsIcon className="icon" />}
                                 contents="Apps"
                                 onClick={this.handlePluginsClick}
-                                endIcon={[<span className="hotkey">&#x2318;A</span>]}
+                                endIcons={[<HotKeyIcon key="hotkey" hotkey="A" />]}
                             />
                         </If>
                         <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-gear icon"/>}
+                            frontIcon={<SettingsIcon className="icon" />}
                             contents="Settings"
                             onClick={this.handleSettingsClick}
                         />

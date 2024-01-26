@@ -1,0 +1,58 @@
+@import "../../../app/common/themes/themes.less";
+
+.front-icon {
+    margin-right: 5px;
+}
+
+.positional-icon-visible {
+    display: inline-block;
+}
+
+.positional-icon-hidden {
+    display: none;
+}
+
+.positional-icon {
+    display: none;
+    width: 20px;
+    height: 20px;
+    .svg-icon svg {
+        width: 14px;
+        height: 14px;
+    }
+    font-size: 16px;
+}
+
+.positional-icon-inner {
+    display: flex;
+    width: inherit;
+    height: 100%;
+    line-height: inherit;
+    align-items: center;
+    justify-content: center;
+    & > div,i,.svg-icon,span {
+        width: 20px;
+        display: flex;
+        text-align: center;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+.actions {
+    .icon {
+        font-size: 14px;
+    }
+}
+
+.status-indicator {
+    .error {
+        color: @term-red;
+    }
+    .success {
+        color: @term-green;
+    }
+    .output {
+        color: @term-white;
+    }
+}

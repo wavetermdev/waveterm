@@ -81,6 +81,7 @@ import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { MagicLayout } from "../app/magiclayout";
 import { modalsRegistry } from "../app/common/modals/registry";
 import * as appconst from "../app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -806,41 +807,48 @@ class Screen {
     }
 
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
-        if (e.code == "ArrowUp") {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "ArrowUp")) {
             termWrap.terminal.scrollLines(-1);
             return;
         }
-        if (e.code == "ArrowDown") {
+        if (checkKeyPressed(waveEvent, "ArrowDown")) {
             termWrap.terminal.scrollLines(1);
             return;
         }
-        if (e.code == "PageUp") {
+        if (checkKeyPressed(waveEvent, "PageUp")) {
             termWrap.terminal.scrollPages(-1);
             return;
         }
-        if (e.code == "PageDown") {
+        if (checkKeyPressed(waveEvent, "PageDown")) {
             termWrap.terminal.scrollPages(1);
             return;
         }
     }
 
     isTermCapturedKey(e: any): boolean {
-        let keys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown"];
-        if (keys.includes(e.code) && keyHasNoMods(e)) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (
+            checkKeyPressed(waveEvent, "ArrowUp") ||
+            checkKeyPressed(waveEvent, "ArrowDown") ||
+            checkKeyPressed(waveEvent, "PageUp") ||
+            checkKeyPressed(waveEvent, "PageDown")
+        ) {
             return true;
         }
         return false;
     }
 
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
-        if (e.type == "keypress" && e.code == "KeyC" && e.shiftKey && e.ctrlKey) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
             e.stopPropagation();
             e.preventDefault();
             let sel = termWrap.terminal.getSelection();
             navigator.clipboard.writeText(sel);
             return false;
         }
-        if (e.type == "keypress" && e.code == "KeyV" && e.shiftKey && e.ctrlKey) {
+        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
             e.stopPropagation();
             e.preventDefault();
             let p = navigator.clipboard.readText();
@@ -2526,7 +2534,8 @@ class HistoryViewModel {
     }
 
     handleDocKeyDown(e: any): void {
-        if (e.code == "Escape") {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             this.closeView();
             return;
@@ -2766,7 +2775,8 @@ class BookmarksModel {
     }
 
     handleDocKeyDown(e: any): void {
-        if (e.code == "Escape") {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             if (this.editingBookmark.get() != null) {
                 this.cancelEdit();
@@ -2778,7 +2788,7 @@ class BookmarksModel {
         if (this.editingBookmark.get() != null) {
             return;
         }
-        if (e.code == "Backspace" || e.code == "Delete") {
+        if (checkKeyPressed(waveEvent, "Backspace") || checkKeyPressed(waveEvent, "Delete")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -2786,7 +2796,13 @@ class BookmarksModel {
             this.handleDeleteBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "ArrowUp" || e.code == "ArrowDown" || e.code == "PageUp" || e.code == "PageDown") {
+
+        if (
+            checkKeyPressed(waveEvent, "ArrowUp") ||
+            checkKeyPressed(waveEvent, "ArrowDown") ||
+            checkKeyPressed(waveEvent, "PageUp") ||
+            checkKeyPressed(waveEvent, "PageDown")
+        ) {
             e.preventDefault();
             if (this.bookmarks.length == 0) {
                 return;
@@ -2810,14 +2826,14 @@ class BookmarksModel {
             })();
             return;
         }
-        if (e.code == "Enter") {
+        if (checkKeyPressed(waveEvent, "Enter")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
             this.useBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "KeyE") {
+        if (checkKeyPressed(waveEvent, "e")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -2825,7 +2841,7 @@ class BookmarksModel {
             this.handleEditBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "KeyC") {
+        if (checkKeyPressed(waveEvent, "c")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -3366,6 +3382,7 @@ class Model {
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
         });
+        this.platform = this.getPlatform();
         this.termFontSize = mobx.computed(() => {
             let cdata = this.clientData.get();
             if (cdata == null || cdata.feopts == null || cdata.feopts.termfontsize == null) {
@@ -3409,7 +3426,12 @@ class Model {
             return this.platform;
         }
         this.platform = getApi().getPlatform();
+        setKeyUtilPlatform(this.platform);
         return this.platform;
+    }
+
+    testGlobalModel() {
+        return "";
     }
 
     needsTos(): boolean {
@@ -3553,16 +3575,17 @@ class Model {
     }
 
     docKeyDownHandler(e: KeyboardEvent) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (isModKeyPress(e)) {
             return;
         }
         if (this.alertMessage.get() != null) {
-            if (e.code == "Escape") {
+            if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
                 this.cancelAlert();
                 return;
             }
-            if (e.code == "Enter") {
+            if (checkKeyPressed(waveEvent, "Enter")) {
                 e.preventDefault();
                 this.confirmAlert();
                 return;
@@ -3585,7 +3608,7 @@ class Model {
             this.historyViewModel.handleDocKeyDown(e);
             return;
         }
-        if (e.code == "Escape") {
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             if (this.activeMainView.get() == "webshare") {
                 this.showSessionView();
@@ -3601,16 +3624,11 @@ class Model {
             }
             return;
         }
-        if (e.code == "KeyB" && e.getModifierState("Meta")) {
+        if (checkKeyPressed(waveEvent, "Cmd:b")) {
             e.preventDefault();
             GlobalCommandRunner.bookmarksView();
         }
-        if (
-            this.activeMainView.get() == "session" &&
-            e.code == "KeyS" &&
-            e.getModifierState("Meta") &&
-            e.getModifierState("Control")
-        ) {
+        if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
             e.preventDefault();
             let activeScreen = this.getActiveScreen();
             if (activeScreen != null) {
@@ -3622,7 +3640,7 @@ class Model {
                 }
             }
         }
-        if (e.code == "KeyD" && e.getModifierState("Meta")) {
+        if (checkKeyPressed(waveEvent, "Cmd:d")) {
             let ranDelete = this.deleteActiveLine();
             if (ranDelete) {
                 e.preventDefault();
