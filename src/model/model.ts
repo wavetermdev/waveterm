@@ -2615,11 +2615,13 @@ interface SidebarModelProps {
 }
 
 class SidebarModel {
-    defaultWidth: number = 240;
-    width: OV<number> = mobx.observable.box(this.defaultWidth, {
+    defaultWidth: OV<number> = mobx.observable.box(240, {
+        name: "SidebarModel-defaultWidth",
+    });
+    width: OV<number> = mobx.observable.box(this.defaultWidth.get(), {
         name: "SidebarModel-width",
     });
-    prevExpandedWidth: OV<number> = mobx.observable.box(this.defaultWidth, {
+    prevExpandedWidth: OV<number> = mobx.observable.box(this.defaultWidth.get(), {
         name: "SidebarModel-prevExpandedWidth",
     });
 

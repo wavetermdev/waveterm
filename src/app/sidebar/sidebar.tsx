@@ -73,8 +73,10 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
 
     @boundMethod
     toggleCollapsed() {
-        if (this.mainSidebarModel.isCollapsed.get()) {
-            this.mainSidebarModel.expand();
+        const isCollapsed = this.mainSidebarModel.isCollapsed.get();
+        const defaultWidth = this.mainSidebarModel.defaultWidth.get();
+        if (isCollapsed) {
+            this.mainSidebarModel.expand(defaultWidth);
         } else {
             this.mainSidebarModel.collapse();
         }

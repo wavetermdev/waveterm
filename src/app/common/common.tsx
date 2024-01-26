@@ -1394,8 +1394,9 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     handleToggleCollapse() {
         const { sidebarModel } = this.props;
         const isCollapsed = sidebarModel.isCollapsed.get();
+        const defaultWidth = sidebarModel.defaultWidth.get();
         if (isCollapsed) {
-            sidebarModel.expand();
+            sidebarModel.expand(defaultWidth);
         } else {
             sidebarModel.collapse();
         }
