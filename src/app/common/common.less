@@ -607,6 +607,9 @@
     }
 }
 
+@box-shadow: 0px 3px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 1px 0px rgba(0, 0, 0, 0.5),
+    0px 0px 1px 0px rgba(255, 255, 255, 0.5) inset, 0px 1px 0px 0px rgba(255, 255, 255, 0.2) inset;
+
 .wave-dropdown {
     position: relative;
     height: 44px;
@@ -615,8 +618,7 @@
     border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
     border-radius: 6px;
     background: var(--element-hover-2, rgba(255, 255, 255, 0.06));
-    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-        0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+    box-shadow: @box-shadow;
 
     &.no-label {
         height: 34px;
@@ -680,8 +682,8 @@
         &-highlighted,
         &:hover {
             background: var(--element-active, rgba(241, 246, 243, 0.08));
-            box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-                0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+            box-shadow: @box-shadow;
+
         }
     }
 
@@ -723,8 +725,8 @@
     gap: 4px;
     border-radius: 6px;
     background: var(--olive-dark-1, #151715);
-    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.5), 0px 3px 8px 0px rgba(0, 0, 0, 0.35), 0px 0px 0.5px 0px #fff inset,
-        0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+    0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
     animation-fill-mode: forwards;
     z-index: 1000;
 }
