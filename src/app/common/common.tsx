@@ -13,6 +13,7 @@ import { RemoteType, StatusIndicatorLevel } from "../../types/types";
 import ReactDOM from "react-dom";
 import { GlobalModel } from "../../model/model";
 import * as appconst from "../appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -714,13 +715,14 @@ class InlineSettingsTextEdit extends React.Component<
 
     @boundMethod
     handleKeyDown(e: any): void {
-        if (e.code == "Enter") {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Enter")) {
             e.preventDefault();
             e.stopPropagation();
             this.confirmChange();
             return;
         }
-        if (e.code == "Escape") {
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             e.stopPropagation();
             this.cancelChange();

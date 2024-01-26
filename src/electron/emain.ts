@@ -12,6 +12,8 @@ import * as winston from "winston";
 import * as util from "util";
 import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
+import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
+import { platform } from "os";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
@@ -189,7 +191,7 @@ let menuTemplate = [
     },
     {
         label: "File",
-        submenu: [{ role: "close" },],
+        submenu: [{ role: "close" }],
     },
     {
         role: "editMenu",
@@ -244,6 +246,7 @@ function shFrameNavHandler(event: any, url: any) {
 
 function createMainWindow(clientData) {
     let bounds = calcBounds(clientData);
+    setKeyUtilPlatform(platform());
     let win = new electron.BrowserWindow({
         x: bounds.x,
         y: bounds.y,
@@ -261,6 +264,7 @@ function createMainWindow(clientData) {
     let indexHtml = isDev ? "index-dev.html" : "index.html";
     win.loadFile(path.join(getAppBasePath(), "public", indexHtml));
     win.webContents.on("before-input-event", (e, input) => {
+        let waveEvent = adaptFromElectronKeyEvent(input);
         if (win.isFocused()) {
             wasActive = true;
         }
@@ -268,12 +272,12 @@ function createMainWindow(clientData) {
             return;
         }
         let mods = getMods(input);
-        if (input.code == "KeyT" && input.meta) {
+        if (checkKeyPressed(waveEvent, "Cmd:t")) {
             win.webContents.send("t-cmd", mods);
             e.preventDefault();
             return;
         }
-        if (input.code == "KeyI" && input.meta) {
+        if (checkKeyPressed(waveEvent, "Cmd:i")) {
             e.preventDefault();
             if (!input.alt) {
                 win.webContents.send("i-cmd", mods);
@@ -283,35 +287,35 @@ function createMainWindow(clientData) {
 
             return;
         }
-        if (input.code == "KeyR" && input.meta) {
+        if (checkKeyPressed(waveEvent, "Cmd:r")) {
             if (input.shift) {
                 e.preventDefault();
                 win.reload();
             }
             return;
         }
-        if (input.code == "KeyL" && input.meta) {
+        if (checkKeyPressed(waveEvent, "Cmd:l")) {
             win.webContents.send("l-cmd", mods);
             e.preventDefault();
             return;
         }
-        if (input.code == "KeyW" && input.meta) {
+        if (checkKeyPressed(waveEvent, "Cmd:w")) {
             e.preventDefault();
             win.webContents.send("w-cmd", mods);
             return;
         }
-        if (input.code == "KeyH" && input.meta) {
+        if (checkKeyPressed(waveEvent, "Cmd:h")) {
             win.webContents.send("h-cmd", mods);
             e.preventDefault();
             return;
         }
-        if (input.code == "KeyP" && input.meta) {
+        if (checkKeyPressed(waveEvent, "Cmd:p")) {
             win.webContents.send("p-cmd", mods);
             e.preventDefault();
             return;
         }
-        if (input.meta && (input.code == "ArrowUp" || input.code == "ArrowDown")) {
-            if (input.code == "ArrowUp") {
+        if (checkKeyPressed(waveEvent, "Cmd:ArrowUp") || checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
+            if (checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
                 win.webContents.send("meta-arrowup");
             } else {
                 win.webContents.send("meta-arrowdown");
@@ -319,8 +323,8 @@ function createMainWindow(clientData) {
             e.preventDefault();
             return;
         }
-        if (input.meta && (input.code == "PageUp" || input.code == "PageDown")) {
-            if (input.code == "PageUp") {
+        if (checkKeyPressed(waveEvent, "Cmd:PageUp") || checkKeyPressed(waveEvent, "Cmd:PageDown")) {
+            if (checkKeyPressed(waveEvent, "Cmd:PageUp")) {
                 win.webContents.send("meta-pageup");
             } else {
                 win.webContents.send("meta-pagedown");
@@ -336,8 +340,8 @@ function createMainWindow(clientData) {
             e.preventDefault();
             win.webContents.send("digit-cmd", { digit: digitNum }, mods);
         }
-        if ((input.code == "BracketRight" || input.code == "BracketLeft") && input.meta) {
-            let rel = input.code == "BracketRight" ? 1 : -1;
+        if (checkKeyPressed(waveEvent, "Cmd:[") || checkKeyPressed(waveEvent, "Cmd:]")) {
+            let rel = checkKeyPressed(waveEvent, "Cmd:]") ? 1 : -1;
             win.webContents.send("bracket-cmd", { relative: rel }, mods);
             e.preventDefault();
             return;
