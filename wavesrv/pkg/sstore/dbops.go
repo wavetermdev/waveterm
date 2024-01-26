@@ -844,8 +844,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 			cmd.OrigTermOpts = cmd.TermOpts
 			cmdMap := cmd.ToMap()
 			query = `
-INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr, rawcmdstr, festate, statebasehash, statediffhasharr, termopts, origtermopts, status, cmdpid, remotepid, donets, exitcode, durationms, rtnstate, runout, rtnbasehash, rtndiffhasharr)
-          VALUES (:screenid,:lineid,:remoteownerid,:remoteid,:remotename,:cmdstr,:rawcmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:cmdpid,:remotepid,:donets,:exitcode,:durationms,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
+INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr, rawcmdstr, festate, statebasehash, statediffhasharr, termopts, origtermopts, status, cmdpid, remotepid, donets, restartts, exitcode, durationms, rtnstate, runout, rtnbasehash, rtndiffhasharr)
+          VALUES (:screenid,:lineid,:remoteownerid,:remoteid,:remotename,:cmdstr,:rawcmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:cmdpid,:remotepid,:donets,:restartts,:exitcode,:durationms,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
 `
 			tx.NamedExec(query, cmdMap)
 		}
