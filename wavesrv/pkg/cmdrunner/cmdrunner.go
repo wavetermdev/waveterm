@@ -3398,8 +3398,11 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.ScreenId, lineId)
 	runPacket.UsePty = true
-	runPacket.TermOpts = convertToPacketTermOpts(cmd.TermOpts)
-	runPacket.TermOpts.MaxPtySize = shexec.DefaultMaxPtySize // TODO fix
+	// TODO how can we preseve the original termopts?
+	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, DefaultPTERM)
+	if err != nil {
+		return nil, fmt.Errorf("error getting creating termopts for command: %w", err)
+	}
 	runPacket.Command = cmd.CmdStr
 	runPacket.ReturnState = false
 	rcOpts := remote.RunCommandOpts{
@@ -3416,7 +3419,7 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	err = sstore.UpdateCmdForRestart(ctx, runPacket.CK, line.Ts, cmd.CmdPid, cmd.RemotePid)
+	err = sstore.UpdateCmdForRestart(ctx, runPacket.CK, line.Ts, cmd.CmdPid, cmd.RemotePid, convertTermOpts(runPacket.TermOpts))
 	if err != nil {
 		return nil, fmt.Errorf("error updating cmd for restart: %w", err)
 	}
