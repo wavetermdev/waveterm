@@ -12,6 +12,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
 )
 
@@ -19,8 +20,97 @@ import (
 
 const NotFoundVersion = "v0.0"
 
+type CmdWrap struct {
+	Cmd *exec.Cmd
+}
+
+func (cw CmdWrap) Kill() {
+	cw.Cmd.Process.Kill()
+}
+
+func (cw CmdWrap) Wait() error {
+	return cw.Cmd.Wait()
+}
+
+func (cw CmdWrap) Sender() (*packet.PacketSender, io.WriteCloser, error) {
+	inputWriter, err := cw.Cmd.StdinPipe()
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating stdin pipe: %v", err)
+	}
+	sender := packet.MakePacketSender(inputWriter, nil)
+	return sender, inputWriter, nil
+}
+
+func (cw CmdWrap) Parser() (*packet.PacketParser, io.ReadCloser, io.ReadCloser, error) {
+	stdoutReader, err := cw.Cmd.StdoutPipe()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("creating stdout pipe: %v", err)
+	}
+	stderrReader, err := cw.Cmd.StderrPipe()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("creating stderr pipe: %v", err)
+	}
+	stdoutPacketParser := packet.MakePacketParser(stdoutReader, &packet.PacketParserOpts{IgnoreUntilValid: true})
+	stderrPacketParser := packet.MakePacketParser(stderrReader, nil)
+	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser, true)
+	return packetParser, stdoutReader, stderrReader, nil
+}
+
+func (cw CmdWrap) Start() error {
+	return cw.Cmd.Start()
+}
+
+type SessionWrap struct {
+	Session  *ssh.Session
+	StartCmd string
+}
+
+func (sw SessionWrap) Kill() {
+	sw.Session.Close()
+}
+
+func (sw SessionWrap) Wait() error {
+	return sw.Session.Wait()
+}
+
+func (sw SessionWrap) Start() error {
+	return sw.Session.Start(sw.StartCmd)
+}
+
+func (sw SessionWrap) Sender() (*packet.PacketSender, io.WriteCloser, error) {
+	inputWriter, err := sw.Session.StdinPipe()
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating stdin pipe: %v", err)
+	}
+	sender := packet.MakePacketSender(inputWriter, nil)
+	return sender, inputWriter, nil
+}
+
+func (sw SessionWrap) Parser() (*packet.PacketParser, io.ReadCloser, io.ReadCloser, error) {
+	stdoutReader, err := sw.Session.StdoutPipe()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("creating stdout pipe: %v", err)
+	}
+	stderrReader, err := sw.Session.StderrPipe()
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("creating stderr pipe: %v", err)
+	}
+	stdoutPacketParser := packet.MakePacketParser(stdoutReader, &packet.PacketParserOpts{IgnoreUntilValid: true})
+	stderrPacketParser := packet.MakePacketParser(stderrReader, nil)
+	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser, true)
+	return packetParser, io.NopCloser(stdoutReader), io.NopCloser(stderrReader), nil
+}
+
+type ConnInterface interface {
+	Kill()
+	Wait() error
+	Sender() (*packet.PacketSender, io.WriteCloser, error)
+	Parser() (*packet.PacketParser, io.ReadCloser, io.ReadCloser, error)
+	Start() error
+}
+
 type ClientProc struct {
-	Cmd          *exec.Cmd
+	Cmd          ConnInterface
 	InitPk       *packet.InitPacketType
 	StartTs      time.Time
 	StdinWriter  io.WriteCloser
@@ -31,28 +121,20 @@ type ClientProc struct {
 }
 
 // returns (clientproc, initpk, error)
-func MakeClientProc(ctx context.Context, ecmd *exec.Cmd) (*ClientProc, *packet.InitPacketType, error) {
-	inputWriter, err := ecmd.StdinPipe()
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating stdin pipe: %v", err)
-	}
-	stdoutReader, err := ecmd.StdoutPipe()
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating stdout pipe: %v", err)
-	}
-	stderrReader, err := ecmd.StderrPipe()
-	if err != nil {
-		return nil, nil, fmt.Errorf("creating stderr pipe: %v", err)
-	}
+func MakeClientProc(ctx context.Context, ecmd ConnInterface) (*ClientProc, *packet.InitPacketType, error) {
 	startTs := time.Now()
+	sender, inputWriter, err := ecmd.Sender()
+	if err != nil {
+		return nil, nil, err
+	}
+	packetParser, stdoutReader, stderrReader, err := ecmd.Parser()
+	if err != nil {
+		return nil, nil, err
+	}
 	err = ecmd.Start()
 	if err != nil {
 		return nil, nil, fmt.Errorf("running local client: %w", err)
 	}
-	sender := packet.MakePacketSender(inputWriter, nil)
-	stdoutPacketParser := packet.MakePacketParser(stdoutReader, &packet.PacketParserOpts{IgnoreUntilValid: true})
-	stderrPacketParser := packet.MakePacketParser(stderrReader, nil)
-	packetParser := packet.CombinePacketParsers(stdoutPacketParser, stderrPacketParser, true)
 	cproc := &ClientProc{
 		Cmd:          ecmd,
 		StartTs:      startTs,
@@ -107,7 +189,7 @@ func (cproc *ClientProc) Close() {
 		cproc.StderrReader.Close()
 	}
 	if cproc.Cmd != nil {
-		cproc.Cmd.Process.Kill()
+		cproc.Cmd.Kill()
 	}
 }
 

@@ -7,7 +7,8 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
-import { StatusIndicator, renderCmdText } from "../../common/common";
+import { ActionsIcon, StatusIndicator, CenteredIcon } from "../../common/icons/icons";
+import { renderCmdText } from "../../common/common";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
@@ -79,14 +80,12 @@ class ScreenTab extends React.Component<
 
         let tabIndex = null;
         if (index + 1 <= 9) {
-            tabIndex = <div className="tab-index">{renderCmdText(String(index + 1))}</div>;
+            tabIndex = (
+                <CenteredIcon className="tab-index">
+                    <div>{renderCmdText(String(index + 1))}</div>
+                </CenteredIcon>
+            );
         }
-
-        let settings = (
-            <div onClick={(e) => this.openScreenSettings(e, screen)} title="Actions" className="tab-gear">
-                <div className="icon hoverEffect fa-sharp fa-solid fa-ellipsis-vertical"></div>
-            </div>
-        );
         let archived = screen.archived.get() ? (
             <i title="archived" className="fa-sharp fa-solid fa-box-archive" />
         ) : null;
@@ -115,20 +114,16 @@ class ScreenTab extends React.Component<
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
                 onDragEnd={this.handleDragEnd}
             >
-                <div className="front-icon">
-                    {this.renderTabIcon(screen)}
-                </div>
+                <CenteredIcon className="front-icon">{this.renderTabIcon(screen)}</CenteredIcon>
                 <div className="tab-name truncate">
                     {archived}
                     {webShared}
                     {screen.name.get()}
                 </div>
-                <div className="end-icon">
-                    <div className="end-icon-inner">
-                        <StatusIndicator level={statusIndicatorLevel}/>
-                        {tabIndex}
-                        {settings}
-                    </div>
+                <div className="end-icons">
+                    <StatusIndicator level={statusIndicatorLevel} />
+                    {tabIndex}
+                    <ActionsIcon onClick={(e) => this.openScreenSettings(e, screen)} />
                 </div>
             </Reorder.Item>
         );

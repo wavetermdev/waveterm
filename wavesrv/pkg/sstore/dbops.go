@@ -1056,6 +1056,7 @@ func getNextId(ids []string, delId string) string {
 }
 
 func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*ModelUpdate, error) {
+	SetActiveSessionId(ctx, sessionId)
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
 		if !tx.Exists(query, sessionId, screenId) {
@@ -1494,8 +1495,6 @@ func DeleteScreenLines(ctx context.Context, screenId string) (*ModelUpdate, erro
 		query = `DELETE FROM line WHERE screenid = ?`
 		tx.Exec(query, screenId)
 		query = `UPDATE history SET lineid = '', linenum = 0 WHERE screenid = ?`
-		tx.Exec(query, screenId)
-		query = `UPDATE screen SET nextlinenum = 1 WHERE screenid = ?`
 		tx.Exec(query, screenId)
 		return nil
 	})
@@ -2159,6 +2158,15 @@ func GetCurDayStr() string {
 	return dayStr
 }
 
+// Wraps UpdateCurrentActivity, but ignores errors
+func UpdateActivityWrap(ctx context.Context, update ActivityUpdate, debugStr string) {
+	err := UpdateCurrentActivity(ctx, update)
+	if err != nil {
+		// ignore error, just log, since this is not critical
+		log.Printf("error updating current activity (%s): %v\n", debugStr, err)
+	}
+}
+
 func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 	now := time.Now()
 	dayStr := GetCurDayStr()
@@ -2173,7 +2181,7 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 			if len(tzName) > MaxTzNameLen {
 				tzName = tzName[0:MaxTzNameLen]
 			}
-			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.WaveVersion, scbase.ClientArch(), scbase.BuildTime, scbase.MacOSRelease())
+			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.WaveVersion, scbase.ClientArch(), scbase.BuildTime, scbase.UnameKernelRelease())
 		}
 		tdata.NumCommands += update.NumCommands
 		tdata.FgMinutes += update.FgMinutes
@@ -2182,6 +2190,8 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.ClickShared += update.ClickShared
 		tdata.HistoryView += update.HistoryView
 		tdata.BookmarksView += update.BookmarksView
+		tdata.ReinitBashErrors += update.ReinitBashErrors
+		tdata.ReinitZshErrors += update.ReinitZshErrors
 		if update.NumConns > 0 {
 			tdata.NumConns = update.NumConns
 		}

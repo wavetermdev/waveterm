@@ -675,11 +675,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	}
 	evalDepth := getEvalDepth(ctx)
 	if pk.Interactive && evalDepth == 0 {
-		err := sstore.UpdateCurrentActivity(ctx, sstore.ActivityUpdate{NumCommands: 1})
-		if err != nil {
-			log.Printf("[error] incrementing activity numcommands: %v\n", err)
-			// fall through (non-fatal error)
-		}
+		sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{NumCommands: 1}, "numcommands")
 	}
 	if evalDepth > MaxEvalDepth {
 		return nil, fmt.Errorf("alias/history expansion max-depth exceeded")
@@ -2755,10 +2751,7 @@ func validateRemoteColor(color string, typeStr string) error {
 
 func SessionOpenSharedCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	activity := sstore.ActivityUpdate{ClickShared: 1}
-	err := sstore.UpdateCurrentActivity(ctx, activity)
-	if err != nil {
-		log.Printf("error updating click-shared: %v\n", err)
-	}
+	sstore.UpdateActivityWrap(ctx, activity, "click-shared")
 	return nil, fmt.Errorf("shared sessions are not available in this version of prompt (stay tuned)")
 }
 
@@ -2983,6 +2976,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
+
 	update := &sstore.ModelUpdate{
 		ActiveSessionId: ritem.Id,
 		Info: &sstore.InfoMsgType{
@@ -2990,6 +2984,22 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 			TimeoutMs: 2000,
 		},
 	}
+
+	// Reset the status indicator for the new active screen
+	session, err := sstore.GetSessionById(ctx, ritem.Id)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get session: %w", err)
+	}
+	if session == nil {
+		return nil, fmt.Errorf("session not found")
+	}
+	err = sstore.ResetStatusIndicator_Update(update, session.ActiveScreenId)
+	if err != nil {
+		log.Printf("error resetting status indicator: %v\n", err)
+	}
+
+	log.Printf("session command update:  %v\n", update)
+
 	return update, nil
 }
 
@@ -3215,10 +3225,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	}
 	show := !resolveBool(pk.Kwargs["noshow"], false)
 	if show {
-		err = sstore.UpdateCurrentActivity(ctx, sstore.ActivityUpdate{HistoryView: 1})
-		if err != nil {
-			log.Printf("error updating current activity (history): %v\n", err)
-		}
+		sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{HistoryView: 1}, "history")
 	}
 	update := &sstore.ModelUpdate{}
 	update.History = &sstore.HistoryInfoType{
@@ -3455,10 +3462,7 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
 	}
-	err = sstore.UpdateCurrentActivity(ctx, sstore.ActivityUpdate{BookmarksView: 1})
-	if err != nil {
-		log.Printf("error updating current activity (bookmarks): %v\n", err)
-	}
+	sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{BookmarksView: 1}, "bookmarks")
 	update := &sstore.ModelUpdate{
 		MainView:  sstore.MainViewBookmarks,
 		Bookmarks: bms,
@@ -4575,7 +4579,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "db-version", dbVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))
-	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.MacOSRelease()))
+	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.UnameKernelRelease()))
 	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("client info"),

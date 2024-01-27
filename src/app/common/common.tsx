@@ -12,6 +12,9 @@ import { If } from "tsx-control-statements/components";
 import { RemoteType, StatusIndicatorLevel } from "../../types/types";
 import ReactDOM from "react-dom";
 import { GlobalModel, SidebarModel } from "../../model/model";
+import { GlobalModel } from "../../model/model";
+import * as appconst from "../appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -116,7 +119,7 @@ class Checkbox extends React.Component<
     constructor(props) {
         super(props);
         this.state = {
-            checkedInternal: this.props.checked !== undefined ? this.props.checked : Boolean(this.props.defaultChecked),
+            checkedInternal: this.props.checked ?? Boolean(this.props.defaultChecked),
         };
         this.generatedId = `checkbox-${Checkbox.idCounter++}`;
     }
@@ -286,15 +289,15 @@ class Button extends React.Component<ButtonProps> {
     }
 
     render() {
-        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style } = this.props;
+        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style, autoFocus, className } = this.props;
 
         return (
             <button
-                className={cn("wave-button", theme, variant, color, { disabled: disabled })}
+                className={cn("wave-button", theme, variant, color, { disabled: disabled }, className)}
                 onClick={this.handleClick}
                 disabled={disabled}
                 style={style}
-                autoFocus={this.props.autoFocus}
+                autoFocus={autoFocus}
             >
                 {leftIcon && <span className="icon-left">{leftIcon}</span>}
                 {children}
@@ -713,13 +716,14 @@ class InlineSettingsTextEdit extends React.Component<
 
     @boundMethod
     handleKeyDown(e: any): void {
-        if (e.code == "Enter") {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Enter")) {
             e.preventDefault();
             e.stopPropagation();
             this.confirmChange();
             return;
         }
-        if (e.code == "Escape") {
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             e.stopPropagation();
             this.cancelChange();
@@ -829,10 +833,7 @@ function CodeRenderer(props: any): any {
 }
 
 @mobxReact.observer
-class CodeBlockMarkdown extends React.Component<
-    { children: React.ReactNode; blockText: string; codeSelectSelectedIndex?: number },
-    {}
-> {
+class CodeBlockMarkdown extends React.Component<{ children: React.ReactNode; codeSelectSelectedIndex?: number }, {}> {
     blockIndex: number;
     blockRef: React.RefObject<HTMLPreElement>;
 
@@ -843,7 +844,6 @@ class CodeBlockMarkdown extends React.Component<
     }
 
     render() {
-        let codeText = this.props.blockText;
         let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
         let inputModel = GlobalModel.inputModel;
         clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
@@ -868,19 +868,15 @@ class Markdown extends React.Component<
     {}
 > {
     CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number): any {
-        let codeText = codeSelect ? props.node.children[0].children[0].value : props.children;
-        if (codeText) {
-            codeText = codeText.replace(/\n$/, ""); // remove trailing newline
-        }
         if (codeSelect) {
-            return (
-                <CodeBlockMarkdown blockText={codeText} codeSelectSelectedIndex={codeSelectIndex}>
-                    {props.children}
-                </CodeBlockMarkdown>
-            );
+            return <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex}>{props.children}</CodeBlockMarkdown>;
         } else {
-            let clickHandler = (e: React.MouseEvent<HTMLElement>) => {
-                navigator.clipboard.writeText(codeText);
+            const clickHandler = (e: React.MouseEvent<HTMLElement>) => {
+                let blockText = (e.target as HTMLElement).innerText;
+                if (blockText) {
+                    blockText = blockText.replace(/\n$/, ""); // remove trailing newline
+                    navigator.clipboard.writeText(blockText);
+                }
             };
             return <pre onClick={(event) => clickHandler(event)}>{props.children}</pre>;
         }
@@ -903,7 +899,9 @@ class Markdown extends React.Component<
         };
         return (
             <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>
-                <ReactMarkdown children={text} remarkPlugins={[remarkGfm]} components={markdownComponents} />
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {text}
+                </ReactMarkdown>
             </div>
         );
     }
@@ -1246,36 +1244,25 @@ class Modal extends React.Component<ModalProps> {
     }
 }
 
-interface StatusIndicatorProps {
-    level: StatusIndicatorLevel;
-    className?: string;
-}
-
-class StatusIndicator extends React.Component<StatusIndicatorProps> {
-    render() {
-        const statusIndicatorLevel = this.props.level;
-        let statusIndicator = null;
-        if (statusIndicatorLevel != StatusIndicatorLevel.None) {
-            let statusIndicatorClass = null;
-            switch (statusIndicatorLevel) {
-                case StatusIndicatorLevel.Output:
-                    statusIndicatorClass = "output";
-                    break;
-                case StatusIndicatorLevel.Success:
-                    statusIndicatorClass = "success";
-                    break;
-                case StatusIndicatorLevel.Error:
-                    statusIndicatorClass = "error";
-                    break;
-            }
-            statusIndicator = (
-                <div
-                    className={`${this.props.className} fa-sharp fa-solid fa-circle-small status-indicator ${statusIndicatorClass}`}
-                ></div>
-            );
+function ShowWaveShellInstallPrompt(callbackFn: () => void) {
+    let message: string = `
+In order to use Wave's advanced features like unified history and persistent sessions, Wave installs a small, open-source helper program called WaveShell on your remote machine.  WaveShell does not open any external ports and only communicates with your *local* Wave terminal instance over ssh.  For more information please see [the docs](https://docs.waveterm.dev/reference/waveshell).        
+        `;
+    message = message.trim();
+    let prtn = GlobalModel.showAlert({
+        message: message,
+        confirm: true,
+        markdown: true,
+        confirmflag: appconst.ConfirmKey_HideShellPrompt,
+    });
+    prtn.then((confirm) => {
+        if (!confirm) {
+            return;
         }
-        return statusIndicator;
-    }
+        if (callbackFn) {
+            callbackFn();
+        }
+    });
 }
 
 interface ResizableSidebarProps {
@@ -1447,6 +1434,6 @@ export {
     LinkButton,
     Status,
     Modal,
-    StatusIndicator,
     ResizableSidebar,
+    ShowWaveShellInstallPrompt,
 };

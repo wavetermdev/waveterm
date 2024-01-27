@@ -1,4 +1,5 @@
 @import "../../../app/common/themes/themes.less";
+@import "../../../app/common/icons/icons.less";
 
 #main .screen-tabs .screen-tab {
     border-top: 1px solid transparent;
@@ -26,10 +27,6 @@
                 rgba(88, 193, 66, 0.03) 44.16%,
                 rgba(88, 193, 66, 0) 86.79%
             );
-        }
-
-        .icon i {
-            color: @tab-green;
         }
     }
 
@@ -242,14 +239,6 @@
 
     .screen-tabs-container-inner {
         overflow-x: scroll;
-        &::-webkit-scrollbar-thumb,
-        &::-webkit-scrollbar-track {
-            display: none;
-        }
-
-        &:hover::-webkit-scrollbar-thumb {
-            display: block;
-        }
     }
 
     .screen-tabs {
@@ -268,14 +257,7 @@
             padding: 0 8px 0 8px;
 
             .front-icon {
-                margin-right: 5px;
-                .svg-icon svg {
-                    width: 14px;
-                    height: 14px;
-                }
-                .fa-icon {
-                    font-size: 16px;
-                }
+                .positional-icon-visible;
             }
 
             .tab-name {
@@ -294,56 +276,27 @@
             }
 
             // Only one of these will be visible at a time
-            .end-icon {
-                // This makes the calculations below easier since we don't need to account for the right margin on the parent tab.
+            .end-icons {
+                // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
                 margin: 0 -8px 0 0;
-                .end-icon-inner {
-                    & > div {
-                        text-align: center;
-                        align-items: center;
-                        & > * {
-                            margin: auto auto;
-                        }
-                        width: 20px;
-                    }
-                }
-                .status-indicator {
-                    display: block;
-                    // The status indicator is a little shorter than the text; this raises it up a bit so it's more centered vertically
-                    padding-bottom: 1px;
-                    margin-top: -1px;
-                }
-                .tab-gear {
-                    display: none;
-                    .icon {
-                        border-radius: 50%;
-                    }
-                }
+                
                 .tab-index {
-                    display: none;
-                    font-size: 0.9em;
-                }
-            }
-
-            &:hover {
-                .tab-gear {
-                    display: block;
+                    font-size: 12.5px;
                 }
             }
         }
 
-        &:hover .screen-tab {
-            .tab-index {
-                display: block;
-            }
-
-            .status-indicator {
-                display: none;
-            }
+        &:not(:hover) .status-indicator{
+            .positional-icon-visible;
         }
 
-        &:hover .screen-tab:hover .tab-index {
-            display: none;
+        &:hover {
+            .screen-tab:not(:hover) .tab-index {
+                .positional-icon-visible;
+            }
+            .screen-tab:hover .actions {
+                .positional-icon-visible;
+            }
         }
     }
 
@@ -357,7 +310,6 @@
         height: 37px;
 
         .icon {
-            height: 2rem;
             height: 2rem;
             border-radius: 50%;
             padding: 0.4em;

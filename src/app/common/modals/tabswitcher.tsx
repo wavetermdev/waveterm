@@ -50,27 +50,30 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         let oSessions = GlobalModel.sessionList;
         let oScreens = GlobalModel.screenMap;
         oScreens.forEach((oScreen) => {
+            if (oScreen == null) {
+                return;
+            }
+            if (oScreen.archived.get()) {
+                return;
+            }
             // Find the matching session in the observable array
             let foundSession = oSessions.find((s) => {
-                if (s.sessionId === oScreen.sessionId && s.archived.get() == false) {
-                    return true;
-                }
-                return false;
+                return s.sessionId == oScreen.sessionId && !s.archived.get();
             });
-
-            if (foundSession) {
-                let data: SwitcherDataType = {
-                    sessionName: foundSession.name.get(),
-                    sessionId: foundSession.sessionId,
-                    sessionIdx: foundSession.sessionIdx.get(),
-                    screenName: oScreen.name.get(),
-                    screenId: oScreen.screenId,
-                    screenIdx: oScreen.screenIdx.get(),
-                    icon: this.getTabIcon(oScreen),
-                    color: this.getTabColor(oScreen),
-                };
-                this.options.push(data);
+            if (!foundSession) {
+                return;
             }
+            let data: SwitcherDataType = {
+                sessionName: foundSession.name.get(),
+                sessionId: foundSession.sessionId,
+                sessionIdx: foundSession.sessionIdx.get(),
+                screenName: oScreen.name.get(),
+                screenId: oScreen.screenId,
+                screenIdx: oScreen.screenIdx.get(),
+                icon: this.getTabIcon(oScreen),
+                color: this.getTabColor(oScreen),
+            };
+            this.options.push(data);
         });
 
         mobx.action(() => {
