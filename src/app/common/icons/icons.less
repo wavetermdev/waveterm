@@ -46,9 +46,15 @@
 }
 
 .status-indicator {
+    .status-indicator-inner {
+        position: relative;
+        height: 15px;
+        width: 15px;
+    }
     .fa-circle-small, .fa-spinner-third {
         display: none;
         position: absolute;
+        top: 0;
         font-size: 15px;
     }
     .running-commands {
@@ -58,6 +64,8 @@
         }
         .fa-circle-small {
             font-size: 12.5px;
+            top: 1px;
+            right: 2px;
         }
     }
     .error .fa-circle-small {
