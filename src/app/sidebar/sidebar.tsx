@@ -81,27 +81,26 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         })();
     }
 
-    @boundMethod
-    componentDidUpdate(): void {
-        // Force to use collapse from client data on first load
-        if (this.collapseStateFromClientData == null) {
-            const sidebar = GlobalModel.clientData.get()?.clientopts?.sidebar;
-            if (sidebar != null) {
-                this.collapseStateFromClientData = true;
-                const { collapsed, width } = sidebar.main;
-                if (collapsed) {
-                    this.mainSidebarModel.collapse();
-                } else {
-                    this.mainSidebarModel.expand(width);
+    componentDidMount(): void {
+        mobx.reaction(
+            () => GlobalModel.clientData.get()?.clientopts?.sidebar,
+            (sidebar) => {
+                if (sidebar != null) {
+                    const { collapsed, width } = sidebar.main;
+                    if (collapsed) {
+                        this.mainSidebarModel.collapse();
+                    } else {
+                        this.mainSidebarModel.expand(width);
+                    }
                 }
             }
-        }
+        );
     }
 
     @boundMethod
     toggleCollapsed() {
         const isCollapsed = this.mainSidebarModel.isCollapsed.get();
-        const defaultWidth = this.mainSidebarModel.defaultWidth.get();
+        const defaultWidth = this.mainSidebarModel.defaultWidth;
         if (isCollapsed) {
             this.mainSidebarModel.expand(defaultWidth);
         } else {
@@ -248,7 +247,6 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
-
         return (
             <ResizableSidebar
                 className={cn("main-sidebar", { collapsed: isCollapsed })}

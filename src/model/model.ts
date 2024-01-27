@@ -2599,48 +2599,36 @@ interface SidebarModelProps {
 }
 
 class SidebarModel {
-    defaultWidth: OV<number> = mobx.observable.box(240, {
-        name: "SidebarModel-defaultWidth",
-    });
-    width: OV<number> = mobx.observable.box(this.defaultWidth.get(), {
+    defaultWidth: number = 240;
+    width: OV<number> = mobx.observable.box(this.defaultWidth, {
         name: "SidebarModel-width",
     });
-    prevExpandedWidth: OV<number> = mobx.observable.box(this.defaultWidth.get(), {
+    prevExpandedWidth: OV<number> = mobx.observable.box(this.defaultWidth, {
         name: "SidebarModel-prevExpandedWidth",
     });
-
     isCollapsed: OV<boolean> = mobx.observable.box(true, {
         name: "SidebarModel-isCollapsed",
     });
-    minWidth: OV<number>;
-    maxWidth: OV<number>;
-    enableSnap: OV<boolean>;
-    snapThreshold: OV<number>;
-    dragResistance: OV<number>;
-    name: OV<T.SidebarNameType>;
+    prevIsCollapsed: OV<boolean> = mobx.observable.box(false, {
+        name: "SidebarModel-prevIsCollapsed",
+    });
     isDragging: OV<boolean> = mobx.observable.box(false, {
         name: "SidebarModel-isDragging",
     });
+    minWidth: number;
+    maxWidth: number;
+    enableSnap: boolean;
+    snapThreshold: number;
+    dragResistance: number;
+    name: T.SidebarNameType;
 
     constructor(props: SidebarModelProps) {
-        this.name = mobx.observable.box(props.name, {
-            name: "SidebarModel-name",
-        });
-        this.minWidth = mobx.observable.box(props?.minWidth || 75, {
-            name: "SidebarModel-minWidth",
-        });
-        this.maxWidth = mobx.observable.box(props?.maxWidth || 300, {
-            name: "SidebarModel-maxWidth",
-        });
-        this.enableSnap = mobx.observable.box(props?.enableSnap != null ? props?.enableSnap : true, {
-            name: "SidebarModel-enableSnap",
-        });
-        this.snapThreshold = mobx.observable.box(props?.snapThreshold || 90, {
-            name: "SidebarModel-snapThreshold",
-        });
-        this.dragResistance = mobx.observable.box(props?.dragResistance || 50, {
-            name: "SidebarModel-dragResistance",
-        });
+        this.name = props.name;
+        this.minWidth = props?.minWidth || 75;
+        this.maxWidth = props?.maxWidth || 300;
+        this.enableSnap = props?.enableSnap != null ? props?.enableSnap : true;
+        this.snapThreshold = props?.snapThreshold || 90;
+        this.dragResistance = props?.dragResistance || 50;
 
         mobx.reaction(
             () => this.isDragging.get(),
@@ -2650,43 +2638,68 @@ class SidebarModel {
                 }
             }
         );
+
+        mobx.reaction(
+            () => [this.prevIsCollapsed.get(), this.isCollapsed.get()],
+            ([prevIsCollapsed, isCollapsed]) => {
+                if (prevIsCollapsed != isCollapsed) {
+                    this.persist();
+                }
+            }
+        );
     }
 
     setWidth(width: number) {
         mobx.action(() => {
-            const newWidth = Math.max(this.minWidth.get(), Math.min(width, this.maxWidth.get()));
+            const isCollapsed = this.isCollapsed.get();
+            this.prevIsCollapsed.set(isCollapsed);
+        })();
+
+        mobx.action(() => {
+            const newWidth = Math.max(this.minWidth, Math.min(width, this.maxWidth));
             this.width.set(newWidth);
 
-            const isCollapsed = newWidth == this.minWidth.get();
-            if (isCollapsed) {
-                this.prevExpandedWidth.set(width);
+            const isCollapsed = newWidth == this.minWidth;
+            if (!isCollapsed) {
+                this.prevExpandedWidth.set(newWidth);
             }
             this.isCollapsed.set(isCollapsed);
         })();
     }
 
     collapse() {
+        const isCollapsed = this.isCollapsed.get();
         mobx.action(() => {
-            const width = this.minWidth.get();
+            this.prevIsCollapsed.set(isCollapsed);
+        })();
+
+        mobx.action(() => {
+            const width = this.minWidth;
             this.isCollapsed.set(true);
             this.width.set(width);
         })();
-
-        this.persist();
     }
 
     expand(width?: number) {
+        const isCollapsed = this.isCollapsed.get();
         mobx.action(() => {
-            const newWidth = width || this.prevExpandedWidth.get();
+            this.prevIsCollapsed.set(isCollapsed);
+        })();
+
+        mobx.action(() => {
+            let newWidth;
+            if (isCollapsed) {
+                newWidth = this.prevExpandedWidth.get();
+            } else {
+                newWidth = width || this.prevExpandedWidth.get();
+            }
             this.isCollapsed.set(false);
             this.width.set(newWidth);
         })();
-
-        this.persist();
     }
 
     persist() {
-        const name = this.name.get();
+        const name = this.name;
         const width = this.width.get();
         const isCollapsed = this.isCollapsed.get();
         GlobalCommandRunner.clientSetSidebar(name, width, isCollapsed);

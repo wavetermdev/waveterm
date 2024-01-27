@@ -1329,12 +1329,12 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         }
 
         newWidth = this.resizeStartWidth + delta;
-        const enableSnap = sidebarModel.enableSnap.get();
+        const enableSnap = sidebarModel.enableSnap;
 
         if (enableSnap) {
-            const minWidth = sidebarModel.minWidth.get();
-            const snapPoint = minWidth + sidebarModel.snapThreshold.get();
-            const dragResistance = sidebarModel.dragResistance.get();
+            const minWidth = sidebarModel.minWidth;
+            const snapPoint = minWidth + sidebarModel.snapThreshold;
+            const dragResistance = sidebarModel.dragResistance;
             let dragDirection;
 
             if (delta - this.prevDelta > 0) {
@@ -1377,18 +1377,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         document.body.style.cursor = "";
     }
 
-    @boundMethod
-    handleToggleCollapse() {
-        const { sidebarModel } = this.props;
-        const isCollapsed = sidebarModel.isCollapsed.get();
-        const defaultWidth = sidebarModel.defaultWidth.get();
-        if (isCollapsed) {
-            sidebarModel.expand(defaultWidth);
-        } else {
-            sidebarModel.collapse();
-        }
-    }
-
     render() {
         const { className, children, sidebarModel } = this.props;
 
@@ -1406,7 +1394,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
                         cursor: "col-resize",
                     }}
                     onMouseDown={this.startResizing}
-                    onDoubleClick={this.handleToggleCollapse}
                 ></div>
             </div>
         );
