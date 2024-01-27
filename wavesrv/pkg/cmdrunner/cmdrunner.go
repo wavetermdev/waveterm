@@ -3894,6 +3894,10 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file", stat.Location))
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file-data", fileDataStr))
 		}
+		if cmd.RestartTs > 0 {
+			restartTs := time.UnixMilli(cmd.RestartTs)
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "restartts", restartTs.Format(TsFormatStr)))
+		}
 		if cmd.DoneTs != 0 {
 			doneTs := time.UnixMilli(cmd.DoneTs)
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "donets", doneTs.Format(TsFormatStr)))
