@@ -518,11 +518,9 @@ type ClientOptsType = {
     noreleasecheck: boolean;
     acceptedtos: number;
     confirmflags: ConfirmFlagsType;
-    sidebar: {
-        [key in any]: {
-            collapsed: boolean;
-            width: number;
-        };
+    mainsidebar: {
+        collapsed: boolean;
+        width: number;
     };
 };
 
@@ -728,7 +726,7 @@ type StrWithPos = {
     pos: number;
 };
 
-type ResizablePaneNameType = "mainSidebar";
+type ResizablePaneNameType = "mainsidebar";
 
 export type {
     SessionDataType,

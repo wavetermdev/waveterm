@@ -1423,7 +1423,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         mobx.action(() => {
             this.isDragging.set(false);
             GlobalCommandRunner.clientSetSidebar(
-                "mainSidebar",
+                this.props.name,
                 this.sidebarModel.tempWidth.get(),
                 this.sidebarModel.tempCollapsed.get()
             );

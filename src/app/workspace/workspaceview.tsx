@@ -40,11 +40,11 @@ class WorkspaceView extends React.Component<{}, {}> {
         }
         cmdInputHeight += MagicLayout.CmdInputBottom; // reference to .cmd-input, bottom: 12px
         let isHidden = GlobalModel.activeMainView.get() != "session";
-        let mainSidebarModel = GlobalModel.resizablePaneModels.get("mainSidebar");
-        console.log("mainSidebarModel", mainSidebarModel, GlobalModel.resizablePaneModels);
-        if (mainSidebarModel == null) {
-            return null;
-        }
+        let mainSidebarModel = GlobalModel.resizablePaneModels.get("mainsidebar");
+        // console.log("mainSidebarModel", mainSidebarModel, GlobalModel.resizablePaneModels);
+        // if (mainSidebarModel == null) {
+        //     return null;
+        // }
         // Has to calc manually because when tabs overflow, the width of the session view is increased for some reason causing inconsistent width.
         // 6px is the right margin of session view.
         let width = window.innerWidth - 6 - mainSidebarModel.tempWidth.get();

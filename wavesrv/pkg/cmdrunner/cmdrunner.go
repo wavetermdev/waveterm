@@ -4472,16 +4472,6 @@ func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
 
-	// Validate sidebar name
-	sidebarName, ok := pk.Kwargs["name"]
-	if !ok {
-		return nil, fmt.Errorf("name key not provided")
-	}
-	validName := utilfn.ContainsStr(SidebarNames, sidebarName)
-	if !validName {
-		return nil, fmt.Errorf("invalid sidebar name: %s", sidebarName)
-	}
-
 	// Handle collapsed
 	collapsed, ok := pk.Kwargs["collapsed"]
 	if !ok {
@@ -4496,16 +4486,13 @@ func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 		if err != nil {
 			return nil, fmt.Errorf("error resolving width: %v", err)
 		}
-	} else if clientData.ClientOpts.Sidebar != nil {
-		sidebarValue, exists := clientData.ClientOpts.Sidebar[sidebarName]
-		if exists && sidebarValue != (sstore.SidebarValueType{}) {
-			width = sidebarValue.Width
-		}
+	} else if clientData.ClientOpts.MainSidebar != nil {
+		width = clientData.ClientOpts.MainSidebar.Width
 	}
 
 	// Initialize SidebarCollapsed if it's nil
-	if clientData.ClientOpts.Sidebar == nil {
-		clientData.ClientOpts.Sidebar = make(map[string]sstore.SidebarValueType)
+	if clientData.ClientOpts.MainSidebar == nil {
+		clientData.ClientOpts.MainSidebar = new(sstore.SidebarValueType)
 	}
 
 	// Set the sidebar values
@@ -4514,7 +4501,7 @@ func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	if width != 0 {
 		sv.Width = width
 	}
-	clientData.ClientOpts.Sidebar[sidebarName] = sv
+	clientData.ClientOpts.MainSidebar = &sv
 
 	// Update client data
 	err = sstore.SetClientOpts(ctx, clientData.ClientOpts)

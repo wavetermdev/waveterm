@@ -84,6 +84,8 @@ class App extends React.Component<{}, {}> {
             return null;
         }
 
+        console.log("clientData", clientData);
+
         if (disconnected || hasClientStop) {
             if (!dcWait) {
                 setTimeout(() => this.updateDcWait(true), 1500);

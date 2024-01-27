@@ -68,7 +68,7 @@ interface MainSideBarProps {
 class MainSideBar extends React.Component<MainSideBarProps, {}> {
     sidebarRef = React.createRef<HTMLDivElement>();
     collapseStateFromClientData = null;
-    name: ResizablePaneNameType = "mainSidebar";
+    name: ResizablePaneNameType = "mainsidebar";
     mainSidebarModel: ResizablePaneModel;
 
     // constructor(props) {
@@ -233,18 +233,21 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
-        let clientData = GlobalModel.clientData.get();
-        let mainSidebar = clientData?.clientopts?.sidebar.main;
+        let clientData = this.props.clientData;
+        let mainSidebar = clientData.clientopts.mainsidebar;
+        // if (mainSidebar == null) {
+        //     return null;
+        // }
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
         return (
             <ResizableSidebar
-                name="mainSidebar"
+                name="mainsidebar"
                 className="main-sidebar"
-                collapsed={mainSidebar.collapsed}
-                width={mainSidebar.width}
+                collapsed={mainSidebar?.collapsed || false}
+                width={mainSidebar?.width || 240}
                 position="left"
                 enableSnap={true}
                 parentRef={this.props.parentRef}
@@ -252,12 +255,12 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                 <div className="title-bar-drag" />
                 <div className="contents">
                     <div className="logo">
-                        <If condition={mainSidebar.collapsed}>
+                        <If condition={mainSidebar?.collapsed}>
                             <div className="logo-container" onClick={this.toggleCollapsed}>
                                 <img src="public/logos/wave-logo.png" />
                             </div>
                         </If>
-                        <If condition={!mainSidebar.collapsed}>
+                        <If condition={!mainSidebar?.collapsed}>
                             <div className="logo-container">
                                 <img src="public/logos/wave-dark.png" />
                             </div>

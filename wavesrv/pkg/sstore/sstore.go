@@ -285,7 +285,7 @@ type ClientOptsType struct {
 	NoReleaseCheck bool                        `json:"noreleasecheck,omitempty"`
 	AcceptedTos    int64                       `json:"acceptedtos,omitempty"`
 	ConfirmFlags   map[string]bool             `json:"confirmflags,omitempty"`
-	Sidebar        map[string]SidebarValueType `json:"sidebar,omitempty"`
+	MainSidebar    *SidebarValueType `json:"mainsidebar,omitempty"`
 }
 
 type FeOptsType struct {
