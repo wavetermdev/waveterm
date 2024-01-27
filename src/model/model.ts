@@ -250,6 +250,10 @@ class Cmd {
         })();
     }
 
+    getRestartTs(): number {
+        return this.data.get().restartts;
+    }
+
     getAsWebCmd(lineid: string): WebCmd {
         let cmd = this.data.get();
         let remote = GlobalModel.getRemote(this.remote.remoteid);

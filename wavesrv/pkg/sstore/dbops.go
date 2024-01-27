@@ -890,9 +890,13 @@ func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, m
 func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdPid int, remotePid int, termOpts *TermOpts) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd
-		          SET status = ?, exitcode = ?, cmdpid = ?, remotepid = ?, durationms = ?, termopts = ?, origtermopts = ?
+		          SET restartts = ?, status = ?, exitcode = ?, cmdpid = ?, remotepid = ?, durationms = ?, termopts = ?, origtermopts = ?
 				  WHERE screenid = ? AND lineid = ?`
-		tx.Exec(query, CmdStatusRunning, 0, cmdPid, remotePid, 0, quickJson(termOpts), quickJson(termOpts), ck.GetGroupId(), lineIdFromCK(ck))
+		tx.Exec(query, ts, CmdStatusRunning, 0, cmdPid, remotePid, 0, quickJson(termOpts), quickJson(termOpts), ck.GetGroupId(), lineIdFromCK(ck))
+		query = `UPDATE history
+		         SET ts = ?, status = ?, exitcode = ?, durationms = ?
+			     WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, ts, CmdStatusRunning, 0, 0, ck.GetGroupId(), lineIdFromCK(ck))
 		return nil
 	})
 }

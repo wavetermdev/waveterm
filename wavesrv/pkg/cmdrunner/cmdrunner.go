@@ -3419,7 +3419,8 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	err = sstore.UpdateCmdForRestart(ctx, runPacket.CK, line.Ts, cmd.CmdPid, cmd.RemotePid, convertTermOpts(runPacket.TermOpts))
+	newTs := time.Now().UnixMilli()
+	err = sstore.UpdateCmdForRestart(ctx, runPacket.CK, newTs, cmd.CmdPid, cmd.RemotePid, convertTermOpts(runPacket.TermOpts))
 	if err != nil {
 		return nil, fmt.Errorf("error updating cmd for restart: %w", err)
 	}

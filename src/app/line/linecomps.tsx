@@ -473,12 +473,21 @@ class LineCmd extends React.Component<
     renderMeta1(cmd: Cmd) {
         let { line } = this.props;
         let termOpts = cmd.getTermOpts();
-        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
+        let formattedTime: string = "";
+        let restartTs = cmd.getRestartTs();
+        let timeTitle: string = null;
+        if (restartTs != null && restartTs > 0) {
+            formattedTime = "restarted @ " + lineutil.getLineDateTimeStr(restartTs);
+            timeTitle = "original start time " + lineutil.getLineDateTimeStr(line.ts);
+        }
+        else {
+            formattedTime = lineutil.getLineDateTimeStr(line.ts);
+        }
         let renderer = line.renderer;
         return (
             <div key="meta1" className="meta meta-line1">
                 <SmallLineAvatar line={line} cmd={cmd} />
-                <div className="ts">{formattedTime}</div>
+                <div title={timeTitle} className="ts">{formattedTime}</div>
                 <div>&nbsp;</div>
                 <If condition={!isBlank(renderer) && renderer != "terminal"}>
                     <div className="renderer">
