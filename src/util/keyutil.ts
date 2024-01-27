@@ -7,6 +7,8 @@ type KeyPressDecl = {
         Option?: boolean;
         Shift?: boolean;
         Ctrl?: boolean;
+        Alt?: boolean;
+        Meta?: boolean;
     };
     key: string;
 };
@@ -30,6 +32,10 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
             rtn.mods.Ctrl = true;
         } else if (key == "Option") {
             rtn.mods.Option = true;
+        } else if (key == "Alt") {
+            rtn.mods.Alt = true;
+        } else if (key == "Meta") {
+            rtn.mods.Meta = true;
         } else {
             rtn.key = key;
             if (key.length == 1) {
@@ -49,7 +55,7 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
 
 function checkKeyPressed(event: WaveKeyboardEvent, description: string): boolean {
     let keyPress = parseKeyDescription(description);
-    if (keyPress.mods.Option && !event.alt) {
+    if (keyPress.mods.Option && !event.option) {
         return false;
     }
     if (keyPress.mods.Cmd && !event.cmd) {
@@ -59,6 +65,12 @@ function checkKeyPressed(event: WaveKeyboardEvent, description: string): boolean
         return false;
     }
     if (keyPress.mods.Ctrl && !event.control) {
+        return false;
+    }
+    if (keyPress.mods.Alt && !event.alt) {
+        return false;
+    }
+    if (keyPress.mods.Meta && !event.meta) {
         return false;
     }
     let eventKey = event.key;
@@ -78,7 +90,8 @@ function checkKeyPressed(event: WaveKeyboardEvent, description: string): boolean
     return true;
 }
 
-type ModKeyStrs = "Cmd" | "Option" | "Shift" | "Ctrl";
+// Cmd and Option are portable between Mac and Linux/Windows
+type ModKeyStrs = "Cmd" | "Option" | "Shift" | "Ctrl" | "Alt" | "Meta";
 
 interface WaveKeyboardEvent {
     type: string;
@@ -105,7 +118,16 @@ interface WaveKeyboardEvent {
     /**
      * Equivalent to KeyboardEvent.metaKey.
      */
+    meta: boolean;
+    /**
+     * cmd is special, on mac it is meta, on windows it is alt
+     */
     cmd: boolean;
+    /**
+     * option is special, on mac it is alt, on windows it is meta
+     */
+    option: boolean;
+
     repeat: boolean;
     /**
      * Equivalent to KeyboardEvent.location.
@@ -117,12 +139,10 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
     rtn.control = event.ctrlKey;
     rtn.shift = event.shiftKey;
-    if (PLATFORM == PlatformMacOS) {
-        rtn.cmd = event.metaKey;
-        rtn.alt = event.altKey;
-    } else {
-        rtn.cmd = event.altKey;
-    }
+    rtn.cmd = (PLATFORM == PlatformMacOS ? event.metaKey : event.altKey);
+    rtn.option = (PLATFORM == PlatformMacOS ? event.altKey : event.metaKey);
+    rtn.meta = event.metaKey;
+    rtn.alt = event.altKey;
     rtn.code = event.code;
     rtn.key = event.key;
     rtn.location = event.location;
@@ -135,12 +155,10 @@ function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
     rtn.type = event.type;
     rtn.control = event.control;
-    if (PLATFORM == PlatformMacOS) {
-        rtn.cmd = event.meta;
-        rtn.alt = event.alt;
-    } else {
-        rtn.cmd = event.alt;
-    }
+    rtn.cmd = (PLATFORM == PlatformMacOS ? event.meta : event.alt)
+    rtn.option = (PLATFORM == PlatformMacOS ? event.alt : event.meta);
+    rtn.meta = event.meta;
+    rtn.alt = event.alt;
     rtn.shift = event.shift;
     rtn.repeat = event.isAutoRepeat;
     rtn.location = event.location;

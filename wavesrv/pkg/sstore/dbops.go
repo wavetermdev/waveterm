@@ -763,29 +763,37 @@ func GetScreenById(ctx context.Context, screenId string) (*ScreenType, error) {
 	})
 }
 
+// special "E" returns last unarchived line, "EA" returns last line (even if archived)
 func FindLineIdByArg(ctx context.Context, screenId string, lineArg string) (string, error) {
-	var lineId string
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		if lineArg == "E" {
+			query := `SELECT lineid FROM line WHERE screenid = ? AND NOT archived ORDER BY linenum DESC LIMIT 1`
+			lineId := tx.GetString(query, screenId)
+			return lineId, nil
+		}
+		if lineArg == "EA" {
+			query := `SELECT lineid FROM line WHERE screenid = ? ORDER BY linenum DESC LIMIT 1`
+			lineId := tx.GetString(query, screenId)
+			return lineId, nil
+		}
 		lineNum, err := strconv.Atoi(lineArg)
 		if err == nil {
 			// valid linenum
 			query := `SELECT lineid FROM line WHERE screenid = ? AND linenum = ?`
-			lineId = tx.GetString(query, screenId, lineNum)
+			lineId := tx.GetString(query, screenId, lineNum)
+			return lineId, nil
 		} else if len(lineArg) == 8 {
 			// prefix id string match
 			query := `SELECT lineid FROM line WHERE screenid = ? AND substr(lineid, 1, 8) = ?`
-			lineId = tx.GetString(query, screenId, lineArg)
+			lineId := tx.GetString(query, screenId, lineArg)
+			return lineId, nil
 		} else {
 			// id match
 			query := `SELECT lineid FROM line WHERE screenid = ? AND lineid = ?`
-			lineId = tx.GetString(query, screenId, lineArg)
+			lineId := tx.GetString(query, screenId, lineArg)
+			return lineId, nil
 		}
-		return nil
 	})
-	if txErr != nil {
-		return "", txErr
-	}
-	return lineId, nil
 }
 
 func GetLineCmdByLineId(ctx context.Context, screenId string, lineId string) (*LineType, *CmdType, error) {
@@ -836,8 +844,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 			cmd.OrigTermOpts = cmd.TermOpts
 			cmdMap := cmd.ToMap()
 			query = `
-INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr, rawcmdstr, festate, statebasehash, statediffhasharr, termopts, origtermopts, status, cmdpid, remotepid, donets, exitcode, durationms, rtnstate, runout, rtnbasehash, rtndiffhasharr)
-          VALUES (:screenid,:lineid,:remoteownerid,:remoteid,:remotename,:cmdstr,:rawcmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:cmdpid,:remotepid,:donets,:exitcode,:durationms,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
+INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr, rawcmdstr, festate, statebasehash, statediffhasharr, termopts, origtermopts, status, cmdpid, remotepid, donets, restartts, exitcode, durationms, rtnstate, runout, rtnbasehash, rtndiffhasharr)
+          VALUES (:screenid,:lineid,:remoteownerid,:remoteid,:remotename,:cmdstr,:rawcmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:cmdpid,:remotepid,:donets,:restartts,:exitcode,:durationms,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
 `
 			tx.NamedExec(query, cmdMap)
 		}
@@ -877,6 +885,20 @@ func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, m
 		return nil, err
 	}
 	return UpdateWithCurrentOpenAICmdInfoChat(screenId)
+}
+
+func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdPid int, remotePid int, termOpts *TermOpts) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE cmd
+		          SET restartts = ?, status = ?, exitcode = ?, cmdpid = ?, remotepid = ?, durationms = ?, termopts = ?, origtermopts = ?
+				  WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, ts, CmdStatusRunning, 0, cmdPid, remotePid, 0, quickJson(termOpts), quickJson(termOpts), ck.GetGroupId(), lineIdFromCK(ck))
+		query = `UPDATE history
+		         SET ts = ?, status = ?, exitcode = ?, durationms = ?
+			     WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, ts, CmdStatusRunning, 0, 0, ck.GetGroupId(), lineIdFromCK(ck))
+		return nil
+	})
 }
 
 func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) (*ModelUpdate, error) {
@@ -1490,12 +1512,16 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 func DeleteScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error) {
 	var lineIds []string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT lineid FROM line WHERE screenid = ?`
-		lineIds = tx.SelectStrings(query, screenId)
-		query = `DELETE FROM line WHERE screenid = ?`
-		tx.Exec(query, screenId)
-		query = `UPDATE history SET lineid = '', linenum = 0 WHERE screenid = ?`
-		tx.Exec(query, screenId)
+		query := `SELECT lineid FROM line 
+		          WHERE screenid = ?
+		            AND NOT EXISTS (SELECT lineid FROM cmd c WHERE c.screenid = ? AND c.lineid = line.lineid AND c.status IN ('running', 'detached'))`
+		lineIds = tx.SelectStrings(query, screenId, screenId)
+		query = `DELETE FROM line 
+				 WHERE screenid = ? AND lineid IN (SELECT value FROM json_each(?))`
+		tx.Exec(query, screenId, quickJsonArr(lineIds))
+		query = `UPDATE history SET lineid = '', linenum = 0 
+		         WHERE screenid = ? AND lineid IN (SELECT value FROM json_each(?))`
+		tx.Exec(query, screenId, quickJsonArr(lineIds))
 		return nil
 	})
 	if txErr != nil {
@@ -2089,6 +2115,19 @@ func SetLineArchivedById(ctx context.Context, screenId string, lineId string, ar
 		return nil
 	})
 	return txErr
+}
+
+func GetScreenSelectedLineId(ctx context.Context, screenId string) (string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		query := `SELECT selectedline FROM screen WHERE screenid = ?`
+		sline := tx.GetInt(query, screenId)
+		if sline <= 0 {
+			return "", nil
+		}
+		query = `SELECT lineid FROM line WHERE screenid = ? AND linenum = ?`
+		lineId := tx.GetString(query, screenId, sline)
+		return lineId, nil
+	})
 }
 
 // returns updated screen (only if updated)

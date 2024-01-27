@@ -1,0 +1,1 @@
+ALTER TABLE cmd DROP COLUMN restartts;

@@ -245,12 +245,14 @@ type CmdDataType = {
     status: string;
     cmdpid: number;
     remotepid: number;
+    restartts: number;
     donets: number;
     exitcode: number;
     durationms: number;
     runout: any[];
     rtnstate: boolean;
     remove?: boolean;
+    restarted?: boolean;
 };
 
 type PtyDataUpdateType = {
