@@ -13,6 +13,7 @@ import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg"
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
 import { MagicLayout } from "../../magiclayout";
+import { cmdStatusIsRunning } from "../../line/lineutil";
 
 @mobxReact.observer
 class ScreenTab extends React.Component<
@@ -95,6 +96,7 @@ class ScreenTab extends React.Component<
         ) : null;
 
         const statusIndicatorLevel = screen.statusIndicator.get();
+        const runningCommands = screen.getScreenLines()?.hasRunningCmdLines();
 
         return (
             <Reorder.Item
@@ -121,7 +123,7 @@ class ScreenTab extends React.Component<
                     {screen.name.get()}
                 </div>
                 <div className="end-icons">
-                    <StatusIndicator level={statusIndicatorLevel} />
+                    <StatusIndicator level={statusIndicatorLevel} runningCommands={runningCommands} />
                     {tabIndex}
                     <ActionsIcon onClick={(e) => this.openScreenSettings(e, screen)} />
                 </div>

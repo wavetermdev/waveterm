@@ -1044,19 +1044,35 @@ class ScreenLines {
         return this.cmds[lineId];
     }
 
-    getRunningCmdLines(): LineType[] {
+    /**
+     * Get all running cmds in the screen.
+     * @param returnFirst If true, return the first running cmd found.
+     * @returns An array of running cmds, or the first running cmd if returnFirst is true.
+     */
+    getRunningCmdLines(returnFirst?: boolean): LineType[] {
         let rtn: LineType[] = [];
         for (const line of this.lines) {
-            let cmd = this.getCmd(line.lineid);
+            const cmd = this.getCmd(line.lineid);
             if (cmd == null) {
                 continue;
             }
-            let status = cmd.getStatus();
+            const status = cmd.getStatus();
             if (cmdStatusIsRunning(status)) {
+                if (returnFirst) {
+                    return [line];
+                }
                 rtn.push(line);
             }
         }
         return rtn;
+    }
+
+    /**
+     * Check if there are any running cmds in the screen.
+     * @returns True if there are any running cmds.
+     */
+    hasRunningCmdLines(): boolean { 
+        return mobx.computed(() => this.getRunningCmdLines(true).length > 0).get();
     }
 
     updateCmd(cmd: CmdDataType): void {

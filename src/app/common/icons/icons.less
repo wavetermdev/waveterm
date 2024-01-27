@@ -46,13 +46,30 @@
 }
 
 .status-indicator {
-    .error {
+    .fa-circle-small, .fa-spinner-third {
+        display: none;
+        position: absolute;
+        font-size: 15px;
+    }
+    .running-commands {
+        .fa-spinner-third {
+            // display: block;
+            color: @term-white;
+        }
+        .fa-circle-small {
+            font-size: 12.5px;
+        }
+    }
+    .error .fa-circle-small {
+        display: block;
         color: @term-red;
     }
-    .success {
+    .success .fa-circle-small {
+        display: block;
         color: @term-green;
     }
-    .output {
+    .output .fa-circle-small{
+        display: block;
         color: @term-white;
     }
 }

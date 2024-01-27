@@ -45,28 +45,33 @@ export class ActionsIcon extends React.Component<ActionsIconProps> {
 interface StatusIndicatorProps {
     level: StatusIndicatorLevel;
     className?: string;
+    runningCommands?: boolean;
 }
 
 export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     render() {
-        const statusIndicatorLevel = this.props.level;
+        const {level, className, runningCommands} = this.props;
         let statusIndicator = null;
-        if (statusIndicatorLevel != StatusIndicatorLevel.None) {
-            let statusIndicatorClass = null;
-            switch (statusIndicatorLevel) {
+        if (level != StatusIndicatorLevel.None || runningCommands) {
+            let levelClass = null;
+            switch (level) {
                 case StatusIndicatorLevel.Output:
-                    statusIndicatorClass = "output";
+                    levelClass = "output";
                     break;
                 case StatusIndicatorLevel.Success:
-                    statusIndicatorClass = "success";
+                    levelClass = "success";
                     break;
                 case StatusIndicatorLevel.Error:
-                    statusIndicatorClass = "error";
+                    levelClass = "error";
                     break;
             }
+            const runningCommandsClass = runningCommands ? "running-commands" : "";
             statusIndicator = (
-                <CenteredIcon className={cn(this.props.className, "status-indicator")}>
-                    <div className={cn(statusIndicatorClass, "fa-sharp", "fa-solid", "fa-circle-small")}></div>
+                <CenteredIcon className={cn(className, "status-indicator")}>
+                    <div className={cn(levelClass, runningCommandsClass)}>
+                        <div className="fa-sharp fa-solid fa-circle-small"></div>
+                        <div className="fa-sharp fa-solid fa-spinner-third spin"></div>
+                    </div>
                 </CenteredIcon>
             );
         }
