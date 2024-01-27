@@ -373,6 +373,7 @@ class Screen {
     webShareOpts: OV<WebShareOpts>;
     filterRunning: OV<boolean>;
     statusIndicator: OV<StatusIndicatorLevel>;
+    numRunningCmds: OV<number>;
 
     constructor(sdata: ScreenDataType) {
         this.sessionId = sdata.sessionid;
@@ -415,6 +416,9 @@ class Screen {
         });
         this.statusIndicator = mobx.observable.box(StatusIndicatorLevel.None, {
             name: "screen-status-indicator",
+        });
+        this.numRunningCmds = mobx.observable.box(0, {
+            name: "screen-num-running-cmds",
         });
     }
 
@@ -811,6 +815,16 @@ class Screen {
         })();
     }
 
+    /**
+     * Set the number of running commands for the screen.
+     * @param numRunning The number of running commands.
+     */
+    setNumRunningCmds(numRunning: number): void {
+        mobx.action(() => {
+            this.numRunningCmds.set(numRunning);
+        })();
+    }
+
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (checkKeyPressed(waveEvent, "ArrowUp")) {
@@ -1077,7 +1091,7 @@ class ScreenLines {
      * @returns True if there are any running cmds.
      */
     hasRunningCmdLines(): boolean { 
-        return mobx.computed(() => this.getRunningCmdLines(true).length > 0).get();
+        return this.getRunningCmdLines(true).length > 0;
     }
 
     updateCmd(cmd: CmdDataType): void {
@@ -4089,6 +4103,12 @@ class Model {
         if ("screenstatusindicator" in update) {
             this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(
                 update.screenstatusindicator.status
+            );
+        }
+        if ("screennumrunningcommands" in update)
+        {
+            this.getScreenById_single(update.screennumrunningcommands.screenid)?.setNumRunningCmds(
+                update.screennumrunningcommands.num
             );
         }
     }

@@ -96,7 +96,7 @@ class ScreenTab extends React.Component<
         ) : null;
 
         const statusIndicatorLevel = screen.statusIndicator.get();
-        const runningCommands = screen.getScreenLines()?.hasRunningCmdLines();
+        const runningCommands = screen.numRunningCmds.get() > 0;
 
         return (
             <Reorder.Item

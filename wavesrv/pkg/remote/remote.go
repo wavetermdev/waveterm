@@ -2204,6 +2204,7 @@ func (msh *MShellProc) ProcessPackets() {
 		if pk.GetType() == packet.CmdFinalPacketStr {
 			finalPk := pk.(*packet.CmdFinalPacketType)
 			runCmdUpdateFn(finalPk.CK, msh.makeHandleCmdFinalPacketClosure(finalPk))
+			go pushNumRunningCmdsUpdate(&finalPk.CK, -1)
 			continue
 		}
 		if pk.GetType() == packet.CmdErrorPacketStr {
@@ -2223,6 +2224,7 @@ func (msh *MShellProc) ProcessPackets() {
 		if pk.GetType() == packet.CmdStartPacketStr {
 			startPk := pk.(*packet.CmdStartPacketType)
 			msh.WriteToPtyBuffer("start> [remote %s] reqid=%s (%p)\n", msh.GetRemoteName(), startPk.RespId, msh.ServerProc.Output)
+			go pushNumRunningCmdsUpdate(&startPk.CK, 1)
 			continue
 		}
 		msh.WriteToPtyBuffer("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
@@ -2463,5 +2465,13 @@ func (msh *MShellProc) GetDisplayName() string {
 // Identify the screen for a given CommandKey and push the given status indicator update for that screen
 func pushStatusIndicatorUpdate(ck *base.CommandKey, level sstore.StatusIndicatorLevel) {
 	screenId := ck.GetGroupId()
-	sstore.SetStatusIndicatorLevel(context.Background(), screenId, level, false)
+	err := sstore.SetStatusIndicatorLevel(context.Background(), screenId, level, false)
+	if err != nil {
+		log.Printf("error setting status indicator level: %v\n", err)
+	}
+}
+
+func pushNumRunningCmdsUpdate(ck *base.CommandKey, delta int) {
+	screenId := ck.GetGroupId()
+	sstore.IncrementNumRunningCmds(screenId, delta)
 }

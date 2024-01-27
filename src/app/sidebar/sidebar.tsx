@@ -187,7 +187,7 @@ class MainSideBar extends React.Component<{}, {}> {
             const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
             const sessionScreens = GlobalModel.getSessionScreens(session.sessionId);
             const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
-            const sessionRunningCommands = sessionScreens.some((screen) => screen.getScreenLines()?.hasRunningCmdLines());
+            const sessionRunningCommands = sessionScreens.some((screen) => screen.numRunningCmds.get() > 0);
             return (
                 <SideBarItem
                     className={`${isActive ? "active" : ""}`}
