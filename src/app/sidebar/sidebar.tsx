@@ -7,10 +7,9 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { RemoteType } from "../../types/types";
+import type { ClientDataType, RemoteType, ResizablePaneNameType } from "../../types/types";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
-import { motion } from "framer-motion";
 
 import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
@@ -19,7 +18,7 @@ import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
 import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Session, VERSION, SidebarModel } from "../../model/model";
+import { GlobalModel, GlobalCommandRunner, Session, VERSION, ResizablePaneModel } from "../../model/model";
 import { isBlank, openLink } from "../../util/util";
 import { ResizableSidebar } from "../common/common";
 import * as constants from "../appconst";
@@ -28,10 +27,6 @@ import "./sidebar.less";
 import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "../common/icons/icons";
 
 dayjs.extend(localizedFormat);
-
-interface MainSideBarProps {
-    parentRef: React.RefObject<HTMLElement>;
-}
 
 class SideBarItem extends React.Component<{
     frontIcon: React.ReactNode;
@@ -64,48 +59,45 @@ class HotKeyIcon extends React.Component<{ hotkey: string }> {
     }
 }
 
+interface MainSideBarProps {
+    parentRef: React.RefObject<HTMLElement>;
+    clientData: ClientDataType;
+}
+
 @mobxReact.observer
 class MainSideBar extends React.Component<MainSideBarProps, {}> {
     sidebarRef = React.createRef<HTMLDivElement>();
-    mainSidebarModel = null;
-    clientData = null;
     collapseStateFromClientData = null;
+    name: ResizablePaneNameType = "mainSidebar";
+    mainSidebarModel: ResizablePaneModel;
 
-    constructor(props) {
-        super(props);
+    // constructor(props) {
+    //     super(props);
 
-        this.mainSidebarModel = new SidebarModel({ name: "main" });
+    //     let mainSidebar = this.props.clientData?.clientopts?.sidebar.main;
 
-        mobx.action(() => {
-            GlobalModel.sidebarModels.set("main", this.mainSidebarModel);
-        })();
-    }
+    //     this.mainSidebarModel = new ResizablePaneModel({
+    //         name: this.name,
+    //         width: mainSidebar.width,
+    //         collapsed: mainSidebar.collapsed,
+    //     });
 
-    componentDidMount(): void {
-        mobx.reaction(
-            () => GlobalModel.clientData.get()?.clientopts?.sidebar,
-            (sidebar) => {
-                if (sidebar != null) {
-                    const { collapsed, width } = sidebar.main;
-                    if (collapsed) {
-                        this.mainSidebarModel.collapse();
-                    } else {
-                        this.mainSidebarModel.expand(width);
-                    }
-                }
-            }
-        );
-    }
+    //     mobx.action(() => {
+    //         GlobalModel.resizablePaneModels.set(this.name, this.mainSidebarModel);
+    //     })();
+    // }
+
+    componentDidUpdate(prevProps: Readonly<MainSideBarProps>, prevState: Readonly<{}>, snapshot?: any): void {}
 
     @boundMethod
     toggleCollapsed() {
-        const isCollapsed = this.mainSidebarModel.isCollapsed.get();
-        const defaultWidth = this.mainSidebarModel.defaultWidth;
-        if (isCollapsed) {
-            this.mainSidebarModel.expand(defaultWidth);
-        } else {
-            this.mainSidebarModel.collapse();
-        }
+        // const isCollapsed = this.mainSidebarModel.isCollapsed.get();
+        // const defaultWidth = this.mainSidebarModel.defaultWidth;
+        // if (isCollapsed) {
+        //     this.mainSidebarModel.expand(defaultWidth);
+        // } else {
+        //     this.mainSidebarModel.collapse();
+        // }
     }
 
     handleSessionClick(sessionId: string) {
@@ -241,27 +233,31 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
-        let isCollapsed = this.mainSidebarModel.isCollapsed.get();
         let clientData = GlobalModel.clientData.get();
+        let mainSidebar = clientData?.clientopts?.sidebar.main;
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
         return (
             <ResizableSidebar
-                className={cn("main-sidebar", { collapsed: isCollapsed })}
-                sidebarModel={this.mainSidebarModel}
+                name="mainSidebar"
+                className="main-sidebar"
+                collapsed={mainSidebar.collapsed}
+                width={mainSidebar.width}
+                position="left"
+                enableSnap={true}
                 parentRef={this.props.parentRef}
             >
                 <div className="title-bar-drag" />
                 <div className="contents">
                     <div className="logo">
-                        <If condition={isCollapsed}>
+                        <If condition={mainSidebar.collapsed}>
                             <div className="logo-container" onClick={this.toggleCollapsed}>
                                 <img src="public/logos/wave-logo.png" />
                             </div>
                         </If>
-                        <If condition={!isCollapsed}>
+                        <If condition={!mainSidebar.collapsed}>
                             <div className="logo-container">
                                 <img src="public/logos/wave-dark.png" />
                             </div>

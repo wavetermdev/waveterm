@@ -9,9 +9,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import { RemoteType } from "../../types/types";
+import { RemoteType, ResizablePaneNameType } from "../../types/types";
 import ReactDOM from "react-dom";
-import { GlobalModel, SidebarModel } from "../../model/model";
+import { GlobalModel, GlobalCommandRunner, ResizablePaneModel } from "../../model/model";
 import * as appconst from "../appconst";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
 
@@ -1265,9 +1265,18 @@ In order to use Wave's advanced features like unified history and persistent ses
     });
 }
 
+const MIN_WIDTH = 75;
+const MAX_WIDTH = 300;
+const SNAP_THRESHOLD = 90;
+const DRAG_RESISTANCE = 50;
+
 interface ResizableSidebarProps {
+    name: ResizablePaneNameType;
     parentRef: React.RefObject<HTMLElement>;
-    sidebarModel: SidebarModel;
+    width?: number;
+    collapsed?: boolean;
+    enableSnap?: boolean;
+    snapThreshold?: number;
     position?: "left" | "right";
     className?: string;
     children?: React.ReactNode;
@@ -1275,66 +1284,89 @@ interface ResizableSidebarProps {
 
 @mobxReact.observer
 class ResizableSidebar extends React.Component<ResizableSidebarProps> {
+    isDragging: OV<boolean>;
+    snapThreshold: number;
+    enableSnap: boolean;
     resizeStartWidth: number = 0;
     startX: number = 0;
-    pos: string;
+    position: string;
     prevDelta: number = 0;
     prevDragDirection: string = null;
+    sidebarModel: ResizablePaneModel;
 
     constructor(props: ResizableSidebarProps) {
         super(props);
-        this.pos = props.position || "left";
+
+        this.sidebarModel = new ResizablePaneModel({
+            name: this.props.name,
+            width: this.props.width,
+            collapsed: this.props.collapsed,
+        });
+
+        mobx.action(() => {
+            GlobalModel.resizablePaneModels.set(this.props.name, this.sidebarModel);
+        })();
+
+        this.position = props.position || "left";
+
+        this.isDragging = mobx.observable.box(false, { name: "ResizableSidebar-isDragging" });
+        this.enableSnap = props.enableSnap ? props.enableSnap : true;
+        this.snapThreshold = props.snapThreshold ? props.snapThreshold : SNAP_THRESHOLD;
     }
 
     @boundMethod
     startResizing(event: React.MouseEvent<HTMLDivElement>) {
         event.preventDefault();
 
-        const { parentRef, sidebarModel } = this.props;
+        const { parentRef } = this.props;
         const parentRect = parentRef.current?.getBoundingClientRect();
 
         if (!parentRect) return;
 
-        if (this.pos === "right") {
+        if (this.position === "right") {
             this.startX = parentRect.right - event.clientX;
         } else {
             this.startX = event.clientX - parentRect.left;
         }
 
-        this.resizeStartWidth = sidebarModel.width.get();
+        this.resizeStartWidth = this.sidebarModel.tempWidth.get();
         document.addEventListener("mousemove", this.onMouseMove);
         document.addEventListener("mouseup", this.stopResizing);
 
         document.body.style.cursor = "col-resize";
         mobx.action(() => {
-            sidebarModel.isDragging.set(true);
+            this.isDragging.set(true);
         })();
+    }
+
+    @boundMethod
+    getWidth(newWidth: number): number {
+        return Math.max(MIN_WIDTH, Math.min(newWidth, MAX_WIDTH));
     }
 
     @boundMethod
     onMouseMove(event: MouseEvent) {
         event.preventDefault();
 
-        const { parentRef, sidebarModel } = this.props;
+        const { parentRef, enableSnap } = this.props;
         const parentRect = parentRef.current?.getBoundingClientRect();
 
-        if (!sidebarModel.isDragging.get() || !parentRect) return;
+        if (!this.isDragging.get() || !parentRect) return;
 
         let delta, newWidth;
 
-        if (this.pos === "right") {
+        if (this.position === "right") {
             delta = parentRect.right - event.clientX - this.startX;
         } else {
             delta = event.clientX - parentRect.left - this.startX;
         }
 
         newWidth = this.resizeStartWidth + delta;
-        const enableSnap = sidebarModel.enableSnap;
 
         if (enableSnap) {
-            const minWidth = sidebarModel.minWidth;
-            const snapPoint = minWidth + sidebarModel.snapThreshold;
-            const dragResistance = sidebarModel.dragResistance;
+            const minWidth = MIN_WIDTH;
+            const snapPoint = minWidth + this.snapThreshold;
+            const dragResistance = DRAG_RESISTANCE;
             let dragDirection;
 
             if (delta - this.prevDelta > 0) {
@@ -1353,23 +1385,48 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             this.prevDragDirection = dragDirection;
 
             if (newWidth - dragResistance > minWidth && newWidth < snapPoint && dragDirection == "+") {
+                console.log("1");
                 newWidth = snapPoint;
-                sidebarModel.setWidth(newWidth);
+                mobx.action(() => {
+                    this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
+                    this.sidebarModel.tempCollapsed.set(false);
+                })();
             } else if (newWidth + dragResistance < snapPoint && dragDirection == "-") {
+                console.log("2");
                 newWidth = minWidth;
-                sidebarModel.setWidth(newWidth);
+                mobx.action(() => {
+                    this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
+                    this.sidebarModel.tempCollapsed.set(true);
+                })();
             } else if (newWidth > snapPoint) {
-                sidebarModel.setWidth(newWidth);
+                console.log("3");
+                mobx.action(() => {
+                    this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
+                    this.sidebarModel.tempCollapsed.set(false);
+                })();
             }
         } else {
-            sidebarModel.setWidth(newWidth);
+            mobx.action(() => {
+                this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
+                if (newWidth == MIN_WIDTH) {
+                    this.sidebarModel.tempCollapsed.set(true);
+                } else {
+                    this.sidebarModel.tempCollapsed.set(false);
+                }
+            })();
         }
     }
 
     @boundMethod
     stopResizing() {
+        console.log("stopResizing:got here");
         mobx.action(() => {
-            this.props.sidebarModel.isDragging.set(false);
+            this.isDragging.set(false);
+            GlobalCommandRunner.clientSetSidebar(
+                "mainSidebar",
+                this.sidebarModel.tempWidth.get(),
+                this.sidebarModel.tempCollapsed.get()
+            );
         })();
 
         document.removeEventListener("mousemove", this.onMouseMove);
@@ -1378,17 +1435,21 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     }
 
     render() {
-        const { className, children, sidebarModel } = this.props;
+        const { className, children } = this.props;
+        console.log("this.tempCollapsed.get", this.sidebarModel.tempCollapsed.get());
 
         return (
-            <div className={cn("sidebar", className, this.pos)} style={{ width: `${sidebarModel.width.get()}px` }}>
+            <div
+                className={cn("sidebar", className, { collapsed: this.sidebarModel.tempCollapsed.get() })}
+                style={{ width: `${this.sidebarModel.tempWidth.get()}px` }}
+            >
                 <div className="sidebar-content">{children}</div>
                 <div
                     className="sidebar-handle"
                     style={{
                         position: "absolute",
                         top: 0,
-                        [this.pos === "left" ? "right" : "left"]: 0,
+                        [this.position === "left" ? "right" : "left"]: 0,
                         bottom: 0,
                         width: "5px",
                         cursor: "col-resize",

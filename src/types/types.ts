@@ -519,7 +519,7 @@ type ClientOptsType = {
     acceptedtos: number;
     confirmflags: ConfirmFlagsType;
     sidebar: {
-        [key in SidebarNameType]: {
+        [key in any]: {
             collapsed: boolean;
             width: number;
         };
@@ -728,7 +728,7 @@ type StrWithPos = {
     pos: number;
 };
 
-type SidebarNameType = "main";
+type ResizablePaneNameType = "mainSidebar";
 
 export type {
     SessionDataType,
@@ -809,7 +809,7 @@ export type {
     CmdInputTextPacketType,
     OpenAICmdInfoChatMessageType,
     ScreenStatusIndicatorUpdateType,
-    SidebarNameType,
+    ResizablePaneNameType,
 };
 
 export { StatusIndicatorLevel };

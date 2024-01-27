@@ -2589,120 +2589,21 @@ class ClientSettingsViewModel {
     }
 }
 
-interface SidebarModelProps {
-    name: T.SidebarNameType;
-    minWidth?: number;
-    maxWidth?: number;
-    enableSnap?: boolean;
-    snapThreshold?: number;
-    dragResistance?: number;
+interface ResizablePaneModelProps {
+    name: T.ResizablePaneNameType;
+    width: number;
+    collapsed: boolean;
 }
 
-class SidebarModel {
-    defaultWidth: number = 240;
-    width: OV<number> = mobx.observable.box(this.defaultWidth, {
-        name: "SidebarModel-width",
-    });
-    prevExpandedWidth: OV<number> = mobx.observable.box(this.defaultWidth, {
-        name: "SidebarModel-prevExpandedWidth",
-    });
-    isCollapsed: OV<boolean> = mobx.observable.box(true, {
-        name: "SidebarModel-isCollapsed",
-    });
-    prevIsCollapsed: OV<boolean> = mobx.observable.box(false, {
-        name: "SidebarModel-prevIsCollapsed",
-    });
-    isDragging: OV<boolean> = mobx.observable.box(false, {
-        name: "SidebarModel-isDragging",
-    });
-    minWidth: number;
-    maxWidth: number;
-    enableSnap: boolean;
-    snapThreshold: number;
-    dragResistance: number;
-    name: T.SidebarNameType;
+class ResizablePaneModel {
+    tempWidth: OV<number>;
+    tempCollapsed: OV<boolean>;
+    name: T.ResizablePaneNameType;
 
-    constructor(props: SidebarModelProps) {
+    constructor(props: ResizablePaneModelProps) {
         this.name = props.name;
-        this.minWidth = props?.minWidth || 75;
-        this.maxWidth = props?.maxWidth || 300;
-        this.enableSnap = props?.enableSnap != null ? props?.enableSnap : true;
-        this.snapThreshold = props?.snapThreshold || 90;
-        this.dragResistance = props?.dragResistance || 50;
-
-        mobx.reaction(
-            () => this.isDragging.get(),
-            (isDragging) => {
-                if (!isDragging) {
-                    this.persist();
-                }
-            }
-        );
-
-        mobx.reaction(
-            () => [this.prevIsCollapsed.get(), this.isCollapsed.get()],
-            ([prevIsCollapsed, isCollapsed]) => {
-                if (prevIsCollapsed != isCollapsed) {
-                    this.persist();
-                }
-            }
-        );
-    }
-
-    setWidth(width: number) {
-        mobx.action(() => {
-            const isCollapsed = this.isCollapsed.get();
-            this.prevIsCollapsed.set(isCollapsed);
-        })();
-
-        mobx.action(() => {
-            const newWidth = Math.max(this.minWidth, Math.min(width, this.maxWidth));
-            this.width.set(newWidth);
-
-            const isCollapsed = newWidth == this.minWidth;
-            if (!isCollapsed) {
-                this.prevExpandedWidth.set(newWidth);
-            }
-            this.isCollapsed.set(isCollapsed);
-        })();
-    }
-
-    collapse() {
-        const isCollapsed = this.isCollapsed.get();
-        mobx.action(() => {
-            this.prevIsCollapsed.set(isCollapsed);
-        })();
-
-        mobx.action(() => {
-            const width = this.minWidth;
-            this.isCollapsed.set(true);
-            this.width.set(width);
-        })();
-    }
-
-    expand(width?: number) {
-        const isCollapsed = this.isCollapsed.get();
-        mobx.action(() => {
-            this.prevIsCollapsed.set(isCollapsed);
-        })();
-
-        mobx.action(() => {
-            let newWidth;
-            if (isCollapsed) {
-                newWidth = this.prevExpandedWidth.get();
-            } else {
-                newWidth = width || this.prevExpandedWidth.get();
-            }
-            this.isCollapsed.set(false);
-            this.width.set(newWidth);
-        })();
-    }
-
-    persist() {
-        const name = this.name;
-        const width = this.width.get();
-        const isCollapsed = this.isCollapsed.get();
-        GlobalCommandRunner.clientSetSidebar(name, width, isCollapsed);
+        this.tempWidth = mobx.observable.box(props.width, { name: "SidebarModel-tempWidth" });
+        this.tempCollapsed = mobx.observable.box(props.collapsed, { name: "SidebarModel-tempCollapsed" });
     }
 }
 
@@ -3433,9 +3334,9 @@ class Model {
         name: "remotesLoaded",
     });
     screenLines: OMap<string, ScreenLines> = mobx.observable.map({}, { name: "screenLines", deep: false }); // key = "sessionid/screenid" (screenlines)
-    sidebarModels: OMap<T.SidebarNameType, SidebarModel> = mobx.observable.map(
+    resizablePaneModels: OMap<T.ResizablePaneNameType, ResizablePaneModel> = mobx.observable.map(
         {},
-        { name: "sidebarModels", deep: false }
+        { name: "resizablePaneModels", deep: false }
     );
     termUsedRowsCache: Record<string, number> = {}; // key = "screenid/lineid"
     debugCmds: number = 0;
@@ -5068,7 +4969,7 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
-    clientSetSidebar(name: T.SidebarNameType, width: number, collapsed: boolean): Promise<CommandRtnType> {
+    clientSetSidebar(name: T.ResizablePaneNameType, width: number, collapsed: boolean): Promise<CommandRtnType> {
         let kwargs = { nohist: "1", name, width: `${width}`, collapsed: collapsed ? "1" : "0" };
         return GlobalModel.submitCommand("client", "setsidebar", null, kwargs, false);
     }
@@ -5215,6 +5116,6 @@ export {
     SpecialLineContainer,
     ForwardLineContainer,
     VERSION,
-    SidebarModel,
+    ResizablePaneModel,
 };
 export type { LineContainerModel };

@@ -76,6 +76,13 @@ class App extends React.Component<{}, {}> {
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
         let platform = GlobalModel.getPlatform();
+        let clientData = GlobalModel.clientData.get();
+
+        // Previously, this is done in sidebar.tsx but it causes flicker when clientData is null cos screen-view shifts around.
+        // Doing it here fixes the flicker cos screen-view is not rendered when clientData is populated.
+        if (clientData == null) {
+            return null;
+        }
 
         if (disconnected || hasClientStop) {
             if (!dcWait) {
@@ -84,7 +91,7 @@ class App extends React.Component<{}, {}> {
             return (
                 <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                     <div ref={this.mainContentRef} className="main-content">
-                        <MainSideBar parentRef={this.mainContentRef} />
+                        <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
                         <div className="session-view" />
                     </div>
                     <If condition={dcWait}>
@@ -104,7 +111,7 @@ class App extends React.Component<{}, {}> {
         return (
             <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                 <div ref={this.mainContentRef} className="main-content">
-                    <MainSideBar parentRef={this.mainContentRef} />
+                    <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
                     <ErrorBoundary>
                         <PluginsView />
                         <WorkspaceView />
