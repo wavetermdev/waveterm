@@ -51,33 +51,52 @@
         height: 15px;
         width: 15px;
     }
-    .fa-circle-small, .fa-spinner-third {
+    .status-circle, .fa-circle-notch {
         display: none;
         position: absolute;
         top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        margin: auto auto;
+        // margin: auto auto;
         font-size: 15px;
+        width: 15px;
+        height: 15px;
+        text-align: center;
+    }
+
+    .spinner {
+            border: 5px solid #FFF;
+            border-bottom-color: transparent;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+    }
+
+    .status-circle {
+        border-radius: 50%;
     }
     .running-commands {
-        .fa-spinner-third {
+        .fa-circle-notch {
             display: block;
             color: @term-white;
         }
-        .fa-circle-small {
-            font-size: 12.5px;
-            top: 1px;
-            right: 2px;
+        .status-circle {
+            height: 10px;
+            width: 10px;
         }
     }
-    .error .fa-circle-small {
+    .error .status-circle {
         display: block;
-        color: @term-red;
+        background-color: @term-red;
     }
-    .success .fa-circle-small {
+    .success .status-circle {
         display: block;
-        color: @term-green;
+        background-color: @term-green;
     }
-    .output .fa-circle-small{
+    .output .status-circle{
         display: block;
-        color: @term-white;
+        background-color: @term-white;
     }
 }

@@ -68,9 +68,9 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
             const runningCommandsClass = runningCommands ? "running-commands" : "";
             statusIndicator = (
                 <CenteredIcon className={cn(className, "status-indicator")}>
-                    <div className={cn(levelClass, runningCommandsClass, "status-indicator-inner")}>
-                        <div className="fa-sharp fa-solid fa-circle-small"></div>
-                        <div className="fa-sharp fa-solid fa-spinner-third spin"></div>
+                    <div className={cn(levelClass, runningCommandsClass, "status-indicator-inner spin")}>
+                        <div className = "status-circle"></div>
+                        <div className="spinner"></div>
                     </div>
                 </CenteredIcon>
             );
