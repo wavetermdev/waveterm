@@ -14,6 +14,7 @@ import ReactDOM from "react-dom";
 import { GlobalModel, GlobalCommandRunner, ResizablePaneModel } from "../../model/model";
 import * as appconst from "../appconst";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
+import { MagicLayout } from "../magiclayout";
 
 import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
@@ -1265,11 +1266,6 @@ In order to use Wave's advanced features like unified history and persistent ses
     });
 }
 
-const MIN_WIDTH = 75;
-const MAX_WIDTH = 300;
-const SNAP_THRESHOLD = 90;
-const DRAG_RESISTANCE = 50;
-
 interface ResizableSidebarProps {
     name: ResizablePaneNameType;
     parentRef: React.RefObject<HTMLElement>;
@@ -1311,7 +1307,16 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
         this.isDragging = mobx.observable.box(false, { name: "ResizableSidebar-isDragging" });
         this.enableSnap = props.enableSnap ? props.enableSnap : true;
-        this.snapThreshold = props.snapThreshold ? props.snapThreshold : SNAP_THRESHOLD;
+        this.snapThreshold = props.snapThreshold ? props.snapThreshold : MagicLayout.MainSidebarSnapThreshold;
+    }
+
+    componentDidUpdate(prevProps: Readonly<ResizableSidebarProps>): void {
+        if (prevProps.width != this.props.width) {
+            mobx.action(() => {
+                this.sidebarModel.tempWidth.set(this.props.width);
+                this.sidebarModel.tempCollapsed.set(this.props.collapsed);
+            })();
+        }
     }
 
     @boundMethod
@@ -1341,7 +1346,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     getWidth(newWidth: number): number {
-        return Math.max(MIN_WIDTH, Math.min(newWidth, MAX_WIDTH));
+        return Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
     }
 
     @boundMethod
@@ -1364,9 +1369,9 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         newWidth = this.resizeStartWidth + delta;
 
         if (enableSnap) {
-            const minWidth = MIN_WIDTH;
+            const minWidth = MagicLayout.MainSidebarMinWidth;
             const snapPoint = minWidth + this.snapThreshold;
-            const dragResistance = DRAG_RESISTANCE;
+            const dragResistance = MagicLayout.MainSidebarDragResistance;
             let dragDirection;
 
             if (delta - this.prevDelta > 0) {
@@ -1408,7 +1413,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         } else {
             mobx.action(() => {
                 this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
-                if (newWidth == MIN_WIDTH) {
+                if (newWidth == MagicLayout.MainSidebarMinWidth) {
                     this.sidebarModel.tempCollapsed.set(true);
                 } else {
                     this.sidebarModel.tempCollapsed.set(false);

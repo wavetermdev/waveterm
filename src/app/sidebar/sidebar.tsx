@@ -10,6 +10,7 @@ import dayjs from "dayjs";
 import type { ClientDataType, RemoteType, ResizablePaneNameType } from "../../types/types";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
+import { MagicLayout } from "../magiclayout";
 
 import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
@@ -233,11 +234,19 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
+        console.log("got here ====================");
         let clientData = this.props.clientData;
         let mainSidebar = clientData.clientopts.mainsidebar;
-        // if (mainSidebar == null) {
-        //     return null;
-        // }
+        let collapsed = mainSidebar?.collapsed || false;
+        console.log("collapsed", collapsed);
+        let width;
+        if (collapsed) {
+            width = MagicLayout.MainSidebarMinWidth;
+        } else if (mainSidebar == null) {
+            width = MagicLayout.MainSidebarDefaultWidth;
+        } else {
+            width = mainSidebar.width;
+        }
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
@@ -246,8 +255,8 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             <ResizableSidebar
                 name="mainsidebar"
                 className="main-sidebar"
-                collapsed={mainSidebar?.collapsed || false}
-                width={mainSidebar?.width || 240}
+                collapsed={collapsed}
+                width={width}
                 position="left"
                 enableSnap={true}
                 parentRef={this.props.parentRef}

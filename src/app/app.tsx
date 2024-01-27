@@ -79,12 +79,10 @@ class App extends React.Component<{}, {}> {
         let clientData = GlobalModel.clientData.get();
 
         // Previously, this is done in sidebar.tsx but it causes flicker when clientData is null cos screen-view shifts around.
-        // Doing it here fixes the flicker cos screen-view is not rendered when clientData is populated.
+        // Doing it here fixes the flicker cos app is not rendered until clientData is populated.
         if (clientData == null) {
             return null;
         }
-
-        console.log("clientData", clientData);
 
         if (disconnected || hasClientStop) {
             if (!dcWait) {
