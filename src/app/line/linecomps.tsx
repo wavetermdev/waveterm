@@ -361,6 +361,12 @@ class LineCmd extends React.Component<
     }
 
     @boundMethod
+    clickRestart() {
+        let { line } = this.props;
+        GlobalCommandRunner.lineRestart(line.lineid, true);
+    }
+
+    @boundMethod
     clickMinimize() {
         mobx.action(() => {
             this.isMinimized.set(!this.isMinimized.get());
@@ -467,12 +473,21 @@ class LineCmd extends React.Component<
     renderMeta1(cmd: Cmd) {
         let { line } = this.props;
         let termOpts = cmd.getTermOpts();
-        let formattedTime = lineutil.getLineDateTimeStr(line.ts);
+        let formattedTime: string = "";
+        let restartTs = cmd.getRestartTs();
+        let timeTitle: string = null;
+        if (restartTs != null && restartTs > 0) {
+            formattedTime = "restarted @ " + lineutil.getLineDateTimeStr(restartTs);
+            timeTitle = "original start time " + lineutil.getLineDateTimeStr(line.ts);
+        }
+        else {
+            formattedTime = lineutil.getLineDateTimeStr(line.ts);
+        }
         let renderer = line.renderer;
         return (
             <div key="meta1" className="meta meta-line1">
                 <SmallLineAvatar line={line} cmd={cmd} />
-                <div className="ts">{formattedTime}</div>
+                <div title={timeTitle} className="ts">{formattedTime}</div>
                 <div>&nbsp;</div>
                 <If condition={!isBlank(renderer) && renderer != "terminal"}>
                     <div className="renderer">
@@ -664,6 +679,9 @@ class LineCmd extends React.Component<
                     <div key="meta" className="meta-wrap">
                         {this.renderMeta1(cmd)}
                         <If condition={!hidePrompt}>{this.renderCmdText(cmd)}</If>
+                    </div>
+                    <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
+                        <i className="fa-sharp fa-regular fa-arrows-rotate"/>
                     </div>
                     <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
                         <i className="fa-sharp fa-regular fa-trash" />

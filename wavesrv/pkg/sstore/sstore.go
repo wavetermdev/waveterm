@@ -1118,13 +1118,15 @@ type CmdType struct {
 	Status       string              `json:"status"`
 	CmdPid       int                 `json:"cmdpid"`
 	RemotePid    int                 `json:"remotepid"`
+	RestartTs    int64               `json:"restartts,omitempty"`
 	DoneTs       int64               `json:"donets"`
 	ExitCode     int                 `json:"exitcode"`
 	DurationMs   int                 `json:"durationms"`
 	RunOut       []packet.PacketType `json:"runout,omitempty"`
 	RtnState     bool                `json:"rtnstate,omitempty"`
 	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
-	Remove       bool                `json:"remove,omitempty"`
+	Remove       bool                `json:"remove,omitempty"`    // not persisted to DB
+	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {
@@ -1189,6 +1191,7 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn["status"] = cmd.Status
 	rtn["cmdpid"] = cmd.CmdPid
 	rtn["remotepid"] = cmd.RemotePid
+	rtn["restartts"] = cmd.RestartTs
 	rtn["donets"] = cmd.DoneTs
 	rtn["exitcode"] = cmd.ExitCode
 	rtn["durationms"] = cmd.DurationMs
@@ -1216,6 +1219,7 @@ func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
 	quickSetInt(&cmd.CmdPid, m, "cmdpid")
 	quickSetInt(&cmd.RemotePid, m, "remotepid")
 	quickSetInt64(&cmd.DoneTs, m, "donets")
+	quickSetInt64(&cmd.RestartTs, m, "restartts")
 	quickSetInt(&cmd.ExitCode, m, "exitcode")
 	quickSetInt(&cmd.DurationMs, m, "durationms")
 	quickSetJson(&cmd.RunOut, m, "runout")

@@ -123,3 +123,12 @@ func convertTermOpts(pkto *packet.TermOpts) *sstore.TermOpts {
 		MaxPtySize: pkto.MaxPtySize,
 	}
 }
+
+func convertToPacketTermOpts(sto sstore.TermOpts) *packet.TermOpts {
+	return &packet.TermOpts{
+		Rows:       int(sto.Rows),
+		Cols:       int(sto.Cols),
+		FlexRows:   sto.FlexRows,
+		MaxPtySize: sto.MaxPtySize,
+	}
+}
