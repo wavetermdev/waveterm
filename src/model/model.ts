@@ -2627,7 +2627,7 @@ class SidebarModel {
         this.maxWidth = mobx.observable.box(props?.maxWidth || 300, {
             name: "SidebarModel-maxWidth",
         });
-        this.enableSnap = mobx.observable.box(props?.enableSnap || true, {
+        this.enableSnap = mobx.observable.box(props?.enableSnap != null ? props?.enableSnap : true, {
             name: "SidebarModel-enableSnap",
         });
         this.snapThreshold = mobx.observable.box(props?.snapThreshold || 90, {

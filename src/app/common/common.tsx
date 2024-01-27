@@ -9,10 +9,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import { RemoteType, StatusIndicatorLevel } from "../../types/types";
+import { RemoteType } from "../../types/types";
 import ReactDOM from "react-dom";
 import { GlobalModel, SidebarModel } from "../../model/model";
-import { GlobalModel } from "../../model/model";
 import * as appconst from "../appconst";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
 
@@ -289,7 +288,8 @@ class Button extends React.Component<ButtonProps> {
     }
 
     render() {
-        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style, autoFocus, className } = this.props;
+        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style, autoFocus, className } =
+            this.props;
 
         return (
             <button

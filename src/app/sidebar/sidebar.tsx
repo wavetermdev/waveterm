@@ -227,6 +227,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
             return (
                 <SideBarItem
+                    key={session.sessionId}
                     className={`${isActive ? "active" : ""}`}
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
@@ -241,24 +242,6 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
-        let model = GlobalModel;
-        let activeSessionId = model.activeSessionId.get();
-        let activeScreen = model.getActiveScreen();
-        let activeRemoteId: string = null;
-        if (activeScreen != null) {
-            let rptr = activeScreen.curRemote.get();
-            if (rptr != null && !isBlank(rptr.remoteid)) {
-                activeRemoteId = rptr.remoteid;
-            }
-        }
-        let remotes = model.remotes ?? [];
-        remotes = sortAndFilterRemotes(remotes);
-        let sessionList = [];
-        for (let session of model.sessionList) {
-            if (!session.archived.get() || session.sessionId == activeSessionId) {
-                sessionList.push(session);
-            }
-        }
         let isCollapsed = this.mainSidebarModel.isCollapsed.get();
         let clientData = GlobalModel.clientData.get();
         let needsUpdate = false;
@@ -307,6 +290,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                     </div>
                     <div className="separator" />
                     <SideBarItem
+                        className="workspaces"
                         frontIcon={<WorkspacesIcon className="icon" />}
                         contents="Workspaces"
                         endIcons={[
