@@ -200,6 +200,7 @@ type ElectronApi = {
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
     onHCmd: (callback: (mods: KeyModsType) => void) => void;
     onPCmd: (callback: (mods: KeyModsType) => void) => void;
+    onRCmd: (callback: (mods: KeyModsType) => void) => void;
     onWCmd: (callback: (mods: KeyModsType) => void) => void;
     onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
@@ -247,6 +248,10 @@ class Cmd {
                 GlobalModel.cmdStatusUpdate(this.screenId, this.lineId, origData.status, cmd.status);
             }
         })();
+    }
+
+    getRestartTs(): number {
+        return this.data.get().restartts;
     }
 
     getAsWebCmd(lineid: string): WebCmd {
@@ -3403,6 +3408,7 @@ class Model {
         getApi().onHCmd(this.onHCmd.bind(this));
         getApi().onPCmd(this.onPCmd.bind(this));
         getApi().onWCmd(this.onWCmd.bind(this));
+        getApi().onRCmd(this.onRCmd.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -3674,6 +3680,9 @@ class Model {
     }
 
     onWCmd(e: any, mods: KeyModsType) {
+        if (this.activeMainView.get() != "session") {
+            return;
+        }
         let activeScreen = this.getActiveScreen();
         if (activeScreen == null) {
             return;
@@ -3688,6 +3697,27 @@ class Model {
             }
             GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
         });
+    }
+
+    onRCmd(e: any, mods: KeyModsType) {
+        if (this.activeMainView.get() != "session") {
+            return;
+        }
+        let activeScreen = this.getActiveScreen();
+        if (activeScreen == null) {
+            return;
+        }
+        if (mods.shift) {
+            // restart last line
+            GlobalCommandRunner.lineRestart("E", true);
+        } else {
+            // restart selected line
+            let selectedLine = activeScreen.selectedLine.get();
+            if (selectedLine == null || selectedLine == 0) {
+                return;
+            }
+            GlobalCommandRunner.lineRestart(String(selectedLine), true);
+        }
     }
 
     clearModals(): boolean {
@@ -4151,12 +4181,28 @@ class Model {
         return session.getActiveScreen();
     }
 
+    handleCmdRestart(cmd: CmdDataType) {
+        if (cmd == null || !cmd.restarted) {
+            return;
+        }
+        let screen = this.screenMap.get(cmd.screenid);
+        if (screen == null) {
+            return;
+        }
+        let termWrap = screen.getTermWrap(cmd.lineid);
+        if (termWrap == null) {
+            return;
+        }
+        termWrap.reload(0);
+    }
+
     addLineCmd(line: LineType, cmd: CmdDataType, interactive: boolean) {
         let slines = this.getScreenLinesById(line.screenid);
         if (slines == null) {
             return;
         }
         slines.addLineCmd(line, cmd, interactive);
+        this.handleCmdRestart(cmd);
     }
 
     updateCmd(cmd: CmdDataType) {
@@ -4164,6 +4210,7 @@ class Model {
         if (slines != null) {
             slines.updateCmd(cmd);
         }
+        this.handleCmdRestart(cmd);
     }
 
     isInfoUpdate(update: UpdateMessage): boolean {
@@ -4599,6 +4646,10 @@ class CommandRunner {
 
     lineDelete(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
         return GlobalModel.submitCommand("line", "delete", [lineArg], { nohist: "1" }, interactive);
+    }
+
+    lineRestart(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("line", "restart", [lineArg], { nohist: "1" }, interactive);
     }
 
     lineSet(lineArg: string, opts: { renderer?: string }): Promise<CommandRtnType> {

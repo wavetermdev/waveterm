@@ -210,6 +210,7 @@ func init() {
 	registerCmdFn("line:setheight", LineSetHeightCommand)
 	registerCmdFn("line:view", LineViewCommand)
 	registerCmdFn("line:set", LineSetCommand)
+	registerCmdFn("line:restart", LineRestartCommand)
 
 	registerCmdFn("client", ClientCommand)
 	registerCmdFn("client:show", ClientShowCommand)
@@ -491,7 +492,12 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	}
 	runPacket.Command = ":"
 	runPacket.ReturnState = true
-	cmd, callback, err := remote.RunCommand(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, runPacket)
+	rcOpts := remote.RunCommandOpts{
+		SessionId: ids.SessionId,
+		ScreenId:  ids.ScreenId,
+		RemotePtr: ids.Remote.RemotePtr,
+	}
+	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
 	if callback != nil {
 		defer callback()
 	}
@@ -587,7 +593,12 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
-	cmd, callback, err := remote.RunCommand(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, runPacket)
+	rcOpts := remote.RunCommandOpts{
+		SessionId: ids.SessionId,
+		ScreenId:  ids.ScreenId,
+		RemotePtr: ids.Remote.RemotePtr,
+	}
+	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
 	if callback != nil {
 		defer callback()
 	}
@@ -3337,6 +3348,121 @@ func LineSetHeightCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	return nil, nil
 }
 
+func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	var lineId string
+	if len(pk.Args) >= 1 {
+		lineArg := pk.Args[0]
+		resolvedLineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg)
+		if err != nil {
+			return nil, fmt.Errorf("error looking up lineid: %v", err)
+		}
+		lineId = resolvedLineId
+	} else {
+		selectedLineId, err := sstore.GetScreenSelectedLineId(ctx, ids.ScreenId)
+		if err != nil {
+			return nil, fmt.Errorf("error getting selected lineid: %v", err)
+		}
+		lineId = selectedLineId
+	}
+	if lineId == "" {
+		return nil, fmt.Errorf("%s requires a lineid to operate on", GetCmdStr(pk))
+	}
+	line, cmd, err := sstore.GetLineCmdByLineId(ctx, ids.ScreenId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting line: %v", err)
+	}
+	if line == nil {
+		return nil, fmt.Errorf("line not found")
+	}
+	if cmd == nil {
+		return nil, fmt.Errorf("cannot restart line (no cmd found)")
+	}
+	if cmd.Status == sstore.CmdStatusRunning || cmd.Status == sstore.CmdStatusDetached {
+		killCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
+		err = ids.Remote.MShell.KillRunningCommandAndWait(killCtx, base.MakeCommandKey(ids.ScreenId, lineId))
+		if err != nil {
+			return nil, err
+		}
+	}
+	ids.Remote.MShell.ResetDataPos(base.MakeCommandKey(ids.ScreenId, lineId))
+	err = sstore.ClearCmdPtyFile(ctx, ids.ScreenId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("error clearing existing pty file: %v", err)
+	}
+	runPacket := packet.MakeRunPacket()
+	runPacket.ReqId = uuid.New().String()
+	runPacket.CK = base.MakeCommandKey(ids.ScreenId, lineId)
+	runPacket.UsePty = true
+	// TODO how can we preseve the original termopts?
+	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, DefaultPTERM)
+	if err != nil {
+		return nil, fmt.Errorf("error getting creating termopts for command: %w", err)
+	}
+	runPacket.Command = cmd.CmdStr
+	runPacket.ReturnState = false
+	rcOpts := remote.RunCommandOpts{
+		SessionId:          ids.SessionId,
+		ScreenId:           ids.ScreenId,
+		RemotePtr:          ids.Remote.RemotePtr,
+		StatePtr:           &cmd.StatePtr,
+		NoCreateCmdPtyFile: true,
+	}
+	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
+	if callback != nil {
+		defer callback()
+	}
+	if err != nil {
+		return nil, err
+	}
+	newTs := time.Now().UnixMilli()
+	err = sstore.UpdateCmdForRestart(ctx, runPacket.CK, newTs, cmd.CmdPid, cmd.RemotePid, convertTermOpts(runPacket.TermOpts))
+	if err != nil {
+		return nil, fmt.Errorf("error updating cmd for restart: %w", err)
+	}
+	line, cmd, err = sstore.GetLineCmdByLineId(ctx, ids.ScreenId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting updated line/cmd: %w", err)
+	}
+	cmd.Restarted = true
+	update := &sstore.ModelUpdate{
+		Line:        line,
+		Cmd:         cmd,
+		Interactive: pk.Interactive,
+	}
+	screen, focusErr := focusScreenLine(ctx, ids.ScreenId, line.LineNum)
+	if focusErr != nil {
+		// not a fatal error, so just log
+		log.Printf("error focusing screen line: %v\n", focusErr)
+	}
+	if screen != nil {
+		update.Screens = []*sstore.ScreenType{screen}
+	}
+	return update, nil
+}
+
+func focusScreenLine(ctx context.Context, screenId string, lineNum int64) (*sstore.ScreenType, error) {
+	screen, err := sstore.GetScreenById(ctx, screenId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting screen: %v", err)
+	}
+	if screen == nil {
+		return nil, fmt.Errorf("screen not found")
+	}
+	updateMap := make(map[string]interface{})
+	updateMap[sstore.ScreenField_SelectedLine] = lineNum
+	updateMap[sstore.ScreenField_Focus] = sstore.ScreenFocusCmd
+	screen, err = sstore.UpdateScreen(ctx, screenId, updateMap)
+	if err != nil {
+		return nil, fmt.Errorf("error updating screen: %v", err)
+	}
+	return screen, nil
+}
+
 func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
@@ -3767,6 +3893,10 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			fileDataStr := fmt.Sprintf("v%d data=%d offset=%d max=%s", stat.Version, stat.DataSize, stat.FileOffset, scbase.NumFormatB2(stat.MaxSize))
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file", stat.Location))
 			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "file-data", fileDataStr))
+		}
+		if cmd.RestartTs > 0 {
+			restartTs := time.UnixMilli(cmd.RestartTs)
+			buf.WriteString(fmt.Sprintf("  %-15s %s\n", "restartts", restartTs.Format(TsFormatStr)))
 		}
 		if cmd.DoneTs != 0 {
 			doneTs := time.UnixMilli(cmd.DoneTs)
