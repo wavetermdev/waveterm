@@ -159,8 +159,9 @@ func ScreenMemIncrementNumRunningCommands(screenId string, delta int) int {
 	if ScreenMemStore[screenId] == nil {
 		ScreenMemStore[screenId] = &ScreenMemState{}
 	}
-	ScreenMemStore[screenId].NumRunningCommands += delta
-	return ScreenMemStore[screenId].NumRunningCommands
+	newNum := ScreenMemStore[screenId].NumRunningCommands + delta
+	ScreenMemStore[screenId].NumRunningCommands = newNum
+	return newNum
 }
 
 // If the new indicator level is higher than the current indicator, update the current indicator. Returns the new indicator level.

@@ -1885,6 +1885,8 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		RemotePtr: remotePtr,
 		RunPacket: runPacket,
 	})
+
+	go pushNumRunningCmdsUpdate(&runPacket.CK, 1)
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
 }
 
@@ -2061,6 +2063,8 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
+
+	go pushNumRunningCmdsUpdate(&donePk.CK, -1)
 	sstore.MainBus.SendUpdate(update)
 	return
 }
@@ -2094,6 +2098,7 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 	if screen != nil {
 		update.Screens = []*sstore.ScreenType{screen}
 	}
+	go pushNumRunningCmdsUpdate(&finalPk.CK, -1)
 	sstore.MainBus.SendUpdate(update)
 }
 
@@ -2204,7 +2209,6 @@ func (msh *MShellProc) ProcessPackets() {
 		if pk.GetType() == packet.CmdFinalPacketStr {
 			finalPk := pk.(*packet.CmdFinalPacketType)
 			runCmdUpdateFn(finalPk.CK, msh.makeHandleCmdFinalPacketClosure(finalPk))
-			go pushNumRunningCmdsUpdate(&finalPk.CK, -1)
 			continue
 		}
 		if pk.GetType() == packet.CmdErrorPacketStr {
@@ -2224,7 +2228,6 @@ func (msh *MShellProc) ProcessPackets() {
 		if pk.GetType() == packet.CmdStartPacketStr {
 			startPk := pk.(*packet.CmdStartPacketType)
 			msh.WriteToPtyBuffer("start> [remote %s] reqid=%s (%p)\n", msh.GetRemoteName(), startPk.RespId, msh.ServerProc.Output)
-			go pushNumRunningCmdsUpdate(&startPk.CK, 1)
 			continue
 		}
 		msh.WriteToPtyBuffer("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
