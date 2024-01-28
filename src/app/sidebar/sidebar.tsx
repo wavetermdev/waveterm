@@ -203,17 +203,18 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
 
     render() {
         let clientData = this.props.clientData;
-        let mainSidebar = clientData.clientopts.mainsidebar;
+        let dbMainSidebar = clientData.clientopts.mainsidebar;
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
+        let mainSidebar = GlobalModel.resizablePaneModels.get("mainsidebar");
         return (
             <ResizableSidebar
                 name="mainsidebar"
                 className="main-sidebar"
-                collapsed={mainSidebar.collapsed}
-                width={mainSidebar.width}
+                collapsed={dbMainSidebar.collapsed || false}
+                width={dbMainSidebar.width || MagicLayout.MainSidebarDefaultWidth}
                 position="left"
                 enableSnap={true}
                 parentRef={this.props.parentRef}
@@ -223,12 +224,12 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                         <div className="title-bar-drag" />
                         <div className="contents">
                             <div className="logo">
-                                <If condition={mainSidebar?.collapsed}>
+                                <If condition={mainSidebar?.tempCollapsed.get() == true}>
                                     <div className="logo-container" onClick={toggleCollapse}>
                                         <img src="public/logos/wave-logo.png" />
                                     </div>
                                 </If>
-                                <If condition={!mainSidebar?.collapsed}>
+                                <If condition={mainSidebar?.tempCollapsed.get() == false}>
                                     <div className="logo-container">
                                         <img src="public/logos/wave-dark.png" />
                                     </div>

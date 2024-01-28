@@ -1437,7 +1437,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         } else {
             mobx.action(() => {
                 this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
-                if (newWidth == MagicLayout.MainSidebarMinWidth) {
+                if (newWidth <= MagicLayout.MainSidebarMinWidth) {
                     this.sidebarModel.tempCollapsed.set(true);
                 } else {
                     this.sidebarModel.tempCollapsed.set(false);
