@@ -187,13 +187,18 @@ class MainSideBar extends React.Component<{}, {}> {
             const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
             const sessionScreens = GlobalModel.getSessionScreens(session.sessionId);
             const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
+            const sessionRunningCommands = sessionScreens.some((screen) => screen.numRunningCmds.get() > 0);
             return (
                 <SideBarItem
                     className={`${isActive ? "active" : ""}`}
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
                     endIcons={[
-                        <StatusIndicator key="statusindicator" level={sessionIndicator} />,
+                        <StatusIndicator
+                            key="statusindicator"
+                            level={sessionIndicator}
+                            runningCommands={sessionRunningCommands}
+                        />,
                         <ActionsIcon key="actions" onClick={(e) => this.openSessionSettings(e, session)} />,
                     ]}
                     onClick={() => this.handleSessionClick(session.sessionId)}

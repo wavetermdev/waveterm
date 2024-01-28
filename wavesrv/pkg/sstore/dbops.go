@@ -944,7 +944,12 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 	} else {
 		indicator = StatusIndicatorLevel_Error
 	}
-	SetStatusIndicatorLevel_Update(ctx, update, screenId, indicator, false)
+
+	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, indicator, false)
+	if err != nil {
+		// This is not a fatal error, so just log it
+		log.Printf("error setting status indicator level after done packet: %v\n", err)
+	}
 
 	return update, nil
 }
@@ -1102,7 +1107,11 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 		update.OpenAICmdInfoChat = ScreenMemGetCmdInfoChat(screenId).Messages
 
 		// Clear any previous status indicator for this screen
-		ResetStatusIndicator_Update(update, screenId)
+		err := ResetStatusIndicator_Update(update, screenId)
+		if err != nil {
+			// This is not a fatal error, so just log it
+			log.Printf("error resetting status indicator when switching screens: %v\n", err)
+		}
 	}
 	return update, nil
 }

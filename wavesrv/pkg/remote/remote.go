@@ -1885,6 +1885,8 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		RemotePtr: remotePtr,
 		RunPacket: runPacket,
 	})
+
+	go pushNumRunningCmdsUpdate(&runPacket.CK, 1)
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
 }
 
@@ -1988,6 +1990,7 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		}
 		update := &sstore.ModelUpdate{Cmd: cmd}
 		sstore.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
+		go pushNumRunningCmdsUpdate(&ck, -1)
 	}
 	msh.RunningCmds = make(map[base.CommandKey]RunCmdType)
 	msh.PendingStateCmds = make(map[pendingStateKey]base.CommandKey)
@@ -2061,6 +2064,8 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
+
+	go pushNumRunningCmdsUpdate(&donePk.CK, -1)
 	sstore.MainBus.SendUpdate(update)
 	return
 }
@@ -2094,6 +2099,7 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 	if screen != nil {
 		update.Screens = []*sstore.ScreenType{screen}
 	}
+	go pushNumRunningCmdsUpdate(&finalPk.CK, -1)
 	sstore.MainBus.SendUpdate(update)
 }
 
@@ -2463,5 +2469,13 @@ func (msh *MShellProc) GetDisplayName() string {
 // Identify the screen for a given CommandKey and push the given status indicator update for that screen
 func pushStatusIndicatorUpdate(ck *base.CommandKey, level sstore.StatusIndicatorLevel) {
 	screenId := ck.GetGroupId()
-	sstore.SetStatusIndicatorLevel(context.Background(), screenId, level, false)
+	err := sstore.SetStatusIndicatorLevel(context.Background(), screenId, level, false)
+	if err != nil {
+		log.Printf("error setting status indicator level: %v\n", err)
+	}
+}
+
+func pushNumRunningCmdsUpdate(ck *base.CommandKey, delta int) {
+	screenId := ck.GetGroupId()
+	sstore.IncrementNumRunningCmds(screenId, delta)
 }

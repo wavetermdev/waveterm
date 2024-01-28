@@ -153,13 +153,15 @@ func ScreenMemSetCmdInputText(screenId string, sp utilfn.StrWithPos, seqNum int)
 	ScreenMemStore[screenId].CmdInputSeqNum = seqNum
 }
 
-func ScreenMemSetNumRunningCommands(screenId string, num int) {
+func ScreenMemIncrementNumRunningCommands(screenId string, delta int) int {
 	MemLock.Lock()
 	defer MemLock.Unlock()
 	if ScreenMemStore[screenId] == nil {
 		ScreenMemStore[screenId] = &ScreenMemState{}
 	}
-	ScreenMemStore[screenId].NumRunningCommands = num
+	newNum := ScreenMemStore[screenId].NumRunningCommands + delta
+	ScreenMemStore[screenId].NumRunningCommands = newNum
+	return newNum
 }
 
 // If the new indicator level is higher than the current indicator, update the current indicator. Returns the new indicator level.

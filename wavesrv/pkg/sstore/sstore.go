@@ -1514,14 +1514,14 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 }
 
 // Sets the in-memory status indicator for the given screenId to the given value and pushes the new value to the FE
-func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusIndicatorLevel, force bool) {
+func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusIndicatorLevel, force bool) error {
 	update := &ModelUpdate{}
 	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, level, false)
 	if err != nil {
-		log.Printf("error setting status indicator level: %v\n", err)
-		return
+		return err
 	}
 	MainBus.SendUpdate(update)
+	return nil
 }
 
 // Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and adds it to the ModelUpdate
@@ -1531,7 +1531,23 @@ func ResetStatusIndicator_Update(update *ModelUpdate, screenId string) error {
 }
 
 // Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and pushes the new value to the FE
-func ResetStatusIndicator(screenId string) {
+func ResetStatusIndicator(screenId string) error {
 	// We do not need to set context when resetting the status indicator because we will not need to call the DB
-	SetStatusIndicatorLevel(context.TODO(), screenId, StatusIndicatorLevel_None, true)
+	return SetStatusIndicatorLevel(context.TODO(), screenId, StatusIndicatorLevel_None, true)
+}
+
+func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta int) {
+	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
+	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
+	update.ScreenNumRunningCommands = &ScreenNumRunningCommandsType{
+		ScreenId: screenId,
+		Num:      newNum,
+	}
+}
+
+func IncrementNumRunningCmds(screenId string, delta int) {
+	log.Printf("IncrementNumRunningCmds: screenId=%s, delta=%d\n", screenId, delta)
+	update := &ModelUpdate{}
+	IncrementNumRunningCmds_Update(update, screenId, delta)
+	MainBus.SendUpdate(update)
 }
