@@ -1336,10 +1336,11 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             } else {
                 newWidth = width;
             }
-        }
-        // From expanded to collapsed
-        else if (width > minWidth && collapsed == true) {
+        } else if (width > minWidth && collapsed == true) {
+            // From expanded to collapsed
             newWidth = minWidth;
+        } else {
+            newWidth = width;
         }
         return newWidth;
     }
@@ -1446,7 +1447,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     stopResizing() {
-        // console.log("stopResizing:got here");
         mobx.action(() => {
             this.isDragging.set(false);
             GlobalCommandRunner.clientSetSidebar(
@@ -1462,7 +1462,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     render() {
         const { className, children } = this.props;
-        // console.log("this.tempCollapsed.get", this.sidebarModel.tempCollapsed.get());
 
         return (
             <div
