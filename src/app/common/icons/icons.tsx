@@ -1,6 +1,9 @@
 import React from "react";
 import { StatusIndicatorLevel } from "../../../types/types";
 import cn from "classnames";
+import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator/spinner-indicator.svg";
+import { ReactComponent as Indicator } from "../../assets/icons/spinner-indicator/indicator.svg";
+import { Choose, If, Otherwise, When } from "tsx-control-statements/components";
 
 interface PositionalIconProps {
     children?: React.ReactNode;
@@ -50,7 +53,7 @@ interface StatusIndicatorProps {
 
 export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     render() {
-        const {level, className, runningCommands} = this.props;
+        const { level, className, runningCommands } = this.props;
         let statusIndicator = null;
         if (level != StatusIndicatorLevel.None || runningCommands) {
             let levelClass = null;
@@ -68,10 +71,14 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
             const runningCommandsClass = runningCommands ? "running-commands" : "";
             statusIndicator = (
                 <CenteredIcon className={cn(className, "status-indicator")}>
-                    <div className={cn(levelClass, runningCommandsClass, "status-indicator-inner spin")}>
-                        <div className = "status-circle"></div>
-                        <div className="spinner"></div>
-                    </div>
+                    <Choose>
+                        <When condition={runningCommands}>
+                            <SpinnerIndicator className={cn(levelClass, "spin")} />
+                        </When>
+                        <Otherwise>
+                            <Indicator className={levelClass} />
+                        </Otherwise>
+                    </Choose>
                 </CenteredIcon>
             );
         }

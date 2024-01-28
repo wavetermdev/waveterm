@@ -46,57 +46,19 @@
 }
 
 .status-indicator {
-    .status-indicator-inner {
-        position: relative;
-        height: 15px;
-        width: 15px;
+    svg>path {
+        stroke: @term-white;
     }
-    .status-circle, .fa-circle-notch {
-        display: none;
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        margin: auto auto;
-        // margin: auto auto;
-        font-size: 15px;
-        width: 15px;
-        height: 15px;
-        text-align: center;
+    svg>circle {
+        fill: @term-white;
     }
-
-    .spinner {
-            border: 5px solid #FFF;
-            border-bottom-color: transparent;
-            border-radius: 50%;
-            display: inline-block;
-            box-sizing: border-box;
+    .error svg>circle {
+        fill: @term-red;
     }
-
-    .status-circle {
-        border-radius: 50%;
+    .success svg>circle {
+        fill: @term-green;
     }
-    .running-commands {
-        .fa-circle-notch {
-            display: block;
-            color: @term-white;
-        }
-        .status-circle {
-            height: 10px;
-            width: 10px;
-        }
-    }
-    .error .status-circle {
-        display: block;
-        background-color: @term-red;
-    }
-    .success .status-circle {
-        display: block;
-        background-color: @term-green;
-    }
-    .output .status-circle{
-        display: block;
-        background-color: @term-white;
+    .output svg>circle {
+        fill: @term-white;
     }
 }
