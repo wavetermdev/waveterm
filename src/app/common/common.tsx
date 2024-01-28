@@ -1448,15 +1448,18 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     stopResizing() {
-        mobx.action(() => {
-            this.isDragging.set(false);
-        })();
+        GlobalCommandRunner.clientSetSidebar(
+            this.sidebarModel.tempWidth.get(),
+            this.sidebarModel.tempCollapsed.get()
+        ).finally(() => {
+            mobx.action(() => {
+                this.isDragging.set(false);
+            })();
 
-        GlobalCommandRunner.clientSetSidebar(this.sidebarModel.tempWidth.get(), this.sidebarModel.tempCollapsed.get());
-
-        document.removeEventListener("mousemove", this.onMouseMove);
-        document.removeEventListener("mouseup", this.stopResizing);
-        document.body.style.cursor = "";
+            document.removeEventListener("mousemove", this.onMouseMove);
+            document.removeEventListener("mouseup", this.stopResizing);
+            document.body.style.cursor = "";
+        });
     }
 
     @boundMethod
