@@ -194,7 +194,11 @@ class MainSideBar extends React.Component<{}, {}> {
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
                     endIcons={[
-                        <StatusIndicator key="statusindicator" level={sessionIndicator} runningCommands={sessionRunningCommands} />,
+                        <StatusIndicator
+                            key="statusindicator"
+                            level={sessionIndicator}
+                            runningCommands={sessionRunningCommands}
+                        />,
                         <ActionsIcon key="actions" onClick={(e) => this.openSessionSettings(e, session)} />,
                     ]}
                     onClick={() => this.handleSessionClick(session.sessionId)}

@@ -297,12 +297,12 @@ enum StatusIndicatorLevel {
 type ScreenStatusIndicatorUpdateType = {
     screenid: string;
     status: StatusIndicatorLevel;
-}
+};
 
 type ScreenNumRunningCommandsUpdateType = {
     screenid: string;
     num: number;
-}
+};
 
 type ModelUpdateType = {
     interactive: boolean;
@@ -809,6 +809,4 @@ export type {
     ScreenStatusIndicatorUpdateType,
 };
 
-export {
-    StatusIndicatorLevel,
-};
+export { StatusIndicatorLevel };

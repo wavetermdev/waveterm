@@ -13,7 +13,6 @@ import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg"
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
 import { MagicLayout } from "../../magiclayout";
-import { cmdStatusIsRunning } from "../../line/lineutil";
 
 @mobxReact.observer
 class ScreenTab extends React.Component<

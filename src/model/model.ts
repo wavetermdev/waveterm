@@ -1090,7 +1090,7 @@ class ScreenLines {
      * Check if there are any running cmds in the screen.
      * @returns True if there are any running cmds.
      */
-    hasRunningCmdLines(): boolean { 
+    hasRunningCmdLines(): boolean {
         return this.getRunningCmdLines(true).length > 0;
     }
 
@@ -4105,8 +4105,7 @@ class Model {
                 update.screenstatusindicator.status
             );
         }
-        if ("screennumrunningcommands" in update)
-        {
+        if ("screennumrunningcommands" in update) {
             this.getScreenById_single(update.screennumrunningcommands.screenid)?.setNumRunningCmds(
                 update.screennumrunningcommands.num
             );

@@ -288,7 +288,8 @@ class Button extends React.Component<ButtonProps> {
     }
 
     render() {
-        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style, autoFocus, className } = this.props;
+        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style, autoFocus, className } =
+            this.props;
 
         return (
             <button

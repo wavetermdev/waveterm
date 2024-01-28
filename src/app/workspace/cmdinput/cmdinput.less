@@ -82,7 +82,7 @@
     .cmd-input-filter {
         opacity: 0.5;
         &:hover {
-            opacity: 1.0;
+            opacity: 1;
         }
 
         .avatar {
@@ -198,14 +198,14 @@
                     opacity: 0.5;
 
                     &:hover {
-                        opacity: 1.0;
+                        opacity: 1;
                     }
                 }
             }
         }
     }
-    
-    .cmd-aichat { 
+
+    .cmd-aichat {
         display: flex;
         justify-content: flex-end;
         flex-flow: column nowrap;
@@ -219,7 +219,7 @@
             flex-shrink: 1;
             flex-direction: column-reverse;
         }
-         
+
         .chat-textarea {
             color: @term-bright-white;
             background-color: @textarea-background;
@@ -242,29 +242,27 @@
         }
 
         .chat-msg {
-            margin-top:5px;
-            margin-bottom:5px;
+            margin-top: 5px;
+            margin-bottom: 5px;
         }
 
         .chat-msg-assistant {
             color: @term-white;
         }
 
-        .chat-msg-user { 
-
+        .chat-msg-user {
             .msg-text {
                 font-family: @markdown-font;
                 font-size: 14px;
                 white-space: pre-wrap;
             }
         }
-         
+
         .chat-msg-error {
             color: @term-bright-red;
             font-family: @markdown-font;
             font-size: 14px;
         }
-        
 
         .grow-spacer {
             flex: 1 0 10px;
