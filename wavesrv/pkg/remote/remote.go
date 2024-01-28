@@ -1990,7 +1990,7 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		}
 		update := &sstore.ModelUpdate{Cmd: cmd}
 		sstore.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
-		go pushNumRunningCmdsUpdate(ck, -1)
+		go pushNumRunningCmdsUpdate(&ck, -1)
 	}
 	msh.RunningCmds = make(map[base.CommandKey]RunCmdType)
 	msh.PendingStateCmds = make(map[pendingStateKey]base.CommandKey)
