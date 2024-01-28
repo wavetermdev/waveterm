@@ -160,6 +160,9 @@ func ScreenMemIncrementNumRunningCommands(screenId string, delta int) int {
 		ScreenMemStore[screenId] = &ScreenMemState{}
 	}
 	newNum := ScreenMemStore[screenId].NumRunningCommands + delta
+	if newNum < 0 {
+		newNum = 0
+	}
 	ScreenMemStore[screenId].NumRunningCommands = newNum
 	return newNum
 }
