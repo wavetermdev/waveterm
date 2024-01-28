@@ -1,9 +1,7 @@
 import React from "react";
 import { StatusIndicatorLevel } from "../../../types/types";
 import cn from "classnames";
-import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator/spinner-indicator.svg";
-import { ReactComponent as Indicator } from "../../assets/icons/spinner-indicator/indicator.svg";
-import { Choose, If, Otherwise, When } from "tsx-control-statements/components";
+import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator.svg";
 
 interface PositionalIconProps {
     children?: React.ReactNode;
@@ -68,17 +66,9 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
                     levelClass = "error";
                     break;
             }
-            const runningCommandsClass = runningCommands ? "running-commands" : "";
             statusIndicator = (
-                <CenteredIcon className={cn(className, "status-indicator")}>
-                    <Choose>
-                        <When condition={runningCommands}>
-                            <SpinnerIndicator className={cn(levelClass, "spin")} />
-                        </When>
-                        <Otherwise>
-                            <Indicator className={levelClass} />
-                        </Otherwise>
-                    </Choose>
+                <CenteredIcon className={cn(className, levelClass, "status-indicator")}>
+                    <SpinnerIndicator className={runningCommands ? "spin" : null} />
                 </CenteredIcon>
             );
         }

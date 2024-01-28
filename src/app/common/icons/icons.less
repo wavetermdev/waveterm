@@ -46,19 +46,27 @@
 }
 
 .status-indicator {
-    svg>path {
+    svg {
+        width: 15px;
+        height: 15px;
+    }
+    #spinner,#indicator {
+        visibility: hidden;
+    }
+    .spin #spinner {
+        visibility: visible;
         stroke: @term-white;
     }
-    svg>circle {
-        fill: @term-white;
-    }
-    .error svg>circle {
+    &.error #indicator {
+        visibility: visible;
         fill: @term-red;
     }
-    .success svg>circle {
+    &.success #indicator {
+        visibility: visible;
         fill: @term-green;
     }
-    .output svg>circle {
+    &.output #indicator {
+        visibility: visible;
         fill: @term-white;
     }
 }
