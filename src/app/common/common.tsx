@@ -1372,7 +1372,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     }
 
     @boundMethod
-    getWidth(newWidth: number): number {
+    resolveWidth(newWidth: number): number {
         return Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
     }
 
@@ -1419,24 +1419,24 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             if (newWidth - dragResistance > minWidth && newWidth < snapPoint && dragDirection == "+") {
                 newWidth = snapPoint;
                 mobx.action(() => {
-                    this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
+                    this.sidebarModel.tempWidth.set(this.resolveWidth(newWidth));
                     this.sidebarModel.tempCollapsed.set(false);
                 })();
             } else if (newWidth + dragResistance < snapPoint && dragDirection == "-") {
                 newWidth = minWidth;
                 mobx.action(() => {
-                    this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
+                    this.sidebarModel.tempWidth.set(this.resolveWidth(newWidth));
                     this.sidebarModel.tempCollapsed.set(true);
                 })();
             } else if (newWidth > snapPoint) {
                 mobx.action(() => {
-                    this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
+                    this.sidebarModel.tempWidth.set(this.resolveWidth(newWidth));
                     this.sidebarModel.tempCollapsed.set(false);
                 })();
             }
         } else {
             mobx.action(() => {
-                this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
+                this.sidebarModel.tempWidth.set(this.resolveWidth(newWidth));
                 if (newWidth <= MagicLayout.MainSidebarMinWidth) {
                     this.sidebarModel.tempCollapsed.set(true);
                 } else {
