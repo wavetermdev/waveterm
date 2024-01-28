@@ -4381,7 +4381,6 @@ class Model {
         if (!addToHistory && pk.kwargs) {
             pk.kwargs["nohist"] = "1";
         }
-        console.log("cmdStr", cmdStr);
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -4969,8 +4968,8 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
-    clientSetSidebar(name: T.ResizablePaneNameType, width: number, collapsed: boolean): Promise<CommandRtnType> {
-        let kwargs = { nohist: "1", name, width: `${width}`, collapsed: collapsed ? "1" : "0" };
+    clientSetSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
         return GlobalModel.submitCommand("client", "setsidebar", null, kwargs, false);
     }
 

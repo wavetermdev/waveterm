@@ -1311,12 +1311,37 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     }
 
     componentDidUpdate(prevProps: Readonly<ResizableSidebarProps>): void {
-        if (prevProps.width != this.props.width) {
+        if (prevProps.collapsed != this.props.collapsed) {
             mobx.action(() => {
-                this.sidebarModel.tempWidth.set(this.props.width);
-                this.sidebarModel.tempCollapsed.set(this.props.collapsed);
+                let width = this.props.width;
+                let collapsed = this.props.collapsed;
+                this.sidebarModel.tempWidth.set(this.resolveWidthFromDb(width, collapsed));
+                this.sidebarModel.tempCollapsed.set(collapsed);
             })();
         }
+    }
+
+    // When collapsed is set via cli, width is not updated, it remains the same as before.
+    // This function is used to update the width when collapsed is set via cli.
+    @boundMethod
+    resolveWidthFromDb(width: number, collapsed: boolean): number {
+        let newWidth;
+        let minWidth = MagicLayout.MainSidebarMinWidth;
+        let defaultWidth = MagicLayout.MainSidebarDefaultWidth;
+
+        // From collapsed to expanded
+        if (collapsed == false) {
+            if (minWidth == width) {
+                newWidth = defaultWidth;
+            } else {
+                newWidth = width;
+            }
+        }
+        // From expanded to collapsed
+        else if (width > minWidth && collapsed == true) {
+            newWidth = minWidth;
+        }
+        return newWidth;
     }
 
     @boundMethod
@@ -1390,21 +1415,18 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             this.prevDragDirection = dragDirection;
 
             if (newWidth - dragResistance > minWidth && newWidth < snapPoint && dragDirection == "+") {
-                console.log("1");
                 newWidth = snapPoint;
                 mobx.action(() => {
                     this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
                     this.sidebarModel.tempCollapsed.set(false);
                 })();
             } else if (newWidth + dragResistance < snapPoint && dragDirection == "-") {
-                console.log("2");
                 newWidth = minWidth;
                 mobx.action(() => {
                     this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
                     this.sidebarModel.tempCollapsed.set(true);
                 })();
             } else if (newWidth > snapPoint) {
-                console.log("3");
                 mobx.action(() => {
                     this.sidebarModel.tempWidth.set(this.getWidth(newWidth));
                     this.sidebarModel.tempCollapsed.set(false);
@@ -1424,11 +1446,10 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     stopResizing() {
-        console.log("stopResizing:got here");
+        // console.log("stopResizing:got here");
         mobx.action(() => {
             this.isDragging.set(false);
             GlobalCommandRunner.clientSetSidebar(
-                this.props.name,
                 this.sidebarModel.tempWidth.get(),
                 this.sidebarModel.tempCollapsed.get()
             );
@@ -1441,7 +1462,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     render() {
         const { className, children } = this.props;
-        console.log("this.tempCollapsed.get", this.sidebarModel.tempCollapsed.get());
+        // console.log("this.tempCollapsed.get", this.sidebarModel.tempCollapsed.get());
 
         return (
             <div

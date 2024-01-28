@@ -234,19 +234,8 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
-        console.log("got here ====================");
         let clientData = this.props.clientData;
         let mainSidebar = clientData.clientopts.mainsidebar;
-        let collapsed = mainSidebar?.collapsed || false;
-        console.log("collapsed", collapsed);
-        let width;
-        if (collapsed) {
-            width = MagicLayout.MainSidebarMinWidth;
-        } else if (mainSidebar == null) {
-            width = MagicLayout.MainSidebarDefaultWidth;
-        } else {
-            width = mainSidebar.width;
-        }
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
@@ -255,8 +244,8 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             <ResizableSidebar
                 name="mainsidebar"
                 className="main-sidebar"
-                collapsed={collapsed}
-                width={width}
+                collapsed={mainSidebar.collapsed}
+                width={mainSidebar.width}
                 position="left"
                 enableSnap={true}
                 parentRef={this.props.parentRef}
