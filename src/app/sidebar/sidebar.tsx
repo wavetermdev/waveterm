@@ -68,38 +68,6 @@ interface MainSideBarProps {
 @mobxReact.observer
 class MainSideBar extends React.Component<MainSideBarProps, {}> {
     sidebarRef = React.createRef<HTMLDivElement>();
-    collapseStateFromClientData = null;
-    name: ResizablePaneNameType = "mainsidebar";
-    mainSidebarModel: ResizablePaneModel;
-
-    // constructor(props) {
-    //     super(props);
-
-    //     let mainSidebar = this.props.clientData?.clientopts?.sidebar.main;
-
-    //     this.mainSidebarModel = new ResizablePaneModel({
-    //         name: this.name,
-    //         width: mainSidebar.width,
-    //         collapsed: mainSidebar.collapsed,
-    //     });
-
-    //     mobx.action(() => {
-    //         GlobalModel.resizablePaneModels.set(this.name, this.mainSidebarModel);
-    //     })();
-    // }
-
-    componentDidUpdate(prevProps: Readonly<MainSideBarProps>, prevState: Readonly<{}>, snapshot?: any): void {}
-
-    @boundMethod
-    toggleCollapsed() {
-        // const isCollapsed = this.mainSidebarModel.isCollapsed.get();
-        // const defaultWidth = this.mainSidebarModel.defaultWidth;
-        // if (isCollapsed) {
-        //     this.mainSidebarModel.expand(defaultWidth);
-        // } else {
-        //     this.mainSidebarModel.collapse();
-        // }
-    }
 
     handleSessionClick(sessionId: string) {
         GlobalCommandRunner.switchSession(sessionId);
@@ -250,89 +218,93 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                 enableSnap={true}
                 parentRef={this.props.parentRef}
             >
-                <div className="title-bar-drag" />
-                <div className="contents">
-                    <div className="logo">
-                        <If condition={mainSidebar?.collapsed}>
-                            <div className="logo-container" onClick={this.toggleCollapsed}>
-                                <img src="public/logos/wave-logo.png" />
+                {(toggleCollapse) => (
+                    <React.Fragment>
+                        <div className="title-bar-drag" />
+                        <div className="contents">
+                            <div className="logo">
+                                <If condition={mainSidebar?.collapsed}>
+                                    <div className="logo-container" onClick={toggleCollapse}>
+                                        <img src="public/logos/wave-logo.png" />
+                                    </div>
+                                </If>
+                                <If condition={!mainSidebar?.collapsed}>
+                                    <div className="logo-container">
+                                        <img src="public/logos/wave-dark.png" />
+                                    </div>
+                                    <div className="spacer" />
+                                    <div className="collapse-button" onClick={toggleCollapse}>
+                                        <LeftChevronIcon className="icon" />
+                                    </div>
+                                </If>
                             </div>
-                        </If>
-                        <If condition={!mainSidebar?.collapsed}>
-                            <div className="logo-container">
-                                <img src="public/logos/wave-dark.png" />
+                            <div className="separator" />
+                            <div className="top">
+                                <SideBarItem
+                                    frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
+                                    contents="History"
+                                    endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
+                                    onClick={this.handleHistoryClick}
+                                />
+                                {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
+                                <SideBarItem
+                                    frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
+                                    contents="Connections"
+                                    onClick={this.handleConnectionsClick}
+                                />
                             </div>
-                            <div className="spacer" />
-                            <div className="collapse-button" onClick={this.toggleCollapsed}>
-                                <LeftChevronIcon className="icon" />
-                            </div>
-                        </If>
-                    </div>
-                    <div className="separator" />
-                    <div className="top">
-                        <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
-                            contents="History"
-                            endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
-                            onClick={this.handleHistoryClick}
-                        />
-                        {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
-                        <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
-                            contents="Connections"
-                            onClick={this.handleConnectionsClick}
-                        />
-                    </div>
-                    <div className="separator" />
-                    <SideBarItem
-                        className="workspaces"
-                        frontIcon={<WorkspacesIcon className="icon" />}
-                        contents="Workspaces"
-                        endIcons={[
-                            <div
-                                key="add_workspace"
-                                className="add_workspace hoverEffect"
-                                onClick={this.handleNewSession}
-                            >
-                                <AddIcon />
-                            </div>,
-                        ]}
-                    />
-                    <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
-                    <div className="bottom">
-                        <If condition={needsUpdate}>
+                            <div className="separator" />
                             <SideBarItem
-                                className="updateBanner"
-                                frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
-                                contents="Update Available"
-                                onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                                className="workspaces"
+                                frontIcon={<WorkspacesIcon className="icon" />}
+                                contents="Workspaces"
+                                endIcons={[
+                                    <div
+                                        key="add_workspace"
+                                        className="add_workspace hoverEffect"
+                                        onClick={this.handleNewSession}
+                                    >
+                                        <AddIcon />
+                                    </div>,
+                                ]}
                             />
-                        </If>
-                        <If condition={GlobalModel.isDev}>
-                            <SideBarItem
-                                frontIcon={<AppsIcon className="icon" />}
-                                contents="Apps"
-                                onClick={this.handlePluginsClick}
-                                endIcons={[<HotKeyIcon key="hotkey" hotkey="A" />]}
-                            />
-                        </If>
-                        <SideBarItem
-                            frontIcon={<SettingsIcon className="icon" />}
-                            contents="Settings"
-                            onClick={this.handleSettingsClick}
-                        />
-                        <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
-                            contents="Documentation"
-                            onClick={() => openLink("https://docs.waveterm.dev")}
-                        />
-                        <SideBarItem
-                            frontIcon={<i className="fa-brands fa-discord icon" />}
-                            contents="Discord"
-                            onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
-                        />
-                    </div>
-                </div>
+                            <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
+                            <div className="bottom">
+                                <If condition={needsUpdate}>
+                                    <SideBarItem
+                                        className="updateBanner"
+                                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                                        contents="Update Available"
+                                        onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                                    />
+                                </If>
+                                <If condition={GlobalModel.isDev}>
+                                    <SideBarItem
+                                        frontIcon={<AppsIcon className="icon" />}
+                                        contents="Apps"
+                                        onClick={this.handlePluginsClick}
+                                        endIcons={[<HotKeyIcon key="hotkey" hotkey="A" />]}
+                                    />
+                                </If>
+                                <SideBarItem
+                                    frontIcon={<SettingsIcon className="icon" />}
+                                    contents="Settings"
+                                    onClick={this.handleSettingsClick}
+                                />
+                                <SideBarItem
+                                    frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
+                                    contents="Documentation"
+                                    onClick={() => openLink("https://docs.waveterm.dev")}
+                                />
+                                <SideBarItem
+                                    frontIcon={<i className="fa-brands fa-discord icon" />}
+                                    contents="Discord"
+                                    onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
+                                />
+                            </div>
+                        </div>
+                    </React.Fragment>
+                )}
             </ResizableSidebar>
         );
     }

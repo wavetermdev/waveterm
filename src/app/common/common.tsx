@@ -1275,7 +1275,8 @@ interface ResizableSidebarProps {
     snapThreshold?: number;
     position?: "left" | "right";
     className?: string;
-    children?: React.ReactNode;
+    children?: (toggleCollapsed: () => void) => React.ReactNode;
+    toggleCollapse?: () => void;
 }
 
 @mobxReact.observer
@@ -1449,15 +1450,31 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     stopResizing() {
         mobx.action(() => {
             this.isDragging.set(false);
-            GlobalCommandRunner.clientSetSidebar(
-                this.sidebarModel.tempWidth.get(),
-                this.sidebarModel.tempCollapsed.get()
-            );
         })();
+
+        GlobalCommandRunner.clientSetSidebar(this.sidebarModel.tempWidth.get(), this.sidebarModel.tempCollapsed.get());
 
         document.removeEventListener("mousemove", this.onMouseMove);
         document.removeEventListener("mouseup", this.stopResizing);
         document.body.style.cursor = "";
+    }
+
+    @boundMethod
+    toggleCollapsed() {
+        const tempCollapsed = this.sidebarModel.tempCollapsed.get();
+        const width = MagicLayout.MainSidebarDefaultWidth;
+        let newWidth;
+        if (tempCollapsed) {
+            newWidth = width;
+            this.sidebarModel.tempWidth.set(width);
+            this.sidebarModel.tempCollapsed.set(!tempCollapsed);
+        } else {
+            newWidth = MagicLayout.MainSidebarMinWidth;
+            this.sidebarModel.tempWidth.set(newWidth);
+            this.sidebarModel.tempCollapsed.set(!tempCollapsed);
+        }
+
+        GlobalCommandRunner.clientSetSidebar(newWidth, !tempCollapsed);
     }
 
     render() {
@@ -1468,7 +1485,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
                 className={cn("sidebar", className, { collapsed: this.sidebarModel.tempCollapsed.get() })}
                 style={{ width: `${this.sidebarModel.tempWidth.get()}px` }}
             >
-                <div className="sidebar-content">{children}</div>
+                <div className="sidebar-content">{children(this.toggleCollapsed)}</div>
                 <div
                     className="sidebar-handle"
                     style={{
@@ -1480,6 +1497,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
                         cursor: "col-resize",
                     }}
                     onMouseDown={this.startResizing}
+                    onDoubleClick={this.toggleCollapsed}
                 ></div>
             </div>
         );
