@@ -1093,31 +1093,62 @@ func SidebarRemoveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
 }
 
+func prettyPrintByteSize(size int64) string {
+	gbSize := float64(size) / float64(1073741824)
+	if gbSize > 1 {
+		return fmt.Sprintf("%v Gigabytes", gbSize)
+	}
+	mbSize := float64(size) / float64(1048576)
+	if mbSize > 1 {
+		return fmt.Sprintf("%v Megabytes", mbSize)
+	}
+	kbSize := float64(size) / float64(24)
+	if kbSize > 1 {
+		return fmt.Sprintf("%v Kilobytes", kbSize)
+	}
+	return fmt.Sprintf("%v Bytes", size)
+}
+
 func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, sourcePath string, localPath string, outputPos int64) {
 	streamPk := packet.MakeStreamFilePacket()
 	streamPk.ReqId = uuid.New().String()
 	streamPk.Path = sourcePath
 	iter, err := remote_msh.StreamFile(ctx, streamPk)
 	if err != nil {
-		writeErrorToPty(cmd, fmt.Sprintf("Error getting file data packet %v", err), outputPos)
+		writeErrorToPty(cmd, fmt.Sprintf("Error getting file data packet: %v", err), outputPos)
+		return
 	}
 	defer iter.Close()
 	respIf, err := iter.Next(ctx)
 	if err != nil {
 		writeErrorToPty(cmd, fmt.Sprintf("Error getting next packet: %v", err), outputPos)
+		return
 	}
+	log.Printf("mk3\n")
 	resp, ok := respIf.(*packet.StreamFileResponseType)
+	log.Printf("mk4\n")
 	if !ok {
 		writeErrorToPty(cmd, fmt.Sprintf("Error in getting packet response: %v", err), outputPos)
+		return
 	}
 	if resp == nil || resp.Error != "" {
 		writeErrorToPty(cmd, fmt.Sprintf("Response packet has error: %v", err), outputPos)
+		return
 	}
+	log.Printf("mk2\n")
+	fileSizeBytes := resp.Info.Size
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Remote File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
 	localFile, err := os.Create(localPath)
 	if err != nil {
 		writeErrorToPty(cmd, fmt.Sprintf("Error creating file on local %v", err), outputPos)
+		return
 	}
 	defer localFile.Close()
+	bytesWritten := int64(0)
+	lastFileTransferPercentage := float64(0)
+	fileTransferPercentage := float64(0)
+
+	writeStringToPty(ctx, cmd, "[", &outputPos)
 	for {
 		dataPkIf, err := iter.Next(ctx)
 		if err != nil {
@@ -1137,8 +1168,16 @@ func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_ms
 			break
 		}
 		localFile.Write(dataPk.Data)
-		writeStringToPty(ctx, cmd, ".", &outputPos)
+		bytesWritten += int64(len(dataPk.Data))
+		fileTransferPercentage = float64(bytesWritten) / float64(fileSizeBytes)
+
+		if fileTransferPercentage-lastFileTransferPercentage > float64(0.05) {
+			writeStringToPty(ctx, cmd, "-", &outputPos)
+			lastFileTransferPercentage = fileTransferPercentage
+		}
 	}
+	writeStringToPty(ctx, cmd, "] done. \r\n", &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\n", fileSizeBytes), &outputPos)
 	cmdStatus := sstore.CmdStatusDone
 	ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
 	donePk := packet.MakeCmdDonePacket(ck)
@@ -1162,48 +1201,105 @@ func writeStringToPty(ctx context.Context, cmd *sstore.CmdType, outputString str
 	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 }
 
+func parseCopyFileParam(info string) (remote string, path string) {
+	stringsList := strings.Split(info, ":")
+	if len(stringsList) == 1 {
+		// use cur remote
+		return "", stringsList[0]
+	} else if len(stringsList) == 2 {
+		remote := strings.Trim(stringsList[0], "[] ")
+		return remote, stringsList[1]
+	} else {
+		return "error", "error"
+	}
+}
+
 func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /copyfile [file to copy] local=[path to copy to on local]")
 	}
-	path := pk.Args[0]
-	destPath := "~/"
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	ids, err := resolveUiIds(ctx, pk, R_Screen|R_Session|R_RemoteConnected)
+	log.Printf("Remote id: %v", ids.Remote)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve UiIds: %v", err)
+		return nil, fmt.Errorf("failed to resolve connected remote id: %v", err)
 	}
-	if pk.Kwargs["local"] != "" {
-		destPath = pk.Kwargs["local"]
+	sourceInfo := pk.Args[0]
+	sourceRemote, sourcePath := parseCopyFileParam(sourceInfo)
+	var sourceRemoteId *ResolvedRemote
+	var destRemoteId *ResolvedRemote
+	if sourceRemote == "error" {
+		return nil, fmt.Errorf("Error: malformed arguments - usage: [remote]:path ")
+	} else if sourceRemote == "" {
+		// use cur remote
+		sourceRemote = "connected"
+		sourceRemoteId = ids.Remote
+		if ids.Remote.DisplayName == "local" {
+			sourceRemote = "local"
+		}
 	} else {
-		return nil, fmt.Errorf("no local path given. Usage: /copyfile [file to copy] local=[path to copy to on local]")
+		pk.Kwargs["remote"] = sourceRemote
+		sourceIds, err := resolveUiIds(ctx, pk, R_Remote)
+		if err != nil {
+			return nil, fmt.Errorf("Error resolving remote id %v", err)
+		}
+		sourceRemoteId = sourceIds.Remote
+		log.Printf("sourceRemoteId %v", sourceRemoteId)
 	}
-	localPathWithHome := base.ExpandHomeDir(destPath)
-	log.Printf("localPathWithHome: %v", localPathWithHome)
-	msh := ids.Remote.MShell
-	if msh == nil {
-		return nil, fmt.Errorf("MSH === nil")
+	destInfo := pk.Args[1]
+	destRemote, destPath := parseCopyFileParam(destInfo)
+	if destRemote == "error" {
+		return nil, fmt.Errorf("Error: malformed arguments - usage: [remote]:path ")
+	} else if destRemote == "" {
+		destRemote = "connected"
+		destRemoteId = ids.Remote
+		if ids.Remote.DisplayName == "local" {
+			destRemote = "local"
+		}
+	} else {
+		pk.Kwargs["remote"] = destRemote
+		destIds, err := resolveUiIds(ctx, pk, R_Remote)
+		if err != nil {
+			return nil, fmt.Errorf("Error resolving remote id %v", err)
+		}
+		destRemoteId = destIds.Remote
+		log.Printf("Dest remote id: %v", destRemoteId)
 	}
-	rrState := msh.GetRemoteRuntimeState()
-	sourceCwd := ids.Remote.FeState["cwd"]
-	sourcePathWithHome, err := rrState.ExpandHomeDir(path)
+	if destPath == "" {
+		return nil, fmt.Errorf("Error: malformed arguments - usage: [remote]:path ")
+	}
+
+	var sourceFullPath string
+	var destFullPath string
+	sourceMsh := sourceRemoteId.MShell
+	if sourceMsh == nil {
+		return nil, fmt.Errorf("failure getting source remote mshell")
+	}
+	sourceRRState := sourceMsh.GetRemoteRuntimeState()
+	sourcePathWithHome, err := sourceRRState.ExpandHomeDir(sourcePath)
 	if err != nil {
 		return nil, fmt.Errorf("expand home dir err: %v", err)
 	}
-	sourceFullPath := sourcePathWithHome
-	if !filepath.IsAbs(sourcePathWithHome) {
+	sourceFullPath = sourcePathWithHome
+	if (sourceRemote == "connected" || sourceRemote == "local") && !filepath.IsAbs(sourcePathWithHome) {
+		sourceCwd := sourceRemoteId.FeState["cwd"]
 		sourceFullPath = filepath.Join(sourceCwd, sourcePathWithHome)
 	}
-	sourceFileName := filepath.Base(sourceFullPath)
-	destFileInfo, err := os.Stat(localPathWithHome)
+	if destPath[len(destPath)-1:] == "/" {
+		sourceFileName := filepath.Base(sourceFullPath)
+		destPath = filepath.Join(destPath, sourceFileName)
+	}
+	destMsh := destRemoteId.MShell
+	if destMsh == nil {
+		return nil, fmt.Errorf("failure getting dest remote mshell")
+	}
+	destRRState := destMsh.GetRemoteRuntimeState()
+	destFullPath, err = destRRState.ExpandHomeDir(destPath)
 	if err != nil {
-		return nil, fmt.Errorf("error reading specified dest path %v", err)
+		return nil, fmt.Errorf("expand home dir err: %v", err)
 	}
-	if destFileInfo.IsDir() {
-		// allow user to not specify filename and get the same filename as source
-		localPathWithHome = filepath.Join(localPathWithHome, sourceFileName)
-	}
+	log.Printf("paths: source: %v dest: %v\n", sourceFullPath, destFullPath)
 	var outputPos int64
-	outputStr := fmt.Sprintf("copying file %v to %v with cwd: %v, with localPath: %v", sourcePathWithHome, destPath, sourceCwd, localPathWithHome)
+	outputStr := fmt.Sprintf("Copying file %v to %v\r\n", sourceFullPath, destFullPath)
 	termopts := sstore.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
 	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
 	writeStringToPty(ctx, cmd, outputStr, &outputPos)
@@ -1217,7 +1313,35 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, err
 	}
 	update.Interactive = pk.Interactive
-	go doCopyRemoteFileToLocal(context.Background(), cmd, msh, sourceFullPath, localPathWithHome, outputPos)
+	if destRemote != "local" && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos)
+		err = destRemoteId.MShell.TryAutoConnect()
+		if err != nil {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos)
+		} else {
+			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
+		}
+	}
+	if sourceRemote != "local" && sourceRemoteId != nil && !sourceRemoteId.RState.IsConnected() {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", sourceRemote), &outputPos)
+		err = sourceRemoteId.MShell.TryAutoConnect()
+		if err != nil {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos)
+		} else {
+			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
+		}
+	}
+	log.Printf("msh: %v destRemote: %v sourceRemote %v\n", sourceMsh, destRemote, sourceRemote)
+	if destRemote == "local" && sourceRemote == "local" {
+		return nil, fmt.Errorf("copying local to local - just use cp :p")
+	} else if destRemote == "local" && sourceRemote != "local" {
+		log.Printf("copying remote file to local")
+		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos)
+	} else if destRemote != "local" && sourceRemote == "local" {
+		return nil, fmt.Errorf("currently unimplemented - copying local to remote")
+	} else if destRemote != "local" && sourceRemote != "local" {
+		return nil, fmt.Errorf("currently unimplemented - copying remote to remote")
+	}
 	return update, nil
 }
 
