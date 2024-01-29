@@ -2,6 +2,7 @@ import React from "react";
 import { StatusIndicatorLevel } from "../../../types/types";
 import cn from "classnames";
 import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator.svg";
+import { boundMethod } from "autobind-decorator";
 
 interface PositionalIconProps {
     children?: React.ReactNode;
@@ -56,6 +57,7 @@ interface StatusIndicatorProps {
 
 export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     iconRef: React.RefObject<HTMLDivElement> = React.createRef();
+    listenerAdded: boolean = false;
 
     componentDidMount() {
         this.syncSpinner();
@@ -63,6 +65,32 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
 
     componentDidUpdate() {
         this.syncSpinner();
+    }
+
+    componentWillUnmount(): void {
+        if (this.iconRef.current != null && this.listenerAdded) {
+            let elem = this.iconRef.current;
+            let svgElem = elem.querySelector("svg");
+            if (svgElem != null) {
+                svgElem.removeEventListener("animationstart", this.handleAnimationStart);
+            }
+        }
+    }
+
+    @boundMethod
+    handleAnimationStart(e: AnimationEvent) {
+        if (this.iconRef.current == null) {
+            return;
+        }
+        let svgElem = this.iconRef.current.querySelector("svg");
+        if (svgElem == null) {
+            return;
+        }
+        let animArr = svgElem.getAnimations();
+        if (animArr == null || animArr.length == 0) {
+            return;
+        }
+        animArr[0].startTime = 0;
     }
 
     syncSpinner() {
@@ -73,11 +101,15 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
             return;
         }
         let elem = this.iconRef.current;
-        let spinElem = elem.querySelector(".spin");
-        if (spinElem == null) {
+        let svgElem = elem.querySelector("svg");
+        if (svgElem == null) {
             return;
         }
-        let animArr = spinElem.getAnimations();
+        if (!this.listenerAdded) {
+            svgElem.addEventListener("animationstart", this.handleAnimationStart);
+            this.listenerAdded = true;
+        }
+        let animArr = svgElem.getAnimations();
         if (animArr == null || animArr.length == 0) {
             return;
         }
