@@ -7,12 +7,13 @@ interface PositionalIconProps {
     children?: React.ReactNode;
     className?: string;
     onClick?: React.MouseEventHandler<HTMLDivElement>;
+    divRef?: React.RefObject<HTMLDivElement>;
 }
 
 export class FrontIcon extends React.Component<PositionalIconProps> {
     render() {
         return (
-            <div className={cn("front-icon", "positional-icon", this.props.className)}>
+            <div ref={this.props.divRef} className={cn("front-icon", "positional-icon", this.props.className)}>
                 <div className="positional-icon-inner">{this.props.children}</div>
             </div>
         );
@@ -22,7 +23,11 @@ export class FrontIcon extends React.Component<PositionalIconProps> {
 export class CenteredIcon extends React.Component<PositionalIconProps> {
     render() {
         return (
-            <div className={cn("centered-icon", "positional-icon", this.props.className)} onClick={this.props.onClick}>
+            <div
+                ref={this.props.divRef}
+                className={cn("centered-icon", "positional-icon", this.props.className)}
+                onClick={this.props.onClick}
+            >
                 <div className="positional-icon-inner">{this.props.children}</div>
             </div>
         );
@@ -50,6 +55,35 @@ interface StatusIndicatorProps {
 }
 
 export class StatusIndicator extends React.Component<StatusIndicatorProps> {
+    iconRef: React.RefObject<HTMLDivElement> = React.createRef();
+
+    componentDidMount() {
+        this.syncSpinner();
+    }
+
+    componentDidUpdate() {
+        this.syncSpinner();
+    }
+
+    syncSpinner() {
+        if (!this.props.runningCommands) {
+            return;
+        }
+        if (this.iconRef.current == null) {
+            return;
+        }
+        let elem = this.iconRef.current;
+        let spinElem = elem.querySelector(".spin");
+        if (spinElem == null) {
+            return;
+        }
+        let animArr = spinElem.getAnimations();
+        if (animArr == null || animArr.length == 0) {
+            return;
+        }
+        animArr[0].startTime = 0;
+    }
+
     render() {
         const { level, className, runningCommands } = this.props;
         let statusIndicator = null;
@@ -67,7 +101,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
                     break;
             }
             statusIndicator = (
-                <CenteredIcon className={cn(className, levelClass, "status-indicator")}>
+                <CenteredIcon divRef={this.iconRef} className={cn(className, levelClass, "status-indicator")}>
                     <SpinnerIndicator className={runningCommands ? "spin" : null} />
                 </CenteredIcon>
             );
