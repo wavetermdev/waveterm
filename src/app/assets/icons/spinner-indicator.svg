@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 <svg width="440" height="440" version="1.1" viewBox="0 0 116.42 116.42" xmlns="http://www.w3.org/2000/svg">
- <path id="spinner" transform="matrix(1 -.0017046 0 1 0 0)" d="m111.01 58.273a52.939 52.939 0 0 1-52.939 52.939" fill="none" stroke="#000" stroke-width="9.0869"/>
- <circle id="indicator" cx="58.208" cy="58.208" r="39.688" stroke-width=".26657"/>
+ <circle id="indicator" cx="58.266" cy="58.266" r="28.311" stroke-width=".19016"/>
+ <path id="spinner" d="m107.2 58.21a48.988 48.988 0 0 1-48.988 48.988" fill="none" stroke="#000" stroke-width="16.856" style="paint-order:normal"/>
 </svg>
