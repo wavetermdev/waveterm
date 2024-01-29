@@ -69,8 +69,8 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
 
     componentWillUnmount(): void {
         if (this.iconRef.current != null && this.listenerAdded) {
-            let elem = this.iconRef.current;
-            let svgElem = elem.querySelector("svg");
+            const elem = this.iconRef.current;
+            const svgElem = elem.querySelector("svg");
             if (svgElem != null) {
                 svgElem.removeEventListener("animationstart", this.handleAnimationStart);
             }
@@ -82,11 +82,11 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
         if (this.iconRef.current == null) {
             return;
         }
-        let svgElem = this.iconRef.current.querySelector("svg");
+        const svgElem = this.iconRef.current.querySelector("svg");
         if (svgElem == null) {
             return;
         }
-        let animArr = svgElem.getAnimations();
+        const animArr = svgElem.getAnimations();
         if (animArr == null || animArr.length == 0) {
             return;
         }
@@ -100,8 +100,8 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
         if (this.iconRef.current == null) {
             return;
         }
-        let elem = this.iconRef.current;
-        let svgElem = elem.querySelector("svg");
+        const elem = this.iconRef.current;
+        const svgElem = elem.querySelector("svg");
         if (svgElem == null) {
             return;
         }
@@ -109,7 +109,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
             svgElem.addEventListener("animationstart", this.handleAnimationStart);
             this.listenerAdded = true;
         }
-        let animArr = svgElem.getAnimations();
+        const animArr = svgElem.getAnimations();
         if (animArr == null || animArr.length == 0) {
             return;
         }
