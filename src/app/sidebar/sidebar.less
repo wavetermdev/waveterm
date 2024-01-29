@@ -127,9 +127,7 @@
                     0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
             }
             .index {
-                font-size: 0.8em;
-                text-align: center;
-                width: 2em;
+                font-size: 10px;
             }
             .hotkey {
                 float: left !important;
@@ -192,13 +190,18 @@
         &:not(:hover) .status-indicator {
             .positional-icon-visible;
         }
-        .add_workspace {
-            float: right;
-            padding: 2px;
-            margin-right: 6px;
-            transition: transform 0.3s ease-in-out;
-            svg {
-                fill: @base-color;
+
+        &.workspaces {
+            cursor: default;
+            .add-workspace {
+                cursor: pointer;
+                .positional-icon-visible;
+                float: right;
+                padding: 2px;
+                margin-right: 6px;
+                .fa-plus {
+                    font-size: 13px;
+                }
             }
         }
 

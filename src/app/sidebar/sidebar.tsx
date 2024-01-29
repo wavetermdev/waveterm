@@ -14,7 +14,6 @@ import { compareLoose } from "semver";
 import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
 import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
-import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
 import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -251,16 +250,17 @@ class MainSideBar extends React.Component<{}, {}> {
                     </div>
                     <div className="separator" />
                     <SideBarItem
+                        className="workspaces"
                         frontIcon={<WorkspacesIcon className="icon" />}
                         contents="Workspaces"
                         endIcons={[
-                            <div
-                                key="add_workspace"
-                                className="add_workspace hoverEffect"
+                            <CenteredIcon
+                                key="add-workspace"
+                                className="add-workspace hoverEffect"
                                 onClick={this.handleNewSession}
                             >
-                                <AddIcon />
-                            </div>,
+                                <i className="fa-sharp fa-solid fa-plus"></i>
+                            </CenteredIcon>,
                         ]}
                     />
                     <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
