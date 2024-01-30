@@ -9,9 +9,9 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import { RemoteType, ResizablePaneNameType } from "../../types/types";
+import { RemoteType } from "../../types/types";
 import ReactDOM from "react-dom";
-import { GlobalModel, GlobalCommandRunner, ResizablePaneModel } from "../../model/model";
+import { GlobalModel, GlobalCommandRunner } from "../../model/model";
 import * as appconst from "../appconst";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
 import { MagicLayout } from "../magiclayout";
@@ -1267,13 +1267,9 @@ In order to use Wave's advanced features like unified history and persistent ses
 }
 
 interface ResizableSidebarProps {
-    name: ResizablePaneNameType;
     parentRef: React.RefObject<HTMLElement>;
-    width?: number;
-    collapsed?: boolean;
+    position: "left" | "right";
     enableSnap?: boolean;
-    snapThreshold?: number;
-    position?: "left" | "right";
     className?: string;
     children?: (toggleCollapsed: () => void) => React.ReactNode;
     toggleCollapse?: () => void;
@@ -1281,93 +1277,34 @@ interface ResizableSidebarProps {
 
 @mobxReact.observer
 class ResizableSidebar extends React.Component<ResizableSidebarProps> {
-    isDragging: OV<boolean>;
-    snapThreshold: number;
-    enableSnap: boolean;
     resizeStartWidth: number = 0;
     startX: number = 0;
-    position: string;
     prevDelta: number = 0;
     prevDragDirection: string = null;
-    sidebarModel: ResizablePaneModel;
-
-    constructor(props: ResizableSidebarProps) {
-        super(props);
-
-        this.sidebarModel = new ResizablePaneModel({
-            name: this.props.name,
-            width: this.props.width,
-            collapsed: this.props.collapsed,
-        });
-
-        mobx.action(() => {
-            GlobalModel.resizablePaneModels.set(this.props.name, this.sidebarModel);
-        })();
-
-        this.position = props.position || "left";
-
-        this.isDragging = mobx.observable.box(false, { name: "ResizableSidebar-isDragging" });
-        this.enableSnap = props.enableSnap ? props.enableSnap : true;
-        this.snapThreshold = props.snapThreshold ? props.snapThreshold : MagicLayout.MainSidebarSnapThreshold;
-    }
-
-    componentDidUpdate(prevProps: Readonly<ResizableSidebarProps>): void {
-        if (prevProps.collapsed != this.props.collapsed) {
-            mobx.action(() => {
-                let width = this.props.width;
-                let collapsed = this.props.collapsed;
-                this.sidebarModel.tempWidth.set(this.resolveWidthFromDb(width, collapsed));
-                this.sidebarModel.tempCollapsed.set(collapsed);
-            })();
-        }
-    }
-
-    // When collapsed is set via cli, width is not updated, it remains the same as before.
-    // This function is used to update the width when collapsed is set via cli.
-    @boundMethod
-    resolveWidthFromDb(width: number, collapsed: boolean): number {
-        let newWidth;
-        let minWidth = MagicLayout.MainSidebarMinWidth;
-        let defaultWidth = MagicLayout.MainSidebarDefaultWidth;
-
-        // From collapsed to expanded
-        if (collapsed == false) {
-            if (minWidth == width) {
-                newWidth = defaultWidth;
-            } else {
-                newWidth = width;
-            }
-        } else if (width > minWidth && collapsed == true) {
-            // From expanded to collapsed
-            newWidth = minWidth;
-        } else {
-            newWidth = width;
-        }
-        return newWidth;
-    }
+    disposeReaction: any;
 
     @boundMethod
     startResizing(event: React.MouseEvent<HTMLDivElement>) {
         event.preventDefault();
 
-        const { parentRef } = this.props;
-        const parentRect = parentRef.current?.getBoundingClientRect();
+        let { parentRef, position } = this.props;
+        let parentRect = parentRef.current?.getBoundingClientRect();
 
         if (!parentRect) return;
 
-        if (this.position === "right") {
+        if (position === "right") {
             this.startX = parentRect.right - event.clientX;
         } else {
             this.startX = event.clientX - parentRect.left;
         }
 
-        this.resizeStartWidth = this.sidebarModel.tempWidth.get();
+        this.resizeStartWidth = GlobalModel.mainSidebarModel.getWidth();
         document.addEventListener("mousemove", this.onMouseMove);
         document.addEventListener("mouseup", this.stopResizing);
 
         document.body.style.cursor = "col-resize";
         mobx.action(() => {
-            this.isDragging.set(true);
+            GlobalModel.mainSidebarModel.isDragging.set(true);
         })();
     }
 
@@ -1380,14 +1317,15 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     onMouseMove(event: MouseEvent) {
         event.preventDefault();
 
-        const { parentRef, enableSnap } = this.props;
-        const parentRect = parentRef.current?.getBoundingClientRect();
+        let { parentRef, enableSnap, position } = this.props;
+        let parentRect = parentRef.current?.getBoundingClientRect();
+        let mainSidebarModel = GlobalModel.mainSidebarModel;
 
-        if (!this.isDragging.get() || !parentRect) return;
+        if (!mainSidebarModel.isDragging.get() || !parentRect) return;
 
         let delta, newWidth;
 
-        if (this.position === "right") {
+        if (position === "right") {
             delta = parentRect.right - event.clientX - this.startX;
         } else {
             delta = event.clientX - parentRect.left - this.startX;
@@ -1396,9 +1334,9 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         newWidth = this.resizeStartWidth + delta;
 
         if (enableSnap) {
-            const minWidth = MagicLayout.MainSidebarMinWidth;
-            const snapPoint = minWidth + this.snapThreshold;
-            const dragResistance = MagicLayout.MainSidebarDragResistance;
+            let minWidth = MagicLayout.MainSidebarMinWidth;
+            let snapPoint = minWidth + MagicLayout.MainSidebarSnapThreshold;
+            let dragResistance = MagicLayout.MainSidebarDragResistance;
             let dragDirection;
 
             if (delta - this.prevDelta > 0) {
@@ -1419,28 +1357,28 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             if (newWidth - dragResistance > minWidth && newWidth < snapPoint && dragDirection == "+") {
                 newWidth = snapPoint;
                 mobx.action(() => {
-                    this.sidebarModel.tempWidth.set(this.resolveWidth(newWidth));
-                    this.sidebarModel.tempCollapsed.set(false);
+                    mainSidebarModel.tempWidth.set(this.resolveWidth(newWidth));
+                    mainSidebarModel.tempCollapsed.set(false);
                 })();
             } else if (newWidth + dragResistance < snapPoint && dragDirection == "-") {
                 newWidth = minWidth;
                 mobx.action(() => {
-                    this.sidebarModel.tempWidth.set(this.resolveWidth(newWidth));
-                    this.sidebarModel.tempCollapsed.set(true);
+                    mainSidebarModel.tempWidth.set(this.resolveWidth(newWidth));
+                    mainSidebarModel.tempCollapsed.set(true);
                 })();
             } else if (newWidth > snapPoint) {
                 mobx.action(() => {
-                    this.sidebarModel.tempWidth.set(this.resolveWidth(newWidth));
-                    this.sidebarModel.tempCollapsed.set(false);
+                    mainSidebarModel.tempWidth.set(this.resolveWidth(newWidth));
+                    mainSidebarModel.tempCollapsed.set(false);
                 })();
             }
         } else {
             mobx.action(() => {
-                this.sidebarModel.tempWidth.set(this.resolveWidth(newWidth));
+                mainSidebarModel.tempWidth.set(this.resolveWidth(newWidth));
                 if (newWidth <= MagicLayout.MainSidebarMinWidth) {
-                    this.sidebarModel.tempCollapsed.set(true);
+                    mainSidebarModel.tempCollapsed.set(true);
                 } else {
-                    this.sidebarModel.tempCollapsed.set(false);
+                    mainSidebarModel.tempCollapsed.set(false);
                 }
             })();
         }
@@ -1448,12 +1386,14 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     stopResizing() {
+        let mainSidebarModel = GlobalModel.mainSidebarModel;
+
         GlobalCommandRunner.clientSetSidebar(
-            this.sidebarModel.tempWidth.get(),
-            this.sidebarModel.tempCollapsed.get()
+            mainSidebarModel.tempWidth.get(),
+            mainSidebarModel.tempCollapsed.get()
         ).finally(() => {
             mobx.action(() => {
-                this.isDragging.set(false);
+                mainSidebarModel.isDragging.set(false);
             })();
 
             document.removeEventListener("mousemove", this.onMouseMove);
@@ -1464,37 +1404,39 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     toggleCollapsed() {
-        const tempCollapsed = this.sidebarModel.tempCollapsed.get();
-        const width = MagicLayout.MainSidebarDefaultWidth;
+        let mainSidebarModel = GlobalModel.mainSidebarModel;
+
+        let tempCollapsed = mainSidebarModel.getCollapsed();
+        let width = MagicLayout.MainSidebarDefaultWidth;
         let newWidth;
         if (tempCollapsed) {
             newWidth = width;
-            this.sidebarModel.tempWidth.set(width);
-            this.sidebarModel.tempCollapsed.set(!tempCollapsed);
         } else {
             newWidth = MagicLayout.MainSidebarMinWidth;
-            this.sidebarModel.tempWidth.set(newWidth);
-            this.sidebarModel.tempCollapsed.set(!tempCollapsed);
         }
 
+        mobx.action(() => {
+            mainSidebarModel.tempWidth.set(newWidth);
+            mainSidebarModel.tempCollapsed.set(!tempCollapsed);
+        })();
         GlobalCommandRunner.clientSetSidebar(newWidth, !tempCollapsed);
     }
 
     render() {
-        const { className, children } = this.props;
+        let { className, children } = this.props;
+        let mainSidebarModel = GlobalModel.mainSidebarModel;
+        let width = mainSidebarModel.getWidth();
+        let isCollapsed = mainSidebarModel.getCollapsed();
 
         return (
-            <div
-                className={cn("sidebar", className, { collapsed: this.sidebarModel.tempCollapsed.get() })}
-                style={{ width: `${this.sidebarModel.tempWidth.get()}px` }}
-            >
+            <div className={cn("sidebar", className, { collapsed: isCollapsed })} style={{ width }}>
                 <div className="sidebar-content">{children(this.toggleCollapsed)}</div>
                 <div
                     className="sidebar-handle"
                     style={{
                         position: "absolute",
                         top: 0,
-                        [this.position === "left" ? "right" : "left"]: 0,
+                        [this.props.position === "left" ? "right" : "left"]: 0,
                         bottom: 0,
                         width: "5px",
                         cursor: "col-resize",

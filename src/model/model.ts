@@ -2588,22 +2588,46 @@ class ClientSettingsViewModel {
         })();
     }
 }
+class MainSidebarModel {
+    tempWidth: OV<number> = mobx.observable.box(null, {
+        name: "MainSidebarModel-tempWidth",
+    });
+    tempCollapsed: OV<boolean> = mobx.observable.box(null, {
+        name: "MainSidebarModel-tempCollapsed",
+    });
+    isDragging: OV<boolean> = mobx.observable.box(false, {
+        name: "MainSidebarModel-isDragging",
+    });
 
-interface ResizablePaneModelProps {
-    name: T.ResizablePaneNameType;
-    width: number;
-    collapsed: boolean;
-}
+    getWidth(): number {
+        let clientData = GlobalModel.clientData.get();
+        let width = clientData.clientopts.mainsidebar.width;
+        console.log("width: " + width);
+        if (this.isDragging.get()) {
+            if (this.tempWidth.get() == null && width == null) {
+                return MagicLayout.MainSidebarDefaultWidth;
+            }
+            if (this.tempWidth.get() == null) {
+                return width;
+            }
+            return this.tempWidth.get();
+        }
+        return clientData.clientopts.mainsidebar.width;
+    }
 
-class ResizablePaneModel {
-    tempWidth: OV<number>;
-    tempCollapsed: OV<boolean>;
-    name: T.ResizablePaneNameType;
-
-    constructor(props: ResizablePaneModelProps) {
-        this.name = props.name;
-        this.tempWidth = mobx.observable.box(props.width, { name: "SidebarModel-tempWidth" });
-        this.tempCollapsed = mobx.observable.box(props.collapsed, { name: "SidebarModel-tempCollapsed" });
+    getCollapsed(): boolean {
+        let clientData = GlobalModel.clientData.get();
+        let collapsed = clientData.clientopts.mainsidebar.collapsed;
+        if (this.isDragging.get()) {
+            if (this.tempCollapsed.get() == null && collapsed == null) {
+                return false;
+            }
+            if (this.tempCollapsed.get() == null) {
+                return collapsed;
+            }
+            return this.tempCollapsed.get();
+        }
+        return clientData.clientopts.mainsidebar.collapsed;
     }
 }
 
@@ -3334,10 +3358,6 @@ class Model {
         name: "remotesLoaded",
     });
     screenLines: OMap<string, ScreenLines> = mobx.observable.map({}, { name: "screenLines", deep: false }); // key = "sessionid/screenid" (screenlines)
-    resizablePaneModels: OMap<T.ResizablePaneNameType, ResizablePaneModel> = mobx.observable.map(
-        {},
-        { name: "resizablePaneModels", deep: false }
-    );
     termUsedRowsCache: Record<string, number> = {}; // key = "screenid/lineid"
     debugCmds: number = 0;
     debugScreen: OV<boolean> = mobx.observable.box(false);
@@ -3380,6 +3400,7 @@ class Model {
     connectionViewModel: ConnectionsViewModel;
     clientSettingsViewModel: ClientSettingsViewModel;
     modalsModel: ModalsModel;
+    mainSidebarModel: MainSidebarModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -3406,6 +3427,7 @@ class Model {
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
         this.modalsModel = new ModalsModel();
+        this.mainSidebarModel = new MainSidebarModel();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -4381,6 +4403,7 @@ class Model {
         if (!addToHistory && pk.kwargs) {
             pk.kwargs["nohist"] = "1";
         }
+        console.log("got here");
         return this.submitCommandPacket(pk, interactive);
     }
 
@@ -5115,6 +5138,5 @@ export {
     SpecialLineContainer,
     ForwardLineContainer,
     VERSION,
-    ResizablePaneModel,
 };
 export type { LineContainerModel };

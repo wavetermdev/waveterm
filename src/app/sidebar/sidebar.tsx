@@ -7,10 +7,9 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { ClientDataType, RemoteType, ResizablePaneNameType } from "../../types/types";
+import type { ClientDataType, RemoteType } from "../../types/types";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
-import { MagicLayout } from "../magiclayout";
 
 import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
@@ -19,7 +18,7 @@ import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
 import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Session, VERSION, ResizablePaneModel } from "../../model/model";
+import { GlobalModel, GlobalCommandRunner, Session, VERSION } from "../../model/model";
 import { isBlank, openLink } from "../../util/util";
 import { ResizableSidebar } from "../common/common";
 import * as constants from "../appconst";
@@ -203,18 +202,15 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
 
     render() {
         let clientData = this.props.clientData;
-        let dbMainSidebar = clientData.clientopts.mainsidebar;
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
-        let mainSidebar = GlobalModel.resizablePaneModels.get("mainsidebar");
+        let mainSidebar = GlobalModel.mainSidebarModel;
+        let isCollapsed = mainSidebar.getCollapsed();
         return (
             <ResizableSidebar
-                name="mainsidebar"
                 className="main-sidebar"
-                collapsed={dbMainSidebar.collapsed || false}
-                width={dbMainSidebar.width || MagicLayout.MainSidebarDefaultWidth}
                 position="left"
                 enableSnap={true}
                 parentRef={this.props.parentRef}
@@ -224,12 +220,12 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                         <div className="title-bar-drag" />
                         <div className="contents">
                             <div className="logo">
-                                <If condition={mainSidebar?.tempCollapsed.get() == true}>
+                                <If condition={isCollapsed}>
                                     <div className="logo-container" onClick={toggleCollapse}>
                                         <img src="public/logos/wave-logo.png" />
                                     </div>
                                 </If>
-                                <If condition={mainSidebar?.tempCollapsed.get() == false}>
+                                <If condition={!isCollapsed}>
                                     <div className="logo-container">
                                         <img src="public/logos/wave-dark.png" />
                                     </div>
