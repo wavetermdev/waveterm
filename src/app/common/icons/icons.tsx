@@ -10,6 +10,8 @@ interface PositionalIconProps {
     children?: React.ReactNode;
     className?: string;
     onClick?: React.MouseEventHandler<HTMLDivElement>;
+    onMount?: () => void;
+    onUnmount?: () => void;
     divRef?: React.RefObject<HTMLDivElement>;
 }
 
@@ -28,13 +30,19 @@ export class FrontIcon extends React.Component<PositionalIconProps> {
 }
 
 export class CenteredIcon extends React.Component<PositionalIconProps> {
+    componentDidMount(): void {
+        if (this.props.onMount) {
+            this.props.onMount();
+        }
+    }
+    componentWillUnmount(): void {
+        if (this.props.onUnmount) {
+            this.props.onUnmount();
+        }
+    }
     render() {
         return (
-            <div
-                ref={this.props.divRef}
-                className={cn("centered-icon", "positional-icon", this.props.className)}
-                onClick={this.props.onClick}
-            >
+            <div className={cn("centered-icon", "positional-icon", this.props.className)} onClick={this.props.onClick}>
                 <div className="positional-icon-inner">{this.props.children}</div>
             </div>
         );
