@@ -2602,7 +2602,6 @@ class MainSidebarModel {
     getWidth(): number {
         let clientData = GlobalModel.clientData.get();
         let width = clientData.clientopts.mainsidebar.width;
-        console.log("width: " + width);
         if (this.isDragging.get()) {
             if (this.tempWidth.get() == null && width == null) {
                 return MagicLayout.MainSidebarDefaultWidth;
