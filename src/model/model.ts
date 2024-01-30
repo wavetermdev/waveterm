@@ -4455,7 +4455,6 @@ class Model {
         if (!addToHistory && pk.kwargs) {
             pk.kwargs["nohist"] = "1";
         }
-        console.log("got here");
         return this.submitCommandPacket(pk, interactive);
     }
 
