@@ -48,13 +48,22 @@
     }
 }
 
+.status-indicator-visible {
+    .positional-icon-visible;
+
+    &.spin.spinner-visible {
+        #spinner {
+            visibility: visible;
+        }
+    }
+}
+
 .status-indicator {
     #spinner,
     #indicator {
         visibility: hidden;
     }
     .spin #spinner {
-        visibility: visible;
         stroke: @term-white;
     }
     &.error #indicator {
