@@ -20,6 +20,7 @@ const WatchScreenPacketStr = "watchscreen"
 const FeInputPacketStr = "feinput"
 const RemoteInputPacketStr = "remoteinput"
 const CmdInputTextPacketStr = "cmdinputtext"
+const UserInputResponsePacketStr = "userinputresp"
 
 type FeCommandPacketType struct {
 	Type        string            `json:"type"`
@@ -92,12 +93,19 @@ type CmdInputTextPacketType struct {
 	Text     utilfn.StrWithPos `json:"text"`
 }
 
+type UserInputResponsePacketType struct {
+	Type      string                        `json:"type"`
+	RequestId string                        `json:"requestid"`
+	Response  *sstore.UserInputResponseType `json:"response"`
+}
+
 func init() {
 	packet.RegisterPacketType(FeCommandPacketStr, reflect.TypeOf(FeCommandPacketType{}))
 	packet.RegisterPacketType(WatchScreenPacketStr, reflect.TypeOf(WatchScreenPacketType{}))
 	packet.RegisterPacketType(FeInputPacketStr, reflect.TypeOf(FeInputPacketType{}))
 	packet.RegisterPacketType(RemoteInputPacketStr, reflect.TypeOf(RemoteInputPacketType{}))
 	packet.RegisterPacketType(CmdInputTextPacketStr, reflect.TypeOf(CmdInputTextPacketType{}))
+	packet.RegisterPacketType(UserInputResponsePacketStr, reflect.TypeOf(UserInputResponsePacketType{}))
 }
 
 func (*CmdInputTextPacketType) GetType() string {
@@ -138,4 +146,8 @@ func MakeRemoteInputPacket() *RemoteInputPacketType {
 
 func (*RemoteInputPacketType) GetType() string {
 	return RemoteInputPacketStr
+}
+
+func (*UserInputResponsePacketType) GetType() string {
+	return UserInputResponsePacketStr
 }

@@ -50,6 +50,9 @@ import {
     HistoryViewDataType,
     AlertMessageType,
     HistorySearchParams,
+    UserInputRequest,
+    UserInputResponse,
+    UserInputResponsePacket,
     FocusTypeStrs,
     ScreenLinesType,
     HistoryTypeStrs,
@@ -4109,6 +4112,19 @@ class Model {
             this.getScreenById_single(update.screennumrunningcommands.screenid)?.setNumRunningCmds(
                 update.screennumrunningcommands.num
             );
+        }
+        if ("userinputrequest" in update) {
+            let userInputRequest: UserInputRequest = update.userinputrequest;
+            let userInputResponse: UserInputResponse = {
+                type: "text",
+                text: "what wonderful weather we're having",
+            };
+            let userInputResponsePacket: UserInputResponsePacket = {
+                type: "userinputresp",
+                requestid: userInputRequest.requestid,
+                response: userInputResponse,
+            };
+            this.ws.pushMessage(userInputResponsePacket);
         }
     }
 

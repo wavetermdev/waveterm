@@ -6,6 +6,7 @@ package remote
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"os/user"
 	"strconv"
@@ -59,6 +60,14 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 	} else {
 		identityFile = configIdentity
 	}
+
+	// test code
+	request := &sstore.UserInputRequestType{
+		ResponseType: "text",
+		QueryText:    "unused",
+	}
+	response, _ := sstore.MainBus.GetUserInput(request)
+	log.Printf("response: %s\n", response.Text)
 
 	hostKeyCallback := ssh.InsecureIgnoreHostKey()
 	var authMethods []ssh.AuthMethod

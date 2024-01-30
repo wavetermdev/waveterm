@@ -4,10 +4,13 @@
 package sstore
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
@@ -39,32 +42,33 @@ func (*PtyDataUpdate) UpdateType() string {
 func (pdu *PtyDataUpdate) Clean() {}
 
 type ModelUpdate struct {
-	Sessions                 []*SessionType                     `json:"sessions,omitempty"`
-	ActiveSessionId          string                             `json:"activesessionid,omitempty"`
-	Screens                  []*ScreenType                      `json:"screens,omitempty"`
-	ScreenLines              *ScreenLinesType                   `json:"screenlines,omitempty"`
-	Line                     *LineType                          `json:"line,omitempty"`
-	Lines                    []*LineType                        `json:"lines,omitempty"`
-	Cmd                      *CmdType                           `json:"cmd,omitempty"`
-	CmdLine                  *utilfn.StrWithPos                 `json:"cmdline,omitempty"`
-	Info                     *InfoMsgType                       `json:"info,omitempty"`
-	ClearInfo                bool                               `json:"clearinfo,omitempty"`
-	Remotes                  []RemoteRuntimeState               `json:"remotes,omitempty"`
-	History                  *HistoryInfoType                   `json:"history,omitempty"`
-	Interactive              bool                               `json:"interactive"`
-	Connect                  bool                               `json:"connect,omitempty"`
-	MainView                 string                             `json:"mainview,omitempty"`
-	Bookmarks                []*BookmarkType                    `json:"bookmarks,omitempty"`
-	SelectedBookmark         string                             `json:"selectedbookmark,omitempty"`
-	HistoryViewData          *HistoryViewData                   `json:"historyviewdata,omitempty"`
-	ClientData               *ClientData                        `json:"clientdata,omitempty"`
-	RemoteView               *RemoteViewType                    `json:"remoteview,omitempty"`
-	ScreenTombstones         []*ScreenTombstoneType             `json:"screentombstones,omitempty"`
-	SessionTombstones        []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
-	OpenAICmdInfoChat        []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
-	AlertMessage             *AlertMessageType                  `json:"alertmessage,omitempty"`
-	ScreenStatusIndicator    *ScreenStatusIndicatorType         `json:"screenstatusindicator,omitempty"`
+	Sessions              []*SessionType                     `json:"sessions,omitempty"`
+	ActiveSessionId       string                             `json:"activesessionid,omitempty"`
+	Screens               []*ScreenType                      `json:"screens,omitempty"`
+	ScreenLines           *ScreenLinesType                   `json:"screenlines,omitempty"`
+	Line                  *LineType                          `json:"line,omitempty"`
+	Lines                 []*LineType                        `json:"lines,omitempty"`
+	Cmd                   *CmdType                           `json:"cmd,omitempty"`
+	CmdLine               *utilfn.StrWithPos                 `json:"cmdline,omitempty"`
+	Info                  *InfoMsgType                       `json:"info,omitempty"`
+	ClearInfo             bool                               `json:"clearinfo,omitempty"`
+	Remotes               []RemoteRuntimeState               `json:"remotes,omitempty"`
+	History               *HistoryInfoType                   `json:"history,omitempty"`
+	Interactive           bool                               `json:"interactive"`
+	Connect               bool                               `json:"connect,omitempty"`
+	MainView              string                             `json:"mainview,omitempty"`
+	Bookmarks             []*BookmarkType                    `json:"bookmarks,omitempty"`
+	SelectedBookmark      string                             `json:"selectedbookmark,omitempty"`
+	HistoryViewData       *HistoryViewData                   `json:"historyviewdata,omitempty"`
+	ClientData            *ClientData                        `json:"clientdata,omitempty"`
+	RemoteView            *RemoteViewType                    `json:"remoteview,omitempty"`
+	ScreenTombstones      []*ScreenTombstoneType             `json:"screentombstones,omitempty"`
+	SessionTombstones     []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
+	OpenAICmdInfoChat     []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
+	AlertMessage          *AlertMessageType                  `json:"alertmessage,omitempty"`
+	ScreenStatusIndicator *ScreenStatusIndicatorType         `json:"screenstatusindicator,omitempty"`
 	ScreenNumRunningCommands *ScreenNumRunningCommandsType      `json:"screennumrunningcommands,omitempty"`
+	UserInputRequest      *UserInputRequestType              `json:"userinputrequest,omitempty"`
 }
 
 func (*ModelUpdate) UpdateType() string {
@@ -160,6 +164,18 @@ type HistoryInfoType struct {
 	Show        bool               `json:"show"`
 }
 
+type UserInputRequestType struct {
+	RequestId    string `json:"requestid"`
+	QueryText    string `json:"querytext"`
+	ResponseType string `json:"responsetype"`
+}
+
+type UserInputResponseType struct {
+	Type    string `json:"type"`
+	Text    string `json:"text,omitempty"`
+	Confirm bool   `json:"confirm,omitempty"`
+}
+
 type UpdateChannel struct {
 	ScreenId string
 	ClientId string
@@ -174,14 +190,16 @@ func (uch UpdateChannel) Match(screenId string) bool {
 }
 
 type UpdateBus struct {
-	Lock     *sync.Mutex
-	Channels map[string]UpdateChannel
+	Lock        *sync.Mutex
+	Channels    map[string]UpdateChannel
+	UserInputCh map[string](chan *UserInputResponseType)
 }
 
 func MakeUpdateBus() *UpdateBus {
 	return &UpdateBus{
-		Lock:     &sync.Mutex{},
-		Channels: make(map[string]UpdateChannel),
+		Lock:        &sync.Mutex{},
+		Channels:    make(map[string]UpdateChannel),
+		UserInputCh: make(map[string](chan *UserInputResponseType)),
 	}
 }
 
@@ -272,4 +290,47 @@ type ScreenStatusIndicatorType struct {
 type ScreenNumRunningCommandsType struct {
 	ScreenId string `json:"screenid"`
 	Num      int    `json:"num"`
+}
+
+func (bus *UpdateBus) registerUserInputChannel() (string, chan *UserInputResponseType) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
+
+	id := uuid.New().String()
+	uich := make(chan *UserInputResponseType)
+
+	bus.UserInputCh[id] = uich
+	return id, uich
+}
+
+func (bus *UpdateBus) unregisterUserInputChannel(id string) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
+
+	delete(bus.UserInputCh, id)
+}
+
+func (bus *UpdateBus) GetUserInput(userInputRequest *UserInputRequestType) (*UserInputResponseType, error) {
+	// create context for timeout
+	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancelFn()
+
+	id, uich := bus.registerUserInputChannel()
+
+	userInputRequest.RequestId = id
+	update := &ModelUpdate{UserInputRequest: userInputRequest}
+	bus.SendUpdate(update)
+
+	var response *UserInputResponseType
+	var err error
+	// prepare to receive response
+	select {
+	case resp := <-uich:
+		response = resp
+	case <-ctx.Done():
+		err = fmt.Errorf("timed out waiting for user input")
+	}
+
+	bus.unregisterUserInputChannel(id)
+	return response, err
 }

@@ -278,6 +278,15 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		sstore.ScreenMemSetCmdInputText(cmdInputPk.ScreenId, cmdInputPk.Text, cmdInputPk.SeqNum)
 		return nil
 	}
+	if pk.GetType() == scpacket.UserInputResponsePacketStr {
+		userInputRespPk := pk.(*scpacket.UserInputResponsePacketType)
+		uich, ok := sstore.MainBus.UserInputCh[userInputRespPk.RequestId]
+		if !ok {
+			return fmt.Errorf("received User Input Response with invalid Id (%s): %v\n", userInputRespPk.RequestId, err)
+		}
+		uich <- userInputRespPk.Response
+		return nil
+	}
 	return fmt.Errorf("got ws bad message: %v", pk.GetType())
 }
 
