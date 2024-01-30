@@ -3006,10 +3006,9 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	}
 	err = sstore.ResetStatusIndicator_Update(update, session.ActiveScreenId)
 	if err != nil {
-		log.Printf("error resetting status indicator: %v\n", err)
+		// this is not a fatal error, just log it
+		log.Printf("error resetting status indicator after session command: %v\n", err)
 	}
-
-	log.Printf("session command update:  %v\n", update)
 
 	return update, nil
 }

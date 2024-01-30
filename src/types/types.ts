@@ -299,6 +299,11 @@ type ScreenStatusIndicatorUpdateType = {
     status: StatusIndicatorLevel;
 };
 
+type ScreenNumRunningCommandsUpdateType = {
+    screenid: string;
+    num: number;
+};
+
 type ModelUpdateType = {
     interactive: boolean;
     sessions?: SessionDataType[];
@@ -322,6 +327,7 @@ type ModelUpdateType = {
     openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
     alertmessage?: AlertMessageType;
     screenstatusindicator?: ScreenStatusIndicatorUpdateType;
+    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType;
 };
 
 type HistoryViewDataType = {
@@ -726,8 +732,6 @@ type StrWithPos = {
     pos: number;
 };
 
-type ResizablePaneNameType = "mainsidebar";
-
 export type {
     SessionDataType,
     LineStateType,
@@ -807,7 +811,6 @@ export type {
     CmdInputTextPacketType,
     OpenAICmdInfoChatMessageType,
     ScreenStatusIndicatorUpdateType,
-    ResizablePaneNameType,
 };
 
 export { StatusIndicatorLevel };

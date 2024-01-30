@@ -374,6 +374,7 @@ class Screen {
     webShareOpts: OV<WebShareOpts>;
     filterRunning: OV<boolean>;
     statusIndicator: OV<StatusIndicatorLevel>;
+    numRunningCmds: OV<number>;
 
     constructor(sdata: ScreenDataType) {
         this.sessionId = sdata.sessionid;
@@ -416,6 +417,9 @@ class Screen {
         });
         this.statusIndicator = mobx.observable.box(StatusIndicatorLevel.None, {
             name: "screen-status-indicator",
+        });
+        this.numRunningCmds = mobx.observable.box(0, {
+            name: "screen-num-running-cmds",
         });
     }
 
@@ -812,6 +816,16 @@ class Screen {
         })();
     }
 
+    /**
+     * Set the number of running commands for the screen.
+     * @param numRunning The number of running commands.
+     */
+    setNumRunningCmds(numRunning: number): void {
+        mobx.action(() => {
+            this.numRunningCmds.set(numRunning);
+        })();
+    }
+
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (checkKeyPressed(waveEvent, "ArrowUp")) {
@@ -1050,19 +1064,35 @@ class ScreenLines {
         return this.cmds[lineId];
     }
 
-    getRunningCmdLines(): LineType[] {
+    /**
+     * Get all running cmds in the screen.
+     * @param returnFirst If true, return the first running cmd found.
+     * @returns An array of running cmds, or the first running cmd if returnFirst is true.
+     */
+    getRunningCmdLines(returnFirst?: boolean): LineType[] {
         let rtn: LineType[] = [];
         for (const line of this.lines) {
-            let cmd = this.getCmd(line.lineid);
+            const cmd = this.getCmd(line.lineid);
             if (cmd == null) {
                 continue;
             }
-            let status = cmd.getStatus();
+            const status = cmd.getStatus();
             if (cmdStatusIsRunning(status)) {
+                if (returnFirst) {
+                    return [line];
+                }
                 rtn.push(line);
             }
         }
         return rtn;
+    }
+
+    /**
+     * Check if there are any running cmds in the screen.
+     * @returns True if there are any running cmds.
+     */
+    hasRunningCmdLines(): boolean {
+        return this.getRunningCmdLines(true).length > 0;
     }
 
     updateCmd(cmd: CmdDataType): void {
@@ -4117,6 +4147,11 @@ class Model {
         if ("screenstatusindicator" in update) {
             this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(
                 update.screenstatusindicator.status
+            );
+        }
+        if ("screennumrunningcommands" in update) {
+            this.getScreenById_single(update.screennumrunningcommands.screenid)?.setNumRunningCmds(
+                update.screennumrunningcommands.num
             );
         }
     }

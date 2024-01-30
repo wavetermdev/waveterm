@@ -95,6 +95,7 @@ class ScreenTab extends React.Component<
         ) : null;
 
         const statusIndicatorLevel = screen.statusIndicator.get();
+        const runningCommands = screen.numRunningCmds.get() > 0;
 
         return (
             <Reorder.Item
@@ -121,7 +122,7 @@ class ScreenTab extends React.Component<
                     {screen.name.get()}
                 </div>
                 <div className="end-icons">
-                    <StatusIndicator level={statusIndicatorLevel} />
+                    <StatusIndicator level={statusIndicatorLevel} runningCommands={runningCommands} />
                     {tabIndex}
                     <ActionsIcon onClick={(e) => this.openScreenSettings(e, screen)} />
                 </div>

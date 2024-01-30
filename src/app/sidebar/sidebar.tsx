@@ -14,7 +14,6 @@ import { compareLoose } from "semver";
 import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
 import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
-import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
 import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -184,6 +183,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
             const sessionScreens = GlobalModel.getSessionScreens(session.sessionId);
             const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
+            const sessionRunningCommands = sessionScreens.some((screen) => screen.numRunningCmds.get() > 0);
             return (
                 <SideBarItem
                     key={session.sessionId}
@@ -191,7 +191,11 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
                     endIcons={[
-                        <StatusIndicator key="statusindicator" level={sessionIndicator} />,
+                        <StatusIndicator
+                            key="statusindicator"
+                            level={sessionIndicator}
+                            runningCommands={sessionRunningCommands}
+                        />,
                         <ActionsIcon key="actions" onClick={(e) => this.openSessionSettings(e, session)} />,
                     ]}
                     onClick={() => this.handleSessionClick(session.sessionId)}
@@ -250,7 +254,41 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                     onClick={this.handleConnectionsClick}
                                 />
                             </div>
-                            <div className="separator" />
+                        </If>
+                    </div>
+                    <div className="separator" />
+                    <div className="top">
+                        <SideBarItem
+                            frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
+                            contents="History"
+                            endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
+                            onClick={this.handleHistoryClick}
+                        />
+                        {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
+                        <SideBarItem
+                            frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
+                            contents="Connections"
+                            onClick={this.handleConnectionsClick}
+                        />
+                    </div>
+                    <div className="separator" />
+                    <SideBarItem
+                        className="workspaces"
+                        frontIcon={<WorkspacesIcon className="icon" />}
+                        contents="Workspaces"
+                        endIcons={[
+                            <CenteredIcon
+                                key="add-workspace"
+                                className="add-workspace hoverEffect"
+                                onClick={this.handleNewSession}
+                            >
+                                <i className="fa-sharp fa-solid fa-plus"></i>
+                            </CenteredIcon>,
+                        ]}
+                    />
+                    <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
+                    <div className="bottom">
+                        <If condition={needsUpdate}>
                             <SideBarItem
                                 className="workspaces"
                                 frontIcon={<WorkspacesIcon className="icon" />}

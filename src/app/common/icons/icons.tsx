@@ -1,6 +1,7 @@
 import React from "react";
 import { StatusIndicatorLevel } from "../../../types/types";
 import cn from "classnames";
+import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator.svg";
 
 interface PositionalIconProps {
     children?: React.ReactNode;
@@ -45,28 +46,29 @@ export class ActionsIcon extends React.Component<ActionsIconProps> {
 interface StatusIndicatorProps {
     level: StatusIndicatorLevel;
     className?: string;
+    runningCommands?: boolean;
 }
 
 export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     render() {
-        const statusIndicatorLevel = this.props.level;
+        const { level, className, runningCommands } = this.props;
         let statusIndicator = null;
-        if (statusIndicatorLevel != StatusIndicatorLevel.None) {
-            let statusIndicatorClass = null;
-            switch (statusIndicatorLevel) {
+        if (level != StatusIndicatorLevel.None || runningCommands) {
+            let levelClass = null;
+            switch (level) {
                 case StatusIndicatorLevel.Output:
-                    statusIndicatorClass = "output";
+                    levelClass = "output";
                     break;
                 case StatusIndicatorLevel.Success:
-                    statusIndicatorClass = "success";
+                    levelClass = "success";
                     break;
                 case StatusIndicatorLevel.Error:
-                    statusIndicatorClass = "error";
+                    levelClass = "error";
                     break;
             }
             statusIndicator = (
-                <CenteredIcon className={cn(this.props.className, "status-indicator")}>
-                    <div className={cn(statusIndicatorClass, "fa-sharp", "fa-solid", "fa-circle-small")}></div>
+                <CenteredIcon className={cn(className, levelClass, "status-indicator")}>
+                    <SpinnerIndicator className={runningCommands ? "spin" : null} />
                 </CenteredIcon>
             );
         }

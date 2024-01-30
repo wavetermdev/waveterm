@@ -30,7 +30,10 @@
     line-height: inherit;
     align-items: center;
     justify-content: center;
-    & > div,i,.svg-icon,span {
+    & > div,
+    i,
+    .svg-icon,
+    span {
         width: 20px;
         display: flex;
         text-align: center;
@@ -46,13 +49,24 @@
 }
 
 .status-indicator {
-    .error {
-        color: @term-red;
+    #spinner,
+    #indicator {
+        visibility: hidden;
     }
-    .success {
-        color: @term-green;
+    .spin #spinner {
+        visibility: visible;
+        stroke: @term-white;
     }
-    .output {
-        color: @term-white;
+    &.error #indicator {
+        visibility: visible;
+        fill: @term-red;
+    }
+    &.success #indicator {
+        visibility: visible;
+        fill: @term-green;
+    }
+    &.output #indicator {
+        visibility: visible;
+        fill: @term-white;
     }
 }
