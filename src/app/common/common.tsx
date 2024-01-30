@@ -1395,11 +1395,11 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             mobx.action(() => {
                 mainSidebarModel.isDragging.set(false);
             })();
-
-            document.removeEventListener("mousemove", this.onMouseMove);
-            document.removeEventListener("mouseup", this.stopResizing);
-            document.body.style.cursor = "";
         });
+
+        document.removeEventListener("mousemove", this.onMouseMove);
+        document.removeEventListener("mouseup", this.stopResizing);
+        document.body.style.cursor = "";
     }
 
     @boundMethod

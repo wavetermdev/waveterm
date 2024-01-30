@@ -2632,6 +2632,7 @@ class MainSidebarModel {
     getWidth(): number {
         let clientData = GlobalModel.clientData.get();
         let width = clientData.clientopts.mainsidebar.width;
+        let setbycli = clientData.clientopts.mainsidebar.setbycli;
         if (this.isDragging.get()) {
             if (this.tempWidth.get() == null && width == null) {
                 return MagicLayout.MainSidebarDefaultWidth;
@@ -2641,7 +2642,23 @@ class MainSidebarModel {
             }
             return this.tempWidth.get();
         }
-        return clientData.clientopts.mainsidebar.width;
+        if (setbycli && this.getCollapsed()) {
+            mobx.action(() => {
+                this.tempWidth.set(MagicLayout.MainSidebarMinWidth);
+                this.tempCollapsed.set(true);
+            })();
+            return MagicLayout.MainSidebarMinWidth;
+        } else if (setbycli && !this.getCollapsed()) {
+            if (width == MagicLayout.MainSidebarMinWidth) {
+                width = MagicLayout.MainSidebarDefaultWidth;
+            }
+            mobx.action(() => {
+                this.tempWidth.set(width);
+                this.tempCollapsed.set(false);
+            })();
+            return width;
+        }
+        return width;
     }
 
     getCollapsed(): boolean {
@@ -2656,7 +2673,7 @@ class MainSidebarModel {
             }
             return this.tempCollapsed.get();
         }
-        return clientData.clientopts.mainsidebar.collapsed;
+        return collapsed;
     }
 }
 
