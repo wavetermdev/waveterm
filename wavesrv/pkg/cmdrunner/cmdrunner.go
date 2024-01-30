@@ -1139,19 +1139,19 @@ func writeCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime time.Tim
 	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 }
 
-func checkForWriteReady(ctx context.Context, iter *packet.RpcResponseIter) error {
+func checkForWriteReady(ctx context.Context, iter *packet.RpcResponseIter) (string, error) {
 	readyIf, err := iter.Next(ctx)
 	if err != nil {
-		return fmt.Errorf("error getting write ready response: %v\r\n", err)
+		return "", fmt.Errorf("error getting write ready response: %v\r\n", err)
 	}
 	readyPk, ok := readyIf.(*packet.WriteFileReadyPacketType)
 	if !ok {
-		return fmt.Errorf("bad write ready packet received %v", readyIf)
+		return "", fmt.Errorf("bad write ready packet received %v", readyIf)
 	}
 	if readyPk.Error != "" {
-		return fmt.Errorf("ready error: %v", readyPk.Error)
+		return "", fmt.Errorf("ready error: %v", readyPk.Error)
 	}
-	return nil
+	return readyPk.RespId, nil
 }
 
 func checkForWriteFinished(ctx context.Context, iter *packet.RpcResponseIter) error {
@@ -1188,7 +1188,7 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_ms
 		return
 	}
 	defer iter.Close()
-	err = checkForWriteReady(ctx, iter)
+	_, err = checkForWriteReady(ctx, iter)
 	if err != nil {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos)
 		return
@@ -1284,7 +1284,7 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		return
 	}
 	defer destWriteIter.Close()
-	err = checkForWriteReady(ctx, destWriteIter)
+	writeRespId, err := checkForWriteReady(ctx, destWriteIter)
 	if err != nil {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos)
 		return
@@ -1311,8 +1311,20 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 			writeErrorToPty(cmd, fmt.Sprintf("in read-file, data packet error: %s", dataPk.Error), outputPos)
 			return
 		}
-		dataPk.RespId = writePk.ReqId
-		destMsh.SendFileData(dataPk)
+		writeDataPk := packet.MakeFileDataPacket(writeRespId)
+		writeDataPk.Eof = dataPk.Eof
+		writeDataPk.Error = dataPk.Error
+		writeDataPk.Type = dataPk.Type
+		writeDataPk.Data = make([]byte, len(dataPk.Data))
+		copy(writeDataPk.Data, dataPk.Data)
+		if !bytes.Equal(writeDataPk.Data, dataPk.Data) {
+			writeStringToPty(ctx, cmd, "Error: bytes are not equal: [Read Data]:%s \r\n\r\n [Write Data]: %s\r\n\r\n", &outputPos)
+		}
+		err = destMsh.SendFileData(writeDataPk)
+		if err != nil {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error sending file to dest: %v", err), &outputPos)
+			return
+		}
 		bytesWritten += int64(len(dataPk.Data))
 		fileTransferPercentage = float64(bytesWritten) / float64(fileSizeBytes)
 
@@ -1320,7 +1332,13 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 			writeStringToPty(ctx, cmd, "-", &outputPos)
 			lastFileTransferPercentage = fileTransferPercentage
 		}
+
+		if writeDataPk.Eof {
+			writeStringToPty(ctx, cmd, "got eof", &outputPos)
+			break
+		}
 	}
+	writeStringToPty(ctx, cmd, "looking for write finished\r\n", &outputPos)
 	err = checkForWriteFinished(ctx, destWriteIter)
 	if err != nil {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Write finished packet error %v", err), &outputPos)
