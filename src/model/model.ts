@@ -4101,12 +4101,12 @@ class Model {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
         if ("screenstatusindicators" in update) {
-            for (let indicator of update.screenstatusindicators) {
+            for (const indicator of update.screenstatusindicators) {
                 this.getScreenById_single(indicator.screenid)?.setStatusIndicator(indicator.status);
             }
         }
         if ("screennumrunningcommands" in update) {
-            for (let snc of update.screennumrunningcommands) {
+            for (const snc of update.screennumrunningcommands) {
                 this.getScreenById_single(snc.screenid)?.setNumRunningCmds(snc.num);
             }
         }
