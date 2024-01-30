@@ -32,7 +32,11 @@ export class FrontIcon extends React.Component<PositionalIconProps> {
 export class CenteredIcon extends React.Component<PositionalIconProps> {
     render() {
         return (
-            <div className={cn("centered-icon", "positional-icon", this.props.className)} onClick={this.props.onClick}>
+            <div
+                ref={this.props.divRef}
+                className={cn("centered-icon", "positional-icon", this.props.className)}
+                onClick={this.props.onClick}
+            >
                 <div className="positional-icon-inner">{this.props.children}</div>
             </div>
         );
