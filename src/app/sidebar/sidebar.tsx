@@ -254,53 +254,19 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                     onClick={this.handleConnectionsClick}
                                 />
                             </div>
-                        </If>
-                    </div>
-                    <div className="separator" />
-                    <div className="top">
-                        <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
-                            contents="History"
-                            endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
-                            onClick={this.handleHistoryClick}
-                        />
-                        {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
-                        <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
-                            contents="Connections"
-                            onClick={this.handleConnectionsClick}
-                        />
-                    </div>
-                    <div className="separator" />
-                    <SideBarItem
-                        className="workspaces"
-                        frontIcon={<WorkspacesIcon className="icon" />}
-                        contents="Workspaces"
-                        endIcons={[
-                            <CenteredIcon
-                                key="add-workspace"
-                                className="add-workspace hoverEffect"
-                                onClick={this.handleNewSession}
-                            >
-                                <i className="fa-sharp fa-solid fa-plus"></i>
-                            </CenteredIcon>,
-                        ]}
-                    />
-                    <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
-                    <div className="bottom">
-                        <If condition={needsUpdate}>
+                            <div className="separator" />
                             <SideBarItem
                                 className="workspaces"
                                 frontIcon={<WorkspacesIcon className="icon" />}
                                 contents="Workspaces"
                                 endIcons={[
-                                    <div
-                                        key="add_workspace"
-                                        className="add_workspace hoverEffect"
+                                    <CenteredIcon
+                                        key="add-workspace"
+                                        className="add-workspace hoverEffect"
                                         onClick={this.handleNewSession}
                                     >
-                                        <AddIcon />
-                                    </div>,
+                                        <i className="fa-sharp fa-solid fa-plus"></i>
+                                    </CenteredIcon>,
                                 ]}
                             />
                             <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
