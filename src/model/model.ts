@@ -4100,15 +4100,15 @@ class Model {
         if ("openaicmdinfochat" in update) {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
-        if ("screenstatusindicator" in update) {
-            this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(
-                update.screenstatusindicator.status
-            );
+        if ("screenstatusindicators" in update) {
+            for (const indicator of update.screenstatusindicators) {
+                this.getScreenById_single(indicator.screenid)?.setStatusIndicator(indicator.status);
+            }
         }
         if ("screennumrunningcommands" in update) {
-            this.getScreenById_single(update.screennumrunningcommands.screenid)?.setNumRunningCmds(
-                update.screennumrunningcommands.num
-            );
+            for (const snc of update.screennumrunningcommands) {
+                this.getScreenById_single(snc.screenid)?.setNumRunningCmds(snc.num);
+            }
         }
     }
 

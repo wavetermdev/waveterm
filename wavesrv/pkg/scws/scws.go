@@ -158,6 +158,7 @@ func (ws *WSState) ReplaceShell(shell *wsshell.WSShell) {
 	return
 }
 
+// returns all state required to display current UI
 func (ws *WSState) handleConnection() error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
@@ -167,6 +168,8 @@ func (ws *WSState) handleConnection() error {
 	}
 	remotes := remote.GetAllRemoteRuntimeState()
 	update.Remotes = remotes
+	// restore status indicators
+	update.ScreenStatusIndicators, update.ScreenNumRunningCommands = sstore.GetCurrentIndicatorState()
 	update.Connect = true
 	err = ws.Shell.WriteJson(update)
 	if err != nil {
