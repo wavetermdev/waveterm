@@ -3,6 +3,8 @@ import { StatusIndicatorLevel } from "../../../types/types";
 import cn from "classnames";
 import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator.svg";
 import { boundMethod } from "autobind-decorator";
+import * as mobx from "mobx";
+import * as mobxReact from "mobx-react";
 
 import { ReactComponent as RotateIconSvg } from "../../assets/icons/line/rotate.svg";
 
@@ -139,8 +141,11 @@ interface StatusIndicatorProps {
     runningCommands?: boolean;
 }
 
+@mobxReact.observer
 export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     iconRef: React.RefObject<HTMLDivElement> = React.createRef();
+    visible: mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    timeout: number = 0;
 
     render() {
         const { level, className, runningCommands } = this.props;
