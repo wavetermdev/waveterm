@@ -58,7 +58,7 @@ export class ActionsIcon extends React.Component<ActionsIconProps> {
 class SyncSpin extends React.Component<{
     classRef?: React.RefObject<HTMLDivElement>;
     children?: React.ReactNode;
-    shouldSync?: () => boolean;
+    shouldSync?: boolean;
 }> {
     listenerAdded: boolean = false;
 
@@ -100,7 +100,7 @@ class SyncSpin extends React.Component<{
 
     syncSpinner() {
         const { classRef, shouldSync } = this.props;
-        const shouldSyncVal = shouldSync ? shouldSync() : true;
+        const shouldSyncVal = shouldSync ?? true;
         if (!shouldSyncVal || classRef.current == null) {
             return;
         }
@@ -157,7 +157,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
             );
         }
         return (
-            <SyncSpin classRef={this.iconRef} shouldSync={() => runningCommands}>
+            <SyncSpin classRef={this.iconRef} shouldSync={runningCommands}>
                 {statusIndicator}
             </SyncSpin>
         );
