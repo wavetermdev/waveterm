@@ -158,11 +158,16 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
                 mobx.action(() => {
                     this.spinnerVisible.set(true);
                 }),
-                1000
+                100
             );
-        } else if (!runningCommands && this.timeout) {
-            clearTimeout(this.timeout);
-            this.timeout = null;
+        } else if (!runningCommands) {
+            if (this.timeout) {
+                clearTimeout(this.timeout);
+                this.timeout = null;
+            }
+            mobx.action(() => {
+                this.spinnerVisible.set(false);
+            })();
         }
     }
 
@@ -187,7 +192,6 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     render() {
         const { level, className, runningCommands } = this.props;
         let statusIndicator = null;
-        const spinnerVisibleClass = this.spinnerVisible.get() ? "spinner-visible" : null;
         if (level != StatusIndicatorLevel.None || runningCommands) {
             let levelClass = null;
             switch (level) {
@@ -202,6 +206,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
                     break;
             }
 
+            const spinnerVisibleClass = this.spinnerVisible.get() ? "spinner-visible" : null;
             statusIndicator = (
                 <CenteredIcon
                     divRef={this.iconRef}
