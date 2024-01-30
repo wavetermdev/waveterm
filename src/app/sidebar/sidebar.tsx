@@ -175,7 +175,7 @@ class MainSideBar extends React.Component<{}, {}> {
 
     getSessions() {
         if (!GlobalModel.sessionListLoaded.get()) return <div className="item">loading ...</div>;
-        let sessionList = [];
+        let sessionList: Session[] = [];
         let activeSessionId = GlobalModel.activeSessionId.get();
         for (let session of GlobalModel.sessionList) {
             if (!session.archived.get() || session.sessionId == activeSessionId) {
@@ -189,6 +189,7 @@ class MainSideBar extends React.Component<{}, {}> {
             const sessionRunningCommands = sessionScreens.some((screen) => screen.numRunningCmds.get() > 0);
             return (
                 <SideBarItem
+                    key={session.sessionId}
                     className={`${isActive ? "active" : ""}`}
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
