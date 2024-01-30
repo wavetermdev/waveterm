@@ -175,9 +175,9 @@ class MainSideBar extends React.Component<{}, {}> {
 
     getSessions() {
         if (!GlobalModel.sessionListLoaded.get()) return <div className="item">loading ...</div>;
-        let sessionList = [];
-        let activeSessionId = GlobalModel.activeSessionId.get();
-        for (let session of GlobalModel.sessionList) {
+        const sessionList: Session[] = [];
+        const activeSessionId = GlobalModel.activeSessionId.get();
+        for (const session of GlobalModel.sessionList) {
             if (!session.archived.get() || session.sessionId == activeSessionId) {
                 sessionList.push(session);
             }
@@ -189,6 +189,7 @@ class MainSideBar extends React.Component<{}, {}> {
             const sessionRunningCommands = sessionScreens.some((screen) => screen.numRunningCmds.get() > 0);
             return (
                 <SideBarItem
+                    key={session.sessionId}
                     className={`${isActive ? "active" : ""}`}
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
@@ -207,8 +208,8 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     render() {
-        let isCollapsed = this.collapsed.get();
-        let clientData = GlobalModel.clientData.get();
+        const isCollapsed = this.collapsed.get();
+        const clientData = GlobalModel.clientData.get();
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
@@ -236,6 +237,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     <div className="separator" />
                     <div className="top">
                         <SideBarItem
+                            key="history"
                             frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
                             contents="History"
                             endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
@@ -243,6 +245,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         />
                         {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
                         <SideBarItem
+                            key="connections"
                             frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
                             contents="Connections"
                             onClick={this.handleConnectionsClick}
@@ -250,6 +253,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     </div>
                     <div className="separator" />
                     <SideBarItem
+                        key="workspaces"
                         className="workspaces"
                         frontIcon={<WorkspacesIcon className="icon" />}
                         contents="Workspaces"
@@ -267,6 +271,7 @@ class MainSideBar extends React.Component<{}, {}> {
                     <div className="bottom">
                         <If condition={needsUpdate}>
                             <SideBarItem
+                                key="update-available"
                                 className="updateBanner"
                                 frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
                                 contents="Update Available"
@@ -275,6 +280,7 @@ class MainSideBar extends React.Component<{}, {}> {
                         </If>
                         <If condition={GlobalModel.isDev}>
                             <SideBarItem
+                                key="apps"
                                 frontIcon={<AppsIcon className="icon" />}
                                 contents="Apps"
                                 onClick={this.handlePluginsClick}
@@ -282,16 +288,19 @@ class MainSideBar extends React.Component<{}, {}> {
                             />
                         </If>
                         <SideBarItem
+                            key="settings"
                             frontIcon={<SettingsIcon className="icon" />}
                             contents="Settings"
                             onClick={this.handleSettingsClick}
                         />
                         <SideBarItem
+                            key="documentation"
                             frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
                             contents="Documentation"
                             onClick={() => openLink("https://docs.waveterm.dev")}
                         />
                         <SideBarItem
+                            key="discord"
                             frontIcon={<i className="fa-brands fa-discord icon" />}
                             contents="Discord"
                             onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
