@@ -1114,6 +1114,10 @@ func (msh *MShellProc) ReInit(ctx context.Context) (*packet.InitPacketType, erro
 	return initPk, nil
 }
 
+func (msh *MShellProc) WriteFile(ctx context.Context, writePk *packet.WriteFilePacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, writePk)
+}
+
 func (msh *MShellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFilePacketType) (*packet.RpcResponseIter, error) {
 	return msh.PacketRpcIter(ctx, streamPk)
 }
