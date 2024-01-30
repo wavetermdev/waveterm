@@ -2648,7 +2648,8 @@ class MainSidebarModel {
                 this.tempCollapsed.set(true);
             })();
             return MagicLayout.MainSidebarMinWidth;
-        } else if (setbycli && !this.getCollapsed()) {
+        }
+        if (setbycli && !this.getCollapsed()) {
             if (width == MagicLayout.MainSidebarMinWidth) {
                 width = MagicLayout.MainSidebarDefaultWidth;
             }
