@@ -4,6 +4,8 @@ import cn from "classnames";
 import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator.svg";
 import { boundMethod } from "autobind-decorator";
 
+import { ReactComponent as RotateIconSvg } from "../../assets/icons/line/rotate.svg";
+
 interface PositionalIconProps {
     children?: React.ReactNode;
     className?: string;
@@ -14,7 +16,11 @@ interface PositionalIconProps {
 export class FrontIcon extends React.Component<PositionalIconProps> {
     render() {
         return (
-            <div ref={this.props.divRef} className={cn("front-icon", "positional-icon", this.props.className)}>
+            <div
+                ref={this.props.divRef}
+                className={cn("front-icon", "positional-icon", this.props.className)}
+                onClick={this.props.onClick}
+            >
                 <div className="positional-icon-inner">{this.props.children}</div>
             </div>
         );
@@ -49,14 +55,11 @@ export class ActionsIcon extends React.Component<ActionsIconProps> {
     }
 }
 
-interface StatusIndicatorProps {
-    level: StatusIndicatorLevel;
-    className?: string;
-    runningCommands?: boolean;
-}
-
-export class StatusIndicator extends React.Component<StatusIndicatorProps> {
-    iconRef: React.RefObject<HTMLDivElement> = React.createRef();
+class SyncSpin extends React.Component<{
+    classRef?: React.RefObject<HTMLDivElement>;
+    children?: React.ReactNode;
+    shouldSync?: () => boolean;
+}> {
     listenerAdded: boolean = false;
 
     componentDidMount() {
@@ -68,8 +71,9 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     }
 
     componentWillUnmount(): void {
-        if (this.iconRef.current != null && this.listenerAdded) {
-            const elem = this.iconRef.current;
+        const classRef = this.props.classRef;
+        if (classRef.current != null && this.listenerAdded) {
+            const elem = classRef.current;
             const svgElem = elem.querySelector("svg");
             if (svgElem != null) {
                 svgElem.removeEventListener("animationstart", this.handleAnimationStart);
@@ -79,10 +83,11 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
 
     @boundMethod
     handleAnimationStart(e: AnimationEvent) {
-        if (this.iconRef.current == null) {
+        const classRef = this.props.classRef;
+        if (classRef.current == null) {
             return;
         }
-        const svgElem = this.iconRef.current.querySelector("svg");
+        const svgElem = classRef.current.querySelector("svg");
         if (svgElem == null) {
             return;
         }
@@ -94,13 +99,12 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     }
 
     syncSpinner() {
-        if (!this.props.runningCommands) {
+        const { classRef, shouldSync } = this.props;
+        const shouldSyncVal = shouldSync ? shouldSync() : true;
+        if (!shouldSyncVal || classRef.current == null) {
             return;
         }
-        if (this.iconRef.current == null) {
-            return;
-        }
-        const elem = this.iconRef.current;
+        const elem = classRef.current;
         const svgElem = elem.querySelector("svg");
         if (svgElem == null) {
             return;
@@ -115,6 +119,20 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
         }
         animArr[0].startTime = 0;
     }
+
+    render() {
+        return this.props.children;
+    }
+}
+
+interface StatusIndicatorProps {
+    level: StatusIndicatorLevel;
+    className?: string;
+    runningCommands?: boolean;
+}
+
+export class StatusIndicator extends React.Component<StatusIndicatorProps> {
+    iconRef: React.RefObject<HTMLDivElement> = React.createRef();
 
     render() {
         const { level, className, runningCommands } = this.props;
@@ -138,6 +156,24 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
                 </CenteredIcon>
             );
         }
-        return statusIndicator;
+        return (
+            <SyncSpin classRef={this.iconRef} shouldSync={() => runningCommands}>
+                {statusIndicator}
+            </SyncSpin>
+        );
+    }
+}
+
+export class RotateIcon extends React.Component<{
+    className?: string;
+    onClick?: React.MouseEventHandler<HTMLDivElement>;
+}> {
+    iconRef: React.RefObject<HTMLDivElement> = React.createRef();
+    render() {
+        return (
+            <SyncSpin classRef={this.iconRef}>
+                <RotateIconSvg className={this.props.className ?? ""} />
+            </SyncSpin>
+        );
     }
 }
