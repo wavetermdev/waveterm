@@ -3307,14 +3307,14 @@ class RemotesModel {
 }
 
 class ModalsModel {
-    store: OArr<T.ModalStoreEntry> = mobx.observable.array([], { name: "ModalsModel-store" });
+    store: OArr<T.ModalStoreEntry> = mobx.observable.array([], { name: "ModalsModel-store", deep: false });
 
-    pushModal(modalId: string) {
+    pushModal(modalId: string, props?: any) {
         const modalFactory = modalsRegistry[modalId];
 
         if (modalFactory && !this.store.some((modal) => modal.id === modalId)) {
             mobx.action(() => {
-                this.store.push({ id: modalId, component: modalFactory, uniqueKey: uuidv4() });
+                this.store.push({ id: modalId, component: modalFactory, uniqueKey: uuidv4(), props: props });
             })();
         }
     }
@@ -4124,7 +4124,8 @@ class Model {
                 requestid: userInputRequest.requestid,
                 response: userInputResponse,
             };
-            this.ws.pushMessage(userInputResponsePacket);
+            this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+            //this.ws.pushMessage(userInputResponsePacket);
         }
     }
 
@@ -5047,6 +5048,10 @@ class CommandRunner {
             kwargs.width = width;
         }
         GlobalModel.submitCommand("sidebar", "open", null, kwargs, false);
+    }
+
+    sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
+        GlobalModel.sendInputPacket(userInputResponsePacket);
     }
 }
 

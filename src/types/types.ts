@@ -740,6 +740,7 @@ type ModalStoreEntry = {
     id: string;
     component: React.ComponentType;
     uniqueKey: string;
+    props?: any;
 };
 
 type StrWithPos = {

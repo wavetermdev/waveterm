@@ -64,7 +64,7 @@ class ModalsProvider extends React.Component {
         for (let i = 0; i < store.length; i++) {
             let entry = store[i];
             let Comp = entry.component;
-            rtn.push(<Comp key={entry.uniqueKey} />);
+            rtn.push(<Comp key={entry.uniqueKey} {...entry.props} />);
         }
         return <>{rtn}</>;
     }
