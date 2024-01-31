@@ -58,6 +58,10 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
         return this.selectedRemote?.local;
     }
 
+    isImportedRemote(): boolean {
+        return this.selectedRemote?.sshconfigsrc == "sshconfig-import";
+    }
+
     componentDidMount(): void {
         mobx.action(() => {
             this.tempAlias.set(this.selectedRemote?.remotealias);
@@ -259,6 +263,27 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
         );
     }
 
+    renderImportedRemoteEditWarning() {
+        return (
+            <div className="import-edit-warning">
+                <Tooltip
+                    message={
+                        <span>
+                            Most options for connections imported from an ssh config file cannot be edited. For these
+                            changes, you must edit the config file and import it again. The shell preference can be
+                            edited, but will return to the default if you import again. It will stay changed if you
+                            follow <a href="https://docs.waveterm.dev/features/sshconfig-imports">this procedure</a>.
+                        </span>
+                    }
+                    icon={<i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />}
+                >
+                    <i className="fa-sharp fa-regular fa-fw fa-triangle-exclamation" />
+                </Tooltip>
+                &nbsp;SSH Config Import Behavior
+            </div>
+        );
+    }
+
     renderAuthMode() {
         let authMode = this.tempAuthMode.get();
         return (
@@ -344,6 +369,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
             return null;
         }
         let isLocal = this.isLocalRemote();
+        let isImported = this.isImportedRemote();
         return (
             <Modal className="erconn-modal">
                 <Modal.Header title="Edit Connection" onClose={this.model.closeModal} />
@@ -351,9 +377,10 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                     <div className="name-actions-section">
                         <div className="name text-primary">{util.getRemoteName(this.selectedRemote)}</div>
                     </div>
-                    <If condition={!isLocal}>{this.renderAlias()}</If>
-                    <If condition={!isLocal}>{this.renderAuthMode()}</If>
-                    <If condition={!isLocal}>{this.renderConnectMode()}</If>
+                    <If condition={!isLocal && !isImported}>{this.renderAlias()}</If>
+                    <If condition={!isLocal && !isImported}>{this.renderAuthMode()}</If>
+                    <If condition={!isLocal && !isImported}>{this.renderConnectMode()}</If>
+                    <If condition={isImported}>{this.renderImportedRemoteEditWarning()}</If>
                     {this.renderShellPref()}
                     <If condition={!util.isBlank(this.remoteEdit?.errorstr)}>
                         <div className="settings-field settings-error">Error: {this.remoteEdit?.errorstr}</div>
