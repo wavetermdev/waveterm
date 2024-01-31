@@ -4480,16 +4480,13 @@ func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 
 	// Handle width
 	var width int
-	var setbycli bool
 	if w, exists := pk.Kwargs["width"]; exists {
 		width, err = resolveNonNegInt(w, 0)
 		if err != nil {
 			return nil, fmt.Errorf("error resolving width: %v", err)
 		}
-		setbycli = false
 	} else if clientData.ClientOpts.MainSidebar != nil {
 		width = clientData.ClientOpts.MainSidebar.Width
-		setbycli = true
 	}
 
 	// Initialize SidebarCollapsed if it's nil
@@ -4500,7 +4497,6 @@ func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	// Set the sidebar values
 	var sv sstore.SidebarValueType
 	sv.Collapsed = collapsedValue
-	sv.SetByCLI = setbycli
 	if width != 0 {
 		sv.Width = width
 	}

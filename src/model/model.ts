@@ -2651,31 +2651,22 @@ class MainSidebarModel {
             }
             return this.tempWidth.get();
         }
-        // Set by CLI but no provided width and collapsed
-        if (setbycli && this.getCollapsed()) {
-            this.setTempWidthAndTempCollapsed(MagicLayout.MainSidebarMinWidth, true);
-            return MagicLayout.MainSidebarMinWidth;
-        }
-        // Set by CLI but no provided width and not collapsed
-        if (setbycli && !this.getCollapsed()) {
-            if (width == MagicLayout.MainSidebarMinWidth) {
-                width = MagicLayout.MainSidebarDefaultWidth;
-            }
-            this.setTempWidthAndTempCollapsed(width, false);
-            return width;
-        }
-        // Handle invalid width set via CLI when collapsed
+        // Set by CLI and collapsed
         if (this.getCollapsed() && width != MagicLayout.MainSidebarMinWidth) {
             this.setTempWidthAndTempCollapsed(MagicLayout.MainSidebarMinWidth, true);
             return MagicLayout.MainSidebarMinWidth;
         }
-        // Handle invalid width set via CLI when not collapsed
-        let snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
+        // Set by CLI and not collapsed
         if (!this.getCollapsed()) {
-            if (width < snapPoint || width > MagicLayout.MainSidebarMaxWidth) {
-                this.setTempWidthAndTempCollapsed(MagicLayout.MainSidebarDefaultWidth, false);
-                return MagicLayout.MainSidebarDefaultWidth;
+            if (width <= MagicLayout.MainSidebarMinWidth) {
+                width = MagicLayout.MainSidebarDefaultWidth;
             }
+            let snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
+            if (width < snapPoint || width > MagicLayout.MainSidebarMaxWidth) {
+                width = MagicLayout.MainSidebarDefaultWidth;
+            }
+            this.setTempWidthAndTempCollapsed(width, false);
+            return width;
         }
         this.setTempWidthAndTempCollapsed(width, this.getCollapsed());
         return width;

@@ -278,7 +278,6 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 type SidebarValueType struct {
 	Collapsed bool `json:"collapsed"`
 	Width     int  `json:"width"`
-	SetByCLI  bool `json:"setbycli"`
 }
 
 type ClientOptsType struct {

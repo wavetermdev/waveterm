@@ -527,7 +527,6 @@ type ClientOptsType = {
     mainsidebar: {
         collapsed: boolean;
         width: number;
-        setbycli: boolean;
     };
 };
 
