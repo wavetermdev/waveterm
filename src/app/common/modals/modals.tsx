@@ -1026,17 +1026,6 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             cancelInstallButton = <></>;
         }
         if (remote.sshconfigsrc == "sshconfig-import") {
-            updateAuthButton = (
-                <Button theme="secondary" disabled={true}>
-                    Edit
-                    <Tooltip
-                        message={`Connections imported from an ssh config file cannot be edited inside waveterm. To edit these, you must edit the config file and import it again.`}
-                        icon={<i className="fa-sharp fa-regular fa-fw fa-ban" />}
-                    >
-                        <i className="fa-sharp fa-regular fa-fw fa-ban" />
-                    </Tooltip>
-                </Button>
-            );
             archiveButton = (
                 <Button theme="secondary" onClick={() => this.clickArchive()}>
                     Delete

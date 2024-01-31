@@ -277,11 +277,17 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 	return quickScanJson(tdata, val)
 }
 
+type SidebarValueType struct {
+	Collapsed bool `json:"collapsed"`
+	Width     int  `json:"width"`
+}
+
 type ClientOptsType struct {
-	NoTelemetry    bool            `json:"notelemetry,omitempty"`
-	NoReleaseCheck bool            `json:"noreleasecheck,omitempty"`
-	AcceptedTos    int64           `json:"acceptedtos,omitempty"`
-	ConfirmFlags   map[string]bool `json:"confirmflags,omitempty"`
+	NoTelemetry    bool              `json:"notelemetry,omitempty"`
+	NoReleaseCheck bool              `json:"noreleasecheck,omitempty"`
+	AcceptedTos    int64             `json:"acceptedtos,omitempty"`
+	ConfirmFlags   map[string]bool   `json:"confirmflags,omitempty"`
+	MainSidebar    *SidebarValueType `json:"mainsidebar,omitempty"`
 }
 
 type FeOptsType struct {
@@ -1446,10 +1452,10 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 	}
 
-	update.ScreenStatusIndicator = &ScreenStatusIndicatorType{
+	update.ScreenStatusIndicators = []*ScreenStatusIndicatorType{{
 		ScreenId: screenId,
 		Status:   newStatus,
-	}
+	}}
 	return nil
 }
 
@@ -1479,10 +1485,10 @@ func ResetStatusIndicator(screenId string) error {
 func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
 	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
-	update.ScreenNumRunningCommands = &ScreenNumRunningCommandsType{
+	update.ScreenNumRunningCommands = []*ScreenNumRunningCommandsType{{
 		ScreenId: screenId,
 		Num:      newNum,
-	}
+	}}
 }
 
 func IncrementNumRunningCmds(screenId string, delta int) {

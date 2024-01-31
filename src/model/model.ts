@@ -7,6 +7,7 @@ import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
 import { boundMethod } from "autobind-decorator";
 import { debounce } from "throttle-debounce";
+import * as mobxReact from "mobx-react";
 import {
     handleJsonFetchResponse,
     base64ToString,
@@ -2619,6 +2620,77 @@ class ClientSettingsViewModel {
         })();
     }
 }
+class MainSidebarModel {
+    tempWidth: OV<number> = mobx.observable.box(null, {
+        name: "MainSidebarModel-tempWidth",
+    });
+    tempCollapsed: OV<boolean> = mobx.observable.box(null, {
+        name: "MainSidebarModel-tempCollapsed",
+    });
+    isDragging: OV<boolean> = mobx.observable.box(false, {
+        name: "MainSidebarModel-isDragging",
+    });
+
+    setTempWidthAndTempCollapsed(newWidth: number, newCollapsed: boolean): void {
+        const width = Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
+
+        mobx.action(() => {
+            this.tempWidth.set(width);
+            this.tempCollapsed.set(newCollapsed);
+        })();
+    }
+
+    /**
+     * Gets the intended width for the sidebar. If the sidebar is being dragged, returns the tempWidth. If the sidebar is collapsed, returns the default width.
+     * @param ignoreCollapse If true, returns the persisted width even if the sidebar is collapsed.
+     * @returns The intended width for the sidebar or the default width if the sidebar is collapsed. Can be overridden using ignoreCollapse.
+     */
+    getWidth(ignoreCollapse: boolean = false): number {
+        const clientData = GlobalModel.clientData.get();
+        let width = clientData?.clientopts?.mainsidebar?.width ?? MagicLayout.MainSidebarDefaultWidth;
+        if (this.isDragging.get()) {
+            if (this.tempWidth.get() == null && width == null) {
+                return MagicLayout.MainSidebarDefaultWidth;
+            }
+            if (this.tempWidth.get() == null) {
+                return width;
+            }
+            return this.tempWidth.get();
+        }
+        // Set by CLI and collapsed
+        if (this.getCollapsed()) {
+            if (ignoreCollapse) {
+                return width;
+            } else {
+                return MagicLayout.MainSidebarMinWidth;
+            }
+        } else {
+            if (width <= MagicLayout.MainSidebarMinWidth) {
+                width = MagicLayout.MainSidebarDefaultWidth;
+            }
+            const snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
+            if (width < snapPoint || width > MagicLayout.MainSidebarMaxWidth) {
+                width = MagicLayout.MainSidebarDefaultWidth;
+            }
+        }
+        return width;
+    }
+
+    getCollapsed(): boolean {
+        const clientData = GlobalModel.clientData.get();
+        const collapsed = clientData?.clientopts?.mainsidebar?.collapsed;
+        if (this.isDragging.get()) {
+            if (this.tempCollapsed.get() == null && collapsed == null) {
+                return false;
+            }
+            if (this.tempCollapsed.get() == null) {
+                return collapsed;
+            }
+            return this.tempCollapsed.get();
+        }
+        return collapsed;
+    }
+}
 
 class BookmarksModel {
     bookmarks: OArr<BookmarkType> = mobx.observable.array([], {
@@ -3389,6 +3461,7 @@ class Model {
     connectionViewModel: ConnectionsViewModel;
     clientSettingsViewModel: ClientSettingsViewModel;
     modalsModel: ModalsModel;
+    mainSidebarModel: MainSidebarModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -3415,6 +3488,7 @@ class Model {
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
         this.modalsModel = new ModalsModel();
+        this.mainSidebarModel = new MainSidebarModel();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -4102,15 +4176,15 @@ class Model {
         if ("openaicmdinfochat" in update) {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
-        if ("screenstatusindicator" in update) {
-            this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(
-                update.screenstatusindicator.status
-            );
+        if ("screenstatusindicators" in update) {
+            for (const indicator of update.screenstatusindicators) {
+                this.getScreenById_single(indicator.screenid)?.setStatusIndicator(indicator.status);
+            }
         }
         if ("screennumrunningcommands" in update) {
-            this.getScreenById_single(update.screennumrunningcommands.screenid)?.setNumRunningCmds(
-                update.screennumrunningcommands.num
-            );
+            for (const snc of update.screennumrunningcommands) {
+                this.getScreenById_single(snc.screenid)?.setNumRunningCmds(snc.num);
+            }
         }
         if ("userinputrequest" in update) {
             let userInputRequest: UserInputRequest = update.userinputrequest;
@@ -4988,6 +5062,11 @@ class CommandRunner {
         let kwargs = { nohist: "1" };
         let valueStr = value ? "1" : "0";
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
+    }
+
+    clientSetSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
+        return GlobalModel.submitCommand("client", "setsidebar", null, kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

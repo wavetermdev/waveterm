@@ -326,8 +326,8 @@ type ModelUpdateType = {
     remoteview?: RemoteViewType;
     openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
     alertmessage?: AlertMessageType;
-    screenstatusindicator?: ScreenStatusIndicatorUpdateType;
-    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType;
+    screenstatusindicators?: ScreenStatusIndicatorUpdateType[];
+    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType[];
     userinputrequest?: UserInputRequest;
 };
 
@@ -525,6 +525,10 @@ type ClientOptsType = {
     noreleasecheck: boolean;
     acceptedtos: number;
     confirmflags: ConfirmFlagsType;
+    mainsidebar: {
+        collapsed: boolean;
+        width: number;
+    };
 };
 
 type ReleaseInfoType = {

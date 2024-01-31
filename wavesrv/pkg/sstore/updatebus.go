@@ -66,8 +66,8 @@ type ModelUpdate struct {
 	SessionTombstones        []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
 	OpenAICmdInfoChat        []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
 	AlertMessage             *AlertMessageType                  `json:"alertmessage,omitempty"`
-	ScreenStatusIndicator    *ScreenStatusIndicatorType         `json:"screenstatusindicator,omitempty"`
-	ScreenNumRunningCommands *ScreenNumRunningCommandsType      `json:"screennumrunningcommands,omitempty"`
+	ScreenStatusIndicators   []*ScreenStatusIndicatorType       `json:"screenstatusindicators,omitempty"`
+	ScreenNumRunningCommands []*ScreenNumRunningCommandsType    `json:"screennumrunningcommands,omitempty"`
 	UserInputRequest         *UserInputRequestType              `json:"userinputrequest,omitempty"`
 }
 

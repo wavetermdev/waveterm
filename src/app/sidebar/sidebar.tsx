@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { RemoteType } from "../../types/types";
+import type { ClientDataType, RemoteType } from "../../types/types";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
 
@@ -19,14 +19,13 @@ import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, VERSION } from "../../model/model";
 import { isBlank, openLink } from "../../util/util";
+import { ResizableSidebar } from "../common/common";
 import * as constants from "../appconst";
 
 import "./sidebar.less";
 import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "../common/icons/icons";
 
 dayjs.extend(localizedFormat);
-
-type OV<V> = mobx.IObservableValue<V>;
 
 class SideBarItem extends React.Component<{
     frontIcon: React.ReactNode;
@@ -59,16 +58,14 @@ class HotKeyIcon extends React.Component<{ hotkey: string }> {
     }
 }
 
-@mobxReact.observer
-class MainSideBar extends React.Component<{}, {}> {
-    collapsed: mobx.IObservableValue<boolean> = mobx.observable.box(false);
+interface MainSideBarProps {
+    parentRef: React.RefObject<HTMLElement>;
+    clientData: ClientDataType;
+}
 
-    @boundMethod
-    toggleCollapsed() {
-        mobx.action(() => {
-            this.collapsed.set(!this.collapsed.get());
-        })();
-    }
+@mobxReact.observer
+class MainSideBar extends React.Component<MainSideBarProps, {}> {
+    sidebarRef = React.createRef<HTMLDivElement>();
 
     handleSessionClick(sessionId: string) {
         GlobalCommandRunner.switchSession(sessionId);
@@ -175,9 +172,9 @@ class MainSideBar extends React.Component<{}, {}> {
 
     getSessions() {
         if (!GlobalModel.sessionListLoaded.get()) return <div className="item">loading ...</div>;
-        let sessionList = [];
-        let activeSessionId = GlobalModel.activeSessionId.get();
-        for (let session of GlobalModel.sessionList) {
+        const sessionList: Session[] = [];
+        const activeSessionId = GlobalModel.activeSessionId.get();
+        for (const session of GlobalModel.sessionList) {
             if (!session.archived.get() || session.sessionId == activeSessionId) {
                 sessionList.push(session);
             }
@@ -189,6 +186,7 @@ class MainSideBar extends React.Component<{}, {}> {
             const sessionRunningCommands = sessionScreens.some((screen) => screen.numRunningCmds.get() > 0);
             return (
                 <SideBarItem
+                    key={session.sessionId}
                     className={`${isActive ? "active" : ""}`}
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
@@ -207,98 +205,116 @@ class MainSideBar extends React.Component<{}, {}> {
     }
 
     render() {
-        let isCollapsed = this.collapsed.get();
-        let clientData = GlobalModel.clientData.get();
+        let clientData = this.props.clientData;
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
+        let mainSidebar = GlobalModel.mainSidebarModel;
+        let isCollapsed = mainSidebar.getCollapsed();
         return (
-            <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
-                <div className="title-bar-drag" />
-                <div className="contents">
-                    <div className="logo">
-                        <If condition={isCollapsed}>
-                            <div className="logo-container" onClick={this.toggleCollapsed}>
-                                <img src="public/logos/wave-logo.png" />
+            <ResizableSidebar
+                className="main-sidebar"
+                position="left"
+                enableSnap={true}
+                parentRef={this.props.parentRef}
+            >
+                {(toggleCollapse) => (
+                    <React.Fragment>
+                        <div className="title-bar-drag" />
+                        <div className="contents">
+                            <div className="logo">
+                                <If condition={isCollapsed}>
+                                    <div className="logo-container" onClick={toggleCollapse}>
+                                        <img src="public/logos/wave-logo.png" />
+                                    </div>
+                                </If>
+                                <If condition={!isCollapsed}>
+                                    <div className="logo-container">
+                                        <img src="public/logos/wave-dark.png" />
+                                    </div>
+                                    <div className="spacer" />
+                                    <div className="collapse-button" onClick={toggleCollapse}>
+                                        <LeftChevronIcon className="icon" />
+                                    </div>
+                                </If>
                             </div>
-                        </If>
-                        <If condition={!isCollapsed}>
-                            <div className="logo-container">
-                                <img src="public/logos/wave-dark.png" />
+                            <div className="separator" />
+                            <div className="top">
+                                <SideBarItem
+                                    key="history"
+                                    frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
+                                    contents="History"
+                                    endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
+                                    onClick={this.handleHistoryClick}
+                                />
+                                {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
+                                <SideBarItem
+                                    key="connections"
+                                    frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
+                                    contents="Connections"
+                                    onClick={this.handleConnectionsClick}
+                                />
                             </div>
-                            <div className="spacer" />
-                            <div className="collapse-button" onClick={this.toggleCollapsed}>
-                                <LeftChevronIcon className="icon" />
-                            </div>
-                        </If>
-                    </div>
-                    <div className="separator" />
-                    <div className="top">
-                        <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
-                            contents="History"
-                            endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
-                            onClick={this.handleHistoryClick}
-                        />
-                        {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
-                        <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
-                            contents="Connections"
-                            onClick={this.handleConnectionsClick}
-                        />
-                    </div>
-                    <div className="separator" />
-                    <SideBarItem
-                        className="workspaces"
-                        frontIcon={<WorkspacesIcon className="icon" />}
-                        contents="Workspaces"
-                        endIcons={[
-                            <CenteredIcon
-                                key="add-workspace"
-                                className="add-workspace hoverEffect"
-                                onClick={this.handleNewSession}
-                            >
-                                <i className="fa-sharp fa-solid fa-plus"></i>
-                            </CenteredIcon>,
-                        ]}
-                    />
-                    <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
-                    <div className="bottom">
-                        <If condition={needsUpdate}>
+                            <div className="separator" />
                             <SideBarItem
-                                className="updateBanner"
-                                frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
-                                contents="Update Available"
-                                onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                                key="workspaces"
+                                className="workspaces"
+                                frontIcon={<WorkspacesIcon className="icon" />}
+                                contents="Workspaces"
+                                endIcons={[
+                                    <CenteredIcon
+                                        key="add-workspace"
+                                        className="add-workspace hoverEffect"
+                                        onClick={this.handleNewSession}
+                                    >
+                                        <i className="fa-sharp fa-solid fa-plus"></i>
+                                    </CenteredIcon>,
+                                ]}
                             />
-                        </If>
-                        <If condition={GlobalModel.isDev}>
-                            <SideBarItem
-                                frontIcon={<AppsIcon className="icon" />}
-                                contents="Apps"
-                                onClick={this.handlePluginsClick}
-                                endIcons={[<HotKeyIcon key="hotkey" hotkey="A" />]}
-                            />
-                        </If>
-                        <SideBarItem
-                            frontIcon={<SettingsIcon className="icon" />}
-                            contents="Settings"
-                            onClick={this.handleSettingsClick}
-                        />
-                        <SideBarItem
-                            frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
-                            contents="Documentation"
-                            onClick={() => openLink("https://docs.waveterm.dev")}
-                        />
-                        <SideBarItem
-                            frontIcon={<i className="fa-brands fa-discord icon" />}
-                            contents="Discord"
-                            onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
-                        />
-                    </div>
-                </div>
-            </div>
+                            <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
+                            <div className="bottom">
+                                <If condition={needsUpdate}>
+                                    <SideBarItem
+                                        key="update-available"
+                                        className="updateBanner"
+                                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                                        contents="Update Available"
+                                        onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                                    />
+                                </If>
+                                <If condition={GlobalModel.isDev}>
+                                    <SideBarItem
+                                        key="apps"
+                                        frontIcon={<AppsIcon className="icon" />}
+                                        contents="Apps"
+                                        onClick={this.handlePluginsClick}
+                                        endIcons={[<HotKeyIcon key="hotkey" hotkey="A" />]}
+                                    />
+                                </If>
+                                <SideBarItem
+                                    key="settings"
+                                    frontIcon={<SettingsIcon className="icon" />}
+                                    contents="Settings"
+                                    onClick={this.handleSettingsClick}
+                                />
+                                <SideBarItem
+                                    key="documentation"
+                                    frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
+                                    contents="Documentation"
+                                    onClick={() => openLink("https://docs.waveterm.dev")}
+                                />
+                                <SideBarItem
+                                    key="discord"
+                                    frontIcon={<i className="fa-brands fa-discord icon" />}
+                                    contents="Discord"
+                                    onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
+                                />
+                            </div>
+                        </div>
+                    </React.Fragment>
+                )}
+            </ResizableSidebar>
         );
     }
 }

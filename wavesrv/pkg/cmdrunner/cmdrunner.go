@@ -92,6 +92,7 @@ var TabIcons = []string{"square", "sparkle", "fire", "ghost", "cloud", "compass"
 var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"}
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 var ConfirmFlags = []string{"hideshellprompt"}
+var SidebarNames = []string{"main"}
 
 var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal", "chat"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
@@ -218,6 +219,7 @@ func init() {
 	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
 	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
 	registerCmdFn("client:setconfirmflag", ClientConfirmFlagCommand)
+	registerCmdFn("client:setsidebar", ClientSetSidebarCommand)
 
 	registerCmdFn("sidebar:open", SidebarOpenCommand)
 	registerCmdFn("sidebar:close", SidebarCloseCommand)
@@ -1418,9 +1420,6 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if err != nil {
 		return nil, err
 	}
-	if ids.Remote.RState.SSHConfigSrc == sstore.SSHConfigSrcTypeImport {
-		return nil, fmt.Errorf("/remote:new cannot update imported remote")
-	}
 	visualEdit := resolveBool(pk.Kwargs["visual"], false)
 	isSubmitted := resolveBool(pk.Kwargs["submit"], false)
 	editArgs, err := parseRemoteEditArgs(false, pk, ids.Remote.MShell.IsLocal())
@@ -1540,6 +1539,7 @@ type HostInfoType struct {
 	SshKeyFile    string
 	ConnectMode   string
 	Ignore        bool
+	ShellPref     string
 }
 
 func createSshImportSummary(changeList map[string][]string) string {
@@ -1635,6 +1635,13 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 		connectMode = sstore.ConnectModeManual
 	}
 
+	shellPref := sstore.ShellTypePref_Detect
+	if cfgWaveOptions["shellpref"] == "bash" {
+		shellPref = "bash"
+	} else if cfgWaveOptions["shellpref"] == "zsh" {
+		shellPref = "zsh"
+	}
+
 	outHostInfo := new(HostInfoType)
 	outHostInfo.Host = hostName
 	outHostInfo.User = userName
@@ -1643,6 +1650,7 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 	outHostInfo.SshKeyFile = sshKeyFile
 	outHostInfo.ConnectMode = connectMode
 	outHostInfo.Ignore = shouldIgnore
+	outHostInfo.ShellPref = shellPref
 	return outHostInfo, nil
 }
 
@@ -1707,6 +1715,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 			if hostInfo.SshKeyFile != "" {
 				editMap[sstore.RemoteField_SSHKey] = hostInfo.SshKeyFile
 			}
+			editMap[sstore.RemoteField_ShellPref] = hostInfo.ShellPref
 			msh := remote.GetRemoteById(previouslyImportedRemote.RemoteId)
 			if msh == nil {
 				remoteChangeList["updateErr"] = append(remoteChangeList["updateErr"], hostInfo.CanonicalName)
@@ -1714,7 +1723,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 				continue
 			}
 
-			if msh.Remote.ConnectMode == hostInfo.ConnectMode && msh.Remote.SSHOpts.SSHIdentity == hostInfo.SshKeyFile && msh.Remote.RemoteAlias == hostInfo.Host {
+			if msh.Remote.ConnectMode == hostInfo.ConnectMode && msh.Remote.SSHOpts.SSHIdentity == hostInfo.SshKeyFile && msh.Remote.RemoteAlias == hostInfo.Host && msh.Remote.ShellPref == hostInfo.ShellPref {
 				// silently skip this one. it didn't fail, but no changes were needed
 				continue
 			}
@@ -1751,6 +1760,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 				AutoInstall:         true,
 				SSHOpts:             sshOpts,
 				SSHConfigSrc:        sstore.SSHConfigSrcTypeImport,
+				ShellPref:           sstore.ShellTypePref_Detect,
 			}
 			err := remote.AddRemote(ctx, r, false)
 			if err != nil {
@@ -4445,6 +4455,62 @@ func ClientConfirmFlagCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	// Set the confirm flag
 	clientData.ClientOpts.ConfirmFlags[confirmKey] = value
 
+	err = sstore.SetClientOpts(ctx, clientData.ClientOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client data: %v", err)
+	}
+
+	// Retrieve updated client data
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+
+	update := &sstore.ModelUpdate{
+		ClientData: clientData,
+	}
+
+	return update, nil
+}
+
+func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+
+	// Handle collapsed
+	collapsed, ok := pk.Kwargs["collapsed"]
+	if !ok {
+		return nil, fmt.Errorf("collapsed key not provided")
+	}
+	collapsedValue := resolveBool(collapsed, false)
+
+	// Handle width
+	var width int
+	if w, exists := pk.Kwargs["width"]; exists {
+		width, err = resolveNonNegInt(w, 0)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving width: %v", err)
+		}
+	} else if clientData.ClientOpts.MainSidebar != nil {
+		width = clientData.ClientOpts.MainSidebar.Width
+	}
+
+	// Initialize SidebarCollapsed if it's nil
+	if clientData.ClientOpts.MainSidebar == nil {
+		clientData.ClientOpts.MainSidebar = new(sstore.SidebarValueType)
+	}
+
+	// Set the sidebar values
+	var sv sstore.SidebarValueType
+	sv.Collapsed = collapsedValue
+	if width != 0 {
+		sv.Width = width
+	}
+	clientData.ClientOpts.MainSidebar = &sv
+
+	// Update client data
 	err = sstore.SetClientOpts(ctx, clientData.ClientOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error updating client data: %v", err)
