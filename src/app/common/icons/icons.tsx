@@ -161,14 +161,18 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
                 100
             );
         } else if (!runningCommands) {
-            if (this.timeout) {
-                clearTimeout(this.timeout);
-                this.timeout = null;
-            }
-            mobx.action(() => {
-                this.spinnerVisible.set(false);
-            })();
+            this.clearSpinnerTimeout();
         }
+    }
+
+    clearSpinnerTimeout() {
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+        mobx.action(() => {
+            this.spinnerVisible.set(false);
+        })();
     }
 
     componentDidUpdate(): void {
@@ -180,13 +184,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     }
 
     componentWillUnmount(): void {
-        mobx.action(() => {
-            this.spinnerVisible.set(false);
-        })();
-        if (this.timeout) {
-            clearTimeout(this.timeout);
-            this.timeout = null;
-        }
+        this.clearSpinnerTimeout();
     }
 
     render() {
