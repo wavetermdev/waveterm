@@ -2638,8 +2638,14 @@ class MainSidebarModel {
         })();
     }
 
-    getWidth(): number {
+    /**
+     * Gets the intended width for the sidebar. If the sidebar is being dragged, returns the tempWidth. If the sidebar is collapsed, returns the default width.
+     * @param ignoreCollapse If true, returns the persisted width even if the sidebar is collapsed.
+     * @returns The intended width for the sidebar or the default width if the sidebar is collapsed. Can be overridden using ignoreCollapse.
+     */
+    getWidth(ignoreCollapse: boolean = false): number {
         const clientData = GlobalModel.clientData.get();
+        console.log("width before", clientData?.clientopts?.mainsidebar?.width);
         let width = clientData?.clientopts?.mainsidebar?.width ?? MagicLayout.MainSidebarDefaultWidth;
         if (this.isDragging.get()) {
             if (this.tempWidth.get() == null && width == null) {
@@ -2648,26 +2654,32 @@ class MainSidebarModel {
             if (this.tempWidth.get() == null) {
                 return width;
             }
+            console.log("dragging, tempWidth", this.tempWidth.get());
             return this.tempWidth.get();
         }
         // Set by CLI and collapsed
-        if (this.getCollapsed() && width != MagicLayout.MainSidebarMinWidth) {
-            this.setTempWidthAndTempCollapsed(MagicLayout.MainSidebarMinWidth, true);
-            return MagicLayout.MainSidebarMinWidth;
-        }
-        // Set by CLI and not collapsed
-        if (!this.getCollapsed()) {
+        if (this.getCollapsed()) {
+            console.log("collapsed, width", width);
+            if (ignoreCollapse) {
+                console.log("ignoreCollapse", ignoreCollapse);
+                return width;
+            } else {
+                console.log("returning MagicLayout.MainSidebarMinWidth", MagicLayout.MainSidebarMinWidth);
+                return MagicLayout.MainSidebarMinWidth;
+            }
+        } else {
             if (width <= MagicLayout.MainSidebarMinWidth) {
+                console.log("width <= MagicLayout.MainSidebarMinWidth", width, MagicLayout.MainSidebarMinWidth);
                 width = MagicLayout.MainSidebarDefaultWidth;
             }
             const snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
             if (width < snapPoint || width > MagicLayout.MainSidebarMaxWidth) {
+                console.log("width < snapPoint || width > MagicLayout.MainSidebarMaxWidth", width, snapPoint);
                 width = MagicLayout.MainSidebarDefaultWidth;
             }
-            this.setTempWidthAndTempCollapsed(width, false);
-            return width;
         }
-        this.setTempWidthAndTempCollapsed(width, this.getCollapsed());
+        console.log("width after", width);
+        this.setTempWidthAndTempCollapsed(width, false);
         return width;
     }
 
