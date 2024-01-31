@@ -1304,7 +1304,9 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
         document.body.style.cursor = "col-resize";
         mobx.action(() => {
-            GlobalModel.mainSidebarModel.isDragging.set(true);
+            const sbm = GlobalModel.mainSidebarModel;
+            sbm.setTempWidthAndTempCollapsed(this.resizeStartWidth, sbm.getCollapsed());
+            sbm.isDragging.set(true);
         })();
     }
 

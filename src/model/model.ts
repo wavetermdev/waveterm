@@ -2671,7 +2671,6 @@ class MainSidebarModel {
                 width = MagicLayout.MainSidebarDefaultWidth;
             }
         }
-        this.setTempWidthAndTempCollapsed(width, false);
         return width;
     }
 
