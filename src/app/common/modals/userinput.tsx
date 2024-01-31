@@ -49,7 +49,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                 </If>
                 <If condition={!false}>{userInputRequest.querytext}</If>
                 <Choose>
-                    <When condition={userInputRequest.responsetype == "string"}>
+                    <When condition={userInputRequest.responsetype == "text"}>
                         <PasswordField
                             placeholder="password"
                             onChange={setResponseText}
@@ -60,10 +60,10 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                 </Choose>
             </div>
             <Choose>
-                <When condition={userInputRequest.responsetype == "string"}>
-                    <Modal.Footer onCancel={closeModal} onOk={handleSendText} okLabel="Connect" />
+                <When condition={userInputRequest.responsetype == "text"}>
+                    <Modal.Footer onCancel={closeModal} onOk={handleSendText} okLabel="Continue" />
                 </When>
-                <When condition={userInputRequest.responsetype == "bool"}>
+                <When condition={userInputRequest.responsetype == "confirm"}>
                     <Modal.Footer
                         onCancel={() => handleSendConfirm(false)}
                         onOk={() => handleSendConfirm(true)}
