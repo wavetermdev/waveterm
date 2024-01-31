@@ -1358,7 +1358,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             } else if (newWidth > snapPoint) {
                 mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, false);
             }
-            console.log(mainSidebarModel.tempWidth.get(), mainSidebarModel.tempCollapsed.get());
         } else {
             if (newWidth <= MagicLayout.MainSidebarMinWidth) {
                 mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, true);
