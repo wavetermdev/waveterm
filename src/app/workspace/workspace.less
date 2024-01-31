@@ -8,12 +8,12 @@
     &.is-hidden {
         display: none;
     }
-    max-width: calc(100% - 20.5em);
     background: @background-session;
     border: 1px solid @base-border;
     border-radius: 8px;
-    transition: width 0.2s ease;
+    // transition: width 0.2s ease;
     margin-bottom: 0.5em;
+    margin-right: 0.5em;
 
     .center-message {
         display: flex;
@@ -23,7 +23,4 @@
         width: 100%;
         color: @text-secondary;
     }
-}
-.collapsed + .session-view {
-    max-width: calc(100% - 6.7em);
 }

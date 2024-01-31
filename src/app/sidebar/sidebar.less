@@ -3,14 +3,13 @@
 
 .main-sidebar {
     padding: 0;
-    min-width: 20rem;
-    max-width: 20rem;
     display: flex;
     flex-direction: column;
     position: relative;
     font-size: 12.5px;
     line-height: 20px;
     backdrop-filter: blur(4px);
+    z-index: 20;
 
     .title-bar-drag {
         -webkit-app-region: drag;
@@ -24,7 +23,6 @@
     &.collapsed {
         width: 6em;
         min-width: 6em;
-
         .arrow-container,
         .collapse-button {
             transform: rotate(180deg);
@@ -34,7 +32,7 @@
             margin-top: 26px;
 
             .top,
-            .workspaces-item,
+            .workspaces,
             .middle,
             .bottom,
             .separator {
@@ -50,7 +48,7 @@
                 justify-content: center;
                 align-items: center;
 
-                .logo-container img {
+                .logo-container {
                     width: 45px;
                 }
 
@@ -86,10 +84,14 @@
         display: flex;
         flex-direction: row;
 
+        .logo-container {
+            flex-shrink: 0;
+            width: 100px;
+        }
+
         .spacer {
             flex-grow: 1;
         }
-
         img {
             width: 100px;
         }
@@ -150,7 +152,6 @@
         margin-left: 6px;
         border-radius: 4px;
         opacity: 1;
-        transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
         width: inherit;
         max-width: inherit;
         min-width: inherit;
@@ -177,6 +178,7 @@
             float: right;
             margin-right: 6px;
             letter-spacing: 6px;
+            margin-left: auto;
         }
         &:hover {
             :not(.disabled) .hotkey {

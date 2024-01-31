@@ -524,6 +524,10 @@ type ClientOptsType = {
     noreleasecheck: boolean;
     acceptedtos: number;
     confirmflags: ConfirmFlagsType;
+    mainsidebar: {
+        collapsed: boolean;
+        width: number;
+    };
 };
 
 type ReleaseInfoType = {

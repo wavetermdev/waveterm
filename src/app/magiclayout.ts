@@ -27,6 +27,12 @@ let MagicLayout = {
     ScreenSidebarWidthPadding: 5,
     ScreenSidebarMinWidth: 200,
     ScreenSidebarHeaderHeight: 28,
+
+    MainSidebarMinWidth: 75,
+    MainSidebarMaxWidth: 300,
+    MainSidebarSnapThreshold: 90,
+    MainSidebarDragResistance: 50,
+    MainSidebarDefaultWidth: 240,
 };
 
 let m = MagicLayout;
