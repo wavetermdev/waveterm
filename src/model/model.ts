@@ -2651,10 +2651,12 @@ class MainSidebarModel {
             }
             return this.tempWidth.get();
         }
+        // Set by CLI but no provided width and collapsed
         if (setbycli && this.getCollapsed()) {
             this.setTempWidthAndTempCollapsed(MagicLayout.MainSidebarMinWidth, true);
             return MagicLayout.MainSidebarMinWidth;
         }
+        // Set by CLI but no provided width and not collapsed
         if (setbycli && !this.getCollapsed()) {
             if (width == MagicLayout.MainSidebarMinWidth) {
                 width = MagicLayout.MainSidebarDefaultWidth;
@@ -2662,6 +2664,20 @@ class MainSidebarModel {
             this.setTempWidthAndTempCollapsed(width, false);
             return width;
         }
+        // Handle invalid width set via CLI when collapsed
+        if (this.getCollapsed() && width != MagicLayout.MainSidebarMinWidth) {
+            this.setTempWidthAndTempCollapsed(MagicLayout.MainSidebarMinWidth, true);
+            return MagicLayout.MainSidebarMinWidth;
+        }
+        // Handle invalid width set via CLI when not collapsed
+        let snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
+        if (!this.getCollapsed()) {
+            if (width < snapPoint || width > MagicLayout.MainSidebarMaxWidth) {
+                this.setTempWidthAndTempCollapsed(MagicLayout.MainSidebarDefaultWidth, false);
+                return MagicLayout.MainSidebarDefaultWidth;
+            }
+        }
+        this.setTempWidthAndTempCollapsed(width, this.getCollapsed());
         return width;
     }
 
