@@ -326,8 +326,8 @@ type ModelUpdateType = {
     remoteview?: RemoteViewType;
     openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
     alertmessage?: AlertMessageType;
-    screenstatusindicator?: ScreenStatusIndicatorUpdateType;
-    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType;
+    screenstatusindicators?: ScreenStatusIndicatorUpdateType[];
+    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType[];
 };
 
 type HistoryViewDataType = {

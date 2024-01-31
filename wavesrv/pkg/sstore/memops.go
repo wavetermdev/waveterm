@@ -190,6 +190,22 @@ func ScreenMemSetIndicatorLevel(screenId string, level StatusIndicatorLevel) {
 	ScreenMemStore[screenId].StatusIndicator = StatusIndicatorLevel_None
 }
 
+func GetCurrentIndicatorState() ([]*ScreenStatusIndicatorType, []*ScreenNumRunningCommandsType) {
+	MemLock.Lock()
+	defer MemLock.Unlock()
+	indicators := []*ScreenStatusIndicatorType{}
+	numRunningCommands := []*ScreenNumRunningCommandsType{}
+	for screenId, screenMem := range ScreenMemStore {
+		if screenMem.StatusIndicator > 0 {
+			indicators = append(indicators, &ScreenStatusIndicatorType{ScreenId: screenId, Status: screenMem.StatusIndicator})
+		}
+		if screenMem.NumRunningCommands > 0 {
+			numRunningCommands = append(numRunningCommands, &ScreenNumRunningCommandsType{ScreenId: screenId, Num: screenMem.NumRunningCommands})
+		}
+	}
+	return indicators, numRunningCommands
+}
+
 // safe because we return a copy
 func GetScreenMemState(screenId string) *ScreenMemState {
 	MemLock.Lock()

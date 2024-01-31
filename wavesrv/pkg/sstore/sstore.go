@@ -1512,10 +1512,10 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 	}
 
-	update.ScreenStatusIndicator = &ScreenStatusIndicatorType{
+	update.ScreenStatusIndicators = []*ScreenStatusIndicatorType{{
 		ScreenId: screenId,
 		Status:   newStatus,
-	}
+	}}
 	return nil
 }
 
@@ -1545,10 +1545,10 @@ func ResetStatusIndicator(screenId string) error {
 func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
 	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
-	update.ScreenNumRunningCommands = &ScreenNumRunningCommandsType{
+	update.ScreenNumRunningCommands = []*ScreenNumRunningCommandsType{{
 		ScreenId: screenId,
 		Num:      newNum,
-	}
+	}}
 }
 
 func IncrementNumRunningCmds(screenId string, delta int) {
