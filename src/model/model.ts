@@ -2629,6 +2629,15 @@ class MainSidebarModel {
         name: "MainSidebarModel-isDragging",
     });
 
+    setTempWidthAndTempCollapsed(newWidth: number, newCollapsed: boolean): void {
+        let width = Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
+
+        mobx.action(() => {
+            this.tempWidth.set(width);
+            this.tempCollapsed.set(newCollapsed);
+        })();
+    }
+
     getWidth(): number {
         let clientData = GlobalModel.clientData.get();
         let width = clientData.clientopts.mainsidebar.width;
@@ -2643,20 +2652,14 @@ class MainSidebarModel {
             return this.tempWidth.get();
         }
         if (setbycli && this.getCollapsed()) {
-            mobx.action(() => {
-                this.tempWidth.set(MagicLayout.MainSidebarMinWidth);
-                this.tempCollapsed.set(true);
-            })();
+            this.setTempWidthAndTempCollapsed(MagicLayout.MainSidebarMinWidth, true);
             return MagicLayout.MainSidebarMinWidth;
         }
         if (setbycli && !this.getCollapsed()) {
             if (width == MagicLayout.MainSidebarMinWidth) {
                 width = MagicLayout.MainSidebarDefaultWidth;
             }
-            mobx.action(() => {
-                this.tempWidth.set(width);
-                this.tempCollapsed.set(false);
-            })();
+            this.setTempWidthAndTempCollapsed(width, false);
             return width;
         }
         return width;

@@ -1309,11 +1309,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     }
 
     @boundMethod
-    resolveWidth(newWidth: number): number {
-        return Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
-    }
-
-    @boundMethod
     onMouseMove(event: MouseEvent) {
         event.preventDefault();
 
@@ -1356,31 +1351,19 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
             if (newWidth - dragResistance > minWidth && newWidth < snapPoint && dragDirection == "+") {
                 newWidth = snapPoint;
-                mobx.action(() => {
-                    mainSidebarModel.tempWidth.set(this.resolveWidth(newWidth));
-                    mainSidebarModel.tempCollapsed.set(false);
-                })();
+                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, false);
             } else if (newWidth + dragResistance < snapPoint && dragDirection == "-") {
                 newWidth = minWidth;
-                mobx.action(() => {
-                    mainSidebarModel.tempWidth.set(this.resolveWidth(newWidth));
-                    mainSidebarModel.tempCollapsed.set(true);
-                })();
+                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, true);
             } else if (newWidth > snapPoint) {
-                mobx.action(() => {
-                    mainSidebarModel.tempWidth.set(this.resolveWidth(newWidth));
-                    mainSidebarModel.tempCollapsed.set(false);
-                })();
+                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, false);
             }
         } else {
-            mobx.action(() => {
-                mainSidebarModel.tempWidth.set(this.resolveWidth(newWidth));
-                if (newWidth <= MagicLayout.MainSidebarMinWidth) {
-                    mainSidebarModel.tempCollapsed.set(true);
-                } else {
-                    mainSidebarModel.tempCollapsed.set(false);
-                }
-            })();
+            if (newWidth <= MagicLayout.MainSidebarMinWidth) {
+                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, true);
+            } else {
+                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, false);
+            }
         }
     }
 
@@ -1415,10 +1398,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             newWidth = MagicLayout.MainSidebarMinWidth;
         }
 
-        mobx.action(() => {
-            mainSidebarModel.tempWidth.set(newWidth);
-            mainSidebarModel.tempCollapsed.set(!tempCollapsed);
-        })();
+        mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, !tempCollapsed);
         GlobalCommandRunner.clientSetSidebar(newWidth, !tempCollapsed);
     }
 
