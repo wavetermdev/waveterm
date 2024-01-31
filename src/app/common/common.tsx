@@ -1302,15 +1302,13 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         const collapsed = mainSidebarModel.getCollapsed();
 
         this.resizeStartWidth = collapsed ? MagicLayout.MainSidebarMinWidth : mainSidebarModel.getWidth();
-        mainSidebarModel.setTempWidthAndTempCollapsed(this.resizeStartWidth, collapsed);
         document.addEventListener("mousemove", this.onMouseMove);
         document.addEventListener("mouseup", this.stopResizing);
 
         document.body.style.cursor = "col-resize";
         mobx.action(() => {
-            const sbm = GlobalModel.mainSidebarModel;
-            sbm.setTempWidthAndTempCollapsed(this.resizeStartWidth, sbm.getCollapsed());
-            sbm.isDragging.set(true);
+            mainSidebarModel.setTempWidthAndTempCollapsed(this.resizeStartWidth, collapsed);
+            mainSidebarModel.isDragging.set(true);
         })();
     }
 
