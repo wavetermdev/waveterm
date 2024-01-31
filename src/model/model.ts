@@ -2630,7 +2630,7 @@ class MainSidebarModel {
     });
 
     setTempWidthAndTempCollapsed(newWidth: number, newCollapsed: boolean): void {
-        let width = Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
+        const width = Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
 
         mobx.action(() => {
             this.tempWidth.set(width);
@@ -2639,8 +2639,8 @@ class MainSidebarModel {
     }
 
     getWidth(): number {
-        let clientData = GlobalModel.clientData.get();
-        let width = clientData.clientopts.mainsidebar.width;
+        const clientData = GlobalModel.clientData.get();
+        let width = clientData?.clientopts?.mainsidebar?.width ?? MagicLayout.MainSidebarDefaultWidth;
         if (this.isDragging.get()) {
             if (this.tempWidth.get() == null && width == null) {
                 return MagicLayout.MainSidebarDefaultWidth;
@@ -2660,7 +2660,7 @@ class MainSidebarModel {
             if (width <= MagicLayout.MainSidebarMinWidth) {
                 width = MagicLayout.MainSidebarDefaultWidth;
             }
-            let snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
+            const snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
             if (width < snapPoint || width > MagicLayout.MainSidebarMaxWidth) {
                 width = MagicLayout.MainSidebarDefaultWidth;
             }
@@ -2672,8 +2672,8 @@ class MainSidebarModel {
     }
 
     getCollapsed(): boolean {
-        let clientData = GlobalModel.clientData.get();
-        let collapsed = clientData.clientopts.mainsidebar.collapsed;
+        const clientData = GlobalModel.clientData.get();
+        const collapsed = clientData?.clientopts?.mainsidebar?.collapsed;
         if (this.isDragging.get()) {
             if (this.tempCollapsed.get() == null && collapsed == null) {
                 return false;
