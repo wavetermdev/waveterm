@@ -192,16 +192,16 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
         const spinnerVisible = this.spinnerVisible.get();
         let statusIndicator = null;
         if (level != StatusIndicatorLevel.None || spinnerVisible) {
-            let levelClass = null;
+            let indicatorLevelClass = null;
             switch (level) {
                 case StatusIndicatorLevel.Output:
-                    levelClass = "output";
+                    indicatorLevelClass = "output";
                     break;
                 case StatusIndicatorLevel.Success:
-                    levelClass = "success";
+                    indicatorLevelClass = "success";
                     break;
                 case StatusIndicatorLevel.Error:
-                    levelClass = "error";
+                    indicatorLevelClass = "error";
                     break;
             }
 
@@ -209,7 +209,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
             statusIndicator = (
                 <CenteredIcon
                     divRef={this.iconRef}
-                    className={cn(className, levelClass, spinnerVisibleClass, "status-indicator")}
+                    className={cn(className, indicatorLevelClass, spinnerVisibleClass, "status-indicator")}
                 >
                     <SpinnerIndicator className={spinnerVisible ? "spin" : null} />
                 </CenteredIcon>
