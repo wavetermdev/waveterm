@@ -2657,7 +2657,6 @@ class MainSidebarModel {
         }
         // Set by CLI and collapsed
         if (this.getCollapsed()) {
-            console.log("collapsed, width", width);
             if (ignoreCollapse) {
                 return width;
             } else {
