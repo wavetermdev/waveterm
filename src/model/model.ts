@@ -2644,7 +2644,7 @@ class MainSidebarModel {
      * @param resizing If true, returns the minimum width if the sidebar is collapsed.
      * @returns The intended width for the sidebar or the default width if the sidebar is collapsed. Can be overridden using ignoreCollapse.
      */
-    getWidth(ignoreCollapse: boolean = false, resizing: boolean = false): number {
+    getWidth(ignoreCollapse: boolean = false): number {
         const clientData = GlobalModel.clientData.get();
         let width = clientData?.clientopts?.mainsidebar?.width ?? MagicLayout.MainSidebarDefaultWidth;
         if (this.isDragging.get()) {
@@ -2658,7 +2658,7 @@ class MainSidebarModel {
         }
         // Set by CLI and collapsed
         if (this.getCollapsed()) {
-            if (ignoreCollapse && !resizing) {
+            if (ignoreCollapse) {
                 return width;
             } else {
                 return MagicLayout.MainSidebarMinWidth;

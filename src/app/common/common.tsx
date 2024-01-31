@@ -1301,7 +1301,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         const mainSidebarModel = GlobalModel.mainSidebarModel;
         const collapsed = mainSidebarModel.getCollapsed();
 
-        this.resizeStartWidth = mainSidebarModel.getWidth(false, true);
+        this.resizeStartWidth = mainSidebarModel.getWidth(false);
         document.addEventListener("mousemove", this.onMouseMove);
         document.addEventListener("mouseup", this.stopResizing);
 
