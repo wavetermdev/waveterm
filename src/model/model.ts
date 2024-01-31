@@ -2632,6 +2632,8 @@ class MainSidebarModel {
     setTempWidthAndTempCollapsed(newWidth: number, newCollapsed: boolean): void {
         const width = Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
 
+        console.log("setTempWidthAndTempCollapsed", newWidth, width, newCollapsed);
+
         mobx.action(() => {
             this.tempWidth.set(width);
             this.tempCollapsed.set(newCollapsed);
