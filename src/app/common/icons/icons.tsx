@@ -188,7 +188,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     }
 
     render() {
-        const { level, className } = this.props;
+        const { level, className, runningCommands } = this.props;
         const spinnerVisible = this.spinnerVisible.get();
         let statusIndicator = null;
         if (level != StatusIndicatorLevel.None || spinnerVisible) {
@@ -216,7 +216,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
             );
         }
         return (
-            <SyncSpin classRef={this.iconRef} shouldSync={spinnerVisible}>
+            <SyncSpin classRef={this.iconRef} shouldSync={runningCommands}>
                 {statusIndicator}
             </SyncSpin>
         );
