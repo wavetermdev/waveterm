@@ -3,6 +3,8 @@ import { StatusIndicatorLevel } from "../../../types/types";
 import cn from "classnames";
 import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator.svg";
 import { boundMethod } from "autobind-decorator";
+import * as mobx from "mobx";
+import * as mobxReact from "mobx-react";
 
 import { ReactComponent as RotateIconSvg } from "../../assets/icons/line/rotate.svg";
 
@@ -126,33 +128,90 @@ class SyncSpin extends React.Component<{
 }
 
 interface StatusIndicatorProps {
+    /**
+     * The level of the status indicator. This will determine the color of the status indicator.
+     */
     level: StatusIndicatorLevel;
     className?: string;
+    /**
+     * If true, a spinner will be shown around the status indicator.
+     */
     runningCommands?: boolean;
 }
 
+/**
+ * This component is used to show the status of a command. It will show a spinner around the status indicator if there are running commands. It will also delay showing the spinner for a short time to prevent flickering.
+ */
+@mobxReact.observer
 export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     iconRef: React.RefObject<HTMLDivElement> = React.createRef();
+    spinnerVisible: mobx.IObservableValue<boolean> = mobx.observable.box(false);
+    timeout: NodeJS.Timeout;
+
+    clearSpinnerTimeout() {
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+        mobx.action(() => {
+            this.spinnerVisible.set(false);
+        })();
+    }
+
+    /**
+     * This will apply a delay after there is a running command before showing the spinner. This prevents flickering for commands that return quickly.
+     */
+    updateMountCallback() {
+        const runningCommands = this.props.runningCommands ?? false;
+        if (runningCommands && !this.timeout) {
+            this.timeout = setTimeout(
+                mobx.action(() => {
+                    this.spinnerVisible.set(true);
+                }),
+                100
+            );
+        } else if (!runningCommands) {
+            this.clearSpinnerTimeout();
+        }
+    }
+
+    componentDidUpdate(): void {
+        this.updateMountCallback();
+    }
+
+    componentDidMount(): void {
+        this.updateMountCallback();
+    }
+
+    componentWillUnmount(): void {
+        this.clearSpinnerTimeout();
+    }
 
     render() {
         const { level, className, runningCommands } = this.props;
+        const spinnerVisible = this.spinnerVisible.get();
         let statusIndicator = null;
-        if (level != StatusIndicatorLevel.None || runningCommands) {
-            let levelClass = null;
+        if (level != StatusIndicatorLevel.None || spinnerVisible) {
+            let indicatorLevelClass = null;
             switch (level) {
                 case StatusIndicatorLevel.Output:
-                    levelClass = "output";
+                    indicatorLevelClass = "output";
                     break;
                 case StatusIndicatorLevel.Success:
-                    levelClass = "success";
+                    indicatorLevelClass = "success";
                     break;
                 case StatusIndicatorLevel.Error:
-                    levelClass = "error";
+                    indicatorLevelClass = "error";
                     break;
             }
+
+            const spinnerVisibleClass = spinnerVisible ? "spinner-visible" : null;
             statusIndicator = (
-                <CenteredIcon divRef={this.iconRef} className={cn(className, levelClass, "status-indicator")}>
-                    <SpinnerIndicator className={runningCommands ? "spin" : null} />
+                <CenteredIcon
+                    divRef={this.iconRef}
+                    className={cn(className, indicatorLevelClass, spinnerVisibleClass, "status-indicator")}
+                >
+                    <SpinnerIndicator className={spinnerVisible ? "spin" : null} />
                 </CenteredIcon>
             );
         }

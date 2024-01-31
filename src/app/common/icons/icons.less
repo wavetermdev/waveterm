@@ -48,13 +48,33 @@
     }
 }
 
+/* 
+The following accounts for a debounce in the status indicator. We will only display the status indicator icon if the parent indicates that it should be visible AND one of the following is true:
+1. There is a status to be shown.
+2. There is a spinner to be shown and the required delay has passed.
+*/
+.status-indicator-visible {
+    &.spinner-visible,
+    &.output,
+    &.error,
+    &.success {
+        .positional-icon-visible;
+    }
+
+    // This is set by the timeout in the status indicator component.
+    &.spinner-visible {
+        #spinner {
+            visibility: visible;
+        }
+    }
+}
+
 .status-indicator {
     #spinner,
     #indicator {
         visibility: hidden;
     }
     .spin #spinner {
-        visibility: visible;
         stroke: @term-white;
     }
     &.error #indicator {
