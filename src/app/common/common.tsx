@@ -1332,7 +1332,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             const minWidth = MagicLayout.MainSidebarMinWidth;
             const snapPoint = minWidth + MagicLayout.MainSidebarSnapThreshold;
             const dragResistance = MagicLayout.MainSidebarDragResistance;
-            console.log("onMouseMove snap newWidth", newWidth);
             let dragDirection: string;
 
             if (delta - this.prevDelta > 0) {
@@ -1346,7 +1345,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             } else {
                 dragDirection = "-";
             }
-            console.log("onMouseMove snap dragDirection", dragDirection);
 
             this.prevDelta = delta;
             this.prevDragDirection = dragDirection;
@@ -1360,13 +1358,8 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             } else if (newWidth > snapPoint) {
                 mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, false);
             }
-            console.log(
-                "end of onMouseMove, current temp width and collapsed",
-                mainSidebarModel.tempWidth.get(),
-                mainSidebarModel.tempCollapsed.get()
-            );
+            console.log(mainSidebarModel.tempWidth.get(), mainSidebarModel.tempCollapsed.get());
         } else {
-            console.log("onMouseMove noSnap newWidth", newWidth);
             if (newWidth <= MagicLayout.MainSidebarMinWidth) {
                 mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, true);
             } else {
@@ -1387,7 +1380,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
                 mainSidebarModel.isDragging.set(false);
             })();
         });
-        console.log("stopResizing", mainSidebarModel.tempWidth.get(), mainSidebarModel.tempCollapsed.get());
 
         document.removeEventListener("mousemove", this.onMouseMove);
         document.removeEventListener("mouseup", this.stopResizing);
@@ -1396,12 +1388,10 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     toggleCollapsed() {
-        console.log("toggleCollapsed start");
         const mainSidebarModel = GlobalModel.mainSidebarModel;
 
         const tempCollapsed = mainSidebarModel.getCollapsed();
         const width = mainSidebarModel.getWidth(true);
-        console.log("toggleCollapsed", width, !tempCollapsed);
         mainSidebarModel.setTempWidthAndTempCollapsed(width, !tempCollapsed);
         GlobalCommandRunner.clientSetSidebar(width, !tempCollapsed);
     }

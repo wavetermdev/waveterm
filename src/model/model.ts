@@ -2645,7 +2645,6 @@ class MainSidebarModel {
      */
     getWidth(ignoreCollapse: boolean = false): number {
         const clientData = GlobalModel.clientData.get();
-        console.log("width before", clientData?.clientopts?.mainsidebar?.width);
         let width = clientData?.clientopts?.mainsidebar?.width ?? MagicLayout.MainSidebarDefaultWidth;
         if (this.isDragging.get()) {
             if (this.tempWidth.get() == null && width == null) {
@@ -2654,31 +2653,25 @@ class MainSidebarModel {
             if (this.tempWidth.get() == null) {
                 return width;
             }
-            console.log("dragging, tempWidth", this.tempWidth.get());
             return this.tempWidth.get();
         }
         // Set by CLI and collapsed
         if (this.getCollapsed()) {
             console.log("collapsed, width", width);
             if (ignoreCollapse) {
-                console.log("ignoreCollapse", ignoreCollapse);
                 return width;
             } else {
-                console.log("returning MagicLayout.MainSidebarMinWidth", MagicLayout.MainSidebarMinWidth);
                 return MagicLayout.MainSidebarMinWidth;
             }
         } else {
             if (width <= MagicLayout.MainSidebarMinWidth) {
-                console.log("width <= MagicLayout.MainSidebarMinWidth", width, MagicLayout.MainSidebarMinWidth);
                 width = MagicLayout.MainSidebarDefaultWidth;
             }
             const snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
             if (width < snapPoint || width > MagicLayout.MainSidebarMaxWidth) {
-                console.log("width < snapPoint || width > MagicLayout.MainSidebarMaxWidth", width, snapPoint);
                 width = MagicLayout.MainSidebarDefaultWidth;
             }
         }
-        console.log("width after", width);
         this.setTempWidthAndTempCollapsed(width, false);
         return width;
     }
