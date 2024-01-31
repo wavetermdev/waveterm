@@ -188,9 +188,10 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     }
 
     render() {
-        const { level, className, runningCommands } = this.props;
+        const { level, className } = this.props;
+        const spinnerVisible = this.spinnerVisible.get();
         let statusIndicator = null;
-        if (level != StatusIndicatorLevel.None || runningCommands) {
+        if (level != StatusIndicatorLevel.None || spinnerVisible) {
             let levelClass = null;
             switch (level) {
                 case StatusIndicatorLevel.Output:
@@ -204,18 +205,18 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
                     break;
             }
 
-            const spinnerVisibleClass = this.spinnerVisible.get() ? "spinner-visible" : null;
+            const spinnerVisibleClass = spinnerVisible ? "spinner-visible" : null;
             statusIndicator = (
                 <CenteredIcon
                     divRef={this.iconRef}
                     className={cn(className, levelClass, spinnerVisibleClass, "status-indicator")}
                 >
-                    <SpinnerIndicator className={runningCommands ? "spin" : null} />
+                    <SpinnerIndicator className={spinnerVisible ? "spin" : null} />
                 </CenteredIcon>
             );
         }
         return (
-            <SyncSpin classRef={this.iconRef} shouldSync={runningCommands}>
+            <SyncSpin classRef={this.iconRef} shouldSync={spinnerVisible}>
                 {statusIndicator}
             </SyncSpin>
         );
