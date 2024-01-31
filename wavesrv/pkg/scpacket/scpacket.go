@@ -6,14 +6,77 @@ package scpacket
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/alessio/shellescape"
+	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
+
+var RemoteNameRe = regexp.MustCompile("^\\*?[a-zA-Z0-9_-]+$")
+
+type RemotePtrType struct {
+	OwnerId  string `json:"ownerid"`
+	RemoteId string `json:"remoteid"`
+	Name     string `json:"name"`
+}
+
+func (r RemotePtrType) IsSessionScope() bool {
+	return strings.HasPrefix(r.Name, "*")
+}
+
+func (rptr *RemotePtrType) GetDisplayName(baseDisplayName string) string {
+	name := baseDisplayName
+	if rptr == nil {
+		return name
+	}
+	if rptr.Name != "" {
+		name = name + ":" + rptr.Name
+	}
+	if rptr.OwnerId != "" {
+		name = "@" + rptr.OwnerId + ":" + name
+	}
+	return name
+}
+
+func (r RemotePtrType) Validate() error {
+	if r.OwnerId != "" {
+		if _, err := uuid.Parse(r.OwnerId); err != nil {
+			return fmt.Errorf("invalid ownerid format: %v", err)
+		}
+	}
+	if r.RemoteId != "" {
+		if _, err := uuid.Parse(r.RemoteId); err != nil {
+			return fmt.Errorf("invalid remoteid format: %v", err)
+		}
+	}
+	if r.Name != "" {
+		ok := RemoteNameRe.MatchString(r.Name)
+		if !ok {
+			return fmt.Errorf("invalid remote name")
+		}
+	}
+	return nil
+}
+
+func (r RemotePtrType) MakeFullRemoteRef() string {
+	if r.RemoteId == "" {
+		return ""
+	}
+	if r.OwnerId == "" && r.Name == "" {
+		return r.RemoteId
+	}
+	if r.OwnerId != "" && r.Name == "" {
+		return fmt.Sprintf("@%s:%s", r.OwnerId, r.RemoteId)
+	}
+	if r.OwnerId == "" && r.Name != "" {
+		return fmt.Sprintf("%s:%s", r.RemoteId, r.Name)
+	}
+	return fmt.Sprintf("@%s:%s:%s", r.OwnerId, r.RemoteId, r.Name)
+}
 
 const FeCommandPacketStr = "fecmd"
 const WatchScreenPacketStr = "watchscreen"
@@ -56,20 +119,20 @@ func (pk *FeCommandPacketType) GetRawStr() string {
 }
 
 type UIContextType struct {
-	SessionId string                `json:"sessionid"`
-	ScreenId  string                `json:"screenid"`
-	Remote    *sstore.RemotePtrType `json:"remote,omitempty"`
-	WinSize   *packet.WinSize       `json:"winsize,omitempty"`
-	Build     string                `json:"build,omitempty"`
+	SessionId string          `json:"sessionid"`
+	ScreenId  string          `json:"screenid"`
+	Remote    *RemotePtrType  `json:"remote,omitempty"`
+	WinSize   *packet.WinSize `json:"winsize,omitempty"`
+	Build     string          `json:"build,omitempty"`
 }
 
 type FeInputPacketType struct {
-	Type        string               `json:"type"`
-	CK          base.CommandKey      `json:"ck"`
-	Remote      sstore.RemotePtrType `json:"remote"`
-	InputData64 string               `json:"inputdata64"`
-	SigName     string               `json:"signame,omitempty"`
-	WinSize     *packet.WinSize      `json:"winsize,omitempty"`
+	Type        string          `json:"type"`
+	CK          base.CommandKey `json:"ck"`
+	Remote      RemotePtrType   `json:"remote"`
+	InputData64 string          `json:"inputdata64"`
+	SigName     string          `json:"signame,omitempty"`
+	WinSize     *packet.WinSize `json:"winsize,omitempty"`
 }
 
 type RemoteInputPacketType struct {
@@ -94,9 +157,11 @@ type CmdInputTextPacketType struct {
 }
 
 type UserInputResponsePacketType struct {
-	Type      string                        `json:"type"`
-	RequestId string                        `json:"requestid"`
-	Response  *sstore.UserInputResponseType `json:"response"`
+	Type      string `json:"type"`
+	RequestId string `json:"requestid"`
+	Text      string `json:"text,omitempty"`
+	Confirm   bool   `json:"confirm,omitempty"`
+	ErrorMsg  string `json:"errormsg,omitempty"`
 }
 
 func init() {

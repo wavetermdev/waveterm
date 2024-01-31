@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 )
 
 var MainBus *UpdateBus = MakeUpdateBus()
@@ -42,33 +42,33 @@ func (*PtyDataUpdate) UpdateType() string {
 func (pdu *PtyDataUpdate) Clean() {}
 
 type ModelUpdate struct {
-	Sessions              []*SessionType                     `json:"sessions,omitempty"`
-	ActiveSessionId       string                             `json:"activesessionid,omitempty"`
-	Screens               []*ScreenType                      `json:"screens,omitempty"`
-	ScreenLines           *ScreenLinesType                   `json:"screenlines,omitempty"`
-	Line                  *LineType                          `json:"line,omitempty"`
-	Lines                 []*LineType                        `json:"lines,omitempty"`
-	Cmd                   *CmdType                           `json:"cmd,omitempty"`
-	CmdLine               *utilfn.StrWithPos                 `json:"cmdline,omitempty"`
-	Info                  *InfoMsgType                       `json:"info,omitempty"`
-	ClearInfo             bool                               `json:"clearinfo,omitempty"`
-	Remotes               []RemoteRuntimeState               `json:"remotes,omitempty"`
-	History               *HistoryInfoType                   `json:"history,omitempty"`
-	Interactive           bool                               `json:"interactive"`
-	Connect               bool                               `json:"connect,omitempty"`
-	MainView              string                             `json:"mainview,omitempty"`
-	Bookmarks             []*BookmarkType                    `json:"bookmarks,omitempty"`
-	SelectedBookmark      string                             `json:"selectedbookmark,omitempty"`
-	HistoryViewData       *HistoryViewData                   `json:"historyviewdata,omitempty"`
-	ClientData            *ClientData                        `json:"clientdata,omitempty"`
-	RemoteView            *RemoteViewType                    `json:"remoteview,omitempty"`
-	ScreenTombstones      []*ScreenTombstoneType             `json:"screentombstones,omitempty"`
-	SessionTombstones     []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
-	OpenAICmdInfoChat     []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
-	AlertMessage          *AlertMessageType                  `json:"alertmessage,omitempty"`
-	ScreenStatusIndicator *ScreenStatusIndicatorType         `json:"screenstatusindicator,omitempty"`
+	Sessions                 []*SessionType                     `json:"sessions,omitempty"`
+	ActiveSessionId          string                             `json:"activesessionid,omitempty"`
+	Screens                  []*ScreenType                      `json:"screens,omitempty"`
+	ScreenLines              *ScreenLinesType                   `json:"screenlines,omitempty"`
+	Line                     *LineType                          `json:"line,omitempty"`
+	Lines                    []*LineType                        `json:"lines,omitempty"`
+	Cmd                      *CmdType                           `json:"cmd,omitempty"`
+	CmdLine                  *utilfn.StrWithPos                 `json:"cmdline,omitempty"`
+	Info                     *InfoMsgType                       `json:"info,omitempty"`
+	ClearInfo                bool                               `json:"clearinfo,omitempty"`
+	Remotes                  []RemoteRuntimeState               `json:"remotes,omitempty"`
+	History                  *HistoryInfoType                   `json:"history,omitempty"`
+	Interactive              bool                               `json:"interactive"`
+	Connect                  bool                               `json:"connect,omitempty"`
+	MainView                 string                             `json:"mainview,omitempty"`
+	Bookmarks                []*BookmarkType                    `json:"bookmarks,omitempty"`
+	SelectedBookmark         string                             `json:"selectedbookmark,omitempty"`
+	HistoryViewData          *HistoryViewData                   `json:"historyviewdata,omitempty"`
+	ClientData               *ClientData                        `json:"clientdata,omitempty"`
+	RemoteView               *RemoteViewType                    `json:"remoteview,omitempty"`
+	ScreenTombstones         []*ScreenTombstoneType             `json:"screentombstones,omitempty"`
+	SessionTombstones        []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
+	OpenAICmdInfoChat        []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
+	AlertMessage             *AlertMessageType                  `json:"alertmessage,omitempty"`
+	ScreenStatusIndicator    *ScreenStatusIndicatorType         `json:"screenstatusindicator,omitempty"`
 	ScreenNumRunningCommands *ScreenNumRunningCommandsType      `json:"screennumrunningcommands,omitempty"`
-	UserInputRequest      *UserInputRequestType              `json:"userinputrequest,omitempty"`
+	UserInputRequest         *UserInputRequestType              `json:"userinputrequest,omitempty"`
 }
 
 func (*ModelUpdate) UpdateType() string {
@@ -168,12 +168,8 @@ type UserInputRequestType struct {
 	RequestId    string `json:"requestid"`
 	QueryText    string `json:"querytext"`
 	ResponseType string `json:"responsetype"`
-}
-
-type UserInputResponseType struct {
-	Type    string `json:"type"`
-	Text    string `json:"text,omitempty"`
-	Confirm bool   `json:"confirm,omitempty"`
+	Title        string `json:"title"`
+	Markdown     bool   `json:"markdown"`
 }
 
 type UpdateChannel struct {
@@ -192,14 +188,14 @@ func (uch UpdateChannel) Match(screenId string) bool {
 type UpdateBus struct {
 	Lock        *sync.Mutex
 	Channels    map[string]UpdateChannel
-	UserInputCh map[string](chan *UserInputResponseType)
+	UserInputCh map[string](chan *scpacket.UserInputResponsePacketType)
 }
 
 func MakeUpdateBus() *UpdateBus {
 	return &UpdateBus{
 		Lock:        &sync.Mutex{},
 		Channels:    make(map[string]UpdateChannel),
-		UserInputCh: make(map[string](chan *UserInputResponseType)),
+		UserInputCh: make(map[string](chan *scpacket.UserInputResponsePacketType)),
 	}
 }
 
@@ -292,12 +288,12 @@ type ScreenNumRunningCommandsType struct {
 	Num      int    `json:"num"`
 }
 
-func (bus *UpdateBus) registerUserInputChannel() (string, chan *UserInputResponseType) {
+func (bus *UpdateBus) registerUserInputChannel() (string, chan *scpacket.UserInputResponsePacketType) {
 	bus.Lock.Lock()
 	defer bus.Lock.Unlock()
 
 	id := uuid.New().String()
-	uich := make(chan *UserInputResponseType)
+	uich := make(chan *scpacket.UserInputResponsePacketType, 1)
 
 	bus.UserInputCh[id] = uich
 	return id, uich
@@ -310,18 +306,24 @@ func (bus *UpdateBus) unregisterUserInputChannel(id string) {
 	delete(bus.UserInputCh, id)
 }
 
-func (bus *UpdateBus) GetUserInput(userInputRequest *UserInputRequestType) (*UserInputResponseType, error) {
-	// create context for timeout
-	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Minute)
-	defer cancelFn()
+func (bus *UpdateBus) GetUserInputChannel(id string) (chan *scpacket.UserInputResponsePacketType, bool) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
 
+	uich, ok := bus.UserInputCh[id]
+	return uich, ok
+}
+
+func (bus *UpdateBus) GetUserInput(userInputRequest *UserInputRequestType, ctx context.Context) (*scpacket.UserInputResponsePacketType, error) {
 	id, uich := bus.registerUserInputChannel()
+	defer bus.unregisterUserInputChannel(id)
 
 	userInputRequest.RequestId = id
 	update := &ModelUpdate{UserInputRequest: userInputRequest}
 	bus.SendUpdate(update)
+	log.Printf("test: %+v", userInputRequest)
 
-	var response *UserInputResponseType
+	var response *scpacket.UserInputResponsePacketType
 	var err error
 	// prepare to receive response
 	select {
@@ -331,6 +333,5 @@ func (bus *UpdateBus) GetUserInput(userInputRequest *UserInputRequestType) (*Use
 		err = fmt.Errorf("timed out waiting for user input")
 	}
 
-	bus.unregisterUserInputChannel(id)
 	return response, err
 }

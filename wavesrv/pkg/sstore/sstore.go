@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/user"
 	"path"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -28,9 +27,12 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+type RemotePtrType = scpacket.RemotePtrType
 
 const LineNoHeight = -1
 const DBFileName = "waveterm.db"
@@ -359,68 +361,6 @@ type SessionStatsType struct {
 	NumLines           int                 `json:"numlines"`
 	NumCmds            int                 `json:"numcmds"`
 	DiskStats          SessionDiskSizeType `json:"diskstats"`
-}
-
-var RemoteNameRe = regexp.MustCompile("^\\*?[a-zA-Z0-9_-]+$")
-
-type RemotePtrType struct {
-	OwnerId  string `json:"ownerid"`
-	RemoteId string `json:"remoteid"`
-	Name     string `json:"name"`
-}
-
-func (r RemotePtrType) IsSessionScope() bool {
-	return strings.HasPrefix(r.Name, "*")
-}
-
-func (rptr *RemotePtrType) GetDisplayName(baseDisplayName string) string {
-	name := baseDisplayName
-	if rptr == nil {
-		return name
-	}
-	if rptr.Name != "" {
-		name = name + ":" + rptr.Name
-	}
-	if rptr.OwnerId != "" {
-		name = "@" + rptr.OwnerId + ":" + name
-	}
-	return name
-}
-
-func (r RemotePtrType) Validate() error {
-	if r.OwnerId != "" {
-		if _, err := uuid.Parse(r.OwnerId); err != nil {
-			return fmt.Errorf("invalid ownerid format: %v", err)
-		}
-	}
-	if r.RemoteId != "" {
-		if _, err := uuid.Parse(r.RemoteId); err != nil {
-			return fmt.Errorf("invalid remoteid format: %v", err)
-		}
-	}
-	if r.Name != "" {
-		ok := RemoteNameRe.MatchString(r.Name)
-		if !ok {
-			return fmt.Errorf("invalid remote name")
-		}
-	}
-	return nil
-}
-
-func (r RemotePtrType) MakeFullRemoteRef() string {
-	if r.RemoteId == "" {
-		return ""
-	}
-	if r.OwnerId == "" && r.Name == "" {
-		return r.RemoteId
-	}
-	if r.OwnerId != "" && r.Name == "" {
-		return fmt.Sprintf("@%s:%s", r.OwnerId, r.RemoteId)
-	}
-	if r.OwnerId == "" && r.Name != "" {
-		return fmt.Sprintf("%s:%s", r.RemoteId, r.Name)
-	}
-	return fmt.Sprintf("@%s:%s:%s", r.OwnerId, r.RemoteId, r.Name)
 }
 
 func (h *HistoryItemType) ToMap() map[string]interface{} {

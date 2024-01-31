@@ -280,11 +280,14 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 	}
 	if pk.GetType() == scpacket.UserInputResponsePacketStr {
 		userInputRespPk := pk.(*scpacket.UserInputResponsePacketType)
-		uich, ok := sstore.MainBus.UserInputCh[userInputRespPk.RequestId]
+		uich, ok := sstore.MainBus.GetUserInputChannel(userInputRespPk.RequestId)
 		if !ok {
 			return fmt.Errorf("received User Input Response with invalid Id (%s): %v\n", userInputRespPk.RequestId, err)
 		}
-		uich <- userInputRespPk.Response
+		select {
+		case uich <- userInputRespPk:
+		default:
+		}
 		return nil
 	}
 	return fmt.Errorf("got ws bad message: %v", pk.GetType())

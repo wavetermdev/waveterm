@@ -51,7 +51,6 @@ import {
     AlertMessageType,
     HistorySearchParams,
     UserInputRequest,
-    UserInputResponse,
     UserInputResponsePacket,
     FocusTypeStrs,
     ScreenLinesType,
@@ -4115,17 +4114,7 @@ class Model {
         }
         if ("userinputrequest" in update) {
             let userInputRequest: UserInputRequest = update.userinputrequest;
-            let userInputResponse: UserInputResponse = {
-                type: "text",
-                text: "what wonderful weather we're having",
-            };
-            let userInputResponsePacket: UserInputResponsePacket = {
-                type: "userinputresp",
-                requestid: userInputRequest.requestid,
-                response: userInputResponse,
-            };
             this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
-            //this.ws.pushMessage(userInputResponsePacket);
         }
     }
 
@@ -4532,6 +4521,10 @@ class Model {
 
     sendInputPacket(inputPacket: any) {
         this.ws.pushMessage(inputPacket);
+    }
+
+    sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
+        this.ws.pushMessage(userInputResponsePacket);
     }
 
     sendCmdInputText(screenId: string, sp: T.StrWithPos) {
@@ -5048,10 +5041,6 @@ class CommandRunner {
             kwargs.width = width;
         }
         GlobalModel.submitCommand("sidebar", "open", null, kwargs, false);
-    }
-
-    sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
-        GlobalModel.sendInputPacket(userInputResponsePacket);
     }
 }
 

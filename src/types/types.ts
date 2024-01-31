@@ -591,18 +591,16 @@ type UserInputRequest = {
     requestid: string;
     querytext: string;
     responsetype: string;
-};
-
-type UserInputResponse = {
-    type: string;
-    text?: string;
-    confirm?: boolean;
+    title: string;
+    markdown: boolean;
 };
 
 type UserInputResponsePacket = {
     type: string;
     requestid: string;
-    response: UserInputResponse;
+    text?: string;
+    confirm?: boolean;
+    errormsg?: string;
 };
 
 type RenderModeType = "normal" | "collapsed" | "expanded";
@@ -792,7 +790,6 @@ export type {
     AlertMessageType,
     HistorySearchParams,
     UserInputRequest,
-    UserInputResponse,
     UserInputResponsePacket,
     ScreenLinesType,
     FocusTypeStrs,

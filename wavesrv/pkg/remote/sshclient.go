@@ -4,6 +4,7 @@
 package remote
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -11,6 +12,7 @@ import (
 	"os/user"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
@@ -62,11 +64,15 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 	}
 
 	// test code
+	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Minute)
+	defer cancelFn()
 	request := &sstore.UserInputRequestType{
 		ResponseType: "text",
-		QueryText:    "unused",
+		QueryText:    "this is a question",
+		Title:        "testing",
+		Markdown:     false,
 	}
-	response, _ := sstore.MainBus.GetUserInput(request)
+	response, _ := sstore.MainBus.GetUserInput(request, ctx)
 	log.Printf("response: %s\n", response.Text)
 
 	hostKeyCallback := ssh.InsecureIgnoreHostKey()
