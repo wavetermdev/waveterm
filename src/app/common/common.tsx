@@ -1286,7 +1286,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     @boundMethod
     startResizing(event: React.MouseEvent<HTMLDivElement>) {
         event.preventDefault();
-        console.log("startResizing");
 
         const { parentRef, position } = this.props;
         const parentRect = parentRef.current?.getBoundingClientRect();
@@ -1334,7 +1333,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         }
 
         newWidth = this.resizeStartWidth + delta;
-        console.log("newWidth", newWidth);
 
         if (enableSnap) {
             const minWidth = MagicLayout.MainSidebarMinWidth;
@@ -1395,7 +1393,6 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     toggleCollapsed() {
-        console.log("toggleCollapsed");
         const mainSidebarModel = GlobalModel.mainSidebarModel;
 
         const tempCollapsed = mainSidebarModel.getCollapsed();
