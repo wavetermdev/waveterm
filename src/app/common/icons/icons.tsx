@@ -148,6 +148,16 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     spinnerVisible: mobx.IObservableValue<boolean> = mobx.observable.box(false);
     timeout: NodeJS.Timeout;
 
+    clearSpinnerTimeout() {
+        if (this.timeout) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
+        }
+        mobx.action(() => {
+            this.spinnerVisible.set(false);
+        })();
+    }
+
     /**
      * This will apply a delay after there is a running command before showing the spinner. This prevents flickering for commands that return quickly.
      */
@@ -163,16 +173,6 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
         } else if (!runningCommands) {
             this.clearSpinnerTimeout();
         }
-    }
-
-    clearSpinnerTimeout() {
-        if (this.timeout) {
-            clearTimeout(this.timeout);
-            this.timeout = null;
-        }
-        mobx.action(() => {
-            this.spinnerVisible.set(false);
-        })();
     }
 
     componentDidUpdate(): void {
