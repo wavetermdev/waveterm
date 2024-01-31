@@ -2641,7 +2641,6 @@ class MainSidebarModel {
     /**
      * Gets the intended width for the sidebar. If the sidebar is being dragged, returns the tempWidth. If the sidebar is collapsed, returns the default width.
      * @param ignoreCollapse If true, returns the persisted width even if the sidebar is collapsed.
-     * @param resizing If true, returns the minimum width if the sidebar is collapsed.
      * @returns The intended width for the sidebar or the default width if the sidebar is collapsed. Can be overridden using ignoreCollapse.
      */
     getWidth(ignoreCollapse: boolean = false): number {
