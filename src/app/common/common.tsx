@@ -609,7 +609,13 @@ class PasswordField extends TextField {
         };
 
         return (
-            <div className={cn(`wave-textfield wave-password ${className || ""}`, { focused: focused, error: error })}>
+            <div
+                className={cn(`wave-textfield wave-password ${className || ""}`, {
+                    focused: focused,
+                    error: error,
+                    "no-label": !label,
+                })}
+            >
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div className="wave-textfield-inner">
                     <label

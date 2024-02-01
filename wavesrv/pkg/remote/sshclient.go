@@ -64,7 +64,7 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 	}
 
 	// test code
-	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Minute)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 1000*time.Second)
 	defer cancelFn()
 	request := &sstore.UserInputRequestType{
 		ResponseType: "text",
@@ -72,7 +72,10 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 		Title:        "testing",
 		Markdown:     false,
 	}
-	response, _ := sstore.MainBus.GetUserInput(request, ctx)
+	response, err := sstore.MainBus.GetUserInput(request, ctx)
+	if err != nil {
+		return nil, err
+	}
 	log.Printf("response: %s\n", response.Text)
 
 	hostKeyCallback := ssh.InsecureIgnoreHostKey()

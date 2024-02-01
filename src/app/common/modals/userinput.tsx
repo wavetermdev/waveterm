@@ -8,13 +8,13 @@ import "./userinput.less";
 
 export const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = React.useState(null);
+    const [countdown, setCountdown] = React.useState(Math.floor(userInputRequest.timeoutms / 1000));
 
     const closeModal = React.useCallback(() => {
-        console.log(userInputRequest);
         GlobalModel.sendUserInput({
             type: "userinputresp",
             requestid: userInputRequest.requestid,
-            errormsg: "canceled",
+            errormsg: "Canceled by the user",
         });
         GlobalModel.remotesModel.closeModal();
     }, [responseText, userInputRequest]);
@@ -40,22 +40,33 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
         [userInputRequest]
     );
 
+    React.useEffect(() => {
+        let timeout: ReturnType<typeof setTimeout>;
+        if (countdown == 0) {
+            timeout = setTimeout(() => {
+                GlobalModel.remotesModel.closeModal();
+            }, 300);
+        } else {
+            timeout = setTimeout(() => {
+                setCountdown(countdown - 1);
+            }, 1000);
+        }
+        return () => clearTimeout(timeout);
+    }, [countdown]);
+
     return (
         <Modal className="userinput-modal">
-            <Modal.Header onClose={closeModal} title={"title"} />
+            <Modal.Header onClose={closeModal} title={userInputRequest.title + ` (${countdown})`} />
             <div className="wave-modal-body">
-                <If condition={false}>
-                    <Markdown text={userInputRequest.querytext} />
-                </If>
-                <If condition={!false}>{userInputRequest.querytext}</If>
+                <div className="userinput-query">
+                    <If condition={userInputRequest.markdown}>
+                        <Markdown text={userInputRequest.querytext} />
+                    </If>
+                    <If condition={!userInputRequest.markdown}>{userInputRequest.querytext}</If>
+                </div>
                 <Choose>
                     <When condition={userInputRequest.responsetype == "text"}>
-                        <PasswordField
-                            placeholder="password"
-                            onChange={setResponseText}
-                            value={responseText}
-                            maxLength={400}
-                        />
+                        <PasswordField onChange={setResponseText} value={responseText} maxLength={400} />
                     </When>
                 </Choose>
             </div>

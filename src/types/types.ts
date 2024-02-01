@@ -597,6 +597,7 @@ type UserInputRequest = {
     responsetype: string;
     title: string;
     markdown: boolean;
+    timeoutms: number;
 };
 
 type UserInputResponsePacket = {

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
@@ -170,6 +171,7 @@ type UserInputRequestType struct {
 	ResponseType string `json:"responsetype"`
 	Title        string `json:"title"`
 	Markdown     bool   `json:"markdown"`
+	TimeoutMs    int    `json:"timeoutms"`
 }
 
 type UpdateChannel struct {
@@ -319,6 +321,8 @@ func (bus *UpdateBus) GetUserInput(userInputRequest *UserInputRequestType, ctx c
 	defer bus.unregisterUserInputChannel(id)
 
 	userInputRequest.RequestId = id
+	deadline, _ := ctx.Deadline()
+	userInputRequest.TimeoutMs = int(time.Until(deadline).Milliseconds()) - 500
 	update := &ModelUpdate{UserInputRequest: userInputRequest}
 	bus.SendUpdate(update)
 	log.Printf("test: %+v", userInputRequest)
@@ -330,7 +334,11 @@ func (bus *UpdateBus) GetUserInput(userInputRequest *UserInputRequestType, ctx c
 	case resp := <-uich:
 		response = resp
 	case <-ctx.Done():
-		err = fmt.Errorf("timed out waiting for user input")
+		return nil, fmt.Errorf("Timed out waiting for user input")
+	}
+
+	if response.ErrorMsg != "" {
+		err = fmt.Errorf(response.ErrorMsg)
 	}
 
 	return response, err
