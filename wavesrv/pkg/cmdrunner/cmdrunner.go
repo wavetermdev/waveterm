@@ -1244,6 +1244,23 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_ms
 	exitSuccess = true
 }
 
+func getStatusBarString(filePercentageInt int) string {
+	statusBarString := "\x1b[2k\r["
+	for count := 0; count < 20; count++ {
+		if (filePercentageInt - count*5) > 0 {
+			statusBarString += "-"
+		} else {
+			statusBarString += " "
+		}
+	}
+	if filePercentageInt < 100 {
+		statusBarString += fmt.Sprintf("] %v%%", filePercentageInt)
+	} else {
+		statusBarString += "]"
+	}
+	return statusBarString
+}
+
 func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMsh *remote.MShellProc, destMsh *remote.MShellProc, sourcePath string, destPath string, outputPos int64) {
 	var exitSuccess bool
 	startTime := time.Now()
@@ -1290,7 +1307,7 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		return
 	}
 	bytesWritten := int64(0)
-	lastFileTransferPercentage := float64(0)
+	lastFilePercentageInt := int(0)
 	fileTransferPercentage := float64(0)
 	writeStringToPty(ctx, cmd, "[", &outputPos)
 	for {
@@ -1317,9 +1334,6 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		writeDataPk.Type = dataPk.Type
 		writeDataPk.Data = make([]byte, int64(len(dataPk.Data)))
 		copy(writeDataPk.Data, dataPk.Data)
-		if !bytes.Equal(writeDataPk.Data, dataPk.Data) {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("[Read Data]:%s \r\n\r\n [Write Data]: %s\r\n\r\n", dataPk.Data, writeDataPk.Data), &outputPos)
-		}
 		err = destMsh.SendFileData(writeDataPk)
 		if err != nil {
 			writeStringToPty(ctx, cmd, fmt.Sprintf("error sending file to dest: %v\r\n", err), &outputPos)
@@ -1327,19 +1341,20 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		}
 		bytesWritten += int64(len(dataPk.Data))
 		fileTransferPercentage = float64(bytesWritten) / float64(fileSizeBytes)
-
-		if fileTransferPercentage-lastFileTransferPercentage > float64(0.01) {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("%v\r\n", bytesWritten), &outputPos)
-			lastFileTransferPercentage = fileTransferPercentage
+		filePercentageInt := int(fileTransferPercentage * 100)
+		if filePercentageInt-lastFilePercentageInt > 5 {
+			statusBarString := getStatusBarString(filePercentageInt)
+			writeStringToPty(ctx, cmd, statusBarString, &outputPos)
+			lastFilePercentageInt = filePercentageInt
 		}
 	}
-	writeStringToPty(ctx, cmd, "looking for write finished\r\n", &outputPos)
 	err = checkForWriteFinished(ctx, destWriteIter)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Write finished packet error %v", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("\r\nWrite finished packet error %v", err), &outputPos)
 		return
 	}
-	writeStringToPty(ctx, cmd, "] done. \r\n", &outputPos)
+	writeStringToPty(ctx, cmd, getStatusBarString(100), &outputPos)
+	writeStringToPty(ctx, cmd, " done. \r\n", &outputPos)
 	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\n", bytesWritten), &outputPos)
 	exitSuccess = true
 }
@@ -1445,7 +1460,6 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("usage: /copyfile [file to copy] local=[path to copy to on local]")
 	}
 	ids, err := resolveUiIds(ctx, pk, R_Screen|R_Session|R_RemoteConnected)
-	log.Printf("Remote id: %v", ids.Remote)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve connected remote id: %v", err)
 	}
@@ -1454,7 +1468,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	var sourceRemoteId *ResolvedRemote
 	var destRemoteId *ResolvedRemote
 	if sourceRemote == "error" {
-		return nil, fmt.Errorf("Error: malformed arguments - usage: [remote]:path ")
+		return nil, fmt.Errorf("error: malformed arguments - usage: [remote]:path ")
 	} else if sourceRemote == "" {
 		// use cur remote
 		sourceRemote = "connected"
@@ -1466,15 +1480,14 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		pk.Kwargs["remote"] = sourceRemote
 		sourceIds, err := resolveUiIds(ctx, pk, R_Remote)
 		if err != nil {
-			return nil, fmt.Errorf("Error resolving remote id %v", err)
+			return nil, fmt.Errorf("error resolving remote id %v", err)
 		}
 		sourceRemoteId = sourceIds.Remote
-		log.Printf("sourceRemoteId %v", sourceRemoteId)
 	}
 	destInfo := pk.Args[1]
 	destRemote, destPath := parseCopyFileParam(destInfo)
 	if destRemote == "error" {
-		return nil, fmt.Errorf("Error: malformed arguments - usage: [remote]:path ")
+		return nil, fmt.Errorf("error: malformed arguments - usage: [remote]:path ")
 	} else if destRemote == "" {
 		destRemote = "connected"
 		destRemoteId = ids.Remote
@@ -1485,13 +1498,12 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		pk.Kwargs["remote"] = destRemote
 		destIds, err := resolveUiIds(ctx, pk, R_Remote)
 		if err != nil {
-			return nil, fmt.Errorf("Error resolving remote id %v", err)
+			return nil, fmt.Errorf("error resolving remote id %v", err)
 		}
 		destRemoteId = destIds.Remote
-		log.Printf("Dest remote id: %v", destRemoteId)
 	}
 	if destPath == "" {
-		return nil, fmt.Errorf("Error: malformed arguments - usage: [remote]:path ")
+		return nil, fmt.Errorf("error: malformed arguments - usage: [remote]:path ")
 	}
 
 	var sourceFullPath string
@@ -1523,9 +1535,8 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, fmt.Errorf("expand home dir err: %v", err)
 	}
-	log.Printf("paths: source: %v dest: %v\n", sourceFullPath, destFullPath)
 	var outputPos int64
-	outputStr := fmt.Sprintf("Copying file %v to %v\r\n", sourceFullPath, destFullPath)
+	outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
 	termopts := sstore.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
 	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
 	writeStringToPty(ctx, cmd, outputStr, &outputPos)
@@ -1557,11 +1568,9 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
 		}
 	}
-	log.Printf("msh: %v destRemote: %v sourceRemote %v\n", sourceMsh, destRemote, sourceRemote)
 	if destRemote == "local" && sourceRemote == "local" {
-		return nil, fmt.Errorf("copying local to local - just use cp :p")
+		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceMsh, destMsh, sourceFullPath, destFullPath, outputPos)
 	} else if destRemote == "local" && sourceRemote != "local" {
-		log.Printf("copying remote file to local")
 		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos)
 	} else if destRemote != "local" && sourceRemote == "local" {
 		go doCopyLocalFileToRemote(context.Background(), cmd, destMsh, sourceFullPath, destFullPath, outputPos)
