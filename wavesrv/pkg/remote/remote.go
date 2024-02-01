@@ -43,6 +43,7 @@ const RemoteTermRows = 8
 const RemoteTermCols = 80
 const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
+const RpcIterChannelSize = 100
 
 // we add this ping packet to the MShellServer Commands in order to deal with spurious SSH output
 // basically we guarantee the parser will see a valid packet (either an init error or a ping)
@@ -1585,7 +1586,7 @@ func (msh *MShellProc) PacketRpcIter(ctx context.Context, pk packet.RpcPacketTyp
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
 	reqId := pk.GetReqId()
-	msh.ServerProc.Output.RegisterRpc(reqId)
+	msh.ServerProc.Output.RegisterRpcSz(reqId, RpcIterChannelSize)
 	err := msh.ServerProc.Input.SendPacketCtx(ctx, pk)
 	if err != nil {
 		return nil, err

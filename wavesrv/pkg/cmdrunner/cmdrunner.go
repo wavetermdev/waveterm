@@ -1274,7 +1274,7 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		return
 	}
 	fileSizeBytes := resp.Info.Size
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", fileSizeBytes), &outputPos)
 	writePk := packet.MakeWriteFilePacket()
 	writePk.ReqId = uuid.New().String()
 	writePk.Path = destPath
@@ -1284,7 +1284,7 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		return
 	}
 	defer destWriteIter.Close()
-	writeRespId, err := checkForWriteReady(ctx, destWriteIter)
+	_, err = checkForWriteReady(ctx, destWriteIter)
 	if err != nil {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos)
 		return
@@ -1311,31 +1311,26 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 			writeErrorToPty(cmd, fmt.Sprintf("in read-file, data packet error: %s", dataPk.Error), outputPos)
 			return
 		}
-		writeDataPk := packet.MakeFileDataPacket(writeRespId)
+		writeDataPk := packet.MakeFileDataPacket(writePk.ReqId)
 		writeDataPk.Eof = dataPk.Eof
 		writeDataPk.Error = dataPk.Error
 		writeDataPk.Type = dataPk.Type
-		writeDataPk.Data = make([]byte, len(dataPk.Data))
+		writeDataPk.Data = make([]byte, int64(len(dataPk.Data)))
 		copy(writeDataPk.Data, dataPk.Data)
 		if !bytes.Equal(writeDataPk.Data, dataPk.Data) {
-			writeStringToPty(ctx, cmd, "Error: bytes are not equal: [Read Data]:%s \r\n\r\n [Write Data]: %s\r\n\r\n", &outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("[Read Data]:%s \r\n\r\n [Write Data]: %s\r\n\r\n", dataPk.Data, writeDataPk.Data), &outputPos)
 		}
 		err = destMsh.SendFileData(writeDataPk)
 		if err != nil {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("error sending file to dest: %v", err), &outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error sending file to dest: %v\r\n", err), &outputPos)
 			return
 		}
 		bytesWritten += int64(len(dataPk.Data))
 		fileTransferPercentage = float64(bytesWritten) / float64(fileSizeBytes)
 
-		if fileTransferPercentage-lastFileTransferPercentage > float64(0.05) {
-			writeStringToPty(ctx, cmd, "-", &outputPos)
+		if fileTransferPercentage-lastFileTransferPercentage > float64(0.01) {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("%v\r\n", bytesWritten), &outputPos)
 			lastFileTransferPercentage = fileTransferPercentage
-		}
-
-		if writeDataPk.Eof {
-			writeStringToPty(ctx, cmd, "got eof", &outputPos)
-			break
 		}
 	}
 	writeStringToPty(ctx, cmd, "looking for write finished\r\n", &outputPos)
@@ -1345,7 +1340,7 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		return
 	}
 	writeStringToPty(ctx, cmd, "] done. \r\n", &outputPos)
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\n", fileSizeBytes), &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\n", bytesWritten), &outputPos)
 	exitSuccess = true
 }
 
