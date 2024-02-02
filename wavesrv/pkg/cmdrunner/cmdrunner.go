@@ -1376,6 +1376,7 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 	var bytesWritten int64
 	startTime := time.Now()
 	defer func() {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
 		writeCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
 	}()
 	sourceFile, err := os.Open(sourcePath)
@@ -1402,7 +1403,6 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 		writeStringToPty(ctx, cmd, fmt.Sprintf("error copying files %v", err), &outputPos)
 		return
 	}
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
 	exitSuccess = true
 }
 
