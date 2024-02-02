@@ -156,7 +156,7 @@ func (p *PacketParser) trySendRpcResponse(pk PacketType) bool {
 		return false
 	}
 	p.Lock.Lock()
-  entry := p.RpcMap[respId]
+	entry := p.RpcMap[respId]
 	p.Lock.Unlock()
 	if entry == nil {
 		return false
