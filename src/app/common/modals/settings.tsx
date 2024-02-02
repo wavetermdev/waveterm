@@ -26,7 +26,7 @@ import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg"
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
 
-import "./modals.less";
+import "./settings.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 
