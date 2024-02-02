@@ -1367,7 +1367,42 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 	}
 	writeStringToPty(ctx, cmd, getStatusBarString(100), &outputPos)
 	writeStringToPty(ctx, cmd, " done. \r\n", &outputPos)
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\n", bytesWritten), &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
+	exitSuccess = true
+}
+
+func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath string, destPath string, outputPos int64) {
+	var exitSuccess bool
+	var bytesWritten int64
+	startTime := time.Now()
+	defer func() {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
+		writeCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+	}()
+	sourceFile, err := os.Open(sourcePath)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error opening source file %v", err), &outputPos)
+		return
+	}
+	defer sourceFile.Close()
+	sourceFileStat, err := sourceFile.Stat()
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error getting filestat %v", err), &outputPos)
+		return
+	}
+	fileSizeBytes := sourceFileStat.Size()
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error opening source file %v", err), &outputPos)
+		return
+	}
+	defer destFile.Close()
+	bytesWritten, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error copying files %v", err), &outputPos)
+		return
+	}
 	exitSuccess = true
 }
 
@@ -1581,7 +1616,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		}
 	}
 	if destRemote == "local" && sourceRemote == "local" {
-		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceMsh, destMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos)
 	} else if destRemote == "local" && sourceRemote != "local" {
 		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos)
 	} else if destRemote != "local" && sourceRemote == "local" {
