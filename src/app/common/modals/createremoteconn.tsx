@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
 import * as T from "../../../types/types";
-import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "../common";
+import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, ShowWaveShellInstallPrompt } from "../common";
 import * as util from "../../../util/util";
 import * as appconst from "../../appconst";
 
@@ -25,6 +25,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     tempConnectMode: OV<string>;
     tempPassword: OV<string>;
     tempKeyFile: OV<string>;
+    tempShellPref: OV<string>;
     errorStr: OV<string>;
     remoteEdit: T.RemoteEditType;
     model: RemotesModel;
@@ -40,6 +41,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
         this.tempConnectMode = mobx.observable.box("auto", { name: "CreateRemote-connectMode" });
         this.tempKeyFile = mobx.observable.box("", { name: "CreateRemote-keystr" });
         this.tempPassword = mobx.observable.box("", { name: "CreateRemote-password" });
+        this.tempShellPref = mobx.observable.box("detect", { name: "CreateRemote-shellPref" });
         this.errorStr = mobx.observable.box(this.remoteEdit?.errorstr ?? null, { name: "CreateRemote-errorStr" });
     }
 
@@ -67,23 +69,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleOk(): void {
-        this.showShellPrompt(this.submitRemote);
-    }
-
-    @boundMethod
-    showShellPrompt(cb: () => void): void {
-        let prtn = GlobalModel.showAlert({
-            message:
-                "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
-            confirm: true,
-            confirmflag: appconst.ConfirmKey_HideShellPrompt,
-        });
-        prtn.then((confirm) => {
-            if (!confirm) {
-                return;
-            }
-            cb();
-        });
+        ShowWaveShellInstallPrompt(this.submitRemote);
     }
 
     @boundMethod
@@ -121,6 +107,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
             kwargs["password"] = "";
         }
         kwargs["connectmode"] = this.tempConnectMode.get();
+        kwargs["shellpref"] = this.tempShellPref.get();
         kwargs["visual"] = "1";
         kwargs["submit"] = "1";
         let prtn = GlobalCommandRunner.createRemote(cname, kwargs, false);
@@ -171,6 +158,13 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     handleChangeAuthMode(value: string): void {
         mobx.action(() => {
             this.tempAuthMode.set(value);
+        })();
+    }
+
+    @boundMethod
+    handleChangeShellPref(value: string): void {
+        mobx.action(() => {
+            this.tempShellPref.set(value);
         })();
     }
 
@@ -354,6 +348,20 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                             value={this.tempConnectMode.get()}
                             onChange={(val: string) => {
                                 this.tempConnectMode.set(val);
+                            }}
+                        />
+                    </div>
+                    <div className="shellpref-section">
+                        <Dropdown
+                            label="Shell Preference"
+                            options={[
+                                { value: "detect", label: "detect" },
+                                { value: "bash", label: "bash" },
+                                { value: "zsh", label: "zsh" },
+                            ]}
+                            value={this.tempShellPref.get()}
+                            onChange={(val: string) => {
+                                this.tempShellPref.set(val);
                             }}
                         />
                     </div>

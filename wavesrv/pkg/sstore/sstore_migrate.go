@@ -10,6 +10,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
@@ -32,6 +33,36 @@ func getSliceChunk[T any](slice []T, chunkSize int) ([]T, []T) {
 		return slice, nil
 	}
 	return slice[0:chunkSize], slice[chunkSize:]
+}
+
+// we're going to mark any invalid basestate versions as "invalid"
+// so we can give a better error message for the FE and prompt a reset
+func RunMigration30() error {
+	ctx := context.Background()
+	startTime := time.Now()
+	updateCount := 0
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `SELECT riid FROM remote_instance`
+		riidArr := tx.SelectStrings(query)
+		for _, riid := range riidArr {
+			query = `SELECT version FROM state_base WHERE basehash = (SELECT statebasehash FROM remote_instance WHERE riid = ?)`
+			version := tx.GetString(query, riid)
+			_, _, err := packet.ParseShellStateVersion(version)
+			if err == nil {
+				continue
+			}
+			// deal with bad versions by marking festate with an invalidshellstate flag
+			query = `UPDATE remote_instance SET festate = json_set(festate, '$.invalidshellstate', '1') WHERE riid = ?`
+			tx.Exec(query, riid)
+			updateCount++
+		}
+		return nil
+	})
+	if txErr != nil {
+		return fmt.Errorf("error running remote-instance v30 migration: %w", txErr)
+	}
+	log.Printf("[db] remote-instance v30 migration done: %v (%d bad versions)\n", time.Since(startTime), updateCount)
+	return nil
 }
 
 func RunMigration20() error {

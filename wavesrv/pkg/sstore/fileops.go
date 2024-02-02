@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
@@ -37,6 +38,27 @@ func StatCmdPtyFile(ctx context.Context, screenId string, lineId string) (*cirfi
 		return nil, err
 	}
 	return cirfile.StatCirFile(ctx, ptyOutFileName)
+}
+
+func ClearCmdPtyFile(ctx context.Context, screenId string, lineId string) error {
+	ptyOutFileName, err := scbase.PtyOutFile(screenId, lineId)
+	if err != nil {
+		return err
+	}
+	stat, err := cirfile.StatCirFile(ctx, ptyOutFileName)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	os.Remove(ptyOutFileName) // ignore error
+	var maxSize int64 = shexec.DefaultMaxPtySize
+	if stat != nil {
+		maxSize = stat.MaxSize
+	}
+	err = CreateCmdPtyFile(ctx, screenId, lineId, maxSize)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, data []byte, pos int64) (*PtyDataUpdate, error) {

@@ -5,27 +5,24 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If, Choose, When, Otherwise } from "tsx-control-statements/components";
+import { If } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Screen, ScreenLines } from "../../../model/model";
-import { renderCmdText, Button } from "../../common/common";
+import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
+import { renderCmdText } from "../../common/common";
 import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "../../common/prompt/prompt";
 import { ReactComponent as ExecIcon } from "../../assets/icons/exec.svg";
-import { ReactComponent as RotateIcon } from "../../assets/icons/line/rotate.svg";
-import "./cmdinput.less";
+import { RotateIcon } from "../../common/icons/icons";
 import { AIChat } from "./aichat";
 
+import "./cmdinput.less";
+
 dayjs.extend(localizedFormat);
-
-const TDots = "⋮";
-
-type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class CmdInput extends React.Component<{}, {}> {
@@ -37,11 +34,11 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     updateCmdInputHeight() {
-        let elem = this.cmdInputRef.current;
+        const elem = this.cmdInputRef.current;
         if (elem == null) {
             return;
         }
-        let height = elem.offsetHeight;
+        const height = elem.offsetHeight;
         if (height == GlobalModel.inputModel.cmdInputHeight) {
             return;
         }
@@ -50,7 +47,7 @@ class CmdInput extends React.Component<{}, {}> {
         })();
     }
 
-    componentDidUpdate(prevProps, prevState, snapshot: {}): void {
+    componentDidUpdate(): void {
         this.updateCmdInputHeight();
     }
 
@@ -75,11 +72,19 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    clickAIHint(e: any): void {
+        e.preventDefault();
+        e.stopPropagation();
+        let inputModel = GlobalModel.inputModel;
+        inputModel.openAIAssistantChat();
+    }
+
+    @boundMethod
     clickHistoryHint(e: any): void {
         e.preventDefault();
         e.stopPropagation();
 
-        let inputModel = GlobalModel.inputModel;
+        const inputModel = GlobalModel.inputModel;
         if (inputModel.historyShow.get()) {
             inputModel.resetHistory();
         } else {
@@ -99,10 +104,15 @@ class CmdInput extends React.Component<{}, {}> {
         })();
     }
 
+    @boundMethod
+    clickResetState(): void {
+        GlobalCommandRunner.resetShellState();
+    }
+
     render() {
-        let model = GlobalModel;
-        let inputModel = model.inputModel;
-        let screen = GlobalModel.getActiveScreen();
+        const model = GlobalModel;
+        const inputModel = model.inputModel;
+        const screen = GlobalModel.getActiveScreen();
         let ri: RemoteInstanceType = null;
         let rptr: RemotePtrType = null;
         if (screen != null) {
@@ -115,15 +125,14 @@ class CmdInput extends React.Component<{}, {}> {
             remote = GlobalModel.getRemote(ri.remoteid);
             feState = ri.festate;
         }
-        let infoShow = inputModel.infoShow.get();
-        let historyShow = !infoShow && inputModel.historyShow.get();
-        let aiChatShow = inputModel.aIChatShow.get();
-        let infoMsg = inputModel.infoMsg.get();
-        let hasInfo = infoMsg != null;
-        let focusVal = inputModel.physicalInputFocused.get();
-        let inputMode: string = inputModel.inputMode.get();
-        let textAreaInputKey = screen == null ? "null" : screen.screenId;
-        let win = GlobalModel.getScreenLinesById(screen.screenId);
+        feState = feState || {};
+        const infoShow = inputModel.infoShow.get();
+        const historyShow = !infoShow && inputModel.historyShow.get();
+        const aiChatShow = inputModel.aIChatShow.get();
+        const focusVal = inputModel.physicalInputFocused.get();
+        const inputMode: string = inputModel.inputMode.get();
+        const textAreaInputKey = screen == null ? "null" : screen.screenId;
+        const win = GlobalModel.getScreenLinesById(screen.screenId);
         let numRunningLines = 0;
         if (win != null) {
             numRunningLines = mobx.computed(() => win.getRunningCmdLines().length).get();
@@ -160,6 +169,18 @@ class CmdInput extends React.Component<{}, {}> {
                                 connect now
                             </div>
                         </If>
+                    </div>
+                </If>
+                <If condition={feState["invalidshellstate"]}>
+                    <div className="remote-status-warning">
+                        WARNING:&nbsp; The shell state for this tab is invalid (
+                        <a target="_blank" href="https://docs.waveterm.dev/reference/faq">
+                            see FAQ
+                        </a>
+                        ). Must reset to continue.
+                        <div className="button is-wave-green is-outlined is-small" onClick={this.clickResetState}>
+                            reset shell state
+                        </div>
                     </div>
                 </If>
                 <div key="prompt" className="cmd-input-context">
@@ -200,12 +221,24 @@ class CmdInput extends React.Component<{}, {}> {
                             </div>**/}
                         {!focusVal && (
                             <div onClick={this.clickFocusInputHint} className="cmd-btn hoverEffect">
-                                focus input ({renderCmdText("I")})
+                                <div className="hint-elem">focus input ({renderCmdText("I")})</div>
                             </div>
                         )}
                         {focusVal && (
-                            <div onMouseDown={this.clickHistoryHint} className="cmd-btn hoverEffect">
-                                {historyShow ? "close (esc)" : "history (ctrl-r)"}
+                            <div className="cmd-btn hoverEffect">
+                                <If condition={historyShow}>
+                                    <div className="hint-elem" onMouseDown={this.clickHistoryHint}>
+                                        close (esc)
+                                    </div>
+                                </If>
+                                <If condition={!historyShow}>
+                                    <div className="hint-elem" onMouseDown={this.clickHistoryHint}>
+                                        history (ctrl-r)
+                                    </div>
+                                    <div className="hint-elem" onMouseDown={this.clickAIHint}>
+                                        AI (ctrl-space)
+                                    </div>
+                                </If>
                             </div>
                         )}
                         <ExecIcon

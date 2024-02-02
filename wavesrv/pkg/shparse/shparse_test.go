@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 // $(ls f[*]); ./x

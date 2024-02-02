@@ -1,15 +1,15 @@
 @import "../../app/common/themes/themes.less";
+@import "../../app/common/icons/icons.less";
 
 .main-sidebar {
     padding: 0;
-    min-width: 20rem;
-    max-width: 20rem;
     display: flex;
     flex-direction: column;
     position: relative;
     font-size: 12.5px;
     line-height: 20px;
     backdrop-filter: blur(4px);
+    z-index: 20;
 
     .title-bar-drag {
         -webkit-app-region: drag;
@@ -23,14 +23,19 @@
     &.collapsed {
         width: 6em;
         min-width: 6em;
-        .arrow-container, .collapse-button {
+        .arrow-container,
+        .collapse-button {
             transform: rotate(180deg);
             margin-top: 20px;
         }
         .contents {
             margin-top: 26px;
-            
-            .top, .workspaces-item, .middle, .bottom, .separator {
+
+            .top,
+            .workspaces,
+            .middle,
+            .bottom,
+            .separator {
                 pointer-events: none;
                 opacity: 0;
                 visibility: hidden;
@@ -43,7 +48,7 @@
                 justify-content: center;
                 align-items: center;
 
-                .logo-container img {
+                .logo-container {
                     width: 45px;
                 }
 
@@ -79,10 +84,14 @@
         display: flex;
         flex-direction: row;
 
+        .logo-container {
+            flex-shrink: 0;
+            width: 100px;
+        }
+
         .spacer {
             flex-grow: 1;
         }
-        
         img {
             width: 100px;
         }
@@ -90,16 +99,13 @@
         .collapse-button {
             transition: transform 0.3s ease-in-out;
             margin-right: 14px;
-            
+
             svg {
                 margin-top: 3px;
                 width: 1.5em;
                 height: 1.5em;
             }
         }
-    }
-
-    .top {
     }
 
     .separator {
@@ -123,12 +129,7 @@
                     0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
             }
             .index {
-                margin: 0 1.5em 0 -0.5rem;
-                font-size: 0.8em;
-                vertical-align: middle;
-                text-align: right;
-                width: 2em;
-                display: inline-block;
+                font-size: 10px;
             }
             .hotkey {
                 float: left !important;
@@ -148,57 +149,74 @@
 
     .item {
         padding: 5px;
-        margin: 0 6px;
+        margin-left: 6px;
         border-radius: 4px;
         opacity: 1;
-        visibility: visible;
-        transition: opacity 0.1s ease-in-out, visibility 0.1s step-end;
-        .sessionName {
-            width: 12rem;
-            display: inline-block;
-            vertical-align: middle;
+        width: inherit;
+        max-width: inherit;
+        min-width: inherit;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        .front-icon {
+            .positional-icon-visible;
+        }
+
+        .end-icons {
+            height: 20px;
+        }
+
+        .item-contents {
+            flex-grow: 1;
         }
         .icon {
-            margin: -2px 8px 0px 4px;
             width: 16px;
             height: 16px;
-            display: inline-block;
-            vertical-align: middle;
-            border-radius: 50%;
-        }
-        .actions.icon {
-            margin-left: 8px;
         }
         .hotkey {
             float: right;
             margin-right: 6px;
-            visibility: hidden;
             letter-spacing: 6px;
+            margin-left: auto;
         }
-        .disabled .hotkey {
-            display: none;
-        }
-        &:hover .hotkey {
-            visibility: visible;
-        }
-        .actions {
-            visibility: hidden;
-        }
-        &:hover .actions {
-            visibility: visible;
-        }
-        .add_workspace {
-            float: right;
-            width: 1.5rem;
-            height: 1.5rem;
-            padding: 2px;
-            margin-right: 6px;
-            border-radius: 50%;
-            transition: transform 0.3s ease-in-out;
-            vertical-align: middle;
-            svg {
-                fill: @base-color;
+        &:hover {
+            :not(.disabled) .hotkey {
+                .positional-icon-visible;
             }
+            .actions {
+                .positional-icon-visible;
+            }
+        }
+
+        &:not(:hover) .status-indicator {
+            .status-indicator-visible;
+        }
+
+        &.workspaces {
+            cursor: default;
+            .add-workspace {
+                cursor: pointer;
+                .positional-icon-visible;
+                float: right;
+                padding: 2px;
+                margin-right: 6px;
+                .fa-plus {
+                    font-size: 13px;
+                }
+            }
+        }
+
+        .front-icon {
+            font-size: 15px;
+        }
+
+        .end-icons {
+            line-height: normal;
+        }
+
+        .fa-discord {
+            font-size: 13px;
         }
     }
 

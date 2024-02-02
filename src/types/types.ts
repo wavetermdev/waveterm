@@ -121,6 +121,8 @@ type RemoteType = {
     remoteopts?: RemoteOptsType;
     local: boolean;
     remove?: boolean;
+    shellpref: string;
+    defaultshelltype: string;
 };
 
 type RemoteStateType = {
@@ -136,6 +138,7 @@ type RemoteInstanceType = {
     remoteownerid: string;
     remoteid: string;
     festate: Record<string, string>;
+    shelltype: string;
 
     remove?: boolean;
 };
@@ -242,12 +245,14 @@ type CmdDataType = {
     status: string;
     cmdpid: number;
     remotepid: number;
+    restartts: number;
     donets: number;
     exitcode: number;
     durationms: number;
     runout: any[];
     rtnstate: boolean;
     remove?: boolean;
+    restarted?: boolean;
 };
 
 type PtyDataUpdateType = {
@@ -279,6 +284,26 @@ type OpenAICmdInfoChatMessageType = {
     userquery?: string;
 };
 
+/**
+ * Levels for the screen status indicator
+ */
+enum StatusIndicatorLevel {
+    None = 0,
+    Output = 1,
+    Success = 2,
+    Error = 3,
+}
+
+type ScreenStatusIndicatorUpdateType = {
+    screenid: string;
+    status: StatusIndicatorLevel;
+};
+
+type ScreenNumRunningCommandsUpdateType = {
+    screenid: string;
+    num: number;
+};
+
 type ModelUpdateType = {
     interactive: boolean;
     sessions?: SessionDataType[];
@@ -301,6 +326,8 @@ type ModelUpdateType = {
     remoteview?: RemoteViewType;
     openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
     alertmessage?: AlertMessageType;
+    screenstatusindicators?: ScreenStatusIndicatorUpdateType[];
+    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType[];
 };
 
 type HistoryViewDataType = {
@@ -497,6 +524,10 @@ type ClientOptsType = {
     noreleasecheck: boolean;
     acceptedtos: number;
     confirmflags: ConfirmFlagsType;
+    mainsidebar: {
+        collapsed: boolean;
+        width: number;
+    };
 };
 
 type ReleaseInfoType = {
@@ -779,4 +810,7 @@ export type {
     StrWithPos,
     CmdInputTextPacketType,
     OpenAICmdInfoChatMessageType,
+    ScreenStatusIndicatorUpdateType,
 };
+
+export { StatusIndicatorLevel };

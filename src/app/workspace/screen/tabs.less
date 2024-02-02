@@ -1,4 +1,5 @@
 @import "../../../app/common/themes/themes.less";
+@import "../../../app/common/icons/icons.less";
 
 #main .screen-tabs .screen-tab {
     border-top: 1px solid transparent;
@@ -10,7 +11,7 @@
 
     &.color-green,
     &.color-default {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-green;
         }
 
@@ -27,14 +28,10 @@
                 rgba(88, 193, 66, 0) 86.79%
             );
         }
-
-        .icon i {
-            color: @tab-green;
-        }
     }
 
     &.color-orange {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-orange;
         }
 
@@ -54,7 +51,7 @@
     }
 
     &.color-red {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-red;
         }
 
@@ -74,7 +71,7 @@
     }
 
     &.color-yellow {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-yellow;
         }
 
@@ -94,7 +91,7 @@
     }
 
     &.color-blue {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-blue;
         }
 
@@ -114,7 +111,7 @@
     }
 
     &.color-mint {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-mint;
         }
 
@@ -134,7 +131,7 @@
     }
 
     &.color-cyan {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-cyan;
         }
 
@@ -154,7 +151,7 @@
     }
 
     &.color-white {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-white;
         }
 
@@ -174,7 +171,7 @@
     }
 
     &.color-violet {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-violet;
         }
 
@@ -194,7 +191,7 @@
     }
 
     &.color-pink {
-        svg.left-icon path {
+        svg.svg-icon-inner path {
             fill: @tab-pink;
         }
 
@@ -240,46 +237,31 @@
         display: flex;
     }
 
+    .screen-tabs-container-inner {
+        overflow-x: scroll;
+    }
+
     .screen-tabs {
         display: flex;
         flex-direction: row;
         align-items: center;
-        overflow-x: scroll;
-
-        &::-webkit-scrollbar-thumb,
-        &::-webkit-scrollbar-track {
-            display: none;
-        }
-
-        &:hover::-webkit-scrollbar-thumb {
-            display: block;
-        }
 
         .screen-tab {
             display: flex;
+            flex-direction: row;
             height: 3em;
-            min-width: 14em;
-            max-width: 14em;
+            min-width: 13.6em;
+            max-width: 13.6em;
             align-items: center;
             cursor: pointer;
-            position: relative;
+            padding: 0 8px 0 8px;
 
-            .icon.svg-icon {
-                margin: 0 12px;
-
-                svg {
-                    width: 14px;
-                    height: 14px;
-                }
-            }
-
-            .icon.fa-icon {
-                font-size: 16px;
-                margin: 0 12px;
+            .front-icon {
+                .positional-icon-visible;
             }
 
             .tab-name {
-                width: 8rem;
+                flex-grow: 1;
             }
 
             &.is-active {
@@ -293,28 +275,28 @@
                 }
             }
 
-            .tab-index,
-            .tab-gear {
-                display: none;
-                .icon {
-                    border-radius: 50%;
-                }
-            }
-
-            &:hover {
-                .tab-gear {
-                    display: block;
+            // Only one of these will be visible at a time
+            .end-icons {
+                // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
+                margin: 0 -8px 0 0;
+                line-height: normal;
+                .tab-index {
+                    font-size: 12.5px;
                 }
             }
         }
 
-        &:hover .screen-tab .tab-index {
-            display: block;
-            font-size: 0.8em;
+        &:not(:hover) .status-indicator {
+            .status-indicator-visible;
         }
 
-        &:hover .screen-tab:hover .tab-index {
-            display: none;
+        &:hover {
+            .screen-tab:not(:hover) .tab-index {
+                .positional-icon-visible;
+            }
+            .screen-tab:hover .actions {
+                .positional-icon-visible;
+            }
         }
     }
 
@@ -328,7 +310,6 @@
         height: 37px;
 
         .icon {
-            height: 2rem;
             height: 2rem;
             border-radius: 50%;
             padding: 0.4em;

@@ -13,6 +13,7 @@ import { TextAreaInput } from "./textareainput";
 import { If, For } from "tsx-control-statements/components";
 import type { OpenAICmdInfoChatMessageType } from "../../../types/types";
 import { Markdown } from "../../common/common";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../../util/keyutil";
 
 @mobxReact.observer
 class AIChat extends React.Component<{}, {}> {
@@ -76,8 +77,8 @@ class AIChat extends React.Component<{}, {}> {
             let inputModel = model.inputModel;
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             let resetCodeSelect = !ctrlMod;
-
-            if (e.code == "Enter") {
+            let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+            if (checkKeyPressed(waveEvent, "Enter")) {
                 e.preventDefault();
                 if (!ctrlMod) {
                     if (inputModel.getCodeSelectSelectedIndex() == -1) {
@@ -91,17 +92,18 @@ class AIChat extends React.Component<{}, {}> {
                     e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
                 }
             }
-            if (e.code == "Escape") {
+            if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
                 e.stopPropagation();
                 inputModel.closeAIAssistantChat();
             }
-            if (e.code == "KeyL" && e.getModifierState("Control")) {
+
+            if (checkKeyPressed(waveEvent, "Ctrl:l")) {
                 e.preventDefault();
                 e.stopPropagation();
                 inputModel.clearAIAssistantChat();
             }
-            if (e.code == "ArrowUp") {
+            if (checkKeyPressed(waveEvent, "ArrowUp")) {
                 if (this.getLinePos(e.target).linePos > 1) {
                     // normal up arrow
                     return;
@@ -110,7 +112,7 @@ class AIChat extends React.Component<{}, {}> {
                 inputModel.codeSelectSelectNextOldestCodeBlock();
                 resetCodeSelect = false;
             }
-            if (e.code == "ArrowDown") {
+            if (checkKeyPressed(waveEvent, "ArrowDown")) {
                 if (inputModel.getCodeSelectSelectedIndex() == inputModel.codeSelectBottom) {
                     return;
                 }
@@ -139,10 +141,10 @@ class AIChat extends React.Component<{}, {}> {
         let msgClassName = "chat-msg " + senderClassName;
         let innerHTML: React.JSX.Element = (
             <span>
-                <span style={{ display: "flex" }}>
-                    <i className="fa-sharp fa-solid fa-user" style={{ marginRight: "5px", marginTop: "1px" }}></i>
-                    <p style={{ marginRight: "5px" }}>You</p>
-                </span>
+                <div style={{ display: "flex", marginBottom: 2 }}>
+                    <i className="fa-sharp fa-solid fa-user" style={{ marginRight: "7px", marginTop: "2px" }}></i>
+                    <div style={{ marginRight: "5px" }}>You</div>
+                </div>
                 <p className="msg-text">{chatItem.userquery}</p>
             </span>
         );
@@ -152,13 +154,13 @@ class AIChat extends React.Component<{}, {}> {
             } else {
                 innerHTML = (
                     <span>
-                        <span style={{ display: "flex" }}>
+                        <div style={{ display: "flex", marginBottom: 2 }}>
                             <i
                                 className="fa-sharp fa-solid fa-headset"
-                                style={{ marginRight: "5px", marginTop: "1px" }}
+                                style={{ marginRight: "7px", marginTop: "3px" }}
                             ></i>
-                            <p style={{ marginRight: "5px" }}>ChatGPT</p>
-                        </span>
+                            <div style={{ marginRight: "5px" }}>ChatGPT</div>
+                        </div>
                         <Markdown text={chatItem.assistantresponse.message} codeSelect />
                     </span>
                 );

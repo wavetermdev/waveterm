@@ -18,7 +18,8 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
@@ -217,8 +218,8 @@ func UpsertRemote(ctx context.Context, r *RemoteType) error {
 		maxRemoteIdx := tx.GetInt(query)
 		r.RemoteIdx = int64(maxRemoteIdx + 1)
 		query = `INSERT INTO remote
-            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, sshconfigsrc, openaiopts) VALUES
-            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:sshconfigsrc,:openaiopts)`
+            ( remoteid, remotetype, remotealias, remotecanonicalname, remoteuser, remotehost, connectmode, autoinstall, sshopts, remoteopts, lastconnectts, archived, remoteidx, local, statevars, sshconfigsrc, openaiopts, shellpref) VALUES
+            (:remoteid,:remotetype,:remotealias,:remotecanonicalname,:remoteuser,:remotehost,:connectmode,:autoinstall,:sshopts,:remoteopts,:lastconnectts,:archived,:remoteidx,:local,:statevars,:sshconfigsrc,:openaiopts,:shellpref)`
 		tx.NamedExec(query, r.ToMap())
 		return nil
 	})
@@ -762,29 +763,37 @@ func GetScreenById(ctx context.Context, screenId string) (*ScreenType, error) {
 	})
 }
 
+// special "E" returns last unarchived line, "EA" returns last line (even if archived)
 func FindLineIdByArg(ctx context.Context, screenId string, lineArg string) (string, error) {
-	var lineId string
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		if lineArg == "E" {
+			query := `SELECT lineid FROM line WHERE screenid = ? AND NOT archived ORDER BY linenum DESC LIMIT 1`
+			lineId := tx.GetString(query, screenId)
+			return lineId, nil
+		}
+		if lineArg == "EA" {
+			query := `SELECT lineid FROM line WHERE screenid = ? ORDER BY linenum DESC LIMIT 1`
+			lineId := tx.GetString(query, screenId)
+			return lineId, nil
+		}
 		lineNum, err := strconv.Atoi(lineArg)
 		if err == nil {
 			// valid linenum
 			query := `SELECT lineid FROM line WHERE screenid = ? AND linenum = ?`
-			lineId = tx.GetString(query, screenId, lineNum)
+			lineId := tx.GetString(query, screenId, lineNum)
+			return lineId, nil
 		} else if len(lineArg) == 8 {
 			// prefix id string match
 			query := `SELECT lineid FROM line WHERE screenid = ? AND substr(lineid, 1, 8) = ?`
-			lineId = tx.GetString(query, screenId, lineArg)
+			lineId := tx.GetString(query, screenId, lineArg)
+			return lineId, nil
 		} else {
 			// id match
 			query := `SELECT lineid FROM line WHERE screenid = ? AND lineid = ?`
-			lineId = tx.GetString(query, screenId, lineArg)
+			lineId := tx.GetString(query, screenId, lineArg)
+			return lineId, nil
 		}
-		return nil
 	})
-	if txErr != nil {
-		return "", txErr
-	}
-	return lineId, nil
 }
 
 func GetLineCmdByLineId(ctx context.Context, screenId string, lineId string) (*LineType, *CmdType, error) {
@@ -835,8 +844,8 @@ func InsertLine(ctx context.Context, line *LineType, cmd *CmdType) error {
 			cmd.OrigTermOpts = cmd.TermOpts
 			cmdMap := cmd.ToMap()
 			query = `
-INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr, rawcmdstr, festate, statebasehash, statediffhasharr, termopts, origtermopts, status, cmdpid, remotepid, donets, exitcode, durationms, rtnstate, runout, rtnbasehash, rtndiffhasharr)
-          VALUES (:screenid,:lineid,:remoteownerid,:remoteid,:remotename,:cmdstr,:rawcmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:cmdpid,:remotepid,:donets,:exitcode,:durationms,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
+INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr, rawcmdstr, festate, statebasehash, statediffhasharr, termopts, origtermopts, status, cmdpid, remotepid, donets, restartts, exitcode, durationms, rtnstate, runout, rtnbasehash, rtndiffhasharr)
+          VALUES (:screenid,:lineid,:remoteownerid,:remoteid,:remotename,:cmdstr,:rawcmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:cmdpid,:remotepid,:donets,:restartts,:exitcode,:durationms,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
 `
 			tx.NamedExec(query, cmdMap)
 		}
@@ -878,6 +887,20 @@ func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, m
 	return UpdateWithCurrentOpenAICmdInfoChat(screenId)
 }
 
+func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdPid int, remotePid int, termOpts *TermOpts) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE cmd
+		          SET restartts = ?, status = ?, exitcode = ?, cmdpid = ?, remotepid = ?, durationms = ?, termopts = ?, origtermopts = ?
+				  WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, ts, CmdStatusRunning, 0, cmdPid, remotePid, 0, quickJson(termOpts), quickJson(termOpts), ck.GetGroupId(), lineIdFromCK(ck))
+		query = `UPDATE history
+		         SET ts = ?, status = ?, exitcode = ?, durationms = ?
+			     WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, ts, CmdStatusRunning, 0, 0, ck.GetGroupId(), lineIdFromCK(ck))
+		return nil
+	})
+}
+
 func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) (*ModelUpdate, error) {
 	if donePk == nil {
 		return nil, fmt.Errorf("invalid cmddone packet")
@@ -911,7 +934,24 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 	if rtnCmd == nil {
 		return nil, fmt.Errorf("cmd data not found for ck[%s]", ck)
 	}
-	return &ModelUpdate{Cmd: rtnCmd}, nil
+
+	update := &ModelUpdate{Cmd: rtnCmd}
+
+	// Update in-memory screen indicator status
+	var indicator StatusIndicatorLevel
+	if rtnCmd.ExitCode == 0 {
+		indicator = StatusIndicatorLevel_Success
+	} else {
+		indicator = StatusIndicatorLevel_Error
+	}
+
+	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, indicator, false)
+	if err != nil {
+		// This is not a fatal error, so just log it
+		log.Printf("error setting status indicator level after done packet: %v\n", err)
+	}
+
+	return update, nil
 }
 
 func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr ShellStatePtr) error {
@@ -1043,6 +1083,7 @@ func getNextId(ids []string, delId string) string {
 }
 
 func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*ModelUpdate, error) {
+	SetActiveSessionId(ctx, sessionId)
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
 		if !tx.Exists(query, sessionId, screenId) {
@@ -1064,6 +1105,13 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 	if memState != nil {
 		update.CmdLine = &memState.CmdInputText
 		update.OpenAICmdInfoChat = ScreenMemGetCmdInfoChat(screenId).Messages
+
+		// Clear any previous status indicator for this screen
+		err := ResetStatusIndicator_Update(update, screenId)
+		if err != nil {
+			// This is not a fatal error, so just log it
+			log.Printf("error resetting status indicator when switching screens: %v\n", err)
+		}
 	}
 	return update, nil
 }
@@ -1288,11 +1336,12 @@ func GetRemoteInstance(ctx context.Context, sessionId string, screenId string, r
 	return ri, nil
 }
 
-// internal function for UpdateRemoteState
+// internal function for UpdateRemoteState (sets StateBaseHash, StateDiffHashArr, and ShellType)
 func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packet.ShellState, stateDiff *packet.ShellStateDiff) error {
 	if stateBase != nil {
 		ri.StateBaseHash = stateBase.GetHashVal(false)
 		ri.StateDiffHashArr = nil
+		ri.ShellType = stateBase.GetShellType()
 		err := StoreStateBase(ctx, stateBase)
 		if err != nil {
 			return err
@@ -1300,6 +1349,7 @@ func updateRIWithState(ctx context.Context, ri *RemoteInstance, stateBase *packe
 	} else if stateDiff != nil {
 		ri.StateBaseHash = stateDiff.BaseHash
 		ri.StateDiffHashArr = append(stateDiff.DiffHashArr, stateDiff.GetHashVal(false))
+		ri.ShellType = stateDiff.GetShellType()
 		err := StoreStateDiff(ctx, stateDiff)
 		if err != nil {
 			return err
@@ -1340,18 +1390,18 @@ func UpdateRemoteState(ctx context.Context, sessionId string, screenId string, r
 			if err != nil {
 				return err
 			}
-			query = `INSERT INTO remote_instance ( riid, name, sessionid, screenid, remoteownerid, remoteid, festate, statebasehash, statediffhasharr)
-                                          VALUES (:riid,:name,:sessionid,:screenid,:remoteownerid,:remoteid,:festate,:statebasehash,:statediffhasharr)`
+			query = `INSERT INTO remote_instance ( riid, name, sessionid, screenid, remoteownerid, remoteid, festate, statebasehash, statediffhasharr, shelltype)
+                                          VALUES (:riid,:name,:sessionid,:screenid,:remoteownerid,:remoteid,:festate,:statebasehash,:statediffhasharr,:shelltype)`
 			tx.NamedExec(query, ri.ToMap())
 			return nil
 		} else {
-			query = `UPDATE remote_instance SET festate = ?, statebasehash = ?, statediffhasharr = ? WHERE riid = ?`
+			query = `UPDATE remote_instance SET festate = ?, statebasehash = ?, statediffhasharr = ?, shelltype = ? WHERE riid = ?`
 			ri.FeState = feState
 			err = updateRIWithState(tx.Context(), ri, stateBase, stateDiff)
 			if err != nil {
 				return err
 			}
-			tx.Exec(query, quickJson(ri.FeState), ri.StateBaseHash, quickJsonArr(ri.StateDiffHashArr), ri.RIId)
+			tx.Exec(query, quickJson(ri.FeState), ri.StateBaseHash, quickJsonArr(ri.StateDiffHashArr), ri.ShellType, ri.RIId)
 			return nil
 		}
 	})
@@ -1471,14 +1521,16 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 func DeleteScreenLines(ctx context.Context, screenId string) (*ModelUpdate, error) {
 	var lineIds []string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT lineid FROM line WHERE screenid = ?`
-		lineIds = tx.SelectStrings(query, screenId)
-		query = `DELETE FROM line WHERE screenid = ?`
-		tx.Exec(query, screenId)
-		query = `UPDATE history SET lineid = '', linenum = 0 WHERE screenid = ?`
-		tx.Exec(query, screenId)
-		query = `UPDATE screen SET nextlinenum = 1 WHERE screenid = ?`
-		tx.Exec(query, screenId)
+		query := `SELECT lineid FROM line 
+		          WHERE screenid = ?
+		            AND NOT EXISTS (SELECT lineid FROM cmd c WHERE c.screenid = ? AND c.lineid = line.lineid AND c.status IN ('running', 'detached'))`
+		lineIds = tx.SelectStrings(query, screenId, screenId)
+		query = `DELETE FROM line 
+				 WHERE screenid = ? AND lineid IN (SELECT value FROM json_each(?))`
+		tx.Exec(query, screenId, quickJsonArr(lineIds))
+		query = `UPDATE history SET lineid = '', linenum = 0 
+		         WHERE screenid = ? AND lineid IN (SELECT value FROM json_each(?))`
+		tx.Exec(query, screenId, quickJsonArr(lineIds))
 		return nil
 	})
 	if txErr != nil {
@@ -1730,9 +1782,11 @@ const (
 	RemoteField_SSHKey      = "sshkey"      // string
 	RemoteField_SSHPassword = "sshpassword" // string
 	RemoteField_Color       = "color"       // string
+	RemoteField_ShellPref   = "shellpref"   // string
 )
 
 // editMap: alias, connectmode, autoinstall, sshkey, color, sshpassword (from constants)
+// note that all validation should have already happened outside of this function
 func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]interface{}) (*RemoteType, error) {
 	var rtn *RemoteType
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -1759,6 +1813,10 @@ func UpdateRemote(ctx context.Context, remoteId string, editMap map[string]inter
 		if sshPassword, found := editMap[RemoteField_SSHPassword]; found {
 			query = `UPDATE remote SET sshopts = json_set(sshopts, '$.sshpassword', ?) WHERE remoteid = ?`
 			tx.Exec(query, sshPassword, remoteId)
+		}
+		if shellPref, found := editMap[RemoteField_ShellPref]; found {
+			query = `UPDATE remote SET shellpref = ? WHERE remoteid = ?`
+			tx.Exec(query, shellPref, remoteId)
 		}
 		if color, found := editMap[RemoteField_Color]; found {
 			query = `UPDATE remote SET remoteopts = json_set(remoteopts, '$.color', ?) WHERE remoteid = ?`
@@ -1958,22 +2016,26 @@ func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState,
 		if err != nil {
 			return err
 		}
+		sapi, err := shellapi.MakeShellApi(state.GetShellType())
+		if err != nil {
+			return err
+		}
 		for idx, diffHash := range ssPtr.DiffHashArr {
 			query = `SELECT * FROM state_diff WHERE diffhash = ?`
 			stateDiff := dbutil.GetMapGen[*StateDiff](tx, query, diffHash)
 			if stateDiff == nil {
 				return fmt.Errorf("ShellStateDiff %s not found", diffHash)
 			}
-			var ssDiff packet.ShellStateDiff
+			ssDiff := &packet.ShellStateDiff{}
 			err = ssDiff.DecodeShellStateDiff(stateDiff.Data)
 			if err != nil {
 				return err
 			}
-			newState, err := shexec.ApplyShellStateDiff(*state, ssDiff)
+			newState, err := sapi.ApplyShellStateDiff(state, ssDiff)
 			if err != nil {
 				return fmt.Errorf("GetFullState, diff[%d]:%s: %v", idx, diffHash, err)
 			}
-			state = &newState
+			state = newState
 		}
 		return nil
 	})
@@ -2064,6 +2126,19 @@ func SetLineArchivedById(ctx context.Context, screenId string, lineId string, ar
 	return txErr
 }
 
+func GetScreenSelectedLineId(ctx context.Context, screenId string) (string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		query := `SELECT selectedline FROM screen WHERE screenid = ?`
+		sline := tx.GetInt(query, screenId)
+		if sline <= 0 {
+			return "", nil
+		}
+		query = `SELECT lineid FROM line WHERE screenid = ? AND linenum = ?`
+		lineId := tx.GetString(query, screenId, sline)
+		return lineId, nil
+	})
+}
+
 // returns updated screen (only if updated)
 func FixupScreenSelectedLine(ctx context.Context, screenId string) (*ScreenType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenType, error) {
@@ -2131,6 +2206,15 @@ func GetCurDayStr() string {
 	return dayStr
 }
 
+// Wraps UpdateCurrentActivity, but ignores errors
+func UpdateActivityWrap(ctx context.Context, update ActivityUpdate, debugStr string) {
+	err := UpdateCurrentActivity(ctx, update)
+	if err != nil {
+		// ignore error, just log, since this is not critical
+		log.Printf("error updating current activity (%s): %v\n", debugStr, err)
+	}
+}
+
 func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 	now := time.Now()
 	dayStr := GetCurDayStr()
@@ -2145,7 +2229,7 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 			if len(tzName) > MaxTzNameLen {
 				tzName = tzName[0:MaxTzNameLen]
 			}
-			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.WaveVersion, scbase.ClientArch(), scbase.BuildTime, scbase.MacOSRelease())
+			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.WaveVersion, scbase.ClientArch(), scbase.BuildTime, scbase.UnameKernelRelease())
 		}
 		tdata.NumCommands += update.NumCommands
 		tdata.FgMinutes += update.FgMinutes
@@ -2154,6 +2238,8 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.ClickShared += update.ClickShared
 		tdata.HistoryView += update.HistoryView
 		tdata.BookmarksView += update.BookmarksView
+		tdata.ReinitBashErrors += update.ReinitBashErrors
+		tdata.ReinitZshErrors += update.ReinitZshErrors
 		if update.NumConns > 0 {
 			tdata.NumConns = update.NumConns
 		}
@@ -2748,5 +2834,17 @@ func SetWebPtyPos(ctx context.Context, screenId string, lineId string, ptyPos in
 			tx.Exec(query, screenId, lineId, ptyPos)
 		}
 		return nil
+	})
+}
+
+func GetRemoteActiveShells(ctx context.Context, remoteId string) ([]string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]string, error) {
+		query := `SELECT * FROM remote_instance WHERE remoteid = ?`
+		riArr := dbutil.SelectMapsGen[*RemoteInstance](tx, query, remoteId)
+		shellTypeMap := make(map[string]bool)
+		for _, ri := range riArr {
+			shellTypeMap[ri.ShellType] = true
+		}
+		return utilfn.GetMapKeys(shellTypeMap), nil
 	})
 }

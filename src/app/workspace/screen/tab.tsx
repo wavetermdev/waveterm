@@ -4,14 +4,12 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Session, Screen } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
+import { ActionsIcon, StatusIndicator, CenteredIcon } from "../../common/icons/icons";
 import { renderCmdText } from "../../common/common";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
-import { ReactComponent as ActionsIcon } from "../../assets/icons/tab/actions.svg";
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";
 import { MagicLayout } from "../../magiclayout";
@@ -66,7 +64,7 @@ class ScreenTab extends React.Component<
         if (tabIcon === "default" || tabIcon === "square") {
             return (
                 <div className="icon svg-icon">
-                    <SquareIcon className="left-icon" />
+                    <SquareIcon className="svg-icon-inner" />
                 </div>
             );
         }
@@ -82,13 +80,12 @@ class ScreenTab extends React.Component<
 
         let tabIndex = null;
         if (index + 1 <= 9) {
-            tabIndex = <div className="tab-index">{renderCmdText(String(index + 1))}</div>;
+            tabIndex = (
+                <CenteredIcon className="tab-index">
+                    <div>{renderCmdText(String(index + 1))}</div>
+                </CenteredIcon>
+            );
         }
-        let settings = (
-            <div onClick={(e) => this.openScreenSettings(e, screen)} title="Actions" className="tab-gear">
-                <ActionsIcon className="icon hoverEffect " />
-            </div>
-        );
         let archived = screen.archived.get() ? (
             <i title="archived" className="fa-sharp fa-solid fa-box-archive" />
         ) : null;
@@ -96,6 +93,9 @@ class ScreenTab extends React.Component<
         let webShared = screen.isWebShared() ? (
             <i title="shared to web" className="fa-sharp fa-solid fa-share-nodes web-share-icon" />
         ) : null;
+
+        const statusIndicatorLevel = screen.statusIndicator.get();
+        const runningCommands = screen.numRunningCmds.get() > 0;
 
         return (
             <Reorder.Item
@@ -115,14 +115,17 @@ class ScreenTab extends React.Component<
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
                 onDragEnd={this.handleDragEnd}
             >
-                {this.renderTabIcon(screen)}
+                <CenteredIcon className="front-icon">{this.renderTabIcon(screen)}</CenteredIcon>
                 <div className="tab-name truncate">
                     {archived}
                     {webShared}
                     {screen.name.get()}
                 </div>
-                {tabIndex}
-                {settings}
+                <div className="end-icons">
+                    <StatusIndicator level={statusIndicatorLevel} runningCommands={runningCommands} />
+                    {tabIndex}
+                    <ActionsIcon onClick={(e) => this.openScreenSettings(e, screen)} />
+                </div>
             </Reorder.Item>
         );
     }

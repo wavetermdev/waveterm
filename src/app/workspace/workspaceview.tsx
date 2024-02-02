@@ -27,20 +27,33 @@ class WorkspaceView extends React.Component<{}, {}> {
         if (session == null) {
             return (
                 <div className="session-view">
-                    <div className="center-message"><div>(no active workspace)</div></div>
+                    <div className="center-message">
+                        <div>(no active workspace)</div>
+                    </div>
                 </div>
             );
         }
         let activeScreen = session.getActiveScreen();
         let cmdInputHeight = model.inputModel.cmdInputHeight.get();
         if (cmdInputHeight == 0) {
-            cmdInputHeight = MagicLayout.CmdInputHeight;  // this is the base size of cmdInput (measured using devtools)
+            cmdInputHeight = MagicLayout.CmdInputHeight; // this is the base size of cmdInput (measured using devtools)
         }
-        cmdInputHeight += MagicLayout.CmdInputBottom;  // reference to .cmd-input, bottom: 12px
+        cmdInputHeight += MagicLayout.CmdInputBottom; // reference to .cmd-input, bottom: 12px
         let isHidden = GlobalModel.activeMainView.get() != "session";
+        let mainSidebarModel = GlobalModel.mainSidebarModel;
+
+        // Has to calc manually because when tabs overflow, the width of the session view is increased for some reason causing inconsistent width.
+        // 6px is the right margin of session view.
+        let width = window.innerWidth - 6 - mainSidebarModel.getWidth();
 
         return (
-            <div className={cn("session-view", { "is-hidden": isHidden })} data-sessionid={session.sessionId}>
+            <div
+                className={cn("session-view", { "is-hidden": isHidden })}
+                data-sessionid={session.sessionId}
+                style={{
+                    width: `${width}px`,
+                }}
+            >
                 <ScreenTabs key={"tabs-" + session.sessionId} session={session} />
                 <ErrorBoundary>
                     <ScreenView key={"screenview-" + session.sessionId} session={session} screen={activeScreen} />

@@ -24,6 +24,7 @@ import {
     Button,
     Status,
     Checkbox,
+    ShowWaveShellInstallPrompt,
 } from "../common";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
@@ -549,23 +550,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleOk(): void {
-        this.showShellPrompt(this.submitRemote);
-    }
-
-    @boundMethod
-    showShellPrompt(cb: () => void): void {
-        let prtn = GlobalModel.showAlert({
-            message:
-                "You are about to install WaveShell on a remote machine. Please be aware that WaveShell will be executed on the remote system.",
-            confirm: true,
-            confirmflag: appconst.ConfirmKey_HideShellPrompt,
-        });
-        prtn.then((confirm) => {
-            if (!confirm) {
-                return;
-            }
-            cb();
-        });
+        ShowWaveShellInstallPrompt(this.submitRemote);
     }
 
     @boundMethod
@@ -1041,17 +1026,6 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             cancelInstallButton = <></>;
         }
         if (remote.sshconfigsrc == "sshconfig-import") {
-            updateAuthButton = (
-                <Button theme="secondary" disabled={true}>
-                    Edit
-                    <Tooltip
-                        message={`Connections imported from an ssh config file cannot be edited inside waveterm. To edit these, you must edit the config file and import it again.`}
-                        icon={<i className="fa-sharp fa-regular fa-fw fa-ban" />}
-                    >
-                        <i className="fa-sharp fa-regular fa-fw fa-ban" />
-                    </Tooltip>
-                </Button>
-            );
             archiveButton = (
                 <Button theme="secondary" onClick={() => this.clickArchive()}>
                     Delete

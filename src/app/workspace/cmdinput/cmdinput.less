@@ -55,9 +55,6 @@
         .button {
             margin-left: 10px;
         }
-
-        .remote-name {
-        }
     }
 
     .input-minmax-control {
@@ -85,7 +82,7 @@
     .cmd-input-filter {
         opacity: 0.5;
         &:hover {
-            opacity: 1.0;
+            opacity: 1;
         }
 
         .avatar {
@@ -100,19 +97,6 @@
         .warning {
             fill: @warning-yellow;
         }
-
-        @keyframes infiniteRotate {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .spin {
-            animation: infiniteRotate 2s linear infinite;
-        }
     }
 
     .cmd-input-field {
@@ -126,6 +110,22 @@
         }
         .control {
             padding: 1em 2px;
+        }
+
+        .textareainput-div {
+            position: relative;
+
+            .shelltag {
+                position: absolute;
+                bottom: 4px;
+                right: 3px;
+                font-size: 10px;
+                color: @text-secondary;
+                line-height: 1;
+                padding: 0px 8px 3px 8px;
+                background-color: @textarea-background;
+                border-radius: 0 0 5px 5px;
+            }
         }
 
         textarea {
@@ -190,18 +190,22 @@
                 display: inline-block;
                 margin-right: 0;
                 padding: 0.2em 0.7rem;
-                opacity: 0.5;
-                cursor: pointer;
                 border-radius: 4px;
                 vertical-align: super;
-                &:hover {
-                    opacity: 1;
+
+                .hint-elem {
+                    cursor: pointer;
+                    opacity: 0.5;
+
+                    &:hover {
+                        opacity: 1;
+                    }
                 }
             }
         }
     }
-    
-    .cmd-aichat { 
+
+    .cmd-aichat {
         display: flex;
         justify-content: flex-end;
         flex-flow: column nowrap;
@@ -215,7 +219,7 @@
             flex-shrink: 1;
             flex-direction: column-reverse;
         }
-         
+
         .chat-textarea {
             color: @term-bright-white;
             background-color: @textarea-background;
@@ -238,29 +242,27 @@
         }
 
         .chat-msg {
-            margin-top:5px;
-            margin-bottom:5px;
+            margin-top: 5px;
+            margin-bottom: 5px;
         }
 
         .chat-msg-assistant {
             color: @term-white;
         }
 
-        .chat-msg-user { 
-
+        .chat-msg-user {
             .msg-text {
                 font-family: @markdown-font;
                 font-size: 14px;
                 white-space: pre-wrap;
             }
         }
-         
+
         .chat-msg-error {
             color: @term-bright-red;
             font-family: @markdown-font;
             font-size: 14px;
         }
-        
 
         .grow-spacer {
             flex: 1 0 10px;
@@ -466,9 +468,6 @@
                 }
 
                 .remote-field-control {
-                    &.text-control {
-                    }
-
                     &.text-input {
                         input[type="text"],
                         input[type="number"],

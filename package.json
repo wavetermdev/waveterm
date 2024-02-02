@@ -2,7 +2,7 @@
     "name": "waveterm",
     "author": "Command Line Inc",
     "productName": "Wave",
-    "version": "0.5.3",
+    "version": "0.6.1",
     "main": "dist/emain.js",
     "license": "Apache-2.0",
     "dependencies": {

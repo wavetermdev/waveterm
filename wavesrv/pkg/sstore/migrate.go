@@ -22,10 +22,11 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 )
 
-const MaxMigration = 29
+const MaxMigration = 31
 const MigratePrimaryScreenVersion = 9
 const CmdScreenSpecialMigration = 13
 const CmdLineSpecialMigration = 20
+const RISpecialMigration = 30
 
 func MakeMigrate() (*migrate.Migrate, error) {
 	fsVar, err := iofs.New(sh2db.MigrationFS, "migrations")
@@ -80,6 +81,12 @@ func MigrateUpStep(m *migrate.Migrate, newVersion uint) error {
 	}
 	if newVersion == CmdLineSpecialMigration {
 		mErr := RunMigration20()
+		if mErr != nil {
+			return fmt.Errorf("migrating to v%d: %w", newVersion, mErr)
+		}
+	}
+	if newVersion == RISpecialMigration {
+		mErr := RunMigration30()
 		if mErr != nil {
 			return fmt.Errorf("migrating to v%d: %w", newVersion, mErr)
 		}

@@ -14,6 +14,7 @@ import (
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 )
@@ -59,9 +60,16 @@ const (
 	WriteFileReadyPacketStr = "writefileready" // rpc-response
 	WriteFileDonePacketStr  = "writefiledone"  // rpc-response
 	FileDataPacketStr       = "filedata"
+	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
+	ShellStatePacketStr     = "shellstate"
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
+)
+
+const (
+	ShellType_bash = "bash"
+	ShellType_zsh  = "zsh"
 )
 
 const PacketSenderQueueSize = 20
@@ -70,7 +78,7 @@ const PacketEOFStr = "EOF"
 
 var TypeStrToFactory map[string]reflect.Type
 
-const OpenAICmdInfoChatGreetingMessage = "Hello, may I help you with this command? \n(Press ESC to close and Ctrl+L to clear chat buffer)"
+const OpenAICmdInfoChatGreetingMessage = "Hello, may I help you with this command?  \n(Ctrl-Space: open, ESC: close, Ctrl+L: clear chat buffer, Up/Down: select code blocks, Enter: to copy a selected code block to the command input)"
 
 func init() {
 	TypeStrToFactory = make(map[string]reflect.Type)
@@ -102,6 +110,8 @@ func init() {
 	TypeStrToFactory[WriteFilePacketStr] = reflect.TypeOf(WriteFilePacketType{})
 	TypeStrToFactory[WriteFileReadyPacketStr] = reflect.TypeOf(WriteFileReadyPacketType{})
 	TypeStrToFactory[WriteFileDonePacketStr] = reflect.TypeOf(WriteFileDonePacketType{})
+	TypeStrToFactory[LogPacketStr] = reflect.TypeOf(LogPacketType{})
+	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -119,6 +129,7 @@ func init() {
 	var _ RpcResponsePacketType = (*FileDataPacketType)(nil)
 	var _ RpcResponsePacketType = (*WriteFileReadyPacketType)(nil)
 	var _ RpcResponsePacketType = (*WriteFileDonePacketType)(nil)
+	var _ RpcResponsePacketType = (*ShellStatePacketType)(nil)
 
 	var _ CommandPacketType = (*DataPacketType)(nil)
 	var _ CommandPacketType = (*DataAckPacketType)(nil)
@@ -382,8 +393,9 @@ func MakeCdPacket() *CdPacketType {
 }
 
 type ReInitPacketType struct {
-	Type  string `json:"type"`
-	ReqId string `json:"reqid"`
+	Type      string `json:"type"`
+	ShellType string `json:"shelltype"`
+	ReqId     string `json:"reqid"`
 }
 
 func (*ReInitPacketType) GetType() string {
@@ -543,6 +555,54 @@ func MakeRawPacket(val string) *RawPacketType {
 	return &RawPacketType{Type: RawPacketStr, Data: val}
 }
 
+type LogPacketType struct {
+	Type     string `json:"type"`
+	Ts       int64  `json:"ts"`                 // log timestamp
+	ReqId    string `json:"reqid,omitempty"`    // if this log line is related to an rpc request
+	ProcInfo string `json:"procinfo,omitempty"` // server/single
+	LogLine  string `json:"logline"`            // the logline data
+}
+
+func (*LogPacketType) GetType() string {
+	return LogPacketStr
+}
+
+func (p *LogPacketType) String() string {
+	return "log"
+}
+
+func MakeLogPacket() *LogPacketType {
+	return &LogPacketType{Type: LogPacketStr, Ts: time.Now().UnixMilli()}
+}
+
+type ShellStatePacketType struct {
+	Type      string      `json:"type"`
+	ShellType string      `json:"shelltype"`
+	RespId    string      `json:"respid,omitempty"`
+	State     *ShellState `json:"state"`
+	Error     string      `json:"error,omitempty"`
+}
+
+func (*ShellStatePacketType) GetType() string {
+	return ShellStatePacketStr
+}
+
+func (p *ShellStatePacketType) String() string {
+	return fmt.Sprintf("shellstate[%s]", p.ShellType)
+}
+
+func (p *ShellStatePacketType) GetResponseId() string {
+	return p.RespId
+}
+
+func (p *ShellStatePacketType) GetResponseDone() bool {
+	return true
+}
+
+func MakeShellStatePacket() *ShellStatePacketType {
+	return &ShellStatePacketType{Type: ShellStatePacketStr}
+}
+
 type MessagePacketType struct {
 	Type    string          `json:"type"`
 	CK      base.CommandKey `json:"ck,omitempty"`
@@ -567,19 +627,18 @@ func FmtMessagePacket(fmtStr string, args ...interface{}) *MessagePacketType {
 }
 
 type InitPacketType struct {
-	Type          string      `json:"type"`
-	RespId        string      `json:"respid,omitempty"`
-	Version       string      `json:"version"`
-	BuildTime     string      `json:"buildtime,omitempty"`
-	MShellHomeDir string      `json:"mshellhomedir,omitempty"`
-	HomeDir       string      `json:"homedir,omitempty"`
-	State         *ShellState `json:"state,omitempty"`
-	User          string      `json:"user,omitempty"`
-	HostName      string      `json:"hostname,omitempty"`
-	NotFound      bool        `json:"notfound,omitempty"`
-	UName         string      `json:"uname,omitempty"`
-	Shell         string      `json:"shell,omitempty"`
-	RemoteId      string      `json:"remoteid,omitempty"`
+	Type          string `json:"type"`
+	RespId        string `json:"respid,omitempty"`
+	Version       string `json:"version"`
+	BuildTime     string `json:"buildtime,omitempty"`
+	MShellHomeDir string `json:"mshellhomedir,omitempty"`
+	HomeDir       string `json:"homedir,omitempty"`
+	User          string `json:"user,omitempty"`
+	HostName      string `json:"hostname,omitempty"`
+	NotFound      bool   `json:"notfound,omitempty"`
+	UName         string `json:"uname,omitempty"`
+	Shell         string `json:"shell,omitempty"`
+	RemoteId      string `json:"remoteid,omitempty"`
 }
 
 func (*InitPacketType) GetType() string {
@@ -701,6 +760,7 @@ type RunPacketType struct {
 	Type          string          `json:"type"`
 	ReqId         string          `json:"reqid"`
 	CK            base.CommandKey `json:"ck"`
+	ShellType     string          `json:"shelltype"` // new in v0.6.0 (either "bash" or "zsh") (set by remote.go)
 	Command       string          `json:"command"`
 	State         *ShellState     `json:"state,omitempty"`
 	StateDiff     *ShellStateDiff `json:"statediff,omitempty"`

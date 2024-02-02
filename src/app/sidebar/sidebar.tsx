@@ -7,42 +7,65 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { RemoteType } from "../../types/types";
+import type { ClientDataType, RemoteType } from "../../types/types";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
 
 import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
-import { ReactComponent as HelpIcon } from "../assets/icons/help.svg";
-import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
-import { ReactComponent as DiscordIcon } from "../assets/icons/discord.svg";
-import { ReactComponent as HistoryIcon } from "../assets/icons/history.svg";
 import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
-import { ReactComponent as ConnectionsIcon } from "../assets/icons/connections.svg";
 import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
-import { ReactComponent as AddIcon } from "../assets/icons/add.svg";
-import { ReactComponent as ActionsIcon } from "../assets/icons/tab/actions.svg";
+import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, VERSION } from "../../model/model";
-import { sortAndFilterRemotes, isBlank, openLink } from "../../util/util";
+import { isBlank, openLink } from "../../util/util";
+import { ResizableSidebar } from "../common/common";
 import * as constants from "../appconst";
 
 import "./sidebar.less";
+import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "../common/icons/icons";
 
 dayjs.extend(localizedFormat);
 
-type OV<V> = mobx.IObservableValue<V>;
+class SideBarItem extends React.Component<{
+    frontIcon: React.ReactNode;
+    contents: React.ReactNode | string;
+    endIcons?: React.ReactNode[];
+    className?: string;
+    onClick?: React.MouseEventHandler<HTMLDivElement>;
+}> {
+    render() {
+        return (
+            <div
+                className={cn("item", "unselectable", "hoverEffect", this.props.className)}
+                onClick={this.props.onClick}
+            >
+                <FrontIcon>{this.props.frontIcon}</FrontIcon>
+                <div className="item-contents truncate">{this.props.contents}</div>
+                <div className="end-icons">{this.props.endIcons}</div>
+            </div>
+        );
+    }
+}
+
+class HotKeyIcon extends React.Component<{ hotkey: string }> {
+    render() {
+        return (
+            <CenteredIcon className="hotkey">
+                <span>&#x2318;{this.props.hotkey}</span>
+            </CenteredIcon>
+        );
+    }
+}
+
+interface MainSideBarProps {
+    parentRef: React.RefObject<HTMLElement>;
+    clientData: ClientDataType;
+}
 
 @mobxReact.observer
-class MainSideBar extends React.Component<{}, {}> {
-    collapsed: mobx.IObservableValue<boolean> = mobx.observable.box(false);
-
-    @boundMethod
-    toggleCollapsed() {
-        mobx.action(() => {
-            this.collapsed.set(!this.collapsed.get());
-        })();
-    }
+class MainSideBar extends React.Component<MainSideBarProps, {}> {
+    sidebarRef = React.createRef<HTMLDivElement>();
 
     handleSessionClick(sessionId: string) {
         GlobalCommandRunner.switchSession(sessionId);
@@ -99,7 +122,6 @@ class MainSideBar extends React.Component<{}, {}> {
     @boundMethod
     handlePlaybookClick(): void {
         console.log("playbook click");
-        return;
     }
 
     @boundMethod
@@ -150,145 +172,149 @@ class MainSideBar extends React.Component<{}, {}> {
 
     getSessions() {
         if (!GlobalModel.sessionListLoaded.get()) return <div className="item">loading ...</div>;
-        let sessionList = [];
-        let activeSessionId = GlobalModel.activeSessionId.get();
-        for (let session of GlobalModel.sessionList) {
+        const sessionList: Session[] = [];
+        const activeSessionId = GlobalModel.activeSessionId.get();
+        for (const session of GlobalModel.sessionList) {
             if (!session.archived.get() || session.sessionId == activeSessionId) {
                 sessionList.push(session);
             }
         }
         return sessionList.map((session, index) => {
             const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
+            const sessionScreens = GlobalModel.getSessionScreens(session.sessionId);
+            const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
+            const sessionRunningCommands = sessionScreens.some((screen) => screen.numRunningCmds.get() > 0);
             return (
-                <div
-                    key={index}
-                    className={`item hoverEffect ${isActive ? "active" : ""}`}
+                <SideBarItem
+                    key={session.sessionId}
+                    className={`${isActive ? "active" : ""}`}
+                    frontIcon={<span className="index">{index + 1}</span>}
+                    contents={session.name.get()}
+                    endIcons={[
+                        <StatusIndicator
+                            key="statusindicator"
+                            level={sessionIndicator}
+                            runningCommands={sessionRunningCommands}
+                        />,
+                        <ActionsIcon key="actions" onClick={(e) => this.openSessionSettings(e, session)} />,
+                    ]}
                     onClick={() => this.handleSessionClick(session.sessionId)}
-                >
-                    <span className="index">{index + 1}</span>
-                    <span className="truncate sessionName">{session.name.get()}</span>
-                    <ActionsIcon
-                        className="icon hoverEffect actions"
-                        onClick={(e) => this.openSessionSettings(e, session)}
-                    />
-                </div>
+                />
             );
         });
     }
 
     render() {
-        let model = GlobalModel;
-        let activeSessionId = model.activeSessionId.get();
-        let activeScreen = model.getActiveScreen();
-        let activeRemoteId: string = null;
-        if (activeScreen != null) {
-            let rptr = activeScreen.curRemote.get();
-            if (rptr != null && !isBlank(rptr.remoteid)) {
-                activeRemoteId = rptr.remoteid;
-            }
-        }
-        let session: Session = null;
-        let remotes = model.remotes ?? [];
-        let remote: RemoteType = null;
-        let idx: number = 0;
-        remotes = sortAndFilterRemotes(remotes);
-        let sessionList = [];
-        for (let session of model.sessionList) {
-            if (!session.archived.get() || session.sessionId == activeSessionId) {
-                sessionList.push(session);
-            }
-        }
-        let isCollapsed = this.collapsed.get();
-        let mainView = GlobalModel.activeMainView.get();
-        let clientData = GlobalModel.clientData.get();
+        let clientData = this.props.clientData;
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
         }
+        let mainSidebar = GlobalModel.mainSidebarModel;
+        let isCollapsed = mainSidebar.getCollapsed();
         return (
-            <div className={cn("main-sidebar", { collapsed: isCollapsed }, { "is-dev": GlobalModel.isDev })}>
-                <div className="title-bar-drag" />
-                <div className="contents">
-                    <div className="logo">
-                        <If condition={isCollapsed}>
-                            <div className="logo-container" onClick={this.toggleCollapsed}>
-                                <img src="public/logos/wave-logo.png" />
+            <ResizableSidebar
+                className="main-sidebar"
+                position="left"
+                enableSnap={true}
+                parentRef={this.props.parentRef}
+            >
+                {(toggleCollapse) => (
+                    <React.Fragment>
+                        <div className="title-bar-drag" />
+                        <div className="contents">
+                            <div className="logo">
+                                <If condition={isCollapsed}>
+                                    <div className="logo-container" onClick={toggleCollapse}>
+                                        <img src="public/logos/wave-logo.png" />
+                                    </div>
+                                </If>
+                                <If condition={!isCollapsed}>
+                                    <div className="logo-container">
+                                        <img src="public/logos/wave-dark.png" />
+                                    </div>
+                                    <div className="spacer" />
+                                    <div className="collapse-button" onClick={toggleCollapse}>
+                                        <LeftChevronIcon className="icon" />
+                                    </div>
+                                </If>
                             </div>
-                        </If>
-                        <If condition={!isCollapsed}>
-                            <div className="logo-container">
-                                <img src="public/logos/wave-dark.png" />
+                            <div className="separator" />
+                            <div className="top">
+                                <SideBarItem
+                                    key="history"
+                                    frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
+                                    contents="History"
+                                    endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
+                                    onClick={this.handleHistoryClick}
+                                />
+                                {/* <SideBarItem className="hoverEffect unselectable" frontIcon={<FavoritesIcon className="icon" />} contents="Favorites" endIcon={<span className="hotkey">&#x2318;B</span>} onClick={this.handleBookmarksClick}/> */}
+                                <SideBarItem
+                                    key="connections"
+                                    frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
+                                    contents="Connections"
+                                    onClick={this.handleConnectionsClick}
+                                />
                             </div>
-                            <div className="spacer" />
-                            <div className="collapse-button" onClick={this.toggleCollapsed}>
-                                <LeftChevronIcon className="icon" />
+                            <div className="separator" />
+                            <SideBarItem
+                                key="workspaces"
+                                className="workspaces"
+                                frontIcon={<WorkspacesIcon className="icon" />}
+                                contents="Workspaces"
+                                endIcons={[
+                                    <CenteredIcon
+                                        key="add-workspace"
+                                        className="add-workspace hoverEffect"
+                                        onClick={this.handleNewSession}
+                                    >
+                                        <i className="fa-sharp fa-solid fa-plus"></i>
+                                    </CenteredIcon>,
+                                ]}
+                            />
+                            <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
+                            <div className="bottom">
+                                <If condition={needsUpdate}>
+                                    <SideBarItem
+                                        key="update-available"
+                                        className="updateBanner"
+                                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                                        contents="Update Available"
+                                        onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                                    />
+                                </If>
+                                <If condition={GlobalModel.isDev}>
+                                    <SideBarItem
+                                        key="apps"
+                                        frontIcon={<AppsIcon className="icon" />}
+                                        contents="Apps"
+                                        onClick={this.handlePluginsClick}
+                                        endIcons={[<HotKeyIcon key="hotkey" hotkey="A" />]}
+                                    />
+                                </If>
+                                <SideBarItem
+                                    key="settings"
+                                    frontIcon={<SettingsIcon className="icon" />}
+                                    contents="Settings"
+                                    onClick={this.handleSettingsClick}
+                                />
+                                <SideBarItem
+                                    key="documentation"
+                                    frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
+                                    contents="Documentation"
+                                    onClick={() => openLink("https://docs.waveterm.dev")}
+                                />
+                                <SideBarItem
+                                    key="discord"
+                                    frontIcon={<i className="fa-brands fa-discord icon" />}
+                                    contents="Discord"
+                                    onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
+                                />
                             </div>
-                        </If>
-                    </div>
-                    <div className="separator" />
-                    <div className="top">
-                        <div className="item hoverEffect unselectable" onClick={this.handleHistoryClick}>
-                            <HistoryIcon className="icon" />
-                            History
-                            <span className="hotkey">&#x2318;H</span>
                         </div>
-                        {/* <div className="item hoverEffect unselectable" onClick={this.handleBookmarksClick}>
-                            <FavoritesIcon className="icon" />
-                            Favorites
-                            <span className="hotkey">&#x2318;B</span>
-                            </div>  */}
-                        <div className="item hoverEffect unselectable" onClick={this.handleConnectionsClick}>
-                            <ConnectionsIcon className="icon" />
-                            Connections
-                        </div>
-                    </div>
-                    <div className="separator" />
-                    <div className="item workspaces-item unselectable">
-                        <WorkspacesIcon className="icon" />
-                        Workspaces
-                        <div className="add_workspace hoverEffect" onClick={this.handleNewSession}>
-                            <AddIcon />
-                        </div>
-                    </div>
-                    <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
-                    <div className="bottom">
-                        <If condition={needsUpdate}>
-                            <div
-                                className="item hoverEffect unselectable updateBanner"
-                                onClick={() => openLink("https://www.waveterm.dev/download")}
-                            >
-                                <i className="fa-sharp fa-regular fa-circle-up icon" />
-                                Update Available
-                            </div>
-                        </If>
-                        <If condition={GlobalModel.isDev}>
-                            <div className="item hoverEffect unselectable" onClick={this.handlePluginsClick}>
-                                <AppsIcon className="icon" />
-                                Apps
-                                <span className="hotkey">&#x2318;A</span>
-                            </div>
-                        </If>
-                        <div className="item hoverEffect unselectable" onClick={this.handleSettingsClick}>
-                            <SettingsIcon className="icon" />
-                            Settings
-                        </div>
-                        <div
-                            className="item hoverEffect unselectable"
-                            onClick={() => openLink("https://docs.waveterm.dev")}
-                        >
-                            <HelpIcon className="icon" />
-                            Documentation
-                        </div>
-                        <div
-                            className="item hoverEffect unselectable"
-                            onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
-                        >
-                            <DiscordIcon className="icon discord" />
-                            Discord
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    </React.Fragment>
+                )}
+            </ResizableSidebar>
         );
     }
 }

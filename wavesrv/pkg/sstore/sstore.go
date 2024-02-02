@@ -25,7 +25,7 @@ import (
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 
@@ -46,6 +46,10 @@ const LocalRemoteAlias = "local"
 
 const DefaultCwd = "~"
 const APITokenSentinel = "--apitoken--"
+
+// defined here and not in packet.go since this value should never
+// be passed to waveshell (it should always get resolved prior to sending a run packet)
+const ShellTypePref_Detect = "detect"
 
 const (
 	LineTypeCmd    = "cmd"
@@ -222,16 +226,18 @@ type ClientWinSizeType struct {
 }
 
 type ActivityUpdate struct {
-	FgMinutes     int
-	ActiveMinutes int
-	OpenMinutes   int
-	NumCommands   int
-	ClickShared   int
-	HistoryView   int
-	BookmarksView int
-	NumConns      int
-	WebShareLimit int
-	BuildTime     string
+	FgMinutes        int
+	ActiveMinutes    int
+	OpenMinutes      int
+	NumCommands      int
+	ClickShared      int
+	HistoryView      int
+	BookmarksView    int
+	NumConns         int
+	WebShareLimit    int
+	ReinitBashErrors int
+	ReinitZshErrors  int
+	BuildTime        string
 }
 
 type ActivityType struct {
@@ -243,19 +249,22 @@ type ActivityType struct {
 	ClientVersion string        `json:"clientversion"`
 	ClientArch    string        `json:"clientarch"`
 	BuildTime     string        `json:"buildtime"`
+	DefaultShell  string        `json:"defaultshell"`
 	OSRelease     string        `json:"osrelease"`
 }
 
 type TelemetryData struct {
-	NumCommands   int `json:"numcommands"`
-	ActiveMinutes int `json:"activeminutes"`
-	FgMinutes     int `json:"fgminutes"`
-	OpenMinutes   int `json:"openminutes"`
-	ClickShared   int `json:"clickshared,omitempty"`
-	HistoryView   int `json:"historyview,omitempty"`
-	BookmarksView int `json:"bookmarksview,omitempty"`
-	NumConns      int `json:"numconns"`
-	WebShareLimit int `json:"websharelimit,omitempty"`
+	NumCommands      int `json:"numcommands"`
+	ActiveMinutes    int `json:"activeminutes"`
+	FgMinutes        int `json:"fgminutes"`
+	OpenMinutes      int `json:"openminutes"`
+	ClickShared      int `json:"clickshared,omitempty"`
+	HistoryView      int `json:"historyview,omitempty"`
+	BookmarksView    int `json:"bookmarksview,omitempty"`
+	NumConns         int `json:"numconns"`
+	WebShareLimit    int `json:"websharelimit,omitempty"`
+	ReinitBashErrors int `json:"reinitbasherrors,omitempty"`
+	ReinitZshErrors  int `json:"reinitzsherrors,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -266,11 +275,17 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 	return quickScanJson(tdata, val)
 }
 
+type SidebarValueType struct {
+	Collapsed bool `json:"collapsed"`
+	Width     int  `json:"width"`
+}
+
 type ClientOptsType struct {
-	NoTelemetry    bool            `json:"notelemetry,omitempty"`
-	NoReleaseCheck bool            `json:"noreleasecheck,omitempty"`
-	AcceptedTos    int64           `json:"acceptedtos,omitempty"`
-	ConfirmFlags   map[string]bool `json:"confirmflags,omitempty"`
+	NoTelemetry    bool              `json:"notelemetry,omitempty"`
+	NoReleaseCheck bool              `json:"noreleasecheck,omitempty"`
+	AcceptedTos    int64             `json:"acceptedtos,omitempty"`
+	ConfirmFlags   map[string]bool   `json:"confirmflags,omitempty"`
+	MainSidebar    *SidebarValueType `json:"mainsidebar,omitempty"`
 }
 
 type FeOptsType struct {
@@ -521,8 +536,9 @@ type ScreenType struct {
 	ArchivedTs     int64               `json:"archivedts,omitempty"`
 
 	// only for updates
-	Full   bool `json:"full,omitempty"`
-	Remove bool `json:"remove,omitempty"`
+	Full            bool   `json:"full,omitempty"`
+	Remove          bool   `json:"remove,omitempty"`
+	StatusIndicator string `json:"statusindicator,omitempty"`
 }
 
 func (s *ScreenType) ToMap() map[string]interface{} {
@@ -694,6 +710,7 @@ type RemoteInstance struct {
 	RemoteOwnerId    string            `json:"remoteownerid"`
 	RemoteId         string            `json:"remoteid"`
 	FeState          map[string]string `json:"festate"`
+	ShellType        string            `json:"shelltype"`
 	StateBaseHash    string            `json:"-"`
 	StateDiffHashArr []string          `json:"-"`
 
@@ -741,14 +758,18 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 	}
 	rtn := make(map[string]string)
 	rtn["cwd"] = state.Cwd
-	envMap := shexec.EnvMapFromState(state)
+	envMap := shellenv.EnvMapFromState(state)
 	if envMap["VIRTUAL_ENV"] != "" {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
 	}
 	for key, val := range envMap {
-		if strings.HasPrefix(key, "PROMPTVAR_") && rtn[key] != "" {
+		if strings.HasPrefix(key, "PROMPTVAR_") && envMap[key] != "" {
 			rtn[key] = val
 		}
+	}
+	_, _, err := packet.ParseShellStateVersion(state.Version)
+	if err != nil {
+		rtn["invalidstate"] = "1"
 	}
 	return rtn
 }
@@ -763,6 +784,7 @@ func (ri *RemoteInstance) FromMap(m map[string]interface{}) bool {
 	quickSetJson(&ri.FeState, m, "festate")
 	quickSetStr(&ri.StateBaseHash, m, "statebasehash")
 	quickSetJsonArr(&ri.StateDiffHashArr, m, "statediffhasharr")
+	quickSetStr(&ri.ShellType, m, "shelltype")
 	return true
 }
 
@@ -777,6 +799,7 @@ func (ri *RemoteInstance) ToMap() map[string]interface{} {
 	rtn["festate"] = quickJson(ri.FeState)
 	rtn["statebasehash"] = ri.StateBaseHash
 	rtn["statediffhasharr"] = quickJsonArr(ri.StateDiffHashArr)
+	rtn["shelltype"] = ri.ShellType
 	return rtn
 }
 
@@ -1014,6 +1037,9 @@ type RemoteRuntimeState struct {
 	Local               bool              `json:"local,omitempty"`
 	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
 	CanComplete         bool              `json:"cancomplete,omitempty"`
+	ActiveShells        []string          `json:"activeshells,omitempty"`
+	ShellPref           string            `json:"shellpref,omitempty"`
+	DefaultShellType    string            `json:"defaultshelltype,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {
@@ -1068,8 +1094,9 @@ type RemoteType struct {
 	SSHOpts      *SSHOpts          `json:"sshopts"`
 	StateVars    map[string]string `json:"statevars"`
 	SSHConfigSrc string            `json:"sshconfigsrc"`
+	ShellPref    string            `json:"shellpref"` // bash, zsh, or detect
 
-	// OpenAI fields
+	// OpenAI fields (unused)
 	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
 }
 
@@ -1097,13 +1124,15 @@ type CmdType struct {
 	Status       string              `json:"status"`
 	CmdPid       int                 `json:"cmdpid"`
 	RemotePid    int                 `json:"remotepid"`
+	RestartTs    int64               `json:"restartts,omitempty"`
 	DoneTs       int64               `json:"donets"`
 	ExitCode     int                 `json:"exitcode"`
 	DurationMs   int                 `json:"durationms"`
 	RunOut       []packet.PacketType `json:"runout,omitempty"`
 	RtnState     bool                `json:"rtnstate,omitempty"`
 	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
-	Remove       bool                `json:"remove,omitempty"`
+	Remove       bool                `json:"remove,omitempty"`    // not persisted to DB
+	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {
@@ -1125,6 +1154,7 @@ func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn["statevars"] = quickJson(r.StateVars)
 	rtn["sshconfigsrc"] = r.SSHConfigSrc
 	rtn["openaiopts"] = quickJson(r.OpenAIOpts)
+	rtn["shellpref"] = r.ShellPref
 	return rtn
 }
 
@@ -1146,6 +1176,7 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetJson(&r.StateVars, m, "statevars")
 	quickSetStr(&r.SSHConfigSrc, m, "sshconfigsrc")
 	quickSetJson(&r.OpenAIOpts, m, "openaiopts")
+	quickSetStr(&r.ShellPref, m, "shellpref")
 	return true
 }
 
@@ -1166,6 +1197,7 @@ func (cmd *CmdType) ToMap() map[string]interface{} {
 	rtn["status"] = cmd.Status
 	rtn["cmdpid"] = cmd.CmdPid
 	rtn["remotepid"] = cmd.RemotePid
+	rtn["restartts"] = cmd.RestartTs
 	rtn["donets"] = cmd.DoneTs
 	rtn["exitcode"] = cmd.ExitCode
 	rtn["durationms"] = cmd.DurationMs
@@ -1193,6 +1225,7 @@ func (cmd *CmdType) FromMap(m map[string]interface{}) bool {
 	quickSetInt(&cmd.CmdPid, m, "cmdpid")
 	quickSetInt(&cmd.RemotePid, m, "remotepid")
 	quickSetInt64(&cmd.DoneTs, m, "donets")
+	quickSetInt64(&cmd.RestartTs, m, "restartts")
 	quickSetInt(&cmd.ExitCode, m, "exitcode")
 	quickSetInt(&cmd.DurationMs, m, "durationms")
 	quickSetJson(&cmd.RunOut, m, "runout")
@@ -1308,6 +1341,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		SSHOpts:             &SSHOpts{Local: true},
 		Local:               true,
 		SSHConfigSrc:        SSHConfigSrcTypeManual,
+		ShellPref:           ShellTypePref_Detect,
 	}
 	err = UpsertRemote(ctx, localRemote)
 	if err != nil {
@@ -1327,6 +1361,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		RemoteOpts:          &RemoteOptsType{Color: "red"},
 		Local:               true,
 		SSHConfigSrc:        SSHConfigSrcTypeManual,
+		ShellPref:           ShellTypePref_Detect,
 	}
 	err = UpsertRemote(ctx, sudoRemote)
 	if err != nil {
@@ -1444,4 +1479,81 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 		return nil
 	})
 	return txErr
+}
+
+// Sets the in-memory status indicator for the given screenId to the given value and adds it to the ModelUpdate. By default, the active screen will be ignored when updating status. To force a status update for the active screen, set force=true.
+func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, screenId string, level StatusIndicatorLevel, force bool) error {
+	var newStatus StatusIndicatorLevel
+	if force {
+		// Force the update and set the new status to the given level, regardless of the current status or the active screen
+		ScreenMemSetIndicatorLevel(screenId, level)
+		newStatus = level
+	} else {
+		// Only update the status if the given screen is not the active screen and if the given level is higher than the current level
+		activeSessionId, err := GetActiveSessionId(ctx)
+		if err != nil {
+			return fmt.Errorf("error getting active session id: %w", err)
+		}
+		bareSession, err := GetBareSessionById(ctx, activeSessionId)
+		if err != nil {
+			return fmt.Errorf("error getting bare session: %w", err)
+		}
+		activeScreenId := bareSession.ActiveScreenId
+		if activeScreenId == screenId {
+			return nil
+		}
+
+		// If we are not forcing the update, follow the rules for combining status indicators
+		newLevel := ScreenMemCombineIndicatorLevels(screenId, level)
+		if newLevel == level {
+			newStatus = level
+		} else {
+			return nil
+		}
+	}
+
+	update.ScreenStatusIndicators = []*ScreenStatusIndicatorType{{
+		ScreenId: screenId,
+		Status:   newStatus,
+	}}
+	return nil
+}
+
+// Sets the in-memory status indicator for the given screenId to the given value and pushes the new value to the FE
+func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusIndicatorLevel, force bool) error {
+	update := &ModelUpdate{}
+	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, level, false)
+	if err != nil {
+		return err
+	}
+	MainBus.SendUpdate(update)
+	return nil
+}
+
+// Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and adds it to the ModelUpdate
+func ResetStatusIndicator_Update(update *ModelUpdate, screenId string) error {
+	// We do not need to set context when resetting the status indicator because we will not need to call the DB
+	return SetStatusIndicatorLevel_Update(context.TODO(), update, screenId, StatusIndicatorLevel_None, true)
+}
+
+// Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and pushes the new value to the FE
+func ResetStatusIndicator(screenId string) error {
+	// We do not need to set context when resetting the status indicator because we will not need to call the DB
+	return SetStatusIndicatorLevel(context.TODO(), screenId, StatusIndicatorLevel_None, true)
+}
+
+func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta int) {
+	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
+	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
+	update.ScreenNumRunningCommands = []*ScreenNumRunningCommandsType{{
+		ScreenId: screenId,
+		Num:      newNum,
+	}}
+}
+
+func IncrementNumRunningCmds(screenId string, delta int) {
+	log.Printf("IncrementNumRunningCmds: screenId=%s, delta=%d\n", screenId, delta)
+	update := &ModelUpdate{}
+	IncrementNumRunningCmds_Update(update, screenId, delta)
+	MainBus.SendUpdate(update)
 }

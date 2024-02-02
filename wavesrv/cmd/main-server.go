@@ -30,6 +30,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
+	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
@@ -802,6 +803,7 @@ func doShutdown(reason string) {
 
 func main() {
 	scbase.BuildTime = BuildTime
+	base.ProcessType = base.ProcessType_WaveSrv
 
 	if len(os.Args) >= 2 && os.Args[1] == "--test" {
 		log.Printf("running test fn\n")
@@ -871,10 +873,7 @@ func main() {
 	}
 
 	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
-	err = sstore.UpdateCurrentActivity(context.Background(), sstore.ActivityUpdate{NumConns: remote.NumRemotes()}) // set at least one record into activity
-	if err != nil {
-		log.Printf("[error] updating activity: %v\n", err)
-	}
+	sstore.UpdateActivityWrap(context.Background(), sstore.ActivityUpdate{NumConns: remote.NumRemotes()}, "numconns") // set at least one record into activity
 	installSignalHandlers()
 	go telemetryLoop()
 	go stdinReadWatch()

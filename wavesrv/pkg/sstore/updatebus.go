@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 var MainBus *UpdateBus = MakeUpdateBus()
@@ -39,30 +39,32 @@ func (*PtyDataUpdate) UpdateType() string {
 func (pdu *PtyDataUpdate) Clean() {}
 
 type ModelUpdate struct {
-	Sessions          []*SessionType                     `json:"sessions,omitempty"`
-	ActiveSessionId   string                             `json:"activesessionid,omitempty"`
-	Screens           []*ScreenType                      `json:"screens,omitempty"`
-	ScreenLines       *ScreenLinesType                   `json:"screenlines,omitempty"`
-	Line              *LineType                          `json:"line,omitempty"`
-	Lines             []*LineType                        `json:"lines,omitempty"`
-	Cmd               *CmdType                           `json:"cmd,omitempty"`
-	CmdLine           *utilfn.StrWithPos                 `json:"cmdline,omitempty"`
-	Info              *InfoMsgType                       `json:"info,omitempty"`
-	ClearInfo         bool                               `json:"clearinfo,omitempty"`
-	Remotes           []RemoteRuntimeState               `json:"remotes,omitempty"`
-	History           *HistoryInfoType                   `json:"history,omitempty"`
-	Interactive       bool                               `json:"interactive"`
-	Connect           bool                               `json:"connect,omitempty"`
-	MainView          string                             `json:"mainview,omitempty"`
-	Bookmarks         []*BookmarkType                    `json:"bookmarks,omitempty"`
-	SelectedBookmark  string                             `json:"selectedbookmark,omitempty"`
-	HistoryViewData   *HistoryViewData                   `json:"historyviewdata,omitempty"`
-	ClientData        *ClientData                        `json:"clientdata,omitempty"`
-	RemoteView        *RemoteViewType                    `json:"remoteview,omitempty"`
-	ScreenTombstones  []*ScreenTombstoneType             `json:"screentombstones,omitempty"`
-	SessionTombstones []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
-	OpenAICmdInfoChat []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
-	AlertMessage      *AlertMessageType                  `json:"alertmessage,omitempty"`
+	Sessions                 []*SessionType                     `json:"sessions,omitempty"`
+	ActiveSessionId          string                             `json:"activesessionid,omitempty"`
+	Screens                  []*ScreenType                      `json:"screens,omitempty"`
+	ScreenLines              *ScreenLinesType                   `json:"screenlines,omitempty"`
+	Line                     *LineType                          `json:"line,omitempty"`
+	Lines                    []*LineType                        `json:"lines,omitempty"`
+	Cmd                      *CmdType                           `json:"cmd,omitempty"`
+	CmdLine                  *utilfn.StrWithPos                 `json:"cmdline,omitempty"`
+	Info                     *InfoMsgType                       `json:"info,omitempty"`
+	ClearInfo                bool                               `json:"clearinfo,omitempty"`
+	Remotes                  []RemoteRuntimeState               `json:"remotes,omitempty"`
+	History                  *HistoryInfoType                   `json:"history,omitempty"`
+	Interactive              bool                               `json:"interactive"`
+	Connect                  bool                               `json:"connect,omitempty"`
+	MainView                 string                             `json:"mainview,omitempty"`
+	Bookmarks                []*BookmarkType                    `json:"bookmarks,omitempty"`
+	SelectedBookmark         string                             `json:"selectedbookmark,omitempty"`
+	HistoryViewData          *HistoryViewData                   `json:"historyviewdata,omitempty"`
+	ClientData               *ClientData                        `json:"clientdata,omitempty"`
+	RemoteView               *RemoteViewType                    `json:"remoteview,omitempty"`
+	ScreenTombstones         []*ScreenTombstoneType             `json:"screentombstones,omitempty"`
+	SessionTombstones        []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
+	OpenAICmdInfoChat        []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
+	AlertMessage             *AlertMessageType                  `json:"alertmessage,omitempty"`
+	ScreenStatusIndicators   []*ScreenStatusIndicatorType       `json:"screenstatusindicators,omitempty"`
+	ScreenNumRunningCommands []*ScreenNumRunningCommandsType    `json:"screennumrunningcommands,omitempty"`
 }
 
 func (*ModelUpdate) UpdateType() string {
@@ -260,4 +262,14 @@ func MakeSessionsUpdateForRemote(sessionId string, ri *RemoteInstance) []*Sessio
 
 type BookmarksViewType struct {
 	Bookmarks []*BookmarkType `json:"bookmarks"`
+}
+
+type ScreenStatusIndicatorType struct {
+	ScreenId string               `json:"screenid"`
+	Status   StatusIndicatorLevel `json:"status"`
+}
+
+type ScreenNumRunningCommandsType struct {
+	ScreenId string `json:"screenid"`
+	Num      int    `json:"num"`
 }

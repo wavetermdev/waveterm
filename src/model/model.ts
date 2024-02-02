@@ -7,6 +7,7 @@ import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
 import { boundMethod } from "autobind-decorator";
 import { debounce } from "throttle-debounce";
+import * as mobxReact from "mobx-react";
 import {
     handleJsonFetchResponse,
     base64ToString,
@@ -20,7 +21,7 @@ import {
 } from "../util/util";
 import { TermWrap } from "../plugins/terminal/term";
 import { PluginModel } from "../plugins/plugins";
-import type {
+import {
     SessionDataType,
     LineType,
     RemoteType,
@@ -30,19 +31,16 @@ import type {
     CmdDataType,
     FeCmdPacketType,
     TermOptsType,
-    RemoteStateType,
     ScreenDataType,
     ScreenOptsType,
     PtyDataUpdateType,
     ModelUpdateType,
     UpdateMessage,
     InfoType,
-    CmdLineUpdateType,
     UIContextType,
     HistoryInfoType,
     HistoryQueryOpts,
     FeInputPacketType,
-    TermWinSize,
     RemoteInputPacketType,
     ContextMenuOpts,
     RendererContext,
@@ -66,6 +64,7 @@ import type {
     WebCmd,
     WebRemote,
     OpenAICmdInfoChatMessageType,
+    StatusIndicatorLevel,
 } from "../types/types";
 import * as T from "../types/types";
 import { WSControl } from "./ws";
@@ -83,11 +82,11 @@ import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
 import { MagicLayout } from "../app/magiclayout";
 import { modalsRegistry } from "../app/common/modals/registry";
 import * as appconst from "../app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
 
-var GlobalUser = "sawka";
 const RemotePtyRows = 8; // also in main.tsx
 const RemotePtyCols = 80;
 const ProdServerEndpoint = "http://127.0.0.1:1619";
@@ -202,6 +201,7 @@ type ElectronApi = {
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
     onHCmd: (callback: (mods: KeyModsType) => void) => void;
     onPCmd: (callback: (mods: KeyModsType) => void) => void;
+    onRCmd: (callback: (mods: KeyModsType) => void) => void;
     onWCmd: (callback: (mods: KeyModsType) => void) => void;
     onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
@@ -249,6 +249,10 @@ class Cmd {
                 GlobalModel.cmdStatusUpdate(this.screenId, this.lineId, origData.status, cmd.status);
             }
         })();
+    }
+
+    getRestartTs(): number {
+        return this.data.get().restartts;
     }
 
     getAsWebCmd(lineid: string): WebCmd {
@@ -326,7 +330,6 @@ class Cmd {
     }
 
     handleDataFromRenderer(data: string, renderer: RendererModel): void {
-        // console.log("handle data", {data: data});
         if (!this.isRunning()) {
             return;
         }
@@ -370,6 +373,8 @@ class Screen {
     shareMode: OV<string>;
     webShareOpts: OV<WebShareOpts>;
     filterRunning: OV<boolean>;
+    statusIndicator: OV<StatusIndicatorLevel>;
+    numRunningCmds: OV<number>;
 
     constructor(sdata: ScreenDataType) {
         this.sessionId = sdata.sessionid;
@@ -409,6 +414,12 @@ class Screen {
         });
         this.filterRunning = mobx.observable.box(false, {
             name: "screen-filter-running",
+        });
+        this.statusIndicator = mobx.observable.box(StatusIndicatorLevel.None, {
+            name: "screen-status-indicator",
+        });
+        this.numRunningCmds = mobx.observable.box(0, {
+            name: "screen-num-running-cmds",
         });
     }
 
@@ -548,7 +559,6 @@ class Screen {
         mobx.action(() => {
             this.anchor.set({ anchorLine: anchorLine, anchorOffset: anchorOffset });
         })();
-        // console.log("set-anchor-fields", anchorLine, anchorOffset, reason);
     }
 
     refocusLine(sdata: ScreenDataType, oldFocusType: string, oldSelectedLine: number): void {
@@ -561,7 +571,6 @@ class Screen {
         if (sdata.selectedline != 0) {
             sline = this.getLineByNum(sdata.selectedline);
         }
-        // console.log("refocus", curLineFocus.linenum, "=>", sdata.selectedline, sline.lineid);
         if (
             curLineFocus.cmdInputFocus ||
             (curLineFocus.linenum != null && curLineFocus.linenum != sdata.selectedline)
@@ -623,9 +632,9 @@ class Screen {
         if (lines == null || lines.length == 0) {
             return null;
         }
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].linenum == lineNum) {
-                return lines[i];
+        for (const line of lines) {
+            if (line.linenum == lineNum) {
+                return line;
             }
         }
         return null;
@@ -643,9 +652,9 @@ class Screen {
         if (lines == null || lines.length == 0) {
             return null;
         }
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].lineid == lineId) {
-                return lines[i];
+        for (const line of lines) {
+            if (line.lineid == lineId) {
+                return line;
             }
         }
         return null;
@@ -663,8 +672,7 @@ class Screen {
         if (lineNum == 0) {
             return null;
         }
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i];
+        for (const line of lines) {
             if (line.linenum == lineNum) {
                 return lineNum;
             }
@@ -790,7 +798,6 @@ class Screen {
     }
 
     setLineFocus(lineNum: number, focus: boolean): void {
-        // console.log("SW setLineFocus", lineNum, focus);
         mobx.action(() => this.termLineNumFocus.set(focus ? lineNum : 0))();
         if (focus && this.selectedLine.get() != lineNum) {
             GlobalCommandRunner.screenSelectLine(String(lineNum), "cmd");
@@ -799,42 +806,69 @@ class Screen {
         }
     }
 
+    /**
+     * Set the status indicator for the screen.
+     * @param indicator The value of the status indicator. One of "none", "error", "success", "output".
+     */
+    setStatusIndicator(indicator: StatusIndicatorLevel): void {
+        mobx.action(() => {
+            this.statusIndicator.set(indicator);
+        })();
+    }
+
+    /**
+     * Set the number of running commands for the screen.
+     * @param numRunning The number of running commands.
+     */
+    setNumRunningCmds(numRunning: number): void {
+        mobx.action(() => {
+            this.numRunningCmds.set(numRunning);
+        })();
+    }
+
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
-        if (e.code == "ArrowUp") {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "ArrowUp")) {
             termWrap.terminal.scrollLines(-1);
             return;
         }
-        if (e.code == "ArrowDown") {
+        if (checkKeyPressed(waveEvent, "ArrowDown")) {
             termWrap.terminal.scrollLines(1);
             return;
         }
-        if (e.code == "PageUp") {
+        if (checkKeyPressed(waveEvent, "PageUp")) {
             termWrap.terminal.scrollPages(-1);
             return;
         }
-        if (e.code == "PageDown") {
+        if (checkKeyPressed(waveEvent, "PageDown")) {
             termWrap.terminal.scrollPages(1);
             return;
         }
     }
 
     isTermCapturedKey(e: any): boolean {
-        let keys = ["ArrowUp", "ArrowDown", "PageUp", "PageDown"];
-        if (keys.includes(e.code) && keyHasNoMods(e)) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (
+            checkKeyPressed(waveEvent, "ArrowUp") ||
+            checkKeyPressed(waveEvent, "ArrowDown") ||
+            checkKeyPressed(waveEvent, "PageUp") ||
+            checkKeyPressed(waveEvent, "PageDown")
+        ) {
             return true;
         }
         return false;
     }
 
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
-        if (e.type == "keypress" && e.code == "KeyC" && e.shiftKey && e.ctrlKey) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
             e.stopPropagation();
             e.preventDefault();
             let sel = termWrap.terminal.getSelection();
             navigator.clipboard.writeText(sel);
             return false;
         }
-        if (e.type == "keypress" && e.code == "KeyV" && e.shiftKey && e.ctrlKey) {
+        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
             e.stopPropagation();
             e.preventDefault();
             let p = navigator.clipboard.readText();
@@ -866,7 +900,6 @@ class Screen {
             console.log("term-wrap already exists for", this.screenId, lineId);
             return;
         }
-        let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
         let usedRows = GlobalModel.getContentHeight(getRendererContext(line));
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
@@ -896,7 +929,6 @@ class Screen {
         if (this.focusType.get() == "cmd" && this.selectedLine.get() == line.linenum) {
             termWrap.giveFocus();
         }
-        return;
     }
 
     unloadRenderer(lineId: string) {
@@ -922,7 +954,6 @@ class Screen {
         }
         let termWrap = this.getTermWrap(cmd.lineId);
         if (termWrap == null) {
-            let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
             let usedRows = GlobalModel.getContentHeight(context);
             if (usedRows != null) {
                 return usedRows;
@@ -993,8 +1024,7 @@ class ScreenLines {
 
     getNonArchivedLines(): LineType[] {
         let rtn: LineType[] = [];
-        for (let i = 0; i < this.lines.length; i++) {
-            let line = this.lines[i];
+        for (const line of this.lines) {
             if (line.archived) {
                 continue;
             }
@@ -1015,8 +1045,8 @@ class ScreenLines {
                 (l: LineType) => sprintf("%013d:%s", l.ts, l.lineid)
             );
             let cmds = slines.cmds || [];
-            for (let i = 0; i < cmds.length; i++) {
-                this.cmds[cmds[i].lineid] = new Cmd(cmds[i]);
+            for (const cmd of cmds) {
+                this.cmds[cmd.lineid] = new Cmd(cmd);
             }
         })();
     }
@@ -1034,20 +1064,35 @@ class ScreenLines {
         return this.cmds[lineId];
     }
 
-    getRunningCmdLines(): LineType[] {
+    /**
+     * Get all running cmds in the screen.
+     * @param returnFirst If true, return the first running cmd found.
+     * @returns An array of running cmds, or the first running cmd if returnFirst is true.
+     */
+    getRunningCmdLines(returnFirst?: boolean): LineType[] {
         let rtn: LineType[] = [];
-        for (let i = 0; i < this.lines.length; i++) {
-            let line = this.lines[i];
-            let cmd = this.getCmd(line.lineid);
+        for (const line of this.lines) {
+            const cmd = this.getCmd(line.lineid);
             if (cmd == null) {
                 continue;
             }
-            let status = cmd.getStatus();
+            const status = cmd.getStatus();
             if (cmdStatusIsRunning(status)) {
+                if (returnFirst) {
+                    return [line];
+                }
                 rtn.push(line);
             }
         }
         return rtn;
+    }
+
+    /**
+     * Check if there are any running cmds in the screen.
+     * @returns True if there are any running cmds.
+     */
+    hasRunningCmdLines(): boolean {
+        return this.getRunningCmdLines(true).length > 0;
     }
 
     updateCmd(cmd: CmdDataType): void {
@@ -1058,7 +1103,6 @@ class ScreenLines {
         if (origCmd != null) {
             origCmd.setCmd(cmd);
         }
-        return;
     }
 
     mergeCmd(cmd: CmdDataType): void {
@@ -1072,7 +1116,6 @@ class ScreenLines {
             return;
         }
         origCmd.setCmd(cmd);
-        return;
     }
 
     addLineCmd(line: LineType, cmd: CmdDataType, interactive: boolean) {
@@ -1192,8 +1235,7 @@ class Session {
         if (rptr.name.startsWith("*")) {
             screenId = "";
         }
-        for (let i = 0; i < this.remoteInstances.length; i++) {
-            let rdata = this.remoteInstances[i];
+        for (const rdata of this.remoteInstances) {
             if (
                 rdata.screenid == screenId &&
                 rdata.remoteid == rptr.remoteid &&
@@ -1213,6 +1255,7 @@ class Session {
                 remoteid: rptr.remoteid,
                 name: rptr.name,
                 festate: remote.defaultfestate,
+                shelltype: remote.defaultshelltype,
             };
         }
         return null;
@@ -1301,10 +1344,8 @@ class InputModel {
             if (isFocused) {
                 this.inputFocused.set(true);
                 this.lineFocused.set(false);
-            } else {
-                if (this.inputFocused.get()) {
-                    this.inputFocused.set(false);
-                }
+            } else if (this.inputFocused.get()) {
+                this.inputFocused.set(false);
             }
         })();
     }
@@ -1314,10 +1355,8 @@ class InputModel {
             if (isFocused) {
                 this.inputFocused.set(false);
                 this.lineFocused.set(true);
-            } else {
-                if (this.lineFocused.get()) {
-                    this.lineFocused.set(false);
-                }
+            } else if (this.lineFocused.get()) {
+                this.lineFocused.set(false);
             }
         })();
     }
@@ -1550,34 +1589,31 @@ class InputModel {
             curRemote = { ownerid: "", name: "", remoteid: "" };
         }
         curRemote = mobx.toJS(curRemote);
-        for (let i = 0; i < hitems.length; i++) {
-            let hitem = hitems[i];
+        for (const hitem of hitems) {
             if (hitem.ismetacmd) {
                 if (!opts.includeMeta) {
                     continue;
                 }
-            } else {
-                if (opts.limitRemoteInstance) {
-                    if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
-                        continue;
-                    }
-                    if (
-                        (curRemote.ownerid ?? "") != (hitem.remote.ownerid ?? "") ||
-                        (curRemote.remoteid ?? "") != (hitem.remote.remoteid ?? "") ||
-                        (curRemote.name ?? "") != (hitem.remote.name ?? "")
-                    ) {
-                        continue;
-                    }
-                } else if (opts.limitRemote) {
-                    if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
-                        continue;
-                    }
-                    if (
-                        (curRemote.ownerid ?? "") != (hitem.remote.ownerid ?? "") ||
-                        (curRemote.remoteid ?? "") != (hitem.remote.remoteid ?? "")
-                    ) {
-                        continue;
-                    }
+            } else if (opts.limitRemoteInstance) {
+                if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
+                    continue;
+                }
+                if (
+                    (curRemote.ownerid ?? "") != (hitem.remote.ownerid ?? "") ||
+                    (curRemote.remoteid ?? "") != (hitem.remote.remoteid ?? "") ||
+                    (curRemote.name ?? "") != (hitem.remote.name ?? "")
+                ) {
+                    continue;
+                }
+            } else if (opts.limitRemote) {
+                if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
+                    continue;
+                }
+                if (
+                    (curRemote.ownerid ?? "") != (hitem.remote.ownerid ?? "") ||
+                    (curRemote.remoteid ?? "") != (hitem.remote.remoteid ?? "")
+                ) {
+                    continue;
                 }
             }
             if (!isBlank(opts.queryStr)) {
@@ -1628,7 +1664,6 @@ class InputModel {
                 return;
             }
             historyDiv.scrollTop = elemOffset - titleHeight - buffer;
-            return;
         }
     }
 
@@ -1714,7 +1749,7 @@ class InputModel {
     }
 
     setAIChatFocus() {
-        if (this.aiChatTextAreaRef != null && this.aiChatTextAreaRef.current != null) {
+        if (this.aiChatTextAreaRef?.current != null) {
             this.aiChatTextAreaRef.current.focus();
         }
     }
@@ -1727,8 +1762,7 @@ class InputModel {
             let curBlockRef = this.codeSelectBlockRefArray[this.codeSelectSelectedIndex.get()];
             let codeText = curBlockRef.current.innerText;
             codeText = codeText.replace(/\n$/, ""); // remove trailing newline
-            let newLineValue = this.getCurLine() + " " + codeText;
-            this.setCurLine(newLineValue);
+            this.setCurLine(codeText);
             this.giveFocus();
         }
     }
@@ -1746,7 +1780,7 @@ class InputModel {
                 this.codeSelectSelectedIndex.set(blockIndex);
                 let currentRef = this.codeSelectBlockRefArray[blockIndex].current;
                 if (currentRef != null) {
-                    if (this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                    if (this.aiChatWindowRef?.current != null) {
                         let chatWindowTop = this.aiChatWindowRef.current.scrollTop;
                         let chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
                         let elemTop = currentRef.offsetTop;
@@ -1776,7 +1810,7 @@ class InputModel {
             let incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
             if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
                 this.codeSelectDeselectAll();
-                if (this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                if (this.aiChatWindowRef?.current != null) {
                     this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
                 }
             }
@@ -1800,7 +1834,7 @@ class InputModel {
             let decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
             if (decBlockIndex < 0) {
                 this.codeSelectDeselectAll(this.codeSelectTop);
-                if (this.aiChatWindowRef != null && this.aiChatWindowRef.current != null) {
+                if (this.aiChatWindowRef?.current != null) {
                     this.aiChatWindowRef.current.scrollTop = 0;
                 }
             }
@@ -1842,8 +1876,7 @@ class InputModel {
     clearAIAssistantChat(): void {
         let prtn = GlobalModel.submitChatInfoCommand("", "", true);
         prtn.then((rtn) => {
-            if (rtn.success) {
-            } else {
+            if (!rtn.success) {
                 console.log("submit chat command error: " + rtn.error);
             }
         }).catch((error) => {
@@ -1966,7 +1999,6 @@ class InputModel {
     }
 
     getCurLine(): string {
-        let model = GlobalModel;
         let hidx = this.historyIndex.get();
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
             return this.modHistory[hidx];
@@ -2177,7 +2209,6 @@ class SpecialLineContainer {
             console.log("term-wrap already exists for", line.screenid, lineId);
             return;
         }
-        let cols = windowWidthToCols(width, GlobalModel.termFontSize.get());
         let usedRows = GlobalModel.getContentHeight(getRendererContext(line));
         if (line.contentheight != null && line.contentheight != -1) {
             usedRows = line.contentheight;
@@ -2201,7 +2232,6 @@ class SpecialLineContainer {
             onUpdateContentHeight: null,
         });
         this.terminal = termWrap;
-        return;
     }
 
     registerRenderer(lineId: string, renderer: RendererModel): void {
@@ -2311,8 +2341,6 @@ class HistoryViewModel {
 
     specialLineContainer: SpecialLineContainer;
 
-    constructor() {}
-
     closeView(): void {
         GlobalModel.showSessionView();
         setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
@@ -2322,8 +2350,7 @@ class HistoryViewModel {
         if (isBlank(lineId)) {
             return null;
         }
-        for (let i = 0; i < this.historyItemLines.length; i++) {
-            let line = this.historyItemLines[i];
+        for (const line of this.historyItemLines) {
             if (line.lineid == lineId) {
                 return line;
             }
@@ -2335,8 +2362,7 @@ class HistoryViewModel {
         if (isBlank(lineId)) {
             return null;
         }
-        for (let i = 0; i < this.historyItemCmds.length; i++) {
-            let cmd = this.historyItemCmds[i];
+        for (const cmd of this.historyItemCmds) {
             if (cmd.lineid == lineId) {
                 return new Cmd(cmd);
             }
@@ -2348,8 +2374,7 @@ class HistoryViewModel {
         if (isBlank(historyId)) {
             return null;
         }
-        for (let i = 0; i < this.items.length; i++) {
-            let hitem = this.items[i];
+        for (const hitem of this.items) {
             if (hitem.historyid == historyId) {
                 return hitem;
             }
@@ -2408,7 +2433,6 @@ class HistoryViewModel {
         prtn.then((result: CommandRtnType) => {
             if (!result.success) {
                 GlobalModel.showAlert({ message: "Error removing history lines." });
-                return;
             }
         });
         let params = this._getSearchParams();
@@ -2423,8 +2447,8 @@ class HistoryViewModel {
     }
 
     _getSearchParams(newOffset?: number, newRawOffset?: number): HistorySearchParams {
-        let offset = newOffset != null ? newOffset : this.offset.get();
-        let rawOffset = newRawOffset != null ? newRawOffset : this.curRawOffset;
+        let offset = newOffset ?? this.offset.get();
+        let rawOffset = newRawOffset ?? this.curRawOffset;
         let opts: HistorySearchParams = {
             offset: offset,
             rawOffset: rawOffset,
@@ -2546,7 +2570,8 @@ class HistoryViewModel {
     }
 
     handleDocKeyDown(e: any): void {
-        if (e.code == "Escape") {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             this.closeView();
             return;
@@ -2591,6 +2616,77 @@ class ClientSettingsViewModel {
         mobx.action(() => {
             GlobalModel.activeMainView.set("clientsettings");
         })();
+    }
+}
+class MainSidebarModel {
+    tempWidth: OV<number> = mobx.observable.box(null, {
+        name: "MainSidebarModel-tempWidth",
+    });
+    tempCollapsed: OV<boolean> = mobx.observable.box(null, {
+        name: "MainSidebarModel-tempCollapsed",
+    });
+    isDragging: OV<boolean> = mobx.observable.box(false, {
+        name: "MainSidebarModel-isDragging",
+    });
+
+    setTempWidthAndTempCollapsed(newWidth: number, newCollapsed: boolean): void {
+        const width = Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
+
+        mobx.action(() => {
+            this.tempWidth.set(width);
+            this.tempCollapsed.set(newCollapsed);
+        })();
+    }
+
+    /**
+     * Gets the intended width for the sidebar. If the sidebar is being dragged, returns the tempWidth. If the sidebar is collapsed, returns the default width.
+     * @param ignoreCollapse If true, returns the persisted width even if the sidebar is collapsed.
+     * @returns The intended width for the sidebar or the default width if the sidebar is collapsed. Can be overridden using ignoreCollapse.
+     */
+    getWidth(ignoreCollapse: boolean = false): number {
+        const clientData = GlobalModel.clientData.get();
+        let width = clientData?.clientopts?.mainsidebar?.width ?? MagicLayout.MainSidebarDefaultWidth;
+        if (this.isDragging.get()) {
+            if (this.tempWidth.get() == null && width == null) {
+                return MagicLayout.MainSidebarDefaultWidth;
+            }
+            if (this.tempWidth.get() == null) {
+                return width;
+            }
+            return this.tempWidth.get();
+        }
+        // Set by CLI and collapsed
+        if (this.getCollapsed()) {
+            if (ignoreCollapse) {
+                return width;
+            } else {
+                return MagicLayout.MainSidebarMinWidth;
+            }
+        } else {
+            if (width <= MagicLayout.MainSidebarMinWidth) {
+                width = MagicLayout.MainSidebarDefaultWidth;
+            }
+            const snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
+            if (width < snapPoint || width > MagicLayout.MainSidebarMaxWidth) {
+                width = MagicLayout.MainSidebarDefaultWidth;
+            }
+        }
+        return width;
+    }
+
+    getCollapsed(): boolean {
+        const clientData = GlobalModel.clientData.get();
+        const collapsed = clientData?.clientopts?.mainsidebar?.collapsed;
+        if (this.isDragging.get()) {
+            if (this.tempCollapsed.get() == null && collapsed == null) {
+                return false;
+            }
+            if (this.tempCollapsed.get() == null) {
+                return collapsed;
+            }
+            return this.tempCollapsed.get();
+        }
+        return collapsed;
     }
 }
 
@@ -2718,8 +2814,7 @@ class BookmarksModel {
         if (bookmarkId == null) {
             return null;
         }
-        for (let i = 0; i < this.bookmarks.length; i++) {
-            let bm = this.bookmarks[i];
+        for (const bm of this.bookmarks) {
             if (bm.bookmarkid == bookmarkId) {
                 return bm;
             }
@@ -2787,7 +2882,8 @@ class BookmarksModel {
     }
 
     handleDocKeyDown(e: any): void {
-        if (e.code == "Escape") {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             if (this.editingBookmark.get() != null) {
                 this.cancelEdit();
@@ -2799,7 +2895,7 @@ class BookmarksModel {
         if (this.editingBookmark.get() != null) {
             return;
         }
-        if (e.code == "Backspace" || e.code == "Delete") {
+        if (checkKeyPressed(waveEvent, "Backspace") || checkKeyPressed(waveEvent, "Delete")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -2807,7 +2903,13 @@ class BookmarksModel {
             this.handleDeleteBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "ArrowUp" || e.code == "ArrowDown" || e.code == "PageUp" || e.code == "PageDown") {
+
+        if (
+            checkKeyPressed(waveEvent, "ArrowUp") ||
+            checkKeyPressed(waveEvent, "ArrowDown") ||
+            checkKeyPressed(waveEvent, "PageUp") ||
+            checkKeyPressed(waveEvent, "PageDown")
+        ) {
             e.preventDefault();
             if (this.bookmarks.length == 0) {
                 return;
@@ -2831,14 +2933,14 @@ class BookmarksModel {
             })();
             return;
         }
-        if (e.code == "Enter") {
+        if (checkKeyPressed(waveEvent, "Enter")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
             this.useBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "KeyE") {
+        if (checkKeyPressed(waveEvent, "e")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
@@ -2846,13 +2948,12 @@ class BookmarksModel {
             this.handleEditBookmark(this.activeBookmark.get());
             return;
         }
-        if (e.code == "KeyC") {
+        if (checkKeyPressed(waveEvent, "c")) {
             if (this.activeBookmark.get() == null) {
                 return;
             }
             e.preventDefault();
             this.handleCopyBookmark(this.activeBookmark.get());
-            return;
         }
     }
 }
@@ -3358,6 +3459,7 @@ class Model {
     connectionViewModel: ConnectionsViewModel;
     clientSettingsViewModel: ClientSettingsViewModel;
     modalsModel: ModalsModel;
+    mainSidebarModel: MainSidebarModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -3384,10 +3486,12 @@ class Model {
         this.remotesModalModel = new RemotesModalModel();
         this.remotesModel = new RemotesModel();
         this.modalsModel = new ModalsModel();
+        this.mainSidebarModel = new MainSidebarModel();
         let isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
         });
+        this.platform = this.getPlatform();
         this.termFontSize = mobx.computed(() => {
             let cdata = this.clientData.get();
             if (cdata == null || cdata.feopts == null || cdata.feopts.termfontsize == null) {
@@ -3408,6 +3512,7 @@ class Model {
         getApi().onHCmd(this.onHCmd.bind(this));
         getApi().onPCmd(this.onPCmd.bind(this));
         getApi().onWCmd(this.onWCmd.bind(this));
+        getApi().onRCmd(this.onRCmd.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -3431,7 +3536,12 @@ class Model {
             return this.platform;
         }
         this.platform = getApi().getPlatform();
+        setKeyUtilPlatform(this.platform);
         return this.platform;
+    }
+
+    testGlobalModel() {
+        return "";
     }
 
     needsTos(): boolean {
@@ -3575,16 +3685,17 @@ class Model {
     }
 
     docKeyDownHandler(e: KeyboardEvent) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (isModKeyPress(e)) {
             return;
         }
         if (this.alertMessage.get() != null) {
-            if (e.code == "Escape") {
+            if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
                 this.cancelAlert();
                 return;
             }
-            if (e.code == "Enter") {
+            if (checkKeyPressed(waveEvent, "Enter")) {
                 e.preventDefault();
                 this.confirmAlert();
                 return;
@@ -3607,7 +3718,7 @@ class Model {
             this.historyViewModel.handleDocKeyDown(e);
             return;
         }
-        if (e.code == "Escape") {
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             if (this.activeMainView.get() == "webshare") {
                 this.showSessionView();
@@ -3623,16 +3734,11 @@ class Model {
             }
             return;
         }
-        if (e.code == "KeyB" && e.getModifierState("Meta")) {
+        if (checkKeyPressed(waveEvent, "Cmd:b")) {
             e.preventDefault();
             GlobalCommandRunner.bookmarksView();
         }
-        if (
-            this.activeMainView.get() == "session" &&
-            e.code == "KeyS" &&
-            e.getModifierState("Meta") &&
-            e.getModifierState("Control")
-        ) {
+        if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
             e.preventDefault();
             let activeScreen = this.getActiveScreen();
             if (activeScreen != null) {
@@ -3644,7 +3750,7 @@ class Model {
                 }
             }
         }
-        if (e.code == "KeyD" && e.getModifierState("Meta")) {
+        if (checkKeyPressed(waveEvent, "Cmd:d")) {
             let ranDelete = this.deleteActiveLine();
             if (ranDelete) {
                 e.preventDefault();
@@ -3678,6 +3784,9 @@ class Model {
     }
 
     onWCmd(e: any, mods: KeyModsType) {
+        if (this.activeMainView.get() != "session") {
+            return;
+        }
         let activeScreen = this.getActiveScreen();
         if (activeScreen == null) {
             return;
@@ -3692,6 +3801,27 @@ class Model {
             }
             GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
         });
+    }
+
+    onRCmd(e: any, mods: KeyModsType) {
+        if (this.activeMainView.get() != "session") {
+            return;
+        }
+        let activeScreen = this.getActiveScreen();
+        if (activeScreen == null) {
+            return;
+        }
+        if (mods.shift) {
+            // restart last line
+            GlobalCommandRunner.lineRestart("E", true);
+        } else {
+            // restart selected line
+            let selectedLine = activeScreen.selectedLine.get();
+            if (selectedLine == null || selectedLine == 0) {
+                return;
+            }
+            GlobalCommandRunner.lineRestart(String(selectedLine), true);
+        }
     }
 
     clearModals(): boolean {
@@ -3726,9 +3856,9 @@ class Model {
     }
 
     getLocalRemote(): RemoteType {
-        for (let i = 0; i < this.remotes.length; i++) {
-            if (this.remotes[i].local) {
-                return this.remotes[i];
+        for (const remote of this.remotes) {
+            if (remote.local) {
+                return remote;
             }
         }
         return null;
@@ -3838,7 +3968,6 @@ class Model {
         let wasRunning = cmdStatusIsRunning(origStatus);
         let isRunning = cmdStatusIsRunning(newStatus);
         if (wasRunning && !isRunning) {
-            // console.log("cmd status", screenId, lineId, origStatus, "=>", newStatus);
             let ptr = this.getActiveLine(screenId, lineId);
             if (ptr != null) {
                 let screen = ptr.screen;
@@ -3945,8 +4074,8 @@ class Model {
                 (sdata: ScreenDataType) => sdata.screenid,
                 (sdata: ScreenDataType) => new Screen(sdata)
             );
-            for (let i = 0; i < mods.removed.length; i++) {
-                this.removeScreenLinesByScreenId(mods.removed[i]);
+            for (const screenId of mods.removed) {
+                this.removeScreenLinesByScreenId(screenId);
             }
         }
         if ("sessions" in update || "activesessionid" in update) {
@@ -3981,8 +4110,8 @@ class Model {
             this.updateCmd(update.cmd);
         }
         if ("lines" in update) {
-            for (let i = 0; i < update.lines.length; i++) {
-                this.addLineCmd(update.lines[i], null, interactive);
+            for (const line of update.lines) {
+                this.addLineCmd(line, null, interactive);
             }
         }
         if ("screenlines" in update) {
@@ -3994,8 +4123,8 @@ class Model {
             }
             this.updateRemotes(update.remotes);
             // This code's purpose is to show view remote connection modal when a new connection is added
-            if (update.remotes && update.remotes.length && this.remotesModel.recentConnAddedState.get()) {
-                GlobalModel.remotesModel.openReadModal(update.remotes![0].remoteid);
+            if (update.remotes?.length && this.remotesModel.recentConnAddedState.get()) {
+                GlobalModel.remotesModel.openReadModal(update.remotes[0].remoteid);
             }
         }
         if ("mainview" in update) {
@@ -4045,7 +4174,16 @@ class Model {
         if ("openaicmdinfochat" in update) {
             this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
         }
-        // console.log("run-update>", Date.now(), interactive, update);
+        if ("screenstatusindicators" in update) {
+            for (const indicator of update.screenstatusindicators) {
+                this.getScreenById_single(indicator.screenid)?.setStatusIndicator(indicator.status);
+            }
+        }
+        if ("screennumrunningcommands" in update) {
+            for (const snc of update.screennumrunningcommands) {
+                this.getScreenById_single(snc.screenid)?.setNumRunningCmds(snc.num);
+            }
+        }
     }
 
     updateRemotes(remotes: RemoteType[]): void {
@@ -4058,8 +4196,7 @@ class Model {
 
     getSessionNames(): Record<string, string> {
         let rtn: Record<string, string> = {};
-        for (let i = 0; i < this.sessionList.length; i++) {
-            let session = this.sessionList[i];
+        for (const session of this.sessionList) {
             rtn[session.sessionId] = session.name.get();
         }
         return rtn;
@@ -4077,9 +4214,9 @@ class Model {
         if (sessionId == null) {
             return null;
         }
-        for (let i = 0; i < this.sessionList.length; i++) {
-            if (this.sessionList[i].sessionId == sessionId) {
-                return this.sessionList[i];
+        for (const session of this.sessionList) {
+            if (session.sessionId == sessionId) {
+                return session;
             }
         }
         return null;
@@ -4106,7 +4243,6 @@ class Model {
                 let newWindow = new ScreenLines(slines.screenid);
                 this.screenLines.set(slines.screenid, newWindow);
                 newWindow.updateData(slines, load);
-                return;
             } else {
                 existingWin.updateData(slines, load);
                 existingWin.loaded.set(true);
@@ -4154,12 +4290,28 @@ class Model {
         return session.getActiveScreen();
     }
 
+    handleCmdRestart(cmd: CmdDataType) {
+        if (cmd == null || !cmd.restarted) {
+            return;
+        }
+        let screen = this.screenMap.get(cmd.screenid);
+        if (screen == null) {
+            return;
+        }
+        let termWrap = screen.getTermWrap(cmd.lineid);
+        if (termWrap == null) {
+            return;
+        }
+        termWrap.reload(0);
+    }
+
     addLineCmd(line: LineType, cmd: CmdDataType, interactive: boolean) {
         let slines = this.getScreenLinesById(line.screenid);
         if (slines == null) {
             return;
         }
         slines.addLineCmd(line, cmd, interactive);
+        this.handleCmdRestart(cmd);
     }
 
     updateCmd(cmd: CmdDataType) {
@@ -4167,6 +4319,7 @@ class Model {
         if (slines != null) {
             slines.updateCmd(cmd);
         }
+        this.handleCmdRestart(cmd);
     }
 
     isInfoUpdate(update: UpdateMessage): boolean {
@@ -4263,7 +4416,7 @@ class Model {
             metacmd: metaCmd,
             metasubcmd: metaSubCmd,
             args: args,
-            kwargs: Object.assign({}, kwargs),
+            kwargs: { ...kwargs },
             uicontext: this.getUIContext(),
             interactive: interactive,
         };
@@ -4338,7 +4491,6 @@ class Model {
                 }
                 let slines: ScreenLinesType = data.data;
                 this.updateScreenLines(slines, true);
-                return;
             })
             .catch((err) => {
                 this.errorHandler(sprintf("getting screen-lines=%s", newWin.screenId), err, false);
@@ -4360,8 +4512,7 @@ class Model {
 
     getRemoteNames(): Record<string, string> {
         let rtn: Record<string, string> = {};
-        for (let i = 0; i < this.remotes.length; i++) {
-            let remote = this.remotes[i];
+        for (const remote of this.remotes) {
             if (!isBlank(remote.remotealias)) {
                 rtn[remote.remoteid] = remote.remotealias;
             } else {
@@ -4372,9 +4523,9 @@ class Model {
     }
 
     getRemoteByName(name: string): RemoteType {
-        for (let i = 0; i < this.remotes.length; i++) {
-            if (this.remotes[i].remotecanonicalname == name || this.remotes[i].remotealias == name) {
-                return this.remotes[i];
+        for (const remote of this.remotes) {
+            if (remote.remotecanonicalname == name || remote.remotealias == name) {
+                return remote;
             }
         }
         return null;
@@ -4405,9 +4556,9 @@ class Model {
             return null;
         }
         let line: LineType = null;
-        for (let i = 0; i < slines.lines.length; i++) {
-            if (slines.lines[i].lineid == lineid) {
-                line = slines.lines[i];
+        for (const element of slines.lines) {
+            if (element.lineid == lineid) {
+                line = element;
                 break;
             }
         }
@@ -4429,7 +4580,7 @@ class Model {
         console.log("[error]", str, err);
         if (interactive) {
             let errMsg = "error running command";
-            if (err != null && err.message) {
+            if (err?.message) {
                 errMsg = err.message;
             }
             this.inputModel.flashInfoMsg({ infoerror: errMsg }, null);
@@ -4486,13 +4637,10 @@ class Model {
         let url = new URL(GlobalModel.getBaseHostPort() + "/api/read-file?" + usp.toString());
         let fetchHeaders = this.getFetchHeaders();
         let fileInfo: T.FileInfoType = null;
-        let contentType: string = null;
-        let isError = false;
         let badResponseStr: string = null;
         let prtn = fetch(url, { method: "get", headers: fetchHeaders })
             .then((resp) => {
                 if (!resp.ok) {
-                    isError = true;
                     badResponseStr = sprintf(
                         "Bad fetch response for /api/read-file: %d %s",
                         resp.status,
@@ -4500,7 +4648,6 @@ class Model {
                     );
                     return resp.text() as any;
                 }
-                contentType = resp.headers.get("Content-Type");
                 fileInfo = JSON.parse(base64ToString(resp.headers.get("X-FileInfo")));
                 return resp.blob();
             })
@@ -4518,7 +4665,6 @@ class Model {
                         throw new Error(badResponseStr);
                     }
                     throw new Error(textError);
-                    return null;
                 }
             });
         return prtn;
@@ -4547,15 +4693,13 @@ class Model {
         let prtn = fetch(url, { method: "post", headers: fetchHeaders, body: formData });
         return prtn
             .then((resp) => handleJsonFetchResponse(url, resp))
-            .then((data) => {
+            .then((_) => {
                 return;
             });
     }
 }
 
 class CommandRunner {
-    constructor() {}
-
     loadHistory(show: boolean, htype: string) {
         let kwargs = { nohist: "1" };
         if (!show) {
@@ -4565,6 +4709,10 @@ class CommandRunner {
             kwargs["type"] = htype;
         }
         GlobalModel.submitCommand("history", null, null, kwargs, true);
+    }
+
+    resetShellState() {
+        GlobalModel.submitCommand("reset", null, null, null, true);
     }
 
     historyPurgeLines(lines: string[]): Promise<CommandRtnType> {
@@ -4607,6 +4755,10 @@ class CommandRunner {
 
     lineDelete(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
         return GlobalModel.submitCommand("line", "delete", [lineArg], { nohist: "1" }, interactive);
+    }
+
+    lineRestart(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("line", "restart", [lineArg], { nohist: "1" }, interactive);
     }
 
     lineSet(lineArg: string, opts: { renderer?: string }): Promise<CommandRtnType> {
@@ -4900,6 +5052,11 @@ class CommandRunner {
         let kwargs = { nohist: "1" };
         let valueStr = value ? "1" : "0";
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
+    }
+
+    clientSetSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
+        return GlobalModel.submitCommand("client", "setsidebar", null, kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

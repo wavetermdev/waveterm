@@ -30,6 +30,7 @@ type OV<V> = mobx.IObservableValue<V>;
 @mobxReact.observer
 class App extends React.Component<{}, {}> {
     dcWait: OV<boolean> = mobx.observable.box(false, { name: "dcWait" });
+    mainContentRef: React.RefObject<HTMLDivElement> = React.createRef();
 
     constructor(props: any) {
         super(props);
@@ -75,6 +76,13 @@ class App extends React.Component<{}, {}> {
         let hasClientStop = GlobalModel.getHasClientStop();
         let dcWait = this.dcWait.get();
         let platform = GlobalModel.getPlatform();
+        let clientData = GlobalModel.clientData.get();
+
+        // Previously, this is done in sidebar.tsx but it causes flicker when clientData is null cos screen-view shifts around.
+        // Doing it here fixes the flicker cos app is not rendered until clientData is populated.
+        if (clientData == null) {
+            return null;
+        }
 
         if (disconnected || hasClientStop) {
             if (!dcWait) {
@@ -82,8 +90,8 @@ class App extends React.Component<{}, {}> {
             }
             return (
                 <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
-                    <div className="main-content">
-                        <MainSideBar />
+                    <div ref={this.mainContentRef} className="main-content">
+                        <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
                         <div className="session-view" />
                     </div>
                     <If condition={dcWait}>
@@ -102,8 +110,8 @@ class App extends React.Component<{}, {}> {
         }
         return (
             <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
-                <div className="main-content">
-                    <MainSideBar />
+                <div ref={this.mainContentRef} className="main-content">
+                    <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
                     <ErrorBoundary>
                         <PluginsView />
                         <WorkspaceView />

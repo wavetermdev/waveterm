@@ -5,12 +5,15 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import type * as T from "../../../types/types";
+import * as util from "../../../util/util";
+import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
 import { getMonoFontSize } from "../../../util/textmeasure";
 import { isModKeyPress, hasNoModifiers } from "../../../util/util";
 import * as appconst from "../../appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../../util/keyutil";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -175,12 +178,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
             let curLine = inputModel.getCurLine();
 
+            let waveEvent = adaptFromReactOrNativeKeyEvent(e);
             let lastTab = this.lastTab;
-            this.lastTab = e.code == "Tab";
+            this.lastTab = checkKeyPressed(waveEvent, "Tab");
             let lastHist = this.lastHistoryUpDown;
             this.lastHistoryUpDown = false;
 
-            if (e.code == "Tab") {
+            if (checkKeyPressed(waveEvent, "Tab")) {
                 e.preventDefault();
                 if (lastTab) {
                     GlobalModel.submitCommand(
@@ -202,7 +206,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     return;
                 }
             }
-            if (e.code == "Enter") {
+            if (checkKeyPressed(waveEvent, "Enter")) {
                 e.preventDefault();
                 if (!ctrlMod) {
                     if (GlobalModel.inputModel.isEmpty()) {
@@ -222,7 +226,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 GlobalModel.inputModel.setCurLine(e.target.value);
                 return;
             }
-            if (e.code == "Escape") {
+            if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
                 e.stopPropagation();
                 let inputModel = GlobalModel.inputModel;
@@ -233,50 +237,50 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 inputModel.closeAIAssistantChat();
                 return;
             }
-            if (e.code == "KeyE" && e.getModifierState("Meta")) {
+            if (checkKeyPressed(waveEvent, "Cmd:e")) {
                 e.preventDefault();
                 e.stopPropagation();
                 let inputModel = GlobalModel.inputModel;
                 inputModel.toggleExpandInput();
             }
-            if (e.code == "KeyC" && e.getModifierState("Control")) {
+            if (checkKeyPressed(waveEvent, "Ctrl:c")) {
                 e.preventDefault();
                 inputModel.resetInput();
                 return;
             }
-            if (e.code == "KeyU" && e.getModifierState("Control")) {
+            if (checkKeyPressed(waveEvent, "Ctrl:u")) {
                 e.preventDefault();
                 this.controlU();
                 return;
             }
-            if (e.code == "KeyP" && e.getModifierState("Control")) {
+            if (checkKeyPressed(waveEvent, "Ctrl:p")) {
                 e.preventDefault();
                 this.controlP();
                 return;
             }
-            if (e.code == "KeyN" && e.getModifierState("Control")) {
+            if (checkKeyPressed(waveEvent, "Ctrl:n")) {
                 e.preventDefault();
                 this.controlN();
                 return;
             }
-            if (e.code == "KeyW" && e.getModifierState("Control")) {
+            if (checkKeyPressed(waveEvent, "Ctrl:w")) {
                 e.preventDefault();
                 this.controlW();
                 return;
             }
-            if (e.code == "KeyY" && e.getModifierState("Control")) {
+            if (checkKeyPressed(waveEvent, "Ctrl:y")) {
                 e.preventDefault();
                 this.controlY();
                 return;
             }
-            if (e.code == "KeyR" && e.getModifierState("Control")) {
+            if (checkKeyPressed(waveEvent, "Ctrl:r")) {
                 e.preventDefault();
                 inputModel.openHistory();
                 return;
             }
-            if ((e.code == "ArrowUp" || e.code == "ArrowDown") && hasNoModifiers(e)) {
+            if (checkKeyPressed(waveEvent, "ArrowUp") || checkKeyPressed(waveEvent, "ArrowDown")) {
                 if (!inputModel.isHistoryLoaded()) {
-                    if (e.code == "ArrowUp") {
+                    if (checkKeyPressed(waveEvent, "ArrowUp")) {
                         this.lastHistoryUpDown = true;
                         inputModel.loadHistory(false, 1, "screen");
                     }
@@ -284,7 +288,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
                 // invisible history movement
                 let linePos = this.getLinePos(e.target);
-                if (e.code == "ArrowUp") {
+                if (checkKeyPressed(waveEvent, "ArrowUp")) {
                     if (!lastHist && linePos.linePos > 1) {
                         // regular arrow
                         return;
@@ -294,7 +298,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     this.lastHistoryUpDown = true;
                     return;
                 }
-                if (e.code == "ArrowDown") {
+                if (checkKeyPressed(waveEvent, "ArrowDown")) {
                     if (!lastHist && linePos.linePos < linePos.numLines) {
                         // regular arrow
                         return;
@@ -305,16 +309,16 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     return;
                 }
             }
-            if (e.code == "PageUp" || e.code == "PageDown") {
+            if (checkKeyPressed(waveEvent, "PageUp") || checkKeyPressed(waveEvent, "PageDown")) {
                 e.preventDefault();
                 let infoScroll = inputModel.hasScrollingInfoMsg();
                 if (infoScroll) {
                     let div = document.querySelector(".cmd-input-info");
                     let amt = pageSize(div);
-                    scrollDiv(div, e.code == "PageUp" ? -amt : amt);
+                    scrollDiv(div, checkKeyPressed(waveEvent, "PageUp") ? -amt : amt);
                 }
             }
-            if (e.code == "Space" && e.getModifierState("Control")) {
+            if (checkKeyPressed(waveEvent, "Ctrl:Space")) {
                 e.preventDefault();
                 inputModel.openAIAssistantChat();
             }
@@ -336,32 +340,29 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
 
     @boundMethod
     onHistoryKeyDown(e: any) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         let inputModel = GlobalModel.inputModel;
-        if (e.code == "Escape") {
+        if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             inputModel.resetHistory();
             return;
         }
-        if (e.code == "Enter") {
+        if (checkKeyPressed(waveEvent, "Enter")) {
             e.preventDefault();
             inputModel.grabSelectedHistoryItem();
             return;
         }
-        if (e.code == "KeyG" && e.getModifierState("Control")) {
+        if (checkKeyPressed(waveEvent, "Ctrl:g")) {
             e.preventDefault();
             inputModel.resetInput();
             return;
         }
-        if (e.code == "KeyC" && e.getModifierState("Control")) {
+        if (checkKeyPressed(waveEvent, "Ctrl:c")) {
             e.preventDefault();
             inputModel.resetInput();
             return;
         }
-        if (
-            e.code == "KeyR" &&
-            (e.getModifierState("Meta") || e.getModifierState("Control")) &&
-            !e.getModifierState("Shift")
-        ) {
+        if (checkKeyPressed(waveEvent, "Cmd:r") || checkKeyPressed(waveEvent, "Ctrl:r")) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
             if (opts.limitRemote) {
@@ -374,7 +375,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             inputModel.setHistoryQueryOpts(opts);
             return;
         }
-        if (e.code == "KeyS" && (e.getModifierState("Meta") || e.getModifierState("Control"))) {
+        if (checkKeyPressed(waveEvent, "Cmd:s") || checkKeyPressed(waveEvent, "Ctrl:s")) {
             e.preventDefault();
             let opts = mobx.toJS(inputModel.historyQueryOpts.get());
             let htype = opts.queryType;
@@ -388,26 +389,26 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             inputModel.setHistoryType(htype);
             return;
         }
-        if (e.code == "Tab") {
+        if (checkKeyPressed(waveEvent, "Tab")) {
             e.preventDefault();
             return;
         }
-        if (e.code == "ArrowUp" || e.code == "ArrowDown") {
+        if (checkKeyPressed(waveEvent, "ArrowUp") || checkKeyPressed(waveEvent, "ArrowDown")) {
             e.preventDefault();
-            inputModel.moveHistorySelection(e.code == "ArrowUp" ? 1 : -1);
+            inputModel.moveHistorySelection(checkKeyPressed(waveEvent, "ArrowUp") ? 1 : -1);
             return;
         }
-        if (e.code == "PageUp" || e.code == "PageDown") {
+        if (checkKeyPressed(waveEvent, "PageUp") || checkKeyPressed(waveEvent, "PageDown")) {
             e.preventDefault();
-            inputModel.moveHistorySelection(e.code == "PageUp" ? 10 : -10);
+            inputModel.moveHistorySelection(checkKeyPressed(waveEvent, "PageUp") ? 10 : -10);
             return;
         }
-        if (e.code == "KeyP" && e.getModifierState("Control")) {
+        if (checkKeyPressed(waveEvent, "Ctrl:p")) {
             e.preventDefault();
             inputModel.moveHistorySelection(1);
             return;
         }
-        if (e.code == "KeyN" && e.getModifierState("Control")) {
+        if (checkKeyPressed(waveEvent, "Ctrl:n")) {
             e.preventDefault();
             inputModel.moveHistorySelection(-1);
             return;
@@ -585,8 +586,23 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         let computedInnerHeight = displayLines * (termFontSize * 1.5) + 2 * 0.5 * termFontSize;
         // inner height + 2*1em padding
         let computedOuterHeight = computedInnerHeight + 2 * 1.0 * termFontSize;
+        let shellType: string = "";
+        let screen = GlobalModel.getActiveScreen();
+        if (screen != null) {
+            let ri = screen.getCurRemoteInstance();
+            if (ri != null && ri.shelltype != null) {
+                shellType = ri.shelltype;
+            }
+        }
         return (
-            <div className="control is-expanded" ref={this.controlRef} style={{ height: computedOuterHeight }}>
+            <div
+                className="textareainput-div control is-expanded"
+                ref={this.controlRef}
+                style={{ height: computedOuterHeight }}
+            >
+                <If condition={!disabled && !util.isBlank(shellType)}>
+                    <div className="shelltag">{shellType}</div>
+                </If>
                 <textarea
                     key="main"
                     ref={this.mainInputRef}
