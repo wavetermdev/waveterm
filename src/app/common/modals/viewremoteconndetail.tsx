@@ -16,7 +16,7 @@ import * as textmeasure from "../../../util/textmeasure";
 import "./viewremoteconndetail.less";
 
 const RemotePtyRows = 9;
-const RemotePtyCols = 80;
+const RemotePtyCols = 74;
 
 @mobxReact.observer
 class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
