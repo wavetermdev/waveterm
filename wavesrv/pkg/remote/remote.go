@@ -601,7 +601,12 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	if vars["remoteuser"] == "root" || vars["sudo"] == "1" {
 		vars["isroot"] = "1"
 	}
-	state.RemoteVars = vars
+	varsCopy := make(map[string]string)
+	// deep copy so that concurrent calls don't collide on this data
+	for key, value := range vars {
+		varsCopy[key] = value
+	}
+	state.RemoteVars = varsCopy
 	return state
 }
 
