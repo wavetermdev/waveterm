@@ -1110,15 +1110,15 @@ func SidebarRemoveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 func prettyPrintByteSize(size int64) string {
 	gbSize := float64(size) / float64(1073741824)
 	if gbSize > 1 {
-		return fmt.Sprintf("%v Gigabytes", gbSize)
+		return fmt.Sprintf("%.2f Gigabytes", gbSize)
 	}
 	mbSize := float64(size) / float64(1048576)
 	if mbSize > 1 {
-		return fmt.Sprintf("%v Megabytes", mbSize)
+		return fmt.Sprintf("%.2f Megabytes", mbSize)
 	}
-	kbSize := float64(size) / float64(24)
+	kbSize := float64(size) / float64(1024)
 	if kbSize > 1 {
-		return fmt.Sprintf("%v Kilobytes", kbSize)
+		return fmt.Sprintf("%.2f Kilobytes", kbSize)
 	}
 	return fmt.Sprintf("%v Bytes", size)
 }
@@ -1303,7 +1303,7 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		return
 	}
 	fileSizeBytes := resp.Info.Size
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", fileSizeBytes), &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
 	writePk := packet.MakeWriteFilePacket()
 	writePk.ReqId = uuid.New().String()
 	writePk.Path = destPath
@@ -1549,7 +1549,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	}
 	var outputPos int64
 	outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
-	termopts := sstore.TermOpts{Rows: shexec.DefaultTermRows, Cols: shexec.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
+	termopts := sstore.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
 	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
 	writeStringToPty(ctx, cmd, outputStr, &outputPos)
 	if err != nil {
