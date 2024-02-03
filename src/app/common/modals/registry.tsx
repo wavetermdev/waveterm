@@ -9,8 +9,10 @@ import {
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
     TabSwitcherModal,
+    SessionSettingsModal,
+    ScreenSettingsModal,
+    LineSettingsModal,
 } from "../modals";
-import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal } from "./settings";
 import * as constants from "../../appconst";
 
 const modalsRegistry: { [key: string]: () => React.ReactElement } = {
