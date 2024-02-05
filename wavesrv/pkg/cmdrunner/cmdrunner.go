@@ -1394,7 +1394,7 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
 	destFile, err := os.Create(destPath)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("error opening source file %v", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error creating dest file %v", err), &outputPos)
 		return
 	}
 	defer destFile.Close()
@@ -1506,7 +1506,9 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /copyfile [file to copy] local=[path to copy to on local]")
 	}
+	log.Printf("mk1\n")
 	ids, err := resolveUiIds(ctx, pk, R_Screen|R_Session|R_RemoteConnected)
+	log.Printf("mk2\n")
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve connected remote id: %v", err)
 	}

@@ -262,6 +262,9 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		return rtn, fmt.Errorf("no remote")
 	}
 	if rtype&R_RemoteConnected > 0 {
+		log.Printf("remote: %v\n", rtn.Remote)
+		log.Printf("remote state: %v", rtn.Remote.StatePtr)
+		log.Printf("remote fe state: %v", rtn.Remote.FeState)
 		if !rtn.Remote.RState.IsConnected() {
 			err = rtn.Remote.MShell.TryAutoConnect()
 			if err != nil {
