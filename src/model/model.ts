@@ -1102,6 +1102,14 @@ class ScreenLines {
         let origCmd = this.cmds[cmd.lineid];
         if (origCmd != null) {
             origCmd.setCmd(cmd);
+        } else {
+            // we haven't gotten an add line update for this lineid, wait 100ms and then try again
+            new Promise((waitFunc) => setTimeout(waitFunc, 100)).then(() => {
+                let origCmd = this.cmds[cmd.lineid];
+                if (origCmd != null) {
+                    origCmd.setCmd(cmd);
+                }
+            });
         }
     }
 
