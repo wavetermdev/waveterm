@@ -262,9 +262,20 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 		return rtn, fmt.Errorf("no remote")
 	}
 	if rtype&R_RemoteConnected > 0 {
-		log.Printf("remote: %v\n", rtn.Remote)
-		log.Printf("remote state: %v", rtn.Remote.StatePtr)
-		log.Printf("remote fe state: %v", rtn.Remote.FeState)
+		log.Printf("COLE TEST remote: %v\n", rtn.Remote)
+		log.Printf("COLE TEST remote state: %v\n", rtn.Remote.StatePtr)
+		log.Printf("COLE TEST remote fe state: %v\n", rtn.Remote.FeState)
+		allRemotes, err := sstore.GetAllRemotes(ctx)
+		if err != nil {
+			log.Printf("COLE TEST error getting all remotes: %v", err)
+		}
+		log.Printf("COLE TEST listing all remotes\n")
+		for index := 0; index < len(allRemotes); index++ {
+			curRemote := allRemotes[index]
+			log.Printf("remoteID: %v, remoteAlias: %v\n", curRemote.RemoteId, curRemote.RemoteAlias)
+			log.Printf("\tremoteCanonicalName: %v remoteType: %v", curRemote.RemoteCanonicalName, curRemote.RemoteType)
+			log.Printf("\tisLocal: %v", curRemote.Local)
+		}
 		if !rtn.Remote.RState.IsConnected() {
 			err = rtn.Remote.MShell.TryAutoConnect()
 			if err != nil {

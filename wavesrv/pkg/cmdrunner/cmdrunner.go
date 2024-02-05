@@ -1506,9 +1506,9 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /copyfile [file to copy] local=[path to copy to on local]")
 	}
-	log.Printf("mk1\n")
+	log.Printf("COLE TEST mk1\n")
 	ids, err := resolveUiIds(ctx, pk, R_Screen|R_Session|R_RemoteConnected)
-	log.Printf("mk2\n")
+	log.Printf("COLE TEST mk2\n")
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve connected remote id: %v", err)
 	}
