@@ -6,8 +6,8 @@ import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 
-import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
-import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
+import { ReactComponent as CheckIcon } from "../../assets/icons/line/check.svg";
+import { ReactComponent as CopyIcon } from "../../assets/icons/history/copy.svg";
 
 import "./cmdstrcode.less";
 

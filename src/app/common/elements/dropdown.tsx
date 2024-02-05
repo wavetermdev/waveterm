@@ -3,15 +3,12 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import ReactDOM from "react-dom";
 
-import "./common.less";
-
-type OV<V> = mobx.IObservableValue<V>;
+import "./dropdown.less";
 
 interface DropdownDecorationProps {
     startDecoration?: React.ReactNode;

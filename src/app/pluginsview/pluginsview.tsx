@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel } from "../../model/model";
 import { PluginModel } from "../../plugins/plugins";
-import { Markdown } from "../common/common";
+import { Markdown } from "../common/elements";
 
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
 
@@ -22,7 +22,7 @@ class PluginsView extends React.Component<{}, {}> {
 
     renderPluginIcon(plugin): any {
         let Comp = plugin.iconComp;
-        return <Comp/>;
+        return <Comp />;
     }
 
     render() {

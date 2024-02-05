@@ -9,7 +9,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
 import { MagicLayout } from "../../magiclayout";
 
-import "./common.less";
+import "./resizablesidebar.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 

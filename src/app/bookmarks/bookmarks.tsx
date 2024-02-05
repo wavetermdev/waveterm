@@ -9,7 +9,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import type { BookmarkType } from "../../types/types";
 import { GlobalModel } from "../../model/model";
-import { CmdStrCode, Markdown } from "../common/common";
+import { CmdStrCode, Markdown } from "../common/elements";
 
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
 import { ReactComponent as CopyIcon } from "../assets/icons/favourites/copy.svg";

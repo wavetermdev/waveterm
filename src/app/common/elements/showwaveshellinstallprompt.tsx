@@ -4,8 +4,6 @@
 import { GlobalModel } from "../../../model/model";
 import * as appconst from "../../appconst";
 
-import "./common.less";
-
 function ShowWaveShellInstallPrompt(callbackFn: () => void) {
     let message: string = `
 In order to use Wave's advanced features like unified history and persistent sessions, Wave installs a small, open-source helper program called WaveShell on your remote machine.  WaveShell does not open any external ports and only communicates with your *local* Wave terminal instance over ssh.  For more information please see [the docs](https://docs.waveterm.dev/reference/waveshell).        

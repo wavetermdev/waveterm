@@ -8,7 +8,7 @@ import ReactDOM from "react-dom";
 import { Button } from "./button";
 import { IconButton } from "./iconbutton";
 
-import "./common.less";
+import "./modal.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 

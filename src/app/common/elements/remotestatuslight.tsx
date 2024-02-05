@@ -2,9 +2,9 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { RemoteType } from "../../../types/types";
 
-import { ReactComponent as CircleIcon } from "../assets/icons/circle.svg";
-import { ReactComponent as KeyIcon } from "../assets/icons/key.svg";
-import { ReactComponent as RotateIcon } from "../assets/icons/rotate_left.svg";
+import { ReactComponent as CircleIcon } from "../../assets/icons/circle.svg";
+import { ReactComponent as KeyIcon } from "../../assets/icons/key.svg";
+import { ReactComponent as RotateIcon } from "../../assets/icons/rotate_left.svg";
 
 import "./remotestatuslight.less";
 

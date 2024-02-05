@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import { ReactComponent as CircleInfoIcon } from "../assets/icons/circle_info.svg";
+import { ReactComponent as CircleInfoIcon } from "../../assets/icons/circle_info.svg";
 
 import "./infomessage.less";
 

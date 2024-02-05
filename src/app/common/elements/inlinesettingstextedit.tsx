@@ -9,7 +9,7 @@ import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../../util/keyutil";
 
-import "./inlinetextedit.less";
+import "./inlinesettingstextedit.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 
