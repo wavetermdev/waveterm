@@ -2,14 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
-import { If } from "tsx-control-statements/components";
 
-import { TextField, TextFieldState } from "./textfield";
-
-import "./numberfield.less";
+import { TextField } from "./textfield";
 
 class NumberField extends TextField {
     @boundMethod
