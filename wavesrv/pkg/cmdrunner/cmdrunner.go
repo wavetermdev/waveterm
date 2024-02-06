@@ -270,7 +270,6 @@ func init() {
 	registerCmdFn("markdownview", MarkdownViewCommand)
 
 	registerCmdFn("csvview", CSVViewCommand)
-
 }
 
 func getValidCommands() []string {
