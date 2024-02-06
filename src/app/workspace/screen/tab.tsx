@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
 import { ActionsIcon, StatusIndicator, CenteredIcon } from "../../common/icons/icons";
-import { renderCmdText } from "../../common/common";
+import { renderCmdText } from "../../common/elements";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import * as constants from "../../appconst";
 import { Reorder } from "framer-motion";

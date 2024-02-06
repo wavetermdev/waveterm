@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel } from "../../../model/model";
-import { Modal, LinkButton } from "../common";
+import { Modal, LinkButton } from "../elements";
 import * as util from "../../../util/util";
 
 import logo from "../../assets/waveterm-logo-with-bg.svg";

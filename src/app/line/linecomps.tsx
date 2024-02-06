@@ -23,7 +23,7 @@ import type {
 import cn from "classnames";
 
 import type { LineContainerModel } from "../../model/model";
-import { renderCmdText } from "../common/common";
+import { renderCmdText } from "../common/elements";
 import { SimpleBlobRenderer } from "../../plugins/core/basicrenderer";
 import { IncrementalRenderer } from "../../plugins/core/incrementalrenderer";
 import { TerminalRenderer } from "../../plugins/terminal/terminal";

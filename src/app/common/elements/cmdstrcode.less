@@ -1,0 +1,102 @@
+@import "../../../app/common/themes/themes.less";
+
+.cmdstr-code {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    padding: 0px 10px 0px 0;
+
+    &.is-large {
+        .use-button {
+            height: 28px;
+            width: 28px;
+        }
+
+        .code-div code {
+        }
+    }
+
+    &.limit-height .code-div {
+        max-height: 58px;
+    }
+
+    &.limit-height.is-large .code-div {
+        max-height: 68px;
+    }
+
+    .use-button {
+        flex-grow: 0;
+        padding: 3px;
+        border-radius: 3px 0 0 3px;
+        height: 22px;
+        width: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        align-self: flex-start;
+        cursor: pointer;
+    }
+
+    .code-div {
+        background-color: @term-black;
+        display: flex;
+        flex-direction: row;
+        min-width: 100px;
+        overflow: auto;
+        border-left: 1px solid #777;
+
+        code {
+            flex-shrink: 0;
+            min-width: 100px;
+            color: @term-white;
+            white-space: pre;
+            padding: 2px 8px 2px 8px;
+            background-color: @term-black;
+            font-size: 1em;
+            font-family: @fixed-font;
+        }
+    }
+
+    .copy-control {
+        width: 0;
+        position: relative;
+        display: block;
+        visibility: hidden;
+
+        .inner-copy {
+            position: absolute;
+            bottom: -1px;
+            right: -20px;
+
+            padding: 2px;
+            padding-left: 4px;
+            cursor: pointer;
+            width: 20px;
+
+            &:hover {
+                color: @term-white;
+            }
+        }
+    }
+
+    &:hover .copy-control {
+        visibility: visible !important;
+    }
+}
+
+.copied-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: @term-white;
+    opacity: 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    animation-name: fade-in-out;
+    animation-duration: 0.3s;
+}

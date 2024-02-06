@@ -19,7 +19,7 @@ import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session, VERSION } from "../../model/model";
 import { isBlank, openLink } from "../../util/util";
-import { ResizableSidebar } from "../common/common";
+import { ResizableSidebar } from "../common/elements";
 import * as constants from "../appconst";
 
 import "./sidebar.less";
