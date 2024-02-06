@@ -1487,6 +1487,11 @@ func writeStringToPty(ctx context.Context, cmd *sstore.CmdType, outputString str
 		log.Printf("error writing to pty: %v", err)
 	}
 	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+	err = sstore.SetStatusIndicatorLevel(ctx, cmd.ScreenId, sstore.StatusIndicatorLevel_Output, false)
+	if err != nil {
+		// This is not a fatal error, so just log it
+		log.Printf("error setting status indicator level to output in writeStringToPty: %v\n", err)
+	}
 }
 
 func parseCopyFileParam(info string) (remote string, path string) {
