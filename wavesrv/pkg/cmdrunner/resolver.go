@@ -495,7 +495,9 @@ func ResolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 			log.Printf("ERROR resolving remote state '%s': %v\n", displayName, err)
 			// continue with state set to nil
 		} else {
+			log.Printf("COLE TEST here is where we get remote state from an sstore.GetRemoteInstance call")
 			if ri == nil {
+				log.Printf("COLE TEST Remote instance is null, getting defaults")
 				rtn.ShellType = msh.GetShellPref()
 				rtn.StatePtr = msh.GetDefaultStatePtr(rtn.ShellType)
 				rtn.FeState = msh.GetDefaultFeState(rtn.ShellType)
@@ -503,6 +505,7 @@ func ResolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 				rtn.StatePtr = &sstore.ShellStatePtr{BaseHash: ri.StateBaseHash, DiffHashArr: ri.StateDiffHashArr}
 				rtn.FeState = ri.FeState
 				rtn.ShellType = ri.ShellType
+				log.Printf("COLE TEST Copying state from remote instance - StatePtr: %v - feState: %v", rtn.StatePtr, rtn.FeState)
 			}
 		}
 	}
