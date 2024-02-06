@@ -6,8 +6,6 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 
-import "./settingserror.less";
-
 type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
