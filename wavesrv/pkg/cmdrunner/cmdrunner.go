@@ -1567,9 +1567,11 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("expand home dir err: %v", err)
 	}
 	sourceFullPath = sourcePathWithHome
-	if (sourceRemote == "connected" || sourceRemote == "local") && !filepath.IsAbs(sourcePathWithHome) {
+	if (sourceRemote == "connected" || sourceRemote == "local") && !filepath.IsAbs(sourcePathWithHome) && sourceRemoteId.FeState != nil {
 		sourceCwd := sourceRemoteId.FeState["cwd"]
-		sourceFullPath = filepath.Join(sourceCwd, sourcePathWithHome)
+		if sourceCwd != "" {
+			sourceFullPath = filepath.Join(sourceCwd, sourcePathWithHome)
+		}
 	}
 	if destPath[len(destPath)-1:] == "/" {
 		sourceFileName := filepath.Base(sourceFullPath)
@@ -1580,9 +1582,16 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("failure getting dest remote mshell")
 	}
 	destRRState := destMsh.GetRemoteRuntimeState()
-	destFullPath, err = destRRState.ExpandHomeDir(destPath)
+	destPathWithHome, err := destRRState.ExpandHomeDir(destPath)
 	if err != nil {
 		return nil, fmt.Errorf("expand home dir err: %v", err)
+	}
+	destFullPath = destPathWithHome
+	if (destRemote == "connnected" || destRemote == "local") && !filepath.IsAbs(destPathWithHome) && destRemoteId.FeState != nil {
+		destCwd := destRemoteId.FeState["cwd"]
+		if destCwd != "" {
+			destFullPath = filepath.Join(destCwd, destPathWithHome)
+		}
 	}
 	var outputPos int64
 	outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
