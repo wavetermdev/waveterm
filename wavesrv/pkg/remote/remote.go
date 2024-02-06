@@ -1896,7 +1896,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		RunPacket: runPacket,
 	})
 
-	go pushNumRunningCmdsUpdate(&runPacket.CK, 1)
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
 }
 
@@ -2074,8 +2073,6 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
-
-	go pushNumRunningCmdsUpdate(&donePk.CK, -1)
 	sstore.MainBus.SendUpdate(update)
 	return
 }

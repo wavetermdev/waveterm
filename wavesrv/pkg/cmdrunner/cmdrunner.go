@@ -3006,6 +3006,7 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 		Cmd:     cmd,
 		Screens: []*sstore.ScreenType{screen},
 	}
+	sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
 	updateHistoryContext(ctx, rtnLine, cmd, cmd.FeState)
 	return update, nil
 }
@@ -3965,6 +3966,7 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		NoCreateCmdPtyFile: true,
 	}
 	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
+	sstore.IncrementNumRunningCmds(cmd.ScreenId, 1)
 	if callback != nil {
 		defer callback()
 	}
