@@ -1,0 +1,30 @@
+@import "../../../app/common/themes/themes.less";
+
+.wave-status-container {
+    display: flex;
+    align-items: center;
+
+    .dot {
+        height: 6px;
+        width: 6px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+    }
+
+    .dot.green {
+        background-color: @status-connected;
+    }
+
+    .dot.red {
+        background-color: @status-error;
+    }
+
+    .dot.gray {
+        background-color: @status-disconnected;
+    }
+
+    .dot.yellow {
+        background-color: @status-connecting;
+    }
+}

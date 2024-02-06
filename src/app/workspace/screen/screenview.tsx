@@ -10,16 +10,24 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import { GlobalCommandRunner, TabColors, TabIcons, ForwardLineContainer, GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
+import {
+    GlobalCommandRunner,
+    TabColors,
+    TabIcons,
+    ForwardLineContainer,
+    GlobalModel,
+    ScreenLines,
+    Screen,
+    Session,
+} from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { Button } from "../../common/common";
+import { Button, TextField, Dropdown } from "../../common/elements";
 import { getRemoteStr } from "../../common/prompt/prompt";
 import { Line } from "../../line/linecomps";
 import { LinesView } from "../../line/linesview";
 import * as util from "../../../util/util";
-import { TextField, Dropdown } from "../../common/common";
 import { ReactComponent as EllipseIcon } from "../../assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "../../assets/icons/check12.svg";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";

@@ -1,0 +1,47 @@
+@import "../../../app/common/themes/themes.less";
+
+.checkbox-toggle {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+
+    input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        content: "";
+        cursor: pointer;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #333;
+        transition: 0.5s;
+        border-radius: 33px;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 2px;
+        bottom: 2px;
+        background-color: @term-white;
+        transition: 0.5s;
+        border-radius: 50%;
+    }
+
+    input:checked + .slider {
+        background-color: @term-green;
+    }
+
+    input:checked + .slider:before {
+        transform: translateX(18px);
+    }
+}

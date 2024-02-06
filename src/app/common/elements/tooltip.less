@@ -1,0 +1,23 @@
+@import "../../../app/common/themes/themes.less";
+
+.wave-tooltip {
+    display: flex;
+    position: absolute;
+    z-index: 1000;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid #777;
+    background-color: #444;
+    border-radius: 5px;
+    overflow: hidden;
+    width: 300px;
+
+    i {
+        display: inline;
+        font-size: 13px;
+        fill: @base-color;
+        padding-top: 0.2em;
+    }
+}

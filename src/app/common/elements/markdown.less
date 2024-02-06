@@ -1,0 +1,91 @@
+@import "../../../app/common/themes/themes.less";
+
+.markdown {
+    color: @term-white;
+    margin-bottom: 10px;
+    font-family: @markdown-font;
+    font-size: 14px;
+
+    code {
+        background-color: @markdown-highlight;
+        color: @term-white;
+        font-family: @terminal-font;
+        border-radius: 4px;
+    }
+
+    code.inline {
+        padding-top: 0;
+        padding-bottom: 0;
+        font-family: @terminal-font;
+    }
+
+    .title {
+        color: @term-white;
+        margin-top: 16px;
+        margin-bottom: 8px;
+    }
+
+    strong {
+        color: @term-white;
+    }
+
+    a {
+        color: #32afff;
+    }
+
+    table {
+        tr th {
+            color: @term-white;
+        }
+    }
+
+    ul {
+        list-style-type: disc;
+        list-style-position: outside;
+        margin-left: 16px;
+    }
+
+    ol {
+        list-style-position: outside;
+        margin-left: 19px;
+    }
+
+    blockquote {
+        margin: 4px 10px 4px 10px;
+        border-radius: 3px;
+        background-color: @markdown-highlight;
+        padding: 2px 4px 2px 6px;
+    }
+
+    pre {
+        background-color: @markdown-highlight;
+        margin: 4px 10px 4px 10px;
+        padding: 6px 6px 6px 10px;
+        border-radius: 4px;
+    }
+
+    pre.selected {
+        outline: 2px solid @term-green;
+    }
+
+    .title.is-1 {
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+    }
+    .title.is-2 {
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+    }
+    .title.is-3 {
+    }
+    .title.is-4 {
+    }
+    .title.is-5 {
+    }
+    .title.is-6 {
+    }
+}
+
+.markdown > *:first-child {
+    margin-top: 0 !important;
+}

@@ -5,7 +5,7 @@ import * as React from "react";
 import * as T from "../../types/types";
 import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import { Markdown } from "../../app/common/common";
+import { Markdown } from "../../app/common/elements";
 import { GlobalModel, GlobalCommandRunner } from "../../model/model";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";

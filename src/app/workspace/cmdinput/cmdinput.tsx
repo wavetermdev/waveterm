@@ -11,7 +11,7 @@ import dayjs from "dayjs";
 import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
-import { renderCmdText } from "../../common/common";
+import { renderCmdText } from "../../common/elements";
 import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
