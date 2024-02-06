@@ -1617,6 +1617,8 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
 		}
 	}
+	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+	update = &sstore.ModelUpdate{}
 	if destRemote == "local" && sourceRemote == "local" {
 		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos)
 	} else if destRemote == "local" && sourceRemote != "local" {
