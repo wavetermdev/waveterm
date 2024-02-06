@@ -5,8 +5,6 @@ import * as React from "react";
 import cn from "classnames";
 import { ButtonProps } from "./button";
 
-import "./linkbutton.less";
-
 interface LinkButtonProps extends ButtonProps {
     href: string;
     rel?: string;
