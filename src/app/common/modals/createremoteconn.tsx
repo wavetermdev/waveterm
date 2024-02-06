@@ -19,7 +19,6 @@ import {
     ShowWaveShellInstallPrompt,
 } from "../elements";
 import * as util from "../../../util/util";
-import * as appconst from "../../appconst";
 
 import "./createremoteconn.less";
 
