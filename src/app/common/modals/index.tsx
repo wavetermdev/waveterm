@@ -6,4 +6,7 @@ export { CreateRemoteConnModal } from "./createremoteconn";
 export { ViewRemoteConnDetailModal } from "./viewremoteconndetail";
 export { EditRemoteConnModal } from "./editremoteconn";
 export { TabSwitcherModal } from "./tabswitcher";
+export { SessionSettingsModal } from "./sessionsettings";
+export { ScreenSettingsModal } from "./screensettings";
+export { LineSettingsModal } from "./linesettings";
 export { UserInputModal } from "./userinput";

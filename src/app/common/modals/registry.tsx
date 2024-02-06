@@ -9,9 +9,11 @@ import {
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
     TabSwitcherModal,
+    SessionSettingsModal,
+    ScreenSettingsModal,
+    LineSettingsModal,
     UserInputModal,
 } from "../modals";
-import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal } from "./settings";
 import * as constants from "../../appconst";
 
 const modalsRegistry: { [key: string]: React.ComponentType } = {
