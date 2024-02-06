@@ -11,7 +11,6 @@ export { Markdown } from "./markdown";
 export { Modal } from "./modal";
 export { NumberField } from "./numberfield";
 export { PasswordField } from "./passwordfield";
-export { RemoteStatusLight } from "./remotestatuslight";
 export { ResizableSidebar } from "./resizablesidebar";
 export { SettingsError } from "./settingserror";
 export { ShowWaveShellInstallPrompt } from "./showwaveshellinstallprompt";

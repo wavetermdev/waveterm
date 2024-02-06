@@ -158,12 +158,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
                 <div
                     className="sidebar-handle"
                     style={{
-                        position: "absolute",
-                        top: 0,
                         [this.props.position === "left" ? "right" : "left"]: 0,
-                        bottom: 0,
-                        width: "5px",
-                        cursor: "col-resize",
                     }}
                     onMouseDown={this.startResizing}
                     onDoubleClick={this.toggleCollapsed}
