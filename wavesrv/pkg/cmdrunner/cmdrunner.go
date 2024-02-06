@@ -702,6 +702,8 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	newPk, rtnErr := EvalMetaCommand(ctxWithHistory, pk)
 	if rtnErr == nil {
 		update, rtnErr = HandleCommand(ctxWithHistory, newPk)
+	} else {
+		return nil, fmt.Errorf("error in Eval Meta Command: %v", rtnErr)
 	}
 	if !resolveBool(pk.Kwargs["nohist"], false) {
 		// TODO should this be "pk" or "newPk" (2nd arg)
@@ -1189,7 +1191,8 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_ms
 	}()
 	localFile, err := os.Open(localPath)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error, unable to open file %v: %v", localFile, localPath), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error, unable to open file %v: %v\r\n", localFile, localPath), &outputPos)
+		return
 	}
 	writePk := packet.MakeWriteFilePacket()
 	writePk.ReqId = uuid.New().String()
@@ -1284,25 +1287,29 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 	streamPk.Path = sourcePath
 	sourceStreamIter, err := sourceMsh.StreamFile(ctx, streamPk)
 	if err != nil {
-		writeErrorToPty(cmd, fmt.Sprintf("Error getting file data packet: %v", err), outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting file data packet: %v\r\n", err), &outputPos)
 		return
 	}
 	defer sourceStreamIter.Close()
 	respIf, err := sourceStreamIter.Next(ctx)
 	if err != nil {
-		writeErrorToPty(cmd, fmt.Sprintf("Error getting next packet: %v", err), outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting next packet: %v\r\n", err), &outputPos)
 		return
 	}
 	resp, ok := respIf.(*packet.StreamFileResponseType)
 	if !ok {
-		writeErrorToPty(cmd, fmt.Sprintf("Error in getting packet response: %v", err), outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error in getting packet response: %v\r\n", err), &outputPos)
 		return
 	}
 	if resp == nil || resp.Error != "" {
-		writeErrorToPty(cmd, fmt.Sprintf("Response packet has error: %v", err), outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos)
 		return
 	}
 	fileSizeBytes := resp.Info.Size
+	if fileSizeBytes == 0 {
+		writeStringToPty(ctx, cmd, "Source file does not exist or is empty - exiting\r\n", &outputPos)
+		return
+	}
 	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
 	writePk := packet.MakeWriteFilePacket()
 	writePk.ReqId = uuid.New().String()
@@ -1333,11 +1340,11 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		}
 		dataPk, ok := dataPkIf.(*packet.FileDataPacketType)
 		if !ok {
-			writeErrorToPty(cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T", dataPkIf), outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T\r\n", dataPkIf), &outputPos)
 			return
 		}
 		if dataPk.Error != "" {
-			writeErrorToPty(cmd, fmt.Sprintf("in read-file, data packet error: %s", dataPk.Error), outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("in read-file, data packet error: %s\r\n", dataPk.Error), &outputPos)
 			return
 		}
 		writeDataPk := packet.MakeFileDataPacket(writePk.ReqId)
@@ -1376,7 +1383,6 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 	var bytesWritten int64
 	startTime := time.Now()
 	defer func() {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
 		writeCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
 	}()
 	sourceFile, err := os.Open(sourcePath)
@@ -1403,6 +1409,7 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 		writeStringToPty(ctx, cmd, fmt.Sprintf("error copying files %v", err), &outputPos)
 		return
 	}
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
 	exitSuccess = true
 }
 
@@ -1417,29 +1424,33 @@ func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_ms
 	streamPk.Path = sourcePath
 	iter, err := remote_msh.StreamFile(ctx, streamPk)
 	if err != nil {
-		writeErrorToPty(cmd, fmt.Sprintf("Error getting file data packet: %v", err), outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting file data packet: %v\r\n", err), &outputPos)
 		return
 	}
 	defer iter.Close()
 	respIf, err := iter.Next(ctx)
 	if err != nil {
-		writeErrorToPty(cmd, fmt.Sprintf("Error getting next packet: %v", err), outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting next packet: %v\r\n", err), &outputPos)
 		return
 	}
 	resp, ok := respIf.(*packet.StreamFileResponseType)
 	if !ok {
-		writeErrorToPty(cmd, fmt.Sprintf("Error in getting packet response: %v", err), outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error in getting packet response: %v\r\n", err), &outputPos)
 		return
 	}
 	if resp == nil || resp.Error != "" {
-		writeErrorToPty(cmd, fmt.Sprintf("Response packet has error: %v", err), outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos)
 		return
 	}
 	fileSizeBytes := resp.Info.Size
+	if fileSizeBytes == 0 {
+		writeStringToPty(ctx, cmd, "Source file doesn't exist or file is empty - exiting\r\n", &outputPos)
+		return
+	}
 	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
 	localFile, err := os.Create(localPath)
 	if err != nil {
-		writeErrorToPty(cmd, fmt.Sprintf("Error creating file on local %v", err), outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error creating file on local %v\r\n", err), &outputPos)
 		return
 	}
 	defer localFile.Close()
@@ -1458,11 +1469,11 @@ func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_ms
 		}
 		dataPk, ok := dataPkIf.(*packet.FileDataPacketType)
 		if !ok {
-			writeErrorToPty(cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T", dataPkIf), outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T\r\n", dataPkIf), &outputPos)
 			return
 		}
 		if dataPk.Error != "" {
-			writeErrorToPty(cmd, fmt.Sprintf("in read-file, data packet error: %s", dataPk.Error), outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("in read-file, data packet error: %s", dataPk.Error), &outputPos)
 			return
 		}
 		localFile.Write(dataPk.Data)
@@ -1511,9 +1522,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /copyfile [file to copy] local=[path to copy to on local]")
 	}
-	log.Printf("COLE TEST mk1\n")
 	ids, err := resolveUiIds(ctx, pk, R_Screen|R_Session|R_RemoteConnected)
-	log.Printf("COLE TEST mk2\n")
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve connected remote id: %v", err)
 	}
