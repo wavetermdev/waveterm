@@ -4,23 +4,34 @@
 package remote
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
+
+type UserInputCancelError struct {
+	Err error
+}
+
+func (uice UserInputCancelError) Error() string {
+	return uice.Err.Error()
+}
 
 func createPublicKeyAuth(identityFile string, passphrase string) (ssh.AuthMethod, error) {
 	privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
@@ -55,6 +66,107 @@ func createKeyboardInteractiveAuth(password string) ssh.AuthMethod {
 	return ssh.KeyboardInteractive(challenge)
 }
 
+func openKnownHostsForEdit(knownHostsFilename string) (*os.File, error) {
+	path, _ := filepath.Split(knownHostsFilename)
+	err := os.MkdirAll(path, 0700)
+	if err != nil {
+		return nil, err
+	}
+	return os.OpenFile(knownHostsFilename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+}
+
+func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerification func() (*scpacket.UserInputResponsePacketType, error)) error {
+	if getUserVerification == nil {
+		getUserVerification = func() (*scpacket.UserInputResponsePacketType, error) {
+			return &scpacket.UserInputResponsePacketType{
+				Type:    "confirm",
+				Confirm: true,
+			}, nil
+		}
+	}
+
+	path, _ := filepath.Split(knownHostsFile)
+	err := os.MkdirAll(path, 0700)
+	if err != nil {
+		return err
+	}
+	f, err := os.OpenFile(knownHostsFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	// do not close writeable files with defer
+
+	// this file works, so let's ask the user for permission
+	response, err := getUserVerification()
+	if err != nil {
+		f.Close()
+		return UserInputCancelError{Err: err}
+	}
+	if !response.Confirm {
+		f.Close()
+		return UserInputCancelError{Err: fmt.Errorf("Canceled by the user")}
+	}
+
+	_, err = f.WriteString(newLine)
+	return f.Close()
+}
+
+func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*scpacket.UserInputResponsePacketType, error) {
+	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
+	queryText := fmt.Sprintf(
+		"The authenticity of host '%s (%s)' can't be established "+
+			"as it **does not exist in any checked known_hosts files**. "+
+			"The host you are attempting to connect to provides this %s key:  \n"+
+			"%s.\n\n"+
+			"**Would you like to continue connecting?** If so, the key will be permanently "+
+			"added to the file %s "+
+			"to protect from future man-in-the-middle attacks.", hostname, remote, key.Type(), base64Key, knownHostsFile)
+	request := &sstore.UserInputRequestType{
+		ResponseType: "confirm",
+		QueryText:    queryText,
+		Markdown:     true,
+		Title:        "Known Hosts Key Missing",
+	}
+	return func() (*scpacket.UserInputResponsePacketType, error) {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		return sstore.MainBus.GetUserInput(request, ctx)
+	}
+}
+
+func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*scpacket.UserInputResponsePacketType, error) {
+	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
+	queryText := fmt.Sprintf(
+		"The authenticity of host '%s (%s)' can't be established "+
+			"as **no known_hosts files could be found**. "+
+			"The host you are attempting to connect to provides this %s key:  \n"+
+			"%s.\n\n"+
+			"**Would you like to continue connecting?** If so:  \n"+
+			"- %s will be created  \n"+
+			"- the key will be added to %s\n\n"+
+			"This will protect from future man-in-the-middle attacks.", hostname, remote, key.Type(), base64Key, knownHostsFile, knownHostsFile)
+	request := &sstore.UserInputRequestType{
+		ResponseType: "confirm",
+		QueryText:    queryText,
+		Markdown:     true,
+		Title:        "Known Hosts File Missing",
+	}
+	return func() (*scpacket.UserInputResponsePacketType, error) {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		return sstore.MainBus.GetUserInput(request, ctx)
+	}
+}
+
+func lineContainsMatch(line []byte, matches [][]byte) bool {
+	for _, match := range matches {
+		if bytes.Contains(line, match) {
+			return true
+		}
+	}
+	return false
+}
+
 func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 	rawUserKnownHostsFiles, _ := ssh_config.GetStrict(opts.SSHHost, "UserKnownHostsFile")
 	userKnownHostsFiles := strings.Fields(rawUserKnownHostsFiles) // TODO - smarter splitting escaped spaces and quotes
@@ -65,8 +177,13 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 	for _, filename := range unexpandedKnownHostsFiles {
 		knownHostsFiles = append(knownHostsFiles, base.ExpandHomeDir(filename))
 	}
-	var unfilteredKnownHostsFiles []string
-	copy(unfilteredKnownHostsFiles, knownHostsFiles)
+
+	// there are no good known hosts files
+	if len(knownHostsFiles) == 0 {
+		return nil, fmt.Errorf("no known_hosts files provided by ssh. defaults are overridden")
+	}
+
+	var unreadableFiles []string
 
 	// the library we use isn't very forgiving about files that are formatted
 	// incorrectly. if a problem file is found, it is removed from our list
@@ -77,6 +194,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 		basicCallback, err = knownhosts.New(knownHostsFiles...)
 		if serr, ok := err.(*os.PathError); ok {
 			badFile := serr.Path
+			unreadableFiles = append(unreadableFiles, badFile)
 			var okFiles []string
 			for _, filename := range knownHostsFiles {
 				if filename != badFile {
@@ -93,24 +211,6 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 		}
 	}
 
-	// determine which file is writeable in case the key is not found.
-	// use knownHostsFiles because there is no point reading to a file
-	// that we can't parse
-	var writeableKnownHostsFile string
-	for _, filename := range knownHostsFiles {
-		f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
-		if err == nil {
-			f.Close()
-			writeableKnownHostsFile = filename
-			break
-		}
-	}
-
-	if len(knownHostsFiles) == 0 {
-		// TODO attempt to create a known host file
-		return nil, fmt.Errorf("there are no known_host files that can be opened")
-	}
-
 	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 		err := basicCallback(hostname, remote, key)
 		if err == nil {
@@ -118,59 +218,88 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 			return nil
 		} else if _, ok := err.(*knownhosts.RevokedError); ok {
 			// revoked credentials are refused outright
-			return fmt.Errorf("foo")
+			return err
 		} else if _, ok := err.(*knownhosts.KeyError); !ok {
-			// this is an unknown error
-			return fmt.Errorf("bar")
+			// this is an unknown error (note the !ok is opposite of usual)
+			return err
 		}
 		serr, _ := err.(*knownhosts.KeyError)
-		var request *sstore.UserInputRequestType
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancelFn()
-		if writeableKnownHostsFile == "" {
-			if len(unfilteredKnownHostsFiles) == 0 {
-				return fmt.Errorf("no known_hosts files provided")
-			}
-			knownHostsFileToCreate := unfilteredKnownHostsFiles[0]
-			request = &sstore.UserInputRequestType{
-				ResponseType: "confirm",
-				QueryText: fmt.Sprintf("You do not have appear to have a known_hosts file in any of\n\n"+
-					"the expected locations. Would you like to create %s and add the key for %s (%s) to it?",
-					knownHostsFileToCreate, hostname, remote.String()),
-				Markdown: true,
-				Title:    "Known Hosts Key Missing",
+		if len(serr.Want) == 0 {
+			// the key was not found
+
+			// try to write to a file that could be parsed
+			var err error
+			for _, filename := range knownHostsFiles {
+				newLine := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
+				getUserVerification := createUnknownKeyVerifier(filename, hostname, remote.String(), key)
+				err = writeToKnownHosts(filename, newLine, getUserVerification)
+				if err == nil {
+					break
+				}
+				if serr, ok := err.(UserInputCancelError); ok {
+					return serr
+				}
 			}
 
-		} else if len(serr.Want) == 0 {
-			request = &sstore.UserInputRequestType{
-				ResponseType: "confirm",
-				QueryText: fmt.Sprintf("The authenticity of host '%s (%s)' can't be established.\n\n"+
-					"%s key fingerprint is %s.\n\nThe key is not known by any other names.\n\nAre you sure"+
-					"you want to continue connecting?", hostname, remote.String(), key.Type(), "TODO"),
-				Markdown: true,
-				Title:    "Known Hosts Key Missing",
+			// try to write to a file that could not be read (file likely doesn't exist)
+			// should catch cases where there is no known_hosts file
+			if err != nil {
+				for _, filename := range unreadableFiles {
+					newLine := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
+					getUserVerification := createMissingKnownHostsVerifier(filename, hostname, remote.String(), key)
+					err = writeToKnownHosts(filename, newLine, getUserVerification)
+					if err == nil {
+						knownHostsFiles = []string{filename}
+						break
+					}
+					if serr, ok := err.(UserInputCancelError); ok {
+						return serr
+					}
+				}
+			}
+			if err != nil {
+				return err
 			}
 		} else {
-			request = &sstore.UserInputRequestType{
-				ResponseType: "confirm",
-				QueryText: fmt.Sprintf("The key provided does not match the one stored in your known\n\n" +
-					"hosts file. If this is unexpected, it could indicate a man-in-the-middle attack. Are\n\n" +
-					"you sure you want to continue connecting?"),
-				Markdown: true,
-				Title:    "Known Hosts Key Mismatch",
+			// the key changed
+			correctKeyFingerprint := base64.StdEncoding.EncodeToString(key.Marshal())
+			var bulletListKnownHosts []string
+			for _, knownHostName := range knownHostsFiles {
+				withBulletPoint := "- " + knownHostName
+				bulletListKnownHosts = append(bulletListKnownHosts, withBulletPoint)
 			}
+			var offendingKeysFmt []string
+			for _, badKey := range serr.Want {
+				formattedKey := "- " + base64.StdEncoding.EncodeToString(badKey.Key.Marshal())
+				offendingKeysFmt = append(offendingKeysFmt, formattedKey)
+			}
+			alertText := fmt.Sprintf("**WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!**\n\n"+
+				"If this is not expected, it is possible that someone could be trying to "+
+				"eavesdrop on you via a man-in-the-middle attack. "+
+				"Alternatively, the host you are connecting to may have changed its key. "+
+				"The %s key sent by the remote hist has the fingerprint:  \n"+
+				"%s\n\n"+
+				"If you are sure this is correct, please update your known_hosts files to "+
+				"remove the lines with the offending before trying to connect again.  \n"+
+				"**Known Hosts Files**  \n"+
+				"%s\n\n"+
+				"**Offending Keys**  \n"+
+				"%s", key.Type(), correctKeyFingerprint, strings.Join(bulletListKnownHosts, "  \n"), strings.Join(offendingKeysFmt, "  \n"))
+			update := &sstore.ModelUpdate{AlertMessage: &sstore.AlertMessageType{
+				Markdown: true,
+				Title:    "Known Hosts Key Changed",
+				Message:  alertText,
+			}}
+			sstore.MainBus.SendUpdate(update)
+			return fmt.Errorf("remote host identification has changed")
 		}
-		response, err := sstore.MainBus.GetUserInput(request, ctx)
+
+		updatedCallback, err := knownhosts.New(knownHostsFiles...)
 		if err != nil {
 			return err
 		}
-		if !response.Confirm {
-			return fmt.Errorf("canceled by the user")
-		}
-		// attempt to fix the problem
-
 		// try one final time
-		return basicCallback(hostname, remote, key)
+		return updatedCallback(hostname, remote, key)
 	}
 
 	return waveHostKeyCallback, nil
@@ -186,24 +315,9 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 		identityFile = configIdentity
 	}
 
-	// test code
-	ctx, cancelFn := context.WithTimeout(context.Background(), 1000*time.Second)
-	defer cancelFn()
-	request := &sstore.UserInputRequestType{
-		ResponseType: "text",
-		QueryText:    "this is a question",
-		Title:        "testing",
-		Markdown:     false,
-	}
-	response, err := sstore.MainBus.GetUserInput(request, ctx)
-	if err != nil {
-		return nil, err
-	}
-	log.Printf("response: %s\n", response.Text)
-
 	hostKeyCallback, err := createHostKeyCallback(opts)
 	if err != nil {
-		return nil, fmt.Errorf("uh oh host key: %+v", err)
+		return nil, err
 	}
 	var authMethods []ssh.AuthMethod
 	publicKeyAuth, err := createPublicKeyAuth(identityFile, opts.SSHPassword)
