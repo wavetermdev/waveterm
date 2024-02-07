@@ -10,7 +10,7 @@
 
 # Wave Terminal 
 
-A open-source, cross-platform, modern terminal for seamless workflows.
+A open-source, cross-platform, AI-integrated, modern terminal for seamless workflows.
 
 Wave isn't just another terminal emulator; it's a rethink on how terminals are built.  Wave combines command line with the power of the open web to help veteran CLI users and new developers alike.
 
@@ -18,6 +18,7 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 * Persistent sessions that can restore state across network disconnections and reboots
 * Searchable contextual command history across all remote sessions (saved locally)
 * Workspaces, tabs, and command blocks to keep you organized
+* AI Integration with ChatGPT (or ChatGPT compatible APIs) to help write commands and get answers inline
 
 ## Installation
 
@@ -35,6 +36,7 @@ brew install --cask wave
 * Homepage &mdash; https://www.waveterm.dev
 * Download Page &mdash; https://www.waveterm.dev/download
 * Documentation &mdash; https://docs.waveterm.dev/
+* Blog &mdash; https://blog.waveterm.dev/
 * Quick Start Guide &mdash; https://docs.waveterm.dev/quickstart/
 * Discord Community &mdash; https://discord.gg/XfvZ334gwU
 
