@@ -52,6 +52,46 @@ func createPublicKeyAuth(identityFile string, passphrase string) (ssh.AuthMethod
 	return ssh.PublicKeys(signer), nil
 }
 
+func createDefaultPasswordCallbackPrompt(password string) func() (secret string, err error) {
+	return func() (secret string, err error) {
+		// this should be modified to return an error if no password is stored
+		// but an empty password is not sufficient because some systems allow
+		// empty passwords
+		return password, nil
+	}
+}
+
+func createInteractivePasswordCallbackPrompt() func() (secret string, err error) {
+	return func() (secret string, err error) {
+		// limited to 15 seconds for some reason. this should be investigated more
+		// in the future
+		ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancelFn()
+		request := &sstore.UserInputRequestType{
+			ResponseType: "text",
+			QueryText:    "Password:",
+			Title:        "Password Authentication",
+		}
+		response, err := sstore.MainBus.GetUserInput(request, ctx)
+		if err != nil {
+			return "", err
+		}
+		return response.Text, nil
+	}
+}
+
+func createPasswordCallbackPrompt(password string) func() (secret string, err error) {
+	return func() (secret string, err error) {
+		defaultPrompt := createDefaultPasswordCallbackPrompt(password)
+		secret, err = defaultPrompt()
+		if err == nil {
+			return secret, nil
+		}
+		interactivePrompt := createInteractivePasswordCallbackPrompt()
+		return interactivePrompt()
+	}
+}
+
 func createNaiveKbdInteractiveChallenge(password string) func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 		for _, q := range questions {
@@ -361,7 +401,7 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 		authMethods = append(authMethods, publicKeyAuth)
 	}
 	authMethods = append(authMethods, createKeyboardInteractiveAuth(opts.SSHPassword))
-	authMethods = append(authMethods, ssh.Password(opts.SSHPassword))
+	authMethods = append(authMethods, ssh.PasswordCallback(createInteractivePasswordCallbackPrompt()))
 
 	configUser, _ := ssh_config.GetStrict(opts.SSHHost, "User")
 	configHostName, _ := ssh_config.GetStrict(opts.SSHHost, "HostName")
