@@ -261,11 +261,14 @@ func init() {
 	registerCmdFn("codeedit", CodeEditCommand)
 	registerCmdFn("codeview", CodeEditCommand)
 
+	registerCmdFn("fileview", FileViewCommand)
+
 	registerCmdFn("imageview", ImageViewCommand)
 	registerCmdFn("mdview", MarkdownViewCommand)
 	registerCmdFn("markdownview", MarkdownViewCommand)
 
 	registerCmdFn("csvview", CSVViewCommand)
+
 }
 
 func getValidCommands() []string {
@@ -4215,6 +4218,24 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "markdown", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update.Interactive = pk.Interactive
+	return update, nil
+}
+
+func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), nil)
+	if err != nil {
+		return nil, err
+	}
+	lineState := make(map[string]any)
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "fileview", lineState)
+	if err != nil {
 		return nil, err
 	}
 	update.Interactive = pk.Interactive
