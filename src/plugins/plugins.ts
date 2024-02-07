@@ -8,6 +8,7 @@ import { SourceCodeRenderer } from "./code/code";
 import { SimpleMustacheRenderer } from "./mustache/mustache";
 import { CSVRenderer } from "./csv/csv";
 import { OpenAIRenderer, OpenAIRendererModel } from "./openai/openai";
+import { FileViewRenderer } from "./fileview/fileview";
 import { isBlank } from "../util/util";
 import { sprintf } from "sprintf-js";
 
@@ -78,6 +79,16 @@ const PluginConfigs: RendererPluginType[] = [
         globalCss: null,
         mimeTypes: ["image/*"],
         simpleComponent: SimpleImageRenderer,
+    },
+    {
+        name: "fileview",
+        rendererType: "simple",
+        heightType: "pixels",
+        dataType: "blob",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: [],
+        simpleComponent: FileViewRenderer,
     },
 ];
 
