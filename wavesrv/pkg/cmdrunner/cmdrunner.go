@@ -1124,7 +1124,8 @@ func prettyPrintByteSize(size int64) string {
 	return fmt.Sprintf("%v Bytes", size)
 }
 
-func writeCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime time.Time, exitSuccess bool, outputPos int64) {
+// this can only be called in a defer func, because recover() only works inside of a defe
+func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime time.Time, exitSuccess bool, outputPos int64) {
 	r := recover()
 	if r != nil {
 		panicMsg := fmt.Sprintf("panic: %v", r)
@@ -1186,13 +1187,14 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_ms
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
-		writeCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
 	}()
 	localFile, err := os.Open(localPath)
 	if err != nil {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Error, unable to open file %v: %v\r\n", localFile, localPath), &outputPos)
 		return
 	}
+	defer localFile.Close()
 	writePk := packet.MakeWriteFilePacket()
 	writePk.ReqId = uuid.New().String()
 	writePk.Path = destPath
@@ -1279,7 +1281,7 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
-		writeCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
 	}()
 	streamPk := packet.MakeStreamFilePacket()
 	streamPk.ReqId = uuid.New().String()
@@ -1382,7 +1384,7 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 	var bytesWritten int64
 	startTime := time.Now()
 	defer func() {
-		writeCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
 	}()
 	sourceFile, err := os.Open(sourcePath)
 	if err != nil {
@@ -1416,7 +1418,7 @@ func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_ms
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
-		writeCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
 	}()
 	streamPk := packet.MakeStreamFilePacket()
 	streamPk.ReqId = uuid.New().String()
@@ -1504,16 +1506,16 @@ func writeStringToPty(ctx context.Context, cmd *sstore.CmdType, outputString str
 	}
 }
 
-func parseCopyFileParam(info string) (remote string, path string) {
+func parseCopyFileParam(info string) (remote string, path string, err error) {
 	stringsList := strings.Split(info, ":")
 	if len(stringsList) == 1 {
 		// use cur remote
-		return "", stringsList[0]
+		return "", stringsList[0], nil
 	} else if len(stringsList) == 2 {
 		remote := strings.Trim(stringsList[0], "[] ")
-		return remote, stringsList[1]
+		return remote, stringsList[1], nil
 	} else {
-		return "error", "error"
+		return "error", "error", fmt.Errorf("malformed arguments")
 	}
 }
 
@@ -1526,17 +1528,17 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("failed to resolve connected remote id: %v", err)
 	}
 	sourceInfo := pk.Args[0]
-	sourceRemote, sourcePath := parseCopyFileParam(sourceInfo)
+	sourceRemote, sourcePath, err := parseCopyFileParam(sourceInfo)
 	var sourceRemoteId *ResolvedRemote
 	var destRemoteId *ResolvedRemote
-	if sourceRemote == "error" {
+	if err != nil {
 		return nil, fmt.Errorf("error: malformed arguments - usage: [remote]:path ")
 	} else if sourceRemote == "" {
 		// use cur remote
-		sourceRemote = "connected"
+		sourceRemote = ConnectedRemote
 		sourceRemoteId = ids.Remote
-		if ids.Remote.DisplayName == "local" {
-			sourceRemote = "local"
+		if ids.Remote.RemoteCopy.IsLocal() {
+			sourceRemote = LocalRemote
 		}
 	} else {
 		pk.Kwargs["remote"] = sourceRemote
@@ -1547,14 +1549,14 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		sourceRemoteId = sourceIds.Remote
 	}
 	destInfo := pk.Args[1]
-	destRemote, destPath := parseCopyFileParam(destInfo)
-	if destRemote == "error" {
+	destRemote, destPath, err := parseCopyFileParam(destInfo)
+	if err != nil {
 		return nil, fmt.Errorf("error: malformed arguments - usage: [remote]:path ")
 	} else if destRemote == "" {
-		destRemote = "connected"
+		destRemote = ConnectedRemote
 		destRemoteId = ids.Remote
-		if ids.Remote.DisplayName == "local" {
-			destRemote = "local"
+		if ids.Remote.RemoteCopy.IsLocal() {
+			destRemote = LocalRemote
 		}
 	} else {
 		pk.Kwargs["remote"] = destRemote
@@ -1580,7 +1582,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("expand home dir err: %v", err)
 	}
 	sourceFullPath = sourcePathWithHome
-	if (sourceRemote == "connected" || sourceRemote == "local") && !filepath.IsAbs(sourcePathWithHome) && sourceRemoteId.FeState != nil {
+	if (sourceRemote == ConnectedRemote || sourceRemote == LocalRemote) && !filepath.IsAbs(sourcePathWithHome) && sourceRemoteId.FeState != nil {
 		sourceCwd := sourceRemoteId.FeState["cwd"]
 		if sourceCwd != "" {
 			sourceFullPath = filepath.Join(sourceCwd, sourcePathWithHome)
@@ -1600,7 +1602,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, fmt.Errorf("expand home dir err: %v", err)
 	}
 	destFullPath = destPathWithHome
-	if (destRemote == "connnected" || destRemote == "local") && !filepath.IsAbs(destPathWithHome) && destRemoteId.FeState != nil {
+	if (destRemote == ConnectedRemote || destRemote == LocalRemote) && !filepath.IsAbs(destPathWithHome) && destRemoteId.FeState != nil {
 		destCwd := destRemoteId.FeState["cwd"]
 		if destCwd != "" {
 			destFullPath = filepath.Join(destCwd, destPathWithHome)
@@ -1621,7 +1623,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, err
 	}
 	update.Interactive = pk.Interactive
-	if destRemote != "local" && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
+	if destRemote != ConnectedRemote && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos)
 		err = destRemoteId.MShell.TryAutoConnect()
 		if err != nil {
@@ -1630,7 +1632,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
 		}
 	}
-	if sourceRemote != "local" && sourceRemoteId != nil && !sourceRemoteId.RState.IsConnected() {
+	if sourceRemote != LocalRemote && sourceRemoteId != nil && !sourceRemoteId.RState.IsConnected() {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", sourceRemote), &outputPos)
 		err = sourceRemoteId.MShell.TryAutoConnect()
 		if err != nil {
@@ -1641,13 +1643,13 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	}
 	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 	update = &sstore.ModelUpdate{}
-	if destRemote == "local" && sourceRemote == "local" {
+	if destRemote == LocalRemote && sourceRemote == LocalRemote {
 		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos)
-	} else if destRemote == "local" && sourceRemote != "local" {
+	} else if destRemote == LocalRemote && sourceRemote != LocalRemote {
 		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos)
-	} else if destRemote != "local" && sourceRemote == "local" {
+	} else if destRemote != LocalRemote && sourceRemote == LocalRemote {
 		go doCopyLocalFileToRemote(context.Background(), cmd, destMsh, sourceFullPath, destFullPath, outputPos)
-	} else if destRemote != "local" && sourceRemote != "local" {
+	} else if destRemote != LocalRemote && sourceRemote != LocalRemote {
 		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceMsh, destMsh, sourceFullPath, destFullPath, outputPos)
 	}
 	return update, nil
