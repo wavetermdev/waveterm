@@ -52,8 +52,8 @@ func createPublicKeyAuth(identityFile string, passphrase string) (ssh.AuthMethod
 	return ssh.PublicKeys(signer), nil
 }
 
-func createKeyboardInteractiveAuth(password string) ssh.AuthMethod {
-	challenge := func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
+func createNaiveKbdInteractiveChallenge(password string) func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
+	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 		for _, q := range questions {
 			if strings.Contains(strings.ToLower(q), "password") {
 				answers = append(answers, password)
@@ -63,6 +63,42 @@ func createKeyboardInteractiveAuth(password string) ssh.AuthMethod {
 		}
 		return answers, nil
 	}
+}
+
+func createInteractiveKbdInteractiveChallenge() func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
+	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
+		if len(questions) != len(echos) {
+			return nil, fmt.Errorf("bad response from server: questions has len %d, echos has len %d", len(questions), len(echos))
+		}
+		for i, question := range questions {
+			echo := echos[i]
+			answer, err := promptChallengeQuestion(question, echo)
+			if err != nil {
+				return nil, err
+			}
+			answers = append(answers, answer)
+		}
+		return answers, nil
+	}
+}
+
+func promptChallengeQuestion(question string, echo bool) (answer string, err error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+	request := &sstore.UserInputRequestType{
+		ResponseType: "text",
+		QueryText:    question,
+		Title:        "Keyboard Interactive Authentication",
+	}
+	response, err := sstore.MainBus.GetUserInput(request, ctx)
+	if err != nil {
+		return "", err
+	}
+	return response.Text, nil
+}
+
+func createKeyboardInteractiveAuth(password string) ssh.AuthMethod {
+	challenge := createInteractiveKbdInteractiveChallenge()
 	return ssh.KeyboardInteractive(challenge)
 }
 
