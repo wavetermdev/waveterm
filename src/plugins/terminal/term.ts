@@ -40,7 +40,7 @@ type TermWrapOpts = {
     isRunning: boolean;
     customKeyHandler?: (event: any, termWrap: TermWrap) => boolean;
     fontSize: number;
-    ptyDataSource: (termContext: TermContextUnion, globalModel: Model) => Promise<PtyDataType>;
+    ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
 };
 
@@ -63,7 +63,7 @@ class TermWrap {
     isRunning: boolean;
     fontSize: number;
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
-    ptyDataSource: (termContext: TermContextUnion, globalModel: Model) => Promise<PtyDataType>;
+    ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     initializing: boolean;
     dataHandler?: (data: string, termWrap: TermWrap) => void;
 

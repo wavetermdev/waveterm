@@ -22,6 +22,7 @@ import type {
     LineType,
     TermContextUnion,
     RendererContainerType,
+    ExtBlob,
 } from "../../../types/types";
 import { debounce } from "throttle-debounce";
 import * as util from "../../../util/util";
@@ -277,7 +278,7 @@ class SimpleBlobRenderer extends React.Component<
                     cwd={festate.cwd}
                     cmdstr={cmdstr}
                     exitcode={exitcode}
-                    data={model.dataBlob}
+                    data={model.dataBlob as ExtBlob}
                     readOnly={model.readOnly}
                     notFound={model.notFound}
                     lineState={model.lineState}

@@ -474,7 +474,7 @@ type RendererModelInitializeParams = {
     opts: RendererOpts;
     lineState: LineStateType;
     api: RendererModelContainerApi;
-    ptyDataSource: (termContext: TermContextUnion, globalModel: Model) => Promise<PtyDataType>;
+    ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
 };
 
 type RendererModel = {

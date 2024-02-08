@@ -1,77 +1,33 @@
 import { sprintf } from "sprintf-js";
-import { Model } from "../models/model";
-import {
-    SessionDataType,
-    LineType,
-    RemoteType,
-    HistoryItem,
-    RemoteInstanceType,
-    RemotePtrType,
-    CmdDataType,
-    FeCmdPacketType,
-    TermOptsType,
-    ScreenDataType,
-    ScreenOptsType,
-    PtyDataUpdateType,
-    ModelUpdateType,
-    UpdateMessage,
-    InfoType,
-    UIContextType,
-    HistoryInfoType,
-    HistoryQueryOpts,
-    FeInputPacketType,
-    RemoteInputPacketType,
-    ContextMenuOpts,
-    RendererContext,
-    RendererModel,
-    PtyDataType,
-    BookmarkType,
-    ClientDataType,
-    HistoryViewDataType,
-    AlertMessageType,
-    HistorySearchParams,
-    FocusTypeStrs,
-    ScreenLinesType,
-    HistoryTypeStrs,
-    RendererPluginType,
-    WindowSize,
-    WebShareOpts,
-    TermContextUnion,
-    RemoteEditType,
-    RemoteViewType,
-    CommandRtnType,
-    WebCmd,
-    WebRemote,
-    OpenAICmdInfoChatMessageType,
-    StatusIndicatorLevel,
-} from "../types/types";
+import { GlobalModel } from "../models/model";
+import { RemotePtrType, FeCmdPacketType, PtyDataType, TermContextUnion } from "../types/types";
 import { isBlank } from "./util";
 
-function getTermPtyData(termContext: TermContextUnion, globalModel: Model): Promise<PtyDataType> {
+function getTermPtyData(termContext: TermContextUnion): Promise<PtyDataType> {
     if ("remoteId" in termContext) {
-        return getRemotePtyData(termContext.remoteId, globalModel);
+        return getRemotePtyData(termContext.remoteId);
     }
-    return getPtyData(termContext.screenId, termContext.lineId, termContext.lineNum, globalModel);
+    return getPtyData(termContext.screenId, termContext.lineId, termContext.lineNum);
 }
 
-function getPtyData(screenId: string, lineId: string, lineNum: number, globalModel: Model): Promise<PtyDataType> {
+function getPtyData(screenId: string, lineId: string, lineNum: number): Promise<PtyDataType> {
     let url = sprintf(
-        globalModel.getBaseHostPort() + "/api/ptyout?linenum=%d&screenid=%s&lineid=%s",
+        GlobalModel.getBaseHostPort() + "/api/ptyout?linenum=%d&screenid=%s&lineid=%s",
         lineNum,
         screenId,
         lineId
     );
-    return getPtyDataFromUrl(url, globalModel);
+    return getPtyDataFromUrl(url);
 }
 
-function getRemotePtyData(remoteId: string, globalModel: Model): Promise<PtyDataType> {
-    let url = sprintf(globalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", remoteId);
-    return getPtyDataFromUrl(url, globalModel);
+function getRemotePtyData(remoteId: string): Promise<PtyDataType> {
+    let url = sprintf(GlobalModel.getBaseHostPort() + "/api/remote-pty?remoteid=%s", remoteId);
+    return getPtyDataFromUrl(url);
 }
 
-function getPtyDataFromUrl(url: string, globalModel: Model): Promise<PtyDataType> {
+function getPtyDataFromUrl(url: string): Promise<PtyDataType> {
     let ptyOffset = 0;
-    let fetchHeaders = globalModel.getFetchHeaders();
+    let fetchHeaders = GlobalModel.getFetchHeaders();
     return fetch(url, { headers: fetchHeaders })
         .then((resp) => {
             if (!resp.ok) {
