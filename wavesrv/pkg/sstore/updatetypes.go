@@ -156,7 +156,7 @@ func (SessionTombstoneUpdate) UpdateType() string {
 	return "sessiontombstone"
 }
 
-type OpenAICmdInfoChatUpdate packet.OpenAICmdInfoChatMessage
+type OpenAICmdInfoChatUpdate []*packet.OpenAICmdInfoChatMessage
 
 func (OpenAICmdInfoChatUpdate) UpdateType() string {
 	return "openaicmdinfochat"
