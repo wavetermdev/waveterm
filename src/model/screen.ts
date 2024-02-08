@@ -34,7 +34,7 @@ import { Cmd } from "./cmd";
 import { ScreenLines } from "./screenlines";
 import { getTermPtyData } from "../util/modelutil";
 
-class Screen {
+class ScreenModel {
     globalCommandRunner: CommandRunner;
     globalModel: Model;
     sessionId: string;
@@ -696,4 +696,4 @@ class Screen {
     }
 }
 
-export { Screen };
+export { ScreenModel };

@@ -3,6 +3,8 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
+import { TermWrap } from "../plugins/terminal/term";
+import { Cmd } from "../model/cmd";
 
 type ShareModeType = "local" | "web";
 type FocusTypeStrs = "input" | "cmd";
@@ -742,6 +744,27 @@ type LineFocusType = {
     screenid?: string;
 };
 
+type LineContainerType = {
+    loadTerminalRenderer: (elem: Element, line: LineType, cmd: Cmd, width: number) => void;
+    registerRenderer: (lineId: string, renderer: RendererModel) => void;
+    unloadRenderer: (lineId: string) => void;
+    getIsFocused: (lineNum: number) => boolean;
+    getTermWrap: (lineId: string) => TermWrap;
+    getRenderer: (lineId: string) => RendererModel;
+    getFocusType: () => FocusTypeStrs;
+    getSelectedLine: () => number;
+    getCmd: (line: LineType) => Cmd;
+    setLineFocus: (lineNum: number, focus: boolean) => void;
+    getUsedRows: (context: RendererContext, line: LineType, cmd: Cmd, width: number) => number;
+    getContentHeight: (context: RendererContext) => number;
+    setContentHeight: (context: RendererContext, height: number) => void;
+    getMaxContentSize(): WindowSize;
+    getIdealContentSize(): WindowSize;
+    isSidebarOpen(): boolean;
+    isLineIdInSidebar(lineId: string): boolean;
+    getContainerType(): LineContainerStrs;
+};
+
 export type {
     SessionDataType,
     LineStateType,
@@ -826,6 +849,7 @@ export type {
     OArr,
     OMap,
     CV,
+    LineContainerType,
 };
 
 export { StatusIndicatorLevel };
