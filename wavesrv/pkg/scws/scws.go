@@ -162,15 +162,24 @@ func (ws *WSState) ReplaceShell(shell *wsshell.WSShell) {
 func (ws *WSState) handleConnection() error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	update, err := sstore.GetAllSessions(ctx)
+	update, err := sstore.GetAllSessionsUpdate(ctx)
 	if err != nil {
 		return fmt.Errorf("getting sessions: %w", err)
 	}
 	remotes := remote.GetAllRemoteRuntimeState()
-	update.Remotes = remotes
+	for _, r := range remotes {
+		update.AddUpdate(sstore.ModelUpdate_Remote, r)
+	}
 	// restore status indicators
-	update.ScreenStatusIndicators, update.ScreenNumRunningCommands = sstore.GetCurrentIndicatorState()
-	update.Connect = true
+	sis, nrcs := sstore.GetCurrentIndicatorState()
+	for _, si := range sis {
+
+		update.AddUpdate(sstore.ModelUpdate_ScreenStatusIndicator, si)
+	}
+	for _, nrc := range nrcs {
+		update.AddUpdate(sstore.ModelUpdate_ScreenNumRunningCommands, nrc)
+	}
+	update.AddUpdate(sstore.ModelUpdate_Connect, true)
 	err = ws.Shell.WriteJson(update)
 	if err != nil {
 		return err

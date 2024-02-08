@@ -4,12 +4,8 @@
 package sstore
 
 import (
-	"fmt"
 	"log"
 	"sync"
-
-	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 var MainBus *UpdateBus = MakeUpdateBus()
@@ -38,66 +34,66 @@ func (*PtyDataUpdate) UpdateType() string {
 
 func (pdu *PtyDataUpdate) Clean() {}
 
-type ModelUpdate struct {
-	Sessions                 []*SessionType                     `json:"sessions,omitempty"`
-	ActiveSessionId          string                             `json:"activesessionid,omitempty"`
-	Screens                  []*ScreenType                      `json:"screens,omitempty"`
-	ScreenLines              *ScreenLinesType                   `json:"screenlines,omitempty"`
-	Line                     *LineType                          `json:"line,omitempty"`
-	Lines                    []*LineType                        `json:"lines,omitempty"`
-	Cmd                      *CmdType                           `json:"cmd,omitempty"`
-	CmdLine                  *utilfn.StrWithPos                 `json:"cmdline,omitempty"`
-	Info                     *InfoMsgType                       `json:"info,omitempty"`
-	ClearInfo                bool                               `json:"clearinfo,omitempty"`
-	Remotes                  []RemoteRuntimeState               `json:"remotes,omitempty"`
-	History                  *HistoryInfoType                   `json:"history,omitempty"`
-	Interactive              bool                               `json:"interactive"`
-	Connect                  bool                               `json:"connect,omitempty"`
-	MainView                 string                             `json:"mainview,omitempty"`
-	Bookmarks                []*BookmarkType                    `json:"bookmarks,omitempty"`
-	SelectedBookmark         string                             `json:"selectedbookmark,omitempty"`
-	HistoryViewData          *HistoryViewData                   `json:"historyviewdata,omitempty"`
-	ClientData               *ClientData                        `json:"clientdata,omitempty"`
-	RemoteView               *RemoteViewType                    `json:"remoteview,omitempty"`
-	ScreenTombstones         []*ScreenTombstoneType             `json:"screentombstones,omitempty"`
-	SessionTombstones        []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
-	OpenAICmdInfoChat        []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
-	AlertMessage             *AlertMessageType                  `json:"alertmessage,omitempty"`
-	ScreenStatusIndicators   []*ScreenStatusIndicatorType       `json:"screenstatusindicators,omitempty"`
-	ScreenNumRunningCommands []*ScreenNumRunningCommandsType    `json:"screennumrunningcommands,omitempty"`
-}
+type ModelUpdate []*ModelUpdateItem
 
 func (*ModelUpdate) UpdateType() string {
 	return ModelUpdateStr
+}
+
+func (mu ModelUpdate) Serialize() []map[string]any {
+	var rtn []map[string]any
+	for _, u := range mu {
+		m := make(map[string]any)
+		m[(*u).UpdateType()] = u
+		rtn = append(rtn, m)
+	}
+	return rtn
+}
+
+type ModelUpdateItem interface {
+	UpdateType() string
 }
 
 func (update *ModelUpdate) Clean() {
 	if update == nil {
 		return
 	}
-	update.ClientData = update.ClientData.Clean()
+	update = nil
 }
 
-func (update *ModelUpdate) UpdateScreen(newScreen *ScreenType) {
-	if newScreen == nil {
-		return
-	}
-	for idx, screen := range update.Screens {
-		if screen.ScreenId == newScreen.ScreenId {
-			update.Screens[idx] = newScreen
-			return
+func (update ModelUpdate) append(item *ModelUpdateItem) {
+	update = append(update, item)
+}
+
+func AddUpdate[I ModelUpdateItem](update *ModelUpdate, item I) {
+	updateItem := (ModelUpdateItem)(item)
+	update.append(&updateItem)
+}
+
+// Returns the first value for the key, nil if not found
+func GetUpdateItems[I ModelUpdateItem](update *ModelUpdate) []*I {
+	ret := make([]*I, 0)
+	for _, item := range *update {
+		if i, ok := (*item).(I); ok {
+			ret = append(ret, &i)
 		}
 	}
-	update.Screens = append(update.Screens, newScreen)
+	return ret
 }
 
 // only sets InfoError if InfoError is not already set
 func (update *ModelUpdate) AddInfoError(errStr string) {
-	if update.Info == nil {
-		update.Info = &InfoMsgType{}
-	}
-	if update.Info.InfoError == "" {
-		update.Info.InfoError = errStr
+	infoUpdates := GetUpdateItems[InfoUpdate](update)
+
+	if len(infoUpdates) > 0 {
+		lastUpdate := infoUpdates[len(infoUpdates)-1]
+		if lastUpdate.InfoError == "" {
+			lastUpdate.InfoError = errStr
+			return
+		}
+	} else {
+		newInfoUpdate := InfoUpdate{InfoError: errStr}
+		AddUpdate[InfoUpdate](update, newInfoUpdate)
 	}
 }
 
@@ -105,13 +101,6 @@ type RemoteViewType struct {
 	RemoteShowAll bool            `json:"remoteshowall,omitempty"`
 	PtyRemoteId   string          `json:"ptyremoteid,omitempty"`
 	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
-}
-
-func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
-	msg := fmt.Sprintf(infoMsgFmt, args...)
-	return &ModelUpdate{
-		Info: &InfoMsgType{InfoMsg: msg},
-	}
 }
 
 type HistoryViewData struct {

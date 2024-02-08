@@ -723,7 +723,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 		if resolveErr == nil {
 			screen, sidebarErr := implementRunInSidebar(ctx, ids.ScreenId, historyContext.LineId)
 			if sidebarErr == nil {
-				modelUpdate.UpdateScreen(screen)
+				sstore.AddScreenUpdate(modelUpdate, screen)
 			} else {
 				modelUpdate.AddInfoError(fmt.Sprintf("cannot move command to sidebar: %v", sidebarErr))
 			}
