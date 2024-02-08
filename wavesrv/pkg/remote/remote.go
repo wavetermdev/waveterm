@@ -1207,6 +1207,10 @@ func (msh *MShellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFi
 	return msh.PacketRpcIter(ctx, streamPk)
 }
 
+func (msh *MShellProc) ListDir(ctx context.Context, listDirPk *packet.ListDirPacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, listDirPk)
+}
+
 func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	if state == nil {
 		return nil

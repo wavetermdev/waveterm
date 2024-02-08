@@ -4253,9 +4253,21 @@ func StatDir(ctx context.Context, ids resolvedIds, path string, fileCallback fun
 		fileCallback(statPk, true, nil)
 		return
 	} else {
-		// do nothing for now
-		fileCallback(nil, true, nil)
-		return
+		cwd := ids.Remote.FeState["cwd"]
+		listDirPk := packet.MakeListDirPacket()
+		listDirPk.ReqId = uuid.New().String()
+		if filepath.IsAbs(path) {
+			listDirPk.Path = path
+		} else {
+			listDirPk.Path = filepath.Join(cwd, path)
+		}
+		msh := ids.Remote.MShell
+		listDirIter, err := msh.ListDir(ctx, listDirPk)
+		if err != nil {
+			fileCallback(nil, true, err)
+			return
+		}
+		log.Printf("listDirIter: %v", listDirIter)
 	}
 }
 
