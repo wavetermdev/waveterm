@@ -60,6 +60,7 @@ const (
 	WriteFileReadyPacketStr = "writefileready" // rpc-response
 	WriteFileDonePacketStr  = "writefiledone"  // rpc-response
 	FileDataPacketStr       = "filedata"
+	FileStatPacketStr       = "filestat"
 	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
 	ShellStatePacketStr     = "shellstate"
 
@@ -408,6 +409,23 @@ func (p *ReInitPacketType) GetReqId() string {
 
 func MakeReInitPacket() *ReInitPacketType {
 	return &ReInitPacketType{Type: ReInitPacketStr}
+}
+
+type FileStatPacketType struct {
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	ModTs   time.Time `json:"modts"`
+	IsDir   bool      `json:"isdir"`
+	Perm    int       `json:"perm"`
+	ModeStr string    `json:"modestr"`
+}
+
+func (*FileStatPacketType) GetType() string {
+	return FileStatPacketStr
+}
+
+func MakeFileStatPacketType() *FileStatPacketType {
+	return &FileStatPacketType{}
 }
 
 type StreamFilePacketType struct {

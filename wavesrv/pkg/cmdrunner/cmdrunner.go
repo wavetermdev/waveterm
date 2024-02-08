@@ -268,7 +268,6 @@ func init() {
 	registerCmdFn("markdownview", MarkdownViewCommand)
 
 	registerCmdFn("csvview", CSVViewCommand)
-
 }
 
 func getValidCommands() []string {
@@ -3960,6 +3959,10 @@ func SetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 func makeStreamFilePk(ids resolvedIds, pk *scpacket.FeCommandPacketType) (*packet.StreamFilePacketType, error) {
 	cwd := ids.Remote.FeState["cwd"]
 	fileArg := pk.Args[0]
+	return makeStreamFilePkFromParams(cwd, fileArg)
+}
+
+func makeStreamFilePkFromParams(cwd string, fileArg string) (*packet.StreamFilePacketType, error) {
 	if fileArg == "" {
 		return nil, fmt.Errorf("/view:stat file argument must be set (cannot be empty)")
 	}
@@ -3971,6 +3974,7 @@ func makeStreamFilePk(ids resolvedIds, pk *scpacket.FeCommandPacketType) (*packe
 		streamPk.Path = filepath.Join(cwd, fileArg)
 	}
 	return streamPk, nil
+
 }
 
 func ViewStatCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -3981,42 +3985,18 @@ func ViewStatCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if err != nil {
 		return nil, err
 	}
-	streamPk, err := makeStreamFilePk(ids, pk)
+	fileArg := pk.Args[0]
+	statPk, streamPk, err := getFileStat(ctx, ids, fileArg)
 	if err != nil {
 		return nil, err
 	}
-	streamPk.StatOnly = true
-	msh := ids.Remote.MShell
-	iter, err := msh.StreamFile(ctx, streamPk)
-	if err != nil {
-		return nil, fmt.Errorf("/view:stat error: %v", err)
-	}
-	defer iter.Close()
-	respIf, err := iter.Next(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("/view:stat error getting response: %v", err)
-	}
-	resp, ok := respIf.(*packet.StreamFileResponseType)
-	if !ok {
-		return nil, fmt.Errorf("/view:stat error, bad response packet type: %T", respIf)
-	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("/view:stat error: %s", resp.Error)
-	}
-	if resp.Info == nil {
-		return nil, fmt.Errorf("/view:stat error, no file info")
-	}
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "path", resp.Info.Name))
-	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "size", resp.Info.Size))
-	modTs := time.UnixMilli(resp.Info.ModTs)
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "path", statPk.Name))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "size", statPk.Size))
+	modTs := statPk.ModTs
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "modts", modTs.Format(TsFormatStr)))
-	buf.WriteString(fmt.Sprintf("  %-15s %v\n", "isdir", resp.Info.IsDir))
-	modeStr := fs.FileMode(resp.Info.Perm).String()
-	if len(modeStr) > 9 {
-		modeStr = modeStr[len(modeStr)-9:]
-	}
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "perms", modeStr))
+	buf.WriteString(fmt.Sprintf("  %-15s %v\n", "isdir", statPk.IsDir))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "perms", statPk.ModeStr))
 	update := &sstore.ModelUpdate{
 		Info: &sstore.InfoMsgType{
 			InfoTitle: fmt.Sprintf("view stat %q", streamPk.Path),
@@ -4024,6 +4004,45 @@ func ViewStatCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		},
 	}
 	return update, nil
+}
+
+func getFileStat(ctx context.Context, ids resolvedIds, fileArg string) (*packet.FileStatPacketType, *packet.StreamFilePacketType, error) {
+	streamPk, err := makeStreamFilePkFromParams(ids.Remote.FeState["cwd"], fileArg)
+	if err != nil {
+		return nil, nil, err
+	}
+	streamPk.StatOnly = true
+	msh := ids.Remote.MShell
+	iter, err := msh.StreamFile(ctx, streamPk)
+	if err != nil {
+		return nil, nil, fmt.Errorf("/view:stat error: %v", err)
+	}
+	defer iter.Close()
+	respIf, err := iter.Next(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("/view:stat error getting response: %v", err)
+	}
+	resp, ok := respIf.(*packet.StreamFileResponseType)
+	if !ok {
+		return nil, nil, fmt.Errorf("/view:stat error, bad response packet type: %T", respIf)
+	}
+	if resp.Error != "" {
+		return nil, nil, fmt.Errorf("/view:stat error: %s", resp.Error)
+	}
+	if resp.Info == nil {
+		return nil, nil, fmt.Errorf("/view:stat error, no file info")
+	}
+	statPk := packet.MakeFileStatPacketType()
+	statPk.Name = resp.Info.Name
+	statPk.Size = resp.Info.Size
+	statPk.ModTs = time.UnixMilli(resp.Info.ModTs)
+	statPk.IsDir = resp.Info.IsDir
+	statPk.Perm = resp.Info.Perm
+	statPk.ModeStr = fs.FileMode(statPk.Perm).String()
+	if len(statPk.ModeStr) > 9 {
+		statPk.ModeStr = statPk.ModeStr[len(statPk.ModeStr)-9:]
+	}
+	return statPk, streamPk, nil
 }
 
 func ViewTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -4224,8 +4243,29 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	return update, nil
 }
 
+func StatDir(ctx context.Context, ids resolvedIds, path string, fileCallback func(pk *packet.FileStatPacketType, done bool, err error)) {
+	statPk, _, err := getFileStat(ctx, ids, path)
+	if err != nil {
+		fileCallback(nil, true, err)
+		return
+	}
+	if !statPk.IsDir {
+		fileCallback(statPk, true, nil)
+		return
+	} else {
+		// do nothing for now
+		fileCallback(nil, true, nil)
+		return
+	}
+}
+
 func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	path := ids.Remote.FeState["cwd"]
+	if len(pk.Args) > 0 {
+		path = pk.Args[0]
+	}
+	log.Printf("path: %v", path)
 	if err != nil {
 		return nil, err
 	}
@@ -4239,6 +4279,21 @@ func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, err
 	}
 	update.Interactive = pk.Interactive
+	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+
+	go func() {
+		var outputPos int64
+		StatDir(context.Background(), ids, path, func(statPk *packet.FileStatPacketType, done bool, err error) {
+			if err != nil {
+				log.Printf("got error: %v\n", err)
+			} else {
+				log.Printf("got statpk: %v", statPk)
+				writePacketToPty(ctx, cmd, statPk, &outputPos)
+			}
+		})
+	}()
+
+	update = &sstore.ModelUpdate{}
 	return update, nil
 }
 
