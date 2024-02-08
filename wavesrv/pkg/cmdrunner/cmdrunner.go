@@ -4295,12 +4295,13 @@ func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 
 	go func() {
 		var outputPos int64
-		StatDir(context.Background(), ids, path, func(statPk *packet.FileStatPacketType, done bool, err error) {
+		statCtx := context.Background()
+		StatDir(statCtx, ids, path, func(statPk *packet.FileStatPacketType, done bool, err error) {
 			if err != nil {
 				log.Printf("got error: %v\n", err)
 			} else {
 				log.Printf("got statpk: %v", statPk)
-				writePacketToPty(ctx, cmd, statPk, &outputPos)
+				writePacketToPty(statCtx, cmd, statPk, &outputPos)
 			}
 		})
 	}()
