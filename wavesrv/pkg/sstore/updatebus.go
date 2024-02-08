@@ -316,7 +316,7 @@ func (bus *UpdateBus) GetUserInputChannel(id string) (chan *scpacket.UserInputRe
 	return uich, ok
 }
 
-func (bus *UpdateBus) GetUserInput(userInputRequest *UserInputRequestType, ctx context.Context) (*scpacket.UserInputResponsePacketType, error) {
+func (bus *UpdateBus) GetUserInput(ctx context.Context, userInputRequest *UserInputRequestType) (*scpacket.UserInputResponsePacketType, error) {
 	id, uich := bus.registerUserInputChannel()
 	defer bus.unregisterUserInputChannel(id)
 

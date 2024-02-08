@@ -73,7 +73,7 @@ func createInteractivePasswordCallbackPrompt() func() (secret string, err error)
 			QueryText:    "Password:",
 			Title:        "Password Authentication",
 		}
-		response, err := sstore.MainBus.GetUserInput(request, ctx)
+		response, err := sstore.MainBus.GetUserInput(ctx, request)
 		if err != nil {
 			return "", err
 		}
@@ -133,7 +133,7 @@ func promptChallengeQuestion(question string, echo bool) (answer string, err err
 		QueryText:    question,
 		Title:        "Keyboard Interactive Authentication",
 	}
-	response, err := sstore.MainBus.GetUserInput(request, ctx)
+	response, err := sstore.MainBus.GetUserInput(ctx, request)
 	if err != nil {
 		return "", err
 	}
@@ -216,7 +216,7 @@ func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote str
 	return func() (*scpacket.UserInputResponsePacketType, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return sstore.MainBus.GetUserInput(request, ctx)
+		return sstore.MainBus.GetUserInput(ctx, request)
 	}
 }
 
@@ -240,7 +240,7 @@ func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, rem
 	return func() (*scpacket.UserInputResponsePacketType, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return sstore.MainBus.GetUserInput(request, ctx)
+		return sstore.MainBus.GetUserInput(ctx, request)
 	}
 }
 
