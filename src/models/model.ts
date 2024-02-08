@@ -22,7 +22,6 @@ import {
     FeCmdPacketType,
     ScreenDataType,
     PtyDataUpdateType,
-    ModelUpdateType,
     UpdateMessage,
     InfoType,
     StrWithPos,
@@ -38,15 +37,16 @@ import {
     CmdInputTextPacketType,
     FileInfoType,
     ExtFile,
-    HistorySearchParams,
-    LineStateType,
+    OV,
+    OArr,
+    OMap,
+    CV,
 } from "../types/types";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "../app/line/lineutil";
 import * as appconst from "../app/appconst";
 import { remotePtrToString, cmdPacketString } from "../util/modelutil";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
-import { OV, OArr, OMap, CV } from "../types/types";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -205,7 +205,7 @@ class Model {
         this.platform = this.getPlatform();
         this.termFontSize = mobx.computed(() => {
             let cdata = this.clientData.get();
-            if (cdata == null || cdata.feopts == null || cdata.feopts.termfontsize == null) {
+            if (cdata?.feopts?.termfontsize == null) {
                 return appconst.DefaultTermFontSize;
             }
             let fontSize = Math.ceil(cdata.feopts.termfontsize);
@@ -755,11 +755,15 @@ class Model {
             let newContext = this.getUIContext();
             if (oldContext.sessionid != newContext.sessionid || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
-                if ("cmdline" in genUpdate) {
-                    // TODO a bit of a hack since this update gets applied in runUpdate_internal.
-                    //   we then undo that update with the resetInput, and then redo it with the line below
-                    //   not sure how else to handle this for now though
-                    this.inputModel.updateCmdLine(genUpdate.cmdline);
+                if (!("ptydata64" in genUpdate)) {
+                    const reversedGenUpdate = genUpdate.slice().reverse();
+                    const lastCmdLine = reversedGenUpdate.find((update) => "cmdline" in update);
+                    if (lastCmdLine) {
+                        // TODO a bit of a hack since this update gets applied in runUpdate_internal.
+                        //   we then undo that update with the resetInput, and then redo it with the line below
+                        //   not sure how else to handle this for now though
+                        this.inputModel.updateCmdLine(lastCmdLine.cmdline);
+                    }
                 }
             } else if (remotePtrToString(oldContext.remote) != remotePtrToString(newContext.remote)) {
                 this.inputModel.resetHistory();
@@ -780,128 +784,131 @@ class Model {
             }
             return;
         }
-        let update: ModelUpdateType = genUpdate;
-        if ("screens" in update) {
-            if (update.connect) {
-                this.screenMap.clear();
-            }
-            let mods = genMergeDataMap(
-                this.screenMap,
-                update.screens,
-                (s: Screen) => s.screenId,
-                (sdata: ScreenDataType) => sdata.screenid,
-                (sdata: ScreenDataType) => new Screen(sdata, this)
-            );
-            for (const screenId of mods.removed) {
-                this.removeScreenLinesByScreenId(screenId);
-            }
-        }
-        if ("sessions" in update || "activesessionid" in update) {
-            if (update.connect) {
-                this.sessionList.clear();
-            }
-            let [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
-            genMergeData(
-                this.sessionList,
-                update.sessions,
-                (s: Session) => s.sessionId,
-                (sdata: SessionDataType) => sdata.sessionid,
-                (sdata: SessionDataType) => new Session(sdata, this),
-                (s: Session) => s.sessionIdx.get()
-            );
-            if ("activesessionid" in update) {
-                let newSessionId = update.activesessionid;
-                if (this.activeSessionId.get() != newSessionId) {
-                    this.activeSessionId.set(newSessionId);
+        let showedRemotesModal = false;
+        genUpdate.forEach((update) => {
+            if ("screen" in update) {
+                if (update.connect) {
+                    this.screenMap.clear();
+                }
+                let mods = genMergeDataMap(
+                    this.screenMap,
+                    [update.screen],
+                    (s: Screen) => s.screenId,
+                    (sdata: ScreenDataType) => sdata.screenid,
+                    (sdata: ScreenDataType) => new Screen(sdata, this)
+                );
+                for (const screenId of mods.removed) {
+                    this.removeScreenLinesByScreenId(screenId);
                 }
             }
-            let [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
-            if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
-                this.activeMainView.set("session");
-                this.deactivateScreenLines();
-                this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+            if ("sessions" in update || "activesessionid" in update) {
+                if (update.connect) {
+                    this.sessionList.clear();
+                }
+                let [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
+                genMergeData(
+                    this.sessionList,
+                    [update.session],
+                    (s: Session) => s.sessionId,
+                    (sdata: SessionDataType) => sdata.sessionid,
+                    (sdata: SessionDataType) => new Session(sdata, this),
+                    (s: Session) => s.sessionIdx.get()
+                );
+                if ("activesessionid" in update) {
+                    let newSessionId = update.activesessionid;
+                    if (this.activeSessionId.get() != newSessionId) {
+                        this.activeSessionId.set(newSessionId);
+                    }
+                }
+                let [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
+                if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
+                    this.activeMainView.set("session");
+                    this.deactivateScreenLines();
+                    this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+                }
             }
-        }
-        if ("line" in update) {
-            this.addLineCmd(update.line, update.cmd, interactive);
-        } else if ("cmd" in update) {
-            this.updateCmd(update.cmd);
-        }
-        if ("lines" in update) {
-            for (const line of update.lines) {
-                this.addLineCmd(line, null, interactive);
+            if ("line" in update) {
+                this.addLineCmd(update.line, update.cmd, interactive);
+            } else if ("cmd" in update) {
+                this.updateCmd(update.cmd);
             }
-        }
-        if ("screenlines" in update) {
-            this.updateScreenLines(update.screenlines, false);
-        }
-        if ("remotes" in update) {
-            if (update.connect) {
-                this.remotes.clear();
+            if ("line" in update) {
+                this.addLineCmd(update.line, null, interactive);
             }
-            this.updateRemotes(update.remotes);
-            // This code's purpose is to show view remote connection modal when a new connection is added
-            if (update.remotes?.length && this.remotesModel.recentConnAddedState.get()) {
-                this.remotesModel.openReadModal(update.remotes[0].remoteid);
+            if ("screenlines" in update) {
+                this.updateScreenLines(update.screenlines, false);
             }
-        }
-        if ("mainview" in update) {
-            if (update.mainview == "plugins") {
-                this.pluginsModel.showPluginsView();
-            } else if (update.mainview == "bookmarks") {
-                this.bookmarksModel.showBookmarksView(update.bookmarks, update.selectedbookmark);
-            } else if (update.mainview == "session") {
-                this.activeMainView.set("session");
-            } else if (update.mainview == "history") {
-                this.historyViewModel.showHistoryView(update.historyviewdata);
-            } else {
-                console.log("invalid mainview in update:", update.mainview);
+            if ("remote" in update) {
+                if (update.connect) {
+                    this.remotes.clear();
+                }
+                if (!update.remote) {
+                    this.updateRemotes([update.remote]);
+                    // This code's purpose is to show view remote connection modal when a new connection is added
+                    if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
+                        showedRemotesModal = true;
+                        this.remotesModel.openReadModal(update.remote.remoteid);
+                    }
+                }
             }
-        } else if ("bookmarks" in update) {
-            this.bookmarksModel.mergeBookmarks(update.bookmarks);
-        }
-        if ("clientdata" in update) {
-            this.clientData.set(update.clientdata);
-        }
-        if (interactive && "info" in update) {
-            let info: InfoType = update.info;
-            this.inputModel.flashInfoMsg(info, info.timeoutms);
-        }
-        if (interactive && "remoteview" in update) {
-            let rview: RemoteViewType = update.remoteview;
-            if (rview.remoteedit != null) {
-                this.remotesModel.openEditModal({ ...rview.remoteedit });
+            if ("mainview" in update) {
+                if (update.mainview == "plugins") {
+                    this.pluginsModel.showPluginsView();
+                } else if (update.mainview == "bookmarks") {
+                    this.bookmarksModel.showBookmarksView(update.bookmarks, update.selectedbookmark);
+                } else if (update.mainview == "session") {
+                    this.activeMainView.set("session");
+                } else if (update.mainview == "history") {
+                    this.historyViewModel.showHistoryView(update.historyviewdata);
+                } else {
+                    console.log("invalid mainview in update:", update.mainview);
+                }
+            } else if ("bookmarks" in update) {
+                this.bookmarksModel.mergeBookmarks(update.bookmarks);
             }
-        }
-        if (interactive && "alertmessage" in update) {
-            let alertMessage: AlertMessageType = update.alertmessage;
-            this.showAlert(alertMessage);
-        }
-        if ("cmdline" in update) {
-            this.inputModel.updateCmdLine(update.cmdline);
-        }
-        if (interactive && "history" in update) {
-            if (uiContext.sessionid == update.history.sessionid && uiContext.screenid == update.history.screenid) {
-                this.inputModel.setHistoryInfo(update.history);
+            if ("clientdata" in update) {
+                this.clientData.set(update.clientdata);
             }
-        }
-        if ("connect" in update) {
-            this.sessionListLoaded.set(true);
-            this.remotesLoaded.set(true);
-        }
-        if ("openaicmdinfochat" in update) {
-            this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
-        }
-        if ("screenstatusindicators" in update) {
-            for (const indicator of update.screenstatusindicators) {
-                this.getScreenById_single(indicator.screenid)?.setStatusIndicator(indicator.status);
+            if (interactive && "info" in update) {
+                let info: InfoType = update.info;
+                this.inputModel.flashInfoMsg(info, info.timeoutms);
             }
-        }
-        if ("screennumrunningcommands" in update) {
-            for (const snc of update.screennumrunningcommands) {
-                this.getScreenById_single(snc.screenid)?.setNumRunningCmds(snc.num);
+            if (interactive && "remoteview" in update) {
+                let rview: RemoteViewType = update.remoteview;
+                if (rview.remoteedit != null) {
+                    this.remotesModel.openEditModal({ ...rview.remoteedit });
+                }
             }
-        }
+            if (interactive && "alertmessage" in update) {
+                let alertMessage: AlertMessageType = update.alertmessage;
+                this.showAlert(alertMessage);
+            }
+            if ("cmdline" in update) {
+                this.inputModel.updateCmdLine(update.cmdline);
+            }
+            if (interactive && "history" in update) {
+                if (uiContext.sessionid == update.history.sessionid && uiContext.screenid == update.history.screenid) {
+                    this.inputModel.setHistoryInfo(update.history);
+                }
+            }
+            if ("connect" in update) {
+                this.sessionListLoaded.set(true);
+                this.remotesLoaded.set(true);
+            }
+            if ("openaicmdinfochat" in update) {
+                this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
+            }
+            if (update.screenstatusindicator != null) {
+                this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(
+                    update.screenstatusindicator.status
+                );
+            }
+            if (update.screennumrunningcommand != null) {
+                this.getScreenById_single(update.screennumrunningcommand.screenid)?.setNumRunningCmds(
+                    update.screennumrunningcommand.num
+                );
+            }
+        });
     }
 
     updateRemotes(remotes: RemoteType[]): void {
@@ -1044,7 +1051,7 @@ class Model {
         if (update == null || "ptydata64" in update) {
             return false;
         }
-        return update.info != null || update.history != null;
+        return update.some((u) => u.info != null || u.history != null);
     }
 
     getClientDataLoop(loopNum: number): void {
