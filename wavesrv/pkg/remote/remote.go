@@ -50,6 +50,7 @@ const RemoteTermRows = 8
 const RemoteTermCols = 80
 const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
+const RpcIterChannelSize = 100
 
 var envVarsToStrip map[string]bool = map[string]bool{
 	"PROMPT":               true,
@@ -665,7 +666,12 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	if vars["remoteuser"] == "root" || vars["sudo"] == "1" {
 		vars["isroot"] = "1"
 	}
-	state.RemoteVars = vars
+	varsCopy := make(map[string]string)
+	// deep copy so that concurrent calls don't collide on this data
+	for key, value := range vars {
+		varsCopy[key] = value
+	}
+	state.RemoteVars = varsCopy
 	state.ActiveShells = msh.StateMap.GetShells()
 	return state
 }
@@ -1202,6 +1208,10 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 	msh.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
 	msh.WriteToPtyBuffer("initialized shell:%s state:%s\n", shellType, ssPk.State.GetHashVal(false))
 	return ssPk, nil
+}
+
+func (msh *MShellProc) WriteFile(ctx context.Context, writePk *packet.WriteFilePacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, writePk)
 }
 
 func (msh *MShellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFilePacketType) (*packet.RpcResponseIter, error) {
@@ -1887,7 +1897,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		RunPacket: runPacket,
 	})
 
-	go pushNumRunningCmdsUpdate(&runPacket.CK, 1)
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
 }
 
@@ -1926,7 +1935,7 @@ func (msh *MShellProc) PacketRpcIter(ctx context.Context, pk packet.RpcPacketTyp
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
 	reqId := pk.GetReqId()
-	msh.ServerProc.Output.RegisterRpc(reqId)
+	msh.ServerProc.Output.RegisterRpcSz(reqId, RpcIterChannelSize)
 	err := msh.ServerProc.Input.SendPacketCtx(ctx, pk)
 	if err != nil {
 		return nil, err
@@ -2066,8 +2075,6 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
-
-	go pushNumRunningCmdsUpdate(&donePk.CK, -1)
 	sstore.MainBus.SendUpdate(update)
 	return
 }

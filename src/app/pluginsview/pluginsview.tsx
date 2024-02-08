@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel } from "../../model/model";
+import { GlobalModel } from "../../models";
 import { PluginModel } from "../../plugins/plugins";
 import { Markdown } from "../common/elements";
 

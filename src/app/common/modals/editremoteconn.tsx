@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../models";
 import * as T from "../../../types/types";
 import { Modal, TextField, InputDecoration, Dropdown, PasswordField, Tooltip } from "../elements";
 import * as util from "../../../util/util";
