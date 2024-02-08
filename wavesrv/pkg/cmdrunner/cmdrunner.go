@@ -3057,8 +3057,8 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
-	update.Sessions = sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst)
+	sstore.AddUpdate[sstore.InteractiveUpdate](update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddUpdate[sstore.SessionUpdate](update, sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))
 	return update, nil
 }
 
@@ -3072,20 +3072,20 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		if err != nil {
 			return nil, fmt.Errorf("clearing screen (archiving): %v", err)
 		}
-		update.Info = &sstore.InfoMsgType{
+		sstore.AddUpdate[sstore.InfoUpdate](update, sstore.InfoUpdate{
 			InfoMsg:   fmt.Sprintf("screen cleared (all lines archived)"),
 			TimeoutMs: 2000,
-		}
+		})
 		return update, nil
 	} else {
 		update, err := sstore.DeleteScreenLines(ctx, ids.ScreenId)
 		if err != nil {
 			return nil, fmt.Errorf("clearing screen: %v", err)
 		}
-		update.Info = &sstore.InfoMsgType{
+		sstore.AddUpdate[sstore.InfoUpdate](update, sstore.InfoUpdate{
 			InfoMsg:   fmt.Sprintf("screen cleared"),
 			TimeoutMs: 2000,
-		}
+		})
 		return update, nil
 	}
 

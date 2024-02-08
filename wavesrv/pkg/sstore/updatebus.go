@@ -240,15 +240,6 @@ func (bus *UpdateBus) SendScreenUpdate(screenId string, update UpdatePacket) {
 	}
 }
 
-func MakeSessionsUpdateForRemote(sessionId string, ri *RemoteInstance) []*SessionType {
-	return []*SessionType{
-		{
-			SessionId: sessionId,
-			Remotes:   []*RemoteInstance{ri},
-		},
-	}
-}
-
 type BookmarksViewType struct {
 	Bookmarks []*BookmarkType `json:"bookmarks"`
 }

@@ -34,6 +34,13 @@ func (SessionUpdate) UpdateType() string {
 	return "session"
 }
 
+func MakeSessionUpdateForRemote(sessionId string, ri *RemoteInstance) SessionUpdate {
+	return SessionUpdate{
+		SessionId: sessionId,
+		Remotes:   []*RemoteInstance{ri},
+	}
+}
+
 type ActiveSessionIdUpdate string
 
 func (ActiveSessionIdUpdate) UpdateType() string {

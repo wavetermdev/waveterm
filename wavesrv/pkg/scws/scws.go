@@ -168,18 +168,17 @@ func (ws *WSState) handleConnection() error {
 	}
 	remotes := remote.GetAllRemoteRuntimeState()
 	for _, r := range remotes {
-		update.AddUpdate(sstore.ModelUpdate_Remote, r)
+		sstore.AddUpdate[sstore.RemoteUpdate](update, (sstore.RemoteUpdate)(r))
 	}
 	// restore status indicators
 	sis, nrcs := sstore.GetCurrentIndicatorState()
 	for _, si := range sis {
-
-		update.AddUpdate(sstore.ModelUpdate_ScreenStatusIndicator, si)
+		sstore.AddUpdate[sstore.ScreenStatusIndicatorUpdate](update, (sstore.ScreenStatusIndicatorUpdate)(*si))
 	}
 	for _, nrc := range nrcs {
-		update.AddUpdate(sstore.ModelUpdate_ScreenNumRunningCommands, nrc)
+		sstore.AddUpdate[sstore.ScreenNumRunningCommandsUpdate](update, (sstore.ScreenNumRunningCommandsUpdate)(*nrc))
 	}
-	update.AddUpdate(sstore.ModelUpdate_Connect, true)
+	sstore.AddUpdate[sstore.ConnectUpdate](update, (sstore.ConnectUpdate)(true))
 	err = ws.Shell.WriteJson(update)
 	if err != nil {
 		return err
