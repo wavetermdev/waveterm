@@ -10,16 +10,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import {
-    GlobalCommandRunner,
-    TabColors,
-    TabIcons,
-    ForwardLineContainer,
-    GlobalModel,
-    ScreenLines,
-    Screen,
-    Session,
-} from "../../../model/model";
+import { GlobalCommandRunner, ForwardLineContainer, GlobalModel, ScreenLines, Screen, Session } from "../../../models";
 import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -442,7 +433,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                     <div key="square" className="icondiv" title="square" onClick={() => this.selectTabIcon("square")}>
                         <SquareIcon className="icon square-icon" />
                     </div>
-                    <For each="icon" of={TabIcons}>
+                    <For each="icon" of={appconst.TabIcons}>
                         <div
                             className="icondiv tabicon"
                             key={icon}
@@ -469,7 +460,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             <>
                 <div className="text-s1 unselectable">Select the color</div>
                 <div className="control-iconlist">
-                    <For each="color" of={TabColors}>
+                    <For each="color" of={appconst.TabColors}>
                         <div
                             className="icondiv"
                             key={color}

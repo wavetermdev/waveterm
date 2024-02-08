@@ -72,13 +72,13 @@ function handleJsonFetchResponse(url: URL, resp: any): Promise<any> {
 }
 
 function base64ToString(b64: string): string {
-    let stringBytes = base64.toByteArray(b64)
-    return new TextDecoder().decode(stringBytes)
+    let stringBytes = base64.toByteArray(b64);
+    return new TextDecoder().decode(stringBytes);
 }
 
 function stringToBase64(input: string): string {
-    let stringBytes = new TextEncoder().encode(input)
-    return base64.fromByteArray(stringBytes)
+    let stringBytes = new TextEncoder().encode(input);
+    return base64.fromByteArray(stringBytes);
 }
 
 function base64ToArray(b64: string): Uint8Array {
@@ -403,6 +403,14 @@ function getRemoteName(remote: RemoteType): string {
     return remotealias ? `${remotealias} [${remotecanonicalname}]` : remotecanonicalname;
 }
 
+// clean empty string
+function ces(s: string) {
+    if (s == "") {
+        return null;
+    }
+    return s;
+}
+
 export {
     handleJsonFetchResponse,
     base64ToString,
@@ -429,4 +437,5 @@ export {
     commandRtnHandler,
     getRemoteConnVal,
     getRemoteName,
+    ces,
 };

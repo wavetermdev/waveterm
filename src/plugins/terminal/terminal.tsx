@@ -8,9 +8,9 @@ import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel, LineContainerModel } from "../../model/model";
+import { GlobalModel } from "../../models";
 import { termHeightFromRows } from "../../util/textmeasure";
-import type { LineType } from "../../types/types";
+import type { LineType, LineContainerType } from "../../types/types";
 import cn from "classnames";
 import * as lineutil from "../../app/line/lineutil";
 
@@ -25,7 +25,7 @@ type OMap<K, V> = mobx.ObservableMap<K, V>;
 @mobxReact.observer
 class TerminalRenderer extends React.Component<
     {
-        screen: LineContainerModel;
+        screen: LineContainerType;
         line: LineType;
         width: number;
         staticRender: boolean;

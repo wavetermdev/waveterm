@@ -17,3 +17,33 @@ export const LineContainer_Sidebar = "sidebar";
 export const ConfirmKey_HideShellPrompt = "hideshellprompt";
 
 export const NoStrPos = -1;
+
+export const RemotePtyRows = 8; // also in main.tsx
+export const RemotePtyCols = 80;
+export const ProdServerEndpoint = "http://127.0.0.1:1619";
+export const ProdServerWsEndpoint = "ws://127.0.0.1:1623";
+export const DevServerEndpoint = "http://127.0.0.1:8090";
+export const DevServerWsEndpoint = "ws://127.0.0.1:8091";
+export const DefaultTermFontSize = 12;
+export const MinFontSize = 8;
+export const MaxFontSize = 24;
+export const InputChunkSize = 500;
+export const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
+export const TabColors = ["red", "orange", "yellow", "green", "mint", "cyan", "blue", "violet", "pink", "white"];
+export const TabIcons = [
+    "sparkle",
+    "fire",
+    "ghost",
+    "cloud",
+    "compass",
+    "crown",
+    "droplet",
+    "graduation-cap",
+    "heart",
+    "file",
+];
+
+// @ts-ignore
+export const VERSION = __WAVETERM_VERSION__;
+// @ts-ignore
+export const BUILD = __WAVETERM_BUILD__;
