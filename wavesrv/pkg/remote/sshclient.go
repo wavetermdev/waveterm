@@ -1,4 +1,4 @@
-// Copyright 2024, Command Line Inc.
+// Copyright 2023-2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package remote
@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kevinburke/ssh_config"
@@ -80,15 +81,15 @@ func createInteractivePasswordCallbackPrompt() func() (secret string, err error)
 	}
 }
 
-func createPasswordCallbackPrompt(password string) func() (secret string, err error) {
+func createCombinedPasswordCallbackPrompt(password string) func() (secret string, err error) {
+	var once sync.Once
 	return func() (secret string, err error) {
-		defaultPrompt := createDefaultPasswordCallbackPrompt(password)
-		secret, err = defaultPrompt()
-		if err == nil {
-			return secret, nil
+		var prompt func() (secret string, err error)
+		once.Do(func() { prompt = createDefaultPasswordCallbackPrompt(password) })
+		if prompt == nil {
+			prompt = createInteractivePasswordCallbackPrompt()
 		}
-		interactivePrompt := createInteractivePasswordCallbackPrompt()
-		return interactivePrompt()
+		return prompt()
 	}
 }
 
@@ -123,7 +124,9 @@ func createInteractiveKbdInteractiveChallenge() func(name, instruction string, q
 }
 
 func promptChallengeQuestion(question string, echo bool) (answer string, err error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+	// limited to 15 seconds for some reason. this should be investigated more
+	// in the future
+	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelFn()
 	request := &sstore.UserInputRequestType{
 		ResponseType: "text",
@@ -137,9 +140,16 @@ func promptChallengeQuestion(question string, echo bool) (answer string, err err
 	return response.Text, nil
 }
 
-func createKeyboardInteractiveAuth(password string) ssh.AuthMethod {
-	challenge := createInteractiveKbdInteractiveChallenge()
-	return ssh.KeyboardInteractive(challenge)
+func createCombinedKbdInteractiveChallenge(password string) ssh.KeyboardInteractiveChallenge {
+	var once sync.Once
+	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
+		var challenge ssh.KeyboardInteractiveChallenge
+		once.Do(func() { challenge = createNaiveKbdInteractiveChallenge(password) })
+		if challenge == nil {
+			challenge = createInteractiveKbdInteractiveChallenge()
+		}
+		return challenge(name, instruction, questions, echos)
+	}
 }
 
 func openKnownHostsForEdit(knownHostsFilename string) (*os.File, error) {
@@ -400,8 +410,8 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 	if err == nil {
 		authMethods = append(authMethods, publicKeyAuth)
 	}
-	authMethods = append(authMethods, createKeyboardInteractiveAuth(opts.SSHPassword))
-	authMethods = append(authMethods, ssh.PasswordCallback(createInteractivePasswordCallbackPrompt()))
+	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword)), 2))
+	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword)), 2))
 
 	configUser, _ := ssh_config.GetStrict(opts.SSHHost, "User")
 	configHostName, _ := ssh_config.GetStrict(opts.SSHHost, "HostName")
