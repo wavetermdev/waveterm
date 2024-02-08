@@ -4876,7 +4876,7 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		return nil, fmt.Errorf("cannot send signal: %v", err)
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, sstore.InfoMsgUpdate("sent signal %q to line %d", sigArg, line.LineNum))
+	sstore.AddUpdate(update, sstore.InfoMsgUpdate("sent line %s signal %s", lineArg, sigArg))
 	return update, nil
 }
 
@@ -4911,7 +4911,7 @@ func ClientNotifyUpdateWriterCommand(ctx context.Context, pk *scpacket.FeCommand
 	pcloud.ResetUpdateWriterNumFailures()
 	sstore.NotifyUpdateWriter()
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, sstore.InfoMsgUpdate("update writer notified"))
+	sstore.AddUpdate(update, sstore.InfoMsgUpdate("notified update writer"))
 	return update, nil
 }
 
