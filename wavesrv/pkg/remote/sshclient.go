@@ -6,9 +6,10 @@ package remote
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/base64"
-	"errors"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/user"
@@ -34,23 +35,39 @@ func (uice UserInputCancelError) Error() string {
 	return uice.Err.Error()
 }
 
-func createPublicKeyAuth(identityFile string, passphrase string) (ssh.AuthMethod, error) {
+func createPublicKeyAuth(identityFile string, passphrase string) (ssh.Signer, error) {
 	privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read ssh key file. err: %+v", err)
 	}
 	signer, err := ssh.ParsePrivateKey(privateKey)
-	if err != nil {
-		if errors.Is(err, &ssh.PassphraseMissingError{}) {
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse private ssh key with passphrase. err: %+v", err)
-			}
-		} else {
-			return nil, fmt.Errorf("failed to parse private ssh key. err: %+v", err)
-		}
+	if err == nil {
+		return signer, err
 	}
-	return ssh.PublicKeys(signer), nil
+	if _, ok := err.(*ssh.PassphraseMissingError); !ok {
+		return nil, fmt.Errorf("failed to parse private ssh key. err: %+v", err)
+	}
+
+	signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
+	if err == nil {
+		return signer, err
+	}
+	if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
+		log.Printf("qwerty: %+v", err)
+		return nil, fmt.Errorf("failed to parse private ssh key. err: %+v", err)
+	}
+	request := &sstore.UserInputRequestType{
+		ResponseType: "text",
+		QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
+		Title:        "Publickey Auth + Passphrase",
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancelFn()
+	response, err := sstore.MainBus.GetUserInput(ctx, request)
+	if err != nil {
+		return nil, UserInputCancelError{Err: err}
+	}
+	return ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
 }
 
 func createDefaultPasswordCallbackPrompt(password string) func() (secret string, err error) {
@@ -406,9 +423,9 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 		return nil, err
 	}
 	var authMethods []ssh.AuthMethod
-	publicKeyAuth, err := createPublicKeyAuth(identityFile, opts.SSHPassword)
+	publicKeySigner, err := createPublicKeyAuth(identityFile, opts.SSHPassword)
 	if err == nil {
-		authMethods = append(authMethods, publicKeyAuth)
+		authMethods = append(authMethods, ssh.PublicKeys(publicKeySigner))
 	}
 	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword)), 2))
 	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword)), 2))
