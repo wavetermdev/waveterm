@@ -551,6 +551,13 @@ func (m *MServer) streamFile(pk *packet.StreamFilePacketType) {
 	return
 }
 
+func (m *MServer) ListDir(listDirPk *packet.ListDirPacketType) {
+	// unimplemented
+
+	// what this is going to do is list the directory and then either send one packet back or stream the file list one by one I'm not sure
+	// I probably need to add a hidden flag on the packet type to specify whether we want to see hidden files
+}
+
 func int64Min(v1 int64, v2 int64) int64 {
 	if v1 < v2 {
 		return v1
@@ -585,6 +592,9 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 		wfc := m.getWriteFileContext(writePk.ReqId)
 		go m.writeFile(writePk, wfc)
 		return
+	}
+	if listDirPk, ok := pk.(*packet.ListDirPacketType); ok {
+		go m.ListDir(listDirPk)
 	}
 	m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid rpc type '%s'", pk.GetType()))
 	return

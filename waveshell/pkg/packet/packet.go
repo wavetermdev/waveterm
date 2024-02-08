@@ -63,6 +63,7 @@ const (
 	FileStatPacketStr       = "filestat"
 	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
 	ShellStatePacketStr     = "shellstate"
+	ListDirPacketStr        = "listdir"
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
@@ -122,6 +123,7 @@ func init() {
 	var _ RpcPacketType = (*ReInitPacketType)(nil)
 	var _ RpcPacketType = (*StreamFilePacketType)(nil)
 	var _ RpcPacketType = (*WriteFilePacketType)(nil)
+	var _ RpcPacketType = (*ListDirPacketType)(nil)
 
 	var _ RpcResponsePacketType = (*CmdStartPacketType)(nil)
 	var _ RpcResponsePacketType = (*ResponsePacketType)(nil)
@@ -426,6 +428,24 @@ func (*FileStatPacketType) GetType() string {
 
 func MakeFileStatPacketType() *FileStatPacketType {
 	return &FileStatPacketType{}
+}
+
+type ListDirPacketType struct {
+	Type  string `json:"type"`
+	ReqId string `json:"reqid"`
+	Path  string `json:"path"`
+}
+
+func (*ListDirPacketType) GetType() string {
+	return ListDirPacketStr
+}
+
+func (p *ListDirPacketType) GetReqId() string {
+	return p.ReqId
+}
+
+func MakeListDirPacket() *ListDirPacketType {
+	return &ListDirPacketType{Type: ListDirPacketStr}
 }
 
 type StreamFilePacketType struct {
