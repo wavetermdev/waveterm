@@ -24,6 +24,11 @@ const (
 	R_RemoteConnected = 16
 )
 
+const (
+	ConnectedRemote = "connected"
+	LocalRemote     = "local"
+)
+
 type resolvedIds struct {
 	SessionId string
 	ScreenId  string
