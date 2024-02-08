@@ -735,10 +735,18 @@ type StrWithPos = {
     pos: number;
 };
 
+type LineFocusType = {
+    cmdInputFocus: boolean;
+    lineid?: string;
+    linenum?: number;
+    screenid?: string;
+};
+
 export type {
     SessionDataType,
     LineStateType,
     LineType,
+    LineFocusType,
     RemoteType,
     RemoteStateType,
     RemoteInstanceType,
@@ -815,6 +823,9 @@ export type {
     OpenAICmdInfoChatMessageType,
     ScreenStatusIndicatorUpdateType,
     OV,
+    OArr,
+    OMap,
+    CV,
 };
 
 export { StatusIndicatorLevel };

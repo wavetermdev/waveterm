@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel, LineContainerModel } from "../../model/model";
+import { GlobalModel, LineContainerModel } from "../../model/model_old";
 import { termHeightFromRows } from "../../util/textmeasure";
 import type { LineType } from "../../types/types";
 import cn from "classnames";

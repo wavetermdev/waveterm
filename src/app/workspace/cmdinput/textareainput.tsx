@@ -9,7 +9,7 @@ import * as util from "../../../util/util";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model/model_old";
 import { getMonoFontSize } from "../../../util/textmeasure";
 import { isModKeyPress, hasNoModifiers } from "../../../util/util";
 import * as appconst from "../../appconst";

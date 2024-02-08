@@ -7,10 +7,10 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner } from "../../../model/model_old";
 import { Modal, TextField, InputDecoration, Tooltip } from "../elements";
 import * as util from "../../../util/util";
-import { Screen } from "../../../model/model";
+import { Screen } from "../../../model/model_old";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 
 import "./tabswitcher.less";

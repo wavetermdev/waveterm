@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import type { BookmarkType } from "../../types/types";
-import { GlobalModel } from "../../model/model";
+import { GlobalModel } from "../../model/model_old";
 import { CmdStrCode, Markdown } from "../common/elements";
 
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";

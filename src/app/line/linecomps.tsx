@@ -9,7 +9,7 @@ import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel, GlobalCommandRunner, Cmd, getTermPtyData } from "../../model/model";
+import { GlobalModel, GlobalCommandRunner, Cmd, getTermPtyData } from "../../model/model_old";
 import { termHeightFromRows } from "../../util/textmeasure";
 import type {
     LineType,
@@ -22,7 +22,7 @@ import type {
 } from "../../types/types";
 import cn from "classnames";
 
-import type { LineContainerModel } from "../../model/model";
+import type { LineContainerModel } from "../../model/model_old";
 import { renderCmdText } from "../common/elements";
 import { SimpleBlobRenderer } from "../../plugins/core/basicrenderer";
 import { IncrementalRenderer } from "../../plugins/core/incrementalrenderer";

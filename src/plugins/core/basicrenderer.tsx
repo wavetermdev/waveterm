@@ -20,7 +20,7 @@ import type {
 import * as T from "../../types/types";
 import { debounce, throttle } from "throttle-debounce";
 import * as util from "../../util/util";
-import { GlobalModel } from "../../model/model";
+import { GlobalModel } from "../../model/model_old";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;
@@ -56,7 +56,7 @@ class SimpleBlobRendererModel {
         this.savedHeight = params.savedHeight;
         this.ptyDataSource = params.ptyDataSource;
         if (this.isClosed) {
-            this.dataBlob = (new Blob() as T.ExtBlob);
+            this.dataBlob = new Blob() as T.ExtBlob;
             this.dataBlob.notFound = false; // TODO
         } else {
             if (this.isDone.get()) {

@@ -9,7 +9,8 @@ import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
 import { boundInt } from "../../util/util";
-import { GlobalModel } from "../../model/model"
+import { GlobalModel } from "../../model/model_old";
+import { Model } from "../../model/model";
 import type {
     TermContextUnion,
     TermOptsType,
@@ -39,7 +40,7 @@ type TermWrapOpts = {
     isRunning: boolean;
     customKeyHandler?: (event: any, termWrap: TermWrap) => boolean;
     fontSize: number;
-    ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
+    ptyDataSource: (termContext: TermContextUnion, globalModel: Model) => Promise<PtyDataType>;
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
 };
 
@@ -62,7 +63,7 @@ class TermWrap {
     isRunning: boolean;
     fontSize: number;
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
-    ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
+    ptyDataSource: (termContext: TermContextUnion, globalModel: Model) => Promise<PtyDataType>;
     initializing: boolean;
     dataHandler?: (data: string, termWrap: TermWrap) => void;
 
@@ -99,21 +100,23 @@ class TermWrap {
             fontFamily: "JetBrains Mono",
             theme: { foreground: terminal.foreground, background: terminal.background },
         });
-        this.terminal.loadAddon(new WebLinksAddon((e, uri) => {
-            e.preventDefault();
-            switch (GlobalModel.platform) {
-                case "darwin":
-                    if (e.metaKey) {
-                        GlobalModel.openExternalLink(uri);
-                    }
-                    break;
-                default:
-                    if (e.ctrlKey) {
-                        GlobalModel.openExternalLink(uri);
-                    }
-                    break;
-            }
-        }));
+        this.terminal.loadAddon(
+            new WebLinksAddon((e, uri) => {
+                e.preventDefault();
+                switch (GlobalModel.platform) {
+                    case "darwin":
+                        if (e.metaKey) {
+                            GlobalModel.openExternalLink(uri);
+                        }
+                        break;
+                    default:
+                        if (e.ctrlKey) {
+                            GlobalModel.openExternalLink(uri);
+                        }
+                        break;
+                }
+            })
+        );
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
             return state;

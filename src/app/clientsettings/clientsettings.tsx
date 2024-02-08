@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, MinFontSize, MaxFontSize, RemotesModel } from "../../model/model";
+import { GlobalModel, GlobalCommandRunner, MinFontSize, MaxFontSize, RemotesModel } from "../../model/model_old";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "../common/elements";
 import { CommandRtnType, ClientDataType } from "../../types/types";
 import { commandRtnHandler, isBlank } from "../../util/util";

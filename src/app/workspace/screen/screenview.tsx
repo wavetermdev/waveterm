@@ -19,7 +19,7 @@ import {
     ScreenLines,
     Screen,
     Session,
-} from "../../../model/model";
+} from "../../../model/model_old";
 import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
