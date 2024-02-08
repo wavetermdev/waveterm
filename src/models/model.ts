@@ -786,7 +786,7 @@ class Model {
         }
         let showedRemotesModal = false;
         genUpdate.forEach((update) => {
-            if ("screen" in update) {
+            if (update.screen != null) {
                 if (update.connect) {
                     this.screenMap.clear();
                 }
@@ -801,7 +801,7 @@ class Model {
                     this.removeScreenLinesByScreenId(screenId);
                 }
             }
-            if ("sessions" in update || "activesessionid" in update) {
+            if (update.session != null || update.activesessionid != null) {
                 if (update.connect) {
                     this.sessionList.clear();
                 }
@@ -814,7 +814,7 @@ class Model {
                     (sdata: SessionDataType) => new Session(sdata, this),
                     (s: Session) => s.sessionIdx.get()
                 );
-                if ("activesessionid" in update) {
+                if (update.activesessionid != null) {
                     let newSessionId = update.activesessionid;
                     if (this.activeSessionId.get() != newSessionId) {
                         this.activeSessionId.set(newSessionId);
@@ -827,18 +827,16 @@ class Model {
                     this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
                 }
             }
-            if ("line" in update) {
+            if (update.line != null) {
                 this.addLineCmd(update.line, update.cmd, interactive);
-            } else if ("cmd" in update) {
+            }
+            if (update.cmd != null) {
                 this.updateCmd(update.cmd);
             }
-            if ("line" in update) {
-                this.addLineCmd(update.line, null, interactive);
-            }
-            if ("screenlines" in update) {
+            if (update.screenlines != null) {
                 this.updateScreenLines(update.screenlines, false);
             }
-            if ("remote" in update) {
+            if (update.remote != null) {
                 if (update.connect) {
                     this.remotes.clear();
                 }
@@ -851,7 +849,7 @@ class Model {
                     }
                 }
             }
-            if ("mainview" in update) {
+            if (update.mainview != null) {
                 if (update.mainview == "plugins") {
                     this.pluginsModel.showPluginsView();
                 } else if (update.mainview == "bookmarks") {
@@ -863,39 +861,46 @@ class Model {
                 } else {
                     console.log("invalid mainview in update:", update.mainview);
                 }
-            } else if ("bookmarks" in update) {
+            }
+            if (update.bookmarks != null) {
                 this.bookmarksModel.mergeBookmarks(update.bookmarks);
             }
-            if ("clientdata" in update) {
+            if (update.clientdata != null) {
                 this.clientData.set(update.clientdata);
             }
-            if (interactive && "info" in update) {
-                let info: InfoType = update.info;
-                this.inputModel.flashInfoMsg(info, info.timeoutms);
-            }
-            if (interactive && "remoteview" in update) {
-                let rview: RemoteViewType = update.remoteview;
-                if (rview.remoteedit != null) {
-                    this.remotesModel.openEditModal({ ...rview.remoteedit });
+            if (interactive) {
+                if (update.info != null) {
+                    let info: InfoType = update.info;
+                    this.inputModel.flashInfoMsg(info, info.timeoutms);
+                }
+                if (update.remoteview != null) {
+                    let rview: RemoteViewType = update.remoteview;
+                    if (rview.remoteedit != null) {
+                        this.remotesModel.openEditModal({ ...rview.remoteedit });
+                    }
+                }
+                if (update.alertmessage != null) {
+                    let alertMessage: AlertMessageType = update.alertmessage;
+                    this.showAlert(alertMessage);
+                }
+                if (update.history != null) {
+                    if (
+                        uiContext.sessionid == update.history.sessionid &&
+                        uiContext.screenid == update.history.screenid
+                    ) {
+                        this.inputModel.setHistoryInfo(update.history);
+                    }
                 }
             }
-            if (interactive && "alertmessage" in update) {
-                let alertMessage: AlertMessageType = update.alertmessage;
-                this.showAlert(alertMessage);
-            }
-            if ("cmdline" in update) {
+
+            if (update.cmdline != null) {
                 this.inputModel.updateCmdLine(update.cmdline);
             }
-            if (interactive && "history" in update) {
-                if (uiContext.sessionid == update.history.sessionid && uiContext.screenid == update.history.screenid) {
-                    this.inputModel.setHistoryInfo(update.history);
-                }
-            }
-            if ("connect" in update) {
+            if (update.connect != null) {
                 this.sessionListLoaded.set(true);
                 this.remotesLoaded.set(true);
             }
-            if ("openaicmdinfochat" in update) {
+            if (update.openaicmdinfochat != null) {
                 this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
             }
             if (update.screenstatusindicator != null) {
