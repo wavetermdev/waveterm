@@ -4,7 +4,7 @@
 import React, { FC, useEffect, useState, useRef, useMemo } from "react";
 import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types/types";
 import * as T from "../../types/types";
-import { GlobalModel } from "../../model";
+import { GlobalModel } from "../../models";
 import Papa from "papaparse";
 import {
     createColumnHelper,

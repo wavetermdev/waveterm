@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model";
+import { GlobalModel, GlobalCommandRunner, Screen } from "../../../models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "../elements";
 import { RemoteType } from "../../../types/types";
 import * as util from "../../../util/util";

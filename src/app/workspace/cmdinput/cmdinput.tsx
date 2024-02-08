@@ -10,7 +10,7 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Screen } from "../../../model";
+import { GlobalModel, GlobalCommandRunner, Screen } from "../../../models";
 import { renderCmdText } from "../../common/elements";
 import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";

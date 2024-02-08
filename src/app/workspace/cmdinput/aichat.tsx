@@ -4,7 +4,7 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { GlobalModel } from "../../../model";
+import { GlobalModel } from "../../../models";
 import { isBlank } from "../../../util/util";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";

@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel } from "../../../model";
+import { GlobalModel } from "../../../models";
 import { Modal, Button } from "../elements";
 
 import "./clientstop.less";

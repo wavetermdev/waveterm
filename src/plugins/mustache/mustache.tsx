@@ -9,7 +9,7 @@ import * as T from "../../types/types";
 import { isBlank } from "../../util/util";
 import mustache from "mustache";
 import * as DOMPurify from "dompurify";
-import { GlobalModel } from "../../model";
+import { GlobalModel } from "../../models";
 
 import "./mustache.less";
 

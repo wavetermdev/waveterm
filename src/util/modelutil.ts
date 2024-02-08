@@ -1,5 +1,5 @@
 import { sprintf } from "sprintf-js";
-import { Model } from "../model/model";
+import { Model } from "../models/model";
 import {
     SessionDataType,
     LineType,

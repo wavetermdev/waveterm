@@ -17,7 +17,7 @@ import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg
 import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Session } from "../../model";
+import { GlobalModel, GlobalCommandRunner, Session } from "../../models";
 import { isBlank, openLink } from "../../util/util";
 import { ResizableSidebar } from "../common/elements";
 import * as appconst from "../appconst";

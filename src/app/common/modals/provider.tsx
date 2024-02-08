@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import { GlobalModel } from "../../../model";
+import { GlobalModel } from "../../../models";
 import { TosModal } from "./tos";
 
 @mobxReact.observer

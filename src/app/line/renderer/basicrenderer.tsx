@@ -25,7 +25,7 @@ import type {
 } from "../../../types/types";
 import { debounce } from "throttle-debounce";
 import * as util from "../../../util/util";
-import { GlobalModel } from "../../../model";
+import { GlobalModel } from "../../../models";
 
 type OV<V> = mobx.IObservableValue<V>;
 type CV<V> = mobx.IComputedValue<V>;

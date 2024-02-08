@@ -4,7 +4,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import { TermWrap } from "../plugins/terminal/term";
-import { Cmd, Model } from "../model";
+import { Cmd, Model } from "../models";
 
 type ShareModeType = "local" | "web";
 type FocusTypeStrs = "input" | "cmd";

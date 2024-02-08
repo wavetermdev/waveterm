@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, RemotesModel, GlobalCommandRunner } from "../../model";
+import { GlobalModel, RemotesModel, GlobalCommandRunner } from "../../models";
 import { Button, Status, ShowWaveShellInstallPrompt } from "../common/elements";
 import * as T from "../../types/types";
 import * as util from "../../util/util";
