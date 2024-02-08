@@ -1,0 +1,1 @@
+export { BookmarksModel } from "./bookmarks";
