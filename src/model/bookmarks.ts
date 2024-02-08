@@ -6,16 +6,10 @@ import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { genMergeSimpleData } from "../util/util";
 import { BookmarkType } from "../types/types";
-import dayjs from "dayjs";
-import localizedFormat from "dayjs/plugin/localizedFormat";
-import customParseFormat from "dayjs/plugin/customParseFormat";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
 import { OV, OArr } from "../types/types";
 import { CommandRunner } from "./commandrunner";
 import { Model } from "./model";
-
-dayjs.extend(customParseFormat);
-dayjs.extend(localizedFormat);
 
 class BookmarksModel {
     globalCommandRunner: CommandRunner;
