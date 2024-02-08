@@ -3575,9 +3575,7 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{BookmarksView: 1}, "bookmarks")
 	update := &sstore.ModelUpdate{}
 	sstore.AddUpdate(update, (sstore.MainViewUpdate)(sstore.MainViewBookmarks))
-	for _, bm := range bms {
-		sstore.AddUpdate(update, (sstore.BookmarkUpdate)(*bm))
-	}
+	sstore.AddUpdate(update, (sstore.BookmarksUpdate)(bms))
 	return update, nil
 }
 
@@ -3612,7 +3610,7 @@ func BookmarkSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("error retrieving edited bookmark: %v", err)
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.BookmarkUpdate)(*bm))
+	sstore.AddUpdate(update, sstore.BookmarksUpdate{bm})
 	sstore.AddUpdate(update, sstore.InfoMsgUpdate("bookmark edited"))
 	return update, nil
 }
@@ -3633,9 +3631,9 @@ func BookmarkDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, fmt.Errorf("error deleting bookmark: %v", err)
 	}
-	bm := sstore.BookmarkUpdate{BookmarkId: bookmarkId, Remove: true}
+	bms := sstore.BookmarksUpdate{{BookmarkId: bookmarkId, Remove: true}}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, bm)
+	sstore.AddUpdate(update, bms)
 	sstore.AddUpdate(update, sstore.InfoMsgUpdate("bookmark deleted"))
 	return update, nil
 }
@@ -3688,9 +3686,7 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	bms, err := sstore.GetBookmarks(ctx, "")
 	update := &sstore.ModelUpdate{}
 	sstore.AddUpdate(update, (sstore.MainViewUpdate)(sstore.MainViewBookmarks))
-	for _, bm := range bms {
-		sstore.AddUpdate(update, (sstore.BookmarkUpdate)(*bm))
-	}
+	sstore.AddUpdate(update, (sstore.BookmarksUpdate)(bms))
 	sstore.AddUpdate(update, (sstore.SelectedBookmarkUpdate)(newBmId))
 	return update, nil
 }

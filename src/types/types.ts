@@ -309,16 +309,15 @@ type ScreenNumRunningCommandsUpdateType = {
 
 type ModelUpdateType = {
     interactive: boolean;
-    sessions?: SessionDataType[];
+    session?: SessionDataType;
     activesessionid?: string;
-    screens?: ScreenDataType[];
+    screen?: ScreenDataType;
     screenlines?: ScreenLinesType;
     line?: LineType;
-    lines?: LineType[];
     cmd?: CmdDataType;
     info?: InfoType;
     cmdline?: StrWithPos;
-    remotes?: RemoteType[];
+    remote?: RemoteType;
     history?: HistoryInfoType;
     connect?: boolean;
     mainview?: string;
@@ -329,8 +328,8 @@ type ModelUpdateType = {
     remoteview?: RemoteViewType;
     openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
     alertmessage?: AlertMessageType;
-    screenstatusindicators?: ScreenStatusIndicatorUpdateType[];
-    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType[];
+    screenstatusindicator?: ScreenStatusIndicatorUpdateType;
+    screennumrunningcommand?: ScreenNumRunningCommandsUpdateType;
 };
 
 type HistoryViewDataType = {
@@ -412,7 +411,7 @@ type ContextMenuOpts = {
     showCut?: boolean;
 };
 
-type UpdateMessage = PtyDataUpdateType | ModelUpdateType;
+type UpdateMessage = PtyDataUpdateType | ModelUpdateType[];
 
 type RendererContext = {
     screenId: string;

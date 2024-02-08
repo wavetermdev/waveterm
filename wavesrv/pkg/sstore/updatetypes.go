@@ -121,10 +121,10 @@ func (MainViewUpdate) UpdateType() string {
 	return "mainview"
 }
 
-type BookmarkUpdate BookmarkType
+type BookmarksUpdate []*BookmarkType
 
-func (BookmarkUpdate) UpdateType() string {
-	return "bookmark"
+func (BookmarksUpdate) UpdateType() string {
+	return "bookmarks"
 }
 
 type SelectedBookmarkUpdate string
