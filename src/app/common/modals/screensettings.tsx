@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, TabColors, TabIcons, Screen } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, Screen } from "../../../models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "../elements";
 import { RemoteType } from "../../../types/types";
 import * as util from "../../../util/util";
@@ -15,6 +15,7 @@ import { commandRtnHandler } from "../../../util/util";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
+import * as appconst from "../../appconst";
 
 import "./screensettings.less";
 
@@ -281,7 +282,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                                     <span className="tab-color-name">{screen.getTabColor()}</span>
                                 </div>
                                 <div className="tab-color-sep">|</div>
-                                <For each="color" of={TabColors}>
+                                <For each="color" of={appconst.TabColors}>
                                     <div
                                         key={color}
                                         className="tab-color-select"
@@ -307,7 +308,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                                     <span className="tab-icon-name">{screen.getTabIcon()}</span>
                                 </div>
                                 <div className="tab-icon-sep">|</div>
-                                <For each="icon" index="index" of={TabIcons}>
+                                <For each="icon" index="index" of={appconst.TabIcons}>
                                     <div
                                         key={`${color}-${index}`}
                                         className="tab-icon-select"
