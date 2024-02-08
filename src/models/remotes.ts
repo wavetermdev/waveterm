@@ -8,7 +8,7 @@ import { TermWrap } from "../plugins/terminal/term";
 import { RemoteInputPacketType, RemoteEditType } from "../types/types";
 import * as appconst from "../app/appconst";
 import { OV } from "../types/types";
-import { CommandRunner } from "./model";
+import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 import { getTermPtyData } from "../util/modelutil";
 
@@ -16,7 +16,6 @@ const RemotePtyRows = 8; // also in main.tsx
 const RemotePtyCols = 80;
 
 class RemotesModel {
-    globalCommandRunner: CommandRunner;
     globalModel: Model;
     selectedRemoteId: OV<string> = mobx.observable.box(null, {
         name: "RemotesModel-selectedRemoteId",
@@ -38,7 +37,6 @@ class RemotesModel {
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
-        this.globalCommandRunner = CommandRunner.getInstance();
     }
 
     get recentConnAdded(): boolean {
@@ -97,7 +95,7 @@ class RemotesModel {
     startEditAuth(): void {
         let remoteId = this.selectedRemoteId.get();
         if (remoteId != null) {
-            this.globalCommandRunner.openEditRemote(remoteId);
+            GlobalCommandRunner.openEditRemote(remoteId);
         }
     }
 

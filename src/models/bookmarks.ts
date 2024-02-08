@@ -8,11 +8,10 @@ import { genMergeSimpleData } from "../util/util";
 import { BookmarkType } from "../types/types";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
 import { OV, OArr } from "../types/types";
-import { CommandRunner } from "./model";
+import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 
 class BookmarksModel {
-    globalCommandRunner: CommandRunner;
     globalModel: Model;
     bookmarks: OArr<BookmarkType> = mobx.observable.array([], {
         name: "Bookmarks",
@@ -39,7 +38,6 @@ class BookmarksModel {
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
-        this.globalCommandRunner = CommandRunner.getInstance();
     }
 
     showBookmarksView(bmArr: BookmarkType[], selectedBookmarkId: string): void {
@@ -125,7 +123,7 @@ class BookmarksModel {
             this.tempDesc.set("");
             this.tempCmd.set("");
         })();
-        this.globalCommandRunner.editBookmark(bm.bookmarkid, bm.description, bm.cmdstr);
+        GlobalCommandRunner.editBookmark(bm.bookmarkid, bm.description, bm.cmdstr);
     }
 
     handleDeleteBookmark(bookmarkId: string): void {
@@ -134,7 +132,7 @@ class BookmarksModel {
             setTimeout(this.clearPendingDelete, 2000);
             return;
         }
-        this.globalCommandRunner.deleteBookmark(bookmarkId);
+        GlobalCommandRunner.deleteBookmark(bookmarkId);
         this.clearPendingDelete();
     }
 

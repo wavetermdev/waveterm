@@ -5,17 +5,15 @@ import * as mobx from "mobx";
 import { PluginModel } from "../plugins/plugins";
 import { RendererPluginType } from "../types/types";
 import { OV } from "../types/types";
-import { CommandRunner } from "./model";
+import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 
 class PluginsModel {
-    globalCommandRunner: CommandRunner = null;
     globalModel: Model = null;
     selectedPlugin: OV<RendererPluginType> = mobx.observable.box(null, { name: "selectedPlugin" });
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
-        this.globalCommandRunner = CommandRunner.getInstance();
     }
 
     showPluginsView(): void {

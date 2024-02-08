@@ -18,7 +18,7 @@ import { StrWithPos } from "../types/types";
 import * as appconst from "../app/appconst";
 import { OV } from "../types/types";
 import { Model } from "./model";
-import { CommandRunner } from "./model";
+import { GlobalCommandRunner } from "./global";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
     return {
@@ -34,7 +34,6 @@ function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
 }
 
 class InputModel {
-    globalCommandRunner: CommandRunner;
     globalModel: Model;
     historyShow: OV<boolean> = mobx.observable.box(false);
     infoShow: OV<boolean> = mobx.observable.box(false);
@@ -85,7 +84,6 @@ class InputModel {
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
-        this.globalCommandRunner = CommandRunner.getInstance();
         this.filteredHistoryItems = mobx.computed(() => {
             return this._getFilteredHistoryItems();
         });
@@ -153,7 +151,7 @@ class InputModel {
             let screen = this.globalModel.getActiveScreen();
             if (screen != null) {
                 if (screen.focusType.get() != "input") {
-                    this.globalCommandRunner.screenSetFocus("input");
+                    GlobalCommandRunner.screenSetFocus("input");
                 }
             }
         }
@@ -251,7 +249,7 @@ class InputModel {
         mobx.action(() => {
             this.historyLoading.set(true);
         })();
-        this.globalCommandRunner.loadHistory(show, htype);
+        GlobalCommandRunner.loadHistory(show, htype);
     }
 
     openHistory(): void {

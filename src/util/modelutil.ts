@@ -1,5 +1,5 @@
 import { sprintf } from "sprintf-js";
-import { GlobalModel } from "../models/model";
+import { GlobalModel } from "../models";
 import { RemotePtrType, FeCmdPacketType, PtyDataType, TermContextUnion } from "../types/types";
 import { isBlank } from "./util";
 

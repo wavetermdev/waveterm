@@ -29,13 +29,12 @@ import * as appconst from "../app/appconst";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
 import { OV } from "../types/types";
 import { Model } from "./model";
-import { CommandRunner } from "./model";
+import { GlobalCommandRunner } from "./global";
 import { Cmd } from "./cmd";
 import { ScreenLines } from "./screenlines";
 import { getTermPtyData } from "../util/modelutil";
 
 class Screen {
-    globalCommandRunner: CommandRunner;
     globalModel: Model;
     sessionId: string;
     screenId: string;
@@ -64,7 +63,6 @@ class Screen {
 
     constructor(sdata: ScreenDataType, globalModel: Model) {
         this.globalModel = globalModel;
-        this.globalCommandRunner = CommandRunner.getInstance();
         this.sessionId = sdata.sessionid;
         this.screenId = sdata.screenid;
         this.name = mobx.observable.box(sdata.name, { name: "screen-name" });
@@ -285,7 +283,7 @@ class Screen {
 
     setAnchor(anchorLine: number, anchorOffset: number): void {
         let setVal = anchorLine == null || anchorLine == 0 ? "0" : sprintf("%d:%d", anchorLine, anchorOffset);
-        this.globalCommandRunner.screenSetAnchor(this.sessionId, this.screenId, setVal);
+        GlobalCommandRunner.screenSetAnchor(this.sessionId, this.screenId, setVal);
     }
 
     getAnchor(): { anchorLine: number; anchorOffset: number } {
@@ -470,7 +468,7 @@ class Screen {
                 exclude.push(lineid);
             }
         }
-        this.globalCommandRunner.resizeScreen(this.screenId, rows, cols, { exclude });
+        GlobalCommandRunner.resizeScreen(this.screenId, rows, cols, { exclude });
     }
 
     getTermWrap(lineId: string): TermWrap {
@@ -488,9 +486,9 @@ class Screen {
     setLineFocus(lineNum: number, focus: boolean): void {
         mobx.action(() => this.termLineNumFocus.set(focus ? lineNum : 0))();
         if (focus && this.selectedLine.get() != lineNum) {
-            this.globalCommandRunner.screenSelectLine(String(lineNum), "cmd");
+            GlobalCommandRunner.screenSelectLine(String(lineNum), "cmd");
         } else if (focus && this.focusType.get() == "input") {
-            this.globalCommandRunner.screenSetFocus("cmd");
+            GlobalCommandRunner.screenSetFocus("cmd");
         }
     }
 

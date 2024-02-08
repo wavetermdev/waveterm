@@ -1,3 +1,4 @@
+export * from "./global";
 export * from "./model";
 export { BookmarksModel } from "./bookmarks";
 export { ClientSettingsViewModel } from "./clientsettingsview";

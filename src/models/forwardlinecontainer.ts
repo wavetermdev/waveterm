@@ -6,12 +6,11 @@ import * as types from "../types/types";
 import { windowWidthToCols, windowHeightToRows } from "../util/textmeasure";
 import { MagicLayout } from "../app/magiclayout";
 import { Model } from "./model";
-import { CommandRunner } from "./model";
+import { GlobalCommandRunner } from "./global";
 import { Cmd } from "./cmd";
 import { Screen } from "./screen";
 
 class ForwardLineContainer {
-    globalCommandRunner: CommandRunner;
     globalModel: Model;
     winSize: types.WindowSize;
     screen: Screen;
@@ -20,7 +19,6 @@ class ForwardLineContainer {
 
     constructor(screen: Screen, winSize: types.WindowSize, containerType: types.LineContainerStrs, lineId: string) {
         this.globalModel = Model.getInstance();
-        this.globalCommandRunner = CommandRunner.getInstance();
         this.screen = screen;
         this.winSize = winSize;
         this.containerType = containerType;
@@ -35,7 +33,7 @@ class ForwardLineContainer {
             let cols = windowWidthToCols(winSize.width, fontSize);
             let rows = windowHeightToRows(winSize.height, fontSize);
             termWrap.resizeCols(cols);
-            this.globalCommandRunner.resizeScreen(this.screen.screenId, rows, cols, { include: [this.lineId] });
+            GlobalCommandRunner.resizeScreen(this.screen.screenId, rows, cols, { include: [this.lineId] });
         }
     }
 

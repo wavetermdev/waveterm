@@ -17,7 +17,7 @@ import dayjs from "dayjs";
 import * as appconst from "../app/appconst";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
 import { OV, OArr, OMap } from "../types/types";
-import { CommandRunner } from "./model";
+import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 import { Cmd } from "./cmd";
 import { SpecialLineContainer } from "./speciallinecontainer";
@@ -25,7 +25,6 @@ import { SpecialLineContainer } from "./speciallinecontainer";
 const HistoryPageSize = 50;
 
 class HistoryViewModel {
-    globalCommandRunner: CommandRunner;
     globalModel: Model;
     items: OArr<HistoryItem> = mobx.observable.array([], {
         name: "HistoryItems",
@@ -70,7 +69,6 @@ class HistoryViewModel {
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
-        this.globalCommandRunner = CommandRunner.getInstance();
     }
 
     closeView(): void {
@@ -161,14 +159,14 @@ class HistoryViewModel {
 
     _deleteSelected(): void {
         let lineIds = Array.from(this.selectedItems.keys());
-        let prtn = this.globalCommandRunner.historyPurgeLines(lineIds);
+        let prtn = GlobalCommandRunner.historyPurgeLines(lineIds);
         prtn.then((result: CommandRtnType) => {
             if (!result.success) {
                 this.globalModel.showAlert({ message: "Error removing history lines." });
             }
         });
         let params = this._getSearchParams();
-        this.globalCommandRunner.historyView(params);
+        GlobalCommandRunner.historyView(params);
     }
 
     @boundMethod
@@ -207,7 +205,7 @@ class HistoryViewModel {
 
     reSearch(): void {
         this.setActiveItem(null);
-        this.globalCommandRunner.historyView(this._getSearchParams());
+        GlobalCommandRunner.historyView(this._getSearchParams());
     }
 
     resetAllFilters(): void {
@@ -220,7 +218,7 @@ class HistoryViewModel {
             this.searchShowMeta.set(true);
             this.searchFilterCmds.set(true);
         })();
-        this.globalCommandRunner.historyView(this._getSearchParams(0, 0));
+        GlobalCommandRunner.historyView(this._getSearchParams(0, 0));
     }
 
     setFromDate(fromDate: string): void {
@@ -230,7 +228,7 @@ class HistoryViewModel {
         mobx.action(() => {
             this.searchFromDate.set(fromDate);
         })();
-        this.globalCommandRunner.historyView(this._getSearchParams(0, 0));
+        GlobalCommandRunner.historyView(this._getSearchParams(0, 0));
     }
 
     setSearchFilterCmds(filter: boolean): void {
@@ -240,7 +238,7 @@ class HistoryViewModel {
         mobx.action(() => {
             this.searchFilterCmds.set(filter);
         })();
-        this.globalCommandRunner.historyView(this._getSearchParams(0, 0));
+        GlobalCommandRunner.historyView(this._getSearchParams(0, 0));
     }
 
     setSearchShowMeta(show: boolean): void {
@@ -250,7 +248,7 @@ class HistoryViewModel {
         mobx.action(() => {
             this.searchShowMeta.set(show);
         })();
-        this.globalCommandRunner.historyView(this._getSearchParams(0, 0));
+        GlobalCommandRunner.historyView(this._getSearchParams(0, 0));
     }
 
     setSearchSessionId(sessionId: string): void {
@@ -260,7 +258,7 @@ class HistoryViewModel {
         mobx.action(() => {
             this.searchSessionId.set(sessionId);
         })();
-        this.globalCommandRunner.historyView(this._getSearchParams(0, 0));
+        GlobalCommandRunner.historyView(this._getSearchParams(0, 0));
     }
 
     setSearchRemoteId(remoteId: string): void {
@@ -270,7 +268,7 @@ class HistoryViewModel {
         mobx.action(() => {
             this.searchRemoteId.set(remoteId);
         })();
-        this.globalCommandRunner.historyView(this._getSearchParams(0, 0));
+        GlobalCommandRunner.historyView(this._getSearchParams(0, 0));
     }
 
     goPrev(): void {
@@ -280,14 +278,14 @@ class HistoryViewModel {
             offset = 0;
         }
         let params = this._getSearchParams(offset, 0);
-        this.globalCommandRunner.historyView(params);
+        GlobalCommandRunner.historyView(params);
     }
 
     goNext(): void {
         let offset = this.offset.get();
         offset += HistoryPageSize;
         let params = this._getSearchParams(offset, this.nextRawOffset ?? 0);
-        this.globalCommandRunner.historyView(params);
+        GlobalCommandRunner.historyView(params);
     }
 
     submitSearch(): void {
@@ -298,7 +296,7 @@ class HistoryViewModel {
             this.historyItemLines = [];
             this.historyItemCmds = [];
         })();
-        this.globalCommandRunner.historyView(this._getSearchParams(0, 0));
+        GlobalCommandRunner.historyView(this._getSearchParams(0, 0));
     }
 
     handleDocKeyDown(e: any): void {
