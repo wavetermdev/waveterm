@@ -410,8 +410,8 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 	if err == nil {
 		authMethods = append(authMethods, publicKeyAuth)
 	}
-	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword)), 1))
-	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword)), 1))
+	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword)), 2))
+	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword)), 2))
 
 	configUser, _ := ssh_config.GetStrict(opts.SSHHost, "User")
 	configHostName, _ := ssh_config.GetStrict(opts.SSHHost, "HostName")
