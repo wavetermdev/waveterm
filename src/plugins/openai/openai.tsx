@@ -8,7 +8,7 @@ import * as T from "../../types/types";
 import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
 import { PacketDataBuffer } from "../core/ptydata";
-import { Markdown } from "../../app/common/common";
+import { Markdown } from "../../app/common/elements";
 
 import "./openai.less";
 
@@ -207,7 +207,7 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
                     <div
                         style={{
                             maxHeight: opts.maxSize.height,
-                            paddingRight: 5
+                            paddingRight: 5,
                         }}
                     >
                         <Markdown text={message} style={{ maxHeight: opts.maxSize.height }} />
@@ -236,18 +236,18 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
         let cmd = model.rawCmd;
         let styleVal: Record<string, any> = null;
         if (model.loading.get() && model.savedHeight >= 0 && model.isDone) {
-            styleVal = { 
+            styleVal = {
                 height: model.savedHeight,
-                maxHeight: model.opts.maxSize.height
+                maxHeight: model.opts.maxSize.height,
             };
         } else {
-            let maxWidth = model.opts.maxSize.width
-            if(maxWidth > 1000) {
-                maxWidth = 1000
+            let maxWidth = model.opts.maxSize.width;
+            if (maxWidth > 1000) {
+                maxWidth = 1000;
             }
-            styleVal = { 
+            styleVal = {
                 maxWidth: maxWidth,
-                maxHeight: model.opts.maxSize.height
+                maxHeight: model.opts.maxSize.height,
             };
         }
         let version = model.version.get();

@@ -950,6 +950,7 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 		// This is not a fatal error, so just log it
 		log.Printf("error setting status indicator level after done packet: %v\n", err)
 	}
+	IncrementNumRunningCmds_Update(update, screenId, -1)
 
 	return update, nil
 }

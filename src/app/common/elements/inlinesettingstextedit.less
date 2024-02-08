@@ -1,0 +1,40 @@
+@import "../../../app/common/themes/themes.less";
+
+.inline-edit {
+    .icon {
+        display: inline;
+        width: 12px;
+        height: 12px;
+        margin-left: 1em;
+        vertical-align: middle;
+        font-size: 14px;
+    }
+
+    .button {
+        padding-top: 0;
+    }
+
+    &.edit-not-active {
+        cursor: pointer;
+
+        i.fa-pen {
+            margin-left: 5px;
+        }
+
+        &:hover {
+            text-decoration: underline;
+            text-decoration-style: dotted;
+        }
+    }
+
+    &.edit-active {
+        input.input {
+            padding: 0;
+            height: 20px;
+        }
+
+        .button {
+            height: 20px;
+        }
+    }
+}

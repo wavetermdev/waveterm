@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, TabColors, TabIcons, Screen } from "../../../model/model";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "../common";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "../elements";
 import { RemoteType } from "../../../types/types";
 import * as util from "../../../util/util";
 import { commandRtnHandler } from "../../../util/util";

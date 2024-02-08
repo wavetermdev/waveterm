@@ -11,6 +11,9 @@ type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error
 type LineContainerStrs = "main" | "sidebar" | "history";
 
 type OV<V> = mobx.IObservableValue<V>;
+type OArr<V> = mobx.IObservableArray<V>;
+type OMap<K, V> = mobx.ObservableMap<K, V>;
+type CV<V> = mobx.IComputedValue<V>;
 
 type SessionDataType = {
     sessionid: string;
@@ -832,6 +835,7 @@ export type {
     CmdInputTextPacketType,
     OpenAICmdInfoChatMessageType,
     ScreenStatusIndicatorUpdateType,
+    OV,
 };
 
 export { StatusIndicatorLevel };

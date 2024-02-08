@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
-import { Modal, TextField, InputDecoration, Tooltip } from "../common";
+import { Modal, TextField, InputDecoration, Tooltip } from "../elements";
 import * as util from "../../../util/util";
 import { Screen } from "../../../model/model";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";

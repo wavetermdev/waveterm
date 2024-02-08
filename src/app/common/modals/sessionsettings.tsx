@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner, Session } from "../../../model/model";
-import { Toggle, InlineSettingsTextEdit, SettingsError, InfoMessage, Modal } from "../common";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip } from "../elements";
 import * as util from "../../../util/util";
 import { commandRtnHandler } from "../../../util/util";
 
@@ -111,10 +111,14 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                     <div className="settings-field">
                         <div className="settings-label">
                             <div>Archived</div>
-                            <InfoMessage width={400}>
-                                Archive will hide the workspace from the active menu. Commands and output will be
-                                retained in history.
-                            </InfoMessage>
+                            <Tooltip
+                                className="session-settings-tooltip"
+                                message="Archive will hide the workspace from the active menu. Commands and output will be
+                                retained in history."
+                                icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                            >
+                                {<i className="fa-sharp fa-regular fa-circle-question" />}
+                            </Tooltip>
                         </div>
                         <div className="settings-input">
                             <Toggle checked={this.session.archived.get()} onChange={this.handleChangeArchived} />
@@ -123,9 +127,13 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                     <div className="settings-field">
                         <div className="settings-label">
                             <div>Actions</div>
-                            <InfoMessage width={400}>
-                                Delete will remove the workspace, removing all commands and output from history.
-                            </InfoMessage>
+                            <Tooltip
+                                className="session-settings-tooltip"
+                                message="Delete will remove the workspace, removing all commands and output from history."
+                                icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                            >
+                                {<i className="fa-sharp fa-regular fa-circle-question" />}
+                            </Tooltip>
                         </div>
                         <div className="settings-input">
                             <div
