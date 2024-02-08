@@ -1,7 +1,7 @@
 import * as React from "react";
 import { GlobalModel } from "../../../model/model";
 import { Choose, When, If } from "tsx-control-statements";
-import { Modal, PasswordField, Markdown } from "../common";
+import { Modal, PasswordField, Markdown } from "../elements";
 import { UserInputRequest } from "../../../types/types";
 
 import "./userinput.less";
