@@ -25,7 +25,7 @@ func AddScreenUpdate(update *ModelUpdate, newScreen *ScreenType) {
 			return
 		}
 	}
-	AddUpdate[ScreenUpdate](update, *newScreenUpdate)
+	AddUpdate(update, *newScreenUpdate)
 }
 
 type SessionUpdate SessionType
@@ -81,7 +81,7 @@ func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
 	msg := fmt.Sprintf(infoMsgFmt, args...)
 	ret := &ModelUpdate{}
 	newInfoUpdate := InfoUpdate{InfoMsg: msg}
-	AddUpdate[InfoUpdate](ret, newInfoUpdate)
+	AddUpdate(ret, newInfoUpdate)
 	return ret
 }
 

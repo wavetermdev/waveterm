@@ -93,7 +93,7 @@ func (update *ModelUpdate) AddInfoError(errStr string) {
 		}
 	} else {
 		newInfoUpdate := InfoUpdate{InfoError: errStr}
-		AddUpdate[InfoUpdate](update, newInfoUpdate)
+		AddUpdate(update, newInfoUpdate)
 	}
 }
 
