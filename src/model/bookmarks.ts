@@ -8,7 +8,7 @@ import { genMergeSimpleData } from "../util/util";
 import { BookmarkType } from "../types/types";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
 import { OV, OArr } from "../types/types";
-import { CommandRunner } from "./commandrunner";
+import { CommandRunner } from "./model";
 import { Model } from "./model";
 
 class BookmarksModel {

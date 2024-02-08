@@ -11,7 +11,7 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import type { HistoryItem, HistoryQueryOpts } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "../../../model/model_old";
+import { GlobalModel } from "../../../model";
 import { isBlank } from "../../../util/util";
 
 dayjs.extend(localizedFormat);

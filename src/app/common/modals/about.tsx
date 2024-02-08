@@ -5,17 +5,13 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel } from "../../../model/model_old";
+import { GlobalModel } from "../../../model";
 import { Modal, LinkButton } from "../elements";
 import * as util from "../../../util/util";
+import * as appconst from "../../appconst";
 
 import logo from "../../assets/waveterm-logo-with-bg.svg";
 import "./about.less";
-
-// @ts-ignore
-const VERSION = __WAVETERM_VERSION__;
-// @ts-ignore
-let BUILD = __WAVETERM_BUILD__;
 
 @mobxReact.observer
 class AboutModal extends React.Component<{}, {}> {
@@ -42,7 +38,7 @@ class AboutModal extends React.Component<{}, {}> {
         return (
             <div className="status updated">
                 <div className="text-selectable">
-                    Client Version {VERSION} ({BUILD})
+                    Client Version {appconst.VERSION} ({appconst.BUILD})
                 </div>
             </div>
         );
@@ -55,7 +51,7 @@ class AboutModal extends React.Component<{}, {}> {
                         <span>Up to Date</span>
                     </div>
                     <div className="selectable">
-                        Client Version {VERSION} ({BUILD})
+                        Client Version {appconst.VERSION} ({appconst.BUILD})
                     </div>
                 </div>
             );
@@ -67,7 +63,7 @@ class AboutModal extends React.Component<{}, {}> {
                     <span>Outdated Version</span>
                 </div>
                 <div className="selectable">
-                    Client Version {VERSION} ({BUILD})
+                    Client Version {appconst.VERSION} ({appconst.BUILD})
                 </div>
                 <div>
                     <button onClick={this.updateApp} className="button color-green text-secondary">

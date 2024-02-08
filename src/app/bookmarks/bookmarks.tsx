@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import type { BookmarkType } from "../../types/types";
-import { GlobalModel } from "../../model/model_old";
+import { Model } from "../../model";
 import { CmdStrCode, Markdown } from "../common/elements";
 
 import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
@@ -19,39 +19,50 @@ import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg"
 
 import "./bookmarks.less";
 
+type BookmarkProps = {
+    bookmark: BookmarkType;
+};
+
 @mobxReact.observer
-class Bookmark extends React.Component<{ bookmark: BookmarkType }, {}> {
+class Bookmark extends React.Component<BookmarkProps, {}> {
+    globalModel: Model;
+
+    constructor(props: BookmarkProps) {
+        super(props);
+        this.globalModel = Model.getInstance();
+    }
+
     @boundMethod
     handleDeleteClick(): void {
         let { bookmark } = this.props;
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         model.handleDeleteBookmark(bookmark.bookmarkid);
     }
 
     @boundMethod
     handleEditClick(): void {
         let { bookmark } = this.props;
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         model.handleEditBookmark(bookmark.bookmarkid);
     }
 
     @boundMethod
     handleEditCancel(): void {
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         model.cancelEdit();
         return;
     }
 
     @boundMethod
     handleEditUpdate(): void {
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         model.confirmEdit();
         return;
     }
 
     @boundMethod
     handleDescChange(e: any): void {
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         mobx.action(() => {
             model.tempDesc.set(e.target.value);
         })();
@@ -59,7 +70,7 @@ class Bookmark extends React.Component<{ bookmark: BookmarkType }, {}> {
 
     @boundMethod
     handleCmdChange(e: any): void {
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         mobx.action(() => {
             model.tempCmd.set(e.target.value);
         })();
@@ -68,27 +79,27 @@ class Bookmark extends React.Component<{ bookmark: BookmarkType }, {}> {
     @boundMethod
     handleClick(): void {
         let { bookmark } = this.props;
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         model.selectBookmark(bookmark.bookmarkid);
     }
 
     @boundMethod
     handleUse(): void {
         let { bookmark } = this.props;
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         model.useBookmark(bookmark.bookmarkid);
     }
 
     @boundMethod
     clickCopy(): void {
         let bm = this.props.bookmark;
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         model.handleCopyBookmark(bm.bookmarkid);
     }
 
     render() {
         let bm = this.props.bookmark;
-        let model = GlobalModel.bookmarksModel;
+        let model = this.globalModel.bookmarksModel;
         let isSelected = model.activeBookmark.get() == bm.bookmarkid;
         let markdown = bm.description ?? "";
         let hasDesc = markdown != "";
@@ -179,17 +190,24 @@ class Bookmark extends React.Component<{ bookmark: BookmarkType }, {}> {
 
 @mobxReact.observer
 class BookmarksView extends React.Component<{}, {}> {
+    globalModel: Model;
+
+    constructor(props: {}) {
+        super(props);
+        this.globalModel = Model.getInstance();
+    }
+
     @boundMethod
     closeView(): void {
-        GlobalModel.bookmarksModel.closeView();
+        this.globalModel.bookmarksModel.closeView();
     }
 
     render() {
-        let isHidden = GlobalModel.activeMainView.get() != "bookmarks";
+        let isHidden = this.globalModel.activeMainView.get() != "bookmarks";
         if (isHidden) {
             return null;
         }
-        let bookmarks = GlobalModel.bookmarksModel.bookmarks;
+        let bookmarks = this.globalModel.bookmarksModel.bookmarks;
         let idx: number = 0;
         let bookmark: BookmarkType = null;
         return (

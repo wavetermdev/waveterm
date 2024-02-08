@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { For } from "tsx-control-statements/components";
-import { GlobalModel, GlobalCommandRunner, Session, Screen } from "../../../model/model_old";
+import { GlobalModel, GlobalCommandRunner, Session, Screen } from "../../../model";
 import { ReactComponent as AddIcon } from "../../assets/icons/add.svg";
 import { Reorder } from "framer-motion";
 import { ScreenTab } from "./tab";

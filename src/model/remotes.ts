@@ -8,7 +8,7 @@ import { TermWrap } from "../plugins/terminal/term";
 import { RemoteInputPacketType, RemoteEditType } from "../types/types";
 import * as appconst from "../app/appconst";
 import { OV } from "../types/types";
-import { CommandRunner } from "./commandrunner";
+import { CommandRunner } from "./model";
 import { Model } from "./model";
 import { getTermPtyData } from "../util/modelutil";
 

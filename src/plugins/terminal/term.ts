@@ -9,7 +9,7 @@ import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
 import { boundInt } from "../../util/util";
-import { GlobalModel } from "../../model/model_old";
+import { GlobalModel } from "../../model";
 import { Model } from "../../model/model";
 import type {
     TermContextUnion,

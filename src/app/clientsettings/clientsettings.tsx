@@ -6,24 +6,20 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, MinFontSize, MaxFontSize, RemotesModel } from "../../model/model_old";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "../common/elements";
-import { CommandRtnType, ClientDataType } from "../../types/types";
+import * as types from "../../types/types";
 import { commandRtnHandler, isBlank } from "../../util/util";
+import * as appconst from "../appconst";
 
 import "./clientsettings.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
-// @ts-ignore
-const VERSION = __WAVETERM_VERSION__;
-// @ts-ignore
-const BUILD = __WAVETERM_BUILD__;
-
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
-    fontSizeDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "clientSettings-fontSizeDropdownActive" });
-    errorMessage: OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
+    fontSizeDropdownActive: types.OV<boolean> = mobx.observable.box(false, {
+        name: "clientSettings-fontSizeDropdownActive",
+    });
+    errorMessage: types.OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
 
     @boundMethod
     dismissError(): void {
@@ -52,7 +48,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeTelemetry(val: boolean): void {
-        let prtn: Promise<CommandRtnType> = null;
+        let prtn: Promise<types.CommandRtnType> = null;
         if (val) {
             prtn = GlobalCommandRunner.telemetryOn(false);
         } else {
@@ -63,7 +59,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeReleaseCheck(val: boolean): void {
-        let prtn: Promise<CommandRtnType> = null;
+        let prtn: Promise<types.CommandRtnType> = null;
         if (val) {
             prtn = GlobalCommandRunner.releaseCheckAutoOn(false);
         } else {
@@ -74,7 +70,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     getFontSizes(): any {
         let availableFontSizes: { label: string; value: number }[] = [];
-        for (let s = MinFontSize; s <= MaxFontSize; s++) {
+        for (let s = appconst.MinFontSize; s <= appconst.MaxFontSize; s++) {
             availableFontSizes.push({ label: s + "px", value: s });
         }
         return availableFontSizes;
@@ -116,7 +112,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             return null;
         }
 
-        let cdata: ClientDataType = GlobalModel.clientData.get();
+        let cdata: types.ClientDataType = GlobalModel.clientData.get();
         let openAIOpts = cdata.openaiopts ?? {};
         let apiTokenStr = isBlank(openAIOpts.apitoken) ? "(not set)" : "********";
         let maxTokensStr = String(
@@ -151,7 +147,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                     <div className="settings-field">
                         <div className="settings-label">Client Version</div>
                         <div className="settings-input">
-                            {VERSION} {BUILD}
+                            {appconst.VERSION} {appconst.BUILD}
                         </div>
                     </div>
                     <div className="settings-field">

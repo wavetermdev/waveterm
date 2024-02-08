@@ -18,7 +18,7 @@ import { StrWithPos } from "../types/types";
 import * as appconst from "../app/appconst";
 import { OV } from "../types/types";
 import { Model } from "./model";
-import { CommandRunner } from "./commandrunner";
+import { CommandRunner } from "./model";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
     return {

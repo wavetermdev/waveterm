@@ -4,7 +4,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import { TermWrap } from "../plugins/terminal/term";
-import { Cmd } from "../model/cmd";
+import { Cmd, Model } from "../model";
 
 type ShareModeType = "local" | "web";
 type FocusTypeStrs = "input" | "cmd";
@@ -474,7 +474,7 @@ type RendererModelInitializeParams = {
     opts: RendererOpts;
     lineState: LineStateType;
     api: RendererModelContainerApi;
-    ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
+    ptyDataSource: (termContext: TermContextUnion, globalModel: Model) => Promise<PtyDataType>;
 };
 
 type RendererModel = {

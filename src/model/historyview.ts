@@ -17,7 +17,7 @@ import dayjs from "dayjs";
 import * as appconst from "../app/appconst";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
 import { OV, OArr, OMap } from "../types/types";
-import { CommandRunner } from "./commandrunner";
+import { CommandRunner } from "./model";
 import { Model } from "./model";
 import { Cmd } from "./cmd";
 import { SpecialLineContainer } from "./speciallinecontainer";

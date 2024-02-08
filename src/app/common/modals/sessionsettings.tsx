@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel, GlobalCommandRunner, Session } from "../../../model/model_old";
+import { GlobalModel, GlobalCommandRunner, Session } from "../../../model";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip } from "../elements";
 import * as util from "../../../util/util";
 import { commandRtnHandler } from "../../../util/util";

@@ -5,7 +5,7 @@ import * as mobx from "mobx";
 import { PluginModel } from "../plugins/plugins";
 import { RendererPluginType } from "../types/types";
 import { OV } from "../types/types";
-import { CommandRunner } from "./commandrunner";
+import { CommandRunner } from "./model";
 import { Model } from "./model";
 
 class PluginsModel {

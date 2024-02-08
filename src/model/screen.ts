@@ -29,12 +29,12 @@ import * as appconst from "../app/appconst";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
 import { OV } from "../types/types";
 import { Model } from "./model";
-import { CommandRunner } from "./commandrunner";
+import { CommandRunner } from "./model";
 import { Cmd } from "./cmd";
 import { ScreenLines } from "./screenlines";
 import { getTermPtyData } from "../util/modelutil";
 
-class ScreenModel {
+class Screen {
     globalCommandRunner: CommandRunner;
     globalModel: Model;
     sessionId: string;
@@ -696,4 +696,4 @@ class ScreenModel {
     }
 }
 
-export { ScreenModel };
+export { Screen };
