@@ -66,7 +66,6 @@ func createDummySigner() ([]ssh.Signer, error) {
 // file, the library can still try again with a new key.
 func createPublicKeyCallback(identityFiles *[]string, passphrase string) func() ([]ssh.Signer, error) {
 	return func() ([]ssh.Signer, error) {
-		log.Printf("this should happen twice\n")
 		if len(*identityFiles) == 0 {
 			// skip this key and try with the next
 			return createDummySigner()
