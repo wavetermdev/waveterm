@@ -145,7 +145,7 @@ func GetBashShellState() (*packet.ShellState, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
 	cmdStr := BaseBashOpts + "; " + GetBashShellStateCmd()
-	ecmd := exec.CommandContext(ctx, GetLocalBashPath(), "-l", "-i", "-c", cmdStr)
+	ecmd := exec.CommandContext(ctx, GetLocalBashPath(), "-c", cmdStr)
 	outputBytes, err := RunSimpleCmdInPty(ecmd)
 	if err != nil {
 		return nil, err

@@ -164,14 +164,14 @@ func (z zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
 }
 
 func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {
-	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
+	return exec.Command(GetLocalZshPath(), "-c", cmdStr)
 }
 
 func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
 	cmdStr := BaseZshOpts + "; " + GetZshShellStateCmd(StateOutputFdNum)
-	ecmd := exec.CommandContext(ctx, GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
+	ecmd := exec.CommandContext(ctx, GetLocalZshPath(), "-c", cmdStr)
 	_, outputBytes, err := RunCommandWithExtraFd(ecmd, StateOutputFdNum)
 	if err != nil {
 		return nil, err
