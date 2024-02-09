@@ -31,6 +31,8 @@ import {
     RendererContext,
     ClientDataType,
     AlertMessageType,
+    UserInputRequest,
+    UserInputResponsePacket,
     ScreenLinesType,
     RemoteViewType,
     CommandRtnType,
@@ -902,6 +904,10 @@ class Model {
                 this.getScreenById_single(snc.screenid)?.setNumRunningCmds(snc.num);
             }
         }
+        if ("userinputrequest" in update) {
+            let userInputRequest: UserInputRequest = update.userinputrequest;
+            this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+        }
     }
 
     updateRemotes(remotes: RemoteType[]): void {
@@ -1307,6 +1313,10 @@ class Model {
 
     sendInputPacket(inputPacket: any) {
         this.ws.pushMessage(inputPacket);
+    }
+
+    sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
+        this.ws.pushMessage(userInputResponsePacket);
     }
 
     sendCmdInputText(screenId: string, sp: StrWithPos) {

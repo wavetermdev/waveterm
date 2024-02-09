@@ -333,6 +333,7 @@ type ModelUpdateType = {
     alertmessage?: AlertMessageType;
     screenstatusindicators?: ScreenStatusIndicatorUpdateType[];
     screennumrunningcommands?: ScreenNumRunningCommandsUpdateType[];
+    userinputrequest?: UserInputRequest;
 };
 
 type HistoryViewDataType = {
@@ -595,6 +596,23 @@ type HistorySearchParams = {
     filterCmds?: boolean;
 };
 
+type UserInputRequest = {
+    requestid: string;
+    querytext: string;
+    responsetype: string;
+    title: string;
+    markdown: boolean;
+    timeoutms: number;
+};
+
+type UserInputResponsePacket = {
+    type: string;
+    requestid: string;
+    text?: string;
+    confirm?: boolean;
+    errormsg?: string;
+};
+
 type RenderModeType = "normal" | "collapsed" | "expanded";
 
 type WebScreen = {
@@ -730,6 +748,7 @@ type ModalStoreEntry = {
     id: string;
     component: React.ComponentType;
     uniqueKey: string;
+    props?: any;
 };
 
 type StrWithPos = {
@@ -809,6 +828,8 @@ export type {
     RenderModeType,
     AlertMessageType,
     HistorySearchParams,
+    UserInputRequest,
+    UserInputResponsePacket,
     ScreenLinesType,
     FocusTypeStrs,
     HistoryTypeStrs,
