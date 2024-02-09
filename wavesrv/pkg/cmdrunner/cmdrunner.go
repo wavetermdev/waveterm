@@ -970,7 +970,8 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	}
 
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, *screen, sstore.InfoMsgType{
+	sstore.AddUpdate(update, *screen)
+	sstore.AddUpdate(update, sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
 	})
@@ -3503,7 +3504,8 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	}
 	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, *bareSession, sstore.InfoMsgType{
+	sstore.AddUpdate(update, *bareSession)
+	sstore.AddUpdate(update, sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
 	})
@@ -3528,7 +3530,8 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, err
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, sstore.ActiveSessionIdUpdate(ritem.Id), sstore.InfoMsgType{
+	sstore.AddUpdate(update, (sstore.ActiveSessionIdUpdate)(ritem.Id))
+	sstore.AddUpdate(update, sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("switched to session %q", ritem.Name),
 		TimeoutMs: 2000,
 	})
@@ -5186,7 +5189,8 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, *clientData, sstore.InfoMsgType{
+	sstore.AddUpdate(update, *clientData)
+	sstore.AddUpdate(update, sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("client updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
 	})
