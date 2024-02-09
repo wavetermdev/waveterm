@@ -97,7 +97,14 @@ class PacketDataBuffer extends PtyDataBuffer {
         if (sizeStr != "N") {
             let packetSize = parseInt(sizeStr);
             if (isNaN(packetSize) || packetSize != packetStr.length) {
-                console.log("invalid line packet", line);
+                console.log(
+                    "invalid line packet",
+                    line,
+                    "packetSize: ",
+                    packetSize,
+                    "packetStrLength: ",
+                    packetStr.length
+                );
             }
         }
         let packet: any = null;

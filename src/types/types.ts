@@ -715,6 +715,7 @@ type FileInfoType = {
     isdir: boolean;
     perm: number;
     notfound: boolean;
+    modestr?: string;
 };
 
 type ExtBlob = Blob & {

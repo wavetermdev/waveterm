@@ -1,11 +1,12 @@
 import React from "react";
-import { GlobalModel } from "../../model/model";
 import * as T from "../../types/types";
 import { debounce } from "throttle-debounce";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import { parse } from "path";
 import { For } from "tsx-control-statements/components";
+import { PacketDataBuffer } from "../core/ptydata";
+import { boundMethod } from "autobind-decorator";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -21,6 +22,7 @@ class FileViewRendererModel {
     isDone: OV<boolean>;
     dirList: mobx.IObservableArray<any>;
     version: OV<number>;
+    packetData: PacketDataBuffer;
 
     constructor() {
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
@@ -38,6 +40,18 @@ class FileViewRendererModel {
         this.dirList = mobx.observable.array(null, {
             name: "FileView-directorylist",
         });
+        this.packetData = new PacketDataBuffer(this.packetCallback);
+    }
+
+    @boundMethod
+    packetCallback(packetAny: any) {
+        let packet: T.FileInfoType = packetAny;
+        if (packet == null) {
+            return;
+        }
+        mobx.action(() => {
+            this.dirList.push(packet);
+        })();
     }
 
     dispose(): void {
@@ -72,29 +86,8 @@ class FileViewRendererModel {
         }
     }
 
-    parseBytesToUTF(data: Uint8Array): string {
-        let rtn = "";
-        for (let index = 0; index < data.length; index++) {
-            let curByte = data[index];
-            rtn += String.fromCharCode(curByte);
-        }
-        return rtn;
-    }
-
-    parseUTFPacketStringJSON(packetString: string) {
-        let jsonStartIndex = packetString.indexOf("{");
-        let jsonString = packetString.substring(jsonStartIndex, packetString.length).trim();
-        let jsonPk = JSON.parse(jsonString);
-        return jsonPk;
-    }
-
     receiveData(pos: number, data: Uint8Array, reason?: string): void {
-        let packetString = this.parseBytesToUTF(data);
-        let pk = this.parseUTFPacketStringJSON(packetString);
-        console.log("pk:", pk.name);
-        mobx.action(() => {
-            this.dirList.push(pk);
-        })();
+        this.packetData.receiveData(pos, data, reason);
     }
 }
 
