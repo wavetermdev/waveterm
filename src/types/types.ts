@@ -354,7 +354,7 @@ type ModelUpdateType = {
     openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
     alertmessage?: AlertMessageType;
     screenstatusindicator?: ScreenStatusIndicatorUpdateType;
-    screennumrunningcommand?: ScreenNumRunningCommandsUpdateType;
+    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType;
     userinputrequest?: UserInputRequest;
 };
 

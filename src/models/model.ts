@@ -789,6 +789,7 @@ class Model {
     }
 
     updateSessions(sessions: SessionDataType[]): void {
+        console.log("updateSessions", sessions);
         genMergeData(
             this.sessionList,
             sessions,
@@ -797,6 +798,7 @@ class Model {
             (sdata: SessionDataType) => new Session(sdata, this),
             (s: Session) => s.sessionIdx.get()
         );
+        console.log("sessionList", this.sessionList);
     }
 
     updateActiveSession(sessionId: string): void {
@@ -817,15 +819,19 @@ class Model {
     }
 
     updateScreenNumRunningCommands(numRunningCommandUpdates: ScreenNumRunningCommandsUpdateType[]) {
+        console.log("updateScreenNumRunningCommands", numRunningCommandUpdates);
         for (const update of numRunningCommandUpdates) {
             this.getScreenById_single(update.screenid)?.setNumRunningCmds(update.num);
         }
+        console.log("screenMap", this.screenMap);
     }
 
     updateScreenStatusIndicators(screenStatusIndicators: ScreenStatusIndicatorUpdateType[]) {
+        console.log("updateScreenStatusIndicators", screenStatusIndicators);
         for (const update of screenStatusIndicators) {
             this.getScreenById_single(update.screenid)?.setStatusIndicator(update.status);
         }
+        console.log("screenMap", this.screenMap);
     }
 
     runUpdate_internal(genUpdate: UpdateMessage, uiContext: UIContextType, interactive: boolean) {
@@ -842,7 +848,6 @@ class Model {
             return;
         }
         let showedRemotesModal = false;
-        let connect = false;
         console.log("genUpdate", genUpdate);
         genUpdate.forEach((update) => {
             console.log("update", update);
@@ -865,6 +870,8 @@ class Model {
                     ) {
                         this.inputModel.setHistoryInfo(update.history);
                     }
+                } else {
+                    console.log("invalid interactive update", update);
                 }
             } else {
                 if (update.connect != null) {
@@ -890,6 +897,9 @@ class Model {
                     if (update.connect.screenstatusindicators != null) {
                         this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
                     }
+
+                    this.sessionListLoaded.set(true);
+                    this.remotesLoaded.set(true);
                 } else if (update.screen != null) {
                     this.updateScreens([update.screen]);
                 } else if (update.session != null) {
@@ -949,18 +959,16 @@ class Model {
                     this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
                 } else if (update.screenstatusindicator != null) {
                     this.updateScreenStatusIndicators([update.screenstatusindicator]);
-                } else if (update.screennumrunningcommand != null) {
-                    this.updateScreenNumRunningCommands([update.screennumrunningcommand]);
+                } else if (update.screennumrunningcommands != null) {
+                    this.updateScreenNumRunningCommands([update.screennumrunningcommands]);
                 } else if (update.userinputrequest != null) {
                     let userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else {
+                    console.log("invalid update", update);
                 }
             }
         });
-        if (connect) {
-            this.sessionListLoaded.set(true);
-            this.remotesLoaded.set(true);
-        }
     }
 
     updateRemotes(remotes: RemoteType[]): void {
