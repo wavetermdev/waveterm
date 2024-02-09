@@ -48,7 +48,7 @@ func (*ModelUpdate) UpdateType() string {
 }
 
 func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
-	rtn := make([]map[string]any, len(*mu))
+	rtn := make([]map[string]any, 0)
 	for _, u := range *mu {
 		m := make(map[string]any)
 		m[(*u).UpdateType()] = u
