@@ -79,7 +79,7 @@ class PacketDataBuffer extends PtyDataBuffer {
         this.parsePos = 0;
     }
 
-    processLine(line: string) {
+    processLine(line: string, byteSize: number) {
         if (line.length == 0) {
             return;
         }
@@ -96,15 +96,8 @@ class PacketDataBuffer extends PtyDataBuffer {
         let sizeStr = line.substring(2, bracePos);
         if (sizeStr != "N") {
             let packetSize = parseInt(sizeStr);
-            if (isNaN(packetSize) || packetSize != packetStr.length) {
-                console.log(
-                    "invalid line packet",
-                    line,
-                    "packetSize: ",
-                    packetSize,
-                    "packetStrLength: ",
-                    packetStr.length
-                );
+            if (isNaN(packetSize) || packetSize != byteSize) {
+                console.log("invalid line packet", line);
             }
         }
         let packet: any = null;
@@ -124,11 +117,13 @@ class PacketDataBuffer extends PtyDataBuffer {
             let ch = this.rawData[i];
             if (ch == NewLineCharCode) {
                 // line does *not* include the newline
-                let line = new TextDecoder().decode(
-                    new Uint8Array(this.rawData.buffer, this.parsePos, i - this.parsePos)
-                );
+                let curLineBytes = new Uint8Array(this.rawData.buffer, this.parsePos, i - this.parsePos);
+                let jsonStartIndex = curLineBytes.indexOf("{".charCodeAt(0));
+                let byteSize = curLineBytes.slice(jsonStartIndex, curLineBytes.length).length;
+                curLineBytes;
+                let line = new TextDecoder().decode(curLineBytes);
                 this.parsePos = i + 1;
-                this.processLine(line);
+                this.processLine(line, byteSize);
             }
         }
         return;
