@@ -4244,6 +4244,7 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 }
 
 func StatDir(ctx context.Context, ids resolvedIds, path string, fileCallback func(pk *packet.FileStatPacketType, done bool, err error)) {
+	log.Printf("running %v: \n", path)
 	statPk, _, err := getFileStat(ctx, ids, path)
 	if err != nil {
 		fileCallback(nil, true, err)
@@ -4267,7 +4268,28 @@ func StatDir(ctx context.Context, ids resolvedIds, path string, fileCallback fun
 			fileCallback(nil, true, err)
 			return
 		}
-		log.Printf("listDirIter: %v", listDirIter)
+		defer listDirIter.Close()
+		for {
+			respIf, err := listDirIter.Next(ctx)
+			if err != nil {
+				fileCallback(nil, true, err)
+				return
+			}
+			resp, ok := respIf.(*packet.FileStatPacketType)
+			if !ok || resp == nil {
+				fileCallback(nil, true, fmt.Errorf("error unmarshalling file stat response type %v %v", resp, respIf))
+				return
+			}
+			if resp.Error != "" {
+				err = fmt.Errorf(resp.Error)
+			} else {
+				err = nil
+			}
+			fileCallback(resp, resp.Done, err)
+			if resp.Done {
+				return
+			}
+		}
 	}
 }
 
@@ -4300,7 +4322,7 @@ func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			if err != nil {
 				log.Printf("got error: %v\n", err)
 			} else {
-				log.Printf("got statpk: %v", statPk)
+				log.Printf("got statpk: %v %v done: %v", statPk.Name, statPk.Error, statPk.Done)
 				writePacketToPty(statCtx, cmd, statPk, &outputPos)
 			}
 		})

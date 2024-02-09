@@ -7,6 +7,8 @@ import (
 	"bufio"
 	"context"
 	"io"
+	"log"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -188,6 +190,19 @@ type PacketParserOpts struct {
 	IgnoreUntilValid bool
 }
 
+func logToFileDev(log string) {
+	logFile, err := os.OpenFile("/Users/colelashley/.waveterm-dev/waveshell.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer logFile.Close()
+	log += "\n"
+	_, err = logFile.WriteString(log)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func MakePacketParser(input io.Reader, opts *PacketParserOpts) *PacketParser {
 	if opts == nil {
 		opts = &PacketParserOpts{}
@@ -238,6 +253,7 @@ func MakePacketParser(input io.Reader, opts *PacketParserOpts) *PacketParser {
 			}
 			pk, err := ParseJsonPacket([]byte(line[bracePos:]))
 			if err != nil {
+				log.Printf("failed to parse json packet: %v\n", err)
 				parser.MainCh <- MakeRawPacket(line[:len(line)-1])
 				continue
 			}

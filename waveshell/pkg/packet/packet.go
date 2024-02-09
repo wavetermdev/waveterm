@@ -114,6 +114,8 @@ func init() {
 	TypeStrToFactory[WriteFileDonePacketStr] = reflect.TypeOf(WriteFileDonePacketType{})
 	TypeStrToFactory[LogPacketStr] = reflect.TypeOf(LogPacketType{})
 	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
+	TypeStrToFactory[ListDirPacketStr] = reflect.TypeOf(ListDirPacketType{})
+	TypeStrToFactory[FileStatPacketStr] = reflect.TypeOf(FileStatPacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -414,20 +416,32 @@ func MakeReInitPacket() *ReInitPacketType {
 }
 
 type FileStatPacketType struct {
+	Type    string    `json:"type"`
 	Name    string    `json:"name"`
 	Size    int64     `json:"size"`
 	ModTs   time.Time `json:"modts"`
 	IsDir   bool      `json:"isdir"`
 	Perm    int       `json:"perm"`
 	ModeStr string    `json:"modestr"`
+	Error   string    `json:"error"`
+	Done    bool      `json:"done"`
+	RespId  string    `json:"respid"`
 }
 
 func (*FileStatPacketType) GetType() string {
 	return FileStatPacketStr
 }
 
+func (p *FileStatPacketType) GetResponseDone() bool {
+	return p.Done
+}
+
+func (p *FileStatPacketType) GetResponseId() string {
+	return p.RespId
+}
+
 func MakeFileStatPacketType() *FileStatPacketType {
-	return &FileStatPacketType{}
+	return &FileStatPacketType{Type: FileStatPacketStr}
 }
 
 type ListDirPacketType struct {
@@ -1087,6 +1101,7 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	}
 	outBytes, err := MarshalPacket(packet)
 	if err != nil {
+		logToFileDev(fmt.Sprintf("SEND ERR: %v", err))
 		return err
 	}
 	if GlobalDebug {
@@ -1094,6 +1109,7 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	}
 	_, err = w.Write(outBytes)
 	if err != nil {
+		logToFileDev(fmt.Sprintf("WRITE ERR: %v", err))
 		return &SendError{IsWriteError: true, PacketType: packet.GetType(), Err: err}
 	}
 	return nil

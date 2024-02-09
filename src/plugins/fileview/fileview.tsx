@@ -5,6 +5,7 @@ import { debounce } from "throttle-debounce";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import { parse } from "path";
+import { For } from "tsx-control-statements/components";
 
 type OV<V> = mobx.IObservableValue<V>;
 
@@ -18,6 +19,7 @@ class FileViewRendererModel {
     rawCmd: T.WebCmd;
     loading: OV<boolean>;
     isDone: OV<boolean>;
+    dirList: mobx.IObservableArray<any>;
 
     constructor() {
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
@@ -32,6 +34,9 @@ class FileViewRendererModel {
         this.savedHeight = params.savedHeight;
         this.ptyDataSource = params.ptyDataSource;
         this.rawCmd = params.rawCmd;
+        this.dirList = mobx.observable.array(null, {
+            name: "FileView-directorylist",
+        });
     }
 
     dispose(): void {
@@ -67,8 +72,7 @@ class FileViewRendererModel {
     }
 
     parseBytesToUTF(data: Uint8Array): string {
-        console.log("data: ", data);
-        var rtn = "";
+        let rtn = "";
         for (let index = 0; index < data.length; index++) {
             let curByte = data[index];
             rtn += String.fromCharCode(curByte);
@@ -76,16 +80,39 @@ class FileViewRendererModel {
         return rtn;
     }
 
+    parseUTFPacketStringJSON(packetString: string) {
+        let jsonStartIndex = packetString.indexOf("{");
+        let jsonString = packetString.substring(jsonStartIndex, packetString.length).trim();
+        let jsonPk = JSON.parse(jsonString);
+        return jsonPk;
+    }
+
     receiveData(pos: number, data: Uint8Array, reason?: string): void {
-        console.log("received data in fileview", pos, this.parseBytesToUTF(data), reason);
+        let packetString = this.parseBytesToUTF(data);
+        let pk = this.parseUTFPacketStringJSON(packetString);
+        console.log("pk:", pk.name);
+        mobx.action(() => {
+            this.dirList.push(pk);
+        })();
     }
 }
 
 class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }> {
+    renderFile(file: any, index: number) {
+        let keyString = "file-" + index;
+        return <div key={keyString}>{file.name}</div>;
+    }
+
     render() {
+        let model: FileViewRendererModel = this.props.model;
+        let dirList = model.dirList;
+        let file: any;
+        let index: number;
         return (
             <div>
-                <h1>File View Full Renderer Test</h1>
+                <For each="file" index="index" of={dirList}>
+                    {this.renderFile(file, index)}
+                </For>
             </div>
         );
     }

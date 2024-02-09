@@ -56,7 +56,7 @@ class SimpleBlobRendererModel {
         this.savedHeight = params.savedHeight;
         this.ptyDataSource = params.ptyDataSource;
         if (this.isClosed) {
-            this.dataBlob = (new Blob() as T.ExtBlob);
+            this.dataBlob = new Blob() as T.ExtBlob;
             this.dataBlob.notFound = false; // TODO
         } else {
             if (this.isDone.get()) {

@@ -551,9 +551,64 @@ func (m *MServer) streamFile(pk *packet.StreamFilePacketType) {
 	return
 }
 
-func (m *MServer) ListDir(listDirPk *packet.ListDirPacketType) {
-	// unimplemented
+func (m *MServer) writeListDirErrPacket(err error, pk *packet.ListDirPacketType) {
+	logToFileDev("sending error packet")
+	resp := packet.MakeFileStatPacketType()
+	resp.RespId = pk.ReqId
+	resp.Error = fmt.Sprintf("Error in list dir: %v", err)
+	resp.Done = true
+	err = m.Sender.SendPacket(resp)
+	if err != nil {
+		logToFileDev(fmt.Sprintf("error sending packet: %v", err))
+	}
+}
 
+func logToFileDev(log string) {
+	logFile, err := os.OpenFile("/Users/colelashley/.waveterm-dev/waveshell.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
+	}
+	defer logFile.Close()
+	log += "\n"
+	_, err = logFile.WriteString(log)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (m *MServer) ListDir(listDirPk *packet.ListDirPacketType) {
+	dirEntries, err := os.ReadDir(listDirPk.Path)
+	var readDirError string = ""
+	if err != nil {
+		readDirError = fmt.Sprintf("error in list dir: %v", err)
+	}
+	logToFileDev(fmt.Sprintf("dir entries: %v", dirEntries))
+	for index := 0; index < len(dirEntries); index++ {
+		dirEntry := dirEntries[index]
+		logToFileDev(fmt.Sprintf("reading dir entry %v", dirEntry))
+		resp := packet.MakeFileStatPacketType()
+		resp.RespId = listDirPk.ReqId
+		resp.Error = readDirError
+		if index == (len(dirEntries) - 1) {
+			resp.Done = true
+		} else {
+			resp.Done = false
+		}
+
+		resp.IsDir = dirEntry.IsDir()
+		resp.Name = dirEntry.Name()
+
+		dirEntryFileInfo, err := dirEntry.Info()
+		if err != nil {
+			m.writeListDirErrPacket(err, listDirPk)
+		}
+		resp.Size = dirEntryFileInfo.Size()
+		resp.ModTs = dirEntryFileInfo.ModTime()
+		resp.Perm = int(dirEntryFileInfo.Mode().Perm())
+		resp.ModeStr = dirEntryFileInfo.Mode().String()
+		logToFileDev("sending pk")
+		m.Sender.SendPacket(resp)
+	}
 	// what this is going to do is list the directory and then either send one packet back or stream the file list one by one I'm not sure
 	// I probably need to add a hidden flag on the packet type to specify whether we want to see hidden files
 }
@@ -566,6 +621,7 @@ func int64Min(v1 int64, v2 int64) int64 {
 }
 
 func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
+	logToFileDev(fmt.Sprintf("process rpc packet %v", pk))
 	reqId := pk.GetReqId()
 	if cdPk, ok := pk.(*packet.CdPacketType); ok {
 		err := os.Chdir(cdPk.Dir)
@@ -594,7 +650,9 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 		return
 	}
 	if listDirPk, ok := pk.(*packet.ListDirPacketType); ok {
+		logToFileDev("list dir pk?")
 		go m.ListDir(listDirPk)
+		return
 	}
 	m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid rpc type '%s'", pk.GetType()))
 	return
@@ -709,6 +767,7 @@ func (m *MServer) packetSenderErrorHandler(sender *packet.PacketSender, pk packe
 func (server *MServer) runReadLoop() {
 	builder := packet.MakeRunPacketBuilder()
 	for pk := range server.MainInput.MainCh {
+		logToFileDev(fmt.Sprintf("got pk: %v", pk))
 		if server.Debug {
 			fmt.Printf("PK> %s\n", packet.AsString(pk))
 		}
@@ -725,6 +784,7 @@ func (server *MServer) runReadLoop() {
 			continue
 		}
 		if rpcPk, ok := pk.(packet.RpcPacketType); ok {
+			logToFileDev(fmt.Sprintf("what ? %v", pk))
 			server.ProcessRpcPacket(rpcPk)
 			continue
 		}

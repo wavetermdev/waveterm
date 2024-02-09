@@ -1928,6 +1928,7 @@ func (msh *MShellProc) PacketRpcIter(ctx context.Context, pk packet.RpcPacketTyp
 	if pk == nil {
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
+	log.Printf("sending packet: %v", pk)
 	reqId := pk.GetReqId()
 	msh.ServerProc.Output.RegisterRpc(reqId)
 	err := msh.ServerProc.Input.SendPacketCtx(ctx, pk)
