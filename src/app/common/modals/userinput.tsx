@@ -1,13 +1,13 @@
 import * as React from "react";
 import { GlobalModel } from "../../../models";
-import { Choose, When, If } from "tsx-control-statements";
+import { Choose, When, If } from "tsx-control-statements/components";
 import { Modal, PasswordField, Markdown } from "../elements";
 import { UserInputRequest } from "../../../types/types";
 
 import "./userinput.less";
 
 export const UserInputModal = (userInputRequest: UserInputRequest) => {
-    const [responseText, setResponseText] = React.useState(null);
+    const [responseText, setResponseText] = React.useState("");
     const [countdown, setCountdown] = React.useState(Math.floor(userInputRequest.timeoutms / 1000));
 
     const closeModal = React.useCallback(() => {
