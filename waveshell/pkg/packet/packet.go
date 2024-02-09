@@ -1101,7 +1101,6 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	}
 	outBytes, err := MarshalPacket(packet)
 	if err != nil {
-		logToFileDev(fmt.Sprintf("SEND ERR: %v", err))
 		return err
 	}
 	if GlobalDebug {
@@ -1109,7 +1108,6 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	}
 	_, err = w.Write(outBytes)
 	if err != nil {
-		logToFileDev(fmt.Sprintf("WRITE ERR: %v", err))
 		return &SendError{IsWriteError: true, PacketType: packet.GetType(), Err: err}
 	}
 	return nil
