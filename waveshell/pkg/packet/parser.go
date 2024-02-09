@@ -158,16 +158,12 @@ func (p *PacketParser) trySendRpcResponse(pk PacketType) bool {
 		return false
 	}
 	p.Lock.Lock()
-	defer p.Lock.Unlock()
 	entry := p.RpcMap[respId]
+	p.Lock.Unlock()
 	if entry == nil {
 		return false
 	}
-	// nonblocking send
-	select {
-	case entry.RespCh <- respPk:
-	default:
-	}
+	entry.RespCh <- respPk
 	return true
 }
 

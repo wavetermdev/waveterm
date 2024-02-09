@@ -1100,6 +1100,10 @@ type RemoteType struct {
 	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
 }
 
+func (r *RemoteType) IsLocal() bool {
+	return r.Local && !r.IsSudo()
+}
+
 func (r *RemoteType) IsSudo() bool {
 	return r.SSHOpts != nil && r.SSHOpts.IsSudo
 }

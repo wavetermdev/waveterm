@@ -6,8 +6,14 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, LineContainerModel } from "../../../model/model";
-import type { LineType, RemoteType, RemotePtrType, LineHeightChangeCallbackType } from "../../../types/types";
+import { GlobalModel } from "../../../models";
+import type {
+    LineType,
+    RemoteType,
+    RemotePtrType,
+    LineHeightChangeCallbackType,
+    LineContainerType,
+} from "../../../types/types";
 import cn from "classnames";
 import { isBlank } from "../../../util/util";
 import { ReactComponent as FolderIcon } from "../../assets/icons/folder.svg";
@@ -21,7 +27,7 @@ type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K, V> = mobx.ObservableMap<K, V>;
 
 type RendererComponentProps = {
-    screen: LineContainerModel;
+    screen: LineContainerType;
     line: LineType;
     width: number;
     staticRender: boolean;
