@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/user"
@@ -114,41 +113,6 @@ func createPublicKeyCallback(identityFiles *[]string, passphrase string) func() 
 		}
 		return []ssh.Signer{signer}, err
 	}
-}
-
-func createPublicKeyAuth(identityFile string, passphrase string) (ssh.Signer, error) {
-	privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read ssh key file. err: %+v", err)
-	}
-	signer, err := ssh.ParsePrivateKey(privateKey)
-	if err == nil {
-		return signer, err
-	}
-	if _, ok := err.(*ssh.PassphraseMissingError); !ok {
-		return nil, fmt.Errorf("failed to parse private ssh key. err: %+v", err)
-	}
-
-	signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
-	if err == nil {
-		return signer, err
-	}
-	if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
-		log.Printf("qwerty: %+v", err)
-		return nil, fmt.Errorf("failed to parse private ssh key. err: %+v", err)
-	}
-	request := &sstore.UserInputRequestType{
-		ResponseType: "text",
-		QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
-		Title:        "Publickey Auth + Passphrase",
-	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancelFn()
-	response, err := sstore.MainBus.GetUserInput(ctx, request)
-	if err != nil {
-		return nil, UserInputCancelError{Err: err}
-	}
-	return ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
 }
 
 func createDefaultPasswordCallbackPrompt(password string) func() (secret string, err error) {
