@@ -46,3 +46,13 @@ export const TabIcons = [
 export const VERSION = __WAVETERM_VERSION__;
 // @ts-ignore
 export const BUILD = __WAVETERM_BUILD__;
+
+/**
+ * Levels for the screen status indicator
+ */
+export enum StatusIndicatorLevel {
+    None = 0,
+    Output = 1,
+    Success = 2,
+    Error = 3,
+}

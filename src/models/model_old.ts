@@ -7,7 +7,6 @@ import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
 import { boundMethod } from "autobind-decorator";
 import { debounce } from "throttle-debounce";
-import * as mobxReact from "mobx-react";
 import {
     handleJsonFetchResponse,
     base64ToString,
@@ -21,52 +20,6 @@ import {
 } from "../util/util";
 import { TermWrap } from "../plugins/terminal/term";
 import { PluginModel } from "../plugins/plugins";
-import {
-    SessionDataType,
-    LineType,
-    RemoteType,
-    HistoryItem,
-    RemoteInstanceType,
-    RemotePtrType,
-    CmdDataType,
-    FeCmdPacketType,
-    TermOptsType,
-    ScreenDataType,
-    ScreenOptsType,
-    PtyDataUpdateType,
-    ModelUpdateType,
-    UpdateMessage,
-    InfoType,
-    UIContextType,
-    HistoryInfoType,
-    HistoryQueryOpts,
-    FeInputPacketType,
-    RemoteInputPacketType,
-    ContextMenuOpts,
-    RendererContext,
-    RendererModel,
-    PtyDataType,
-    BookmarkType,
-    ClientDataType,
-    HistoryViewDataType,
-    AlertMessageType,
-    HistorySearchParams,
-    FocusTypeStrs,
-    ScreenLinesType,
-    HistoryTypeStrs,
-    RendererPluginType,
-    WindowSize,
-    WebShareOpts,
-    TermContextUnion,
-    RemoteEditType,
-    RemoteViewType,
-    CommandRtnType,
-    WebCmd,
-    WebRemote,
-    OpenAICmdInfoChatMessageType,
-    StatusIndicatorLevel,
-} from "../types/types";
-import * as T from "../types/types";
 import { WSControl } from "./ws";
 import {
     getMonoFontSize,
@@ -135,7 +88,7 @@ type LineContainerModel = {
     getIdealContentSize(): WindowSize;
     isSidebarOpen(): boolean;
     isLineIdInSidebar(lineId: string): boolean;
-    getContainerType(): T.LineContainerStrs;
+    getContainerType(): LineContainerStrs;
 };
 
 type SWLinePtr = {
@@ -355,7 +308,7 @@ class Screen {
     screenId: string;
     screenIdx: OV<number>;
     opts: OV<ScreenOptsType>;
-    viewOpts: OV<T.ScreenViewOptsType>;
+    viewOpts: OV<ScreenViewOptsType>;
     name: OV<string>;
     archived: OV<boolean>;
     curRemote: OV<RemotePtrType>;
@@ -373,7 +326,7 @@ class Screen {
     shareMode: OV<string>;
     webShareOpts: OV<WebShareOpts>;
     filterRunning: OV<boolean>;
-    statusIndicator: OV<StatusIndicatorLevel>;
+    statusIndicator: OV<appconst.StatusIndicatorLevel>;
     numRunningCmds: OV<number>;
 
     constructor(sdata: ScreenDataType) {
@@ -415,7 +368,7 @@ class Screen {
         this.filterRunning = mobx.observable.box(false, {
             name: "screen-filter-running",
         });
-        this.statusIndicator = mobx.observable.box(StatusIndicatorLevel.None, {
+        this.statusIndicator = mobx.observable.box(appconst.StatusIndicatorLevel.None, {
             name: "screen-status-indicator",
         });
         this.numRunningCmds = mobx.observable.box(0, {
@@ -448,7 +401,7 @@ class Screen {
         return viewOpts?.sidebar?.sidebarlineid == lineId;
     }
 
-    getContainerType(): T.LineContainerStrs {
+    getContainerType(): LineContainerStrs {
         return appconst.LineContainer_Main;
     }
 
@@ -810,7 +763,7 @@ class Screen {
      * Set the status indicator for the screen.
      * @param indicator The value of the status indicator. One of "none", "error", "success", "output".
      */
-    setStatusIndicator(indicator: StatusIndicatorLevel): void {
+    setStatusIndicator(indicator: appconst.StatusIndicatorLevel): void {
         mobx.action(() => {
             this.statusIndicator.set(indicator);
         })();
@@ -1510,7 +1463,7 @@ class InputModel {
         }
     }
 
-    updateCmdLine(cmdLine: T.StrWithPos): void {
+    updateCmdLine(cmdLine: StrWithPos): void {
         mobx.action(() => {
             this.setCurLine(cmdLine.str);
             if (cmdLine.pos != appconst.NoStrPos) {
@@ -2052,12 +2005,12 @@ type CmdFinder = {
 };
 
 class ForwardLineContainer {
-    winSize: T.WindowSize;
+    winSize: WindowSize;
     screen: Screen;
-    containerType: T.LineContainerStrs;
+    containerType: LineContainerStrs;
     lineId: string;
 
-    constructor(screen: Screen, winSize: T.WindowSize, containerType: T.LineContainerStrs, lineId: string) {
+    constructor(screen: Screen, winSize: WindowSize, containerType: LineContainerStrs, lineId: string) {
         this.screen = screen;
         this.winSize = winSize;
         this.containerType = containerType;
@@ -2076,7 +2029,7 @@ class ForwardLineContainer {
         }
     }
 
-    getContainerType(): T.LineContainerStrs {
+    getContainerType(): LineContainerStrs {
         return this.containerType;
     }
 
@@ -2152,15 +2105,15 @@ class ForwardLineContainer {
 }
 
 class SpecialLineContainer {
-    wsize: T.WindowSize;
+    wsize: WindowSize;
     allowInput: boolean;
     terminal: TermWrap;
     renderer: RendererModel;
     cmd: Cmd;
     cmdFinder: CmdFinder;
-    containerType: T.LineContainerStrs;
+    containerType: LineContainerStrs;
 
-    constructor(cmdFinder: CmdFinder, wsize: T.WindowSize, allowInput: boolean, containerType: T.LineContainerStrs) {
+    constructor(cmdFinder: CmdFinder, wsize: WindowSize, allowInput: boolean, containerType: LineContainerStrs) {
         this.cmdFinder = cmdFinder;
         this.wsize = wsize;
         this.allowInput = allowInput;
@@ -2173,7 +2126,7 @@ class SpecialLineContainer {
         return this.cmd;
     }
 
-    getContainerType(): T.LineContainerStrs {
+    getContainerType(): LineContainerStrs {
         return this.containerType;
     }
 
@@ -3376,7 +3329,7 @@ class RemotesModel {
 }
 
 class ModalsModel {
-    store: OArr<T.ModalStoreEntry> = mobx.observable.array([], { name: "ModalsModel-store" });
+    store: OArr<ModalStoreEntry> = mobx.observable.array([], { name: "ModalsModel-store" });
 
     pushModal(modalId: string) {
         const modalFactory = modalsRegistry[modalId];
@@ -3774,7 +3727,7 @@ class Model {
         let cmd = activeScreen.getCmd(line);
         if (cmd != null) {
             if (cmd.isRunning()) {
-                let info: T.InfoType = { infomsg: "Cannot delete a running command" };
+                let info: InfoType = { infomsg: "Cannot delete a running command" };
                 this.inputModel.flashInfoMsg(info, 2000);
                 return false;
             }
@@ -4591,8 +4544,8 @@ class Model {
         this.ws.pushMessage(inputPacket);
     }
 
-    sendCmdInputText(screenId: string, sp: T.StrWithPos) {
-        let pk: T.CmdInputTextPacketType = {
+    sendCmdInputText(screenId: string, sp: StrWithPos) {
+        let pk: CmdInputTextPacketType = {
             type: "cmdinputtext",
             seqnum: this.getNextPacketSeqNum(),
             screenid: screenId,
@@ -4627,7 +4580,7 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    readRemoteFile(screenId: string, lineId: string, path: string): Promise<T.ExtFile> {
+    readRemoteFile(screenId: string, lineId: string, path: string): Promise<ExtFile> {
         let urlParams = {
             screenid: screenId,
             lineid: lineId,
@@ -4636,7 +4589,7 @@ class Model {
         let usp = new URLSearchParams(urlParams);
         let url = new URL(GlobalModel.getBaseHostPort() + "/api/read-file?" + usp.toString());
         let fetchHeaders = this.getFetchHeaders();
-        let fileInfo: T.FileInfoType = null;
+        let fileInfo: FileInfoType = null;
         let badResponseStr: string = null;
         let prtn = fetch(url, { method: "get", headers: fetchHeaders })
             .then((resp) => {
@@ -4658,7 +4611,7 @@ class Model {
                     let isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
                     (file as any).readOnly = !isWriteable;
                     (file as any).notFound = !!fileInfo.notfound;
-                    return file as T.ExtFile;
+                    return file as ExtFile;
                 } else {
                     let textError: string = blobOrText;
                     if (textError == null || textError.length == 0) {
@@ -5079,7 +5032,7 @@ class CommandRunner {
     setLineState(
         screenId: string,
         lineId: string,
-        state: T.LineStateType,
+        state: LineStateType,
         interactive: boolean
     ): Promise<CommandRtnType> {
         let stateStr = JSON.stringify(state);

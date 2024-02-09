@@ -4,7 +4,6 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import * as T from "../../types/types";
 import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
 import { PacketDataBuffer } from "../core/ptydata";
@@ -22,18 +21,18 @@ type OpenAIOutputType = {
 };
 
 class OpenAIRendererModel {
-    context: T.RendererContext;
-    opts: T.RendererOpts;
+    context: RendererContext;
+    opts: RendererOpts;
     isDone: OV<boolean>;
-    api: T.RendererModelContainerApi;
+    api: RendererModelContainerApi;
     savedHeight: number;
     loading: OV<boolean>;
     loadError: OV<string> = mobx.observable.box(null, { name: "renderer-loadError" });
     chatError: OV<string> = mobx.observable.box(null, { name: "renderer-chatError" });
     updateHeight_debounced: (newHeight: number) => void;
-    ptyDataSource: (termContext: T.TermContextUnion) => Promise<T.PtyDataType>;
+    ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     packetData: PacketDataBuffer;
-    rawCmd: T.WebCmd;
+    rawCmd: WebCmd;
     output: OV<OpenAIOutputType>;
     version: OV<number>;
 
@@ -44,7 +43,7 @@ class OpenAIRendererModel {
         this.version = mobx.observable.box(0);
     }
 
-    initialize(params: T.RendererModelInitializeParams): void {
+    initialize(params: RendererModelInitializeParams): void {
         this.loading = mobx.observable.box(true, { name: "renderer-loading" });
         this.isDone = mobx.observable.box(params.isDone, { name: "renderer-isDone" });
         this.context = params.context;
@@ -58,7 +57,7 @@ class OpenAIRendererModel {
 
     @boundMethod
     packetCallback(packetAny: any) {
-        let packet: T.OpenAIPacketType = packetAny;
+        let packet: OpenAIPacketType = packetAny;
         if (packet == null) {
             return;
         }
@@ -107,7 +106,7 @@ class OpenAIRendererModel {
         return;
     }
 
-    updateOpts(update: T.RendererOptsUpdate): void {
+    updateOpts(update: RendererOptsUpdate): void {
         Object.assign(this.opts, update);
     }
 
@@ -162,7 +161,7 @@ class OpenAIRendererModel {
 
 @mobxReact.observer
 class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
-    renderPrompt(cmd: T.WebCmd) {
+    renderPrompt(cmd: WebCmd) {
         let cmdStr = cmd.cmdstr.trim();
         if (cmdStr.startsWith("/openai")) {
             let spaceIdx = cmdStr.indexOf(" ");

@@ -4,9 +4,7 @@
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { genMergeSimpleData } from "../util/util";
-import { LineType, CmdDataType, ScreenLinesType } from "../types/types";
 import { cmdStatusIsRunning } from "../app/line/lineutil";
-import { OV, OArr } from "../types/types";
 import { Cmd } from "./cmd";
 
 class ScreenLines {

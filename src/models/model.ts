@@ -13,34 +13,6 @@ import {
     isModKeyPress,
     isBlank,
 } from "../util/util";
-import {
-    SessionDataType,
-    LineType,
-    RemoteType,
-    RemoteInstanceType,
-    CmdDataType,
-    FeCmdPacketType,
-    ScreenDataType,
-    PtyDataUpdateType,
-    ModelUpdateType,
-    UpdateMessage,
-    InfoType,
-    StrWithPos,
-    UIContextType,
-    ContextMenuOpts,
-    RendererContext,
-    ClientDataType,
-    AlertMessageType,
-    ScreenLinesType,
-    RemoteViewType,
-    CommandRtnType,
-    LineFocusType,
-    CmdInputTextPacketType,
-    FileInfoType,
-    ExtFile,
-    HistorySearchParams,
-    LineStateType,
-} from "../types/types";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "../app/line/lineutil";
 import * as appconst from "../app/appconst";

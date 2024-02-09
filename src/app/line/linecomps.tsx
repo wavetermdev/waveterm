@@ -11,16 +11,6 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, Cmd } from "../../models";
 import { termHeightFromRows } from "../../util/textmeasure";
-import type {
-    LineType,
-    RenderModeType,
-    RendererOpts,
-    RendererPluginType,
-    LineHeightChangeCallbackType,
-    RendererModelInitializeParams,
-    RendererModel,
-    LineContainerType,
-} from "../../types/types";
 import cn from "classnames";
 import { getTermPtyData } from "../../util/modelutil";
 

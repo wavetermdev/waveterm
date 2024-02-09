@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as mobx from "mobx";
-import { RendererContext, CommandRtnType, HistorySearchParams, LineStateType } from "../types/types";
 import { GlobalModel } from "./global";
 
 class CommandRunner {

@@ -3,8 +3,8 @@
 
 import * as mobx from "mobx";
 import { MagicLayout } from "../app/magiclayout";
-import { OV } from "../types/types";
 import { Model } from "./model";
+
 class MainSidebarModel {
     globalModel: Model = null;
     tempWidth: OV<number> = mobx.observable.box(null, {

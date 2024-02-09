@@ -5,7 +5,6 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import type { RemoteType, CommandRtnType } from "../types/types";
 import base64 from "base64-js";
 
 type OV<V> = mobx.IObservableValue<V>;

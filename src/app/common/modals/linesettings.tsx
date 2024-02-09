@@ -7,7 +7,6 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner } from "../../../models";
 import { SettingsError, Modal, Dropdown } from "../elements";
-import { LineType, RendererPluginType } from "../../../types/types";
 import { PluginModel } from "../../../plugins/plugins";
 import { commandRtnHandler } from "../../../util/util";
 

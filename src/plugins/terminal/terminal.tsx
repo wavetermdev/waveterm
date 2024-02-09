@@ -10,7 +10,6 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel } from "../../models";
 import { termHeightFromRows } from "../../util/textmeasure";
-import type { LineType, LineContainerType } from "../../types/types";
 import cn from "classnames";
 import * as lineutil from "../../app/line/lineutil";
 
