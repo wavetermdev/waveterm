@@ -289,6 +289,16 @@ declare global {
         userquery?: string;
     };
 
+    /**
+     * Levels for the screen status indicator
+     */
+    enum StatusIndicatorLevel {
+        None = 0,
+        Output = 1,
+        Success = 2,
+        Error = 3,
+    }
+
     type ScreenStatusIndicatorUpdateType = {
         screenid: string;
         status: StatusIndicatorLevel;
@@ -323,6 +333,7 @@ declare global {
         alertmessage?: AlertMessageType;
         screenstatusindicators?: ScreenStatusIndicatorUpdateType[];
         screennumrunningcommands?: ScreenNumRunningCommandsUpdateType[];
+        userinputrequest?: UserInputRequest;
     };
 
     type HistoryViewDataType = {
@@ -585,6 +596,23 @@ declare global {
         filterCmds?: boolean;
     };
 
+    type UserInputRequest = {
+        requestid: string;
+        querytext: string;
+        responsetype: string;
+        title: string;
+        markdown: boolean;
+        timeoutms: number;
+    };
+
+    type UserInputResponsePacket = {
+        type: string;
+        requestid: string;
+        text?: string;
+        confirm?: boolean;
+        errormsg?: string;
+    };
+
     type RenderModeType = "normal" | "collapsed" | "expanded";
 
     type WebScreen = {
@@ -720,6 +748,7 @@ declare global {
         id: string;
         component: React.ComponentType;
         uniqueKey: string;
+        props?: any;
     };
 
     type StrWithPos = {

@@ -8,6 +8,7 @@ export const SESSION_SETTINGS = "sessionSettings";
 export const LINE_SETTINGS = "lineSettings";
 export const CLIENT_SETTINGS = "clientSettings";
 export const TAB_SWITCHER = "tabSwitcher";
+export const USER_INPUT = "userInput";
 
 export const LineContainer_Main = "main";
 export const LineContainer_History = "history";

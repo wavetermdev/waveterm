@@ -18,7 +18,6 @@ import { cmdStatusIsRunning } from "../app/line/lineutil";
 import * as appconst from "../app/appconst";
 import { remotePtrToString, cmdPacketString } from "../util/modelutil";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
-import { OV, OArr, OMap, CV } from "../types/types";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -873,6 +872,10 @@ class Model {
             for (const snc of update.screennumrunningcommands) {
                 this.getScreenById_single(snc.screenid)?.setNumRunningCmds(snc.num);
             }
+        }
+        if ("userinputrequest" in update) {
+            let userInputRequest: UserInputRequest = update.userinputrequest;
+            this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
         }
     }
 
