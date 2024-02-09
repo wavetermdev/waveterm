@@ -2865,8 +2865,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		log.Printf("openai error updating screen selected line: %v\n", err)
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.LineUpdate)(*line))
-	sstore.AddUpdate(update, (sstore.CmdUpdate)(*cmd))
+	sstore.AddLineUpdate(update, line, cmd)
 	sstore.AddUpdate(update, (sstore.ScreenUpdate)(*screen))
 	return update, nil
 }
@@ -2999,8 +2998,7 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 		}
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.LineUpdate)(*rtnLine))
-	sstore.AddUpdate(update, (sstore.CmdUpdate)(*cmd))
+	sstore.AddLineUpdate(update, rtnLine, cmd)
 	sstore.AddUpdate(update, (sstore.ScreenUpdate)(*screen))
 	sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
 	updateHistoryContext(ctx, rtnLine, cmd, cmd.FeState)
@@ -3212,7 +3210,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		log.Printf("/comment error updating screen selected line: %v\n", err)
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.LineUpdate)(*rtnLine))
+	sstore.AddLineUpdate(update, rtnLine, nil)
 	sstore.AddUpdate(update, (sstore.ScreenUpdate)(*screen))
 	return update, nil
 }
@@ -3973,8 +3971,7 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	}
 	cmd.Restarted = true
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.LineUpdate)(*line))
-	sstore.AddUpdate(update, (sstore.CmdUpdate)(*cmd))
+	sstore.AddLineUpdate(update, line, cmd)
 	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
 	screen, focusErr := focusScreenLine(ctx, ids.ScreenId, line.LineNum)
 	if focusErr != nil {
@@ -4062,7 +4059,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, fmt.Errorf("/line:set cannot retrieve updated line: %v", err)
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.LineUpdate)(*updatedLine))
+	sstore.AddLineUpdate(update, updatedLine, nil)
 	sstore.AddUpdate(update, sstore.InfoUpdate{
 		InfoMsg:   fmt.Sprintf("line updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
@@ -4289,7 +4286,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		return nil, nil
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.LineUpdate)(*lineObj))
+	sstore.AddLineUpdate(update, lineObj, nil)
 	return update, nil
 }
 
@@ -4326,7 +4323,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, nil
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.LineUpdate)(*lineObj))
+	sstore.AddLineUpdate(update, lineObj, nil)
 	return update, nil
 }
 
@@ -4355,11 +4352,8 @@ func LineDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	}
 	update := &sstore.ModelUpdate{}
 	for _, lineId := range lineIds {
-		sstore.AddUpdate(update, sstore.LineUpdate{
-			ScreenId: ids.ScreenId,
-			LineId:   lineId,
-			Remove:   true,
-		})
+		line := &sstore.LineType{ScreenId: ids.ScreenId, LineId: lineId, Remove: true}
+		sstore.AddLineUpdate(update, line, nil)
 	}
 	screen, err := sstore.FixupScreenSelectedLine(ctx, ids.ScreenId)
 	if err != nil {

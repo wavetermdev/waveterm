@@ -828,12 +828,15 @@ class Model {
                 }
             }
             if (update.line != null) {
+                console.log("update.line", update.line);
                 this.addLineCmd(update.line, update.cmd, interactive);
             }
             if (update.cmd != null) {
+                console.log("update.cmd", update.cmd);
                 this.updateCmd(update.cmd);
             }
             if (update.screenlines != null) {
+                console.log("update.screenlines", update.screenlines);
                 this.updateScreenLines(update.screenlines, false);
             }
             if (update.remote != null) {

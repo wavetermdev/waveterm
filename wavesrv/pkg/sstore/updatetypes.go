@@ -53,10 +53,26 @@ func (ScreenLinesUpdate) UpdateType() string {
 	return "screenlines"
 }
 
-type LineUpdate LineType
+type LineUpdate struct {
+	Line LineType `json:"line"`
+	Cmd  CmdType  `json:"cmd,omitempty"`
+}
 
 func (LineUpdate) UpdateType() string {
 	return "line"
+}
+
+func AddLineUpdate(update *ModelUpdate, newLine *LineType, newCmd *CmdType) {
+	if newLine == nil {
+		return
+	}
+	newLineUpdate := LineUpdate{
+		Line: *newLine,
+	}
+	if newCmd != nil {
+		newLineUpdate.Cmd = *newCmd
+	}
+	AddUpdate(update, newLineUpdate)
 }
 
 type CmdUpdate CmdType
