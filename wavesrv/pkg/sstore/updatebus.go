@@ -42,14 +42,12 @@ func (*ModelUpdate) UpdateType() string {
 }
 
 func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
-	log.Printf("modelupdate serialize mu=%+v\n", mu)
 	rtn := make([]map[string]any, 0)
 	for _, u := range *mu {
 		m := make(map[string]any)
 		m[(*u).UpdateType()] = u
 		rtn = append(rtn, m)
 	}
-	log.Printf("modelupdate serialize rtn=%+v\n", rtn)
 	return json.Marshal(rtn)
 }
 
@@ -58,7 +56,6 @@ type ModelUpdateItem interface {
 }
 
 func (update *ModelUpdate) Clean() {
-	log.Printf("update clean update=%+v\n", update)
 	if update == nil {
 		return
 	}
@@ -67,7 +64,6 @@ func (update *ModelUpdate) Clean() {
 		lastUpdate := clientDataUpdates[len(clientDataUpdates)-1]
 		(*ClientData)(lastUpdate).Clean()
 	}
-	log.Printf("update clean done update=%+v\n", update)
 }
 
 func (update *ModelUpdate) append(item *ModelUpdateItem) {
@@ -75,7 +71,6 @@ func (update *ModelUpdate) append(item *ModelUpdateItem) {
 }
 
 func AddUpdate[I ModelUpdateItem](update *ModelUpdate, item I) {
-	log.Printf("update: %+v add item of type %v: %+v\n", update, item.UpdateType(), item)
 	updateItem := (ModelUpdateItem)(item)
 	update.append(&updateItem)
 }
@@ -215,7 +210,6 @@ func (bus *UpdateBus) UnregisterChannel(clientId string) {
 }
 
 func (bus *UpdateBus) SendUpdate(update UpdatePacket) {
-	log.Printf("updatebus sendupdate update=%+v\n", update)
 	if update == nil {
 		return
 	}

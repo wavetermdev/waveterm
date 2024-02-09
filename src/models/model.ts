@@ -828,26 +828,21 @@ class Model {
                 }
             }
             if (update.line != null) {
-                console.log("update.line", update.line);
                 this.addLineCmd(update.line.line, update.line.cmd, interactive);
             }
             if (update.cmd != null) {
-                console.log("update.cmd", update.cmd);
                 this.updateCmd(update.cmd);
             }
             if (update.screenlines != null) {
-                console.log("update.screenlines", update.screenlines);
                 this.updateScreenLines(update.screenlines, false);
             }
             if (update.remote != null) {
-                console.log("update.remote", update.remote);
                 if (update.connect) {
                     this.remotes.clear();
                 }
                 this.updateRemotes([update.remote]);
                 // This code's purpose is to show view remote connection modal when a new connection is added
                 if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
-                    console.log("showing remotes modal");
                     showedRemotesModal = true;
                     this.remotesModel.openReadModal(update.remote.remoteid);
                 }

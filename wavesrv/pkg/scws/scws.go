@@ -160,7 +160,6 @@ func (ws *WSState) ReplaceShell(shell *wsshell.WSShell) {
 
 // returns all state required to display current UI
 func (ws *WSState) handleConnection() error {
-	log.Printf("[ws %s] handleConnection\n", ws.ClientId)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	update, err := sstore.GetAllSessionsUpdate(ctx)
@@ -180,7 +179,6 @@ func (ws *WSState) handleConnection() error {
 		sstore.AddUpdate(update, (sstore.ScreenNumRunningCommandsUpdate)(*nrc))
 	}
 	sstore.AddUpdate(update, (sstore.ConnectUpdate)(true))
-	log.Printf("[ws %s] sending connect update\n", ws.ClientId)
 	err = ws.Shell.WriteJson(update)
 	if err != nil {
 		return err
