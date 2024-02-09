@@ -7,7 +7,7 @@ import { UserInputRequest } from "../../../types/types";
 import "./userinput.less";
 
 export const UserInputModal = (userInputRequest: UserInputRequest) => {
-    const [responseText, setResponseText] = React.useState(null);
+    const [responseText, setResponseText] = React.useState("");
     const [countdown, setCountdown] = React.useState(Math.floor(userInputRequest.timeoutms / 1000));
 
     const closeModal = React.useCallback(() => {
