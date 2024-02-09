@@ -65,10 +65,10 @@ func (update *ModelUpdate) Clean() {
 	if update == nil {
 		return
 	}
-	clientDataUpdates := GetUpdateItems[ClientDataUpdate](update)
+	clientDataUpdates := GetUpdateItems[ClientData](update)
 	if len(clientDataUpdates) > 0 {
 		lastUpdate := clientDataUpdates[len(clientDataUpdates)-1]
-		(*ClientData)(lastUpdate).Clean()
+		lastUpdate.Clean()
 	}
 }
 
@@ -76,9 +76,10 @@ func (update *ModelUpdate) append(item *ModelUpdateItem) {
 	*update = append(*update, item)
 }
 
-func AddUpdate[I ModelUpdateItem](update *ModelUpdate, item I) {
-	updateItem := (ModelUpdateItem)(item)
-	update.append(&updateItem)
+func AddUpdate(update *ModelUpdate, item ...ModelUpdateItem) {
+	for _, i := range item {
+		update.append(&i)
+	}
 }
 
 // Returns the first value for the key, nil if not found
@@ -94,7 +95,7 @@ func GetUpdateItems[I ModelUpdateItem](update *ModelUpdate) []*I {
 
 // only sets InfoError if InfoError is not already set
 func (update *ModelUpdate) AddInfoError(errStr string) {
-	infoUpdates := GetUpdateItems[InfoUpdate](update)
+	infoUpdates := GetUpdateItems[InfoMsgType](update)
 
 	if len(infoUpdates) > 0 {
 		lastUpdate := infoUpdates[len(infoUpdates)-1]
@@ -103,70 +104,8 @@ func (update *ModelUpdate) AddInfoError(errStr string) {
 			return
 		}
 	} else {
-		newInfoUpdate := InfoUpdate{InfoError: errStr}
-		AddUpdate(update, newInfoUpdate)
+		AddUpdate(update, InfoMsgType{InfoError: errStr})
 	}
-}
-
-type RemoteViewType struct {
-	RemoteShowAll bool            `json:"remoteshowall,omitempty"`
-	PtyRemoteId   string          `json:"ptyremoteid,omitempty"`
-	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
-}
-
-type HistoryViewData struct {
-	Items         []*HistoryItemType `json:"items"`
-	Offset        int                `json:"offset"`
-	RawOffset     int                `json:"rawoffset"`
-	NextRawOffset int                `json:"nextrawoffset"`
-	HasMore       bool               `json:"hasmore"`
-	Lines         []*LineType        `json:"lines"`
-	Cmds          []*CmdType         `json:"cmds"`
-}
-
-type RemoteEditType struct {
-	RemoteEdit  bool   `json:"remoteedit"`
-	RemoteId    string `json:"remoteid,omitempty"`
-	ErrorStr    string `json:"errorstr,omitempty"`
-	InfoStr     string `json:"infostr,omitempty"`
-	KeyStr      string `json:"keystr,omitempty"`
-	HasPassword bool   `json:"haspassword,omitempty"`
-}
-
-type AlertMessageType struct {
-	Title    string `json:"title,omitempty"`
-	Message  string `json:"message"`
-	Confirm  bool   `json:"confirm,omitempty"`
-	Markdown bool   `json:"markdown,omitempty"`
-}
-
-type InfoMsgType struct {
-	InfoTitle     string   `json:"infotitle"`
-	InfoError     string   `json:"infoerror,omitempty"`
-	InfoMsg       string   `json:"infomsg,omitempty"`
-	InfoMsgHtml   bool     `json:"infomsghtml,omitempty"`
-	WebShareLink  bool     `json:"websharelink,omitempty"`
-	InfoComps     []string `json:"infocomps,omitempty"`
-	InfoCompsMore bool     `json:"infocompssmore,omitempty"`
-	InfoLines     []string `json:"infolines,omitempty"`
-	TimeoutMs     int64    `json:"timeoutms,omitempty"`
-}
-
-type HistoryInfoType struct {
-	HistoryType string             `json:"historytype"`
-	SessionId   string             `json:"sessionid,omitempty"`
-	ScreenId    string             `json:"screenid,omitempty"`
-	Items       []*HistoryItemType `json:"items"`
-	Show        bool               `json:"show"`
-}
-
-type UserInputRequestType struct {
-	RequestId    string `json:"requestid"`
-	QueryText    string `json:"querytext"`
-	ResponseType string `json:"responsetype"`
-	Title        string `json:"title"`
-	Markdown     bool   `json:"markdown"`
-	TimeoutMs    int    `json:"timeoutms"`
 }
 
 type UpdateChannel struct {
@@ -262,16 +201,6 @@ func (bus *UpdateBus) SendScreenUpdate(screenId string, update UpdatePacket) {
 	}
 }
 
-type ScreenStatusIndicatorType struct {
-	ScreenId string               `json:"screenid"`
-	Status   StatusIndicatorLevel `json:"status"`
-}
-
-type ScreenNumRunningCommandsType struct {
-	ScreenId string `json:"screenid"`
-	Num      int    `json:"num"`
-}
-
 func (bus *UpdateBus) registerUserInputChannel() (string, chan *scpacket.UserInputResponsePacketType) {
 	bus.Lock.Lock()
 	defer bus.Lock.Unlock()
@@ -306,7 +235,7 @@ func (bus *UpdateBus) GetUserInput(ctx context.Context, userInputRequest *UserIn
 	deadline, _ := ctx.Deadline()
 	userInputRequest.TimeoutMs = int(time.Until(deadline).Milliseconds()) - 500
 	update := &ModelUpdate{}
-	AddUpdate(update, (UserInputRequestUpdate)(*userInputRequest))
+	AddUpdate(update, *userInputRequest)
 	bus.SendUpdate(update)
 	log.Printf("test: %+v", userInputRequest)
 

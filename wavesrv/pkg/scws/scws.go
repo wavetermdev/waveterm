@@ -168,15 +168,15 @@ func (ws *WSState) handleConnection() error {
 	}
 	remotes := remote.GetAllRemoteRuntimeState()
 	for _, r := range remotes {
-		sstore.AddUpdate(update, (sstore.RemoteUpdate)(r))
+		sstore.AddUpdate(update, r)
 	}
 	// restore status indicators
 	sis, nrcs := sstore.GetCurrentIndicatorState()
 	for _, si := range sis {
-		sstore.AddUpdate(update, (sstore.ScreenStatusIndicatorUpdate)(*si))
+		sstore.AddUpdate(update, *si)
 	}
 	for _, nrc := range nrcs {
-		sstore.AddUpdate(update, (sstore.ScreenNumRunningCommandsUpdate)(*nrc))
+		sstore.AddUpdate(update, *nrc)
 	}
 	sstore.AddUpdate(update, (sstore.ConnectUpdate)(true))
 	err = ws.Shell.WriteJson(update)

@@ -7,50 +7,10 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
-type ScreenUpdate ScreenType
-
-func (ScreenUpdate) UpdateType() string {
-	return "screen"
-}
-
-func AddScreenUpdate(update *ModelUpdate, newScreen *ScreenType) {
-	if newScreen == nil {
-		return
-	}
-	newScreenUpdate := (*ScreenUpdate)(newScreen)
-	screenUpdates := GetUpdateItems[ScreenUpdate](update)
-	for _, screenUpdate := range screenUpdates {
-		if screenUpdate.ScreenId == newScreen.ScreenId {
-			screenUpdate = newScreenUpdate
-			return
-		}
-	}
-	AddUpdate(update, *newScreenUpdate)
-}
-
-type SessionUpdate SessionType
-
-func (SessionUpdate) UpdateType() string {
-	return "session"
-}
-
-func MakeSessionUpdateForRemote(sessionId string, ri *RemoteInstance) SessionUpdate {
-	return SessionUpdate{
-		SessionId: sessionId,
-		Remotes:   []*RemoteInstance{ri},
-	}
-}
-
 type ActiveSessionIdUpdate string
 
 func (ActiveSessionIdUpdate) UpdateType() string {
 	return "activesessionid"
-}
-
-type ScreenLinesUpdate ScreenLinesType
-
-func (ScreenLinesUpdate) UpdateType() string {
-	return "screenlines"
 }
 
 type LineUpdate struct {
@@ -75,28 +35,32 @@ func AddLineUpdate(update *ModelUpdate, newLine *LineType, newCmd *CmdType) {
 	AddUpdate(update, newLineUpdate)
 }
 
-type CmdUpdate CmdType
-
-func (CmdUpdate) UpdateType() string {
-	return "cmd"
-}
-
 type CmdLineUpdate utilfn.StrWithPos
 
 func (CmdLineUpdate) UpdateType() string {
 	return "cmdline"
 }
 
-type InfoUpdate InfoMsgType
+type InfoMsgType struct {
+	InfoTitle     string   `json:"infotitle"`
+	InfoError     string   `json:"infoerror,omitempty"`
+	InfoMsg       string   `json:"infomsg,omitempty"`
+	InfoMsgHtml   bool     `json:"infomsghtml,omitempty"`
+	WebShareLink  bool     `json:"websharelink,omitempty"`
+	InfoComps     []string `json:"infocomps,omitempty"`
+	InfoCompsMore bool     `json:"infocompssmore,omitempty"`
+	InfoLines     []string `json:"infolines,omitempty"`
+	TimeoutMs     int64    `json:"timeoutms,omitempty"`
+}
 
-func (InfoUpdate) UpdateType() string {
+func (InfoMsgType) UpdateType() string {
 	return "info"
 }
 
 func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
 	msg := fmt.Sprintf(infoMsgFmt, args...)
 	ret := &ModelUpdate{}
-	newInfoUpdate := InfoUpdate{InfoMsg: msg}
+	newInfoUpdate := InfoMsgType{InfoMsg: msg}
 	AddUpdate(ret, newInfoUpdate)
 	return ret
 }
@@ -107,15 +71,15 @@ func (ClearInfoUpdate) UpdateType() string {
 	return "clearinfo"
 }
 
-type RemoteUpdate RemoteRuntimeState
-
-func (RemoteUpdate) UpdateType() string {
-	return "remote"
+type HistoryInfoType struct {
+	HistoryType string             `json:"historytype"`
+	SessionId   string             `json:"sessionid,omitempty"`
+	ScreenId    string             `json:"screenid,omitempty"`
+	Items       []*HistoryItemType `json:"items"`
+	Show        bool               `json:"show"`
 }
 
-type HistoryUpdate HistoryInfoType
-
-func (HistoryUpdate) UpdateType() string {
+func (HistoryInfoType) UpdateType() string {
 	return "history"
 }
 
@@ -149,34 +113,37 @@ func (SelectedBookmarkUpdate) UpdateType() string {
 	return "selectedbookmark"
 }
 
-type HistoryViewDataUpdate HistoryViewData
+type HistoryViewData struct {
+	Items         []*HistoryItemType `json:"items"`
+	Offset        int                `json:"offset"`
+	RawOffset     int                `json:"rawoffset"`
+	NextRawOffset int                `json:"nextrawoffset"`
+	HasMore       bool               `json:"hasmore"`
+	Lines         []*LineType        `json:"lines"`
+	Cmds          []*CmdType         `json:"cmds"`
+}
 
-func (HistoryViewDataUpdate) UpdateType() string {
+func (HistoryViewData) UpdateType() string {
 	return "historyviewdata"
 }
 
-type ClientDataUpdate ClientData
-
-func (ClientDataUpdate) UpdateType() string {
-	return "clientdata"
+type RemoteEditType struct {
+	RemoteEdit  bool   `json:"remoteedit"`
+	RemoteId    string `json:"remoteid,omitempty"`
+	ErrorStr    string `json:"errorstr,omitempty"`
+	InfoStr     string `json:"infostr,omitempty"`
+	KeyStr      string `json:"keystr,omitempty"`
+	HasPassword bool   `json:"haspassword,omitempty"`
 }
 
-type RemoteViewUpdate RemoteViewType
+type RemoteViewType struct {
+	RemoteShowAll bool            `json:"remoteshowall,omitempty"`
+	PtyRemoteId   string          `json:"ptyremoteid,omitempty"`
+	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
+}
 
-func (RemoteViewUpdate) UpdateType() string {
+func (RemoteViewType) UpdateType() string {
 	return "remoteview"
-}
-
-type ScreenTombstoneUpdate ScreenTombstoneType
-
-func (ScreenTombstoneUpdate) UpdateType() string {
-	return "screentombstone"
-}
-
-type SessionTombstoneUpdate SessionTombstoneType
-
-func (SessionTombstoneUpdate) UpdateType() string {
-	return "sessiontombstone"
 }
 
 type OpenAICmdInfoChatUpdate []*packet.OpenAICmdInfoChatMessage
@@ -185,26 +152,44 @@ func (OpenAICmdInfoChatUpdate) UpdateType() string {
 	return "openaicmdinfochat"
 }
 
-type AlertMessageUpdate AlertMessageType
+type AlertMessageType struct {
+	Title    string `json:"title,omitempty"`
+	Message  string `json:"message"`
+	Confirm  bool   `json:"confirm,omitempty"`
+	Markdown bool   `json:"markdown,omitempty"`
+}
 
-func (AlertMessageUpdate) UpdateType() string {
+func (AlertMessageType) UpdateType() string {
 	return "alertmessage"
 }
 
-type ScreenStatusIndicatorUpdate ScreenStatusIndicatorType
+type ScreenStatusIndicatorType struct {
+	ScreenId string               `json:"screenid"`
+	Status   StatusIndicatorLevel `json:"status"`
+}
 
-func (ScreenStatusIndicatorUpdate) UpdateType() string {
+func (ScreenStatusIndicatorType) UpdateType() string {
 	return "screenstatusindicator"
 }
 
-type ScreenNumRunningCommandsUpdate ScreenNumRunningCommandsType
+type ScreenNumRunningCommandsType struct {
+	ScreenId string `json:"screenid"`
+	Num      int    `json:"num"`
+}
 
-func (ScreenNumRunningCommandsUpdate) UpdateType() string {
+func (ScreenNumRunningCommandsType) UpdateType() string {
 	return "screennumrunningcommands"
 }
 
-type UserInputRequestUpdate UserInputRequestType
+type UserInputRequestType struct {
+	RequestId    string `json:"requestid"`
+	QueryText    string `json:"querytext"`
+	ResponseType string `json:"responsetype"`
+	Title        string `json:"title"`
+	Markdown     bool   `json:"markdown"`
+	TimeoutMs    int    `json:"timeoutms"`
+}
 
-func (UserInputRequestUpdate) UpdateType() string {
+func (UserInputRequestType) UpdateType() string {
 	return "userinputrequest"
 }

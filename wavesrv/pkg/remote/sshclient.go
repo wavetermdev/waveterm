@@ -389,7 +389,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 				"**Offending Keys**  \n"+
 				"%s", key.Type(), correctKeyFingerprint, strings.Join(bulletListKnownHosts, "  \n"), strings.Join(offendingKeysFmt, "  \n"))
 			update := &sstore.ModelUpdate{}
-			sstore.AddUpdate(update, sstore.AlertMessageUpdate{
+			sstore.AddUpdate(update, sstore.AlertMessageType{
 				Markdown: true,
 				Title:    "Known Hosts Key Changed",
 				Message:  alertText,

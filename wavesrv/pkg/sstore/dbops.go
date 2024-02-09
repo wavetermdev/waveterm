@@ -474,13 +474,13 @@ func GetAllSessionsUpdate(ctx context.Context) (*ModelUpdate, error) {
 		for _, session := range sessions {
 			sessionMap[session.SessionId] = session
 			session.Full = true
-			AddUpdate(update, (SessionUpdate)(*session))
+			AddUpdate(update, *session)
 		}
 		query := `SELECT * FROM screen ORDER BY archived, screenidx, archivedts`
 		screens := dbutil.SelectMapsGen[*ScreenType](tx, query)
 		for _, screen := range screens {
 			screen.Full = true
-			AddUpdate(update, (ScreenUpdate)(*screen))
+			AddUpdate(update, *screen)
 		}
 		query = `SELECT * FROM remote_instance`
 		riArr := dbutil.SelectMapsGen[*RemoteInstance](tx, query)
@@ -569,7 +569,7 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 // returns sessionId
 // if sessionName == "", it will be generated
 func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*ModelUpdate, error) {
-	var newScreen *ScreenUpdate
+	var newScreen *ScreenType
 	newSessionId := scbase.GenWaveUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		names := tx.SelectStrings(`SELECT name FROM session`)
@@ -582,7 +582,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		if err != nil {
 			return err
 		}
-		screenUpdateItems := GetUpdateItems[ScreenUpdate](screenUpdate)
+		screenUpdateItems := GetUpdateItems[ScreenType](screenUpdate)
 		if len(screenUpdateItems) < 1 {
 			return fmt.Errorf("no screen update items")
 		}
@@ -601,7 +601,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		return nil, err
 	}
 	update := &ModelUpdate{}
-	AddUpdate(update, (SessionUpdate)(*session))
+	AddUpdate(update, *session)
 	AddUpdate(update, *newScreen)
 	if activate {
 		AddUpdate(update, ActiveSessionIdUpdate(newSessionId))
@@ -759,13 +759,13 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		return nil, err
 	}
 	update := &ModelUpdate{}
-	AddUpdate(update, (ScreenUpdate)(*newScreen))
+	AddUpdate(update, *newScreen)
 	if activate {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
 		if err != nil {
 			return nil, txErr
 		}
-		AddUpdate(update, (SessionUpdate)(*bareSession))
+		AddUpdate(update, *bareSession)
 		UpdateWithCurrentOpenAICmdInfoChat(newScreenId, update)
 	}
 	return update, nil
@@ -954,7 +954,7 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 	}
 
 	update := &ModelUpdate{}
-	AddUpdate(update, (CmdUpdate)(*rtnCmd))
+	AddUpdate(update, *rtnCmd)
 
 	// Update in-memory screen indicator status
 	var indicator StatusIndicatorLevel
@@ -1122,7 +1122,7 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 	}
 	update := &ModelUpdate{}
 	AddUpdate(update, (ActiveSessionIdUpdate)(sessionId))
-	AddUpdate(update, (SessionUpdate)(*bareSession))
+	AddUpdate(update, *bareSession)
 	memState := GetScreenMemState(screenId)
 	if memState != nil {
 		AddUpdate(update, (CmdLineUpdate)(memState.CmdInputText))
@@ -1195,13 +1195,13 @@ func ArchiveScreen(ctx context.Context, sessionId string, screenId string) (Upda
 		return nil, fmt.Errorf("cannot retrive archived screen: %w", err)
 	}
 	update := &ModelUpdate{}
-	AddUpdate(update, (ScreenUpdate)(*newScreen))
+	AddUpdate(update, *newScreen)
 	if isActive {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
 		if err != nil {
 			return nil, err
 		}
-		AddUpdate(update, (SessionUpdate)(*bareSession))
+		AddUpdate(update, *bareSession)
 	}
 	return update, nil
 }
@@ -1284,14 +1284,14 @@ func DeleteScreen(ctx context.Context, screenId string, sessionDel bool, update 
 	if update == nil {
 		update = &ModelUpdate{}
 	}
-	AddUpdate(update, (ScreenTombstoneUpdate)(*screenTombstone))
-	AddUpdate(update, ScreenUpdate{SessionId: sessionId, ScreenId: screenId, Remove: true})
+	AddUpdate(update, *screenTombstone)
+	AddUpdate(update, ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
 	if isActive {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
 		if err != nil {
 			return nil, err
 		}
-		AddUpdate(update, (SessionUpdate)(*bareSession))
+		AddUpdate(update, *bareSession)
 	}
 	return update, nil
 }
@@ -1542,7 +1542,7 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*ModelUpdate, err
 		return nil, err
 	}
 	ret := &ModelUpdate{}
-	AddUpdate(ret, (ScreenLinesUpdate)(*screenLines))
+	AddUpdate(ret, *screenLines)
 	return ret, nil
 }
 
@@ -1586,8 +1586,8 @@ func DeleteScreenLines(ctx context.Context, screenId string) (*ModelUpdate, erro
 		screenLines.Lines = append(screenLines.Lines, line)
 	}
 	ret := &ModelUpdate{}
-	AddUpdate(ret, (ScreenUpdate)(*screen))
-	AddUpdate(ret, (ScreenLinesUpdate)(*screenLines))
+	AddUpdate(ret, *screen)
+	AddUpdate(ret, *screenLines)
 	return ret, nil
 }
 
@@ -1676,9 +1676,9 @@ func DeleteSession(ctx context.Context, sessionId string) (UpdatePacket, error) 
 	if newActiveSessionId != "" {
 		AddUpdate(update, (ActiveSessionIdUpdate)(newActiveSessionId))
 	}
-	AddUpdate(update, SessionUpdate{SessionId: sessionId, Remove: true})
+	AddUpdate(update, SessionType{SessionId: sessionId, Remove: true})
 	if sessionTombstone != nil {
-		AddUpdate(update, (SessionTombstoneUpdate)(*sessionTombstone))
+		AddUpdate(update, *sessionTombstone)
 	}
 	return update, nil
 }
@@ -1731,7 +1731,7 @@ func ArchiveSession(ctx context.Context, sessionId string) (*ModelUpdate, error)
 	bareSession, _ := GetBareSessionById(ctx, sessionId)
 	update := &ModelUpdate{}
 	if bareSession != nil {
-		AddUpdate(update, (SessionUpdate)(*bareSession))
+		AddUpdate(update, *bareSession)
 	}
 	if newActiveSessionId != "" {
 		AddUpdate(update, (ActiveSessionIdUpdate)(newActiveSessionId))
@@ -1768,7 +1768,7 @@ func UnArchiveSession(ctx context.Context, sessionId string, activate bool) (*Mo
 	update := &ModelUpdate{}
 
 	if bareSession != nil {
-		AddUpdate(update, (SessionUpdate)(*bareSession))
+		AddUpdate(update, *bareSession)
 	}
 	if activate {
 		AddUpdate(update, (ActiveSessionIdUpdate)(sessionId))

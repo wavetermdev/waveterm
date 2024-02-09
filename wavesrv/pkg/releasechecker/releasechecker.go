@@ -67,7 +67,7 @@ func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error
 	}
 
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.ClientDataUpdate)(*clientData))
+	sstore.AddUpdate(update, *clientData)
 	sstore.MainBus.SendUpdate(update)
 
 	return Success, nil
