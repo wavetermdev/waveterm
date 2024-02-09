@@ -893,7 +893,7 @@ func UpdateWithAddNewOpenAICmdInfoPacket(ctx context.Context, screenId string, p
 
 func UpdateWithCurrentOpenAICmdInfoChat(screenId string, update *ModelUpdate) (*ModelUpdate, error) {
 	ret := &ModelUpdate{}
-	AddUpdate(ret, (OpenAICmdInfoChatUpdate)(ScreenMemGetCmdInfoChat(screenId).Messages))
+	AddOpenAICmdInfoChatUpdate(ret, ScreenMemGetCmdInfoChat(screenId).Messages)
 	return ret, nil
 }
 
@@ -1125,7 +1125,7 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 	AddUpdate(update, *bareSession)
 	memState := GetScreenMemState(screenId)
 	if memState != nil {
-		AddUpdate(update, (CmdLineUpdate)(memState.CmdInputText))
+		AddCmdLineUpdate(update, memState.CmdInputText)
 		UpdateWithCurrentOpenAICmdInfoChat(screenId, update)
 
 		// Clear any previous status indicator for this screen

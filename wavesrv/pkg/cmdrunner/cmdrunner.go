@@ -515,7 +515,7 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if err != nil {
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	sstore.MainBus.SendScreenUpdate(ids.ScreenId, update)
 	return nil, nil
 }
@@ -623,7 +623,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	// this update is sent asynchronously for timing issues.  the cmd update comes async as well
 	// so if we return this directly it sometimes gets evaluated first.  by pushing it on the MainBus
 	// it ensures it happens after the command creation event.
@@ -731,7 +731,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 			if sidebarErr == nil {
 				sstore.AddScreenUpdate(modelUpdate, screen)
 			} else {
-				modelUpdate.AddInfoError(fmt.Sprintf("cannot move command to sidebar: %v", sidebarErr))
+				sstore.AddInfoMsgUpdateError(modelUpdate, fmt.Sprintf("cannot move command to sidebar: %v", sidebarErr))
 			}
 		}
 	}
@@ -1646,7 +1646,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	if destRemote != ConnectedRemote && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos)
 		err = destRemoteId.MShell.TryAutoConnect()
@@ -2388,7 +2388,7 @@ func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	sstore.AddUpdate(update, sessionUpdate)
 	return update, nil
 }
@@ -2901,7 +2901,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		}
 		update := &sstore.ModelUpdate{}
 		sstore.AddUpdate(update, *screen)
-		sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+		sstore.AddInteractiveUpdate(update, pk.Interactive)
 		return update, nil
 	}
 	outputStr := fmt.Sprintf("connected to %s", GetFullRemoteDisplayName(rptr, rstate))
@@ -2915,7 +2915,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 
@@ -3183,7 +3183,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		return nil, nil
 	}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.CmdLineUpdate)(utilfn.StrWithPos{Str: newSP.Str, Pos: newSP.Pos}))
+	sstore.AddCmdLineUpdate(update, utilfn.StrWithPos{Str: newSP.Str, Pos: newSP.Pos})
 	return update, nil
 }
 
@@ -3589,7 +3589,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	sstore.AddUpdate(update, sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))
 	return update, nil
 }
@@ -3731,7 +3731,7 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	hvdata.Cmds = cmds
 	update := &sstore.ModelUpdate{}
 	sstore.AddUpdate(update, *hvdata)
-	sstore.AddUpdate(update, (sstore.MainViewUpdate)(sstore.MainViewHistory))
+	sstore.AddMainViewUpdate(update, sstore.MainViewHistory)
 	return update, nil
 }
 
@@ -3972,7 +3972,7 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	cmd.Restarted = true
 	update := &sstore.ModelUpdate{}
 	sstore.AddLineUpdate(update, line, cmd)
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	screen, focusErr := focusScreenLine(ctx, ids.ScreenId, line.LineNum)
 	if focusErr != nil {
 		// not a fatal error, so just log
@@ -4126,8 +4126,8 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{BookmarksView: 1}, "bookmarks")
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.MainViewUpdate)(sstore.MainViewBookmarks))
-	sstore.AddUpdate(update, (sstore.BookmarksUpdate)(bms))
+	sstore.AddMainViewUpdate(update, sstore.MainViewBookmarks)
+	sstore.AddBookmarksUpdate(update, bms)
 	return update, nil
 }
 
@@ -4237,9 +4237,9 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	}
 	bms, err := sstore.GetBookmarks(ctx, "")
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, (sstore.MainViewUpdate)(sstore.MainViewBookmarks))
-	sstore.AddUpdate(update, (sstore.BookmarksUpdate)(bms))
-	sstore.AddUpdate(update, (sstore.SelectedBookmarkUpdate)(newBmId))
+	sstore.AddMainViewUpdate(update, sstore.MainViewBookmarks)
+	sstore.AddBookmarksUpdate(update, bms)
+	sstore.AddSelectedBookmarkUpdate(update, newBmId)
 	return update, nil
 }
 
@@ -4646,7 +4646,7 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 
@@ -4677,7 +4677,7 @@ func CSVViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 
@@ -4708,7 +4708,7 @@ func ImageViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 
@@ -4739,7 +4739,7 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddUpdate(update, (sstore.InteractiveUpdate)(pk.Interactive))
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 

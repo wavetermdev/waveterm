@@ -93,21 +93,6 @@ func GetUpdateItems[I ModelUpdateItem](update *ModelUpdate) []*I {
 	return ret
 }
 
-// only sets InfoError if InfoError is not already set
-func (update *ModelUpdate) AddInfoError(errStr string) {
-	infoUpdates := GetUpdateItems[InfoMsgType](update)
-
-	if len(infoUpdates) > 0 {
-		lastUpdate := infoUpdates[len(infoUpdates)-1]
-		if lastUpdate.InfoError == "" {
-			lastUpdate.InfoError = errStr
-			return
-		}
-	} else {
-		AddUpdate(update, InfoMsgType{InfoError: errStr})
-	}
-}
-
 type UpdateChannel struct {
 	ScreenId string
 	ClientId string

@@ -41,6 +41,10 @@ func (CmdLineUpdate) UpdateType() string {
 	return "cmdline"
 }
 
+func AddCmdLineUpdate(update *ModelUpdate, cmdLine utilfn.StrWithPos) {
+	AddUpdate(update, CmdLineUpdate(cmdLine))
+}
+
 type InfoMsgType struct {
 	InfoTitle     string   `json:"infotitle"`
 	InfoError     string   `json:"infoerror,omitempty"`
@@ -63,6 +67,21 @@ func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
 	newInfoUpdate := InfoMsgType{InfoMsg: msg}
 	AddUpdate(ret, newInfoUpdate)
 	return ret
+}
+
+// only sets InfoError if InfoError is not already set
+func AddInfoMsgUpdateError(update *ModelUpdate, errStr string) {
+	infoUpdates := GetUpdateItems[InfoMsgType](update)
+
+	if len(infoUpdates) > 0 {
+		lastUpdate := infoUpdates[len(infoUpdates)-1]
+		if lastUpdate.InfoError == "" {
+			lastUpdate.InfoError = errStr
+			return
+		}
+	} else {
+		AddUpdate(update, InfoMsgType{InfoError: errStr})
+	}
 }
 
 type ClearInfoUpdate bool
@@ -89,10 +108,18 @@ func (InteractiveUpdate) UpdateType() string {
 	return "interactive"
 }
 
+func AddInteractiveUpdate(update *ModelUpdate, interactive bool) {
+	AddUpdate(update, InteractiveUpdate(interactive))
+}
+
 type ConnectUpdate bool
 
 func (ConnectUpdate) UpdateType() string {
 	return "connect"
+}
+
+func AddConnectUpdate(update *ModelUpdate, connect bool) {
+	AddUpdate(update, ConnectUpdate(connect))
 }
 
 type MainViewUpdate string
@@ -101,16 +128,28 @@ func (MainViewUpdate) UpdateType() string {
 	return "mainview"
 }
 
+func AddMainViewUpdate(update *ModelUpdate, mainView string) {
+	AddUpdate(update, MainViewUpdate(mainView))
+}
+
 type BookmarksUpdate []*BookmarkType
 
 func (BookmarksUpdate) UpdateType() string {
 	return "bookmarks"
 }
 
+func AddBookmarksUpdate(update *ModelUpdate, bookmarks []*BookmarkType) {
+	AddUpdate(update, BookmarksUpdate(bookmarks))
+}
+
 type SelectedBookmarkUpdate string
 
 func (SelectedBookmarkUpdate) UpdateType() string {
 	return "selectedbookmark"
+}
+
+func AddSelectedBookmarkUpdate(update *ModelUpdate, selectedBookmark string) {
+	AddUpdate(update, SelectedBookmarkUpdate(selectedBookmark))
 }
 
 type HistoryViewData struct {
@@ -150,6 +189,10 @@ type OpenAICmdInfoChatUpdate []*packet.OpenAICmdInfoChatMessage
 
 func (OpenAICmdInfoChatUpdate) UpdateType() string {
 	return "openaicmdinfochat"
+}
+
+func AddOpenAICmdInfoChatUpdate(update *ModelUpdate, chatMessages []*packet.OpenAICmdInfoChatMessage) {
+	AddUpdate(update, OpenAICmdInfoChatUpdate(chatMessages))
 }
 
 type AlertMessageType struct {

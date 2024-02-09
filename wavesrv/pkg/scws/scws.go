@@ -178,7 +178,7 @@ func (ws *WSState) handleConnection() error {
 	for _, nrc := range nrcs {
 		sstore.AddUpdate(update, *nrc)
 	}
-	sstore.AddUpdate(update, (sstore.ConnectUpdate)(true))
+	sstore.AddConnectUpdate(update, true)
 	err = ws.Shell.WriteJson(update)
 	if err != nil {
 		return err
