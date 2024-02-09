@@ -260,6 +260,11 @@ type CmdDataType = {
     restarted?: boolean;
 };
 
+type LineUpdateType = {
+    line: LineType;
+    cmd: CmdDataType;
+};
+
 type PtyDataUpdateType = {
     screenid: string;
     lineid: string;
@@ -315,7 +320,7 @@ type ModelUpdateType = {
     activesessionid?: string;
     screen?: ScreenDataType;
     screenlines?: ScreenLinesType;
-    line?: LineType;
+    line?: LineUpdateType;
     cmd?: CmdDataType;
     info?: InfoType;
     cmdline?: StrWithPos;

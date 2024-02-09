@@ -829,7 +829,7 @@ class Model {
             }
             if (update.line != null) {
                 console.log("update.line", update.line);
-                this.addLineCmd(update.line, update.cmd, interactive);
+                this.addLineCmd(update.line.line, update.line.cmd, interactive);
             }
             if (update.cmd != null) {
                 console.log("update.cmd", update.cmd);
