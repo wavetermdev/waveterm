@@ -12,8 +12,6 @@ import { commandRtnHandler } from "../../../util/util";
 
 import "./linesettings.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
 class LineSettingsModal extends React.Component<{}, {}> {
     rendererDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "lineSettings-rendererDropdownActive" });

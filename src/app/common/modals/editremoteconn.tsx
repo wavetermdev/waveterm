@@ -12,8 +12,6 @@ import * as util from "../../../util/util";
 
 import "./editremoteconn.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 const PasswordUnchangedSentinel = "--unchanged--";
 
 @mobxReact.observer

@@ -21,8 +21,6 @@ import * as util from "../../../util/util";
 
 import "./createremoteconn.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
 class CreateRemoteConnModal extends React.Component<{}, {}> {
     tempAlias: OV<string>;

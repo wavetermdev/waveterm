@@ -18,8 +18,6 @@ import * as appconst from "../../appconst";
 
 import "./screensettings.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 const ScreenDeleteMessage = `
 Are you sure you want to delete this tab?
 

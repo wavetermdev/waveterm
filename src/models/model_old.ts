@@ -101,11 +101,6 @@ function keyHasNoMods(e: any) {
     return !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey;
 }
 
-type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
-type CV<V> = mobx.IComputedValue<V>;
-
 function isBlank(s: string) {
     return s == null || s == "";
 }

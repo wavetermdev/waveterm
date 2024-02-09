@@ -12,8 +12,6 @@ import { GlobalModel } from "../../models";
 
 import "./mustache.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
 class SimpleMustacheRenderer extends React.Component<
     {

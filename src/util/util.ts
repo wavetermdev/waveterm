@@ -7,8 +7,6 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import base64 from "base64-js";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 dayjs.extend(localizedFormat);
 
 function isBlank(s: string): boolean {

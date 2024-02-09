@@ -4,12 +4,9 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { debounce, throttle } from "throttle-debounce";
+import { debounce } from "throttle-debounce";
 import * as util from "../../util/util";
 import { GlobalModel } from "../../models";
-
-type OV<V> = mobx.IObservableValue<V>;
-type CV<V> = mobx.IComputedValue<V>;
 
 class SimpleBlobRendererModel {
     context: RendererContext;

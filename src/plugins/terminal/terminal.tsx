@@ -17,10 +17,6 @@ import "./terminal.less";
 
 dayjs.extend(localizedFormat);
 
-type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
-
 @mobxReact.observer
 class TerminalRenderer extends React.Component<
     {

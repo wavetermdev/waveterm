@@ -11,8 +11,6 @@ import { Markdown } from "../../app/common/elements";
 
 import "./openai.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 type OpenAIOutputType = {
     model: string;
     created: number;

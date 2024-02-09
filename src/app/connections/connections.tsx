@@ -13,8 +13,6 @@ import * as util from "../../util/util";
 
 import "./connections.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
 class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
     tableRef: React.RefObject<any> = React.createRef();

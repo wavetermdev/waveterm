@@ -11,8 +11,6 @@ import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../../util/k
 
 import "./inlinesettingstextedit.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
 class InlineSettingsTextEdit extends React.Component<
     {

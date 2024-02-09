@@ -9,8 +9,6 @@ import { Markdown } from "../../app/common/elements";
 
 import "./markdown.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 const MaxMarkdownSize = 200000;
 const DefaultMaxMarkdownWidth = 1000;
 
