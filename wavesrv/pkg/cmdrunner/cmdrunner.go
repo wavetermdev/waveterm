@@ -3730,8 +3730,7 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	hvdata.Lines = lines
 	hvdata.Cmds = cmds
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, *hvdata)
-	sstore.AddMainViewUpdate(update, sstore.MainViewHistory)
+	sstore.AddUpdate(update, &sstore.MainViewUpdate{MainView: sstore.MainViewHistory, HistoryView: hvdata})
 	return update, nil
 }
 
@@ -4126,8 +4125,11 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{BookmarksView: 1}, "bookmarks")
 	update := &sstore.ModelUpdate{}
-	sstore.AddMainViewUpdate(update, sstore.MainViewBookmarks)
-	sstore.AddBookmarksUpdate(update, bms)
+
+	sstore.AddUpdate(update, &sstore.MainViewUpdate{
+		MainView:      sstore.MainViewBookmarks,
+		BookmarksView: &sstore.BookmarksUpdate{Bookmarks: bms},
+	})
 	return update, nil
 }
 
@@ -4161,8 +4163,9 @@ func BookmarkSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving edited bookmark: %v", err)
 	}
+	bms := []*sstore.BookmarkType{bm}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, sstore.BookmarksUpdate{bm})
+	sstore.AddBookmarksUpdate(update, bms, nil)
 	sstore.AddUpdate(update, sstore.InfoMsgUpdate("bookmark edited"))
 	return update, nil
 }
@@ -4183,9 +4186,9 @@ func BookmarkDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, fmt.Errorf("error deleting bookmark: %v", err)
 	}
-	bms := sstore.BookmarksUpdate{{BookmarkId: bookmarkId, Remove: true}}
 	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, bms)
+	bms := []*sstore.BookmarkType{{BookmarkId: bookmarkId, Remove: true}}
+	sstore.AddBookmarksUpdate(update, bms, nil)
 	sstore.AddUpdate(update, sstore.InfoMsgUpdate("bookmark deleted"))
 	return update, nil
 }
@@ -4237,9 +4240,10 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	}
 	bms, err := sstore.GetBookmarks(ctx, "")
 	update := &sstore.ModelUpdate{}
-	sstore.AddMainViewUpdate(update, sstore.MainViewBookmarks)
-	sstore.AddBookmarksUpdate(update, bms)
-	sstore.AddSelectedBookmarkUpdate(update, newBmId)
+	sstore.AddUpdate(update, &sstore.MainViewUpdate{
+		MainView:      sstore.MainViewBookmarks,
+		BookmarksView: &sstore.BookmarksUpdate{Bookmarks: bms, SelectedBookmark: newBmId},
+	})
 	return update, nil
 }
 

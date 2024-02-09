@@ -125,24 +125,31 @@ func (ConnectUpdate) UpdateType() string {
 	return "connect"
 }
 
-type MainViewUpdate string
+type MainViewUpdate struct {
+	MainView      string           `json:"mainview"`
+	HistoryView   *HistoryViewData `json:"historyview,omitempty"`
+	BookmarksView *BookmarksUpdate `json:"bookmarksview,omitempty"`
+}
 
 func (MainViewUpdate) UpdateType() string {
 	return "mainview"
 }
 
-func AddMainViewUpdate(update *ModelUpdate, mainView string) {
-	AddUpdate(update, MainViewUpdate(mainView))
+type BookmarksUpdate struct {
+	Bookmarks        []*BookmarkType `json:"bookmarks"`
+	SelectedBookmark string          `json:"selectedbookmark,omitempty"`
 }
-
-type BookmarksUpdate []*BookmarkType
 
 func (BookmarksUpdate) UpdateType() string {
 	return "bookmarks"
 }
 
-func AddBookmarksUpdate(update *ModelUpdate, bookmarks []*BookmarkType) {
-	AddUpdate(update, BookmarksUpdate(bookmarks))
+func AddBookmarksUpdate(update *ModelUpdate, bookmarks []*BookmarkType, selectedBookmark *string) {
+	if selectedBookmark == nil {
+		AddUpdate(update, BookmarksUpdate{Bookmarks: bookmarks})
+	} else {
+		AddUpdate(update, BookmarksUpdate{Bookmarks: bookmarks, SelectedBookmark: *selectedBookmark})
+	}
 }
 
 type SelectedBookmarkUpdate string
@@ -163,10 +170,6 @@ type HistoryViewData struct {
 	HasMore       bool               `json:"hasmore"`
 	Lines         []*LineType        `json:"lines"`
 	Cmds          []*CmdType         `json:"cmds"`
-}
-
-func (HistoryViewData) UpdateType() string {
-	return "historyviewdata"
 }
 
 type RemoteEditType struct {

@@ -323,6 +323,17 @@ type ConnectUpdateType = {
     activesessionid: string;
 };
 
+type BookmarksUpdateType = {
+    bookmarks: BookmarkType[];
+    selectedbookmark: string;
+};
+
+type MainViewUpdateType = {
+    mainview: string;
+    historyview?: HistoryViewDataType;
+    bookmarksview?: BookmarksUpdateType;
+};
+
 type ModelUpdateType = {
     interactive: boolean;
     session?: SessionDataType;
@@ -336,11 +347,9 @@ type ModelUpdateType = {
     remote?: RemoteType;
     history?: HistoryInfoType;
     connect?: ConnectUpdateType;
-    mainview?: string;
-    bookmarks?: BookmarkType[];
-    selectedbookmark?: string;
+    mainview?: MainViewUpdateType;
+    bookmarks?: BookmarksUpdateType;
     clientdata?: ClientDataType;
-    historyviewdata?: HistoryViewDataType;
     remoteview?: RemoteViewType;
     openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
     alertmessage?: AlertMessageType;

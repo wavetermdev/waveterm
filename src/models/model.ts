@@ -846,92 +846,19 @@ class Model {
         console.log("genUpdate", genUpdate);
         genUpdate.forEach((update) => {
             console.log("update", update);
-            // Connect must be the first update in the list if it is present, otherwise it will wipe out all other updates
-            if (update.connect != null) {
-                console.log("connect update");
-                if (update.connect.screens != null) {
-                    this.screenMap.clear();
-                    this.updateScreens(update.connect.screens);
-                }
-                if (update.connect.sessions != null) {
-                    this.sessionList.clear();
-                    this.updateSessions(update.connect.sessions);
-                }
-                if (update.connect.remotes != null) {
-                    this.remotes.clear();
-                    this.updateRemotes(update.connect.remotes);
-                }
-                if (update.connect.activesessionid != null) {
-                    this.updateActiveSession(update.connect.activesessionid);
-                }
-                if (update.connect.screennumrunningcommands != null) {
-                    this.updateScreenNumRunningCommands(update.connect.screennumrunningcommands);
-                }
-                if (update.connect.screenstatusindicators != null) {
-                    this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
-                }
-            }
-            if (update.screen != null) {
-                this.updateScreens([update.screen]);
-            }
-            if (update.session != null) {
-                this.updateSessions([update.session]);
-            }
-            if (update.activesessionid != null) {
-                this.updateActiveSession(update.activesessionid);
-            }
-            if (update.line != null) {
-                this.addLineCmd(update.line.line, update.line.cmd, interactive);
-            }
-            if (update.cmd != null) {
-                this.updateCmd(update.cmd);
-            }
-            if (update.screenlines != null) {
-                this.updateScreenLines(update.screenlines, false);
-            }
-            if (update.remote != null) {
-                this.updateRemotes([update.remote]);
-                // This code's purpose is to show view remote connection modal when a new connection is added
-                if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
-                    showedRemotesModal = true;
-                    this.remotesModel.openReadModal(update.remote.remoteid);
-                }
-            }
-            if (update.mainview != null) {
-                if (update.mainview == "plugins") {
-                    this.pluginsModel.showPluginsView();
-                } else if (update.mainview == "bookmarks") {
-                    this.bookmarksModel.showBookmarksView(update.bookmarks, update.selectedbookmark);
-                } else if (update.mainview == "session") {
-                    this.activeMainView.set("session");
-                } else if (update.mainview == "history") {
-                    this.historyViewModel.showHistoryView(update.historyviewdata);
-                } else {
-                    console.log("invalid mainview in update:", update.mainview);
-                }
-            }
-            if (update.bookmarks != null) {
-                this.bookmarksModel.mergeBookmarks(update.bookmarks);
-            }
-            if (update.clientdata != null) {
-                this.clientData.set(update.clientdata);
-            }
             if (interactive) {
                 if (update.info != null) {
                     const info: InfoType = update.info;
                     this.inputModel.flashInfoMsg(info, info.timeoutms);
-                }
-                if (update.remoteview != null) {
+                } else if (update.remoteview != null) {
                     const rview: RemoteViewType = update.remoteview;
                     if (rview.remoteedit != null) {
                         this.remotesModel.openEditModal({ ...rview.remoteedit });
                     }
-                }
-                if (update.alertmessage != null) {
+                } else if (update.alertmessage != null) {
                     const alertMessage: AlertMessageType = update.alertmessage;
                     this.showAlert(alertMessage);
-                }
-                if (update.history != null) {
+                } else if (update.history != null) {
                     if (
                         uiContext.sessionid == update.history.sessionid &&
                         uiContext.screenid == update.history.screenid
@@ -939,23 +866,95 @@ class Model {
                         this.inputModel.setHistoryInfo(update.history);
                     }
                 }
-            }
-
-            if (update.cmdline != null) {
-                this.inputModel.updateCmdLine(update.cmdline);
-            }
-            if (update.openaicmdinfochat != null) {
-                this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
-            }
-            if (update.screenstatusindicator != null) {
-                this.updateScreenStatusIndicators([update.screenstatusindicator]);
-            }
-            if (update.screennumrunningcommand != null) {
-                this.updateScreenNumRunningCommands([update.screennumrunningcommand]);
-            }
-            if (update.userinputrequest != null) {
-                let userInputRequest: UserInputRequest = update.userinputrequest;
-                this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+            } else {
+                if (update.connect != null) {
+                    console.log("connect update");
+                    if (update.connect.screens != null) {
+                        this.screenMap.clear();
+                        this.updateScreens(update.connect.screens);
+                    }
+                    if (update.connect.sessions != null) {
+                        this.sessionList.clear();
+                        this.updateSessions(update.connect.sessions);
+                    }
+                    if (update.connect.remotes != null) {
+                        this.remotes.clear();
+                        this.updateRemotes(update.connect.remotes);
+                    }
+                    if (update.connect.activesessionid != null) {
+                        this.updateActiveSession(update.connect.activesessionid);
+                    }
+                    if (update.connect.screennumrunningcommands != null) {
+                        this.updateScreenNumRunningCommands(update.connect.screennumrunningcommands);
+                    }
+                    if (update.connect.screenstatusindicators != null) {
+                        this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
+                    }
+                } else if (update.screen != null) {
+                    this.updateScreens([update.screen]);
+                } else if (update.session != null) {
+                    this.updateSessions([update.session]);
+                } else if (update.activesessionid != null) {
+                    this.updateActiveSession(update.activesessionid);
+                } else if (update.line != null) {
+                    this.addLineCmd(update.line.line, update.line.cmd, interactive);
+                } else if (update.cmd != null) {
+                    this.updateCmd(update.cmd);
+                } else if (update.screenlines != null) {
+                    this.updateScreenLines(update.screenlines, false);
+                } else if (update.remote != null) {
+                    this.updateRemotes([update.remote]);
+                    // This code's purpose is to show view remote connection modal when a new connection is added
+                    if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
+                        showedRemotesModal = true;
+                        this.remotesModel.openReadModal(update.remote.remoteid);
+                    }
+                } else if (update.mainview != null) {
+                    switch (update.mainview.mainview) {
+                        case "session":
+                            this.activeMainView.set("session");
+                            break;
+                        case "history":
+                            if (update.mainview.historyview != null) {
+                                this.historyViewModel.showHistoryView(update.mainview.historyview);
+                            } else {
+                                console.log("invalid historyview in update:", update.mainview);
+                            }
+                            break;
+                        case "bookmarks":
+                            if (update.mainview.bookmarksview != null) {
+                                this.bookmarksModel.showBookmarksView(
+                                    update.mainview.bookmarksview?.bookmarks ?? [],
+                                    update.mainview.bookmarksview?.selectedbookmark
+                                );
+                            } else {
+                                console.log("invalid bookmarksview in update:", update.mainview);
+                            }
+                            break;
+                        case "plugins":
+                            this.pluginsModel.showPluginsView();
+                            break;
+                        default:
+                            console.log("invalid mainview in update:", update.mainview);
+                    }
+                } else if (update.bookmarks != null) {
+                    if (update.bookmarks.bookmarks != null) {
+                        this.bookmarksModel.mergeBookmarks(update.bookmarks.bookmarks);
+                    }
+                } else if (update.clientdata != null) {
+                    this.clientData.set(update.clientdata);
+                } else if (update.cmdline != null) {
+                    this.inputModel.updateCmdLine(update.cmdline);
+                } else if (update.openaicmdinfochat != null) {
+                    this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
+                } else if (update.screenstatusindicator != null) {
+                    this.updateScreenStatusIndicators([update.screenstatusindicator]);
+                } else if (update.screennumrunningcommand != null) {
+                    this.updateScreenNumRunningCommands([update.screennumrunningcommand]);
+                } else if (update.userinputrequest != null) {
+                    let userInputRequest: UserInputRequest = update.userinputrequest;
+                    this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                }
             }
         });
         if (connect) {
