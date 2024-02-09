@@ -20,6 +20,7 @@ class FileViewRendererModel {
     loading: OV<boolean>;
     isDone: OV<boolean>;
     dirList: mobx.IObservableArray<any>;
+    version: OV<number>;
 
     constructor() {
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
@@ -97,7 +98,12 @@ class FileViewRendererModel {
     }
 }
 
+@mobxReact.observer
 class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }> {
+    constructor(props) {
+        super(props);
+    }
+
     renderFile(file: any, index: number) {
         let keyString = "file-" + index;
         return <div key={keyString}>{file.name}</div>;
