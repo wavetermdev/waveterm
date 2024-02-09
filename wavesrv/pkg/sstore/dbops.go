@@ -601,8 +601,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		return nil, err
 	}
 	update := &ModelUpdate{}
-	AddUpdate(update, *session)
-	AddUpdate(update, *newScreen)
+	AddUpdate(update, *session, *newScreen)
 	if activate {
 		AddUpdate(update, ActiveSessionIdUpdate(newSessionId))
 	}
@@ -893,7 +892,7 @@ func UpdateWithAddNewOpenAICmdInfoPacket(ctx context.Context, screenId string, p
 
 func UpdateWithCurrentOpenAICmdInfoChat(screenId string, update *ModelUpdate) (*ModelUpdate, error) {
 	ret := &ModelUpdate{}
-	AddOpenAICmdInfoChatUpdate(ret, ScreenMemGetCmdInfoChat(screenId).Messages)
+	AddUpdate(ret, OpenAICmdInfoChatUpdate(ScreenMemGetCmdInfoChat(screenId).Messages))
 	return ret, nil
 }
 
@@ -1121,8 +1120,7 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 		return nil, err
 	}
 	update := &ModelUpdate{}
-	AddUpdate(update, (ActiveSessionIdUpdate)(sessionId))
-	AddUpdate(update, *bareSession)
+	AddUpdate(update, ActiveSessionIdUpdate(sessionId), *bareSession)
 	memState := GetScreenMemState(screenId)
 	if memState != nil {
 		AddCmdLineUpdate(update, memState.CmdInputText)
@@ -1284,8 +1282,7 @@ func DeleteScreen(ctx context.Context, screenId string, sessionDel bool, update 
 	if update == nil {
 		update = &ModelUpdate{}
 	}
-	AddUpdate(update, *screenTombstone)
-	AddUpdate(update, ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
+	AddUpdate(update, *screenTombstone, ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
 	if isActive {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
 		if err != nil {
@@ -1586,8 +1583,7 @@ func DeleteScreenLines(ctx context.Context, screenId string) (*ModelUpdate, erro
 		screenLines.Lines = append(screenLines.Lines, line)
 	}
 	ret := &ModelUpdate{}
-	AddUpdate(ret, *screen)
-	AddUpdate(ret, *screenLines)
+	AddUpdate(ret, *screen, *screenLines)
 	return ret, nil
 }
 
@@ -1674,7 +1670,7 @@ func DeleteSession(ctx context.Context, sessionId string) (UpdatePacket, error) 
 	}
 	GoDeleteScreenDirs(screenIds...)
 	if newActiveSessionId != "" {
-		AddUpdate(update, (ActiveSessionIdUpdate)(newActiveSessionId))
+		AddUpdate(update, ActiveSessionIdUpdate(newActiveSessionId))
 	}
 	AddUpdate(update, SessionType{SessionId: sessionId, Remove: true})
 	if sessionTombstone != nil {
@@ -1734,7 +1730,7 @@ func ArchiveSession(ctx context.Context, sessionId string) (*ModelUpdate, error)
 		AddUpdate(update, *bareSession)
 	}
 	if newActiveSessionId != "" {
-		AddUpdate(update, (ActiveSessionIdUpdate)(newActiveSessionId))
+		AddUpdate(update, ActiveSessionIdUpdate(newActiveSessionId))
 	}
 	return update, nil
 }
@@ -1771,7 +1767,7 @@ func UnArchiveSession(ctx context.Context, sessionId string, activate bool) (*Mo
 		AddUpdate(update, *bareSession)
 	}
 	if activate {
-		AddUpdate(update, (ActiveSessionIdUpdate)(sessionId))
+		AddUpdate(update, ActiveSessionIdUpdate(sessionId))
 	}
 	return update, nil
 }

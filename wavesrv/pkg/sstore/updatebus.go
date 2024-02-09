@@ -22,6 +22,7 @@ const ModelUpdateStr = "model"
 const UpdateChSize = 100
 
 type UpdatePacket interface {
+	// The key to use when marshalling to JSON and interpreting in the client
 	UpdateType() string
 	Clean()
 }
@@ -41,6 +42,7 @@ func (*PtyDataUpdate) UpdateType() string {
 
 func (pdu *PtyDataUpdate) Clean() {}
 
+// A collection of independent model updates to be sent to the client. Will be evaluated in order on the client.
 type ModelUpdate []*ModelUpdateItem
 
 func (*ModelUpdate) UpdateType() string {
@@ -58,10 +60,13 @@ func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rtn)
 }
 
+// An interface for all model updates
 type ModelUpdateItem interface {
+	// The key to use when marshalling to JSON and interpreting in the client
 	UpdateType() string
 }
 
+// Clean the ClientData in an update, if present
 func (update *ModelUpdate) Clean() {
 	if update == nil {
 		return
@@ -77,13 +82,14 @@ func (update *ModelUpdate) append(item *ModelUpdateItem) {
 	*update = append(*update, item)
 }
 
+// Add a collection of model updates to the update
 func AddUpdate(update *ModelUpdate, item ...ModelUpdateItem) {
 	for _, i := range item {
 		update.append(&i)
 	}
 }
 
-// Returns the first value for the key, nil if not found
+// Returns the items in the update that are of type I
 func GetUpdateItems[I ModelUpdateItem](update *ModelUpdate) []*I {
 	ret := make([]*I, 0)
 	for _, item := range *update {

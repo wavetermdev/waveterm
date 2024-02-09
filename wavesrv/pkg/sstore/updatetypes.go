@@ -152,16 +152,6 @@ func AddBookmarksUpdate(update *ModelUpdate, bookmarks []*BookmarkType, selected
 	}
 }
 
-type SelectedBookmarkUpdate string
-
-func (SelectedBookmarkUpdate) UpdateType() string {
-	return "selectedbookmark"
-}
-
-func AddSelectedBookmarkUpdate(update *ModelUpdate, selectedBookmark string) {
-	AddUpdate(update, SelectedBookmarkUpdate(selectedBookmark))
-}
-
 type HistoryViewData struct {
 	Items         []*HistoryItemType `json:"items"`
 	Offset        int                `json:"offset"`
@@ -195,10 +185,6 @@ type OpenAICmdInfoChatUpdate []*packet.OpenAICmdInfoChatMessage
 
 func (OpenAICmdInfoChatUpdate) UpdateType() string {
 	return "openaicmdinfochat"
-}
-
-func AddOpenAICmdInfoChatUpdate(update *ModelUpdate, chatMessages []*packet.OpenAICmdInfoChatMessage) {
-	AddUpdate(update, OpenAICmdInfoChatUpdate(chatMessages))
 }
 
 type AlertMessageType struct {
