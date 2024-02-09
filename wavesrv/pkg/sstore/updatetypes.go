@@ -202,3 +202,9 @@ type ScreenNumRunningCommandsUpdate ScreenNumRunningCommandsType
 func (ScreenNumRunningCommandsUpdate) UpdateType() string {
 	return "screennumrunningcommands"
 }
+
+type UserInputRequestUpdate UserInputRequestType
+
+func (UserInputRequestUpdate) UpdateType() string {
+	return "userinputrequest"
+}

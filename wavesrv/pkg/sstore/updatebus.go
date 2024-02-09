@@ -4,9 +4,15 @@
 package sstore
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 )
 
 var MainBus *UpdateBus = MakeUpdateBus()
@@ -154,6 +160,15 @@ type HistoryInfoType struct {
 	Show        bool               `json:"show"`
 }
 
+type UserInputRequestType struct {
+	RequestId    string `json:"requestid"`
+	QueryText    string `json:"querytext"`
+	ResponseType string `json:"responsetype"`
+	Title        string `json:"title"`
+	Markdown     bool   `json:"markdown"`
+	TimeoutMs    int    `json:"timeoutms"`
+}
+
 type UpdateChannel struct {
 	ScreenId string
 	ClientId string
@@ -168,14 +183,16 @@ func (uch UpdateChannel) Match(screenId string) bool {
 }
 
 type UpdateBus struct {
-	Lock     *sync.Mutex
-	Channels map[string]UpdateChannel
+	Lock        *sync.Mutex
+	Channels    map[string]UpdateChannel
+	UserInputCh map[string](chan *scpacket.UserInputResponsePacketType)
 }
 
 func MakeUpdateBus() *UpdateBus {
 	return &UpdateBus{
-		Lock:     &sync.Mutex{},
-		Channels: make(map[string]UpdateChannel),
+		Lock:        &sync.Mutex{},
+		Channels:    make(map[string]UpdateChannel),
+		UserInputCh: make(map[string](chan *scpacket.UserInputResponsePacketType)),
 	}
 }
 
@@ -253,4 +270,59 @@ type ScreenStatusIndicatorType struct {
 type ScreenNumRunningCommandsType struct {
 	ScreenId string `json:"screenid"`
 	Num      int    `json:"num"`
+}
+
+func (bus *UpdateBus) registerUserInputChannel() (string, chan *scpacket.UserInputResponsePacketType) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
+
+	id := uuid.New().String()
+	uich := make(chan *scpacket.UserInputResponsePacketType, 1)
+
+	bus.UserInputCh[id] = uich
+	return id, uich
+}
+
+func (bus *UpdateBus) unregisterUserInputChannel(id string) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
+
+	delete(bus.UserInputCh, id)
+}
+
+func (bus *UpdateBus) GetUserInputChannel(id string) (chan *scpacket.UserInputResponsePacketType, bool) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
+
+	uich, ok := bus.UserInputCh[id]
+	return uich, ok
+}
+
+func (bus *UpdateBus) GetUserInput(ctx context.Context, userInputRequest *UserInputRequestType) (*scpacket.UserInputResponsePacketType, error) {
+	id, uich := bus.registerUserInputChannel()
+	defer bus.unregisterUserInputChannel(id)
+
+	userInputRequest.RequestId = id
+	deadline, _ := ctx.Deadline()
+	userInputRequest.TimeoutMs = int(time.Until(deadline).Milliseconds()) - 500
+	update := &ModelUpdate{}
+	AddUpdate(update, (UserInputRequestUpdate)(*userInputRequest))
+	bus.SendUpdate(update)
+	log.Printf("test: %+v", userInputRequest)
+
+	var response *scpacket.UserInputResponsePacketType
+	var err error
+	// prepare to receive response
+	select {
+	case resp := <-uich:
+		response = resp
+	case <-ctx.Done():
+		return nil, fmt.Errorf("Timed out waiting for user input")
+	}
+
+	if response.ErrorMsg != "" {
+		err = fmt.Errorf(response.ErrorMsg)
+	}
+
+	return response, err
 }

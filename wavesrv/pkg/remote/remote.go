@@ -40,7 +40,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const UseSshLibrary = false
+const UseSshLibrary = true
 
 const RemoteTypeMShell = "mshell"
 const DefaultTerm = "xterm-256color"

@@ -51,6 +51,8 @@ import {
     HistoryViewDataType,
     AlertMessageType,
     HistorySearchParams,
+    UserInputRequest,
+    UserInputResponsePacket,
     FocusTypeStrs,
     ScreenLinesType,
     HistoryTypeStrs,
@@ -3376,14 +3378,14 @@ class RemotesModel {
 }
 
 class ModalsModel {
-    store: OArr<T.ModalStoreEntry> = mobx.observable.array([], { name: "ModalsModel-store" });
+    store: OArr<T.ModalStoreEntry> = mobx.observable.array([], { name: "ModalsModel-store", deep: false });
 
-    pushModal(modalId: string) {
+    pushModal(modalId: string, props?: any) {
         const modalFactory = modalsRegistry[modalId];
 
         if (modalFactory && !this.store.some((modal) => modal.id === modalId)) {
             mobx.action(() => {
-                this.store.push({ id: modalId, component: modalFactory, uniqueKey: uuidv4() });
+                this.store.push({ id: modalId, component: modalFactory, uniqueKey: uuidv4(), props: props });
             })();
         }
     }
@@ -4184,6 +4186,10 @@ class Model {
                 this.getScreenById_single(snc.screenid)?.setNumRunningCmds(snc.num);
             }
         }
+        if ("userinputrequest" in update) {
+            let userInputRequest: UserInputRequest = update.userinputrequest;
+            this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+        }
     }
 
     updateRemotes(remotes: RemoteType[]): void {
@@ -4589,6 +4595,10 @@ class Model {
 
     sendInputPacket(inputPacket: any) {
         this.ws.pushMessage(inputPacket);
+    }
+
+    sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
+        this.ws.pushMessage(userInputResponsePacket);
     }
 
     sendCmdInputText(screenId: string, sp: T.StrWithPos) {

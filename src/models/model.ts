@@ -30,6 +30,8 @@ import {
     RendererContext,
     ClientDataType,
     AlertMessageType,
+    UserInputRequest,
+    UserInputResponsePacket,
     ScreenLinesType,
     RemoteViewType,
     CommandRtnType,
@@ -911,6 +913,10 @@ class Model {
                     update.screennumrunningcommand.num
                 );
             }
+            if (update.userinputrequest != null) {
+                let userInputRequest: UserInputRequest = update.userinputrequest;
+                this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+            }
         });
     }
 
@@ -1317,6 +1323,10 @@ class Model {
 
     sendInputPacket(inputPacket: any) {
         this.ws.pushMessage(inputPacket);
+    }
+
+    sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
+        this.ws.pushMessage(userInputResponsePacket);
     }
 
     sendCmdInputText(screenId: string, sp: StrWithPos) {
