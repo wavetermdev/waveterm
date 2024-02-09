@@ -623,13 +623,17 @@ class InputModel {
     }
 
     openAIAssistantChat(): void {
-        this.aIChatShow.set(true);
-        this.setAIChatFocus();
+        mobx.action(() => {
+            this.aIChatShow.set(true);
+            this.setAIChatFocus();
+        })();
     }
 
     closeAIAssistantChat(): void {
-        this.aIChatShow.set(false);
-        this.giveFocus();
+        mobx.action(() => {
+            this.aIChatShow.set(false);
+            this.giveFocus();
+        })();
     }
 
     clearAIAssistantChat(): void {

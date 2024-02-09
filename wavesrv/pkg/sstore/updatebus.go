@@ -4,6 +4,7 @@
 package sstore
 
 import (
+	"encoding/json"
 	"log"
 	"sync"
 )
@@ -40,14 +41,16 @@ func (*ModelUpdate) UpdateType() string {
 	return ModelUpdateStr
 }
 
-func (mu ModelUpdate) Serialize() []map[string]any {
-	var rtn []map[string]any
-	for _, u := range mu {
+func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
+	log.Printf("modelupdate serialize mu=%+v\n", mu)
+	rtn := make([]map[string]any, 0)
+	for _, u := range *mu {
 		m := make(map[string]any)
 		m[(*u).UpdateType()] = u
 		rtn = append(rtn, m)
 	}
-	return rtn
+	log.Printf("modelupdate serialize rtn=%+v\n", rtn)
+	return json.Marshal(rtn)
 }
 
 type ModelUpdateItem interface {
@@ -55,17 +58,24 @@ type ModelUpdateItem interface {
 }
 
 func (update *ModelUpdate) Clean() {
+	log.Printf("update clean update=%+v\n", update)
 	if update == nil {
 		return
 	}
-	update = nil
+	clientDataUpdates := GetUpdateItems[ClientDataUpdate](update)
+	if len(clientDataUpdates) > 0 {
+		lastUpdate := clientDataUpdates[len(clientDataUpdates)-1]
+		(*ClientData)(lastUpdate).Clean()
+	}
+	log.Printf("update clean done update=%+v\n", update)
 }
 
-func (update ModelUpdate) append(item *ModelUpdateItem) {
-	update = append(update, item)
+func (update *ModelUpdate) append(item *ModelUpdateItem) {
+	*update = append(*update, item)
 }
 
 func AddUpdate[I ModelUpdateItem](update *ModelUpdate, item I) {
+	log.Printf("update: %+v add item of type %v: %+v\n", update, item.UpdateType(), item)
 	updateItem := (ModelUpdateItem)(item)
 	update.append(&updateItem)
 }
@@ -205,6 +215,7 @@ func (bus *UpdateBus) UnregisterChannel(clientId string) {
 }
 
 func (bus *UpdateBus) SendUpdate(update UpdatePacket) {
+	log.Printf("updatebus sendupdate update=%+v\n", update)
 	if update == nil {
 		return
 	}
@@ -238,10 +249,6 @@ func (bus *UpdateBus) SendScreenUpdate(screenId string, update UpdatePacket) {
 			}
 		}
 	}
-}
-
-type BookmarksViewType struct {
-	Bookmarks []*BookmarkType `json:"bookmarks"`
 }
 
 type ScreenStatusIndicatorType struct {

@@ -1530,6 +1530,7 @@ func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusI
 	if err != nil {
 		return err
 	}
+	log.Printf("SetStatusIndicatorLevel: sending update: %+v\n", update)
 	MainBus.SendUpdate(update)
 	return nil
 }
@@ -1560,5 +1561,6 @@ func IncrementNumRunningCmds(screenId string, delta int) {
 	log.Printf("IncrementNumRunningCmds: screenId=%s, delta=%d\n", screenId, delta)
 	update := &ModelUpdate{}
 	IncrementNumRunningCmds_Update(update, screenId, delta)
+	log.Printf("IncrementNumRunningCmds: sending update: %+v\n", update)
 	MainBus.SendUpdate(update)
 }

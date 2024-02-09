@@ -569,7 +569,7 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 // returns sessionId
 // if sessionName == "", it will be generated
 func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*ModelUpdate, error) {
-	var update *ModelUpdate
+	var newScreen *ScreenUpdate
 	newSessionId := scbase.GenWaveUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		names := tx.SelectStrings(`SELECT name FROM session`)
@@ -582,7 +582,11 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		if err != nil {
 			return err
 		}
-		update = screenUpdate
+		screenUpdateItems := GetUpdateItems[ScreenUpdate](screenUpdate)
+		if len(screenUpdateItems) < 1 {
+			return fmt.Errorf("no screen update items")
+		}
+		newScreen = screenUpdateItems[0]
 		if activate {
 			query = `UPDATE client SET activesessionid = ?`
 			tx.Exec(query, newSessionId)
@@ -591,6 +595,16 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 	})
 	if txErr != nil {
 		return nil, txErr
+	}
+	session, err := GetSessionById(ctx, newSessionId)
+	if err != nil {
+		return nil, err
+	}
+	update := &ModelUpdate{}
+	AddUpdate(update, (SessionUpdate)(*session))
+	AddUpdate(update, *newScreen)
+	if activate {
+		AddUpdate(update, ActiveSessionIdUpdate(newSessionId))
 	}
 	return update, nil
 }

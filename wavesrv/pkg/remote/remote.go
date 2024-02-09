@@ -680,6 +680,7 @@ func (msh *MShellProc) NotifyRemoteUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
 	update := &sstore.ModelUpdate{}
 	sstore.AddUpdate(update, (sstore.RemoteUpdate)(rstate))
+	log.Printf("[remote] sending update for remote %s\n", rstate.RemoteId)
 	sstore.MainBus.SendUpdate(update)
 }
 
@@ -946,6 +947,7 @@ func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
 	}
+	log.Printf("[remote] sending pty update for remote %s\n", remoteId)
 	sstore.MainBus.SendUpdate(update)
 }
 
@@ -2075,6 +2077,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
+	log.Printf("[remote] cmd done: %s, update: %+v\n", donePk.CK, update)
 	sstore.MainBus.SendUpdate(update)
 	return
 }
@@ -2110,6 +2113,7 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		sstore.AddUpdate(update, (sstore.ScreenUpdate)(*screen))
 	}
 	go pushNumRunningCmdsUpdate(&finalPk.CK, -1)
+	log.Printf("[remote] cmd final: %s, update: %+v\n", finalPk.CK, update)
 	sstore.MainBus.SendUpdate(update)
 }
 
@@ -2177,6 +2181,7 @@ func sendScreenUpdates(screens []*sstore.ScreenType) {
 	for _, screen := range screens {
 		update := &sstore.ModelUpdate{}
 		sstore.AddUpdate(update, (sstore.ScreenUpdate)(*screen))
+		log.Printf("[remote] screen update: %s, update: %+v\n", screen.ScreenId, update)
 		sstore.MainBus.SendUpdate(update)
 	}
 }

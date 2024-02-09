@@ -69,14 +69,19 @@ func (ws *WSShell) WritePing() error {
 }
 
 func (ws *WSShell) WriteJson(val interface{}) error {
+	log.Printf("WriteJson val=%+v\n", val)
 	if ws.IsClosed() {
+		log.Printf("cannot write packet, empty or closed wsshell\n")
 		return fmt.Errorf("cannot write packet, empty or closed wsshell")
 	}
 	barr, err := json.Marshal(val)
 	if err != nil {
+		log.Printf("Error marshalling json: %v\n", err)
 		return err
 	}
+	log.Printf("WriteJson barr=%s\n", string(barr))
 	ws.WriteChan <- barr
+	log.Printf("WriteJson done\n")
 	return nil
 }
 

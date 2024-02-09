@@ -837,16 +837,16 @@ class Model {
                 this.updateScreenLines(update.screenlines, false);
             }
             if (update.remote != null) {
+                console.log("update.remote", update.remote);
                 if (update.connect) {
                     this.remotes.clear();
                 }
-                if (!update.remote) {
-                    this.updateRemotes([update.remote]);
-                    // This code's purpose is to show view remote connection modal when a new connection is added
-                    if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
-                        showedRemotesModal = true;
-                        this.remotesModel.openReadModal(update.remote.remoteid);
-                    }
+                this.updateRemotes([update.remote]);
+                // This code's purpose is to show view remote connection modal when a new connection is added
+                if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
+                    console.log("showing remotes modal");
+                    showedRemotesModal = true;
+                    this.remotesModel.openReadModal(update.remote.remoteid);
                 }
             }
             if (update.mainview != null) {

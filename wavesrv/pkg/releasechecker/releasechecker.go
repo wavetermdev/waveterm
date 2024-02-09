@@ -3,6 +3,7 @@ package releasechecker
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/google/go-github/v57/github"
 	"golang.org/x/mod/semver"
@@ -68,6 +69,7 @@ func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error
 
 	update := &sstore.ModelUpdate{}
 	sstore.AddUpdate(update, (sstore.ClientDataUpdate)(*clientData))
+	log.Printf("[releasechecker] Sending update: %+v\n", update)
 	sstore.MainBus.SendUpdate(update)
 
 	return Success, nil
