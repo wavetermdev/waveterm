@@ -6,6 +6,8 @@ package remote
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
@@ -33,6 +35,86 @@ type UserInputCancelError struct {
 
 func (uice UserInputCancelError) Error() string {
 	return uice.Err.Error()
+}
+
+// This exists to trick the ssh library into continuing to try
+// different public keys even when the current key cannot be
+// properly parsed
+func createDummySigner() ([]ssh.Signer, error) {
+	dummyKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return nil, err
+	}
+	dummySigner, err := ssh.NewSignerFromKey(dummyKey)
+	if err != nil {
+		return nil, err
+	}
+	return []ssh.Signer{dummySigner}, nil
+
+}
+
+// This is a workaround to only process one identity file at a time,
+// even if they have passphrases. It must be combined with retryable
+// authentication to work properly
+//
+// Despite returning an array of signers, we only ever provide one since
+// it allows proper user interaction in between attempts
+//
+// A significant number of errors end up returning dummy values as if
+// they were successes. An error in this function prevents any other
+// keys from being attempted. But if there's an error because of a dummy
+// file, the library can still try again with a new key.
+func createPublicKeyCallback(identityFiles *[]string, passphrase string) func() ([]ssh.Signer, error) {
+	return func() ([]ssh.Signer, error) {
+		log.Printf("this should happen twice\n")
+		if len(*identityFiles) == 0 {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		identityFile := (*identityFiles)[0]
+		*identityFiles = (*identityFiles)[1:]
+		privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
+		if err != nil {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		signer, err := ssh.ParsePrivateKey(privateKey)
+		if err == nil {
+			return []ssh.Signer{signer}, err
+		}
+		if _, ok := err.(*ssh.PassphraseMissingError); !ok {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
+		if err == nil {
+			return []ssh.Signer{signer}, err
+		}
+		if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		request := &sstore.UserInputRequestType{
+			ResponseType: "text",
+			QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
+			Title:        "Publickey Auth + Passphrase",
+		}
+		ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancelFn()
+		response, err := sstore.MainBus.GetUserInput(ctx, request)
+		if err != nil {
+			// this is an error where we actually do want to stop
+			// trying keys
+			return nil, UserInputCancelError{Err: err}
+		}
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
+		if err != nil {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		return []ssh.Signer{signer}, err
+	}
 }
 
 func createPublicKeyAuth(identityFile string, passphrase string) (ssh.Signer, error) {
@@ -410,23 +492,17 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 
 func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 	ssh_config.ReloadConfigs()
-	configIdentity, _ := ssh_config.GetStrict(opts.SSHHost, "IdentityFile")
-	var identityFile string
-	if opts.SSHIdentity != "" {
-		identityFile = opts.SSHIdentity
-	} else {
-		identityFile = configIdentity
-	}
+	configIdentityFiles := ssh_config.GetAll(opts.SSHHost, "IdentityFile")
+	identityFiles := []string{opts.SSHIdentity}
+	identityFiles = append(identityFiles, configIdentityFiles...)
 
 	hostKeyCallback, err := createHostKeyCallback(opts)
 	if err != nil {
 		return nil, err
 	}
+	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(&identityFiles, opts.SSHPassword))
 	var authMethods []ssh.AuthMethod
-	publicKeySigner, err := createPublicKeyAuth(identityFile, opts.SSHPassword)
-	if err == nil {
-		authMethods = append(authMethods, ssh.PublicKeys(publicKeySigner))
-	}
+	authMethods = append(authMethods, ssh.RetryableAuthMethod(publicKeyCallback, len(identityFiles)))
 	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword)), 2))
 	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword)), 2))
 
