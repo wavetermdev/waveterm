@@ -325,7 +325,6 @@ func (bus *UpdateBus) GetUserInput(ctx context.Context, userInputRequest *UserIn
 	userInputRequest.TimeoutMs = int(time.Until(deadline).Milliseconds()) - 500
 	update := &ModelUpdate{UserInputRequest: userInputRequest}
 	bus.SendUpdate(update)
-	log.Printf("test: %+v", userInputRequest)
 
 	var response *scpacket.UserInputResponsePacketType
 	var err error
