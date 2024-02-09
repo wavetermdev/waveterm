@@ -54,6 +54,7 @@ func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
 		m[(*u).UpdateType()] = u
 		rtn = append(rtn, m)
 	}
+	log.Printf("marshaljson: %v", rtn)
 	return json.Marshal(rtn)
 }
 

@@ -314,6 +314,15 @@ type ScreenNumRunningCommandsUpdateType = {
     num: number;
 };
 
+type ConnectUpdateType = {
+    sessions: SessionDataType[];
+    screens: ScreenDataType[];
+    remotes: RemoteType[];
+    screenstatusindicators: ScreenStatusIndicatorUpdateType[];
+    screennumrunningcommands: ScreenNumRunningCommandsUpdateType[];
+    activesessionid: string;
+};
+
 type ModelUpdateType = {
     interactive: boolean;
     session?: SessionDataType;
@@ -326,7 +335,7 @@ type ModelUpdateType = {
     cmdline?: StrWithPos;
     remote?: RemoteType;
     history?: HistoryInfoType;
-    connect?: boolean;
+    connect?: ConnectUpdateType;
     mainview?: string;
     bookmarks?: BookmarkType[];
     selectedbookmark?: string;
@@ -870,6 +879,7 @@ export type {
     CmdInputTextPacketType,
     OpenAICmdInfoChatMessageType,
     ScreenStatusIndicatorUpdateType,
+    ScreenNumRunningCommandsUpdateType,
     OV,
     OArr,
     OMap,

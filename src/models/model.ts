@@ -43,6 +43,8 @@ import {
     OArr,
     OMap,
     CV,
+    ScreenNumRunningCommandsUpdateType,
+    ScreenStatusIndicatorUpdateType,
 } from "../types/types";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "../app/line/lineutil";
@@ -773,6 +775,59 @@ class Model {
         })();
     }
 
+    updateScreens(screens: ScreenDataType[]): void {
+        const mods = genMergeDataMap(
+            this.screenMap,
+            screens,
+            (s: Screen) => s.screenId,
+            (sdata: ScreenDataType) => sdata.screenid,
+            (sdata: ScreenDataType) => new Screen(sdata, this)
+        );
+        for (const screenId of mods.removed) {
+            this.removeScreenLinesByScreenId(screenId);
+        }
+    }
+
+    updateSessions(sessions: SessionDataType[]): void {
+        genMergeData(
+            this.sessionList,
+            sessions,
+            (s: Session) => s.sessionId,
+            (sdata: SessionDataType) => sdata.sessionid,
+            (sdata: SessionDataType) => new Session(sdata, this),
+            (s: Session) => s.sessionIdx.get()
+        );
+    }
+
+    updateActiveSession(sessionId: string): void {
+        const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
+
+        if (sessionId != null) {
+            const newSessionId = sessionId;
+            if (this.activeSessionId.get() != newSessionId) {
+                this.activeSessionId.set(newSessionId);
+            }
+        }
+        const [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
+        if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
+            this.activeMainView.set("session");
+            this.deactivateScreenLines();
+            this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+        }
+    }
+
+    updateScreenNumRunningCommands(numRunningCommandUpdates: ScreenNumRunningCommandsUpdateType[]) {
+        for (const update of numRunningCommandUpdates) {
+            this.getScreenById_single(update.screenid)?.setNumRunningCmds(update.num);
+        }
+    }
+
+    updateScreenStatusIndicators(screenStatusIndicators: ScreenStatusIndicatorUpdateType[]) {
+        for (const update of screenStatusIndicators) {
+            this.getScreenById_single(update.screenid)?.setStatusIndicator(update.status);
+        }
+    }
+
     runUpdate_internal(genUpdate: UpdateMessage, uiContext: UIContextType, interactive: boolean) {
         if ("ptydata64" in genUpdate) {
             const ptyMsg: PtyDataUpdateType = genUpdate;
@@ -787,47 +842,43 @@ class Model {
             return;
         }
         let showedRemotesModal = false;
+        let connect = false;
+        console.log("genUpdate", genUpdate);
         genUpdate.forEach((update) => {
-            if (update.screen != null) {
-                if (update.connect) {
+            console.log("update", update);
+            // Connect must be the first update in the list if it is present, otherwise it will wipe out all other updates
+            if (update.connect != null) {
+                console.log("connect update");
+                if (update.connect.screens != null) {
                     this.screenMap.clear();
+                    this.updateScreens(update.connect.screens);
                 }
-                const mods = genMergeDataMap(
-                    this.screenMap,
-                    [update.screen],
-                    (s: Screen) => s.screenId,
-                    (sdata: ScreenDataType) => sdata.screenid,
-                    (sdata: ScreenDataType) => new Screen(sdata, this)
-                );
-                for (const screenId of mods.removed) {
-                    this.removeScreenLinesByScreenId(screenId);
+                if (update.connect.sessions != null) {
+                    this.sessionList.clear();
+                    this.updateSessions(update.connect.sessions);
+                }
+                if (update.connect.remotes != null) {
+                    this.remotes.clear();
+                    this.updateRemotes(update.connect.remotes);
+                }
+                if (update.connect.activesessionid != null) {
+                    this.updateActiveSession(update.connect.activesessionid);
+                }
+                if (update.connect.screennumrunningcommands != null) {
+                    this.updateScreenNumRunningCommands(update.connect.screennumrunningcommands);
+                }
+                if (update.connect.screenstatusindicators != null) {
+                    this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
                 }
             }
-            if (update.session != null || update.activesessionid != null) {
-                if (update.connect) {
-                    this.sessionList.clear();
-                }
-                const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
-                genMergeData(
-                    this.sessionList,
-                    [update.session],
-                    (s: Session) => s.sessionId,
-                    (sdata: SessionDataType) => sdata.sessionid,
-                    (sdata: SessionDataType) => new Session(sdata, this),
-                    (s: Session) => s.sessionIdx.get()
-                );
-                if (update.activesessionid != null) {
-                    const newSessionId = update.activesessionid;
-                    if (this.activeSessionId.get() != newSessionId) {
-                        this.activeSessionId.set(newSessionId);
-                    }
-                }
-                const [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
-                if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
-                    this.activeMainView.set("session");
-                    this.deactivateScreenLines();
-                    this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
-                }
+            if (update.screen != null) {
+                this.updateScreens([update.screen]);
+            }
+            if (update.session != null) {
+                this.updateSessions([update.session]);
+            }
+            if (update.activesessionid != null) {
+                this.updateActiveSession(update.activesessionid);
             }
             if (update.line != null) {
                 this.addLineCmd(update.line.line, update.line.cmd, interactive);
@@ -839,9 +890,6 @@ class Model {
                 this.updateScreenLines(update.screenlines, false);
             }
             if (update.remote != null) {
-                if (update.connect) {
-                    this.remotes.clear();
-                }
                 this.updateRemotes([update.remote]);
                 // This code's purpose is to show view remote connection modal when a new connection is added
                 if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
@@ -896,28 +944,24 @@ class Model {
             if (update.cmdline != null) {
                 this.inputModel.updateCmdLine(update.cmdline);
             }
-            if (update.connect != null) {
-                this.sessionListLoaded.set(true);
-                this.remotesLoaded.set(true);
-            }
             if (update.openaicmdinfochat != null) {
                 this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
             }
             if (update.screenstatusindicator != null) {
-                this.getScreenById_single(update.screenstatusindicator.screenid)?.setStatusIndicator(
-                    update.screenstatusindicator.status
-                );
+                this.updateScreenStatusIndicators([update.screenstatusindicator]);
             }
             if (update.screennumrunningcommand != null) {
-                this.getScreenById_single(update.screennumrunningcommand.screenid)?.setNumRunningCmds(
-                    update.screennumrunningcommand.num
-                );
+                this.updateScreenNumRunningCommands([update.screennumrunningcommand]);
             }
             if (update.userinputrequest != null) {
                 let userInputRequest: UserInputRequest = update.userinputrequest;
                 this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
             }
         });
+        if (connect) {
+            this.sessionListLoaded.set(true);
+            this.remotesLoaded.set(true);
+        }
     }
 
     updateRemotes(remotes: RemoteType[]): void {

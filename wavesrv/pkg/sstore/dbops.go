@@ -465,22 +465,22 @@ func GetAllSessions(ctx context.Context) ([]*SessionType, error) {
 }
 
 // Get all sessions and screens, including remotes
-func GetAllSessionsUpdate(ctx context.Context) (*ModelUpdate, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*ModelUpdate, error) {
-		update := &ModelUpdate{}
+func GetConnectUpdate(ctx context.Context) (*ConnectUpdate, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*ConnectUpdate, error) {
+		update := &ConnectUpdate{}
 		sessions := []*SessionType{}
 		tx.Select(&sessions, getAllSessionsQuery)
 		sessionMap := make(map[string]*SessionType)
 		for _, session := range sessions {
 			sessionMap[session.SessionId] = session
 			session.Full = true
-			AddUpdate(update, *session)
+			update.Sessions = append(update.Sessions, session)
 		}
 		query := `SELECT * FROM screen ORDER BY archived, screenidx, archivedts`
 		screens := dbutil.SelectMapsGen[*ScreenType](tx, query)
 		for _, screen := range screens {
 			screen.Full = true
-			AddUpdate(update, *screen)
+			update.Screens = append(update.Screens, screen)
 		}
 		query = `SELECT * FROM remote_instance`
 		riArr := dbutil.SelectMapsGen[*RemoteInstance](tx, query)
@@ -491,7 +491,7 @@ func GetAllSessionsUpdate(ctx context.Context) (*ModelUpdate, error) {
 			}
 		}
 		query = `SELECT activesessionid FROM client`
-		AddUpdate(update, ActiveSessionIdUpdate(tx.GetString(query)))
+		update.ActiveSessionId = tx.GetString(query)
 		return update, nil
 	})
 }

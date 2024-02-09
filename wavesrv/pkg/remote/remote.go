@@ -683,14 +683,14 @@ func (msh *MShellProc) NotifyRemoteUpdate() {
 	sstore.MainBus.SendUpdate(update)
 }
 
-func GetAllRemoteRuntimeState() []RemoteRuntimeState {
+func GetAllRemoteRuntimeState() []*RemoteRuntimeState {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 
-	var rtn []RemoteRuntimeState
+	var rtn []*RemoteRuntimeState
 	for _, proc := range GlobalStore.Map {
 		state := proc.GetRemoteRuntimeState()
-		rtn = append(rtn, state)
+		rtn = append(rtn, &state)
 	}
 	return rtn
 }

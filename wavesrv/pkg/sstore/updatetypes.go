@@ -112,14 +112,17 @@ func AddInteractiveUpdate(update *ModelUpdate, interactive bool) {
 	AddUpdate(update, InteractiveUpdate(interactive))
 }
 
-type ConnectUpdate bool
+type ConnectUpdate struct {
+	Sessions                 []*SessionType                  `json:"sessions,omitempty"`
+	Screens                  []*ScreenType                   `json:"screens,omitempty"`
+	Remotes                  []*RemoteRuntimeState           `json:"remotes,omitempty"`
+	ScreenStatusIndicators   []*ScreenStatusIndicatorType    `json:"screenstatusindicators,omitempty"`
+	ScreenNumRunningCommands []*ScreenNumRunningCommandsType `json:"screennumrunningcommands,omitempty"`
+	ActiveSessionId          string                          `json:"activesessionid,omitempty"`
+}
 
 func (ConnectUpdate) UpdateType() string {
 	return "connect"
-}
-
-func AddConnectUpdate(update *ModelUpdate, connect bool) {
-	AddUpdate(update, ConnectUpdate(connect))
 }
 
 type MainViewUpdate string
