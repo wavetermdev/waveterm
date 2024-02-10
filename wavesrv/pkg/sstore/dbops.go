@@ -473,13 +473,11 @@ func GetConnectUpdate(ctx context.Context) (*ConnectUpdate, error) {
 		sessionMap := make(map[string]*SessionType)
 		for _, session := range sessions {
 			sessionMap[session.SessionId] = session
-			session.Full = true
 			update.Sessions = append(update.Sessions, session)
 		}
 		query := `SELECT * FROM screen ORDER BY archived, screenidx, archivedts`
 		screens := dbutil.SelectMapsGen[*ScreenType](tx, query)
 		for _, screen := range screens {
-			screen.Full = true
 			update.Screens = append(update.Screens, screen)
 		}
 		query = `SELECT * FROM remote_instance`
@@ -516,9 +514,6 @@ func GetSessionScreens(ctx context.Context, sessionId string) ([]*ScreenType, er
 	return WithTxRtn(ctx, func(tx *TxWrap) ([]*ScreenType, error) {
 		query := `SELECT * FROM screen WHERE sessionid = ? ORDER BY archived, screenidx, archivedts`
 		rtn := dbutil.SelectMapsGen[*ScreenType](tx, query, sessionId)
-		for _, screen := range rtn {
-			screen.Full = true
-		}
 		return rtn, nil
 	})
 }
@@ -775,7 +770,6 @@ func GetScreenById(ctx context.Context, screenId string) (*ScreenType, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*ScreenType, error) {
 		query := `SELECT * FROM screen WHERE screenid = ?`
 		screen := dbutil.GetMapGen[*ScreenType](tx, query, screenId)
-		screen.Full = true
 		return screen, nil
 	})
 }

@@ -92,7 +92,6 @@ function base64ToArray(b64: string): Uint8Array {
 
 interface IDataType {
     remove?: boolean;
-    full?: boolean;
 }
 
 interface IObjType<DataType> {
@@ -173,10 +172,6 @@ function genMergeData<ObjType extends IObjType<DataType>, DataType extends IData
             continue;
         }
         if (obj == null) {
-            if (!dataItem.full) {
-                console.log("cannot create object, dataitem is not full", objs, dataItem);
-                continue;
-            }
             obj = ctorFn(dataItem);
             objMap[id] = obj;
             continue;
@@ -220,10 +215,6 @@ function genMergeDataMap<ObjType extends IObjType<DataType>, DataType extends ID
             continue;
         }
         if (obj == null) {
-            if (!dataItem.full) {
-                console.log("cannot create object, dataitem is not full", dataItem);
-                continue;
-            }
             obj = ctorFn(dataItem);
             objMap.set(id, obj);
             rtn.added.push(id);

@@ -29,7 +29,6 @@ type SessionDataType = {
 
     // for updates
     remove?: boolean;
-    full?: boolean;
 };
 
 type LineStateType = { [k: string]: any };
@@ -92,7 +91,6 @@ type ScreenDataType = {
     anchor: { anchorline: number; anchoroffset: number };
 
     // for updates
-    full?: boolean;
     remove?: boolean;
 };
 

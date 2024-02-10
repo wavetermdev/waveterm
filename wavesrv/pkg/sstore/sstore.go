@@ -353,7 +353,6 @@ type SessionType struct {
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
-	Full   bool `json:"full,omitempty"`
 }
 
 func (SessionType) UpdateType() string {
@@ -499,9 +498,7 @@ type ScreenType struct {
 	ArchivedTs     int64               `json:"archivedts,omitempty"`
 
 	// only for updates
-	Full            bool   `json:"full,omitempty"`
-	Remove          bool   `json:"remove,omitempty"`
-	StatusIndicator string `json:"statusindicator,omitempty"`
+	Remove bool `json:"remove,omitempty"`
 }
 
 func (s *ScreenType) ToMap() map[string]interface{} {
