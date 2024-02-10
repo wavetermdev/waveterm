@@ -465,11 +465,34 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 	}
 
 	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(&sshKeywords.IdentityFile, opts.SSHPassword))
+	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword))
+	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword))
+
+	// exclude gssapi-with-mic and hostbased until implemented
+	authMethodMap := map[string]ssh.AuthMethod{
+		"publickey":            ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)),
+		"keyboard-interactive": ssh.RetryableAuthMethod(keyboardInteractive, 2),
+		"password":             ssh.RetryableAuthMethod(passwordCallback, 2),
+	}
+
+	authMethodActiveMap := map[string]bool{
+		"publickey":            sshKeywords.PubkeyAuthentication,
+		"keyboard-interactive": sshKeywords.KbdInteractiveAuthentication,
+		"password":             sshKeywords.PasswordAuthentication,
+	}
 
 	var authMethods []ssh.AuthMethod
-	authMethods = append(authMethods, ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)))
-	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword)), 2))
-	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword)), 2))
+	for _, authMethodName := range sshKeywords.PreferredAuthentications {
+		authMethodActive, ok := authMethodActiveMap[authMethodName]
+		if !ok || !authMethodActive {
+			continue
+		}
+		authMethod, ok := authMethodMap[authMethodName]
+		if !ok {
+			continue
+		}
+		authMethods = append(authMethods, authMethod)
+	}
 
 	hostKeyCallback, err := createHostKeyCallback(opts)
 	if err != nil {
@@ -491,6 +514,7 @@ type SshKeywords struct {
 	Port                         string
 	IdentityFile                 []string
 	BatchMode                    bool
+	PubkeyAuthentication         bool
 	PasswordAuthentication       bool
 	KbdInteractiveAuthentication bool
 	PreferredAuthentications     []string
@@ -533,6 +557,7 @@ func combineSshKeywords(opts *sstore.SSHOpts, configKeywords *SshKeywords) (*Ssh
 	// these are not officially supported in the waveterm frontend but can be configured
 	// in ssh config files
 	sshKeywords.BatchMode = configKeywords.BatchMode
+	sshKeywords.PubkeyAuthentication = configKeywords.PubkeyAuthentication
 	sshKeywords.PasswordAuthentication = configKeywords.PasswordAuthentication
 	sshKeywords.KbdInteractiveAuthentication = configKeywords.KbdInteractiveAuthentication
 	sshKeywords.PreferredAuthentications = configKeywords.PreferredAuthentications
@@ -540,6 +565,9 @@ func combineSshKeywords(opts *sstore.SSHOpts, configKeywords *SshKeywords) (*Ssh
 	return sshKeywords, nil
 }
 
+// note that a `var == "yes"` will default to false
+// but `var != "no"` will default to true
+// when given unexpected strings
 func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 	ssh_config.ReloadConfigs()
 	sshKeywords := &SshKeywords{}
@@ -568,17 +596,24 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 	}
 	sshKeywords.BatchMode = (strings.ToLower(batchModeRaw) == "yes")
 
+	// we currently do not support host-bound or unbound but will use yes when they are selected
+	pubkeyAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "PubkeyAuthentication")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.PubkeyAuthentication = (strings.ToLower(pubkeyAuthenticationRaw) != "no")
+
 	passwordAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "PasswordAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.PasswordAuthentication = (strings.ToLower(passwordAuthenticationRaw) == "yes")
+	sshKeywords.PasswordAuthentication = (strings.ToLower(passwordAuthenticationRaw) != "no")
 
 	kbdInteractiveAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "KbdInteractiveAuthentication")
 	if err != nil {
 		return nil, err
 	}
-	sshKeywords.KbdInteractiveAuthentication = (strings.ToLower(kbdInteractiveAuthenticationRaw) == "yes")
+	sshKeywords.KbdInteractiveAuthentication = (strings.ToLower(kbdInteractiveAuthenticationRaw) != "no")
 
 	// these are case sensitive in openssh so they are here too
 	sshKeywords.PreferredAuthentications = ssh_config.GetAll(hostPattern, "PreferredAuthentications")
