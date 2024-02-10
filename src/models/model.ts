@@ -753,7 +753,7 @@ class Model {
             try {
                 this.runUpdate_internal(genUpdate, oldContext, interactive);
             } catch (e) {
-                console.log("error running update", e, genUpdate);
+                console.warn("error running update", e, genUpdate);
                 throw e;
             }
             const newContext = this.getUIContext();
@@ -789,7 +789,6 @@ class Model {
     }
 
     updateSessions(sessions: SessionDataType[]): void {
-        console.log("updateSessions", sessions);
         genMergeData(
             this.sessionList,
             sessions,
@@ -798,7 +797,6 @@ class Model {
             (sdata: SessionDataType) => new Session(sdata, this),
             (s: Session) => s.sessionIdx.get()
         );
-        console.log("sessionList", this.sessionList);
     }
 
     updateActiveSession(sessionId: string): void {
@@ -819,19 +817,15 @@ class Model {
     }
 
     updateScreenNumRunningCommands(numRunningCommandUpdates: ScreenNumRunningCommandsUpdateType[]) {
-        console.log("updateScreenNumRunningCommands", numRunningCommandUpdates);
         for (const update of numRunningCommandUpdates) {
             this.getScreenById_single(update.screenid)?.setNumRunningCmds(update.num);
         }
-        console.log("screenMap", this.screenMap);
     }
 
     updateScreenStatusIndicators(screenStatusIndicators: ScreenStatusIndicatorUpdateType[]) {
-        console.log("updateScreenStatusIndicators", screenStatusIndicators);
         for (const update of screenStatusIndicators) {
             this.getScreenById_single(update.screenid)?.setStatusIndicator(update.status);
         }
-        console.log("screenMap", this.screenMap);
     }
 
     runUpdate_internal(genUpdate: UpdateMessage, uiContext: UIContextType, interactive: boolean) {
@@ -848,9 +842,7 @@ class Model {
             return;
         }
         let showedRemotesModal = false;
-        console.log("genUpdate", genUpdate);
         genUpdate.forEach((update) => {
-            console.log("update", update);
             if (interactive) {
                 if (update.info != null) {
                     const info: InfoType = update.info;
@@ -871,11 +863,10 @@ class Model {
                         this.inputModel.setHistoryInfo(update.history);
                     }
                 } else {
-                    console.log("invalid interactive update", update);
+                    console.log("did not match interactive update", update);
                 }
             } else {
                 if (update.connect != null) {
-                    console.log("connect update");
                     if (update.connect.screens != null) {
                         this.screenMap.clear();
                         this.updateScreens(update.connect.screens);
@@ -928,7 +919,7 @@ class Model {
                             if (update.mainview.historyview != null) {
                                 this.historyViewModel.showHistoryView(update.mainview.historyview);
                             } else {
-                                console.log("invalid historyview in update:", update.mainview);
+                                console.warn("invalid historyview in update:", update.mainview);
                             }
                             break;
                         case "bookmarks":
@@ -938,14 +929,14 @@ class Model {
                                     update.mainview.bookmarksview?.selectedbookmark
                                 );
                             } else {
-                                console.log("invalid bookmarksview in update:", update.mainview);
+                                console.warn("invalid bookmarksview in update:", update.mainview);
                             }
                             break;
                         case "plugins":
                             this.pluginsModel.showPluginsView();
                             break;
                         default:
-                            console.log("invalid mainview in update:", update.mainview);
+                            console.warn("invalid mainview in update:", update.mainview);
                     }
                 } else if (update.bookmarks != null) {
                     if (update.bookmarks.bookmarks != null) {
@@ -965,7 +956,7 @@ class Model {
                     let userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
                 } else {
-                    console.log("invalid update", update);
+                    console.log("did not match update", update);
                 }
             }
         });
