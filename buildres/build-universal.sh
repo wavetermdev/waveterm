@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # assumes we have Wave-darwin-x64-[version].zip and Wave-darwin-arm64-[version].zip in current directory
-VERSION=0.6.1
+VERSION=0.6.2
 rm -rf temp
 rm -rf builds
 mkdir temp

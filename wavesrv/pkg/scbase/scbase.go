@@ -35,7 +35,7 @@ const WaveLockFile = "waveterm.lock"
 const WaveDirName = ".waveterm"        // must match emain.ts
 const WaveDevDirName = ".waveterm-dev" // must match emain.ts
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
-const WaveVersion = "v0.6.1"
+const WaveVersion = "v0.6.2"
 const WaveAuthKeyFileName = "waveterm.authkey"
 const MShellVersion = "v0.4.0"
 
