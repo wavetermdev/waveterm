@@ -139,7 +139,7 @@ class ScreenLines {
                     return;
                 }
                 let lineIdx = 0;
-                for (lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+                for (lineIdx; lineIdx < lines.length; lineIdx++) {
                     let lineId = lines[lineIdx].lineid;
                     let curTs = lines[lineIdx].ts;
                     if (lineId == line.lineid) {

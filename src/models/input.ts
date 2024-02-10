@@ -13,10 +13,10 @@ import {
     HistoryQueryOpts,
     HistoryTypeStrs,
     OpenAICmdInfoChatMessageType,
+    OV,
+    StrWithPos,
 } from "../types/types";
-import { StrWithPos } from "../types/types";
 import * as appconst from "../app/appconst";
-import { OV } from "../types/types";
 import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
 
@@ -207,7 +207,6 @@ class InputModel {
             this.historyQueryOpts.set(opts);
             let bestIndex = this.findBestNewIndex(oldItem);
             setTimeout(() => this.setHistoryIndex(bestIndex, true), 10);
-            return;
         })();
     }
 
@@ -624,13 +623,17 @@ class InputModel {
     }
 
     openAIAssistantChat(): void {
-        this.aIChatShow.set(true);
-        this.setAIChatFocus();
+        mobx.action(() => {
+            this.aIChatShow.set(true);
+            this.setAIChatFocus();
+        })();
     }
 
     closeAIAssistantChat(): void {
-        this.aIChatShow.set(false);
-        this.giveFocus();
+        mobx.action(() => {
+            this.aIChatShow.set(false);
+            this.giveFocus();
+        })();
     }
 
     clearAIAssistantChat(): void {
@@ -721,14 +724,6 @@ class InputModel {
     setCurLine(val: string): void {
         let hidx = this.historyIndex.get();
         mobx.action(() => {
-            // if (val == "\" ") {
-            //     this.setInputMode("comment");
-            //     val = "";
-            // }
-            // if (val == "//") {
-            //     this.setInputMode("global");
-            //     val = "";
-            // }
             if (this.modHistory.length <= hidx) {
                 this.modHistory.length = hidx + 1;
             }
