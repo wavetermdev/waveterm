@@ -1139,9 +1139,6 @@ class Model {
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
-        if (this.isDev) {
-            console.log("submitCommandPacket", cmdPk);
-        }
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
