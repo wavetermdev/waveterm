@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/user"
 	"path"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -28,9 +27,12 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+type RemotePtrType = scpacket.RemotePtrType
 
 const LineNoHeight = -1
 const DBFileName = "waveterm.db"
@@ -334,6 +336,10 @@ func (cdata *ClientData) Clean() *ClientData {
 	return &rtn
 }
 
+func (ClientData) UpdateType() string {
+	return "clientdata"
+}
+
 type SessionType struct {
 	SessionId      string            `json:"sessionid"`
 	Name           string            `json:"name"`
@@ -347,7 +353,17 @@ type SessionType struct {
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
-	Full   bool `json:"full,omitempty"`
+}
+
+func (SessionType) UpdateType() string {
+	return "session"
+}
+
+func MakeSessionUpdateForRemote(sessionId string, ri *RemoteInstance) SessionType {
+	return SessionType{
+		SessionId: sessionId,
+		Remotes:   []*RemoteInstance{ri},
+	}
 }
 
 type SessionTombstoneType struct {
@@ -358,6 +374,10 @@ type SessionTombstoneType struct {
 
 func (SessionTombstoneType) UseDBMap() {}
 
+func (SessionTombstoneType) UpdateType() string {
+	return "sessiontombstone"
+}
+
 type SessionStatsType struct {
 	SessionId          string              `json:"sessionid"`
 	NumScreens         int                 `json:"numscreens"`
@@ -365,68 +385,6 @@ type SessionStatsType struct {
 	NumLines           int                 `json:"numlines"`
 	NumCmds            int                 `json:"numcmds"`
 	DiskStats          SessionDiskSizeType `json:"diskstats"`
-}
-
-var RemoteNameRe = regexp.MustCompile("^\\*?[a-zA-Z0-9_-]+$")
-
-type RemotePtrType struct {
-	OwnerId  string `json:"ownerid"`
-	RemoteId string `json:"remoteid"`
-	Name     string `json:"name"`
-}
-
-func (r RemotePtrType) IsSessionScope() bool {
-	return strings.HasPrefix(r.Name, "*")
-}
-
-func (rptr *RemotePtrType) GetDisplayName(baseDisplayName string) string {
-	name := baseDisplayName
-	if rptr == nil {
-		return name
-	}
-	if rptr.Name != "" {
-		name = name + ":" + rptr.Name
-	}
-	if rptr.OwnerId != "" {
-		name = "@" + rptr.OwnerId + ":" + name
-	}
-	return name
-}
-
-func (r RemotePtrType) Validate() error {
-	if r.OwnerId != "" {
-		if _, err := uuid.Parse(r.OwnerId); err != nil {
-			return fmt.Errorf("invalid ownerid format: %v", err)
-		}
-	}
-	if r.RemoteId != "" {
-		if _, err := uuid.Parse(r.RemoteId); err != nil {
-			return fmt.Errorf("invalid remoteid format: %v", err)
-		}
-	}
-	if r.Name != "" {
-		ok := RemoteNameRe.MatchString(r.Name)
-		if !ok {
-			return fmt.Errorf("invalid remote name")
-		}
-	}
-	return nil
-}
-
-func (r RemotePtrType) MakeFullRemoteRef() string {
-	if r.RemoteId == "" {
-		return ""
-	}
-	if r.OwnerId == "" && r.Name == "" {
-		return r.RemoteId
-	}
-	if r.OwnerId != "" && r.Name == "" {
-		return fmt.Sprintf("@%s:%s", r.OwnerId, r.RemoteId)
-	}
-	if r.OwnerId == "" && r.Name != "" {
-		return fmt.Sprintf("%s:%s", r.RemoteId, r.Name)
-	}
-	return fmt.Sprintf("@%s:%s:%s", r.OwnerId, r.RemoteId, r.Name)
 }
 
 func (h *HistoryItemType) ToMap() map[string]interface{} {
@@ -489,6 +447,10 @@ type ScreenLinesType struct {
 
 func (ScreenLinesType) UseDBMap() {}
 
+func (ScreenLinesType) UpdateType() string {
+	return "screenlines"
+}
+
 type ScreenWebShareOpts struct {
 	ShareName string `json:"sharename"`
 	ViewKey   string `json:"viewkey"`
@@ -536,9 +498,7 @@ type ScreenType struct {
 	ArchivedTs     int64               `json:"archivedts,omitempty"`
 
 	// only for updates
-	Full            bool   `json:"full,omitempty"`
-	Remove          bool   `json:"remove,omitempty"`
-	StatusIndicator string `json:"statusindicator,omitempty"`
+	Remove bool `json:"remove,omitempty"`
 }
 
 func (s *ScreenType) ToMap() map[string]interface{} {
@@ -586,6 +546,24 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
+func (ScreenType) UpdateType() string {
+	return "screen"
+}
+
+func AddScreenUpdate(update *ModelUpdate, newScreen *ScreenType) {
+	if newScreen == nil {
+		return
+	}
+	screenUpdates := GetUpdateItems[ScreenType](update)
+	for _, screenUpdate := range screenUpdates {
+		if screenUpdate.ScreenId == newScreen.ScreenId {
+			screenUpdate = newScreen
+			return
+		}
+	}
+	AddUpdate(update, newScreen)
+}
+
 type ScreenTombstoneType struct {
 	ScreenId   string         `json:"screenid"`
 	SessionId  string         `json:"sessionid"`
@@ -595,6 +573,10 @@ type ScreenTombstoneType struct {
 }
 
 func (ScreenTombstoneType) UseDBMap() {}
+
+func (ScreenTombstoneType) UpdateType() string {
+	return "screentombstone"
+}
 
 const (
 	LayoutFull = "full"
@@ -1075,6 +1057,10 @@ func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
 	return path.Join(homeDir, pathStr[2:]), nil
 }
 
+func (RemoteRuntimeState) UpdateType() string {
+	return "remote"
+}
+
 type RemoteType struct {
 	RemoteId            string          `json:"remoteid"`
 	RemoteType          string          `json:"remotetype"`
@@ -1098,6 +1084,10 @@ type RemoteType struct {
 
 	// OpenAI fields (unused)
 	OpenAIOpts *OpenAIOptsType `json:"openaiopts,omitempty"`
+}
+
+func (r *RemoteType) IsLocal() bool {
+	return r.Local && !r.IsSudo()
 }
 
 func (r *RemoteType) IsSudo() bool {
@@ -1133,6 +1123,10 @@ type CmdType struct {
 	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
 	Remove       bool                `json:"remove,omitempty"`    // not persisted to DB
 	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
+}
+
+func (CmdType) UpdateType() string {
+	return "cmd"
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {
@@ -1512,10 +1506,10 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 	}
 
-	update.ScreenStatusIndicators = []*ScreenStatusIndicatorType{{
+	AddUpdate(update, ScreenStatusIndicatorType{
 		ScreenId: screenId,
 		Status:   newStatus,
-	}}
+	})
 	return nil
 }
 
@@ -1545,10 +1539,11 @@ func ResetStatusIndicator(screenId string) error {
 func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
 	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
-	update.ScreenNumRunningCommands = []*ScreenNumRunningCommandsType{{
+	AddUpdate(update, ScreenNumRunningCommandsType{
 		ScreenId: screenId,
 		Num:      newNum,
-	}}
+	})
+
 }
 
 func IncrementNumRunningCmds(screenId string, delta int) {

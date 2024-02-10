@@ -4,8 +4,8 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel, GlobalCommandRunner } from "../../../model/model";
-import { Toggle, Modal, Button } from "../common";
+import { GlobalModel, GlobalCommandRunner } from "../../../models";
+import { Toggle, Modal, Button } from "../elements";
 import * as util from "../../../util/util";
 import { ClientDataType } from "../../../types/types";
 

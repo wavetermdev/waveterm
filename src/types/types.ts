@@ -3,6 +3,8 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
+import { TermWrap } from "../plugins/terminal/term";
+import { Cmd, Model } from "../models";
 
 type ShareModeType = "local" | "web";
 type FocusTypeStrs = "input" | "cmd";
@@ -11,6 +13,9 @@ type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error
 type LineContainerStrs = "main" | "sidebar" | "history";
 
 type OV<V> = mobx.IObservableValue<V>;
+type OArr<V> = mobx.IObservableArray<V>;
+type OMap<K, V> = mobx.ObservableMap<K, V>;
+type CV<V> = mobx.IComputedValue<V>;
 
 type SessionDataType = {
     sessionid: string;
@@ -24,7 +29,6 @@ type SessionDataType = {
 
     // for updates
     remove?: boolean;
-    full?: boolean;
 };
 
 type LineStateType = { [k: string]: any };
@@ -87,7 +91,6 @@ type ScreenDataType = {
     anchor: { anchorline: number; anchoroffset: number };
 
     // for updates
-    full?: boolean;
     remove?: boolean;
 };
 
@@ -255,6 +258,11 @@ type CmdDataType = {
     restarted?: boolean;
 };
 
+type LineUpdateType = {
+    line: LineType;
+    cmd: CmdDataType;
+};
+
 type PtyDataUpdateType = {
     screenid: string;
     lineid: string;
@@ -304,30 +312,48 @@ type ScreenNumRunningCommandsUpdateType = {
     num: number;
 };
 
+type ConnectUpdateType = {
+    sessions: SessionDataType[];
+    screens: ScreenDataType[];
+    remotes: RemoteType[];
+    screenstatusindicators: ScreenStatusIndicatorUpdateType[];
+    screennumrunningcommands: ScreenNumRunningCommandsUpdateType[];
+    activesessionid: string;
+};
+
+type BookmarksUpdateType = {
+    bookmarks: BookmarkType[];
+    selectedbookmark: string;
+};
+
+type MainViewUpdateType = {
+    mainview: string;
+    historyview?: HistoryViewDataType;
+    bookmarksview?: BookmarksUpdateType;
+};
+
 type ModelUpdateType = {
     interactive: boolean;
-    sessions?: SessionDataType[];
+    session?: SessionDataType;
     activesessionid?: string;
-    screens?: ScreenDataType[];
+    screen?: ScreenDataType;
     screenlines?: ScreenLinesType;
-    line?: LineType;
-    lines?: LineType[];
+    line?: LineUpdateType;
     cmd?: CmdDataType;
     info?: InfoType;
     cmdline?: StrWithPos;
-    remotes?: RemoteType[];
+    remote?: RemoteType;
     history?: HistoryInfoType;
-    connect?: boolean;
-    mainview?: string;
-    bookmarks?: BookmarkType[];
-    selectedbookmark?: string;
+    connect?: ConnectUpdateType;
+    mainview?: MainViewUpdateType;
+    bookmarks?: BookmarksUpdateType;
     clientdata?: ClientDataType;
-    historyviewdata?: HistoryViewDataType;
     remoteview?: RemoteViewType;
     openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
     alertmessage?: AlertMessageType;
-    screenstatusindicators?: ScreenStatusIndicatorUpdateType[];
-    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType[];
+    screenstatusindicator?: ScreenStatusIndicatorUpdateType;
+    screennumrunningcommands?: ScreenNumRunningCommandsUpdateType;
+    userinputrequest?: UserInputRequest;
 };
 
 type HistoryViewDataType = {
@@ -409,7 +435,7 @@ type ContextMenuOpts = {
     showCut?: boolean;
 };
 
-type UpdateMessage = PtyDataUpdateType | ModelUpdateType;
+type UpdateMessage = PtyDataUpdateType | ModelUpdateType[];
 
 type RendererContext = {
     screenId: string;
@@ -590,6 +616,23 @@ type HistorySearchParams = {
     filterCmds?: boolean;
 };
 
+type UserInputRequest = {
+    requestid: string;
+    querytext: string;
+    responsetype: string;
+    title: string;
+    markdown: boolean;
+    timeoutms: number;
+};
+
+type UserInputResponsePacket = {
+    type: string;
+    requestid: string;
+    text?: string;
+    confirm?: boolean;
+    errormsg?: string;
+};
+
 type RenderModeType = "normal" | "collapsed" | "expanded";
 
 type WebScreen = {
@@ -725,6 +768,7 @@ type ModalStoreEntry = {
     id: string;
     component: React.ComponentType;
     uniqueKey: string;
+    props?: any;
 };
 
 type StrWithPos = {
@@ -732,10 +776,39 @@ type StrWithPos = {
     pos: number;
 };
 
+type LineFocusType = {
+    cmdInputFocus: boolean;
+    lineid?: string;
+    linenum?: number;
+    screenid?: string;
+};
+
+type LineContainerType = {
+    loadTerminalRenderer: (elem: Element, line: LineType, cmd: Cmd, width: number) => void;
+    registerRenderer: (lineId: string, renderer: RendererModel) => void;
+    unloadRenderer: (lineId: string) => void;
+    getIsFocused: (lineNum: number) => boolean;
+    getTermWrap: (lineId: string) => TermWrap;
+    getRenderer: (lineId: string) => RendererModel;
+    getFocusType: () => FocusTypeStrs;
+    getSelectedLine: () => number;
+    getCmd: (line: LineType) => Cmd;
+    setLineFocus: (lineNum: number, focus: boolean) => void;
+    getUsedRows: (context: RendererContext, line: LineType, cmd: Cmd, width: number) => number;
+    getContentHeight: (context: RendererContext) => number;
+    setContentHeight: (context: RendererContext, height: number) => void;
+    getMaxContentSize(): WindowSize;
+    getIdealContentSize(): WindowSize;
+    isSidebarOpen(): boolean;
+    isLineIdInSidebar(lineId: string): boolean;
+    getContainerType(): LineContainerStrs;
+};
+
 export type {
     SessionDataType,
     LineStateType,
     LineType,
+    LineFocusType,
     RemoteType,
     RemoteStateType,
     RemoteInstanceType,
@@ -775,6 +848,8 @@ export type {
     RenderModeType,
     AlertMessageType,
     HistorySearchParams,
+    UserInputRequest,
+    UserInputResponsePacket,
     ScreenLinesType,
     FocusTypeStrs,
     HistoryTypeStrs,
@@ -811,6 +886,12 @@ export type {
     CmdInputTextPacketType,
     OpenAICmdInfoChatMessageType,
     ScreenStatusIndicatorUpdateType,
+    ScreenNumRunningCommandsUpdateType,
+    OV,
+    OArr,
+    OMap,
+    CV,
+    LineContainerType,
 };
 
 export { StatusIndicatorLevel };

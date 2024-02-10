@@ -17,10 +17,10 @@ import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg
 import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Session, VERSION } from "../../model/model";
+import { GlobalModel, GlobalCommandRunner, Session } from "../../models";
 import { isBlank, openLink } from "../../util/util";
-import { ResizableSidebar } from "../common/common";
-import * as constants from "../appconst";
+import { ResizableSidebar } from "../common/elements";
+import * as appconst from "../appconst";
 
 import "./sidebar.less";
 import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "../common/icons/icons";
@@ -167,7 +167,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         mobx.action(() => {
             GlobalModel.sessionSettingsModal.set(session.sessionId);
         })();
-        GlobalModel.modalsModel.pushModal(constants.SESSION_SETTINGS);
+        GlobalModel.modalsModel.pushModal(appconst.SESSION_SETTINGS);
     }
 
     getSessions() {
@@ -208,7 +208,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         let clientData = this.props.clientData;
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
-            needsUpdate = compareLoose(VERSION, clientData.releaseinfo.latestversion) < 0;
+            needsUpdate = compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0;
         }
         let mainSidebar = GlobalModel.mainSidebarModel;
         let isCollapsed = mainSidebar.getCollapsed();

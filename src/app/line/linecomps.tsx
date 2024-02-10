@@ -9,7 +9,7 @@ import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel, GlobalCommandRunner, Cmd, getTermPtyData } from "../../model/model";
+import { GlobalModel, GlobalCommandRunner, Cmd } from "../../models";
 import { termHeightFromRows } from "../../util/textmeasure";
 import type {
     LineType,
@@ -19,11 +19,12 @@ import type {
     LineHeightChangeCallbackType,
     RendererModelInitializeParams,
     RendererModel,
+    LineContainerType,
 } from "../../types/types";
 import cn from "classnames";
+import { getTermPtyData } from "../../util/modelutil";
 
-import type { LineContainerModel } from "../../model/model";
-import { renderCmdText } from "../common/common";
+import { renderCmdText } from "../common/elements";
 import { SimpleBlobRenderer } from "../../plugins/core/basicrenderer";
 import { IncrementalRenderer } from "../../plugins/core/incrementalrenderer";
 import { TerminalRenderer } from "../../plugins/terminal/terminal";
@@ -101,7 +102,7 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
 @mobxReact.observer
 class LineCmd extends React.Component<
     {
-        screen: LineContainerModel;
+        screen: LineContainerType;
         line: LineType;
         width: number;
         staticRender: boolean;
@@ -799,7 +800,7 @@ class LineCmd extends React.Component<
 @mobxReact.observer
 class Line extends React.Component<
     {
-        screen: LineContainerModel;
+        screen: LineContainerType;
         line: LineType;
         width: number;
         staticRender: boolean;
@@ -830,7 +831,7 @@ class Line extends React.Component<
 @mobxReact.observer
 class LineText extends React.Component<
     {
-        screen: LineContainerModel;
+        screen: LineContainerType;
         line: LineType;
         renderMode: RenderModeType;
         noSelect?: boolean;

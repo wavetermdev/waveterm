@@ -40,7 +40,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const UseSshLibrary = false
+const UseSshLibrary = true
 
 const RemoteTypeMShell = "mshell"
 const DefaultTerm = "xterm-256color"
@@ -50,6 +50,7 @@ const RemoteTermRows = 8
 const RemoteTermCols = 80
 const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
+const RpcIterChannelSize = 100
 
 var envVarsToStrip map[string]bool = map[string]bool{
 	"PROMPT":               true,
@@ -665,25 +666,31 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	if vars["remoteuser"] == "root" || vars["sudo"] == "1" {
 		vars["isroot"] = "1"
 	}
-	state.RemoteVars = vars
+	varsCopy := make(map[string]string)
+	// deep copy so that concurrent calls don't collide on this data
+	for key, value := range vars {
+		varsCopy[key] = value
+	}
+	state.RemoteVars = varsCopy
 	state.ActiveShells = msh.StateMap.GetShells()
 	return state
 }
 
 func (msh *MShellProc) NotifyRemoteUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
-	update := &sstore.ModelUpdate{Remotes: []RemoteRuntimeState{rstate}}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, rstate)
 	sstore.MainBus.SendUpdate(update)
 }
 
-func GetAllRemoteRuntimeState() []RemoteRuntimeState {
+func GetAllRemoteRuntimeState() []*RemoteRuntimeState {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 
-	var rtn []RemoteRuntimeState
+	var rtn []*RemoteRuntimeState
 	for _, proc := range GlobalStore.Map {
 		state := proc.GetRemoteRuntimeState()
-		rtn = append(rtn, state)
+		rtn = append(rtn, &state)
 	}
 	return rtn
 }
@@ -1201,6 +1208,10 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 	msh.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
 	msh.WriteToPtyBuffer("initialized shell:%s state:%s\n", shellType, ssPk.State.GetHashVal(false))
 	return ssPk, nil
+}
+
+func (msh *MShellProc) WriteFile(ctx context.Context, writePk *packet.WriteFilePacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, writePk)
 }
 
 func (msh *MShellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFilePacketType) (*packet.RpcResponseIter, error) {
@@ -1886,7 +1897,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		RunPacket: runPacket,
 	})
 
-	go pushNumRunningCmdsUpdate(&runPacket.CK, 1)
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
 }
 
@@ -1925,7 +1935,7 @@ func (msh *MShellProc) PacketRpcIter(ctx context.Context, pk packet.RpcPacketTyp
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
 	reqId := pk.GetReqId()
-	msh.ServerProc.Output.RegisterRpc(reqId)
+	msh.ServerProc.Output.RegisterRpcSz(reqId, RpcIterChannelSize)
 	err := msh.ServerProc.Input.SendPacketCtx(ctx, pk)
 	if err != nil {
 		return nil, err
@@ -1988,7 +1998,8 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		if err != nil {
 			continue
 		}
-		update := &sstore.ModelUpdate{Cmd: cmd}
+		update := &sstore.ModelUpdate{}
+		sstore.AddUpdate(update, *cmd)
 		sstore.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
 		go pushNumRunningCmdsUpdate(&ck, -1)
 	}
@@ -2018,7 +2029,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		// fall-through (nothing to do)
 	}
 	if screen != nil {
-		update.Screens = []*sstore.ScreenType{screen}
+		sstore.AddUpdate(update, *screen)
 	}
 	rct := msh.GetRunningCmd(donePk.CK)
 	var statePtr *sstore.ShellStatePtr
@@ -2030,7 +2041,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 		if remoteInst != nil {
-			update.Sessions = sstore.MakeSessionsUpdateForRemote(rct.SessionId, remoteInst)
+			sstore.AddUpdate(update, sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
 		}
 		statePtr = &sstore.ShellStatePtr{BaseHash: donePk.FinalState.GetHashVal(false)}
 	} else if donePk.FinalStateDiff != nil && rct != nil {
@@ -2050,7 +2061,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 				// fall-through (nothing to do)
 			}
 			if remoteInst != nil {
-				update.Sessions = sstore.MakeSessionsUpdateForRemote(rct.SessionId, remoteInst)
+				sstore.AddUpdate(update, sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
 			}
 			diffHashArr := append(([]string)(nil), donePk.FinalStateDiff.DiffHashArr...)
 			diffHashArr = append(diffHashArr, donePk.FinalStateDiff.GetHashVal(false))
@@ -2064,8 +2075,6 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
-
-	go pushNumRunningCmdsUpdate(&donePk.CK, -1)
 	sstore.MainBus.SendUpdate(update)
 	return
 }
@@ -2095,9 +2104,10 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		log.Printf("error getting cmd(2) in handleCmdFinalPacket (not found)\n")
 		return
 	}
-	update := &sstore.ModelUpdate{Cmd: rtnCmd}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *rtnCmd)
 	if screen != nil {
-		update.Screens = []*sstore.ScreenType{screen}
+		sstore.AddUpdate(update, *screen)
 	}
 	go pushNumRunningCmdsUpdate(&finalPk.CK, -1)
 	sstore.MainBus.SendUpdate(update)
@@ -2165,7 +2175,9 @@ func (msh *MShellProc) makeHandleCmdFinalPacketClosure(finalPk *packet.CmdFinalP
 
 func sendScreenUpdates(screens []*sstore.ScreenType) {
 	for _, screen := range screens {
-		sstore.MainBus.SendUpdate(&sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}})
+		update := &sstore.ModelUpdate{}
+		sstore.AddUpdate(update, *screen)
+		sstore.MainBus.SendUpdate(update)
 	}
 }
 

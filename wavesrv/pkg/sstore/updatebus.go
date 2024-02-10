@@ -4,12 +4,15 @@
 package sstore
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
+	"time"
 
-	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 )
 
 var MainBus *UpdateBus = MakeUpdateBus()
@@ -19,6 +22,7 @@ const ModelUpdateStr = "model"
 const UpdateChSize = 100
 
 type UpdatePacket interface {
+	// The key to use when marshalling to JSON and interpreting in the client
 	UpdateType() string
 	Clean()
 }
@@ -38,126 +42,61 @@ func (*PtyDataUpdate) UpdateType() string {
 
 func (pdu *PtyDataUpdate) Clean() {}
 
-type ModelUpdate struct {
-	Sessions                 []*SessionType                     `json:"sessions,omitempty"`
-	ActiveSessionId          string                             `json:"activesessionid,omitempty"`
-	Screens                  []*ScreenType                      `json:"screens,omitempty"`
-	ScreenLines              *ScreenLinesType                   `json:"screenlines,omitempty"`
-	Line                     *LineType                          `json:"line,omitempty"`
-	Lines                    []*LineType                        `json:"lines,omitempty"`
-	Cmd                      *CmdType                           `json:"cmd,omitempty"`
-	CmdLine                  *utilfn.StrWithPos                 `json:"cmdline,omitempty"`
-	Info                     *InfoMsgType                       `json:"info,omitempty"`
-	ClearInfo                bool                               `json:"clearinfo,omitempty"`
-	Remotes                  []RemoteRuntimeState               `json:"remotes,omitempty"`
-	History                  *HistoryInfoType                   `json:"history,omitempty"`
-	Interactive              bool                               `json:"interactive"`
-	Connect                  bool                               `json:"connect,omitempty"`
-	MainView                 string                             `json:"mainview,omitempty"`
-	Bookmarks                []*BookmarkType                    `json:"bookmarks,omitempty"`
-	SelectedBookmark         string                             `json:"selectedbookmark,omitempty"`
-	HistoryViewData          *HistoryViewData                   `json:"historyviewdata,omitempty"`
-	ClientData               *ClientData                        `json:"clientdata,omitempty"`
-	RemoteView               *RemoteViewType                    `json:"remoteview,omitempty"`
-	ScreenTombstones         []*ScreenTombstoneType             `json:"screentombstones,omitempty"`
-	SessionTombstones        []*SessionTombstoneType            `json:"sessiontombstones,omitempty"`
-	OpenAICmdInfoChat        []*packet.OpenAICmdInfoChatMessage `json:"openaicmdinfochat,omitempty"`
-	AlertMessage             *AlertMessageType                  `json:"alertmessage,omitempty"`
-	ScreenStatusIndicators   []*ScreenStatusIndicatorType       `json:"screenstatusindicators,omitempty"`
-	ScreenNumRunningCommands []*ScreenNumRunningCommandsType    `json:"screennumrunningcommands,omitempty"`
-}
+// A collection of independent model updates to be sent to the client. Will be evaluated in order on the client.
+type ModelUpdate []*ModelUpdateItem
 
 func (*ModelUpdate) UpdateType() string {
 	return ModelUpdateStr
 }
 
+func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
+	rtn := make([]map[string]any, 0)
+	for _, u := range *mu {
+		m := make(map[string]any)
+		m[(*u).UpdateType()] = u
+		rtn = append(rtn, m)
+	}
+	return json.Marshal(rtn)
+}
+
+// An interface for all model updates
+type ModelUpdateItem interface {
+	// The key to use when marshalling to JSON and interpreting in the client
+	UpdateType() string
+}
+
+// Clean the ClientData in an update, if present
 func (update *ModelUpdate) Clean() {
 	if update == nil {
 		return
 	}
-	update.ClientData = update.ClientData.Clean()
+	clientDataUpdates := GetUpdateItems[ClientData](update)
+	if len(clientDataUpdates) > 0 {
+		lastUpdate := clientDataUpdates[len(clientDataUpdates)-1]
+		lastUpdate.Clean()
+	}
 }
 
-func (update *ModelUpdate) UpdateScreen(newScreen *ScreenType) {
-	if newScreen == nil {
-		return
+func (update *ModelUpdate) append(item *ModelUpdateItem) {
+	*update = append(*update, item)
+}
+
+// Add a collection of model updates to the update
+func AddUpdate(update *ModelUpdate, item ...ModelUpdateItem) {
+	for _, i := range item {
+		update.append(&i)
 	}
-	for idx, screen := range update.Screens {
-		if screen.ScreenId == newScreen.ScreenId {
-			update.Screens[idx] = newScreen
-			return
+}
+
+// Returns the items in the update that are of type I
+func GetUpdateItems[I ModelUpdateItem](update *ModelUpdate) []*I {
+	ret := make([]*I, 0)
+	for _, item := range *update {
+		if i, ok := (*item).(I); ok {
+			ret = append(ret, &i)
 		}
 	}
-	update.Screens = append(update.Screens, newScreen)
-}
-
-// only sets InfoError if InfoError is not already set
-func (update *ModelUpdate) AddInfoError(errStr string) {
-	if update.Info == nil {
-		update.Info = &InfoMsgType{}
-	}
-	if update.Info.InfoError == "" {
-		update.Info.InfoError = errStr
-	}
-}
-
-type RemoteViewType struct {
-	RemoteShowAll bool            `json:"remoteshowall,omitempty"`
-	PtyRemoteId   string          `json:"ptyremoteid,omitempty"`
-	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
-}
-
-func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
-	msg := fmt.Sprintf(infoMsgFmt, args...)
-	return &ModelUpdate{
-		Info: &InfoMsgType{InfoMsg: msg},
-	}
-}
-
-type HistoryViewData struct {
-	Items         []*HistoryItemType `json:"items"`
-	Offset        int                `json:"offset"`
-	RawOffset     int                `json:"rawoffset"`
-	NextRawOffset int                `json:"nextrawoffset"`
-	HasMore       bool               `json:"hasmore"`
-	Lines         []*LineType        `json:"lines"`
-	Cmds          []*CmdType         `json:"cmds"`
-}
-
-type RemoteEditType struct {
-	RemoteEdit  bool   `json:"remoteedit"`
-	RemoteId    string `json:"remoteid,omitempty"`
-	ErrorStr    string `json:"errorstr,omitempty"`
-	InfoStr     string `json:"infostr,omitempty"`
-	KeyStr      string `json:"keystr,omitempty"`
-	HasPassword bool   `json:"haspassword,omitempty"`
-}
-
-type AlertMessageType struct {
-	Title    string `json:"title,omitempty"`
-	Message  string `json:"message"`
-	Confirm  bool   `json:"confirm,omitempty"`
-	Markdown bool   `json:"markdown,omitempty"`
-}
-
-type InfoMsgType struct {
-	InfoTitle     string   `json:"infotitle"`
-	InfoError     string   `json:"infoerror,omitempty"`
-	InfoMsg       string   `json:"infomsg,omitempty"`
-	InfoMsgHtml   bool     `json:"infomsghtml,omitempty"`
-	WebShareLink  bool     `json:"websharelink,omitempty"`
-	InfoComps     []string `json:"infocomps,omitempty"`
-	InfoCompsMore bool     `json:"infocompssmore,omitempty"`
-	InfoLines     []string `json:"infolines,omitempty"`
-	TimeoutMs     int64    `json:"timeoutms,omitempty"`
-}
-
-type HistoryInfoType struct {
-	HistoryType string             `json:"historytype"`
-	SessionId   string             `json:"sessionid,omitempty"`
-	ScreenId    string             `json:"screenid,omitempty"`
-	Items       []*HistoryItemType `json:"items"`
-	Show        bool               `json:"show"`
+	return ret
 }
 
 type UpdateChannel struct {
@@ -174,14 +113,16 @@ func (uch UpdateChannel) Match(screenId string) bool {
 }
 
 type UpdateBus struct {
-	Lock     *sync.Mutex
-	Channels map[string]UpdateChannel
+	Lock        *sync.Mutex
+	Channels    map[string]UpdateChannel
+	UserInputCh map[string](chan *scpacket.UserInputResponsePacketType)
 }
 
 func MakeUpdateBus() *UpdateBus {
 	return &UpdateBus{
-		Lock:     &sync.Mutex{},
-		Channels: make(map[string]UpdateChannel),
+		Lock:        &sync.Mutex{},
+		Channels:    make(map[string]UpdateChannel),
+		UserInputCh: make(map[string](chan *scpacket.UserInputResponsePacketType)),
 	}
 }
 
@@ -251,25 +192,57 @@ func (bus *UpdateBus) SendScreenUpdate(screenId string, update UpdatePacket) {
 	}
 }
 
-func MakeSessionsUpdateForRemote(sessionId string, ri *RemoteInstance) []*SessionType {
-	return []*SessionType{
-		{
-			SessionId: sessionId,
-			Remotes:   []*RemoteInstance{ri},
-		},
+func (bus *UpdateBus) registerUserInputChannel() (string, chan *scpacket.UserInputResponsePacketType) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
+
+	id := uuid.New().String()
+	uich := make(chan *scpacket.UserInputResponsePacketType, 1)
+
+	bus.UserInputCh[id] = uich
+	return id, uich
+}
+
+func (bus *UpdateBus) unregisterUserInputChannel(id string) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
+
+	delete(bus.UserInputCh, id)
+}
+
+func (bus *UpdateBus) GetUserInputChannel(id string) (chan *scpacket.UserInputResponsePacketType, bool) {
+	bus.Lock.Lock()
+	defer bus.Lock.Unlock()
+
+	uich, ok := bus.UserInputCh[id]
+	return uich, ok
+}
+
+func (bus *UpdateBus) GetUserInput(ctx context.Context, userInputRequest *UserInputRequestType) (*scpacket.UserInputResponsePacketType, error) {
+	id, uich := bus.registerUserInputChannel()
+	defer bus.unregisterUserInputChannel(id)
+
+	userInputRequest.RequestId = id
+	deadline, _ := ctx.Deadline()
+	userInputRequest.TimeoutMs = int(time.Until(deadline).Milliseconds()) - 500
+	update := &ModelUpdate{}
+	AddUpdate(update, *userInputRequest)
+	bus.SendUpdate(update)
+	log.Printf("test: %+v", userInputRequest)
+
+	var response *scpacket.UserInputResponsePacketType
+	var err error
+	// prepare to receive response
+	select {
+	case resp := <-uich:
+		response = resp
+	case <-ctx.Done():
+		return nil, fmt.Errorf("Timed out waiting for user input")
 	}
-}
 
-type BookmarksViewType struct {
-	Bookmarks []*BookmarkType `json:"bookmarks"`
-}
+	if response.ErrorMsg != "" {
+		err = fmt.Errorf(response.ErrorMsg)
+	}
 
-type ScreenStatusIndicatorType struct {
-	ScreenId string               `json:"screenid"`
-	Status   StatusIndicatorLevel `json:"status"`
-}
-
-type ScreenNumRunningCommandsType struct {
-	ScreenId string `json:"screenid"`
-	Num      int    `json:"num"`
+	return response, err
 }

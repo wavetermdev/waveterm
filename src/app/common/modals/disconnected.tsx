@@ -5,8 +5,8 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel } from "../../../model/model";
-import { Modal, Button } from "../common";
+import { GlobalModel } from "../../../models";
+import { Modal, Button } from "../elements";
 
 import "./disconnected.less";
 

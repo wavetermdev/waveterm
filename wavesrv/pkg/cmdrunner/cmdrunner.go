@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net/url"
@@ -27,6 +28,7 @@ import (
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -198,6 +200,8 @@ func init() {
 	registerCmdFn("remote:installcancel", RemoteInstallCancelCommand)
 	registerCmdFn("remote:reset", RemoteResetCommand)
 	registerCmdFn("remote:parse", RemoteConfigParseCommand)
+
+	registerCmdFn("copyfile", CopyFileCommand)
 
 	registerCmdFn("screen:resize", ScreenResizeCommand)
 
@@ -511,7 +515,7 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	if err != nil {
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	sstore.MainBus.SendScreenUpdate(ids.ScreenId, update)
 	return nil, nil
 }
@@ -619,7 +623,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.U
 	if err != nil {
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	// this update is sent asynchronously for timing issues.  the cmd update comes async as well
 	// so if we return this directly it sometimes gets evaluated first.  by pushing it on the MainBus
 	// it ensures it happens after the command creation event.
@@ -697,6 +701,8 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 	newPk, rtnErr := EvalMetaCommand(ctxWithHistory, pk)
 	if rtnErr == nil {
 		update, rtnErr = HandleCommand(ctxWithHistory, newPk)
+	} else {
+		return nil, fmt.Errorf("error in Eval Meta Command: %v", rtnErr)
 	}
 	if !resolveBool(pk.Kwargs["nohist"], false) {
 		// TODO should this be "pk" or "newPk" (2nd arg)
@@ -723,9 +729,9 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.
 		if resolveErr == nil {
 			screen, sidebarErr := implementRunInSidebar(ctx, ids.ScreenId, historyContext.LineId)
 			if sidebarErr == nil {
-				modelUpdate.UpdateScreen(screen)
+				sstore.AddScreenUpdate(modelUpdate, screen)
 			} else {
-				modelUpdate.AddInfoError(fmt.Sprintf("cannot move command to sidebar: %v", sidebarErr))
+				sstore.AddInfoMsgUpdateError(modelUpdate, fmt.Sprintf("cannot move command to sidebar: %v", sidebarErr))
 			}
 		}
 	}
@@ -769,9 +775,8 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		if err != nil {
 			return nil, fmt.Errorf("/screen:archive cannot get updated screen obj: %v", err)
 		}
-		update := &sstore.ModelUpdate{
-			Screens: []*sstore.ScreenType{screen},
-		}
+		update := &sstore.ModelUpdate{}
+		sstore.AddUpdate(update, *screen)
 		return update, nil
 	}
 }
@@ -792,7 +797,7 @@ func ScreenDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if screenId == "" {
 		return nil, fmt.Errorf("/screen:delete no active screen or screen arg passed")
 	}
-	update, err := sstore.DeleteScreen(ctx, screenId, false)
+	update, err := sstore.DeleteScreen(ctx, screenId, false, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -847,13 +852,14 @@ func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 
 	// Prepare the update packet to send back to the client
-	update := &sstore.ModelUpdate{
-		Screens: screens,
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   "screen indices updated successfully",
-			TimeoutMs: 2000,
-		},
+	update := &sstore.ModelUpdate{}
+	for _, screen := range screens {
+		sstore.AddUpdate(update, *screen)
 	}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoMsg:   "screen indices updated successfully",
+		TimeoutMs: 2000,
+	})
 
 	return update, nil
 }
@@ -962,13 +968,13 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if !setNonAnchor {
 		return nil, nil
 	}
-	update := &sstore.ModelUpdate{
-		Screens: []*sstore.ScreenType{screen},
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
-			TimeoutMs: 2000,
-		},
-	}
+
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *screen)
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
+		TimeoutMs: 2000,
+	})
 	return update, nil
 }
 
@@ -1037,7 +1043,9 @@ func SidebarOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *screen)
+	return update, nil
 }
 
 func SidebarCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1049,7 +1057,9 @@ func SidebarCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if err != nil {
 		return nil, err
 	}
-	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *screen)
+	return update, nil
 }
 
 func SidebarAddCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1077,7 +1087,9 @@ func SidebarAddCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if err != nil {
 		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
 	}
-	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *screen)
+	return update, nil
 }
 
 func SidebarRemoveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1099,7 +1111,572 @@ func SidebarRemoveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
 	}
-	return &sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *screen)
+	return update, nil
+}
+
+func createRemoteViewRemoteIdUpdate(remoteId string) sstore.UpdatePacket {
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.RemoteViewType{
+		PtyRemoteId: remoteId,
+	})
+	return update
+}
+
+func createRemoteViewRemoteEditUpdate(redit *sstore.RemoteEditType) sstore.UpdatePacket {
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.RemoteViewType{
+		RemoteEdit: redit,
+	})
+	return update
+}
+
+func prettyPrintByteSize(size int64) string {
+	gbSize := float64(size) / float64(1073741824)
+	if gbSize > 1 {
+		return fmt.Sprintf("%.2f Gigabytes", gbSize)
+	}
+	mbSize := float64(size) / float64(1048576)
+	if mbSize > 1 {
+		return fmt.Sprintf("%.2f Megabytes", mbSize)
+	}
+	kbSize := float64(size) / float64(1024)
+	if kbSize > 1 {
+		return fmt.Sprintf("%.2f Kilobytes", kbSize)
+	}
+	return fmt.Sprintf("%v Bytes", size)
+}
+
+// this can only be called in a defer func, because recover() only works inside of a defe
+func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime time.Time, exitSuccess bool, outputPos int64) {
+	r := recover()
+	if r != nil {
+		panicMsg := fmt.Sprintf("panic: %v", r)
+		log.Printf("panic: %v\n", panicMsg)
+		writeStringToPty(ctx, cmd, panicMsg, &outputPos)
+	}
+	duration := time.Since(startTime)
+	cmdStatus := sstore.CmdStatusDone
+	var exitCode int
+	if !exitSuccess {
+		cmdStatus = sstore.CmdStatusError
+		exitCode = 1
+	}
+	ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	donePk := packet.MakeCmdDonePacket(ck)
+	donePk.Ts = time.Now().UnixMilli()
+	donePk.ExitCode = exitCode
+	donePk.DurationMs = duration.Milliseconds()
+	update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, donePk, cmdStatus)
+	if err != nil {
+		// nothing to do
+		log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
+		return
+	}
+	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+}
+
+func checkForWriteReady(ctx context.Context, iter *packet.RpcResponseIter) (string, error) {
+	readyIf, err := iter.Next(ctx)
+	if err != nil {
+		return "", fmt.Errorf("error getting write ready response: %v\r\n", err)
+	}
+	readyPk, ok := readyIf.(*packet.WriteFileReadyPacketType)
+	if !ok {
+		return "", fmt.Errorf("bad write ready packet received %v", readyIf)
+	}
+	if readyPk.Error != "" {
+		return "", fmt.Errorf("ready error: %v", readyPk.Error)
+	}
+	return readyPk.RespId, nil
+}
+
+func checkForWriteFinished(ctx context.Context, iter *packet.RpcResponseIter) error {
+	doneIf, err := iter.Next(ctx)
+	if err != nil {
+		return fmt.Errorf("error while getting done response: %v", err)
+	}
+	writeDonePk, ok := doneIf.(*packet.WriteFileDonePacketType)
+	if !ok {
+		return fmt.Errorf("bad done packet received: %T", doneIf)
+	}
+	if writeDonePk.Error != "" {
+		return fmt.Errorf("done error: %v", writeDonePk.Error)
+	}
+	return nil
+}
+
+func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, localPath string, destPath string, outputPos int64) {
+	var exitSuccess bool
+	startTime := time.Now()
+	defer func() {
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+	}()
+	localFile, err := os.Open(localPath)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error, unable to open file %v: %v\r\n", localFile, localPath), &outputPos)
+		return
+	}
+	defer localFile.Close()
+	writePk := packet.MakeWriteFilePacket()
+	writePk.ReqId = uuid.New().String()
+	writePk.Path = destPath
+	iter, err := remote_msh.WriteFile(ctx, writePk)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error starting file write: %v\r\n", err), &outputPos)
+		return
+	}
+	defer iter.Close()
+	_, err = checkForWriteReady(ctx, iter)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos)
+		return
+	}
+	fileStat, err := localFile.Stat()
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error: could not get file stat: %v", err), &outputPos)
+		return
+	}
+	fileSizeBytes := fileStat.Size()
+	bytesWritten := int64(0)
+	lastFileTransferPercentage := float64(0)
+	fileTransferPercentage := float64(0)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
+	writeStringToPty(ctx, cmd, "[", &outputPos)
+	var buffer [server.MaxFileDataPacketSize]byte
+	bufSlice := buffer[:]
+	for {
+		dataPk := packet.MakeFileDataPacket(writePk.ReqId)
+		bytesRead, err := io.ReadFull(localFile, bufSlice)
+		if err == io.ErrUnexpectedEOF || err == io.EOF {
+			dataPk.Eof = true
+		} else if err != nil {
+			dataErr := fmt.Sprintf("error reading file data: %v", err)
+			dataPk.Error = dataErr
+			remote_msh.SendFileData(dataPk)
+			writeStringToPty(ctx, cmd, dataErr, &outputPos)
+			return
+		}
+		if bytesRead > 0 {
+			dataPk.Data = make([]byte, bytesRead)
+			copy(dataPk.Data, bufSlice[0:bytesRead])
+			bytesWritten += int64(len(dataPk.Data))
+			fileTransferPercentage = float64(bytesWritten) / float64(fileSizeBytes)
+
+			if fileTransferPercentage-lastFileTransferPercentage > float64(0.05) {
+				writeStringToPty(ctx, cmd, "-", &outputPos)
+				lastFileTransferPercentage = fileTransferPercentage
+			}
+		}
+		remote_msh.SendFileData(dataPk)
+		if dataPk.Eof {
+			break
+		}
+	}
+	err = checkForWriteFinished(ctx, iter)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Write finished packet error %v", err), &outputPos)
+		return
+	}
+	writeStringToPty(ctx, cmd, "] done. \r\n", &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", fileSizeBytes), &outputPos)
+	exitSuccess = true
+}
+
+func getStatusBarString(filePercentageInt int) string {
+	statusBarString := "\x1b[2k\r["
+	for count := 0; count < 20; count++ {
+		if (filePercentageInt - count*5) > 0 {
+			statusBarString += "-"
+		} else {
+			statusBarString += " "
+		}
+	}
+	if filePercentageInt < 100 {
+		statusBarString += fmt.Sprintf("] %v%%", filePercentageInt)
+	} else {
+		statusBarString += "]"
+	}
+	return statusBarString
+}
+
+func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMsh *remote.MShellProc, destMsh *remote.MShellProc, sourcePath string, destPath string, outputPos int64) {
+	var exitSuccess bool
+	startTime := time.Now()
+	defer func() {
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+	}()
+	streamPk := packet.MakeStreamFilePacket()
+	streamPk.ReqId = uuid.New().String()
+	streamPk.Path = sourcePath
+	sourceStreamIter, err := sourceMsh.StreamFile(ctx, streamPk)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting file data packet: %v\r\n", err), &outputPos)
+		return
+	}
+	defer sourceStreamIter.Close()
+	respIf, err := sourceStreamIter.Next(ctx)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting next packet: %v\r\n", err), &outputPos)
+		return
+	}
+	resp, ok := respIf.(*packet.StreamFileResponseType)
+	if !ok {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error in getting packet response: %v\r\n", err), &outputPos)
+		return
+	}
+	if resp == nil || resp.Error != "" {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos)
+		return
+	}
+	fileSizeBytes := resp.Info.Size
+	if fileSizeBytes == 0 {
+		writeStringToPty(ctx, cmd, "Source file does not exist or is empty - exiting\r\n", &outputPos)
+		return
+	}
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
+	writePk := packet.MakeWriteFilePacket()
+	writePk.ReqId = uuid.New().String()
+	writePk.Path = destPath
+	destWriteIter, err := destMsh.WriteFile(ctx, writePk)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error starting file write: %v\r\n", err), &outputPos)
+		return
+	}
+	defer destWriteIter.Close()
+	_, err = checkForWriteReady(ctx, destWriteIter)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos)
+		return
+	}
+	bytesWritten := int64(0)
+	lastFilePercentageInt := int(0)
+	fileTransferPercentage := float64(0)
+	writeStringToPty(ctx, cmd, "[", &outputPos)
+	for {
+		dataPkIf, err := sourceStreamIter.Next(ctx)
+		if err != nil {
+			log.Printf("error in read-file while getting data: %v\n", err)
+			return
+		}
+		if dataPkIf == nil {
+			break
+		}
+		dataPk, ok := dataPkIf.(*packet.FileDataPacketType)
+		if !ok {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T\r\n", dataPkIf), &outputPos)
+			return
+		}
+		if dataPk.Error != "" {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("in read-file, data packet error: %s\r\n", dataPk.Error), &outputPos)
+			return
+		}
+		writeDataPk := packet.MakeFileDataPacket(writePk.ReqId)
+		writeDataPk.Eof = dataPk.Eof
+		writeDataPk.Error = dataPk.Error
+		writeDataPk.Type = dataPk.Type
+		writeDataPk.Data = make([]byte, int64(len(dataPk.Data)))
+		copy(writeDataPk.Data, dataPk.Data)
+		err = destMsh.SendFileData(writeDataPk)
+		if err != nil {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error sending file to dest: %v\r\n", err), &outputPos)
+			return
+		}
+		bytesWritten += int64(len(dataPk.Data))
+		fileTransferPercentage = float64(bytesWritten) / float64(fileSizeBytes)
+		filePercentageInt := int(fileTransferPercentage * 100)
+		if filePercentageInt-lastFilePercentageInt > 5 {
+			statusBarString := getStatusBarString(filePercentageInt)
+			writeStringToPty(ctx, cmd, statusBarString, &outputPos)
+			lastFilePercentageInt = filePercentageInt
+		}
+	}
+	err = checkForWriteFinished(ctx, destWriteIter)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("\r\nWrite finished packet error %v", err), &outputPos)
+		return
+	}
+	writeStringToPty(ctx, cmd, getStatusBarString(100), &outputPos)
+	writeStringToPty(ctx, cmd, " done. \r\n", &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
+	exitSuccess = true
+}
+
+func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath string, destPath string, outputPos int64) {
+	var exitSuccess bool
+	var bytesWritten int64
+	startTime := time.Now()
+	defer func() {
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+	}()
+	sourceFile, err := os.Open(sourcePath)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error opening source file %v", err), &outputPos)
+		return
+	}
+	defer sourceFile.Close()
+	sourceFileStat, err := sourceFile.Stat()
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error getting filestat %v", err), &outputPos)
+		return
+	}
+	fileSizeBytes := sourceFileStat.Size()
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
+	destFile, err := os.Create(destPath)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error creating dest file %v", err), &outputPos)
+		return
+	}
+	defer destFile.Close()
+	bytesWritten, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error copying files %v", err), &outputPos)
+		return
+	}
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
+	exitSuccess = true
+}
+
+func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, sourcePath string, localPath string, outputPos int64) {
+	var exitSuccess bool
+	startTime := time.Now()
+	defer func() {
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+	}()
+	streamPk := packet.MakeStreamFilePacket()
+	streamPk.ReqId = uuid.New().String()
+	streamPk.Path = sourcePath
+	iter, err := remote_msh.StreamFile(ctx, streamPk)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting file data packet: %v\r\n", err), &outputPos)
+		return
+	}
+	defer iter.Close()
+	respIf, err := iter.Next(ctx)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting next packet: %v\r\n", err), &outputPos)
+		return
+	}
+	resp, ok := respIf.(*packet.StreamFileResponseType)
+	if !ok {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error in getting packet response: %v\r\n", err), &outputPos)
+		return
+	}
+	if resp == nil || resp.Error != "" {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos)
+		return
+	}
+	fileSizeBytes := resp.Info.Size
+	if fileSizeBytes == 0 {
+		writeStringToPty(ctx, cmd, "Source file doesn't exist or file is empty - exiting\r\n", &outputPos)
+		return
+	}
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
+	localFile, err := os.Create(localPath)
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error creating file on local %v\r\n", err), &outputPos)
+		return
+	}
+	defer localFile.Close()
+	bytesWritten := int64(0)
+	lastFileTransferPercentage := float64(0)
+	fileTransferPercentage := float64(0)
+	writeStringToPty(ctx, cmd, "[", &outputPos)
+	for {
+		dataPkIf, err := iter.Next(ctx)
+		if err != nil {
+			log.Printf("error in read-file while getting data: %v\n", err)
+			return
+		}
+		if dataPkIf == nil {
+			break
+		}
+		dataPk, ok := dataPkIf.(*packet.FileDataPacketType)
+		if !ok {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T\r\n", dataPkIf), &outputPos)
+			return
+		}
+		if dataPk.Error != "" {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("in read-file, data packet error: %s", dataPk.Error), &outputPos)
+			return
+		}
+		localFile.Write(dataPk.Data)
+		bytesWritten += int64(len(dataPk.Data))
+		fileTransferPercentage = float64(bytesWritten) / float64(fileSizeBytes)
+
+		if fileTransferPercentage-lastFileTransferPercentage > float64(0.05) {
+			writeStringToPty(ctx, cmd, "-", &outputPos)
+			lastFileTransferPercentage = fileTransferPercentage
+		}
+	}
+	writeStringToPty(ctx, cmd, "] done. \r\n", &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\n", fileSizeBytes), &outputPos)
+	exitSuccess = true
+}
+
+func writeStringToPty(ctx context.Context, cmd *sstore.CmdType, outputString string, outputPos *int64) {
+	outBytes := []byte(outputString)
+	update, err := sstore.AppendToCmdPtyBlob(ctx, cmd.ScreenId, cmd.LineId, outBytes, *outputPos)
+	*outputPos += int64(len(outBytes))
+	if err != nil {
+		log.Printf("error writing to pty: %v", err)
+	}
+	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+	err = sstore.SetStatusIndicatorLevel(ctx, cmd.ScreenId, sstore.StatusIndicatorLevel_Output, false)
+	if err != nil {
+		// This is not a fatal error, so just log it
+		log.Printf("error setting status indicator level to output in writeStringToPty: %v\n", err)
+	}
+}
+
+func parseCopyFileParam(info string) (remote string, path string, err error) {
+	stringsList := strings.Split(info, ":")
+	if len(stringsList) == 1 {
+		// use cur remote
+		return "", stringsList[0], nil
+	} else if len(stringsList) == 2 {
+		remote := strings.Trim(stringsList[0], "[] ")
+		return remote, stringsList[1], nil
+	} else {
+		return "error", "error", fmt.Errorf("malformed arguments")
+	}
+}
+
+func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("usage: /copyfile [file to copy] local=[path to copy to on local]")
+	}
+	ids, err := resolveUiIds(ctx, pk, R_Screen|R_Session|R_RemoteConnected)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve connected remote id: %v", err)
+	}
+	sourceInfo := pk.Args[0]
+	sourceRemote, sourcePath, err := parseCopyFileParam(sourceInfo)
+	var sourceRemoteId *ResolvedRemote
+	var destRemoteId *ResolvedRemote
+	if err != nil {
+		return nil, fmt.Errorf("error: malformed arguments - usage: [remote]:path ")
+	} else if sourceRemote == "" {
+		// use cur remote
+		sourceRemote = ConnectedRemote
+		sourceRemoteId = ids.Remote
+		if ids.Remote.RemoteCopy.IsLocal() {
+			sourceRemote = LocalRemote
+		}
+	} else {
+		pk.Kwargs["remote"] = sourceRemote
+		sourceIds, err := resolveUiIds(ctx, pk, R_Remote)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving remote id %v", err)
+		}
+		sourceRemoteId = sourceIds.Remote
+	}
+	destInfo := pk.Args[1]
+	destRemote, destPath, err := parseCopyFileParam(destInfo)
+	if err != nil {
+		return nil, fmt.Errorf("error: malformed arguments - usage: [remote]:path ")
+	} else if destRemote == "" {
+		destRemote = ConnectedRemote
+		destRemoteId = ids.Remote
+		if ids.Remote.RemoteCopy.IsLocal() {
+			destRemote = LocalRemote
+		}
+	} else {
+		pk.Kwargs["remote"] = destRemote
+		destIds, err := resolveUiIds(ctx, pk, R_Remote)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving remote id %v", err)
+		}
+		destRemoteId = destIds.Remote
+	}
+	if destPath == "" {
+		return nil, fmt.Errorf("error: malformed arguments - usage: [remote]:path ")
+	}
+
+	var sourceFullPath string
+	var destFullPath string
+	sourceMsh := sourceRemoteId.MShell
+	if sourceMsh == nil {
+		return nil, fmt.Errorf("failure getting source remote mshell")
+	}
+	sourceRRState := sourceMsh.GetRemoteRuntimeState()
+	sourcePathWithHome, err := sourceRRState.ExpandHomeDir(sourcePath)
+	if err != nil {
+		return nil, fmt.Errorf("expand home dir err: %v", err)
+	}
+	sourceFullPath = sourcePathWithHome
+	if (sourceRemote == ConnectedRemote || sourceRemote == LocalRemote) && !filepath.IsAbs(sourcePathWithHome) && sourceRemoteId.FeState != nil {
+		sourceCwd := sourceRemoteId.FeState["cwd"]
+		if sourceCwd != "" {
+			sourceFullPath = filepath.Join(sourceCwd, sourcePathWithHome)
+		}
+	}
+	if destPath[len(destPath)-1:] == "/" {
+		sourceFileName := filepath.Base(sourceFullPath)
+		destPath = filepath.Join(destPath, sourceFileName)
+	}
+	destMsh := destRemoteId.MShell
+	if destMsh == nil {
+		return nil, fmt.Errorf("failure getting dest remote mshell")
+	}
+	destRRState := destMsh.GetRemoteRuntimeState()
+	destPathWithHome, err := destRRState.ExpandHomeDir(destPath)
+	if err != nil {
+		return nil, fmt.Errorf("expand home dir err: %v", err)
+	}
+	destFullPath = destPathWithHome
+	if (destRemote == ConnectedRemote || destRemote == LocalRemote) && !filepath.IsAbs(destPathWithHome) && destRemoteId.FeState != nil {
+		destCwd := destRemoteId.FeState["cwd"]
+		if destCwd != "" {
+			destFullPath = filepath.Join(destCwd, destPathWithHome)
+		}
+	}
+	var outputPos int64
+	outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
+	termopts := sstore.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
+	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
+	writeStringToPty(ctx, cmd, outputStr, &outputPos)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update, err := addLineForCmd(ctx, "/copy file", false, ids, cmd, "", nil)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	if destRemote != ConnectedRemote && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos)
+		err = destRemoteId.MShell.TryAutoConnect()
+		if err != nil {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos)
+		} else {
+			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
+		}
+	}
+	if sourceRemote != LocalRemote && sourceRemoteId != nil && !sourceRemoteId.RState.IsConnected() {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", sourceRemote), &outputPos)
+		err = sourceRemoteId.MShell.TryAutoConnect()
+		if err != nil {
+			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos)
+		} else {
+			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
+		}
+	}
+	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+	update = &sstore.ModelUpdate{}
+	if destRemote == LocalRemote && sourceRemote == LocalRemote {
+		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos)
+	} else if destRemote == LocalRemote && sourceRemote != LocalRemote {
+		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos)
+	} else if destRemote != LocalRemote && sourceRemote == LocalRemote {
+		go doCopyLocalFileToRemote(context.Background(), cmd, destMsh, sourceFullPath, destFullPath, outputPos)
+	} else if destRemote != LocalRemote && sourceRemote != LocalRemote {
+		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceMsh, destMsh, sourceFullPath, destFullPath, outputPos)
+	}
+	return update, nil
 }
 
 func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1109,11 +1686,7 @@ func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	mshell := ids.Remote.MShell
 	go mshell.RunInstall()
-	return &sstore.ModelUpdate{
-		RemoteView: &sstore.RemoteViewType{
-			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
-		},
-	}, nil
+	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
 func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1123,11 +1696,7 @@ func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 	}
 	mshell := ids.Remote.MShell
 	go mshell.CancelInstall()
-	return &sstore.ModelUpdate{
-		RemoteView: &sstore.RemoteViewType{
-			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
-		},
-	}, nil
+	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
 func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1136,11 +1705,7 @@ func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, err
 	}
 	go ids.Remote.MShell.Launch(true)
-	return &sstore.ModelUpdate{
-		RemoteView: &sstore.RemoteViewType{
-			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
-		},
-	}, nil
+	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
 func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1150,11 +1715,7 @@ func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	}
 	force := resolveBool(pk.Kwargs["force"], false)
 	go ids.Remote.MShell.Disconnect(force)
-	return &sstore.ModelUpdate{
-		RemoteView: &sstore.RemoteViewType{
-			PtyRemoteId: ids.Remote.RemotePtr.RemoteId,
-		},
-	}, nil
+	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
 func makeRemoteEditUpdate_new(err error) sstore.UpdatePacket {
@@ -1164,12 +1725,7 @@ func makeRemoteEditUpdate_new(err error) sstore.UpdatePacket {
 	if err != nil {
 		redit.ErrorStr = err.Error()
 	}
-	update := &sstore.ModelUpdate{
-		RemoteView: &sstore.RemoteViewType{
-			RemoteEdit: redit,
-		},
-	}
-	return update
+	return createRemoteViewRemoteEditUpdate(redit)
 }
 
 func makeRemoteEditErrorReturn_new(visual bool, err error) (sstore.UpdatePacket, error) {
@@ -1191,12 +1747,7 @@ func makeRemoteEditUpdate_edit(ids resolvedIds, err error) sstore.UpdatePacket {
 	if err != nil {
 		redit.ErrorStr = err.Error()
 	}
-	update := &sstore.ModelUpdate{
-		RemoteView: &sstore.RemoteViewType{
-			RemoteEdit: redit,
-		},
-	}
-	return update
+	return createRemoteViewRemoteEditUpdate(redit)
 }
 
 func makeRemoteEditErrorReturn_edit(ids resolvedIds, visual bool, err error) (sstore.UpdatePacket, error) {
@@ -1408,11 +1959,7 @@ func RemoteNewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return nil, fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
 	}
 	// SUCCESS
-	return &sstore.ModelUpdate{
-		RemoteView: &sstore.RemoteViewType{
-			PtyRemoteId: r.RemoteId,
-		},
-	}, nil
+	return createRemoteViewRemoteIdUpdate(r.RemoteId), nil
 }
 
 func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1437,18 +1984,13 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		return makeRemoteEditErrorReturn_edit(ids, visualEdit, fmt.Errorf("/remote:new error updating remote: %v", err))
 	}
 	if visualEdit {
-		return &sstore.ModelUpdate{
-			RemoteView: &sstore.RemoteViewType{
-				PtyRemoteId: ids.Remote.RemoteCopy.RemoteId,
-			},
-		}, nil
+		return createRemoteViewRemoteIdUpdate(ids.Remote.RemoteCopy.RemoteId), nil
 	}
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("remote %q updated", ids.Remote.DisplayName),
-			TimeoutMs: 2000,
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("remote %q updated", ids.Remote.DisplayName),
+		TimeoutMs: 2000,
+	})
 	return update, nil
 }
 
@@ -1458,11 +2000,7 @@ func RemoteShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		return nil, err
 	}
 	state := ids.Remote.RState
-	return &sstore.ModelUpdate{
-		RemoteView: &sstore.RemoteViewType{
-			PtyRemoteId: state.RemoteId,
-		},
-	}, nil
+	return createRemoteViewRemoteIdUpdate(state.RemoteId), nil
 }
 
 func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1477,11 +2015,11 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		}
 		buf.WriteString(fmt.Sprintf("%-12s %-5s %8s  %s\n", rstate.Status, rstate.RemoteType, rstate.RemoteId[0:8], name))
 	}
-	return &sstore.ModelUpdate{
-		RemoteView: &sstore.RemoteViewType{
-			RemoteShowAll: true,
-		},
-	}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.RemoteViewType{
+		RemoteShowAll: true,
+	})
+	return update, nil
 }
 
 func resolveSshConfigPatterns(configFiles []string) ([]string, error) {
@@ -1777,16 +2315,17 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	visualEdit := resolveBool(pk.Kwargs["visual"], false)
 	if visualEdit {
 		update := &sstore.ModelUpdate{}
-		update.AlertMessage = &sstore.AlertMessageType{
+		sstore.AddUpdate(update, sstore.AlertMessageType{
 			Title:    "SSH Config Import",
 			Message:  outMsg,
 			Markdown: true,
-		}
+		})
 		return update, nil
 	} else {
 		update := &sstore.ModelUpdate{}
-		update.Info = &sstore.InfoMsgType{}
-		update.Info.InfoMsg = outMsg
+		sstore.AddUpdate(update, sstore.InfoMsgType{
+			InfoMsg: outMsg,
+		})
 		return update, nil
 	}
 }
@@ -1810,12 +2349,12 @@ func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		outStr := fmt.Sprintf("%-30s %s  %s\n", screen.Name+archivedStr, screen.ScreenId, screenIdxStr)
 		buf.WriteString(outStr)
 	}
-	return &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle: fmt.Sprintf("all screens for session"),
-			InfoLines: splitLinesForInfo(buf.String()),
-		},
-	}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle: fmt.Sprintf("all screens for session"),
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
+	return update, nil
 }
 
 func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -1849,8 +2388,8 @@ func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
-	update.Sessions = []*sstore.SessionType{sessionUpdate}
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	sstore.AddUpdate(update, sessionUpdate)
 	return update, nil
 }
 
@@ -1874,7 +2413,7 @@ func RemoteArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get updated screen: %w", err)
 	}
-	update.Screens = []*sstore.ScreenType{screen}
+	sstore.AddUpdate(update, *screen)
 	return update, nil
 }
 
@@ -1923,11 +2462,10 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 		}
 		buf.WriteString(fmt.Sprintf("%-30s %-50s (default)\n", msh.GetDisplayName(), cwdStr))
 	}
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoLines: splitLinesForInfo(buf.String()),
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
 	return update, nil
 }
 
@@ -2281,7 +2819,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if resolveBool(pk.Kwargs["cmdinfo"], false) {
 		if promptStr == "" {
 			// this is requesting an update without wanting an openai query
-			update, err := sstore.UpdateWithCurrentOpenAICmdInfoChat(cmd.ScreenId)
+			update, err := sstore.UpdateWithCurrentOpenAICmdInfoChat(cmd.ScreenId, nil)
 			if err != nil {
 				return nil, fmt.Errorf("error getting update for CmdInfoChat %v", err)
 			}
@@ -2326,7 +2864,9 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 		// ignore error again (nothing to do)
 		log.Printf("openai error updating screen selected line: %v\n", err)
 	}
-	update := &sstore.ModelUpdate{Line: line, Cmd: cmd, Screens: []*sstore.ScreenType{screen}}
+	update := &sstore.ModelUpdate{}
+	sstore.AddLineUpdate(update, line, cmd)
+	sstore.AddUpdate(update, *screen)
 	return update, nil
 }
 
@@ -2359,10 +2899,9 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		if err != nil {
 			return nil, fmt.Errorf("/%s error: cannot resolve screen for update: %w", GetCmdStr(pk), err)
 		}
-		update := &sstore.ModelUpdate{
-			Screens:     []*sstore.ScreenType{screen},
-			Interactive: pk.Interactive,
-		}
+		update := &sstore.ModelUpdate{}
+		sstore.AddUpdate(update, *screen)
+		sstore.AddInteractiveUpdate(update, pk.Interactive)
 		return update, nil
 	}
 	outputStr := fmt.Sprintf("connected to %s", GetFullRemoteDisplayName(rptr, rstate))
@@ -2376,7 +2915,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.Up
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 
@@ -2458,11 +2997,10 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 			log.Printf("%s error updating screen selected line: %v\n", metaCmd, err)
 		}
 	}
-	update := &sstore.ModelUpdate{
-		Line:    rtnLine,
-		Cmd:     cmd,
-		Screens: []*sstore.ScreenType{screen},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddLineUpdate(update, rtnLine, cmd)
+	sstore.AddUpdate(update, *screen)
+	sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
 	updateHistoryContext(ctx, rtnLine, cmd, cmd.FeState)
 	return update, nil
 }
@@ -2503,13 +3041,12 @@ func makeInfoFromComps(compType string, comps []string, hasMore bool) sstore.Upd
 	if len(comps) == 0 {
 		comps = []string{"(no completions)"}
 	}
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle:     fmt.Sprintf("%s completions", compType),
-			InfoComps:     comps,
-			InfoCompsMore: hasMore,
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle:     fmt.Sprintf("%s completions", compType),
+		InfoComps:     comps,
+		InfoCompsMore: hasMore,
+	})
 	return update
 }
 
@@ -2645,9 +3182,8 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if newSP == nil || cmdSP == *newSP {
 		return nil, nil
 	}
-	update := &sstore.ModelUpdate{
-		CmdLine: &utilfn.StrWithPos{Str: newSP.Str, Pos: newSP.Pos},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddCmdLineUpdate(update, utilfn.StrWithPos{Str: newSP.Str, Pos: newSP.Pos})
 	return update, nil
 }
 
@@ -2673,7 +3209,9 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		// ignore error again (nothing to do)
 		log.Printf("/comment error updating screen selected line: %v\n", err)
 	}
-	update := &sstore.ModelUpdate{Line: rtnLine, Screens: []*sstore.ScreenType{screen}}
+	update := &sstore.ModelUpdate{}
+	sstore.AddLineUpdate(update, rtnLine, nil)
+	sstore.AddUpdate(update, *screen)
 	return update, nil
 }
 
@@ -2856,9 +3394,9 @@ func SessionArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		if err != nil {
 			return nil, fmt.Errorf("cannot archive session: %v", err)
 		}
-		update.Info = &sstore.InfoMsgType{
+		sstore.AddUpdate(update, sstore.InfoMsgType{
 			InfoMsg: "session archived",
-		}
+		})
 		return update, nil
 	} else {
 		activate := resolveBool(pk.Kwargs["activate"], false)
@@ -2866,9 +3404,9 @@ func SessionArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		if err != nil {
 			return nil, fmt.Errorf("cannot un-archive session: %v", err)
 		}
-		update.Info = &sstore.InfoMsgType{
+		sstore.AddUpdate(update, sstore.InfoMsgType{
 			InfoMsg: "session un-archived",
-		}
+		})
 		return update, nil
 	}
 }
@@ -2909,12 +3447,12 @@ func SessionShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "cmds", stats.NumCmds))
 	buf.WriteString(fmt.Sprintf("  %-15s %0.2fM\n", "disksize", float64(stats.DiskStats.TotalSize)/1000000))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "disk-location", stats.DiskStats.Location))
-	return &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle: "session info",
-			InfoLines: splitLinesForInfo(buf.String()),
-		},
-	}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle: "session info",
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
+	return update, nil
 }
 
 func SessionShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -2935,12 +3473,12 @@ func SessionShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		outStr := fmt.Sprintf("%-30s %s  %s\n", session.Name+archivedStr, session.SessionId, sessionIdxStr)
 		buf.WriteString(outStr)
 	}
-	return &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle: "all sessions",
-			InfoLines: splitLinesForInfo(buf.String()),
-		},
-	}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle: "all sessions",
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
+	return update, nil
 }
 
 func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -2961,20 +3499,16 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		}
 		varsUpdated = append(varsUpdated, "name")
 	}
-	if pk.Kwargs["pos"] != "" {
-
-	}
 	if len(varsUpdated) == 0 {
 		return nil, fmt.Errorf("/session:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
 	}
 	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
-	update := &sstore.ModelUpdate{
-		Sessions: []*sstore.SessionType{bareSession},
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
-			TimeoutMs: 2000,
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *bareSession)
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
+		TimeoutMs: 2000,
+	})
 	return update, nil
 }
 
@@ -2995,14 +3529,12 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, err
 	}
-
-	update := &sstore.ModelUpdate{
-		ActiveSessionId: ritem.Id,
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("switched to session %q", ritem.Name),
-			TimeoutMs: 2000,
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, (sstore.ActiveSessionIdUpdate)(ritem.Id))
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("switched to session %q", ritem.Name),
+		TimeoutMs: 2000,
+	})
 
 	// Reset the status indicator for the new active screen
 	session, err := sstore.GetSessionById(ctx, ritem.Id)
@@ -3057,8 +3589,8 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
-	update.Sessions = sstore.MakeSessionsUpdateForRemote(ids.SessionId, remoteInst)
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	sstore.AddUpdate(update, sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))
 	return update, nil
 }
 
@@ -3072,20 +3604,20 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore
 		if err != nil {
 			return nil, fmt.Errorf("clearing screen (archiving): %v", err)
 		}
-		update.Info = &sstore.InfoMsgType{
+		sstore.AddUpdate(update, sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("screen cleared (all lines archived)"),
 			TimeoutMs: 2000,
-		}
+		})
 		return update, nil
 	} else {
 		update, err := sstore.DeleteScreenLines(ctx, ids.ScreenId)
 		if err != nil {
 			return nil, fmt.Errorf("clearing screen: %v", err)
 		}
-		update.Info = &sstore.InfoMsgType{
+		sstore.AddUpdate(update, sstore.InfoMsgType{
 			InfoMsg:   fmt.Sprintf("screen cleared"),
 			TimeoutMs: 2000,
-		}
+		})
 		return update, nil
 	}
 
@@ -3197,10 +3729,8 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	}
 	hvdata.Lines = lines
 	hvdata.Cmds = cmds
-	update := &sstore.ModelUpdate{
-		HistoryViewData: hvdata,
-		MainView:        sstore.MainViewHistory,
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, &sstore.MainViewUpdate{MainView: sstore.MainViewHistory, HistoryView: hvdata})
 	return update, nil
 }
 
@@ -3246,13 +3776,13 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{HistoryView: 1}, "history")
 	}
 	update := &sstore.ModelUpdate{}
-	update.History = &sstore.HistoryInfoType{
+	sstore.AddUpdate(update, sstore.HistoryInfoType{
 		HistoryType: htype,
 		SessionId:   ids.SessionId,
 		ScreenId:    ids.ScreenId,
 		Items:       hresult.Items,
 		Show:        show,
-	}
+	})
 	return update, nil
 }
 
@@ -3422,6 +3952,7 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		NoCreateCmdPtyFile: true,
 	}
 	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
+	sstore.IncrementNumRunningCmds(cmd.ScreenId, 1)
 	if callback != nil {
 		defer callback()
 	}
@@ -3438,18 +3969,16 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("error getting updated line/cmd: %w", err)
 	}
 	cmd.Restarted = true
-	update := &sstore.ModelUpdate{
-		Line:        line,
-		Cmd:         cmd,
-		Interactive: pk.Interactive,
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddLineUpdate(update, line, cmd)
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	screen, focusErr := focusScreenLine(ctx, ids.ScreenId, line.LineNum)
 	if focusErr != nil {
 		// not a fatal error, so just log
 		log.Printf("error focusing screen line: %v\n", focusErr)
 	}
 	if screen != nil {
-		update.Screens = []*sstore.ScreenType{screen}
+		sstore.AddUpdate(update, *screen)
 	}
 	return update, nil
 }
@@ -3528,13 +4057,12 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if err != nil {
 		return nil, fmt.Errorf("/line:set cannot retrieve updated line: %v", err)
 	}
-	update := &sstore.ModelUpdate{
-		Line: updatedLine,
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("line updated %s", formatStrs(varsUpdated, "and", false)),
-			TimeoutMs: 2000,
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddLineUpdate(update, updatedLine, nil)
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("line updated %s", formatStrs(varsUpdated, "and", false)),
+		TimeoutMs: 2000,
+	})
 	return update, nil
 }
 
@@ -3580,7 +4108,7 @@ func LineViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		if err != nil {
 			return nil, err
 		}
-		update.Screens = []*sstore.ScreenType{screen}
+		sstore.AddUpdate(update, *screen)
 	}
 	return update, nil
 }
@@ -3596,10 +4124,12 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
 	}
 	sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{BookmarksView: 1}, "bookmarks")
-	update := &sstore.ModelUpdate{
-		MainView:  sstore.MainViewBookmarks,
-		Bookmarks: bms,
-	}
+	update := &sstore.ModelUpdate{}
+
+	sstore.AddUpdate(update, &sstore.MainViewUpdate{
+		MainView:      sstore.MainViewBookmarks,
+		BookmarksView: &sstore.BookmarksUpdate{Bookmarks: bms},
+	})
 	return update, nil
 }
 
@@ -3633,12 +4163,11 @@ func BookmarkSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving edited bookmark: %v", err)
 	}
-	return &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoMsg: "bookmark edited",
-		},
-		Bookmarks: []*sstore.BookmarkType{bm},
-	}, nil
+	bms := []*sstore.BookmarkType{bm}
+	update := &sstore.ModelUpdate{}
+	sstore.AddBookmarksUpdate(update, bms, nil)
+	sstore.AddUpdate(update, sstore.InfoMsgUpdate("bookmark edited"))
+	return update, nil
 }
 
 func BookmarkDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -3657,13 +4186,11 @@ func BookmarkDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, fmt.Errorf("error deleting bookmark: %v", err)
 	}
-	bm := &sstore.BookmarkType{BookmarkId: bookmarkId, Remove: true}
-	return &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoMsg: "bookmark deleted",
-		},
-		Bookmarks: []*sstore.BookmarkType{bm},
-	}, nil
+	update := &sstore.ModelUpdate{}
+	bms := []*sstore.BookmarkType{{BookmarkId: bookmarkId, Remove: true}}
+	sstore.AddBookmarksUpdate(update, bms, nil)
+	sstore.AddUpdate(update, sstore.InfoMsgUpdate("bookmark deleted"))
+	return update, nil
 }
 
 func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -3712,11 +4239,11 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		newBmId = newBm.BookmarkId
 	}
 	bms, err := sstore.GetBookmarks(ctx, "")
-	update := &sstore.ModelUpdate{
-		MainView:         sstore.MainViewBookmarks,
-		Bookmarks:        bms,
-		SelectedBookmark: newBmId,
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, &sstore.MainViewUpdate{
+		MainView:      sstore.MainViewBookmarks,
+		BookmarksView: &sstore.BookmarksUpdate{Bookmarks: bms, SelectedBookmark: newBmId},
+	})
 	return update, nil
 }
 
@@ -3762,7 +4289,9 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		// no line (which is strange given we checked for it above).  just return a nop.
 		return nil, nil
 	}
-	return &sstore.ModelUpdate{Line: lineObj}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddLineUpdate(update, lineObj, nil)
+	return update, nil
 }
 
 func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -3797,7 +4326,9 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// no line (which is strange given we checked for it above).  just return a nop.
 		return nil, nil
 	}
-	return &sstore.ModelUpdate{Line: lineObj}, nil
+	update := &sstore.ModelUpdate{}
+	sstore.AddLineUpdate(update, lineObj, nil)
+	return update, nil
 }
 
 func LineDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
@@ -3825,18 +4356,16 @@ func LineDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	}
 	update := &sstore.ModelUpdate{}
 	for _, lineId := range lineIds {
-		lineObj := &sstore.LineType{
-			ScreenId: ids.ScreenId,
-			LineId:   lineId,
-			Remove:   true,
-		}
-		update.Lines = append(update.Lines, lineObj)
+		line := &sstore.LineType{ScreenId: ids.ScreenId, LineId: lineId, Remove: true}
+		sstore.AddLineUpdate(update, line, nil)
 	}
 	screen, err := sstore.FixupScreenSelectedLine(ctx, ids.ScreenId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:delete error fixing up screen: %v", err)
 	}
-	update.Screens = []*sstore.ScreenType{screen}
+	if screen != nil {
+		sstore.AddUpdate(update, *screen)
+	}
 	return update, nil
 }
 
@@ -3919,12 +4448,11 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		stateStr = stateStr[0:77] + "..."
 	}
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "state", stateStr))
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle: fmt.Sprintf("line %d info", line.LineNum),
-			InfoLines: splitLinesForInfo(buf.String()),
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle: fmt.Sprintf("line %d info", line.LineNum),
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
 	return update, nil
 }
 
@@ -4014,12 +4542,11 @@ func ViewStatCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		modeStr = modeStr[len(modeStr)-9:]
 	}
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "perms", modeStr))
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle: fmt.Sprintf("view stat %q", streamPk.Path),
-			InfoLines: splitLinesForInfo(buf.String()),
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle: fmt.Sprintf("view stat %q", streamPk.Path),
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
 	return update, nil
 }
 
@@ -4076,12 +4603,11 @@ func ViewTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		buf.Write(dataPk.Data)
 	}
 	buf.WriteString(fmt.Sprintf("\n\ntotal packets: %d\n", numPackets))
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle: fmt.Sprintf("view file %q", streamPk.Path),
-			InfoLines: splitLinesForInfo(buf.String()),
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle: fmt.Sprintf("view file %q", streamPk.Path),
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
 	return update, nil
 }
 
@@ -4124,7 +4650,7 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 
@@ -4155,7 +4681,7 @@ func CSVViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 
@@ -4186,7 +4712,7 @@ func ImageViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 
@@ -4217,7 +4743,7 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.Interactive = pk.Interactive
+	sstore.AddInteractiveUpdate(update, pk.Interactive)
 	return update, nil
 }
 
@@ -4281,11 +4807,10 @@ func EditTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 	if donePk.Error != "" {
 		return nil, fmt.Errorf("/edit:test %s", donePk.Error)
 	}
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle: fmt.Sprintf("edit test, wrote %q", writePk.Path),
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle: fmt.Sprintf("edit test, wrote %q", writePk.Path),
+	})
 	return update, nil
 }
 
@@ -4348,11 +4873,8 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 	if err != nil {
 		return nil, fmt.Errorf("cannot send signal: %v", err)
 	}
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoMsg: fmt.Sprintf("sent line %s signal %s", lineArg, sigArg),
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgUpdate("sent line %s signal %s", lineArg, sigArg))
 	return update, nil
 }
 
@@ -4386,11 +4908,8 @@ func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstor
 func ClientNotifyUpdateWriterCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	pcloud.ResetUpdateWriterNumFailures()
 	sstore.NotifyUpdateWriter()
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoMsg: fmt.Sprintf("notified update writer"),
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgUpdate("notified update writer"))
 	return update, nil
 }
 
@@ -4416,9 +4935,8 @@ func ClientAcceptTosCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
-	update := &sstore.ModelUpdate{
-		ClientData: clientData,
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *clientData)
 	return update, nil
 }
 
@@ -4466,9 +4984,8 @@ func ClientConfirmFlagCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 
-	update := &sstore.ModelUpdate{
-		ClientData: clientData,
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *clientData)
 
 	return update, nil
 }
@@ -4522,9 +5039,8 @@ func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 
-	update := &sstore.ModelUpdate{
-		ClientData: clientData,
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *clientData)
 
 	return update, nil
 }
@@ -4672,13 +5188,12 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ss
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("client updated %s", formatStrs(varsUpdated, "and", false)),
-			TimeoutMs: 2000,
-		},
-		ClientData: clientData,
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *clientData)
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("client updated %s", formatStrs(varsUpdated, "and", false)),
+		TimeoutMs: 2000,
+	})
 	return update, nil
 }
 
@@ -4704,12 +5219,12 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))
 	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.UnameKernelRelease()))
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle: fmt.Sprintf("client info"),
-			InfoLines: splitLinesForInfo(buf.String()),
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle: fmt.Sprintf("client info"),
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
+
 	return update, nil
 }
 
@@ -4763,7 +5278,7 @@ func TelemetryOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 	update := sstore.InfoMsgUpdate("telemetry is now on")
-	update.ClientData = clientData
+	sstore.AddUpdate(update, *clientData)
 	return update, nil
 }
 
@@ -4784,7 +5299,7 @@ func TelemetryOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 	update := sstore.InfoMsgUpdate("telemetry is now off")
-	update.ClientData = clientData
+	sstore.AddUpdate(update, *clientData)
 	return update, nil
 }
 
@@ -4795,12 +5310,11 @@ func TelemetryShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
-	update := &sstore.ModelUpdate{
-		Info: &sstore.InfoMsgType{
-			InfoTitle: fmt.Sprintf("telemetry info"),
-			InfoLines: splitLinesForInfo(buf.String()),
-		},
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, sstore.InfoMsgType{
+		InfoTitle: fmt.Sprintf("telemetry info"),
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
 	return update, nil
 }
 
@@ -4872,7 +5386,7 @@ func ReleaseCheckOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 	update := sstore.InfoMsgUpdate("automatic release checking is now on")
-	update.ClientData = clientData
+	sstore.AddUpdate(update, *clientData)
 	return update, nil
 }
 
@@ -4893,7 +5407,7 @@ func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 	update := sstore.InfoMsgUpdate("automatic release checking is now off")
-	update.ClientData = clientData
+	sstore.AddUpdate(update, *clientData)
 	return update, nil
 }
 
@@ -4916,7 +5430,7 @@ func ReleaseCheckCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	}
 
 	update := sstore.InfoMsgUpdate(rsp)
-	update.ClientData = clientData
+	sstore.AddUpdate(update, *clientData)
 	return update, nil
 }
 

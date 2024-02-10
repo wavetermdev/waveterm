@@ -9,20 +9,24 @@ import {
     ViewRemoteConnDetailModal,
     EditRemoteConnModal,
     TabSwitcherModal,
+    SessionSettingsModal,
+    ScreenSettingsModal,
+    LineSettingsModal,
+    UserInputModal,
 } from "../modals";
-import { ScreenSettingsModal, SessionSettingsModal, LineSettingsModal } from "./settings";
 import * as constants from "../../appconst";
 
-const modalsRegistry: { [key: string]: () => React.ReactElement } = {
-    [constants.ABOUT]: () => <AboutModal />,
-    [constants.CREATE_REMOTE]: () => <CreateRemoteConnModal />,
-    [constants.VIEW_REMOTE]: () => <ViewRemoteConnDetailModal />,
-    [constants.EDIT_REMOTE]: () => <EditRemoteConnModal />,
-    [constants.ALERT]: () => <AlertModal />,
-    [constants.SCREEN_SETTINGS]: () => <ScreenSettingsModal />,
-    [constants.SESSION_SETTINGS]: () => <SessionSettingsModal />,
-    [constants.LINE_SETTINGS]: () => <LineSettingsModal />,
-    [constants.TAB_SWITCHER]: () => <TabSwitcherModal />,
+const modalsRegistry: { [key: string]: React.ComponentType } = {
+    [constants.ABOUT]: AboutModal,
+    [constants.CREATE_REMOTE]: CreateRemoteConnModal,
+    [constants.VIEW_REMOTE]: ViewRemoteConnDetailModal,
+    [constants.EDIT_REMOTE]: EditRemoteConnModal,
+    [constants.ALERT]: AlertModal,
+    [constants.SCREEN_SETTINGS]: ScreenSettingsModal,
+    [constants.SESSION_SETTINGS]: SessionSettingsModal,
+    [constants.LINE_SETTINGS]: LineSettingsModal,
+    [constants.TAB_SWITCHER]: TabSwitcherModal,
+    [constants.USER_INPUT]: UserInputModal,
 };
 
 export { modalsRegistry };

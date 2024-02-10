@@ -6,11 +6,19 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../models";
 import * as T from "../../../types/types";
-import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip, ShowWaveShellInstallPrompt } from "../common";
+import {
+    Modal,
+    TextField,
+    NumberField,
+    InputDecoration,
+    Dropdown,
+    PasswordField,
+    Tooltip,
+    ShowWaveShellInstallPrompt,
+} from "../elements";
 import * as util from "../../../util/util";
-import * as appconst from "../../appconst";
 
 import "./createremoteconn.less";
 

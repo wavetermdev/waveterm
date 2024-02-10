@@ -1,0 +1,123 @@
+@import "../../../app/common/themes/themes.less";
+
+.wave-button {
+    background: none;
+    color: inherit;
+    border: none;
+    font: inherit;
+    cursor: pointer;
+    outline: inherit;
+
+    display: flex;
+    padding: 6px 16px;
+    align-items: center;
+    gap: 4px;
+    border-radius: 6px;
+    height: auto;
+
+    &:hover {
+        color: @term-white;
+    }
+
+    i {
+        fill: rgba(255, 255, 255, 0.12);
+    }
+
+    &.primary {
+        color: @term-green;
+        background: none;
+
+        i {
+            fill: @term-green;
+        }
+
+        &.solid {
+            color: @term-bright-white;
+            background: @term-green;
+            box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
+                0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
+
+            i {
+                fill: @term-white;
+            }
+        }
+
+        &.outlined {
+            border: 1px solid @term-green;
+        }
+
+        &.ghost {
+            // Styles for .ghost are already defined above
+        }
+
+        &:hover {
+            color: @term-bright-white;
+        }
+    }
+
+    &.secondary {
+        color: @term-white;
+        background: none;
+
+        &.solid {
+            background: rgba(255, 255, 255, 0.09);
+            box-shadow: none;
+        }
+
+        &.outlined {
+            border: 1px solid rgba(255, 255, 255, 0.09);
+        }
+
+        &.ghost {
+            padding: 6px 10px;
+
+            i {
+                fill: @term-green;
+            }
+        }
+    }
+
+    &.color-yellow {
+        &.solid {
+            border-color: @warning-yellow;
+            background-color: mix(@warning-yellow, @term-white, 50%);
+            box-shadow: none;
+        }
+
+        &.outlined {
+            color: @warning-yellow;
+            border-color: @warning-yellow;
+            &:hover {
+                color: @term-white;
+                border-color: @term-white;
+            }
+        }
+
+        &.ghost {
+        }
+    }
+
+    &.color-red {
+        &.solid {
+            border-color: @term-red;
+            background-color: mix(@term-red, @term-white, 50%);
+            box-shadow: none;
+        }
+
+        &.outlined {
+            color: @term-red;
+            border-color: @term-red;
+        }
+
+        &.ghost {
+        }
+    }
+
+    &.disabled {
+        opacity: 0.5;
+    }
+
+    &.link-button {
+        cursor: pointer;
+    }
+}

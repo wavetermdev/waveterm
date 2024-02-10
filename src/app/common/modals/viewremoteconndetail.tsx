@@ -7,9 +7,9 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../model/model";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../models";
 import * as T from "../../../types/types";
-import { Modal, Tooltip, Button, Status } from "../common";
+import { Modal, Tooltip, Button, Status } from "../elements";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
 
