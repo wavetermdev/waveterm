@@ -63,14 +63,18 @@ func createDummySigner() ([]ssh.Signer, error) {
 // they were successes. An error in this function prevents any other
 // keys from being attempted. But if there's an error because of a dummy
 // file, the library can still try again with a new key.
-func createPublicKeyCallback(identityFiles *[]string, passphrase string) func() ([]ssh.Signer, error) {
+func createPublicKeyCallback(sshKeywords *SshKeywords, passphrase string) func() ([]ssh.Signer, error) {
+	var identityFiles []string
+	copy(identityFiles, sshKeywords.IdentityFile)
+	identityFilesPtr := &identityFiles
+
 	return func() ([]ssh.Signer, error) {
-		if len(*identityFiles) == 0 {
+		if len(*identityFilesPtr) == 0 {
 			// skip this key and try with the next
 			return createDummySigner()
 		}
-		identityFile := (*identityFiles)[0]
-		*identityFiles = (*identityFiles)[1:]
+		identityFile := (*identityFilesPtr)[0]
+		*identityFilesPtr = (*identityFilesPtr)[1:]
 		privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
 		if err != nil {
 			// skip this key and try with the next
@@ -93,6 +97,13 @@ func createPublicKeyCallback(identityFiles *[]string, passphrase string) func() 
 			// skip this key and try with the next
 			return createDummySigner()
 		}
+
+		// batch mode deactivates user input
+		if sshKeywords.BatchMode {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+
 		request := &sstore.UserInputRequestType{
 			ResponseType: "text",
 			QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
@@ -464,15 +475,25 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 		return nil, err
 	}
 
-	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(&sshKeywords.IdentityFile, opts.SSHPassword))
+	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(sshKeywords, opts.SSHPassword))
 	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword))
 	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword))
+
+	// batch mode turns off interactive input
+	// this means the number of attemtps must
+	// drop to 1 with this setup
+	var attemptsAllowed int
+	if sshKeywords.BatchMode {
+		attemptsAllowed = 1
+	} else {
+		attemptsAllowed = 2
+	}
 
 	// exclude gssapi-with-mic and hostbased until implemented
 	authMethodMap := map[string]ssh.AuthMethod{
 		"publickey":            ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)),
-		"keyboard-interactive": ssh.RetryableAuthMethod(keyboardInteractive, 2),
-		"password":             ssh.RetryableAuthMethod(passwordCallback, 2),
+		"keyboard-interactive": ssh.RetryableAuthMethod(keyboardInteractive, attemptsAllowed),
+		"password":             ssh.RetryableAuthMethod(passwordCallback, attemptsAllowed),
 	}
 
 	authMethodActiveMap := map[string]bool{
