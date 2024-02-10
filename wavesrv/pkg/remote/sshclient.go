@@ -388,11 +388,12 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 				"%s\n\n"+
 				"**Offending Keys**  \n"+
 				"%s", key.Type(), correctKeyFingerprint, strings.Join(bulletListKnownHosts, "  \n"), strings.Join(offendingKeysFmt, "  \n"))
-			update := &sstore.ModelUpdate{AlertMessage: &sstore.AlertMessageType{
+			update := &sstore.ModelUpdate{}
+			sstore.AddUpdate(update, sstore.AlertMessageType{
 				Markdown: true,
 				Title:    "Known Hosts Key Changed",
 				Message:  alertText,
-			}}
+			})
 			sstore.MainBus.SendUpdate(update)
 			return fmt.Errorf("remote host identification has changed")
 		}

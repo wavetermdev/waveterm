@@ -678,18 +678,19 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 
 func (msh *MShellProc) NotifyRemoteUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
-	update := &sstore.ModelUpdate{Remotes: []RemoteRuntimeState{rstate}}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, rstate)
 	sstore.MainBus.SendUpdate(update)
 }
 
-func GetAllRemoteRuntimeState() []RemoteRuntimeState {
+func GetAllRemoteRuntimeState() []*RemoteRuntimeState {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 
-	var rtn []RemoteRuntimeState
+	var rtn []*RemoteRuntimeState
 	for _, proc := range GlobalStore.Map {
 		state := proc.GetRemoteRuntimeState()
-		rtn = append(rtn, state)
+		rtn = append(rtn, &state)
 	}
 	return rtn
 }
@@ -1997,7 +1998,8 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		if err != nil {
 			continue
 		}
-		update := &sstore.ModelUpdate{Cmd: cmd}
+		update := &sstore.ModelUpdate{}
+		sstore.AddUpdate(update, *cmd)
 		sstore.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
 		go pushNumRunningCmdsUpdate(&ck, -1)
 	}
@@ -2027,7 +2029,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		// fall-through (nothing to do)
 	}
 	if screen != nil {
-		update.Screens = []*sstore.ScreenType{screen}
+		sstore.AddUpdate(update, *screen)
 	}
 	rct := msh.GetRunningCmd(donePk.CK)
 	var statePtr *sstore.ShellStatePtr
@@ -2039,7 +2041,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 		if remoteInst != nil {
-			update.Sessions = sstore.MakeSessionsUpdateForRemote(rct.SessionId, remoteInst)
+			sstore.AddUpdate(update, sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
 		}
 		statePtr = &sstore.ShellStatePtr{BaseHash: donePk.FinalState.GetHashVal(false)}
 	} else if donePk.FinalStateDiff != nil && rct != nil {
@@ -2059,7 +2061,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 				// fall-through (nothing to do)
 			}
 			if remoteInst != nil {
-				update.Sessions = sstore.MakeSessionsUpdateForRemote(rct.SessionId, remoteInst)
+				sstore.AddUpdate(update, sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
 			}
 			diffHashArr := append(([]string)(nil), donePk.FinalStateDiff.DiffHashArr...)
 			diffHashArr = append(diffHashArr, donePk.FinalStateDiff.GetHashVal(false))
@@ -2102,9 +2104,10 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		log.Printf("error getting cmd(2) in handleCmdFinalPacket (not found)\n")
 		return
 	}
-	update := &sstore.ModelUpdate{Cmd: rtnCmd}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *rtnCmd)
 	if screen != nil {
-		update.Screens = []*sstore.ScreenType{screen}
+		sstore.AddUpdate(update, *screen)
 	}
 	go pushNumRunningCmdsUpdate(&finalPk.CK, -1)
 	sstore.MainBus.SendUpdate(update)
@@ -2172,7 +2175,9 @@ func (msh *MShellProc) makeHandleCmdFinalPacketClosure(finalPk *packet.CmdFinalP
 
 func sendScreenUpdates(screens []*sstore.ScreenType) {
 	for _, screen := range screens {
-		sstore.MainBus.SendUpdate(&sstore.ModelUpdate{Screens: []*sstore.ScreenType{screen}})
+		update := &sstore.ModelUpdate{}
+		sstore.AddUpdate(update, *screen)
+		sstore.MainBus.SendUpdate(update)
 	}
 }
 

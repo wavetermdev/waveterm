@@ -29,7 +29,6 @@ declare global {
 
         // for updates
         remove?: boolean;
-        full?: boolean;
     };
 
     type LineStateType = { [k: string]: any };
@@ -92,7 +91,6 @@ declare global {
         anchor: { anchorline: number; anchoroffset: number };
 
         // for updates
-        full?: boolean;
         remove?: boolean;
     };
 
@@ -260,6 +258,11 @@ declare global {
         restarted?: boolean;
     };
 
+    type LineUpdateType = {
+        line: LineType;
+        cmd: CmdDataType;
+    };
+
     type PtyDataUpdateType = {
         screenid: string;
         lineid: string;
@@ -309,30 +312,47 @@ declare global {
         num: number;
     };
 
+    type ConnectUpdateType = {
+        sessions: SessionDataType[];
+        screens: ScreenDataType[];
+        remotes: RemoteType[];
+        screenstatusindicators: ScreenStatusIndicatorUpdateType[];
+        screennumrunningcommands: ScreenNumRunningCommandsUpdateType[];
+        activesessionid: string;
+    };
+
+    type BookmarksUpdateType = {
+        bookmarks: BookmarkType[];
+        selectedbookmark: string;
+    };
+
+    type MainViewUpdateType = {
+        mainview: string;
+        historyview?: HistoryViewDataType;
+        bookmarksview?: BookmarksUpdateType;
+    };
+
     type ModelUpdateType = {
         interactive: boolean;
-        sessions?: SessionDataType[];
+        session?: SessionDataType;
         activesessionid?: string;
-        screens?: ScreenDataType[];
+        screen?: ScreenDataType;
         screenlines?: ScreenLinesType;
-        line?: LineType;
-        lines?: LineType[];
+        line?: LineUpdateType;
         cmd?: CmdDataType;
         info?: InfoType;
         cmdline?: StrWithPos;
-        remotes?: RemoteType[];
+        remote?: RemoteType;
         history?: HistoryInfoType;
-        connect?: boolean;
-        mainview?: string;
-        bookmarks?: BookmarkType[];
-        selectedbookmark?: string;
+        connect?: ConnectUpdateType;
+        mainview?: MainViewUpdateType;
+        bookmarks?: BookmarksUpdateType;
         clientdata?: ClientDataType;
-        historyviewdata?: HistoryViewDataType;
         remoteview?: RemoteViewType;
         openaicmdinfochat?: OpenAICmdInfoChatMessageType[];
         alertmessage?: AlertMessageType;
-        screenstatusindicators?: ScreenStatusIndicatorUpdateType[];
-        screennumrunningcommands?: ScreenNumRunningCommandsUpdateType[];
+        screenstatusindicator?: ScreenStatusIndicatorUpdateType;
+        screennumrunningcommands?: ScreenNumRunningCommandsUpdateType;
         userinputrequest?: UserInputRequest;
     };
 
@@ -415,7 +435,7 @@ declare global {
         showCut?: boolean;
     };
 
-    type UpdateMessage = PtyDataUpdateType | ModelUpdateType;
+    type UpdateMessage = PtyDataUpdateType | ModelUpdateType[];
 
     type RendererContext = {
         screenId: string;

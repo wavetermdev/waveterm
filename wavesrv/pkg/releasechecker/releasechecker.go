@@ -66,9 +66,8 @@ func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error
 		return Failure, fmt.Errorf("error getting updated client data: %w", err)
 	}
 
-	update := &sstore.ModelUpdate{
-		ClientData: clientData,
-	}
+	update := &sstore.ModelUpdate{}
+	sstore.AddUpdate(update, *clientData)
 	sstore.MainBus.SendUpdate(update)
 
 	return Success, nil
