@@ -64,7 +64,7 @@ func createDummySigner() ([]ssh.Signer, error) {
 // keys from being attempted. But if there's an error because of a dummy
 // file, the library can still try again with a new key.
 func createPublicKeyCallback(sshKeywords *SshKeywords, passphrase string) func() ([]ssh.Signer, error) {
-	var identityFiles []string
+	identityFiles := make([]string, len(sshKeywords.IdentityFile))
 	copy(identityFiles, sshKeywords.IdentityFile)
 	identityFilesPtr := &identityFiles
 
@@ -479,9 +479,8 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword))
 	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword))
 
-	// batch mode turns off interactive input
-	// this means the number of attemtps must
-	// drop to 1 with this setup
+	// batch mode turns off interactive input. this means the number of
+	// attemtps must drop to 1 with this setup
 	var attemptsAllowed int
 	if sshKeywords.BatchMode {
 		attemptsAllowed = 1
@@ -636,8 +635,10 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 	}
 	sshKeywords.KbdInteractiveAuthentication = (strings.ToLower(kbdInteractiveAuthenticationRaw) != "no")
 
+	// these are parsed as a single string and must be separated
 	// these are case sensitive in openssh so they are here too
-	sshKeywords.PreferredAuthentications = ssh_config.GetAll(hostPattern, "PreferredAuthentications")
+	preferredAuthenticationsRaw, err := ssh_config.GetStrict(hostPattern, "PreferredAuthentications")
+	sshKeywords.PreferredAuthentications = strings.Split(preferredAuthenticationsRaw, ",")
 
 	return sshKeywords, nil
 }
