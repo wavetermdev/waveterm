@@ -120,8 +120,9 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     getFKeys(): DDItem[] {
         let opts: DDItem[] = [];
         opts.push({ label: "Disabled", value: "" });
+        let platform = GlobalModel.getPlatform();
         for (let i = 1; i <= 12; i++) {
-            let shortcut = "Cmd+F" + String(i);
+            let shortcut = (platform == "darwin" ? "Cmd" : "Alt") + "+F" + String(i);
             opts.push({ label: shortcut, value: shortcut });
         }
         return opts;
