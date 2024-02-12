@@ -415,7 +415,7 @@ function mainResizeHandler(e, win) {
         });
 }
 
-function calcBounds(clientData) {
+function calcBounds(clientData: T.ClientDataType) {
     let primaryDisplay = electron.screen.getPrimaryDisplay();
     let pdBounds = primaryDisplay.bounds;
     let size = { x: 100, y: 100, width: pdBounds.width - 200, height: pdBounds.height - 200 };
@@ -510,6 +510,12 @@ electron.ipcMain.on("open-external-link", async (_, url) => {
     } catch (err) {
         console.warn("error opening external link", err);
     }
+});
+
+electron.ipcMain.on("reregister-global-shortcut", (event, shortcut: string) => {
+    reregisterGlobalShortcut(shortcut);
+    event.returnValue = true;
+    return;
 });
 
 electron.ipcMain.on("get-last-logs", async (event, numberOfLines) => {
@@ -747,7 +753,6 @@ function reregisterGlobalShortcut(shortcut: string) {
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();
-    reregisterGlobalShortcut("Cmd+F4");
     app.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
             createMainWindowWrap().then();

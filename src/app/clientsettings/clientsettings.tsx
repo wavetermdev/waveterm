@@ -14,6 +14,11 @@ import * as appconst from "../appconst";
 
 import "./clientsettings.less";
 
+type DDItem = {
+    label: string;
+    value: string;
+};
+
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
     fontSizeDropdownActive: types.OV<boolean> = mobx.observable.box(false, {
@@ -68,10 +73,10 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         commandRtnHandler(prtn, this.errorMessage);
     }
 
-    getFontSizes(): any {
-        let availableFontSizes: { label: string; value: number }[] = [];
+    getFontSizes(): DDItem[] {
+        let availableFontSizes: DDItem[] = [];
         for (let s = appconst.MinFontSize; s <= appconst.MaxFontSize; s++) {
-            availableFontSizes.push({ label: s + "px", value: s });
+            availableFontSizes.push({ label: s + "px", value: String(s) });
         }
         return availableFontSizes;
     }
@@ -104,6 +109,27 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     @boundMethod
     handleClose(): void {
         GlobalModel.clientSettingsViewModel.closeView();
+    }
+
+    @boundMethod
+    handleChangeShortcut(newShortcut: string): void {
+        let prtn = GlobalCommandRunner.setGlobalShortcut(newShortcut);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    getFKeys(): DDItem[] {
+        let opts: DDItem[] = [];
+        opts.push({ label: "Disabled", value: "" });
+        for (let i = 1; i <= 12; i++) {
+            let shortcut = "Cmd+F" + String(i);
+            opts.push({ label: shortcut, value: shortcut });
+        }
+        return opts;
+    }
+
+    getCurrentShortcut(): string {
+        let clientData = GlobalModel.clientData.get();
+        return clientData?.clientopts?.globalshortcut ?? "";
     }
 
     render() {
@@ -205,6 +231,17 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 onChange={this.inlineUpdateOpenAIMaxTokens}
                                 maxLength={10}
                                 showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Global Hotkey</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="hotkey-dropdown"
+                                options={this.getFKeys()}
+                                defaultValue={this.getCurrentShortcut()}
+                                onChange={this.handleChangeShortcut}
                             />
                         </div>
                     </div>
