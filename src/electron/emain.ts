@@ -10,6 +10,7 @@ import { debounce } from "throttle-debounce";
 import { handleJsonFetchResponse } from "../util/util";
 import * as winston from "winston";
 import * as util from "util";
+import * as waveutil from "../util/util";
 import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
 import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
@@ -30,6 +31,7 @@ let instanceId = uuidv4();
 let oldConsoleLog = console.log;
 let wasActive = true;
 let wasInFg = true;
+let currentGlobalShortcut: string | null = null;
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -699,6 +701,34 @@ function runActiveTimer() {
     setTimeout(runActiveTimer, 60000);
 }
 
+function reregisterGlobalShortcut(shortcut: string) {
+    if (shortcut == "") {
+        shortcut = null;
+    }
+    if (currentGlobalShortcut == shortcut) {
+        return;
+    }
+    if (!waveutil.isBlank(currentGlobalShortcut)) {
+        if (electron.globalShortcut.isRegistered(currentGlobalShortcut)) {
+            electron.globalShortcut.unregister(currentGlobalShortcut);
+        }
+    }
+    if (waveutil.isBlank(shortcut)) {
+        currentGlobalShortcut = null;
+        return;
+    }
+    let ok = electron.globalShortcut.register(shortcut, () => {
+        console.log("global shortcut triggered, showing window");
+        MainWindow?.show();
+    });
+    console.log("registered global shortcut", shortcut, ok ? "ok" : "failed");
+    if (!ok) {
+        currentGlobalShortcut = null;
+        console.log("failed to register global shortcut", shortcut);
+    }
+    currentGlobalShortcut = shortcut;
+}
+
 // ====== MAIN ====== //
 
 (async () => {
@@ -717,6 +747,7 @@ function runActiveTimer() {
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();
+    reregisterGlobalShortcut("Cmd+F4");
     app.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
             createMainWindowWrap().then();

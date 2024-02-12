@@ -1,6 +1,5 @@
 {
     "include": ["src/**/*", "types/**/*"],
-    "exclude": ["src/electron/emain.ts"],
     "compilerOptions": {
         "target": "es5",
         "module": "commonjs",

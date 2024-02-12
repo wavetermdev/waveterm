@@ -554,6 +554,8 @@ type ClientOptsType = {
         collapsed: boolean;
         width: number;
     };
+    globalshortcut: string;
+    globalshortcutenabled: boolean;
 };
 
 type ReleaseInfoType = {
