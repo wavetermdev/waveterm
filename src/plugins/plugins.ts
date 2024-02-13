@@ -1,7 +1,6 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { RendererPluginType } from "../types/types";
 import { SimpleImageRenderer } from "./image/image";
 import { SimpleMarkdownRenderer } from "./markdown/markdown";
 import { SourceCodeRenderer } from "./code/code";

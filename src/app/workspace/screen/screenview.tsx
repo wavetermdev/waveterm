@@ -11,8 +11,6 @@ import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import { GlobalCommandRunner, ForwardLineContainer, GlobalModel, ScreenLines, Screen, Session } from "../../../models";
-import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
-import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { Button, TextField, Dropdown } from "../../common/elements";
 import { getRemoteStr } from "../../common/prompt/prompt";
@@ -31,8 +29,6 @@ import "./tabs.less";
 import { MagicLayout } from "../../magiclayout";
 
 dayjs.extend(localizedFormat);
-
-type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class ScreenView extends React.Component<{ session: Session; screen: Screen }, {}> {
@@ -164,7 +160,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 
 type SidebarLineContainerPropsType = {
     screen: Screen;
-    winSize: T.WindowSize;
+    winSize: WindowSize;
     lineId: string;
 };
 
@@ -230,7 +226,7 @@ class SidebarLineContainer extends React.Component<SidebarLineContainerPropsType
 @mobxReact.observer
 class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
     rszObs: ResizeObserver;
-    sidebarSize: OV<T.WindowSize> = mobx.observable.box({ height: 0, width: 0 }, { name: "sidebarSize" });
+    sidebarSize: OV<WindowSize> = mobx.observable.box({ height: 0, width: 0 }, { name: "sidebarSize" });
     sidebarRef: React.RefObject<any> = React.createRef();
     handleResize_debounced: (entries: ResizeObserverEntry[]) => void;
 
@@ -288,7 +284,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         GlobalCommandRunner.screenSidebarOpen("500px");
     }
 
-    getSidebarConfig(): T.ScreenSidebarOptsType {
+    getSidebarConfig(): ScreenSidebarOptsType {
         let { screen } = this.props;
         let viewOpts = screen.viewOpts.get();
         return viewOpts?.sidebar;
@@ -344,7 +340,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
 class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
     connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "NewTabSettings-connDropdownActive" });
     errorMessage: OV<string | null> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
-    remotes: T.RemoteType[];
+    remotes: RemoteType[];
 
     constructor(props) {
         super(props);

@@ -4,10 +4,6 @@
 import * as mobx from "mobx";
 import { incObs } from "../../util/util";
 
-type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
-
 const InitialSize = 10 * 1024;
 const IncreaseFactor = 1.5;
 

@@ -1,10 +1,10 @@
 import React from "react";
-import { StatusIndicatorLevel } from "../../../types/types";
 import cn from "classnames";
 import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator.svg";
 import { boundMethod } from "autobind-decorator";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
+import * as appconst from "../../appconst";
 
 import { ReactComponent as RotateIconSvg } from "../../assets/icons/line/rotate.svg";
 
@@ -131,7 +131,7 @@ interface StatusIndicatorProps {
     /**
      * The level of the status indicator. This will determine the color of the status indicator.
      */
-    level: StatusIndicatorLevel;
+    level: appconst.StatusIndicatorLevel;
     className?: string;
     /**
      * If true, a spinner will be shown around the status indicator.
@@ -191,16 +191,16 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
         const { level, className, runningCommands } = this.props;
         const spinnerVisible = this.spinnerVisible.get();
         let statusIndicator = null;
-        if (level != StatusIndicatorLevel.None || spinnerVisible) {
+        if (level != appconst.StatusIndicatorLevel.None || spinnerVisible) {
             let indicatorLevelClass = null;
             switch (level) {
-                case StatusIndicatorLevel.Output:
+                case appconst.StatusIndicatorLevel.Output:
                     indicatorLevelClass = "output";
                     break;
-                case StatusIndicatorLevel.Success:
+                case appconst.StatusIndicatorLevel.Success:
                     indicatorLevelClass = "success";
                     break;
-                case StatusIndicatorLevel.Error:
+                case appconst.StatusIndicatorLevel.Error:
                     indicatorLevelClass = "error";
                     break;
             }

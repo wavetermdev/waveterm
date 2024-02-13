@@ -11,16 +11,6 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, Cmd } from "../../models";
 import { termHeightFromRows } from "../../util/textmeasure";
-import type {
-    LineType,
-    RenderModeType,
-    RendererOpts,
-    RendererPluginType,
-    LineHeightChangeCallbackType,
-    RendererModelInitializeParams,
-    RendererModel,
-    LineContainerType,
-} from "../../types/types";
 import cn from "classnames";
 import { getTermPtyData } from "../../util/modelutil";
 
@@ -48,8 +38,6 @@ import { RotateIcon } from "../common/icons/icons";
 import "./lines.less";
 
 dayjs.extend(localizedFormat);
-
-type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRightClick?: (e: any) => void }, {}> {

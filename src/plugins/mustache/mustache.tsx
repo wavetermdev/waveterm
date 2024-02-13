@@ -5,7 +5,6 @@ import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
-import * as T from "../../types/types";
 import { isBlank } from "../../util/util";
 import mustache from "mustache";
 import * as DOMPurify from "dompurify";
@@ -13,16 +12,14 @@ import { GlobalModel } from "../../models";
 
 import "./mustache.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
 class SimpleMustacheRenderer extends React.Component<
     {
-        data: T.ExtBlob;
-        context: T.RendererContext;
-        opts: T.RendererOpts;
+        data: ExtBlob;
+        context: RendererContext;
+        opts: RendererOpts;
         savedHeight: number;
-        lineState: T.LineStateType;
+        lineState: LineStateType;
     },
     {}
 > {

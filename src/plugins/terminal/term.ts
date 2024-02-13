@@ -10,15 +10,6 @@ import { boundMethod } from "autobind-decorator";
 import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
 import { boundInt } from "../../util/util";
 import { GlobalModel } from "../../models";
-import { Model } from "../../models/model";
-import type {
-    TermContextUnion,
-    TermOptsType,
-    TermWinSize,
-    RendererContext,
-    WindowSize,
-    PtyDataType,
-} from "../../types/types";
 import { getTheme } from "../../app/common/themes/themes";
 
 type DataUpdate = {

@@ -3,17 +3,7 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import * as mobx from "mobx";
-import type {
-    RendererModelInitializeParams,
-    RendererPluginType,
-    RendererModel,
-    RendererContainerType,
-} from "../../types/types";
-import { debounce, throttle } from "throttle-debounce";
-
-type OV<V> = mobx.IObservableValue<V>;
-type CV<V> = mobx.IComputedValue<V>;
+import { debounce } from "throttle-debounce";
 
 @mobxReact.observer
 class IncrementalRenderer extends React.Component<

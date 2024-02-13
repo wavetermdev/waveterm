@@ -4,13 +4,10 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import * as T from "../../types/types";
 import { sprintf } from "sprintf-js";
 import { Markdown } from "../../app/common/elements";
 
 import "./markdown.less";
-
-type OV<V> = mobx.IObservableValue<V>;
 
 const MaxMarkdownSize = 200000;
 const DefaultMaxMarkdownWidth = 1000;
@@ -18,11 +15,11 @@ const DefaultMaxMarkdownWidth = 1000;
 @mobxReact.observer
 class SimpleMarkdownRenderer extends React.Component<
     {
-        data: T.ExtBlob;
-        context: T.RendererContext;
-        opts: T.RendererOpts;
+        data: ExtBlob;
+        context: RendererContext;
+        opts: RendererOpts;
         savedHeight: number;
-        lineState: T.LineStateType;
+        lineState: LineStateType;
     },
     {}
 > {

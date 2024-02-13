@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { For } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner } from "../../../models";
 import { Modal, TextField, InputDecoration, Tooltip } from "../elements";
@@ -15,8 +15,10 @@ import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg"
 
 import "./tabswitcher.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
+type ViewDataType = {
+    label: string;
+    value: string;
+};
 
 type SwitcherDataType = {
     sessionId: string;
@@ -27,9 +29,25 @@ type SwitcherDataType = {
     screenName: string;
     icon: string;
     color: string;
+    viewData?: ViewDataType;
 };
 
 const MaxOptionsToDisplay = 100;
+const additionalOptions = [
+    { label: "Connections", value: "connections" },
+    { label: "History", value: "history" },
+    { label: "Settings", value: "clientsettings" },
+].map((item, index) => ({
+    sessionId: `additional-${index}`,
+    sessionName: "",
+    sessionIdx: -1,
+    screenId: `additional-${index}`,
+    screenIdx: -1,
+    screenName: "",
+    icon: "",
+    color: "",
+    viewData: item,
+}));
 
 @mobxReact.observer
 class TabSwitcherModal extends React.Component<{}, {}> {
@@ -47,8 +65,8 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     componentDidMount() {
         this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
-        let oSessions = GlobalModel.sessionList;
-        let oScreens = GlobalModel.screenMap;
+        const oSessions = GlobalModel.sessionList;
+        const oScreens = GlobalModel.screenMap;
         oScreens.forEach((oScreen) => {
             if (oScreen == null) {
                 return;
@@ -57,13 +75,13 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                 return;
             }
             // Find the matching session in the observable array
-            let foundSession = oSessions.find((s) => {
+            const foundSession = oSessions.find((s) => {
                 return s.sessionId == oScreen.sessionId && !s.archived.get();
             });
             if (!foundSession) {
                 return;
             }
-            let data: SwitcherDataType = {
+            const data: SwitcherDataType = {
                 sessionName: foundSession.name.get(),
                 sessionId: foundSession.sessionId,
                 sessionIdx: foundSession.sessionIdx.get(),
@@ -88,11 +106,11 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        let currFocusedIdx = this.focusedIdx.get();
+        const currFocusedIdx = this.focusedIdx.get();
 
         // Check if selectedIdx has changed
         if (currFocusedIdx !== this.prevFocusedIdx) {
-            let optionElement = this.optionRefs[currFocusedIdx]?.current;
+            const optionElement = this.optionRefs[currFocusedIdx]?.current;
 
             if (optionElement) {
                 optionElement.scrollIntoView({ block: "nearest" });
@@ -109,7 +127,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @boundMethod
     getTabIcon(screen: Screen): string {
         let tabIcon = "default";
-        let screenOpts = screen.opts.get();
+        const screenOpts = screen.opts.get();
         if (screenOpts != null && !util.isBlank(screenOpts.tabicon)) {
             tabIcon = screenOpts.tabicon;
         }
@@ -119,7 +137,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @boundMethod
     getTabColor(screen: Screen): string {
         let tabColor = "default";
-        let screenOpts = screen.opts.get();
+        const screenOpts = screen.opts.get();
         if (screenOpts != null && !util.isBlank(screenOpts.tabcolor)) {
             tabColor = screenOpts.tabcolor;
         }
@@ -132,7 +150,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
             this.closeModal();
         } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
             e.preventDefault();
-            let newIndex = this.calculateNewIndex(e.key === "ArrowUp");
+            const newIndex = this.calculateNewIndex(e.key === "ArrowUp");
             this.setFocusedIndex(newIndex);
         } else if (e.key === "Enter") {
             e.preventDefault();
@@ -142,7 +160,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @boundMethod
     calculateNewIndex(isUpKey) {
-        let currentIndex = this.focusedIdx.get();
+        const currentIndex = this.focusedIdx.get();
         if (isUpKey) {
             return Math.max(currentIndex - 1, 0);
         } else {
@@ -165,6 +183,11 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @boundMethod
     handleSelect(index: number): void {
         const selectedOption = this.sOptions[index];
+        if (selectedOption.sessionIdx === -1) {
+            GlobalCommandRunner.switchView(selectedOption.viewData.value);
+            this.closeModal();
+            return;
+        }
         if (selectedOption) {
             GlobalCommandRunner.switchScreen(selectedOption.screenId, selectedOption.sessionId);
             this.closeModal();
@@ -192,27 +215,28 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @mobx.computed
     @boundMethod
     filterOptions(searchInput: string): SwitcherDataType[] {
-        let filteredScreens = [];
+        const searchLower = searchInput.toLowerCase();
 
-        for (let i = 0; i < this.options.length; i++) {
-            let tab = this.options[i];
-            let match = false;
-
+        let filteredScreens = this.options.filter((tab) => {
             if (searchInput.includes("/")) {
-                let [sessionFilter, screenFilter] = searchInput.split("/").map((s) => s.trim().toLowerCase());
-                match =
+                const [sessionFilter, screenFilter] = searchInput.split("/").map((s) => s.trim().toLowerCase());
+                return (
                     tab.sessionName.toLowerCase().includes(sessionFilter) &&
-                    tab.screenName.toLowerCase().includes(screenFilter);
+                    tab.screenName.toLowerCase().includes(screenFilter)
+                );
             } else {
-                match =
-                    tab.sessionName.toLowerCase().includes(searchInput) ||
-                    tab.screenName.toLowerCase().includes(searchInput);
+                return (
+                    tab.sessionName.toLowerCase().includes(searchLower) ||
+                    tab.screenName.toLowerCase().includes(searchLower)
+                );
             }
+        });
 
-            // Add tab to filtered list if it matches the criteria
-            if (match) {
-                filteredScreens.push(tab);
-            }
+        if (searchLower.length > 0) {
+            const additionalFiltered = additionalOptions.filter((item) =>
+                item.viewData?.label.toLowerCase().includes(searchLower)
+            );
+            filteredScreens = filteredScreens.concat(additionalFiltered);
         }
 
         return filteredScreens;
@@ -221,9 +245,10 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @mobx.computed
     @boundMethod
     sortOptions(options: SwitcherDataType[]): SwitcherDataType[] {
-        return options.sort((a, b) => {
-            let aInCurrentSession = a.sessionIdx === this.activeSessionIdx;
-            let bInCurrentSession = b.sessionIdx === this.activeSessionIdx;
+        const mainOptions = options.filter((o) => o.sessionIdx !== -1);
+        mainOptions.sort((a, b) => {
+            const aInCurrentSession = a.sessionIdx === this.activeSessionIdx;
+            const bInCurrentSession = b.sessionIdx === this.activeSessionIdx;
 
             // Tabs in the current session are sorted by screenIdx
             if (aInCurrentSession && bInCurrentSession) {
@@ -246,11 +271,16 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                 }
             }
         });
+
+        const additionalOptions = options.filter((o) => o.sessionIdx === -1);
+        additionalOptions.sort((a, b) => a.viewData?.label.localeCompare(b.viewData?.label));
+
+        return mainOptions.concat(additionalOptions);
     }
 
     @boundMethod
     renderIcon(option: SwitcherDataType): React.ReactNode {
-        let tabIcon = option.icon;
+        const tabIcon = option.icon;
         if (tabIcon === "default" || tabIcon === "square") {
             return <SquareIcon className="left-icon" />;
         }
@@ -271,10 +301,15 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                 })}
                 onClick={() => this.handleSelect(index)}
             >
-                <div className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</div>
-                <div className="tabname">
-                    #{option.sessionName} / {option.screenName}
-                </div>
+                <If condition={option.sessionIdx != -1}>
+                    <div className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</div>
+                    <div className="tabname">
+                        #{option.sessionName} / {option.screenName}
+                    </div>
+                </If>
+                <If condition={option.sessionIdx == -1}>
+                    <div className="tabname">{option.viewData?.label}</div>
+                </If>
             </div>
         );
     }
@@ -293,13 +328,13 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                             decoration={{
                                 startDecoration: (
                                     <InputDecoration position="start">
-                                        <div className="tabswitcher-search-prefix">Switch to Tab:</div>
+                                        <div className="tabswitcher-search-prefix">Go to:</div>
                                     </InputDecoration>
                                 ),
                                 endDecoration: (
                                     <InputDecoration>
                                         <Tooltip
-                                            message={`Type to filter workspaces and tabs.`}
+                                            message={`Type to filter workspaces, tabs and views.`}
                                             icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                         >
                                             <i className="fa-sharp fa-regular fa-circle-question" />

@@ -11,8 +11,6 @@ import { MagicLayout } from "../../magiclayout";
 
 import "./resizablesidebar.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 interface ResizableSidebarProps {
     parentRef: React.RefObject<HTMLElement>;
     position: "left" | "right";
