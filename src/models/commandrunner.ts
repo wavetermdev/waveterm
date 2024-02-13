@@ -34,6 +34,12 @@ class CommandRunner {
         return prtn;
     }
 
+    switchView(view: string) {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set(view);
+        })();
+    }
+
     switchSession(session: string) {
         mobx.action(() => {
             GlobalModel.activeMainView.set("session");
