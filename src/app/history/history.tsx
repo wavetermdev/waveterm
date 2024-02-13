@@ -419,8 +419,16 @@ class HistoryView extends React.Component<{}, {}> {
         let sessionId: string = null;
         let remoteIds = Object.keys(rnames);
         let remoteId: string = null;
+
+        // TODO: something is weird with how we calculate width for views. Before, history view was not honoring tab width. This fix is copied from workspaceview.tsx, which had a similar issue.
+        const width = window.innerWidth - 6 - GlobalModel.mainSidebarModel.getWidth();
         return (
-            <div className={cn("history-view", { "is-hidden": isHidden })}>
+            <div
+                className={cn("history-view", "view", { "is-hidden": isHidden })}
+                style={{
+                    width: `${width}px`,
+                }}
+            >
                 <div className="header">
                     <div className="history-title">History</div>
                     <div className="history-search">
