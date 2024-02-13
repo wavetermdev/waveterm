@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 // Provides a mechanism for the backend to request user input from the frontend.
 package userinput
 
