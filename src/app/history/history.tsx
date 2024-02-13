@@ -420,8 +420,7 @@ class HistoryView extends React.Component<{}, {}> {
         let remoteIds = Object.keys(rnames);
         let remoteId: string = null;
 
-        // Has to calc manually because when tabs overflow, the width of the session view is increased for some reason causing inconsistent width.
-        // 6px is the right margin of session view.
+        // TODO: something is weird with how we calculate width for views. Before, history view was not honoring tab width. This fix is copied from workspaceview.tsx, which had a similar issue.
         const width = window.innerWidth - 6 - GlobalModel.mainSidebarModel.getWidth();
         return (
             <div
