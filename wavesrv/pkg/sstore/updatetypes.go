@@ -42,10 +42,6 @@ func (CmdLineUpdate) UpdateType() string {
 	return "cmdline"
 }
 
-func AddCmdLineUpdate(update *feupdate.ModelUpdate, cmdLine utilfn.StrWithPos) {
-	update.AddUpdate(CmdLineUpdate(cmdLine))
-}
-
 type InfoMsgType struct {
 	InfoTitle     string   `json:"infotitle"`
 	InfoError     string   `json:"infoerror,omitempty"`
@@ -107,10 +103,6 @@ type InteractiveUpdate bool
 
 func (InteractiveUpdate) UpdateType() string {
 	return "interactive"
-}
-
-func AddInteractiveUpdate(update *feupdate.ModelUpdate, interactive bool) {
-	update.AddUpdate(InteractiveUpdate(interactive))
 }
 
 type ConnectUpdate struct {
@@ -186,10 +178,6 @@ type OpenAICmdInfoChatUpdate []*packet.OpenAICmdInfoChatMessage
 
 func (OpenAICmdInfoChatUpdate) UpdateType() string {
 	return "openaicmdinfochat"
-}
-
-func AddOpenAICmdInfoChatUpdate(update *feupdate.ModelUpdate, chatMessages []*packet.OpenAICmdInfoChatMessage) {
-	update.AddUpdate(OpenAICmdInfoChatUpdate(chatMessages))
 }
 
 type AlertMessageType struct {

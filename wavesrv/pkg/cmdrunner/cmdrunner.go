@@ -517,7 +517,7 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (updateb
 	if err != nil {
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	feupdate.MainBus.SendScreenUpdate(ids.ScreenId, update)
 	return nil, nil
 }
@@ -625,7 +625,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (updatebu
 	if err != nil {
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	// this update is sent asynchronously for timing issues.  the cmd update comes async as well
 	// so if we return this directly it sometimes gets evaluated first.  by pushing it on the MainBus
 	// it ensures it happens after the command creation event.
@@ -972,8 +972,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (up
 	}
 
 	update := &feupdate.ModelUpdate{}
-	update.AddUpdate(*screen)
-	update.AddUpdate(sstore.InfoMsgType{
+	update.AddUpdate(*screen, sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
 	})
@@ -1648,7 +1647,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (upd
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	if destRemote != ConnectedRemote && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos)
 		err = destRemoteId.MShell.TryAutoConnect()
@@ -2390,8 +2389,7 @@ func ScreenResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
-	update.AddUpdate(sessionUpdate)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive), sessionUpdate)
 	return update, nil
 }
 
@@ -2574,10 +2572,7 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 }
 
 func writePacketToUpdateBus(ctx context.Context, cmd *sstore.CmdType, pk *packet.OpenAICmdInfoChatMessage) {
-	update, err := sstore.UpdateWithAddNewOpenAICmdInfoPacket(ctx, cmd.ScreenId, pk)
-	if err != nil {
-		log.Printf("Open AI Update packet err: %v\n", err)
-	}
+	update := sstore.UpdateWithAddNewOpenAICmdInfoPacket(ctx, cmd.ScreenId, pk)
 	feupdate.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 }
 
@@ -2821,7 +2816,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (updat
 	if resolveBool(pk.Kwargs["cmdinfo"], false) {
 		if promptStr == "" {
 			// this is requesting an update without wanting an openai query
-			update, err := sstore.UpdateWithCurrentOpenAICmdInfoChat(cmd.ScreenId, nil)
+			update := sstore.UpdateWithCurrentOpenAICmdInfoChat(cmd.ScreenId, nil)
 			if err != nil {
 				return nil, fmt.Errorf("error getting update for CmdInfoChat %v", err)
 			}
@@ -2839,7 +2834,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (updat
 	}
 	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
 	if resolveBool(pk.Kwargs["cmdinfoclear"], false) {
-		update, err := sstore.UpdateWithClearOpenAICmdInfo(cmd.ScreenId)
+		update := sstore.UpdateWithClearOpenAICmdInfo(cmd.ScreenId)
 		if err != nil {
 			return nil, fmt.Errorf("error clearing CmdInfoChat: %v", err)
 		}
@@ -2902,8 +2897,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (updatebus
 			return nil, fmt.Errorf("/%s error: cannot resolve screen for update: %w", GetCmdStr(pk), err)
 		}
 		update := &feupdate.ModelUpdate{}
-		update.AddUpdate(*screen)
-		sstore.AddInteractiveUpdate(update, pk.Interactive)
+		update.AddUpdate(*screen, sstore.InteractiveUpdate(pk.Interactive))
 		return update, nil
 	}
 	outputStr := fmt.Sprintf("connected to %s", GetFullRemoteDisplayName(rptr, rstate))
@@ -2917,7 +2911,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (updatebus
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	return update, nil
 }
 
@@ -3185,7 +3179,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (upda
 		return nil, nil
 	}
 	update := &feupdate.ModelUpdate{}
-	sstore.AddCmdLineUpdate(update, utilfn.StrWithPos{Str: newSP.Str, Pos: newSP.Pos})
+	update.AddUpdate(sstore.CmdLineUpdate(utilfn.StrWithPos{Str: newSP.Str, Pos: newSP.Pos}))
 	return update, nil
 }
 
@@ -3591,8 +3585,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
-	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))
+	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst), sstore.InteractiveUpdate(pk.Interactive))
 	return update, nil
 }
 
@@ -3973,7 +3966,7 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	cmd.Restarted = true
 	update := &feupdate.ModelUpdate{}
 	sstore.AddLineUpdate(update, line, cmd)
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	screen, focusErr := focusScreenLine(ctx, ids.ScreenId, line.LineNum)
 	if focusErr != nil {
 		// not a fatal error, so just log
@@ -4652,7 +4645,7 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (upd
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	return update, nil
 }
 
@@ -4683,7 +4676,7 @@ func CSVViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (upda
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	return update, nil
 }
 
@@ -4714,7 +4707,7 @@ func ImageViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (up
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	return update, nil
 }
 
@@ -4745,7 +4738,7 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	sstore.AddInteractiveUpdate(update, pk.Interactive)
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	return update, nil
 }
 

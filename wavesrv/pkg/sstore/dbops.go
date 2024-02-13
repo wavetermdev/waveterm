@@ -877,20 +877,22 @@ func GetCmdByScreenId(ctx context.Context, screenId string, lineId string) (*Cmd
 	})
 }
 
-func UpdateWithClearOpenAICmdInfo(screenId string) (*feupdate.ModelUpdate, error) {
+func UpdateWithClearOpenAICmdInfo(screenId string) *feupdate.ModelUpdate {
 	ScreenMemClearCmdInfoChat(screenId)
 	return UpdateWithCurrentOpenAICmdInfoChat(screenId, nil)
 }
 
-func UpdateWithAddNewOpenAICmdInfoPacket(ctx context.Context, screenId string, pk *packet.OpenAICmdInfoChatMessage) (*feupdate.ModelUpdate, error) {
+func UpdateWithAddNewOpenAICmdInfoPacket(ctx context.Context, screenId string, pk *packet.OpenAICmdInfoChatMessage) *feupdate.ModelUpdate {
 	ScreenMemAddCmdInfoChatMessage(screenId, pk)
 	return UpdateWithCurrentOpenAICmdInfoChat(screenId, nil)
 }
 
-func UpdateWithCurrentOpenAICmdInfoChat(screenId string, update *feupdate.ModelUpdate) (*feupdate.ModelUpdate, error) {
-	ret := &feupdate.ModelUpdate{}
-	AddOpenAICmdInfoChatUpdate(ret, ScreenMemGetCmdInfoChat(screenId).Messages)
-	return ret, nil
+func UpdateWithCurrentOpenAICmdInfoChat(screenId string, update *feupdate.ModelUpdate) *feupdate.ModelUpdate {
+	if update == nil {
+		update = &feupdate.ModelUpdate{}
+	}
+	update.AddUpdate(OpenAICmdInfoChatUpdate(ScreenMemGetCmdInfoChat(screenId).Messages))
+	return update
 }
 
 func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, messageID int, pk *packet.OpenAICmdInfoChatMessage) (*feupdate.ModelUpdate, error) {
@@ -898,7 +900,7 @@ func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, m
 	if err != nil {
 		return nil, err
 	}
-	return UpdateWithCurrentOpenAICmdInfoChat(screenId, nil)
+	return UpdateWithCurrentOpenAICmdInfoChat(screenId, nil), nil
 }
 
 func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdPid int, remotePid int, termOpts *TermOpts) error {
@@ -1121,7 +1123,7 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 	update.AddUpdate(*bareSession)
 	memState := GetScreenMemState(screenId)
 	if memState != nil {
-		AddCmdLineUpdate(update, memState.CmdInputText)
+		update.AddUpdate(CmdLineUpdate(memState.CmdInputText))
 		UpdateWithCurrentOpenAICmdInfoChat(screenId, update)
 
 		// Clear any previous status indicator for this screen
