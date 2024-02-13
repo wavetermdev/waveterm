@@ -88,7 +88,6 @@ func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
 		m[(u).UpdateType()] = u
 		rtn = append(rtn, m)
 	}
-	log.Printf("marshalling model update: %v\n", rtn)
 	return json.Marshal(rtn)
 }
 
@@ -99,19 +98,14 @@ type ModelUpdateItem interface {
 }
 
 func (update *ModelUpdate) append(item ModelUpdateItem) {
-	log.Printf("appending update: %+v. updates before: %+v\n", item, *update)
 	*update = append(*update, item)
-	log.Printf("appended update: %v\n", *update)
 }
 
 // Add a collection of model updates to the update
 func (update *ModelUpdate) AddUpdate(items ...ModelUpdateItem) {
-	log.Printf("adding updates: %+v\n", items)
 	for _, i := range items {
-		log.Printf("adding update: %+v\n", i)
 		update.append(i)
 	}
-	log.Printf("update: %+v\n", update)
 }
 
 // Returns the items in the update that are of type I
