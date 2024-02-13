@@ -65,8 +65,8 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     componentDidMount() {
         this.activeSessionIdx = GlobalModel.getActiveSession().sessionIdx.get();
-        let oSessions = GlobalModel.sessionList;
-        let oScreens = GlobalModel.screenMap;
+        const oSessions = GlobalModel.sessionList;
+        const oScreens = GlobalModel.screenMap;
         oScreens.forEach((oScreen) => {
             if (oScreen == null) {
                 return;
@@ -75,13 +75,13 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                 return;
             }
             // Find the matching session in the observable array
-            let foundSession = oSessions.find((s) => {
+            const foundSession = oSessions.find((s) => {
                 return s.sessionId == oScreen.sessionId && !s.archived.get();
             });
             if (!foundSession) {
                 return;
             }
-            let data: SwitcherDataType = {
+            const data: SwitcherDataType = {
                 sessionName: foundSession.name.get(),
                 sessionId: foundSession.sessionId,
                 sessionIdx: foundSession.sessionIdx.get(),
@@ -106,11 +106,11 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        let currFocusedIdx = this.focusedIdx.get();
+        const currFocusedIdx = this.focusedIdx.get();
 
         // Check if selectedIdx has changed
         if (currFocusedIdx !== this.prevFocusedIdx) {
-            let optionElement = this.optionRefs[currFocusedIdx]?.current;
+            const optionElement = this.optionRefs[currFocusedIdx]?.current;
 
             if (optionElement) {
                 optionElement.scrollIntoView({ block: "nearest" });
@@ -127,7 +127,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @boundMethod
     getTabIcon(screen: Screen): string {
         let tabIcon = "default";
-        let screenOpts = screen.opts.get();
+        const screenOpts = screen.opts.get();
         if (screenOpts != null && !util.isBlank(screenOpts.tabicon)) {
             tabIcon = screenOpts.tabicon;
         }
@@ -137,7 +137,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @boundMethod
     getTabColor(screen: Screen): string {
         let tabColor = "default";
-        let screenOpts = screen.opts.get();
+        const screenOpts = screen.opts.get();
         if (screenOpts != null && !util.isBlank(screenOpts.tabcolor)) {
             tabColor = screenOpts.tabcolor;
         }
@@ -150,7 +150,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
             this.closeModal();
         } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
             e.preventDefault();
-            let newIndex = this.calculateNewIndex(e.key === "ArrowUp");
+            const newIndex = this.calculateNewIndex(e.key === "ArrowUp");
             this.setFocusedIndex(newIndex);
         } else if (e.key === "Enter") {
             e.preventDefault();
@@ -160,7 +160,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @boundMethod
     calculateNewIndex(isUpKey) {
-        let currentIndex = this.focusedIdx.get();
+        const currentIndex = this.focusedIdx.get();
         if (isUpKey) {
             return Math.max(currentIndex - 1, 0);
         } else {
@@ -280,7 +280,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
 
     @boundMethod
     renderIcon(option: SwitcherDataType): React.ReactNode {
-        let tabIcon = option.icon;
+        const tabIcon = option.icon;
         if (tabIcon === "default" || tabIcon === "square") {
             return <SquareIcon className="left-icon" />;
         }
