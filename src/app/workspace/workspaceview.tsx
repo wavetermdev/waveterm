@@ -7,11 +7,11 @@ import * as mobx from "mobx";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "../../models";
+import { GlobalModel } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
-import { ErrorBoundary } from "../../app/common/error/errorboundary";
+import { ErrorBoundary } from "@/common/error/errorboundary";
 import { MagicLayout } from "../magiclayout";
 import "./workspace.less";
 

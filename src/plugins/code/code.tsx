@@ -4,12 +4,12 @@
 import * as React from "react";
 import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import { Markdown } from "../../app/common/elements";
-import { GlobalModel, GlobalCommandRunner } from "../../models";
+import { Markdown } from "@/elements";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./code.less";
 

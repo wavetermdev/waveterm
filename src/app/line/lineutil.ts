@@ -3,7 +3,7 @@
 
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { isBlank, getDateStr } from "../../util/util";
+import { isBlank, getDateStr } from "@/util/util";
 
 dayjs.extend(localizedFormat);
 

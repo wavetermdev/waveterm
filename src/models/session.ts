@@ -3,7 +3,7 @@
 
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
-import { genMergeSimpleData, isBlank, ces } from "../util/util";
+import { genMergeSimpleData, isBlank, ces } from "@/util/util";
 import { Model } from "./model";
 import { Screen } from "./screen";
 

@@ -58,6 +58,16 @@ var electronCommon = {
     },
     resolve: {
         extensions: [".ts", ".tsx", ".js"],
+        alias: {
+            "@/app": path.resolve(__dirname, "../src/app/"),
+            "@/util": path.resolve(__dirname, "../src/util/"),
+            "@/models": path.resolve(__dirname, "../src/models/"),
+            "@/common": path.resolve(__dirname, "../src/app/common/"),
+            "@/elements": path.resolve(__dirname, "../src/app/common/elements/"),
+            "@/modals": path.resolve(__dirname, "../src/app/common/modals/"),
+            "@/assets": path.resolve(__dirname, "../src/app/assets/"),
+            "@/plugins": path.resolve(__dirname, "../src/plugins/"),
+        },
     },
 };
 
@@ -100,4 +110,4 @@ var electronProd = webpackMerge.merge(electronCommon, {
     },
 });
 
-module.exports = {electronDev: electronDev, electronProd: electronProd};
+module.exports = { electronDev: electronDev, electronProd: electronProd };

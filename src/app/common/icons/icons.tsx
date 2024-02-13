@@ -1,12 +1,12 @@
 import React from "react";
 import cn from "classnames";
-import { ReactComponent as SpinnerIndicator } from "../../assets/icons/spinner-indicator.svg";
+import { ReactComponent as SpinnerIndicator } from "@/assets/icons/spinner-indicator.svg";
 import { boundMethod } from "autobind-decorator";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
-import * as appconst from "../../appconst";
+import * as appconst from "@/app/appconst";
 
-import { ReactComponent as RotateIconSvg } from "../../assets/icons/line/rotate.svg";
+import { ReactComponent as RotateIconSvg } from "@/assets/icons/line/rotate.svg";
 
 interface PositionalIconProps {
     children?: React.ReactNode;

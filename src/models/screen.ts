@@ -4,18 +4,18 @@
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { debounce } from "throttle-debounce";
-import { base64ToArray, boundInt, isModKeyPress, isBlank } from "../util/util";
-import { TermWrap } from "../plugins/terminal/term";
-import { windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows } from "../util/textmeasure";
-import { getRendererContext } from "../app/line/lineutil";
-import { MagicLayout } from "../app/magiclayout";
-import * as appconst from "../app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
+import { base64ToArray, boundInt, isModKeyPress, isBlank } from "@/util/util";
+import { TermWrap } from "@/plugins/terminal/term";
+import { windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows } from "@/util/textmeasure";
+import { getRendererContext } from "@/app/line/lineutil";
+import { MagicLayout } from "@/app/magiclayout";
+import * as appconst from "@/app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
 import { Cmd } from "./cmd";
 import { ScreenLines } from "./screenlines";
-import { getTermPtyData } from "../util/modelutil";
+import { getTermPtyData } from "@/util/modelutil";
 
 class Screen {
     globalModel: Model;

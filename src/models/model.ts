@@ -12,12 +12,12 @@ import {
     genMergeSimpleData,
     isModKeyPress,
     isBlank,
-} from "../util/util";
+} from "@/util/util";
 import { WSControl } from "./ws";
-import { cmdStatusIsRunning } from "../app/line/lineutil";
-import * as appconst from "../app/appconst";
-import { remotePtrToString, cmdPacketString } from "../util/modelutil";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
+import { cmdStatusIsRunning } from "@/app/line/lineutil";
+import * as appconst from "@/app/appconst";
+import { remotePtrToString, cmdPacketString } from "@/util/modelutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";

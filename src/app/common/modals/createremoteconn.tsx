@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../models";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
 import {
     Modal,
     TextField,
@@ -16,8 +16,8 @@ import {
     PasswordField,
     Tooltip,
     ShowWaveShellInstallPrompt,
-} from "../elements";
-import * as util from "../../../util/util";
+} from "@/elements";
+import * as util from "@/util/util";
 
 import "./createremoteconn.less";
 

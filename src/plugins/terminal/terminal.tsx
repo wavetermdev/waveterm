@@ -8,10 +8,10 @@ import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel } from "../../models";
-import { termHeightFromRows } from "../../util/textmeasure";
+import { GlobalModel } from "@/models";
+import { termHeightFromRows } from "@/util/textmeasure";
 import cn from "classnames";
-import * as lineutil from "../../app/line/lineutil";
+import * as lineutil from "@/app/line/lineutil";
 
 import "./terminal.less";
 
