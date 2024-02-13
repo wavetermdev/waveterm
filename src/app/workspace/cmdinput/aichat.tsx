@@ -4,16 +4,13 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import { GlobalModel } from "../../../models";
-import { isBlank } from "../../../util/util";
+import { GlobalModel } from "@/models";
+import { isBlank } from "@/util";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { Prompt } from "../../common/prompt/prompt";
-import { TextAreaInput } from "./textareainput";
-import { If, For } from "tsx-control-statements/components";
-import type { OpenAICmdInfoChatMessageType } from "../../../types/types";
-import { Markdown } from "../../common/elements";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../../util/keyutil";
+import { For } from "tsx-control-statements/components";
+import { Markdown } from "@/elements";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 @mobxReact.observer
 class AIChat extends React.Component<{}, {}> {

@@ -12,45 +12,12 @@ import {
     genMergeSimpleData,
     isModKeyPress,
     isBlank,
-} from "../util/util";
-import {
-    SessionDataType,
-    LineType,
-    RemoteType,
-    RemoteInstanceType,
-    CmdDataType,
-    FeCmdPacketType,
-    ScreenDataType,
-    PtyDataUpdateType,
-    UpdateMessage,
-    InfoType,
-    StrWithPos,
-    UIContextType,
-    ContextMenuOpts,
-    RendererContext,
-    ClientDataType,
-    AlertMessageType,
-    UserInputRequest,
-    UserInputResponsePacket,
-    ScreenLinesType,
-    RemoteViewType,
-    CommandRtnType,
-    LineFocusType,
-    CmdInputTextPacketType,
-    FileInfoType,
-    ExtFile,
-    OV,
-    OArr,
-    OMap,
-    CV,
-    ScreenNumRunningCommandsUpdateType,
-    ScreenStatusIndicatorUpdateType,
-} from "../types/types";
+} from "@/util/util";
 import { WSControl } from "./ws";
-import { cmdStatusIsRunning } from "../app/line/lineutil";
-import * as appconst from "../app/appconst";
-import { remotePtrToString, cmdPacketString } from "../util/modelutil";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
+import { cmdStatusIsRunning } from "@/app/line/lineutil";
+import * as appconst from "@/app/appconst";
+import { remotePtrToString, cmdPacketString } from "@/util/modelutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -1371,12 +1338,12 @@ class Model {
         }
     }
 
-    sendInputPacket(inputPacket: any) {
-        this.ws.pushMessage(inputPacket);
-    }
-
     sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
         this.ws.pushMessage(userInputResponsePacket);
+    }
+
+    sendInputPacket(inputPacket: any) {
+        this.ws.pushMessage(inputPacket);
     }
 
     sendCmdInputText(screenId: string, sp: StrWithPos) {

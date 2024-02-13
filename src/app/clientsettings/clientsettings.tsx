@@ -6,11 +6,10 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "../common/elements";
-import * as types from "../../types/types";
-import { commandRtnHandler, isBlank } from "../../util/util";
-import * as appconst from "../appconst";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
+import { commandRtnHandler, isBlank } from "@/util/util";
+import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
 
@@ -21,10 +20,10 @@ type DDItem = {
 
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
-    fontSizeDropdownActive: types.OV<boolean> = mobx.observable.box(false, {
+    fontSizeDropdownActive: OV<boolean> = mobx.observable.box(false, {
         name: "clientSettings-fontSizeDropdownActive",
     });
-    errorMessage: types.OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
+    errorMessage: OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
 
     @boundMethod
     dismissError(): void {
@@ -53,7 +52,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeTelemetry(val: boolean): void {
-        let prtn: Promise<types.CommandRtnType> = null;
+        let prtn: Promise<CommandRtnType> = null;
         if (val) {
             prtn = GlobalCommandRunner.telemetryOn(false);
         } else {
@@ -64,7 +63,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeReleaseCheck(val: boolean): void {
-        let prtn: Promise<types.CommandRtnType> = null;
+        let prtn: Promise<CommandRtnType> = null;
         if (val) {
             prtn = GlobalCommandRunner.releaseCheckAutoOn(false);
         } else {
@@ -139,7 +138,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             return null;
         }
 
-        let cdata: types.ClientDataType = GlobalModel.clientData.get();
+        let cdata: ClientDataType = GlobalModel.clientData.get();
         let openAIOpts = cdata.openaiopts ?? {};
         let apiTokenStr = isBlank(openAIOpts.apitoken) ? "(not set)" : "********";
         let maxTokensStr = String(

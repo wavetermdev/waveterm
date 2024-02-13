@@ -3,14 +3,12 @@
 
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { stringToBase64 } from "../util/util";
-import { TermWrap } from "../plugins/terminal/term";
-import { RemoteInputPacketType, RemoteEditType } from "../types/types";
-import * as appconst from "../app/appconst";
-import { OV } from "../types/types";
+import { stringToBase64 } from "@/util/util";
+import { TermWrap } from "@/plugins/terminal/term";
+import * as appconst from "@/app/appconst";
 import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
-import { getTermPtyData } from "../util/modelutil";
+import { getTermPtyData } from "@/util/modelutil";
 
 class RemotesModel {
     globalModel: Model;

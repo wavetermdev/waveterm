@@ -3,20 +3,11 @@
 
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { isBlank } from "../util/util";
-import {
-    LineType,
-    HistoryItem,
-    CmdDataType,
-    HistoryViewDataType,
-    HistorySearchParams,
-    CommandRtnType,
-} from "../types/types";
-import { termWidthFromCols, termHeightFromRows } from "../util/textmeasure";
+import { isBlank } from "@/util/util";
+import { termWidthFromCols, termHeightFromRows } from "@/util/textmeasure";
 import dayjs from "dayjs";
-import * as appconst from "../app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
-import { OV, OArr, OMap } from "../types/types";
+import * as appconst from "@/app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 import { Cmd } from "./cmd";

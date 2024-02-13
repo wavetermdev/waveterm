@@ -5,12 +5,12 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel } from "../../../models";
-import { Modal, LinkButton } from "../elements";
-import * as util from "../../../util/util";
-import * as appconst from "../../appconst";
+import { GlobalModel } from "@/models";
+import { Modal, LinkButton } from "@/elements";
+import * as util from "@/util/util";
+import * as appconst from "@/app/appconst";
 
-import logo from "../../assets/waveterm-logo-with-bg.svg";
+import logo from "@/assets/waveterm-logo-with-bg.svg";
 import "./about.less";
 
 @mobxReact.observer

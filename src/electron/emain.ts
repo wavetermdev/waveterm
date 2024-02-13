@@ -7,15 +7,14 @@ import * as fs from "fs";
 import fetch from "node-fetch";
 import * as child_process from "node:child_process";
 import { debounce } from "throttle-debounce";
-import { handleJsonFetchResponse } from "../util/util";
 import * as winston from "winston";
 import * as util from "util";
 import * as waveutil from "../util/util";
 import { sprintf } from "sprintf-js";
+import { handleJsonFetchResponse } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
-import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
+import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
-import type * as T from "../types/types";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
@@ -259,7 +258,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     return;
 }
 
-function createMainWindow(clientData: T.ClientDataType | null) {
+function createMainWindow(clientData: ClientDataType | null) {
     let bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
     let win = new electron.BrowserWindow({
@@ -415,7 +414,7 @@ function mainResizeHandler(e, win) {
         });
 }
 
-function calcBounds(clientData: T.ClientDataType) {
+function calcBounds(clientData: ClientDataType) {
     let primaryDisplay = electron.screen.getPrimaryDisplay();
     let pdBounds = primaryDisplay.bounds;
     let size = { x: 100, y: 100, width: pdBounds.width - 200, height: pdBounds.height - 200 };
@@ -671,7 +670,7 @@ electron.ipcMain.on("context-editmenu", (event, { x, y }, opts) => {
 });
 
 async function createMainWindowWrap() {
-    let clientData: T.ClientDataType | null = null;
+    let clientData: ClientDataType | null = null;
     try {
         clientData = await getClientDataPoll(1);
     } catch (e) {

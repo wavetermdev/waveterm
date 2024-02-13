@@ -6,14 +6,11 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../models";
-import * as T from "../../../types/types";
-import { Modal, TextField, InputDecoration, Dropdown, PasswordField, Tooltip } from "../elements";
-import * as util from "../../../util/util";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
+import { Modal, TextField, InputDecoration, Dropdown, PasswordField, Tooltip } from "@/elements";
+import * as util from "@/util/util";
 
 import "./editremoteconn.less";
-
-type OV<V> = mobx.IObservableValue<V>;
 
 const PasswordUnchangedSentinel = "--unchanged--";
 
@@ -42,11 +39,11 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
         return this.model.selectedRemoteId.get();
     }
 
-    get selectedRemote(): T.RemoteType {
+    get selectedRemote(): RemoteType {
         return GlobalModel.getRemote(this.selectedRemoteId);
     }
 
-    get remoteEdit(): T.RemoteEditType {
+    get remoteEdit(): RemoteEditType {
         return this.model.remoteEdit.get();
     }
 

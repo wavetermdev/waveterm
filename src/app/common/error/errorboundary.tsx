@@ -1,5 +1,4 @@
 import React, { Component, ReactNode } from "react";
-import { RendererContext } from "../../../types/types";
 import cn from "classnames";
 
 interface ErrorBoundaryState {
