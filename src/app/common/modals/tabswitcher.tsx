@@ -344,7 +344,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                                 endDecoration: (
                                     <InputDecoration>
                                         <Tooltip
-                                            message={`Type to filter workspaces, tabs and screens.`}
+                                            message={`Type to filter workspaces, tabs and views.`}
                                             icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                         >
                                             <i className="fa-sharp fa-regular fa-circle-question" />
