@@ -71,7 +71,7 @@ func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error
 	}
 
 	update := &feupdate.ModelUpdate{}
-	update.AddUpdate(update, *clientData)
+	update.AddUpdate(clientData)
 	feupdate.MainBus.SendUpdate(update)
 
 	return Success, nil

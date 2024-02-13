@@ -63,7 +63,7 @@ func (sch *ModelUpdateChannel[J]) Match(screenId string) bool {
 }
 
 // An UpdatePacket that is a collection of independent model updates to be sent to the client. Will be evaluated in order on the client.
-type ModelUpdate []*ModelUpdateItem
+type ModelUpdate []ModelUpdateItem
 
 func (*ModelUpdate) UpdateType() string {
 	return ModelUpdateStr
@@ -75,7 +75,7 @@ func (update *ModelUpdate) Clean() {
 		return
 	}
 	for _, item := range *update {
-		if i, ok := (*item).(CleanableUpdateItem); ok {
+		if i, ok := (item).(CleanableUpdateItem); ok {
 			i.Clean()
 		}
 	}
@@ -85,9 +85,10 @@ func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
 	rtn := make([]map[string]any, 0)
 	for _, u := range *mu {
 		m := make(map[string]any)
-		m[(*u).UpdateType()] = u
+		m[(u).UpdateType()] = u
 		rtn = append(rtn, m)
 	}
+	log.Printf("marshalling model update: %v\n", rtn)
 	return json.Marshal(rtn)
 }
 
@@ -97,22 +98,27 @@ type ModelUpdateItem interface {
 	UpdateType() string
 }
 
-func (update *ModelUpdate) append(item *ModelUpdateItem) {
+func (update *ModelUpdate) append(item ModelUpdateItem) {
+	log.Printf("appending update: %+v. updates before: %+v\n", item, *update)
 	*update = append(*update, item)
+	log.Printf("appended update: %v\n", *update)
 }
 
 // Add a collection of model updates to the update
-func (update *ModelUpdate) AddUpdate(item ...ModelUpdateItem) {
-	for _, i := range item {
-		update.append(&i)
+func (update *ModelUpdate) AddUpdate(items ...ModelUpdateItem) {
+	log.Printf("adding updates: %+v\n", items)
+	for _, i := range items {
+		log.Printf("adding update: %+v\n", i)
+		update.append(i)
 	}
+	log.Printf("update: %+v\n", update)
 }
 
 // Returns the items in the update that are of type I
 func GetUpdateItems[I ModelUpdateItem](update *ModelUpdate) []*I {
 	ret := make([]*I, 0)
 	for _, item := range *update {
-		if i, ok := (*item).(I); ok {
+		if i, ok := (item).(I); ok {
 			ret = append(ret, &i)
 		}
 	}

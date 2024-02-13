@@ -838,6 +838,7 @@ class Model {
             } else if (update.screen != null) {
                 this.updateScreens([update.screen]);
             } else if (update.session != null) {
+                console.log("update.session", update.session);
                 this.updateSessions([update.session]);
             } else if (update.activesessionid != null) {
                 this.updateActiveSession(update.activesessionid);

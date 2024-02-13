@@ -3500,8 +3500,7 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (u
 	}
 	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
 	update := &feupdate.ModelUpdate{}
-	update.AddUpdate(*bareSession)
-	update.AddUpdate(sstore.InfoMsgType{
+	update.AddUpdate(*bareSession, sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
 	})

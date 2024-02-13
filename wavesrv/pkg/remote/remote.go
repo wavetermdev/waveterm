@@ -681,7 +681,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 func (msh *MShellProc) NotifyRemoteUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
 	update := &feupdate.ModelUpdate{}
-	update.AddUpdate(update, rstate)
+	update.AddUpdate(rstate)
 	feupdate.MainBus.SendUpdate(update)
 }
 
@@ -2001,7 +2001,7 @@ func (msh *MShellProc) notifyHangups_nolock() {
 			continue
 		}
 		update := &feupdate.ModelUpdate{}
-		update.AddUpdate(update, *cmd)
+		update.AddUpdate(*cmd)
 		feupdate.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
 		go pushNumRunningCmdsUpdate(&ck, -1)
 	}
@@ -2031,7 +2031,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		// fall-through (nothing to do)
 	}
 	if screen != nil {
-		update.AddUpdate(update, *screen)
+		update.AddUpdate(*screen)
 	}
 	rct := msh.GetRunningCmd(donePk.CK)
 	var statePtr *sstore.ShellStatePtr
