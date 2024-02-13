@@ -29,7 +29,7 @@ type SwitcherDataType = {
     screenName: string;
     icon: string;
     color: string;
-    viewData: ViewDataType;
+    viewData?: ViewDataType;
 };
 
 const MaxOptionsToDisplay = 100;
@@ -228,7 +228,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
             // Separate logic for additionalOptions
             if (i >= this.options.length) {
                 if (searchLower.length > 0) {
-                    match = tab.viewData.label.toLowerCase().includes(searchLower);
+                    match = tab.viewData?.label.toLowerCase().includes(searchLower);
                 }
             } else {
                 if (searchInput.includes("/")) {
@@ -283,7 +283,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
         });
 
         let additionalOptions = options.filter((o) => o.sessionIdx === -1);
-        additionalOptions.sort((a, b) => a.viewData.label.localeCompare(b.viewData.label));
+        additionalOptions.sort((a, b) => a.viewData?.label.localeCompare(b.viewData?.label));
 
         return [...mainOptions, ...additionalOptions];
     }
@@ -318,7 +318,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <If condition={option.sessionIdx == -1}>
-                    <div className="tabname">{option.viewData.label}</div>
+                    <div className="tabname">{option.viewData?.label}</div>
                 </If>
             </div>
         );
