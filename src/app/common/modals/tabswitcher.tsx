@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { For } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner } from "../../../models";
 import { Modal, TextField, InputDecoration, Tooltip } from "../elements";
@@ -14,6 +14,11 @@ import { Screen } from "../../../models";
 import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
 
 import "./tabswitcher.less";
+
+type ViewDataType = {
+    label: string;
+    value: string;
+};
 
 type SwitcherDataType = {
     sessionId: string;
@@ -24,9 +29,25 @@ type SwitcherDataType = {
     screenName: string;
     icon: string;
     color: string;
+    viewData: ViewDataType;
 };
 
 const MaxOptionsToDisplay = 100;
+const additionalOptions = [
+    { label: "Connections", value: "connections" },
+    { label: "History", value: "history" },
+    { label: "Settings", value: "clientsettings" },
+].map((item, index) => ({
+    sessionId: `additional-${index}`,
+    sessionName: "",
+    sessionIdx: -1,
+    screenId: `additional-${index}`,
+    screenIdx: -1,
+    screenName: "",
+    icon: "",
+    color: "",
+    viewData: item,
+}));
 
 @mobxReact.observer
 class TabSwitcherModal extends React.Component<{}, {}> {
@@ -162,6 +183,11 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @boundMethod
     handleSelect(index: number): void {
         const selectedOption = this.sOptions[index];
+        if (selectedOption.sessionIdx === -1) {
+            GlobalCommandRunner.switchView(selectedOption.viewData.value);
+            this.closeModal();
+            return;
+        }
         if (selectedOption) {
             GlobalCommandRunner.switchScreen(selectedOption.screenId, selectedOption.sessionId);
             this.closeModal();
@@ -189,21 +215,32 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @mobx.computed
     @boundMethod
     filterOptions(searchInput: string): SwitcherDataType[] {
+        const searchLower = searchInput.toLowerCase();
         let filteredScreens = [];
 
-        for (let i = 0; i < this.options.length; i++) {
-            let tab = this.options[i];
+        // Combine both arrays for iteration
+        const combinedOptions = [...this.options, ...additionalOptions];
+
+        for (let i = 0; i < combinedOptions.length; i++) {
+            let tab = combinedOptions[i];
             let match = false;
 
-            if (searchInput.includes("/")) {
-                let [sessionFilter, screenFilter] = searchInput.split("/").map((s) => s.trim().toLowerCase());
-                match =
-                    tab.sessionName.toLowerCase().includes(sessionFilter) &&
-                    tab.screenName.toLowerCase().includes(screenFilter);
+            // Separate logic for additionalOptions
+            if (i >= this.options.length) {
+                if (searchLower.length > 0) {
+                    match = tab.viewData.label.toLowerCase().includes(searchLower);
+                }
             } else {
-                match =
-                    tab.sessionName.toLowerCase().includes(searchInput) ||
-                    tab.screenName.toLowerCase().includes(searchInput);
+                if (searchInput.includes("/")) {
+                    let [sessionFilter, screenFilter] = searchInput.split("/").map((s) => s.trim().toLowerCase());
+                    match =
+                        tab.sessionName.toLowerCase().includes(sessionFilter) &&
+                        tab.screenName.toLowerCase().includes(screenFilter);
+                } else {
+                    match =
+                        tab.sessionName.toLowerCase().includes(searchLower) ||
+                        tab.screenName.toLowerCase().includes(searchLower);
+                }
             }
 
             // Add tab to filtered list if it matches the criteria
@@ -218,7 +255,8 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @mobx.computed
     @boundMethod
     sortOptions(options: SwitcherDataType[]): SwitcherDataType[] {
-        return options.sort((a, b) => {
+        let mainOptions = options.filter((o) => o.sessionIdx !== -1);
+        mainOptions.sort((a, b) => {
             let aInCurrentSession = a.sessionIdx === this.activeSessionIdx;
             let bInCurrentSession = b.sessionIdx === this.activeSessionIdx;
 
@@ -243,6 +281,11 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                 }
             }
         });
+
+        let additionalOptions = options.filter((o) => o.sessionIdx === -1);
+        additionalOptions.sort((a, b) => a.viewData.label.localeCompare(b.viewData.label));
+
+        return [...mainOptions, ...additionalOptions];
     }
 
     @boundMethod
@@ -268,10 +311,15 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                 })}
                 onClick={() => this.handleSelect(index)}
             >
-                <div className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</div>
-                <div className="tabname">
-                    #{option.sessionName} / {option.screenName}
-                </div>
+                <If condition={option.sessionIdx != -1}>
+                    <div className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</div>
+                    <div className="tabname">
+                        #{option.sessionName} / {option.screenName}
+                    </div>
+                </If>
+                <If condition={option.sessionIdx == -1}>
+                    <div className="tabname">{option.viewData.label}</div>
+                </If>
             </div>
         );
     }
@@ -290,13 +338,13 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                             decoration={{
                                 startDecoration: (
                                     <InputDecoration position="start">
-                                        <div className="tabswitcher-search-prefix">Switch to Tab:</div>
+                                        <div className="tabswitcher-search-prefix">Go to:</div>
                                     </InputDecoration>
                                 ),
                                 endDecoration: (
                                     <InputDecoration>
                                         <Tooltip
-                                            message={`Type to filter workspaces and tabs.`}
+                                            message={`Type to filter workspaces, tabs and screens.`}
                                             icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                         >
                                             <i className="fa-sharp fa-regular fa-circle-question" />
