@@ -14,6 +14,7 @@ import { sprintf } from "sprintf-js";
 import { v4 as uuidv4 } from "uuid";
 import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
 import { platform } from "os";
+import type * as T from "../types/types";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
@@ -40,19 +41,21 @@ let unameArch: string = process.arch;
 if (unameArch == "x64") {
     unameArch = "amd64";
 }
-let logger;
+let loggerTransports: winston.transport[] = [
+    new winston.transports.File({ filename: path.join(waveHome, "waveterm-app.log"), level: "info" }),
+];
+if (isDev) {
+    loggerTransports.push(new winston.transports.Console());
+}
 let loggerConfig = {
     level: "info",
     format: winston.format.combine(
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         winston.format.printf((info) => `${info.timestamp} ${info.message}`)
     ),
-    transports: [new winston.transports.File({ filename: path.join(waveHome, "waveterm-app.log"), level: "info" })],
+    transports: loggerTransports,
 };
-if (isDev) {
-    loggerConfig.transports.push(new winston.transports.Console());
-}
-logger = winston.createLogger(loggerConfig);
+let logger = winston.createLogger(loggerConfig);
 function log(...msg) {
     try {
         logger.info(util.format(...msg));
@@ -75,7 +78,7 @@ if (isDev) {
 }
 let app = electron.app;
 app.setName(isDev ? "Wave (Dev)" : "Wave");
-let waveSrvProc = null;
+let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 let waveSrvShouldRestart = false;
 
 electron.dialog.showErrorBox = (title, content) => {
@@ -101,8 +104,11 @@ function checkPromptMigrate() {
         // don't migrate if we're running dev version or if wave home directory already exists
         return;
     }
-    let homeDir = process.env.HOME;
-    let promptHome = path.join(homeDir, "prompt");
+    if (process.env.HOME == null) {
+        return;
+    }
+    let homeDir: string = process.env.HOME;
+    let promptHome: string = path.join(homeDir, "prompt");
     if (!fs.existsSync(promptHome) || !fs.existsSync(path.join(promptHome, "prompt.db"))) {
         // make sure we have a valid prompt home directory (prompt.db must exist inside)
         return;
@@ -170,7 +176,7 @@ function readAuthKey() {
     return authKeyStr.trim();
 }
 
-let menuTemplate = [
+let menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {
         role: "appMenu",
         submenu: [
@@ -222,7 +228,7 @@ function getMods(input: any) {
     return { meta: input.meta, shift: input.shift, ctrl: input.control, alt: input.alt };
 }
 
-function shNavHandler(event: any, url: any) {
+function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
     event.preventDefault();
     if (url.startsWith("https://") || url.startsWith("http://") || url.startsWith("file://")) {
         console.log("open external, shNav", url);
@@ -232,12 +238,13 @@ function shNavHandler(event: any, url: any) {
     }
 }
 
-function shFrameNavHandler(event: any, url: any) {
+function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNavigateEventParams>) {
     if (!event.frame || event.frame.parent == null) {
         // only use this handler to process iframe events (non-iframe events go to shNavHandler)
         return;
     }
     event.preventDefault();
+    let url = event.url;
     console.log(`frame-navigation url=${url} frame=${event.frame.name}`);
     if (event.frame.name == "webview") {
         // "webview" links always open in new window
@@ -250,7 +257,7 @@ function shFrameNavHandler(event: any, url: any) {
     return;
 }
 
-function createMainWindow(clientData) {
+function createMainWindow(clientData: T.ClientDataType | null) {
     let bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
     let win = new electron.BrowserWindow({
@@ -644,12 +651,11 @@ electron.ipcMain.on("context-editmenu", (event, { x, y }, opts) => {
     }
     console.log("context-editmenu");
     let menu = new electron.Menu();
-    let menuItem = null;
     if (opts.showCut) {
-        menuItem = new electron.MenuItem({ label: "Cut", role: "cut" });
+        let menuItem = new electron.MenuItem({ label: "Cut", role: "cut" });
         menu.append(menuItem);
     }
-    menuItem = new electron.MenuItem({ label: "Copy", role: "copy" });
+    let menuItem = new electron.MenuItem({ label: "Copy", role: "copy" });
     menu.append(menuItem);
     menuItem = new electron.MenuItem({ label: "Paste", role: "paste" });
     menu.append(menuItem);
@@ -657,7 +663,7 @@ electron.ipcMain.on("context-editmenu", (event, { x, y }, opts) => {
 });
 
 async function createMainWindowWrap() {
-    let clientData = null;
+    let clientData: T.ClientDataType | null = null;
     try {
         clientData = await getClientDataPoll(1);
     } catch (e) {

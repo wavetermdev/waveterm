@@ -10,9 +10,6 @@ import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 import { getTermPtyData } from "../util/modelutil";
 
-const RemotePtyRows = 8; // also in main.tsx
-const RemotePtyCols = 80;
-
 class RemotesModel {
     globalModel: Model;
     selectedRemoteId: OV<string> = mobx.observable.box(null, {
@@ -178,14 +175,14 @@ class RemotesModel {
             return;
         }
         let termOpts = {
-            rows: RemotePtyRows,
-            cols: RemotePtyCols,
+            rows: appconst.RemotePtyRows,
+            cols: appconst.RemotePtyCols,
             flexrows: false,
             maxptysize: 64 * 1024,
         };
         let termWrap = new TermWrap(elem, {
             termContext: { remoteId: remoteId },
-            usedRows: RemotePtyRows,
+            usedRows: appconst.RemotePtyRows,
             termOpts: termOpts,
             winSize: null,
             keyHandler: (e, termWrap) => {

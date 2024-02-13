@@ -1,6 +1,6 @@
 import { Model } from "./model";
 import { CommandRunner } from "./commandrunner";
 
-const GlobalModel = Model.getInstance();
-const GlobalCommandRunner = CommandRunner.getInstance();
+const GlobalModel: Model = Model.getInstance();
+const GlobalCommandRunner: CommandRunner = CommandRunner.getInstance();
 export { GlobalModel, GlobalCommandRunner };

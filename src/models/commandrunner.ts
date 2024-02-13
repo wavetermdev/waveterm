@@ -7,7 +7,7 @@ import { GlobalModel } from "./global";
 class CommandRunner {
     private constructor() {}
 
-    static getInstance() {
+    static getInstance(): CommandRunner {
         if (!(window as any).GlobalCommandRunner) {
             (window as any).GlobalCommandRunner = new CommandRunner();
         }

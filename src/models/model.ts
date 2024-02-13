@@ -208,7 +208,7 @@ class Model {
         setTimeout(() => this.getClientDataLoop(1), 10);
     }
 
-    static getInstance() {
+    static getInstance(): Model {
         if (!(window as any).GlobalModel) {
             (window as any).GlobalModel = new Model();
         }
