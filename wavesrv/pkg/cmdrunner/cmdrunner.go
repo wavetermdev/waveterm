@@ -3526,7 +3526,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (upda
 		return nil, err
 	}
 	update := &feupdate.ModelUpdate{}
-	update.AddUpdate((sstore.ActiveSessionIdUpdate)(ritem.Id))
+	update.AddUpdate(sstore.ActiveSessionIdUpdate(ritem.Id))
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("switched to session %q", ritem.Name),
 		TimeoutMs: 2000,

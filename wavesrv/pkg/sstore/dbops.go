@@ -1119,7 +1119,7 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 		return nil, err
 	}
 	update := &feupdate.ModelUpdate{}
-	update.AddUpdate((ActiveSessionIdUpdate)(sessionId))
+	update.AddUpdate(ActiveSessionIdUpdate(sessionId))
 	update.AddUpdate(*bareSession)
 	memState := GetScreenMemState(screenId)
 	if memState != nil {
@@ -1672,7 +1672,7 @@ func DeleteSession(ctx context.Context, sessionId string) (updatebus.UpdatePacke
 	}
 	GoDeleteScreenDirs(screenIds...)
 	if newActiveSessionId != "" {
-		update.AddUpdate((ActiveSessionIdUpdate)(newActiveSessionId))
+		update.AddUpdate(ActiveSessionIdUpdate(newActiveSessionId))
 	}
 	update.AddUpdate(SessionType{SessionId: sessionId, Remove: true})
 	if sessionTombstone != nil {
@@ -1732,7 +1732,7 @@ func ArchiveSession(ctx context.Context, sessionId string) (*feupdate.ModelUpdat
 		update.AddUpdate(*bareSession)
 	}
 	if newActiveSessionId != "" {
-		update.AddUpdate((ActiveSessionIdUpdate)(newActiveSessionId))
+		update.AddUpdate(ActiveSessionIdUpdate(newActiveSessionId))
 	}
 	return update, nil
 }
@@ -1769,7 +1769,7 @@ func UnArchiveSession(ctx context.Context, sessionId string, activate bool) (*fe
 		update.AddUpdate(*bareSession)
 	}
 	if activate {
-		update.AddUpdate((ActiveSessionIdUpdate)(sessionId))
+		update.AddUpdate(ActiveSessionIdUpdate(sessionId))
 	}
 	return update, nil
 }
