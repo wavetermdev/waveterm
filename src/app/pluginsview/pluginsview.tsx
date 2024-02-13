@@ -5,11 +5,11 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel } from "../../models";
-import { PluginModel } from "../../plugins/plugins";
-import { Markdown } from "../common/elements";
+import { GlobalModel } from "@/models";
+import { PluginModel } from "@/plugins/plugins";
+import { Markdown } from "@/common/elements";
 
-import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
+import { ReactComponent as XmarkIcon } from "@/assets/icons/line/xmark.svg";
 
 import "./pluginsview.less";
 

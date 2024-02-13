@@ -7,10 +7,10 @@ import { Terminal } from "xterm";
 import { WebLinksAddon } from "xterm-addon-web-links";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
-import { boundInt } from "../../util/util";
-import { GlobalModel } from "../../models";
-import { getTheme } from "../../app/common/themes/themes";
+import { windowWidthToCols, windowHeightToRows } from "@/util/textmeasure";
+import { boundInt } from "@/util/util";
+import { GlobalModel } from "@/models";
+import { getTheme } from "@/common/themes/themes";
 
 type DataUpdate = {
     data: Uint8Array;

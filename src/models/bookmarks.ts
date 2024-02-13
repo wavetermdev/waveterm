@@ -4,8 +4,8 @@
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { genMergeSimpleData } from "../util/util";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
+import { genMergeSimpleData } from "@/util/util";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 

@@ -3,8 +3,8 @@
 
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
-import { genMergeSimpleData } from "../util/util";
-import { cmdStatusIsRunning } from "../app/line/lineutil";
+import { genMergeSimpleData } from "@/util/util";
+import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import { Cmd } from "./cmd";
 
 class ScreenLines {

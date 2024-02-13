@@ -7,14 +7,14 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel } from "../../models";
-import { CmdStrCode, Markdown } from "../common/elements";
+import { GlobalModel } from "@/models";
+import { CmdStrCode, Markdown } from "@/common/elements";
 
-import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
-import { ReactComponent as CopyIcon } from "../assets/icons/favourites/copy.svg";
-import { ReactComponent as PenIcon } from "../assets/icons/favourites/pen.svg";
-import { ReactComponent as TrashIcon } from "../assets/icons/favourites/trash.svg";
-import { ReactComponent as FavoritesIcon } from "../assets/icons/favourites.svg";
+import { ReactComponent as XmarkIcon } from "@/assets/icons/line/xmark.svg";
+import { ReactComponent as CopyIcon } from "@/assets/icons/favourites/copy.svg";
+import { ReactComponent as PenIcon } from "@/assets/icons/favourites/pen.svg";
+import { ReactComponent as TrashIcon } from "@/assets/icons/favourites/trash.svg";
+import { ReactComponent as FavoritesIcon } from "@/assets/icons/favourites.svg";
 
 import "./bookmarks.less";
 

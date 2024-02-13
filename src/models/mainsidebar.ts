@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as mobx from "mobx";
-import { MagicLayout } from "../app/magiclayout";
+import { MagicLayout } from "@/app/magiclayout";
 import { Model } from "./model";
 
 class MainSidebarModel {

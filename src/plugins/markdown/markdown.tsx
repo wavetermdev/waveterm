@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import { sprintf } from "sprintf-js";
-import { Markdown } from "../../app/common/elements";
+import { Markdown } from "@/elements";
 
 import "./markdown.less";
 

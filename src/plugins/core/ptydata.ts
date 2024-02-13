@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as mobx from "mobx";
-import { incObs } from "../../util/util";
+import { incObs } from "@/util/util";
 
 const InitialSize = 10 * 1024;
 const IncreaseFactor = 1.5;

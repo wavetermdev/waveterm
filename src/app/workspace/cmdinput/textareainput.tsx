@@ -4,15 +4,14 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import * as util from "../../../util/util";
+import * as util from "@/util/util";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Screen } from "../../../models";
-import { getMonoFontSize } from "../../../util/textmeasure";
-import { isModKeyPress, hasNoModifiers } from "../../../util/util";
-import * as appconst from "../../appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../../util/keyutil";
+import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
+import { getMonoFontSize } from "@/util/textmeasure";
+import * as appconst from "@/app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -168,7 +167,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     @boundMethod
     onKeyDown(e: any) {
         mobx.action(() => {
-            if (isModKeyPress(e)) {
+            if (util.isModKeyPress(e)) {
                 return;
             }
             let model = GlobalModel;
