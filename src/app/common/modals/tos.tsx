@@ -7,7 +7,6 @@ import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner } from "../../../models";
 import { Toggle, Modal, Button } from "../elements";
 import * as util from "../../../util/util";
-import { ClientDataType } from "../../../types/types";
 
 import shield from "../../assets/icons/shield_check.svg";
 import help from "../../assets/icons/help_filled.svg";

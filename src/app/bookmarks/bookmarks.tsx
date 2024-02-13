@@ -7,7 +7,6 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import type { BookmarkType } from "../../types/types";
 import { GlobalModel } from "../../models";
 import { CmdStrCode, Markdown } from "../common/elements";
 

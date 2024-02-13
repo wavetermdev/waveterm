@@ -13,39 +13,6 @@ import {
     isModKeyPress,
     isBlank,
 } from "../util/util";
-import {
-    SessionDataType,
-    LineType,
-    RemoteType,
-    RemoteInstanceType,
-    CmdDataType,
-    FeCmdPacketType,
-    ScreenDataType,
-    PtyDataUpdateType,
-    UpdateMessage,
-    InfoType,
-    StrWithPos,
-    UIContextType,
-    ContextMenuOpts,
-    RendererContext,
-    ClientDataType,
-    AlertMessageType,
-    UserInputRequest,
-    UserInputResponsePacket,
-    ScreenLinesType,
-    RemoteViewType,
-    CommandRtnType,
-    LineFocusType,
-    CmdInputTextPacketType,
-    FileInfoType,
-    ExtFile,
-    OV,
-    OArr,
-    OMap,
-    CV,
-    ScreenNumRunningCommandsUpdateType,
-    ScreenStatusIndicatorUpdateType,
-} from "../types/types";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "../app/line/lineutil";
 import * as appconst from "../app/appconst";
@@ -1363,10 +1330,6 @@ class Model {
 
     sendInputPacket(inputPacket: any) {
         this.ws.pushMessage(inputPacket);
-    }
-
-    sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
-        this.ws.pushMessage(userInputResponsePacket);
     }
 
     sendCmdInputText(screenId: string, sp: StrWithPos) {

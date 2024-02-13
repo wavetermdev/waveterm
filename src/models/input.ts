@@ -5,17 +5,6 @@ import type React from "react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { isBlank } from "../util/util";
-import {
-    HistoryItem,
-    RemotePtrType,
-    InfoType,
-    HistoryInfoType,
-    HistoryQueryOpts,
-    HistoryTypeStrs,
-    OpenAICmdInfoChatMessageType,
-    OV,
-    StrWithPos,
-} from "../types/types";
 import * as appconst from "../app/appconst";
 import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";

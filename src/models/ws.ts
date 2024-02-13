@@ -4,7 +4,6 @@
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { WatchScreenPacketType } from "../types/types";
 import dayjs from "dayjs";
 
 class WSControl {

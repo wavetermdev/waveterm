@@ -3,9 +3,6 @@
 
 import * as mobx from "mobx";
 import { PluginModel } from "../plugins/plugins";
-import { RendererPluginType } from "../types/types";
-import { OV } from "../types/types";
-import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 
 class PluginsModel {

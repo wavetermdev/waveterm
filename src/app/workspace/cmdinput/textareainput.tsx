@@ -4,7 +4,6 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import type * as T from "../../../types/types";
 import * as util from "../../../util/util";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
@@ -51,7 +50,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     historyInputRef: React.RefObject<HTMLInputElement> = React.createRef();
     controlRef: React.RefObject<HTMLDivElement> = React.createRef();
     lastHeight: number = 0;
-    lastSP: T.StrWithPos = { str: "", pos: appconst.NoStrPos };
+    lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0); // forces render updates
 
     incVersion(): void {
@@ -59,7 +58,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         mobx.action(() => this.version.set(v + 1))();
     }
 
-    getCurSP(): T.StrWithPos {
+    getCurSP(): StrWithPos {
         let textarea = this.mainInputRef.current;
         if (textarea == null) {
             return this.lastSP;

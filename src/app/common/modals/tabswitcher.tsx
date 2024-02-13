@@ -15,9 +15,6 @@ import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg"
 
 import "./tabswitcher.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-
 type SwitcherDataType = {
     sessionId: string;
     sessionName: string;

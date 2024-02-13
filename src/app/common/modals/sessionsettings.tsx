@@ -12,8 +12,6 @@ import { commandRtnHandler } from "../../../util/util";
 
 import "./sessionsettings.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 const SessionDeleteMessage = `
 Are you sure you want to delete this workspace?
 

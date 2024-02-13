@@ -1,6 +1,5 @@
 import { sprintf } from "sprintf-js";
 import { GlobalModel } from "../models";
-import { RemotePtrType, FeCmdPacketType, PtyDataType, TermContextUnion } from "../types/types";
 import { isBlank } from "./util";
 
 function getTermPtyData(termContext: TermContextUnion): Promise<PtyDataType> {

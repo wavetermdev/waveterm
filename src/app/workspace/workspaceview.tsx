@@ -17,8 +17,6 @@ import "./workspace.less";
 
 dayjs.extend(localizedFormat);
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
 class WorkspaceView extends React.Component<{}, {}> {
     render() {

@@ -7,7 +7,6 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../models";
-import * as T from "../../../types/types";
 import {
     Modal,
     TextField,
@@ -22,8 +21,6 @@ import * as util from "../../../util/util";
 
 import "./createremoteconn.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
 class CreateRemoteConnModal extends React.Component<{}, {}> {
     tempAlias: OV<string>;
@@ -35,7 +32,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     tempKeyFile: OV<string>;
     tempShellPref: OV<string>;
     errorStr: OV<string>;
-    remoteEdit: T.RemoteEditType;
+    remoteEdit: RemoteEditType;
     model: RemotesModel;
 
     constructor(props: { remotesModel?: RemotesModel }) {

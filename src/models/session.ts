@@ -4,8 +4,6 @@
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { genMergeSimpleData, isBlank, ces } from "../util/util";
-import { SessionDataType, RemoteInstanceType, RemotePtrType } from "../types/types";
-import { OV, OArr } from "../types/types";
 import { Model } from "./model";
 import { Screen } from "./screen";
 

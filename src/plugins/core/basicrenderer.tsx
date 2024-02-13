@@ -4,26 +4,9 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import type {
-    RendererModelInitializeParams,
-    TermOptsType,
-    RendererContext,
-    RendererOpts,
-    RendererModelContainerApi,
-    RendererPluginType,
-    PtyDataType,
-    RendererOptsUpdate,
-    LineStateType,
-    TermContextUnion,
-    RendererContainerType,
-} from "../../types/types";
-import * as T from "../../types/types";
-import { debounce, throttle } from "throttle-debounce";
+import { debounce } from "throttle-debounce";
 import * as util from "../../util/util";
 import { GlobalModel } from "../../models";
-
-type OV<V> = mobx.IObservableValue<V>;
-type CV<V> = mobx.IComputedValue<V>;
 
 class SimpleBlobRendererModel {
     context: RendererContext;
@@ -38,7 +21,7 @@ class SimpleBlobRendererModel {
     lineState: LineStateType;
     ptyData: PtyDataType;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
-    dataBlob: T.ExtBlob;
+    dataBlob: ExtBlob;
     readOnly: boolean;
     notFound: boolean;
     isClosed: boolean;
@@ -56,7 +39,7 @@ class SimpleBlobRendererModel {
         this.savedHeight = params.savedHeight;
         this.ptyDataSource = params.ptyDataSource;
         if (this.isClosed) {
-            this.dataBlob = new Blob() as T.ExtBlob;
+            this.dataBlob = new Blob() as ExtBlob;
             this.dataBlob.notFound = false; // TODO
         } else {
             if (this.isDone.get()) {
@@ -154,7 +137,7 @@ class SimpleBlobRendererModel {
         }
         rtnp.then((ptydata) => {
             this.ptyData = ptydata;
-            let blob: T.ExtBlob = new Blob([this.ptyData.data]) as T.ExtBlob;
+            let blob: ExtBlob = new Blob([this.ptyData.data]) as ExtBlob;
             blob.notFound = false;
             this.dataBlob = blob;
             mobx.action(() => {
