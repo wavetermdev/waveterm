@@ -560,6 +560,14 @@ declare global {
         latestversion: string;
     };
 
+    type ClientWinSize = {
+        width: number;
+        height: number;
+        top: number;
+        left: number;
+        fullscreen: boolean;
+    };
+
     type ClientDataType = {
         clientid: string;
         userid: string;
@@ -569,6 +577,7 @@ declare global {
         dbversion: number;
         openaiopts?: OpenAIOptsType;
         releaseinfo?: ReleaseInfoType;
+        winsize: ClientWinSize;
     };
 
     type OpenAIOptsType = {

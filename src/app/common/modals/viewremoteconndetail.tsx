@@ -11,11 +11,9 @@ import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../models"
 import { Modal, Tooltip, Button, Status } from "../elements";
 import * as util from "../../../util/util";
 import * as textmeasure from "../../../util/textmeasure";
+import * as appconst from "../../appconst";
 
 import "./viewremoteconndetail.less";
-
-const RemotePtyRows = 9;
-const RemotePtyCols = 80;
 
 @mobxReact.observer
 class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
@@ -292,7 +290,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         let model = this.model;
         let isTermFocused = this.model.remoteTermWrapFocus.get();
         let termFontSize = GlobalModel.termFontSize.get();
-        let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
+        let termWidth = textmeasure.termWidthFromCols(appconst.RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
         let selectedRemoteStatus = this.getSelectedRemote().status;
 
@@ -370,7 +368,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                                 ref={this.termRef}
                                 data-remoteid={remote.remoteid}
                                 style={{
-                                    height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
+                                    height: textmeasure.termHeightFromRows(appconst.RemotePtyRows, termFontSize),
                                     width: termWidth,
                                 }}
                             ></div>
