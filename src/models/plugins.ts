@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as mobx from "mobx";
-import { PluginModel } from "../plugins/plugins";
+import { PluginModel } from "@/plugins/plugins";
 import { Model } from "./model";
 
 class PluginsModel {

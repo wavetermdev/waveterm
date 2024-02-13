@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { FC, useEffect, useState, useRef, useMemo } from "react";
-import { GlobalModel } from "../../models";
+import { GlobalModel } from "@/models";
 import Papa from "papaparse";
 import {
     createColumnHelper,

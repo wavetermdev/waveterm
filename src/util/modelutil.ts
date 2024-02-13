@@ -1,5 +1,5 @@
 import { sprintf } from "sprintf-js";
-import { GlobalModel } from "../models";
+import { GlobalModel } from "@/models";
 import { isBlank } from "./util";
 
 function getTermPtyData(termContext: TermContextUnion): Promise<PtyDataType> {

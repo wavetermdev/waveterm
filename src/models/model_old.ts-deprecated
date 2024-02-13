@@ -18,9 +18,9 @@ import {
     genMergeSimpleData,
     boundInt,
     isModKeyPress,
-} from "../util/util";
-import { TermWrap } from "../plugins/terminal/term";
-import { PluginModel } from "../plugins/plugins";
+} from "@/util/util";
+import { TermWrap } from "@/plugins/terminal/term";
+import { PluginModel } from "@/plugins/plugins";
 import {
     SessionDataType,
     LineType,
@@ -76,15 +76,15 @@ import {
     windowHeightToRows,
     termWidthFromCols,
     termHeightFromRows,
-} from "../util/textmeasure";
+} from "@/util/textmeasure";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import { getRendererContext, cmdStatusIsRunning } from "../app/line/lineutil";
-import { MagicLayout } from "../app/magiclayout";
-import { modalsRegistry } from "../app/common/modals/registry";
-import * as appconst from "../app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
+import { getRendererContext, cmdStatusIsRunning } from "@/app/line/lineutil";
+import { MagicLayout } from "@/app/magiclayout";
+import { modalsRegistry } from "@/modals/registry";
+import * as appconst from "@/app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);

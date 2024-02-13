@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as mobx from "mobx";
-import { stringToBase64 } from "../util/util";
-import { TermWrap } from "../plugins/terminal/term";
-import { cmdStatusIsRunning } from "../app/line/lineutil";
+import { stringToBase64 } from "@/util/util";
+import { TermWrap } from "@/plugins/terminal/term";
+import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import { Model } from "./model";
 
 const InputChunkSize = 500;

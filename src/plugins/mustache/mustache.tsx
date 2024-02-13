@@ -5,10 +5,10 @@ import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
-import { isBlank } from "../../util/util";
+import { isBlank } from "@/util/util";
 import mustache from "mustache";
 import * as DOMPurify from "dompurify";
-import { GlobalModel } from "../../models";
+import { GlobalModel } from "@/models";
 
 import "./mustache.less";
 

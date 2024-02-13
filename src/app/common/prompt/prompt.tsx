@@ -5,10 +5,10 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "../../../models";
+import { GlobalModel } from "@/models";
 import cn from "classnames";
-import { isBlank } from "../../../util/util";
-import { ReactComponent as FolderIcon } from "../../assets/icons/folder.svg";
+import { isBlank } from "@/util/util";
+import { ReactComponent as FolderIcon } from "@/assets/icons/folder.svg";
 
 import "./prompt.less";
 

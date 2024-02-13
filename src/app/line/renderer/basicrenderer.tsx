@@ -6,8 +6,8 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 
 import { debounce } from "throttle-debounce";
-import * as util from "../../../util/util";
-import { GlobalModel } from "../../../models";
+import * as util from "@/util";
+import { GlobalModel } from "@/models";
 
 class SimpleBlobRendererModel {
     context: RendererContext;

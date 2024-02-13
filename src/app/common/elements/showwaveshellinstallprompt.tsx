@@ -1,8 +1,8 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { GlobalModel } from "../../../models";
-import * as appconst from "../../appconst";
+import { GlobalModel } from "@/models";
+import * as appconst from "@/app/appconst";
 
 function ShowWaveShellInstallPrompt(callbackFn: () => void) {
     let message: string = `

@@ -6,8 +6,8 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner } from "../../../models";
-import { MagicLayout } from "../../magiclayout";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
+import { MagicLayout } from "@/app/magiclayout";
 
 import "./resizablesidebar.less";
 

@@ -13,8 +13,8 @@ import {
     ScreenSettingsModal,
     LineSettingsModal,
     UserInputModal,
-} from "../modals";
-import * as constants from "../../appconst";
+} from "@/modals";
+import * as constants from "@/app/appconst";
 
 const modalsRegistry: { [key: string]: React.ComponentType } = {
     [constants.ABOUT]: AboutModal,

@@ -3,7 +3,7 @@
 
 import * as mobx from "mobx";
 import { v4 as uuidv4 } from "uuid";
-import { modalsRegistry } from "../app/common/modals/registry";
+import { modalsRegistry } from "@/modals/registry";
 
 class ModalsModel {
     store: OArr<ModalStoreEntry> = mobx.observable.array([], { name: "ModalsModel-store", deep: false });

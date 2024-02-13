@@ -8,24 +8,24 @@ import { If, For } from "tsx-control-statements/components";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Cmd } from "../../models";
+import { GlobalModel, GlobalCommandRunner, Cmd } from "@/models";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import { Line } from "../line/linecomps";
-import { CmdStrCode } from "../common/elements";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
+import { Line } from "@/app/line/linecomps";
+import { CmdStrCode } from "@/common/elements";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
-import { ReactComponent as XmarkIcon } from "../assets/icons/line/xmark.svg";
-import { ReactComponent as AngleDownIcon } from "../assets/icons/history/angle-down.svg";
-import { ReactComponent as ChevronLeftIcon } from "../assets/icons/history/chevron-left.svg";
-import { ReactComponent as ChevronRightIcon } from "../assets/icons/history/chevron-right.svg";
-import { ReactComponent as RightIcon } from "../assets/icons/history/right.svg";
-import { ReactComponent as SearchIcon } from "../assets/icons/history/search.svg";
-import { ReactComponent as TrashIcon } from "../assets/icons/trash.svg";
-import { ReactComponent as CheckedCheckbox } from "../assets/icons/checked-checkbox.svg";
-import { ReactComponent as CheckIcon } from "../assets/icons/line/check.svg";
-import { ReactComponent as CopyIcon } from "../assets/icons/history/copy.svg";
+import { ReactComponent as XmarkIcon } from "@/assets/icons/line/xmark.svg";
+import { ReactComponent as AngleDownIcon } from "@/assets/icons/history/angle-down.svg";
+import { ReactComponent as ChevronLeftIcon } from "@/assets/icons/history/chevron-left.svg";
+import { ReactComponent as ChevronRightIcon } from "@/assets/icons/history/chevron-right.svg";
+import { ReactComponent as RightIcon } from "@/assets/icons/history/right.svg";
+import { ReactComponent as SearchIcon } from "@/assets/icons/history/search.svg";
+import { ReactComponent as TrashIcon } from "@/assets/icons/trash.svg";
+import { ReactComponent as CheckedCheckbox } from "@/assets/icons/checked-checkbox.svg";
+import { ReactComponent as CheckIcon } from "@/assets/icons/line/check.svg";
+import { ReactComponent as CopyIcon } from "@/assets/icons/history/copy.svg";
 
 import "./history.less";
 

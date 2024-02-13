@@ -7,7 +7,7 @@ import * as mobxReact from "mobx-react";
 import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
 import { PacketDataBuffer } from "../core/ptydata";
-import { Markdown } from "../../app/common/elements";
+import { Markdown } from "@/elements";
 
 import "./openai.less";
 
