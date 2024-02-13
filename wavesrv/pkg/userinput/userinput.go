@@ -7,7 +7,6 @@ package userinput
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -81,7 +80,6 @@ func (bus *UserInputBus) GetUserInput(ctx context.Context, userInputRequest *Use
 	mu := &feupdate.ModelUpdate{}
 	mu.AddUpdate(userInputRequest)
 	feupdate.MainBus.SendUpdate(mu)
-	log.Printf("test: %+v", userInputRequest)
 
 	var response *scpacket.UserInputResponsePacketType
 	var err error
