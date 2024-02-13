@@ -216,37 +216,27 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @boundMethod
     filterOptions(searchInput: string): SwitcherDataType[] {
         const searchLower = searchInput.toLowerCase();
-        let filteredScreens = [];
 
-        // Combine both arrays for iteration
-        const combinedOptions = [...this.options, ...additionalOptions];
-
-        for (let i = 0; i < combinedOptions.length; i++) {
-            let tab = combinedOptions[i];
-            let match = false;
-
-            // Separate logic for additionalOptions
-            if (i >= this.options.length) {
-                if (searchLower.length > 0) {
-                    match = tab.viewData?.label.toLowerCase().includes(searchLower);
-                }
+        let filteredScreens = this.options.filter((tab) => {
+            if (searchInput.includes("/")) {
+                const [sessionFilter, screenFilter] = searchInput.split("/").map((s) => s.trim().toLowerCase());
+                return (
+                    tab.sessionName.toLowerCase().includes(sessionFilter) &&
+                    tab.screenName.toLowerCase().includes(screenFilter)
+                );
             } else {
-                if (searchInput.includes("/")) {
-                    let [sessionFilter, screenFilter] = searchInput.split("/").map((s) => s.trim().toLowerCase());
-                    match =
-                        tab.sessionName.toLowerCase().includes(sessionFilter) &&
-                        tab.screenName.toLowerCase().includes(screenFilter);
-                } else {
-                    match =
-                        tab.sessionName.toLowerCase().includes(searchLower) ||
-                        tab.screenName.toLowerCase().includes(searchLower);
-                }
+                return (
+                    tab.sessionName.toLowerCase().includes(searchLower) ||
+                    tab.screenName.toLowerCase().includes(searchLower)
+                );
             }
+        });
 
-            // Add tab to filtered list if it matches the criteria
-            if (match) {
-                filteredScreens.push(tab);
-            }
+        if (searchLower.length > 0) {
+            const additionalFiltered = additionalOptions.filter((item) =>
+                item.viewData?.label.toLowerCase().includes(searchLower)
+            );
+            filteredScreens = filteredScreens.concat(additionalFiltered);
         }
 
         return filteredScreens;
@@ -255,10 +245,10 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     @mobx.computed
     @boundMethod
     sortOptions(options: SwitcherDataType[]): SwitcherDataType[] {
-        let mainOptions = options.filter((o) => o.sessionIdx !== -1);
+        const mainOptions = options.filter((o) => o.sessionIdx !== -1);
         mainOptions.sort((a, b) => {
-            let aInCurrentSession = a.sessionIdx === this.activeSessionIdx;
-            let bInCurrentSession = b.sessionIdx === this.activeSessionIdx;
+            const aInCurrentSession = a.sessionIdx === this.activeSessionIdx;
+            const bInCurrentSession = b.sessionIdx === this.activeSessionIdx;
 
             // Tabs in the current session are sorted by screenIdx
             if (aInCurrentSession && bInCurrentSession) {
@@ -282,10 +272,10 @@ class TabSwitcherModal extends React.Component<{}, {}> {
             }
         });
 
-        let additionalOptions = options.filter((o) => o.sessionIdx === -1);
+        const additionalOptions = options.filter((o) => o.sessionIdx === -1);
         additionalOptions.sort((a, b) => a.viewData?.label.localeCompare(b.viewData?.label));
 
-        return [...mainOptions, ...additionalOptions];
+        return mainOptions.concat(additionalOptions);
     }
 
     @boundMethod
