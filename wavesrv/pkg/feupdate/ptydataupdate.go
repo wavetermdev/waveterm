@@ -1,0 +1,19 @@
+package feupdate
+
+const PtyDataUpdateStr = "pty"
+
+// An UpdatePacket for sending pty data to the client
+type PtyDataUpdate struct {
+	ScreenId   string `json:"screenid,omitempty"`
+	LineId     string `json:"lineid,omitempty"`
+	RemoteId   string `json:"remoteid,omitempty"`
+	PtyPos     int64  `json:"ptypos"`
+	PtyData64  string `json:"ptydata64"`
+	PtyDataLen int64  `json:"ptydatalen"`
+}
+
+func (*PtyDataUpdate) UpdateType() string {
+	return PtyDataUpdateStr
+}
+
+func (pdu *PtyDataUpdate) Clean() {}

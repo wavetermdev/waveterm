@@ -5,6 +5,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/feupdate"
 )
 
 type ActiveSessionIdUpdate string
@@ -22,7 +23,7 @@ func (LineUpdate) UpdateType() string {
 	return "line"
 }
 
-func AddLineUpdate(update *ModelUpdate, newLine *LineType, newCmd *CmdType) {
+func AddLineUpdate(update *feupdate.ModelUpdate, newLine *LineType, newCmd *CmdType) {
 	if newLine == nil {
 		return
 	}
@@ -32,7 +33,7 @@ func AddLineUpdate(update *ModelUpdate, newLine *LineType, newCmd *CmdType) {
 	if newCmd != nil {
 		newLineUpdate.Cmd = *newCmd
 	}
-	AddUpdate(update, newLineUpdate)
+	update.AddUpdate(newLineUpdate)
 }
 
 type CmdLineUpdate utilfn.StrWithPos
@@ -41,8 +42,8 @@ func (CmdLineUpdate) UpdateType() string {
 	return "cmdline"
 }
 
-func AddCmdLineUpdate(update *ModelUpdate, cmdLine utilfn.StrWithPos) {
-	AddUpdate(update, CmdLineUpdate(cmdLine))
+func AddCmdLineUpdate(update *feupdate.ModelUpdate, cmdLine utilfn.StrWithPos) {
+	update.AddUpdate(CmdLineUpdate(cmdLine))
 }
 
 type InfoMsgType struct {
@@ -61,17 +62,17 @@ func (InfoMsgType) UpdateType() string {
 	return "info"
 }
 
-func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
+func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *feupdate.ModelUpdate {
 	msg := fmt.Sprintf(infoMsgFmt, args...)
-	ret := &ModelUpdate{}
+	ret := &feupdate.ModelUpdate{}
 	newInfoUpdate := InfoMsgType{InfoMsg: msg}
-	AddUpdate(ret, newInfoUpdate)
+	ret.AddUpdate(newInfoUpdate)
 	return ret
 }
 
 // only sets InfoError if InfoError is not already set
-func AddInfoMsgUpdateError(update *ModelUpdate, errStr string) {
-	infoUpdates := GetUpdateItems[InfoMsgType](update)
+func AddInfoMsgUpdateError(update *feupdate.ModelUpdate, errStr string) {
+	infoUpdates := feupdate.GetUpdateItems[InfoMsgType](update)
 
 	if len(infoUpdates) > 0 {
 		lastUpdate := infoUpdates[len(infoUpdates)-1]
@@ -80,7 +81,7 @@ func AddInfoMsgUpdateError(update *ModelUpdate, errStr string) {
 			return
 		}
 	} else {
-		AddUpdate(update, InfoMsgType{InfoError: errStr})
+		update.AddUpdate(InfoMsgType{InfoError: errStr})
 	}
 }
 
@@ -108,8 +109,8 @@ func (InteractiveUpdate) UpdateType() string {
 	return "interactive"
 }
 
-func AddInteractiveUpdate(update *ModelUpdate, interactive bool) {
-	AddUpdate(update, InteractiveUpdate(interactive))
+func AddInteractiveUpdate(update *feupdate.ModelUpdate, interactive bool) {
+	update.AddUpdate(InteractiveUpdate(interactive))
 }
 
 type ConnectUpdate struct {
@@ -144,11 +145,11 @@ func (BookmarksUpdate) UpdateType() string {
 	return "bookmarks"
 }
 
-func AddBookmarksUpdate(update *ModelUpdate, bookmarks []*BookmarkType, selectedBookmark *string) {
+func AddBookmarksUpdate(update *feupdate.ModelUpdate, bookmarks []*BookmarkType, selectedBookmark *string) {
 	if selectedBookmark == nil {
-		AddUpdate(update, BookmarksUpdate{Bookmarks: bookmarks})
+		update.AddUpdate(BookmarksUpdate{Bookmarks: bookmarks})
 	} else {
-		AddUpdate(update, BookmarksUpdate{Bookmarks: bookmarks, SelectedBookmark: *selectedBookmark})
+		update.AddUpdate(BookmarksUpdate{Bookmarks: bookmarks, SelectedBookmark: *selectedBookmark})
 	}
 }
 
@@ -187,8 +188,8 @@ func (OpenAICmdInfoChatUpdate) UpdateType() string {
 	return "openaicmdinfochat"
 }
 
-func AddOpenAICmdInfoChatUpdate(update *ModelUpdate, chatMessages []*packet.OpenAICmdInfoChatMessage) {
-	AddUpdate(update, OpenAICmdInfoChatUpdate(chatMessages))
+func AddOpenAICmdInfoChatUpdate(update *feupdate.ModelUpdate, chatMessages []*packet.OpenAICmdInfoChatMessage) {
+	update.AddUpdate(OpenAICmdInfoChatUpdate(chatMessages))
 }
 
 type AlertMessageType struct {
@@ -218,17 +219,4 @@ type ScreenNumRunningCommandsType struct {
 
 func (ScreenNumRunningCommandsType) UpdateType() string {
 	return "screennumrunningcommands"
-}
-
-type UserInputRequestType struct {
-	RequestId    string `json:"requestid"`
-	QueryText    string `json:"querytext"`
-	ResponseType string `json:"responsetype"`
-	Title        string `json:"title"`
-	Markdown     bool   `json:"markdown"`
-	TimeoutMs    int    `json:"timeoutms"`
-}
-
-func (UserInputRequestType) UpdateType() string {
-	return "userinputrequest"
 }

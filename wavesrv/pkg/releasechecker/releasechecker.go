@@ -7,6 +7,7 @@ import (
 	"github.com/google/go-github/v57/github"
 	"golang.org/x/mod/semver"
 
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/feupdate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
@@ -66,9 +67,9 @@ func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error
 		return Failure, fmt.Errorf("error getting updated client data: %w", err)
 	}
 
-	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, *clientData)
-	sstore.MainBus.SendUpdate(update)
+	update := &feupdate.ModelUpdate{}
+	update.AddUpdate(update, *clientData)
+	feupdate.MainBus.SendUpdate(update)
 
 	return Success, nil
 }

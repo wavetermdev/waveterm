@@ -930,7 +930,7 @@ class Model {
             } else if (update.screennumrunningcommands != null) {
                 this.updateScreenNumRunningCommands([update.screennumrunningcommands]);
             } else if (update.userinputrequest != null) {
-                let userInputRequest: UserInputRequest = update.userinputrequest;
+                const userInputRequest: UserInputRequest = update.userinputrequest;
                 this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
             } else if (interactive) {
                 if (update.info != null) {

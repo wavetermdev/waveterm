@@ -173,6 +173,10 @@ func init() {
 	packet.RegisterPacketType(UserInputResponsePacketStr, reflect.TypeOf(UserInputResponsePacketType{}))
 }
 
+type PacketType interface {
+	GetType() string
+}
+
 func (*CmdInputTextPacketType) GetType() string {
 	return CmdInputTextPacketStr
 }
