@@ -419,8 +419,17 @@ class HistoryView extends React.Component<{}, {}> {
         let sessionId: string = null;
         let remoteIds = Object.keys(rnames);
         let remoteId: string = null;
+
+        // Has to calc manually because when tabs overflow, the width of the session view is increased for some reason causing inconsistent width.
+        // 6px is the right margin of session view.
+        const width = window.innerWidth - 6 - GlobalModel.mainSidebarModel.getWidth();
         return (
-            <div className={cn("history-view", { "is-hidden": isHidden })}>
+            <div
+                className={cn("history-view", "view", { "is-hidden": isHidden })}
+                style={{
+                    width: `${width}px`,
+                }}
+            >
                 <div className="header">
                     <div className="history-title">History</div>
                     <div className="history-search">
