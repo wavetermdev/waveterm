@@ -109,7 +109,7 @@ func createPublicKeyCallback(sshKeywords *SshKeywords, passphrase string) func()
 			QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
 			Title:        "Publickey Auth + Passphrase",
 		}
-		ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
 		response, err := sstore.MainBus.GetUserInput(ctx, request)
 		if err != nil {
@@ -139,7 +139,7 @@ func createInteractivePasswordCallbackPrompt() func() (secret string, err error)
 	return func() (secret string, err error) {
 		// limited to 15 seconds for some reason. this should be investigated more
 		// in the future
-		ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
 		request := &sstore.UserInputRequestType{
 			ResponseType: "text",
@@ -199,7 +199,7 @@ func createInteractiveKbdInteractiveChallenge() func(name, instruction string, q
 func promptChallengeQuestion(question string, echo bool) (answer string, err error) {
 	// limited to 15 seconds for some reason. this should be investigated more
 	// in the future
-	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
 	request := &sstore.UserInputRequestType{
 		ResponseType: "text",
