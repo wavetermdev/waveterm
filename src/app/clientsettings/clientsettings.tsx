@@ -29,12 +29,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeFontSize(fontSize: string): void {
-        let newFontSize = Number(fontSize);
+        const newFontSize = Number(fontSize);
         this.fontSizeDropdownActive.set(false);
         if (GlobalModel.termFontSize.get() == newFontSize) {
             return;
         }
-        let prtn = GlobalCommandRunner.setTermFontSize(newFontSize, false);
+        const prtn = GlobalCommandRunner.setTermFontSize(newFontSize, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -67,29 +67,29 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         commandRtnHandler(prtn, this.errorMessage);
     }
 
-    getFontSizes(): any {
-        let availableFontSizes: { label: string; value: number }[] = [];
+    getFontSizes(): DropdownItem[] {
+        const availableFontSizes: DropdownItem[] = [];
         for (let s = appconst.MinFontSize; s <= appconst.MaxFontSize; s++) {
-            availableFontSizes.push({ label: s + "px", value: s });
+            availableFontSizes.push({ label: s + "px", value: String(s) });
         }
         return availableFontSizes;
     }
 
     @boundMethod
     inlineUpdateOpenAIModel(newModel: string): void {
-        let prtn = GlobalCommandRunner.setClientOpenAISettings({ model: newModel });
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ model: newModel });
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     inlineUpdateOpenAIToken(newToken: string): void {
-        let prtn = GlobalCommandRunner.setClientOpenAISettings({ apitoken: newToken });
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ apitoken: newToken });
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     inlineUpdateOpenAIMaxTokens(newMaxTokensStr: string): void {
-        let prtn = GlobalCommandRunner.setClientOpenAISettings({ maxtokens: newMaxTokensStr });
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ maxtokens: newMaxTokensStr });
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -105,19 +105,41 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         GlobalModel.clientSettingsViewModel.closeView();
     }
 
+    @boundMethod
+    handleChangeShortcut(newShortcut: string): void {
+        const prtn = GlobalCommandRunner.setGlobalShortcut(newShortcut);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    getFKeys(): DropdownItem[] {
+        const opts: DropdownItem[] = [];
+        opts.push({ label: "Disabled", value: "" });
+        const platform = GlobalModel.getPlatform();
+        for (let i = 1; i <= 12; i++) {
+            const shortcut = (platform == "darwin" ? "Cmd" : "Alt") + "+F" + String(i);
+            opts.push({ label: shortcut, value: shortcut });
+        }
+        return opts;
+    }
+
+    getCurrentShortcut(): string {
+        const clientData = GlobalModel.clientData.get();
+        return clientData?.clientopts?.globalshortcut ?? "";
+    }
+
     render() {
-        let isHidden = GlobalModel.activeMainView.get() != "clientsettings";
+        const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
             return null;
         }
 
-        let cdata: ClientDataType = GlobalModel.clientData.get();
-        let openAIOpts = cdata.openaiopts ?? {};
-        let apiTokenStr = isBlank(openAIOpts.apitoken) ? "(not set)" : "********";
-        let maxTokensStr = String(
+        const cdata: ClientDataType = GlobalModel.clientData.get();
+        const openAIOpts = cdata.openaiopts ?? {};
+        const apiTokenStr = isBlank(openAIOpts.apitoken) ? "(not set)" : "********";
+        const maxTokensStr = String(
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
-        let curFontSize = GlobalModel.termFontSize.get();
+        const curFontSize = GlobalModel.termFontSize.get();
 
         return (
             <div className={cn("view clientsettings-view")}>
@@ -204,6 +226,17 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 onChange={this.inlineUpdateOpenAIMaxTokens}
                                 maxLength={10}
                                 showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Global Hotkey</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="hotkey-dropdown"
+                                options={this.getFKeys()}
+                                defaultValue={this.getCurrentShortcut()}
+                                onChange={this.handleChangeShortcut}
                             />
                         </div>
                     </div>
