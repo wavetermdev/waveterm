@@ -55,6 +55,7 @@ type ElectronApi = {
     restartWaveSrv: () => boolean;
     reloadWindow: () => void;
     openExternalLink: (url: string) => void;
+    reregisterGlobalShortcut: (shortcut: string) => void;
     onTCmd: (callback: (mods: KeyModsType) => void) => void;
     onICmd: (callback: (mods: KeyModsType) => void) => void;
     onLCmd: (callback: (mods: KeyModsType) => void) => void;
@@ -887,7 +888,7 @@ class Model {
                     this.bookmarksModel.mergeBookmarks(update.bookmarks.bookmarks);
                 }
             } else if (update.clientdata != null) {
-                this.clientData.set(update.clientdata);
+                this.setClientData(update.clientdata);
             } else if (update.cmdline != null) {
                 this.inputModel.updateCmdLine(update.cmdline);
             } else if (update.openaicmdinfochat != null) {
@@ -1095,14 +1096,23 @@ class Model {
         fetch(url, { method: "post", body: null, headers: fetchHeaders })
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
-                mobx.action(() => {
-                    const clientData: ClientDataType = data.data;
-                    this.clientData.set(clientData);
-                })();
+                const clientData: ClientDataType = data.data;
+                this.setClientData(clientData);
             })
             .catch((err) => {
                 this.errorHandler("calling get-client-data", err, true);
             });
+    }
+
+    setClientData(clientData: ClientDataType) {
+        mobx.action(() => {
+            this.clientData.set(clientData);
+        })();
+        let shortcut = null;
+        if (clientData?.clientopts?.globalshortcutenabled) {
+            shortcut = clientData?.clientopts?.globalshortcut;
+        }
+        getApi().reregisterGlobalShortcut(shortcut);
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
@@ -1326,6 +1336,10 @@ class Model {
             }
             this.inputModel.flashInfoMsg({ infoerror: errMsg }, null);
         }
+    }
+
+    sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
+        this.ws.pushMessage(userInputResponsePacket);
     }
 
     sendInputPacket(inputPacket: any) {

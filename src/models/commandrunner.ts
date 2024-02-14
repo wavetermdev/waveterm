@@ -431,6 +431,10 @@ class CommandRunner {
         }
         GlobalModel.submitCommand("sidebar", "open", null, kwargs, false);
     }
+
+    setGlobalShortcut(shortcut: string): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("client", "setglobalshortcut", [shortcut], { nohist: "1" }, false);
+    }
 }
 
 export { CommandRunner };

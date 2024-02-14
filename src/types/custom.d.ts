@@ -292,6 +292,11 @@ declare global {
         userquery?: string;
     };
 
+    type DropdownItem = {
+        label: string;
+        value: string;
+    };
+
     /**
      * Levels for the screen status indicator
      */
@@ -554,6 +559,8 @@ declare global {
             collapsed: boolean;
             width: number;
         };
+        globalshortcut: string;
+        globalshortcutenabled: boolean;
     };
 
     type ReleaseInfoType = {

@@ -226,6 +226,7 @@ func init() {
 	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
 	registerCmdFn("client:setconfirmflag", ClientConfirmFlagCommand)
 	registerCmdFn("client:setsidebar", ClientSetSidebarCommand)
+	registerCmdFn("client:setglobalshortcut", ClientSetGlobalShortcut)
 
 	registerCmdFn("sidebar:open", SidebarOpenCommand)
 	registerCmdFn("sidebar:close", SidebarCloseCommand)
@@ -4981,6 +4982,28 @@ func ClientConfirmFlagCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	update := &feupdate.ModelUpdate{}
 	update.AddUpdate(*clientData)
 
+	return update, nil
+}
+
+func ClientSetGlobalShortcut(ctx context.Context, pk *scpacket.FeCommandPacketType) (updatebus.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	newShortcut := firstArg(pk)
+	if len(newShortcut) > 50 {
+		return nil, fmt.Errorf("invalid shortcut (maxlen = 50)")
+	}
+	clientOpts := clientData.ClientOpts
+	clientOpts.GlobalShortcut = newShortcut
+	clientOpts.GlobalShortcutEnabled = (newShortcut != "")
+	err = sstore.SetClientOpts(ctx, clientOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client data: %v", err)
+	}
+	clientData.ClientOpts = clientOpts
+	update := &feupdate.ModelUpdate{}
+	update.AddUpdate(*clientData)
 	return update, nil
 }
 

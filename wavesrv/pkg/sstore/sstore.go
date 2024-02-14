@@ -284,11 +284,13 @@ type SidebarValueType struct {
 }
 
 type ClientOptsType struct {
-	NoTelemetry    bool              `json:"notelemetry,omitempty"`
-	NoReleaseCheck bool              `json:"noreleasecheck,omitempty"`
-	AcceptedTos    int64             `json:"acceptedtos,omitempty"`
-	ConfirmFlags   map[string]bool   `json:"confirmflags,omitempty"`
-	MainSidebar    *SidebarValueType `json:"mainsidebar,omitempty"`
+	NoTelemetry           bool              `json:"notelemetry,omitempty"`
+	NoReleaseCheck        bool              `json:"noreleasecheck,omitempty"`
+	AcceptedTos           int64             `json:"acceptedtos,omitempty"`
+	ConfirmFlags          map[string]bool   `json:"confirmflags,omitempty"`
+	MainSidebar           *SidebarValueType `json:"mainsidebar,omitempty"`
+	GlobalShortcut        string            `json:"globalshortcut,omitempty"`
+	GlobalShortcutEnabled bool              `json:"globalshortcutenabled,omitempty"`
 }
 
 type FeOptsType struct {
