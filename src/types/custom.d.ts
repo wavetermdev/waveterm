@@ -106,7 +106,6 @@ declare global {
         remotevars: Record<string, string>;
         status: RemoteStatusTypeStrs;
         connecttimeout: number;
-        countdownactive: boolean;
         errorstr: string;
         installstatus: string;
         installerrorstr: string;
@@ -291,6 +290,11 @@ declare global {
         isassistantresponse?: boolean;
         assistantresponse?: OpenAIPacketOutputType;
         userquery?: string;
+    };
+
+    type DropdownItem = {
+        label: string;
+        value: string;
     };
 
     /**
@@ -555,6 +559,8 @@ declare global {
             collapsed: boolean;
             width: number;
         };
+        globalshortcut: string;
+        globalshortcutenabled: boolean;
     };
 
     type ReleaseInfoType = {

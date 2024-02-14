@@ -8,8 +8,9 @@ import fetch from "node-fetch";
 import * as child_process from "node:child_process";
 import { debounce } from "throttle-debounce";
 import * as winston from "winston";
-import { sprintf } from "sprintf-js";
 import * as util from "util";
+import * as waveutil from "../util/util";
+import { sprintf } from "sprintf-js";
 import { handleJsonFetchResponse } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
 import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
@@ -29,6 +30,7 @@ let instanceId = uuidv4();
 let oldConsoleLog = console.log;
 let wasActive = true;
 let wasInFg = true;
+let currentGlobalShortcut: string | null = null;
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -412,7 +414,7 @@ function mainResizeHandler(e, win) {
         });
 }
 
-function calcBounds(clientData) {
+function calcBounds(clientData: ClientDataType) {
     let primaryDisplay = electron.screen.getPrimaryDisplay();
     let pdBounds = primaryDisplay.bounds;
     let size = { x: 100, y: 100, width: pdBounds.width - 200, height: pdBounds.height - 200 };
@@ -507,6 +509,12 @@ electron.ipcMain.on("open-external-link", async (_, url) => {
     } catch (err) {
         console.warn("error opening external link", err);
     }
+});
+
+electron.ipcMain.on("reregister-global-shortcut", (event, shortcut: string) => {
+    reregisterGlobalShortcut(shortcut);
+    event.returnValue = true;
+    return;
 });
 
 electron.ipcMain.on("get-last-logs", async (event, numberOfLines) => {
@@ -696,6 +704,34 @@ function logActiveState() {
 function runActiveTimer() {
     logActiveState();
     setTimeout(runActiveTimer, 60000);
+}
+
+function reregisterGlobalShortcut(shortcut: string) {
+    if (shortcut == "") {
+        shortcut = null;
+    }
+    if (currentGlobalShortcut == shortcut) {
+        return;
+    }
+    if (!waveutil.isBlank(currentGlobalShortcut)) {
+        if (electron.globalShortcut.isRegistered(currentGlobalShortcut)) {
+            electron.globalShortcut.unregister(currentGlobalShortcut);
+        }
+    }
+    if (waveutil.isBlank(shortcut)) {
+        currentGlobalShortcut = null;
+        return;
+    }
+    let ok = electron.globalShortcut.register(shortcut, () => {
+        console.log("global shortcut triggered, showing window");
+        MainWindow?.show();
+    });
+    console.log("registered global shortcut", shortcut, ok ? "ok" : "failed");
+    if (!ok) {
+        currentGlobalShortcut = null;
+        console.log("failed to register global shortcut", shortcut);
+    }
+    currentGlobalShortcut = shortcut;
 }
 
 // ====== MAIN ====== //
