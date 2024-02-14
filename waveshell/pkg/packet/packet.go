@@ -416,16 +416,18 @@ func MakeReInitPacket() *ReInitPacketType {
 }
 
 type FileStatPacketType struct {
-	Type    string    `json:"type"`
-	Name    string    `json:"name"`
-	Size    int64     `json:"size"`
-	ModTs   time.Time `json:"modts"`
-	IsDir   bool      `json:"isdir"`
-	Perm    int       `json:"perm"`
-	ModeStr string    `json:"modestr"`
-	Error   string    `json:"error"`
-	Done    bool      `json:"done"`
-	RespId  string    `json:"respid"`
+	Type      string    `json:"type"`
+	Name      string    `json:"name"`
+	Size      int64     `json:"size"`
+	ModTs     time.Time `json:"modts"`
+	IsDir     bool      `json:"isdir"`
+	Perm      int       `json:"perm"`
+	ModeStr   string    `json:"modestr"`
+	Error     string    `json:"error"`
+	Done      bool      `json:"done"`
+	RespId    string    `json:"respid"`
+	Path      string    `json:"path"`
+	OutputPos int64     `json:"outputpos"`
 }
 
 func (*FileStatPacketType) GetType() string {

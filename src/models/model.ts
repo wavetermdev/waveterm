@@ -1150,6 +1150,45 @@ class Model {
         return this.submitCommandPacket(pk, interactive);
     }
 
+    submitViewDirCommand(newDir: string, lineId: string, screenId: string, outputPos: number) {
+        let commandStr = "/view:dir " + newDir;
+        let interactive = false;
+        let pk: FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: "eval",
+            args: [commandStr],
+            kwargs: {},
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            rawstr: newDir,
+        };
+        pk.kwargs["nohist"] = "1";
+        pk.kwargs["outputpty"] = "1";
+        pk.kwargs["lineid"] = lineId;
+        pk.kwargs["screenid"] = screenId;
+        pk.kwargs["outputpos"] = outputPos.toString();
+        return this.submitCommandPacket(pk, interactive);
+    }
+
+    submitPtyOutCommand(commandStr: string, lineId: string, screenId: string, outputPos: number) {
+        let interactive = false;
+        let pk: FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: "eval",
+            args: [commandStr],
+            kwargs: {},
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            rawstr: commandStr,
+        };
+        pk.kwargs["nohist"] = "1";
+        pk.kwargs["outputpty"] = "1";
+        pk.kwargs["lineid"] = lineId;
+        pk.kwargs["screenid"] = screenId;
+        pk.kwargs["outputpos"] = outputPos.toString();
+        return this.submitCommandPacket(pk, interactive);
+    }
+
     submitChatInfoCommand(chatMsg: string, curLineStr: string, clear: boolean): Promise<CommandRtnType> {
         let commandStr = "/chat " + chatMsg;
         let interactive = false;

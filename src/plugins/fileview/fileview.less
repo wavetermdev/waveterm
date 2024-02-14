@@ -1,0 +1,33 @@
+@import "../../app/common/themes/themes.less";
+
+.fileview-container {
+    columns: 4 auto;
+
+    .file-container {
+        font-size: 11px;
+        padding: 3px;
+
+        &:hover {
+            box-sizing: border-box;
+            outline: 2px solid @term-green;
+            outline-offset: -2px;
+        }
+
+        .download-button {
+            width: 20px;
+            height: inherit;
+            float: right;
+            outline: 1px solid @term-green;
+            outline-offset: -2px;
+
+            &:hover {
+                outline: 2px solid @term-green;
+                outline-offset: -2px;
+            }
+
+            .icon {
+                float: middle;
+            }
+        }
+    }
+}

@@ -79,6 +79,9 @@ var webCommon = {
     },
     resolve: {
         extensions: [".ts", ".tsx", ".js", ".mjs", ".cjs", ".wasm", ".json", ".less", ".css"],
+        fallback: {
+            path: require.resolve("path-browserify"),
+        },
     },
 };
 

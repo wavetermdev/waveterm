@@ -708,6 +708,10 @@ type OpenAIPacketType = {
     error: string;
 };
 
+type FileViewMeta = {
+    curDirectory: string;
+};
+
 type FileInfoType = {
     name: string;
     size: number;
@@ -716,6 +720,8 @@ type FileInfoType = {
     perm: number;
     notfound: boolean;
     modestr?: string;
+    path?: string;
+    outputpos?: number;
 };
 
 type ExtBlob = Blob & {
@@ -837,6 +843,7 @@ export type {
     RemoteViewType,
     CommandRtnType,
     OpenAIPacketType,
+    FileViewMeta,
     FileInfoType,
     ExtBlob,
     ExtFile,

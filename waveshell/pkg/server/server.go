@@ -556,7 +556,24 @@ func (m *MServer) writeListDirErrPacket(err error, pk *packet.ListDirPacketType)
 	resp.RespId = pk.ReqId
 	resp.Error = fmt.Sprintf("Error in list dir: %v", err)
 	resp.Done = true
-	err = m.Sender.SendPacket(resp)
+	m.Sender.SendPacket(resp)
+}
+
+func makeFileStatPacketFromFileInfo(listDirPk *packet.ListDirPacketType, finfo fs.FileInfo, err string, done bool) *packet.FileStatPacketType {
+	resp := packet.MakeFileStatPacketType()
+	resp.RespId = listDirPk.ReqId
+	resp.Path = listDirPk.Path
+	resp.Error = err
+	resp.Done = done
+
+	resp.IsDir = finfo.IsDir()
+	resp.Name = finfo.Name()
+
+	resp.Size = finfo.Size()
+	resp.ModTs = finfo.ModTime()
+	resp.Perm = int(finfo.Mode().Perm())
+	resp.ModeStr = finfo.Mode().String()
+	return resp
 }
 
 func (m *MServer) ListDir(listDirPk *packet.ListDirPacketType) {
@@ -565,32 +582,33 @@ func (m *MServer) ListDir(listDirPk *packet.ListDirPacketType) {
 	if err != nil {
 		readDirError = fmt.Sprintf("error in list dir: %v", err)
 	}
+	curDirStat, err := os.Stat(listDirPk.Path)
+	if err != nil {
+		m.writeListDirErrPacket(err, listDirPk)
+	}
+	resp := makeFileStatPacketFromFileInfo(listDirPk, curDirStat, readDirError, false)
+	resp.Name = "."
+	m.Sender.SendPacket(resp)
+	curDirStat, err = os.Stat(filepath.Join(listDirPk.Path, ".."))
+	if err != nil {
+		m.writeListDirErrPacket(err, listDirPk)
+		return
+	}
+	resp = makeFileStatPacketFromFileInfo(listDirPk, curDirStat, readDirError, len(dirEntries) == 0)
+	resp.Name = ".."
+	m.Sender.SendPacket(resp)
+
 	for index := 0; index < len(dirEntries); index++ {
 		dirEntry := dirEntries[index]
-		resp := packet.MakeFileStatPacketType()
-		resp.RespId = listDirPk.ReqId
-		resp.Error = readDirError
-		if index == (len(dirEntries) - 1) {
-			resp.Done = true
-		} else {
-			resp.Done = false
-		}
-
-		resp.IsDir = dirEntry.IsDir()
-		resp.Name = dirEntry.Name()
-
 		dirEntryFileInfo, err := dirEntry.Info()
 		if err != nil {
 			m.writeListDirErrPacket(err, listDirPk)
+			return
 		}
-		resp.Size = dirEntryFileInfo.Size()
-		resp.ModTs = dirEntryFileInfo.ModTime()
-		resp.Perm = int(dirEntryFileInfo.Mode().Perm())
-		resp.ModeStr = dirEntryFileInfo.Mode().String()
+		done := index == len(dirEntries)-1
+		resp = makeFileStatPacketFromFileInfo(listDirPk, dirEntryFileInfo, readDirError, done)
 		m.Sender.SendPacket(resp)
 	}
-	// what this is going to do is list the directory and then either send one packet back or stream the file list one by one I'm not sure
-	// I probably need to add a hidden flag on the packet type to specify whether we want to see hidden files
 }
 
 func int64Min(v1 int64, v2 int64) int64 {

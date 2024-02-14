@@ -58,6 +58,9 @@ var electronCommon = {
     },
     resolve: {
         extensions: [".ts", ".tsx", ".js"],
+        fallback: {
+            path: require.resolve("path-browserify"),
+        },
     },
 };
 
@@ -100,4 +103,4 @@ var electronProd = webpackMerge.merge(electronCommon, {
     },
 });
 
-module.exports = {electronDev: electronDev, electronProd: electronProd};
+module.exports = { electronDev: electronDev, electronProd: electronProd };

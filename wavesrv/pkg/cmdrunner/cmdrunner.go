@@ -27,6 +27,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
@@ -257,6 +258,7 @@ func init() {
 	registerCmdFn("set", SetCommand)
 
 	registerCmdFn("view:stat", ViewStatCommand)
+	registerCmdFn("view:dir", ViewDirCommand)
 	registerCmdFn("view:test", ViewTestCommand)
 
 	registerCmdFn("edit:test", EditTestCommand)
@@ -272,6 +274,7 @@ func init() {
 	registerCmdFn("markdownview", MarkdownViewCommand)
 
 	registerCmdFn("csvview", CSVViewCommand)
+
 }
 
 func getValidCommands() []string {
@@ -1127,7 +1130,10 @@ func prettyPrintByteSize(size int64) string {
 }
 
 // this can only be called in a defer func, because recover() only works inside of a defe
-func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime time.Time, exitSuccess bool, outputPos int64) {
+func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime time.Time, exitSuccess bool, outputPos int64, outputPty bool) {
+	if outputPty {
+		return
+	}
 	r := recover()
 	if r != nil {
 		panicMsg := fmt.Sprintf("panic: %v", r)
@@ -1185,11 +1191,11 @@ func checkForWriteFinished(ctx context.Context, iter *packet.RpcResponseIter) er
 	return nil
 }
 
-func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, localPath string, destPath string, outputPos int64) {
+func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, localPath string, destPath string, outputPos int64, outputPty bool) {
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
-		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos, outputPty)
 	}()
 	localFile, err := os.Open(localPath)
 	if err != nil {
@@ -1279,11 +1285,11 @@ func getStatusBarString(filePercentageInt int) string {
 	return statusBarString
 }
 
-func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMsh *remote.MShellProc, destMsh *remote.MShellProc, sourcePath string, destPath string, outputPos int64) {
+func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMsh *remote.MShellProc, destMsh *remote.MShellProc, sourcePath string, destPath string, outputPos int64, outputPty bool) {
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
-		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos, outputPty)
 	}()
 	streamPk := packet.MakeStreamFilePacket()
 	streamPk.ReqId = uuid.New().String()
@@ -1381,12 +1387,12 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 	exitSuccess = true
 }
 
-func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath string, destPath string, outputPos int64) {
+func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath string, destPath string, outputPos int64, outputPty bool) {
 	var exitSuccess bool
 	var bytesWritten int64
 	startTime := time.Now()
 	defer func() {
-		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos, outputPty)
 	}()
 	sourceFile, err := os.Open(sourcePath)
 	if err != nil {
@@ -1416,11 +1422,11 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 	exitSuccess = true
 }
 
-func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, sourcePath string, localPath string, outputPos int64) {
+func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, sourcePath string, localPath string, outputPos int64, outputPty bool) {
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
-		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos, outputPty)
 	}()
 	streamPk := packet.MakeStreamFilePacket()
 	streamPk.ReqId = uuid.New().String()
@@ -1611,20 +1617,32 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 		}
 	}
 	var outputPos int64
-	outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
-	termopts := sstore.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
-	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
-	writeStringToPty(ctx, cmd, outputStr, &outputPos)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
+	var cmd *sstore.CmdType
+	var update *sstore.ModelUpdate
+	outputPty := resolveBool(pk.Kwargs["outputpty"], false)
+	log.Printf("outputpty: %v", outputPty)
+	if !outputPty {
+		outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
+		termopts := sstore.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
+		cmd, err = makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
+		writeStringToPty(ctx, cmd, outputStr, &outputPos)
+		if err != nil {
+			// TODO tricky error since the command was a success, but we can't show the output
+			return nil, err
+		}
+		update, err := addLineForCmd(ctx, "/copy file", false, ids, cmd, "", nil)
+		if err != nil {
+			// TODO tricky error since the command was a success, but we can't show the output
+			return nil, err
+		}
+		update.Interactive = pk.Interactive
+		sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
+	} else {
+		cmd, err = sstore.GetCmdByScreenId(ctx, pk.Kwargs["screenid"], pk.Kwargs["lineid"])
+		if err != nil {
+			return nil, err
+		}
 	}
-	update, err := addLineForCmd(ctx, "/copy file", false, ids, cmd, "", nil)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update.Interactive = pk.Interactive
 	if destRemote != ConnectedRemote && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos)
 		err = destRemoteId.MShell.TryAutoConnect()
@@ -1643,16 +1661,15 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
 		}
 	}
-	sstore.MainBus.SendScreenUpdate(cmd.ScreenId, update)
 	update = &sstore.ModelUpdate{}
 	if destRemote == LocalRemote && sourceRemote == LocalRemote {
-		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos)
+		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos, outputPty)
 	} else if destRemote == LocalRemote && sourceRemote != LocalRemote {
-		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos, outputPty)
 	} else if destRemote != LocalRemote && sourceRemote == LocalRemote {
-		go doCopyLocalFileToRemote(context.Background(), cmd, destMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyLocalFileToRemote(context.Background(), cmd, destMsh, sourceFullPath, destFullPath, outputPos, outputPty)
 	} else if destRemote != LocalRemote && sourceRemote != LocalRemote {
-		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceMsh, destMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceMsh, destMsh, sourceFullPath, destFullPath, outputPos, outputPty)
 	}
 	return update, nil
 }
@@ -2527,6 +2544,7 @@ func writePacketToPty(ctx context.Context, cmd *sstore.CmdType, pk packet.Packet
 	if err != nil {
 		return err
 	}
+	log.Printf("outbytes: %v, len: %v", string(outBytes[:]), int64(len(outBytes)))
 	update, err := sstore.AppendToCmdPtyBlob(ctx, cmd.ScreenId, cmd.LineId, outBytes, *outputPos)
 	if err != nil {
 		return err
@@ -3018,7 +3036,9 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 		Cmd:     cmd,
 		Screens: []*sstore.ScreenType{screen},
 	}
-	sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
+	if cmd.Status == sstore.CmdStatusRunning {
+		sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
+	}
 	updateHistoryContext(ctx, rtnLine, cmd, cmd.FeState)
 	return update, nil
 }
@@ -4848,21 +4868,75 @@ func StatDir(ctx context.Context, ids resolvedIds, path string, fileCallback fun
 	}
 }
 
-func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func getCurCirFileOffset(ctx context.Context, cmd *sstore.CmdType) (int64, error) {
+	ptyOutFileName, err := scbase.PtyOutFile(cmd.ScreenId, cmd.LineId)
+	if err != nil {
+		return 0, err
+	}
+	stat, err := cirfile.StatCirFile(ctx, ptyOutFileName)
+	if err != nil {
+		return 0, err
+	}
+	return stat.FileOffset, nil
+}
+
+func ViewDirCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
 	path := ids.Remote.FeState["cwd"]
 	if len(pk.Args) > 0 {
 		path = pk.Args[0]
 	}
-	log.Printf("path: %v", path)
+	cmd, err := sstore.GetCmdByScreenId(ctx, pk.Kwargs["screenid"], pk.Kwargs["lineid"])
 	if err != nil {
 		return nil, err
+	}
+	go func() {
+		outputPos, err := strconv.ParseInt(pk.Kwargs["outputpos"], 10, 64)
+		if err != nil {
+			log.Printf("err getting output pos: %v", err)
+			return
+		}
+		log.Printf("got outputpos: %v\n", outputPos)
+		statCtx := context.Background()
+		StatDir(statCtx, ids, path, func(statPk *packet.FileStatPacketType, done bool, err error) {
+			if err != nil {
+				log.Printf("got error: %v\n", err)
+			} else {
+				log.Printf("got statpk: %v %v done: %v, offset: %v", statPk.Name, statPk.Error, statPk.Done, outputPos)
+				outBytes, err := packet.MarshalPacket(statPk)
+				if err != nil {
+					log.Printf("err marhaling packets: %v", err)
+				}
+				statPk.OutputPos = outputPos + int64(len(outBytes)) + int64(len(fmt.Sprint(outputPos))-1)
+				err = writePacketToPty(statCtx, cmd, statPk, &outputPos)
+				if err != nil {
+					log.Printf("err writing packet to pty: %v\n", err)
+				}
+			}
+		})
+	}()
+	update := &sstore.ModelUpdate{}
+	return update, nil
+}
+
+func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	path := ids.Remote.FeState["cwd"]
+	if len(pk.Args) > 0 {
+		path = pk.Args[0]
 	}
 	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), nil)
 	if err != nil {
 		return nil, err
 	}
 	lineState := make(map[string]any)
+	lineState[sstore.LineState_File] = path
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "fileview", lineState)
 	if err != nil {
 		return nil, err
@@ -4877,8 +4951,13 @@ func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			if err != nil {
 				log.Printf("got error: %v\n", err)
 			} else {
-				log.Printf("got statpk: %v %v done: %v", statPk.Name, statPk.Error, statPk.Done)
+				outBytes, err := packet.MarshalPacket(statPk)
+				if err != nil {
+					log.Printf("err marhaling packets: %v", err)
+				}
+				statPk.OutputPos = outputPos + int64(len(outBytes)) + int64(len(fmt.Sprint(outputPos))-1)
 				writePacketToPty(statCtx, cmd, statPk, &outputPos)
+				log.Printf("got statpk: %v %v done: %v, offset: %v", statPk.Name, statPk.Error, statPk.Done, outputPos)
 			}
 		})
 	}()
