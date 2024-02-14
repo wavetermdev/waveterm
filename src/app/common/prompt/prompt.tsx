@@ -3,41 +3,16 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import * as mobx from "mobx";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "../../../models";
-import type {
-    LineType,
-    RemoteType,
-    RemotePtrType,
-    LineHeightChangeCallbackType,
-    LineContainerType,
-} from "../../../types/types";
+import { GlobalModel } from "@/models";
 import cn from "classnames";
-import { isBlank } from "../../../util/util";
-import { ReactComponent as FolderIcon } from "../../assets/icons/folder.svg";
+import { isBlank } from "@/util/util";
+import { ReactComponent as FolderIcon } from "@/assets/icons/folder.svg";
 
 import "./prompt.less";
 
 dayjs.extend(localizedFormat);
-
-type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
-
-type RendererComponentProps = {
-    screen: LineContainerType;
-    line: LineType;
-    width: number;
-    staticRender: boolean;
-    visible: OV<boolean>;
-    onHeightChange: LineHeightChangeCallbackType;
-    collapsed: boolean;
-};
-type RendererComponentType = {
-    new (props: RendererComponentProps): React.Component<RendererComponentProps, {}>;
-};
 
 function makeFullRemoteRef(ownerName: string, remoteRef: string, name: string): string {
     if (isBlank(ownerName) && isBlank(name)) {

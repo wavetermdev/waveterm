@@ -5,14 +5,11 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel, GlobalCommandRunner, Session } from "../../../models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip } from "../elements";
-import * as util from "../../../util/util";
-import { commandRtnHandler } from "../../../util/util";
+import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip } from "@/elements";
+import * as util from "@/util/util";
 
 import "./sessionsettings.less";
-
-type OV<V> = mobx.IObservableValue<V>;
 
 const SessionDeleteMessage = `
 Are you sure you want to delete this workspace?
@@ -52,7 +49,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
             return;
         }
         let prtn = GlobalCommandRunner.sessionSetSettings(this.sessionId, { name: newVal }, false);
-        commandRtnHandler(prtn, this.errorMessage);
+        util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -64,7 +61,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
             return;
         }
         let prtn = GlobalCommandRunner.sessionArchive(this.sessionId, val);
-        commandRtnHandler(prtn, this.errorMessage);
+        util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -76,7 +73,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                 return;
             }
             let prtn = GlobalCommandRunner.sessionDelete(this.sessionId);
-            commandRtnHandler(prtn, this.errorMessage, () => GlobalModel.modalsModel.popModal());
+            util.commandRtnHandler(prtn, this.errorMessage, () => GlobalModel.modalsModel.popModal());
         });
     }
 

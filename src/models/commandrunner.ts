@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as mobx from "mobx";
-import { RendererContext, CommandRtnType, HistorySearchParams, LineStateType } from "../types/types";
 import { GlobalModel } from "./global";
 
 class CommandRunner {
     private constructor() {}
 
-    static getInstance() {
+    static getInstance(): CommandRunner {
         if (!(window as any).GlobalCommandRunner) {
             (window as any).GlobalCommandRunner = new CommandRunner();
         }
@@ -33,6 +32,12 @@ class CommandRunner {
     historyPurgeLines(lines: string[]): Promise<CommandRtnType> {
         let prtn = GlobalModel.submitCommand("history", "purge", lines, { nohist: "1" }, false);
         return prtn;
+    }
+
+    switchView(view: string) {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set(view);
+        })();
     }
 
     switchSession(session: string) {

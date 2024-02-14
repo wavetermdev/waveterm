@@ -2,15 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as T from "../../types/types";
 import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import { Markdown } from "../../app/common/elements";
-import { GlobalModel, GlobalCommandRunner } from "../../models";
+import { Markdown } from "@/elements";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
 loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./code.less";
 
@@ -23,20 +22,20 @@ declare var monaco: any;
 
 class SourceCodeRenderer extends React.Component<
     {
-        data: T.ExtBlob;
+        data: ExtBlob;
         cmdstr: string;
         cwd: string;
         readOnly: boolean;
         notFound: boolean;
         exitcode: number;
-        context: T.RendererContext;
-        opts: T.RendererOpts;
+        context: RendererContext;
+        opts: RendererOpts;
         savedHeight: number;
         scrollToBringIntoViewport: () => void;
-        lineState: T.LineStateType;
+        lineState: LineStateType;
         isSelected: boolean;
         shouldFocus: boolean;
-        rendererApi: T.RendererModelContainerApi;
+        rendererApi: RendererModelContainerApi;
     },
     {
         code: string;

@@ -3,10 +3,8 @@
 
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
-import { genMergeSimpleData } from "../util/util";
-import { LineType, CmdDataType, ScreenLinesType } from "../types/types";
-import { cmdStatusIsRunning } from "../app/line/lineutil";
-import { OV, OArr } from "../types/types";
+import { genMergeSimpleData } from "@/util/util";
+import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import { Cmd } from "./cmd";
 
 class ScreenLines {
@@ -139,7 +137,7 @@ class ScreenLines {
                     return;
                 }
                 let lineIdx = 0;
-                for (lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+                for (lineIdx; lineIdx < lines.length; lineIdx++) {
                     let lineId = lines[lineIdx].lineid;
                     let curTs = lines[lineIdx].ts;
                     if (lineId == line.lineid) {

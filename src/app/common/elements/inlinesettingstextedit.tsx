@@ -7,11 +7,9 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../../util/keyutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./inlinesettingstextedit.less";
-
-type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class InlineSettingsTextEdit extends React.Component<

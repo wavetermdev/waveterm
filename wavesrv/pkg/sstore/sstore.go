@@ -336,6 +336,10 @@ func (cdata *ClientData) Clean() *ClientData {
 	return &rtn
 }
 
+func (ClientData) UpdateType() string {
+	return "clientdata"
+}
+
 type SessionType struct {
 	SessionId      string            `json:"sessionid"`
 	Name           string            `json:"name"`
@@ -349,7 +353,17 @@ type SessionType struct {
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
-	Full   bool `json:"full,omitempty"`
+}
+
+func (SessionType) UpdateType() string {
+	return "session"
+}
+
+func MakeSessionUpdateForRemote(sessionId string, ri *RemoteInstance) SessionType {
+	return SessionType{
+		SessionId: sessionId,
+		Remotes:   []*RemoteInstance{ri},
+	}
 }
 
 type SessionTombstoneType struct {
@@ -359,6 +373,10 @@ type SessionTombstoneType struct {
 }
 
 func (SessionTombstoneType) UseDBMap() {}
+
+func (SessionTombstoneType) UpdateType() string {
+	return "sessiontombstone"
+}
 
 type SessionStatsType struct {
 	SessionId          string              `json:"sessionid"`
@@ -429,6 +447,10 @@ type ScreenLinesType struct {
 
 func (ScreenLinesType) UseDBMap() {}
 
+func (ScreenLinesType) UpdateType() string {
+	return "screenlines"
+}
+
 type ScreenWebShareOpts struct {
 	ShareName string `json:"sharename"`
 	ViewKey   string `json:"viewkey"`
@@ -476,9 +498,7 @@ type ScreenType struct {
 	ArchivedTs     int64               `json:"archivedts,omitempty"`
 
 	// only for updates
-	Full            bool   `json:"full,omitempty"`
-	Remove          bool   `json:"remove,omitempty"`
-	StatusIndicator string `json:"statusindicator,omitempty"`
+	Remove bool `json:"remove,omitempty"`
 }
 
 func (s *ScreenType) ToMap() map[string]interface{} {
@@ -526,6 +546,24 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
+func (ScreenType) UpdateType() string {
+	return "screen"
+}
+
+func AddScreenUpdate(update *ModelUpdate, newScreen *ScreenType) {
+	if newScreen == nil {
+		return
+	}
+	screenUpdates := GetUpdateItems[ScreenType](update)
+	for _, screenUpdate := range screenUpdates {
+		if screenUpdate.ScreenId == newScreen.ScreenId {
+			screenUpdate = newScreen
+			return
+		}
+	}
+	AddUpdate(update, newScreen)
+}
+
 type ScreenTombstoneType struct {
 	ScreenId   string         `json:"screenid"`
 	SessionId  string         `json:"sessionid"`
@@ -535,6 +573,10 @@ type ScreenTombstoneType struct {
 }
 
 func (ScreenTombstoneType) UseDBMap() {}
+
+func (ScreenTombstoneType) UpdateType() string {
+	return "screentombstone"
+}
 
 const (
 	LayoutFull = "full"
@@ -1016,6 +1058,10 @@ func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
 	return path.Join(homeDir, pathStr[2:]), nil
 }
 
+func (RemoteRuntimeState) UpdateType() string {
+	return "remote"
+}
+
 type RemoteType struct {
 	RemoteId            string          `json:"remoteid"`
 	RemoteType          string          `json:"remotetype"`
@@ -1078,6 +1124,10 @@ type CmdType struct {
 	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
 	Remove       bool                `json:"remove,omitempty"`    // not persisted to DB
 	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
+}
+
+func (CmdType) UpdateType() string {
+	return "cmd"
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {
@@ -1457,10 +1507,10 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 	}
 
-	update.ScreenStatusIndicators = []*ScreenStatusIndicatorType{{
+	AddUpdate(update, ScreenStatusIndicatorType{
 		ScreenId: screenId,
 		Status:   newStatus,
-	}}
+	})
 	return nil
 }
 
@@ -1490,10 +1540,11 @@ func ResetStatusIndicator(screenId string) error {
 func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
 	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
-	update.ScreenNumRunningCommands = []*ScreenNumRunningCommandsType{{
+	AddUpdate(update, ScreenNumRunningCommandsType{
 		ScreenId: screenId,
 		Num:      newNum,
-	}}
+	})
+
 }
 
 func IncrementNumRunningCmds(screenId string, delta int) {

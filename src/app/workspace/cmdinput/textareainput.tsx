@@ -4,16 +4,14 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import type * as T from "../../../types/types";
-import * as util from "../../../util/util";
+import * as util from "@/util/util";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Screen } from "../../../models";
-import { getMonoFontSize } from "../../../util/textmeasure";
-import { isModKeyPress, hasNoModifiers } from "../../../util/util";
-import * as appconst from "../../appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../../util/keyutil";
+import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
+import { getMonoFontSize } from "@/util/textmeasure";
+import * as appconst from "@/app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -51,7 +49,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     historyInputRef: React.RefObject<HTMLInputElement> = React.createRef();
     controlRef: React.RefObject<HTMLDivElement> = React.createRef();
     lastHeight: number = 0;
-    lastSP: T.StrWithPos = { str: "", pos: appconst.NoStrPos };
+    lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0); // forces render updates
 
     incVersion(): void {
@@ -59,7 +57,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         mobx.action(() => this.version.set(v + 1))();
     }
 
-    getCurSP(): T.StrWithPos {
+    getCurSP(): StrWithPos {
         let textarea = this.mainInputRef.current;
         if (textarea == null) {
             return this.lastSP;
@@ -169,7 +167,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     @boundMethod
     onKeyDown(e: any) {
         mobx.action(() => {
-            if (isModKeyPress(e)) {
+            if (util.isModKeyPress(e)) {
                 return;
             }
             let model = GlobalModel;

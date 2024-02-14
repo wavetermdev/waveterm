@@ -11,16 +11,12 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { debounce, throttle } from "throttle-debounce";
-import * as T from "../../types/types";
-import * as util from "../../util/util";
+import * as util from "@/util/util";
 import * as lineutil from "./lineutil";
 
 import "./lines.less";
 
 dayjs.extend(localizedFormat);
-type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
 
 const LinesVisiblePadding = 500;
 
@@ -29,20 +25,20 @@ type ScreenInterface = {
     getSelectedLine(): number;
     getAnchor(): { anchorLine: number; anchorOffset: number };
     isLineIdInSidebar(lineId: string): boolean;
-    getLineByNum(lineNum: number): T.LineType;
+    getLineByNum(lineNum: number): LineType;
 };
 
 // <Line key={line.lineid} line={line} screen={screen} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
 
-type LineCompFactory = (props: T.LineFactoryProps) => JSX.Element;
+type LineCompFactory = (props: LineFactoryProps) => JSX.Element;
 
 @mobxReact.observer
 class LinesView extends React.Component<
     {
         screen: ScreenInterface;
         width: number;
-        lines: T.LineInterface[];
-        renderMode: T.RenderModeType;
+        lines: LineInterface[];
+        renderMode: RenderModeType;
         lineFactory: LineCompFactory;
     },
     {}
@@ -384,7 +380,7 @@ class LinesView extends React.Component<
         this.computeVisibleMap_debounced();
     }
 
-    hasTopBorder(lines: T.LineInterface[], idx: number): boolean {
+    hasTopBorder(lines: LineInterface[], idx: number): boolean {
         if (idx == 0) {
             return false;
         }
@@ -394,7 +390,7 @@ class LinesView extends React.Component<
     }
 
     getDateSepStr(
-        lines: T.LineInterface[],
+        lines: LineInterface[],
         idx: number,
         prevStr: string,
         todayStr: string,
@@ -410,7 +406,7 @@ class LinesView extends React.Component<
         return null;
     }
 
-    findClosestLineIndex(lineNum: number): { line: T.LineInterface; index: number } {
+    findClosestLineIndex(lineNum: number): { line: LineInterface; index: number } {
         let { lines } = this.props;
         if (lines.length == 0) {
             throw new Error("invalid lines, cannot have 0 length in LinesView");
@@ -444,7 +440,7 @@ class LinesView extends React.Component<
     render() {
         let { screen, width, lines, renderMode } = this.props;
         let selectedLine = screen.getSelectedLine(); // for re-rendering
-        let line: T.LineInterface = null;
+        let line: LineInterface = null;
         for (let i = 0; i < lines.length; i++) {
             let key = String(lines[i].linenum);
             let visObs = this.visibleMap.get(key);

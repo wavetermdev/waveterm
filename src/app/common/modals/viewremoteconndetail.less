@@ -1,4 +1,4 @@
-@import "../../../app/common/themes/themes.less";
+@import "@/common/themes/themes.less";
 
 .rconndetail-modal {
     width: 631px;
@@ -54,6 +54,8 @@
             }
 
             .remote-detail {
+                width: 100%;
+
                 .settings-field {
                     display: flex;
                     flex-direction: row;
@@ -91,8 +93,9 @@
                 }
 
                 .terminal-wrapper {
-                    width: 100%;
                     margin-top: 5px;
+                    overflow-x: auto;
+                    overflow-y: hidden;
 
                     .terminal-connectelem {
                         height: 163px !important; // Needed to override plugin height
@@ -111,7 +114,6 @@
 
                         .xterm-screen {
                             padding: 10px;
-                            width: 541px !important; // Needed to override plugin width
                         }
                     }
                 }

@@ -10,8 +10,6 @@ import { IconButton } from "./iconbutton";
 
 import "./modal.less";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 interface ModalHeaderProps {
     onClose?: () => void;
     title: string;

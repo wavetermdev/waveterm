@@ -2,9 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React, { FC, useEffect, useState, useRef, useMemo } from "react";
-import { RendererContext, RendererOpts, LineStateType, RendererModelContainerApi } from "../../types/types";
-import * as T from "../../types/types";
-import { GlobalModel } from "../../models";
+import { GlobalModel } from "@/models";
 import Papa from "papaparse";
 import {
     createColumnHelper,
@@ -28,14 +26,14 @@ type CSVRow = {
 };
 
 interface Props {
-    data: T.ExtBlob;
+    data: ExtBlob;
     readOnly: boolean;
-    context: T.RendererContext;
-    opts: T.RendererOpts;
+    context: RendererContext;
+    opts: RendererOpts;
     savedHeight: number;
-    lineState: T.LineStateType;
+    lineState: LineStateType;
     shouldFocus: boolean;
-    rendererApi: T.RendererModelContainerApi;
+    rendererApi: RendererModelContainerApi;
     scrollToBringIntoViewport: () => void;
 }
 

@@ -7,15 +7,11 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, RemotesModel, GlobalCommandRunner } from "../../models";
-import { Button, Status, ShowWaveShellInstallPrompt } from "../common/elements";
-import * as T from "../../types/types";
-import * as util from "../../util/util";
-import * as appconst from "../appconst";
+import { GlobalModel, RemotesModel, GlobalCommandRunner } from "@/models";
+import { Button, Status, ShowWaveShellInstallPrompt } from "@/common/elements";
+import * as util from "@/util/util";
 
 import "./connections.less";
-
-type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -54,13 +50,13 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
-    getName(item: T.RemoteType) {
+    getName(item: RemoteType) {
         const { remotealias, remotecanonicalname } = item;
         return remotealias ? `${remotealias} [${remotecanonicalname}]` : remotecanonicalname;
     }
 
     @boundMethod
-    getImportSymbol(item: T.RemoteType): React.ReactElement<any, any> {
+    getImportSymbol(item: RemoteType): React.ReactElement<any, any> {
         const { sshconfigsrc } = item;
         if (sshconfigsrc == "sshconfig-import") {
             return <i title="Connection Imported from SSH Config" className="fa-sharp fa-solid fa-file-import" />;
@@ -131,7 +127,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         }
 
         let items = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let item: T.RemoteType = null;
+        let item: RemoteType = null;
 
         return (
             <div className={cn("view connections-view")}>
