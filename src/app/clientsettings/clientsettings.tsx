@@ -13,11 +13,6 @@ import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
 
-type DDItem = {
-    label: string;
-    value: string;
-};
-
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
     fontSizeDropdownActive: OV<boolean> = mobx.observable.box(false, {
@@ -72,8 +67,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         commandRtnHandler(prtn, this.errorMessage);
     }
 
-    getFontSizes(): DDItem[] {
-        let availableFontSizes: DDItem[] = [];
+    getFontSizes(): DropdownItem[] {
+        let availableFontSizes: DropdownItem[] = [];
         for (let s = appconst.MinFontSize; s <= appconst.MaxFontSize; s++) {
             availableFontSizes.push({ label: s + "px", value: String(s) });
         }
@@ -116,8 +111,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         commandRtnHandler(prtn, this.errorMessage);
     }
 
-    getFKeys(): DDItem[] {
-        let opts: DDItem[] = [];
+    getFKeys(): DropdownItem[] {
+        let opts: DropdownItem[] = [];
         opts.push({ label: "Disabled", value: "" });
         let platform = GlobalModel.getPlatform();
         for (let i = 1; i <= 12; i++) {

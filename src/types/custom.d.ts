@@ -292,6 +292,11 @@ declare global {
         userquery?: string;
     };
 
+    type DropdownItem = {
+        label: string;
+        value: string;
+    };
+
     /**
      * Levels for the screen status indicator
      */
