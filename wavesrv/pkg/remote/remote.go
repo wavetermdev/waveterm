@@ -554,6 +554,9 @@ func (msh *MShellProc) GetShellPref() string {
 	if msh.Remote.ShellPref == sstore.ShellTypePref_Detect {
 		return msh.InitPkShellType
 	}
+	if msh.Remote.ShellPref == "" {
+		return packet.ShellType_bash
+	}
 	return msh.Remote.ShellPref
 }
 

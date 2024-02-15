@@ -42,8 +42,8 @@ const LogRcFileName = "debug.rcfile"
 const (
 	ProcessType_Unknown         = "unknown"
 	ProcessType_WaveSrv         = "wavesrv"
-	ProcessType_WaveShellSingle = "waveshell-single"
-	ProcessType_WaveShellServer = "waveshell-server"
+	ProcessType_WaveShellSingle = "wsh-1"
+	ProcessType_WaveShellServer = "wsh-s"
 )
 
 // keys are sessionids (also the key RcFilesDirBaseName)

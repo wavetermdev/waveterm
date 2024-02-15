@@ -14,6 +14,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
 var BuildTime = "0"
@@ -39,6 +40,7 @@ func handleSingle() {
 		sender.Close()
 		sender.WaitForDone()
 	}()
+	wlog.LogConsumer = sender.SendLogPacket
 	initPacket := shexec.MakeInitPacket()
 	sender.SendPacket(initPacket)
 	if len(os.Args) >= 3 && os.Args[2] == "--version" {
@@ -133,11 +135,13 @@ func main() {
 		return
 	} else if firstArg == "--single" || firstArg == "--single-from-server" {
 		base.ProcessType = base.ProcessType_WaveShellSingle
+		wlog.GlobalSubsystem = base.ProcessType_WaveShellSingle
 		base.InitDebugLog("single")
 		handleSingle()
 		return
 	} else if firstArg == "--server" {
 		base.ProcessType = base.ProcessType_WaveShellServer
+		wlog.GlobalSubsystem = base.ProcessType_WaveShellServer
 		base.InitDebugLog("server")
 		rtnCode, err := server.RunServer()
 		if err != nil {
