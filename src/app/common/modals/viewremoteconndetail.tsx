@@ -259,8 +259,10 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             message = "Connected and ready to run commands.";
         } else if (remote.status == "connecting") {
             message = remote.waitingforpassword ? "Connecting, waiting for user-input..." : "Connecting...";
-            let connectTimeout = remote.connecttimeout ?? 0;
-            message = message + " (" + connectTimeout + "s)";
+            if (remote.countdownactive) {
+                let connectTimeout = remote.connecttimeout ?? 0;
+                message = message + " (" + connectTimeout + "s)";
+            }
         } else if (remote.status == "disconnected") {
             message = "Disconnected";
         } else if (remote.status == "error") {

@@ -228,7 +228,6 @@ func (bus *UpdateBus) GetUserInput(ctx context.Context, userInputRequest *UserIn
 	update := &ModelUpdate{}
 	AddUpdate(update, *userInputRequest)
 	bus.SendUpdate(update)
-	log.Printf("test: %+v", userInputRequest)
 
 	var response *scpacket.UserInputResponsePacketType
 	var err error

@@ -1004,6 +1004,7 @@ type RemoteRuntimeState struct {
 	DefaultFeState      map[string]string `json:"defaultfestate"`
 	Status              string            `json:"status"`
 	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
+	CountdownActive     bool              `json:"countdownactive"`
 	ErrorStr            string            `json:"errorstr,omitempty"`
 	InstallStatus       string            `json:"installstatus"`
 	InstallErrorStr     string            `json:"installerrorstr,omitempty"`

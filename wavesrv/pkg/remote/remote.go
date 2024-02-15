@@ -601,6 +601,9 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 			if state.ConnectTimeout < 0 {
 				state.ConnectTimeout = 0
 			}
+			state.CountdownActive = true
+		} else {
+			state.CountdownActive = false
 		}
 	}
 	vars := msh.Remote.StateVars
@@ -1318,23 +1321,22 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 	if remoteCopy.ConnectMode != sstore.ConnectModeManual && remoteCopy.SSHOpts.SSHPassword == "" && !interactive {
 		sshOpts.BatchMode = true
 	}
-	makeClientCtx, makeClientCancelFn := context.WithCancel(context.Background())
-	defer makeClientCancelFn()
-	msh.WithLock(func() {
-		msh.Err = nil
-		msh.ErrNoInitPk = false
-		msh.Status = StatusConnecting
-		msh.MakeClientCancelFn = makeClientCancelFn
-		deadlineTime := time.Now().Add(RemoteConnectTimeout)
-		msh.MakeClientDeadline = &deadlineTime
-		go msh.NotifyRemoteUpdate()
-	})
-	go msh.watchClientDeadlineTime()
-	var cmdStr string
 	var cproc *shexec.ClientProc
 	var initPk *packet.InitPacketType
 	if sshOpts.SSHHost == "" && remoteCopy.Local {
-		cmdStr, err = MakeLocalMShellCommandStr(remoteCopy.IsSudo())
+		makeClientCtx, makeClientCancelFn := context.WithCancel(context.Background())
+		defer makeClientCancelFn()
+		msh.WithLock(func() {
+			msh.Err = nil
+			msh.ErrNoInitPk = false
+			msh.Status = StatusConnecting
+			msh.MakeClientCancelFn = makeClientCancelFn
+			deadlineTime := time.Now().Add(RemoteConnectTimeout)
+			msh.MakeClientDeadline = &deadlineTime
+			go msh.NotifyRemoteUpdate()
+		})
+		go msh.watchClientDeadlineTime()
+		cmdStr, err := MakeLocalMShellCommandStr(remoteCopy.IsSudo())
 		if err != nil {
 			msh.WriteToPtyBuffer("*error, cannot find local mshell binary: %v\n", err)
 			return
@@ -1359,6 +1361,13 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 		}
 		cproc, initPk, err = shexec.MakeClientProc(makeClientCtx, shexec.CmdWrap{Cmd: ecmd})
 	} else {
+		msh.WithLock(func() {
+			msh.Err = nil
+			msh.ErrNoInitPk = false
+			msh.Status = StatusConnecting
+			msh.MakeClientDeadline = nil
+			go msh.NotifyRemoteUpdate()
+		})
 		var client *ssh.Client
 		client, err = ConnectToClient(remoteCopy.SSHOpts)
 		if err != nil {
@@ -1375,6 +1384,15 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 			msh.setErrorStatus(statusErr)
 			return
 		}
+		makeClientCtx, makeClientCancelFn := context.WithCancel(context.Background())
+		defer makeClientCancelFn()
+		msh.WithLock(func() {
+			msh.MakeClientCancelFn = makeClientCancelFn
+			deadlineTime := time.Now().Add(RemoteConnectTimeout)
+			msh.MakeClientDeadline = &deadlineTime
+			go msh.NotifyRemoteUpdate()
+		})
+		go msh.watchClientDeadlineTime()
 		cproc, initPk, err = shexec.MakeClientProc(makeClientCtx, shexec.SessionWrap{Session: session, StartCmd: MakeServerRunOnlyCommandStr()})
 	}
 	// TODO check if initPk.State is not nil
