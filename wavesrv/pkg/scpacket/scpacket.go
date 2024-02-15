@@ -220,3 +220,7 @@ func (*RemoteInputPacketType) GetType() string {
 func (*UserInputResponsePacketType) GetType() string {
 	return UserInputResponsePacketStr
 }
+
+func (pk *UserInputResponsePacketType) GetReqId() string {
+	return pk.RequestId
+}

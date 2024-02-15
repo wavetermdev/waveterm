@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package feupdate
+package scbus
 
 const PtyDataUpdateStr = "pty"
 
@@ -15,7 +15,7 @@ type PtyDataUpdate struct {
 	PtyDataLen int64  `json:"ptydatalen"`
 }
 
-func (*PtyDataUpdate) UpdateType() string {
+func (*PtyDataUpdate) GetType() string {
 	return PtyDataUpdateStr
 }
 

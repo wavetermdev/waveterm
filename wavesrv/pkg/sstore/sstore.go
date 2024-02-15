@@ -339,7 +339,7 @@ func (cdata *ClientData) Clean() *ClientData {
 	return &rtn
 }
 
-func (ClientData) UpdateType() string {
+func (ClientData) GetType() string {
 	return "clientdata"
 }
 
@@ -358,7 +358,7 @@ type SessionType struct {
 	Remove bool `json:"remove,omitempty"`
 }
 
-func (SessionType) UpdateType() string {
+func (SessionType) GetType() string {
 	return "session"
 }
 
@@ -377,7 +377,7 @@ type SessionTombstoneType struct {
 
 func (SessionTombstoneType) UseDBMap() {}
 
-func (SessionTombstoneType) UpdateType() string {
+func (SessionTombstoneType) GetType() string {
 	return "sessiontombstone"
 }
 
@@ -450,7 +450,7 @@ type ScreenLinesType struct {
 
 func (ScreenLinesType) UseDBMap() {}
 
-func (ScreenLinesType) UpdateType() string {
+func (ScreenLinesType) GetType() string {
 	return "screenlines"
 }
 
@@ -549,7 +549,7 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
-func (ScreenType) UpdateType() string {
+func (ScreenType) GetType() string {
 	return "screen"
 }
 
@@ -577,7 +577,7 @@ type ScreenTombstoneType struct {
 
 func (ScreenTombstoneType) UseDBMap() {}
 
-func (ScreenTombstoneType) UpdateType() string {
+func (ScreenTombstoneType) GetType() string {
 	return "screentombstone"
 }
 
@@ -1060,7 +1060,7 @@ func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
 	return path.Join(homeDir, pathStr[2:]), nil
 }
 
-func (RemoteRuntimeState) UpdateType() string {
+func (RemoteRuntimeState) GetType() string {
 	return "remote"
 }
 
@@ -1128,7 +1128,7 @@ type CmdType struct {
 	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
 }
 
-func (CmdType) UpdateType() string {
+func (CmdType) GetType() string {
 	return "cmd"
 }
 

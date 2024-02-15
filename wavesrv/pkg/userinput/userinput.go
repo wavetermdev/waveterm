@@ -51,7 +51,7 @@ type UserInputRequestType struct {
 	TimeoutMs    int    `json:"timeoutms"`
 }
 
-func (UserInputRequestType) UpdateType() string {
+func (UserInputRequestType) GetType() string {
 	return "userinputrequest"
 }
 

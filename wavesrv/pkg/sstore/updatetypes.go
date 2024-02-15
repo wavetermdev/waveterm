@@ -13,7 +13,7 @@ import (
 
 type ActiveSessionIdUpdate string
 
-func (ActiveSessionIdUpdate) UpdateType() string {
+func (ActiveSessionIdUpdate) GetType() string {
 	return "activesessionid"
 }
 
@@ -22,7 +22,7 @@ type LineUpdate struct {
 	Cmd  CmdType  `json:"cmd,omitempty"`
 }
 
-func (LineUpdate) UpdateType() string {
+func (LineUpdate) GetType() string {
 	return "line"
 }
 
@@ -41,7 +41,7 @@ func AddLineUpdate(update *feupdate.ModelUpdate, newLine *LineType, newCmd *CmdT
 
 type CmdLineUpdate utilfn.StrWithPos
 
-func (CmdLineUpdate) UpdateType() string {
+func (CmdLineUpdate) GetType() string {
 	return "cmdline"
 }
 
@@ -57,7 +57,7 @@ type InfoMsgType struct {
 	TimeoutMs     int64    `json:"timeoutms,omitempty"`
 }
 
-func (InfoMsgType) UpdateType() string {
+func (InfoMsgType) GetType() string {
 	return "info"
 }
 
@@ -86,7 +86,7 @@ func AddInfoMsgUpdateError(update *feupdate.ModelUpdate, errStr string) {
 
 type ClearInfoUpdate bool
 
-func (ClearInfoUpdate) UpdateType() string {
+func (ClearInfoUpdate) GetType() string {
 	return "clearinfo"
 }
 
@@ -98,13 +98,13 @@ type HistoryInfoType struct {
 	Show        bool               `json:"show"`
 }
 
-func (HistoryInfoType) UpdateType() string {
+func (HistoryInfoType) GetType() string {
 	return "history"
 }
 
 type InteractiveUpdate bool
 
-func (InteractiveUpdate) UpdateType() string {
+func (InteractiveUpdate) GetType() string {
 	return "interactive"
 }
 
@@ -117,7 +117,7 @@ type ConnectUpdate struct {
 	ActiveSessionId          string                          `json:"activesessionid,omitempty"`
 }
 
-func (ConnectUpdate) UpdateType() string {
+func (ConnectUpdate) GetType() string {
 	return "connect"
 }
 
@@ -127,7 +127,7 @@ type MainViewUpdate struct {
 	BookmarksView *BookmarksUpdate `json:"bookmarksview,omitempty"`
 }
 
-func (MainViewUpdate) UpdateType() string {
+func (MainViewUpdate) GetType() string {
 	return "mainview"
 }
 
@@ -136,7 +136,7 @@ type BookmarksUpdate struct {
 	SelectedBookmark string          `json:"selectedbookmark,omitempty"`
 }
 
-func (BookmarksUpdate) UpdateType() string {
+func (BookmarksUpdate) GetType() string {
 	return "bookmarks"
 }
 
@@ -173,13 +173,13 @@ type RemoteViewType struct {
 	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
 }
 
-func (RemoteViewType) UpdateType() string {
+func (RemoteViewType) GetType() string {
 	return "remoteview"
 }
 
 type OpenAICmdInfoChatUpdate []*packet.OpenAICmdInfoChatMessage
 
-func (OpenAICmdInfoChatUpdate) UpdateType() string {
+func (OpenAICmdInfoChatUpdate) GetType() string {
 	return "openaicmdinfochat"
 }
 
@@ -190,7 +190,7 @@ type AlertMessageType struct {
 	Markdown bool   `json:"markdown,omitempty"`
 }
 
-func (AlertMessageType) UpdateType() string {
+func (AlertMessageType) GetType() string {
 	return "alertmessage"
 }
 
@@ -199,7 +199,7 @@ type ScreenStatusIndicatorType struct {
 	Status   StatusIndicatorLevel `json:"status"`
 }
 
-func (ScreenStatusIndicatorType) UpdateType() string {
+func (ScreenStatusIndicatorType) GetType() string {
 	return "screenstatusindicator"
 }
 
@@ -208,6 +208,6 @@ type ScreenNumRunningCommandsType struct {
 	Num      int    `json:"num"`
 }
 
-func (ScreenNumRunningCommandsType) UpdateType() string {
+func (ScreenNumRunningCommandsType) GetType() string {
 	return "screennumrunningcommands"
 }
