@@ -51,6 +51,7 @@ var ZshIgnoreVars = map[string]bool{
 	"EPOCHREALTIME":        true,
 	"SHLVL":                true,
 	"TTY":                  true,
+	"ZDOTDIR":              true,
 	"epochtime":            true,
 	"langinfo":             true,
 	"keymaps":              true,

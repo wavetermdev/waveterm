@@ -1541,7 +1541,6 @@ func ResetStatusIndicator(screenId string) error {
 
 func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
-	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
 	AddUpdate(update, ScreenNumRunningCommandsType{
 		ScreenId: screenId,
 		Num:      newNum,
@@ -1550,7 +1549,6 @@ func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta 
 }
 
 func IncrementNumRunningCmds(screenId string, delta int) {
-	log.Printf("IncrementNumRunningCmds: screenId=%s, delta=%d\n", screenId, delta)
 	update := &ModelUpdate{}
 	IncrementNumRunningCmds_Update(update, screenId, delta)
 	MainBus.SendUpdate(update)
