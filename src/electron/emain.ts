@@ -176,7 +176,7 @@ function readAuthKey() {
     }
     return authKeyStr.trim();
 }
-
+const reloadAcceleratorKey = unamePlatform == "darwin" ? "Option+R" : "Super+R";
 let menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {
         role: "appMenu",
@@ -202,7 +202,7 @@ let menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {
         role: "viewMenu",
         submenu: [
-            { role: "reload", accelerator: "Option+R" },
+            { role: "reload", accelerator: reloadAcceleratorKey },
             { role: "toggleDevTools" },
             { type: "separator" },
             { role: "resetZoom" },
