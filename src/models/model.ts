@@ -728,7 +728,7 @@ class Model {
             if (oldContext.sessionid != newContext.sessionid || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
                 if (!("ptydata64" in genUpdate)) {
-                    const reversedGenUpdate = genUpdate.slice().reverse();
+                    const reversedGenUpdate = genUpdate.items?.slice().reverse();
                     const lastCmdLine = reversedGenUpdate.find((update) => "cmdline" in update);
                     if (lastCmdLine) {
                         // TODO a bit of a hack since this update gets applied in runUpdate_internal.
@@ -810,7 +810,7 @@ class Model {
             return;
         }
         let showedRemotesModal = false;
-        genUpdate.forEach((update) => {
+        genUpdate.items?.forEach((update) => {
             if (update.connect != null) {
                 if (update.connect.screens != null) {
                     this.screenMap.clear();
@@ -1068,7 +1068,7 @@ class Model {
         if (update == null || "ptydata64" in update) {
             return false;
         }
-        return update.some((u) => u.info != null || u.history != null);
+        return update.items?.some((u) => u.info != null || u.history != null);
     }
 
     getClientDataLoop(loopNum: number): void {
