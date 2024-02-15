@@ -26,8 +26,8 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/feupdate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -553,11 +553,11 @@ func (ScreenType) GetType() string {
 	return "screen"
 }
 
-func AddScreenUpdate(update *feupdate.ModelUpdate, newScreen *ScreenType) {
+func AddScreenUpdate(update *scbus.ModelUpdate, newScreen *ScreenType) {
 	if newScreen == nil {
 		return
 	}
-	screenUpdates := feupdate.GetUpdateItems[ScreenType](update)
+	screenUpdates := scbus.GetUpdateItems[ScreenType](update)
 	for _, screenUpdate := range screenUpdates {
 		if screenUpdate.ScreenId == newScreen.ScreenId {
 			screenUpdate = newScreen
@@ -1479,7 +1479,7 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 }
 
 // Sets the in-memory status indicator for the given screenId to the given value and adds it to the ModelUpdate. By default, the active screen will be ignored when updating status. To force a status update for the active screen, set force=true.
-func SetStatusIndicatorLevel_Update(ctx context.Context, update *feupdate.ModelUpdate, screenId string, level StatusIndicatorLevel, force bool) error {
+func SetStatusIndicatorLevel_Update(ctx context.Context, update *scbus.ModelUpdate, screenId string, level StatusIndicatorLevel, force bool) error {
 	var newStatus StatusIndicatorLevel
 	if force {
 		// Force the update and set the new status to the given level, regardless of the current status or the active screen
@@ -1518,17 +1518,17 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *feupdate.ModelU
 
 // Sets the in-memory status indicator for the given screenId to the given value and pushes the new value to the FE
 func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusIndicatorLevel, force bool) error {
-	update := &feupdate.ModelUpdate{}
+	update := &scbus.ModelUpdate{}
 	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, level, false)
 	if err != nil {
 		return err
 	}
-	feupdate.MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 	return nil
 }
 
 // Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and adds it to the ModelUpdate
-func ResetStatusIndicator_Update(update *feupdate.ModelUpdate, screenId string) error {
+func ResetStatusIndicator_Update(update *scbus.ModelUpdate, screenId string) error {
 	// We do not need to set context when resetting the status indicator because we will not need to call the DB
 	return SetStatusIndicatorLevel_Update(context.TODO(), update, screenId, StatusIndicatorLevel_None, true)
 }
@@ -1539,7 +1539,7 @@ func ResetStatusIndicator(screenId string) error {
 	return SetStatusIndicatorLevel(context.TODO(), screenId, StatusIndicatorLevel_None, true)
 }
 
-func IncrementNumRunningCmds_Update(update *feupdate.ModelUpdate, screenId string, delta int) {
+func IncrementNumRunningCmds_Update(update *scbus.ModelUpdate, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
 	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
 	update.AddUpdate(ScreenNumRunningCommandsType{
@@ -1551,7 +1551,7 @@ func IncrementNumRunningCmds_Update(update *feupdate.ModelUpdate, screenId strin
 
 func IncrementNumRunningCmds(screenId string, delta int) {
 	log.Printf("IncrementNumRunningCmds: screenId=%s, delta=%d\n", screenId, delta)
-	update := &feupdate.ModelUpdate{}
+	update := &scbus.ModelUpdate{}
 	IncrementNumRunningCmds_Update(update, screenId, delta)
-	feupdate.MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 }

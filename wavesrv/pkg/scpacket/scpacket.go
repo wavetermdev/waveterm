@@ -164,6 +164,18 @@ type UserInputResponsePacketType struct {
 	ErrorMsg  string `json:"errormsg,omitempty"`
 }
 
+func (*UserInputResponsePacketType) GetType() string {
+	return UserInputResponsePacketStr
+}
+
+func (pk *UserInputResponsePacketType) GetError() string {
+	return pk.ErrorMsg
+}
+
+func (pk *UserInputResponsePacketType) SetError(err string) {
+	pk.ErrorMsg = err
+}
+
 func init() {
 	packet.RegisterPacketType(FeCommandPacketStr, reflect.TypeOf(FeCommandPacketType{}))
 	packet.RegisterPacketType(WatchScreenPacketStr, reflect.TypeOf(WatchScreenPacketType{}))
@@ -215,12 +227,4 @@ func MakeRemoteInputPacket() *RemoteInputPacketType {
 
 func (*RemoteInputPacketType) GetType() string {
 	return RemoteInputPacketStr
-}
-
-func (*UserInputResponsePacketType) GetType() string {
-	return UserInputResponsePacketStr
-}
-
-func (pk *UserInputResponsePacketType) GetReqId() string {
-	return pk.RequestId
 }

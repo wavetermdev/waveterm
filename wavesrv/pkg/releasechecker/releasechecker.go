@@ -10,8 +10,8 @@ import (
 	"github.com/google/go-github/v57/github"
 	"golang.org/x/mod/semver"
 
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/feupdate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
@@ -70,9 +70,9 @@ func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error
 		return Failure, fmt.Errorf("error getting updated client data: %w", err)
 	}
 
-	update := &feupdate.ModelUpdate{}
+	update := &scbus.ModelUpdate{}
 	update.AddUpdate(clientData)
-	feupdate.MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 
 	return Success, nil
 }

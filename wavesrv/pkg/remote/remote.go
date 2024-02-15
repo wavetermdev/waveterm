@@ -33,8 +33,8 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/feupdate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 
@@ -680,9 +680,9 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 
 func (msh *MShellProc) NotifyRemoteUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
-	update := &feupdate.ModelUpdate{}
+	update := &scbus.ModelUpdate{}
 	update.AddUpdate(rstate)
-	feupdate.MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 }
 
 func GetAllRemoteRuntimeState() []*RemoteRuntimeState {
@@ -942,13 +942,13 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 
 func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
 	data64 := base64.StdEncoding.EncodeToString(data)
-	update := &feupdate.PtyDataUpdate{
+	update := &scbus.PtyDataUpdate{
 		RemoteId:   remoteId,
 		PtyPos:     dataOffset,
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
 	}
-	feupdate.MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 }
 
 func (msh *MShellProc) isWaitingForPassword_nolock() bool {
@@ -2000,9 +2000,9 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		if err != nil {
 			continue
 		}
-		update := &feupdate.ModelUpdate{}
+		update := &scbus.ModelUpdate{}
 		update.AddUpdate(*cmd)
-		feupdate.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
+		scbus.MainUpdateBus.DoScreenUpdate(ck.GetGroupId(), update)
 		go pushNumRunningCmdsUpdate(&ck, -1)
 	}
 	msh.RunningCmds = make(map[base.CommandKey]RunCmdType)
@@ -2077,7 +2077,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
-	feupdate.MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 	return
 }
 
@@ -2106,13 +2106,13 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		log.Printf("error getting cmd(2) in handleCmdFinalPacket (not found)\n")
 		return
 	}
-	update := &feupdate.ModelUpdate{}
+	update := &scbus.ModelUpdate{}
 	update.AddUpdate(*rtnCmd)
 	if screen != nil {
 		update.AddUpdate(*screen)
 	}
 	go pushNumRunningCmdsUpdate(&finalPk.CK, -1)
-	feupdate.MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 }
 
 // TODO notify FE about cmd errors
@@ -2148,7 +2148,7 @@ func (msh *MShellProc) handleDataPacket(dataPk *packet.DataPacketType, dataPosMa
 		}
 		utilfn.IncSyncMap(dataPosMap, dataPk.CK, int64(len(realData)))
 		if update != nil {
-			feupdate.MainBus.SendScreenUpdate(dataPk.CK.GetGroupId(), update)
+			scbus.MainUpdateBus.DoScreenUpdate(dataPk.CK.GetGroupId(), update)
 		}
 	}
 	if ack != nil {
@@ -2177,9 +2177,9 @@ func (msh *MShellProc) makeHandleCmdFinalPacketClosure(finalPk *packet.CmdFinalP
 
 func sendScreenUpdates(screens []*sstore.ScreenType) {
 	for _, screen := range screens {
-		update := &feupdate.ModelUpdate{}
+		update := &scbus.ModelUpdate{}
 		update.AddUpdate(*screen)
-		feupdate.MainBus.SendUpdate(update)
+		scbus.MainUpdateBus.DoUpdate(update)
 	}
 }
 

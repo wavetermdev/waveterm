@@ -14,7 +14,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/feupdate"
 )
 
 var MainUpdateBus *UpdateBus = MakeUpdateBus()
@@ -70,7 +69,6 @@ type UpdatePacket interface {
 // A channel for sending model updates to the client
 type UpdateChannel struct {
 	ScreenId string
-	ClientId string
 	ch       chan UpdatePacket
 }
 
@@ -213,9 +211,9 @@ func (bus *RpcBus) DoRpc(ctx context.Context, pk RpcPacket) (RpcResponse, error)
 	pk.SetTimeoutMs(int(time.Until(deadline).Milliseconds()) - 500)
 
 	// Send the request to the frontend
-	mu := &feupdate.ModelUpdate{}
+	mu := &ModelUpdate{}
 	mu.AddUpdate(pk)
-	feupdate.MainBus.SendUpdate(mu)
+	MainUpdateBus.DoUpdate(mu)
 
 	var response RpcResponse
 	var err error

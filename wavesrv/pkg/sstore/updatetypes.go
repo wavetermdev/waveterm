@@ -8,7 +8,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/feupdate"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
 
 type ActiveSessionIdUpdate string
@@ -26,7 +26,7 @@ func (LineUpdate) GetType() string {
 	return "line"
 }
 
-func AddLineUpdate(update *feupdate.ModelUpdate, newLine *LineType, newCmd *CmdType) {
+func AddLineUpdate(update *scbus.ModelUpdate, newLine *LineType, newCmd *CmdType) {
 	if newLine == nil {
 		return
 	}
@@ -61,17 +61,17 @@ func (InfoMsgType) GetType() string {
 	return "info"
 }
 
-func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *feupdate.ModelUpdate {
+func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *scbus.ModelUpdate {
 	msg := fmt.Sprintf(infoMsgFmt, args...)
-	ret := &feupdate.ModelUpdate{}
+	ret := &scbus.ModelUpdate{}
 	newInfoUpdate := InfoMsgType{InfoMsg: msg}
 	ret.AddUpdate(newInfoUpdate)
 	return ret
 }
 
 // only sets InfoError if InfoError is not already set
-func AddInfoMsgUpdateError(update *feupdate.ModelUpdate, errStr string) {
-	infoUpdates := feupdate.GetUpdateItems[InfoMsgType](update)
+func AddInfoMsgUpdateError(update *scbus.ModelUpdate, errStr string) {
+	infoUpdates := scbus.GetUpdateItems[InfoMsgType](update)
 
 	if len(infoUpdates) > 0 {
 		lastUpdate := infoUpdates[len(infoUpdates)-1]
@@ -140,7 +140,7 @@ func (BookmarksUpdate) GetType() string {
 	return "bookmarks"
 }
 
-func AddBookmarksUpdate(update *feupdate.ModelUpdate, bookmarks []*BookmarkType, selectedBookmark *string) {
+func AddBookmarksUpdate(update *scbus.ModelUpdate, bookmarks []*BookmarkType, selectedBookmark *string) {
 	if selectedBookmark == nil {
 		update.AddUpdate(BookmarksUpdate{Bookmarks: bookmarks})
 	} else {

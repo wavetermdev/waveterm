@@ -21,7 +21,7 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/feupdate"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
@@ -65,7 +65,7 @@ func createPublicKeyAuth(identityFile string, passphrase string) (ssh.Signer, er
 	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancelFn()
-	response, err := userinput.MainBus.GetUserInput(ctx, request)
+	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	if err != nil {
 		return nil, UserInputCancelError{Err: err}
 	}
@@ -92,7 +92,7 @@ func createInteractivePasswordCallbackPrompt() func() (secret string, err error)
 			QueryText:    "Password:",
 			Title:        "Password Authentication",
 		}
-		response, err := userinput.MainBus.GetUserInput(ctx, request)
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 		if err != nil {
 			return "", err
 		}
@@ -152,7 +152,7 @@ func promptChallengeQuestion(question string, echo bool) (answer string, err err
 		QueryText:    question,
 		Title:        "Keyboard Interactive Authentication",
 	}
-	response, err := userinput.MainBus.GetUserInput(ctx, request)
+	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	if err != nil {
 		return "", err
 	}
@@ -235,7 +235,7 @@ func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote str
 	return func() (*scpacket.UserInputResponsePacketType, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return userinput.MainBus.GetUserInput(ctx, request)
+		return userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	}
 }
 
@@ -259,7 +259,7 @@ func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, rem
 	return func() (*scpacket.UserInputResponsePacketType, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return userinput.MainBus.GetUserInput(ctx, request)
+		return userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	}
 }
 
@@ -390,13 +390,13 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 				"%s\n\n"+
 				"**Offending Keys**  \n"+
 				"%s", key.Type(), correctKeyFingerprint, strings.Join(bulletListKnownHosts, "  \n"), strings.Join(offendingKeysFmt, "  \n"))
-			update := &feupdate.ModelUpdate{}
+			update := &scbus.ModelUpdate{}
 			update.AddUpdate(sstore.AlertMessageType{
 				Markdown: true,
 				Title:    "Known Hosts Key Changed",
 				Message:  alertText,
 			})
-			feupdate.MainBus.SendUpdate(update)
+			scbus.MainUpdateBus.DoUpdate(update)
 			return fmt.Errorf("remote host identification has changed")
 		}
 

@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/feupdate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
 
 func CreateCmdPtyFile(ctx context.Context, screenId string, lineId string, maxSize int64) error {
@@ -62,7 +62,7 @@ func ClearCmdPtyFile(ctx context.Context, screenId string, lineId string) error 
 	return nil
 }
 
-func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, data []byte, pos int64) (*feupdate.PtyDataUpdate, error) {
+func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, data []byte, pos int64) (*scbus.PtyDataUpdate, error) {
 	if screenId == "" {
 		return nil, fmt.Errorf("cannot append to PtyBlob, screenid is not set")
 	}
@@ -83,7 +83,7 @@ func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, dat
 		return nil, err
 	}
 	data64 := base64.StdEncoding.EncodeToString(data)
-	update := &feupdate.PtyDataUpdate{
+	update := &scbus.PtyDataUpdate{
 		ScreenId:   screenId,
 		LineId:     lineId,
 		PtyPos:     pos,
