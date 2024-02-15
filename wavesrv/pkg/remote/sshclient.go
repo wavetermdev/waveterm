@@ -40,7 +40,7 @@ func (uice UserInputCancelError) Error() string {
 // different public keys even when the current key cannot be
 // properly parsed
 func createDummySigner() ([]ssh.Signer, error) {
-	dummyKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	dummyKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, err
 	}
