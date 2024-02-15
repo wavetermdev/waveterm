@@ -768,19 +768,11 @@ class Model {
     }
 
     updateActiveSession(sessionId: string): void {
-        const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
-
         if (sessionId != null) {
             const newSessionId = sessionId;
             if (this.activeSessionId.get() != newSessionId) {
                 this.activeSessionId.set(newSessionId);
             }
-        }
-        const [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
-        if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
-            this.activeMainView.set("session");
-            this.deactivateScreenLines();
-            this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
         }
     }
 
@@ -810,6 +802,7 @@ class Model {
             return;
         }
         let showedRemotesModal = false;
+        const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
         genUpdate.items?.forEach((update) => {
             if (update.connect != null) {
                 if (update.connect.screens != null) {
@@ -926,6 +919,13 @@ class Model {
                 console.log("did not match update", update);
             }
         });
+
+        const [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
+        if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
+            this.activeMainView.set("session");
+            this.deactivateScreenLines();
+            this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+        }
     }
 
     updateRemotes(remotes: RemoteType[]): void {
