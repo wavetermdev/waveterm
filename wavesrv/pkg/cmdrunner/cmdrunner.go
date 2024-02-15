@@ -1203,6 +1203,15 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_ms
 		return
 	}
 	defer localFile.Close()
+	fileStat, err := localFile.Stat()
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error: could not get file stat: %v", err), &outputPos)
+		return
+	}
+	if fileStat.IsDir() {
+		writeStringToPty(ctx, cmd, "Cant copy a directory, try zipping it up first", &outputPos)
+		return
+	}
 	writePk := packet.MakeWriteFilePacket()
 	writePk.ReqId = uuid.New().String()
 	writePk.Path = destPath
@@ -1215,11 +1224,6 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_ms
 	_, err = checkForWriteReady(ctx, iter)
 	if err != nil {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos)
-		return
-	}
-	fileStat, err := localFile.Stat()
-	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("error: could not get file stat: %v", err), &outputPos)
 		return
 	}
 	fileSizeBytes := fileStat.Size()
@@ -1314,6 +1318,10 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos)
 		return
 	}
+	if resp.Info.IsDir {
+		writeStringToPty(ctx, cmd, "Cant copy a directory, try zipping it up first", &outputPos)
+		return
+	}
 	fileSizeBytes := resp.Info.Size
 	if fileSizeBytes == 0 {
 		writeStringToPty(ctx, cmd, "Source file does not exist or is empty - exiting\r\n", &outputPos)
@@ -1405,6 +1413,10 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 		writeStringToPty(ctx, cmd, fmt.Sprintf("error getting filestat %v", err), &outputPos)
 		return
 	}
+	if sourceFileStat.IsDir() {
+		writeStringToPty(ctx, cmd, "Cant copy a directory, try zipping it up first", &outputPos)
+		return
+	}
 	fileSizeBytes := sourceFileStat.Size()
 	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
 	destFile, err := os.Create(destPath)
@@ -1449,6 +1461,10 @@ func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_ms
 	}
 	if resp == nil || resp.Error != "" {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos)
+		return
+	}
+	if resp.Info.IsDir {
+		writeStringToPty(ctx, cmd, "Cant copy a directory, try zipping it up first", &outputPos)
 		return
 	}
 	fileSizeBytes := resp.Info.Size

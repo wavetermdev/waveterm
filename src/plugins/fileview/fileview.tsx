@@ -99,7 +99,7 @@ class FileViewRendererModel {
     }
 
     changeDirectory(fileName: string) {
-        let newDir = this.curDirectory + "/" + fileName;
+        let newDir = path.join(this.curDirectory, fileName);
         let prtn = GlobalModel.submitViewDirCommand(newDir, this.rawCmd.lineid, this.rawCmd.screenid, this.outputPos);
         prtn.then((rtn) => {
             if (!rtn.success) {
@@ -187,7 +187,7 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
             >
                 {file.name}
                 <div className="download-button" onClick={(event) => this.props.model.downloadWasClicked(event, file)}>
-                    <i className="fa-solid fa-download icon"></i>
+                    <i className="fa-sharp fa-solid fa-download"></i>
                 </div>
             </div>
         );
@@ -198,11 +198,21 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
         let dirList = model.dirList;
         let file: any;
         let index: number;
+        let columnMinSize = 6;
+        let columnWidth = Math.min(dirList.length / columnMinSize, 4);
         return (
-            <div className="fileview-container">
-                <For each="file" index="index" of={dirList}>
-                    {this.renderFile(file, index)}
-                </For>
+            <div className="fileview-toplevel">
+                <div className="status-bar">
+                    {this.props.model.curDirectory}
+                    <div className="search-icon">
+                        <i className="fa-sharp fa-solid fa-magnifying-glass"></i>
+                    </div>
+                </div>
+                <div className="fileview-container" style={{ columnCount: columnWidth, columnWidth: "auto" }}>
+                    <For each="file" index="index" of={dirList}>
+                        {this.renderFile(file, index)}
+                    </For>
+                </div>
             </div>
         );
     }

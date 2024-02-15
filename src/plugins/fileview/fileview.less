@@ -1,32 +1,53 @@
 @import "../../app/common/themes/themes.less";
 
-.fileview-container {
-    columns: 4 auto;
-
-    .file-container {
-        font-size: 11px;
+.fileview-toplevel {
+    .status-bar {
+        box-sizing: border-box;
+        border: 1px solid @term-green;
+        width: 100%;
+        font-size: 12px;
         padding: 3px;
 
-        &:hover {
-            box-sizing: border-box;
-            outline: 2px solid @term-green;
-            outline-offset: -2px;
-        }
-
-        .download-button {
-            width: 20px;
-            height: inherit;
+        .search-icon {
+            width: 30px;
             float: right;
-            outline: 1px solid @term-green;
-            outline-offset: -2px;
+            text-align: center;
+            border-left: 1px solid @term-green;
+
+            &:hover {
+                background-color: rgba(77, 153, 5, 0.58);
+            }
+        }
+    }
+
+    .fileview-container {
+        border-left: 1px solid @term-green;
+        border-right: 1px solid @term-green;
+        border-bottom: 1px solid @term-green;
+
+        .file-container {
+            font-size: 11px;
+            box-sizing: border-box;
+            padding: 3px;
 
             &:hover {
                 outline: 2px solid @term-green;
                 outline-offset: -2px;
+
+                .download-button {
+                    outline: 1px solid @term-green;
+                    outline-offset: -2px;
+                }
             }
 
-            .icon {
-                float: middle;
+            .download-button {
+                width: 25px;
+                float: right;
+                text-align: center;
+
+                &:hover {
+                    background-color: rgba(77, 153, 5, 0.58);
+                }
             }
         }
     }
