@@ -920,6 +920,7 @@ class Model {
             }
         });
 
+        // Check if the active session or screen has changed, and if so, watch the new screen
         const [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
         if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
             this.activeMainView.set("session");
