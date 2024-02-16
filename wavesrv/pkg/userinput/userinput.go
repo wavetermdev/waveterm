@@ -13,7 +13,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
 
-// An UpdatePacket for requesting user input from the client
+// An RpcPacket for requesting user input from the client
 type UserInputRequestType struct {
 	RequestId    string `json:"requestid"`
 	QueryText    string `json:"querytext"`
@@ -27,16 +27,8 @@ func (*UserInputRequestType) GetType() string {
 	return "userinputrequest"
 }
 
-func (req *UserInputRequestType) GetReqId() string {
-	return req.RequestId
-}
-
 func (req *UserInputRequestType) SetReqId(reqId string) {
 	req.RequestId = reqId
-}
-
-func (req *UserInputRequestType) GetTimeoutMs() int {
-	return req.TimeoutMs
 }
 
 func (req *UserInputRequestType) SetTimeoutMs(timeoutMs int) {
@@ -45,6 +37,7 @@ func (req *UserInputRequestType) SetTimeoutMs(timeoutMs int) {
 
 const UserInputResponsePacketStr = "userinputresp"
 
+// An RpcResponse for user input requests
 type UserInputResponsePacketType struct {
 	Type      string `json:"type"`
 	RequestId string `json:"requestid"`
@@ -79,5 +72,6 @@ func GetUserInput(ctx context.Context, bus *scbus.RpcBus, userInputRequest *User
 }
 
 func init() {
+	// Register the user input request packet type
 	packet.RegisterPacketType(UserInputResponsePacketStr, reflect.TypeOf(UserInputResponsePacketType{}))
 }

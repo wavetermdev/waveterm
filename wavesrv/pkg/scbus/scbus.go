@@ -146,6 +146,7 @@ func (bus *UpdateBus) DoScreenUpdate(screenId string, update UpdatePacket) {
 	}
 }
 
+// An interface for rpc requests
 // This is separate from the RpcPacketType defined in the waveshell/pkg/packet package, as that one is intended for use communicating between wavesrv and waveshell. It is has a different set of required methods.
 type RpcPacket interface {
 	SetReqId(string)
@@ -153,6 +154,7 @@ type RpcPacket interface {
 	GetType() string
 }
 
+// An interface for rpc responses
 // This is separate from the RpcResponsePacketType defined in the waveshell/pkg/packet package, as that one is intended for use communicating between wavesrv and waveshell. It is has a different set of required methods.
 type RpcResponse interface {
 	SetError(string)
