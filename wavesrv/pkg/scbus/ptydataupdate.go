@@ -35,6 +35,10 @@ func (pdu *PtyDataUpdatePacketType) Clean() {
 	// This is a no-op for PtyDataUpdatePacketType, but it is required to satisfy the UpdatePacket interface
 }
 
+func (pdu *PtyDataUpdatePacketType) IsEmpty() bool {
+	return pdu == nil || pdu.Data == nil || pdu.Data.PtyDataLen == 0
+}
+
 // Create a new PtyDataUpdatePacketType
 func MakePtyDataUpdate(update *PtyDataUpdate) *PtyDataUpdatePacketType {
 	return &PtyDataUpdatePacketType{Type: PtyDataUpdateStr, Data: update}

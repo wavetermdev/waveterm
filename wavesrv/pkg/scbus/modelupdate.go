@@ -44,6 +44,14 @@ type ModelUpdateItem interface {
 // An inner data type for the ModelUpdatePacketType. Stores a collection of model updates to be sent to the client.
 type ModelUpdate []ModelUpdateItem
 
+func (mu *ModelUpdate) IsEmpty() bool {
+	if mu == nil {
+		return true
+	}
+	muArr := []ModelUpdateItem(*mu)
+	return len(muArr) == 0
+}
+
 func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
 	rtn := make([]map[string]any, 0)
 	for _, u := range *mu {
@@ -62,6 +70,13 @@ type ModelUpdatePacketType struct {
 
 func (*ModelUpdatePacketType) GetType() string {
 	return ModelUpdateStr
+}
+
+func (mu *ModelUpdatePacketType) IsEmpty() bool {
+	if mu == nil || mu.Data == nil {
+		return true
+	}
+	return mu.Data.IsEmpty()
 }
 
 // Clean the ClientData in an update, if present

@@ -65,6 +65,7 @@ type UpdatePacket interface {
 	// The key to use when marshalling to JSON and interpreting in the client
 	GetType() string
 	Clean()
+	IsEmpty() bool
 }
 
 // A channel for sending model updates to the client
@@ -110,7 +111,7 @@ func MakeUpdateBus() *UpdateBus {
 
 // Send an update to all channels in the collection
 func (bus *UpdateBus) DoUpdate(update UpdatePacket) {
-	if update == nil {
+	if update == nil || update.IsEmpty() {
 		return
 	}
 	update.Clean()
