@@ -41,6 +41,7 @@ type ModelUpdateItem interface {
 	GetType() string
 }
 
+// An inner data type for the ModelUpdatePacketType. Stores a collection of model updates to be sent to the client.
 type ModelUpdate []ModelUpdateItem
 
 func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
@@ -53,7 +54,7 @@ func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
 	return json.Marshal(rtn)
 }
 
-// An UpdatePacket that is a collection of independent model updates to be sent to the client. Will be evaluated in order on the client.
+// An UpdatePacket for sending model updates to the client
 type ModelUpdatePacketType struct {
 	Type string       `json:"type"`
 	Data *ModelUpdate `json:"data"`
@@ -80,6 +81,7 @@ func (upk *ModelUpdatePacketType) AddUpdate(items ...ModelUpdateItem) {
 	*(upk.Data) = append(*(upk.Data), items...)
 }
 
+// Create a new model update packet
 func MakeUpdatePacket() *ModelUpdatePacketType {
 	return &ModelUpdatePacketType{
 		Type: ModelUpdateStr,

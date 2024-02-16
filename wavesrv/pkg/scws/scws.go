@@ -18,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
 
@@ -118,12 +119,6 @@ func (ws *WSState) UnWatchScreen() {
 	log.Printf("[ws] unwatch screen clientid=%s\n", ws.ClientId)
 }
 
-func (ws *WSState) getUpdateCh() chan scbus.UpdatePacket {
-	ws.Lock.Lock()
-	defer ws.Lock.Unlock()
-	return ws.UpdateCh
-}
-
 func (ws *WSState) RunUpdates(updateCh chan scbus.UpdatePacket) {
 	if updateCh == nil {
 		panic("invalid nil updateCh passed to RunUpdates")
@@ -143,7 +138,6 @@ func writeJsonProtected(shell *wsshell.WSShell, update any) {
 			return
 		}
 		log.Printf("[error] in scws RunUpdates WriteJson: %v\n", r)
-		return
 	}()
 	shell.WriteJson(update)
 }
@@ -157,7 +151,6 @@ func (ws *WSState) ReplaceShell(shell *wsshell.WSShell) {
 	}
 	ws.Shell.Conn.Close()
 	ws.Shell = shell
-	return
 }
 
 // returns all state required to display current UI
@@ -284,11 +277,11 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		sstore.ScreenMemSetCmdInputText(cmdInputPk.ScreenId, cmdInputPk.Text, cmdInputPk.SeqNum)
 		return nil
 	}
-	if pk.GetType() == scpacket.UserInputResponsePacketStr {
-		userInputRespPk := pk.(*scpacket.UserInputResponsePacketType)
+	if pk.GetType() == userinput.UserInputResponsePacketStr {
+		userInputRespPk := pk.(*userinput.UserInputResponsePacketType)
 		uich, ok := scbus.MainRpcBus.GetRpcChannel(userInputRespPk.RequestId)
 		if !ok {
-			return fmt.Errorf("received User Input Response with invalid Id (%s): %v\n", userInputRespPk.RequestId, err)
+			return fmt.Errorf("received User Input Response with invalid Id (%s): %v", userInputRespPk.RequestId, err)
 		}
 		select {
 		case uich <- userInputRespPk:

@@ -6,10 +6,11 @@ package remote
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/user"
@@ -22,7 +23,6 @@ import (
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"golang.org/x/crypto/ssh"
@@ -37,39 +37,93 @@ func (uice UserInputCancelError) Error() string {
 	return uice.Err.Error()
 }
 
-func createPublicKeyAuth(identityFile string, passphrase string) (ssh.Signer, error) {
-	privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
+// This exists to trick the ssh library into continuing to try
+// different public keys even when the current key cannot be
+// properly parsed
+func createDummySigner() ([]ssh.Signer, error) {
+	dummyKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read ssh key file. err: %+v", err)
+		return nil, err
 	}
-	signer, err := ssh.ParsePrivateKey(privateKey)
-	if err == nil {
-		return signer, err
+	dummySigner, err := ssh.NewSignerFromKey(dummyKey)
+	if err != nil {
+		return nil, err
 	}
-	if _, ok := err.(*ssh.PassphraseMissingError); !ok {
-		return nil, fmt.Errorf("failed to parse private ssh key. err: %+v", err)
-	}
+	return []ssh.Signer{dummySigner}, nil
 
-	signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
-	if err == nil {
-		return signer, err
+}
+
+// This is a workaround to only process one identity file at a time,
+// even if they have passphrases. It must be combined with retryable
+// authentication to work properly
+//
+// Despite returning an array of signers, we only ever provide one since
+// it allows proper user interaction in between attempts
+//
+// A significant number of errors end up returning dummy values as if
+// they were successes. An error in this function prevents any other
+// keys from being attempted. But if there's an error because of a dummy
+// file, the library can still try again with a new key.
+func createPublicKeyCallback(sshKeywords *SshKeywords, passphrase string) func() ([]ssh.Signer, error) {
+	identityFiles := make([]string, len(sshKeywords.IdentityFile))
+	copy(identityFiles, sshKeywords.IdentityFile)
+	identityFilesPtr := &identityFiles
+
+	return func() ([]ssh.Signer, error) {
+		if len(*identityFilesPtr) == 0 {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		identityFile := (*identityFilesPtr)[0]
+		*identityFilesPtr = (*identityFilesPtr)[1:]
+		privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
+		if err != nil {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		signer, err := ssh.ParsePrivateKey(privateKey)
+		if err == nil {
+			return []ssh.Signer{signer}, err
+		}
+		if _, ok := err.(*ssh.PassphraseMissingError); !ok {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
+		if err == nil {
+			return []ssh.Signer{signer}, err
+		}
+		if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+
+		// batch mode deactivates user input
+		if sshKeywords.BatchMode {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+
+		request := &userinput.UserInputRequestType{
+			ResponseType: "text",
+			QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
+			Title:        "Publickey Auth + Passphrase",
+		}
+		ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			// this is an error where we actually do want to stop
+			// trying keys
+			return nil, UserInputCancelError{Err: err}
+		}
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
+		if err != nil {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		return []ssh.Signer{signer}, err
 	}
-	if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
-		log.Printf("qwerty: %+v", err)
-		return nil, fmt.Errorf("failed to parse private ssh key. err: %+v", err)
-	}
-	request := &userinput.UserInputRequestType{
-		ResponseType: "text",
-		QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
-		Title:        "Publickey Auth + Passphrase",
-	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancelFn()
-	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
-	if err != nil {
-		return nil, UserInputCancelError{Err: err}
-	}
-	return ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
 }
 
 func createDefaultPasswordCallbackPrompt(password string) func() (secret string, err error) {
@@ -85,7 +139,7 @@ func createInteractivePasswordCallbackPrompt() func() (secret string, err error)
 	return func() (secret string, err error) {
 		// limited to 15 seconds for some reason. this should be investigated more
 		// in the future
-		ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
 		request := &userinput.UserInputRequestType{
 			ResponseType: "text",
@@ -145,7 +199,7 @@ func createInteractiveKbdInteractiveChallenge() func(name, instruction string, q
 func promptChallengeQuestion(question string, echo bool) (answer string, err error) {
 	// limited to 15 seconds for some reason. this should be investigated more
 	// in the future
-	ctx, cancelFn := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
 	request := &userinput.UserInputRequestType{
 		ResponseType: "text",
@@ -180,10 +234,10 @@ func openKnownHostsForEdit(knownHostsFilename string) (*os.File, error) {
 	return os.OpenFile(knownHostsFilename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 }
 
-func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerification func() (*scpacket.UserInputResponsePacketType, error)) error {
+func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerification func() (*userinput.UserInputResponsePacketType, error)) error {
 	if getUserVerification == nil {
-		getUserVerification = func() (*scpacket.UserInputResponsePacketType, error) {
-			return &scpacket.UserInputResponsePacketType{
+		getUserVerification = func() (*userinput.UserInputResponsePacketType, error) {
+			return &userinput.UserInputResponsePacketType{
 				Type:    "confirm",
 				Confirm: true,
 			}, nil
@@ -216,7 +270,7 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 	return f.Close()
 }
 
-func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*scpacket.UserInputResponsePacketType, error) {
+func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponsePacketType, error) {
 	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
 	queryText := fmt.Sprintf(
 		"The authenticity of host '%s (%s)' can't be established "+
@@ -232,14 +286,14 @@ func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote str
 		Markdown:     true,
 		Title:        "Known Hosts Key Missing",
 	}
-	return func() (*scpacket.UserInputResponsePacketType, error) {
+	return func() (*userinput.UserInputResponsePacketType, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
 		return userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	}
 }
 
-func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*scpacket.UserInputResponsePacketType, error) {
+func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponsePacketType, error) {
 	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
 	queryText := fmt.Sprintf(
 		"The authenticity of host '%s (%s)' can't be established "+
@@ -256,7 +310,7 @@ func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, rem
 		Markdown:     true,
 		Title:        "Known Hosts File Missing",
 	}
-	return func() (*scpacket.UserInputResponsePacketType, error) {
+	return func() (*userinput.UserInputResponsePacketType, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
 		return userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
@@ -412,61 +466,180 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 }
 
 func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
-	ssh_config.ReloadConfigs()
-	configIdentity, _ := ssh_config.GetStrict(opts.SSHHost, "IdentityFile")
-	var identityFile string
-	if opts.SSHIdentity != "" {
-		identityFile = opts.SSHIdentity
+	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
+	if err != nil {
+		return nil, err
+	}
+
+	sshKeywords, err := combineSshKeywords(opts, sshConfigKeywords)
+	if err != nil {
+		return nil, err
+	}
+
+	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(sshKeywords, opts.SSHPassword))
+	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword))
+	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword))
+
+	// batch mode turns off interactive input. this means the number of
+	// attemtps must drop to 1 with this setup
+	var attemptsAllowed int
+	if sshKeywords.BatchMode {
+		attemptsAllowed = 1
 	} else {
-		identityFile = configIdentity
+		attemptsAllowed = 2
+	}
+
+	// exclude gssapi-with-mic and hostbased until implemented
+	authMethodMap := map[string]ssh.AuthMethod{
+		"publickey":            ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)),
+		"keyboard-interactive": ssh.RetryableAuthMethod(keyboardInteractive, attemptsAllowed),
+		"password":             ssh.RetryableAuthMethod(passwordCallback, attemptsAllowed),
+	}
+
+	authMethodActiveMap := map[string]bool{
+		"publickey":            sshKeywords.PubkeyAuthentication,
+		"keyboard-interactive": sshKeywords.KbdInteractiveAuthentication,
+		"password":             sshKeywords.PasswordAuthentication,
+	}
+
+	var authMethods []ssh.AuthMethod
+	for _, authMethodName := range sshKeywords.PreferredAuthentications {
+		authMethodActive, ok := authMethodActiveMap[authMethodName]
+		if !ok || !authMethodActive {
+			continue
+		}
+		authMethod, ok := authMethodMap[authMethodName]
+		if !ok {
+			continue
+		}
+		authMethods = append(authMethods, authMethod)
 	}
 
 	hostKeyCallback, err := createHostKeyCallback(opts)
 	if err != nil {
 		return nil, err
 	}
-	var authMethods []ssh.AuthMethod
-	publicKeySigner, err := createPublicKeyAuth(identityFile, opts.SSHPassword)
-	if err == nil {
-		authMethods = append(authMethods, ssh.PublicKeys(publicKeySigner))
-	}
-	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword)), 2))
-	authMethods = append(authMethods, ssh.RetryableAuthMethod(ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword)), 2))
 
-	configUser, _ := ssh_config.GetStrict(opts.SSHHost, "User")
-	configHostName, _ := ssh_config.GetStrict(opts.SSHHost, "HostName")
-	configPort, _ := ssh_config.GetStrict(opts.SSHHost, "Port")
-	var username string
+	clientConfig := &ssh.ClientConfig{
+		User:            sshKeywords.User,
+		Auth:            authMethods,
+		HostKeyCallback: hostKeyCallback,
+	}
+	networkAddr := sshKeywords.HostName + ":" + sshKeywords.Port
+	return ssh.Dial("tcp", networkAddr, clientConfig)
+}
+
+type SshKeywords struct {
+	User                         string
+	HostName                     string
+	Port                         string
+	IdentityFile                 []string
+	BatchMode                    bool
+	PubkeyAuthentication         bool
+	PasswordAuthentication       bool
+	KbdInteractiveAuthentication bool
+	PreferredAuthentications     []string
+}
+
+func combineSshKeywords(opts *sstore.SSHOpts, configKeywords *SshKeywords) (*SshKeywords, error) {
+	sshKeywords := &SshKeywords{}
+
 	if opts.SSHUser != "" {
-		username = opts.SSHUser
-	} else if configUser != "" {
-		username = configUser
+		sshKeywords.User = opts.SSHUser
+	} else if configKeywords.User != "" {
+		sshKeywords.User = configKeywords.User
 	} else {
 		user, err := user.Current()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get user for ssh: %+v", err)
 		}
-		username = user.Username
+		sshKeywords.User = user.Username
 	}
-	var hostName string
-	if configHostName != "" {
-		hostName = configHostName
+
+	// we have to check the host value because of the weird way
+	// we store the pattern as the hostname for imported remotes
+	if configKeywords.HostName != "" {
+		sshKeywords.HostName = configKeywords.HostName
 	} else {
-		hostName = opts.SSHHost
+		sshKeywords.HostName = opts.SSHHost
 	}
-	clientConfig := &ssh.ClientConfig{
-		User:            username,
-		Auth:            authMethods,
-		HostKeyCallback: hostKeyCallback,
-	}
-	var port string
+
 	if opts.SSHPort != 0 && opts.SSHPort != 22 {
-		port = strconv.Itoa(opts.SSHPort)
-	} else if configPort != "" && configPort != "22" {
-		port = configPort
+		sshKeywords.Port = strconv.Itoa(opts.SSHPort)
+	} else if configKeywords.Port != "" && configKeywords.Port != "22" {
+		sshKeywords.Port = configKeywords.Port
 	} else {
-		port = "22"
+		sshKeywords.Port = "22"
 	}
-	networkAddr := hostName + ":" + port
-	return ssh.Dial("tcp", networkAddr, clientConfig)
+
+	sshKeywords.IdentityFile = []string{opts.SSHIdentity}
+	sshKeywords.IdentityFile = append(sshKeywords.IdentityFile, configKeywords.IdentityFile...)
+
+	// these are not officially supported in the waveterm frontend but can be configured
+	// in ssh config files
+	sshKeywords.BatchMode = configKeywords.BatchMode
+	sshKeywords.PubkeyAuthentication = configKeywords.PubkeyAuthentication
+	sshKeywords.PasswordAuthentication = configKeywords.PasswordAuthentication
+	sshKeywords.KbdInteractiveAuthentication = configKeywords.KbdInteractiveAuthentication
+	sshKeywords.PreferredAuthentications = configKeywords.PreferredAuthentications
+
+	return sshKeywords, nil
+}
+
+// note that a `var == "yes"` will default to false
+// but `var != "no"` will default to true
+// when given unexpected strings
+func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
+	ssh_config.ReloadConfigs()
+	sshKeywords := &SshKeywords{}
+	var err error
+
+	sshKeywords.User, err = ssh_config.GetStrict(hostPattern, "User")
+	if err != nil {
+		return nil, err
+	}
+
+	sshKeywords.HostName, err = ssh_config.GetStrict(hostPattern, "HostName")
+	if err != nil {
+		return nil, err
+	}
+
+	sshKeywords.Port, err = ssh_config.GetStrict(hostPattern, "Port")
+	if err != nil {
+		return nil, err
+	}
+
+	sshKeywords.IdentityFile = ssh_config.GetAll(hostPattern, "IdentityFile")
+
+	batchModeRaw, err := ssh_config.GetStrict(hostPattern, "BatchMode")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.BatchMode = (strings.ToLower(batchModeRaw) == "yes")
+
+	// we currently do not support host-bound or unbound but will use yes when they are selected
+	pubkeyAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "PubkeyAuthentication")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.PubkeyAuthentication = (strings.ToLower(pubkeyAuthenticationRaw) != "no")
+
+	passwordAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "PasswordAuthentication")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.PasswordAuthentication = (strings.ToLower(passwordAuthenticationRaw) != "no")
+
+	kbdInteractiveAuthenticationRaw, err := ssh_config.GetStrict(hostPattern, "KbdInteractiveAuthentication")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.KbdInteractiveAuthentication = (strings.ToLower(kbdInteractiveAuthenticationRaw) != "no")
+
+	// these are parsed as a single string and must be separated
+	// these are case sensitive in openssh so they are here too
+	preferredAuthenticationsRaw, err := ssh_config.GetStrict(hostPattern, "PreferredAuthentications")
+	sshKeywords.PreferredAuthentications = strings.Split(preferredAuthenticationsRaw, ",")
+
+	return sshKeywords, nil
 }

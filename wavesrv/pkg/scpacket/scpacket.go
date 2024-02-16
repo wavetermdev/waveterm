@@ -83,7 +83,6 @@ const WatchScreenPacketStr = "watchscreen"
 const FeInputPacketStr = "feinput"
 const RemoteInputPacketStr = "remoteinput"
 const CmdInputTextPacketStr = "cmdinputtext"
-const UserInputResponsePacketStr = "userinputresp"
 
 type FeCommandPacketType struct {
 	Type        string            `json:"type"`
@@ -156,33 +155,12 @@ type CmdInputTextPacketType struct {
 	Text     utilfn.StrWithPos `json:"text"`
 }
 
-type UserInputResponsePacketType struct {
-	Type      string `json:"type"`
-	RequestId string `json:"requestid"`
-	Text      string `json:"text,omitempty"`
-	Confirm   bool   `json:"confirm,omitempty"`
-	ErrorMsg  string `json:"errormsg,omitempty"`
-}
-
-func (*UserInputResponsePacketType) GetType() string {
-	return UserInputResponsePacketStr
-}
-
-func (pk *UserInputResponsePacketType) GetError() string {
-	return pk.ErrorMsg
-}
-
-func (pk *UserInputResponsePacketType) SetError(err string) {
-	pk.ErrorMsg = err
-}
-
 func init() {
 	packet.RegisterPacketType(FeCommandPacketStr, reflect.TypeOf(FeCommandPacketType{}))
 	packet.RegisterPacketType(WatchScreenPacketStr, reflect.TypeOf(WatchScreenPacketType{}))
 	packet.RegisterPacketType(FeInputPacketStr, reflect.TypeOf(FeInputPacketType{}))
 	packet.RegisterPacketType(RemoteInputPacketStr, reflect.TypeOf(RemoteInputPacketType{}))
 	packet.RegisterPacketType(CmdInputTextPacketStr, reflect.TypeOf(CmdInputTextPacketType{}))
-	packet.RegisterPacketType(UserInputResponsePacketStr, reflect.TypeOf(UserInputResponsePacketType{}))
 }
 
 type PacketType interface {

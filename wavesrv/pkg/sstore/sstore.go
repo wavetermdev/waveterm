@@ -1005,6 +1005,7 @@ type RemoteRuntimeState struct {
 	DefaultFeState      map[string]string `json:"defaultfestate"`
 	Status              string            `json:"status"`
 	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
+	CountdownActive     bool              `json:"countdownactive"`
 	ErrorStr            string            `json:"errorstr,omitempty"`
 	InstallStatus       string            `json:"installstatus"`
 	InstallErrorStr     string            `json:"installerrorstr,omitempty"`
@@ -1541,7 +1542,6 @@ func ResetStatusIndicator(screenId string) error {
 
 func IncrementNumRunningCmds_Update(update *scbus.ModelUpdatePacketType, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
-	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
 	update.AddUpdate(ScreenNumRunningCommandsType{
 		ScreenId: screenId,
 		Num:      newNum,
@@ -1550,7 +1550,6 @@ func IncrementNumRunningCmds_Update(update *scbus.ModelUpdatePacketType, screenI
 }
 
 func IncrementNumRunningCmds(screenId string, delta int) {
-	log.Printf("IncrementNumRunningCmds: screenId=%s, delta=%d\n", screenId, delta)
 	update := scbus.MakeUpdatePacket()
 	IncrementNumRunningCmds_Update(update, screenId, delta)
 	scbus.MainUpdateBus.DoUpdate(update)

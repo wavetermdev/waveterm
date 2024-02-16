@@ -28,6 +28,7 @@ type Channel[I packet.PacketType] interface {
 	Match(string) bool
 }
 
+// A concurrent bus for registering and managing channels
 type Bus[I packet.PacketType] struct {
 	Lock     *sync.Mutex
 	Channels map[string]Channel[I]
@@ -145,20 +146,21 @@ func (bus *UpdateBus) DoScreenUpdate(screenId string, update UpdatePacket) {
 	}
 }
 
+// This is separate from the RpcPacketType defined in the waveshell/pkg/packet package, as that one is intended for use communicating between wavesrv and waveshell. It is has a different set of required methods.
 type RpcPacket interface {
-	GetReqId() string
 	SetReqId(string)
-	GetTimeoutMs() int
 	SetTimeoutMs(int)
 	GetType() string
 }
 
+// This is separate from the RpcResponsePacketType defined in the waveshell/pkg/packet package, as that one is intended for use communicating between wavesrv and waveshell. It is has a different set of required methods.
 type RpcResponse interface {
 	SetError(string)
 	GetError() string
 	GetType() string
 }
 
+// A collection of channels that can receive rpc responses
 type RpcBus struct {
 	Bus[RpcResponse]
 }
@@ -184,6 +186,7 @@ func (bus *RpcBus) GetRpcChannel(id string) (chan RpcResponse, bool) {
 	return nil, false
 }
 
+// Implements the Channel interface to allow receiving rpc responses
 type RpcChannel struct {
 	ch chan RpcResponse
 }
@@ -196,6 +199,7 @@ func (ch *RpcChannel) SetChannel(newCh chan RpcResponse) {
 	ch.ch = newCh
 }
 
+// This is a no-op, only used to satisfy the Channel interface
 func (ch *RpcChannel) Match(string) bool {
 	return true
 }

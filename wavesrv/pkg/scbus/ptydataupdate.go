@@ -11,6 +11,7 @@ import (
 
 const PtyDataUpdateStr = "pty"
 
+// The inner data type for the PtyDataUpdatePacketType. Stores the pty data to be sent to the client.
 type PtyDataUpdate struct {
 	ScreenId   string `json:"screenid,omitempty"`
 	LineId     string `json:"lineid,omitempty"`
@@ -32,10 +33,12 @@ func (*PtyDataUpdatePacketType) GetType() string {
 
 func (pdu *PtyDataUpdatePacketType) Clean() {}
 
+// Create a new PtyDataUpdatePacketType
 func MakePtyDataUpdate(update *PtyDataUpdate) *PtyDataUpdatePacketType {
 	return &PtyDataUpdatePacketType{Type: PtyDataUpdateStr, Data: update}
 }
 
 func init() {
+	// Register the PtyDataUpdatePacketType with the packet package
 	packet.RegisterPacketType(PtyDataUpdateStr, reflect.TypeOf(PtyDataUpdatePacketType{}))
 }
