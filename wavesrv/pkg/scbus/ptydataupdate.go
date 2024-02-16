@@ -31,7 +31,9 @@ func (*PtyDataUpdatePacketType) GetType() string {
 	return PtyDataUpdateStr
 }
 
-func (pdu *PtyDataUpdatePacketType) Clean() {}
+func (pdu *PtyDataUpdatePacketType) Clean() {
+	// This is a no-op for PtyDataUpdatePacketType, but it is required to satisfy the UpdatePacket interface
+}
 
 // Create a new PtyDataUpdatePacketType
 func MakePtyDataUpdate(update *PtyDataUpdate) *PtyDataUpdatePacketType {
