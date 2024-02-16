@@ -110,7 +110,7 @@ func MakeUpdateBus() *UpdateBus {
 
 // Send an update to all channels in the collection
 func (bus *UpdateBus) DoUpdate(update UpdatePacket) {
-	if update == nil || update.IsEmpty() {
+	if update.IsEmpty() {
 		return
 	}
 	update.Clean()
@@ -128,7 +128,7 @@ func (bus *UpdateBus) DoUpdate(update UpdatePacket) {
 
 // Send a model update to only clients that are subscribed to the given screenId
 func (bus *UpdateBus) DoScreenUpdate(screenId string, update UpdatePacket) {
-	if update == nil {
+	if update.IsEmpty() {
 		return
 	}
 	update.Clean()
