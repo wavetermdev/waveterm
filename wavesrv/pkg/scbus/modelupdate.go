@@ -72,16 +72,16 @@ func (*ModelUpdatePacketType) GetType() string {
 	return ModelUpdateStr
 }
 
-func (mu *ModelUpdatePacketType) IsEmpty() bool {
-	if mu == nil || mu.Data == nil {
+func (upk *ModelUpdatePacketType) IsEmpty() bool {
+	if upk == nil {
 		return true
 	}
-	return mu.Data.IsEmpty()
+	return upk.Data.IsEmpty()
 }
 
 // Clean the ClientData in an update, if present
 func (upk *ModelUpdatePacketType) Clean() {
-	if upk == nil || upk.Data == nil {
+	if upk.IsEmpty() {
 		return
 	}
 	for _, item := range *(upk.Data) {
@@ -106,6 +106,9 @@ func MakeUpdatePacket() *ModelUpdatePacketType {
 
 // Returns the items in the update that are of type I
 func GetUpdateItems[I ModelUpdateItem](upk *ModelUpdatePacketType) []*I {
+	if upk.IsEmpty() {
+		return nil
+	}
 	ret := make([]*I, 0)
 	for _, item := range *(upk.Data) {
 		if i, ok := (item).(I); ok {
