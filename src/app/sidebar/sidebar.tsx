@@ -210,10 +210,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         const windowHeight = window.innerHeight;
         const bottomHeight = windowHeight - window.document.getElementById("sidebar-bottom")?.offsetTop;
         const middleTop = document.getElementById("sidebar-middle")?.offsetTop;
-        console.log("bottomHeight", bottomHeight);
-        console.log("middleTop", middleTop);
         const newMiddleHeightSubtractor = bottomHeight + middleTop;
-        console.log("newMiddleHeightSubtractor", newMiddleHeightSubtractor);
         if (!Number.isNaN(newMiddleHeightSubtractor)) {
             mobx.action(() => {
                 this.middleHeightSubtractor.set(newMiddleHeightSubtractor);
