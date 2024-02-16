@@ -22,8 +22,9 @@ import (
 
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
@@ -104,14 +105,13 @@ func createPublicKeyCallback(sshKeywords *SshKeywords, passphrase string) func()
 			return createDummySigner()
 		}
 
-		request := &sstore.UserInputRequestType{
+		request := &userinput.UserInputRequestType{
 			ResponseType: "text",
 			QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
 			Title:        "Publickey Auth + Passphrase",
 		}
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancelFn()
-		response, err := sstore.MainBus.GetUserInput(ctx, request)
+		ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 		if err != nil {
 			// this is an error where we actually do want to stop
 			// trying keys
@@ -141,12 +141,12 @@ func createInteractivePasswordCallbackPrompt() func() (secret string, err error)
 		// in the future
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		request := &sstore.UserInputRequestType{
+		request := &userinput.UserInputRequestType{
 			ResponseType: "text",
 			QueryText:    "Password:",
 			Title:        "Password Authentication",
 		}
-		response, err := sstore.MainBus.GetUserInput(ctx, request)
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 		if err != nil {
 			return "", err
 		}
@@ -201,12 +201,12 @@ func promptChallengeQuestion(question string, echo bool) (answer string, err err
 	// in the future
 	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
-	request := &sstore.UserInputRequestType{
+	request := &userinput.UserInputRequestType{
 		ResponseType: "text",
 		QueryText:    question,
 		Title:        "Keyboard Interactive Authentication",
 	}
-	response, err := sstore.MainBus.GetUserInput(ctx, request)
+	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	if err != nil {
 		return "", err
 	}
@@ -234,10 +234,10 @@ func openKnownHostsForEdit(knownHostsFilename string) (*os.File, error) {
 	return os.OpenFile(knownHostsFilename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 }
 
-func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerification func() (*scpacket.UserInputResponsePacketType, error)) error {
+func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerification func() (*userinput.UserInputResponsePacketType, error)) error {
 	if getUserVerification == nil {
-		getUserVerification = func() (*scpacket.UserInputResponsePacketType, error) {
-			return &scpacket.UserInputResponsePacketType{
+		getUserVerification = func() (*userinput.UserInputResponsePacketType, error) {
+			return &userinput.UserInputResponsePacketType{
 				Type:    "confirm",
 				Confirm: true,
 			}, nil
@@ -270,7 +270,7 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 	return f.Close()
 }
 
-func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*scpacket.UserInputResponsePacketType, error) {
+func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponsePacketType, error) {
 	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
 	queryText := fmt.Sprintf(
 		"The authenticity of host '%s (%s)' can't be established "+
@@ -280,20 +280,20 @@ func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote str
 			"**Would you like to continue connecting?** If so, the key will be permanently "+
 			"added to the file %s "+
 			"to protect from future man-in-the-middle attacks.", hostname, remote, key.Type(), base64Key, knownHostsFile)
-	request := &sstore.UserInputRequestType{
+	request := &userinput.UserInputRequestType{
 		ResponseType: "confirm",
 		QueryText:    queryText,
 		Markdown:     true,
 		Title:        "Known Hosts Key Missing",
 	}
-	return func() (*scpacket.UserInputResponsePacketType, error) {
+	return func() (*userinput.UserInputResponsePacketType, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return sstore.MainBus.GetUserInput(ctx, request)
+		return userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	}
 }
 
-func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*scpacket.UserInputResponsePacketType, error) {
+func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponsePacketType, error) {
 	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
 	queryText := fmt.Sprintf(
 		"The authenticity of host '%s (%s)' can't be established "+
@@ -304,16 +304,16 @@ func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, rem
 			"- %s will be created  \n"+
 			"- the key will be added to %s\n\n"+
 			"This will protect from future man-in-the-middle attacks.", hostname, remote, key.Type(), base64Key, knownHostsFile, knownHostsFile)
-	request := &sstore.UserInputRequestType{
+	request := &userinput.UserInputRequestType{
 		ResponseType: "confirm",
 		QueryText:    queryText,
 		Markdown:     true,
 		Title:        "Known Hosts File Missing",
 	}
-	return func() (*scpacket.UserInputResponsePacketType, error) {
+	return func() (*userinput.UserInputResponsePacketType, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return sstore.MainBus.GetUserInput(ctx, request)
+		return userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	}
 }
 
@@ -444,13 +444,13 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 				"%s\n\n"+
 				"**Offending Keys**  \n"+
 				"%s", key.Type(), correctKeyFingerprint, strings.Join(bulletListKnownHosts, "  \n"), strings.Join(offendingKeysFmt, "  \n"))
-			update := &sstore.ModelUpdate{}
-			sstore.AddUpdate(update, sstore.AlertMessageType{
+			update := scbus.MakeUpdatePacket()
+			update.AddUpdate(sstore.AlertMessageType{
 				Markdown: true,
 				Title:    "Known Hosts Key Changed",
 				Message:  alertText,
 			})
-			sstore.MainBus.SendUpdate(update)
+			scbus.MainUpdateBus.DoUpdate(update)
 			return fmt.Errorf("remote host identification has changed")
 		}
 

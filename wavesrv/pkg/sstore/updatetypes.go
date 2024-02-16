@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package sstore
 
 import (
@@ -5,11 +8,12 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
 
 type ActiveSessionIdUpdate string
 
-func (ActiveSessionIdUpdate) UpdateType() string {
+func (ActiveSessionIdUpdate) GetType() string {
 	return "activesessionid"
 }
 
@@ -18,11 +22,11 @@ type LineUpdate struct {
 	Cmd  CmdType  `json:"cmd,omitempty"`
 }
 
-func (LineUpdate) UpdateType() string {
+func (LineUpdate) GetType() string {
 	return "line"
 }
 
-func AddLineUpdate(update *ModelUpdate, newLine *LineType, newCmd *CmdType) {
+func AddLineUpdate(update *scbus.ModelUpdatePacketType, newLine *LineType, newCmd *CmdType) {
 	if newLine == nil {
 		return
 	}
@@ -32,17 +36,13 @@ func AddLineUpdate(update *ModelUpdate, newLine *LineType, newCmd *CmdType) {
 	if newCmd != nil {
 		newLineUpdate.Cmd = *newCmd
 	}
-	AddUpdate(update, newLineUpdate)
+	update.AddUpdate(newLineUpdate)
 }
 
 type CmdLineUpdate utilfn.StrWithPos
 
-func (CmdLineUpdate) UpdateType() string {
+func (CmdLineUpdate) GetType() string {
 	return "cmdline"
-}
-
-func AddCmdLineUpdate(update *ModelUpdate, cmdLine utilfn.StrWithPos) {
-	AddUpdate(update, CmdLineUpdate(cmdLine))
 }
 
 type InfoMsgType struct {
@@ -57,21 +57,21 @@ type InfoMsgType struct {
 	TimeoutMs     int64    `json:"timeoutms,omitempty"`
 }
 
-func (InfoMsgType) UpdateType() string {
+func (InfoMsgType) GetType() string {
 	return "info"
 }
 
-func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *ModelUpdate {
+func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *scbus.ModelUpdatePacketType {
 	msg := fmt.Sprintf(infoMsgFmt, args...)
-	ret := &ModelUpdate{}
+	ret := scbus.MakeUpdatePacket()
 	newInfoUpdate := InfoMsgType{InfoMsg: msg}
-	AddUpdate(ret, newInfoUpdate)
+	ret.AddUpdate(newInfoUpdate)
 	return ret
 }
 
 // only sets InfoError if InfoError is not already set
-func AddInfoMsgUpdateError(update *ModelUpdate, errStr string) {
-	infoUpdates := GetUpdateItems[InfoMsgType](update)
+func AddInfoMsgUpdateError(update *scbus.ModelUpdatePacketType, errStr string) {
+	infoUpdates := scbus.GetUpdateItems[InfoMsgType](update)
 
 	if len(infoUpdates) > 0 {
 		lastUpdate := infoUpdates[len(infoUpdates)-1]
@@ -80,13 +80,13 @@ func AddInfoMsgUpdateError(update *ModelUpdate, errStr string) {
 			return
 		}
 	} else {
-		AddUpdate(update, InfoMsgType{InfoError: errStr})
+		update.AddUpdate(InfoMsgType{InfoError: errStr})
 	}
 }
 
 type ClearInfoUpdate bool
 
-func (ClearInfoUpdate) UpdateType() string {
+func (ClearInfoUpdate) GetType() string {
 	return "clearinfo"
 }
 
@@ -98,18 +98,14 @@ type HistoryInfoType struct {
 	Show        bool               `json:"show"`
 }
 
-func (HistoryInfoType) UpdateType() string {
+func (HistoryInfoType) GetType() string {
 	return "history"
 }
 
 type InteractiveUpdate bool
 
-func (InteractiveUpdate) UpdateType() string {
+func (InteractiveUpdate) GetType() string {
 	return "interactive"
-}
-
-func AddInteractiveUpdate(update *ModelUpdate, interactive bool) {
-	AddUpdate(update, InteractiveUpdate(interactive))
 }
 
 type ConnectUpdate struct {
@@ -121,7 +117,7 @@ type ConnectUpdate struct {
 	ActiveSessionId          string                          `json:"activesessionid,omitempty"`
 }
 
-func (ConnectUpdate) UpdateType() string {
+func (ConnectUpdate) GetType() string {
 	return "connect"
 }
 
@@ -131,7 +127,7 @@ type MainViewUpdate struct {
 	BookmarksView *BookmarksUpdate `json:"bookmarksview,omitempty"`
 }
 
-func (MainViewUpdate) UpdateType() string {
+func (MainViewUpdate) GetType() string {
 	return "mainview"
 }
 
@@ -140,15 +136,15 @@ type BookmarksUpdate struct {
 	SelectedBookmark string          `json:"selectedbookmark,omitempty"`
 }
 
-func (BookmarksUpdate) UpdateType() string {
+func (BookmarksUpdate) GetType() string {
 	return "bookmarks"
 }
 
-func AddBookmarksUpdate(update *ModelUpdate, bookmarks []*BookmarkType, selectedBookmark *string) {
+func AddBookmarksUpdate(update *scbus.ModelUpdatePacketType, bookmarks []*BookmarkType, selectedBookmark *string) {
 	if selectedBookmark == nil {
-		AddUpdate(update, BookmarksUpdate{Bookmarks: bookmarks})
+		update.AddUpdate(BookmarksUpdate{Bookmarks: bookmarks})
 	} else {
-		AddUpdate(update, BookmarksUpdate{Bookmarks: bookmarks, SelectedBookmark: *selectedBookmark})
+		update.AddUpdate(BookmarksUpdate{Bookmarks: bookmarks, SelectedBookmark: *selectedBookmark})
 	}
 }
 
@@ -177,18 +173,14 @@ type RemoteViewType struct {
 	RemoteEdit    *RemoteEditType `json:"remoteedit,omitempty"`
 }
 
-func (RemoteViewType) UpdateType() string {
+func (RemoteViewType) GetType() string {
 	return "remoteview"
 }
 
 type OpenAICmdInfoChatUpdate []*packet.OpenAICmdInfoChatMessage
 
-func (OpenAICmdInfoChatUpdate) UpdateType() string {
+func (OpenAICmdInfoChatUpdate) GetType() string {
 	return "openaicmdinfochat"
-}
-
-func AddOpenAICmdInfoChatUpdate(update *ModelUpdate, chatMessages []*packet.OpenAICmdInfoChatMessage) {
-	AddUpdate(update, OpenAICmdInfoChatUpdate(chatMessages))
 }
 
 type AlertMessageType struct {
@@ -198,7 +190,7 @@ type AlertMessageType struct {
 	Markdown bool   `json:"markdown,omitempty"`
 }
 
-func (AlertMessageType) UpdateType() string {
+func (AlertMessageType) GetType() string {
 	return "alertmessage"
 }
 
@@ -207,7 +199,7 @@ type ScreenStatusIndicatorType struct {
 	Status   StatusIndicatorLevel `json:"status"`
 }
 
-func (ScreenStatusIndicatorType) UpdateType() string {
+func (ScreenStatusIndicatorType) GetType() string {
 	return "screenstatusindicator"
 }
 
@@ -216,19 +208,6 @@ type ScreenNumRunningCommandsType struct {
 	Num      int    `json:"num"`
 }
 
-func (ScreenNumRunningCommandsType) UpdateType() string {
+func (ScreenNumRunningCommandsType) GetType() string {
 	return "screennumrunningcommands"
-}
-
-type UserInputRequestType struct {
-	RequestId    string `json:"requestid"`
-	QueryText    string `json:"querytext"`
-	ResponseType string `json:"responsetype"`
-	Title        string `json:"title"`
-	Markdown     bool   `json:"markdown"`
-	TimeoutMs    int    `json:"timeoutms"`
-}
-
-func (UserInputRequestType) UpdateType() string {
-	return "userinputrequest"
 }

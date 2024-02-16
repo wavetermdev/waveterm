@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -338,7 +339,7 @@ func (cdata *ClientData) Clean() *ClientData {
 	return &rtn
 }
 
-func (ClientData) UpdateType() string {
+func (ClientData) GetType() string {
 	return "clientdata"
 }
 
@@ -357,7 +358,7 @@ type SessionType struct {
 	Remove bool `json:"remove,omitempty"`
 }
 
-func (SessionType) UpdateType() string {
+func (SessionType) GetType() string {
 	return "session"
 }
 
@@ -376,7 +377,7 @@ type SessionTombstoneType struct {
 
 func (SessionTombstoneType) UseDBMap() {}
 
-func (SessionTombstoneType) UpdateType() string {
+func (SessionTombstoneType) GetType() string {
 	return "sessiontombstone"
 }
 
@@ -449,7 +450,7 @@ type ScreenLinesType struct {
 
 func (ScreenLinesType) UseDBMap() {}
 
-func (ScreenLinesType) UpdateType() string {
+func (ScreenLinesType) GetType() string {
 	return "screenlines"
 }
 
@@ -548,22 +549,22 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
-func (ScreenType) UpdateType() string {
+func (ScreenType) GetType() string {
 	return "screen"
 }
 
-func AddScreenUpdate(update *ModelUpdate, newScreen *ScreenType) {
+func AddScreenUpdate(update *scbus.ModelUpdatePacketType, newScreen *ScreenType) {
 	if newScreen == nil {
 		return
 	}
-	screenUpdates := GetUpdateItems[ScreenType](update)
+	screenUpdates := scbus.GetUpdateItems[ScreenType](update)
 	for _, screenUpdate := range screenUpdates {
 		if screenUpdate.ScreenId == newScreen.ScreenId {
 			screenUpdate = newScreen
 			return
 		}
 	}
-	AddUpdate(update, newScreen)
+	update.AddUpdate(newScreen)
 }
 
 type ScreenTombstoneType struct {
@@ -576,7 +577,7 @@ type ScreenTombstoneType struct {
 
 func (ScreenTombstoneType) UseDBMap() {}
 
-func (ScreenTombstoneType) UpdateType() string {
+func (ScreenTombstoneType) GetType() string {
 	return "screentombstone"
 }
 
@@ -1060,7 +1061,7 @@ func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
 	return path.Join(homeDir, pathStr[2:]), nil
 }
 
-func (RemoteRuntimeState) UpdateType() string {
+func (RemoteRuntimeState) GetType() string {
 	return "remote"
 }
 
@@ -1128,7 +1129,7 @@ type CmdType struct {
 	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
 }
 
-func (CmdType) UpdateType() string {
+func (CmdType) GetType() string {
 	return "cmd"
 }
 
@@ -1479,7 +1480,7 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 }
 
 // Sets the in-memory status indicator for the given screenId to the given value and adds it to the ModelUpdate. By default, the active screen will be ignored when updating status. To force a status update for the active screen, set force=true.
-func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, screenId string, level StatusIndicatorLevel, force bool) error {
+func SetStatusIndicatorLevel_Update(ctx context.Context, update *scbus.ModelUpdatePacketType, screenId string, level StatusIndicatorLevel, force bool) error {
 	var newStatus StatusIndicatorLevel
 	if force {
 		// Force the update and set the new status to the given level, regardless of the current status or the active screen
@@ -1509,7 +1510,7 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 	}
 
-	AddUpdate(update, ScreenStatusIndicatorType{
+	update.AddUpdate(ScreenStatusIndicatorType{
 		ScreenId: screenId,
 		Status:   newStatus,
 	})
@@ -1518,17 +1519,17 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 
 // Sets the in-memory status indicator for the given screenId to the given value and pushes the new value to the FE
 func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusIndicatorLevel, force bool) error {
-	update := &ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, level, false)
 	if err != nil {
 		return err
 	}
-	MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 	return nil
 }
 
 // Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and adds it to the ModelUpdate
-func ResetStatusIndicator_Update(update *ModelUpdate, screenId string) error {
+func ResetStatusIndicator_Update(update *scbus.ModelUpdatePacketType, screenId string) error {
 	// We do not need to set context when resetting the status indicator because we will not need to call the DB
 	return SetStatusIndicatorLevel_Update(context.TODO(), update, screenId, StatusIndicatorLevel_None, true)
 }
@@ -1539,9 +1540,9 @@ func ResetStatusIndicator(screenId string) error {
 	return SetStatusIndicatorLevel(context.TODO(), screenId, StatusIndicatorLevel_None, true)
 }
 
-func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta int) {
+func IncrementNumRunningCmds_Update(update *scbus.ModelUpdatePacketType, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
-	AddUpdate(update, ScreenNumRunningCommandsType{
+	update.AddUpdate(ScreenNumRunningCommandsType{
 		ScreenId: screenId,
 		Num:      newNum,
 	})
@@ -1549,7 +1550,7 @@ func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta 
 }
 
 func IncrementNumRunningCmds(screenId string, delta int) {
-	update := &ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	IncrementNumRunningCmds_Update(update, screenId, delta)
-	MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 }

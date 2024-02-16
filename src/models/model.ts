@@ -715,7 +715,7 @@ class Model {
         return this.ws.open.get();
     }
 
-    runUpdate(genUpdate: UpdateMessage, interactive: boolean) {
+    runUpdate(genUpdate: UpdatePacket, interactive: boolean) {
         mobx.action(() => {
             const oldContext = this.getUIContext();
             try {
@@ -727,8 +727,9 @@ class Model {
             const newContext = this.getUIContext();
             if (oldContext.sessionid != newContext.sessionid || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
-                if (!("ptydata64" in genUpdate)) {
-                    const reversedGenUpdate = genUpdate.slice().reverse();
+                if (genUpdate.type == "model") {
+                    const modelUpdate = genUpdate as ModelUpdatePacket;
+                    const reversedGenUpdate = modelUpdate.data.slice().reverse();
                     const lastCmdLine = reversedGenUpdate.find((update) => "cmdline" in update);
                     if (lastCmdLine) {
                         // TODO a bit of a hack since this update gets applied in runUpdate_internal.
@@ -768,19 +769,11 @@ class Model {
     }
 
     updateActiveSession(sessionId: string): void {
-        const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
-
         if (sessionId != null) {
             const newSessionId = sessionId;
             if (this.activeSessionId.get() != newSessionId) {
                 this.activeSessionId.set(newSessionId);
             }
-        }
-        const [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
-        if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
-            this.activeMainView.set("session");
-            this.deactivateScreenLines();
-            this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
         }
     }
 
@@ -796,9 +789,9 @@ class Model {
         }
     }
 
-    runUpdate_internal(genUpdate: UpdateMessage, uiContext: UIContextType, interactive: boolean) {
-        if ("ptydata64" in genUpdate) {
-            const ptyMsg: PtyDataUpdateType = genUpdate;
+    runUpdate_internal(genUpdate: UpdatePacket, uiContext: UIContextType, interactive: boolean) {
+        if (genUpdate.type == "pty") {
+            const ptyMsg = genUpdate.data as PtyDataUpdateType;
             if (isBlank(ptyMsg.remoteid)) {
                 // regular update
                 this.updatePtyData(ptyMsg);
@@ -807,125 +800,138 @@ class Model {
                 const ptyData = base64ToArray(ptyMsg.ptydata64);
                 this.remotesModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
             }
-            return;
-        }
-        let showedRemotesModal = false;
-        genUpdate.forEach((update) => {
-            if (update.connect != null) {
-                if (update.connect.screens != null) {
-                    this.screenMap.clear();
-                    this.updateScreens(update.connect.screens);
-                }
-                if (update.connect.sessions != null) {
-                    this.sessionList.clear();
-                    this.updateSessions(update.connect.sessions);
-                }
-                if (update.connect.remotes != null) {
-                    this.remotes.clear();
-                    this.updateRemotes(update.connect.remotes);
-                }
-                if (update.connect.activesessionid != null) {
-                    this.updateActiveSession(update.connect.activesessionid);
-                }
-                if (update.connect.screennumrunningcommands != null) {
-                    this.updateScreenNumRunningCommands(update.connect.screennumrunningcommands);
-                }
-                if (update.connect.screenstatusindicators != null) {
-                    this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
-                }
+        } else if (genUpdate.type == "model") {
+            const modelUpdateItems = genUpdate.data as ModelUpdateItemType[];
 
-                this.sessionListLoaded.set(true);
-                this.remotesLoaded.set(true);
-            } else if (update.screen != null) {
-                this.updateScreens([update.screen]);
-            } else if (update.session != null) {
-                this.updateSessions([update.session]);
-            } else if (update.activesessionid != null) {
-                this.updateActiveSession(update.activesessionid);
-            } else if (update.line != null) {
-                this.addLineCmd(update.line.line, update.line.cmd, interactive);
-            } else if (update.cmd != null) {
-                this.updateCmd(update.cmd);
-            } else if (update.screenlines != null) {
-                this.updateScreenLines(update.screenlines, false);
-            } else if (update.remote != null) {
-                this.updateRemotes([update.remote]);
-                // This code's purpose is to show view remote connection modal when a new connection is added
-                if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
-                    showedRemotesModal = true;
-                    this.remotesModel.openReadModal(update.remote.remoteid);
-                }
-            } else if (update.mainview != null) {
-                switch (update.mainview.mainview) {
-                    case "session":
-                        this.activeMainView.set("session");
-                        break;
-                    case "history":
-                        if (update.mainview.historyview != null) {
-                            this.historyViewModel.showHistoryView(update.mainview.historyview);
-                        } else {
-                            console.warn("invalid historyview in update:", update.mainview);
-                        }
-                        break;
-                    case "bookmarks":
-                        if (update.mainview.bookmarksview != null) {
-                            this.bookmarksModel.showBookmarksView(
-                                update.mainview.bookmarksview?.bookmarks ?? [],
-                                update.mainview.bookmarksview?.selectedbookmark
-                            );
-                        } else {
-                            console.warn("invalid bookmarksview in update:", update.mainview);
-                        }
-                        break;
-                    case "plugins":
-                        this.pluginsModel.showPluginsView();
-                        break;
-                    default:
-                        console.warn("invalid mainview in update:", update.mainview);
-                }
-            } else if (update.bookmarks != null) {
-                if (update.bookmarks.bookmarks != null) {
-                    this.bookmarksModel.mergeBookmarks(update.bookmarks.bookmarks);
-                }
-            } else if (update.clientdata != null) {
-                this.setClientData(update.clientdata);
-            } else if (update.cmdline != null) {
-                this.inputModel.updateCmdLine(update.cmdline);
-            } else if (update.openaicmdinfochat != null) {
-                this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
-            } else if (update.screenstatusindicator != null) {
-                this.updateScreenStatusIndicators([update.screenstatusindicator]);
-            } else if (update.screennumrunningcommands != null) {
-                this.updateScreenNumRunningCommands([update.screennumrunningcommands]);
-            } else if (update.userinputrequest != null) {
-                let userInputRequest: UserInputRequest = update.userinputrequest;
-                this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
-            } else if (interactive) {
-                if (update.info != null) {
-                    const info: InfoType = update.info;
-                    this.inputModel.flashInfoMsg(info, info.timeoutms);
-                } else if (update.remoteview != null) {
-                    const rview: RemoteViewType = update.remoteview;
-                    if (rview.remoteedit != null) {
-                        this.remotesModel.openEditModal({ ...rview.remoteedit });
+            let showedRemotesModal = false;
+            const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
+            modelUpdateItems.forEach((update) => {
+                if (update.connect != null) {
+                    if (update.connect.screens != null) {
+                        this.screenMap.clear();
+                        this.updateScreens(update.connect.screens);
                     }
-                } else if (update.alertmessage != null) {
-                    const alertMessage: AlertMessageType = update.alertmessage;
-                    this.showAlert(alertMessage);
-                } else if (update.history != null) {
-                    if (
-                        uiContext.sessionid == update.history.sessionid &&
-                        uiContext.screenid == update.history.screenid
-                    ) {
-                        this.inputModel.setHistoryInfo(update.history);
+                    if (update.connect.sessions != null) {
+                        this.sessionList.clear();
+                        this.updateSessions(update.connect.sessions);
+                    }
+                    if (update.connect.remotes != null) {
+                        this.remotes.clear();
+                        this.updateRemotes(update.connect.remotes);
+                    }
+                    if (update.connect.activesessionid != null) {
+                        this.updateActiveSession(update.connect.activesessionid);
+                    }
+                    if (update.connect.screennumrunningcommands != null) {
+                        this.updateScreenNumRunningCommands(update.connect.screennumrunningcommands);
+                    }
+                    if (update.connect.screenstatusindicators != null) {
+                        this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
+                    }
+
+                    this.sessionListLoaded.set(true);
+                    this.remotesLoaded.set(true);
+                } else if (update.screen != null) {
+                    this.updateScreens([update.screen]);
+                } else if (update.session != null) {
+                    this.updateSessions([update.session]);
+                } else if (update.activesessionid != null) {
+                    this.updateActiveSession(update.activesessionid);
+                } else if (update.line != null) {
+                    this.addLineCmd(update.line.line, update.line.cmd, interactive);
+                } else if (update.cmd != null) {
+                    this.updateCmd(update.cmd);
+                } else if (update.screenlines != null) {
+                    this.updateScreenLines(update.screenlines, false);
+                } else if (update.remote != null) {
+                    this.updateRemotes([update.remote]);
+                    // This code's purpose is to show view remote connection modal when a new connection is added
+                    if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
+                        showedRemotesModal = true;
+                        this.remotesModel.openReadModal(update.remote.remoteid);
+                    }
+                } else if (update.mainview != null) {
+                    switch (update.mainview.mainview) {
+                        case "session":
+                            this.activeMainView.set("session");
+                            break;
+                        case "history":
+                            if (update.mainview.historyview != null) {
+                                this.historyViewModel.showHistoryView(update.mainview.historyview);
+                            } else {
+                                console.warn("invalid historyview in update:", update.mainview);
+                            }
+                            break;
+                        case "bookmarks":
+                            if (update.mainview.bookmarksview != null) {
+                                this.bookmarksModel.showBookmarksView(
+                                    update.mainview.bookmarksview?.bookmarks ?? [],
+                                    update.mainview.bookmarksview?.selectedbookmark
+                                );
+                            } else {
+                                console.warn("invalid bookmarksview in update:", update.mainview);
+                            }
+                            break;
+                        case "plugins":
+                            this.pluginsModel.showPluginsView();
+                            break;
+                        default:
+                            console.warn("invalid mainview in update:", update.mainview);
+                    }
+                } else if (update.bookmarks != null) {
+                    if (update.bookmarks.bookmarks != null) {
+                        this.bookmarksModel.mergeBookmarks(update.bookmarks.bookmarks);
+                    }
+                } else if (update.clientdata != null) {
+                    this.setClientData(update.clientdata);
+                } else if (update.cmdline != null) {
+                    this.inputModel.updateCmdLine(update.cmdline);
+                } else if (update.openaicmdinfochat != null) {
+                    this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
+                } else if (update.screenstatusindicator != null) {
+                    this.updateScreenStatusIndicators([update.screenstatusindicator]);
+                } else if (update.screennumrunningcommands != null) {
+                    this.updateScreenNumRunningCommands([update.screennumrunningcommands]);
+                } else if (update.userinputrequest != null) {
+                    const userInputRequest: UserInputRequest = update.userinputrequest;
+                    this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (interactive) {
+                    if (update.info != null) {
+                        const info: InfoType = update.info;
+                        this.inputModel.flashInfoMsg(info, info.timeoutms);
+                    } else if (update.remoteview != null) {
+                        const rview: RemoteViewType = update.remoteview;
+                        if (rview.remoteedit != null) {
+                            this.remotesModel.openEditModal({ ...rview.remoteedit });
+                        }
+                    } else if (update.alertmessage != null) {
+                        const alertMessage: AlertMessageType = update.alertmessage;
+                        this.showAlert(alertMessage);
+                    } else if (update.history != null) {
+                        if (
+                            uiContext.sessionid == update.history.sessionid &&
+                            uiContext.screenid == update.history.screenid
+                        ) {
+                            this.inputModel.setHistoryInfo(update.history);
+                        }
+                    } else if (this.isDev) {
+                        console.log("did not match update", update);
                     }
                 } else if (this.isDev) {
                     console.log("did not match update", update);
                 }
-            } else if (this.isDev) {
-                console.log("did not match update", update);
+            });
+
+            // Check if the active session or screen has changed, and if so, watch the new screen
+            const [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
+            if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
+                this.activeMainView.set("session");
+                this.deactivateScreenLines();
+                this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
             }
-        });
+        } else {
+            console.warn("unknown update", genUpdate);
+        }
     }
 
     updateRemotes(remotes: RemoteType[]): void {
@@ -1064,11 +1070,13 @@ class Model {
         this.handleCmdRestart(cmd);
     }
 
-    isInfoUpdate(update: UpdateMessage): boolean {
-        if (update == null || "ptydata64" in update) {
+    isInfoUpdate(update: UpdatePacket): boolean {
+        if (update.type == "model") {
+            const modelUpdate = update as ModelUpdatePacket;
+            return modelUpdate.data.some((u) => u.info != null || u.history != null);
+        } else {
             return false;
         }
-        return update.some((u) => u.info != null || u.history != null);
     }
 
     getClientDataLoop(loopNum: number): void {

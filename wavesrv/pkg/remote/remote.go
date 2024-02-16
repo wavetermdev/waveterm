@@ -34,8 +34,10 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
 )
@@ -681,9 +683,9 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 
 func (msh *MShellProc) NotifyRemoteUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
-	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, rstate)
-	sstore.MainBus.SendUpdate(update)
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(rstate)
+	scbus.MainUpdateBus.DoUpdate(update)
 }
 
 func GetAllRemoteRuntimeState() []*RemoteRuntimeState {
@@ -943,13 +945,13 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 
 func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
 	data64 := base64.StdEncoding.EncodeToString(data)
-	update := &sstore.PtyDataUpdate{
+	update := scbus.MakePtyDataUpdate(&scbus.PtyDataUpdate{
 		RemoteId:   remoteId,
 		PtyPos:     dataOffset,
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
-	}
-	sstore.MainBus.SendUpdate(update)
+	})
+	scbus.MainUpdateBus.DoUpdate(update)
 }
 
 func (msh *MShellProc) isWaitingForPassword_nolock() bool {
@@ -2016,9 +2018,9 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		if err != nil {
 			continue
 		}
-		update := &sstore.ModelUpdate{}
-		sstore.AddUpdate(update, *cmd)
-		sstore.MainBus.SendScreenUpdate(ck.GetGroupId(), update)
+		update := scbus.MakeUpdatePacket()
+		update.AddUpdate(*cmd)
+		scbus.MainUpdateBus.DoScreenUpdate(ck.GetGroupId(), update)
 		go pushNumRunningCmdsUpdate(&ck, -1)
 	}
 	msh.RunningCmds = make(map[base.CommandKey]RunCmdType)
@@ -2047,7 +2049,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 		// fall-through (nothing to do)
 	}
 	if screen != nil {
-		sstore.AddUpdate(update, *screen)
+		update.AddUpdate(*screen)
 	}
 	rct := msh.GetRunningCmd(donePk.CK)
 	var statePtr *sstore.ShellStatePtr
@@ -2059,7 +2061,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 		if remoteInst != nil {
-			sstore.AddUpdate(update, sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
+			update.AddUpdate(sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
 		}
 		statePtr = &sstore.ShellStatePtr{BaseHash: donePk.FinalState.GetHashVal(false)}
 	} else if donePk.FinalStateDiff != nil && rct != nil {
@@ -2079,7 +2081,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 				// fall-through (nothing to do)
 			}
 			if remoteInst != nil {
-				sstore.AddUpdate(update, sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
+				update.AddUpdate(sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
 			}
 			diffHashArr := append(([]string)(nil), donePk.FinalStateDiff.DiffHashArr...)
 			diffHashArr = append(diffHashArr, donePk.FinalStateDiff.GetHashVal(false))
@@ -2093,7 +2095,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 			// fall-through (nothing to do)
 		}
 	}
-	sstore.MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 	return
 }
 
@@ -2122,13 +2124,13 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		log.Printf("error getting cmd(2) in handleCmdFinalPacket (not found)\n")
 		return
 	}
-	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, *rtnCmd)
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(*rtnCmd)
 	if screen != nil {
-		sstore.AddUpdate(update, *screen)
+		update.AddUpdate(*screen)
 	}
 	go pushNumRunningCmdsUpdate(&finalPk.CK, -1)
-	sstore.MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 }
 
 // TODO notify FE about cmd errors
@@ -2164,7 +2166,7 @@ func (msh *MShellProc) handleDataPacket(dataPk *packet.DataPacketType, dataPosMa
 		}
 		utilfn.IncSyncMap(dataPosMap, dataPk.CK, int64(len(realData)))
 		if update != nil {
-			sstore.MainBus.SendScreenUpdate(dataPk.CK.GetGroupId(), update)
+			scbus.MainUpdateBus.DoScreenUpdate(dataPk.CK.GetGroupId(), update)
 		}
 	}
 	if ack != nil {
@@ -2193,9 +2195,9 @@ func (msh *MShellProc) makeHandleCmdFinalPacketClosure(finalPk *packet.CmdFinalP
 
 func sendScreenUpdates(screens []*sstore.ScreenType) {
 	for _, screen := range screens {
-		update := &sstore.ModelUpdate{}
-		sstore.AddUpdate(update, *screen)
-		sstore.MainBus.SendUpdate(update)
+		update := scbus.MakeUpdatePacket()
+		update.AddUpdate(*screen)
+		scbus.MainUpdateBus.DoUpdate(update)
 	}
 }
 
