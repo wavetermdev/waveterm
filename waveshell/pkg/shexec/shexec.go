@@ -1091,7 +1091,6 @@ func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
 	cmd.DetachedOutput.SendPacket(donePacket)
 	<-ptyCopyDone
 	cmd.Close()
-	return
 }
 
 func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, *packet.CmdStartPacketType, error) {

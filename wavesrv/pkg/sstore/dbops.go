@@ -2868,6 +2868,9 @@ func GetRemoteActiveShells(ctx context.Context, remoteId string) ([]string, erro
 		riArr := dbutil.SelectMapsGen[*RemoteInstance](tx, query, remoteId)
 		shellTypeMap := make(map[string]bool)
 		for _, ri := range riArr {
+			if ri.ShellType == "" {
+				continue
+			}
 			shellTypeMap[ri.ShellType] = true
 		}
 		return utilfn.GetMapKeys(shellTypeMap), nil
