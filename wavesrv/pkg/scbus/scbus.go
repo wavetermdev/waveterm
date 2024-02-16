@@ -40,7 +40,6 @@ func (bus *Bus[I]) RegisterChannel(key string, channelEntry Channel[I]) chan I {
 	defer bus.Lock.Unlock()
 	uch, found := bus.Channels[key]
 	ch := make(chan I, ChSize)
-	log.Printf("registering channel key=%s ch=%v\n", key, ch)
 	channelEntry.SetChannel(ch)
 	if found {
 		close(uch.GetChannel())
