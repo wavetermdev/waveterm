@@ -801,11 +801,11 @@ class Model {
                 this.remotesModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
             }
         } else if (genUpdate.type == "model") {
-            const modelUpdate = genUpdate as ModelUpdatePacket;
+            const modelUpdateItems = genUpdate.data as ModelUpdateItemType[];
 
             let showedRemotesModal = false;
             const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
-            modelUpdate.data.forEach((update) => {
+            modelUpdateItems.forEach((update) => {
                 if (update.connect != null) {
                     if (update.connect.screens != null) {
                         this.screenMap.clear();
