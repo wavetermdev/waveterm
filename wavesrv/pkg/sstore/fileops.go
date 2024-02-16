@@ -62,7 +62,7 @@ func ClearCmdPtyFile(ctx context.Context, screenId string, lineId string) error 
 	return nil
 }
 
-func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, data []byte, pos int64) (*scbus.PtyDataUpdate, error) {
+func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, data []byte, pos int64) (*scbus.PtyDataUpdatePacketType, error) {
 	if screenId == "" {
 		return nil, fmt.Errorf("cannot append to PtyBlob, screenid is not set")
 	}
@@ -83,13 +83,13 @@ func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, dat
 		return nil, err
 	}
 	data64 := base64.StdEncoding.EncodeToString(data)
-	update := &scbus.PtyDataUpdate{
+	update := scbus.MakePtyDataUpdate(&scbus.PtyDataUpdate{
 		ScreenId:   screenId,
 		LineId:     lineId,
 		PtyPos:     pos,
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
-	}
+	})
 	err = MaybeInsertPtyPosUpdate(ctx, screenId, lineId)
 	if err != nil {
 		// just log

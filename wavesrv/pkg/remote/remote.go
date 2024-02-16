@@ -680,7 +680,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 
 func (msh *MShellProc) NotifyRemoteUpdate() {
 	rstate := msh.GetRemoteRuntimeState()
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(rstate)
 	scbus.MainUpdateBus.DoUpdate(update)
 }
@@ -942,12 +942,12 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 
 func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
 	data64 := base64.StdEncoding.EncodeToString(data)
-	update := &scbus.PtyDataUpdate{
+	update := scbus.MakePtyDataUpdate(&scbus.PtyDataUpdate{
 		RemoteId:   remoteId,
 		PtyPos:     dataOffset,
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
-	}
+	})
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
@@ -2000,7 +2000,7 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		if err != nil {
 			continue
 		}
-		update := &scbus.ModelUpdate{}
+		update := scbus.MakeUpdatePacket()
 		update.AddUpdate(*cmd)
 		scbus.MainUpdateBus.DoScreenUpdate(ck.GetGroupId(), update)
 		go pushNumRunningCmdsUpdate(&ck, -1)
@@ -2106,7 +2106,7 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 		log.Printf("error getting cmd(2) in handleCmdFinalPacket (not found)\n")
 		return
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*rtnCmd)
 	if screen != nil {
 		update.AddUpdate(*screen)
@@ -2177,7 +2177,7 @@ func (msh *MShellProc) makeHandleCmdFinalPacketClosure(finalPk *packet.CmdFinalP
 
 func sendScreenUpdates(screens []*sstore.ScreenType) {
 	for _, screen := range screens {
-		update := &scbus.ModelUpdate{}
+		update := scbus.MakeUpdatePacket()
 		update.AddUpdate(*screen)
 		scbus.MainUpdateBus.DoUpdate(update)
 	}

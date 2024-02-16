@@ -172,7 +172,7 @@ func (ws *WSState) handleConnection() error {
 	connectUpdate.Remotes = remotes
 	// restore status indicators
 	connectUpdate.ScreenStatusIndicators, connectUpdate.ScreenNumRunningCommands = sstore.GetCurrentIndicatorState()
-	mu := &scbus.ModelUpdate{}
+	mu := scbus.MakeUpdatePacket()
 	mu.AddUpdate(*connectUpdate)
 	err = ws.Shell.WriteJson(mu)
 	if err != nil {

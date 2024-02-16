@@ -3,9 +3,14 @@
 
 package scbus
 
+import (
+	"reflect"
+
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+)
+
 const PtyDataUpdateStr = "pty"
 
-// An UpdatePacket for sending pty data to the client
 type PtyDataUpdate struct {
 	ScreenId   string `json:"screenid,omitempty"`
 	LineId     string `json:"lineid,omitempty"`
@@ -15,8 +20,22 @@ type PtyDataUpdate struct {
 	PtyDataLen int64  `json:"ptydatalen"`
 }
 
-func (*PtyDataUpdate) GetType() string {
+// An UpdatePacket for sending pty data to the client
+type PtyDataUpdatePacketType struct {
+	Type string         `json:"type"`
+	Data *PtyDataUpdate `json:"data"`
+}
+
+func (*PtyDataUpdatePacketType) GetType() string {
 	return PtyDataUpdateStr
 }
 
-func (pdu *PtyDataUpdate) Clean() {}
+func (pdu *PtyDataUpdatePacketType) Clean() {}
+
+func MakePtyDataUpdate(update *PtyDataUpdate) *PtyDataUpdatePacketType {
+	return &PtyDataUpdatePacketType{Type: PtyDataUpdateStr, Data: update}
+}
+
+func init() {
+	packet.RegisterPacketType(PtyDataUpdateStr, reflect.TypeOf(PtyDataUpdatePacketType{}))
+}

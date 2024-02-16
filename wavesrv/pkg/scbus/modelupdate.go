@@ -5,6 +5,9 @@ package scbus
 
 import (
 	"encoding/json"
+	"reflect"
+
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 )
 
 const ModelUpdateStr = "model"
@@ -32,54 +35,62 @@ func (sch *ModelUpdateChannel[J]) Match(screenId string) bool {
 	return screenId == sch.ScreenId
 }
 
-// An UpdatePacket that is a collection of independent model updates to be sent to the client. Will be evaluated in order on the client.
-type ModelUpdate struct {
-	items []ModelUpdateItem
-}
-
-func (*ModelUpdate) GetType() string {
-	return ModelUpdateStr
-}
-
-// Clean the ClientData in an update, if present
-func (update *ModelUpdate) Clean() {
-	if update == nil {
-		return
-	}
-	for _, item := range update.items {
-		if i, ok := (item).(CleanableUpdateItem); ok {
-			i.Clean()
-		}
-	}
-}
-
-func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
-	items := make([]map[string]any, 0)
-	for _, u := range mu.items {
-		m := make(map[string]any)
-		m[(u).GetType()] = u
-		items = append(items, m)
-	}
-	rtn := make(map[string]any)
-	rtn["items"] = items
-	return json.Marshal(rtn)
-}
-
 // An interface for all model updates
 type ModelUpdateItem interface {
 	// The key to use when marshalling to JSON and interpreting in the client
 	GetType() string
 }
 
+type ModelUpdate []ModelUpdateItem
+
+func (mu *ModelUpdate) MarshalJSON() ([]byte, error) {
+	rtn := make([]map[string]any, 0)
+	for _, u := range *mu {
+		m := make(map[string]any)
+		m[(u).GetType()] = u
+		rtn = append(rtn, m)
+	}
+	return json.Marshal(rtn)
+}
+
+// An UpdatePacket that is a collection of independent model updates to be sent to the client. Will be evaluated in order on the client.
+type ModelUpdatePacketType struct {
+	Type string       `json:"type"`
+	Data *ModelUpdate `json:"data"`
+}
+
+func (*ModelUpdatePacketType) GetType() string {
+	return ModelUpdateStr
+}
+
+// Clean the ClientData in an update, if present
+func (upk *ModelUpdatePacketType) Clean() {
+	if upk == nil || upk.Data == nil {
+		return
+	}
+	for _, item := range *(upk.Data) {
+		if i, ok := (item).(CleanableUpdateItem); ok {
+			i.Clean()
+		}
+	}
+}
+
 // Add a collection of model updates to the update
-func (update *ModelUpdate) AddUpdate(items ...ModelUpdateItem) {
-	update.items = append(update.items, items...)
+func (upk *ModelUpdatePacketType) AddUpdate(items ...ModelUpdateItem) {
+	*(upk.Data) = append(*(upk.Data), items...)
+}
+
+func MakeUpdatePacket() *ModelUpdatePacketType {
+	return &ModelUpdatePacketType{
+		Type: ModelUpdateStr,
+		Data: &ModelUpdate{},
+	}
 }
 
 // Returns the items in the update that are of type I
-func GetUpdateItems[I ModelUpdateItem](update *ModelUpdate) []*I {
+func GetUpdateItems[I ModelUpdateItem](upk *ModelUpdatePacketType) []*I {
 	ret := make([]*I, 0)
-	for _, item := range update.items {
+	for _, item := range *(upk.Data) {
 		if i, ok := (item).(I); ok {
 			ret = append(ret, &i)
 		}
@@ -90,4 +101,9 @@ func GetUpdateItems[I ModelUpdateItem](update *ModelUpdate) []*I {
 // An interface for model updates that can be cleaned
 type CleanableUpdateItem interface {
 	Clean()
+}
+
+func init() {
+	// Register the model update packet type
+	packet.RegisterPacketType(ModelUpdateStr, reflect.TypeOf(ModelUpdatePacketType{}))
 }

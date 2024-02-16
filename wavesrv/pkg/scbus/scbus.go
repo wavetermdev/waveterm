@@ -211,7 +211,7 @@ func (bus *RpcBus) DoRpc(ctx context.Context, pk RpcPacket) (RpcResponse, error)
 	pk.SetTimeoutMs(int(time.Until(deadline).Milliseconds()) - 500)
 
 	// Send the request to the frontend
-	mu := &ModelUpdate{}
+	mu := MakeUpdatePacket()
 	mu.AddUpdate(pk)
 	MainUpdateBus.DoUpdate(mu)
 

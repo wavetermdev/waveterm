@@ -715,12 +715,12 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 		}
 	}
 	var hasModelUpdate bool
-	var modelUpdate *scbus.ModelUpdate
+	var modelUpdate *scbus.ModelUpdatePacketType
 	if update == nil {
 		hasModelUpdate = true
-		modelUpdate = &scbus.ModelUpdate{}
+		modelUpdate = scbus.MakeUpdatePacket()
 		update = modelUpdate
-	} else if mu, ok := update.(*scbus.ModelUpdate); ok {
+	} else if mu, ok := update.(*scbus.ModelUpdatePacketType); ok {
 		hasModelUpdate = true
 		modelUpdate = mu
 	}
@@ -777,7 +777,7 @@ func ScreenArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		if err != nil {
 			return nil, fmt.Errorf("/screen:archive cannot get updated screen obj: %v", err)
 		}
-		update := &scbus.ModelUpdate{}
+		update := scbus.MakeUpdatePacket()
 		update.AddUpdate(*screen)
 		return update, nil
 	}
@@ -854,7 +854,7 @@ func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 
 	// Prepare the update packet to send back to the client
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	for _, screen := range screens {
 		update.AddUpdate(*screen)
 	}
@@ -971,7 +971,7 @@ func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		return nil, nil
 	}
 
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*screen, sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("screen updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
@@ -1044,7 +1044,7 @@ func SidebarOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*screen)
 	return update, nil
 }
@@ -1058,7 +1058,7 @@ func SidebarCloseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if err != nil {
 		return nil, err
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*screen)
 	return update, nil
 }
@@ -1088,7 +1088,7 @@ func SidebarAddCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if err != nil {
 		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*screen)
 	return update, nil
 }
@@ -1112,13 +1112,13 @@ func SidebarRemoveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error updating screenviewopts: %v", GetCmdStr(pk), err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*screen)
 	return update, nil
 }
 
 func createRemoteViewRemoteIdUpdate(remoteId string) scbus.UpdatePacket {
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.RemoteViewType{
 		PtyRemoteId: remoteId,
 	})
@@ -1126,7 +1126,7 @@ func createRemoteViewRemoteIdUpdate(remoteId string) scbus.UpdatePacket {
 }
 
 func createRemoteViewRemoteEditUpdate(redit *sstore.RemoteEditType) scbus.UpdatePacket {
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.RemoteViewType{
 		RemoteEdit: redit,
 	})
@@ -1667,7 +1667,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 		}
 	}
 	scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
-	update = &scbus.ModelUpdate{}
+	update = scbus.MakeUpdatePacket()
 	if destRemote == LocalRemote && sourceRemote == LocalRemote {
 		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos)
 	} else if destRemote == LocalRemote && sourceRemote != LocalRemote {
@@ -1987,7 +1987,7 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	if visualEdit {
 		return createRemoteViewRemoteIdUpdate(ids.Remote.RemoteCopy.RemoteId), nil
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("remote %q updated", ids.Remote.DisplayName),
 		TimeoutMs: 2000,
@@ -2016,7 +2016,7 @@ func RemoteShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		}
 		buf.WriteString(fmt.Sprintf("%-12s %-5s %8s  %s\n", rstate.Status, rstate.RemoteType, rstate.RemoteId[0:8], name))
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.RemoteViewType{
 		RemoteShowAll: true,
 	})
@@ -2315,7 +2315,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 	outMsg := createSshImportSummary(remoteChangeList)
 	visualEdit := resolveBool(pk.Kwargs["visual"], false)
 	if visualEdit {
-		update := &scbus.ModelUpdate{}
+		update := scbus.MakeUpdatePacket()
 		update.AddUpdate(sstore.AlertMessageType{
 			Title:    "SSH Config Import",
 			Message:  outMsg,
@@ -2323,7 +2323,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		})
 		return update, nil
 	} else {
-		update := &scbus.ModelUpdate{}
+		update := scbus.MakeUpdatePacket()
 		update.AddUpdate(sstore.InfoMsgType{
 			InfoMsg: outMsg,
 		})
@@ -2350,7 +2350,7 @@ func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		outStr := fmt.Sprintf("%-30s %s  %s\n", screen.Name+archivedStr, screen.ScreenId, screenIdxStr)
 		buf.WriteString(outStr)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("all screens for session"),
 		InfoLines: splitLinesForInfo(buf.String()),
@@ -2462,7 +2462,7 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 		}
 		buf.WriteString(fmt.Sprintf("%-30s %-50s (default)\n", msh.GetDisplayName(), cwdStr))
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoLines: splitLinesForInfo(buf.String()),
 	})
@@ -2829,7 +2829,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		writePacketToUpdateBus(ctx, cmd, userQueryPk)
 		prompt := BuildOpenAIPromptArrayWithContext(sstore.ScreenMemGetCmdInfoChat(cmd.ScreenId).Messages)
 		go doOpenAICmdInfoCompletion(cmd, clientData.ClientId, opts, prompt, curLineStr)
-		update := &scbus.ModelUpdate{}
+		update := scbus.MakeUpdatePacket()
 		return update, nil
 	}
 	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
@@ -2861,7 +2861,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		// ignore error again (nothing to do)
 		log.Printf("openai error updating screen selected line: %v\n", err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	sstore.AddLineUpdate(update, line, cmd)
 	update.AddUpdate(*screen)
 	return update, nil
@@ -2896,7 +2896,7 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Upd
 		if err != nil {
 			return nil, fmt.Errorf("/%s error: cannot resolve screen for update: %w", GetCmdStr(pk), err)
 		}
-		update := &scbus.ModelUpdate{}
+		update := scbus.MakeUpdatePacket()
 		update.AddUpdate(*screen, sstore.InteractiveUpdate(pk.Interactive))
 		return update, nil
 	}
@@ -2971,7 +2971,7 @@ func makeStaticCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr 
 	return cmd, nil
 }
 
-func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType, renderer string, lineState map[string]any) (*scbus.ModelUpdate, error) {
+func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids resolvedIds, cmd *sstore.CmdType, renderer string, lineState map[string]any) (*scbus.ModelUpdatePacketType, error) {
 	rtnLine, err := sstore.AddCmdLine(ctx, ids.ScreenId, DefaultUserId, cmd, renderer, lineState)
 	if err != nil {
 		return nil, err
@@ -2993,7 +2993,7 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 			log.Printf("%s error updating screen selected line: %v\n", metaCmd, err)
 		}
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	sstore.AddLineUpdate(update, rtnLine, cmd)
 	update.AddUpdate(*screen)
 	sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
@@ -3037,7 +3037,7 @@ func makeInfoFromComps(compType string, comps []string, hasMore bool) scbus.Upda
 	if len(comps) == 0 {
 		comps = []string{"(no completions)"}
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle:     fmt.Sprintf("%s completions", compType),
 		InfoComps:     comps,
@@ -3178,7 +3178,7 @@ func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	if newSP == nil || cmdSP == *newSP {
 		return nil, nil
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.CmdLineUpdate(utilfn.StrWithPos{Str: newSP.Str, Pos: newSP.Pos}))
 	return update, nil
 }
@@ -3205,7 +3205,7 @@ func CommentCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 		// ignore error again (nothing to do)
 		log.Printf("/comment error updating screen selected line: %v\n", err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	sstore.AddLineUpdate(update, rtnLine, nil)
 	update.AddUpdate(*screen)
 	return update, nil
@@ -3443,7 +3443,7 @@ func SessionShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "cmds", stats.NumCmds))
 	buf.WriteString(fmt.Sprintf("  %-15s %0.2fM\n", "disksize", float64(stats.DiskStats.TotalSize)/1000000))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "disk-location", stats.DiskStats.Location))
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: "session info",
 		InfoLines: splitLinesForInfo(buf.String()),
@@ -3469,7 +3469,7 @@ func SessionShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		outStr := fmt.Sprintf("%-30s %s  %s\n", session.Name+archivedStr, session.SessionId, sessionIdxStr)
 		buf.WriteString(outStr)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: "all sessions",
 		InfoLines: splitLinesForInfo(buf.String()),
@@ -3499,7 +3499,7 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		return nil, fmt.Errorf("/session:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
 	}
 	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*bareSession, sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
@@ -3524,7 +3524,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	if err != nil {
 		return nil, err
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.ActiveSessionIdUpdate(ritem.Id))
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("switched to session %q", ritem.Name),
@@ -3723,7 +3723,7 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	}
 	hvdata.Lines = lines
 	hvdata.Cmds = cmds
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(&sstore.MainViewUpdate{MainView: sstore.MainViewHistory, HistoryView: hvdata})
 	return update, nil
 }
@@ -3769,7 +3769,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	if show {
 		sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{HistoryView: 1}, "history")
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.HistoryInfoType{
 		HistoryType: htype,
 		SessionId:   ids.SessionId,
@@ -3963,7 +3963,7 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("error getting updated line/cmd: %w", err)
 	}
 	cmd.Restarted = true
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	sstore.AddLineUpdate(update, line, cmd)
 	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	screen, focusErr := focusScreenLine(ctx, ids.ScreenId, line.LineNum)
@@ -4051,7 +4051,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	if err != nil {
 		return nil, fmt.Errorf("/line:set cannot retrieve updated line: %v", err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	sstore.AddLineUpdate(update, updatedLine, nil)
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("line updated %s", formatStrs(varsUpdated, "and", false)),
@@ -4118,7 +4118,7 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
 	}
 	sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{BookmarksView: 1}, "bookmarks")
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 
 	update.AddUpdate(&sstore.MainViewUpdate{
 		MainView:      sstore.MainViewBookmarks,
@@ -4158,7 +4158,7 @@ func BookmarkSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("error retrieving edited bookmark: %v", err)
 	}
 	bms := []*sstore.BookmarkType{bm}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	sstore.AddBookmarksUpdate(update, bms, nil)
 	update.AddUpdate(sstore.InfoMsgUpdate("bookmark edited"))
 	return update, nil
@@ -4180,7 +4180,7 @@ func BookmarkDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, fmt.Errorf("error deleting bookmark: %v", err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	bms := []*sstore.BookmarkType{{BookmarkId: bookmarkId, Remove: true}}
 	sstore.AddBookmarksUpdate(update, bms, nil)
 	update.AddUpdate(sstore.InfoMsgUpdate("bookmark deleted"))
@@ -4233,7 +4233,7 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		newBmId = newBm.BookmarkId
 	}
 	bms, err := sstore.GetBookmarks(ctx, "")
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(&sstore.MainViewUpdate{
 		MainView:      sstore.MainViewBookmarks,
 		BookmarksView: &sstore.BookmarksUpdate{Bookmarks: bms, SelectedBookmark: newBmId},
@@ -4283,7 +4283,7 @@ func LineStarCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 		// no line (which is strange given we checked for it above).  just return a nop.
 		return nil, nil
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	sstore.AddLineUpdate(update, lineObj, nil)
 	return update, nil
 }
@@ -4320,7 +4320,7 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		// no line (which is strange given we checked for it above).  just return a nop.
 		return nil, nil
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	sstore.AddLineUpdate(update, lineObj, nil)
 	return update, nil
 }
@@ -4348,7 +4348,7 @@ func LineDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if err != nil {
 		return nil, fmt.Errorf("/line:delete error deleting lines: %v", err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	for _, lineId := range lineIds {
 		line := &sstore.LineType{ScreenId: ids.ScreenId, LineId: lineId, Remove: true}
 		sstore.AddLineUpdate(update, line, nil)
@@ -4442,7 +4442,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 		stateStr = stateStr[0:77] + "..."
 	}
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "state", stateStr))
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("line %d info", line.LineNum),
 		InfoLines: splitLinesForInfo(buf.String()),
@@ -4536,7 +4536,7 @@ func ViewStatCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 		modeStr = modeStr[len(modeStr)-9:]
 	}
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "perms", modeStr))
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("view stat %q", streamPk.Path),
 		InfoLines: splitLinesForInfo(buf.String()),
@@ -4597,7 +4597,7 @@ func ViewTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 		buf.Write(dataPk.Data)
 	}
 	buf.WriteString(fmt.Sprintf("\n\ntotal packets: %d\n", numPackets))
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("view file %q", streamPk.Path),
 		InfoLines: splitLinesForInfo(buf.String()),
@@ -4801,7 +4801,7 @@ func EditTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	if donePk.Error != "" {
 		return nil, fmt.Errorf("/edit:test %s", donePk.Error)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("edit test, wrote %q", writePk.Path),
 	})
@@ -4867,7 +4867,7 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 	if err != nil {
 		return nil, fmt.Errorf("cannot send signal: %v", err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgUpdate("sent line %s signal %s", lineArg, sigArg))
 	return update, nil
 }
@@ -4902,7 +4902,7 @@ func ClientCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 func ClientNotifyUpdateWriterCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	pcloud.ResetUpdateWriterNumFailures()
 	sstore.NotifyUpdateWriter()
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgUpdate("notified update writer"))
 	return update, nil
 }
@@ -4929,7 +4929,7 @@ func ClientAcceptTosCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*clientData)
 	return update, nil
 }
@@ -4978,7 +4978,7 @@ func ClientConfirmFlagCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*clientData)
 
 	return update, nil
@@ -5001,7 +5001,7 @@ func ClientSetGlobalShortcut(ctx context.Context, pk *scpacket.FeCommandPacketTy
 		return nil, fmt.Errorf("error updating client data: %v", err)
 	}
 	clientData.ClientOpts = clientOpts
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*clientData)
 	return update, nil
 }
@@ -5055,7 +5055,7 @@ func ClientSetSidebarCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*clientData)
 
 	return update, nil
@@ -5204,7 +5204,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*clientData)
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("client updated %s", formatStrs(varsUpdated, "and", false)),
@@ -5235,7 +5235,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))
 	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.UnameKernelRelease()))
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("client info"),
 		InfoLines: splitLinesForInfo(buf.String()),
@@ -5326,7 +5326,7 @@ func TelemetryShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("telemetry info"),
 		InfoLines: splitLinesForInfo(buf.String()),

@@ -553,7 +553,7 @@ func (ScreenType) GetType() string {
 	return "screen"
 }
 
-func AddScreenUpdate(update *scbus.ModelUpdate, newScreen *ScreenType) {
+func AddScreenUpdate(update *scbus.ModelUpdatePacketType, newScreen *ScreenType) {
 	if newScreen == nil {
 		return
 	}
@@ -1479,7 +1479,7 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 }
 
 // Sets the in-memory status indicator for the given screenId to the given value and adds it to the ModelUpdate. By default, the active screen will be ignored when updating status. To force a status update for the active screen, set force=true.
-func SetStatusIndicatorLevel_Update(ctx context.Context, update *scbus.ModelUpdate, screenId string, level StatusIndicatorLevel, force bool) error {
+func SetStatusIndicatorLevel_Update(ctx context.Context, update *scbus.ModelUpdatePacketType, screenId string, level StatusIndicatorLevel, force bool) error {
 	var newStatus StatusIndicatorLevel
 	if force {
 		// Force the update and set the new status to the given level, regardless of the current status or the active screen
@@ -1518,7 +1518,7 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *scbus.ModelUpda
 
 // Sets the in-memory status indicator for the given screenId to the given value and pushes the new value to the FE
 func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusIndicatorLevel, force bool) error {
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, level, false)
 	if err != nil {
 		return err
@@ -1528,7 +1528,7 @@ func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusI
 }
 
 // Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and adds it to the ModelUpdate
-func ResetStatusIndicator_Update(update *scbus.ModelUpdate, screenId string) error {
+func ResetStatusIndicator_Update(update *scbus.ModelUpdatePacketType, screenId string) error {
 	// We do not need to set context when resetting the status indicator because we will not need to call the DB
 	return SetStatusIndicatorLevel_Update(context.TODO(), update, screenId, StatusIndicatorLevel_None, true)
 }
@@ -1539,7 +1539,7 @@ func ResetStatusIndicator(screenId string) error {
 	return SetStatusIndicatorLevel(context.TODO(), screenId, StatusIndicatorLevel_None, true)
 }
 
-func IncrementNumRunningCmds_Update(update *scbus.ModelUpdate, screenId string, delta int) {
+func IncrementNumRunningCmds_Update(update *scbus.ModelUpdatePacketType, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
 	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
 	update.AddUpdate(ScreenNumRunningCommandsType{
@@ -1551,7 +1551,7 @@ func IncrementNumRunningCmds_Update(update *scbus.ModelUpdate, screenId string, 
 
 func IncrementNumRunningCmds(screenId string, delta int) {
 	log.Printf("IncrementNumRunningCmds: screenId=%s, delta=%d\n", screenId, delta)
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	IncrementNumRunningCmds_Update(update, screenId, delta)
 	scbus.MainUpdateBus.DoUpdate(update)
 }

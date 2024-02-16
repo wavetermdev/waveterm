@@ -26,7 +26,7 @@ func (LineUpdate) GetType() string {
 	return "line"
 }
 
-func AddLineUpdate(update *scbus.ModelUpdate, newLine *LineType, newCmd *CmdType) {
+func AddLineUpdate(update *scbus.ModelUpdatePacketType, newLine *LineType, newCmd *CmdType) {
 	if newLine == nil {
 		return
 	}
@@ -61,16 +61,16 @@ func (InfoMsgType) GetType() string {
 	return "info"
 }
 
-func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *scbus.ModelUpdate {
+func InfoMsgUpdate(infoMsgFmt string, args ...interface{}) *scbus.ModelUpdatePacketType {
 	msg := fmt.Sprintf(infoMsgFmt, args...)
-	ret := &scbus.ModelUpdate{}
+	ret := scbus.MakeUpdatePacket()
 	newInfoUpdate := InfoMsgType{InfoMsg: msg}
 	ret.AddUpdate(newInfoUpdate)
 	return ret
 }
 
 // only sets InfoError if InfoError is not already set
-func AddInfoMsgUpdateError(update *scbus.ModelUpdate, errStr string) {
+func AddInfoMsgUpdateError(update *scbus.ModelUpdatePacketType, errStr string) {
 	infoUpdates := scbus.GetUpdateItems[InfoMsgType](update)
 
 	if len(infoUpdates) > 0 {
@@ -140,7 +140,7 @@ func (BookmarksUpdate) GetType() string {
 	return "bookmarks"
 }
 
-func AddBookmarksUpdate(update *scbus.ModelUpdate, bookmarks []*BookmarkType, selectedBookmark *string) {
+func AddBookmarksUpdate(update *scbus.ModelUpdatePacketType, bookmarks []*BookmarkType, selectedBookmark *string) {
 	if selectedBookmark == nil {
 		update.AddUpdate(BookmarksUpdate{Bookmarks: bookmarks})
 	} else {

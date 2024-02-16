@@ -564,7 +564,7 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 
 // returns sessionId
 // if sessionName == "", it will be generated
-func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*scbus.ModelUpdate, error) {
+func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*scbus.ModelUpdatePacketType, error) {
 	var newScreen *ScreenType
 	newSessionId := scbase.GenWaveUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -596,7 +596,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 	if err != nil {
 		return nil, err
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*session)
 	update.AddUpdate(*newScreen)
 	if activate {
@@ -688,7 +688,7 @@ func fmtUniqueName(name string, defaultFmtStr string, startIdx int, strs []strin
 	}
 }
 
-func InsertScreen(ctx context.Context, sessionId string, origScreenName string, opts ScreenCreateOpts, activate bool) (*scbus.ModelUpdate, error) {
+func InsertScreen(ctx context.Context, sessionId string, origScreenName string, opts ScreenCreateOpts, activate bool) (*scbus.ModelUpdatePacketType, error) {
 	var newScreenId string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT sessionid FROM session WHERE sessionid = ? AND NOT archived`
@@ -754,7 +754,7 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 	if err != nil {
 		return nil, err
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*newScreen)
 	if activate {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
@@ -876,25 +876,25 @@ func GetCmdByScreenId(ctx context.Context, screenId string, lineId string) (*Cmd
 	})
 }
 
-func UpdateWithClearOpenAICmdInfo(screenId string) *scbus.ModelUpdate {
+func UpdateWithClearOpenAICmdInfo(screenId string) *scbus.ModelUpdatePacketType {
 	ScreenMemClearCmdInfoChat(screenId)
 	return UpdateWithCurrentOpenAICmdInfoChat(screenId, nil)
 }
 
-func UpdateWithAddNewOpenAICmdInfoPacket(ctx context.Context, screenId string, pk *packet.OpenAICmdInfoChatMessage) *scbus.ModelUpdate {
+func UpdateWithAddNewOpenAICmdInfoPacket(ctx context.Context, screenId string, pk *packet.OpenAICmdInfoChatMessage) *scbus.ModelUpdatePacketType {
 	ScreenMemAddCmdInfoChatMessage(screenId, pk)
 	return UpdateWithCurrentOpenAICmdInfoChat(screenId, nil)
 }
 
-func UpdateWithCurrentOpenAICmdInfoChat(screenId string, update *scbus.ModelUpdate) *scbus.ModelUpdate {
+func UpdateWithCurrentOpenAICmdInfoChat(screenId string, update *scbus.ModelUpdatePacketType) *scbus.ModelUpdatePacketType {
 	if update == nil {
-		update = &scbus.ModelUpdate{}
+		update = scbus.MakeUpdatePacket()
 	}
 	update.AddUpdate(OpenAICmdInfoChatUpdate(ScreenMemGetCmdInfoChat(screenId).Messages))
 	return update
 }
 
-func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, messageID int, pk *packet.OpenAICmdInfoChatMessage) (*scbus.ModelUpdate, error) {
+func UpdateWithUpdateOpenAICmdInfoPacket(ctx context.Context, screenId string, messageID int, pk *packet.OpenAICmdInfoChatMessage) (*scbus.ModelUpdatePacketType, error) {
 	err := ScreenMemUpdateCmdInfoChatMessage(screenId, messageID, pk)
 	if err != nil {
 		return nil, err
@@ -916,7 +916,7 @@ func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdP
 	})
 }
 
-func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) (*scbus.ModelUpdate, error) {
+func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) (*scbus.ModelUpdatePacketType, error) {
 	if donePk == nil {
 		return nil, fmt.Errorf("invalid cmddone packet")
 	}
@@ -950,7 +950,7 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 		return nil, fmt.Errorf("cmd data not found for ck[%s]", ck)
 	}
 
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*rtnCmd)
 
 	// Update in-memory screen indicator status
@@ -1099,7 +1099,7 @@ func getNextId(ids []string, delId string) string {
 	return ids[0]
 }
 
-func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*scbus.ModelUpdate, error) {
+func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*scbus.ModelUpdatePacketType, error) {
 	SetActiveSessionId(ctx, sessionId)
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE sessionid = ? AND screenid = ?`
@@ -1117,7 +1117,7 @@ func SwitchScreenById(ctx context.Context, sessionId string, screenId string) (*
 	if err != nil {
 		return nil, err
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(ActiveSessionIdUpdate(sessionId))
 	update.AddUpdate(*bareSession)
 	memState := GetScreenMemState(screenId)
@@ -1191,7 +1191,7 @@ func ArchiveScreen(ctx context.Context, sessionId string, screenId string) (scbu
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrive archived screen: %w", err)
 	}
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*newScreen)
 	if isActive {
 		bareSession, err := GetBareSessionById(ctx, sessionId)
@@ -1218,7 +1218,7 @@ func UnArchiveScreen(ctx context.Context, sessionId string, screenId string) err
 }
 
 // if sessionDel is passed, we do *not* delete the screen directory (session delete will handle that)
-func DeleteScreen(ctx context.Context, screenId string, sessionDel bool, update *scbus.ModelUpdate) (*scbus.ModelUpdate, error) {
+func DeleteScreen(ctx context.Context, screenId string, sessionDel bool, update *scbus.ModelUpdatePacketType) (*scbus.ModelUpdatePacketType, error) {
 	var sessionId string
 	var isActive bool
 	var screenTombstone *ScreenTombstoneType
@@ -1279,7 +1279,7 @@ func DeleteScreen(ctx context.Context, screenId string, sessionDel bool, update 
 		GoDeleteScreenDirs(screenId)
 	}
 	if update == nil {
-		update = &scbus.ModelUpdate{}
+		update = scbus.MakeUpdatePacket()
 	}
 	update.AddUpdate(*screenTombstone)
 	update.AddUpdate(ScreenType{SessionId: sessionId, ScreenId: screenId, Remove: true})
@@ -1519,7 +1519,7 @@ func SetScreenName(ctx context.Context, sessionId string, screenId string, name 
 	return txErr
 }
 
-func ArchiveScreenLines(ctx context.Context, screenId string) (*scbus.ModelUpdate, error) {
+func ArchiveScreenLines(ctx context.Context, screenId string) (*scbus.ModelUpdatePacketType, error) {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT screenid FROM screen WHERE screenid = ?`
 		if !tx.Exists(query, screenId) {
@@ -1538,12 +1538,12 @@ func ArchiveScreenLines(ctx context.Context, screenId string) (*scbus.ModelUpdat
 	if err != nil {
 		return nil, err
 	}
-	ret := &scbus.ModelUpdate{}
+	ret := scbus.MakeUpdatePacket()
 	ret.AddUpdate(*screenLines)
 	return ret, nil
 }
 
-func DeleteScreenLines(ctx context.Context, screenId string) (*scbus.ModelUpdate, error) {
+func DeleteScreenLines(ctx context.Context, screenId string) (*scbus.ModelUpdatePacketType, error) {
 	var lineIds []string
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT lineid FROM line 
@@ -1582,7 +1582,7 @@ func DeleteScreenLines(ctx context.Context, screenId string) (*scbus.ModelUpdate
 		}
 		screenLines.Lines = append(screenLines.Lines, line)
 	}
-	ret := &scbus.ModelUpdate{}
+	ret := scbus.MakeUpdatePacket()
 	ret.AddUpdate(*screen)
 	ret.AddUpdate(*screenLines)
 	return ret, nil
@@ -1636,7 +1636,7 @@ func DeleteSession(ctx context.Context, sessionId string) (scbus.UpdatePacket, e
 	var newActiveSessionId string
 	var screenIds []string
 	var sessionTombstone *SessionTombstoneType
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		bareSession, err := GetBareSessionById(tx.Context(), sessionId)
 		if err != nil {
@@ -1702,7 +1702,7 @@ func fixActiveSessionId(ctx context.Context) (string, error) {
 	return newActiveSessionId, nil
 }
 
-func ArchiveSession(ctx context.Context, sessionId string) (*scbus.ModelUpdate, error) {
+func ArchiveSession(ctx context.Context, sessionId string) (*scbus.ModelUpdatePacketType, error) {
 	if sessionId == "" {
 		return nil, fmt.Errorf("invalid blank sessionid")
 	}
@@ -1726,7 +1726,7 @@ func ArchiveSession(ctx context.Context, sessionId string) (*scbus.ModelUpdate, 
 		return nil, txErr
 	}
 	bareSession, _ := GetBareSessionById(ctx, sessionId)
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	if bareSession != nil {
 		update.AddUpdate(*bareSession)
 	}
@@ -1736,7 +1736,7 @@ func ArchiveSession(ctx context.Context, sessionId string) (*scbus.ModelUpdate, 
 	return update, nil
 }
 
-func UnArchiveSession(ctx context.Context, sessionId string, activate bool) (*scbus.ModelUpdate, error) {
+func UnArchiveSession(ctx context.Context, sessionId string, activate bool) (*scbus.ModelUpdatePacketType, error) {
 	if sessionId == "" {
 		return nil, fmt.Errorf("invalid blank sessionid")
 	}
@@ -1762,7 +1762,7 @@ func UnArchiveSession(ctx context.Context, sessionId string, activate bool) (*sc
 		return nil, txErr
 	}
 	bareSession, _ := GetBareSessionById(ctx, sessionId)
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 
 	if bareSession != nil {
 		update.AddUpdate(*bareSession)

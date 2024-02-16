@@ -70,7 +70,7 @@ func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error
 		return Failure, fmt.Errorf("error getting updated client data: %w", err)
 	}
 
-	update := &scbus.ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(clientData)
 	scbus.MainUpdateBus.DoUpdate(update)
 
