@@ -21,14 +21,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(App, null, null);
     let elem = document.getElementById("app");
     let root = createRoot(elem);
-    let isFontLoaded = document.fonts.check("12px 'JetBrains Mono'");
-    if (isFontLoaded) {
+    document.fonts.ready.then(() => {
         root.render(reactElem);
-    } else {
-        document.fonts.ready.then(() => {
-            root.render(reactElem);
-        });
-    }
+    });
 });
 
 // put some items on the window for debugging
