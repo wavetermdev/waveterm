@@ -31,6 +31,7 @@ let oldConsoleLog = console.log;
 let wasActive = true;
 let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
+let initialClientData: ClientDataType = null;
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -483,6 +484,11 @@ electron.ipcMain.on("wavesrv-status", (event) => {
     return;
 });
 
+electron.ipcMain.on("get-initial-termfontfamily", (event) => {
+    event.returnValue = initialClientData?.feopts?.termfontfamily;
+    return;
+});
+
 electron.ipcMain.on("restart-server", (event) => {
     if (waveSrvProc != null) {
         waveSrvProc.kill();
@@ -673,6 +679,7 @@ async function createMainWindowWrap() {
     let clientData: ClientDataType | null = null;
     try {
         clientData = await getClientDataPoll(1);
+        initialClientData = clientData;
     } catch (e) {
         console.log("error getting wavesrv clientdata", e.toString());
     }

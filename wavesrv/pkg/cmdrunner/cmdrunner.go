@@ -5088,6 +5088,24 @@ func validateOpenAIModel(model string) error {
 	return nil
 }
 
+const MaxFontFamilyLen = 50
+
+var fontfamilyRe = regexp.MustCompile(`^[a-zA-Z0-9_ -]+$`)
+
+func validateFontFamily(fontFamily string) error {
+	if len(fontFamily) == 0 {
+		return nil
+	}
+	if len(fontFamily) > MaxFontFamilyLen {
+		return fmt.Errorf("invalid font family, too long")
+	}
+	m := fontfamilyRe.MatchString(fontFamily)
+	if !m {
+		return fmt.Errorf("invalid font family, must match %q", fontfamilyRe.String())
+	}
+	return nil
+}
+
 func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
@@ -5109,6 +5127,20 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("error updating client feopts: %v", err)
 		}
 		varsUpdated = append(varsUpdated, "termfontsize")
+	}
+	if fontFamilyStr, found := pk.Kwargs["termfontfamily"]; found {
+		newFontFamily := fontFamilyStr
+		err = validateFontFamily(newFontFamily)
+		if err != nil {
+			return nil, err
+		}
+		feOpts := clientData.FeOpts
+		feOpts.TermFontFamily = newFontFamily
+		err = sstore.UpdateClientFeOpts(ctx, feOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client feopts: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "termfontfamily")
 	}
 	if apiToken, found := pk.Kwargs["openaiapitoken"]; found {
 		err = validateOpenAIAPIToken(apiToken)

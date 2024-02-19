@@ -33,47 +33,10 @@ import { Screen } from "./screen";
 import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
 
-type KeyModsType = {
-    meta?: boolean;
-    ctrl?: boolean;
-    alt?: boolean;
-    shift?: boolean;
-};
-
 type SWLinePtr = {
     line: LineType;
     slines: ScreenLines;
     screen: Screen;
-};
-
-type ElectronApi = {
-    getId: () => string;
-    getIsDev: () => boolean;
-    getPlatform: () => string;
-    getAuthKey: () => string;
-    getWaveSrvStatus: () => boolean;
-    restartWaveSrv: () => boolean;
-    reloadWindow: () => void;
-    openExternalLink: (url: string) => void;
-    reregisterGlobalShortcut: (shortcut: string) => void;
-    onTCmd: (callback: (mods: KeyModsType) => void) => void;
-    onICmd: (callback: (mods: KeyModsType) => void) => void;
-    onLCmd: (callback: (mods: KeyModsType) => void) => void;
-    onHCmd: (callback: (mods: KeyModsType) => void) => void;
-    onPCmd: (callback: (mods: KeyModsType) => void) => void;
-    onRCmd: (callback: (mods: KeyModsType) => void) => void;
-    onWCmd: (callback: (mods: KeyModsType) => void) => void;
-    onMenuItemAbout: (callback: () => void) => void;
-    onMetaArrowUp: (callback: () => void) => void;
-    onMetaArrowDown: (callback: () => void) => void;
-    onMetaPageUp: (callback: () => void) => void;
-    onMetaPageDown: (callback: () => void) => void;
-    onBracketCmd: (callback: (event: any, arg: { relative: number }, mods: KeyModsType) => void) => void;
-    onDigitCmd: (callback: (event: any, arg: { digit: number }, mods: KeyModsType) => void) => void;
-    contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;
-    contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
-    onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
-    getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
 };
 
 function getApi(): ElectronApi {
@@ -346,7 +309,12 @@ class Model {
     }
 
     getTermFontFamily(): string {
-        return "JetBrains Mono, monospace";
+        let cdata = this.clientData.get();
+        let ff = cdata?.feopts?.termfontfamily;
+        if (ff == null) {
+            ff = "JetBrains Mono, monospace";
+        }
+        return ff;
     }
 
     getTermFontSize(): number {
@@ -1467,4 +1435,4 @@ class Model {
     }
 }
 
-export { Model };
+export { Model, getApi };

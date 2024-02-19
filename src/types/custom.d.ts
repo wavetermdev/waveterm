@@ -471,6 +471,7 @@ declare global {
         idealSize: WindowSize;
         termOpts: TermOptsType;
         termFontSize: number;
+        termFontFamily: string;
     };
 
     type RendererOptsUpdate = {
@@ -558,6 +559,7 @@ declare global {
 
     type FeOptsType = {
         termfontsize: number;
+        termfontfamily: string;
     };
 
     type ConfirmFlagsType = {
@@ -587,6 +589,13 @@ declare global {
         top: number;
         left: number;
         fullscreen: boolean;
+    };
+
+    type KeyModsType = {
+        meta?: boolean;
+        ctrl?: boolean;
+        alt?: boolean;
+        shift?: boolean;
     };
 
     type ClientDataType = {
@@ -832,6 +841,37 @@ declare global {
         isSidebarOpen(): boolean;
         isLineIdInSidebar(lineId: string): boolean;
         getContainerType(): LineContainerStrs;
+    };
+
+    type ElectronApi = {
+        getId: () => string;
+        getIsDev: () => boolean;
+        getPlatform: () => string;
+        getAuthKey: () => string;
+        getWaveSrvStatus: () => boolean;
+        getInitialTermFontFamily: () => string;
+        restartWaveSrv: () => boolean;
+        reloadWindow: () => void;
+        openExternalLink: (url: string) => void;
+        reregisterGlobalShortcut: (shortcut: string) => void;
+        onTCmd: (callback: (mods: KeyModsType) => void) => void;
+        onICmd: (callback: (mods: KeyModsType) => void) => void;
+        onLCmd: (callback: (mods: KeyModsType) => void) => void;
+        onHCmd: (callback: (mods: KeyModsType) => void) => void;
+        onPCmd: (callback: (mods: KeyModsType) => void) => void;
+        onRCmd: (callback: (mods: KeyModsType) => void) => void;
+        onWCmd: (callback: (mods: KeyModsType) => void) => void;
+        onMenuItemAbout: (callback: () => void) => void;
+        onMetaArrowUp: (callback: () => void) => void;
+        onMetaArrowDown: (callback: () => void) => void;
+        onMetaPageUp: (callback: () => void) => void;
+        onMetaPageDown: (callback: () => void) => void;
+        onBracketCmd: (callback: (event: any, arg: { relative: number }, mods: KeyModsType) => void) => void;
+        onDigitCmd: (callback: (event: any, arg: { digit: number }, mods: KeyModsType) => void) => void;
+        contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;
+        contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
+        onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
+        getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
     };
 }
 

@@ -270,7 +270,6 @@ function loadJetBrainsMonoFont() {
 }
 
 function loadHackFont() {
-    document.documentElement.style.setProperty("--termfontfamily", "Hack, monospace");
     let hackRegular = new FontFace("Hack", "url('public/fonts/hack-regular.woff2')", {
         style: "normal",
         weight: "400",
@@ -311,13 +310,14 @@ function loadFonts(termFont: string) {
     addToFontFaceSet(document.fonts, mmFont);
     faFont.load();
     mmFont.load();
-    if (termFont == "Martian Mono") {
-        // do nothing (already loaded)
-    } else if (termFont == "Hack") {
+    loadJetBrainsMonoFont();
+    if (termFont == "Hack") {
         loadHackFont();
-    } else {
-        loadJetBrainsMonoFont();
     }
+    document.documentElement.style.setProperty(
+        "--termfontfamily",
+        '"' + termFont + '"' + ', "JetBrains Mono", monospace'
+    );
 }
 
 const DOW_STRS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
