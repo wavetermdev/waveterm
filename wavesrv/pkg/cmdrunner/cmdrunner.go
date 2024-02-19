@@ -216,7 +216,7 @@ func init() {
 	registerCmdFn("line:view", LineViewCommand)
 	registerCmdFn("line:set", LineSetCommand)
 	registerCmdFn("line:restart", LineRestartCommand)
-	registerCmdFn("line:min", LineMinCommand)
+	registerCmdFn("line:minimize", LineMinimizeCommand)
 
 	registerCmdFn("client", ClientCommand)
 	registerCmdFn("client:show", ClientShowCommand)
@@ -4333,16 +4333,16 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	return update, nil
 }
 
-func LineMinCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
+func LineMinimizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
 		return nil, err
 	}
 	if len(pk.Args) == 0 {
-		return nil, fmt.Errorf("/line:min requires arguments (line number or id and min value)")
+		return nil, fmt.Errorf("/line:minimize requires arguments (line number or id and min value)")
 	}
 	if len(pk.Args) > 2 {
-		return nil, fmt.Errorf("/line:min only takes up to 2 argument (line number or id and min value)")
+		return nil, fmt.Errorf("/line:minimize only takes up to 2 argument (line number or id and min value)")
 	}
 	lineArg1 := pk.Args[0]
 	lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg1)
@@ -4356,7 +4356,7 @@ func LineMinCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	minVal := resolveBool(lineArg2, true)
 	lineObj, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
 	if err != nil {
-		return nil, fmt.Errorf("/line:min error getting line: %v", err)
+		return nil, fmt.Errorf("/line:minimize error getting line: %v", err)
 	}
 	if lineObj == nil {
 		// no line (which is strange given we checked for it above). just return a nop.
@@ -4375,7 +4375,7 @@ func LineMinCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	}
 	updatedLine, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
 	if err != nil {
-		return nil, fmt.Errorf("/line:min cannot retrieve updated line: %v", err)
+		return nil, fmt.Errorf("/line:minimize cannot retrieve updated line: %v", err)
 	}
 	update := &sstore.ModelUpdate{}
 	sstore.AddLineUpdate(update, updatedLine, nil)

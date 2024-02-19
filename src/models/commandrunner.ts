@@ -77,6 +77,11 @@ class CommandRunner {
         return GlobalModel.submitCommand("line", "delete", [lineArg], { nohist: "1" }, interactive);
     }
 
+    lineMinimize(lineId: string, minimize: boolean, interactive: boolean): Promise<CommandRtnType> {
+        let minimizeStr = minimize ? "1" : "0";
+        return GlobalModel.submitCommand("line", "minimize", [lineId, minimizeStr], { nohist: "1" }, interactive);
+    }
+
     lineRestart(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
         return GlobalModel.submitCommand("line", "restart", [lineArg], { nohist: "1" }, interactive);
     }
