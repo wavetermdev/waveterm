@@ -15,7 +15,7 @@ let VERSION = __WAVETERM_VERSION__;
 // @ts-ignore
 let BUILD = __WAVETERM_BUILD__;
 
-loadFonts();
+loadFonts("JetBrains Mono");
 
 document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(App, null, null);

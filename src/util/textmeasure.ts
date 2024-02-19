@@ -88,4 +88,12 @@ function termHeightFromRows(rows: number, fontSize: number): number {
     return Math.ceil(dr.height * rows) + MagicLayout.TermDescendersHeight;
 }
 
-export { measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows };
+export {
+    measureText,
+    getMonoFontSize,
+    windowWidthToCols,
+    windowHeightToRows,
+    termWidthFromCols,
+    termHeightFromRows,
+    MonoFontSizes,
+};

@@ -248,6 +248,7 @@ function addToFontFaceSet(fontFaceSet: FontFaceSet, fontFace: FontFace) {
 }
 
 function loadJetBrainsMonoFont() {
+    document.documentElement.style.setProperty("--termfontfamily", '"JetBrains Mono", monospace');
     let jbmFontNormal = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-regular.woff2')", {
         style: "normal",
         weight: "400",
@@ -269,6 +270,7 @@ function loadJetBrainsMonoFont() {
 }
 
 function loadHackFont() {
+    document.documentElement.style.setProperty("--termfontfamily", "Hack, monospace");
     let hackRegular = new FontFace("Hack", "url('public/fonts/hack-regular.woff2')", {
         style: "normal",
         weight: "400",
@@ -301,9 +303,17 @@ function loadFonts(termFont: string) {
         style: "normal",
         weight: "normal",
     });
+    let mmFont = new FontFace("Martian Mono", "url(public/fonts/MartianMono-VariableFont_wdth,wght.ttf)", {
+        style: "normal",
+        weight: "normal",
+    });
     addToFontFaceSet(document.fonts, faFont);
+    addToFontFaceSet(document.fonts, mmFont);
     faFont.load();
-    if (termFont == "Hack") {
+    mmFont.load();
+    if (termFont == "Martian Mono") {
+        // do nothing (already loaded)
+    } else if (termFont == "Hack") {
         loadHackFont();
     } else {
         loadJetBrainsMonoFont();
