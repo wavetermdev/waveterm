@@ -190,7 +190,8 @@ class RemotesModel {
             },
             focusHandler: this.setRemoteTermWrapFocus.bind(this),
             isRunning: true,
-            fontSize: this.globalModel.termFontSize.get(),
+            fontSize: this.globalModel.getTermFontSize(),
+            fontFamily: this.globalModel.getTermFontFamily(),
             ptyDataSource: getTermPtyData,
             onUpdateContentHeight: null,
         });

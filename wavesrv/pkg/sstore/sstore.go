@@ -294,7 +294,8 @@ type ClientOptsType struct {
 }
 
 type FeOptsType struct {
-	TermFontSize int `json:"termfontsize,omitempty"`
+	TermFontSize   int    `json:"termfontsize,omitempty"`
+	TermFontFamily string `json:"termfontfamily,omitempty"`
 }
 
 type ReleaseInfoType struct {

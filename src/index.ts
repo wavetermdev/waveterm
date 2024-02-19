@@ -8,6 +8,7 @@ import { sprintf } from "sprintf-js";
 import { App } from "@/app/app";
 import * as DOMPurify from "dompurify";
 import { loadFonts } from "./util/util";
+import * as textmeasure from "./util/textmeasure";
 
 // @ts-ignore
 let VERSION = __WAVETERM_VERSION__;
@@ -30,8 +31,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+// put some items on the window for debugging
 (window as any).mobx = mobx;
 (window as any).sprintf = sprintf;
 (window as any).DOMPurify = DOMPurify;
+(window as any).textmeasure = textmeasure;
 
 console.log("WaveTerm", VERSION, BUILD);

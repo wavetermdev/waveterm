@@ -90,7 +90,8 @@ class SpecialLineContainer {
             focusHandler: null,
             isRunning: cmd.isRunning(),
             customKeyHandler: null,
-            fontSize: this.globalModel.termFontSize.get(),
+            fontSize: this.globalModel.getTermFontSize(),
+            fontFamily: this.globalModel.getTermFontFamily(),
             ptyDataSource: getTermPtyData,
             onUpdateContentHeight: null,
         });

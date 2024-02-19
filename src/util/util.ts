@@ -242,9 +242,13 @@ function incObs(inum: mobx.IObservableValue<number>) {
     })();
 }
 
-// @check:font
-function loadFonts() {
-    const jbmFontNormal = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-regular.woff2')", {
+function addToFontFaceSet(fontFaceSet: FontFaceSet, fontFace: FontFace) {
+    // any cast to work around typing issue
+    (fontFaceSet as any).add(fontFace);
+}
+
+function loadJetBrainsMonoFont() {
+    let jbmFontNormal = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-regular.woff2')", {
         style: "normal",
         weight: "400",
     });
@@ -256,19 +260,54 @@ function loadFonts() {
         style: "normal",
         weight: "700",
     });
-    const faFont = new FontFace("FontAwesome", "url(public/fonts/fontawesome-webfont-4.7.woff2)", {
-        style: "normal",
-        weight: "normal",
-    });
-    const docFonts: any = document.fonts; // work around ts typing issue
-    docFonts.add(jbmFontNormal);
-    docFonts.add(jbmFont200);
-    docFonts.add(jbmFont700);
-    docFonts.add(faFont);
+    addToFontFaceSet(document.fonts, jbmFontNormal);
+    addToFontFaceSet(document.fonts, jbmFont200);
+    addToFontFaceSet(document.fonts, jbmFont700);
     jbmFontNormal.load();
     jbmFont200.load();
     jbmFont700.load();
+}
+
+function loadHackFont() {
+    let hackRegular = new FontFace("Hack", "url('public/fonts/hack-regular.woff2')", {
+        style: "normal",
+        weight: "400",
+    });
+    let hackBold = new FontFace("Hack", "url('public/fonts/hack-bold.woff2')", {
+        style: "normal",
+        weight: "700",
+    });
+    let hackItalic = new FontFace("Hack", "url('public/fonts/hack-italic.woff2')", {
+        style: "italic",
+        weight: "400",
+    });
+    let hackBoldItalic = new FontFace("Hack", "url('public/fonts/hack-bolditalic.woff2')", {
+        style: "italic",
+        weight: "700",
+    });
+    addToFontFaceSet(document.fonts, hackRegular);
+    addToFontFaceSet(document.fonts, hackBold);
+    addToFontFaceSet(document.fonts, hackItalic);
+    addToFontFaceSet(document.fonts, hackBoldItalic);
+    hackRegular.load();
+    hackBold.load();
+    hackItalic.load();
+    hackBoldItalic.load();
+}
+
+// @check:font
+function loadFonts(termFont: string) {
+    let faFont = new FontFace("FontAwesome", "url(public/fonts/fontawesome-webfont-4.7.woff2)", {
+        style: "normal",
+        weight: "normal",
+    });
+    addToFontFaceSet(document.fonts, faFont);
     faFont.load();
+    if (termFont == "Hack") {
+        loadHackFont();
+    } else {
+        loadJetBrainsMonoFont();
+    }
 }
 
 const DOW_STRS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

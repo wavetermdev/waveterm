@@ -31,6 +31,7 @@ type TermWrapOpts = {
     isRunning: boolean;
     customKeyHandler?: (event: any, termWrap: TermWrap) => boolean;
     fontSize: number;
+    fontFamily: string;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
 };
@@ -53,6 +54,7 @@ class TermWrap {
     focusHandler: (focus: boolean) => void;
     isRunning: boolean;
     fontSize: number;
+    fontFamily: string;
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     initializing: boolean;
@@ -67,6 +69,7 @@ class TermWrap {
         this.focusHandler = opts.focusHandler;
         this.isRunning = opts.isRunning;
         this.fontSize = opts.fontSize;
+        this.fontFamily = opts.fontFamily;
         this.ptyDataSource = opts.ptyDataSource;
         this.onUpdateContentHeight = opts.onUpdateContentHeight;
         this.initializing = true;
@@ -88,7 +91,7 @@ class TermWrap {
             rows: this.termSize.rows,
             cols: this.termSize.cols,
             fontSize: opts.fontSize,
-            fontFamily: "JetBrains Mono",
+            fontFamily: opts.fontFamily,
             theme: { foreground: terminal.foreground, background: terminal.background },
         });
         this.terminal.loadAddon(

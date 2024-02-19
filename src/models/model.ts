@@ -345,6 +345,14 @@ class Model {
         return appconst.ProdServerEndpoint;
     }
 
+    getTermFontFamily(): string {
+        return "JetBrains Mono, monospace";
+    }
+
+    getTermFontSize(): number {
+        return this.termFontSize.get();
+    }
+
     setTermFontSize(fontSize: number) {
         if (fontSize < appconst.MinFontSize) {
             fontSize = appconst.MinFontSize;
