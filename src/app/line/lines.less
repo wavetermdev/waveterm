@@ -84,9 +84,12 @@
     }
 
     .meta.meta-line1 {
-        margin-left: 2px;
         color: rgba(@base-color, 0.6) !important;
         font-size: 11px;
+    }
+
+    .meta.meta-line2 {
+        margin-left: -2px;
     }
 
     &.has-rtnstate .terminal-wrapper {
@@ -111,11 +114,6 @@
         .terminal-connectelem {
             overflow-y: hidden;
             overflow-x: hidden;
-        }
-
-        .terminal {
-            margin-right: 8px;
-            padding: 0.25rem;
         }
 
         &.cmd-done .terminal .xterm-cursor {
