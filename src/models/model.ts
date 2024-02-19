@@ -847,6 +847,7 @@ class Model {
             } else if (update.cmd != null) {
                 this.updateCmd(update.cmd);
             } else if (update.screenlines != null) {
+                console.log("update.screenlines", update.screenlines);
                 this.updateScreenLines(update.screenlines, false);
             } else if (update.remote != null) {
                 this.updateRemotes([update.remote]);

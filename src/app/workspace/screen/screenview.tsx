@@ -693,7 +693,9 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         }
         let isActive = screen.isActive();
         let lines = this.determineVisibleLines(win);
+        console.log("lines", lines);
         let renderMode = this.renderMode.get();
+        console.log("screen", screen);
         return (
             <div className="window-view" ref={this.windowViewRef} style={{ width: this.props.width }}>
                 <div
