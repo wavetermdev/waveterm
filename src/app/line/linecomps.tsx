@@ -349,7 +349,7 @@ class LineCmd extends React.Component<
     @boundMethod
     clickMinimize() {
         const { line } = this.props;
-        const isMinimized = line.linestate["prompt:min"];
+        const isMinimized = line.linestate["wave:min"];
         GlobalCommandRunner.lineMinimize(line.lineid, !isMinimized, true);
     }
 
@@ -563,7 +563,7 @@ class LineCmd extends React.Component<
 
     render() {
         const { screen, line, width, staticRender, visible } = this.props;
-        const isMinimized = line.linestate["prompt:min"];
+        const isMinimized = line.linestate["wave:min"];
         const isVisible = visible.get();
         if (staticRender || !isVisible) {
             return this.renderSimple();

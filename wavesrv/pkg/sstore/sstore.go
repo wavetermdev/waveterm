@@ -63,7 +63,7 @@ const (
 const (
 	LineState_Source   = "prompt:source"
 	LineState_File     = "prompt:file"
-	LineState_Min      = "prompt:min"
+	LineState_Min      = "wave:min"
 	LineState_Template = "template"
 	LineState_Mode     = "mode"
 	LineState_Lang     = "lang"
