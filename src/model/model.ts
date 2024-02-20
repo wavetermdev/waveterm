@@ -74,6 +74,7 @@ import {
     windowHeightToRows,
     termWidthFromCols,
     termHeightFromRows,
+    clearMonoFontCache,
 } from "../util/textmeasure";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -203,6 +204,7 @@ type ElectronApi = {
     onPCmd: (callback: (mods: KeyModsType) => void) => void;
     onRCmd: (callback: (mods: KeyModsType) => void) => void;
     onWCmd: (callback: (mods: KeyModsType) => void) => void;
+    onZoomChanged: (callback: () => void) => void;
     onMenuItemAbout: (callback: () => void) => void;
     onMetaArrowUp: (callback: () => void) => void;
     onMetaArrowDown: (callback: () => void) => void;
@@ -304,6 +306,11 @@ class Cmd {
 
     getTermOpts(): TermOptsType {
         return this.data.get().termopts;
+    }
+
+    getTermMaxRows(): number {
+        let termOpts = this.getTermOpts();
+        return termOpts?.rows;
     }
 
     getCmdStr(): string {
@@ -741,7 +748,7 @@ class Screen {
     getMaxContentSize(): WindowSize {
         if (this.lastScreenSize == null) {
             let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
-            let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+            let height = termHeightFromRows(25, GlobalModel.termFontSize.get(), 25);
             return { width, height };
         }
         let winSize = this.lastScreenSize;
@@ -755,7 +762,7 @@ class Screen {
     getIdealContentSize(): WindowSize {
         if (this.lastScreenSize == null) {
             let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
-            let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+            let height = termHeightFromRows(25, GlobalModel.termFontSize.get(), 25);
             return { width, height };
         }
         let winSize = this.lastScreenSize;
@@ -2394,7 +2401,7 @@ class HistoryViewModel {
             } else {
                 this.activeItem.set(hitem.historyid);
                 let width = termWidthFromCols(80, GlobalModel.termFontSize.get());
-                let height = termHeightFromRows(25, GlobalModel.termFontSize.get());
+                let height = termHeightFromRows(25, GlobalModel.termFontSize.get(), 25);
                 this.specialLineContainer = new SpecialLineContainer(
                     this,
                     { width, height },
@@ -3449,6 +3456,9 @@ class Model {
     lineSettingsModal: OV<number> = mobx.observable.box(null, {
         name: "lineSettingsModal",
     }); // linenum
+    devicePixelRatio: OV<number> = mobx.observable.box(window.devicePixelRatio, {
+        name: "devicePixelRatio",
+    });
     remotesModalModel: RemotesModalModel;
     remotesModel: RemotesModel;
 
@@ -3513,6 +3523,7 @@ class Model {
         getApi().onPCmd(this.onPCmd.bind(this));
         getApi().onWCmd(this.onWCmd.bind(this));
         getApi().onRCmd(this.onRCmd.bind(this));
+        getApi().onZoomChanged(this.onZoomChanged.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -3822,6 +3833,29 @@ class Model {
             }
             GlobalCommandRunner.lineRestart(String(selectedLine), true);
         }
+    }
+
+    onZoomChanged(): void {
+        mobx.action(() => {
+            this.devicePixelRatio.set(window.devicePixelRatio);
+            clearMonoFontCache();
+        })();
+    }
+
+    getSelectedTermWrap(): TermWrap {
+        let screen = this.getActiveScreen();
+        if (screen == null) {
+            return null;
+        }
+        let lineNum = screen.selectedLine.get();
+        if (lineNum == null) {
+            return null;
+        }
+        let line = screen.getLineByNum(lineNum);
+        if (line == null) {
+            return null;
+        }
+        return screen.getTermWrap(line.lineid);
     }
 
     clearModals(): boolean {

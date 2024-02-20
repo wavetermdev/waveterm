@@ -16,6 +16,7 @@ import * as textmeasure from "../../../util/textmeasure";
 import "./viewremoteconndetail.less";
 
 const RemotePtyRows = 9;
+const RemotePtyTotalRows = 25;
 const RemotePtyCols = 80;
 
 @mobxReact.observer
@@ -371,7 +372,11 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                                 ref={this.termRef}
                                 data-remoteid={remote.remoteid}
                                 style={{
-                                    height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
+                                    height: textmeasure.termHeightFromRows(
+                                        RemotePtyRows,
+                                        termFontSize,
+                                        RemotePtyTotalRows
+                                    ),
                                     width: termWidth,
                                 }}
                             ></div>
