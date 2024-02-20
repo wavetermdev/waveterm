@@ -410,7 +410,7 @@ class Screen {
     getMaxContentSize(): WindowSize {
         if (this.lastScreenSize == null) {
             let width = termWidthFromCols(80, this.globalModel.termFontSize.get());
-            let height = termHeightFromRows(25, this.globalModel.termFontSize.get());
+            let height = termHeightFromRows(25, this.globalModel.termFontSize.get(), 25);
             return { width, height };
         }
         let winSize = this.lastScreenSize;
@@ -424,7 +424,7 @@ class Screen {
     getIdealContentSize(): WindowSize {
         if (this.lastScreenSize == null) {
             let width = termWidthFromCols(80, this.globalModel.termFontSize.get());
-            let height = termHeightFromRows(25, this.globalModel.termFontSize.get());
+            let height = termHeightFromRows(25, this.globalModel.termFontSize.get(), 25);
             return { width, height };
         }
         let winSize = this.lastScreenSize;
