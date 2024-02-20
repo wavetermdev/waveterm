@@ -4,10 +4,12 @@ import { debounce } from "throttle-debounce";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import { parse } from "path";
-import { For } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import { PacketDataBuffer } from "../core/ptydata";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel } from "../../models";
+import { Modal, TextField, InputDecoration, Tooltip } from "../../app/common/elements";
+import cn from "classnames";
 import * as path from "path";
 
 import "./fileview.less";
@@ -30,6 +32,8 @@ class FileViewRendererModel {
     packetData: PacketDataBuffer;
     curDirectory: string;
     outputPos: number;
+    search: OV<boolean>;
+    searchText: OV<string>;
 
     constructor() {
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
@@ -38,6 +42,8 @@ class FileViewRendererModel {
     initialize(params: T.RendererModelInitializeParams): void {
         this.loading = mobx.observable.box(true, { name: "renderer-loading" });
         this.isDone = mobx.observable.box(params.isDone, { name: "renderer-isDone" });
+        this.search = mobx.observable.box(false, { name: "renderer-search" });
+        this.searchText = mobx.observable.box("", { name: "renderer-searchText" });
         this.context = params.context;
         this.opts = params.opts;
         this.api = params.api;
@@ -51,6 +57,7 @@ class FileViewRendererModel {
         this.lineState = params.lineState;
         this.curDirectory = this.lineState["prompt:file"];
         this.outputPos = 0;
+        setTimeout(() => this.reload(0), 10);
     }
 
     @boundMethod
@@ -59,8 +66,8 @@ class FileViewRendererModel {
         if (packet == null) {
             return;
         }
+        console.log("packet: ", packet.name);
         this.curDirectory = packet.path;
-        this.outputPos = packet.outputpos;
         mobx.action(() => {
             this.dirList.push(packet);
         })();
@@ -87,8 +94,33 @@ class FileViewRendererModel {
         })();
     }
 
+    getPtyData(delayMs: number, callback: any) {
+        let rtnp = this.ptyDataSource(this.context);
+        if (rtnp == null) {
+            console.log("no promise returned from ptyDataSource (openai renderer)", this.context);
+            return;
+        }
+        rtnp.then((ptydata) => {
+            setTimeout(() => {
+                callback(ptydata);
+            }, delayMs);
+        }).catch((e) => {
+            console.log("error loading data", e);
+        });
+    }
+
     reload(delayMs: number): void {
-        return;
+        mobx.action(() => {
+            this.loading.set(true);
+            this.dirList.clear();
+        })();
+        this.getPtyData(delayMs, (ptydata) => {
+            this.packetData.reset();
+            this.receiveData(ptydata.pos, ptydata.data, "reload");
+            mobx.action(() => {
+                this.loading.set(false);
+            })();
+        });
     }
 
     updateHeight(newHeight: number): void {
@@ -99,16 +131,17 @@ class FileViewRendererModel {
     }
 
     changeDirectory(fileName: string) {
-        let newDir = path.join(this.curDirectory, fileName);
-        let prtn = GlobalModel.submitViewDirCommand(newDir, this.rawCmd.lineid, this.rawCmd.screenid, this.outputPos);
+        mobx.action(() => {
+            this.dirList.clear();
+        })();
+        let newDir = GlobalModel.getApi().pathJoin(this.curDirectory, fileName);
+        let prtn = GlobalModel.submitViewDirCommand(newDir, this.rawCmd.lineid, this.rawCmd.screenid);
         prtn.then((rtn) => {
             if (!rtn.success) {
                 console.log("submit view dir command error:", rtn.error);
                 // to do: display this as an error
             }
-            mobx.action(() => {
-                this.dirList.clear();
-            })();
+            this.reload(0);
         });
     }
 
@@ -116,8 +149,10 @@ class FileViewRendererModel {
         let fileName = file.name;
         let cwd = GlobalModel.getCmdByScreenLine(this.rawCmd.screenid, this.rawCmd.lineid).getAsWebCmd().festate["cwd"];
         console.log("cwd: ", cwd);
-        let fileFullPath = path.join(cwd, fileName);
+        let fileFullPath = GlobalModel.getApi().pathJoin(this.curDirectory, fileName);
+        let fileRelativePath = GlobalModel.getApi().pathRelative(cwd, fileFullPath);
         console.log("filefull path: ", fileFullPath);
+        console.log("file relative path: ", fileRelativePath);
         let fileExtSplit = fileName.split(".");
         let fileExt = "";
         if (fileExtSplit.length > 0) {
@@ -129,11 +164,11 @@ class FileViewRendererModel {
             // change directories
             return;
         } else if (fileExt == "jpg" || fileExt == "png") {
-            command = "/imageview " + fileFullPath;
+            command = "/imageview " + fileRelativePath;
         } else if (fileExt == "exe" || fileExt == "sh") {
-            command = "./" + fileFullPath;
+            command = "./" + fileRelativePath;
         } else {
-            command = "codeedit " + fileFullPath;
+            command = "codeedit " + fileRelativePath;
         }
         console.log("command: ", command, "fileExt", fileExt);
         let inputModel = GlobalModel.inputModel;
@@ -166,6 +201,29 @@ class FileViewRendererModel {
         });
     }
 
+    searchButtonClicked(event: any) {
+        mobx.action(() => {
+            this.search.set(true);
+        })();
+    }
+
+    @boundMethod
+    closeSearchModal(): void {
+        console.log("Closing Modal");
+        mobx.action(() => {
+            this.search.set(false);
+            GlobalModel.modalsModel.popModal();
+        })();
+    }
+
+    handleSearch(searchText: string) {
+        console.log("searching: ", searchText);
+        this.closeSearchModal();
+        if (searchText == "") {
+            return;
+        }
+    }
+
     receiveData(pos: number, data: Uint8Array, reason?: string): void {
         this.packetData.receiveData(pos, data, reason);
     }
@@ -173,22 +231,86 @@ class FileViewRendererModel {
 
 @mobxReact.observer
 class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }> {
+    tempSearchField: OV<string>;
+
     constructor(props) {
         super(props);
+        this.tempSearchField = mobx.observable.box("", { name: "fileview-temp-searchfield" });
+    }
+
+    @boundMethod
+    handleSearchSubmit() {
+        mobx.action(() => {
+            let searchText = this.tempSearchField.get();
+            this.props.model.handleSearch(searchText);
+        })();
+    }
+
+    renderSearchModal() {
+        let rendererModel = this.props.model;
+        let searchText = "";
+        return (
+            <If condition={rendererModel.search.get()}>
+                <Modal>
+                    <Modal.Header title="Search Filesystem" onClose={this.props.model.closeSearchModal}></Modal.Header>
+                    <TextField
+                        label="Search Field"
+                        autoFocus={true}
+                        value={this.tempSearchField.get()}
+                        onChange={(value) => {
+                            mobx.action(() => {
+                                this.tempSearchField.set(value);
+                            })();
+                        }}
+                        required={true}
+                        decoration={{
+                            endDecoration: (
+                                <InputDecoration>
+                                    <Tooltip
+                                        message={`The query that you would like to search in the filesystem from this directory`}
+                                        icon={<i className="fa-sharp fa-regular fa-circle-question" />}
+                                    >
+                                        <i className="fa-sharp fa-regular fa-circle-question" />
+                                    </Tooltip>
+                                </InputDecoration>
+                            ),
+                        }}
+                    />
+
+                    <Modal.Footer
+                        onCancel={this.props.model.closeSearchModal}
+                        onOk={this.handleSearchSubmit}
+                        okLabel="Ok"
+                    />
+                </Modal>
+            </If>
+        );
     }
 
     renderFile(file: any, index: number) {
         let keyString = "file-" + index;
         return (
             <div
-                className="file-container"
+                className={cn("file-container", {
+                    "dir-container": file.isdir,
+                })}
                 key={keyString}
                 onClick={(event) => this.props.model.fileWasClicked(event, file)}
             >
                 {file.name}
-                <div className="download-button" onClick={(event) => this.props.model.downloadWasClicked(event, file)}>
-                    <i className="fa-sharp fa-solid fa-download"></i>
-                </div>
+                <If condition={!file.isdir}>
+                    <div
+                        className="download-button"
+                        onClick={(event) => this.props.model.downloadWasClicked(event, file)}
+                    >
+                        <i className="fa-sharp fa-solid fa-download"></i>
+                    </div>
+                </If>
+                <If condition={file.isdir}>
+                    <div className="dir-icon">
+                        <i className="fa-sharp fa-solid fa-folder"></i>
+                    </div>
+                </If>
             </div>
         );
     }
@@ -204,7 +326,8 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
             <div className="fileview-toplevel">
                 <div className="status-bar">
                     {this.props.model.curDirectory}
-                    <div className="search-icon">
+                    {this.renderSearchModal()}
+                    <div className="search-icon" onClick={(event) => this.props.model.searchButtonClicked(event)}>
                         <i className="fa-sharp fa-solid fa-magnifying-glass"></i>
                     </div>
                 </div>

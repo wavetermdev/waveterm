@@ -27,7 +27,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/kevinburke/ssh_config"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
@@ -4884,18 +4883,6 @@ func StatDir(ctx context.Context, ids resolvedIds, path string, fileCallback fun
 	}
 }
 
-func getCurCirFileOffset(ctx context.Context, cmd *sstore.CmdType) (int64, error) {
-	ptyOutFileName, err := scbase.PtyOutFile(cmd.ScreenId, cmd.LineId)
-	if err != nil {
-		return 0, err
-	}
-	stat, err := cirfile.StatCirFile(ctx, ptyOutFileName)
-	if err != nil {
-		return 0, err
-	}
-	return stat.FileOffset, nil
-}
-
 func ViewDirCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sstore.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
@@ -4905,28 +4892,28 @@ func ViewDirCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (ssto
 	if len(pk.Args) > 0 {
 		path = pk.Args[0]
 	}
-	cmd, err := sstore.GetCmdByScreenId(ctx, pk.Kwargs["screenid"], pk.Kwargs["lineid"])
+	lineId := pk.Kwargs["lineid"]
+	screenId := pk.Kwargs["screenid"]
+	cmd, err := sstore.GetCmdByScreenId(ctx, screenId, lineId)
 	if err != nil {
 		return nil, err
 	}
-	go func() {
-		outputPos, err := strconv.ParseInt(pk.Kwargs["outputpos"], 10, 64)
+	outputPty := resolveBool(pk.Kwargs["outputpty"], false)
+	if outputPty {
+		ids.Remote.MShell.ResetDataPos(base.MakeCommandKey(screenId, lineId))
+		err = sstore.ClearCmdPtyFile(ctx, screenId, lineId)
 		if err != nil {
-			log.Printf("err getting output pos: %v", err)
-			return
+			return nil, fmt.Errorf("error clearing existing pty file: %v", err)
 		}
-		log.Printf("got outputpos: %v\n", outputPos)
+
+	}
+	go func() {
+		var outputPos int64
 		statCtx := context.Background()
 		StatDir(statCtx, ids, path, func(statPk *packet.FileStatPacketType, done bool, err error) {
 			if err != nil {
 				log.Printf("got error: %v\n", err)
 			} else {
-				log.Printf("got statpk: %v %v done: %v, offset: %v", statPk.Name, statPk.Error, statPk.Done, outputPos)
-				outBytes, err := packet.MarshalPacket(statPk)
-				if err != nil {
-					log.Printf("err marhaling packets: %v", err)
-				}
-				statPk.OutputPos = outputPos + int64(len(outBytes)) + int64(len(fmt.Sprint(outputPos))-1)
 				err = writePacketToPty(statCtx, cmd, statPk, &outputPos)
 				if err != nil {
 					log.Printf("err writing packet to pty: %v\n", err)
@@ -4967,11 +4954,6 @@ func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sst
 			if err != nil {
 				log.Printf("got error: %v\n", err)
 			} else {
-				outBytes, err := packet.MarshalPacket(statPk)
-				if err != nil {
-					log.Printf("err marhaling packets: %v", err)
-				}
-				statPk.OutputPos = outputPos + int64(len(outBytes)) + int64(len(fmt.Sprint(outputPos))-1)
 				writePacketToPty(statCtx, cmd, statPk, &outputPos)
 				log.Printf("got statpk: %v %v done: %v, offset: %v", statPk.Name, statPk.Error, statPk.Done, outputPos)
 			}

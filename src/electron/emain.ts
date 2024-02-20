@@ -450,6 +450,16 @@ app.on("window-all-closed", () => {
     if (unamePlatform !== "darwin") app.quit();
 });
 
+electron.ipcMain.on("path-relative", (event, fromPath, toPath) => {
+    event.returnValue = path.relative(fromPath, toPath);
+    return;
+});
+
+electron.ipcMain.on("path-join", (event, basePath, newPath) => {
+    event.returnValue = path.join(basePath, newPath);
+    return;
+});
+
 electron.ipcMain.on("get-id", (event) => {
     event.returnValue = instanceId + ":" + event.processId;
     return;

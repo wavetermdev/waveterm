@@ -102,6 +102,8 @@ type ElectronApi = {
     contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
     onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
     getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
+    pathRelative: (fromPath: string, toPath: string) => string;
+    pathJoin: (basePath: string, newPath: string) => string;
 };
 
 function getApi(): ElectronApi {
@@ -256,6 +258,10 @@ class Model {
         this.platform = getApi().getPlatform();
         setKeyUtilPlatform(this.platform);
         return this.platform;
+    }
+
+    getApi() {
+        return getApi();
     }
 
     testGlobalModel() {
@@ -1150,7 +1156,7 @@ class Model {
         return this.submitCommandPacket(pk, interactive);
     }
 
-    submitViewDirCommand(newDir: string, lineId: string, screenId: string, outputPos: number) {
+    submitViewDirCommand(newDir: string, lineId: string, screenId: string) {
         let commandStr = "/view:dir " + newDir;
         let interactive = false;
         let pk: FeCmdPacketType = {
@@ -1166,7 +1172,6 @@ class Model {
         pk.kwargs["outputpty"] = "1";
         pk.kwargs["lineid"] = lineId;
         pk.kwargs["screenid"] = screenId;
-        pk.kwargs["outputpos"] = outputPos.toString();
         return this.submitCommandPacket(pk, interactive);
     }
 
