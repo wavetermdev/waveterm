@@ -88,6 +88,11 @@ class Cmd {
         return this.data.get().termopts;
     }
 
+    getTermMaxRows(): number {
+        let termOpts = this.getTermOpts();
+        return termOpts?.rows;
+    }
+
     getCmdStr(): string {
         return this.data.get().cmdstr;
     }

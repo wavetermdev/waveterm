@@ -370,7 +370,11 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                                 ref={this.termRef}
                                 data-remoteid={remote.remoteid}
                                 style={{
-                                    height: textmeasure.termHeightFromRows(appconst.RemotePtyRows, termFontSize),
+                                    height: textmeasure.termHeightFromRows(
+                                        appconst.RemotePtyRows,
+                                        termFontSize,
+                                        appconst.RemotePtyTotalRows
+                                    ),
                                     width: termWidth,
                                 }}
                             ></div>
