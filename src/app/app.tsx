@@ -75,8 +75,6 @@ class App extends React.Component<{}, {}> {
         let platform = GlobalModel.getPlatform();
         let clientData = GlobalModel.clientData.get();
 
-        console.log("clientData", clientData);
-
         // Previously, this is done in sidebar.tsx but it causes flicker when clientData is null cos screen-view shifts around.
         // Doing it here fixes the flicker cos app is not rendered until clientData is populated.
         if (clientData == null) {
