@@ -115,7 +115,7 @@ class HistoryViewModel {
             } else {
                 this.activeItem.set(hitem.historyid);
                 let width = termWidthFromCols(80, this.globalModel.termFontSize.get());
-                let height = termHeightFromRows(25, this.globalModel.termFontSize.get());
+                let height = termHeightFromRows(25, this.globalModel.termFontSize.get(), 25);
                 this.specialLineContainer = new SpecialLineContainer(
                     this,
                     { width, height },
@@ -149,7 +149,7 @@ class HistoryViewModel {
     }
 
     _deleteSelected(): void {
-        let lineIds = Array.from(this.selectedItems.keys());
+        let lineIds: string[] = Array.from(this.selectedItems.keys());
         let prtn = GlobalCommandRunner.historyPurgeLines(lineIds);
         prtn.then((result: CommandRtnType) => {
             if (!result.success) {

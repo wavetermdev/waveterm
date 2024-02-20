@@ -32,48 +32,13 @@ import { MainSidebarModel } from "./mainsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
-
-type KeyModsType = {
-    meta?: boolean;
-    ctrl?: boolean;
-    alt?: boolean;
-    shift?: boolean;
-};
+import { clearMonoFontCache } from "@/util/textmeasure";
+import type { TermWrap } from "@/plugins/terminal/term";
 
 type SWLinePtr = {
     line: LineType;
     slines: ScreenLines;
     screen: Screen;
-};
-
-type ElectronApi = {
-    getId: () => string;
-    getIsDev: () => boolean;
-    getPlatform: () => string;
-    getAuthKey: () => string;
-    getWaveSrvStatus: () => boolean;
-    restartWaveSrv: () => boolean;
-    reloadWindow: () => void;
-    openExternalLink: (url: string) => void;
-    reregisterGlobalShortcut: (shortcut: string) => void;
-    onTCmd: (callback: (mods: KeyModsType) => void) => void;
-    onICmd: (callback: (mods: KeyModsType) => void) => void;
-    onLCmd: (callback: (mods: KeyModsType) => void) => void;
-    onHCmd: (callback: (mods: KeyModsType) => void) => void;
-    onPCmd: (callback: (mods: KeyModsType) => void) => void;
-    onRCmd: (callback: (mods: KeyModsType) => void) => void;
-    onWCmd: (callback: (mods: KeyModsType) => void) => void;
-    onMenuItemAbout: (callback: () => void) => void;
-    onMetaArrowUp: (callback: () => void) => void;
-    onMetaArrowDown: (callback: () => void) => void;
-    onMetaPageUp: (callback: () => void) => void;
-    onMetaPageDown: (callback: () => void) => void;
-    onBracketCmd: (callback: (event: any, arg: { relative: number }, mods: KeyModsType) => void) => void;
-    onDigitCmd: (callback: (event: any, arg: { digit: number }, mods: KeyModsType) => void) => void;
-    contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;
-    contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
-    onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
-    getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
 };
 
 function getApi(): ElectronApi {
@@ -133,7 +98,10 @@ class Model {
     });
     lineSettingsModal: OV<number> = mobx.observable.box(null, {
         name: "lineSettingsModal",
-    }); // linenum
+    });
+    devicePixelRatio: OV<number> = mobx.observable.box(window.devicePixelRatio, {
+        name: "devicePixelRatio",
+    });
     remotesModel: RemotesModel;
 
     inputModel: InputModel;
@@ -196,6 +164,7 @@ class Model {
         getApi().onPCmd(this.onPCmd.bind(this));
         getApi().onWCmd(this.onWCmd.bind(this));
         getApi().onRCmd(this.onRCmd.bind(this));
+        getApi().onZoomChanged(this.onZoomChanged.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -512,6 +481,30 @@ class Model {
             }
             GlobalCommandRunner.lineRestart(String(selectedLine), true);
         }
+    }
+
+    onZoomChanged(): void {
+        mobx.action(() => {
+            this.devicePixelRatio.set(window.devicePixelRatio);
+            clearMonoFontCache();
+        })();
+    }
+
+    // for debuggin
+    getSelectedTermWrap(): TermWrap {
+        let screen = this.getActiveScreen();
+        if (screen == null) {
+            return null;
+        }
+        let lineNum = screen.selectedLine.get();
+        if (lineNum == null) {
+            return null;
+        }
+        let line = screen.getLineByNum(lineNum);
+        if (line == null) {
+            return null;
+        }
+        return screen.getTermWrap(line.lineid);
     }
 
     clearModals(): boolean {

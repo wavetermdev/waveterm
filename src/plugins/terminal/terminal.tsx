@@ -148,7 +148,7 @@ class TerminalRenderer extends React.Component<
             .get();
         let cmd = screen.getCmd(line); // will not be null
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-        let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+        let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get(), cmd.getTermMaxRows());
         if (usedRows === 0) {
             termHeight = 0;
         }
@@ -164,6 +164,7 @@ class TerminalRenderer extends React.Component<
                     { "zero-height": termHeight == 0 },
                     { collapsed: collapsed }
                 )}
+                data-usedrows={usedRows}
             >
                 <If condition={!isFocused}>
                     <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>

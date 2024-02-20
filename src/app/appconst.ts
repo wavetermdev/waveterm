@@ -18,7 +18,8 @@ export const ConfirmKey_HideShellPrompt = "hideshellprompt";
 
 export const NoStrPos = -1;
 
-export const RemotePtyRows = 8; // also in main.tsx
+export const RemotePtyRows = 8;
+export const RemotePtyTotalRows = 25;
 export const RemotePtyCols = 80;
 export const ProdServerEndpoint = "http://127.0.0.1:1619";
 export const ProdServerWsEndpoint = "ws://127.0.0.1:1623";
