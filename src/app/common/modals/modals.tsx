@@ -49,6 +49,7 @@ type OV<V> = mobx.IObservableValue<V>;
 type OArr<V> = mobx.IObservableArray<V>;
 
 const RemotePtyRows = 9;
+const RemotePtyTotalRows = 25;
 const RemotePtyCols = 80;
 const NumOfLines = 50;
 const PasswordUnchangedSentinel = "--unchanged--";
@@ -1184,7 +1185,11 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                                 ref={this.termRef}
                                 data-remoteid={remote.remoteid}
                                 style={{
-                                    height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
+                                    height: textmeasure.termHeightFromRows(
+                                        RemotePtyRows,
+                                        termFontSize,
+                                        RemotePtyTotalRows
+                                    ),
                                     width: termWidth,
                                 }}
                             ></div>

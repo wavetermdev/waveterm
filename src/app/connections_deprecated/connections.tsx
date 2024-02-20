@@ -29,6 +29,7 @@ type OArr<V> = mobx.IObservableArray<V>;
 type OMap<K, V> = mobx.ObservableMap<K, V>;
 
 const RemotePtyRows = 8;
+const RemotePtyTotalRows = 25;
 const RemotePtyCols = 80;
 const PasswordUnchangedSentinel = "--unchanged--";
 
@@ -1049,7 +1050,7 @@ class RemoteDetailView extends React.Component<{ model: RemotesModalModel; remot
                         ref={this.termRef}
                         data-remoteid={remote.remoteid}
                         style={{
-                            height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
+                            height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize, RemotePtyTotalRows),
                             width: termWidth,
                         }}
                     ></div>

@@ -10,7 +10,16 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
-import { GlobalCommandRunner, TabColors, TabIcons, ForwardLineContainer, GlobalModel, ScreenLines, Screen, Session } from "../../../model/model";
+import {
+    GlobalCommandRunner,
+    TabColors,
+    TabIcons,
+    ForwardLineContainer,
+    GlobalModel,
+    ScreenLines,
+    Screen,
+    Session,
+} from "../../../model/model";
 import type { LineType, RenderModeType, LineFactoryProps } from "../../../types/types";
 import * as T from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -114,6 +123,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             return <div className="screen-view" ref={this.screenViewRef}></div>;
         }
         let fontSize = GlobalModel.termFontSize.get();
+        let dprStr = sprintf("%0.3f", GlobalModel.devicePixelRatio.get());
         let viewOpts = screen.viewOpts.get();
         let hasSidebar = viewOpts?.sidebar?.open;
         let winWidth = "100%";
@@ -150,7 +160,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         return (
             <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
                 <ScreenWindowView
-                    key={screen.screenId + ":" + fontSize}
+                    key={screen.screenId + ":" + fontSize + ":" + dprStr}
                     session={session}
                     screen={screen}
                     width={winWidth}

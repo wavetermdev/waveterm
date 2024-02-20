@@ -170,6 +170,7 @@ function readAuthKey() {
     return authKeyStr.trim();
 }
 
+let cmdOrAlt = process.platform === "darwin" ? "Cmd" : "Alt";
 let menuTemplate = [
     {
         role: "appMenu",
@@ -198,9 +199,41 @@ let menuTemplate = [
             { role: "reload", accelerator: "Option+R" },
             { role: "toggleDevTools" },
             { type: "separator" },
-            { role: "resetZoom" },
-            { role: "zoomIn" },
-            { role: "zoomOut" },
+            {
+                label: "Actual Size",
+                accelerator: cmdOrAlt + "+0",
+                click: () => {
+                    if (MainWindow == null) {
+                        return;
+                    }
+                    MainWindow.webContents.setZoomFactor(1);
+                    MainWindow.webContents.send("zoom-changed");
+                },
+            },
+            {
+                label: "Zoom In",
+                accelerator: cmdOrAlt + "+Plus",
+                click: () => {
+                    if (MainWindow == null) {
+                        return;
+                    }
+                    const zoomFactor = MainWindow.webContents.getZoomFactor();
+                    MainWindow.webContents.setZoomFactor(zoomFactor * 1.1);
+                    MainWindow.webContents.send("zoom-changed");
+                },
+            },
+            {
+                label: "Zoom Out",
+                accelerator: cmdOrAlt + "+-",
+                click: () => {
+                    if (MainWindow == null) {
+                        return;
+                    }
+                    const zoomFactor = MainWindow.webContents.getZoomFactor();
+                    MainWindow.webContents.setZoomFactor(zoomFactor / 1.1);
+                    MainWindow.webContents.send("zoom-changed");
+                },
+            },
             { type: "separator" },
             { role: "togglefullscreen" },
         ],
@@ -366,6 +399,9 @@ function createMainWindow(clientData) {
     });
     win.on("close", () => {
         MainWindow = null;
+    });
+    win.webContents.on("zoom-changed", (e) => {
+        win.webContents.send("zoom-changed");
     });
     win.webContents.setWindowOpenHandler(({ url, frameName }) => {
         if (url.startsWith("https://docs.waveterm.dev/")) {

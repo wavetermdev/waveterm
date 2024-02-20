@@ -399,7 +399,7 @@ class LineCmd extends React.Component<
         let height = 45 + 24; // height of zero height terminal
         const usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         if (usedRows > 0) {
-            height = 48 + 24 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+            height = 48 + 24 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get(), cmd.getTermMaxRows());
         }
         return height;
     }

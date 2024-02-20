@@ -30,6 +30,10 @@ function getMonoFontSize(fontSize: number): { height: number; width: number } {
     return size;
 }
 
+function clearMonoFontCache(): void {
+    MonoFontSizes = [];
+}
+
 function measureText(
     text: string,
     textOpts?: { pre?: boolean; mono?: boolean; fontSize?: number | string }
@@ -57,8 +61,9 @@ function measureText(
         throw new Error("cannot measure text, no #measure div");
     }
     measureDiv.replaceChildren(textElem);
-    let rect = textElem.getBoundingClientRect();
-    return { width: rect.width, height: Math.ceil(rect.height) };
+    let height = textElem.offsetHeight;
+    let width = textElem.offsetWidth;
+    return { width: width, height: Math.ceil(height) };
 }
 
 function windowWidthToCols(width: number, fontSize: number): number {
@@ -82,10 +87,27 @@ function termWidthFromCols(cols: number, fontSize: number): number {
     return Math.ceil(dr.width * cols) + MagicLayout.TermWidthBuffer;
 }
 
-function termHeightFromRows(rows: number, fontSize: number): number {
+// we need to match the xtermjs calculation in CharSizeService.ts and DomRenderer.ts
+// it does some crazy rounding depending on the value of window.devicePixelRatio
+// works out to `realHeight = round(ceil(height * dpr) * rows / dpr) / rows`
+// their calculation is based off the "totalRows" (so that argument has been added)
+function termHeightFromRows(rows: number, fontSize: number, totalRows: number): number {
     let dr = getMonoFontSize(fontSize);
-    // TODO: replace the TermDescendersHeight with some calculation based on termFontSize.
-    return Math.ceil(dr.height * rows) + MagicLayout.TermDescendersHeight;
+    const dpr = window.devicePixelRatio;
+    if (totalRows == null || totalRows == 0) {
+        totalRows = rows > 25 ? rows : 25;
+    }
+    let realHeight = Math.round((Math.ceil(dr.height * dpr) * totalRows) / dpr) / totalRows;
+    return Math.ceil(realHeight * rows);
 }
 
-export { measureText, getMonoFontSize, windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows };
+export {
+    measureText,
+    getMonoFontSize,
+    windowWidthToCols,
+    windowHeightToRows,
+    termWidthFromCols,
+    termHeightFromRows,
+    clearMonoFontCache,
+    MonoFontSizes,
+};
