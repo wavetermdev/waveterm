@@ -1190,7 +1190,6 @@ class Model {
         pk.kwargs["outputpty"] = "1";
         pk.kwargs["lineid"] = lineId;
         pk.kwargs["screenid"] = screenId;
-        pk.kwargs["outputpos"] = outputPos.toString();
         return this.submitCommandPacket(pk, interactive);
     }
 

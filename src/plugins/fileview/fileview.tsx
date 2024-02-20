@@ -27,6 +27,7 @@ class FileViewRendererModel {
     rawCmd: T.WebCmd;
     loading: OV<boolean>;
     isDone: OV<boolean>;
+    active: OV<boolean>;
     dirList: mobx.IObservableArray<any>;
     version: OV<number>;
     packetData: PacketDataBuffer;
@@ -42,6 +43,7 @@ class FileViewRendererModel {
     initialize(params: T.RendererModelInitializeParams): void {
         this.loading = mobx.observable.box(true, { name: "renderer-loading" });
         this.isDone = mobx.observable.box(params.isDone, { name: "renderer-isDone" });
+        this.active = mobx.observable.box(false, { name: "renderer-active" });
         this.search = mobx.observable.box(false, { name: "renderer-search" });
         this.searchText = mobx.observable.box("", { name: "renderer-searchText" });
         this.context = params.context;
@@ -56,7 +58,6 @@ class FileViewRendererModel {
         this.packetData = new PacketDataBuffer(this.packetCallback);
         this.lineState = params.lineState;
         this.curDirectory = this.lineState["prompt:file"];
-        this.outputPos = 0;
         setTimeout(() => this.reload(0), 10);
     }
 
@@ -70,6 +71,7 @@ class FileViewRendererModel {
         this.curDirectory = packet.path;
         mobx.action(() => {
             this.dirList.push(packet);
+            this.active.set(true);
         })();
     }
 
@@ -110,11 +112,14 @@ class FileViewRendererModel {
     }
 
     reload(delayMs: number): void {
+        if (!this.active.get()) {
+            return;
+        }
         mobx.action(() => {
             this.loading.set(true);
-            this.dirList.clear();
         })();
         this.getPtyData(delayMs, (ptydata) => {
+            this.dirList.clear();
             this.packetData.reset();
             this.receiveData(ptydata.pos, ptydata.data, "reload");
             mobx.action(() => {
@@ -181,17 +186,14 @@ class FileViewRendererModel {
         console.log("download was clicked", file);
         let fileName = file.name;
         let cwd = this.rawCmd.festate["cwd"];
-        let curRemoteName = this.rawCmd.remote.name;
+        let curRemoteName = this.rawCmd.remote.alias;
         console.log("cwd: ", cwd);
+        console.log("cur remote name:", curRemoteName);
         let fileFullPath = path.join(cwd, fileName);
         console.log("filefull path: ", fileFullPath);
         let commandStr = "/copyfile [" + curRemoteName + "]:" + fileFullPath + " ~/";
-        let prtn = GlobalModel.submitPtyOutCommand(
-            commandStr,
-            this.rawCmd.lineid,
-            this.rawCmd.screenid,
-            this.outputPos
-        );
+        console.log("commandStr: ", commandStr);
+        let prtn = GlobalModel.submitPtyOutCommand(commandStr, this.rawCmd.lineid, this.rawCmd.screenid);
         prtn.then((rtn) => {
             if (!rtn.success) {
                 console.log("submit view dir command error:", rtn.error);
@@ -315,6 +317,14 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
         );
     }
 
+    renderInactive() {
+        return (
+            <div className="fileview-toplevel">
+                <div className="status-bar">Inactive: run fileview again to view files</div>
+            </div>
+        );
+    }
+
     render() {
         let model: FileViewRendererModel = this.props.model;
         let dirList = model.dirList;
@@ -322,6 +332,10 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
         let index: number;
         let columnMinSize = 6;
         let columnWidth = Math.min(dirList.length / columnMinSize, 4);
+        let active = model.active.get();
+        if (!active) {
+            return this.renderInactive();
+        }
         return (
             <div className="fileview-toplevel">
                 <div className="status-bar">
