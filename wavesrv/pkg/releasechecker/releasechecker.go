@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package releasechecker
 
 import (
@@ -8,6 +11,7 @@ import (
 	"golang.org/x/mod/semver"
 
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
@@ -66,9 +70,9 @@ func CheckNewRelease(ctx context.Context, force bool) (ReleaseCheckResult, error
 		return Failure, fmt.Errorf("error getting updated client data: %w", err)
 	}
 
-	update := &sstore.ModelUpdate{}
-	sstore.AddUpdate(update, *clientData)
-	sstore.MainBus.SendUpdate(update)
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(clientData)
+	scbus.MainUpdateBus.DoUpdate(update)
 
 	return Success, nil
 }

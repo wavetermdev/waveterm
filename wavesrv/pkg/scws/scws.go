@@ -15,8 +15,10 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/mapqueue"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
 
@@ -35,8 +37,8 @@ type WSState struct {
 	ClientId      string
 	ConnectTime   time.Time
 	Shell         *wsshell.WSShell
-	UpdateCh      chan interface{}
-	UpdateQueue   []interface{}
+	UpdateCh      chan scbus.UpdatePacket
+	UpdateQueue   []any
 	Authenticated bool
 	AuthKey       string
 
@@ -71,7 +73,7 @@ func (ws *WSState) GetShell() *wsshell.WSShell {
 	return ws.Shell
 }
 
-func (ws *WSState) WriteUpdate(update interface{}) error {
+func (ws *WSState) WriteUpdate(update any) error {
 	shell := ws.GetShell()
 	if shell == nil {
 		return fmt.Errorf("cannot write update, empty shell")
@@ -103,26 +105,21 @@ func (ws *WSState) WatchScreen(sessionId string, screenId string) {
 	}
 	ws.SessionId = sessionId
 	ws.ScreenId = screenId
-	ws.UpdateCh = sstore.MainBus.RegisterChannel(ws.ClientId, ws.ScreenId)
+	ws.UpdateCh = scbus.MainUpdateBus.RegisterChannel(ws.ClientId, &scbus.UpdateChannel{ScreenId: ws.ScreenId})
+	log.Printf("[ws] watch screen clientid=%s sessionid=%s screenid=%s, updateCh=%v\n", ws.ClientId, sessionId, screenId, ws.UpdateCh)
 	go ws.RunUpdates(ws.UpdateCh)
 }
 
 func (ws *WSState) UnWatchScreen() {
 	ws.Lock.Lock()
 	defer ws.Lock.Unlock()
-	sstore.MainBus.UnregisterChannel(ws.ClientId)
+	scbus.MainUpdateBus.UnregisterChannel(ws.ClientId)
 	ws.SessionId = ""
 	ws.ScreenId = ""
 	log.Printf("[ws] unwatch screen clientid=%s\n", ws.ClientId)
 }
 
-func (ws *WSState) getUpdateCh() chan interface{} {
-	ws.Lock.Lock()
-	defer ws.Lock.Unlock()
-	return ws.UpdateCh
-}
-
-func (ws *WSState) RunUpdates(updateCh chan interface{}) {
+func (ws *WSState) RunUpdates(updateCh chan scbus.UpdatePacket) {
 	if updateCh == nil {
 		panic("invalid nil updateCh passed to RunUpdates")
 	}
@@ -141,7 +138,6 @@ func writeJsonProtected(shell *wsshell.WSShell, update any) {
 			return
 		}
 		log.Printf("[error] in scws RunUpdates WriteJson: %v\n", r)
-		return
 	}()
 	shell.WriteJson(update)
 }
@@ -155,7 +151,6 @@ func (ws *WSState) ReplaceShell(shell *wsshell.WSShell) {
 	}
 	ws.Shell.Conn.Close()
 	ws.Shell = shell
-	return
 }
 
 // returns all state required to display current UI
@@ -170,8 +165,8 @@ func (ws *WSState) handleConnection() error {
 	connectUpdate.Remotes = remotes
 	// restore status indicators
 	connectUpdate.ScreenStatusIndicators, connectUpdate.ScreenNumRunningCommands = sstore.GetCurrentIndicatorState()
-	mu := &sstore.ModelUpdate{}
-	sstore.AddUpdate(mu, *connectUpdate)
+	mu := scbus.MakeUpdatePacket()
+	mu.AddUpdate(*connectUpdate)
 	err = ws.Shell.WriteJson(mu)
 	if err != nil {
 		return err
@@ -282,11 +277,11 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		sstore.ScreenMemSetCmdInputText(cmdInputPk.ScreenId, cmdInputPk.Text, cmdInputPk.SeqNum)
 		return nil
 	}
-	if pk.GetType() == scpacket.UserInputResponsePacketStr {
-		userInputRespPk := pk.(*scpacket.UserInputResponsePacketType)
-		uich, ok := sstore.MainBus.GetUserInputChannel(userInputRespPk.RequestId)
+	if pk.GetType() == userinput.UserInputResponsePacketStr {
+		userInputRespPk := pk.(*userinput.UserInputResponsePacketType)
+		uich, ok := scbus.MainRpcBus.GetRpcChannel(userInputRespPk.RequestId)
 		if !ok {
-			return fmt.Errorf("received User Input Response with invalid Id (%s): %v\n", userInputRespPk.RequestId, err)
+			return fmt.Errorf("received User Input Response with invalid Id (%s): %v", userInputRespPk.RequestId, err)
 		}
 		select {
 		case uich <- userInputRespPk:
@@ -302,7 +297,7 @@ func (ws *WSState) RunWSRead() {
 	if shell == nil {
 		return
 	}
-	shell.WriteJson(map[string]interface{}{"type": "hello"}) // let client know we accepted this connection, ignore error
+	shell.WriteJson(map[string]any{"type": "hello"}) // let client know we accepted this connection, ignore error
 	for msgBytes := range shell.ReadChan {
 		err := ws.processMessage(msgBytes)
 		if err != nil {

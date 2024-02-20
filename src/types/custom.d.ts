@@ -338,6 +338,10 @@ declare global {
     };
 
     type ModelUpdateType = {
+        items?: ModelUpdateItemType[];
+    };
+
+    type ModelUpdateItemType = {
         interactive: boolean;
         session?: SessionDataType;
         activesessionid?: string;
@@ -440,7 +444,17 @@ declare global {
         showCut?: boolean;
     };
 
-    type UpdateMessage = PtyDataUpdateType | ModelUpdateType[];
+    type ModelUpdatePacket = {
+        type: "model";
+        data: ModelUpdateItemType[];
+    };
+
+    type PtyDataUpdatePacket = {
+        type: "pty";
+        data: PtyDataUpdateType;
+    };
+
+    type UpdatePacket = ModelUpdatePacket | PtyDataUpdatePacket;
 
     type RendererContext = {
         screenId: string;

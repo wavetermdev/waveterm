@@ -33,6 +33,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
@@ -804,6 +805,8 @@ func doShutdown(reason string) {
 func main() {
 	scbase.BuildTime = BuildTime
 	base.ProcessType = base.ProcessType_WaveSrv
+	wlog.GlobalSubsystem = base.ProcessType_WaveSrv
+	wlog.LogConsumer = wlog.LogWithLogger
 
 	if len(os.Args) >= 2 && os.Args[1] == "--test" {
 		log.Printf("running test fn\n")

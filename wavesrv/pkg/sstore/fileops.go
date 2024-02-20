@@ -18,6 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/cirfile"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
 
 func CreateCmdPtyFile(ctx context.Context, screenId string, lineId string, maxSize int64) error {
@@ -61,7 +62,7 @@ func ClearCmdPtyFile(ctx context.Context, screenId string, lineId string) error 
 	return nil
 }
 
-func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, data []byte, pos int64) (*PtyDataUpdate, error) {
+func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, data []byte, pos int64) (*scbus.PtyDataUpdatePacketType, error) {
 	if screenId == "" {
 		return nil, fmt.Errorf("cannot append to PtyBlob, screenid is not set")
 	}
@@ -82,13 +83,13 @@ func AppendToCmdPtyBlob(ctx context.Context, screenId string, lineId string, dat
 		return nil, err
 	}
 	data64 := base64.StdEncoding.EncodeToString(data)
-	update := &PtyDataUpdate{
+	update := scbus.MakePtyDataUpdate(&scbus.PtyDataUpdate{
 		ScreenId:   screenId,
 		LineId:     lineId,
 		PtyPos:     pos,
 		PtyData64:  data64,
 		PtyDataLen: int64(len(data)),
-	}
+	})
 	err = MaybeInsertPtyPosUpdate(ctx, screenId, lineId)
 	if err != nil {
 		// just log
