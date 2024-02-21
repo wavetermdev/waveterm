@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="./assets/wave-logo_horizontal-coloronblack.svg">
-    <source media="(prefers-color-scheme: light)" srcset="./assets/wave-logo_horizontal-coloronwhite.svg">
-    <img alt="Wave Terminal Logo" src="./assets/wave-logo_horizontal-coloronwhite.svg" width="352" height="59" style="max-width: 100%;">
+    <source media="(prefers-color-scheme: dark)" srcset="./assets/waveterm-logo-horizontal-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="./assets/waveterm-logo-horizontal-light.png">
+    <img alt="Wave Terminal Logo" src="./assets/waveterm-logo-horizontal-light.png" width="240" height="80" style="max-width: 100%;">
   </picture>
   <br/>
 </p>
