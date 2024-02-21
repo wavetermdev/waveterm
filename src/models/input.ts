@@ -619,6 +619,9 @@ class InputModel {
     }
 
     closeAIAssistantChat(): void {
+        if (!this.aIChatShow.get()) {
+            return;
+        }
         mobx.action(() => {
             this.aIChatShow.set(false);
             this.giveFocus();
