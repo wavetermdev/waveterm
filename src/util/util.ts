@@ -247,8 +247,13 @@ function addToFontFaceSet(fontFaceSet: FontFaceSet, fontFace: FontFace) {
     (fontFaceSet as any).add(fontFace);
 }
 
+let isJetBrainsMonoLoaded = false;
+
 function loadJetBrainsMonoFont() {
-    document.documentElement.style.setProperty("--termfontfamily", '"JetBrains Mono", monospace');
+    if (isJetBrainsMonoLoaded) {
+        return;
+    }
+    isJetBrainsMonoLoaded = true;
     let jbmFontNormal = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-regular.woff2')", {
         style: "normal",
         weight: "400",
@@ -269,7 +274,13 @@ function loadJetBrainsMonoFont() {
     jbmFont700.load();
 }
 
+let isHackFontLoaded = false;
+
 function loadHackFont() {
+    if (isHackFontLoaded) {
+        return;
+    }
+    isHackFontLoaded = true;
     let hackRegular = new FontFace("Hack", "url('public/fonts/hack-regular.woff2')", {
         style: "normal",
         weight: "400",
@@ -296,8 +307,13 @@ function loadHackFont() {
     hackBoldItalic.load();
 }
 
-// @check:font
-function loadFonts(termFont: string) {
+let isBaseFontsLoaded = false;
+
+function loadBaseFonts() {
+    if (isBaseFontsLoaded) {
+        return;
+    }
+    isBaseFontsLoaded = true;
     let faFont = new FontFace("FontAwesome", "url(public/fonts/fontawesome-webfont-4.7.woff2)", {
         style: "normal",
         weight: "normal",
@@ -310,6 +326,10 @@ function loadFonts(termFont: string) {
     addToFontFaceSet(document.fonts, mmFont);
     faFont.load();
     mmFont.load();
+}
+
+function loadFonts(termFont: string) {
+    loadBaseFonts();
     loadJetBrainsMonoFont();
     if (termFont == "Hack") {
         loadHackFont();
