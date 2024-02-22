@@ -861,6 +861,7 @@ declare global {
         reloadWindow: () => void;
         openExternalLink: (url: string) => void;
         reregisterGlobalShortcut: (shortcut: string) => void;
+        changeAutoUpdate: (enabled: boolean) => void;
         onTCmd: (callback: (mods: KeyModsType) => void) => void;
         onICmd: (callback: (mods: KeyModsType) => void) => void;
         onLCmd: (callback: (mods: KeyModsType) => void) => void;

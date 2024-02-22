@@ -15,6 +15,7 @@ import { handleJsonFetchResponse } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
 import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
+import { UpdateSourceType, updateElectronApp } from "update-electron-app";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
@@ -431,6 +432,7 @@ function createMainWindow(clientData: ClientDataType | null) {
         console.log("window-open denied", url);
         return { action: "deny" };
     });
+
     return win;
 }
 
@@ -562,6 +564,10 @@ electron.ipcMain.on("get-last-logs", (event, numberOfLines) => {
             event.reply("last-logs", "Error reading log file.");
         }
     })();
+});
+
+electron.ipcMain.on("change-auto-update", (event, enable) => {
+    configureAutoUpdater(enable, false);
 });
 
 function readLastLinesOfFile(filePath: string, lineCount: number) {
@@ -717,10 +723,11 @@ async function createMainWindowWrap() {
     if (clientData && clientData.winsize.fullscreen) {
         MainWindow.setFullScreen(true);
     }
+    configureAutoUpdaterStartup(clientData);
 }
 
-async function sleep(ms) {
-    return new Promise((resolve, reject) => setTimeout(resolve, ms));
+async function sleep(ms: number) {
+    return new Promise((resolve, _) => setTimeout(resolve, ms));
 }
 
 function logActiveState() {
@@ -771,6 +778,47 @@ function reregisterGlobalShortcut(shortcut: string) {
     currentGlobalShortcut = shortcut;
 }
 
+function configureAutoUpdaterStartup(clientData: ClientDataType) {
+    console.log("configureAutoUpdaterStartup", clientData);
+    configureAutoUpdater(!clientData.clientopts.noreleasecheck, true);
+}
+
+function configureAutoUpdater(enabled: boolean, startup: boolean) {
+    console.log("configureAutoUpdater", enabled, startup);
+    if (unamePlatform == "darwin") {
+        if (enabled) {
+            updateElectronApp({
+                updateSource: {
+                    type: UpdateSourceType.ElectronPublicUpdateService,
+                    repo: "esimkowitz/waveterm",
+                },
+                updateInterval: "1 hour",
+                logger: console,
+            });
+        } else if (!startup) {
+            electron.dialog
+                .showMessageBox(MainWindow, {
+                    message: "You have disabled automatic updates. To persist this change, please restart the app.",
+                    type: "question",
+                    buttons: ["Restart App", "Later"],
+                })
+                .then((resp) => {
+                    if (resp.response == 0) {
+                        restartWave().catch((e) => {
+                            console.log("error restarting app", e.toString());
+                        });
+                    }
+                });
+        }
+    }
+}
+
+async function restartWave() {
+    console.log("restarting app");
+    app.relaunch();
+    app.quit();
+}
+
 // ====== MAIN ====== //
 
 (async () => {
@@ -786,7 +834,6 @@ function reregisterGlobalShortcut(shortcut: string) {
     } catch (e) {
         console.log(e.toString());
     }
-    setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();
     app.on("activate", () => {

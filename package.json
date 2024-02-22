@@ -33,6 +33,7 @@
         "sprintf-js": "^1.1.2",
         "throttle-debounce": "^5.0.0",
         "tsx-control-statements": "^4.1.1",
+        "update-electron-app": "^3.0.0",
         "uuid": "^9.0.0",
         "winston": "^3.8.2",
         "xterm": "^5.0.0",

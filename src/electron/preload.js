@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld("api", {
     reloadWindow: () => ipcRenderer.sendSync("reload-window"),
     reregisterGlobalShortcut: (shortcut) => ipcRenderer.sendSync("reregister-global-shortcut", shortcut),
     openExternalLink: (url) => ipcRenderer.send("open-external-link", url),
+    changeAutoUpdate: (enabled) => ipcRenderer.send("change-auto-update", enabled),
     onTCmd: (callback) => ipcRenderer.on("t-cmd", callback),
     onICmd: (callback) => ipcRenderer.on("i-cmd", callback),
     onLCmd: (callback) => ipcRenderer.on("l-cmd", callback),
