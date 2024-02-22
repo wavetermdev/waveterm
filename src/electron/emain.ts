@@ -274,7 +274,7 @@ function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEven
 }
 
 function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNavigateEventParams>) {
-    if (!event.frame || event.frame.parent == null) {
+    if (!event.frame?.parent) {
         // only use this handler to process iframe events (non-iframe events go to shNavHandler)
         return;
     }
@@ -289,7 +289,6 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
         return;
     }
     console.log("frame navigation canceled");
-    return;
 }
 
 function createMainWindow(clientData: ClientDataType | null) {
@@ -378,7 +377,7 @@ function createMainWindow(clientData: ClientDataType | null) {
             return;
         }
         if (input.code.startsWith("Digit") && input.meta) {
-            let digitNum = parseInt(input.code.substr(5));
+            let digitNum = parseInt(input.code.substring(5));
             if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
                 return;
             }
@@ -421,7 +420,7 @@ function createMainWindow(clientData: ClientDataType | null) {
             electron.shell.openExternal(url);
         } else if (url.startsWith("https://extern/?")) {
             let qmark = url.indexOf("?");
-            let param = url.substr(qmark + 1);
+            let param = url.substring(qmark + 1);
             let newUrl = decodeURIComponent(param);
             console.log("openExternal extern", newUrl);
             electron.shell.openExternal(newUrl);
@@ -455,7 +454,7 @@ function calcBounds(clientData: ClientDataType) {
     let primaryDisplay = electron.screen.getPrimaryDisplay();
     let pdBounds = primaryDisplay.bounds;
     let size = { x: 100, y: 100, width: pdBounds.width - 200, height: pdBounds.height - 200 };
-    if (clientData != null && clientData.winsize != null && clientData.winsize.width > 0) {
+    if (clientData?.winsize?.width > 0) {
         let cwinSize = clientData.winsize;
         if (cwinSize.width > 0) {
             size.width = cwinSize.width;
@@ -497,32 +496,26 @@ app.on("window-all-closed", () => {
 
 electron.ipcMain.on("get-id", (event) => {
     event.returnValue = instanceId + ":" + event.processId;
-    return;
 });
 
 electron.ipcMain.on("get-platform", (event) => {
     event.returnValue = unamePlatform;
-    return;
 });
 
 electron.ipcMain.on("get-isdev", (event) => {
     event.returnValue = isDev;
-    return;
 });
 
 electron.ipcMain.on("get-authkey", (event) => {
     event.returnValue = GlobalAuthKey;
-    return;
 });
 
 electron.ipcMain.on("wavesrv-status", (event) => {
     event.returnValue = waveSrvProc != null;
-    return;
 });
 
 electron.ipcMain.on("get-initial-termfontfamily", (event) => {
     event.returnValue = initialClientData?.feopts?.termfontfamily;
-    return;
 });
 
 electron.ipcMain.on("restart-server", (event) => {
@@ -534,7 +527,6 @@ electron.ipcMain.on("restart-server", (event) => {
         runWaveSrv();
     }
     event.returnValue = true;
-    return;
 });
 
 electron.ipcMain.on("reload-window", (event) => {
@@ -542,35 +534,37 @@ electron.ipcMain.on("reload-window", (event) => {
         MainWindow.reload();
     }
     event.returnValue = true;
-    return;
 });
 
-electron.ipcMain.on("open-external-link", async (_, url) => {
-    try {
-        await electron.shell.openExternal(url);
-    } catch (err) {
-        console.warn("error opening external link", err);
-    }
+electron.ipcMain.on("open-external-link", (_, url) => {
+    (async () => {
+        try {
+            await electron.shell.openExternal(url);
+        } catch (err) {
+            console.warn("error opening external link", err);
+        }
+    })();
 });
 
 electron.ipcMain.on("reregister-global-shortcut", (event, shortcut: string) => {
     reregisterGlobalShortcut(shortcut);
     event.returnValue = true;
-    return;
 });
 
-electron.ipcMain.on("get-last-logs", async (event, numberOfLines) => {
-    try {
-        const logPath = path.join(getWaveHomeDir(), "wavesrv.log");
-        const lastLines = await readLastLinesOfFile(logPath, numberOfLines);
-        event.reply("last-logs", lastLines);
-    } catch (err) {
-        console.error("Error reading log file:", err);
-        event.reply("last-logs", "Error reading log file.");
-    }
+electron.ipcMain.on("get-last-logs", (event, numberOfLines) => {
+    (async () => {
+        try {
+            const logPath = path.join(getWaveHomeDir(), "wavesrv.log");
+            const lastLines = await readLastLinesOfFile(logPath, numberOfLines);
+            event.reply("last-logs", lastLines);
+        } catch (err) {
+            console.error("Error reading log file:", err);
+            event.reply("last-logs", "Error reading log file.");
+        }
+    })();
 });
 
-function readLastLinesOfFile(filePath, lineCount) {
+function readLastLinesOfFile(filePath: string, lineCount: number) {
     return new Promise((resolve, reject) => {
         child_process.exec(`tail -n ${lineCount} "${filePath}"`, (err, stdout, stderr) => {
             if (err) {
@@ -623,9 +617,9 @@ function getClientData(willRetry: boolean, retryNum: number) {
         .catch((err) => {
             if (willRetry) {
                 console.log("error getting client-data from wavesrv, will retry", "(" + retryNum + ")");
-                return null;
+            } else {
+                console.log("error getting client-data from wavesrv, failed: ", err);
             }
-            console.log("error getting client-data from wavesrv, failed: ", err);
             return null;
         });
 }
@@ -647,7 +641,7 @@ function runWaveSrv() {
         pResolve = argResolve;
         pReject = argReject;
     });
-    let envCopy = Object.assign({}, process.env);
+    let envCopy = { ...process.env };
     envCopy[WaveAppPathVarName] = getAppBasePath();
     if (isDev) {
         envCopy[WaveDevVarName] = "1";
