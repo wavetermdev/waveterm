@@ -217,6 +217,7 @@ func init() {
 	registerCmdFn("line:view", LineViewCommand)
 	registerCmdFn("line:set", LineSetCommand)
 	registerCmdFn("line:restart", LineRestartCommand)
+	registerCmdFn("line:minimize", LineMinimizeCommand)
 
 	registerCmdFn("client", ClientCommand)
 	registerCmdFn("client:show", ClientShowCommand)
@@ -4315,6 +4316,51 @@ func LineArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	lineObj, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("/line:archive error getting line: %v", err)
+	}
+	if lineObj == nil {
+		// no line (which is strange given we checked for it above).  just return a nop.
+		return nil, nil
+	}
+	update := scbus.MakeUpdatePacket()
+	sstore.AddLineUpdate(update, lineObj, nil)
+	return update, nil
+}
+
+func LineMinimizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("/line:minimize requires arguments (line number or id and min value)")
+	}
+	if len(pk.Args) > 2 {
+		return nil, fmt.Errorf("/line:minimize only takes up to 2 argument (line number or id and min value)")
+	}
+	lineArg1 := pk.Args[0]
+	lineId, err := sstore.FindLineIdByArg(ctx, ids.ScreenId, lineArg1)
+	if err != nil {
+		return nil, fmt.Errorf("error looking up lineid: %v", err)
+	}
+	if lineId == "" {
+		return nil, fmt.Errorf("line %q not found", lineArg1)
+	}
+	lineArg2 := pk.Args[1]
+	minVal := resolveBool(lineArg2, true)
+	lineState := make(map[string]any)
+	if minVal {
+		lineState[sstore.LineState_Min] = minVal
+	} else {
+		// Remove sstore.LineState_Min from lineState if it exists
+		delete(lineState, sstore.LineState_Min)
+	}
+	err = sstore.UpdateLineState(ctx, ids.ScreenId, lineId, lineState)
+	if err != nil {
+		return nil, fmt.Errorf("cannot update linestate: %v", err)
+	}
+	lineObj, err := sstore.GetLineById(ctx, ids.ScreenId, lineId)
+	if err != nil {
+		return nil, fmt.Errorf("/line:minimize cannot retrieve updated line: %v", err)
 	}
 	if lineObj == nil {
 		// no line (which is strange given we checked for it above).  just return a nop.

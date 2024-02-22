@@ -113,9 +113,6 @@ class LineCmd extends React.Component<
     isOverflow: OV<boolean> = mobx.observable.box(false, {
         name: "line-overflow",
     });
-    isMinimized: OV<boolean> = mobx.observable.box(false, {
-        name: "line-minimised",
-    });
     isCmdExpanded: OV<boolean> = mobx.observable.box(false, {
         name: "cmd-expanded",
     });
@@ -351,9 +348,9 @@ class LineCmd extends React.Component<
 
     @boundMethod
     clickMinimize() {
-        mobx.action(() => {
-            this.isMinimized.set(!this.isMinimized.get());
-        })();
+        const { line } = this.props;
+        const isMinimized = line.linestate["wave:min"];
+        GlobalCommandRunner.lineMinimize(line.lineid, !isMinimized, true);
     }
 
     @boundMethod
@@ -566,6 +563,7 @@ class LineCmd extends React.Component<
 
     render() {
         const { screen, line, width, staticRender, visible } = this.props;
+        const isMinimized = line.linestate["wave:min"];
         const isVisible = visible.get();
         if (staticRender || !isVisible) {
             return this.renderSimple();
@@ -678,19 +676,19 @@ class LineCmd extends React.Component<
                     <If condition={containerType == appconst.LineContainer_Main}>
                         <div
                             key="minimize"
-                            title={`${this.isMinimized.get() ? "Maximise" : "Minimize"}`}
+                            title={`${isMinimized ? "Maximise" : "Minimize"}`}
                             className={cn(
                                 "line-icon",
                                 "line-minimize",
                                 "hoverEffect",
-                                this.isMinimized.get() ? "line-icon-show" : ""
+                                isMinimized ? "line-icon-show" : ""
                             )}
                             onClick={this.clickMinimize}
                         >
-                            <If condition={this.isMinimized.get()}>
+                            <If condition={isMinimized}>
                                 <i className="fa-sharp fa-regular fa-circle-plus" />
                             </If>
-                            <If condition={!this.isMinimized.get()}>
+                            <If condition={!isMinimized}>
                                 <i className="fa-sharp fa-regular fa-circle-minus" />
                             </If>
                         </div>
@@ -717,7 +715,7 @@ class LineCmd extends React.Component<
                         &nbsp;&nbsp;showing in sidebar =&gt;
                     </div>
                 </If>
-                <If condition={!this.isMinimized.get() && !isInSidebar}>
+                <If condition={!isMinimized && !isInSidebar}>
                     <ErrorBoundary plugin={rendererPlugin?.name} lineContext={lineutil.getRendererContext(line)}>
                         <If condition={rendererPlugin == null && !isNoneRenderer}>
                             <TerminalRenderer
