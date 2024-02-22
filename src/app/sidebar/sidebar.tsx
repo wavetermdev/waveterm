@@ -64,7 +64,7 @@ interface MainSideBarProps {
 
 @mobxReact.observer
 class MainSideBar extends React.Component<MainSideBarProps, {}> {
-    sidebarRef = React.createRef<HTMLDivElement>();
+    middleHeightSubtractor = mobx.observable.box(404);
 
     handleSessionClick(sessionId: string) {
         GlobalCommandRunner.switchSession(sessionId);
@@ -203,14 +203,37 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         });
     }
 
+    /**
+     * Calculate the subtractor portion for the middle div's height calculation, which should be `100vh - subtractor`.
+     */
+    setMiddleHeightSubtractor() {
+        const windowHeight = window.innerHeight;
+        const bottomHeight = windowHeight - window.document.getElementById("sidebar-bottom")?.offsetTop;
+        const middleTop = document.getElementById("sidebar-middle")?.offsetTop;
+        const newMiddleHeightSubtractor = bottomHeight + middleTop;
+        if (!Number.isNaN(newMiddleHeightSubtractor)) {
+            mobx.action(() => {
+                this.middleHeightSubtractor.set(newMiddleHeightSubtractor);
+            })();
+        }
+    }
+
+    componentDidMount() {
+        this.setMiddleHeightSubtractor();
+    }
+
+    componentDidUpdate() {
+        this.setMiddleHeightSubtractor();
+    }
+
     render() {
-        let clientData = this.props.clientData;
+        const clientData = this.props.clientData;
         let needsUpdate = false;
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0;
         }
-        let mainSidebar = GlobalModel.mainSidebarModel;
-        let isCollapsed = mainSidebar.getCollapsed();
+        const mainSidebar = GlobalModel.mainSidebarModel;
+        const isCollapsed = mainSidebar.getCollapsed();
         return (
             <ResizableSidebar
                 className="main-sidebar"
@@ -271,8 +294,16 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                     </CenteredIcon>,
                                 ]}
                             />
-                            <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
-                            <div className="bottom">
+                            <div
+                                className="middle hideScrollbarUntillHover"
+                                id="sidebar-middle"
+                                style={{
+                                    maxHeight: `calc(100vh - ${this.middleHeightSubtractor.get()}px)`,
+                                }}
+                            >
+                                {this.getSessions()}
+                            </div>
+                            <div className="bottom" id="sidebar-bottom">
                                 <If condition={needsUpdate}>
                                     <SideBarItem
                                         key="update-available"

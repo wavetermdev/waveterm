@@ -843,6 +843,13 @@ declare global {
         getContainerType(): LineContainerStrs;
     };
 
+    type KeyModsType = {
+        meta?: boolean;
+        ctrl?: boolean;
+        alt?: boolean;
+        shift?: boolean;
+    };
+
     type ElectronApi = {
         getId: () => string;
         getIsDev: () => boolean;
@@ -861,6 +868,7 @@ declare global {
         onPCmd: (callback: (mods: KeyModsType) => void) => void;
         onRCmd: (callback: (mods: KeyModsType) => void) => void;
         onWCmd: (callback: (mods: KeyModsType) => void) => void;
+        onZoomChanged: (callback: () => void) => void;
         onMenuItemAbout: (callback: () => void) => void;
         onMetaArrowUp: (callback: () => void) => void;
         onMetaArrowDown: (callback: () => void) => void;

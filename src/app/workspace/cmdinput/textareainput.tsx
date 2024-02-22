@@ -232,7 +232,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 if (inputModel.inputMode.get() != null) {
                     inputModel.resetInputMode();
                 }
-                inputModel.closeAIAssistantChat();
+                inputModel.closeAIAssistantChat(true);
                 return;
             }
             if (checkKeyPressed(waveEvent, "Cmd:e")) {

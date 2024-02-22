@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld("api", {
     onWCmd: (callback) => ipcRenderer.on("w-cmd", callback),
     onPCmd: (callback) => ipcRenderer.on("p-cmd", callback),
     onRCmd: (callback) => ipcRenderer.on("r-cmd", callback),
+    onZoomChanged: (callback) => ipcRenderer.on("zoom-changed", callback),
     onMetaArrowUp: (callback) => ipcRenderer.on("meta-arrowup", callback),
     onMetaArrowDown: (callback) => ipcRenderer.on("meta-arrowdown", callback),
     onMetaPageUp: (callback) => ipcRenderer.on("meta-pageup", callback),

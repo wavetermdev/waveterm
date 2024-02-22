@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
-import { isBlank } from "@/util";
+import { isBlank } from "@/util/util";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { For } from "tsx-control-statements/components";
@@ -92,7 +92,7 @@ class AIChat extends React.Component<{}, {}> {
             if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
                 e.stopPropagation();
-                inputModel.closeAIAssistantChat();
+                inputModel.closeAIAssistantChat(true);
             }
 
             if (checkKeyPressed(waveEvent, "Ctrl:l")) {

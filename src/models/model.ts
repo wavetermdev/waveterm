@@ -32,6 +32,8 @@ import { MainSidebarModel } from "./mainsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
+import { clearMonoFontCache } from "@/util/textmeasure";
+import type { TermWrap } from "@/plugins/terminal/term";
 
 type SWLinePtr = {
     line: LineType;
@@ -96,7 +98,10 @@ class Model {
     });
     lineSettingsModal: OV<number> = mobx.observable.box(null, {
         name: "lineSettingsModal",
-    }); // linenum
+    });
+    devicePixelRatio: OV<number> = mobx.observable.box(window.devicePixelRatio, {
+        name: "devicePixelRatio",
+    });
     remotesModel: RemotesModel;
 
     inputModel: InputModel;
@@ -159,6 +164,7 @@ class Model {
         getApi().onPCmd(this.onPCmd.bind(this));
         getApi().onWCmd(this.onWCmd.bind(this));
         getApi().onRCmd(this.onRCmd.bind(this));
+        getApi().onZoomChanged(this.onZoomChanged.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -488,6 +494,30 @@ class Model {
             }
             GlobalCommandRunner.lineRestart(String(selectedLine), true);
         }
+    }
+
+    onZoomChanged(): void {
+        mobx.action(() => {
+            this.devicePixelRatio.set(window.devicePixelRatio);
+            clearMonoFontCache();
+        })();
+    }
+
+    // for debuggin
+    getSelectedTermWrap(): TermWrap {
+        let screen = this.getActiveScreen();
+        if (screen == null) {
+            return null;
+        }
+        let lineNum = screen.selectedLine.get();
+        if (lineNum == null) {
+            return null;
+        }
+        let line = screen.getLineByNum(lineNum);
+        if (line == null) {
+            return null;
+        }
+        return screen.getTermWrap(line.lineid);
     }
 
     clearModals(): boolean {

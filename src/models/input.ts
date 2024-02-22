@@ -618,10 +618,17 @@ class InputModel {
         })();
     }
 
-    closeAIAssistantChat(): void {
+    // pass true to give focus to the input (e.g. if this is an 'active' close of the chat)
+    // when resetting the input (when switching screens, don't give focus)
+    closeAIAssistantChat(giveFocus: boolean): void {
+        if (!this.aIChatShow.get()) {
+            return;
+        }
         mobx.action(() => {
             this.aIChatShow.set(false);
-            this.giveFocus();
+            if (giveFocus) {
+                this.giveFocus();
+            }
         })();
     }
 
@@ -723,7 +730,7 @@ class InputModel {
     resetInput(): void {
         mobx.action(() => {
             this.setHistoryShow(false);
-            this.closeAIAssistantChat();
+            this.closeAIAssistantChat(false);
             this.infoShow.set(false);
             this.inputMode.set(null);
             this.resetHistory();

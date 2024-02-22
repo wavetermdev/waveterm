@@ -109,6 +109,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             return <div className="screen-view" ref={this.screenViewRef}></div>;
         }
         let fontSize = GlobalModel.termFontSize.get();
+        let dprStr = sprintf("%0.3f", GlobalModel.devicePixelRatio.get());
         let viewOpts = screen.viewOpts.get();
         let hasSidebar = viewOpts?.sidebar?.open;
         let winWidth = "100%";
@@ -145,7 +146,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         return (
             <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
                 <ScreenWindowView
-                    key={screen.screenId + ":" + fontSize}
+                    key={screen.screenId + ":" + fontSize + ":" + dprStr}
                     session={session}
                     screen={screen}
                     width={winWidth}
