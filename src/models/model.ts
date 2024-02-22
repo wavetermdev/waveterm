@@ -347,6 +347,7 @@ class Model {
         }
         mobx.action(() => {
             this.termFontSize.set(fontSize);
+            this.bumpRenderVersion();
         })();
     }
 
