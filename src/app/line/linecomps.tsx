@@ -35,7 +35,7 @@ import { ReactComponent as GearIcon } from "@/assets/icons/line/gear.svg";
 
 import { RotateIcon } from "@/common/icons/icons";
 
-import "./lines.less";
+import "./line.less";
 
 dayjs.extend(localizedFormat);
 
