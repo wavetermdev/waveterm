@@ -15,9 +15,6 @@ import "./clientsettings.less";
 
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
-    fontSizeDropdownActive: OV<boolean> = mobx.observable.box(false, {
-        name: "clientSettings-fontSizeDropdownActive",
-    });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
 
     @boundMethod
@@ -30,7 +27,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     @boundMethod
     handleChangeFontSize(fontSize: string): void {
         const newFontSize = Number(fontSize);
-        this.fontSizeDropdownActive.set(false);
         if (GlobalModel.termFontSize.get() == newFontSize) {
             return;
         }
@@ -39,10 +35,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
-    togglefontSizeDropdown(): void {
-        mobx.action(() => {
-            this.fontSizeDropdownActive.set(!this.fontSizeDropdownActive.get());
-        })();
+    handleChangeFontFamily(fontFamily: string): void {
+        if (GlobalModel.getTermFontFamily() == fontFamily) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setTermFontFamily(fontFamily, false);
+        commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -73,6 +71,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             availableFontSizes.push({ label: s + "px", value: String(s) });
         }
         return availableFontSizes;
+    }
+
+    getFontFamilies(): DropdownItem[] {
+        const availableFontFamilies: DropdownItem[] = [];
+        availableFontFamilies.push({ label: "JetBrains Mono", value: "JetBrains Mono" });
+        availableFontFamilies.push({ label: "Hack", value: "Hack" });
+        return availableFontFamilies;
     }
 
     @boundMethod
@@ -140,6 +145,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
         const curFontSize = GlobalModel.termFontSize.get();
+        const curFontFamily = GlobalModel.getTermFontFamily();
 
         return (
             <div className={cn("view clientsettings-view")}>
@@ -158,6 +164,17 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 options={this.getFontSizes()}
                                 defaultValue={`${curFontSize}px`}
                                 onChange={this.handleChangeFontSize}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Term Font Family</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="font-size-dropdown"
+                                options={this.getFontFamilies()}
+                                defaultValue={curFontFamily}
+                                onChange={this.handleChangeFontFamily}
                             />
                         </div>
                     </div>

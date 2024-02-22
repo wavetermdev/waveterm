@@ -471,6 +471,7 @@ declare global {
         idealSize: WindowSize;
         termOpts: TermOptsType;
         termFontSize: number;
+        termFontFamily: string;
     };
 
     type RendererOptsUpdate = {
@@ -558,6 +559,7 @@ declare global {
 
     type FeOptsType = {
         termfontsize: number;
+        termfontfamily: string;
     };
 
     type ConfirmFlagsType = {
@@ -587,6 +589,13 @@ declare global {
         top: number;
         left: number;
         fullscreen: boolean;
+    };
+
+    type KeyModsType = {
+        meta?: boolean;
+        ctrl?: boolean;
+        alt?: boolean;
+        shift?: boolean;
     };
 
     type ClientDataType = {
@@ -847,6 +856,7 @@ declare global {
         getPlatform: () => string;
         getAuthKey: () => string;
         getWaveSrvStatus: () => boolean;
+        getInitialTermFontFamily: () => string;
         restartWaveSrv: () => boolean;
         reloadWindow: () => void;
         openExternalLink: (url: string) => void;

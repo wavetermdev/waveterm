@@ -588,7 +588,8 @@ class Screen {
             focusHandler: (focus: boolean) => this.setLineFocus(line.linenum, focus),
             isRunning: cmd.isRunning(),
             customKeyHandler: this.termCustomKeyHandler.bind(this),
-            fontSize: this.globalModel.termFontSize.get(),
+            fontSize: this.globalModel.getTermFontSize(),
+            fontFamily: this.globalModel.getTermFontFamily(),
             ptyDataSource: getTermPtyData,
             onUpdateContentHeight: (termContext: RendererContext, height: number) => {
                 this.globalModel.setContentHeight(termContext, height);

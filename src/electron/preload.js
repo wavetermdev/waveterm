@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("api", {
         ipcRenderer.send("get-last-logs", numberOfLines);
         ipcRenderer.once("last-logs", (event, data) => callback(data));
     },
+    getInitialTermFontFamily: () => ipcRenderer.sendSync("get-initial-termfontfamily"),
     restartWaveSrv: () => ipcRenderer.sendSync("restart-server"),
     reloadWindow: () => ipcRenderer.sendSync("reload-window"),
     reregisterGlobalShortcut: (shortcut) => ipcRenderer.sendSync("reregister-global-shortcut", shortcut),

@@ -492,7 +492,8 @@ class LineCmd extends React.Component<
             maxSize: screen.getMaxContentSize(),
             idealSize: screen.getIdealContentSize(),
             termOpts: cmd.getTermOpts(),
-            termFontSize: GlobalModel.termFontSize.get(),
+            termFontSize: GlobalModel.getTermFontSize(),
+            termFontFamily: GlobalModel.getTermFontFamily(),
         };
     }
 

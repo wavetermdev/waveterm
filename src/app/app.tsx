@@ -105,8 +105,15 @@ class App extends React.Component<{}, {}> {
         if (dcWait) {
             setTimeout(() => this.updateDcWait(false), 0);
         }
+        // used to force a full reload of the application
+        let renderVersion = GlobalModel.renderVersion.get();
         return (
-            <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
+            <div
+                key={"version-" + renderVersion}
+                id="main"
+                className={"platform-" + platform}
+                onContextMenu={this.handleContextMenu}
+            >
                 <div ref={this.mainContentRef} className="main-content">
                     <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
                     <ErrorBoundary>

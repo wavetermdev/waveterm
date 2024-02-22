@@ -1,12 +1,5 @@
 @import "./common/themes/themes.less";
 
-@font-face {
-    font-family: "Martian Mono";
-    src: url("./assets/fonts/MartianMono-VariableFont_wdth,wght.ttf") format("truetype");
-    font-weight: normal;
-    font-style: normal;
-}
-
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
 }
@@ -98,7 +91,7 @@ body a {
 }
 
 body code {
-    font-family: @terminal-font;
+    font-family: var(--termfontfamily);
     background-color: transparent;
 }
 
@@ -312,7 +305,7 @@ a.a-block {
     }
 
     .mono {
-        font-family: @terminal-font;
+        font-family: var(--termfontfamily);
     }
 }
 

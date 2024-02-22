@@ -12,6 +12,7 @@ import {
     genMergeSimpleData,
     isModKeyPress,
     isBlank,
+    loadFonts,
 } from "@/util/util";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
@@ -120,6 +121,10 @@ class Model {
     });
     packetSeqNum: number = 0;
 
+    renderVersion: OV<number> = mobx.observable.box(0, {
+        name: "renderVersion",
+    });
+
     private constructor() {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
@@ -183,6 +188,12 @@ class Model {
             (window as any).GlobalModel = new Model();
         }
         return (window as any).GlobalModel;
+    }
+
+    bumpRenderVersion() {
+        mobx.action(() => {
+            this.renderVersion.set(this.renderVersion.get() + 1);
+        })();
     }
 
     getNextPacketSeqNum(): number {
@@ -314,6 +325,19 @@ class Model {
         return appconst.ProdServerEndpoint;
     }
 
+    getTermFontFamily(): string {
+        let cdata = this.clientData.get();
+        let ff = cdata?.feopts?.termfontfamily;
+        if (ff == null) {
+            ff = "JetBrains Mono, monospace";
+        }
+        return ff;
+    }
+
+    getTermFontSize(): number {
+        return this.termFontSize.get();
+    }
+
     setTermFontSize(fontSize: number) {
         if (fontSize < appconst.MinFontSize) {
             fontSize = appconst.MinFontSize;
@@ -323,6 +347,7 @@ class Model {
         }
         mobx.action(() => {
             this.termFontSize.set(fontSize);
+            this.bumpRenderVersion();
         })();
     }
 
@@ -1114,6 +1139,15 @@ class Model {
             shortcut = clientData?.clientopts?.globalshortcut;
         }
         getApi().reregisterGlobalShortcut(shortcut);
+        let fontFamily = clientData?.feopts?.termfontfamily;
+        if (fontFamily == null) {
+            fontFamily = "JetBrains Mono";
+        }
+        loadFonts(fontFamily);
+        document.fonts.ready.then(() => {
+            clearMonoFontCache();
+            this.bumpRenderVersion();
+        });
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
@@ -1452,4 +1486,4 @@ class Model {
     }
 }
 
-export { Model };
+export { Model, getApi };

@@ -337,8 +337,8 @@ class SourceCodeRenderer extends React.Component<
                 onMount={this.handleEditorDidMount}
                 options={{
                     scrollBeyondLastLine: false,
-                    fontSize: GlobalModel.termFontSize.get() * 0.9,
-                    /* fontFamily: "Martian Mono", */
+                    fontSize: GlobalModel.getTermFontSize(),
+                    fontFamily: GlobalModel.getTermFontFamily(),
                     readOnly: !this.getAllowEditing(),
                 }}
                 onChange={this.handleEditorChange}
