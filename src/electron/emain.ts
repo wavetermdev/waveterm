@@ -787,14 +787,18 @@ function configureAutoUpdater(enabled: boolean, startup: boolean) {
     console.log("configureAutoUpdater", enabled, startup);
     if (unamePlatform == "darwin") {
         if (enabled) {
-            updateElectronApp({
-                updateSource: {
-                    type: UpdateSourceType.ElectronPublicUpdateService,
-                    repo: "esimkowitz/waveterm",
-                },
-                updateInterval: "1 hour",
-                logger: console,
-            });
+            try {
+                updateElectronApp({
+                    updateSource: {
+                        type: UpdateSourceType.ElectronPublicUpdateService,
+                        repo: "esimkowitz/waveterm",
+                    },
+                    updateInterval: "1 hour",
+                    logger: console,
+                });
+            } catch (e) {
+                console.log("error configuring auto updater", e.toString());
+            }
         } else if (!startup) {
             electron.dialog
                 .showMessageBox(MainWindow, {
