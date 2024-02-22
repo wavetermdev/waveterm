@@ -20,6 +20,9 @@ import { MainSideBar } from "./sidebar/sidebar";
 import { DisconnectedModal, ClientStopModal } from "./common/modals";
 import { ModalsProvider } from "./common/modals/provider";
 import { ErrorBoundary } from "./common/error/errorboundary";
+
+import "@/common/themes/fonts.less";
+import "@/common/themes/themes.less";
 import "./app.less";
 
 dayjs.extend(localizedFormat);

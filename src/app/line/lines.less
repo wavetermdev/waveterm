@@ -1,5 +1,3 @@
-@import "@/common/themes/themes.less";
-
 .line.line-text {
     flex-direction: row;
     padding-top: 5px;
@@ -13,7 +11,7 @@
 }
 
 .line .load-error-text {
-    color: @term-red;
+    color: var(--line-load-error-text-color);
     padding-top: 5px;
 }
 
@@ -36,7 +34,7 @@
     }
 
     .sidebar-message {
-        color: @term-yellow;
+        color: var(--line-sidebar-message-text-color);
     }
 
     .line-header {
@@ -84,7 +82,7 @@
     }
 
     .meta.meta-line1 {
-        color: rgba(@base-color, 0.6) !important;
+        color: var(--line-text-color) !important;
         font-size: 11px;
     }
 
@@ -132,7 +130,7 @@
         position: relative;
 
         .cmd-rtnstate-label {
-            font-family: @terminal-font;
+            font-family: var(--terminal-font);
             position: relative;
             font-size: 10px;
             z-index: 2;
@@ -140,13 +138,13 @@
             padding: 2px 5px 0px 5px;
             display: inline-block;
             font-size: 10px;
-            color: @term-white;
+            color: var(--line-base-white-color);
             background-color: #151715;
         }
 
         .cmd-rtnstate-diff {
-            font-family: @terminal-font;
-            color: @term-white;
+            font-family: var(--terminal-font);
+            color: var(--line-base-white-color);
             white-space: pre;
             margin-left: 10px;
             padding-left: 10px;
@@ -181,16 +179,16 @@
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
-    background: @base-background;
+    background: var(--line-background);
     border: 1px solid transparent;
 
     &.selected {
-        border: 1px solid rgba(@base-color, 0.8) !important;
+        border: 1px solid var(--line-selected-border-color) !important;
         box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
     }
 
     &.active {
-        border: 1px solid rgba(@wave-green, 0.8) !important;
+        border: 1px solid var(--line-active-border-color) !important;
         box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
     }
 
@@ -202,7 +200,7 @@
     &.line-simple {
         font-size: 11px;
         line-height: 1.2;
-        color: rgba(@base-color, 0.6);
+        color: var(--line-text-color);
 
         .simple-line-header {
             display: flex;
@@ -232,19 +230,19 @@
             height: 1em;
             margin: 0 0.5em;
             vertical-align: text-top;
-            fill: @base-color;
+            fill: var(--line-avatar-color);
         }
 
         .success {
-            fill: @wave-green;
+            fill: var(--line-status-success-fill);
         }
 
         .fail {
-            fill: @error-red;
+            fill: var(--line-status-error-fill);
         }
 
         .warning {
-            fill: @warning-yellow;
+            fill: var(--line-status-warning-fill);
         }
     }
 
@@ -275,7 +273,8 @@
         align-items: center;
         justify-content: center;
         font-weight: bold;
-        color: @term-white;
+        // color: @term-white;
+        color: var(--line-avatar-color);
 
         border-radius: 5px;
         position: relative;
@@ -307,30 +306,30 @@
 
         &.status-error {
             .status-icon {
-                color: @error-red;
+                color: var(--line-base-error-color);
             }
         }
 
         &.status-hangup {
             .status-icon {
-                color: @term-yellow;
+                color: var(--line-base-yellow-color);
             }
         }
 
         &.status-running {
-            background-color: @soft-blue;
+            background-color: var(--line-base-soft-blue-color);
         }
 
         &.status-waiting {
-            background-color: @term-yellow;
+            background-color: var(--line-base-yellow-color);
         }
 
         &.status-detached {
-            background-color: @soft-blue;
+            background-color: var(--line-base-soft-blue-color);
             .status-icon {
                 top: 3px;
                 right: 3px;
-                color: @term-white;
+                color: var(--line-base-soft-blue-color);
             }
         }
     }
@@ -353,7 +352,7 @@
         }
 
         .user {
-            color: lighten(@soft-blue, 10%);
+            color: var(--line-meta-user-color);
             font-weight: bold;
             margin-top: 1px;
             margin-right: 10px;
@@ -372,7 +371,7 @@
             svg {
                 width: 1em;
                 margin-right: 0.5em;
-                fill: rgba(@base-color, 0.6);
+                fill: var(--line-text-color);
             }
         }
 
@@ -386,9 +385,9 @@
             border-radius: 50%;
             line-height: 1em;
             svg {
-                fill: rgba(@base-color, 0.6);
+                fill: var(--line-text-color);
                 &:hover {
-                    fill: @base-color;
+                    fill: var(--line-svg-hover-fill);
                 }
             }
         }
@@ -417,7 +416,7 @@
         .cmdtext-overflow {
             flex-shrink: 0;
             padding-right: 2px;
-            color: @term-white;
+            color: var(--line-base-white-color);
             cursor: pointer;
 
             margin-top: 4px;
@@ -435,7 +434,7 @@
         .cmdtext-expanded {
             white-space: pre;
 
-            color: @term-white;
+            color: var(--line-base-white-color);
             padding-bottom: 5px;
         }
     }
@@ -453,7 +452,7 @@
 }
 
 .line.line-invalid {
-    color: @term-white;
+    color: var(--line-base-white-color);
     margin-left: 5px;
 }
 
@@ -477,7 +476,7 @@
     &:focus,
     &:focus-within {
         &::-webkit-scrollbar-thumb {
-            background-color: @scrollbar-thumb !important;
+            background-color: var(--scrollbar-thumb-background) !important;
         }
     }
 
@@ -493,7 +492,7 @@
         display: flex;
         align-items: center;
         margin-top: 1em;
-        color: rgba(@base-color, 0.5);
+        color: var(--line-separator-color);
     }
 
     .line-sep::before,
@@ -501,7 +500,7 @@
         content: "";
         height: 1px;
         flex-grow: 1;
-        background-color: rgba(@base-color, 0.5);
+        background-color: var(--line-separator-color);
     }
 
     .line-sep::before {
