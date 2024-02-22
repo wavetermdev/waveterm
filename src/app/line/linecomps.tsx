@@ -385,7 +385,7 @@ class LineCmd extends React.Component<
         let height = 45 + 24; // height of zero height terminal
         const usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         if (usedRows > 0) {
-            height = 48 + 24 + termHeightFromRows(usedRows, GlobalModel.termFontSize.get(), cmd.getTermMaxRows());
+            height = 48 + 24 + termHeightFromRows(usedRows, GlobalModel.getTermFontSize(), cmd.getTermMaxRows());
         }
         return height;
     }
@@ -637,7 +637,7 @@ class LineCmd extends React.Component<
         }
         const rendererType = lineutil.getRendererType(line);
         const hidePrompt = rendererPlugin?.hidePrompt;
-        const termFontSize = GlobalModel.termFontSize.get();
+        const termFontSize = GlobalModel.getTermFontSize();
         let rtnStateDiffSize = termFontSize - 2;
         if (rtnStateDiffSize < 10) {
             rtnStateDiffSize = Math.max(termFontSize, 10);

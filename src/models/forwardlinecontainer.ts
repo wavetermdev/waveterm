@@ -28,7 +28,7 @@ class ForwardLineContainer {
         this.winSize = winSize;
         let termWrap = this.getTermWrap(this.lineId);
         if (termWrap != null) {
-            let fontSize = this.globalModel.termFontSize.get();
+            let fontSize = this.globalModel.getTermFontSize();
             let cols = windowWidthToCols(winSize.width, fontSize);
             let rows = windowHeightToRows(winSize.height, fontSize);
             termWrap.resizeCols(cols);
