@@ -56,8 +56,8 @@ TEMP_WAVE_DIR_X64=$TEMP_DIR/arm64/Wave.app
 TEMP_WAVE_DIR_UNIVERSAL=$TEMP_DIR/Wave.app
 lipo -create -output $TEMP_DIR/wavesrv $TEMP_WAVE_DIR_X64/Contents/Resources/app/bin/wavesrv $TEMP_WAVE_DIR_ARM/Contents/Resources/app/bin/wavesrv
 rm -rf $TEMP_WAVE_DIR_ARM/Contents/Resources/app
-mv $TEMP_WAVE_DIR_X64/Contents/Resources/app temp/
-cp $TEMP_DIR/wavesrv temp/app/bin/wavesrv
+mv $TEMP_WAVE_DIR_X64/Contents/Resources/app $TEMP_DIR
+cp $TEMP_DIR/wavesrv $TEMP_DIR/app/bin/wavesrv
 mkdir $TEMP_WAVE_DIR_ARM/Contents/Resources/app
 mkdir $TEMP_WAVE_DIR_X64/Contents/Resources/app
 node $SCRIPT_DIR/build-universal.js
