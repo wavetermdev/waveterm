@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # assumes we have Wave-darwin-x64-[version].zip and Wave-darwin-arm64-[version].zip in current directory
-VERSION=0.6.1
 rm -rf temp
 rm -rf builds
 mkdir temp
@@ -13,20 +12,33 @@ if ! [ -f $BUILDS_ZIP ]; then
     exit 1;
 fi
 echo "unzipping $BUILDS_ZIP"
-unzip -q $BUILDS_ZIP -d builds
-X64_ZIP="builds/Wave-darwin-x64-$VERSION.zip"
-ARM64_ZIP="builds/Wave-darwin-arm64-$VERSION.zip"
-if ! [ -f $X64_ZIP ]; then
-    echo "no $X64_ZIP found";
-    exit 1;
-fi
-if ! [ -f $ARM64_ZIP ]; then
-    echo "no $ARM64_ZIP found"
-    exit 1;
-fi
+BUILDS_DIR=./builds
+unzip -q $BUILDS_ZIP -d $BUILDS_DIR
+X64_ZIP=Wave-darwin-x64-*.zip
+ARM64_ZIP=Wave-darwin-arm64-*.zip
+
+# Ensure we have exactly one of each build
+find_build() 
+{
+    local BUILD_DIR=$1
+    local BUILD_PATTERN=$2
+    local BUILD_PATH=$(find $BUILD_DIR -type f -iname "$BUILD_PATTERN")
+    local NUM_MATCHES=$(echo $BUILD_PATH | wc -l)
+    if [ "0" -eq "$NUM_MATCHES" ]; then
+        echo "no $BUILD_NAME found in $BUILD_DIR"
+        exit 1
+    elif [ "1" -lt "$NUM_MATCHES" ]; then
+        echo "multiple $BUILD_NAME found in $BUILD_DIR"
+        exit 1
+    fi
+    echo $BUILD_PATH
+}
+
+X64_ZIP=$(find_build $BUILDS_DIR $X64_ZIP)
+ARM64_ZIP=$(find_build $BUILDS_DIR $ARM64_ZIP)
 set -e
-echo "unzipping version v$VERSION zip files"
-ls -l "$X64_ZIP" "$ARM64_ZIP"
+
+echo "unzipping zip files"
 unzip -q $X64_ZIP -d temp/x64
 mkdir temp/arm64
 unzip -q $ARM64_ZIP -d temp/arm64
