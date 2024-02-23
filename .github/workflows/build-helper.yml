@@ -42,7 +42,10 @@ jobs:
                   node-version: ${{env.NODE_VERSION}}
                   cache: "yarn"
             - run: yarn --frozen-lockfile
-            - run: scripthaus run build-package
+            - if: ${{ matrix.platform == 'linux' }}
+              run: ./scripthaus/scripthaus run build-package-linux
+            - if: ${{ matrix.platform == 'darwin' }}
+              run: ./scripthaus/scripthaus run build-package
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}-${{ matrix.arch }}
