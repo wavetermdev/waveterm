@@ -34,7 +34,7 @@ jobs:
                       waveshell/go.sum
                       scripthaus/go.sum
             - if: ${{ matrix.platform == 'darwin' }}
-              run: brew install scripthaus && brew install scripthaus-dev/scripthaus/scripthaus
+              run: brew install scripthaus-dev/scripthaus/scripthaus
             - if: ${{ matrix.platform != 'darwin'}}
               run: |
                   go work use ./scripthaus;
