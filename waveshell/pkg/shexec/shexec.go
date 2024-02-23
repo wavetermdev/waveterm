@@ -437,6 +437,16 @@ func MakeMShellSingleCmd() (*exec.Cmd, error) {
 	return ecmd, nil
 }
 
+func MakeLocalExecCmd(cmdStr string, sapi shellapi.ShellApi) *exec.Cmd {
+	homeDir, _ := os.UserHomeDir() // ignore error
+	if homeDir == "" {
+		homeDir = "/"
+	}
+	ecmd := exec.Command(sapi.GetLocalShellPath(), "-c", cmdStr)
+	ecmd.Dir = homeDir
+	return ecmd
+}
+
 func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string, sapi shellapi.ShellApi) *exec.Cmd {
 	remoteCommand = strings.TrimSpace(remoteCommand)
 	if opts.SSHHost == "" {

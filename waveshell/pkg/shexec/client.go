@@ -57,6 +57,11 @@ func (cw CmdWrap) Parser() (*packet.PacketParser, io.ReadCloser, io.ReadCloser, 
 }
 
 func (cw CmdWrap) Start() error {
+	defer func() {
+		for _, extraFile := range cw.Cmd.ExtraFiles {
+			extraFile.Close()
+		}
+	}()
 	return cw.Cmd.Start()
 }
 
@@ -120,20 +125,44 @@ type ClientProc struct {
 	Output       *packet.PacketParser
 }
 
+type WaveshellLaunchError struct {
+	InitPk *packet.InitPacketType
+}
+
+func (wle WaveshellLaunchError) Error() string {
+	if wle.InitPk.NotFound {
+		return "waveshell client not found"
+	} else if semver.MajorMinor(wle.InitPk.Version) != semver.MajorMinor(base.MShellVersion) {
+		return fmt.Sprintf("invalid remote waveshell version '%s', must be '=%s'", wle.InitPk.Version, semver.MajorMinor(base.MShellVersion))
+	}
+	return fmt.Sprintf("invalid waveshell: init packet=%v", *wle.InitPk)
+}
+
+type InvalidPacketError struct {
+	InvalidPk *packet.PacketType
+}
+
+func (ipe InvalidPacketError) Error() string {
+	if ipe.InvalidPk == nil {
+		return "no init packet received from waveshell client"
+	}
+	return fmt.Sprintf("invalid packet received from waveshell client: %s", packet.AsString(*ipe.InvalidPk))
+}
+
 // returns (clientproc, initpk, error)
-func MakeClientProc(ctx context.Context, ecmd ConnInterface) (*ClientProc, *packet.InitPacketType, error) {
+func MakeClientProc(ctx context.Context, ecmd ConnInterface) (*ClientProc, error) {
 	startTs := time.Now()
 	sender, inputWriter, err := ecmd.Sender()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	packetParser, stdoutReader, stderrReader, err := ecmd.Parser()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	err = ecmd.Start()
 	if err != nil {
-		return nil, nil, fmt.Errorf("running local client: %w", err)
+		return nil, fmt.Errorf("running local client: %w", err)
 	}
 	cproc := &ClientProc{
 		Cmd:          ecmd,
@@ -150,29 +179,27 @@ func MakeClientProc(ctx context.Context, ecmd ConnInterface) (*ClientProc, *pack
 	case pk = <-packetParser.MainCh:
 	case <-ctx.Done():
 		cproc.Close()
-		return nil, nil, ctx.Err()
+		return nil, ctx.Err()
 	}
-	if pk != nil {
-		if pk.GetType() != packet.InitPacketStr {
-			cproc.Close()
-			return nil, nil, fmt.Errorf("invalid packet received from mshell client: %s", packet.AsString(pk))
-		}
-		initPk := pk.(*packet.InitPacketType)
-		if initPk.NotFound {
-			cproc.Close()
-			return nil, initPk, fmt.Errorf("mshell client not found")
-		}
-		if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.MShellVersion) {
-			cproc.Close()
-			return nil, initPk, fmt.Errorf("invalid remote mshell version '%s', must be '=%s'", initPk.Version, semver.MajorMinor(base.MShellVersion))
-		}
-		cproc.InitPk = initPk
-	}
-	if cproc.InitPk == nil {
+	if pk == nil {
 		cproc.Close()
-		return nil, nil, fmt.Errorf("no init packet received from mshell client")
+		return nil, InvalidPacketError{}
 	}
-	return cproc, cproc.InitPk, nil
+	if pk.GetType() != packet.InitPacketStr {
+		cproc.Close()
+		return nil, InvalidPacketError{InvalidPk: &pk}
+	}
+	initPk := pk.(*packet.InitPacketType)
+	if initPk.NotFound {
+		cproc.Close()
+		return nil, WaveshellLaunchError{InitPk: initPk}
+	}
+	if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.MShellVersion) {
+		cproc.Close()
+		return nil, WaveshellLaunchError{InitPk: initPk}
+	}
+	cproc.InitPk = initPk
+	return cproc, nil
 }
 
 func (cproc *ClientProc) Close() {
