@@ -1,7 +1,6 @@
 name: "Build Helper"
 on: workflow_dispatch
 env:
-    WAVETERM_VERSION: 0.6.1
     GO_VERSION: "1.21.5"
     NODE_VERSION: "21.5.0"
 jobs:
@@ -44,6 +43,9 @@ jobs:
               with:
                   node-version: ${{env.NODE_VERSION}}
                   cache: "yarn"
+            - run: |
+                  VERSION=$(node -e 'console.log(require("./version.js"))')
+                  echo "WAVETERM_VERSION=${VERSION:1}" >> $GITHUB_ENV
             - run: yarn --frozen-lockfile
             - run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
             - uses: actions/upload-artifact@v4
