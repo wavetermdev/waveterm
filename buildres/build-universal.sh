@@ -56,18 +56,18 @@ TEMP_WAVE_DIR_X64=$TEMP_DIR/arm64/Wave.app
 TEMP_WAVE_DIR_UNIVERSAL=$TEMP_DIR/Wave.app
 lipo -create -output $TEMP_DIR/wavesrv $TEMP_WAVE_DIR_X64/Contents/Resources/app/bin/wavesrv $TEMP_WAVE_DIR_ARM/Contents/Resources/app/bin/wavesrv
 rm -rf $TEMP_WAVE_DIR_ARM/Contents/Resources/app
-mv $TEMP_WAVE_DIR_X64/Contents/Resources/app temp/
-cp $TEMP_DIR/wavesrv temp/app/bin/wavesrv
+mv $TEMP_WAVE_DIR_X64/Contents/Resources/app $TEMP_DIR
+cp $TEMP_DIR/wavesrv $TEMP_DIR/app/bin/wavesrv
 mkdir $TEMP_WAVE_DIR_ARM/Contents/Resources/app
 mkdir $TEMP_WAVE_DIR_X64/Contents/Resources/app
 node $SCRIPT_DIR/build-universal.js
 rm -rf $TEMP_WAVE_DIR_UNIVERSAL/Contents/Resources/app
 mv $TEMP_DIR/app $TEMP_WAVE_DIR_UNIVERSAL/Contents/Resources/app
 node $SCRIPT_DIR/osx-sign.js
-DEBUG=electron-notarize node osx-notarize.js
+DEBUG=electron-notarize node $SCRIPT_DIR/osx-notarize.js
 echo "universal app creation success (build/sign/notarize)"
 
-UVERSION=$(node -e 'console.log(require("../version.js"))')
+UVERSION=$(node -e "console.log(require('${SCRIPT_DIR}/../version.js'))")
 UPACKAGE_NAME="waveterm-macos-universal-${UVERSION}"
 
 echo "creating universal zip"
