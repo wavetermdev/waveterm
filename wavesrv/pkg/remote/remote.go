@@ -880,6 +880,7 @@ func (msh *MShellProc) Disconnect(force bool) {
 	defer msh.Lock.Unlock()
 	if msh.ServerProc != nil {
 		msh.ServerProc.Close()
+		msh.Client = nil
 	}
 	if msh.MakeClientCancelFn != nil {
 		msh.MakeClientCancelFn()
@@ -1364,6 +1365,9 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 	if err != nil {
 		msh.WriteToPtyBuffer("*error, %s\n", err.Error())
 		msh.setErrorStatus(err)
+		msh.WithLock(func() {
+			msh.Client = nil
+		})
 		return
 	}
 	var makeClientCtx context.Context
@@ -1385,12 +1389,18 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 	if err == context.DeadlineExceeded {
 		msh.WriteToPtyBuffer("*connect timeout\n")
 		msh.setErrorStatus(errors.New("connect timeout"))
+		msh.WithLock(func() {
+			msh.Client = nil
+		})
 		return
 	} else if err == context.Canceled {
 		msh.WriteToPtyBuffer("*forced disconnection\n")
 		msh.WithLock(func() {
 			msh.Status = StatusDisconnected
 			go msh.NotifyRemoteUpdate()
+		})
+		msh.WithLock(func() {
+			msh.Client = nil
 		})
 		return
 	} else if serr, ok := err.(shexec.WaveshellLaunchError); ok {
@@ -1407,6 +1417,9 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 	} else if err != nil {
 		msh.WriteToPtyBuffer("*error, %s\n", serr.Error())
 		msh.setErrorStatus(err)
+		msh.WithLock(func() {
+			msh.Client = nil
+		})
 		return
 	}
 	msh.WithLock(func() {
