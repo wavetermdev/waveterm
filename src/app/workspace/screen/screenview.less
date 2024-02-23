@@ -4,6 +4,7 @@
     .screen-view {
         flex-grow: 1;
         position: relative;
+        border-top: 1px solid @thin-border-color;
     }
 
     .screen-sidebar,
@@ -19,8 +20,6 @@
         flex-direction: column;
         height: 100%;
         overflow: hidden;
-        margin-left: 5px;
-        padding-left: 5px;
         overflow-y: auto;
         border-left: 1px solid @thin-border-color;
 
@@ -28,9 +27,27 @@
             /* sidebar-header height linked to MagicLayout.ScreenSidebarHeaderHeight */
             display: flex;
             flex-direction: row;
-            padding: 3px 5px;
-            border-radius: 3px;
-            margin: 3px 5px 0 5px;
+            padding: 3px 0;
+            margin: 0;
+            border-bottom: 1px solid @thin-border-color;
+            font-size: var(--termfontsize);
+            font-family: var(--termfontfamily);
+            font-weight: normal;
+            line-height: var(--termlineheight);
+            color: @text-caption;
+
+            &:hover {
+                color: white;
+            }
+
+            div.pane-name {
+                visibility: hidden;
+                margin-left: calc(var(--termpad) * 2);
+            }
+
+            &:hover div.pane-name {
+                visibility: visible;
+            }
 
             i {
                 padding: 3px;
