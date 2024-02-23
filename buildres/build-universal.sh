@@ -64,10 +64,10 @@ node $SCRIPT_DIR/build-universal.js
 rm -rf $TEMP_WAVE_DIR_UNIVERSAL/Contents/Resources/app
 mv $TEMP_DIR/app $TEMP_WAVE_DIR_UNIVERSAL/Contents/Resources/app
 node $SCRIPT_DIR/osx-sign.js
-DEBUG=electron-notarize node osx-notarize.js
+DEBUG=electron-notarize node $SCRIPT_DIR/osx-notarize.js
 echo "universal app creation success (build/sign/notarize)"
 
-UVERSION=$(node -e 'console.log(require("../version.js"))')
+UVERSION=$(node -e "console.log(require('${SCRIPT_DIR}/../version.js'))")
 UPACKAGE_NAME="waveterm-macos-universal-${UVERSION}"
 
 echo "creating universal zip"
