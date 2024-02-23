@@ -37,8 +37,6 @@ jobs:
                   cd scripthaus;
                   go get ./...;
                   CGO_ENABLED=1 go build -o scripthaus cmd/main.go
-            - run: brew tap scripthaus-dev/scripthaus
-            - run: brew install scripthaus
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
