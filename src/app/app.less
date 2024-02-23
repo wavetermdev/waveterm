@@ -17,12 +17,18 @@ body {
     font-size: 12px;
     font-weight: 300;
     line-height: 1.5;
-    background: @base-background-transparent;
+    background: black;
     color: @base-color;
 }
 
-body.is-dev {
-    background-color: @base-background-dev;
+body {
+    .sidebar {
+        background-color: @base-background;
+    }
+
+    &.is-dev .sidebar {
+        background-color: @base-background-dev;
+    }
 }
 
 textarea {
