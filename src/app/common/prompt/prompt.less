@@ -2,6 +2,8 @@
 
 .term-prompt {
     font-weight: normal;
+    font-size: var(--termfontsize);
+    line-height: var(--termlineheight);
     font-family: var(--termfontfamily);
 
     .icon {
@@ -10,6 +12,10 @@
         width: 1.2em;
         height: 1.2em;
         fill: @wave-green;
+    }
+
+    i {
+        margin-right: 0.25em; // em for relative sizing
     }
 
     .term-prompt-branch {
@@ -21,9 +27,6 @@
     }
 
     .term-prompt-remote {
-        i {
-            margin-right: 0;
-        }
     }
 
     .term-prompt-remote {

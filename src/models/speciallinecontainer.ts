@@ -127,7 +127,7 @@ class SpecialLineContainer {
         }
         let termWrap = this.getTermWrap(cmd.lineId);
         if (termWrap == null) {
-            let cols = windowWidthToCols(width, this.globalModel.termFontSize.get());
+            let cols = windowWidthToCols(width, this.globalModel.getTermFontSize());
             let usedRows = this.globalModel.getContentHeight(context);
             if (usedRows != null) {
                 return usedRows;

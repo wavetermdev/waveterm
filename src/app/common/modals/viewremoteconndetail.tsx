@@ -291,7 +291,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
         let model = this.model;
         let isTermFocused = this.model.remoteTermWrapFocus.get();
-        let termFontSize = GlobalModel.termFontSize.get();
+        let termFontSize = GlobalModel.getTermFontSize();
         let termWidth = textmeasure.termWidthFromCols(appconst.RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
         let selectedRemoteStatus = this.getSelectedRemote().status;

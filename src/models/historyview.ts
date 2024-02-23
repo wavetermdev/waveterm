@@ -114,8 +114,8 @@ class HistoryViewModel {
                 this.specialLineContainer = null;
             } else {
                 this.activeItem.set(hitem.historyid);
-                let width = termWidthFromCols(80, this.globalModel.termFontSize.get());
-                let height = termHeightFromRows(25, this.globalModel.termFontSize.get(), 25);
+                let width = termWidthFromCols(80, this.globalModel.getTermFontSize());
+                let height = termHeightFromRows(25, this.globalModel.getTermFontSize(), 25);
                 this.specialLineContainer = new SpecialLineContainer(
                     this,
                     { width, height },
