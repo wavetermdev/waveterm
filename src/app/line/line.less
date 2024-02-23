@@ -2,7 +2,7 @@
 
 .line {
     margin: 1rem 1rem 0 1rem;
-    padding: 1rem;
+    padding: var(--termpad) var(--termpad) var(--termpad) var(--termpad);
     border-radius: 6px;
     display: flex;
     overflow: hidden;
@@ -84,12 +84,6 @@
             cursor: pointer;
         }
 
-        &.has-rtnstate {
-            .linenum {
-                font-weight: bold;
-            }
-        }
-
         .avatar {
             display: inline-block;
             height: 1em;
@@ -143,15 +137,8 @@
         font-size: var(--termfontsize);
         line-height: var(--termlineheight);
 
-        margin-top: var(--termlineheight_top);
-        margin-bottom: var(--termlineheight_bottom);
-
         &.is-expanded {
             height: auto;
-        }
-
-        &.hide-prompt {
-            height: 32px;
         }
 
         .line-icon {
@@ -188,6 +175,10 @@
         .meta.meta-line2 {
             margin-left: -2px;
         }
+    }
+
+    .line-header + div:not(.zero-height) {
+        margin-top: var(--termpad);
     }
 
     .meta-wrap {

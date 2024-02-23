@@ -37,7 +37,6 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
         const { line, cmd } = this.props;
         const lineNumStr = (line.linenumtemp ? "~" : "#") + String(line.linenum);
         let status = cmd != null ? cmd.getStatus() : "done";
-        const rtnstate = cmd != null ? cmd.getRtnState() : false;
         const exitcode = cmd != null ? cmd.getExitCode() : 0;
         const isComment = line.linetype == "text";
         let icon = null;
@@ -70,7 +69,7 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
             <div
                 onContextMenu={this.props.onRightClick}
                 title={iconTitle}
-                className={cn("simple-line-status", "status-" + status, rtnstate ? "has-rtnstate" : null)}
+                className={cn("simple-line-status", "status-" + status)}
             >
                 <span className="linenum">{lineNumStr}</span>
                 <div className="avatar">{icon}</div>
@@ -599,6 +598,7 @@ class LineCmd extends React.Component<
                 </div>
             );
         }
+        const isRtnState = cmd.getRtnState() && false; // turning off rtnstate for now
         const isSelected = mobx
             .computed(() => screen.getSelectedLine() == line.linenum, {
                 name: "computed-isSelected",
@@ -643,7 +643,7 @@ class LineCmd extends React.Component<
             { selected: isSelected },
             { active: isSelected && isFocused },
             { "cmd-done": !isRunning },
-            { "has-rtnstate": cmd.getRtnState() }
+            { "has-rtnstate": isRtnState }
         );
         let rendererPlugin: RendererPluginType = null;
         const isNoneRenderer = line.renderer == "none";
@@ -730,7 +730,7 @@ class LineCmd extends React.Component<
                         </div>
                     </If>
                 </div>
-                <If condition={isInSidebar}>
+                <If condition={!isMinimized && isInSidebar}>
                     <div className="sidebar-message" style={{ fontSize: termFontSize }}>
                         &nbsp;&nbsp;showing in sidebar =&gt;
                     </div>
@@ -771,7 +771,7 @@ class LineCmd extends React.Component<
                             />
                         </If>
                     </ErrorBoundary>
-                    <If condition={cmd.getRtnState()}>
+                    <If condition={isRtnState}>
                         <RtnState cmd={cmd} line={line} />
                     </If>
                     <If condition={isSelected && !isFocused && rendererType == "terminal"}>

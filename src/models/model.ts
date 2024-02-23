@@ -353,8 +353,7 @@ class Model {
             this.bumpRenderVersion();
             this.setStyleVar("--termfontsize", fontSize + "px");
             this.setStyleVar("--termlineheight", monoFontSize.height + "px");
-            this.setStyleVar("--termlineheight_top", Math.floor(monoFontSize.height / 2) + "px");
-            this.setStyleVar("--termlineheight_bottom", Math.ceil(monoFontSize.height / 2) + "px");
+            this.setStyleVar("--termpad", Math.floor(monoFontSize.height / 2) + "px");
         })();
     }
 
