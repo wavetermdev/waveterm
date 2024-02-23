@@ -106,6 +106,7 @@ declare global {
         remotevars: Record<string, string>;
         status: RemoteStatusTypeStrs;
         connecttimeout: number;
+        countdownactive: boolean;
         errorstr: string;
         installstatus: string;
         installerrorstr: string;
