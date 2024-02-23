@@ -452,7 +452,6 @@ class LineCmd extends React.Component<
 
     renderMeta1(cmd: Cmd) {
         let { line } = this.props;
-        let termOpts = cmd.getTermOpts();
         let formattedTime: string = "";
         let restartTs = cmd.getRestartTs();
         let timeTitle: string = null;
@@ -476,12 +475,6 @@ class LineCmd extends React.Component<
                         {renderer}&nbsp;
                     </div>
                 </If>
-                <div className="termopts">
-                    ({termOpts.rows}x{termOpts.cols})
-                </div>
-                <div className="settings hoverEffect" onClick={this.handleLineSettings}>
-                    <GearIcon />
-                </div>
             </div>
         );
     }
@@ -699,6 +692,14 @@ class LineCmd extends React.Component<
                             title="Move to Sidebar"
                         >
                             <i className="fa-sharp fa-solid fa-right-to-line" />
+                        </div>
+                        <div
+                            key="settings"
+                            title="Line Settings"
+                            className="line-icon"
+                            onClick={this.handleLineSettings}
+                        >
+                            <i className="fa-sharp fa-regular fa-ellipsis-vertical" />
                         </div>
                     </If>
                     <If condition={containerType == appconst.LineContainer_Sidebar}>

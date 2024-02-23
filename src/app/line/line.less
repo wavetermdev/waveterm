@@ -202,11 +202,13 @@
     .line-header {
         display: flex;
         flex-direction: row;
-        padding-bottom: 0.7rem;
         width: 100%;
         font-family: var(--termfontfamily);
         font-size: var(--termfontsize);
         line-height: var(--termlineheight);
+
+        margin-top: var(--termlineheight_top);
+        margin-bottom: var(--termlineheight_bottom);
 
         &.is-expanded {
             height: auto;
@@ -264,10 +266,6 @@
         display: flex;
         flex-direction: row;
 
-        .simple-line-status {
-            margin-top: 5px;
-        }
-
         .user {
             color: lighten(@soft-blue, 10%);
             font-weight: bold;
@@ -279,12 +277,10 @@
         .termopts,
         .renderer {
             display: flex;
-            margin-top: 5px;
         }
 
         .renderer {
             margin-left: 3px;
-            margin-top: 5px;
             svg {
                 width: 1em;
                 margin-right: 0.5em;
@@ -295,7 +291,6 @@
         .settings {
             display: none;
             margin-left: 0.5em;
-            margin-top: 0.65em;
             cursor: pointer;
             width: 1em;
             height: 1em;
@@ -310,7 +305,6 @@
         }
 
         .termopts {
-            margin-top: 5px;
             display: none;
             .resize-button {
                 cursor: pointer;
@@ -321,7 +315,6 @@
 
         .metapart-mono {
             margin-left: 8px;
-            margin-top: 4px;
             white-space: nowrap;
         }
 
@@ -335,13 +328,10 @@
             padding-right: 2px;
             color: @term-white;
             cursor: pointer;
-
-            margin-top: 4px;
         }
     }
 
     .cmdtext-expanded-wrapper {
-        margin-top: 2px;
         padding-left: 6px;
         overflow-y: auto;
         max-height: 60px;
