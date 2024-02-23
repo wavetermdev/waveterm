@@ -92,22 +92,25 @@
 
         .avatar {
             display: inline-block;
-            width: 1em;
             height: 1em;
-            margin: 0 0.5em;
+            margin-left: 0.5em;
+            margin-right: 0.5em;
             vertical-align: text-top;
             fill: @base-color;
         }
 
         .success {
+            color: @wave-green;
             fill: @wave-green;
         }
 
         .fail {
+            color: @error-red;
             fill: @error-red;
         }
 
         .warning {
+            color: @warning-yellow;
             fill: @warning-yellow;
         }
     }
@@ -131,78 +134,11 @@
         display: block;
     }
 
-    .avatar {
-        max-height: 38px;
-        width: 38px;
-        display: flex;
-        flex-shrink: 0;
-        align-items: center;
-        justify-content: center;
-        font-weight: bold;
-        color: @term-white;
-
-        border-radius: 5px;
-        position: relative;
-
-        &.rtnstate {
-            border: 1px solid white;
-        }
-
-        .status-icon {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-        }
-
-        .comment-icon {
-            position: absolute;
-            top: 0px;
-            right: -4px;
-        }
-
-        &.status-done {
-            background-color: #555;
-        }
-
-        &.ephemeral {
-            opacity: 0.5;
-            outline: 1px solid white;
-        }
-
-        &.status-error {
-            .status-icon {
-                color: @error-red;
-            }
-        }
-
-        &.status-hangup {
-            .status-icon {
-                color: @term-yellow;
-            }
-        }
-
-        &.status-running {
-            background-color: @soft-blue;
-        }
-
-        &.status-waiting {
-            background-color: @term-yellow;
-        }
-
-        &.status-detached {
-            background-color: @soft-blue;
-            .status-icon {
-                top: 3px;
-                right: 3px;
-                color: @term-white;
-            }
-        }
-    }
-
     .line-header {
         display: flex;
         flex-direction: row;
         width: 100%;
+        font-weight: normal;
         font-family: var(--termfontfamily);
         font-size: var(--termfontsize);
         line-height: var(--termlineheight);

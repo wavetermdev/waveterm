@@ -25,15 +25,7 @@ import * as lineutil from "./lineutil";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as appconst from "@/app/appconst";
 
-import { ReactComponent as CheckIcon } from "@/assets/icons/line/check.svg";
-import { ReactComponent as CommentIcon } from "@/assets/icons/line/comment.svg";
-import { ReactComponent as QuestionIcon } from "@/assets/icons/line/question.svg";
-import { ReactComponent as WarningIcon } from "@/assets/icons/line/triangle-exclamation.svg";
-import { ReactComponent as XmarkIcon } from "@/assets/icons/line/xmark.svg";
 import { ReactComponent as FillIcon } from "@/assets/icons/line/fill.svg";
-import { ReactComponent as GearIcon } from "@/assets/icons/line/gear.svg";
-
-import { RotateIcon } from "@/common/icons/icons";
 
 import "./line.less";
 
@@ -44,34 +36,34 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
     render() {
         const { line, cmd } = this.props;
         const lineNumStr = (line.linenumtemp ? "~" : "#") + String(line.linenum);
-        const status = cmd != null ? cmd.getStatus() : "done";
+        let status = cmd != null ? cmd.getStatus() : "done";
         const rtnstate = cmd != null ? cmd.getRtnState() : false;
         const exitcode = cmd != null ? cmd.getExitCode() : 0;
         const isComment = line.linetype == "text";
         let icon = null;
         let iconTitle = null;
         if (isComment) {
-            icon = <CommentIcon />;
+            icon = <i className="fa-sharp fa-solid fa-comment" />;
             iconTitle = "comment";
         } else if (status == "done") {
             if (exitcode === 0) {
-                icon = <CheckIcon className="success" />;
+                icon = <i className="success fa-sharp fa-solid fa-check" />;
                 iconTitle = "success";
             } else {
-                icon = <XmarkIcon className="fail" />;
+                icon = <i className="fail fa-sharp fa-solid fa-xmark" />;
                 iconTitle = "exitcode " + exitcode;
             }
         } else if (status == "hangup") {
-            icon = <WarningIcon className="warning" />;
+            icon = <i className="warning fa-sharp fa-solid fa-triangle-exclamation" />;
             iconTitle = status;
         } else if (status == "error") {
-            icon = <XmarkIcon className="fail" />;
+            icon = <i className="fail fa-sharp fa-solid fa-xmark" />;
             iconTitle = "error";
-        } else if (status == "running" || "detached") {
-            icon = <RotateIcon className="warning spin" />;
+        } else if (status == "running" || status == "detached") {
+            icon = <i className="warning fa-sharp fa-solid fa-rotate fa-spin" />;
             iconTitle = "running";
         } else {
-            icon = <QuestionIcon />;
+            icon = <i className="fail fa-sharp fa-solid fa-question" />;
             iconTitle = "unknown";
         }
         return (
@@ -88,52 +80,22 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<
-    {
-        screen: LineContainerType;
-        line: LineType;
-        width: number;
-        staticRender: boolean;
-        visible: OV<boolean>;
-        onHeightChange: LineHeightChangeCallbackType;
-        renderMode: RenderModeType;
-        overrideCollapsed: OV<boolean>;
-        noSelect?: boolean;
-        showHints?: boolean;
-    },
-    {}
-> {
-    lineRef: React.RefObject<any> = React.createRef();
-    cmdTextRef: React.RefObject<any> = React.createRef();
+class RtnState extends React.Component<{ cmd: Cmd; line: LineType }> {
     rtnStateDiff: mobx.IObservableValue<string> = mobx.observable.box(null, {
         name: "linecmd-rtn-state-diff",
     });
     rtnStateDiffFetched: boolean = false;
-    lastHeight: number;
-    isOverflow: OV<boolean> = mobx.observable.box(false, {
-        name: "line-overflow",
-    });
-    isCmdExpanded: OV<boolean> = mobx.observable.box(false, {
-        name: "cmd-expanded",
-    });
 
-    constructor(props) {
-        super(props);
+    componentDidMount() {
+        this.componentDidUpdate();
+    }
+
+    componentDidUpdate() {
+        this.checkStateDiffLoad();
     }
 
     checkStateDiffLoad(): void {
-        const { screen, line, staticRender, visible } = this.props;
-        if (staticRender) {
-            return;
-        }
-        if (!visible.get()) {
-            if (this.rtnStateDiffFetched) {
-                this.rtnStateDiffFetched = false;
-                this.setRtnStateDiff(null);
-            }
-            return;
-        }
-        const cmd = screen.getCmd(line);
+        let cmd = this.props.cmd;
         if (cmd == null || !cmd.getRtnState() || this.rtnStateDiffFetched) {
             return;
         }
@@ -177,6 +139,68 @@ class LineCmd extends React.Component<
         mobx.action(() => {
             this.rtnStateDiff.set(val);
         })();
+    }
+
+    render() {
+        let { cmd } = this.props;
+        const rsdiff = this.rtnStateDiff.get();
+        const termFontSize = GlobalModel.getTermFontSize();
+        let rtnStateDiffSize = termFontSize - 2;
+        if (rtnStateDiffSize < 10) {
+            rtnStateDiffSize = Math.max(termFontSize, 10);
+        }
+        return (
+            <div
+                key="rtnstate"
+                className="cmd-rtnstate"
+                style={{
+                    visibility: cmd.getStatus() == "done" ? "visible" : "hidden",
+                }}
+            >
+                <If condition={rsdiff == null || rsdiff == ""}>
+                    <div className="cmd-rtnstate-label">state unchanged</div>
+                    <div className="cmd-rtnstate-sep"></div>
+                </If>
+                <If condition={rsdiff != null && rsdiff != ""}>
+                    <div className="cmd-rtnstate-label">new state</div>
+                    <div className="cmd-rtnstate-sep"></div>
+                    <div className="cmd-rtnstate-diff" style={{ fontSize: rtnStateDiffSize }}>
+                        <div className="cmd-rtnstate-diff-inner">{this.rtnStateDiff.get()}</div>
+                    </div>
+                </If>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class LineCmd extends React.Component<
+    {
+        screen: LineContainerType;
+        line: LineType;
+        width: number;
+        staticRender: boolean;
+        visible: OV<boolean>;
+        onHeightChange: LineHeightChangeCallbackType;
+        renderMode: RenderModeType;
+        overrideCollapsed: OV<boolean>;
+        noSelect?: boolean;
+        showHints?: boolean;
+    },
+    {}
+> {
+    lineRef: React.RefObject<any> = React.createRef();
+    cmdTextRef: React.RefObject<any> = React.createRef();
+    lastHeight: number;
+    isOverflow: OV<boolean> = mobx.observable.box(false, {
+        name: "line-overflow",
+    });
+    isCmdExpanded: OV<boolean> = mobx.observable.box(false, {
+        name: "cmd-expanded",
+    });
+
+    constructor(props) {
+        super(props);
     }
 
     componentDidMount() {
@@ -241,7 +265,6 @@ class LineCmd extends React.Component<
 
     componentDidUpdate(prevProps, prevState, snapshot: { height: number }): void {
         this.handleHeightChange();
-        this.checkStateDiffLoad();
         this.checkCmdText();
     }
 
@@ -471,7 +494,7 @@ class LineCmd extends React.Component<
                 <div>&nbsp;</div>
                 <If condition={!isBlank(renderer) && renderer != "terminal"}>
                     <div className="renderer">
-                        <FillIcon />
+                        <i className="fa-sharp fa-solid fa-fill" />
                         {renderer}&nbsp;
                     </div>
                 </If>
@@ -614,7 +637,6 @@ class LineCmd extends React.Component<
             .get();
         const isRunning = cmd.isRunning();
         const isExpanded = this.isCmdExpanded.get();
-        const rsdiff = this.rtnStateDiff.get();
         const mainDivCn = cn(
             "line",
             "line-cmd",
@@ -631,10 +653,6 @@ class LineCmd extends React.Component<
         const rendererType = lineutil.getRendererType(line);
         const hidePrompt = rendererPlugin?.hidePrompt;
         const termFontSize = GlobalModel.getTermFontSize();
-        let rtnStateDiffSize = termFontSize - 2;
-        if (rtnStateDiffSize < 10) {
-            rtnStateDiffSize = Math.max(termFontSize, 10);
-        }
         const containerType = screen.getContainerType();
         return (
             <div
@@ -754,25 +772,7 @@ class LineCmd extends React.Component<
                         </If>
                     </ErrorBoundary>
                     <If condition={cmd.getRtnState()}>
-                        <div
-                            key="rtnstate"
-                            className="cmd-rtnstate"
-                            style={{
-                                visibility: cmd.getStatus() == "done" ? "visible" : "hidden",
-                            }}
-                        >
-                            <If condition={rsdiff == null || rsdiff == ""}>
-                                <div className="cmd-rtnstate-label">state unchanged</div>
-                                <div className="cmd-rtnstate-sep"></div>
-                            </If>
-                            <If condition={rsdiff != null && rsdiff != ""}>
-                                <div className="cmd-rtnstate-label">new state</div>
-                                <div className="cmd-rtnstate-sep"></div>
-                                <div className="cmd-rtnstate-diff" style={{ fontSize: rtnStateDiffSize }}>
-                                    <div className="cmd-rtnstate-diff-inner">{this.rtnStateDiff.get()}</div>
-                                </div>
-                            </If>
-                        </div>
+                        <RtnState cmd={cmd} line={line} />
                     </If>
                     <If condition={isSelected && !isFocused && rendererType == "terminal"}>
                         <div className="cmd-hints">
