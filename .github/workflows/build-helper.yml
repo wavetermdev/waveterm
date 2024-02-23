@@ -22,7 +22,6 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - uses: actions/checkout@v4
-              if: ${{ matrix.platform != 'darwin' }}
               with:
                   repository: scripthaus-dev/scripthaus
                   path: scripthaus
@@ -33,10 +32,7 @@ jobs:
                       wavesrv/go.sum
                       waveshell/go.sum
                       scripthaus/go.sum
-            - if: ${{ matrix.platform == 'darwin' }}
-              run: brew install scripthaus-dev/scripthaus/scripthaus
-            - if: ${{ matrix.platform != 'darwin'}}
-              run: |
+            - run: |
                   go work use ./scripthaus;
                   cd scripthaus;
                   go get ./...;
