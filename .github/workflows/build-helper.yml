@@ -5,9 +5,20 @@ env:
     GO_VERSION: "1.21.5"
     NODE_VERSION: "21.5.0"
 jobs:
-    runbuild-darwin-x64:
-        name: "Build MacOS x64"
-        runs-on: macos-latest
+    runbuild:
+        strategy:
+            matrix:
+                include:
+                    - platform: "darwin"
+                      arch: "x64"
+                      runner: "macos-latest"
+                    - platform: "darwin"
+                      arch: "arm64"
+                      runner: "macos-latest-xlarge"
+                    - platform: "linux"
+                      arch: "x64"
+                      runner: "ubuntu-latest"
+        runs-on: ${{ matrix.runner }}
         steps:
             - uses: actions/checkout@v4
             - uses: actions/setup-go@v5
@@ -26,64 +37,29 @@ jobs:
             - run: scripthaus run build-package
             - uses: actions/upload-artifact@v4
               with:
-                  name: waveterm-build-darwin-x64
-                  path: out/make/zip/darwin/x64/*.zip
+                  name: waveterm-build-${{ matrix.platform }}-${{ matrix.arch }}
+                  path: out/make/zip/${{ matrix.platform }}/${{ matrix.arch }}/*.zip
                   retention-days: 2
-    runbuild-darwin-arm64:
-        name: "Build MacOS arm64"
-        runs-on: macos-latest-xlarge
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-go@v5
-              with:
-                  go-version: ${{env.GO_VERSION}}
-                  cache-dependency-path: |
-                      wavesrv/go.sum
-                      waveshell/go.sum
-            - run: brew tap scripthaus-dev/scripthaus
-            - run: brew install scripthaus
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: ${{env.NODE_VERSION}}
-                  cache: "yarn"
-            - run: yarn --frozen-lockfile
-            - run: scripthaus run build-package
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: waveterm-build-darwin-arm64
-                  path: out/make/zip/darwin/arm64/*.zip
-                  retention-days: 2
-    runbuild-linux:
-        name: "Build Linux x64"
+    upload:
+        name: "Upload Builds"
         runs-on: ubuntu-latest
-        needs: [runbuild-darwin-x64, runbuild-darwin-arm64]
+        needs: [runbuild]
         steps:
-            - uses: actions/checkout@v4
-            - uses: actions/checkout@v4
-              with:
-                  repository: scripthaus-dev/scripthaus
-                  path: scripthaus
-            - uses: actions/setup-go@v5
-              with:
-                  go-version: ${{env.GO_VERSION}}
-                  cache-dependency-path: |
-                      wavesrv/go.sum
-                      waveshell/go.sum
-                      scripthaus/go.sum
-            - run: |
-                  go work use ./scripthaus;
-                  cd scripthaus;
-                  go get ./...;
-                  CGO_ENABLED=1 go build -o scripthaus cmd/main.go
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: ${{env.NODE_VERSION}}
-                  cache: "yarn"
-            - run: yarn --frozen-lockfile
-            - run: ./scripthaus/scripthaus run build-package-linux
             - uses: actions/download-artifact@v4
               with:
-                  merge-multiple: true
+                  name: waveterm-build-darwin-x64
+                  path: buildtemp
+            - run: |
+                  mv out/make/zip/darwin/x64/Wave-darwin-x64-$WAVETERM_VERSION.zip buildtemp/waveterm-darwin-x64-v$WAVETERM_VERSION.zip
+            - uses: actions/download-artifact@v4
+              with:
+                  name: waveterm-build-darwin-arm64
+                  path: buildtemp
+            - run: |
+                  mv out/make/zip/darwin/arm64/Wave-darwin-arm64-$WAVETERM_VERSION.zip buildtemp/waveterm-darwin-arm64-v$WAVETERM_VERSION.zip
+            - uses: actions/download-artifact@v4
+              with:
+                  name: waveterm-build-linux
                   path: buildtemp
             - run: |
                   mv out/make/zip/linux/x64/Wave-linux-x64-$WAVETERM_VERSION.zip buildtemp/waveterm-linux-x64-v$WAVETERM_VERSION.zip
@@ -93,8 +69,3 @@ jobs:
                   AWS_ACCESS_KEY_ID: "${{ secrets.S3_USERID }}"
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRETKEY }}"
                   AWS_DEFAULT_REGION: us-west-2
-            - uses: actions/upload-artifact@v4
-              with:
-                  name: waveterm-builds
-                  path: buildtemp
-                  retention-days: 2
