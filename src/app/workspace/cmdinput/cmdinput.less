@@ -350,7 +350,7 @@
     .cmd-input-info {
         flex-shrink: 1;
         overflow-y: auto;
-        margin-bottom: 5px;
+        margin-bottom: var(--termpad);
 
         .info-msg {
             color: @soft-blue;
@@ -377,6 +377,9 @@
             flex-direction: row;
             flex-wrap: wrap;
             padding-bottom: 5px;
+            font-weight: normal;
+            font-family: var(--termfontfamily);
+            font-size: var(--termfontsize);
 
             .info-comp {
                 min-width: 200px;
