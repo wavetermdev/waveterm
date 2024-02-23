@@ -4,7 +4,7 @@
     display: flex;
     flex-direction: column;
     overflow: auto;
-    padding: 0 0 10px 0;
+    padding: 0;
     flex-grow: 1;
     position: relative;
     overflow-x: hidden;
@@ -35,8 +35,10 @@
     .line-sep-labeled {
         display: flex;
         align-items: center;
-        margin-top: 1em;
-        color: rgba(@base-color, 0.5);
+        color: @text-caption;
+        font-family: var(--termfontfamily);
+        line-height: var(--termlineheight);
+        font-size: var(--termfontsize);
     }
 
     .line-sep-labeled::before,
