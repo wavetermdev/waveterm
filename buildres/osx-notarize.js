@@ -1,4 +1,5 @@
 const { notarize } = require("@electron/notarize");
+const path = require("path");
 
 console.log("running osx-notarize");
 const waveAppPath = path.resolve(__dirname, "temp", "Wave.app");
