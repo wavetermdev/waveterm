@@ -215,31 +215,6 @@ class CmdInput extends React.Component<{}, {}> {
                         onHeightChange={this.handleInnerHeightUpdate}
                     />
                     <div className="control cmd-exec">
-                        {/**<div onClick={inputModel.toggleExpandInput} className="hint-item color-white">
-                            {inputModel.inputExpanded.get() ? "shrink" : "expand"} input ({renderCmdText("E")})
-                            </div>**/}
-                        {!focusVal && (
-                            <div onClick={this.clickFocusInputHint} className="cmd-btn hoverEffect">
-                                <div className="hint-elem">focus input ({renderCmdText("I")})</div>
-                            </div>
-                        )}
-                        {focusVal && (
-                            <div className="cmd-btn hoverEffect">
-                                <If condition={historyShow}>
-                                    <div className="hint-elem" onMouseDown={this.clickHistoryHint}>
-                                        close (esc)
-                                    </div>
-                                </If>
-                                <If condition={!historyShow}>
-                                    <div className="hint-elem" onMouseDown={this.clickHistoryHint}>
-                                        history (ctrl-r)
-                                    </div>
-                                    <div className="hint-elem" onMouseDown={this.clickAIHint}>
-                                        AI (ctrl-space)
-                                    </div>
-                                </If>
-                            </div>
-                        )}
                         <ExecIcon
                             onClick={inputModel.uiSubmitCommand}
                             className={`icon ${inputModel.getCurLine().trim() === "" ? "disabled" : "hoverEffect"}`}

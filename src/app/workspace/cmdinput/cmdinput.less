@@ -10,7 +10,6 @@
     right: 12px;
     width: calc(100% - 24px);
     padding: 12px;
-    padding-bottom: 6px;
     z-index: 100;
     background: @background-session-components;
     box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.5), 0px 3px 8px 0px rgba(0, 0, 0, 0.35),
@@ -101,7 +100,7 @@
 
     .cmd-input-field {
         position: relative;
-        padding-right: 17em;
+        padding-right: 5em;
 
         .cmd-hints {
             position: absolute;
@@ -115,10 +114,14 @@
         .textareainput-div {
             position: relative;
 
+            &.control {
+                padding: var(--termpad) 0;
+            }
+
             .shelltag {
                 position: absolute;
-                bottom: 4px;
-                right: 3px;
+                bottom: -4px;
+                right: 0px;
                 font-size: 10px;
                 color: @text-secondary;
                 line-height: 1;
@@ -131,7 +134,7 @@
         textarea {
             color: @term-bright-white;
             background-color: @textarea-background;
-            padding: 0.5em;
+            padding: var(--termpad);
             resize: none;
             overflow: auto;
             overflow-wrap: anywhere;
@@ -139,6 +142,7 @@
             border: none;
             font-family: var(--termfontfamily);
             font-weight: normal;
+            line-height: var(--termlineheight);
             &.display-disabled {
                 background-color: #444;
             }
