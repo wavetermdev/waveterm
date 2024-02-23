@@ -579,11 +579,11 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         if (activeScreen != null) {
             activeScreen.focusType.get(); // for reaction
         }
-        let termFontSize = 14;
-        // fontSize*1.5 (line-height) + 2 * 0.5em padding
-        let computedInnerHeight = displayLines * (termFontSize * 1.5) + 2 * 0.5 * termFontSize;
-        // inner height + 2*1em padding
-        let computedOuterHeight = computedInnerHeight + 2 * 1.0 * termFontSize;
+        let termFontSize = GlobalModel.getTermFontSize();
+        let fontSize = getMonoFontSize(termFontSize);
+        let termPad = Math.floor(fontSize.height / 2);
+        let computedInnerHeight = displayLines * fontSize.height + 2 * termPad;
+        let computedOuterHeight = computedInnerHeight + 2 * termPad;
         let shellType: string = "";
         let screen = GlobalModel.getActiveScreen();
         if (screen != null) {

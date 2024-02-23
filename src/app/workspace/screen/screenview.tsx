@@ -108,7 +108,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         if (screenWidth == null) {
             return <div className="screen-view" ref={this.screenViewRef}></div>;
         }
-        let fontSize = GlobalModel.termFontSize.get();
+        let fontSize = GlobalModel.getTermFontSize();
         let dprStr = sprintf("%0.3f", GlobalModel.devicePixelRatio.get());
         let viewOpts = screen.viewOpts.get();
         let hasSidebar = viewOpts?.sidebar?.open;

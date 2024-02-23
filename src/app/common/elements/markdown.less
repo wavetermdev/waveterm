@@ -2,10 +2,13 @@
 
 .markdown {
     color: @term-white;
-    margin-bottom: 10px;
     font-family: @markdown-font;
     font-size: 14px;
     overflow-wrap: break-word;
+
+    &.bottom-margin {
+        margin-bottom: 10px;
+    }
 
     code {
         background-color: @markdown-highlight;

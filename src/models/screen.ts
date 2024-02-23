@@ -402,15 +402,15 @@ class Screen {
             return;
         }
         this.lastScreenSize = winSize;
-        let cols = windowWidthToCols(winSize.width, this.globalModel.termFontSize.get());
-        let rows = windowHeightToRows(winSize.height, this.globalModel.termFontSize.get());
+        let cols = windowWidthToCols(winSize.width, this.globalModel.getTermFontSize());
+        let rows = windowHeightToRows(winSize.height, this.globalModel.getTermFontSize());
         this._termSizeCallback(rows, cols);
     }
 
     getMaxContentSize(): WindowSize {
         if (this.lastScreenSize == null) {
-            let width = termWidthFromCols(80, this.globalModel.termFontSize.get());
-            let height = termHeightFromRows(25, this.globalModel.termFontSize.get(), 25);
+            let width = termWidthFromCols(80, this.globalModel.getTermFontSize());
+            let height = termHeightFromRows(25, this.globalModel.getTermFontSize(), 25);
             return { width, height };
         }
         let winSize = this.lastScreenSize;
@@ -423,8 +423,8 @@ class Screen {
 
     getIdealContentSize(): WindowSize {
         if (this.lastScreenSize == null) {
-            let width = termWidthFromCols(80, this.globalModel.termFontSize.get());
-            let height = termHeightFromRows(25, this.globalModel.termFontSize.get(), 25);
+            let width = termWidthFromCols(80, this.globalModel.getTermFontSize());
+            let height = termHeightFromRows(25, this.globalModel.getTermFontSize(), 25);
             return { width, height };
         }
         let winSize = this.lastScreenSize;

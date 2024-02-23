@@ -33,7 +33,7 @@ import { MainSidebarModel } from "./mainsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
-import { clearMonoFontCache } from "@/util/textmeasure";
+import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
 
 type SWLinePtr = {
@@ -338,17 +338,27 @@ class Model {
         return this.termFontSize.get();
     }
 
-    setTermFontSize(fontSize: number) {
+    updateTermFontSizeVars(fontSize: number, force: boolean) {
+        if (!force && fontSize == this.termFontSize.get()) {
+            return;
+        }
         if (fontSize < appconst.MinFontSize) {
             fontSize = appconst.MinFontSize;
         }
         if (fontSize > appconst.MaxFontSize) {
             fontSize = appconst.MaxFontSize;
         }
+        const monoFontSize = getMonoFontSize(fontSize);
         mobx.action(() => {
-            this.termFontSize.set(fontSize);
             this.bumpRenderVersion();
+            this.setStyleVar("--termfontsize", fontSize + "px");
+            this.setStyleVar("--termlineheight", monoFontSize.height + "px");
+            this.setStyleVar("--termpad", Math.floor(monoFontSize.height / 2) + "px");
         })();
+    }
+
+    setStyleVar(name: string, value: string) {
+        document.documentElement.style.setProperty(name, value);
     }
 
     getBaseWsHostPort(): string {
@@ -1131,6 +1141,16 @@ class Model {
     }
 
     setClientData(clientData: ClientDataType) {
+        let newFontFamily = clientData?.feopts?.termfontfamily;
+        if (newFontFamily == null) {
+            newFontFamily = "JetBrains Mono";
+        }
+        let newFontSize = clientData?.feopts?.termfontsize;
+        if (newFontSize == null) {
+            newFontSize = appconst.DefaultTermFontSize;
+        }
+        const ffUpdated = newFontFamily != this.getTermFontFamily();
+        const fsUpdated = newFontSize != this.getTermFontSize();
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1139,15 +1159,17 @@ class Model {
             shortcut = clientData?.clientopts?.globalshortcut;
         }
         getApi().reregisterGlobalShortcut(shortcut);
-        let fontFamily = clientData?.feopts?.termfontfamily;
-        if (fontFamily == null) {
-            fontFamily = "JetBrains Mono";
+        if (ffUpdated) {
+            // this also updates fontSize vars
+            loadFonts(newFontFamily);
+            document.fonts.ready.then(() => {
+                clearMonoFontCache();
+                this.updateTermFontSizeVars(this.termFontSize.get(), true); // forces an update of css vars
+                this.bumpRenderVersion();
+            });
+        } else if (fsUpdated) {
+            this.updateTermFontSizeVars(newFontSize, true);
         }
-        loadFonts(fontFamily);
-        document.fonts.ready.then(() => {
-            clearMonoFontCache();
-            this.bumpRenderVersion();
-        });
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {

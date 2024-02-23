@@ -307,7 +307,7 @@ class SourceCodeRenderer extends React.Component<
         let allowEditing = this.getAllowEditing();
         if (!allowEditing) {
             const noOfLines = Math.max(this.state.code.split("\n").length, 5);
-            const lineHeight = Math.ceil(GlobalModel.termFontSize.get() * 1.5);
+            const lineHeight = Math.ceil(GlobalModel.getTermFontSize() * 1.5);
             _editorHeight = Math.min(noOfLines * lineHeight + 10, fullWindowHeight);
         }
         this.setState({ editorHeight: _editorHeight }, () => {
@@ -434,7 +434,7 @@ class SourceCodeRenderer extends React.Component<
                 <div
                     className="code-renderer"
                     style={{
-                        fontSize: GlobalModel.termFontSize.get(),
+                        fontSize: GlobalModel.getTermFontSize(),
                         color: "white",
                     }}
                 >
