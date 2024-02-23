@@ -2,7 +2,7 @@
 
 .line {
     margin: 0 10px 0 0;
-    padding: var(--termpad) var(--termpad) var(--termpad) calc(var(--termpad) * 2);
+    padding: var(--termpad) var(--termpad) calc(var(--termpad) + 1px) calc(var(--termpad) * 2);
     display: flex;
     overflow: hidden;
     flex-shrink: 0;
@@ -135,12 +135,6 @@
     &.top-border {
         border-top: 1px solid #777;
         padding: 10px;
-    }
-
-    &:nth-child(2) {
-        margin: 0px 5px 5px 5px;
-        padding: 0px 5px 5px 12px;
-        border-top: none;
     }
 
     &:hover .meta .termopts {
