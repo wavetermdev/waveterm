@@ -12,12 +12,15 @@ jobs:
                     - platform: "darwin"
                       arch: "x64"
                       runner: "macos-latest"
+                      scripthaus: "build-package"
                     - platform: "darwin"
                       arch: "arm64"
                       runner: "macos-latest-xlarge"
+                      scripthaus: "build-package"
                     - platform: "linux"
                       arch: "x64"
                       runner: "ubuntu-latest"
+                      scripthaus: "build-package-linux"
         runs-on: ${{ matrix.runner }}
         steps:
             - uses: actions/checkout@v4
@@ -42,10 +45,7 @@ jobs:
                   node-version: ${{env.NODE_VERSION}}
                   cache: "yarn"
             - run: yarn --frozen-lockfile
-            - if: ${{ matrix.platform == 'linux' }}
-              run: ./scripthaus/scripthaus run build-package-linux
-            - if: ${{ matrix.platform == 'darwin' }}
-              run: ./scripthaus/scripthaus run build-package
+            - run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}-${{ matrix.arch }}
