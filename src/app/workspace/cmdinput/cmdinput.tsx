@@ -214,12 +214,6 @@ class CmdInput extends React.Component<{}, {}> {
                         screen={screen}
                         onHeightChange={this.handleInnerHeightUpdate}
                     />
-                    <div className="control cmd-exec">
-                        <ExecIcon
-                            onClick={inputModel.uiSubmitCommand}
-                            className={`icon ${inputModel.getCurLine().trim() === "" ? "disabled" : "hoverEffect"}`}
-                        />
-                    </div>
                 </div>
             </div>
         );
