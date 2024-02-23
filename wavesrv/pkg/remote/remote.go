@@ -1380,7 +1380,7 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 		go msh.NotifyRemoteUpdate()
 	})
 	defer makeClientCancelFn()
-	//go msh.watchClientDeadlineTime()
+	go msh.watchClientDeadlineTime()
 	cproc, err := shexec.MakeClientProc(makeClientCtx, wsSession)
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
@@ -1531,7 +1531,7 @@ func (LegacyLauncher) Launch(msh *MShellProc, interactive bool) {
 		msh.MakeClientDeadline = &deadlineTime
 		go msh.NotifyRemoteUpdate()
 	})
-	//go msh.watchClientDeadlineTime()
+	go msh.watchClientDeadlineTime()
 	cproc, err := shexec.MakeClientProc(makeClientCtx, shexec.CmdWrap{Cmd: ecmd})
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
