@@ -46,9 +46,14 @@ echo "universal app creation success (build/sign/notarize)"
 UVERSION=$(node -e 'console.log(require("../version.js"))')
 
 echo "creating universal zip"
-rm -f *.zip
+rm -rf zip
+mkdir zip
+ditto temp/Wave.app zip/Wave.app
 ZIP_NAME="waveterm-macos-universal-${UVERSION}.zip"
-zip -qr $ZIP_NAME temp/Wave.app
+cd zip
+zip -9yqr $ZIP_NAME Wave.app
+mv $ZIP_NAME ..
+cd ..
 
 echo "creating universal dmg"
 rm -f *.dmg
