@@ -35,13 +35,22 @@
     }
 
     &.selected {
-        // border: 1px solid rgba(@base-color, 0.8) !important;
+        .line-mask {
+            border-left: 4px solid #ccc;
+        }
+
+        &.has-error {
+            .line-mask {
+                border-left: 4px solid rgba(@error-red-brightened, 0.8);
+            }
+        }
     }
 
-    &.active {
+    &.active.selected {
         .line-mask {
             background-color: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(@wave-green, 0.8);
+            border-left: 4px solid rgba(@wave-green, 0.8);
         }
 
         &.has-error {

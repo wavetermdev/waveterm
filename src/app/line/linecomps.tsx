@@ -669,7 +669,7 @@ class LineCmd extends React.Component<
                 data-linenum={line.linenum}
                 data-screenid={line.screenid}
             >
-                <If condition={(isSelected && isFocused) || cmdError}>
+                <If condition={isSelected || cmdError}>
                     <div key="mask" className={cn("line-mask", { "error-mask": cmdError })}></div>
                 </If>
                 <div
