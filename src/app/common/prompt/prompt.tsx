@@ -8,7 +8,6 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import cn from "classnames";
 import { isBlank } from "@/util/util";
-import { ReactComponent as FolderIcon } from "@/assets/icons/folder.svg";
 
 import "./prompt.less";
 
@@ -76,6 +75,7 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
         if (rptr == null || isBlank(rptr.remoteid)) {
             return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>;
         }
+        let termFontSize = GlobalModel.getTermFontSize();
         let remote = GlobalModel.getRemote(this.props.rptr.remoteid);
         let remoteStr = getRemoteStr(rptr);
         let festate = this.props.festate ?? {};
@@ -96,7 +96,7 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
         }
         let cwdElem = (
             <span title="current directory" className="term-prompt-cwd">
-                <FolderIcon className="icon" />
+                <i className="fa-sharp fa-solid fa-folder" style={{ marginRight: Math.ceil(termFontSize / 4) }} />
                 {cwd}
             </span>
         );

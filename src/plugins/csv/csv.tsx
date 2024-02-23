@@ -182,7 +182,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
 
     if (isFileTooLarge) {
         return (
-            <div className="csv-renderer" style={{ fontSize: GlobalModel.termFontSize.get() }}>
+            <div className="csv-renderer" style={{ fontSize: GlobalModel.getTermFontSize() }}>
                 <div className="load-error-text">The file size exceeds 10MB and cannot be displayed.</div>
             </div>
         );

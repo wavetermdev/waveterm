@@ -27,7 +27,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     @boundMethod
     handleChangeFontSize(fontSize: string): void {
         const newFontSize = Number(fontSize);
-        if (GlobalModel.termFontSize.get() == newFontSize) {
+        if (GlobalModel.getTermFontSize() == newFontSize) {
             return;
         }
         const prtn = GlobalCommandRunner.setTermFontSize(newFontSize, false);
@@ -145,7 +145,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const maxTokensStr = String(
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
-        const curFontSize = GlobalModel.termFontSize.get();
+        const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
 
         return (
