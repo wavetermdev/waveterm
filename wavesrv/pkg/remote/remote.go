@@ -1061,29 +1061,34 @@ func (msh *MShellProc) RunInstall() {
 		msh.WriteToPtyBuffer("*error: cannot install on remote that is already trying to install, cancel current install to try again\n")
 		return
 	}
-	sapi, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	if remoteCopy.Local {
+		msh.WriteToPtyBuffer("*error: cannot install on a local remote\n")
+		return
+	}
+	_, err := shellapi.MakeShellApi(packet.ShellType_bash)
 	if err != nil {
 		msh.WriteToPtyBuffer("*error: %v\n", err)
 		return
 	}
-	msh.WriteToPtyBuffer("installing mshell %s to %s...\n", scbase.MShellVersion, remoteCopy.RemoteCanonicalName)
-	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
-	sshOpts.SSHErrorsToTty = true
-	cmdStr := shexec.MakeInstallCommandStr()
-	ecmd := sshOpts.MakeSSHExecCmd(cmdStr, sapi)
-	cmdPty, err := msh.addControllingTty(ecmd)
+	if msh.Client == nil {
+		client, err := ConnectToClient(remoteCopy.SSHOpts)
+		if err != nil {
+			statusErr := fmt.Errorf("ssh cannot connect to client: %w", err)
+			msh.setInstallErrorStatus(statusErr)
+			return
+		}
+		msh.WithLock(func() {
+			msh.Client = client
+		})
+	}
+	session, err := msh.Client.NewSession()
 	if err != nil {
-		statusErr := fmt.Errorf("cannot attach controlling tty to mshell install command: %w", err)
+		statusErr := fmt.Errorf("ssh cannot connect to client: %w", err)
 		msh.setInstallErrorStatus(statusErr)
 		return
 	}
-	defer func() {
-		if len(ecmd.ExtraFiles) > 0 {
-			ecmd.ExtraFiles[len(ecmd.ExtraFiles)-1].Close()
-		}
-		cmdPty.Close()
-	}()
-	go msh.RunPtyReadLoop(cmdPty)
+	installSession := shexec.SessionWrap{Session: session, StartCmd: shexec.MakeInstallCommandStr()}
+	msh.WriteToPtyBuffer("installing waveshell %s to %s...\n", scbase.MShellVersion, remoteCopy.RemoteCanonicalName)
 	clientCtx, clientCancelFn := context.WithCancel(context.Background())
 	defer clientCancelFn()
 	msh.WithLock(func() {
@@ -1095,7 +1100,7 @@ func (msh *MShellProc) RunInstall() {
 	msgFn := func(msg string) {
 		msh.WriteToPtyBuffer("%s", msg)
 	}
-	err = shexec.RunInstallFromCmd(clientCtx, ecmd, true, nil, scbase.MShellBinaryReader, msgFn)
+	err = shexec.RunInstallFromCmd(clientCtx, installSession, true, nil, scbase.MShellBinaryReader, msgFn)
 	if err == context.Canceled {
 		msh.WriteToPtyBuffer("*install canceled\n")
 		msh.WithLock(func() {
@@ -1118,7 +1123,7 @@ func (msh *MShellProc) RunInstall() {
 		msh.Err = nil
 		connectMode = msh.Remote.ConnectMode
 	})
-	msh.WriteToPtyBuffer("successfully installed mshell %s to ~/.mshell\n", scbase.MShellVersion)
+	msh.WriteToPtyBuffer("successfully installed waveshell %s to ~/.mshell\n", scbase.MShellVersion)
 	go msh.NotifyRemoteUpdate()
 	if connectMode == sstore.ConnectModeStartup || connectMode == sstore.ConnectModeAuto {
 		// the install was successful, and we don't have a manual connect mode, try to connect

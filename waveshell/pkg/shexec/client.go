@@ -65,6 +65,18 @@ func (cw CmdWrap) Start() error {
 	return cw.Cmd.Start()
 }
 
+func (cw CmdWrap) StdinPipe() (io.WriteCloser, error) {
+	return cw.Cmd.StdinPipe()
+}
+
+func (cw CmdWrap) StdoutPipe() (io.ReadCloser, error) {
+	return cw.Cmd.StdoutPipe()
+}
+
+func (cw CmdWrap) StderrPipe() (io.ReadCloser, error) {
+	return cw.Cmd.StderrPipe()
+}
+
 type SessionWrap struct {
 	Session  *ssh.Session
 	StartCmd string
@@ -106,12 +118,35 @@ func (sw SessionWrap) Parser() (*packet.PacketParser, io.ReadCloser, io.ReadClos
 	return packetParser, io.NopCloser(stdoutReader), io.NopCloser(stderrReader), nil
 }
 
+func (sw SessionWrap) StdinPipe() (io.WriteCloser, error) {
+	return sw.Session.StdinPipe()
+}
+
+func (sw SessionWrap) StdoutPipe() (io.ReadCloser, error) {
+	stdoutReader, err := sw.Session.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	return io.NopCloser(stdoutReader), nil
+}
+
+func (sw SessionWrap) StderrPipe() (io.ReadCloser, error) {
+	stderrReader, err := sw.Session.StderrPipe()
+	if err != nil {
+		return nil, err
+	}
+	return io.NopCloser(stderrReader), nil
+}
+
 type ConnInterface interface {
 	Kill()
 	Wait() error
 	Sender() (*packet.PacketSender, io.WriteCloser, error)
 	Parser() (*packet.PacketParser, io.ReadCloser, io.ReadCloser, error)
 	Start() error
+	StdinPipe() (io.WriteCloser, error)
+	StdoutPipe() (io.ReadCloser, error)
+	StderrPipe() (io.ReadCloser, error)
 }
 
 type ClientProc struct {
