@@ -1,14 +1,12 @@
 @import "@/common/themes/themes.less";
 
 .line {
-    margin: 1rem 1rem 0 1rem;
-    padding: var(--termpad) var(--termpad) var(--termpad) var(--termpad);
-    border-radius: 6px;
+    margin: 0 10px 0 0;
+    padding: var(--termpad) var(--termpad) var(--termpad) calc(var(--termpad) * 2);
     display: flex;
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
-    border: 1px solid transparent; // reserves space for border when not active
     font-weight: normal;
     font-family: var(--termfontfamily);
 
@@ -37,11 +35,37 @@
     }
 
     &.selected {
-        border: 1px solid rgba(@base-color, 0.8) !important;
+        // border: 1px solid rgba(@base-color, 0.8) !important;
     }
 
     &.active {
-        border: 1px solid rgba(@wave-green, 0.8) !important;
+        .line-mask {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(@wave-green, 0.8);
+        }
+
+        &.has-error {
+            .line-mask {
+                border: 2px solid rgba(@error-red, 0.8);
+                border-left: 4px solid rgba(@error-red, 0.8);
+            }
+        }
+    }
+
+    .line-mask {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: transparent;
+        z-index: 3;
+        pointer-events: none;
+
+        &.error-mask {
+            background-color: rgba(200, 0, 0, 0.1);
+            border-left: 4px solid rgba(@error-red, 0.8);
+        }
     }
 
     .load-error-text {
