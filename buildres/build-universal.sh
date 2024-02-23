@@ -42,10 +42,17 @@ mv temp/app temp/Wave.app/Contents/Resources/app
 node osx-sign.js
 DEBUG=electron-notarize node osx-notarize.js
 echo "universal app creation success (build/sign/notarize)"
+
+UVERSION=$(node -e 'console.log(require("../version.js"))')
+
+echo "creating universal zip"
+rm -f *.zip
+ZIP_NAME="waveterm-macos-universal-${UVERSION}.zip"
+zip -qr $ZIP_NAME temp/Wave.app
+
 echo "creating universal dmg"
 rm -f *.dmg
-DMG_VERSION=$(node -e 'console.log(require("../version.js"))')
-DMG_NAME="waveterm-macos-universal-${DMG_VERSION}.dmg"
+DMG_NAME="waveterm-macos-universal-${UVERSION}.dmg"
 ../../create-dmg/create-dmg \
   --volname "WaveTerm" \
   --window-pos 200 120 \
