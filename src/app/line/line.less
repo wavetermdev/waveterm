@@ -8,7 +8,7 @@
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
-    background: @base-background;
+    background: var(--primary-background-color);
     border: 1px solid transparent;
 
     &.line-cmd {
@@ -31,22 +31,22 @@
     }
 
     &.line-invalid {
-        color: @term-white;
+        color: var(--term-text-white);
         margin-left: 5px;
     }
 
     &.selected {
-        border: 1px solid rgba(@base-color, 0.8) !important;
+        border: 1px solid var(--line-selected-border-color) !important;
         box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
     }
 
     &.active {
-        border: 1px solid rgba(@wave-green, 0.8) !important;
+        border: 1px solid var(--line-active-border-color) !important;
         box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
     }
 
     .load-error-text {
-        color: @term-red;
+        color: var(--term-text-red);
         padding-top: 5px;
     }
 
@@ -55,7 +55,7 @@
     }
 
     .sidebar-message {
-        color: @term-yellow;
+        color: var(--term-text-yellow);
     }
 
     .focus-indicator {
@@ -66,7 +66,7 @@
     &.line-simple {
         font-size: 11px;
         line-height: 1.2;
-        color: rgba(@base-color, 0.6);
+        color: var(--line-text-color);
 
         .simple-line-header {
             display: flex;
@@ -90,22 +90,22 @@
             margin-left: 0.5em;
             margin-right: 0.5em;
             vertical-align: text-top;
-            fill: @base-color;
+            fill: var(--primary-background-color);
         }
 
         .success {
-            color: @wave-green;
-            fill: @wave-green;
+            color: var(--primary-accent-color);
+            fill: var(--primary-accent-color);
         }
 
         .fail {
-            color: @error-red;
-            fill: @error-red;
+            color: var(--line-error-color);
+            fill: var(--line-error-color);
         }
 
         .warning {
-            color: @warning-yellow;
-            fill: @warning-yellow;
+            color: var(--line-warning-color);
+            fill: var(--line-warning-color);
         }
     }
 
@@ -169,7 +169,7 @@
         }
 
         .meta.meta-line1 {
-            color: rgba(@base-color, 0.6) !important;
+            color: var(--line-meta-line1-color) !important;
         }
 
         .meta.meta-line2 {
@@ -194,7 +194,7 @@
         flex-direction: row;
 
         .user {
-            color: lighten(@soft-blue, 10%);
+            color: var(--line-meta-user-color);
             font-weight: bold;
             margin-top: 1px;
             margin-right: 10px;
@@ -211,7 +211,7 @@
             svg {
                 width: 1em;
                 margin-right: 0.5em;
-                fill: rgba(@base-color, 0.6);
+                fill: var(--line-svg-fill-color);
             }
         }
 
@@ -224,9 +224,9 @@
             border-radius: 50%;
             line-height: 1em;
             svg {
-                fill: rgba(@base-color, 0.6);
+                fill: var(--line-svg-fill-color);
                 &:hover {
-                    fill: @base-color;
+                    fill: var(--line-svg-hover-fill-color);
                 }
             }
         }
@@ -253,7 +253,7 @@
         .cmdtext-overflow {
             flex-shrink: 0;
             padding-right: 2px;
-            color: @term-white;
+            color: var(--term-text-white);
             cursor: pointer;
         }
     }
@@ -268,7 +268,7 @@
         .cmdtext-expanded {
             white-space: pre;
 
-            color: @term-white;
+            color: var(--term-text-white);
             padding-bottom: 5px;
         }
     }
@@ -332,13 +332,13 @@
             padding: 2px 5px 0px 5px;
             display: inline-block;
             font-size: 10px;
-            color: @term-white;
+            color: var(--term-text-white);
             background-color: #151715;
         }
 
         .cmd-rtnstate-diff {
             font-family: var(--termfontfamily);
-            color: @term-white;
+            color: var(--term-text-white);
             white-space: pre;
             margin-left: 10px;
             padding-left: 10px;

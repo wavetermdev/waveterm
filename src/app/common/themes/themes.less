@@ -69,6 +69,7 @@
 
 // @font-face declaration lives in app.less
 @fixed-font: "Martian Mono", sans-serif;
+@terminal-font: "JetBrains Mono", sans-serif;
 
 @text-s1-font: "Martian Mono", sans-serif;
 
@@ -76,3 +77,136 @@
 @markdown-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji";
 @markdown-highlight: rgb(35, 35, 35);
+
+:root {
+    // previously base-color
+    --primary-text-color: #eceeec;
+    --primary-icon-color: var(--primary-text-color);
+
+    --primary-background-color: rgba(21, 23, 21, 1);
+
+    // semantic vars based on  --base-color
+    // line colors
+    --line-avatar-color: #eceeec;
+    --line-text-color: #f2f4f2;
+    --line-svg-fill-color: rgb(150, 152, 150);
+    --line-svg-hover-fill-color: #eceeec;
+    --line-selected-border-color: rgb(193, 195, 193);
+    --line-separator-color: rgb(126, 126, 126);
+    --line-meta-line1-color: rgb(150, 152, 150);
+
+    --primary-background: rgba(21, 23, 21, 1);
+
+    // semantic vars based on  --base-background
+    --line-background: rgba(21, 23, 21, 1);
+
+    --base-background-transparent: rgba(21, 23, 21, 0.7);
+    --base-background-dev: rgba(21, 23, 48, 0.7);
+    --app-border: rgba(241, 246, 243, 0.08);
+    --background-session: rgba(13, 13, 13, 0.85);
+    --background-session-components: rgba(48, 49, 48, 0.6);
+    --background-session-components-solid: rgb(33, 34, 33);
+    --wave-green: rgb(88, 193, 66);
+
+    // semantic vars based on  --wave-green
+    --primary-accent-color: rgb(88, 193, 66);
+
+    // semantic vars based on  --wave-green
+    --line-status-success-fill: rgb(88, 193, 66);
+
+    --wave-green-faded: rgba(88, 193, 66, 0.4);
+
+    --cmd-input-border-color: rgba(88, 193, 66, 0.8);
+
+    --disabled-background: rgba(76, 81, 75, 1);
+    --disabled-color: #adadad;
+    --disabled-color-faded: rgba(173, 173, 173, 0.6);
+    --scrollbar-background: rgba(21, 23, 21, 1);
+    --scrollbar-thumb-background: rgb(134, 134, 134);
+    --button-background: rgb(38, 38, 38);
+    --button-disabled-background: rgb(30, 29, 29);
+    --success-green: rgb(38, 97, 26);
+    --error-red: #cc0000;
+
+    // semantic vars based on  --error-red
+    --line-error-color: #cc0000;
+
+    // semantic vars based on  --error-red
+    --line-status-error-fill: #cc0000;
+
+    --warning-yellow: #ffa500;
+
+    // semantic vars based on  --warning-yellow
+    --line-status-warning-fill: #ffa500;
+    --line-warning-color: #ffa500;
+
+    --textarea-background: #2a2a2a;
+
+    --text-primary: #fff;
+    --text-secondary: #c3c8c2;
+    --text-caption: #8b918a;
+
+    --status-connected: #46a758;
+    --status-connecting: #f5d90a;
+    --status-error: #e54d2e;
+    --status-disconnected: #c3c8c2;
+
+    --term-black: #000000;
+    --term-text-red: #cc0000;
+
+    // semantic vars based on  --term-red
+    --term-text-error: #cc0000;
+
+    --term-green: #4e9a06;
+
+    // semantic vars based on  --term-green
+    --line-active-border-color: rgb(97, 158, 72);
+
+    --term-text-yellow: #c4a000;
+
+    // semantic vars based on --term-yellow
+    --term-text-yellow: #fce94f;
+
+    // semantic vars based on  --term-yellow
+    --line-sidebar-message-text: #c4a000;
+
+    --term-blue: #3465a4;
+    --term-cyan: #06989a;
+    --term-text-white: #d3d7cf;
+
+    --term-bright-red: #ef2929;
+
+    --term-bright-green: #58c142;
+    --term-bright-yellow: #fce94f;
+
+    --term-bright-blue: #32afff;
+    --term-bright-magenta: #ad7fa8;
+    --term-bright-cyan: #34e2e2;
+    --term-bright-white: #ffffff;
+
+    --button-bg-yellow: #e9be68;
+    --button-bg-red: #d06c68;
+
+    --history-error-red: #d06c68;
+
+    --history-selected-error-red: #f79494;
+
+    --tab-red: #e54d2e;
+    --tab-orange: #ef713b;
+    --tab-yellow: #e0b956;
+    --tab-green: #58c142;
+    --tab-mint: #4bffa9;
+    --tab-cyan: #4bdfff;
+    --tab-blue: #3971ff;
+    --tab-violet: #ba76ff;
+    --tab-pink: #e05677;
+    --tab-white: #ffffff;
+
+    --soft-blue: #729fcf;
+
+    // semantic vars based on  --soft-blue
+    --line-base-soft-blue-color: #729fcf;
+    --line-meta-user-color: #89afd7;
+
+    --active-menu-color: rgb(0, 71, 171);
+}
