@@ -68,11 +68,11 @@ DEBUG=electron-notarize node $SCRIPT_DIR/osx-notarize.js
 echo "universal app creation success (build/sign/notarize)"
 
 UVERSION=$(cat $BUILDS_DIR/version.txt)
-UPACKAGE_NAME="Wave-macos-universal-${UVERSION}"
+DMG_NAME="waveterm-macos-universal-${UVERSION}.dmg"
+ZIP_NAME="Wave-macos-universal-${UVERSION}.zip"
 
 echo "creating universal zip"
 ditto $TEMP_WAVE_DIR_UNIVERSAL $ZIP_DIR/Wave.app
-ZIP_NAME="${UPACKAGE_NAME}.zip"
 cd $ZIP_DIR
 zip -9yqr $ZIP_NAME Wave.app
 mv $ZIP_NAME $BUILDS_DIR/
@@ -80,7 +80,6 @@ cd $SCRIPT_DIR
 
 # Expects create-dmg repo to be cloned in the same parent directory as the waveterm repo.
 echo "creating universal dmg"
-DMG_NAME="${UPACKAGE_NAME}.dmg"
 $SCRIPT_DIR/../../create-dmg/create-dmg \
   --volname "WaveTerm" \
   --window-pos 200 120 \
