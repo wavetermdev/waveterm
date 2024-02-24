@@ -51,7 +51,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     }
 
     componentDidMount(): void {
-        GlobalModel.getClientData();
+        GlobalModel.getClientData(false);
     }
 
     remoteCName(): string {

@@ -1126,20 +1126,21 @@ class Model {
         setTimeout(() => this.getClientDataLoop(loopNum + 1), timeoutMs);
     }
 
-    getClientData(): void {
+    getClientData(bumpRenderVersion?: boolean): void {
         const url = new URL(this.getBaseHostPort() + "/api/get-client-data");
         const fetchHeaders = this.getFetchHeaders();
         fetch(url, { method: "post", body: null, headers: fetchHeaders })
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
                 const clientData: ClientDataType = data.data;
-                this.setClientData(clientData);
+                this.setClientData(clientData, bumpRenderVersion);
             })
             .catch((err) => {
                 this.errorHandler("calling get-client-data", err, true);
             });
     }
 
+<<<<<<< Updated upstream
     setClientData(clientData: ClientDataType) {
         let newFontFamily = clientData?.feopts?.termfontfamily;
         if (newFontFamily == null) {
@@ -1151,6 +1152,9 @@ class Model {
         }
         const ffUpdated = newFontFamily != this.getTermFontFamily();
         const fsUpdated = newFontSize != this.getTermFontSize();
+=======
+    setClientData(clientData: ClientDataType, bumpRenderVersion = true) {
+>>>>>>> Stashed changes
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1170,6 +1174,16 @@ class Model {
         } else if (fsUpdated) {
             this.updateTermFontSizeVars(newFontSize, true);
         }
+<<<<<<< Updated upstream
+=======
+        loadFonts(fontFamily);
+        if (bumpRenderVersion) {
+            document.fonts.ready.then(() => {
+                clearMonoFontCache();
+                this.bumpRenderVersion();
+            });
+        }
+>>>>>>> Stashed changes
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
