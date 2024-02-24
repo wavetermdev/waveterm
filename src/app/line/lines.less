@@ -20,7 +20,7 @@
     &:focus,
     &:focus-within {
         &::-webkit-scrollbar-thumb {
-            background-color: @scrollbar-thumb !important;
+            background-color: var(--app-scrollbar-thumb-color) !important;
         }
     }
 
@@ -35,7 +35,7 @@
     .line-sep-labeled {
         display: flex;
         align-items: center;
-        color: @text-caption;
+        color: var(--line-meta-text-color);
         font-family: var(--termfontfamily);
         line-height: var(--termlineheight);
         font-size: var(--termfontsize);
@@ -60,6 +60,6 @@
     .line-sep {
         width: 100%;
         height: 1px;
-        border-bottom: 1px solid @thin-border-color;
+        border-bottom: 1px solid var(--app-border-color);
     }
 }
