@@ -329,7 +329,7 @@ class Model {
         let cdata = this.clientData.get();
         let ff = cdata?.feopts?.termfontfamily;
         if (ff == null) {
-            ff = "JetBrains Mono, monospace";
+            ff = appconst.DefaultTermFontFamily;
         }
         return ff;
     }
@@ -1143,7 +1143,7 @@ class Model {
     setClientData(clientData: ClientDataType) {
         let newFontFamily = clientData?.feopts?.termfontfamily;
         if (newFontFamily == null) {
-            newFontFamily = "JetBrains Mono";
+            newFontFamily = appconst.DefaultTermFontFamily;
         }
         let newFontSize = clientData?.feopts?.termfontsize;
         if (newFontSize == null) {

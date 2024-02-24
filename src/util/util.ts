@@ -334,10 +334,7 @@ function loadFonts(termFont: string) {
     if (termFont == "Hack") {
         loadHackFont();
     }
-    document.documentElement.style.setProperty(
-        "--termfontfamily",
-        '"' + termFont + '"' + ', "JetBrains Mono", monospace'
-    );
+    document.documentElement.style.setProperty("--termfontfamily", '"' + termFont + '"');
 }
 
 const DOW_STRS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
