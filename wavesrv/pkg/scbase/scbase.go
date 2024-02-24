@@ -35,14 +35,16 @@ const WaveLockFile = "waveterm.lock"
 const WaveDirName = ".waveterm"        // must match emain.ts
 const WaveDevDirName = ".waveterm-dev" // must match emain.ts
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
-const WaveVersion = "v0.6.1"
 const WaveAuthKeyFileName = "waveterm.authkey"
 const MShellVersion = "v0.4.0"
 
 var SessionDirCache = make(map[string]string)
 var ScreenDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
+
+// these are set by the main-server using build-time variables
 var BuildTime = "-"
+var WaveVersion = "-"
 
 func IsDevMode() bool {
 	pdev := os.Getenv(WaveDevVarName)
