@@ -43,12 +43,13 @@ rm -rf dist/
 rm -rf bin/
 rm -rf build/
 node_modules/.bin/webpack --env prod
+WAVESRV_VERSION=$(node -e 'console.log(require("./version.js"))')
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 (cd waveshell; CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-darwin.amd64 main-waveshell.go)
 (cd waveshell; CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-darwin.arm64 main-waveshell.go)
 (cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-linux.amd64 main-waveshell.go)
 (cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-linux.arm64 main-waveshell.go)
-(cd wavesrv; CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o ../bin/wavesrv ./cmd)
+(cd wavesrv; CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv ./cmd)
 node_modules/.bin/electron-forge make
 ```
 
@@ -59,13 +60,14 @@ rm -rf dist/
 rm -rf bin/
 rm -rf build/
 node_modules/.bin/webpack --env prod
+WAVESRV_VERSION=$(node -e 'console.log(require("./version.js"))')
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 (cd waveshell; CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-darwin.amd64 main-waveshell.go)
 (cd waveshell; CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-darwin.arm64 main-waveshell.go)
 (cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-linux.amd64 main-waveshell.go)
 (cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-linux.arm64 main-waveshell.go)
 # adds -extldflags=-static, *only* on linux (macos does not support fully static binaries) to avoid a glibc dependency
-(cd wavesrv; CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-linkmode 'external' -extldflags=-static $GO_LDFLAGS" -o ../bin/wavesrv ./cmd)
+(cd wavesrv; CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-linkmode 'external' -extldflags=-static $GO_LDFLAGS -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv ./cmd)
 node_modules/.bin/electron-forge make
 ```
 
@@ -77,8 +79,9 @@ open out/Wave-darwin-x64/Wave.app
 
 ```bash
 # @scripthaus command build-wavesrv
+WAVESRV_VERSION=$(node -e 'console.log(require("./version.js"))')
 cd wavesrv
-CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M')" -o ../bin/wavesrv ./cmd
+CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv ./cmd
 ```
 
 ```bash

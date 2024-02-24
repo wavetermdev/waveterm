@@ -66,10 +66,13 @@ const TelemetryInterval = 8 * time.Hour
 
 const MaxWriteFileMemSize = 20 * (1024 * 1024) // 20M
 
+// these are set at build time
+var WaveVersion = "v0.0.0"
+var BuildTime = "0"
+
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
 var GlobalAuthKey string
-var BuildTime = "0"
 var shutdownOnce sync.Once
 var ContentTypeHeaderValidRe = regexp.MustCompile(`^\w+/[\w.+-]+$`)
 
@@ -804,6 +807,7 @@ func doShutdown(reason string) {
 
 func main() {
 	scbase.BuildTime = BuildTime
+	scbase.WaveVersion = WaveVersion
 	base.ProcessType = base.ProcessType_WaveSrv
 	wlog.GlobalSubsystem = base.ProcessType_WaveSrv
 	wlog.LogConsumer = wlog.LogWithLogger
