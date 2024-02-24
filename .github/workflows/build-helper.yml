@@ -48,8 +48,7 @@ jobs:
             - id: set-version
               run: |
                   VERSION=$(node -e 'console.log(require("./version.js"))')
-                  echo "WAVETERM_VERSION=${VERSION:1}" >> "$GITHUB_ENV"
-                  echo "WAVETERM_VERSION=${VERSION:1}" >> "$GITHUB_OUTPUT"
+                  echo "WAVETERM_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
             - run: yarn --frozen-lockfile
             - run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
             - uses: actions/upload-artifact@v4
