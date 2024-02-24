@@ -307,7 +307,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <If condition={needsUpdate}>
                                     <SideBarItem
                                         key="update-available"
-                                        className="updateBanner"
+                                        className="update-banner"
                                         frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
                                         contents="Update Available"
                                         onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
