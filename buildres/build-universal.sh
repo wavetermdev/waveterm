@@ -67,8 +67,8 @@ node $SCRIPT_DIR/osx-sign.js
 DEBUG=electron-notarize node $SCRIPT_DIR/osx-notarize.js
 echo "universal app creation success (build/sign/notarize)"
 
-UVERSION=$(node -e "console.log(require('${SCRIPT_DIR}/../version.js'))")
-UPACKAGE_NAME="waveterm-macos-universal-${UVERSION}"
+UVERSION=$(cat $BUILDS_DIR/version.txt)
+UPACKAGE_NAME="Wave-macos-universal-${UVERSION}"
 
 echo "creating universal zip"
 ditto $TEMP_WAVE_DIR_UNIVERSAL $ZIP_DIR/Wave.app
