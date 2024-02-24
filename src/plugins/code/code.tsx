@@ -8,10 +8,23 @@ import { Markdown } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
-loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./code.less";
+
+document.addEventListener("DOMContentLoaded", () => {
+    loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
+    loader.init().then(() => {
+        monaco.editor.defineTheme("wave-theme", {
+            base: "hc-black",
+            inherit: true,
+            rules: [],
+            colors: {
+                "editor.background": "#000000",
+            },
+        });
+    });
+});
 
 function renderCmdText(text: string): any {
     return <span>&#x2318;{text}</span>;
@@ -330,7 +343,7 @@ class SourceCodeRenderer extends React.Component<
         <div style={{ maxHeight: this.props.opts.maxSize.height }}>
             {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
             <Editor
-                theme="hc-black"
+                theme="wave-theme"
                 height={this.state.editorHeight}
                 defaultLanguage={this.state.selectedLanguage}
                 value={this.state.code}

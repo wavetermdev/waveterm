@@ -31,6 +31,10 @@ import "./line.less";
 
 dayjs.extend(localizedFormat);
 
+function cmdHasError(cmd: Cmd): boolean {
+    return cmd.getStatus() == "error" || cmd.getExitCode() != 0;
+}
+
 @mobxReact.observer
 class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRightClick?: (e: any) => void }, {}> {
     render() {
@@ -637,13 +641,15 @@ class LineCmd extends React.Component<
             .get();
         const isRunning = cmd.isRunning();
         const isExpanded = this.isCmdExpanded.get();
+        const cmdError = cmdHasError(cmd);
         const mainDivCn = cn(
             "line",
             "line-cmd",
             { selected: isSelected },
             { active: isSelected && isFocused },
             { "cmd-done": !isRunning },
-            { "has-rtnstate": isRtnState }
+            { "has-rtnstate": isRtnState },
+            { "has-error": cmdError }
         );
         let rendererPlugin: RendererPluginType = null;
         const isNoneRenderer = line.renderer == "none";
@@ -663,6 +669,9 @@ class LineCmd extends React.Component<
                 data-linenum={line.linenum}
                 data-screenid={line.screenid}
             >
+                <If condition={isSelected || cmdError}>
+                    <div key="mask" className={cn("line-mask", { "error-mask": cmdError })}></div>
+                </If>
                 <div
                     key="header"
                     className={cn("line-header", { "is-expanded": isExpanded }, { "hide-prompt": hidePrompt })}

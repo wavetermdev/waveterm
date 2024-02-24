@@ -4,7 +4,7 @@
     display: flex;
     flex-direction: column;
     overflow: auto;
-    padding: 0 0 10px 0;
+    padding: 0;
     flex-grow: 1;
     position: relative;
     overflow-x: hidden;
@@ -32,26 +32,34 @@
         flex-grow: 1;
     }
 
-    .line-sep {
+    .line-sep-labeled {
         display: flex;
         align-items: center;
-        margin-top: 1em;
-        color: rgba(@base-color, 0.5);
+        color: @text-caption;
+        font-family: var(--termfontfamily);
+        line-height: var(--termlineheight);
+        font-size: var(--termfontsize);
     }
 
-    .line-sep::before,
-    .line-sep::after {
+    .line-sep-labeled::before,
+    .line-sep-labeled::after {
         content: "";
         height: 1px;
         flex-grow: 1;
         background-color: rgba(@base-color, 0.5);
     }
 
-    .line-sep::before {
+    .line-sep-labeled::before {
         margin-right: 1rem;
     }
 
-    .line-sep::after {
+    .line-sep-labeled::after {
         margin-left: 1rem;
+    }
+
+    .line-sep {
+        width: 100%;
+        height: 1px;
+        border-bottom: 1px solid @thin-border-color;
     }
 }

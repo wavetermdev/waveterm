@@ -17,12 +17,14 @@ body {
     font-size: 12px;
     font-weight: 300;
     line-height: 1.5;
-    background: @base-background-transparent;
+    background-color: black;
     color: @base-color;
 }
 
-body.is-dev {
-    background-color: @base-background-dev;
+body {
+    &.is-dev .sidebar {
+        background-color: @base-background-dev;
+    }
 }
 
 textarea {
@@ -231,6 +233,7 @@ a.a-block {
         display: flex;
         flex-direction: row;
         height: 100%;
+        position: relative;
 
         .history-view,
         .bookmarks-view,
@@ -245,6 +248,17 @@ a.a-block {
                 display: none;
             }
             overflow: auto;
+        }
+
+        .main-content-bottom-color {
+            position: absolute;
+            width: 100%;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 30%;
+            pointer-events: none;
+            background-color: @main-content-bottom-background;
         }
     }
 }
