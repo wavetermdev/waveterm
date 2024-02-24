@@ -38,7 +38,6 @@ class FileViewRendererModel {
     rawCmd: T.WebCmd;
     loading: OV<boolean>;
     isDone: OV<boolean>;
-    active: OV<boolean>;
     needsReloadDir: OV<boolean>;
     dirList: mobx.IObservableArray<any>;
     dirListCache: Array<any>;
@@ -59,7 +58,6 @@ class FileViewRendererModel {
     initialize(params: T.RendererModelInitializeParams): void {
         this.loading = mobx.observable.box(true, { name: "renderer-loading" });
         this.isDone = mobx.observable.box(params.isDone, { name: "renderer-isDone" });
-        this.active = mobx.observable.box(false, { name: "renderer-active" });
         this.search = mobx.observable.box(false, { name: "renderer-search" });
         this.needsReloadDir = mobx.observable.box(false, { name: "renderer-needs-reload-dir" });
         this.searchText = mobx.observable.box("", { name: "renderer-searchText" });
@@ -97,7 +95,6 @@ class FileViewRendererModel {
                     this.error = "Error: The maximum amount of files has been reached. file output has been truncated.";
                     this.fileViewStateVersion.set(this.fileViewStateVersion.get() + 1);
                 }
-                this.active.set(true);
                 this.needsReloadDir.set(false);
             })();
             return;
@@ -115,7 +112,7 @@ class FileViewRendererModel {
                         mobx.action(() => {
                             this.needsReloadDir.set(true);
                         })();
-                        this.reload(0);
+                        setTimeout(() => this.reload(0), 10);
                     }
                 }
             }
@@ -160,23 +157,30 @@ class FileViewRendererModel {
     }
 
     reload(delayMs: number): void {
+        console.log("reloading");
         mobx.action(() => {
             this.dirList.clear();
         })();
         if (this.needsReloadDir.get()) {
+            console.log("needs reload dir");
             mobx.action(() => {
                 this.needsReloadDir.set(false);
             })();
             this.changeDirectory(".");
-            this.packetData.reset();
             return;
+        } else if (this.dirListCache.length != 0) {
+            mobx.action(() => {
+                this.dirList.replace(this.dirListCache);
+            })();
         } else {
+            console.log("resetting packet data");
             this.getPtyData(delayMs, (ptydata) => {
-                this.packetData.reset();
-                this.receiveData(ptydata.pos, ptydata.data, "reload");
                 mobx.action(() => {
                     this.loading.set(false);
+                    this.dirList.clear();
                 })();
+                this.packetData.reset();
+                this.receiveData(ptydata.pos, ptydata.data, "reload");
             });
         }
     }
@@ -194,6 +198,9 @@ class FileViewRendererModel {
     }
 
     setDirectory(newDir: string) {
+        if (this.curCopyFileState != null && this.curCopyFileState.progress != 100) {
+            return;
+        }
         this.packetData.reset();
         mobx.action(() => {
             this.dirList.clear();
@@ -203,8 +210,8 @@ class FileViewRendererModel {
             if (!rtn.success) {
                 console.log("submit view dir command error:", rtn.error);
                 // to do: display this as an error
+                setTimeout(() => this.reload(0), 10);
             }
-            this.reload(0);
         });
     }
 

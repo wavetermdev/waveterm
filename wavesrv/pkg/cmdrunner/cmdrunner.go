@@ -1461,6 +1461,7 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 		writeStringToPty(ctx, cmd, fmt.Sprintf("error copying files %v", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
+	writeProgressToFileView(ctx, cmd, 1, fileViewConfig)
 	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos, fileViewConfig.OutputPty)
 	exitSuccess = true
 }
