@@ -300,6 +300,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
         return (
             <div className="screen-sidebar" style={{ width: width }} ref={this.sidebarRef}>
                 <div className="sidebar-header">
+                    <div className="pane-name">sidebar</div>
                     <div className="flex-spacer" />
                     <div onClick={this.sidebarOpenHalf} title="Set Sidebar Width to 50%">
                         <i className="fa-sharp fa-solid fa-table-columns" />
@@ -307,8 +308,8 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
                     <div onClick={this.sidebarOpenPartial} title="Set Sidebar Width to 500px">
                         <i className="fa-sharp fa-solid fa-sidebar-flip" />
                     </div>
-                    <div onClick={this.sidebarClose} style={{ marginLeft: 5 }}>
-                        <i className="fa-sharp fa-solid fa-xmark" />
+                    <div onClick={this.sidebarClose} style={{ marginLeft: 5, marginRight: 10 }}>
+                        <i className="fa-sharp fa-solid fa-xmark-large" />
                     </div>
                 </div>
                 <If condition={!sidebarOk}>

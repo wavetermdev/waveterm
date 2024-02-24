@@ -36,7 +36,6 @@ class WorkspaceView extends React.Component<{}, {}> {
         if (cmdInputHeight == 0) {
             cmdInputHeight = MagicLayout.CmdInputHeight; // this is the base size of cmdInput (measured using devtools)
         }
-        cmdInputHeight += MagicLayout.CmdInputBottom; // reference to .cmd-input, bottom: 12px
         let isHidden = GlobalModel.activeMainView.get() != "session";
         let mainSidebarModel = GlobalModel.mainSidebarModel;
 
