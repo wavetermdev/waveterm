@@ -100,5 +100,4 @@ echo "success, created $DMG_NAME"
 mv $DMG_NAME $BUILDS_DIR/
 spctl -a -vvv -t install $TEMP_WAVE_DIR_UNIVERSAL/
 
-
 rm -rf $TEMP_DIR $ZIP_DIR
