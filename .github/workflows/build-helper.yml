@@ -45,8 +45,8 @@ jobs:
                   cache: "yarn"
             - run: |
                   VERSION=$(node -e 'console.log(require("./version.js"))')
-                  echo "WAVETERM_VERSION=${VERSION:1}" >> $GITHUB_ENV
-                  echo "WAVETERM_VERSION=${VERSION:1}" >> $GITHUB_OUTPUT
+                  echo "WAVETERM_VERSION=${VERSION:1}" >> "$GITHUB_ENV"
+                  echo "WAVETERM_VERSION=${VERSION:1}" >> "$GITHUB_OUTPUT"
             - run: yarn --frozen-lockfile
             - run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
             - uses: actions/upload-artifact@v4
@@ -64,9 +64,7 @@ jobs:
                   merge-multiple: true
                   path: buildtemp
             - run: |
-                  echo "${WAVETERM_VERSION}" > buildtemp/version.txt
-              env:
-                  WAVETERM_VERSION: ${{ needs.runbuild.outputs.WAVETERM_VERSION }}
+                  echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" > buildtemp/version.txt
             - run: (cd buildtemp; zip ../waveterm-builds.zip *)
             - run: aws s3 cp waveterm-builds.zip s3://waveterm-github-artifacts/
               env:
