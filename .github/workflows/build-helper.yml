@@ -5,6 +5,8 @@ env:
     NODE_VERSION: "21.5.0"
 jobs:
     runbuild:
+        outputs:
+            WAVETERM_VERSION: ${{ steps.set-version.outputs.WAVETERM_VERSION }}
         strategy:
             matrix:
                 include:
@@ -43,7 +45,8 @@ jobs:
               with:
                   node-version: ${{env.NODE_VERSION}}
                   cache: "yarn"
-            - run: |
+            - id: set-version
+              run: |
                   VERSION=$(node -e 'console.log(require("./version.js"))')
                   echo "WAVETERM_VERSION=${VERSION:1}" >> "$GITHUB_ENV"
                   echo "WAVETERM_VERSION=${VERSION:1}" >> "$GITHUB_OUTPUT"
