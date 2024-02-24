@@ -1,25 +1,17 @@
 @import "@/common/themes/themes.less";
 
 .cmd-input {
-    border-radius: 6px;
     max-height: max(300px, 40%);
     display: flex;
     flex-direction: column;
     position: absolute;
-    bottom: var(--termfontsize);
-    right: var(--termfontsize);
-    width: calc(100% - 2 * var(--termfontsize));
+    bottom: 0;
+    width: 100%;
     padding: var(--termfontsize);
     z-index: 100;
-    background: @background-session-components;
-    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.5), 0px 3px 8px 0px rgba(0, 0, 0, 0.35),
-        0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
-    backdrop-filter: blur(20px);
-    border: 1px solid transparent;
+    border-top: 1px solid @thin-border-color;
 
     &.active {
-        border: 1px solid rgba(@wave-green, 0.8) !important;
-        box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
     }
 
     &.has-info {

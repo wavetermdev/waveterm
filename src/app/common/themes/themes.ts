@@ -9,7 +9,7 @@
 const themes = [
     {
         id: "default",
-        terminal: { foreground: "#eceeec", background: "rgba(21, 23, 21, 1)" },
+        terminal: { foreground: "#eceeec", background: "black" },
     },
 ];
 
