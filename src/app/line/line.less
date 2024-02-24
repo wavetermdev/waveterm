@@ -30,33 +30,33 @@
     }
 
     &.line-invalid {
-        color: @term-white;
+        color: var(--line-text-color);
         margin-left: 5px;
     }
 
     &.selected {
         .line-mask {
-            border-left: 4px solid #ccc;
+            border-left: 4px solid var(--line-selected-border-left-color);
         }
 
         &.has-error {
             .line-mask {
-                border-left: 4px solid rgba(@error-red-brightened, 0.8);
+                border-left: 4px solid var(--line-selected-error-border-color);
             }
         }
     }
 
     &.active.selected {
         .line-mask {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(@wave-green, 0.8);
-            border-left: 4px solid rgba(@wave-green, 0.8);
+            background-color: var(--line-selected-bg-color);
+            border: 2px solid var(--line-active-border-color);
+            border-left: 4px solid var(--line-active-border-color);
         }
 
         &.has-error {
             .line-mask {
-                border: 2px solid rgba(@error-red, 0.8);
-                border-left: 4px solid rgba(@error-red, 0.8);
+                border: 2px solid var(--line-selected-error-border-color);
+                border-left: 4px solid var(--line-selected-error-border-color);
             }
         }
     }
@@ -72,13 +72,13 @@
         pointer-events: none;
 
         &.error-mask {
-            background-color: rgba(200, 0, 0, 0.1);
-            border-left: 4px solid rgba(@error-red, 0.8);
+            background-color: var(--line-error-bg-color);
+            border-left: 4px solid var(--line-error-border-left-color);
         }
     }
 
     .load-error-text {
-        color: @term-red;
+        color: var(--term-error-color);
         padding-top: 5px;
     }
 
@@ -87,7 +87,7 @@
     }
 
     .sidebar-message {
-        color: @term-yellow;
+        color: var(--line-sidebar-message-color);
     }
 
     .focus-indicator {
@@ -98,7 +98,7 @@
     &.line-simple {
         font-size: 11px;
         line-height: 1.2;
-        color: rgba(@base-color, 0.6);
+        color: var(--line-simple-text-color);
 
         .simple-line-header {
             display: flex;
@@ -122,22 +122,22 @@
             margin-left: 0.5em;
             margin-right: 0.5em;
             vertical-align: text-top;
-            fill: @base-color;
+            fill: var(--app-text-color);
         }
 
         .success {
-            color: @wave-green;
-            fill: @wave-green;
+            color: var(--app-accent-color);
+            fill: var(--app-accent-color);
         }
 
         .fail {
-            color: @error-red;
-            fill: @error-red;
+            color: var(--app-error-color);
+            fill: var(--app-error-color);
         }
 
         .warning {
-            color: @warning-yellow;
-            fill: @warning-yellow;
+            color: var(--app-warning-color);
+            fill: var(--app-warning-color);
         }
     }
 
@@ -195,7 +195,7 @@
         }
 
         .meta.meta-line1 {
-            color: @text-caption;
+            color: var(--line-meta-text-color);
         }
 
         .meta.meta-line2 {
@@ -220,7 +220,8 @@
         flex-direction: row;
 
         .user {
-            color: lighten(@soft-blue, 10%);
+            // color: lighten(@soft-blue, 10%);
+            color: var(--line-meta-user-color);
             font-weight: bold;
             margin-top: 1px;
             margin-right: 10px;
@@ -237,7 +238,7 @@
             svg {
                 width: 1em;
                 margin-right: 0.5em;
-                fill: rgba(@base-color, 0.6);
+                fill: var(--line-svg-color);
             }
         }
 
@@ -250,9 +251,9 @@
             border-radius: 50%;
             line-height: 1em;
             svg {
-                fill: rgba(@base-color, 0.6);
+                fill: var(--line-svg-color);
                 &:hover {
-                    fill: @base-color;
+                    fill: var(--line-svg-hover-color);
                 }
             }
         }
@@ -279,7 +280,7 @@
         .cmdtext-overflow {
             flex-shrink: 0;
             padding-right: 2px;
-            color: @term-white;
+            color: var(--line-text-color);
             cursor: pointer;
         }
     }
@@ -294,7 +295,7 @@
         .cmdtext-expanded {
             white-space: pre;
 
-            color: @term-white;
+            color: var(--line-text-color);
             padding-bottom: 5px;
         }
     }
@@ -358,13 +359,13 @@
             padding: 2px 5px 0px 5px;
             display: inline-block;
             font-size: 10px;
-            color: @term-white;
+            color: var(--line-text-color);
             background-color: #151715;
         }
 
         .cmd-rtnstate-diff {
             font-family: var(--termfontfamily);
-            color: @term-white;
+            color: var(--line-text-color);
             white-space: pre;
             margin-left: 10px;
             padding-left: 10px;
