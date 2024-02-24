@@ -50,11 +50,6 @@ unzip -q $X64_ZIP -d $TEMP_DIR/x64
 unzip -q $ARM64_ZIP -d $TEMP_DIR/arm64
 rm $ARM64_ZIP $X64_ZIP
 
-# Rename any non-darwin builds to waveterm
-for f in $BUILDS_DIR/*[!.txt]; do
-    mv "$f" "$(echo "$f" | sed "s/Wave/waveterm/")";
-done
-
 # Create universal app and sign and notarize it
 TEMP_WAVE_DIR_ARM=$TEMP_DIR/x64/Wave.app
 TEMP_WAVE_DIR_X64=$TEMP_DIR/arm64/Wave.app
@@ -73,7 +68,7 @@ DEBUG=electron-notarize node $SCRIPT_DIR/osx-notarize.js
 echo "universal app creation success (build/sign/notarize)"
 
 UVERSION=$(cat $BUILDS_DIR/version.txt)
-UPACKAGE_NAME="waveterm-macos-universal-${UVERSION}"
+UPACKAGE_NAME="Wave-macos-universal-${UVERSION}"
 
 echo "creating universal zip"
 ditto $TEMP_WAVE_DIR_UNIVERSAL $ZIP_DIR/Wave.app
