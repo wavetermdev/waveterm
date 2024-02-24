@@ -38,7 +38,7 @@
     }
 
     .code-div {
-        background-color: @term-black;
+        background-color: var(--cmdstrcode-bg-color);
         display: flex;
         flex-direction: row;
         min-width: 100px;
@@ -48,10 +48,10 @@
         code {
             flex-shrink: 0;
             min-width: 100px;
-            color: @term-white;
+            color: var(--cmdstrcode-text-color);
             white-space: pre;
             padding: 2px 8px 2px 8px;
-            background-color: @term-black;
+            background-color: var(--cmdstrcode-bg-color);
             font-size: 1em;
             font-family: @fixed-font;
         }
@@ -74,7 +74,7 @@
             width: 20px;
 
             &:hover {
-                color: @term-white;
+                color: var(--cmdstrcode-text-color);
             }
         }
     }
@@ -82,21 +82,4 @@
     &:hover .copy-control {
         visibility: visible !important;
     }
-}
-
-.copied-indicator {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: @term-white;
-    opacity: 0;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    animation-name: fade-in-out;
-    animation-duration: 0.3s;
 }
