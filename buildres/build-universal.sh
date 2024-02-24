@@ -50,6 +50,11 @@ unzip -q $X64_ZIP -d $TEMP_DIR/x64
 unzip -q $ARM64_ZIP -d $TEMP_DIR/arm64
 rm $ARM64_ZIP $X64_ZIP
 
+# Rename any non-darwin builds to waveterm
+for f in $BUILDS_DIR/*[!.txt]; do
+    mv "$f" "$(echo "$f" | sed "s/Wave/waveterm/")";
+done
+
 # Create universal app and sign and notarize it
 TEMP_WAVE_DIR_ARM=$TEMP_DIR/x64/Wave.app
 TEMP_WAVE_DIR_X64=$TEMP_DIR/arm64/Wave.app
@@ -94,5 +99,6 @@ $SCRIPT_DIR/../../create-dmg/create-dmg \
 echo "success, created $DMG_NAME"
 mv $DMG_NAME $BUILDS_DIR/
 spctl -a -vvv -t install $TEMP_WAVE_DIR_UNIVERSAL/
+
 
 rm -rf $TEMP_DIR $ZIP_DIR
