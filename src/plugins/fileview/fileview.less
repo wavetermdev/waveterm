@@ -1,6 +1,10 @@
 @import "../../app/common/themes/themes.less";
 
 .fileview-toplevel {
+    .fileInput {
+        display: none;
+    }
+
     .status-bar {
         box-sizing: border-box;
         border: 1px solid @term-green;
@@ -8,7 +12,7 @@
         font-size: 12px;
         padding: 3px;
 
-        .search-icon {
+        .status-bar-icon {
             width: 30px;
             float: right;
             text-align: center;
@@ -60,5 +64,14 @@
         .dir-container {
             color: @term-green;
         }
+    }
+
+    .bottom-info-panel {
+        box-sizing: border-box;
+        border: 1px solid @term-green;
+        width: 100%;
+        height: 24px;
+        font-size: 12px;
+        padding: 3px;
     }
 }

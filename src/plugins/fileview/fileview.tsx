@@ -16,6 +16,17 @@ import "./fileview.less";
 
 type OV<V> = mobx.IObservableValue<V>;
 
+type CopyFileState = {
+    file: string;
+    progress: number;
+    operation: string;
+};
+
+const OperationDownload = "download";
+const OperationUpload = "upload";
+
+const DirListMaxFiles = 5000;
+
 class FileViewRendererModel {
     context: T.RendererContext;
     opts: T.RendererOpts;
@@ -28,13 +39,18 @@ class FileViewRendererModel {
     loading: OV<boolean>;
     isDone: OV<boolean>;
     active: OV<boolean>;
+    needsReloadDir: OV<boolean>;
     dirList: mobx.IObservableArray<any>;
+    dirListCache: Array<any>;
     version: OV<number>;
     packetData: PacketDataBuffer;
     curDirectory: string;
     outputPos: number;
     search: OV<boolean>;
     searchText: OV<string>;
+    curCopyFileState: CopyFileState;
+    error: string;
+    fileViewStateVersion: OV<number>;
 
     constructor() {
         this.updateHeight_debounced = debounce(1000, this.updateHeight.bind(this));
@@ -45,6 +61,7 @@ class FileViewRendererModel {
         this.isDone = mobx.observable.box(params.isDone, { name: "renderer-isDone" });
         this.active = mobx.observable.box(false, { name: "renderer-active" });
         this.search = mobx.observable.box(false, { name: "renderer-search" });
+        this.needsReloadDir = mobx.observable.box(false, { name: "renderer-needs-reload-dir" });
         this.searchText = mobx.observable.box("", { name: "renderer-searchText" });
         this.context = params.context;
         this.opts = params.opts;
@@ -55,24 +72,55 @@ class FileViewRendererModel {
         this.dirList = mobx.observable.array(null, {
             name: "FileView-directorylist",
         });
+        this.dirListCache = [];
         this.packetData = new PacketDataBuffer(this.packetCallback);
         this.lineState = params.lineState;
         this.curDirectory = this.lineState["prompt:file"];
+        console.log("curDirectory: ", this.curDirectory);
         setTimeout(() => this.reload(0), 10);
+        this.curCopyFileState = null;
+        this.error = "";
+        this.fileViewStateVersion = mobx.observable.box(0, { name: "renderer-copyfilestate-version" });
     }
 
     @boundMethod
     packetCallback(packetAny: any) {
-        let packet: T.FileInfoType = packetAny;
-        if (packet == null) {
+        let fileInfoPacket: T.FileInfoType = packetAny;
+        if (fileInfoPacket != null && fileInfoPacket.type == "filestat") {
+            console.log(fileInfoPacket);
+            this.curDirectory = fileInfoPacket.path;
+            this.dirListCache = [];
+            mobx.action(() => {
+                if (this.dirList.length < DirListMaxFiles) {
+                    this.dirList.push(fileInfoPacket);
+                } else {
+                    this.error = "Error: The maximum amount of files has been reached. file output has been truncated.";
+                    this.fileViewStateVersion.set(this.fileViewStateVersion.get() + 1);
+                }
+                this.active.set(true);
+                this.needsReloadDir.set(false);
+            })();
             return;
         }
-        console.log("packet: ", packet.name);
-        this.curDirectory = packet.path;
-        mobx.action(() => {
-            this.dirList.push(packet);
-            this.active.set(true);
-        })();
+        let fileViewStatePacket: T.FileViewStateType = packetAny;
+        if (fileViewStatePacket != null && fileViewStatePacket.type == "fileviewstate") {
+            console.log("File view state packet: ", fileViewStatePacket, this.curCopyFileState);
+            if (fileViewStatePacket.file && fileViewStatePacket.file != "" && fileViewStatePacket.progress) {
+                if (this.curCopyFileState != null && this.curCopyFileState.file == fileViewStatePacket.file) {
+                    this.curCopyFileState.progress = fileViewStatePacket.progress;
+                    mobx.action(() => {
+                        this.fileViewStateVersion.set(this.fileViewStateVersion.get() + 1);
+                    })();
+                    if (fileViewStatePacket.progress == 100) {
+                        mobx.action(() => {
+                            this.needsReloadDir.set(true);
+                        })();
+                        this.reload(0);
+                    }
+                }
+            }
+            return;
+        }
     }
 
     dispose(): void {
@@ -112,20 +160,25 @@ class FileViewRendererModel {
     }
 
     reload(delayMs: number): void {
-        if (!this.active.get()) {
-            return;
-        }
         mobx.action(() => {
-            this.loading.set(true);
-        })();
-        this.getPtyData(delayMs, (ptydata) => {
             this.dirList.clear();
-            this.packetData.reset();
-            this.receiveData(ptydata.pos, ptydata.data, "reload");
+        })();
+        if (this.needsReloadDir.get()) {
             mobx.action(() => {
-                this.loading.set(false);
+                this.needsReloadDir.set(false);
             })();
-        });
+            this.changeDirectory(".");
+            this.packetData.reset();
+            return;
+        } else {
+            this.getPtyData(delayMs, (ptydata) => {
+                this.packetData.reset();
+                this.receiveData(ptydata.pos, ptydata.data, "reload");
+                mobx.action(() => {
+                    this.loading.set(false);
+                })();
+            });
+        }
     }
 
     updateHeight(newHeight: number): void {
@@ -136,10 +189,15 @@ class FileViewRendererModel {
     }
 
     changeDirectory(fileName: string) {
+        let newDir = GlobalModel.getApi().pathJoin(this.curDirectory, fileName);
+        this.setDirectory(newDir);
+    }
+
+    setDirectory(newDir: string) {
+        this.packetData.reset();
         mobx.action(() => {
             this.dirList.clear();
         })();
-        let newDir = GlobalModel.getApi().pathJoin(this.curDirectory, fileName);
         let prtn = GlobalModel.submitViewDirCommand(newDir, this.rawCmd.lineid, this.rawCmd.screenid);
         prtn.then((rtn) => {
             if (!rtn.success) {
@@ -153,11 +211,8 @@ class FileViewRendererModel {
     fileWasClicked(event: any, file: any) {
         let fileName = file.name;
         let cwd = GlobalModel.getCmdByScreenLine(this.rawCmd.screenid, this.rawCmd.lineid).getAsWebCmd().festate["cwd"];
-        console.log("cwd: ", cwd);
         let fileFullPath = GlobalModel.getApi().pathJoin(this.curDirectory, fileName);
         let fileRelativePath = GlobalModel.getApi().pathRelative(cwd, fileFullPath);
-        console.log("filefull path: ", fileFullPath);
-        console.log("file relative path: ", fileRelativePath);
         let fileExtSplit = fileName.split(".");
         let fileExt = "";
         if (fileExtSplit.length > 0) {
@@ -181,17 +236,22 @@ class FileViewRendererModel {
         inputModel.giveFocus();
     }
 
-    downloadWasClicked(event: any, file: any) {
+    downloadWasClicked(event: any, sourceFile: any, destPath: string) {
         event.stopPropagation();
-        console.log("download was clicked", file);
-        let fileName = file.name;
+        this.packetData.reset();
+        if (destPath == "") {
+            destPath = "~/";
+        }
+        let fileName = sourceFile.name;
         let cwd = this.rawCmd.festate["cwd"];
         let curRemoteName = this.rawCmd.remote.alias;
-        console.log("cwd: ", cwd);
-        console.log("cur remote name:", curRemoteName);
         let fileFullPath = path.join(cwd, fileName);
-        console.log("filefull path: ", fileFullPath);
-        let commandStr = "/copyfile [" + curRemoteName + "]:" + fileFullPath + " ~/";
+        this.curCopyFileState = { file: fileFullPath, progress: 0, operation: OperationDownload };
+        mobx.action(() => {
+            this.fileViewStateVersion.set(this.fileViewStateVersion.get() + 1);
+            this.dirListCache = Object.assign([], this.dirList.slice());
+        })();
+        let commandStr = "/copyfile [" + curRemoteName + "]:" + fileFullPath + " [local]:" + destPath;
         console.log("commandStr: ", commandStr);
         let prtn = GlobalModel.submitPtyOutCommand(commandStr, this.rawCmd.lineid, this.rawCmd.screenid);
         prtn.then((rtn) => {
@@ -203,10 +263,38 @@ class FileViewRendererModel {
         });
     }
 
+    uploadWasClicked(event: any, filePath: string) {
+        event.stopPropagation();
+        console.log("upload was clicked", filePath);
+        this.packetData.reset();
+        let destFileFullPath = this.curDirectory;
+        let curRemoteName = this.rawCmd.remote.alias;
+        this.curCopyFileState = { file: filePath, progress: 0, operation: OperationUpload };
+        mobx.action(() => {
+            this.fileViewStateVersion.set(this.fileViewStateVersion.get() + 1);
+            this.dirListCache = Object.assign([], this.dirList.slice());
+        })();
+        let commandStr = "/copyfile [local]:" + filePath + " [" + curRemoteName + "]:" + destFileFullPath;
+        console.log("commandStr: ", commandStr);
+        let prtn = GlobalModel.submitPtyOutCommand(commandStr, this.rawCmd.lineid, this.rawCmd.screenid);
+        prtn.then((rtn) => {
+            if (!rtn.success) {
+                console.log("submit view dir command error:", rtn.error);
+                // to do: display this as an error
+            }
+            this.reload(0);
+        });
+    }
+
     searchButtonClicked(event: any) {
         mobx.action(() => {
             this.search.set(true);
         })();
+    }
+
+    homeButtonClicked(event: any) {
+        let cwd = this.rawCmd.festate["cwd"];
+        this.setDirectory(cwd);
     }
 
     @boundMethod
@@ -224,6 +312,17 @@ class FileViewRendererModel {
         if (searchText == "") {
             return;
         }
+        this.packetData.reset();
+        this.dirList.clear();
+        let searchPath = this.curDirectory;
+        let commandStr = "/searchdir " + searchPath + " " + searchText;
+        let prtn = GlobalModel.submitPtyOutCommand(commandStr, this.rawCmd.lineid, this.rawCmd.screenid);
+        prtn.then((rtn) => {
+            if (!rtn.success) {
+                console.log("submit view dir command error:", rtn.error);
+                // to do: display this as an error
+            }
+        });
     }
 
     receiveData(pos: number, data: Uint8Array, reason?: string): void {
@@ -250,7 +349,6 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
 
     renderSearchModal() {
         let rendererModel = this.props.model;
-        let searchText = "";
         return (
             <If condition={rendererModel.search.get()}>
                 <Modal>
@@ -291,6 +389,13 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
 
     renderFile(file: any, index: number) {
         let keyString = "file-" + index;
+        let downloadFileInputRef: React.RefObject<HTMLInputElement> = React.createRef();
+        const downloadButtonClicked = (event) => {
+            event.stopPropagation();
+            downloadFileInputRef.current.setAttribute("directory", "");
+            downloadFileInputRef.current.setAttribute("webkitdirectory", "");
+            downloadFileInputRef.current.click();
+        };
         return (
             <div
                 className={cn("file-container", {
@@ -301,11 +406,14 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
             >
                 {file.name}
                 <If condition={!file.isdir}>
-                    <div
-                        className="download-button"
-                        onClick={(event) => this.props.model.downloadWasClicked(event, file)}
-                    >
+                    <div className="download-button" onClick={(event) => downloadButtonClicked(event)}>
                         <i className="fa-sharp fa-solid fa-download"></i>
+                        <input
+                            type="file"
+                            className="fileInput"
+                            ref={downloadFileInputRef}
+                            onChange={(event) => this.onDownloadFileInputChange(event, file)}
+                        ></input>
                     </div>
                 </If>
                 <If condition={file.isdir}>
@@ -317,12 +425,54 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
         );
     }
 
+    renderBottomPanel() {
+        let model: FileViewRendererModel = this.props.model;
+        let copyFileStateVersion = model.fileViewStateVersion.get();
+        let spanId = "span-" + copyFileStateVersion;
+        let copyFileState = model.curCopyFileState;
+        let infoText = "";
+        if (model.error != "") {
+            infoText = "error: " + model.error;
+        } else if (copyFileState == null) {
+            return;
+        } else if (copyFileState.progress == 100) {
+            infoText += copyFileState.file + " ";
+            if (copyFileState.operation == OperationDownload) {
+                infoText += "Finished Downloading";
+            } else if (copyFileState.operation == OperationUpload) {
+                infoText += "Finished Uploading";
+            }
+        } else {
+            if (copyFileState.operation == OperationDownload) {
+                infoText += "Downloading";
+            } else if (copyFileState.operation == OperationUpload) {
+                infoText += "Uploading";
+            }
+            infoText += " " + copyFileState.file;
+            infoText += " Progress: " + copyFileState.progress + "%";
+        }
+        return <span id={spanId}>{infoText}</span>;
+    }
+
     renderInactive() {
         return (
             <div className="fileview-toplevel">
                 <div className="status-bar">Inactive: run fileview again to view files</div>
             </div>
         );
+    }
+
+    onUploadFileInputChange(event) {
+        let uploadedFiles = event.target.files;
+        for (let file of uploadedFiles) {
+            this.props.model.uploadWasClicked(event, file.path);
+        }
+    }
+
+    onDownloadFileInputChange(event, sourceFile) {
+        let uploadedFile: string = event.target.files[0].path;
+        let dirName = GlobalModel.getApi().pathDirName(uploadedFile);
+        this.props.model.downloadWasClicked(event, sourceFile, dirName);
     }
 
     render() {
@@ -332,17 +482,35 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
         let index: number;
         let columnMinSize = 6;
         let columnWidth = Math.min(dirList.length / columnMinSize, 4);
-        let active = model.active.get();
-        if (!active) {
-            return this.renderInactive();
-        }
+        let shouldRenderBottomPanel = model.curCopyFileState != null;
+        let copyFileStateVersion = model.fileViewStateVersion.get();
+        let bottomPanelId = "bottom-panel-" + copyFileStateVersion;
+        let curDirectory = this.props.model.curDirectory;
+        let uploadFileInputRef: React.RefObject<HTMLInputElement> = React.createRef();
+        const uploadButtonClicked = () => {
+            if (uploadFileInputRef.current != null) {
+                uploadFileInputRef.current.click();
+            }
+        };
         return (
             <div className="fileview-toplevel">
                 <div className="status-bar">
-                    {this.props.model.curDirectory}
+                    {curDirectory}
                     {this.renderSearchModal()}
-                    <div className="search-icon" onClick={(event) => this.props.model.searchButtonClicked(event)}>
+                    <div className="status-bar-icon" onClick={(event) => this.props.model.searchButtonClicked(event)}>
                         <i className="fa-sharp fa-solid fa-magnifying-glass"></i>
+                    </div>
+                    <div className="status-bar-icon" onClick={uploadButtonClicked}>
+                        <i className="fa-sharp fa-solid fa-upload"></i>
+                        <input
+                            type="file"
+                            className="fileInput"
+                            ref={uploadFileInputRef}
+                            onChange={(event) => this.onUploadFileInputChange(event)}
+                        ></input>
+                    </div>
+                    <div className="status-bar-icon" onClick={(event) => this.props.model.homeButtonClicked(event)}>
+                        <i className="fa-sharp fa-solid fa-house"></i>
                     </div>
                 </div>
                 <div className="fileview-container" style={{ columnCount: columnWidth, columnWidth: "auto" }}>
@@ -350,6 +518,11 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
                         {this.renderFile(file, index)}
                     </For>
                 </div>
+                <If condition={shouldRenderBottomPanel}>
+                    <div className="bottom-info-panel" id={bottomPanelId}>
+                        {this.renderBottomPanel()};
+                    </div>
+                </If>
             </div>
         );
     }

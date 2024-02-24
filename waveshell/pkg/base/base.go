@@ -34,7 +34,7 @@ const MShellVersion = "v0.4.0"
 const RemoteIdFile = "remoteid"
 const DefaultMShellInstallBinDir = "/opt/mshell/bin"
 const LogFileName = "mshell.log"
-const ForceDebugLog = false
+const ForceDebugLog = true
 
 const DebugFlag_LogRcFile = "logrc"
 const LogRcFileName = "debug.rcfile"

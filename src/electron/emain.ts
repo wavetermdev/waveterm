@@ -460,6 +460,11 @@ electron.ipcMain.on("path-join", (event, basePath, newPath) => {
     return;
 });
 
+electron.ipcMain.on("path-dirname", (event, filePath) => {
+    event.returnValue = path.dirname(filePath);
+    return;
+});
+
 electron.ipcMain.on("get-id", (event) => {
     event.returnValue = instanceId + ":" + event.processId;
     return;

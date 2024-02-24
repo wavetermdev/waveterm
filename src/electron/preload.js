@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("api", {
     getWaveSrvStatus: () => ipcRenderer.sendSync("wavesrv-status"),
     pathRelative: (fromPath, toPath) => ipcRenderer.sendSync("path-relative", fromPath, toPath),
     pathJoin: (basePath, newPath) => ipcRenderer.sendSync("path-join", basePath, newPath),
+    pathDirName: (filePath) => ipcRenderer.sendSync("path-dirname", filePath),
     getLastLogs: (numberOfLines, callback) => {
         ipcRenderer.send("get-last-logs", numberOfLines);
         ipcRenderer.once("last-logs", (event, data) => callback(data));

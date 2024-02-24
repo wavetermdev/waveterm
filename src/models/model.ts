@@ -104,6 +104,7 @@ type ElectronApi = {
     getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
     pathRelative: (fromPath: string, toPath: string) => string;
     pathJoin: (basePath: string, newPath: string) => string;
+    pathDirName: (filePath: string) => string;
 };
 
 function getApi(): ElectronApi {

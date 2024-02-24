@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -551,29 +552,12 @@ func (m *MServer) streamFile(pk *packet.StreamFilePacketType) {
 	return
 }
 
-func (m *MServer) writeListDirErrPacket(err error, pk *packet.ListDirPacketType) {
+func (m *MServer) writeListDirErrPacket(err error, reqId string) {
 	resp := packet.MakeFileStatPacketType()
-	resp.RespId = pk.ReqId
+	resp.RespId = reqId
 	resp.Error = fmt.Sprintf("Error in list dir: %v", err)
 	resp.Done = true
 	m.Sender.SendPacket(resp)
-}
-
-func makeFileStatPacketFromFileInfo(listDirPk *packet.ListDirPacketType, finfo fs.FileInfo, err string, done bool) *packet.FileStatPacketType {
-	resp := packet.MakeFileStatPacketType()
-	resp.RespId = listDirPk.ReqId
-	resp.Path = listDirPk.Path
-	resp.Error = err
-	resp.Done = done
-
-	resp.IsDir = finfo.IsDir()
-	resp.Name = finfo.Name()
-
-	resp.Size = finfo.Size()
-	resp.ModTs = finfo.ModTime()
-	resp.Perm = int(finfo.Mode().Perm())
-	resp.ModeStr = finfo.Mode().String()
-	return resp
 }
 
 func (m *MServer) ListDir(listDirPk *packet.ListDirPacketType) {
@@ -584,17 +568,17 @@ func (m *MServer) ListDir(listDirPk *packet.ListDirPacketType) {
 	}
 	curDirStat, err := os.Stat(listDirPk.Path)
 	if err != nil {
-		m.writeListDirErrPacket(err, listDirPk)
+		m.writeListDirErrPacket(err, listDirPk.ReqId)
 	}
-	resp := makeFileStatPacketFromFileInfo(listDirPk, curDirStat, readDirError, false)
+	resp := packet.MakeFileStatPacketFromFileInfo(listDirPk, curDirStat, readDirError, false)
 	resp.Name = "."
 	m.Sender.SendPacket(resp)
 	curDirStat, err = os.Stat(filepath.Join(listDirPk.Path, ".."))
 	if err != nil {
-		m.writeListDirErrPacket(err, listDirPk)
+		m.writeListDirErrPacket(err, listDirPk.ReqId)
 		return
 	}
-	resp = makeFileStatPacketFromFileInfo(listDirPk, curDirStat, readDirError, len(dirEntries) == 0)
+	resp = packet.MakeFileStatPacketFromFileInfo(listDirPk, curDirStat, readDirError, len(dirEntries) == 0)
 	resp.Name = ".."
 	m.Sender.SendPacket(resp)
 
@@ -602,13 +586,54 @@ func (m *MServer) ListDir(listDirPk *packet.ListDirPacketType) {
 		dirEntry := dirEntries[index]
 		dirEntryFileInfo, err := dirEntry.Info()
 		if err != nil {
-			m.writeListDirErrPacket(err, listDirPk)
+			m.writeListDirErrPacket(err, listDirPk.ReqId)
 			return
 		}
 		done := index == len(dirEntries)-1
-		resp = makeFileStatPacketFromFileInfo(listDirPk, dirEntryFileInfo, readDirError, done)
+		resp = packet.MakeFileStatPacketFromFileInfo(listDirPk, dirEntryFileInfo, readDirError, done)
 		m.Sender.SendPacket(resp)
 	}
+}
+
+func (m *MServer) SearchDir(searchDirPk *packet.SearchDirPacketType) {
+	searchEmpty := true
+	err := filepath.WalkDir(searchDirPk.Path, func(path string, dirEntry fs.DirEntry, err error) error {
+		if err != nil {
+			errString := fmt.Sprintf("%v", err)
+			if strings.Contains(errString, "operation not permitted") {
+				return filepath.SkipDir
+			}
+		}
+		fileName := filepath.Base(path)
+		match, err := regexp.MatchString(searchDirPk.SearchQuery, fileName)
+		if err != nil {
+			return err
+		}
+		if match {
+			base.Logf("matched file: %v %v", path, searchDirPk.SearchQuery)
+			dirEntryFileInfo, err := dirEntry.Info()
+			if err != nil {
+				return err
+			}
+			searchEmpty = false
+			resp := packet.MakeFileStatPacketFromFileInfo(searchDirPk.ConvertToListDir(), dirEntryFileInfo, "", false)
+			m.Sender.SendPacket(resp)
+		}
+		return nil
+	})
+	if err != nil {
+		m.writeListDirErrPacket(err, searchDirPk.ReqId)
+	} else {
+		searchError := ""
+		if searchEmpty {
+			searchError = "none"
+		}
+		resp := packet.MakeFileStatPacketType()
+		resp.Error = searchError
+		resp.Done = true
+		m.Sender.SendPacket(resp)
+	}
+
 }
 
 func int64Min(v1 int64, v2 int64) int64 {
@@ -648,6 +673,10 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 	}
 	if listDirPk, ok := pk.(*packet.ListDirPacketType); ok {
 		go m.ListDir(listDirPk)
+		return
+	}
+	if searchDirPk, ok := pk.(*packet.SearchDirPacketType); ok {
+		go m.SearchDir(searchDirPk)
 		return
 	}
 	m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid rpc type '%s'", pk.GetType()))

@@ -1221,6 +1221,10 @@ func (msh *MShellProc) ListDir(ctx context.Context, listDirPk *packet.ListDirPac
 	return msh.PacketRpcIter(ctx, listDirPk)
 }
 
+func (msh *MShellProc) SearchDir(ctx context.Context, searchDirPk *packet.SearchDirPacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, searchDirPk)
+}
+
 func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	if state == nil {
 		return nil
