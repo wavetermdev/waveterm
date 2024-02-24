@@ -36,27 +36,27 @@
 
     &.selected {
         .line-mask {
-            border-left: 4px solid #ccc;
+            border-left: 4px solid var(--line-selected-border-left-color);
         }
 
         &.has-error {
             .line-mask {
-                border-left: 4px solid rgba(@error-red-brightened, 0.8);
+                border-left: 4px solid var(--line-selected-error-border-color);
             }
         }
     }
 
     &.active.selected {
         .line-mask {
-            background-color: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(@wave-green, 0.8);
-            border-left: 4px solid rgba(@wave-green, 0.8);
+            background-color: var(--line-selected-bg-color);
+            border: 2px solid var(--line-active-border-color);
+            border-left: 4px solid var(--line-active-border-color);
         }
 
         &.has-error {
             .line-mask {
-                border: 2px solid rgba(@error-red, 0.8);
-                border-left: 4px solid rgba(@error-red, 0.8);
+                border: 2px solid var(--line-selected-error-border-color);
+                border-left: 4px solid var(--line-selected-error-border-color);
             }
         }
     }
@@ -72,8 +72,8 @@
         pointer-events: none;
 
         &.error-mask {
-            background-color: rgba(200, 0, 0, 0.1);
-            border-left: 4px solid rgba(@error-red, 0.8);
+            background-color: var(--line-error-bg-color);
+            border-left: 4px solid var(--line-error-border-left-color);
         }
     }
 
@@ -195,7 +195,7 @@
         }
 
         .meta.meta-line1 {
-            color: @text-caption;
+            color: var(--line-meta-text-color);
         }
 
         .meta.meta-line2 {
