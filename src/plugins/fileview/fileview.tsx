@@ -10,7 +10,6 @@ import { boundMethod } from "autobind-decorator";
 import { GlobalModel } from "../../models";
 import { Modal, TextField, InputDecoration, Tooltip } from "../../app/common/elements";
 import cn from "classnames";
-import * as path from "path";
 
 import "./fileview.less";
 
@@ -26,6 +25,7 @@ const OperationDownload = "download";
 const OperationUpload = "upload";
 
 const DirListMaxFiles = 5000;
+const ColumnMinSize = 8;
 
 class FileViewRendererModel {
     context: T.RendererContext;
@@ -218,29 +218,12 @@ class FileViewRendererModel {
     fileWasClicked(event: any, file: any) {
         let fileName = file.name;
         let cwd = GlobalModel.getCmdByScreenLine(this.rawCmd.screenid, this.rawCmd.lineid).getAsWebCmd().festate["cwd"];
-        let fileFullPath = GlobalModel.getApi().pathJoin(this.curDirectory, fileName);
-        let fileRelativePath = GlobalModel.getApi().pathRelative(cwd, fileFullPath);
-        let fileExtSplit = fileName.split(".");
-        let fileExt = "";
-        if (fileExtSplit.length > 0) {
-            fileExt = fileExtSplit.pop();
-        }
-        let command = "";
+        let fileFullPath = GlobalModel.getApi().pathJoin(file.path, fileName);
+        console.log("fileFullPath", fileFullPath);
         if (fileName == ".." || file.isdir) {
-            this.changeDirectory(fileName);
+            this.setDirectory(fileFullPath);
             // change directories
-            return;
-        } else if (fileExt == "jpg" || fileExt == "png") {
-            command = "/imageview " + fileRelativePath;
-        } else if (fileExt == "exe" || fileExt == "sh") {
-            command = "./" + fileRelativePath;
-        } else {
-            command = "codeedit " + fileRelativePath;
         }
-        console.log("command: ", command, "fileExt", fileExt);
-        let inputModel = GlobalModel.inputModel;
-        inputModel.setCurLine(command);
-        inputModel.giveFocus();
     }
 
     downloadWasClicked(event: any, sourceFile: any, destPath: string) {
@@ -252,7 +235,7 @@ class FileViewRendererModel {
         let fileName = sourceFile.name;
         let cwd = this.rawCmd.festate["cwd"];
         let curRemoteName = this.rawCmd.remote.alias;
-        let fileFullPath = path.join(cwd, fileName);
+        let fileFullPath = GlobalModel.getApi().pathJoin(cwd, fileName);
         this.curCopyFileState = { file: fileFullPath, progress: 0, operation: OperationDownload };
         mobx.action(() => {
             this.fileViewStateVersion.set(this.fileViewStateVersion.get() + 1);
@@ -487,8 +470,10 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
         let dirList = model.dirList;
         let file: any;
         let index: number;
-        let columnMinSize = 6;
-        let columnWidth = Math.min(dirList.length / columnMinSize, 4);
+        let columnMinSize = ColumnMinSize;
+        let numColumnsUncapped = dirList.length > columnMinSize ? Math.floor(dirList.length / columnMinSize) : 1;
+        console.log("numColumnsUncapped", numColumnsUncapped);
+        let columnWidth = Math.min(numColumnsUncapped, 4);
         let shouldRenderBottomPanel = model.curCopyFileState != null;
         let copyFileStateVersion = model.fileViewStateVersion.get();
         let bottomPanelId = "bottom-panel-" + copyFileStateVersion;

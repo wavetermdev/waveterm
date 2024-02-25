@@ -2618,7 +2618,6 @@ func writePacketToPty(ctx context.Context, cmd *sstore.CmdType, pk packet.Packet
 	if err != nil {
 		return err
 	}
-	log.Printf("outbytes: %v, len: %v", string(outBytes[:]), int64(len(outBytes)))
 	update, err := sstore.AppendToCmdPtyBlob(ctx, cmd.ScreenId, cmd.LineId, outBytes, *outputPos)
 	if err != nil {
 		return err
@@ -4910,8 +4909,8 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 }
 
 func StatDir(ctx context.Context, ids resolvedIds, path string, fileCallback func(pk *packet.FileStatPacketType, done bool, err error)) {
-	log.Printf("running %v: \n", path)
 	statPk, _, err := getFileStat(ctx, ids, path)
+	log.Printf("statPk: %\n", statPk)
 	if err != nil {
 		fileCallback(nil, true, err)
 		return

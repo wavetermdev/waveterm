@@ -597,6 +597,7 @@ func (m *MServer) ListDir(listDirPk *packet.ListDirPacketType) {
 
 func (m *MServer) SearchDir(searchDirPk *packet.SearchDirPacketType) {
 	searchEmpty := true
+	foundRoot := false
 	err := filepath.WalkDir(searchDirPk.Path, func(path string, dirEntry fs.DirEntry, err error) error {
 		if err != nil {
 			errString := fmt.Sprintf("%v", err)
@@ -611,6 +612,12 @@ func (m *MServer) SearchDir(searchDirPk *packet.SearchDirPacketType) {
 		}
 		if match {
 			base.Logf("matched file: %v %v", path, searchDirPk.SearchQuery)
+			// special case where walkdir includes the current path, which messes up the stat pk
+			rootName := filepath.Base(searchDirPk.Path)
+			if !foundRoot && fileName == rootName {
+				foundRoot = true
+				return nil
+			}
 			dirEntryFileInfo, err := dirEntry.Info()
 			if err != nil {
 				return err
