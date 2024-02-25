@@ -228,6 +228,9 @@ class FileViewRendererModel {
 
     downloadWasClicked(event: any, sourceFile: any, destPath: string) {
         event.stopPropagation();
+        if (this.curCopyFileState != null && this.curCopyFileState.progress != 100) {
+            return;
+        }
         this.packetData.reset();
         if (destPath == "") {
             destPath = "~/";
@@ -242,7 +245,6 @@ class FileViewRendererModel {
             this.dirListCache = Object.assign([], this.dirList.slice());
         })();
         let commandStr = "/copyfile [" + curRemoteName + "]:" + fileFullPath + " [local]:" + destPath;
-        console.log("commandStr: ", commandStr);
         let prtn = GlobalModel.submitPtyOutCommand(commandStr, this.rawCmd.lineid, this.rawCmd.screenid);
         prtn.then((rtn) => {
             if (!rtn.success) {
@@ -255,7 +257,9 @@ class FileViewRendererModel {
 
     uploadWasClicked(event: any, filePath: string) {
         event.stopPropagation();
-        console.log("upload was clicked", filePath);
+        if (this.curCopyFileState != null && this.curCopyFileState.progress != 100) {
+            return;
+        }
         this.packetData.reset();
         let destFileFullPath = this.curDirectory;
         let curRemoteName = this.rawCmd.remote.alias;
@@ -265,7 +269,6 @@ class FileViewRendererModel {
             this.dirListCache = Object.assign([], this.dirList.slice());
         })();
         let commandStr = "/copyfile [local]:" + filePath + " [" + curRemoteName + "]:" + destFileFullPath;
-        console.log("commandStr: ", commandStr);
         let prtn = GlobalModel.submitPtyOutCommand(commandStr, this.rawCmd.lineid, this.rawCmd.screenid);
         prtn.then((rtn) => {
             if (!rtn.success) {
@@ -289,7 +292,6 @@ class FileViewRendererModel {
 
     @boundMethod
     closeSearchModal(): void {
-        console.log("Closing Modal");
         mobx.action(() => {
             this.search.set(false);
             GlobalModel.modalsModel.popModal();
@@ -297,7 +299,6 @@ class FileViewRendererModel {
     }
 
     handleSearch(searchText: string) {
-        console.log("searching: ", searchText);
         this.closeSearchModal();
         if (searchText == "") {
             return;
@@ -334,6 +335,7 @@ class FileViewRenderer extends React.Component<{ model: FileViewRendererModel }>
         mobx.action(() => {
             let searchText = this.tempSearchField.get();
             this.props.model.handleSearch(searchText);
+            this.tempSearchField.set("");
         })();
     }
 

@@ -100,4 +100,4 @@ var electronProd = webpackMerge.merge(electronCommon, {
     },
 });
 
-module.exports = {electronDev: electronDev, electronProd: electronProd};
+module.exports = { electronDev: electronDev, electronProd: electronProd };

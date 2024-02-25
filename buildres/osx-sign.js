@@ -12,9 +12,11 @@ signAsync({
         waveAppPath + "/Contents/Resources/app/bin/mshell/mshell-v0.4-darwin.amd64",
         waveAppPath + "/Contents/Resources/app/bin/mshell/mshell-v0.4-darwin.arm64",
     ],
-}).then(() => {
-    console.log("signing success");
-}).catch((e) => {
-    console.log("signing error", e);
-    process.exit(1);
-});
+})
+    .then(() => {
+        console.log("signing success");
+    })
+    .catch((e) => {
+        console.log("signing error", e);
+        process.exit(1);
+    });
