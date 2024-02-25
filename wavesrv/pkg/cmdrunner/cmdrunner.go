@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -2585,13 +2586,18 @@ func updateAsstResponseAndWriteToUpdateBus(ctx context.Context, cmd *sstore.CmdT
 	scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
 }
 
-func getCmdInfoEngineeredPrompt(userQuery string, curLineStr string) string {
-	rtn := "You are an expert on the command line terminal. Your task is to help me write a command."
-	if curLineStr != "" {
-		rtn += "My current command is: " + curLineStr
+func getCmdInfoEngineeredPrompt(userQuery string, curLineStr string, shellType string, osType string) string {
+	promptBase := "You are an AI assistant with deep expertise in command line interfaces, CLI programs, and shell scripting. Your task is to help the user to fix an existing command that will be provided, or if no command is provided, help write a new command that the user requires. Feel free to provide appropriate context, but try to keep your answers short and to the point as the user is asking for help because they are trying to get a task done immediately."
+	promptBase = promptBase + " The user is current using the \"" + shellType + "\" shell on " + osType + "."
+	promptCurrentCommand := ""
+	if strings.TrimSpace(curLineStr) != "" {
+		// Enclose the command in triple backticks to format it as a code block.
+		promptCurrentCommand = " The user is currently working with the command: ```\n" + curLineStr + "\n```\n\n"
 	}
-	rtn += ". My question is: " + userQuery + "."
-	return rtn
+	promptFormattingInstruction := "Please ensure any command line suggestions or code snippets that are meant to be run by the user are enclosed in triple backquotes for easy copy and paste into the terminal."
+	promptQuestion := " The user's question is:\n\n" + userQuery + ""
+
+	return promptBase + promptCurrentCommand + promptFormattingInstruction + promptQuestion
 }
 
 func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType, curLineStr string) {
@@ -2641,7 +2647,6 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 			doneWaitingForPackets = true
 			asstOutputPk.Error = "timeout waiting for server response"
 			updateAsstResponseAndWriteToUpdateBus(ctx, cmd, asstMessagePk, asstOutputMessageID)
-			break
 		case pk, ok := <-ch:
 			if ok {
 				// got a packet
@@ -2667,11 +2672,9 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 				}
 				asstMessagePk.AssistantResponse = asstOutputPk
 				updateAsstResponseAndWriteToUpdateBus(ctx, cmd, asstMessagePk, asstOutputMessageID)
-
 			} else {
 				// channel closed
 				doneWaitingForPackets = true
-				break
 			}
 		}
 	}
@@ -2739,7 +2742,6 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 				return
 			}
 			doneWaitingForPackets = true
-			break
 		case pk, ok := <-ch:
 			if ok {
 				// got a packet
@@ -2755,7 +2757,6 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 			} else {
 				// channel closed
 				doneWaitingForPackets = true
-				break
 			}
 		}
 	}
@@ -2777,6 +2778,14 @@ func BuildOpenAIPromptArrayWithContext(messages []*packet.OpenAICmdInfoChatMessa
 		rtn = append(rtn, packet.OpenAIPromptMessageType{Role: msgRole, Content: content})
 	}
 	return rtn
+}
+
+func GetOsTypeFromRuntime() string {
+	osVal := runtime.GOOS
+	if osVal == "darwin" {
+		osVal = "macos"
+	}
+	return osVal
 }
 
 func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
@@ -2825,7 +2834,8 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		}
 		curLineStr := defaultStr(pk.Kwargs["curline"], "")
 		userQueryPk := &packet.OpenAICmdInfoChatMessage{UserQuery: promptStr, MessageID: sstore.ScreenMemGetCmdInfoMessageCount(cmd.ScreenId)}
-		engineeredQuery := getCmdInfoEngineeredPrompt(promptStr, curLineStr)
+		osType := GetOsTypeFromRuntime()
+		engineeredQuery := getCmdInfoEngineeredPrompt(promptStr, curLineStr, ids.Remote.ShellType, osType)
 		userQueryPk.UserEngineeredQuery = engineeredQuery
 		writePacketToUpdateBus(ctx, cmd, userQueryPk)
 		prompt := BuildOpenAIPromptArrayWithContext(sstore.ScreenMemGetCmdInfoChat(cmd.ScreenId).Messages)
