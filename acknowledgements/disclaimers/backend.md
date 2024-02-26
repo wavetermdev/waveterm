@@ -179,11 +179,11 @@ THE SOFTWARE.
 
 -----
 
-## github.com/google/go-github/v57/github
+## github.com/google/go-github/v59/github
 
-* Name: github.com/google/go-github/v57/github
-* Version: v57.0.0
-* License: [BSD-3-Clause](https://github.com/google/go-github/blob/v57.0.0/LICENSE)
+* Name: github.com/google/go-github/v59/github
+* Version: v59.0.0
+* License: [BSD-3-Clause](https://github.com/google/go-github/blob/v59.0.0/LICENSE)
 
 ```txt
 Copyright (c) 2013 The go-github AUTHORS. All rights reserved.
