@@ -38,12 +38,12 @@
                     line-height: 20px;
 
                     div:first-child {
-                        color: @term-bright-white;
+                        color: var(--app-text-primary-color);
                         font-size: 14.5px;
                     }
 
                     div:last-child {
-                        color: @term-white;
+                        color: var(--app-text-color);
                         text-align: left;
                     }
                 }
@@ -61,7 +61,7 @@
                     }
 
                     div:first-child + div {
-                        color: @term-white;
+                        color: var(--app-text-color);
                     }
                 }
 
@@ -72,7 +72,7 @@
                         margin-bottom: 5px;
 
                         i {
-                            color: @term-green;
+                            color: var(--status-updated-color);
                         }
                     }
                 }
@@ -80,7 +80,7 @@
                 .status.outdated {
                     div {
                         i {
-                            color: @term-yellow;
+                            color: var(--status-outdated-color);
                         }
                     }
 
@@ -107,7 +107,7 @@
 
             .about-section:last-child {
                 margin-bottom: 24px;
-                color: @term-white;
+                color: var(--app-text-color);
             }
         }
     }

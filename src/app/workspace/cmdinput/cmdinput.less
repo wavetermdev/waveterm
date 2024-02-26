@@ -9,7 +9,7 @@
     width: 100%;
     padding: var(--termfontsize);
     z-index: 100;
-    border-top: 1px solid @thin-border-color;
+    border-top: 1px solid var(--app-border-color);
 
     &.active {
     }
@@ -40,7 +40,7 @@
     .remote-status-warning {
         display: flex;
         flex-direction: row;
-        color: @term-yellow;
+        color: var(--cmdinput-warning-color);
         align-items: center;
 
         .button {
@@ -52,7 +52,7 @@
         position: absolute;
         top: 5px;
         right: 5px;
-        color: @term-white;
+        color: var(--app-text-color);
 
         padding: 5px;
         cursor: pointer;
@@ -82,11 +82,11 @@
             height: 1em;
             margin: 0 0.5em;
             vertical-align: text-top;
-            fill: @base-color;
+            fill: var(--app-text-color);
         }
 
         .warning {
-            fill: @warning-yellow;
+            fill: var(--cmdinput-warning-color);
         }
     }
 
@@ -120,17 +120,17 @@
                 bottom: calc(-13px + var(--termpad));
                 right: 0px;
                 font-size: 10px;
-                color: @text-secondary;
+                color: var(--app-text-secondary-color);
                 line-height: 1;
                 padding: 0px 8px 3px 8px;
-                background-color: @textarea-background;
+                background-color: var(--cmdinput-textarea-bg);
                 border-radius: 0 0 5px 5px;
             }
         }
 
         textarea {
-            color: @term-bright-white;
-            background-color: @textarea-background;
+            color: var(--app-text-primary-color);
+            background-color: var(--cmdinput-textarea-bg);
             padding: var(--termpad);
             resize: none;
             overflow: auto;
@@ -158,17 +158,17 @@
 
         .cmd-quick-context .button {
             background-color: #000 !important;
-            color: @term-white;
+            color: var(--app-text-color);
         }
 
         &.inputmode-global .cmd-quick-context .button {
-            color: @term-black;
-            background-color: @tab-green !important;
+            color: var(--app-black);
+            background-color: var(--cmdinput-button-bg-color) !important;
         }
 
         &.inputmode-comment .cmd-quick-context .button {
-            color: @term-black;
-            background-color: @tab-blue !important;
+            color: var(--app-black);
+            background-color: var(--cmdinput-comment-button-bg-color) !important;
         }
 
         .cmd-exec {
@@ -181,11 +181,11 @@
                 height: 2.5em;
                 cursor: pointer;
                 border-radius: 50%;
-                fill: @wave-green;
+                fill: var(--app-accent-color);
                 padding: 0.25em;
             }
             .icon.disabled {
-                fill: @disabled-background;
+                fill: var(--cmdinput-disabled-icon-color);
                 cursor: default;
             }
             .cmd-btn {
@@ -223,8 +223,8 @@
         }
 
         .chat-textarea {
-            color: @term-bright-white;
-            background-color: @textarea-background;
+            color: var(--app-text-primary-color);
+            background-color: var(--cmdinput-textarea-bg);
             padding: 0.5em;
             resize: none;
             overflow: auto;
@@ -250,7 +250,7 @@
         }
 
         .chat-msg-assistant {
-            color: @term-white;
+            color: var(--app-text-color);
         }
 
         .chat-msg-user {
@@ -262,7 +262,7 @@
         }
 
         .chat-msg-error {
-            color: @term-bright-red;
+            color: var(--cmdinput-text-error);
             font-family: @markdown-font;
             font-size: 14px;
         }
@@ -273,7 +273,7 @@
     }
 
     .cmd-history {
-        color: @term-white;
+        color: var(--app-text-color);
         margin-bottom: 5px;
         overflow: auto;
         flex-shrink: 1;
@@ -283,8 +283,8 @@
             z-index: 102;
             top: 5px;
             left: 20px;
-            background-color: @background-session-components-solid;
-            color: @soft-blue;
+            background-color: var(--cmdinput-history-bg-color);
+            color: var(--cmdinput-history-title-color);
             padding-bottom: 4px;
             display: flex;
             flex-direction: row;
@@ -311,7 +311,7 @@
 
         .history-items {
             margin-top: 24px;
-            color: @term-white;
+            color: var(--app-text-color);
 
             padding-bottom: 6px;
 
@@ -320,7 +320,7 @@
             }
 
             .history-item.history-haderror {
-                color: mix(@term-red, @term-white, 50%);
+                color: var(--cmdinput-history-item-error-color);
             }
 
             .history-line:first-child {
@@ -338,12 +338,12 @@
 
             .history-item.is-selected {
                 font-weight: bold;
-                color: @term-bright-white;
+                color: var(--app-text-primary-color);
                 background-color: #444;
             }
 
             .history-item.is-selected.history-haderror {
-                color: mix(@term-bright-red, @term-bright-white, 50%);
+                color: var(--cmdinput-history-item-selected-error-color);
             }
         }
     }
@@ -354,21 +354,16 @@
         margin-bottom: var(--termpad);
 
         .info-msg {
-            color: @soft-blue;
+            color: var(--cmdinput-history-title-color);
             padding-bottom: 2px;
 
             a {
-                color: @term-blue;
+                color: var(--prompt-blue);
             }
         }
 
-        .info-title {
-            color: @soft-blue;
-            padding-bottom: 2px;
-        }
-
         .info-lines {
-            color: @term-white;
+            color: var(--app-text-color);
             white-space: pre;
             padding-bottom: 6px;
         }
@@ -384,7 +379,7 @@
 
             .info-comp {
                 min-width: 200px;
-                color: @term-white;
+                color: var(--app-text-color);
                 margin-right: 10px;
 
                 &.has-space {
@@ -393,19 +388,19 @@
             }
 
             .metacmd-comp {
-                color: @term-bright-green;
+                color: var(--prompt-bright-green);
             }
         }
 
         .info-error {
-            color: @term-red;
+            color: var(--cmdinput-text-error-color);
             padding-bottom: 2px;
         }
 
         .info-remote-showall {
             table.remotes-table {
                 th {
-                    color: @term-white;
+                    color: var(--app-text-color);
                     font-weight: bold;
                 }
 
@@ -429,7 +424,7 @@
 
             .info-remote-title {
                 font-weight: bold;
-                color: @term-cyan;
+                color: var(--cmdinput-remote-title-color);
             }
 
             .info-error,
@@ -464,7 +459,7 @@
                     white-space: pre;
                     width: 140px;
                     font-weight: bold;
-                    color: @term-bright-white;
+                    color: var(--app-text-primary-color);
                 }
 
                 .undo-icon {
@@ -478,8 +473,8 @@
                         input[type="text"],
                         input[type="number"],
                         input[type="password"] {
-                            background-color: @term-black;
-                            color: @term-white;
+                            background-color: var(--app-black);
+                            color: var(--app-text-color);
                             width: 200px;
                         }
                     }
@@ -494,8 +489,8 @@
                     &.select-input {
                         select {
                             width: 200px;
-                            background-color: @term-black;
-                            color: @term-white;
+                            background-color: var(--app-black);
+                            color: var(--app-text-color);
                         }
                     }
                 }

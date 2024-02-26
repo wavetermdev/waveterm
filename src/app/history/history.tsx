@@ -13,8 +13,8 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "@/app/line/linecomps";
-import { CmdStrCode } from "@/common/elements";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { TextField } from "@/elements";
 
 import { ReactComponent as XmarkIcon } from "@/assets/icons/line/xmark.svg";
 import { ReactComponent as AngleDownIcon } from "@/assets/icons/history/angle-down.svg";
@@ -194,9 +194,9 @@ class HistoryView extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    changeSearchText(e: any) {
+    changeSearchText(val: string) {
         mobx.action(() => {
-            GlobalModel.historyViewModel.searchText.set(e.target.value);
+            GlobalModel.historyViewModel.searchText.set(val);
         })();
     }
 
@@ -433,19 +433,12 @@ class HistoryView extends React.Component<{}, {}> {
                     <div className="history-title">History</div>
                     <div className="history-search">
                         <div className="main-search field">
-                            <p className="control has-icons-left">
-                                <input
-                                    className="input"
-                                    type="text"
-                                    placeholder="Exact String Search"
-                                    value={hvm.searchText.get()}
-                                    onChange={this.changeSearchText}
-                                    onKeyDown={this.searchKeyDown}
-                                />
-                                <span className="is-small is-left">
-                                    <SearchIcon className="icon" />
-                                </span>
-                            </p>
+                            <TextField
+                                placeholder="Exact String Search"
+                                onChange={this.changeSearchText}
+                                onKeyDown={this.searchKeyDown}
+                                decoration={{ startDecoration: <SearchIcon className="icon" /> }}
+                            />
                         </div>
                         <div className="advanced-search">
                             <div
