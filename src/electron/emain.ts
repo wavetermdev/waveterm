@@ -792,6 +792,7 @@ function configureAutoUpdater(enabled: boolean, startup: boolean) {
                     updateSource: {
                         type: UpdateSourceType.ElectronPublicUpdateService,
                         repo: "esimkowitz/waveterm",
+                        host: "https://update.electronjs.org",
                     },
                     updateInterval: "1 hour",
                     logger: console,
