@@ -10,6 +10,16 @@
     //     border-radius: var(--app-border-radius) 0px 0px 0px;
     // }
 
+    &:not(:hover) .status-indicator {
+        .status-indicator-visible;
+    }
+
+    &:hover {
+        .actions {
+            .positional-icon-visible;
+        }
+    }
+
     &.color-green,
     &.color-default {
         svg.svg-icon-inner path {
@@ -283,19 +293,6 @@
                 .tab-index {
                     font-size: 12.5px;
                 }
-            }
-        }
-
-        &:not(:hover) .status-indicator {
-            .status-indicator-visible;
-        }
-
-        &:hover {
-            .screen-tab:not(:hover) .tab-index {
-                .positional-icon-visible;
-            }
-            .screen-tab:hover .actions {
-                .positional-icon-visible;
             }
         }
     }
