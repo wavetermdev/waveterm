@@ -206,7 +206,7 @@ class HistoryInfo extends React.Component<{}, {}> {
             scrNames = GlobalModel.getScreenNames();
         }
         return (
-            <div className="cmd-history">
+            <div className="cmd-history hide-scrollbar">
                 <div className="history-title">
                     <div className="history-label">history</div>
                     <div className="spacer"></div>

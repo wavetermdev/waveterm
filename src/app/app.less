@@ -132,8 +132,8 @@ svg.icon {
 }
 
 *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 4px;
+    height: 4px;
 }
 
 *::-webkit-scrollbar-track {
@@ -143,10 +143,29 @@ svg.icon {
 *::-webkit-scrollbar-thumb {
     background-color: var(--scrollbar-thumb-color) !important;
     border-radius: 4px;
+    margin: 0 1px 0 1px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
     background-color: var(--scrollbar-thumb-hover-color) !important;
+}
+
+.hide-scrollbar {
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.wide-scrollbar {
+    &::-webkit-scrollbar {
+        width: 12px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 10px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
 }
 
 .truncate {
