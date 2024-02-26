@@ -116,21 +116,21 @@
 
             .shelltag {
                 position: absolute;
-                // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding
-                bottom: calc(-13px + var(--termpad));
+                // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding (2px not sure?)
+                bottom: calc(-13px + var(--termpad) + 2px);
                 right: 0px;
                 font-size: 10px;
                 color: var(--app-text-secondary-color);
                 line-height: 1;
                 padding: 0px 8px 3px 8px;
-                background-color: var(--cmdinput-textarea-bg);
+                background-color: var(--cmdinput-textarea-bg-color);
                 border-radius: 0 0 5px 5px;
             }
         }
 
         textarea {
             color: var(--app-text-primary-color);
-            background-color: var(--cmdinput-textarea-bg);
+            background-color: var(--cmdinput-textarea-bg-color);
             padding: var(--termpad);
             resize: none;
             overflow: auto;
