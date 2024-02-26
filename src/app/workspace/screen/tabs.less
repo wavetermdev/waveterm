@@ -298,8 +298,6 @@
 
     .new-screen {
         flex-shrink: 0;
-        margin-left: 1em;
-        margin-right: 1em;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -311,5 +309,11 @@
             padding: 0.4em;
             vertical-align: middle;
         }
+    }
+
+    .tabs-end-spacer {
+        flex-grow: 1;
+        min-width: 20px;
+        -webkit-app-region: drag;
     }
 }
