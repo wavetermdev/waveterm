@@ -10,13 +10,13 @@
     line-height: 20px;
     backdrop-filter: blur(4px);
     z-index: 20;
-    border-radius: 10px;
-    border-left: 1px solid @thin-border-color;
-    border-bottom: 1px solid @thin-border-color;
+    border-radius: var(--app-border-radius) 0 var(--app-border-radius) var(--app-border-radius);
+    border-left: 1px solid var(--app-border-color);
+    border-bottom: 1px solid var(--app-border-color);
 
     .title-bar-drag {
         -webkit-app-region: drag;
-        height: 20px;
+        height: 30px;
         position: absolute;
         top: 0;
         left: 0;
@@ -114,7 +114,7 @@
     .separator {
         height: 1px;
         margin: 16px 0;
-        background-color: @base-border;
+        background-color: var(--sidebar-separator-color);
     }
 
     .item.workspaces-item {
@@ -123,12 +123,10 @@
 
     .middle {
         padding: 4px 6px 8px 6px;
-        border-bottom: 1px solid @base-border;
+        border-bottom: 1px solid var(--sidebar-separator-color);
         .item {
             &.active {
-                background: @base-border;
-                box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-                    0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+                background-color: var(--sidebar-highlight-color);
             }
             .index {
                 font-size: 10px;
@@ -223,127 +221,7 @@
         }
     }
 
-    .menu-label {
-        color: @base-color;
-    }
-
-    .menu-list {
-        li.menu-history,
-        li.menu-bookmarks,
-        li.menu-settings,
-        li.menu-websharing {
-            margin-left: -10px;
-        }
-
-        li.menu-bookmarks {
-            margin-left: -10px;
-        }
-
-        li {
-            .hotkey {
-                visibility: hidden;
-            }
-
-            &:hover .hotkey {
-                visibility: visible;
-            }
-        }
-    }
-
-    .menu-list.session-menu-list {
-        li a {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-
-            .session-num {
-                width: 24px;
-                margin-left: -12px;
-            }
-
-            .session-gear {
-                visibility: hidden;
-            }
-
-            &:hover .session-gear {
-                color: @term-white;
-                visibility: visible;
-
-                &:hover {
-                    color: @term-white;
-                }
-            }
-        }
-    }
-
-    .menu-list.emotes-menu-list {
-        max-height: 35%;
-        overflow-y: auto;
-    }
-
-    .menu-list li.emote-menu-item {
-        a {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-    }
-
-    .menu-list li a {
-        white-space: nowrap;
-        padding: 3px 5px 3px 12px;
-        vertical-align: middle;
-        position: relative;
-
-        .user-status {
-            position: absolute !important;
-            top: 24px !important;
-            left: 32px !important;
-        }
-
-        .avatar {
-            width: 24px;
-            height: 24px;
-            margin-right: 5px;
-            vertical-align: middle;
-        }
-
-        &.is-active .small-text {
-            color: @term-white;
-        }
-
-        &.is-active {
-            font-weight: bold;
-            background-color: @active-menu-color;
-
-            .session-num {
-                font-weight: normal;
-            }
-        }
-
-        .sub-label {
-            font-style: italic;
-        }
-
-        &.activity {
-            font-weight: bold;
-
-            .tag {
-                margin-left: 4px;
-                padding: 0 5px 0 5px;
-                position: relative;
-                top: -1px;
-            }
-        }
-
-        .status {
-            margin-right: 5px;
-            position: relative;
-            top: -3px;
-        }
-    }
-
-    .updateBanner {
+    .update-banner {
         font-weight: bold;
 
         .icon {

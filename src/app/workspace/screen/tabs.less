@@ -5,9 +5,10 @@
     border-top: 1px solid transparent;
     font-size: 12.5px;
 
-    &:first-child {
-        border-radius: 8px 0px 0px 0px;
-    }
+    // this comes back when we have a completely removable left-sidebar
+    // &:first-child {
+    //     border-radius: var(--app-border-radius) 0px 0px 0px;
+    // }
 
     &.color-green,
     &.color-default {
@@ -249,12 +250,11 @@
         .screen-tab {
             display: flex;
             flex-direction: row;
-            height: 3em;
             min-width: 13.6em;
             max-width: 13.6em;
             align-items: center;
             cursor: pointer;
-            padding: 0 8px 0 8px;
+            padding: 8px 8px 4px 8px; // extra 4px of tab padding to account for horizontal scrollbar (to make tab text look centered)
 
             .front-icon {
                 .positional-icon-visible;
@@ -302,12 +302,10 @@
 
     .new-screen {
         flex-shrink: 0;
-        margin-left: 1em;
-        margin-right: 1em;
         cursor: pointer;
         display: flex;
         align-items: center;
-        height: 37px;
+        height: 100%;
 
         .icon {
             height: 2rem;
@@ -315,5 +313,12 @@
             padding: 0.4em;
             vertical-align: middle;
         }
+    }
+
+    .tabs-end-spacer {
+        flex-grow: 1;
+        min-width: 30px;
+        -webkit-app-region: drag;
+        height: 100%;
     }
 }

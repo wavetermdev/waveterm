@@ -205,6 +205,7 @@ class ScreenTabs extends React.Component<
                 <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
                     <AddIcon className="icon hoverEffect" />
                 </div>
+                <div className="tabs-end-spacer" />
             </div>
         );
     }

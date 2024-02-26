@@ -17,6 +17,7 @@ interface TextFieldProps {
     value?: string;
     className?: string;
     onChange?: (value: string) => void;
+    onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
     placeholder?: string;
     defaultValue?: string;
     decoration?: TextFieldDecorationProps;
@@ -157,6 +158,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         onChange={this.handleInputChange}
                         onFocus={this.handleFocus}
                         onBlur={this.handleBlur}
+                        onKeyDown={this.props.onKeyDown}
                         placeholder={placeholder}
                         maxLength={maxLength}
                         autoFocus={autoFocus}
