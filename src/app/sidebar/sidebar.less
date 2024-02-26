@@ -16,7 +16,7 @@
 
     .title-bar-drag {
         -webkit-app-region: drag;
-        height: 20px;
+        height: 30px;
         position: absolute;
         top: 0;
         left: 0;
@@ -126,9 +126,7 @@
         border-bottom: 1px solid var(--sidebar-separator-color);
         .item {
             &.active {
-                background: var(--sidebar-separator-color);
-                box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-                    0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+                background-color: var(--sidebar-highlight-color);
             }
             .index {
                 font-size: 10px;

@@ -250,12 +250,11 @@
         .screen-tab {
             display: flex;
             flex-direction: row;
-            height: 3em;
             min-width: 13.6em;
             max-width: 13.6em;
             align-items: center;
             cursor: pointer;
-            padding: 0 8px 0 8px;
+            padding: 8px 8px 4px 8px; // extra 4px of tab padding to account for horizontal scrollbar (to make tab text look centered)
 
             .front-icon {
                 .positional-icon-visible;
@@ -306,7 +305,7 @@
         cursor: pointer;
         display: flex;
         align-items: center;
-        height: 37px;
+        height: 100%;
 
         .icon {
             height: 2rem;
@@ -318,7 +317,8 @@
 
     .tabs-end-spacer {
         flex-grow: 1;
-        min-width: 20px;
+        min-width: 30px;
         -webkit-app-region: drag;
+        height: 100%;
     }
 }
