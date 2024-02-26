@@ -790,9 +790,8 @@ function configureAutoUpdater(enabled: boolean, startup: boolean) {
             try {
                 updateElectronApp({
                     updateSource: {
-                        type: UpdateSourceType.ElectronPublicUpdateService,
-                        repo: "esimkowitz/waveterm",
-                        host: "https://update.electronjs.org",
+                        type: UpdateSourceType.StaticStorage,
+                        baseUrl: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
                     },
                     updateInterval: "1 hour",
                     logger: console,
