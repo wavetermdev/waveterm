@@ -131,7 +131,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
 
         return (
             <div className={cn("mainview", "connections-view")}>
-                <header className="header">
+                <header className="header bottom-border">
                     <div className="connections-title text-primary">Connections</div>
                     <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
                         <i className="fa-sharp fa-solid fa-xmark"></i>

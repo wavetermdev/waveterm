@@ -149,7 +149,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
         return (
             <div className={cn("mainview", "clientsettings-view")}>
-                <header className="header">
+                <header className="header bottom-border">
                     <div className="clientsettings-title text-primary">Client Settings</div>
                     <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
                         <i className="fa-sharp fa-solid fa-xmark"></i>

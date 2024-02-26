@@ -10,7 +10,6 @@ import cn from "classnames";
 import { GlobalModel } from "@/models";
 import { CmdStrCode, Markdown } from "@/common/elements";
 
-import { ReactComponent as XmarkIcon } from "@/assets/icons/line/xmark.svg";
 import { ReactComponent as CopyIcon } from "@/assets/icons/favourites/copy.svg";
 import { ReactComponent as PenIcon } from "@/assets/icons/favourites/pen.svg";
 import { ReactComponent as TrashIcon } from "@/assets/icons/favourites/trash.svg";
@@ -204,11 +203,11 @@ class BookmarksView extends React.Component<{}, {}> {
         let idx: number = 0;
         let bookmark: BookmarkType = null;
         return (
-            <div className={cn("bookmarks-view", { "is-hidden": isHidden })}>
-                <div className="header">
-                    <div className="bookmarks-title">Favorites</div>
-                    <div className="close-button hoverEffect" title="Close (Escape)" onClick={this.closeView}>
-                        <XmarkIcon className={"icon"} />
+            <div className={cn("mainview", "bookmarks-view", { "is-hidden": isHidden })}>
+                <div className="header bottom-border">
+                    <div className="bookmarks-title text-primary">Favorites</div>
+                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.closeView}>
+                        <i className="fa-sharp fa-solid fa-xmark"></i>
                     </div>
                 </div>
                 <div className="bookmarks-list">
