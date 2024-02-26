@@ -208,7 +208,7 @@ class HistoryInfo extends React.Component<{}, {}> {
         return (
             <div className="cmd-history">
                 <div className="history-title">
-                    <div>history</div>
+                    <div className="history-label">history</div>
                     <div className="spacer"></div>
                     <div className="history-opt">[for {opts.queryType} &#x2318;S]</div>
                     <div className="spacer"></div>
