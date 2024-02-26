@@ -1,7 +1,7 @@
 @import "@/common/themes/themes.less";
 
 .markdown {
-    color: @term-white;
+    color: var(--app-text-color);
     font-family: @markdown-font;
     font-size: 14px;
     overflow-wrap: break-word;
@@ -12,7 +12,7 @@
 
     code {
         background-color: var(--markdown-bg-color);
-        color: @term-white;
+        color: var(--app-text-color);
         font-family: var(--termfontfamily);
         border-radius: 4px;
     }
@@ -24,13 +24,13 @@
     }
 
     .title {
-        color: @term-white;
+        color: var(--app-text-color);
         margin-top: 16px;
         margin-bottom: 8px;
     }
 
     strong {
-        color: @term-white;
+        color: var(--app-text-color);
     }
 
     a {
@@ -39,7 +39,7 @@
 
     table {
         tr th {
-            color: @term-white;
+            color: var(--app-text-color);
         }
     }
 

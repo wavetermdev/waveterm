@@ -12,12 +12,12 @@ body {
     font-weight: 300;
     line-height: 1.5;
     background-color: black;
-    color: @base-color;
+    color: var(--app-text-color);
 }
 
 body {
     &.is-dev .sidebar {
-        background-color: @base-background-dev;
+        background-color: var(--app-bg-color-dev);
     }
 }
 
@@ -27,8 +27,8 @@ textarea {
     font-size: 12px;
     font-weight: 300;
     line-height: 1.5;
-    background: @base-background;
-    color: @base-color;
+    background: var(--app-bg-color);
+    color: var(--app-text-color);
 }
 
 // typography
@@ -49,7 +49,7 @@ textarea {
     font-weight: 500;
     line-height: 20px;
     font-family: @text-s1-font;
-    color: @text-primary;
+    color: var(--app-text-color);
 }
 
 .text-standard {
@@ -84,11 +84,11 @@ textarea {
 }
 
 body a {
-    color: @wave-green;
+    color: var(--app-accent-color);
     cursor: pointer;
     text-decoration: none;
     &:hover {
-        color: @wave-green;
+        color: var(--app-accent-color);
     }
 }
 
@@ -98,7 +98,7 @@ body code {
 }
 
 svg.icon {
-    fill: @base-color;
+    fill: var(--app-text-color);
     width: 100%;
     height: 100%;
     display: inline-block;
@@ -137,19 +137,11 @@ svg.icon {
 }
 
 *::-webkit-scrollbar-track {
-    background-color: @scrollbar-background !important;
+    background-color: var(--scrollbar-thumb-color) !important;
 }
 
 *::-webkit-scrollbar-thumb {
-    background-color: @scrollbar-thumb !important;
-}
-
-.glow {
-    &:focus,
-    &:hover {
-        border: 1px solid @background-session-components !important;
-        box-shadow: 0px 0px 2px rgba(255, 255, 255, 0.5) inset, 0px 0px 2px rgba(255, 255, 255, 0.2) inset;
-    }
+    background-color: var(--scrollbar-thumb-color) !important;
 }
 
 .truncate {
@@ -165,10 +157,10 @@ svg.icon {
     border-radius: 5px;
     cursor: pointer;
     background-color: @button-background !important;
-    color: @wave-green;
+    color: var(--app-accent-color);
     .hoverEffect;
     &:hover {
-        color: @wave-green;
+        color: var(--app-accent-color);
     }
     &.disabled {
         color: fade(@disabled-color, 60%);
@@ -263,7 +255,7 @@ a.a-block {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: @term-white;
+    background-color: var(--app-text-color);
     opacity: 0;
     display: flex;
     flex-direction: row;
@@ -324,43 +316,43 @@ a.a-block {
 }
 
 .text-button {
-    color: @term-white;
+    color: var(--app-text-color);
     cursor: pointer;
     background-color: #171717;
     outline: 2px solid #171717;
 
     &:hover,
     &:focus {
-        color: @term-white;
+        color: var(--app-text-color);
         background-color: #333;
         outline: 2px solid #333;
     }
 
     &.connect-button {
-        color: @term-green;
+        color: var(--button-primary-bg-color);
         &:hover {
-            color: @term-green;
+            color: var(--button-primary-bg-color);
         }
     }
 
     &.disconnect-button {
-        color: @term-red;
+        color: var(--button-error-bg-color);
         &:hover {
-            color: @term-red;
+            color: var(--button-error-bg-color);
         }
     }
 
     &.success-button {
-        color: @term-green;
+        color: var(--button-primary-bg-color);
         &:hover {
-            color: @term-green;
+            color: var(--button-primary-bg-color);
         }
     }
 
     &.error-button {
-        color: @term-red;
+        color: var(--button-error-bg-color);
         &:hover {
-            color: @term-red;
+            color: var(--button-error-bg-color);
         }
     }
 
@@ -399,12 +391,12 @@ a.a-block {
     &.active,
     &.active.selected {
         display: block;
-        background-color: @tab-blue !important;
+        background-color: var(--tab-blue) !important;
     }
 
     &.active.selected.fg-focus {
         display: block;
-        background-color: @tab-green !important;
+        background-color: var(--tab-green) !important;
     }
 }
 
@@ -438,12 +430,12 @@ a.a-block {
 }
 
 .load-error-text {
-    color: @term-red;
+    color: var(--tab-red);
     padding-top: 5px;
 }
 
 .plugin-info-text {
-    color: @term-white;
+    color: var(--app-text-color);
     padding-top: 5px;
 }
 
@@ -492,138 +484,138 @@ a.a-block {
 .icon.color-green {
     path,
     circle {
-        fill: @tab-green;
+        fill: var(--tab-green);
     }
 
     i {
-        color: @tab-green;
+        color: var(--tab-green);
     }
 }
 
 .icon.color-red {
     path,
     circle {
-        fill: @tab-red;
+        fill: var(--tab-red);
     }
 
     i {
-        color: @tab-red;
+        color: var(--tab-green);
     }
 }
 
 .icon.color-orange {
     path,
     circle {
-        fill: @tab-orange;
+        fill: var(--tab-orange);
     }
 
     i {
-        color: @tab-orange;
+        color: var(--tab-orange);
     }
 }
 
 .icon.color-blue {
     path,
     circle {
-        fill: @tab-blue;
+        fill: var(--tab-blue);
     }
 
     i {
-        color: @tab-blue;
+        color: var(--tab-blue);
     }
 }
 
 .icon.color-yellow {
     path,
     circle {
-        fill: @tab-yellow;
+        fill: var(--tab-yellow);
     }
 
     i {
-        color: @tab-yellow;
+        color: var(--tab-yellow);
     }
 }
 
 .icon.color-pink {
     path,
     circle {
-        fill: @tab-pink;
+        fill: var(--tab-pink);
     }
 
     i {
-        color: @tab-pink;
+        color: var(--tab-pink);
     }
 }
 
 .icon.color-mint {
     path,
     circle {
-        fill: @tab-mint;
+        fill: var(--tab-mint);
     }
 
     i {
-        color: @tab-mint;
+        color: var(--tab-mint);
     }
 }
 
 .icon.color-cyan {
     path,
     circle {
-        fill: @tab-cyan;
+        fill: var(--tab-cyan);
     }
 
     i {
-        color: @tab-cyan;
+        color: var(--tab-cyan);
     }
 }
 
 .icon.color-violet {
     path,
     circle {
-        fill: @tab-violet;
+        fill: var(--tab-violet);
     }
 
     i {
-        color: @tab-violet;
+        color: var(--tab-violet);
     }
 }
 
 .icon.color-white {
     path,
     circle {
-        fill: @tab-white;
+        fill: var(--tab-white);
     }
 
     i {
-        color: @tab-white;
+        color: var(--tab-white);
     }
 }
 
 .status-icon.status-connected {
     path,
     circle {
-        fill: @status-connected;
+        fill: var(--status-connected-color);
     }
 }
 
 .status-icon.status-connecting {
     path,
     circle {
-        fill: @status-connecting;
+        fill: var(--status-connecting-color);
     }
 }
 
 .status-icon.status-disconnected {
     path,
     circle {
-        fill: @status-disconnected;
+        fill: var(--status-disconnected-color);
     }
 }
 
 .status-icon.status-error {
     path,
     circle {
-        fill: @status-error;
+        fill: var(--status-error-color);
     }
 }
 
@@ -649,7 +641,7 @@ a.a-block {
 }
 
 .view {
-    background-color: @background-session;
+    background-color: var(--session-bg-color);
     flex-grow: 1;
     display: flex;
     flex-direction: column;
@@ -687,12 +679,12 @@ a.a-block {
     }
 
     &.settings-error {
-        color: @term-red;
+        color: var(--term-red);
         margin-top: 20px;
         padding: 10px;
         border-radius: 5px;
         background-color: #200707;
-        border: 1px solid @term-red;
+        border: 1px solid var(--term-red);
         font-weight: bold;
 
         .error-dismiss {
@@ -716,7 +708,7 @@ a.a-block {
         display: flex;
         flex-direction: row;
         align-items: center;
-        color: @term-white;
+        color: var(--app-text-color);
 
         &.settings-clickable {
             cursor: pointer;
@@ -747,37 +739,37 @@ a.a-block {
         }
 
         .tab-color-icon.color-default path {
-            fill: @tab-green;
+            fill: var(--tab-green);
         }
         .tab-color-icon.color-green path {
-            fill: @tab-green;
+            fill: var(--tab-green);
         }
         .tab-color-icon.color-orange path {
-            fill: @tab-orange;
+            fill: var(--tab-orange);
         }
         .tab-color-icon.color-red path {
-            fill: @tab-red;
+            fill: var(--tab-red);
         }
         .tab-color-icon.color-yellow path {
-            fill: @tab-yellow;
+            fill: var(--tab-yellow);
         }
         .tab-color-icon.color-blue path {
-            fill: @tab-blue;
+            fill: var(--tab-blue);
         }
         .tab-color-icon.color-mint path {
-            fill: @tab-mint;
+            fill: var(--tab-mint);
         }
         .tab-color-icon.color-cyan path {
-            fill: @tab-cyan;
+            fill: var(--tab-cyan);
         }
         .tab-color-icon.color-white path {
-            fill: @tab-white;
+            fill: var(--tab-white);
         }
         .tab-color-icon.color-violet path {
-            fill: @tab-violet;
+            fill: var(--tab-violet);
         }
         .tab-color-icon.color-pink path {
-            fill: @tab-pink;
+            fill: var(--tab-pink);
         }
 
         .tab-colors,
@@ -817,7 +809,7 @@ a.a-block {
         .action-text {
             margin-left: 20px;
 
-            color: @term-red;
+            color: var(--term-red);
         }
 
         .settings-share-link {
