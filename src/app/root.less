@@ -1,0 +1,184 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+:root {
+    --fa-style-family: "Font Awesome 6 Sharp";
+
+    // these variables are overridden by user settings
+    --termfontfamily: "JetBrains Mono", monospace;
+    --termfontsize: 12px;
+    --termlineheight: 15px;
+    --termpad: 7px; // padding value (scaled to termfontsize)
+
+    // global colors
+    --app-accent-color: rgb(88, 193, 66);
+    --app-error-color: rgb(204, 0, 0);
+    --app-warning-color: rgb(255, 165, 0);
+    --app-text-color: rgb(211, 215, 207);
+    --app-text-primary-color: rgb(255, 255, 255);
+    --app-text-secondary-color: rgb(195, 200, 194);
+    --app-border-color: rgb(51, 51, 51);
+    --app-bg-color: rgba(21, 23, 21, 1);
+    --app-bg-color-dev: rgba(21, 23, 48, 1);
+
+    // global generic colors
+    --app-black: rgb(0, 0, 0);
+
+    // scrollbar colors
+    --scrollbar-background-color: rgba(21, 23, 21, 1);
+    --scrollbar-thumb-color: rgb(134, 134, 134);
+
+    // code color
+    --pre-bg-color: rgb(0, 0, 0);
+
+    // tab colors
+    --tab-red: rgb(229, 77, 46);
+    --tab-orange: rgb(239, 113, 59);
+    --tab-yellow: rgb(224, 185, 86);
+    --tab-green: rgb(88, 193, 66);
+    --tab-mint: rgb(75, 255, 169);
+    --tab-cyan: rgb(75, 223, 255);
+    --tab-blue: rgb(57, 113, 255);
+    --tab-violet: rgb(186, 118, 255);
+    --tab-pink: rgb(224, 86, 119);
+    --tab-white: rgb(255, 255, 255);
+
+    // prompt colors
+    --prompt-black: rgb(0, 0, 0);
+    --prompt-white: rgb(211, 215, 207);
+    --prompt-orange: rgb(239, 113, 59);
+    --prompt-blue: rgb(52, 101, 164);
+    --prompt-bright-black: rgb(85, 87, 83);
+    --prompt-bright-red: rgb(239, 41, 41);
+    --prompt-bright-green: rgb(88, 193, 66);
+    --prompt-bright-yellow: rgb(252, 233, 79);
+    --prompt-bright-blue: rgb(50, 175, 255);
+    --prompt-bright-magenta: rgb(173, 127, 168);
+    --prompt-bright-cyan: rgb(52, 226, 226);
+    --prompt-bright-white: rgb(255, 255, 255);
+
+    // button colors
+    --button-text-color: rgb(255, 255, 255);
+    --button-primary-bg-color: rgb(78, 154, 6);
+    --button-secondary-bg-color: rgba(255, 255, 255, 0.09);
+    --button-warning-bg-color: rgb(204, 0, 0);
+
+    // input colors
+    --checkbox-text-color: rgb(255, 255, 255);
+    --checkbox-bg-color: rgb(78, 154, 6);
+    --checkbox-check-color: rgb(255, 255, 255);
+
+    // dropdown colors
+    --dropdown-text-color: rgb(211, 215, 207);
+    --dropdown-error-color: rgb(229, 77, 46);
+    --dropdown-focus-color: rgb(78, 154, 6);
+
+    // textfield colors
+    --textfield-focused-border-color: rgb(78, 154, 6);
+    --textfield-error-border-color: rgb(229, 77, 46);
+    --textfield-label-color: rgb(195, 200, 194);
+    --textfield-text-color: rgb(255, 255, 255);
+
+    // toggle colors
+    --toggle-bg-color: rgb(51, 51, 51);
+    --toggle-thumb-color: rgb(211, 215, 207);
+    --toggle-checked-bg-color: rgb(78, 154, 6);
+
+    // cmdstrcode colors
+    --cmdstrcode-bg-color: rgb(0, 0, 0);
+    --cmdstrcode-text-color: rgb(211, 215, 207);
+
+    // markdown colors
+    --markdown-bg-color: rgb(35, 35, 35);
+    --markdown-outline-color: rgb(78, 154, 6);
+
+    // status(remote) colors
+    // todo: all status colors must be unified
+    --status-connected-color: rgb(70, 167, 88);
+    --status-connecting-color: rgb(245, 217, 10);
+    --status-error-color: rgb(229, 77, 46);
+    --status-disconnected-color: rgb(195, 200, 194);
+
+    // status indicator colors
+    // todo: all status colors must be unified
+    --status-indicator-color: rgb(211, 215, 207);
+    --status-indicator-error: rgb(204, 0, 0);
+    --status-indicator-success: rgb(78, 154, 6);
+
+    // status(version) colors
+    // todo: all status colors must be unified
+    --status-outdated-color: rgb(196, 160, 0);
+    --status-updated-color: rgb(78, 154, 6);
+
+    // term status colors
+    // todo: all status colors must be unified
+    --term-error-color: rgb(204, 0, 0);
+    --term-warning-color: rgb(196, 160, 0);
+
+    // hotkey colors
+    --hotkey-text-color: rgb(195, 200, 194);
+
+    // sidebar colors
+    --sidebar-dev-bg-color: rgb(21, 23, 48);
+    --sidebar-settings-color: rgb(255, 255, 255);
+
+    // line colors
+    --line-sidebar-message-color: rgb(196, 160, 0);
+    --line-background: rgba(21, 23, 21, 1);
+    --line-avatar-color: #eceeec;
+    --line-text-color: rgb(211, 215, 207);
+    --line-svg-fill-color: rgb(150, 152, 150);
+    --line-svg-hover-fill-color: #eceeec;
+    --line-selected-border-color: rgb(193, 195, 193);
+    --line-separator-color: rgb(126, 126, 126);
+    --line-meta-line1-color: rgb(150, 152, 150);
+    --line-error-color: #cc0000;
+    --line-warning-color: #ffa500;
+    --line-base-soft-blue-color: #729fcf;
+    --line-active-border-color: rgb(97, 158, 72);
+    --line-selected-bg-color: rgba(255, 255, 255, 0.1);
+    --line-selected-border-left-color: #ccc;
+    --line-selected-error-border-color: rgba(204, 0, 0, 0.8);
+    --line-selected-error-bg-color: rgb(19, 4, 3);
+    --line-error-bg-color: rgba(200, 0, 0, 0.1);
+    --line-error-border-left-color: rgba(204, 0, 0, 0.8);
+    --line-simple-text-color: rgba(236, 238, 236, 0.6);
+    --line-meta-text-color: rgb(139, 145, 138);
+    --line-meta-user-color: rgba(140, 184, 232);
+    --line-svg-color: rgba(236, 238, 236, 0.6);
+    --line-svg-hover-color: rgba(236, 238, 236, 1);
+    --line-status-success-fill: rgb(88, 193, 66);
+    --line-status-error-fill: #cc0000;
+    --line-status-warning-fill: #ffa500;
+
+    // view colors
+    // todo: bookmarks is a view, colors must be unified with --view* colors
+    --bookmarks-text-color: rgb(211, 215, 207);
+    --bookmarks-textarea-bg-color: rgb(0, 0, 0);
+    --bookmarks-disabled-text-color: rgb(173, 173, 173);
+    --bookmarks-control-hover-color: rgb(255, 255, 255);
+
+    // view colors
+    --view-error-color: rgb(204, 0, 0);
+    --view-text-color: rgb(195, 200, 194);
+
+    // session colors
+    --session-bg-color: rgba(13, 13, 13, 0.85);
+
+    // cmdinput colors
+    --cmdinput-textarea-bg-color: #171717;
+    --cmdinput-text-error-color: rgb(239, 41, 41);
+    --cmdinput-history-title-color: rgb(114, 159, 207);
+    --cmdinput-remote-title-color: rgb(6, 152, 154);
+    --cmdinput-history-item-error-color: rgb(220, 119, 118);
+    --cmdinput-history-item-selected-error-color: rgb(247, 148, 148);
+    --cmdinput-remote-field-control-color: rgb(0, 0, 0);
+    --cmdinput-warning-color: rgb(255, 165, 0);
+    --cmdinput-button-bg-color: rgb(88, 193, 66);
+    --cmdinput-comment-button-bg-color: rgb(57, 113, 255);
+    --cmdinput-disabled-icon-color: rgb(76, 81, 75, 1);
+    --cmdinput-history-bg-color: rgb(21, 23, 21, 1);
+
+    // screen view color
+    --screen-view-text-caption-color: rgb(139, 145, 138);
+}

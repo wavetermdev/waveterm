@@ -8,12 +8,12 @@
     &.is-hidden {
         display: none;
     }
-    background: @background-session;
-    border: 1px solid @base-border;
-    border-radius: 8px;
-    // transition: width 0.2s ease;
-    margin-bottom: 0.5em;
-    margin-right: 0.5em;
+    border-radius: 10px;
+    border-radius: 0 0 6px 6px;
+    border-bottom: 1px solid var(--app-border-color);
+    border-right: 1px solid var(--app-border-color);
+    border-left: 1px solid var(--app-border-color);
+    background-color: black;
 
     .center-message {
         display: flex;
@@ -21,6 +21,6 @@
         justify-content: center;
         height: 100%;
         width: 100%;
-        color: @text-secondary;
+        color: var(--app-text-secondary-color);
     }
 }

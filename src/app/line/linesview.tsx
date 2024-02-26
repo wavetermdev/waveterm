@@ -471,11 +471,13 @@ class LinesView extends React.Component<
             prevDateStr = curDateStr;
             if (dateSepStr != null) {
                 let sepElem = (
-                    <div key={"sep-" + line.lineid} className="line-sep">
+                    <div key={"sep-" + line.lineid} className="line-sep-labeled">
                         {dateSepStr}
                     </div>
                 );
                 lineElements.push(sepElem);
+            } else if (idx > 0) {
+                lineElements.push(<div key={"sep-" + line.lineid} className="line-sep"></div>);
             }
             let topBorder = dateSepStr == null && this.hasTopBorder(lines, idx);
             let lineProps = {

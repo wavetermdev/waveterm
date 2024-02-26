@@ -1,12 +1,12 @@
 @import "@/common/themes/themes.less";
 
 .history-view {
-    background-color: @background-session;
+    background-color: var(--session-bg-color);
 
     .icon {
         width: 1.3em !important;
         height: 1.3em !important;
-        fill: @base-color;
+        fill: var(--app-text-color);
     }
 
     .history-checkbox {
@@ -51,7 +51,7 @@
         svg {
             width: 1.5em;
             height: 1.5em;
-            fill: @base-color;
+            fill: var(--app-text-color);
         }
     }
 
@@ -62,15 +62,6 @@
             margin-bottom: 0.5em;
             font-weight: bold;
             font-size: 1.5em;
-        }
-
-        input {
-            border: none;
-            border-radius: 4px;
-            font-size: 1em;
-            padding: 0.5em 1em;
-            background-color: @background-session-components;
-            color: @base-color;
         }
     }
 
@@ -99,7 +90,7 @@
                 .label {
                     display: inline;
                     vertical-align: middle;
-                    color: @base-color;
+                    color: var(--app-text-color);
                 }
                 .icon {
                     vertical-align: middle;
@@ -110,7 +101,7 @@
             .session-dropdown,
             .remote-dropdown {
                 .dropdown-item {
-                    color: @term-white;
+                    color: var(--app-text-color);
                     cursor: pointer;
                     &:hover {
                         background-color: #666;
@@ -130,7 +121,7 @@
             .search-checkbox {
                 margin-left: 15px;
                 padding: 5px 10px 5px 10px;
-                background: @base-border;
+                background: var(--button-secondary-bg-color);
                 border-radius: 4px;
                 display: flex;
                 flex-direction: row;
@@ -163,7 +154,7 @@
 
             .reset-button {
                 margin-left: 1em;
-                color: @base-color;
+                color: var(--app-text-color);
                 line-height: 1.75em;
             }
         }
@@ -191,7 +182,7 @@
         .trash-icon {
             width: 12px;
             height: 12px;
-            fill: @text-secondary;
+            fill: var(--app-text-color);
         }
 
         .control-checkbox {
@@ -216,11 +207,11 @@
             }
 
             &:hover {
-                color: @term-white;
+                color: var(--app-text-color);
             }
 
             &.delete-button.is-active {
-                color: @term-bright-red !important;
+                color: var(--view-error-color) !important;
             }
         }
 
@@ -273,7 +264,7 @@
                 .line-container {
                     padding: 0px 10px 10px 10px;
                     overflow-x: auto;
-                    background-color: @term-black;
+                    background-color: var(--prompt-black);
                 }
 
                 .line-context {
@@ -285,10 +276,10 @@
 
                     .vic-btn {
                         cursor: pointer;
-                        color: @term-white;
+                        color: var(--app-text-color);
 
                         &:hover {
-                            color: @term-white;
+                            color: var(--app-text-color);
                         }
                     }
                 }
@@ -312,7 +303,7 @@
             display: flex;
             border-bottom: 1px solid rgba(250, 250, 250, 0.1);
             align-items: center;
-            color: @text-secondary;
+            color: var(--app-text-color);
 
             &.is-selected {
                 background-color: #222;
@@ -373,7 +364,7 @@
             }
 
             td.cmdstr {
-                color: @term-white;
+                color: var(--app-text-color);
                 flex: 1 0 0;
                 border-radius: 3px;
                 white-space: pre;

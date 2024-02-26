@@ -189,7 +189,7 @@ class TermWrap {
             return;
         }
         this.terminal.focus();
-        setTimeout(() => this.terminal._core.viewport.syncScrollArea(true), 0);
+        setTimeout(() => this.terminal?._core?.viewport?.syncScrollArea(true), 0);
     }
 
     disconnectElem() {

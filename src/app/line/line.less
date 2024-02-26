@@ -1,15 +1,14 @@
 @import "@/common/themes/themes.less";
 
 .line {
-    margin: 1rem 1rem 0 1rem;
-    padding: var(--termpad) var(--termpad) var(--termpad) var(--termpad);
-    border-radius: 6px;
+    margin: 0 10px 0 0;
+    padding: var(--termpad) var(--termpad) calc(var(--termpad) + 1px) calc(var(--termpad) * 2);
     display: flex;
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
-    background: @base-background;
-    border: 1px solid transparent;
+    font-weight: normal;
+    font-family: var(--termfontfamily);
 
     &.line-cmd {
         flex-direction: column;
@@ -31,22 +30,55 @@
     }
 
     &.line-invalid {
-        color: @term-white;
+        color: var(--term-text-white);
         margin-left: 5px;
     }
 
     &.selected {
-        border: 1px solid rgba(@base-color, 0.8) !important;
-        box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+        .line-mask {
+            border-left: 4px solid var(--line-selected-border-left-color);
+        }
+
+        &.has-error {
+            .line-mask {
+                border-left: 4px solid var(--line-selected-error-border-color);
+            }
+        }
     }
 
-    &.active {
-        border: 1px solid rgba(@wave-green, 0.8) !important;
-        box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+    &.active.selected {
+        .line-mask {
+            background-color: var(--line-selected-bg-color);
+            border: 2px solid var(--line-active-border-color);
+            border-left: 4px solid var(--line-active-border-color);
+        }
+
+        &.has-error {
+            .line-mask {
+                border: 2px solid var(--line-selected-error-border-color);
+                border-left: 4px solid var(--line-selected-error-border-color);
+            }
+        }
+    }
+
+    .line-mask {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: transparent;
+        z-index: 10;
+        pointer-events: none;
+
+        &.error-mask {
+            background-color: var(--line-error-bg-color);
+            border-left: 4px solid var(--line-error-border-left-color);
+        }
     }
 
     .load-error-text {
-        color: @term-red;
+        color: var(--term-text-red);
         padding-top: 5px;
     }
 
@@ -55,7 +87,7 @@
     }
 
     .sidebar-message {
-        color: @term-yellow;
+        color: var(--term-text-yellow);
     }
 
     .focus-indicator {
@@ -66,7 +98,7 @@
     &.line-simple {
         font-size: 11px;
         line-height: 1.2;
-        color: rgba(@base-color, 0.6);
+        color: var(--line-text-color);
 
         .simple-line-header {
             display: flex;
@@ -90,34 +122,28 @@
             margin-left: 0.5em;
             margin-right: 0.5em;
             vertical-align: text-top;
-            fill: @base-color;
+            fill: var(--primary-background-color);
         }
 
         .success {
-            color: @wave-green;
-            fill: @wave-green;
+            color: var(--primary-accent-color);
+            fill: var(--primary-accent-color);
         }
 
         .fail {
-            color: @error-red;
-            fill: @error-red;
+            color: var(--line-error-color);
+            fill: var(--line-error-color);
         }
 
         .warning {
-            color: @warning-yellow;
-            fill: @warning-yellow;
+            color: var(--line-warning-color);
+            fill: var(--line-warning-color);
         }
     }
 
     &.top-border {
         border-top: 1px solid #777;
         padding: 10px;
-    }
-
-    &:nth-child(2) {
-        margin: 0px 5px 5px 5px;
-        padding: 0px 5px 5px 12px;
-        border-top: none;
     }
 
     &:hover .meta .termopts {
@@ -169,7 +195,7 @@
         }
 
         .meta.meta-line1 {
-            color: rgba(@base-color, 0.6) !important;
+            color: var(--line-meta-text-color);
         }
 
         .meta.meta-line2 {
@@ -194,7 +220,7 @@
         flex-direction: row;
 
         .user {
-            color: lighten(@soft-blue, 10%);
+            color: var(--line-meta-user-color);
             font-weight: bold;
             margin-top: 1px;
             margin-right: 10px;
@@ -211,7 +237,7 @@
             svg {
                 width: 1em;
                 margin-right: 0.5em;
-                fill: rgba(@base-color, 0.6);
+                fill: var(--line-svg-fill-color);
             }
         }
 
@@ -224,9 +250,9 @@
             border-radius: 50%;
             line-height: 1em;
             svg {
-                fill: rgba(@base-color, 0.6);
+                fill: var(--line-svg-fill-color);
                 &:hover {
-                    fill: @base-color;
+                    fill: var(--line-svg-hover-fill-color);
                 }
             }
         }
@@ -253,7 +279,7 @@
         .cmdtext-overflow {
             flex-shrink: 0;
             padding-right: 2px;
-            color: @term-white;
+            color: var(--term-text-white);
             cursor: pointer;
         }
     }
@@ -268,7 +294,7 @@
         .cmdtext-expanded {
             white-space: pre;
 
-            color: @term-white;
+            color: var(--term-text-white);
             padding-bottom: 5px;
         }
     }
@@ -332,13 +358,13 @@
             padding: 2px 5px 0px 5px;
             display: inline-block;
             font-size: 10px;
-            color: @term-white;
+            color: var(--term-text-white);
             background-color: #151715;
         }
 
         .cmd-rtnstate-diff {
             font-family: var(--termfontfamily);
-            color: @term-white;
+            color: var(--term-text-white);
             white-space: pre;
             margin-left: 10px;
             padding-left: 10px;
