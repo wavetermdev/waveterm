@@ -240,21 +240,6 @@ a.a-block {
         flex-direction: row;
         height: 100%;
         position: relative;
-
-        .history-view,
-        .bookmarks-view,
-        .plugins-view,
-        .connections-view {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            margin-right: 0.5em;
-            position: relative;
-            &.is-hidden {
-                display: none;
-            }
-            overflow: auto;
-        }
     }
 }
 
@@ -649,25 +634,31 @@ a.a-block {
     }
 }
 
-.view {
-    background-color: var(--session-bg-color);
+.mainview {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     position: relative;
-    overflow: auto;
-    margin-bottom: 10px;
-    margin-right: 10px;
-    border-radius: 8px;
-    border: 1px solid rgba(241, 246, 243, 0.08);
+    border-radius: 0 var(--app-border-radius) var(--app-border-radius) var(--app-border-radius);
+    border-bottom: 1px solid var(--app-border-color);
+    border-right: 1px solid var(--app-border-color);
+    border-left: 1px solid var(--app-border-color);
+    background-color: black;
+
+    &.is-hidden {
+        display: none;
+    }
 
     .header {
-        margin: 24px 18px;
+        -webkit-app-region: drag;
+        padding: 24px 18px;
+        margin: 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
 
         .close-div {
+            -webkit-app-region: no-drag;
             font-size: 1.5em;
         }
     }

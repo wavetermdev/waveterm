@@ -148,7 +148,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontFamily = GlobalModel.getTermFontFamily();
 
         return (
-            <div className={cn("view clientsettings-view")}>
+            <div className={cn("mainview", "clientsettings-view")}>
                 <header className="header">
                     <div className="clientsettings-title text-primary">Client Settings</div>
                     <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
