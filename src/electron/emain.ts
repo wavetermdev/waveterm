@@ -791,7 +791,7 @@ function configureAutoUpdater(enabled: boolean, startup: boolean) {
                 updateElectronApp({
                     updateSource: {
                         type: UpdateSourceType.StaticStorage,
-                        baseUrl: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
+                        baseUrl: `https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate/${unamePlatform}/${unameArch}`,
                     },
                     updateInterval: "1 hour",
                     logger: console,
