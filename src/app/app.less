@@ -204,15 +204,6 @@ svg.icon {
     outline: none !important;
 }
 
-#title-bar {
-    -webkit-app-region: drag;
-    height: 10px;
-    width: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-
 input[type="checkbox"] {
     cursor: pointer;
 }
@@ -238,10 +229,11 @@ a.a-block {
 
 // main layout
 #main {
-    margin-top: 10px;
-    height: calc(100vh - 10px);
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    background-color: var(--app-maincontent-bg-color);
+    border-top: 1px solid var(--app-border-color);
 
     .main-content {
         display: flex;
@@ -262,17 +254,6 @@ a.a-block {
                 display: none;
             }
             overflow: auto;
-        }
-
-        .main-content-bottom-color {
-            position: absolute;
-            width: 100%;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 30%;
-            pointer-events: none;
-            background-color: @main-content-bottom-background;
         }
     }
 }
