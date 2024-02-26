@@ -4,7 +4,7 @@
     .screen-view {
         flex-grow: 1;
         position: relative;
-        border-top: 1px solid @thin-border-color;
+        border-top: 1px solid var(--app-border-color);
     }
 
     .screen-sidebar,
@@ -21,7 +21,7 @@
         height: 100%;
         overflow: hidden;
         overflow-y: auto;
-        border-left: 1px solid @thin-border-color;
+        border-left: 1px solid var(--app-border-color);
 
         .sidebar-header {
             /* sidebar-header height linked to MagicLayout.ScreenSidebarHeaderHeight */
@@ -29,12 +29,12 @@
             flex-direction: row;
             padding: 3px 0;
             margin: 0;
-            border-bottom: 1px solid @thin-border-color;
+            border-bottom: 1px solid var(--app-border-color);
             font-size: var(--termfontsize);
             font-family: var(--termfontfamily);
             font-weight: normal;
             line-height: var(--termlineheight);
-            color: @text-caption;
+            color: var(--screen-view-text-caption-color);
 
             &:hover {
                 color: white;
@@ -99,13 +99,13 @@
             top: 0;
             right: 0;
             background-color: rgba(78, 154, 6, 0.65);
-            color: @term-black;
+            color: var(--app-black);
             padding: 2px 8px 2px 4px;
             border-bottom-left-radius: 5px;
             z-index: 10;
 
             &.is-active {
-                color: @term-white;
+                color: var(--app-text-color);
             }
 
             .render-mode {
@@ -113,10 +113,10 @@
 
                 position: relative;
                 cursor: pointer;
-                color: @term-white;
+                color: var(--app-text-color);
 
                 &:hover {
-                    color: @term-white;
+                    color: var(--app-text-color);
                 }
             }
         }
@@ -142,7 +142,7 @@
         }
 
         .share-tag {
-            color: @term-white;
+            color: var(--app-text-color);
             position: absolute;
             top: 0;
             left: 40%;
@@ -192,7 +192,7 @@
             padding: 1.5em 1em;
             margin-top: 0;
             line-height: 2.5em;
-            border-top: 1px solid @base-border;
+            border-top: 1px solid var(--app-border);
             &:first-child {
                 border-top: none;
             }
@@ -240,7 +240,7 @@
     }
 
     .cr-help-text {
-        color: @text-caption;
+        color: var(--screen-view-text-caption-color);
         margin-left: 5px;
     }
 
@@ -328,17 +328,17 @@
                     height: 16px;
 
                     path {
-                        fill: @text-primary;
+                        fill: var(--app-text-primary-color);
                     }
                 }
             }
 
             .text-standard {
-                color: @text-secondary;
+                color: var(--app-text-secondary-color);
             }
 
             .text-caption {
-                color: @text-caption;
+                color: var(--screen-view-text-caption-color);
             }
 
             .ellipsis {
