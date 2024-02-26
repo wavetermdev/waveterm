@@ -115,7 +115,6 @@ class App extends React.Component<{}, {}> {
                 onContextMenu={this.handleContextMenu}
             >
                 <div ref={this.mainContentRef} className="main-content">
-                    <div className="main-content-bottom-color" />
                     <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
                     <ErrorBoundary>
                         <PluginsView />

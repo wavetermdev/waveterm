@@ -21,6 +21,10 @@ body {
     }
 }
 
+body .sidebar {
+    background-color: var(--app-bg-color);
+}
+
 textarea {
     overflow: hidden;
     font-family: @fixed-font;
@@ -137,11 +141,35 @@ svg.icon {
 }
 
 *::-webkit-scrollbar-track {
-    background-color: var(--scrollbar-thumb-color) !important;
+    background-color: var(--scrollbar-background-color) !important;
 }
 
 *::-webkit-scrollbar-thumb {
     background-color: var(--scrollbar-thumb-color) !important;
+    border-radius: 4px;
+    margin: 0 1px 0 1px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover-color) !important;
+}
+
+.hide-scrollbar {
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.wide-scrollbar {
+    &::-webkit-scrollbar {
+        width: 12px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        border-radius: 10px;
+        border: 2px solid transparent;
+        background-clip: padding-box;
+    }
 }
 
 .truncate {
@@ -176,15 +204,6 @@ svg.icon {
     outline: none !important;
 }
 
-#title-bar {
-    -webkit-app-region: drag;
-    height: 10px;
-    width: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-}
-
 input[type="checkbox"] {
     cursor: pointer;
 }
@@ -210,10 +229,11 @@ a.a-block {
 
 // main layout
 #main {
-    margin-top: 10px;
-    height: calc(100vh - 10px);
+    height: 100vh;
     display: flex;
     flex-direction: column;
+    background-color: var(--app-maincontent-bg-color);
+    border-top: 1px solid var(--app-border-color);
 
     .main-content {
         display: flex;
@@ -234,17 +254,6 @@ a.a-block {
                 display: none;
             }
             overflow: auto;
-        }
-
-        .main-content-bottom-color {
-            position: absolute;
-            width: 100%;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            height: 30%;
-            pointer-events: none;
-            background-color: @main-content-bottom-background;
         }
     }
 }
