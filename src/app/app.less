@@ -132,16 +132,21 @@ svg.icon {
 }
 
 *::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
+    width: 8px;
+    height: 8px;
 }
 
 *::-webkit-scrollbar-track {
-    background-color: var(--scrollbar-thumb-color) !important;
+    background-color: var(--scrollbar-background-color) !important;
 }
 
 *::-webkit-scrollbar-thumb {
     background-color: var(--scrollbar-thumb-color) !important;
+    border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover-color) !important;
 }
 
 .truncate {
