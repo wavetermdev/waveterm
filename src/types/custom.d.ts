@@ -852,6 +852,7 @@ declare global {
     };
 
     type ElectronApi = {
+        getKeybindManager: () => KeybindManager;
         getId: () => string;
         getIsDev: () => boolean;
         getPlatform: () => string;
@@ -871,6 +872,7 @@ declare global {
         onWCmd: (callback: (mods: KeyModsType) => void) => void;
         onZoomChanged: (callback: () => void) => void;
         onMenuItemAbout: (callback: () => void) => void;
+        onElectronKeyPress: (callback: (event: WaveKeyboardEvent) => void) => void;
         onMetaArrowUp: (callback: () => void) => void;
         onMetaArrowDown: (callback: () => void) => void;
         onMetaPageUp: (callback: () => void) => void;

@@ -8,7 +8,7 @@ import { Markdown } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { KeybindManager, checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./code.less";
 
@@ -164,23 +164,17 @@ class SourceCodeRenderer extends React.Component<
         this.monacoEditor = editor;
         this.setInitialLanguage(editor);
         this.setEditorHeight();
-        editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
-            let waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
-            if (checkKeyPressed(waveEvent, "Cmd:s") && this.state.isSave) {
-                e.preventDefault();
-                e.stopPropagation();
+        GlobalModel.keybindManager.registerKeybinding("codeedit", "Cmd:s", (waveEvent) => {
+            if (this.state.isSave) {
                 this.doSave();
             }
-            if (checkKeyPressed(waveEvent, "Cmd:d")) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.doClose();
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:p")) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.togglePreview();
-            }
+        });
+        GlobalModel.keybindManager.registerKeybinding("codeedit", "Cmd:d", (waveEvent) => {
+            this.doClose();
+        });
+        GlobalModel.keybindManager.registerKeybinding("codeedit", "Cmd:p", (waveEvent) => {
+            console.log("toggling preview");
+            this.togglePreview();
         });
         editor.onDidScrollChange((e) => {
             if (!this.syncing && e.scrollTopChanged) {
@@ -282,6 +276,8 @@ class SourceCodeRenderer extends React.Component<
         const { screenId, lineId } = this.props.context;
         GlobalCommandRunner.setLineState(screenId, lineId, { ...this.props.lineState, "prompt:closed": true }, false)
             .then(() => {
+                console.log("unregistering keybinding domain");
+                GlobalModel.keybindManager.unregisterDomain("codeedit");
                 this.setState({
                     isClosed: true,
                     message: { status: "success", text: `Closed. This editor is now read-only` },

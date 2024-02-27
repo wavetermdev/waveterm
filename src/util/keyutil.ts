@@ -13,11 +13,117 @@ type KeyPressDecl = {
     key: string;
 };
 
+type Keybind = {
+    domain: string;
+    keybinding: string;
+    callback: (event: WaveKeyboardEvent) => void;
+};
+
+var GlobalKeybindManager: KeybindManager;
+
+class KeybindManager {
+    activeKeybinds: Array<Keybind>;
+    domainCallbacks: Map<string, (event: WaveKeyboardEvent) => void>;
+
+    processKeyEvent(event: WaveKeyboardEvent) {
+        // iterate through keybinds in backwards order
+        for (let index = this.activeKeybinds.length - 1; index >= 0; index--) {
+            let curKeybind = this.activeKeybinds[index];
+            if (checkKeyPressed(event, curKeybind.keybinding)) {
+                let foundCallback = false;
+                if (curKeybind.callback != null) {
+                    curKeybind.callback(event);
+                    foundCallback = true;
+                }
+                if (this.domainCallbacks.has(curKeybind.domain)) {
+                    let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
+                    if (curDomainCallback != null) {
+                        curDomainCallback(event);
+                        foundCallback = true;
+                    } else {
+                        console.log("domain callback for ", curKeybind.domain, " is null. This should never happen");
+                    }
+                }
+                if (foundCallback) {
+                    return;
+                }
+            }
+        }
+    }
+
+    keybindingAlreadyAdded(domain: string, keybinding: string) {
+        for (let index = 0; index < this.activeKeybinds.length; index++) {
+            let curKeybind = this.activeKeybinds[index];
+            if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    registerKeybinding(domain: string, keybinding: string, callback: (event: WaveKeyboardEvent) => void): boolean {
+        if (domain == "" || this.keybindingAlreadyAdded(domain, keybinding)) {
+            return false;
+        }
+        // TODO: check if keybinding is valid
+        let newKeybind = { domain: domain, keybinding: keybinding, callback: callback } as Keybind;
+        this.activeKeybinds.push(newKeybind);
+        return true;
+    }
+    unregisterKeybinding(domain: string, keybinding: string): boolean {
+        for (let index = 0; index < this.activeKeybinds.length; index++) {
+            let curKeybind = this.activeKeybinds[index];
+            if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
+                this.activeKeybinds.splice(index, 1);
+            }
+            return true;
+        }
+        return false;
+    }
+    unregisterDomain(domain: string) {
+        let foundKeybind = false;
+        for (let index = 0; index < this.activeKeybinds.length; index++) {
+            let curKeybind = this.activeKeybinds[index];
+            if (curKeybind.domain == domain) {
+                this.activeKeybinds.splice(index, 1);
+                foundKeybind = true;
+            }
+        }
+        this.domainCallbacks.delete(domain);
+        return foundKeybind;
+    }
+
+    getKeyPressEventForDomain(domain: string, callback: (event: WaveKeyboardEvent) => void) {
+        if (callback == null) {
+            console.log("domain callback can't be null");
+        }
+        this.domainCallbacks.set(domain, callback);
+    }
+
+    constructor() {
+        this.activeKeybinds = [];
+        this.domainCallbacks = new Map();
+    }
+}
+
 var PLATFORM: string;
 const PlatformMacOS: string = "darwin";
 
+function InitGlobalKeybindManager() {
+    GlobalKeybindManager = new KeybindManager();
+    return GlobalKeybindManager;
+}
+
+function GetGlobalKeybindManager() {
+    return GlobalKeybindManager;
+}
+
 function setKeyUtilPlatform(platform: string) {
     PLATFORM = platform;
+}
+
+function keybindingIsEqual(bind1: string, bind2: string) {
+    return bind1 == bind2;
 }
 
 function parseKeyDescription(keyDescription: string): KeyPressDecl {
@@ -54,6 +160,9 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
 }
 
 function checkKeyPressed(event: WaveKeyboardEvent, description: string): boolean {
+    if (description == "any") {
+        return true;
+    }
     let keyPress = parseKeyDescription(description);
     if (keyPress.mods.Option && !event.option) {
         return false;
@@ -139,8 +248,8 @@ function adaptFromReactOrNativeKeyEvent(event: React.KeyboardEvent | KeyboardEve
     let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
     rtn.control = event.ctrlKey;
     rtn.shift = event.shiftKey;
-    rtn.cmd = (PLATFORM == PlatformMacOS ? event.metaKey : event.altKey);
-    rtn.option = (PLATFORM == PlatformMacOS ? event.altKey : event.metaKey);
+    rtn.cmd = PLATFORM == PlatformMacOS ? event.metaKey : event.altKey;
+    rtn.option = PLATFORM == PlatformMacOS ? event.altKey : event.metaKey;
     rtn.meta = event.metaKey;
     rtn.alt = event.altKey;
     rtn.code = event.code;
@@ -155,8 +264,8 @@ function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     let rtn: WaveKeyboardEvent = {} as WaveKeyboardEvent;
     rtn.type = event.type;
     rtn.control = event.control;
-    rtn.cmd = (PLATFORM == PlatformMacOS ? event.meta : event.alt)
-    rtn.option = (PLATFORM == PlatformMacOS ? event.alt : event.meta);
+    rtn.cmd = PLATFORM == PlatformMacOS ? event.meta : event.alt;
+    rtn.option = PLATFORM == PlatformMacOS ? event.alt : event.meta;
     rtn.meta = event.meta;
     rtn.alt = event.alt;
     rtn.shift = event.shift;
@@ -167,5 +276,13 @@ function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     return rtn;
 }
 
-export { adaptFromElectronKeyEvent, adaptFromReactOrNativeKeyEvent, checkKeyPressed, setKeyUtilPlatform };
+export {
+    KeybindManager,
+    InitGlobalKeybindManager,
+    GetGlobalKeybindManager,
+    adaptFromElectronKeyEvent,
+    adaptFromReactOrNativeKeyEvent,
+    checkKeyPressed,
+    setKeyUtilPlatform,
+};
 export type { WaveKeyboardEvent };

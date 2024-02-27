@@ -13,7 +13,13 @@ import * as waveutil from "../util/util";
 import { sprintf } from "sprintf-js";
 import { handleJsonFetchResponse } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
-import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
+import {
+    KeybindManager,
+    InitGlobalKeybindManager,
+    checkKeyPressed,
+    adaptFromElectronKeyEvent,
+    setKeyUtilPlatform,
+} from "@/util/keyutil";
 import { platform } from "os";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
@@ -316,81 +322,71 @@ function createMainWindow(clientData: ClientDataType | null) {
         if (win.isFocused()) {
             wasActive = true;
         }
-        if (input.type != "keyDown") {
+        if (waveEvent.type != "keyDown") {
             return;
         }
-        let mods = getMods(input);
+        let mods = getMods(waveEvent);
         if (checkKeyPressed(waveEvent, "Cmd:t")) {
-            win.webContents.send("t-cmd", mods);
-            e.preventDefault();
+            win.webContents.send("electron-key-press", mods);
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:i")) {
-            e.preventDefault();
-            if (!input.alt) {
-                win.webContents.send("i-cmd", mods);
+            if (!waveEvent.alt) {
+                win.webContents.send("electron-key-press", mods);
             } else {
                 win.webContents.toggleDevTools();
             }
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:r")) {
-            e.preventDefault();
-            win.webContents.send("r-cmd", mods);
+            win.webContents.send("electron-key-press", mods);
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:l")) {
-            win.webContents.send("l-cmd", mods);
-            e.preventDefault();
+            win.webContents.send("electron-key-press", mods);
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:w")) {
-            e.preventDefault();
-            win.webContents.send("w-cmd", mods);
+            win.webContents.send("electron-key-press", mods);
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:h")) {
-            win.webContents.send("h-cmd", mods);
-            e.preventDefault();
+            win.webContents.send("electron-key-press", mods);
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:p")) {
-            win.webContents.send("p-cmd", mods);
-            e.preventDefault();
+            win.webContents.send("electron-key-press", mods);
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:ArrowUp") || checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
             if (checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
-                win.webContents.send("meta-arrowup");
+                win.webContents.send("electron-key-press");
             } else {
-                win.webContents.send("meta-arrowdown");
+                win.webContents.send("electron-key-press");
             }
-            e.preventDefault();
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:PageUp") || checkKeyPressed(waveEvent, "Cmd:PageDown")) {
             if (checkKeyPressed(waveEvent, "Cmd:PageUp")) {
-                win.webContents.send("meta-pageup");
+                win.webContents.send("electron-key-press");
             } else {
-                win.webContents.send("meta-pagedown");
+                win.webContents.send("electron-key-press");
             }
-            e.preventDefault();
             return;
         }
-        if (input.code.startsWith("Digit") && input.meta) {
-            let digitNum = parseInt(input.code.substr(5));
+        if (waveEvent.code.startsWith("Digit") && waveEvent.meta) {
+            let digitNum = parseInt(waveEvent.code.substr(5));
             if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
                 return;
             }
-            e.preventDefault();
-            win.webContents.send("digit-cmd", { digit: digitNum }, mods);
+            win.webContents.send("electron-key-press", { digit: digitNum }, mods);
         }
         if (checkKeyPressed(waveEvent, "Cmd:[") || checkKeyPressed(waveEvent, "Cmd:]")) {
             let rel = checkKeyPressed(waveEvent, "Cmd:]") ? 1 : -1;
-            win.webContents.send("bracket-cmd", { relative: rel }, mods);
-            e.preventDefault();
+            win.webContents.send("electron-key-press", { relative: rel }, mods);
             return;
         }
+        return;
     });
     win.webContents.on("will-navigate", shNavHandler);
     win.webContents.on("will-frame-navigate", shFrameNavHandler);
@@ -493,6 +489,12 @@ function calcBounds(clientData: ClientDataType) {
 
 app.on("window-all-closed", () => {
     if (unamePlatform !== "darwin") app.quit();
+});
+
+electron.ipcMain.on("get-keybind-manager", (event) => {
+    console.log("getting keybind manager", GlobalKeybindManager);
+    event.returnValue = GlobalKeybindManager;
+    return;
 });
 
 electron.ipcMain.on("get-id", (event) => {

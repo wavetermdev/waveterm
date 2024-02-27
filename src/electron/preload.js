@@ -1,6 +1,7 @@
 let { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
+    getKeybindManager: () => ipcRenderer.sendSync("get-keybind-manager"),
     getId: () => ipcRenderer.sendSync("get-id"),
     getPlatform: () => ipcRenderer.sendSync("get-platform"),
     getIsDev: () => ipcRenderer.sendSync("get-isdev"),
@@ -22,6 +23,7 @@ contextBridge.exposeInMainWorld("api", {
     onWCmd: (callback) => ipcRenderer.on("w-cmd", callback),
     onPCmd: (callback) => ipcRenderer.on("p-cmd", callback),
     onRCmd: (callback) => ipcRenderer.on("r-cmd", callback),
+    onElectronKeyPress: (callback) => ipcRenderer.on("electron-keypress", callback),
     onZoomChanged: (callback) => ipcRenderer.on("zoom-changed", callback),
     onMetaArrowUp: (callback) => ipcRenderer.on("meta-arrowup", callback),
     onMetaArrowDown: (callback) => ipcRenderer.on("meta-arrowdown", callback),

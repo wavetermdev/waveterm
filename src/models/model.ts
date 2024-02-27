@@ -18,7 +18,13 @@ import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import * as appconst from "@/app/appconst";
 import { remotePtrToString, cmdPacketString } from "@/util/modelutil";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
+import {
+    WaveKeyboardEvent,
+    KeybindManager,
+    checkKeyPressed,
+    adaptFromReactOrNativeKeyEvent,
+    setKeyUtilPlatform,
+} from "@/util/keyutil";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -44,6 +50,10 @@ type SWLinePtr = {
 
 function getApi(): ElectronApi {
     return (window as any).api;
+}
+
+function getMods(input: any) {
+    return { meta: input.meta, shift: input.shift, ctrl: input.control, alt: input.alt };
 }
 
 class Model {
@@ -105,6 +115,7 @@ class Model {
     });
     remotesModel: RemotesModel;
 
+    keybindManager: KeybindManager;
     inputModel: InputModel;
     pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
@@ -134,6 +145,7 @@ class Model {
             this.runUpdate(message, interactive);
         });
         this.ws.reconnect();
+        this.keybindManager = new KeybindManager();
         this.inputModel = new InputModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
@@ -161,6 +173,69 @@ class Model {
                 return appconst.MaxFontSize;
             }
             return fontSize;
+        });
+        getApi().onElectronKeyPress(this.onElectronKeyPress.bind(this));
+        this.keybindManager.registerKeybinding("electron", "any", (waveEvent) => {
+            let mods = getMods(waveEvent);
+            if (checkKeyPressed(waveEvent, "Cmd:t")) {
+                this.onTCmd(mods);
+                return;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:i")) {
+                if (!waveEvent.alt) {
+                    this.onICmd(mods);
+                }
+                return;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:r")) {
+                this.onRCmd(mods);
+                return;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:l")) {
+                this.onLCmd(mods);
+                return;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:w")) {
+                this.onWCmd(mods);
+                return;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:h")) {
+                this.onHCmd(mods);
+                return;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:p")) {
+                console.log("on p cmd");
+                this.onPCmd(mods);
+                return;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:ArrowUp") || checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
+                if (checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
+                    this.onMetaArrowUp();
+                } else {
+                    this.onMetaArrowDown();
+                }
+                return;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:PageUp") || checkKeyPressed(waveEvent, "Cmd:PageDown")) {
+                if (checkKeyPressed(waveEvent, "Cmd:PageUp")) {
+                    this.onMetaPageUp();
+                } else {
+                    this.onMetaPageDown();
+                }
+                return;
+            }
+            if (waveEvent.code.startsWith("Digit") && waveEvent.meta) {
+                let digitNum = parseInt(waveEvent.code.substr(5));
+                if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
+                    return;
+                }
+                this.onDigitCmd(digitNum, mods);
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:[") || checkKeyPressed(waveEvent, "Cmd:]")) {
+                let rel = checkKeyPressed(waveEvent, "Cmd:]") ? 1 : -1;
+                this.onBracketCmd(rel, mods);
+                return;
+            }
         });
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
@@ -380,6 +455,8 @@ class Model {
 
     docKeyDownHandler(e: KeyboardEvent) {
         const waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        console.log("got keydown");
+        this.keybindManager.processKeyEvent(waveEvent);
         if (isModKeyPress(e)) {
             return;
         }
@@ -477,7 +554,12 @@ class Model {
         return true;
     }
 
-    onWCmd(e: any, mods: KeyModsType) {
+    onElectronKeyPress(e: any, waveEvent: WaveKeyboardEvent) {
+        this.keybindManager.processKeyEvent(waveEvent);
+    }
+
+    onWCmd(mods: KeyModsType) {
+        console.log("w cmd pressed");
         if (this.activeMainView.get() != "session") {
             return;
         }
@@ -497,7 +579,8 @@ class Model {
         });
     }
 
-    onRCmd(e: any, mods: KeyModsType) {
+    onRCmd(mods: KeyModsType) {
+        console.log("r cmd pressed");
         if (this.activeMainView.get() != "session") {
             return;
         }
@@ -642,26 +725,26 @@ class Model {
         return rtn;
     }
 
-    onTCmd(e: any, mods: KeyModsType) {
+    onTCmd(mods: KeyModsType) {
         GlobalCommandRunner.createNewScreen();
     }
 
-    onICmd(e: any, mods: KeyModsType) {
+    onICmd(mods: KeyModsType) {
         this.inputModel.giveFocus();
     }
 
-    onLCmd(e: any, mods: KeyModsType) {
+    onLCmd(mods: KeyModsType) {
         const screen = this.getActiveScreen();
         if (screen != null) {
             GlobalCommandRunner.screenSetFocus("cmd");
         }
     }
 
-    onHCmd(e: any, mods: KeyModsType) {
+    onHCmd(mods: KeyModsType) {
         this.historyViewModel.reSearch();
     }
 
-    onPCmd(e: any, mods: KeyModsType) {
+    onPCmd(mods: KeyModsType) {
         this.modalsModel.pushModal(appconst.TAB_SWITCHER);
     }
 
@@ -723,20 +806,20 @@ class Model {
         GlobalCommandRunner.screenSelectLine("+1");
     }
 
-    onBracketCmd(e: any, arg: { relative: number }, mods: KeyModsType) {
-        if (arg.relative == 1) {
+    onBracketCmd(relative: number, mods: KeyModsType) {
+        if (relative == 1) {
             GlobalCommandRunner.switchScreen("+");
-        } else if (arg.relative == -1) {
+        } else if (relative == -1) {
             GlobalCommandRunner.switchScreen("-");
         }
     }
 
-    onDigitCmd(e: any, arg: { digit: number }, mods: KeyModsType) {
+    onDigitCmd(digit: number, mods: KeyModsType) {
         if (mods.meta && mods.ctrl) {
-            GlobalCommandRunner.switchSession(String(arg.digit));
+            GlobalCommandRunner.switchSession(String(digit));
             return;
         }
-        GlobalCommandRunner.switchScreen(String(arg.digit));
+        GlobalCommandRunner.switchScreen(String(digit));
     }
 
     isConnected(): boolean {
