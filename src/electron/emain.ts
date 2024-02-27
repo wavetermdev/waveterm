@@ -15,6 +15,7 @@ import { handleJsonFetchResponse } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
 import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
+import Main from "electron/main";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
@@ -890,6 +891,8 @@ function configureAutoUpdater(enabled: boolean) {
         console.log("auto-update already in progress, skipping");
         return;
     }
+    MainWindow?.webContents.send("app-update-status", "ready");
+    console.log("sent app-update-status ready");
     autoUpdateLock = true;
     if (unamePlatform == "darwin") {
         if (enabled && autoUpdateInterval == null) {

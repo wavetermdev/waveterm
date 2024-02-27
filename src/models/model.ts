@@ -182,7 +182,7 @@ class Model {
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
-        getApi().onAppUpdateStatus(this.onAppUpdateAvailable.bind(this));
+        getApi().onAppUpdateStatus(this.onAppUpdateStatus.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
@@ -1516,8 +1516,11 @@ class Model {
         }
     }
 
-    onAppUpdateAvailable(status: AutoUpdateStatusType) {
-        this.autoUpdateStatus.set(status);
+    onAppUpdateStatus(status: AutoUpdateStatusType) {
+        console.log("onAppUpdateStatus", status);
+        mobx.action(() => {
+            this.autoUpdateStatus.set(status);
+        })();
     }
 }
 

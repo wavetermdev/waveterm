@@ -171,22 +171,26 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
 
     @boundMethod
     getUpdateAppBanner(): React.ReactNode {
-        console.log("getUpdateAppBanner");
-        if (GlobalModel.platform == "darwin" && GlobalModel.autoUpdateStatus.get() == "ready") {
-            console.log("update ready");
-            return (
-                <SideBarItem
-                    key="update-ready"
-                    className="update-banner"
-                    frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
-                    contents="Click to Install Update"
-                    onClick={() => GlobalModel.installAppUpdate()}
-                />
-            );
+        if (GlobalModel.platform == "darwin") {
+            console.log("darwin", GlobalModel.autoUpdateStatus.get());
+            if (GlobalModel.autoUpdateStatus.get() == "ready") {
+                console.log("update ready");
+                return (
+                    <SideBarItem
+                        key="update-ready"
+                        className="update-banner"
+                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                        contents="Click to Install Update"
+                        onClick={() => GlobalModel.installAppUpdate()}
+                    />
+                );
+            }
         } else {
+            console.log("not darwin");
             const clientData = this.props.clientData;
             if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
                 if (compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0) {
+                    console.log("update available");
                     return (
                         <SideBarItem
                             key="update-available"
