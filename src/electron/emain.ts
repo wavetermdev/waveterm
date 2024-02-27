@@ -843,6 +843,7 @@ function initUpdater(): NodeJS.Timeout {
                 }
             })();
         });
+        updateNotification.show();
     });
 
     // check for updates right away and keep checking later
