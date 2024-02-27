@@ -1356,11 +1356,7 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 		msh.WriteToPtyBuffer("remote is trying to install, cancel install before trying to connect again\n")
 		return
 	}
-	if remoteCopy.SSHOpts.SSHPort != 0 && remoteCopy.SSHOpts.SSHPort != 22 {
-		msh.WriteToPtyBuffer("connecting to %s (port %d)...\n", remoteCopy.RemoteCanonicalName, remoteCopy.SSHOpts.SSHPort)
-	} else {
-		msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
-	}
+	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
 	wsSession, err := msh.createWaveshellSession(remoteCopy)
 	if err != nil {
 		msh.WriteToPtyBuffer("*error, %s\n", err.Error())
