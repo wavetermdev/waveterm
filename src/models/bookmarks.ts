@@ -205,27 +205,24 @@ class BookmarksModel {
         })();
     }
 
-    handleDocKeyDown(e: any): void {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+    handleDocKeyDown(waveEvent: any): boolean {
         if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
             if (this.editingBookmark.get() != null) {
                 this.cancelEdit();
-                return;
+                return true;
             }
             this.closeView();
-            return;
+            return true;
         }
         if (this.editingBookmark.get() != null) {
-            return;
+            return false;
         }
         if (checkKeyPressed(waveEvent, "Backspace") || checkKeyPressed(waveEvent, "Delete")) {
             if (this.activeBookmark.get() == null) {
-                return;
+                return false;
             }
-            e.preventDefault();
             this.handleDeleteBookmark(this.activeBookmark.get());
-            return;
+            return true;
         }
 
         if (
@@ -234,9 +231,8 @@ class BookmarksModel {
             checkKeyPressed(waveEvent, "PageUp") ||
             checkKeyPressed(waveEvent, "PageDown")
         ) {
-            e.preventDefault();
             if (this.bookmarks.length == 0) {
-                return;
+                return true;
             }
             let newPos = 0; // if active is null, then newPos will be 0 (select the first)
             if (this.activeBookmark.get() != null) {
@@ -255,30 +251,31 @@ class BookmarksModel {
             mobx.action(() => {
                 this.activeBookmark.set(bm.bookmarkid);
             })();
-            return;
+            return true;
         }
         if (checkKeyPressed(waveEvent, "Enter")) {
             if (this.activeBookmark.get() == null) {
                 return;
+                false;
             }
             this.useBookmark(this.activeBookmark.get());
-            return;
+            return false;
         }
         if (checkKeyPressed(waveEvent, "e")) {
             if (this.activeBookmark.get() == null) {
-                return;
+                return false;
             }
-            e.preventDefault();
             this.handleEditBookmark(this.activeBookmark.get());
-            return;
+            return true;
         }
         if (checkKeyPressed(waveEvent, "c")) {
             if (this.activeBookmark.get() == null) {
-                return;
+                return false;
             }
-            e.preventDefault();
             this.handleCopyBookmark(this.activeBookmark.get());
+            return true;
         }
+        return false;
     }
 }
 

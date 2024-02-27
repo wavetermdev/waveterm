@@ -13,38 +13,38 @@ type KeyPressDecl = {
     key: string;
 };
 
+type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
+
 type Keybind = {
     domain: string;
     keybinding: string;
-    callback: (event: WaveKeyboardEvent) => void;
+    callback: KeybindCallback;
 };
 
 var GlobalKeybindManager: KeybindManager;
 
 class KeybindManager {
     activeKeybinds: Array<Keybind>;
-    domainCallbacks: Map<string, (event: WaveKeyboardEvent) => void>;
+    domainCallbacks: Map<string, KeybindCallback>;
 
     processKeyEvent(event: WaveKeyboardEvent) {
         // iterate through keybinds in backwards order
         for (let index = this.activeKeybinds.length - 1; index >= 0; index--) {
             let curKeybind = this.activeKeybinds[index];
             if (checkKeyPressed(event, curKeybind.keybinding)) {
-                let foundCallback = false;
+                let shouldReturn = false;
                 if (curKeybind.callback != null) {
-                    curKeybind.callback(event);
-                    foundCallback = true;
+                    shouldReturn = curKeybind.callback(event);
                 }
-                if (this.domainCallbacks.has(curKeybind.domain)) {
+                if (!shouldReturn && this.domainCallbacks.has(curKeybind.domain)) {
                     let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
                     if (curDomainCallback != null) {
-                        curDomainCallback(event);
-                        foundCallback = true;
+                        shouldReturn = curDomainCallback(event);
                     } else {
                         console.log("domain callback for ", curKeybind.domain, " is null. This should never happen");
                     }
                 }
-                if (foundCallback) {
+                if (shouldReturn) {
                     return;
                 }
             }
@@ -61,7 +61,7 @@ class KeybindManager {
         return false;
     }
 
-    registerKeybinding(domain: string, keybinding: string, callback: (event: WaveKeyboardEvent) => void): boolean {
+    registerKeybinding(domain: string, keybinding: string, callback: KeybindCallback): boolean {
         if (domain == "" || this.keybindingAlreadyAdded(domain, keybinding)) {
             return false;
         }
@@ -93,7 +93,7 @@ class KeybindManager {
         return foundKeybind;
     }
 
-    getKeyPressEventForDomain(domain: string, callback: (event: WaveKeyboardEvent) => void) {
+    getKeyPressEventForDomain(domain: string, callback: KeybindCallback) {
         if (callback == null) {
             console.log("domain callback can't be null");
         }

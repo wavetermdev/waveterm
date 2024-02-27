@@ -174,39 +174,38 @@ class Model {
             }
             return fontSize;
         });
-        getApi().onElectronKeyPress(this.onElectronKeyPress.bind(this));
         this.keybindManager.registerKeybinding("electron", "any", (waveEvent) => {
             let mods = getMods(waveEvent);
             if (checkKeyPressed(waveEvent, "Cmd:t")) {
                 this.onTCmd(mods);
-                return;
+                return true;
             }
             if (checkKeyPressed(waveEvent, "Cmd:i")) {
                 if (!waveEvent.alt) {
                     this.onICmd(mods);
                 }
-                return;
+                return true;
             }
             if (checkKeyPressed(waveEvent, "Cmd:r")) {
                 this.onRCmd(mods);
-                return;
+                return true;
             }
             if (checkKeyPressed(waveEvent, "Cmd:l")) {
                 this.onLCmd(mods);
-                return;
+                return true;
             }
             if (checkKeyPressed(waveEvent, "Cmd:w")) {
                 this.onWCmd(mods);
-                return;
+                return true;
             }
             if (checkKeyPressed(waveEvent, "Cmd:h")) {
                 this.onHCmd(mods);
-                return;
+                return true;
             }
             if (checkKeyPressed(waveEvent, "Cmd:p")) {
                 console.log("on p cmd");
                 this.onPCmd(mods);
-                return;
+                return true;
             }
             if (checkKeyPressed(waveEvent, "Cmd:ArrowUp") || checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
                 if (checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
@@ -214,7 +213,7 @@ class Model {
                 } else {
                     this.onMetaArrowDown();
                 }
-                return;
+                return true;
             }
             if (checkKeyPressed(waveEvent, "Cmd:PageUp") || checkKeyPressed(waveEvent, "Cmd:PageDown")) {
                 if (checkKeyPressed(waveEvent, "Cmd:PageUp")) {
@@ -222,36 +221,91 @@ class Model {
                 } else {
                     this.onMetaPageDown();
                 }
-                return;
+                return true;
             }
             if (waveEvent.code.startsWith("Digit") && waveEvent.meta) {
                 let digitNum = parseInt(waveEvent.code.substr(5));
                 if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
-                    return;
+                    return true;
                 }
                 this.onDigitCmd(digitNum, mods);
             }
             if (checkKeyPressed(waveEvent, "Cmd:[") || checkKeyPressed(waveEvent, "Cmd:]")) {
                 let rel = checkKeyPressed(waveEvent, "Cmd:]") ? 1 : -1;
                 this.onBracketCmd(rel, mods);
-                return;
+                return true;
             }
+            return false;
         });
-        getApi().onTCmd(this.onTCmd.bind(this));
-        getApi().onICmd(this.onICmd.bind(this));
-        getApi().onLCmd(this.onLCmd.bind(this));
-        getApi().onHCmd(this.onHCmd.bind(this));
-        getApi().onPCmd(this.onPCmd.bind(this));
-        getApi().onWCmd(this.onWCmd.bind(this));
-        getApi().onRCmd(this.onRCmd.bind(this));
+
+        this.keybindManager.registerKeybinding("model", "any", (waveEvent) => {
+            if (isModKeyPress(waveEvent)) {
+                return false;
+            }
+            if (this.alertMessage.get() != null) {
+                if (checkKeyPressed(waveEvent, "Escape")) {
+                    this.cancelAlert();
+                    return true;
+                }
+                if (checkKeyPressed(waveEvent, "Enter")) {
+                    this.confirmAlert();
+                    return true;
+                }
+                return false;
+            }
+            if (this.activeMainView.get() == "bookmarks") {
+                return this.bookmarksModel.handleDocKeyDown(waveEvent);
+            }
+            if (this.activeMainView.get() == "history") {
+                return this.historyViewModel.handleDocKeyDown(waveEvent);
+            }
+            if (this.activeMainView.get() == "connections") {
+                return this.historyViewModel.handleDocKeyDown(waveEvent);
+            }
+            if (this.activeMainView.get() == "clientsettings") {
+                return this.historyViewModel.handleDocKeyDown(waveEvent);
+            }
+            if (checkKeyPressed(waveEvent, "Escape")) {
+                if (this.activeMainView.get() == "webshare") {
+                    this.showSessionView();
+                    return true;
+                }
+                if (this.clearModals()) {
+                    return true;
+                }
+                const inputModel = this.inputModel;
+                inputModel.toggleInfoMsg();
+                if (inputModel.inputMode.get() != null) {
+                    inputModel.resetInputMode();
+                }
+                return true;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:b")) {
+                GlobalCommandRunner.bookmarksView();
+                return true;
+            }
+            if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
+                const activeScreen = this.getActiveScreen();
+                if (activeScreen != null) {
+                    const isSidebarOpen = activeScreen.isSidebarOpen();
+                    if (isSidebarOpen) {
+                        GlobalCommandRunner.screenSidebarClose();
+                    } else {
+                        GlobalCommandRunner.screenSidebarOpen();
+                    }
+                }
+                return true;
+            }
+            if (checkKeyPressed(waveEvent, "Cmd:d")) {
+                const ranDelete = this.deleteActiveLine();
+                if (ranDelete) {
+                    return true;
+                }
+            }
+            return false;
+        });
         getApi().onZoomChanged(this.onZoomChanged.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
-        getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
-        getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
-        getApi().onMetaPageUp(this.onMetaPageUp.bind(this));
-        getApi().onMetaPageDown(this.onMetaPageDown.bind(this));
-        getApi().onBracketCmd(this.onBracketCmd.bind(this));
-        getApi().onDigitCmd(this.onDigitCmd.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
@@ -457,76 +511,6 @@ class Model {
         const waveEvent = adaptFromReactOrNativeKeyEvent(e);
         console.log("got keydown");
         this.keybindManager.processKeyEvent(waveEvent);
-        if (isModKeyPress(e)) {
-            return;
-        }
-        if (this.alertMessage.get() != null) {
-            if (checkKeyPressed(waveEvent, "Escape")) {
-                e.preventDefault();
-                this.cancelAlert();
-                return;
-            }
-            if (checkKeyPressed(waveEvent, "Enter")) {
-                e.preventDefault();
-                this.confirmAlert();
-                return;
-            }
-            return;
-        }
-        if (this.activeMainView.get() == "bookmarks") {
-            this.bookmarksModel.handleDocKeyDown(e);
-            return;
-        }
-        if (this.activeMainView.get() == "history") {
-            this.historyViewModel.handleDocKeyDown(e);
-            return;
-        }
-        if (this.activeMainView.get() == "connections") {
-            this.historyViewModel.handleDocKeyDown(e);
-            return;
-        }
-        if (this.activeMainView.get() == "clientsettings") {
-            this.historyViewModel.handleDocKeyDown(e);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            if (this.activeMainView.get() == "webshare") {
-                this.showSessionView();
-                return;
-            }
-            if (this.clearModals()) {
-                return;
-            }
-            const inputModel = this.inputModel;
-            inputModel.toggleInfoMsg();
-            if (inputModel.inputMode.get() != null) {
-                inputModel.resetInputMode();
-            }
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:b")) {
-            e.preventDefault();
-            GlobalCommandRunner.bookmarksView();
-        }
-        if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
-            e.preventDefault();
-            const activeScreen = this.getActiveScreen();
-            if (activeScreen != null) {
-                const isSidebarOpen = activeScreen.isSidebarOpen();
-                if (isSidebarOpen) {
-                    GlobalCommandRunner.screenSidebarClose();
-                } else {
-                    GlobalCommandRunner.screenSidebarOpen();
-                }
-            }
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:d")) {
-            const ranDelete = this.deleteActiveLine();
-            if (ranDelete) {
-                e.preventDefault();
-            }
-        }
     }
 
     deleteActiveLine(): boolean {
@@ -552,10 +536,6 @@ class Model {
         }
         GlobalCommandRunner.lineDelete(String(selectedLine), true);
         return true;
-    }
-
-    onElectronKeyPress(e: any, waveEvent: WaveKeyboardEvent) {
-        this.keybindManager.processKeyEvent(waveEvent);
     }
 
     onWCmd(mods: KeyModsType) {

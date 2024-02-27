@@ -325,68 +325,12 @@ function createMainWindow(clientData: ClientDataType | null) {
         if (waveEvent.type != "keyDown") {
             return;
         }
-        let mods = getMods(waveEvent);
-        if (checkKeyPressed(waveEvent, "Cmd:t")) {
-            win.webContents.send("electron-key-press", mods);
-            return;
-        }
         if (checkKeyPressed(waveEvent, "Cmd:i")) {
-            if (!waveEvent.alt) {
-                win.webContents.send("electron-key-press", mods);
-            } else {
+            if (waveEvent.alt) {
                 win.webContents.toggleDevTools();
             }
             return;
         }
-        if (checkKeyPressed(waveEvent, "Cmd:r")) {
-            win.webContents.send("electron-key-press", mods);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:l")) {
-            win.webContents.send("electron-key-press", mods);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:w")) {
-            win.webContents.send("electron-key-press", mods);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:h")) {
-            win.webContents.send("electron-key-press", mods);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:p")) {
-            win.webContents.send("electron-key-press", mods);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:ArrowUp") || checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
-            if (checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
-                win.webContents.send("electron-key-press");
-            } else {
-                win.webContents.send("electron-key-press");
-            }
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:PageUp") || checkKeyPressed(waveEvent, "Cmd:PageDown")) {
-            if (checkKeyPressed(waveEvent, "Cmd:PageUp")) {
-                win.webContents.send("electron-key-press");
-            } else {
-                win.webContents.send("electron-key-press");
-            }
-            return;
-        }
-        if (waveEvent.code.startsWith("Digit") && waveEvent.meta) {
-            let digitNum = parseInt(waveEvent.code.substr(5));
-            if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
-                return;
-            }
-            win.webContents.send("electron-key-press", { digit: digitNum }, mods);
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:[") || checkKeyPressed(waveEvent, "Cmd:]")) {
-            let rel = checkKeyPressed(waveEvent, "Cmd:]") ? 1 : -1;
-            win.webContents.send("electron-key-press", { relative: rel }, mods);
-            return;
-        }
-        return;
     });
     win.webContents.on("will-navigate", shNavHandler);
     win.webContents.on("will-frame-navigate", shFrameNavHandler);
