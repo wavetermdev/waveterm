@@ -1,5 +1,3 @@
-@import "@/common/themes/themes.less";
-
 .lines {
     display: flex;
     flex-direction: column;
@@ -35,7 +33,7 @@
         content: "";
         height: 1px;
         flex-grow: 1;
-        background-color: rgba(@base-color, 0.5);
+        background-color: var(--app-text-color);
     }
 
     .line-sep-labeled::before {
