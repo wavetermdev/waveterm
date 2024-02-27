@@ -243,25 +243,12 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             >
                 {(toggleCollapse) => (
                     <React.Fragment>
-                        <div className="title-bar-drag" />
-                        <div className="contents">
-                            <div className="logo">
-                                <If condition={isCollapsed}>
-                                    <div className="logo-container" onClick={toggleCollapse}>
-                                        <img src="public/logos/wave-logo.png" />
-                                    </div>
-                                </If>
-                                <If condition={!isCollapsed}>
-                                    <div className="logo-container">
-                                        <img src="public/logos/wave-dark.png" />
-                                    </div>
-                                    <div className="spacer" />
-                                    <div className="collapse-button" onClick={toggleCollapse}>
-                                        <LeftChevronIcon className="icon" />
-                                    </div>
-                                </If>
+                        <div className="title-bar-drag">
+                            <div className="close-button">
+                                <i className="fa-sharp fa-solid fa-xmark-large" onClick={toggleCollapse} />
                             </div>
-                            <div className="separator" />
+                        </div>
+                        <div className="contents">
                             <div className="top">
                                 <SideBarItem
                                     key="history"
