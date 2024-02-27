@@ -32,6 +32,8 @@ let wasActive = true;
 let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
 let initialClientData: ClientDataType = null;
+
+let autoUpdateLock = false;
 let autoUpdateInterval: NodeJS.Timeout | null = null;
 let availableUpdateReleaseName: string | null = null;
 let availableUpdateReleaseNotes: string | null = null;
@@ -780,11 +782,6 @@ function reregisterGlobalShortcut(shortcut: string) {
     currentGlobalShortcut = shortcut;
 }
 
-function configureAutoUpdaterStartup(clientData: ClientDataType) {
-    console.log("configureAutoUpdaterStartup", clientData);
-    configureAutoUpdater(!clientData.clientopts.noreleasecheck);
-}
-
 function initUpdater(): NodeJS.Timeout {
     const { autoUpdater } = electron;
 
@@ -827,7 +824,6 @@ function initUpdater(): NodeJS.Timeout {
 
     autoUpdater.on("update-not-available", () => {
         console.log("update-not-available");
-        MainWindow?.webContents.send("app-update-status", "unavailable");
     });
 
     autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName, releaseDate, updateURL) => {
@@ -856,7 +852,7 @@ function initUpdater(): NodeJS.Timeout {
     autoUpdater.checkForUpdates();
     return setInterval(() => {
         autoUpdater.checkForUpdates();
-    }, 10 * 60 * 60);
+    }, 600000); // 10 minutes in ms
 }
 
 async function installAppUpdate() {
@@ -883,8 +879,18 @@ electron.ipcMain.on("install-app-update", () => {
     })();
 });
 
+function configureAutoUpdaterStartup(clientData: ClientDataType) {
+    console.log("configureAutoUpdaterStartup", clientData);
+    configureAutoUpdater(!clientData.clientopts.noreleasecheck);
+}
+
 function configureAutoUpdater(enabled: boolean) {
     console.log("configureAutoUpdater");
+    if (autoUpdateLock) {
+        console.log("auto-update already in progress, skipping");
+        return;
+    }
+    autoUpdateLock = true;
     if (unamePlatform == "darwin") {
         if (enabled && autoUpdateInterval == null) {
             try {
@@ -899,6 +905,7 @@ function configureAutoUpdater(enabled: boolean) {
             autoUpdateInterval = null;
         }
     }
+    autoUpdateLock = false;
 }
 
 // ====== MAIN ====== //
