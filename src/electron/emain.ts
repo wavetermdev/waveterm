@@ -808,7 +808,7 @@ function initUpdater(): NodeJS.Timeout {
     }
 
     setAppUpdateStatus("unavailable");
-    let feedURL = `https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate/${unamePlatform}/${unameArch}`;
+    let feedURL = `https://dl.waveterm.dev/autoupdate/${unamePlatform}/${unameArch}`;
     let serverType: "default" | "json" = "default";
 
     if (unamePlatform == "darwin") {

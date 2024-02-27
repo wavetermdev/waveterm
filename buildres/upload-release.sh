@@ -58,25 +58,25 @@ fi
 # Upload the DMG
 echo "Uploading DMG"
 DMG_NAME=$(basename $DMG)
-aws s3 cp $DMG s3://waveterm-test-autoupdate/$DMG_NAME
+aws s3 cp $DMG s3://dl.waveterm.dev/$DMG_NAME
 
 # Upload the Linux zips
 echo "Uploading Linux zips"
 for LINUX_ZIP in $LINUX_ZIPS; do
     LINUX_ZIP_NAME=$(basename $LINUX_ZIP)
-    aws s3 cp $LINUX_ZIP s3://waveterm-test-autoupdate/$LINUX_ZIP_NAME
+    aws s3 cp $LINUX_ZIP s3://dl.waveterm.dev/$LINUX_ZIP_NAME
 done
 
 # Upload the autoupdate Mac zip
 echo "Uploading Mac zip"
 MAC_ZIP_NAME=$(basename $MAC_ZIP)
-aws s3 cp $MAC_ZIP s3://waveterm-test-autoupdate/autoupdate/$MAC_ZIP_NAME
+aws s3 cp $MAC_ZIP s3://dl.waveterm.dev/autoupdate/$MAC_ZIP_NAME
 
 # Update the autoupdate feeds
 echo "Updating autoupdate feeds"
-RELEASES_CONTENTS="{\"name\": \"$UVERSION\", \"notes\": \"\", \"url\": \"https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate/$MAC_ZIP_NAME\"}"
-aws s3 cp - s3://waveterm-test-autoupdate/autoupdate/darwin/arm64/RELEASES.json <<< $RELEASES_CONTENTS
-aws s3 cp - s3://waveterm-test-autoupdate/autoupdate/darwin/x64/RELEASES.json <<< $RELEASES_CONTENTS
+RELEASES_CONTENTS="{\"name\":\"$UVERSION\",\"notes\":\"\",\"url\":\"https://dl.waveterm.dev/autoupdate/$MAC_ZIP_NAME\"}"
+aws s3 cp - s3://dl.waveterm.dev/autoupdate/darwin/arm64/RELEASES.json <<< $RELEASES_CONTENTS
+aws s3 cp - s3://dl.waveterm.dev/autoupdate/darwin/x64/RELEASES.json <<< $RELEASES_CONTENTS
 
 # Clean up
 echo "Cleaning up"
