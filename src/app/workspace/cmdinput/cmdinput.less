@@ -1,5 +1,3 @@
-@import "@/common/themes/themes.less";
-
 .cmd-input {
     max-height: max(300px, 40%);
     display: flex;
@@ -256,7 +254,7 @@
 
         .chat-msg-user {
             .msg-text {
-                font-family: @markdown-font;
+                font-family: var(--markdown-font);
                 font-size: 14px;
                 white-space: pre-wrap;
             }
@@ -264,7 +262,7 @@
 
         .chat-msg-error {
             color: var(--cmdinput-text-error);
-            font-family: @markdown-font;
+            font-family: var(--markdown-font);
             font-size: 14px;
         }
 

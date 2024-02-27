@@ -1,5 +1,3 @@
-@import "@/common/themes/themes.less";
-
 .openai-renderer {
     .openai-message {
         display: flex;
@@ -7,31 +5,31 @@
         justify-content: flex-start;
 
         .openai-role {
-            color: @term-bright-green;
+            color: var(--prompt-bright-green);
             font-weight: bold;
             width: 100px;
             flex-shrink: 0;
         }
 
         .openai-role.openai-role-assistant {
-            color: @term-bright-white;
+            color: var(--app-text-primary-color);
         }
 
         .openai-content-user {
             white-space: pre;
-            color: @term-white;
+            color: var(--app-text-color);
         }
 
         .openai-content-assistant {
-            color: @term-white;
+            color: var(--app-text-color);
         }
 
         .openai-role-error {
-            color: @term-bright-red;
+            color: var(--app-text-color);
         }
 
         .openai-content-error {
-            color: @term-bright-red;
+            color: var(--app-text-color);
         }
     }
 

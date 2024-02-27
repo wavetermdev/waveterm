@@ -1,13 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-@import "./common/themes/themes.less";
 @import "./root.less";
 
 html,
 body {
     overflow: hidden;
-    font-family: @fixed-font;
+    font-family: var(--fixed-font);
     font-size: 12px;
     font-weight: 300;
     line-height: 1.5;
@@ -27,7 +26,7 @@ body .sidebar {
 
 textarea {
     overflow: hidden;
-    font-family: @fixed-font;
+    font-family: var(--fixed-font);
     font-size: 12px;
     font-weight: 300;
     line-height: 1.5;
@@ -40,7 +39,7 @@ textarea {
     font-size: 12.5px;
     font-weight: 300;
     line-height: 20px;
-    font-family: @text-s1-font;
+    font-family: var(--text-s1-font);
 
     .icon {
         width: 16px;
@@ -52,7 +51,7 @@ textarea {
     font-size: 15px;
     font-weight: 500;
     line-height: 20px;
-    font-family: @text-s1-font;
+    font-family: var(--text-s1-font);
     color: var(--app-text-color);
 }
 
@@ -60,7 +59,7 @@ textarea {
     font-size: 12.5px;
     font-weight: 300;
     line-height: 20px;
-    font-family: @text-s1-font;
+    font-family: var(--text-s1-font);
 
     .icon {
         width: 16px;
@@ -69,14 +68,14 @@ textarea {
 }
 
 .text-secondary {
-    font-family: @fixed-font;
+    font-family: var(--fixed-font);
     font-size: 11px;
     font-weight: 300;
     line-height: 16px;
 }
 
 .text-caption {
-    font-family: @fixed-font;
+    font-family: var(--fixed-font);
     font-size: 10px;
     font-weight: 300;
     line-height: 14px;
@@ -181,18 +180,19 @@ svg.icon {
 .dropdown,
 .button {
     display: inline-block;
-    border: 1px solid @base-border !important;
+    border: 1px solid var(--button-secondary-bg-color) !important;
     border-radius: 5px;
     cursor: pointer;
-    background-color: @button-background !important;
+    background-color: var(--button-secondary-bg-color) !important;
     color: var(--app-accent-color);
     .hoverEffect;
     &:hover {
         color: var(--app-accent-color);
     }
     &.disabled {
-        color: fade(@disabled-color, 60%);
-        background: @button-disabled-background;
+        color: var(--app-text-color);
+        background: var(--button-secondary-bg-color);
+        opacity: 0.5;
         cursor: initial;
         &:hover {
             box-shadow: none;
