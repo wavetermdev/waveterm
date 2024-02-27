@@ -21,203 +21,63 @@
 
     &.color-green,
     &.color-default {
-        svg.svg-icon-inner path {
-            fill: var(--tab-green);
-        }
+        --tab-color: var(--tab-green);
+    }
 
-        .icon i {
-            color: var(--tab-green);
-        }
+    svg.svg-icon-inner path {
+        fill: var(--tab-color);
+    }
 
-        &.is-active {
-            border-top: 1px solid var(--tab-green);
-            background: linear-gradient(
-                180deg,
-                rgba(88, 193, 66, 0.2) 9.34%,
-                rgba(88, 193, 66, 0.03) 44.16%,
-                rgba(88, 193, 66, 0) 86.79%
-            );
-        }
+    .icon i {
+        color: var(--tab-color);
+    }
+
+    &.is-active {
+        border-top: 1px solid var(--tab-color);
+        background-color: var(--tab-color);
+        background-image: linear-gradient(
+            rgba(0, 0, 0, 0),
+            rgba(0, 0, 0, 0.5) 15%,
+            rgba(0, 0, 0, 0.7) 30%,
+            rgba(0, 0, 0, 1) 100%
+        );
+        // background: linear-gradient(180deg, );
     }
 
     &.color-orange {
-        svg.svg-icon-inner path {
-            fill: var(--tab-orange);
-        }
-
-        .icon i {
-            color: var(--tab-orange);
-        }
-
-        &.is-active {
-            border-top: 1px solid var(--tab-orange);
-            background: linear-gradient(
-                180deg,
-                rgba(239, 113, 59, 0.2) 9.34%,
-                rgba(239, 113, 59, 0.03) 44.16%,
-                rgba(239, 113, 59, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-orange);
     }
 
     &.color-red {
-        svg.svg-icon-inner path {
-            fill: var(--tab-red);
-        }
-
-        .icon i {
-            color: var(--tab-red);
-        }
-
-        &.is-active {
-            border-top: 1px solid var(--tab-red);
-            background: linear-gradient(
-                180deg,
-                rgba(229, 77, 46, 0.2) 9.34%,
-                rgba(229, 77, 46, 0.03) 44.16%,
-                rgba(229, 77, 46, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-red);
     }
 
     &.color-yellow {
-        svg.svg-icon-inner path {
-            fill: var(--tab-yellow);
-        }
-
-        .icon i {
-            color: var(--tab-yellow);
-        }
-
-        &.is-active {
-            border-top: 1px solid var(--tab-yellow);
-            background: linear-gradient(
-                180deg,
-                rgba(224, 185, 86, 0.2) 9.34%,
-                rgba(224, 185, 86, 0.03) 44.16%,
-                rgba(224, 185, 86, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-yellow);
     }
 
     &.color-blue {
-        svg.svg-icon-inner path {
-            fill: var(--tab-blue);
-        }
-
-        .icon i {
-            color: var(--tab-blue);
-        }
-
-        &.is-active {
-            border-top: 1px solid var(--tab-blue);
-            background: linear-gradient(
-                180deg,
-                rgba(57, 113, 255, 0.2) 9.34%,
-                rgba(57, 113, 255, 0.03) 44.16%,
-                rgba(57, 113, 255, 0) 77.18%
-            );
-        }
+        --tab-color: var(--tab-blue);
     }
 
     &.color-mint {
-        svg.svg-icon-inner path {
-            fill: var(--tab-mint);
-        }
-
-        .icon i {
-            color: var(--tab-mint);
-        }
-
-        &.is-active {
-            border-top: 1px solid var(--tab-mint);
-            background: linear-gradient(
-                180deg,
-                rgba(75, 255, 169, 0.2) 9.34%,
-                rgba(75, 255, 169, 0.03) 44.16%,
-                rgba(75, 255, 169, 0) 77.18%
-            );
-        }
+        --tab-color: var(--tab-mint);
     }
 
     &.color-cyan {
-        svg.svg-icon-inner path {
-            fill: var(--tab-cyan);
-        }
-
-        .icon i {
-            color: var(--tab-cyan);
-        }
-
-        &.is-active {
-            border-top: 1px solid var(--tab-cyan);
-            background: linear-gradient(
-                180deg,
-                rgba(75, 223, 255, 0.2) 9.34%,
-                rgba(75, 223, 255, 0.03) 44.16%,
-                rgba(58, 186, 214, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-cyan);
     }
 
     &.color-white {
-        svg.svg-icon-inner path {
-            fill: var(--tab-white);
-        }
-
-        .icon i {
-            color: var(--tab-white);
-        }
-
-        &.is-active {
-            border-top: 1px solid var(--tab-white);
-            background: linear-gradient(
-                180deg,
-                rgba(255, 255, 255, 0.2) 9.34%,
-                rgba(255, 255, 255, 0.03) 44.16%,
-                rgba(255, 255, 255, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-white);
     }
 
     &.color-violet {
-        svg.svg-icon-inner path {
-            fill: var(--tab-violet);
-        }
-
-        .icon i {
-            color: var(--tab-violet);
-        }
-
-        &.is-active {
-            border-top: 1px solid var(--tab-violet);
-            background: linear-gradient(
-                180deg,
-                rgba(186, 118, 255, 0.2) 9.34%,
-                rgba(186, 118, 255, 0.03) 44.16%,
-                rgba(186, 118, 255, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-violet);
     }
 
     &.color-pink {
-        svg.svg-icon-inner path {
-            fill: var(--tab-pink);
-        }
-
-        .icon i {
-            color: var(--tab-pink);
-        }
-
-        &.is-active {
-            border-top: 1px solid var(--tab-pink);
-            background: linear-gradient(
-                180deg,
-                rgba(255, 136, 165, 0.2) 9.34%,
-                rgba(255, 136, 165, 0.03) 44.16%,
-                rgba(255, 136, 165, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-pink);
     }
 
     .web-share-icon {
