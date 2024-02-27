@@ -59,7 +59,9 @@ func (cw CmdWrap) Parser() (*packet.PacketParser, io.ReadCloser, io.ReadCloser, 
 func (cw CmdWrap) Start() error {
 	defer func() {
 		for _, extraFile := range cw.Cmd.ExtraFiles {
-			extraFile.Close()
+			if extraFile != nil {
+				extraFile.Close()
+			}
 		}
 	}()
 	return cw.Cmd.Start()
