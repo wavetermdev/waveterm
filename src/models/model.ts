@@ -707,6 +707,7 @@ class Model {
     }
 
     onMenuItemAbout(): void {
+        console.log("onMenuItemAbout");
         mobx.action(() => {
             this.modalsModel.pushModal(appconst.ABOUT);
         })();
