@@ -243,6 +243,34 @@ a.a-block {
     }
 }
 
+.logo-button-container {
+    width: 105px;
+    flex-shrink: 0;
+    position: absolute;
+    z-index: 10;
+    top: 5px;
+    left: 0px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    -webkit-app-region: drag;
+
+    .logo-button {
+        width: 25px;
+        height: 25px;
+        margin-right: 6px;
+        cursor: pointer;
+        user-select: none;
+        -webkit-app-region: no-drag;
+
+        &:hover {
+            background-color: #333;
+            border-radius: 4px;
+        }
+    }
+}
+
 .copied-indicator {
     position: absolute;
     top: 0;
@@ -668,6 +696,10 @@ a.a-block {
             margin-bottom: 20px;
         }
     }
+}
+
+#main.sidebar-collapsed .mainview:not(.session-view) {
+    padding-top: var(--floating-logo-height);
 }
 
 .settings-field {
