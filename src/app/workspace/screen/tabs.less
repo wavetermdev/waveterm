@@ -2,8 +2,10 @@
 
 #main .screen-tabs .screen-tab {
     border-top: 1px solid transparent;
-    font-size: 12.5px;
-    line-height: 21px;
+    font-size: var(--screentabs-font-size);
+    line-height: var(--screentabs-line-height);
+    font-family: var(--label-font-family);
+    font-weight: var(--screentabs-font-weight);
 
     // this comes back when we have a completely removable left-sidebar
     // &:first-child {
@@ -228,7 +230,8 @@
     }
 }
 
-.screen-tabs-container {
+// #main for selectivity
+#main .screen-tabs-container {
     display: flex;
     position: relative;
     overflow: hidden;
@@ -306,6 +309,7 @@
             &.is-active {
                 border-top: none;
                 opacity: 1;
+                font-weight: var(--screentabs-selected-font-weight);
             }
 
             &.is-archived {
