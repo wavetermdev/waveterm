@@ -844,6 +844,13 @@ declare global {
         getContainerType(): LineContainerStrs;
     };
 
+    type MonoFontSize = {
+        height: number;
+        width: number;
+        fontSize: number;
+        pad: number;
+    };
+
     type KeyModsType = {
         meta?: boolean;
         ctrl?: boolean;
