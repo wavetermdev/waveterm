@@ -274,7 +274,8 @@
 
     .cmd-history {
         color: var(--app-text-color);
-        margin-bottom: 5px;
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
         overflow: auto;
         flex-shrink: 1;
 
@@ -282,14 +283,19 @@
             position: absolute;
             z-index: 102;
             top: 5px;
-            left: 20px;
-            background-color: var(--cmdinput-history-bg-color);
+            left: 0;
+            background-color: var(--app-black);
             color: var(--cmdinput-history-title-color);
             padding-bottom: 4px;
             display: flex;
             flex-direction: row;
-            width: calc(100% - 40px);
+            width: 100%;
             overflow-x: auto;
+            border-bottom: 1px solid var(--app-border-color);
+
+            div:first-child {
+                margin-left: var(--termpad);
+            }
 
             .history-opt {
                 white-space: nowrap;

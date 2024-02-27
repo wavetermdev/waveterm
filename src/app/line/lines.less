@@ -9,19 +9,8 @@
     position: relative;
     overflow-x: hidden;
 
-    &::-webkit-scrollbar-thumb {
-        background-color: transparent !important;
-    }
-    &::-webkit-scrollbar-track {
-        background-color: transparent !important;
-    }
-
-    &:hover,
-    &:focus,
-    &:focus-within {
-        &::-webkit-scrollbar-thumb {
-            background-color: var(--app-scrollbar-thumb-color) !important;
-        }
+    &.hide-scrollbar::-webkit-scrollbar-thumb {
+        display: none;
     }
 
     .line:nth-child(2) {

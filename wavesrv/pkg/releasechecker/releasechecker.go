@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/go-github/v57/github"
+	"github.com/google/go-github/v59/github"
 	"golang.org/x/mod/semver"
 
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
