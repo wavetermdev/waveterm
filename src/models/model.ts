@@ -1511,7 +1511,7 @@ class Model {
     }
 
     installAppUpdate(): void {
-        if (this.autoUpdateStatus.get() == AutoUpdateStatusType.Ready) {
+        if (this.autoUpdateStatus.get() == "ready") {
             getApi().installAppUpdate();
         }
     }

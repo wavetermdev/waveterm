@@ -787,6 +787,13 @@ function configureAutoUpdaterStartup(clientData: ClientDataType) {
 
 function initUpdater(): NodeJS.Timeout {
     const { autoUpdater } = electron;
+
+    if (isDev) {
+        console.log("skipping auto-updater in dev mode");
+        return null;
+    }
+
+    MainWindow?.webContents.send("app-update-status", "unavailable");
     let feedURL = `https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate/${unamePlatform}/${unameArch}`;
     let serverType: "default" | "json" = "default";
 
@@ -816,12 +823,11 @@ function initUpdater(): NodeJS.Timeout {
 
     autoUpdater.on("update-available", () => {
         console.log("update-available; downloading...");
-        MainWindow?.webContents.send("app-update-status", AutoUpdateStatusType.Downloading);
     });
 
     autoUpdater.on("update-not-available", () => {
         console.log("update-not-available");
-        MainWindow?.webContents.send("app-update-status", AutoUpdateStatusType.Unavailable);
+        MainWindow?.webContents.send("app-update-status", "unavailable");
     });
 
     autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName, releaseDate, updateURL) => {
@@ -829,7 +835,7 @@ function initUpdater(): NodeJS.Timeout {
         availableUpdateReleaseName = releaseName;
         availableUpdateReleaseNotes = releaseNotes;
 
-        MainWindow?.webContents.send("app-update-status", AutoUpdateStatusType.Ready);
+        MainWindow?.webContents.send("app-update-status", "ready");
         const updateNotification = new electron.Notification({
             title: "Wave Terminal",
             body: "A new version of Wave Terminal is ready to install.",

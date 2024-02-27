@@ -11,12 +11,7 @@ declare global {
     type HistoryTypeStrs = "global" | "session" | "screen";
     type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error";
     type LineContainerStrs = "main" | "sidebar" | "history";
-    enum AutoUpdateStatusType {
-        Unavailable = "unavailable",
-        Available = "available",
-        Downloading = "downloading",
-        Ready = "ready",
-    }
+    type AutoUpdateStatusType = "unavailable" | "ready";
 
     type OV<V> = mobx.IObservableValue<V>;
     type OArr<V> = mobx.IObservableArray<V>;
