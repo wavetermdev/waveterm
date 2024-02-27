@@ -172,8 +172,9 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     @boundMethod
     getUpdateAppBanner(): React.ReactNode {
         if (GlobalModel.platform == "darwin") {
-            console.log("darwin", GlobalModel.autoUpdateStatus.get());
-            if (GlobalModel.autoUpdateStatus.get() == "ready") {
+            const status = GlobalModel.autoUpdateStatus.get();
+            console.log("darwin", status);
+            if (status == "ready") {
                 console.log("update ready");
                 return (
                     <SideBarItem

@@ -125,7 +125,7 @@ class Model {
         name: "renderVersion",
     });
 
-    autoUpdateStatus = mobx.observable.box("unavailable" as AutoUpdateStatusType, {
+    autoUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "autoUpdateStatus",
     });
 

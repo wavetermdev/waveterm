@@ -37,6 +37,7 @@ let autoUpdateLock = false;
 let autoUpdateInterval: NodeJS.Timeout | null = null;
 let availableUpdateReleaseName: string | null = null;
 let availableUpdateReleaseNotes: string | null = null;
+let appUpdateStatus = "unavailable";
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -790,7 +791,7 @@ function initUpdater(): NodeJS.Timeout {
         return null;
     }
 
-    MainWindow?.webContents.send("app-update-status", "unavailable");
+    appUpdateStatus = "unavailable";
     let feedURL = `https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate/${unamePlatform}/${unameArch}`;
     let serverType: "default" | "json" = "default";
 
@@ -833,7 +834,7 @@ function initUpdater(): NodeJS.Timeout {
         availableUpdateReleaseName = releaseName;
         availableUpdateReleaseNotes = releaseNotes;
 
-        MainWindow?.webContents.send("app-update-status", "ready");
+        MainWindow?.webContents.send("app-update-status", appUpdateStatus);
         const updateNotification = new electron.Notification({
             title: "Wave Terminal",
             body: "A new version of Wave Terminal is ready to install.",
@@ -881,6 +882,10 @@ electron.ipcMain.on("install-app-update", () => {
     })();
 });
 
+electron.ipcMain.on("get-app-update-status", (event) => {
+    event.returnValue = appUpdateStatus;
+});
+
 function configureAutoUpdaterStartup(clientData: ClientDataType) {
     console.log("configureAutoUpdaterStartup", clientData);
     configureAutoUpdater(!clientData.clientopts.noreleasecheck);
@@ -892,8 +897,6 @@ function configureAutoUpdater(enabled: boolean) {
         console.log("auto-update already in progress, skipping");
         return;
     }
-    MainWindow?.webContents.send("app-update-status", "ready");
-    console.log("sent app-update-status ready");
     autoUpdateLock = true;
     if (unamePlatform == "darwin") {
         if (enabled && autoUpdateInterval == null) {

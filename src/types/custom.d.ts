@@ -865,6 +865,7 @@ declare global {
         reregisterGlobalShortcut: (shortcut: string) => void;
         changeAutoUpdate: (enabled: boolean) => void;
         installAppUpdate: () => void;
+        getAppUpdateStatus: () => AutoUpdateStatusType;
         onAppUpdateStatus: (callback: (status: AutoUpdateStatusType) => void) => void;
         onTCmd: (callback: (mods: KeyModsType) => void) => void;
         onICmd: (callback: (mods: KeyModsType) => void) => void;
