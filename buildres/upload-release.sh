@@ -6,6 +6,9 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BUILDS_DIR=$SCRIPT_DIR/builds
 TEMP2_DIR=$SCRIPT_DIR/temp2
 
+MAIN_RELEASE_PATH="dl.waveterm.dev/build"
+AUTOUPDATE_RELEASE_PATH="dl.waveterm.dev/autoupdate"
+
 # Copy the builds to the temp2 directory
 echo "Copying builds to temp2"
 rm -rf $TEMP2_DIR
@@ -58,25 +61,25 @@ fi
 # Upload the DMG
 echo "Uploading DMG"
 DMG_NAME=$(basename $DMG)
-aws s3 cp $DMG s3://dl.waveterm.dev/$DMG_NAME
+aws s3 cp $DMG s3:/$MAIN_RELEASE_PATH/$DMG_NAME
 
 # Upload the Linux zips
 echo "Uploading Linux zips"
 for LINUX_ZIP in $LINUX_ZIPS; do
     LINUX_ZIP_NAME=$(basename $LINUX_ZIP)
-    aws s3 cp $LINUX_ZIP s3://dl.waveterm.dev/$LINUX_ZIP_NAME
+    aws s3 cp $LINUX_ZIP s3://$MAIN_RELEASE_PATH/$LINUX_ZIP_NAME
 done
 
 # Upload the autoupdate Mac zip
 echo "Uploading Mac zip"
 MAC_ZIP_NAME=$(basename $MAC_ZIP)
-aws s3 cp $MAC_ZIP s3://dl.waveterm.dev/autoupdate/$MAC_ZIP_NAME
+aws s3 cp $MAC_ZIP s3://$AUTOUPDATE_RELEASE_PATH/$MAC_ZIP_NAME
 
 # Update the autoupdate feeds
 echo "Updating autoupdate feeds"
-RELEASES_CONTENTS="{\"name\":\"$UVERSION\",\"notes\":\"\",\"url\":\"https://dl.waveterm.dev/autoupdate/$MAC_ZIP_NAME\"}"
-aws s3 cp - s3://dl.waveterm.dev/autoupdate/darwin/arm64/RELEASES.json <<< $RELEASES_CONTENTS
-aws s3 cp - s3://dl.waveterm.dev/autoupdate/darwin/x64/RELEASES.json <<< $RELEASES_CONTENTS
+RELEASES_CONTENTS="{\"name\":\"$UVERSION\",\"notes\":\"\",\"url\":\"https://$AUTOUPDATE_RELEASE_PATH/$MAC_ZIP_NAME\"}"
+aws s3 cp - s3://$AUTOUPDATE_RELEASE_PATH/darwin/arm64/RELEASES.json <<< $RELEASES_CONTENTS
+aws s3 cp - s3://$AUTOUPDATE_RELEASE_PATH/darwin/x64/RELEASES.json <<< $RELEASES_CONTENTS
 
 # Clean up
 echo "Cleaning up"
