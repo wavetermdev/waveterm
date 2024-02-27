@@ -11,6 +11,12 @@ declare global {
     type HistoryTypeStrs = "global" | "session" | "screen";
     type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error";
     type LineContainerStrs = "main" | "sidebar" | "history";
+    enum AutoUpdateStatusType {
+        Unavailable = "unavailable",
+        Available = "available",
+        Downloading = "downloading",
+        Ready = "ready",
+    }
 
     type OV<V> = mobx.IObservableValue<V>;
     type OArr<V> = mobx.IObservableArray<V>;
@@ -863,6 +869,8 @@ declare global {
         openExternalLink: (url: string) => void;
         reregisterGlobalShortcut: (shortcut: string) => void;
         changeAutoUpdate: (enabled: boolean) => void;
+        installAppUpdate: () => void;
+        onAppUpdateStatus: (callback: (status: AutoUpdateStatusType) => void) => void;
         onTCmd: (callback: (mods: KeyModsType) => void) => void;
         onICmd: (callback: (mods: KeyModsType) => void) => void;
         onLCmd: (callback: (mods: KeyModsType) => void) => void;

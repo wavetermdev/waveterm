@@ -125,6 +125,10 @@ class Model {
         name: "renderVersion",
     });
 
+    autoUpdateStatus = mobx.observable.box("unavailable" as AutoUpdateStatusType, {
+        name: "autoUpdateStatus",
+    });
+
     private constructor() {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
@@ -178,6 +182,7 @@ class Model {
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
+        getApi().onAppUpdateStatus(this.onAppUpdateAvailable.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
@@ -756,8 +761,7 @@ class Model {
             if (oldContext.sessionid != newContext.sessionid || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
                 if (genUpdate.type == "model") {
-                    const modelUpdate = genUpdate as ModelUpdatePacket;
-                    const reversedGenUpdate = modelUpdate.data.slice().reverse();
+                    const reversedGenUpdate = genUpdate.data.slice().reverse();
                     const lastCmdLine = reversedGenUpdate.find((update) => "cmdline" in update);
                     if (lastCmdLine) {
                         // TODO a bit of a hack since this update gets applied in runUpdate_internal.
@@ -819,7 +823,7 @@ class Model {
 
     runUpdate_internal(genUpdate: UpdatePacket, uiContext: UIContextType, interactive: boolean) {
         if (genUpdate.type == "pty") {
-            const ptyMsg = genUpdate.data as PtyDataUpdateType;
+            const ptyMsg = genUpdate.data;
             if (isBlank(ptyMsg.remoteid)) {
                 // regular update
                 this.updatePtyData(ptyMsg);
@@ -829,7 +833,7 @@ class Model {
                 this.remotesModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
             }
         } else if (genUpdate.type == "model") {
-            const modelUpdateItems = genUpdate.data as ModelUpdateItemType[];
+            const modelUpdateItems = genUpdate.data;
 
             let showedRemotesModal = false;
             const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
@@ -1100,8 +1104,7 @@ class Model {
 
     isInfoUpdate(update: UpdatePacket): boolean {
         if (update.type == "model") {
-            const modelUpdate = update as ModelUpdatePacket;
-            return modelUpdate.data.some((u) => u.info != null || u.history != null);
+            return update.data.some((u) => u.info != null || u.history != null);
         } else {
             return false;
         }
@@ -1505,6 +1508,16 @@ class Model {
         const prtn = fetch(url, { method: "post", headers: fetchHeaders, body: formData });
         const resp = await prtn;
         const _ = await handleJsonFetchResponse(url, resp);
+    }
+
+    installAppUpdate(): void {
+        if (this.autoUpdateStatus.get() == AutoUpdateStatusType.Ready) {
+            getApi().installAppUpdate();
+        }
+    }
+
+    onAppUpdateAvailable(status: AutoUpdateStatusType) {
+        this.autoUpdateStatus.set(status);
     }
 }
 

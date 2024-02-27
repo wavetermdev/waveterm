@@ -15,7 +15,6 @@ import { handleJsonFetchResponse } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
 import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
-import { UpdateSourceType, updateElectronApp } from "update-electron-app";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
@@ -33,6 +32,9 @@ let wasActive = true;
 let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
 let initialClientData: ClientDataType = null;
+let autoUpdateInterval: NodeJS.Timeout | null = null;
+let availableUpdateReleaseName: string | null = null;
+let availableUpdateReleaseNotes: string | null = null;
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -566,8 +568,8 @@ electron.ipcMain.on("get-last-logs", (event, numberOfLines) => {
     })();
 });
 
-electron.ipcMain.on("change-auto-update", (event, enable) => {
-    configureAutoUpdater(enable, false);
+electron.ipcMain.on("change-auto-update", (_, enable) => {
+    configureAutoUpdater(enable);
 });
 
 function readLastLinesOfFile(filePath: string, lineCount: number) {
@@ -780,47 +782,116 @@ function reregisterGlobalShortcut(shortcut: string) {
 
 function configureAutoUpdaterStartup(clientData: ClientDataType) {
     console.log("configureAutoUpdaterStartup", clientData);
-    configureAutoUpdater(!clientData.clientopts.noreleasecheck, true);
+    configureAutoUpdater(!clientData.clientopts.noreleasecheck);
 }
 
-function configureAutoUpdater(enabled: boolean, startup: boolean) {
-    console.log("configureAutoUpdater", enabled, startup);
+function initUpdater(): NodeJS.Timeout {
+    const { autoUpdater } = electron;
+    let feedURL = `https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate/${unamePlatform}/${unameArch}`;
+    let serverType: "default" | "json" = "default";
+
     if (unamePlatform == "darwin") {
-        if (enabled) {
+        feedURL += "/RELEASES.json";
+        serverType = "json";
+    }
+
+    const requestHeaders = { "User-Agent": "Wave Auto-Update" };
+
+    console.log("feedURL", feedURL);
+    console.log("requestHeaders", requestHeaders);
+    autoUpdater.setFeedURL({
+        url: feedURL,
+        headers: requestHeaders,
+        serverType,
+    });
+
+    autoUpdater.on("error", (err) => {
+        console.log("updater error");
+        console.log(err);
+    });
+
+    autoUpdater.on("checking-for-update", () => {
+        console.log("checking-for-update");
+    });
+
+    autoUpdater.on("update-available", () => {
+        console.log("update-available; downloading...");
+        MainWindow?.webContents.send("app-update-status", AutoUpdateStatusType.Downloading);
+    });
+
+    autoUpdater.on("update-not-available", () => {
+        console.log("update-not-available");
+        MainWindow?.webContents.send("app-update-status", AutoUpdateStatusType.Unavailable);
+    });
+
+    autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName, releaseDate, updateURL) => {
+        console.log("update-downloaded", [event, releaseNotes, releaseName, releaseDate, updateURL]);
+        availableUpdateReleaseName = releaseName;
+        availableUpdateReleaseNotes = releaseNotes;
+
+        MainWindow?.webContents.send("app-update-status", AutoUpdateStatusType.Ready);
+        const updateNotification = new electron.Notification({
+            title: "Wave Terminal",
+            body: "A new version of Wave Terminal is ready to install.",
+        });
+        updateNotification.on("click", () => {
+            (async () => {
+                try {
+                    await installAppUpdate();
+                } catch (err) {
+                    console.error("Error installing app update:", err);
+                }
+            })();
+        });
+    });
+
+    // check for updates right away and keep checking later
+    autoUpdater.checkForUpdates();
+    return setInterval(() => {
+        autoUpdater.checkForUpdates();
+    }, 10 * 60 * 60);
+}
+
+async function installAppUpdate() {
+    const dialogOpts: Electron.MessageBoxOptions = {
+        type: "info",
+        buttons: ["Restart", "Later"],
+        title: "Application Update",
+        message: process.platform === "win32" ? availableUpdateReleaseNotes : availableUpdateReleaseName,
+        detail: "A new version has been downloaded. Restart the application to apply the updates.",
+    };
+
+    await electron.dialog.showMessageBox(MainWindow, dialogOpts).then(({ response }) => {
+        if (response === 0) electron.autoUpdater.quitAndInstall();
+    });
+}
+
+electron.ipcMain.on("install-app-update", () => {
+    (async () => {
+        try {
+            await installAppUpdate();
+        } catch (err) {
+            console.error("Error installing app update:", err);
+        }
+    })();
+});
+
+function configureAutoUpdater(enabled: boolean) {
+    console.log("configureAutoUpdater");
+    if (unamePlatform == "darwin") {
+        if (enabled && autoUpdateInterval == null) {
             try {
-                updateElectronApp({
-                    updateSource: {
-                        type: UpdateSourceType.StaticStorage,
-                        baseUrl: `https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate/${unamePlatform}/${unameArch}`,
-                    },
-                    updateInterval: "1 hour",
-                    logger: console,
-                });
+                console.log("configuring auto updater");
+                autoUpdateInterval = initUpdater();
             } catch (e) {
                 console.log("error configuring auto updater", e.toString());
             }
-        } else if (!startup) {
-            electron.dialog
-                .showMessageBox(MainWindow, {
-                    message: "You have disabled automatic updates. To persist this change, please restart the app.",
-                    type: "question",
-                    buttons: ["Restart App", "Later"],
-                })
-                .then((resp) => {
-                    if (resp.response == 0) {
-                        restartWave().catch((e) => {
-                            console.log("error restarting app", e.toString());
-                        });
-                    }
-                });
+        } else if (autoUpdateInterval != null) {
+            console.log("user has disabled auto-updates, stopping updater");
+            clearInterval(autoUpdateInterval);
+            autoUpdateInterval = null;
         }
     }
-}
-
-async function restartWave() {
-    console.log("restarting app");
-    app.relaunch();
-    app.quit();
 }
 
 // ====== MAIN ====== //

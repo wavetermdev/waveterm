@@ -169,6 +169,39 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         GlobalModel.modalsModel.pushModal(appconst.SESSION_SETTINGS);
     }
 
+    @boundMethod
+    getUpdateAppBanner(): React.ReactNode {
+        if (GlobalModel.platform == "darwin") {
+            if (GlobalModel.autoUpdateStatus.get() == AutoUpdateStatusType.Ready) {
+                return (
+                    <SideBarItem
+                        key="update-ready"
+                        className="update-banner"
+                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                        contents="Click to Install Update"
+                        onClick={() => GlobalModel.installAppUpdate()}
+                    />
+                );
+            }
+        } else {
+            const clientData = this.props.clientData;
+            if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
+                if (compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0) {
+                    return (
+                        <SideBarItem
+                            key="update-available"
+                            className="update-banner"
+                            frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                            contents="Update Available"
+                            onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                        />
+                    );
+                }
+            }
+        }
+        return null;
+    }
+
     getSessions() {
         if (!GlobalModel.sessionListLoaded.get()) return <div className="item">loading ...</div>;
         const sessionList: Session[] = [];
@@ -227,11 +260,6 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
-        const clientData = this.props.clientData;
-        let needsUpdate = false;
-        if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
-            needsUpdate = compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0;
-        }
         const mainSidebar = GlobalModel.mainSidebarModel;
         const isCollapsed = mainSidebar.getCollapsed();
         return (
@@ -304,15 +332,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 {this.getSessions()}
                             </div>
                             <div className="bottom" id="sidebar-bottom">
-                                <If condition={needsUpdate}>
-                                    <SideBarItem
-                                        key="update-available"
-                                        className="update-banner"
-                                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
-                                        contents="Update Available"
-                                        onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
-                                    />
-                                </If>
+                                {this.getUpdateAppBanner()}
                                 <If condition={GlobalModel.isDev}>
                                     <SideBarItem
                                         key="apps"
