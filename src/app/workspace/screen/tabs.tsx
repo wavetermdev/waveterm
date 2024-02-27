@@ -185,7 +185,11 @@ class ScreenTabs extends React.Component<
         let activeScreenId = this.getActiveScreenId();
         const sidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
         return (
-            <div className={cn("screen-tabs-container", { "sidebar-collapsed": sidebarCollapsed })}>
+            <div
+                className={cn("screen-tabs-container", {
+                    "sidebar-collapsed": sidebarCollapsed,
+                })}
+            >
                 <If condition={sidebarCollapsed}>
                     <div key="logo-button" className="logo-button-container">
                         <div className="logo-button" onClick={this.openSidebar}>
@@ -194,7 +198,10 @@ class ScreenTabs extends React.Component<
                     </div>
                 </If>
                 {/* Inner container ensures that hovering over the scrollbar doesn't trigger the hover effect on the tabs. This prevents weird flickering of the icons when the mouse is moved over the scrollbar. */}
-                <div key="container-inner" className="screen-tabs-container-inner hideScrollbarUntillHover">
+                <div
+                    key="container-inner"
+                    className="screen-tabs-container-inner no-highlight-scrollbar hideScrollbarUntillHover"
+                >
                     <Reorder.Group
                         className="screen-tabs"
                         ref={this.tabsRef}

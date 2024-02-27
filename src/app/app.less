@@ -153,6 +153,12 @@ svg.icon {
     background-color: var(--scrollbar-thumb-hover-color) !important;
 }
 
+.no-highlight-scrollbar {
+    &::-webkit-scrollbar-thumb:hover {
+        background-color: var(--scrollbar-thumb-color) !important;
+    }
+}
+
 .hide-scrollbar {
     &::-webkit-scrollbar {
         display: none;
