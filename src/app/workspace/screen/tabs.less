@@ -1,214 +1,77 @@
-@import "@/common/themes/themes.less";
 @import "@/common/icons/icons.less";
 
 #main .screen-tabs .screen-tab {
     border-top: 1px solid transparent;
     font-size: 12.5px;
 
-    // this comes back when we have a completely removable left-sidebar
-    // &:first-child {
-    //     border-radius: var(--app-border-radius) 0px 0px 0px;
-    // }
+    &:not(:hover) .status-indicator {
+        .status-indicator-visible;
+    }
+
+    &:hover {
+        .actions {
+            .positional-icon-visible;
+        }
+    }
+
+    svg.svg-icon-inner path {
+        fill: var(--tab-color);
+    }
+
+    .icon i {
+        color: var(--tab-color);
+    }
+
+    &.is-active {
+        border-top: 1px solid var(--tab-color);
+        background-color: var(--tab-color);
+        background-image: linear-gradient(
+            rgba(0, 0, 0, 0),
+            rgba(0, 0, 0, 0.5) 15%,
+            rgba(0, 0, 0, 0.7) 30%,
+            rgba(0, 0, 0, 1) 100%
+        );
+    }
 
     &.color-green,
     &.color-default {
-        svg.svg-icon-inner path {
-            fill: @tab-green;
-        }
-
-        .icon i {
-            color: @tab-green;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-green;
-            background: linear-gradient(
-                180deg,
-                rgba(88, 193, 66, 0.2) 9.34%,
-                rgba(88, 193, 66, 0.03) 44.16%,
-                rgba(88, 193, 66, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-green);
     }
 
     &.color-orange {
-        svg.svg-icon-inner path {
-            fill: @tab-orange;
-        }
-
-        .icon i {
-            color: @tab-orange;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-orange;
-            background: linear-gradient(
-                180deg,
-                rgba(239, 113, 59, 0.2) 9.34%,
-                rgba(239, 113, 59, 0.03) 44.16%,
-                rgba(239, 113, 59, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-orange);
     }
 
     &.color-red {
-        svg.svg-icon-inner path {
-            fill: @tab-red;
-        }
-
-        .icon i {
-            color: @tab-red;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-red;
-            background: linear-gradient(
-                180deg,
-                rgba(229, 77, 46, 0.2) 9.34%,
-                rgba(229, 77, 46, 0.03) 44.16%,
-                rgba(229, 77, 46, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-red);
     }
 
     &.color-yellow {
-        svg.svg-icon-inner path {
-            fill: @tab-yellow;
-        }
-
-        .icon i {
-            color: @tab-yellow;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-yellow;
-            background: linear-gradient(
-                180deg,
-                rgba(224, 185, 86, 0.2) 9.34%,
-                rgba(224, 185, 86, 0.03) 44.16%,
-                rgba(224, 185, 86, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-yellow);
     }
 
     &.color-blue {
-        svg.svg-icon-inner path {
-            fill: @tab-blue;
-        }
-
-        .icon i {
-            color: @tab-blue;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-blue;
-            background: linear-gradient(
-                180deg,
-                rgba(57, 113, 255, 0.2) 9.34%,
-                rgba(57, 113, 255, 0.03) 44.16%,
-                rgba(57, 113, 255, 0) 77.18%
-            );
-        }
+        --tab-color: var(--tab-blue);
     }
 
     &.color-mint {
-        svg.svg-icon-inner path {
-            fill: @tab-mint;
-        }
-
-        .icon i {
-            color: @tab-mint;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-mint;
-            background: linear-gradient(
-                180deg,
-                rgba(75, 255, 169, 0.2) 9.34%,
-                rgba(75, 255, 169, 0.03) 44.16%,
-                rgba(75, 255, 169, 0) 77.18%
-            );
-        }
+        --tab-color: var(--tab-mint);
     }
 
     &.color-cyan {
-        svg.svg-icon-inner path {
-            fill: @tab-cyan;
-        }
-
-        .icon i {
-            color: @tab-cyan;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-cyan;
-            background: linear-gradient(
-                180deg,
-                rgba(75, 223, 255, 0.2) 9.34%,
-                rgba(75, 223, 255, 0.03) 44.16%,
-                rgba(58, 186, 214, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-cyan);
     }
 
     &.color-white {
-        svg.svg-icon-inner path {
-            fill: @tab-white;
-        }
-
-        .icon i {
-            color: @tab-white;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-white;
-            background: linear-gradient(
-                180deg,
-                rgba(255, 255, 255, 0.2) 9.34%,
-                rgba(255, 255, 255, 0.03) 44.16%,
-                rgba(255, 255, 255, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-white);
     }
 
     &.color-violet {
-        svg.svg-icon-inner path {
-            fill: @tab-violet;
-        }
-
-        .icon i {
-            color: @tab-violet;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-violet;
-            background: linear-gradient(
-                180deg,
-                rgba(186, 118, 255, 0.2) 9.34%,
-                rgba(186, 118, 255, 0.03) 44.16%,
-                rgba(186, 118, 255, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-violet);
     }
 
     &.color-pink {
-        svg.svg-icon-inner path {
-            fill: @tab-pink;
-        }
-
-        .icon i {
-            color: @tab-pink;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-pink;
-            background: linear-gradient(
-                180deg,
-                rgba(255, 136, 165, 0.2) 9.34%,
-                rgba(255, 136, 165, 0.03) 44.16%,
-                rgba(255, 136, 165, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-pink);
     }
 
     .web-share-icon {
@@ -222,6 +85,35 @@
     display: flex;
     position: relative;
     overflow: hidden;
+    height: var(--screentabs-height);
+
+    &.sidebar-collapsed .logo-button-container {
+        width: 105px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        align-items: center;
+        -webkit-app-region: drag;
+
+        .logo-button {
+            width: 25px;
+            height: 25px;
+            margin-right: 6px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-app-region: no-drag;
+
+            &:hover {
+                background-color: #333;
+                border-radius: 4px;
+            }
+        }
+    }
+
+    .logo-button {
+        width: 20px;
+    }
 
     &:hover {
         z-index: 200;
@@ -283,19 +175,6 @@
                 .tab-index {
                     font-size: 12.5px;
                 }
-            }
-        }
-
-        &:not(:hover) .status-indicator {
-            .status-indicator-visible;
-        }
-
-        &:hover {
-            .screen-tab:not(:hover) .tab-index {
-                .positional-icon-visible;
-            }
-            .screen-tab:hover .actions {
-                .positional-icon-visible;
             }
         }
     }

@@ -77,15 +77,6 @@ class ScreenTab extends React.Component<
 
     render() {
         let { screen, activeScreenId, index, onSwitchScreen } = this.props;
-
-        let tabIndex = null;
-        if (index + 1 <= 9) {
-            tabIndex = (
-                <CenteredIcon className="tab-index">
-                    <div>{renderCmdText(String(index + 1))}</div>
-                </CenteredIcon>
-            );
-        }
         let archived = screen.archived.get() ? (
             <i title="archived" className="fa-sharp fa-solid fa-box-archive" />
         ) : null;
@@ -123,7 +114,6 @@ class ScreenTab extends React.Component<
                 </div>
                 <div className="end-icons">
                     <StatusIndicator level={statusIndicatorLevel} runningCommands={runningCommands} />
-                    {tabIndex}
                     <ActionsIcon onClick={(e) => this.openScreenSettings(e, screen)} />
                 </div>
             </Reorder.Item>

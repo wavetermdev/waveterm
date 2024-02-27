@@ -1,4 +1,3 @@
-@import "@/common/themes/themes.less";
 @import "@/common/icons/icons.less";
 
 .main-sidebar {
@@ -10,20 +9,36 @@
     line-height: 20px;
     backdrop-filter: blur(4px);
     z-index: 20;
-    border-radius: var(--app-border-radius) 0 var(--app-border-radius) var(--app-border-radius);
+    border-radius: var(--app-border-radius) 0 0 var(--app-border-radius);
     border-left: 1px solid var(--app-border-color);
     border-bottom: 1px solid var(--app-border-color);
 
     .title-bar-drag {
         -webkit-app-region: drag;
-        height: 30px;
-        position: absolute;
+        height: calc(var(--screentabs-height) + 1px);
         top: 0;
         left: 0;
         width: 100%;
+        border-bottom: 1px solid var(--app-border-color);
+        position: relative;
+
+        .close-button {
+            -webkit-app-region: no-drag;
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
     }
 
     &.collapsed {
+        display: none;
+
         width: 6em;
         min-width: 6em;
         .arrow-container,
@@ -31,9 +46,14 @@
             transform: rotate(180deg);
             margin-top: 20px;
         }
-        .contents {
-            margin-top: 26px;
 
+        .title-bar-drag {
+            .close-button {
+                display: none;
+            }
+        }
+
+        .contents {
             .top,
             .workspaces,
             .middle,
@@ -79,7 +99,7 @@
     }
 
     .contents {
-        margin-top: 36px;
+        margin-top: 16px;
     }
 
     .logo {
@@ -89,7 +109,9 @@
 
         .logo-container {
             flex-shrink: 0;
-            width: 100px;
+            img {
+                width: 40px;
+            }
         }
 
         .spacer {
