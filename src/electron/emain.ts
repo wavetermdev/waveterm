@@ -782,7 +782,7 @@ function reregisterGlobalShortcut(shortcut: string) {
 // ====== AUTO-UPDATER ====== //
 /**
  * Sets the app update status and sends it to the main window
- * @param status The AutoUpdateStatus to set, either "ready" or "unavailable"
+ * @param status The AppUpdateStatus to set, either "ready" or "unavailable"
  */
 function setAppUpdateStatus(status: string) {
     appUpdateStatus = status;

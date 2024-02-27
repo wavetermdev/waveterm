@@ -125,8 +125,8 @@ class Model {
         name: "renderVersion",
     });
 
-    autoUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
-        name: "autoUpdateStatus",
+    appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
+        name: "appUpdateStatus",
     });
 
     private constructor() {
@@ -1514,14 +1514,14 @@ class Model {
      * Tell Electron to install the waiting app update. Will prompt for user input before restarting.
      */
     installAppUpdate(): void {
-        if (this.autoUpdateStatus.get() == "ready") {
+        if (this.appUpdateStatus.get() == "ready") {
             getApi().installAppUpdate();
         }
     }
 
-    onAppUpdateStatus(status: AutoUpdateStatusType) {
+    onAppUpdateStatus(status: AppUpdateStatusType) {
         mobx.action(() => {
-            this.autoUpdateStatus.set(status);
+            this.appUpdateStatus.set(status);
         })();
     }
 }
