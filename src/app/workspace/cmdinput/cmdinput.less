@@ -1,5 +1,3 @@
-@import "@/common/themes/themes.less";
-
 .cmd-input {
     max-height: max(300px, 40%);
     display: flex;
@@ -117,12 +115,12 @@
             .shelltag {
                 position: absolute;
                 // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding (2px not sure?)
-                bottom: calc(-13px + var(--termpad) + 2px);
+                bottom: calc(-13px + var(--termpad));
                 right: 0px;
                 font-size: 10px;
                 color: var(--app-text-secondary-color);
                 line-height: 1;
-                padding: 0px 8px 3px 8px;
+                padding: 1px 8px 3px 8px;
                 background-color: var(--cmdinput-textarea-bg-color);
                 border-radius: 0 0 5px 5px;
             }
@@ -139,6 +137,7 @@
             border: none;
             line-height: var(--termlineheight);
             font-size: var(--termfontsize);
+            border-radius: 4px 4px 0 4px; // 0 is for shelltag
 
             &.display-disabled {
                 background-color: #444;
@@ -255,7 +254,7 @@
 
         .chat-msg-user {
             .msg-text {
-                font-family: @markdown-font;
+                font-family: var(--markdown-font);
                 font-size: 14px;
                 white-space: pre-wrap;
             }
@@ -263,7 +262,7 @@
 
         .chat-msg-error {
             color: var(--cmdinput-text-error);
-            font-family: @markdown-font;
+            font-family: var(--markdown-font);
             font-size: 14px;
         }
 
