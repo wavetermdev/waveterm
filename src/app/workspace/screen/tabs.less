@@ -9,6 +9,16 @@
     //     border-radius: var(--app-border-radius) 0px 0px 0px;
     // }
 
+    &:not(:hover) .status-indicator {
+        .status-indicator-visible;
+    }
+
+    &:hover {
+        .actions {
+            .positional-icon-visible;
+        }
+    }
+
     &.color-green,
     &.color-default {
         svg.svg-icon-inner path {
@@ -221,6 +231,35 @@
     display: flex;
     position: relative;
     overflow: hidden;
+    height: var(--screentabs-height);
+
+    &.sidebar-collapsed .logo-button-container {
+        width: 105px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        align-items: center;
+        -webkit-app-region: drag;
+
+        .logo-button {
+            width: 25px;
+            height: 25px;
+            margin-right: 6px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-app-region: no-drag;
+
+            &:hover {
+                background-color: #333;
+                border-radius: 4px;
+            }
+        }
+    }
+
+    .logo-button {
+        width: 20px;
+    }
 
     &:hover {
         z-index: 200;
@@ -282,19 +321,6 @@
                 .tab-index {
                     font-size: 12.5px;
                 }
-            }
-        }
-
-        &:not(:hover) .status-indicator {
-            .status-indicator-visible;
-        }
-
-        &:hover {
-            .screen-tab:not(:hover) .tab-index {
-                .positional-icon-visible;
-            }
-            .screen-tab:hover .actions {
-                .positional-icon-visible;
             }
         }
     }
