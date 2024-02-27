@@ -809,6 +809,8 @@ function initUpdater(): NodeJS.Timeout {
         serverType,
     });
 
+    autoUpdater.removeAllListeners();
+
     autoUpdater.on("error", (err) => {
         console.log("updater error");
         console.log(err);
@@ -925,6 +927,7 @@ function configureAutoUpdater(enabled: boolean) {
     } catch (e) {
         console.log(e.toString());
     }
+    setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();
     app.on("activate", () => {
