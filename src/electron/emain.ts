@@ -571,10 +571,6 @@ electron.ipcMain.on("get-last-logs", (event, numberOfLines) => {
     })();
 });
 
-electron.ipcMain.on("change-auto-update", (_, enable) => {
-    configureAutoUpdater(enable);
-});
-
 function readLastLinesOfFile(filePath: string, lineCount: number) {
     return new Promise((resolve, reject) => {
         child_process.exec(`tail -n ${lineCount} "${filePath}"`, (err, stdout, stderr) => {
@@ -816,13 +812,9 @@ function initUpdater(): NodeJS.Timeout {
         serverType = "json";
     }
 
-    const requestHeaders = { "User-Agent": "Wave Auto-Update" };
-
-    console.log("feedURL", feedURL);
-    console.log("requestHeaders", requestHeaders);
     autoUpdater.setFeedURL({
         url: feedURL,
-        headers: requestHeaders,
+        headers: { "User-Agent": "Wave Auto-Update" },
         serverType,
     });
 
@@ -850,6 +842,7 @@ function initUpdater(): NodeJS.Timeout {
         availableUpdateReleaseName = releaseName;
         availableUpdateReleaseNotes = releaseNotes;
 
+        // Display the update banner and create a system notification
         setAppUpdateStatus("ready");
         const updateNotification = new electron.Notification({
             title: "Wave Terminal",
@@ -905,12 +898,15 @@ electron.ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = appUpdateStatus;
 });
 
+electron.ipcMain.on("change-auto-update", (_, enable: boolean) => {
+    configureAutoUpdater(enable);
+});
+
 /**
  * Configures the auto-updater based on the client data
  * @param clientData The client data to use to configure the auto-updater. If the clientData has noreleasecheck set to true, the auto-updater will be disabled.
  */
 function configureAutoUpdaterStartup(clientData: ClientDataType) {
-    console.log("configureAutoUpdaterStartup", clientData);
     configureAutoUpdater(!clientData.clientopts.noreleasecheck);
 }
 
@@ -919,12 +915,14 @@ function configureAutoUpdaterStartup(clientData: ClientDataType) {
  * @param enabled Whether the auto-updater should be enabled
  */
 function configureAutoUpdater(enabled: boolean) {
-    console.log("configureAutoUpdater");
+    // simple lock to prevent multiple auto-update configuration attempts, this should be very rare
     if (autoUpdateLock) {
-        console.log("auto-update already in progress, skipping");
+        console.log("auto-update configuration already in progress, skipping");
         return;
     }
     autoUpdateLock = true;
+
+    // only configure auto-updater on macOS
     if (unamePlatform == "darwin") {
         if (enabled && autoUpdateInterval == null) {
             try {

@@ -177,9 +177,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     getUpdateAppBanner(): React.ReactNode {
         if (GlobalModel.platform == "darwin") {
             const status = GlobalModel.autoUpdateStatus.get();
-            console.log("darwin", status);
             if (status == "ready") {
-                console.log("update ready");
                 return (
                     <SideBarItem
                         key="update-ready"
@@ -191,11 +189,9 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                 );
             }
         } else {
-            console.log("not darwin");
             const clientData = this.props.clientData;
             if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
                 if (compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0) {
-                    console.log("update available");
                     return (
                         <SideBarItem
                             key="update-available"
