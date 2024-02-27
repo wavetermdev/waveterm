@@ -1511,6 +1511,9 @@ class Model {
         const _ = await handleJsonFetchResponse(url, resp);
     }
 
+    /**
+     * Tell Electron to install the waiting app update. Will prompt for user input before restarting.
+     */
     installAppUpdate(): void {
         if (this.autoUpdateStatus.get() == "ready") {
             getApi().installAppUpdate();

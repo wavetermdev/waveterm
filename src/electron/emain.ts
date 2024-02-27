@@ -783,6 +783,22 @@ function reregisterGlobalShortcut(shortcut: string) {
     currentGlobalShortcut = shortcut;
 }
 
+// ====== AUTO-UPDATER ====== //
+/**
+ * Sets the app update status and sends it to the main window
+ * @param status The AutoUpdateStatus to set, either "ready" or "unavailable"
+ */
+function setAppUpdateStatus(status: string) {
+    appUpdateStatus = status;
+    if (MainWindow != null) {
+        MainWindow.webContents.send("app-update-status", appUpdateStatus);
+    }
+}
+
+/**
+ * Initializes the auto-updater and sets up event listeners
+ * @returns The interval at which the auto-updater checks for updates
+ */
 function initUpdater(): NodeJS.Timeout {
     const { autoUpdater } = electron;
 
@@ -791,7 +807,7 @@ function initUpdater(): NodeJS.Timeout {
         return null;
     }
 
-    appUpdateStatus = "unavailable";
+    setAppUpdateStatus("unavailable");
     let feedURL = `https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate/${unamePlatform}/${unameArch}`;
     let serverType: "default" | "json" = "default";
 
@@ -834,7 +850,7 @@ function initUpdater(): NodeJS.Timeout {
         availableUpdateReleaseName = releaseName;
         availableUpdateReleaseNotes = releaseNotes;
 
-        MainWindow?.webContents.send("app-update-status", appUpdateStatus);
+        setAppUpdateStatus("ready");
         const updateNotification = new electron.Notification({
             title: "Wave Terminal",
             body: "A new version of Wave Terminal is ready to install.",
@@ -858,6 +874,9 @@ function initUpdater(): NodeJS.Timeout {
     }, 600000); // 10 minutes in ms
 }
 
+/**
+ * Prompts the user to install the downloaded application update and restarts the application
+ */
 async function installAppUpdate() {
     const dialogOpts: Electron.MessageBoxOptions = {
         type: "info",
@@ -886,11 +905,19 @@ electron.ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = appUpdateStatus;
 });
 
+/**
+ * Configures the auto-updater based on the client data
+ * @param clientData The client data to use to configure the auto-updater. If the clientData has noreleasecheck set to true, the auto-updater will be disabled.
+ */
 function configureAutoUpdaterStartup(clientData: ClientDataType) {
     console.log("configureAutoUpdaterStartup", clientData);
     configureAutoUpdater(!clientData.clientopts.noreleasecheck);
 }
 
+/**
+ * Configures the auto-updater based on the user's preference
+ * @param enabled Whether the auto-updater should be enabled
+ */
 function configureAutoUpdater(enabled: boolean) {
     console.log("configureAutoUpdater");
     if (autoUpdateLock) {
@@ -914,6 +941,7 @@ function configureAutoUpdater(enabled: boolean) {
     }
     autoUpdateLock = false;
 }
+// ====== AUTO-UPDATER ====== //
 
 // ====== MAIN ====== //
 

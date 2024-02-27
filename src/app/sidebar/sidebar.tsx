@@ -169,6 +169,10 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         GlobalModel.modalsModel.pushModal(appconst.SESSION_SETTINGS);
     }
 
+    /**
+     * Get the update banner for the app, if we need to show it.
+     * @returns Either a banner to install the ready update, a link to the download page, or null if no update is available.
+     */
     @boundMethod
     getUpdateAppBanner(): React.ReactNode {
         if (GlobalModel.platform == "darwin") {
