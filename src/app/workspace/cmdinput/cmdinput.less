@@ -290,7 +290,7 @@
             top: 5px;
             left: 0;
             background-color: var(--app-bg-color);
-            color: var(--cmdinput-history-title-color);
+            color: var(--cmdinput-title-color);
             padding-bottom: 4px;
             display: flex;
             flex-direction: row;
@@ -364,6 +364,29 @@
         overflow-y: auto;
         margin-bottom: var(--termpad);
 
+        .info-title {
+            position: absolute;
+            z-index: 102;
+            top: 5px;
+            left: 0;
+            background-color: var(--app-bg-color);
+            color: var(--cmdinput-title-color);
+            padding-bottom: 4px;
+            padding-left: calc(var(--termpad) * 2);
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--app-border-color);
+        }
+
+        .info-title + .info-msg,
+        .info-title + .info-lines,
+        .info-title + .info-comps,
+        .info-title + .info-error {
+            margin-top: 24px;
+        }
+
         .info-msg {
             color: var(--cmdinput-history-title-color);
             padding-bottom: 2px;
@@ -406,110 +429,6 @@
         .info-error {
             color: var(--cmdinput-text-error-color);
             padding-bottom: 2px;
-        }
-
-        .info-remote-showall {
-            table.remotes-table {
-                th {
-                    color: var(--app-text-color);
-                    font-weight: bold;
-                }
-
-                th,
-                td {
-                    padding: 3px 8px 3px 8px;
-                }
-
-                td {
-                    cursor: pointer;
-                }
-
-                tr:hover td {
-                    background-color: #333;
-                }
-            }
-        }
-
-        .info-remote {
-            color: #d3d7cf;
-
-            .info-remote-title {
-                font-weight: bold;
-                color: var(--cmdinput-remote-title-color);
-            }
-
-            .info-error,
-            .info-msg {
-                margin-top: 5px;
-                padding: 5px;
-            }
-
-            .remote-field {
-                display: flex;
-                flex-direction: row;
-
-                .remote-field-def {
-                    white-space: pre;
-                    width: 120px;
-                }
-
-                .remote-field-val {
-                    white-space: pre;
-                    display: flex;
-                    flex-direction: row;
-                }
-            }
-
-            .remote-input-field {
-                display: flex;
-                flex-direction: row;
-                height: 25px;
-                align-items: center;
-
-                .remote-field-label {
-                    white-space: pre;
-                    width: 140px;
-                    font-weight: bold;
-                    color: var(--app-text-primary-color);
-                }
-
-                .undo-icon {
-                    margin-left: 4px;
-                    cursor: pointer;
-                    padding: 2px;
-                }
-
-                .remote-field-control {
-                    &.text-input {
-                        input[type="text"],
-                        input[type="number"],
-                        input[type="password"] {
-                            background-color: var(--app-bg-color);
-                            color: var(--app-text-color);
-                            width: 200px;
-                        }
-                    }
-
-                    &.checkbox-input {
-                        input[type="checkbox"] {
-                            position: relative;
-                            top: 3px;
-                        }
-                    }
-
-                    &.select-input {
-                        select {
-                            width: 200px;
-                            background-color: var(--app-bg-color);
-                            color: var(--app-text-color);
-                        }
-                    }
-                }
-            }
-        }
-
-        .info-remote-showall {
-            color: #d3d7cf;
         }
     }
 }
