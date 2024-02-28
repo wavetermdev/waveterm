@@ -107,12 +107,6 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
                 </span>
             );
         }
-        let rootIndicatorElem = null;
-        if (isRoot) {
-            rootIndicatorElem = <span className="term-prompt-end-root">#</span>;
-        } else {
-            rootIndicatorElem = <span className="term-prompt-end-user">$</span>;
-        }
         let branchElem = null;
         let pythonElem = null;
         let condaElem = null;
@@ -142,9 +136,15 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
             );
         }
         return (
-            <span className={cn("term-prompt", { "term-prompt-color": this.props.color })}>
+            <span
+                className={cn(
+                    "term-prompt",
+                    { "term-prompt-color": this.props.color },
+                    { "term-prompt-isroot": isRoot }
+                )}
+            >
                 {remoteElem} {condaElem} {pythonElem}
-                {cwdElem} {branchElem} {rootIndicatorElem}
+                {cwdElem} {branchElem}
             </span>
         );
     }
