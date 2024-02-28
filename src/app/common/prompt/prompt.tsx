@@ -96,24 +96,30 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
         }
         let cwdElem = (
             <span title="current directory" className="term-prompt-cwd">
-                <i className="fa-sharp fa-solid fa-folder" style={{ marginRight: Math.ceil(termFontSize / 4) }} />
                 {cwd}
             </span>
         );
-        let remoteElem = (
-            <span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>
-                [{remoteStr}]{" "}
-            </span>
-        );
-        let rootIndicatorElem = <span className="term-prompt-end">{isRoot ? "#" : "$"}</span>;
+        let remoteElem = null;
+        if (remoteStr != "local") {
+            remoteElem = (
+                <span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>
+                    [{remoteStr}]{" "}
+                </span>
+            );
+        }
+        let rootIndicatorElem = null;
+        if (isRoot) {
+            rootIndicatorElem = <span className="term-prompt-end-root">#</span>;
+        } else {
+            rootIndicatorElem = <span className="term-prompt-end-user">$</span>;
+        }
         let branchElem = null;
         let pythonElem = null;
         if (!isBlank(festate["PROMPTVAR_GITBRANCH"])) {
             let branchName = festate["PROMPTVAR_GITBRANCH"];
             branchElem = (
                 <span title="current git branch" className="term-prompt-branch">
-                    <i className="fa-sharp fa-solid fa-code-branch" />
-                    {branchName}{" "}
+                    git:({branchName}){" "}
                 </span>
             );
         }
@@ -122,16 +128,14 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
             let venv = getShortVEnv(venvDir);
             pythonElem = (
                 <span title="python venv" className="term-prompt-python">
-                    <i className="fa-brands fa-python" />
-                    {venv}{" "}
+                    venv:({venv}){" "}
                 </span>
             );
         }
         return (
             <span className="term-prompt">
                 {remoteElem} {pythonElem}
-                {branchElem}
-                {cwdElem} {rootIndicatorElem}
+                {cwdElem} {branchElem} {rootIndicatorElem}
             </span>
         );
     }

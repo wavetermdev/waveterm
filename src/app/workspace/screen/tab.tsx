@@ -64,10 +64,6 @@ class ScreenTab extends React.Component<
             <i title="archived" className="fa-sharp fa-solid fa-box-archive" />
         ) : null;
 
-        let webShared = screen.isWebShared() ? (
-            <i title="shared to web" className="fa-sharp fa-solid fa-share-nodes web-share-icon" />
-        ) : null;
-
         const statusIndicatorLevel = screen.statusIndicator.get();
         const runningCommands = screen.numRunningCmds.get() > 0;
 
@@ -94,7 +90,6 @@ class ScreenTab extends React.Component<
                 </CenteredIcon>
                 <div className="tab-name truncate">
                     {archived}
-                    {webShared}
                     {screen.name.get()}
                 </div>
                 <div className="end-icons">
