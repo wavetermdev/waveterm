@@ -17,12 +17,12 @@ body {
 
 body {
     &.is-dev .sidebar {
-        background-color: var(--app-bg-color-dev);
+        background-color: var(--sidebar-dev-bg-color);
     }
 }
 
 body .sidebar {
-    background-color: var(--app-bg-color);
+    background-color: var(--sidebar-bg-color);
 }
 
 textarea {
@@ -31,7 +31,6 @@ textarea {
     font-size: 12px;
     font-weight: 300;
     line-height: 1.5;
-    background: var(--app-bg-color);
     color: var(--app-text-color);
 }
 
@@ -800,13 +799,15 @@ a.a-block {
 
             .tab-color-name,
             .tab-icon-name {
+                display: inline-block;
                 margin-left: 1em;
+                min-width: 80px;
             }
 
             .tab-color-select,
             .tab-icon-select {
                 cursor: pointer;
-                margin: 5px;
+                margin: 3px;
                 &:hover {
                     outline: 2px solid white;
                 }

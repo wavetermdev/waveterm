@@ -17,9 +17,9 @@ import { getRemoteStr } from "@/common/prompt/prompt";
 import { Line } from "@/app/line/linecomps";
 import { LinesView } from "@/app/line/linesview";
 import * as util from "@/util/util";
+import { TabIcon } from "@/elements/tabicon";
 import { ReactComponent as EllipseIcon } from "@/assets/icons/ellipse.svg";
 import { ReactComponent as Check12Icon } from "@/assets/icons/check12.svg";
-import { ReactComponent as SquareIcon } from "@/assets/icons/tab/square.svg";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
@@ -428,9 +428,6 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             <>
                 <div className="text-s1 unselectable">Select the icon</div>
                 <div className="control-iconlist tabicon-list">
-                    <div key="square" className="icondiv" title="square" onClick={() => this.selectTabIcon("square")}>
-                        <SquareIcon className="icon square-icon" />
-                    </div>
                     <For each="icon" of={appconst.TabIcons}>
                         <div
                             className="icondiv tabicon"
@@ -438,7 +435,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                             title={icon || ""}
                             onClick={() => this.selectTabIcon(icon || "")}
                         >
-                            <i className={`fa-sharp fa-solid fa-${icon}`}></i>
+                            <TabIcon icon={icon} color="white" />
                         </div>
                     </For>
                 </div>
