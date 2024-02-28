@@ -118,7 +118,6 @@
             display: inline-block;
             height: 1em;
             margin-left: 0.5em;
-            margin-right: 0.5em;
             vertical-align: text-top;
             fill: var(--primary-background-color);
         }
@@ -153,7 +152,48 @@
     }
 
     .line-header + div:not(.zero-height) {
-        margin-top: var(--termpad);
+        margin-top: calc(var(--termpad) + 2px);
+    }
+
+    &:hover .line-actions {
+        background-color: var(--app-panel-bg-color);
+        .line-icon {
+            visibility: visible;
+        }
+    }
+
+    .line-actions {
+        position: absolute;
+        right: calc(var(--termpad) * 2);
+        top: var(--termpad);
+        font-size: 14px;
+        color: var(--line-actions-inactive-color);
+        border-radius: 4px;
+        padding-left: 4px;
+        padding-right: 4px;
+
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        .line-icon {
+            visibility: hidden;
+
+            &.active {
+                visibility: visible;
+            }
+
+            &:hover {
+                color: var(--line-actions-active-color);
+            }
+
+            padding: 4px;
+            cursor: pointer;
+        }
+
+        .line-icon + .line-icon:not(.line-icon-shrink-left) {
+            margin-left: 3px;
+        }
     }
 
     .line-header {
@@ -169,39 +209,16 @@
             height: auto;
         }
 
-        .line-icon {
-            display: block;
-            visibility: hidden;
-            cursor: pointer;
-            padding: 3px;
-            border-radius: 50%;
-        }
-
-        .line-icon-show {
-            visibility: visible;
-        }
-
-        .line-icon + .line-icon {
-            margin-left: 5px;
-        }
-
-        .line-icon.active {
-            visibility: visible;
-            display: block;
-        }
-
-        &:hover .line-icon {
-            visibility: visible;
-            display: block;
-            opacity: 1;
-        }
-
         .meta-wrap {
             flex: 1 1 0px;
             min-width: 0;
             display: flex;
             flex-direction: column;
             justify-content: flex-start;
+        }
+
+        .meta + .meta {
+            margin-top: 2px;
         }
 
         .meta {
@@ -221,16 +238,11 @@
                 font-size: var(--termfontsize-sm);
                 line-height: var(--termlineheight-sm);
                 color: var(--term-gray);
-                margin-bottom: 2px;
             }
 
             .meta-divider {
                 margin-left: var(--termpad);
                 margin-right: var(--termpad);
-            }
-
-            &.meta-line2 {
-                margin-left: -2px;
             }
 
             .ts,
@@ -245,22 +257,6 @@
                     width: 1em;
                     margin-right: 0.5em;
                     fill: var(--line-svg-fill-color);
-                }
-            }
-
-            .settings {
-                display: none;
-                margin-left: 0.5em;
-                cursor: pointer;
-                width: 1em;
-                height: 1em;
-                border-radius: 50%;
-                line-height: 1em;
-                svg {
-                    fill: var(--line-svg-fill-color);
-                    &:hover {
-                        fill: var(--line-svg-hover-fill-color);
-                    }
                 }
             }
 

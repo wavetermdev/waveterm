@@ -44,6 +44,142 @@ function getIsHidePrompt(line: LineType): boolean {
 }
 
 @mobxReact.observer
+class LineActions extends React.Component<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
+    @boundMethod
+    clickStar() {
+        const { line } = this.props;
+        if (!line.star || line.star == 0) {
+            GlobalCommandRunner.lineStar(line.lineid, 1);
+        } else {
+            GlobalCommandRunner.lineStar(line.lineid, 0);
+        }
+    }
+
+    @boundMethod
+    clickPin() {
+        const { line } = this.props;
+        if (!line.pinned) {
+            GlobalCommandRunner.linePin(line.lineid, true);
+        } else {
+            GlobalCommandRunner.linePin(line.lineid, false);
+        }
+    }
+
+    @boundMethod
+    clickBookmark() {
+        const { line } = this.props;
+        GlobalCommandRunner.lineBookmark(line.lineid);
+    }
+
+    @boundMethod
+    clickDelete() {
+        const { line } = this.props;
+        GlobalCommandRunner.lineDelete(line.lineid, true);
+    }
+
+    @boundMethod
+    clickRestart() {
+        const { line } = this.props;
+        GlobalCommandRunner.lineRestart(line.lineid, true);
+    }
+
+    @boundMethod
+    clickMinimize() {
+        const { line } = this.props;
+        const isMinimized = line.linestate["wave:min"];
+        GlobalCommandRunner.lineMinimize(line.lineid, !isMinimized, true);
+    }
+
+    @boundMethod
+    clickMoveToSidebar() {
+        const { line } = this.props;
+        GlobalCommandRunner.screenSidebarAddLine(line.lineid);
+    }
+
+    @boundMethod
+    clickRemoveFromSidebar() {
+        GlobalCommandRunner.screenSidebarRemove();
+    }
+
+    @boundMethod
+    handleResizeButton() {
+        console.log("resize button");
+    }
+
+    @boundMethod
+    handleLineSettings(e: any): void {
+        e.preventDefault();
+        e.stopPropagation();
+        let { line } = this.props;
+        if (line != null) {
+            mobx.action(() => {
+                GlobalModel.lineSettingsModal.set(line.linenum);
+            })();
+            GlobalModel.modalsModel.pushModal(appconst.LINE_SETTINGS);
+        }
+    }
+
+    render() {
+        let { line, screen } = this.props;
+        const isMinimized = line.linestate["wave:min"];
+        const containerType = screen.getContainerType();
+        return (
+            <div className="line-actions">
+                <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
+                    <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
+                </div>
+                <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
+                    <i className="fa-sharp fa-regular fa-trash fa-fw" />
+                </div>
+                <div
+                    key="bookmark"
+                    title="Bookmark"
+                    className={cn("line-icon", "line-bookmark")}
+                    onClick={this.clickBookmark}
+                >
+                    <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
+                </div>
+                <If condition={containerType == appconst.LineContainer_Main}>
+                    <div
+                        key="minimize"
+                        title={`${isMinimized ? "Show Output" : "Hide Output"}`}
+                        className={cn("line-icon", isMinimized ? "active" : "")}
+                        onClick={this.clickMinimize}
+                    >
+                        <If condition={isMinimized}>
+                            <i className="fa-sharp fa-regular fa-circle-plus fa-fw" />
+                        </If>
+                        <If condition={!isMinimized}>
+                            <i className="fa-sharp fa-regular fa-circle-minus fa-fw" />
+                        </If>
+                    </div>
+                    <div className="line-icon line-sidebar" onClick={this.clickMoveToSidebar} title="Move to Sidebar">
+                        <i className="fa-sharp fa-solid fa-right-to-line fa-fw" />
+                    </div>
+                    <div
+                        key="settings"
+                        title="Line Settings"
+                        className="line-icon line-icon-shrink-left"
+                        onClick={this.handleLineSettings}
+                    >
+                        <i className="fa-sharp fa-regular fa-ellipsis-vertical fa-fw" />
+                    </div>
+                </If>
+                <If condition={containerType == appconst.LineContainer_Sidebar}>
+                    <div
+                        className="line-icon line-sidebar"
+                        onClick={this.clickRemoveFromSidebar}
+                        title="Move to Sidebar"
+                    >
+                        <i className="fa-sharp fa-solid fa-left-to-line fa-fw" />
+                    </div>
+                </If>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
 class LineHeader extends React.Component<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
     cmdTextRef: React.RefObject<any> = React.createRef();
     isCmdExpanded: OV<boolean> = mobx.observable.box(false, {
@@ -147,9 +283,10 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
         let renderer = line.renderer;
         return (
             <div key="meta1" className="meta meta-line1">
+                <SmallLineAvatar line={line} cmd={cmd} />
+                <div className="meta-divider">|</div>
                 <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()} color={false} />
                 <div className="meta-divider">|</div>
-                <SmallLineAvatar line={line} cmd={cmd} />
                 <div title={timeTitle} className="ts">
                     {formattedTime}
                 </div>
@@ -163,87 +300,10 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
         );
     }
 
-    @boundMethod
-    clickStar() {
-        const { line } = this.props;
-        if (!line.star || line.star == 0) {
-            GlobalCommandRunner.lineStar(line.lineid, 1);
-        } else {
-            GlobalCommandRunner.lineStar(line.lineid, 0);
-        }
-    }
-
-    @boundMethod
-    clickPin() {
-        const { line } = this.props;
-        if (!line.pinned) {
-            GlobalCommandRunner.linePin(line.lineid, true);
-        } else {
-            GlobalCommandRunner.linePin(line.lineid, false);
-        }
-    }
-
-    @boundMethod
-    clickBookmark() {
-        const { line } = this.props;
-        GlobalCommandRunner.lineBookmark(line.lineid);
-    }
-
-    @boundMethod
-    clickDelete() {
-        const { line } = this.props;
-        GlobalCommandRunner.lineDelete(line.lineid, true);
-    }
-
-    @boundMethod
-    clickRestart() {
-        const { line } = this.props;
-        GlobalCommandRunner.lineRestart(line.lineid, true);
-    }
-
-    @boundMethod
-    clickMinimize() {
-        const { line } = this.props;
-        const isMinimized = line.linestate["wave:min"];
-        GlobalCommandRunner.lineMinimize(line.lineid, !isMinimized, true);
-    }
-
-    @boundMethod
-    clickMoveToSidebar() {
-        const { line } = this.props;
-        GlobalCommandRunner.screenSidebarAddLine(line.lineid);
-    }
-
-    @boundMethod
-    clickRemoveFromSidebar() {
-        GlobalCommandRunner.screenSidebarRemove();
-    }
-
-    @boundMethod
-    handleResizeButton() {
-        console.log("resize button");
-    }
-
-    @boundMethod
-    handleLineSettings(e: any): void {
-        e.preventDefault();
-        e.stopPropagation();
-        let { line } = this.props;
-        if (line != null) {
-            mobx.action(() => {
-                GlobalModel.lineSettingsModal.set(line.linenum);
-            })();
-            GlobalModel.modalsModel.pushModal(appconst.LINE_SETTINGS);
-        }
-    }
-
     render() {
-        let { line, cmd, screen } = this.props;
+        let { line, cmd } = this.props;
         const isExpanded = this.isCmdExpanded.get();
         const hidePrompt = getIsHidePrompt(line);
-        const isMinimized = line.linestate["wave:min"];
-        const containerType = screen.getContainerType();
-
         return (
             <div
                 key="header"
@@ -253,50 +313,6 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
                     {this.renderMeta1(cmd)}
                     <If condition={!hidePrompt}>{this.renderCmdText(cmd)}</If>
                 </div>
-                <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
-                    <i className="fa-sharp fa-regular fa-arrows-rotate" />
-                </div>
-                <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
-                    <i className="fa-sharp fa-regular fa-trash" />
-                </div>
-                <div
-                    key="bookmark"
-                    title="Bookmark"
-                    className={cn("line-icon", "line-bookmark", "hoverEffect")}
-                    onClick={this.clickBookmark}
-                >
-                    <i className="fa-sharp fa-regular fa-bookmark" />
-                </div>
-                <If condition={containerType == appconst.LineContainer_Main}>
-                    <div
-                        key="minimize"
-                        title={`${isMinimized ? "Maximise" : "Minimize"}`}
-                        className={cn("line-icon", "line-minimize", "hoverEffect", isMinimized ? "line-icon-show" : "")}
-                        onClick={this.clickMinimize}
-                    >
-                        <If condition={isMinimized}>
-                            <i className="fa-sharp fa-regular fa-circle-plus" />
-                        </If>
-                        <If condition={!isMinimized}>
-                            <i className="fa-sharp fa-regular fa-circle-minus" />
-                        </If>
-                    </div>
-                    <div className="line-icon line-sidebar" onClick={this.clickMoveToSidebar} title="Move to Sidebar">
-                        <i className="fa-sharp fa-solid fa-right-to-line" />
-                    </div>
-                    <div key="settings" title="Line Settings" className="line-icon" onClick={this.handleLineSettings}>
-                        <i className="fa-sharp fa-regular fa-ellipsis-vertical" />
-                    </div>
-                </If>
-                <If condition={containerType == appconst.LineContainer_Sidebar}>
-                    <div
-                        className="line-icon line-sidebar"
-                        onClick={this.clickRemoveFromSidebar}
-                        title="Move to Sidebar"
-                    >
-                        <i className="fa-sharp fa-solid fa-left-to-line" />
-                    </div>
-                </If>
             </div>
         );
     }
@@ -654,7 +670,6 @@ class LineCmd extends React.Component<
 
     render() {
         const { screen, line, width, staticRender, visible } = this.props;
-        const isMinimized = line.linestate["wave:min"];
         const isVisible = visible.get();
         if (staticRender || !isVisible) {
             return this.renderSimple();
@@ -730,6 +745,7 @@ class LineCmd extends React.Component<
         const hidePrompt = rendererPlugin?.hidePrompt;
         const termFontSize = GlobalModel.getTermFontSize();
         const containerType = screen.getContainerType();
+        const isMinimized = line.linestate["wave:min"] && containerType == appconst.LineContainer_Main;
         return (
             <div
                 className={mainDivCn}
@@ -742,6 +758,7 @@ class LineCmd extends React.Component<
                 <If condition={isSelected || cmdError}>
                     <div key="mask" className={cn("line-mask", { "error-mask": cmdError })}></div>
                 </If>
+                <LineActions screen={screen} line={line} cmd={cmd} />
                 <LineHeader screen={screen} line={line} cmd={cmd} />
                 <If condition={!isMinimized && isInSidebar}>
                     <div className="sidebar-message" style={{ fontSize: termFontSize }}>
