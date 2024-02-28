@@ -28,6 +28,7 @@ import { ReactComponent as CheckIcon } from "@/assets/icons/line/check.svg";
 import { ReactComponent as CopyIcon } from "@/assets/icons/history/copy.svg";
 
 import "./history.less";
+import { MainView } from "../common/elements/mainview";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(localizedFormat);
@@ -179,11 +180,6 @@ class HistoryView extends React.Component<{}, {}> {
     copiedItemId: OV<string> = mobx.observable.box(null, { name: "copiedItemId" });
 
     @boundMethod
-    clickCloseHandler(): void {
-        GlobalModel.historyViewModel.closeView();
-    }
-
-    @boundMethod
     handleNext() {
         GlobalModel.historyViewModel.goNext();
     }
@@ -206,7 +202,6 @@ class HistoryView extends React.Component<{}, {}> {
         if (checkKeyPressed(waveEvent, "Enter")) {
             e.preventDefault();
             GlobalModel.historyViewModel.submitSearch();
-            return;
         }
     }
 
@@ -229,10 +224,9 @@ class HistoryView extends React.Component<{}, {}> {
             let numSelected = hvm.selectedItems.size;
             if (numSelected > 0) {
                 hvm.selectedItems.clear();
-                return;
             } else {
-                for (let i = 0; i < hvm.items.length; i++) {
-                    hvm.selectedItems.set(hvm.items[i].historyid, true);
+                for (const element of hvm.items) {
+                    hvm.selectedItems.set(element.historyid, true);
                 }
             }
         })();
@@ -302,7 +296,6 @@ class HistoryView extends React.Component<{}, {}> {
             return;
         }
         hvm.setFromDate(e.target.value);
-        return;
     }
 
     @boundMethod
@@ -399,7 +392,6 @@ class HistoryView extends React.Component<{}, {}> {
             return null;
         }
         let hvm = GlobalModel.historyViewModel;
-        let idx: number = 0;
         let item: HistoryItem = null;
         let items = hvm.items.slice();
         let nowDate = new Date();
@@ -410,32 +402,13 @@ class HistoryView extends React.Component<{}, {}> {
         let offset = hvm.offset.get();
         let numSelected = hvm.selectedItems.size;
         let activeItemId = hvm.activeItem.get();
-        let activeItem = hvm.getHistoryItemById(activeItemId);
-        let activeLine: LineType = null;
-        if (activeItem != null) {
-            activeLine = hvm.getLineById(activeItem.lineid);
-        }
         let sessionIds = Object.keys(snames);
         let sessionId: string = null;
         let remoteIds = Object.keys(rnames);
         let remoteId: string = null;
 
-        // TODO: something is weird with how we calculate width for views. Before, history view was not honoring tab width. This fix is copied from workspaceview.tsx, which had a similar issue.
-        const width = window.innerWidth - 6 - GlobalModel.mainSidebarModel.getWidth();
         return (
-            <div
-                className={cn("history-view", "mainview", { "is-hidden": isHidden })}
-                style={{
-                    width: `${width}px`,
-                }}
-            >
-                <header key="header" className="header">
-                    <div className="clientsettings-title text-primary">History</div>
-                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.clickCloseHandler}>
-                        <i className="fa-sharp fa-solid fa-xmark"></i>
-                    </div>
-                </header>
-
+            <MainView viewName="history" title="History" onClose={GlobalModel.historyViewModel.closeView}>
                 <div key="search" className="history-search">
                     <div className="main-search field">
                         <TextField
@@ -678,14 +651,13 @@ class HistoryView extends React.Component<{}, {}> {
                         <ChevronRightIcon className="icon" />
                     </div>
                 </div>
-            </div>
+            </MainView>
         );
     }
 }
 
 class LineContainer extends React.Component<{ historyId: string; width: number }, {}> {
     line: LineType;
-    cmd: Cmd;
     historyItem: HistoryItem;
     visible: OV<boolean> = mobx.observable.box(true);
     overrideCollapsed: OV<boolean> = mobx.observable.box(false);
@@ -698,7 +670,6 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
             return;
         }
         this.line = hvm.getLineById(this.historyItem.lineid);
-        this.cmd = hvm.getCmdById(this.historyItem.lineid);
     }
 
     @boundMethod

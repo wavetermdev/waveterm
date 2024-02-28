@@ -12,6 +12,7 @@ import { Button, Status, ShowWaveShellInstallPrompt } from "@/common/elements";
 import * as util from "@/util/util";
 
 import "./connections.less";
+import { MainView } from "../common/elements/mainview";
 
 @mobxReact.observer
 class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -97,11 +98,6 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         }
     }
 
-    @boundMethod
-    handleClose(): void {
-        GlobalModel.connectionViewModel.closeView();
-    }
-
     componentDidMount() {
         if (this.tableRef.current != null) {
             this.tableRszObs = new ResizeObserver(this.handleTableResize.bind(this));
@@ -130,13 +126,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         let item: RemoteType = null;
 
         return (
-            <div className={cn("mainview", "connections-view")}>
-                <header className="header bottom-border">
-                    <div className="connections-title text-primary">Connections</div>
-                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
-                        <i className="fa-sharp fa-solid fa-xmark"></i>
-                    </div>
-                </header>
+            <MainView viewName="connections" title="Connections" onClose={GlobalModel.connectionViewModel.closeView}>
                 <table
                     className="connections-table"
                     cellSpacing="0"
@@ -209,7 +199,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                         <div>No Connections Items Found</div>
                     </div>
                 </If>
-            </div>
+            </MainView>
         );
     }
 }

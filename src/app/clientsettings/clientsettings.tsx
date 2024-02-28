@@ -12,6 +12,7 @@ import { commandRtnHandler, isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
+import { MainView } from "../common/elements/mainview";
 
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -106,11 +107,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
-    handleClose(): void {
-        GlobalModel.clientSettingsViewModel.closeView();
-    }
-
-    @boundMethod
     handleChangeShortcut(newShortcut: string): void {
         const prtn = GlobalCommandRunner.setGlobalShortcut(newShortcut);
         commandRtnHandler(prtn, this.errorMessage);
@@ -148,13 +144,11 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontFamily = GlobalModel.getTermFontFamily();
 
         return (
-            <div className={cn("mainview", "clientsettings-view")}>
-                <header className="header bottom-border">
-                    <div className="clientsettings-title text-primary">Client Settings</div>
-                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
-                        <i className="fa-sharp fa-solid fa-xmark"></i>
-                    </div>
-                </header>
+            <MainView
+                viewName="clientsettings"
+                title="Client Settings"
+                onClose={GlobalModel.clientSettingsViewModel.closeView}
+            >
                 <div className="content">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>
@@ -259,7 +253,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />
                 </div>
-            </div>
+            </MainView>
         );
     }
 }

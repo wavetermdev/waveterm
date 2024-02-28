@@ -16,6 +16,7 @@ import { ReactComponent as TrashIcon } from "@/assets/icons/favourites/trash.svg
 import { ReactComponent as FavoritesIcon } from "@/assets/icons/favourites.svg";
 
 import "./bookmarks.less";
+import { MainView } from "../common/elements/mainview";
 
 type BookmarkProps = {
     bookmark: BookmarkType;
@@ -23,10 +24,6 @@ type BookmarkProps = {
 
 @mobxReact.observer
 class Bookmark extends React.Component<BookmarkProps, {}> {
-    constructor(props: BookmarkProps) {
-        super(props);
-    }
-
     @boundMethod
     handleDeleteClick(): void {
         let { bookmark } = this.props;
@@ -45,14 +42,12 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
     handleEditCancel(): void {
         let model = GlobalModel.bookmarksModel;
         model.cancelEdit();
-        return;
     }
 
     @boundMethod
     handleEditUpdate(): void {
         let model = GlobalModel.bookmarksModel;
         model.confirmEdit();
-        return;
     }
 
     @boundMethod
@@ -185,31 +180,15 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
 
 @mobxReact.observer
 class BookmarksView extends React.Component<{}, {}> {
-    constructor(props: {}) {
-        super(props);
-    }
-
-    @boundMethod
-    closeView(): void {
-        GlobalModel.bookmarksModel.closeView();
-    }
-
     render() {
-        let isHidden = GlobalModel.activeMainView.get() != "bookmarks";
+        const isHidden = GlobalModel.activeMainView.get() != "bookmarks";
         if (isHidden) {
             return null;
         }
         let bookmarks = GlobalModel.bookmarksModel.bookmarks;
-        let idx: number = 0;
         let bookmark: BookmarkType = null;
         return (
-            <div className={cn("mainview", "bookmarks-view", { "is-hidden": isHidden })}>
-                <div className="header bottom-border">
-                    <div className="bookmarks-title text-primary">Favorites</div>
-                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.closeView}>
-                        <i className="fa-sharp fa-solid fa-xmark"></i>
-                    </div>
-                </div>
+            <MainView viewName="bookmarks" title="Bookmarks" onClose={GlobalModel.bookmarksModel.closeView}>
                 <div className="bookmarks-list">
                     <For index="idx" each="bookmark" of={bookmarks}>
                         <Bookmark key={bookmark.bookmarkid} bookmark={bookmark} />
@@ -238,7 +217,7 @@ class BookmarksView extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </If>
-            </div>
+            </MainView>
         );
     }
 }
