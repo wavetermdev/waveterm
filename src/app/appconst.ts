@@ -33,6 +33,7 @@ export const InputChunkSize = 500;
 export const RemoteColors = ["red", "green", "yellow", "blue", "magenta", "cyan", "white", "orange"];
 export const TabColors = ["red", "orange", "yellow", "green", "mint", "cyan", "blue", "violet", "pink", "white"];
 export const TabIcons = [
+    "square",
     "sparkle",
     "fire",
     "ghost",
