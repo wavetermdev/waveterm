@@ -197,7 +197,12 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
         const isMultiLine = lineutil.isMultiLineCmdText(cmd.getCmdStr());
         return (
             <React.Fragment>
-                <div key="meta2" className={cn("meta meta-line2 cmdtext-expanded", { "is-multiline": isMultiLine })}>
+                <div
+                    key="meta2"
+                    className={cn("meta meta-line2 cmdtext-expanded no-highlight-scrollbar", {
+                        "is-multiline": isMultiLine,
+                    })}
+                >
                     {lineutil.getFullCmdText(cmd.getCmdStr())}
                 </div>
             </React.Fragment>

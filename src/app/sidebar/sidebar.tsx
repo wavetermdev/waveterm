@@ -324,7 +324,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 ]}
                             />
                             <div
-                                className="middle hideScrollbarUntillHover"
+                                className="middle scrollbar-hide-until-hover"
                                 id="sidebar-middle"
                                 style={{
                                     maxHeight: `calc(100vh - ${this.middleHeightSubtractor.get()}px)`,
