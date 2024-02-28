@@ -16,10 +16,12 @@ class MainView extends React.Component<{
     children: React.ReactNode;
 }> {
     render() {
+        const sidebarModel = GlobalModel.mainSidebarModel;
+        const maxWidthSubtractor = sidebarModel.getCollapsed() ? 0 : sidebarModel.getWidth();
         return (
             <div
                 className={cn("mainview", `${this.props.viewName}-view`)}
-                style={{ maxWidth: `calc(100vw - ${GlobalModel.mainSidebarModel.getWidth()}px)` }}
+                style={{ maxWidth: `calc(100vw - ${maxWidthSubtractor}px)` }}
             >
                 <div className="header-container bottom-border">
                     <header className="header">
