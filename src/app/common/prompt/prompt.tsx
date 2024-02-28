@@ -69,7 +69,7 @@ function getCwdStr(remote: RemoteType, state: Record<string, string>): string {
 }
 
 @mobxReact.observer
-class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<string, string> }, {}> {
+class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<string, string>; color: boolean }, {}> {
     render() {
         let rptr = this.props.rptr;
         if (rptr == null || isBlank(rptr.remoteid)) {
@@ -133,7 +133,7 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
             );
         }
         return (
-            <span className="term-prompt">
+            <span className={cn("term-prompt", { "term-prompt-color": this.props.color })}>
                 {remoteElem} {pythonElem}
                 {cwdElem} {branchElem} {rootIndicatorElem}
             </span>

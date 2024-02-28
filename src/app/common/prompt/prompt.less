@@ -1,30 +1,25 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 .term-prompt {
     font-weight: normal;
     font-size: var(--termfontsize);
     line-height: var(--termlineheight);
     font-family: var(--termfontfamily);
-
-    .icon {
-        margin: 0 4px 0 2px;
-        vertical-align: middle;
-        width: 1.2em;
-        height: 1.2em;
-        fill: var(--app-accent-color);
-    }
+    color: var(--term-gray);
 
     i {
         margin-right: 0.25em; // em for relative sizing
     }
+}
 
+.term-prompt.term-prompt-color {
     .term-prompt-branch {
         color: var(--term-white);
     }
 
     .term-prompt-python {
         color: var(--term-bright-magenta);
-    }
-
-    .term-prompt-remote {
     }
 
     .term-prompt-remote {

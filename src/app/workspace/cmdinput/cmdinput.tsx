@@ -185,7 +185,7 @@ class CmdInput extends React.Component<{}, {}> {
                 <div key="prompt" className="cmd-input-context">
                     <div className="has-text-white">
                         <span ref={this.promptRef}>
-                            <Prompt rptr={rptr} festate={feState} />
+                            <Prompt rptr={rptr} festate={feState} color={true} />
                         </span>
                     </div>
                     <If condition={numRunningLines > 0}>
