@@ -3,6 +3,7 @@
         display: flex;
         flex-direction: row;
         justify-content: flex-start;
+        font-weight: normal;
 
         .openai-role {
             color: var(--prompt-bright-green);
@@ -16,8 +17,10 @@
         }
 
         .openai-content-user {
-            white-space: pre;
             color: var(--app-text-color);
+            font-family: var(--markdown-font);
+            font-size: var(--markdown-font-size);
+            font-weight: normal;
         }
 
         .openai-content-assistant {

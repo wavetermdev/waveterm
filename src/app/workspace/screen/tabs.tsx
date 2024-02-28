@@ -180,7 +180,10 @@ class ScreenTabs extends React.Component<
         return (
             <div className="screen-tabs-container">
                 {/* Inner container ensures that hovering over the scrollbar doesn't trigger the hover effect on the tabs. This prevents weird flickering of the icons when the mouse is moved over the scrollbar. */}
-                <div key="container-inner" className="screen-tabs-container-inner hideScrollbarUntillHover">
+                <div
+                    key="container-inner"
+                    className="screen-tabs-container-inner no-highlight-scrollbar hideScrollbarUntillHover"
+                >
                     <Reorder.Group
                         className="screen-tabs"
                         ref={this.tabsRef}
