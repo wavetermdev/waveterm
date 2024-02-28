@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
+import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
@@ -64,6 +64,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             prtn = GlobalCommandRunner.releaseCheckAutoOff(false);
         }
         commandRtnHandler(prtn, this.errorMessage);
+        getApi().changeAutoUpdate(val);
     }
 
     getFontSizes(): DropdownItem[] {

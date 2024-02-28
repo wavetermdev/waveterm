@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 @import "./root.less";
+@import "./overrides.less";
 
 html,
 body {
@@ -151,6 +152,12 @@ svg.icon {
 
 *::-webkit-scrollbar-thumb:hover {
     background-color: var(--scrollbar-thumb-hover-color) !important;
+}
+
+.no-highlight-scrollbar {
+    &::-webkit-scrollbar-thumb:hover {
+        background-color: var(--scrollbar-thumb-color) !important;
+    }
 }
 
 .hide-scrollbar {
