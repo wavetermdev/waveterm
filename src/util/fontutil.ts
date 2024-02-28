@@ -91,17 +91,11 @@ function loadBaseFonts() {
         return;
     }
     isBaseFontsLoaded = true;
-    let faFont = new FontFace("FontAwesome", "url(public/fonts/fontawesome-webfont-4.7.woff2)", {
-        style: "normal",
-        weight: "normal",
-    });
     let mmFont = new FontFace("Martian Mono", "url(public/fonts/MartianMono-VariableFont_wdth,wght.ttf)", {
         style: "normal",
         weight: "normal",
     });
-    addToFontFaceSet(document.fonts, faFont);
     addToFontFaceSet(document.fonts, mmFont);
-    faFont.load();
     mmFont.load();
 }
 
