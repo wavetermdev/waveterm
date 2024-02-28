@@ -25,8 +25,6 @@ import * as lineutil from "./lineutil";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as appconst from "@/app/appconst";
 
-import { ReactComponent as FillIcon } from "@/assets/icons/line/fill.svg";
-
 import "./line.less";
 
 dayjs.extend(localizedFormat);
@@ -124,8 +122,6 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
         return (
             <div key="meta2" className="meta meta-line2" ref={this.cmdTextRef}>
                 <div className="metapart-mono cmdtext">
-                    <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()} color={true} />
-                    <span> </span>
                     <span className="meta-cmdtext">{lineutil.getSingleLineCmdText(cmd.getCmdStr())}</span>
                 </div>
                 <If condition={this.isOverflow.get() || isMultiLine}>
@@ -151,15 +147,16 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
         let renderer = line.renderer;
         return (
             <div key="meta1" className="meta meta-line1">
+                <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()} color={false} />
+                <div className="meta-divider">|</div>
                 <SmallLineAvatar line={line} cmd={cmd} />
                 <div title={timeTitle} className="ts">
                     {formattedTime}
                 </div>
-                <div>&nbsp;</div>
                 <If condition={!isBlank(renderer) && renderer != "terminal"}>
                     <div className="renderer">
                         <i className="fa-sharp fa-solid fa-fill" />
-                        {renderer}&nbsp;
+                        {renderer}
                     </div>
                 </If>
             </div>
