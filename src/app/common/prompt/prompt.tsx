@@ -143,8 +143,7 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
                     { "term-prompt-isroot": isRoot }
                 )}
             >
-                {remoteElem} {condaElem} {pythonElem}
-                {cwdElem} {branchElem}
+                {remoteElem} {cwdElem} {branchElem} {condaElem} {pythonElem}
             </span>
         );
     }
