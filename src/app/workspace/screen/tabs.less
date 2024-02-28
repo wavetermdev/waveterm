@@ -2,7 +2,10 @@
 
 #main .screen-tabs .screen-tab {
     border-top: 1px solid transparent;
-    font-size: 12.5px;
+    font-size: var(--screentabs-font-size);
+    line-height: var(--screentabs-line-height);
+    font-family: var(--label-font-family);
+    font-weight: var(--screentabs-font-weight);
 
     &:not(:hover) .status-indicator {
         .status-indicator-visible;
@@ -81,7 +84,8 @@
     }
 }
 
-.screen-tabs-container {
+// #main for selectivity
+#main .screen-tabs-container {
     display: flex;
     position: relative;
     overflow: hidden;
@@ -159,6 +163,7 @@
             &.is-active {
                 border-top: none;
                 opacity: 1;
+                font-weight: var(--screentabs-selected-font-weight);
             }
 
             &.is-archived {
