@@ -363,6 +363,16 @@ function ces(s: string) {
     return s;
 }
 
+/**
+ * A wrapper function for running a promise and catching any errors
+ * @param f The promise to run
+ */
+function fireAndForget(f: () => Promise<void>) {
+    f().catch((e) => {
+        console.log("fireAndForget error", e);
+    });
+}
+
 export {
     handleJsonFetchResponse,
     base64ToString,
@@ -389,4 +399,5 @@ export {
     getRemoteConnVal,
     getRemoteName,
     ces,
+    fireAndForget,
 };
