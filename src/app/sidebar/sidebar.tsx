@@ -10,10 +10,11 @@ import dayjs from "dayjs";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
 
-import { ReactComponent as LeftChevronIcon } from "@/assets/icons/chevron_left.svg";
 import { ReactComponent as AppsIcon } from "@/assets/icons/apps.svg";
 import { ReactComponent as WorkspacesIcon } from "@/assets/icons/workspaces.svg";
 import { ReactComponent as SettingsIcon } from "@/assets/icons/settings.svg";
+import { ReactComponent as WaveLogoWord } from "@/assets/wave-logo_horizontal-coloronblack.svg";
+import { ReactComponent as WaveLogo } from "@/assets/waveterm-logo.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
@@ -279,10 +280,10 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                         <div className="title-bar-drag">
                             <div className="logo">
                                 <If condition={sidebarWidth > 215}>
-                                    <img src="public/logos/wave-dark.png" alt="logo" />
+                                    <WaveLogoWord />
                                 </If>
                                 <If condition={sidebarWidth <= 215}>
-                                    <img src="public/logos/wave-logo.png" alt="logo" />
+                                    <WaveLogo />
                                 </If>
                             </div>
                             <div className="close-button">

@@ -5,7 +5,6 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    font-size: 12.5px;
     line-height: 20px;
     backdrop-filter: blur(4px);
     z-index: 20;
@@ -20,56 +19,32 @@
         -webkit-app-region: drag;
         --title-bar-height: calc(var(--screentabs-height) + 1px);
         height: var(--title-bar-height);
-        top: 0px;
-        left: 0px;
         border-bottom: 1px solid var(--app-border-color);
         position: relative;
-        align-items: center;
         display: flex;
-        flex-direction: row;
 
-        vertical-align: middle;
         .logo {
-            align-items: center;
-            vertical-align: middle;
-            padding: 0 10px;
+            line-height: 15px;
             margin: auto auto;
-            line-height: var(--title-bar-height);
-            height: var(--title-bar-height);
-            img {
-                height: 20px;
+            svg {
+                width: 88px;
             }
         }
 
         .close-button {
             -webkit-app-region: no-drag;
-            float: right;
+            position: absolute;
+            right: 0;
             height: 100%;
-            padding: 5px;
+            padding: 10px;
             display: flex;
             align-items: center;
-            justify-content: center;
             cursor: pointer;
         }
     }
 
     &.collapsed {
         display: none;
-    }
-
-    .arrow-container {
-        position: absolute;
-        top: 24px;
-        right: 15px;
-        width: 1.5em;
-        height: 1.5em;
-        border-radius: 50%;
-        transition: transform 0.3s ease-in-out;
-        z-index: 2;
-        svg {
-            width: 1.5em;
-            height: 1.5em;
-        }
     }
 
     .contents {
@@ -128,10 +103,12 @@
 
         .front-icon {
             .positional-icon-visible;
+            font-size: 15px;
         }
 
         .end-icons {
             height: 20px;
+            line-height: normal;
         }
 
         .item-contents {
@@ -174,14 +151,6 @@
             }
         }
 
-        .front-icon {
-            font-size: 15px;
-        }
-
-        .end-icons {
-            line-height: normal;
-        }
-
         .fa-discord {
             font-size: 13px;
         }
@@ -195,9 +164,4 @@
             font-size: 16px;
         }
     }
-}
-
-// This ensures the logo does not collide with the macOS traffic light buttons
-#main.platform-darwin .title-bar-drag {
-    padding-left: 50px;
 }

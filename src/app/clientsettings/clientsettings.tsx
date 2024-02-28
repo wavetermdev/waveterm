@@ -130,6 +130,11 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     render() {
+        const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
+        if (isHidden) {
+            return null;
+        }
+
         const cdata: ClientDataType = GlobalModel.clientData.get();
         const openAIOpts = cdata.openaiopts ?? {};
         const apiTokenStr = isBlank(openAIOpts.apitoken) ? "(not set)" : "********";
