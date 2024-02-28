@@ -1,6 +1,6 @@
 .line {
     margin: 0;
-    padding: var(--termpad) var(--termpad) calc(var(--termpad) + 1px) calc(var(--termpad) * 2);
+    padding: calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 2 + 1px) calc(var(--termpad) * 3);
     display: flex;
     overflow: hidden;
     flex-shrink: 0;
@@ -177,7 +177,7 @@
             visibility: visible;
         }
 
-        .line-icon + .line-icon {
+        .line-icon + .line-icon {p
             margin-left: 5px;
         }
 
@@ -193,7 +193,7 @@
         }
 
         .meta.meta-line1 {
-            color: var(--line-meta-text-color);
+            color: var(--term-gray);
         }
 
         .meta.meta-line2 {
@@ -279,6 +279,10 @@
             padding-right: 2px;
             color: var(--term-text-white);
             cursor: pointer;
+        }
+
+        .meta-cmdtext {
+            color: var(--term-bright-white);
         }
     }
 

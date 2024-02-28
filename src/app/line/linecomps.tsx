@@ -231,7 +231,7 @@ class LineCmd extends React.Component<
                 <React.Fragment>
                     <div key="meta2" className="meta meta-line2">
                         <div className="metapart-mono cmdtext">
-                            <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()} />
+                            <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()} color={true} />
                         </div>
                     </div>
                     <div key="meta3" className="meta meta-line3 cmdtext-expanded-wrapper">
@@ -244,9 +244,9 @@ class LineCmd extends React.Component<
         return (
             <div key="meta2" className="meta meta-line2" ref={this.cmdTextRef}>
                 <div className="metapart-mono cmdtext">
-                    <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()} />
+                    <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()} color={true} />
                     <span> </span>
-                    <span>{lineutil.getSingleLineCmdText(cmd.getCmdStr())}</span>
+                    <span className="meta-cmdtext">{lineutil.getSingleLineCmdText(cmd.getCmdStr())}</span>
                 </div>
                 <If condition={this.isOverflow.get() || isMultiLine}>
                     <div className="cmdtext-overflow" onClick={this.handleExpandCmd}>
