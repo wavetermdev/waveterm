@@ -118,13 +118,13 @@ class App extends React.Component<{}, {}> {
                 className={cn("platform-" + platform, { "sidebar-collapsed": sidebarCollapsed })}
                 onContextMenu={this.handleContextMenu}
             >
-                {/* <If condition={sidebarCollapsed}> */}
-                <div key="logo-button" className="logo-button-container">
-                    <div className="logo-button" onClick={this.openSidebar}>
-                        <img src="public/logos/wave-logo.png" alt="logo" />
+                <If condition={sidebarCollapsed}>
+                    <div key="logo-button" className="logo-button-container">
+                        <div className="logo-button" onClick={this.openSidebar}>
+                            <img src="public/logos/wave-logo.png" alt="logo" />
+                        </div>
                     </div>
-                </div>
-                {/* </If> */}
+                </If>
                 <div ref={this.mainContentRef} className="main-content">
                     <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
                     <ErrorBoundary>

@@ -1,0 +1,55 @@
+.mainview {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    border-radius: 0 var(--app-border-radius) var(--app-border-radius) 0;
+    border-bottom: 1px solid var(--app-border-color);
+    border-right: 1px solid var(--app-border-color);
+    border-left: 1px solid var(--app-border-color);
+    background-color: black;
+
+    &.is-hidden {
+        display: none;
+    }
+
+    .header {
+        -webkit-app-region: drag;
+        display: flex;
+        justify-content: space-between;
+        flex-direction: row;
+        line-height: var(--screentabs-height);
+        vertical-align: middle;
+        padding: 0 10px 0 10px;
+        margin: 0;
+
+        .title {
+            font-size: 1.5em;
+            padding: 0 10px;
+            vertical-align: middle;
+            line-height: var(--screentabs-height);
+            color: var(--term-white);
+            margin: 0;
+        }
+
+        .close-div {
+            -webkit-app-region: no-drag;
+            font-size: 1.5em;
+        }
+    }
+
+    .bottom-border {
+        border-bottom: 1px solid var(--app-border-color);
+        margin-bottom: 10px;
+    }
+}
+
+// This ensures the tab bar does not collide with the floating logo. The floating logo sits above the sidebar when it is not collapsed, so no additional margin is needed in that case.
+// More margin is given on macOS to account for the traffic light buttons
+#main.platform-darwin.sidebar-collapsed .header {
+    margin-left: var(--floating-logo-width-darwin);
+}
+
+#main:not(.platform-darwin).sidebar-collapsed .header {
+    margin-left: var(--floating-logo-width);
+}

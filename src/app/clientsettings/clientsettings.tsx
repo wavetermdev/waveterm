@@ -12,6 +12,7 @@ import { commandRtnHandler, isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
+import { MainView } from "../common/elements/mainview";
 
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -106,11 +107,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
-    handleClose(): void {
-        GlobalModel.clientSettingsViewModel.closeView();
-    }
-
-    @boundMethod
     handleChangeShortcut(newShortcut: string): void {
         const prtn = GlobalCommandRunner.setGlobalShortcut(newShortcut);
         commandRtnHandler(prtn, this.errorMessage);
@@ -133,11 +129,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     render() {
-        const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
-        if (isHidden) {
-            return null;
-        }
-
         const cdata: ClientDataType = GlobalModel.clientData.get();
         const openAIOpts = cdata.openaiopts ?? {};
         const apiTokenStr = isBlank(openAIOpts.apitoken) ? "(not set)" : "********";
@@ -148,118 +139,111 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontFamily = GlobalModel.getTermFontFamily();
 
         return (
-            <div className={cn("mainview", "clientsettings-view")}>
-                <header className="header bottom-border">
-                    <div className="clientsettings-title text-primary">Client Settings</div>
-                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
-                        <i className="fa-sharp fa-solid fa-xmark"></i>
+            <MainView
+                viewName="clientsettings"
+                title="Client Settings"
+                onClose={GlobalModel.clientSettingsViewModel.closeView}
+            >
+                <div className="settings-field">
+                    <div className="settings-label">Term Font Size</div>
+                    <div className="settings-input">
+                        <Dropdown
+                            className="font-size-dropdown"
+                            options={this.getFontSizes()}
+                            defaultValue={`${curFontSize}px`}
+                            onChange={this.handleChangeFontSize}
+                        />
                     </div>
-                </header>
-                <div className="content">
-                    <div className="settings-field">
-                        <div className="settings-label">Term Font Size</div>
-                        <div className="settings-input">
-                            <Dropdown
-                                className="font-size-dropdown"
-                                options={this.getFontSizes()}
-                                defaultValue={`${curFontSize}px`}
-                                onChange={this.handleChangeFontSize}
-                            />
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">Term Font Family</div>
-                        <div className="settings-input">
-                            <Dropdown
-                                className="font-size-dropdown"
-                                options={this.getFontFamilies()}
-                                defaultValue={curFontFamily}
-                                onChange={this.handleChangeFontFamily}
-                            />
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">Client ID</div>
-                        <div className="settings-input">{cdata.clientid}</div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">Client Version</div>
-                        <div className="settings-input">
-                            {appconst.VERSION} {appconst.BUILD}
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">DB Version</div>
-                        <div className="settings-input">{cdata.dbversion}</div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">Basic Telemetry</div>
-                        <div className="settings-input">
-                            <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">Check for Updates</div>
-                        <div className="settings-input">
-                            <Toggle
-                                checked={!cdata.clientopts.noreleasecheck}
-                                onChange={this.handleChangeReleaseCheck}
-                            />
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">OpenAI Token</div>
-                        <div className="settings-input">
-                            <InlineSettingsTextEdit
-                                placeholder=""
-                                text={apiTokenStr}
-                                value={""}
-                                onChange={this.inlineUpdateOpenAIToken}
-                                maxLength={100}
-                                showIcon={true}
-                            />
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">OpenAI Model</div>
-                        <div className="settings-input">
-                            <InlineSettingsTextEdit
-                                placeholder="gpt-3.5-turbo"
-                                text={isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model}
-                                value={openAIOpts.model ?? ""}
-                                onChange={this.inlineUpdateOpenAIModel}
-                                maxLength={100}
-                                showIcon={true}
-                            />
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">OpenAI MaxTokens</div>
-                        <div className="settings-input">
-                            <InlineSettingsTextEdit
-                                placeholder=""
-                                text={maxTokensStr}
-                                value={maxTokensStr}
-                                onChange={this.inlineUpdateOpenAIMaxTokens}
-                                maxLength={10}
-                                showIcon={true}
-                            />
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">Global Hotkey</div>
-                        <div className="settings-input">
-                            <Dropdown
-                                className="hotkey-dropdown"
-                                options={this.getFKeys()}
-                                defaultValue={this.getCurrentShortcut()}
-                                onChange={this.handleChangeShortcut}
-                            />
-                        </div>
-                    </div>
-                    <SettingsError errorMessage={this.errorMessage} />
                 </div>
-            </div>
+                <div className="settings-field">
+                    <div className="settings-label">Term Font Family</div>
+                    <div className="settings-input">
+                        <Dropdown
+                            className="font-size-dropdown"
+                            options={this.getFontFamilies()}
+                            defaultValue={curFontFamily}
+                            onChange={this.handleChangeFontFamily}
+                        />
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">Client ID</div>
+                    <div className="settings-input">{cdata.clientid}</div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">Client Version</div>
+                    <div className="settings-input">
+                        {appconst.VERSION} {appconst.BUILD}
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">DB Version</div>
+                    <div className="settings-input">{cdata.dbversion}</div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">Basic Telemetry</div>
+                    <div className="settings-input">
+                        <Toggle checked={!cdata.clientopts.notelemetry} onChange={this.handleChangeTelemetry} />
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">Check for Updates</div>
+                    <div className="settings-input">
+                        <Toggle checked={!cdata.clientopts.noreleasecheck} onChange={this.handleChangeReleaseCheck} />
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">OpenAI Token</div>
+                    <div className="settings-input">
+                        <InlineSettingsTextEdit
+                            placeholder=""
+                            text={apiTokenStr}
+                            value={""}
+                            onChange={this.inlineUpdateOpenAIToken}
+                            maxLength={100}
+                            showIcon={true}
+                        />
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">OpenAI Model</div>
+                    <div className="settings-input">
+                        <InlineSettingsTextEdit
+                            placeholder="gpt-3.5-turbo"
+                            text={isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model}
+                            value={openAIOpts.model ?? ""}
+                            onChange={this.inlineUpdateOpenAIModel}
+                            maxLength={100}
+                            showIcon={true}
+                        />
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">OpenAI MaxTokens</div>
+                    <div className="settings-input">
+                        <InlineSettingsTextEdit
+                            placeholder=""
+                            text={maxTokensStr}
+                            value={maxTokensStr}
+                            onChange={this.inlineUpdateOpenAIMaxTokens}
+                            maxLength={10}
+                            showIcon={true}
+                        />
+                    </div>
+                </div>
+                <div className="settings-field">
+                    <div className="settings-label">Global Hotkey</div>
+                    <div className="settings-input">
+                        <Dropdown
+                            className="hotkey-dropdown"
+                            options={this.getFKeys()}
+                            defaultValue={this.getCurrentShortcut()}
+                            onChange={this.handleChangeShortcut}
+                        />
+                    </div>
+                </div>
+                <SettingsError errorMessage={this.errorMessage} />
+            </MainView>
         );
     }
 }
