@@ -15,18 +15,32 @@
 
     .title-bar-drag {
         -webkit-app-region: drag;
-        height: calc(var(--screentabs-height) + 1px);
-        top: 0;
-        left: 0;
-        width: 100%;
+        --title-bar-height: calc(var(--screentabs-height) + 1px);
+        height: var(--title-bar-height);
+        top: 0px;
+        left: 0px;
         border-bottom: 1px solid var(--app-border-color);
         position: relative;
+        align-items: center;
+        display: flex;
+        flex-direction: row;
+
+        vertical-align: middle;
+        .logo {
+            align-items: center;
+            vertical-align: middle;
+            padding: 0 10px;
+            margin: auto auto;
+            line-height: var(--title-bar-height);
+            height: var(--title-bar-height);
+            img {
+                height: 20px;
+            }
+        }
 
         .close-button {
             -webkit-app-region: no-drag;
-            position: absolute;
-            right: 0;
-            top: 0;
+            float: right;
             height: 100%;
             padding: 5px;
             display: flex;
@@ -38,49 +52,6 @@
 
     &.collapsed {
         display: none;
-
-        width: 6em;
-        min-width: 6em;
-        .arrow-container,
-        .collapse-button {
-            transform: rotate(180deg);
-            margin-top: 20px;
-        }
-
-        .title-bar-drag {
-            .close-button {
-                display: none;
-            }
-        }
-
-        .contents {
-            .top,
-            .workspaces,
-            .middle,
-            .bottom,
-            .separator {
-                pointer-events: none;
-                opacity: 0;
-                visibility: hidden;
-            }
-
-            .logo {
-                display: flex;
-                flex-direction: column;
-                margin-left: 0;
-                justify-content: center;
-                align-items: center;
-
-                .logo-container {
-                    width: 45px;
-                }
-
-                .collapse-button {
-                    margin-right: 0;
-                }
-            }
-        }
-        overflow: hidden;
     }
 
     .arrow-container {
@@ -100,37 +71,6 @@
 
     .contents {
         margin-top: 16px;
-    }
-
-    .logo {
-        margin-left: 14px;
-        display: flex;
-        flex-direction: row;
-
-        .logo-container {
-            flex-shrink: 0;
-            img {
-                width: 40px;
-            }
-        }
-
-        .spacer {
-            flex-grow: 1;
-        }
-        img {
-            width: 100px;
-        }
-
-        .collapse-button {
-            transition: transform 0.3s ease-in-out;
-            margin-right: 14px;
-
-            svg {
-                margin-top: 3px;
-                width: 1.5em;
-                height: 1.5em;
-            }
-        }
     }
 
     .separator {
@@ -251,4 +191,9 @@
             font-size: 16px;
         }
     }
+}
+
+// This ensures the logo does not collide with the macOS traffic light buttons
+#main.platform-darwin .title-bar-drag {
+    padding-left: 50px;
 }

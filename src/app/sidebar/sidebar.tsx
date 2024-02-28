@@ -232,8 +232,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
             needsUpdate = compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0;
         }
-        const mainSidebar = GlobalModel.mainSidebarModel;
-        const isCollapsed = mainSidebar.getCollapsed();
+        const sidebarWidth = GlobalModel.mainSidebarModel.getWidth();
         return (
             <ResizableSidebar
                 className="main-sidebar"
@@ -244,6 +243,14 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                 {(toggleCollapse) => (
                     <React.Fragment>
                         <div className="title-bar-drag">
+                            <div className="logo">
+                                <If condition={sidebarWidth > 215}>
+                                    <img src="public/logos/wave-dark.png" alt="logo" />
+                                </If>
+                                <If condition={sidebarWidth <= 215}>
+                                    <img src="public/logos/wave-logo.png" alt="logo" />
+                                </If>
+                            </div>
                             <div className="close-button">
                                 <i className="fa-sharp fa-solid fa-xmark-large" onClick={toggleCollapse} />
                             </div>
