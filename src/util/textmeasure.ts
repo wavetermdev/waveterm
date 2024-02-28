@@ -7,7 +7,7 @@ import { MagicLayout } from "@/app/magiclayout";
 const MinTermCols = 10;
 const MaxTermCols = 1024;
 
-let MonoFontSizes: { height: number; width: number }[] = [];
+let MonoFontSizes: MonoFontSize[] = [];
 
 // MonoFontSizes[8] = {height: 11, width: 4.797};
 // MonoFontSizes[9] = {height: 12, width: 5.398};
@@ -19,7 +19,7 @@ let MonoFontSizes: { height: number; width: number }[] = [];
 // MonoFontSizes[15] = {height: 20, width: 9};
 // MonoFontSizes[16] = {height: 22, width: 9.594};
 
-function getMonoFontSize(fontSize: number): { height: number; width: number } {
+function getMonoFontSize(fontSize: number): MonoFontSize {
     if (MonoFontSizes[fontSize] != null) {
         return MonoFontSizes[fontSize];
     }
@@ -34,12 +34,9 @@ function clearMonoFontCache(): void {
     MonoFontSizes = [];
 }
 
-function measureText(
-    text: string,
-    textOpts?: { pre?: boolean; mono?: boolean; fontSize?: number | string }
-): { height: number; width: number } {
+function measureText(text: string, textOpts: { pre?: boolean; mono?: boolean; fontSize: number }): MonoFontSize {
     if (textOpts == null) {
-        textOpts = {};
+        throw new Error("invalid textOpts passed to measureText (null)");
     }
     let textElem = document.createElement("span");
     if (textOpts.pre) {
@@ -61,9 +58,10 @@ function measureText(
         throw new Error("cannot measure text, no #measure div");
     }
     measureDiv.replaceChildren(textElem);
-    let height = textElem.offsetHeight;
+    let height = Math.ceil(textElem.offsetHeight);
     let width = textElem.offsetWidth;
-    return { width: width, height: Math.ceil(height) };
+    let pad = Math.floor(height / 2);
+    return { width, height, pad, fontSize: textOpts.fontSize };
 }
 
 function windowWidthToCols(width: number, fontSize: number): number {

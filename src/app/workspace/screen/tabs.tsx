@@ -168,12 +168,6 @@ class ScreenTabs extends React.Component<
         // For touchpad events, do nothing and let the browser handle it
     }
 
-    @boundMethod
-    openSidebar() {
-        const width = GlobalModel.mainSidebarModel.getWidth(true);
-        GlobalCommandRunner.clientSetSidebar(width, false);
-    }
-
     render() {
         let { showingScreens } = this.state;
         let { session } = this.props;
@@ -183,18 +177,13 @@ class ScreenTabs extends React.Component<
         let screen: Screen | null = null;
         let index = 0;
         let activeScreenId = this.getActiveScreenId();
-        const sidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
         return (
-            <div className={cn("screen-tabs-container", { "sidebar-collapsed": sidebarCollapsed })}>
-                <If condition={sidebarCollapsed}>
-                    <div key="logo-button" className="logo-button-container">
-                        <div className="logo-button" onClick={this.openSidebar}>
-                            <img src="public/logos/wave-logo.png" alt="logo" />
-                        </div>
-                    </div>
-                </If>
+            <div className="screen-tabs-container">
                 {/* Inner container ensures that hovering over the scrollbar doesn't trigger the hover effect on the tabs. This prevents weird flickering of the icons when the mouse is moved over the scrollbar. */}
-                <div key="container-inner" className="screen-tabs-container-inner hideScrollbarUntillHover">
+                <div
+                    key="container-inner"
+                    className="screen-tabs-container-inner no-highlight-scrollbar hideScrollbarUntillHover"
+                >
                     <Reorder.Group
                         className="screen-tabs"
                         ref={this.tabsRef}

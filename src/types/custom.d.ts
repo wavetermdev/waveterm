@@ -11,6 +11,7 @@ declare global {
     type HistoryTypeStrs = "global" | "session" | "screen";
     type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error";
     type LineContainerStrs = "main" | "sidebar" | "history";
+    type AppUpdateStatusType = "unavailable" | "ready";
 
     type OV<V> = mobx.IObservableValue<V>;
     type OArr<V> = mobx.IObservableArray<V>;
@@ -844,6 +845,13 @@ declare global {
         getContainerType(): LineContainerStrs;
     };
 
+    type MonoFontSize = {
+        height: number;
+        width: number;
+        fontSize: number;
+        pad: number;
+    };
+
     type KeyModsType = {
         meta?: boolean;
         ctrl?: boolean;
@@ -862,6 +870,10 @@ declare global {
         reloadWindow: () => void;
         openExternalLink: (url: string) => void;
         reregisterGlobalShortcut: (shortcut: string) => void;
+        changeAutoUpdate: (enabled: boolean) => void;
+        installAppUpdate: () => void;
+        getAppUpdateStatus: () => AppUpdateStatusType;
+        onAppUpdateStatus: (callback: (status: AppUpdateStatusType) => void) => void;
         onTCmd: (callback: (mods: KeyModsType) => void) => void;
         onICmd: (callback: (mods: KeyModsType) => void) => void;
         onLCmd: (callback: (mods: KeyModsType) => void) => void;

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 @import "./root.less";
+@import "./overrides.less";
 
 html,
 body {
@@ -153,6 +154,12 @@ svg.icon {
     background-color: var(--scrollbar-thumb-hover-color) !important;
 }
 
+.no-highlight-scrollbar {
+    &::-webkit-scrollbar-thumb:hover {
+        background-color: var(--scrollbar-thumb-color) !important;
+    }
+}
+
 .hide-scrollbar {
     &::-webkit-scrollbar {
         display: none;
@@ -240,6 +247,36 @@ a.a-block {
         flex-direction: row;
         height: 100%;
         position: relative;
+    }
+}
+
+.logo-button-container {
+    width: 105px;
+    flex-shrink: 0;
+    position: absolute;
+    z-index: 25;
+    top: 7px;
+    left: 0px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    -webkit-app-region: drag;
+    pointer-events: none;
+
+    .logo-button {
+        width: 25px;
+        height: 25px;
+        margin-right: 6px;
+        cursor: pointer;
+        user-select: none;
+        -webkit-app-region: no-drag;
+        pointer-events: all;
+
+        &:hover {
+            background-color: #333;
+            border-radius: 4px;
+        }
     }
 }
 
@@ -630,42 +667,6 @@ a.a-block {
         }
         to {
             transform: rotate(360deg);
-        }
-    }
-}
-
-.mainview {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    border-radius: 0 var(--app-border-radius) var(--app-border-radius) 0;
-    border-bottom: 1px solid var(--app-border-color);
-    border-right: 1px solid var(--app-border-color);
-    border-left: 1px solid var(--app-border-color);
-    background-color: black;
-
-    &.is-hidden {
-        display: none;
-    }
-
-    .header {
-        -webkit-app-region: drag;
-        padding: 24px 18px;
-        margin: 0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-
-        .close-div {
-            -webkit-app-region: no-drag;
-            font-size: 1.5em;
-        }
-
-        &.bottom-border {
-            border-bottom: 1px solid white;
-            padding-bottom: 20px;
-            margin-bottom: 20px;
         }
     }
 }

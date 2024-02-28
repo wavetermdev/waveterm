@@ -2,7 +2,10 @@
 
 #main .screen-tabs .screen-tab {
     border-top: 1px solid transparent;
-    font-size: 12.5px;
+    font-size: var(--screentabs-font-size);
+    line-height: var(--screentabs-line-height);
+    font-family: var(--label-font-family);
+    font-weight: var(--screentabs-font-weight);
 
     &:not(:hover) .status-indicator {
         .status-indicator-visible;
@@ -81,39 +84,12 @@
     }
 }
 
-.screen-tabs-container {
+// #main for selectivity
+#main .screen-tabs-container {
     display: flex;
     position: relative;
     overflow: hidden;
     height: var(--screentabs-height);
-
-    &.sidebar-collapsed .logo-button-container {
-        width: 105px;
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: row;
-        justify-content: flex-end;
-        align-items: center;
-        -webkit-app-region: drag;
-
-        .logo-button {
-            width: 25px;
-            height: 25px;
-            margin-right: 6px;
-            cursor: pointer;
-            user-select: none;
-            -webkit-app-region: no-drag;
-
-            &:hover {
-                background-color: #333;
-                border-radius: 4px;
-            }
-        }
-    }
-
-    .logo-button {
-        width: 20px;
-    }
 
     &:hover {
         z-index: 200;
@@ -159,6 +135,7 @@
             &.is-active {
                 border-top: none;
                 opacity: 1;
+                font-weight: var(--screentabs-selected-font-weight);
             }
 
             &.is-archived {
@@ -200,4 +177,14 @@
         -webkit-app-region: drag;
         height: 100%;
     }
+}
+
+// This ensures the tab bar does not collide with the floating logo. The floating logo sits above the sidebar when it is not collapsed, so no additional margin is needed in that case.
+// More margin is given on macOS to account for the traffic light buttons
+#main.platform-darwin.sidebar-collapsed .screen-tabs-container {
+    margin-left: var(--floating-logo-width-darwin);
+}
+
+#main:not(.platform-darwin).sidebar-collapsed .screen-tabs-container {
+    margin-left: var(--floating-logo-width);
 }
