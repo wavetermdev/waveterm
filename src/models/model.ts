@@ -18,13 +18,7 @@ import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import * as appconst from "@/app/appconst";
 import { remotePtrToString, cmdPacketString } from "@/util/modelutil";
-import {
-    WaveKeyboardEvent,
-    KeybindManager,
-    checkKeyPressed,
-    adaptFromReactOrNativeKeyEvent,
-    setKeyUtilPlatform,
-} from "@/util/keyutil";
+import { WaveKeyboardEvent, KeybindManager, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -174,85 +168,81 @@ class Model {
             }
             return fontSize;
         });
-        this.keybindManager.registerKeybinding("electron", "any", (waveEvent) => {
-            let mods = getMods(waveEvent);
-            if (checkKeyPressed(waveEvent, "Cmd:t")) {
-                this.onTCmd(mods);
-                return true;
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:i")) {
-                if (!waveEvent.alt) {
-                    this.onICmd(mods);
-                }
-                return true;
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:r")) {
-                this.onRCmd(mods);
-                return true;
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:l")) {
-                this.onLCmd(mods);
-                return true;
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:w")) {
-                this.onWCmd(mods);
-                return true;
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:h")) {
-                this.onHCmd(mods);
-                return true;
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:p")) {
-                console.log("on p cmd");
-                this.onPCmd(mods);
-                return true;
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:ArrowUp") || checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
-                if (checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
-                    this.onMetaArrowUp();
-                } else {
-                    this.onMetaArrowDown();
-                }
-                return true;
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:PageUp") || checkKeyPressed(waveEvent, "Cmd:PageDown")) {
-                if (checkKeyPressed(waveEvent, "Cmd:PageUp")) {
-                    this.onMetaPageUp();
-                } else {
-                    this.onMetaPageDown();
-                }
-                return true;
-            }
-            if (waveEvent.code.startsWith("Digit") && waveEvent.meta) {
-                let digitNum = parseInt(waveEvent.code.substr(5));
-                if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
-                    return true;
-                }
-                this.onDigitCmd(digitNum, mods);
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:[") || checkKeyPressed(waveEvent, "Cmd:]")) {
-                let rel = checkKeyPressed(waveEvent, "Cmd:]") ? 1 : -1;
-                this.onBracketCmd(rel, mods);
-                return true;
-            }
+        this.keybindManager.registerKeybinding("system", "electron", "any", (waveEvent) => {
             return false;
         });
 
-        this.keybindManager.registerKeybinding("model", "any", (waveEvent) => {
+        this.keybindManager.registerKeybinding("app", "model", "any", (waveEvent) => {
             if (isModKeyPress(waveEvent)) {
                 return false;
             }
             if (this.alertMessage.get() != null) {
-                if (checkKeyPressed(waveEvent, "Escape")) {
+                if (this.keybindManager.checkKeyPressed(waveEvent, "cancelModal")) {
                     this.cancelAlert();
                     return true;
                 }
-                if (checkKeyPressed(waveEvent, "Enter")) {
+                if (this.keybindManager.checkKeyPressed(waveEvent, "confirmModal")) {
                     this.confirmAlert();
                     return true;
                 }
                 return false;
             }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:newTab")) {
+                this.onNewTab(waveEvent);
+                return true;
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:openHistory")) {
+                this.onOpenHistoryPress(waveEvent);
+                return true;
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:openTabSearchModal")) {
+                console.log("on p cmd");
+                this.onOpenTabSearchModal(waveEvent);
+                return true;
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:restartCommand")) {
+                this.onRestartCommand(waveEvent);
+                return true;
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:restartLastCommand")) {
+                this.onRestartLastCommand(waveEvent);
+                return true;
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:focusCmdInput")) {
+                this.onFocusCmdInput(waveEvent);
+                return true;
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:focusSelectedLine")) {
+                this.onFocusSelectedLine(waveEvent);
+                return true;
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:closeCurrentTab")) {
+                this.onCloseCurrentTab(waveEvent);
+                return true;
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectLineAbove")) {
+                this.onSelectLineAbove();
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectLineBelow")) {
+                this.onSelectLineBelow();
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectNumberedTab")) {
+                for (let digitNum = 1; digitNum <= 9; digitNum++) {
+                    if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectTab-" + digitNum)) {
+                        this.onDigitCmd(digitNum, waveEvent);
+                        return true;
+                    }
+                }
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectTabLeft")) {
+                this.onBracketCmd(-1, waveEvent);
+                return true;
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectTabRight")) {
+                this.onBracketCmd(1, waveEvent);
+                return true;
+            }
+
             if (this.activeMainView.get() == "bookmarks") {
                 return this.bookmarksModel.handleDocKeyDown(waveEvent);
             }
@@ -265,7 +255,7 @@ class Model {
             if (this.activeMainView.get() == "clientsettings") {
                 return this.historyViewModel.handleDocKeyDown(waveEvent);
             }
-            if (checkKeyPressed(waveEvent, "Escape")) {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "cancelModal")) {
                 if (this.activeMainView.get() == "webshare") {
                     this.showSessionView();
                     return true;
@@ -280,11 +270,14 @@ class Model {
                 }
                 return true;
             }
-            if (checkKeyPressed(waveEvent, "Cmd:b")) {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "Cmd:b")) {
                 GlobalCommandRunner.bookmarksView();
                 return true;
             }
-            if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
+            if (
+                this.activeMainView.get() == "session" &&
+                this.keybindManager.checkKeyPressed(waveEvent, "Cmd:Ctrl:s")
+            ) {
                 const activeScreen = this.getActiveScreen();
                 if (activeScreen != null) {
                     const isSidebarOpen = activeScreen.isSidebarOpen();
@@ -296,7 +289,7 @@ class Model {
                 }
                 return true;
             }
-            if (checkKeyPressed(waveEvent, "Cmd:d")) {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "Cmd:d")) {
                 const ranDelete = this.deleteActiveLine();
                 if (ranDelete) {
                     return true;
@@ -510,7 +503,7 @@ class Model {
     docKeyDownHandler(e: KeyboardEvent) {
         const waveEvent = adaptFromReactOrNativeKeyEvent(e);
         console.log("got keydown");
-        this.keybindManager.processKeyEvent(waveEvent);
+        this.keybindManager.processKeyEvent(e, waveEvent);
     }
 
     deleteActiveLine(): boolean {
@@ -538,7 +531,7 @@ class Model {
         return true;
     }
 
-    onWCmd(mods: KeyModsType) {
+    onCloseCurrentTab(mods: KeyModsType) {
         console.log("w cmd pressed");
         if (this.activeMainView.get() != "session") {
             return;
@@ -559,8 +552,7 @@ class Model {
         });
     }
 
-    onRCmd(mods: KeyModsType) {
-        console.log("r cmd pressed");
+    onRestartCommand(waveEvent: WaveKeyboardEvent) {
         if (this.activeMainView.get() != "session") {
             return;
         }
@@ -568,17 +560,23 @@ class Model {
         if (activeScreen == null) {
             return;
         }
-        if (mods.shift) {
-            // restart last line
-            GlobalCommandRunner.lineRestart("E", true);
-        } else {
-            // restart selected line
-            const selectedLine = activeScreen.selectedLine.get();
-            if (selectedLine == null || selectedLine == 0) {
-                return;
-            }
-            GlobalCommandRunner.lineRestart(String(selectedLine), true);
+        // restart selected line
+        const selectedLine = activeScreen.selectedLine.get();
+        if (selectedLine == null || selectedLine == 0) {
+            return;
         }
+        GlobalCommandRunner.lineRestart(String(selectedLine), true);
+    }
+
+    onRestartLastCommand(waveEvent: WaveKeyboardEvent) {
+        if (this.activeMainView.get() != "session") {
+            return;
+        }
+        const activeScreen = this.getActiveScreen();
+        if (activeScreen == null) {
+            return;
+        }
+        GlobalCommandRunner.lineRestart("E", true);
     }
 
     onZoomChanged(): void {
@@ -705,26 +703,26 @@ class Model {
         return rtn;
     }
 
-    onTCmd(mods: KeyModsType) {
+    onNewTab(waveEvent: WaveKeyboardEvent) {
         GlobalCommandRunner.createNewScreen();
     }
 
-    onICmd(mods: KeyModsType) {
+    onFocusCmdInput(waveEvent: WaveKeyboardEvent) {
         this.inputModel.giveFocus();
     }
 
-    onLCmd(mods: KeyModsType) {
+    onFocusSelectedLine(mods: KeyModsType) {
         const screen = this.getActiveScreen();
         if (screen != null) {
             GlobalCommandRunner.screenSetFocus("cmd");
         }
     }
 
-    onHCmd(mods: KeyModsType) {
+    onOpenHistoryPress(waveEvent: WaveKeyboardEvent) {
         this.historyViewModel.reSearch();
     }
 
-    onPCmd(mods: KeyModsType) {
+    onOpenTabSearchModal(waveEvent: WaveKeyboardEvent) {
         this.modalsModel.pushModal(appconst.TAB_SWITCHER);
     }
 
@@ -778,11 +776,11 @@ class Model {
         GlobalCommandRunner.screenSelectLine("+1");
     }
 
-    onMetaArrowUp(): void {
+    onSelectLineAbove(): void {
         GlobalCommandRunner.screenSelectLine("-1");
     }
 
-    onMetaArrowDown(): void {
+    onSelectLineBelow(): void {
         GlobalCommandRunner.screenSelectLine("+1");
     }
 
@@ -794,8 +792,8 @@ class Model {
         }
     }
 
-    onDigitCmd(digit: number, mods: KeyModsType) {
-        if (mods.meta && mods.ctrl) {
+    onDigitCmd(digit: number, waveEvent: WaveKeyboardEvent) {
+        if (waveEvent.meta && waveEvent.control) {
             GlobalCommandRunner.switchSession(String(digit));
             return;
         }

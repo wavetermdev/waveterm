@@ -13,13 +13,7 @@ import * as waveutil from "../util/util";
 import { sprintf } from "sprintf-js";
 import { handleJsonFetchResponse } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
-import {
-    KeybindManager,
-    InitGlobalKeybindManager,
-    checkKeyPressed,
-    adaptFromElectronKeyEvent,
-    setKeyUtilPlatform,
-} from "@/util/keyutil";
+import { KeybindManager, checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";

@@ -21,17 +21,19 @@ type Keybind = {
     callback: KeybindCallback;
 };
 
-var GlobalKeybindManager: KeybindManager;
+const KeybindLevels = ["system", "app", "pane", "plugin"];
 
 class KeybindManager {
-    activeKeybinds: Array<Keybind>;
     domainCallbacks: Map<string, KeybindCallback>;
+    levelMap: Map<string, Array<Keybind>>;
+    levelArray: Array<string>;
+    keyDescriptionsMap: Map<string, Array<KeyPressDecl>>;
 
-    processKeyEvent(event: WaveKeyboardEvent) {
+    processLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {
         // iterate through keybinds in backwards order
-        for (let index = this.activeKeybinds.length - 1; index >= 0; index--) {
-            let curKeybind = this.activeKeybinds[index];
-            if (checkKeyPressed(event, curKeybind.keybinding)) {
+        for (let index = keybindsArray.length - 1; index >= 0; index--) {
+            let curKeybind = keybindsArray[index];
+            if (this.checkKeyPressed(event, curKeybind.keybinding)) {
                 let shouldReturn = false;
                 if (curKeybind.callback != null) {
                     shouldReturn = curKeybind.callback(event);
@@ -45,15 +47,38 @@ class KeybindManager {
                     }
                 }
                 if (shouldReturn) {
-                    return;
+                    nativeEvent.preventDefault();
+                    return true;
                 }
+            }
+        }
+        return false;
+    }
+
+    processKeyEvent(nativeEvent: any, event: WaveKeyboardEvent) {
+        for (let index = this.levelArray.length - 1; index >= 0; index--) {
+            let curLevel = this.levelArray[index];
+            let curKeybindsArray;
+            if (this.levelMap.has(curLevel)) {
+                curKeybindsArray = this.levelMap.get(curLevel);
+            } else {
+                console.error("error processing key event: couldn't find level: ", curLevel);
+                continue;
+            }
+            let shouldReturn = this.processLevel(nativeEvent, event, curKeybindsArray);
+            if (shouldReturn) {
+                return;
             }
         }
     }
 
-    keybindingAlreadyAdded(domain: string, keybinding: string) {
-        for (let index = 0; index < this.activeKeybinds.length; index++) {
-            let curKeybind = this.activeKeybinds[index];
+    keybindingAlreadyAdded(level: string, domain: string, keybinding: string) {
+        if (!this.levelMap.has(level)) {
+            return false;
+        }
+        let keybindsArray = this.levelMap.get(level);
+        for (let index = 0; index < keybindsArray.length; index++) {
+            let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
                 return true;
             }
@@ -61,32 +86,46 @@ class KeybindManager {
         return false;
     }
 
-    registerKeybinding(domain: string, keybinding: string, callback: KeybindCallback): boolean {
-        if (domain == "" || this.keybindingAlreadyAdded(domain, keybinding)) {
+    registerKeybinding(level: string, domain: string, keybinding: string, callback: KeybindCallback): boolean {
+        if (domain == "" || this.keybindingAlreadyAdded(level, domain, keybinding)) {
             return false;
         }
         // TODO: check if keybinding is valid
         let newKeybind = { domain: domain, keybinding: keybinding, callback: callback } as Keybind;
-        this.activeKeybinds.push(newKeybind);
+        if (!this.levelMap.has(level)) {
+            return false;
+        }
+        let curKeybindArray = this.levelMap.get(level);
+        curKeybindArray.push(newKeybind);
         return true;
     }
-    unregisterKeybinding(domain: string, keybinding: string): boolean {
-        for (let index = 0; index < this.activeKeybinds.length; index++) {
-            let curKeybind = this.activeKeybinds[index];
+
+    unregisterKeybinding(level: string, domain: string, keybinding: string): boolean {
+        if (!this.levelMap.has(level)) {
+            return false;
+        }
+        let keybindsArray = this.levelMap.get(level);
+        for (let index = 0; index < keybindsArray.length; index++) {
+            let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
-                this.activeKeybinds.splice(index, 1);
+                keybindsArray.splice(index, 1);
             }
             return true;
         }
         return false;
     }
+
     unregisterDomain(domain: string) {
         let foundKeybind = false;
-        for (let index = 0; index < this.activeKeybinds.length; index++) {
-            let curKeybind = this.activeKeybinds[index];
-            if (curKeybind.domain == domain) {
-                this.activeKeybinds.splice(index, 1);
-                foundKeybind = true;
+        for (let levelIndex = 0; levelIndex < this.levelArray.length; levelIndex++) {
+            let curLevel = this.levelArray[levelIndex];
+            let curKeybindArray = this.levelMap.get(curLevel);
+            for (let curArrayIndex = 0; curArrayIndex < curKeybindArray.length; curArrayIndex++) {
+                let curKeybind = curKeybindArray[curArrayIndex];
+                if (curKeybind.domain == domain) {
+                    curKeybindArray.splice(curArrayIndex, 1);
+                    foundKeybind = true;
+                }
             }
         }
         this.domainCallbacks.delete(domain);
@@ -101,22 +140,78 @@ class KeybindManager {
     }
 
     constructor() {
-        this.activeKeybinds = [];
+        this.levelMap = new Map();
         this.domainCallbacks = new Map();
+        this.levelArray = KeybindLevels;
+        for (let index = 0; index < this.levelArray.length; index++) {
+            let curLevel = this.levelArray[index];
+            this.levelMap.set(curLevel, new Array<Keybind>());
+        }
+        this.initKeyDescriptionsMap();
+    }
+
+    initKeyDescriptionsMap() {
+        this.keyDescriptionsMap = new Map();
+        this.keyDescriptionsMap.set("cancelModal", [parseKeyDescription("Escape")]);
+        this.keyDescriptionsMap.set("confirmModal", [parseKeyDescription("Enter")]);
+        this.keyDescriptionsMap.set("app:openHistory", [parseKeyDescription("Cmd:h")]);
+        this.keyDescriptionsMap.set("app:openTabSearchModal", [parseKeyDescription("Cmd:p")]);
+        this.keyDescriptionsMap.set("app:newTab", [parseKeyDescription("Cmd:t")]);
+        this.keyDescriptionsMap.set("app:focusCmdInput", [parseKeyDescription("Cmd:i")]);
+        this.keyDescriptionsMap.set("app:focusSelectedLine", [parseKeyDescription("Cmd:l")]);
+        this.keyDescriptionsMap.set("app:restartCommand", [parseKeyDescription("Cmd:r")]);
+        this.keyDescriptionsMap.set("app:restartLastCommand", [parseKeyDescription("Cmd:Shift:r")]);
+        this.keyDescriptionsMap.set("app:closeCurrentTab", [parseKeyDescription("Cmd:w")]);
+        this.keyDescriptionsMap.set("app:selectLineAbove", [
+            parseKeyDescription("Cmd:ArrowUp"),
+            parseKeyDescription("Cmd:PageUp"),
+        ]);
+        this.keyDescriptionsMap.set("app:selectLineBelow", [
+            parseKeyDescription("Cmd:ArrowDown"),
+            parseKeyDescription("Cmd:PageDown"),
+        ]);
+        this.keyDescriptionsMap.set("app:selectTab-1", [parseKeyDescription("Cmd:1")]);
+        this.keyDescriptionsMap.set("app:selectTab-2", [parseKeyDescription("Cmd:2")]);
+        this.keyDescriptionsMap.set("app:selectTab-3", [parseKeyDescription("Cmd:3")]);
+        this.keyDescriptionsMap.set("app:selectTab-4", [parseKeyDescription("Cmd:4")]);
+        this.keyDescriptionsMap.set("app:selectTab-5", [parseKeyDescription("Cmd:5")]);
+        this.keyDescriptionsMap.set("app:selectTab-6", [parseKeyDescription("Cmd:6")]);
+        this.keyDescriptionsMap.set("app:selectTab-7", [parseKeyDescription("Cmd:7")]);
+        this.keyDescriptionsMap.set("app:selectTab-8", [parseKeyDescription("Cmd:8")]);
+        this.keyDescriptionsMap.set("app:selectTab-9", [parseKeyDescription("Cmd:9")]);
+        let selectNumberedTabKeyPressArray = [];
+        for (let num = 1; num <= 9; num++) {
+            // get all of the above 9 keybindings into one array
+            let curNumArray = this.keyDescriptionsMap.get("app:selectTab-" + num);
+            selectNumberedTabKeyPressArray = selectNumberedTabKeyPressArray.concat(curNumArray);
+        }
+        // this keybinding will work for any of the above 9 keybindings. The user can then check for each one, allowing for slightly cleaner code
+        this.keyDescriptionsMap.set("app:selectNumberedTab", selectNumberedTabKeyPressArray);
+        this.keyDescriptionsMap.set("app:selectTabLeft", [parseKeyDescription("Cmd:[")]);
+        this.keyDescriptionsMap.set("app:selectTabRight", [parseKeyDescription("Cmd:]")]);
+    }
+
+    checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
+        if (keyDescription == "any") {
+            return true;
+        }
+        if (!this.keyDescriptionsMap.has(keyDescription)) {
+            return false;
+        }
+        let keyPressArray = this.keyDescriptionsMap.get(keyDescription);
+        for (let index = 0; index < keyPressArray.length; index++) {
+            let curKeyPress = keyPressArray[index];
+            let pressed = checkKeyPressed(event, curKeyPress);
+            if (pressed) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
 var PLATFORM: string;
 const PlatformMacOS: string = "darwin";
-
-function InitGlobalKeybindManager() {
-    GlobalKeybindManager = new KeybindManager();
-    return GlobalKeybindManager;
-}
-
-function GetGlobalKeybindManager() {
-    return GlobalKeybindManager;
-}
 
 function setKeyUtilPlatform(platform: string) {
     PLATFORM = platform;
@@ -159,11 +254,7 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
     return rtn;
 }
 
-function checkKeyPressed(event: WaveKeyboardEvent, description: string): boolean {
-    if (description == "any") {
-        return true;
-    }
-    let keyPress = parseKeyDescription(description);
+function checkKeyPressed(event: WaveKeyboardEvent, keyPress: KeyPressDecl): boolean {
     if (keyPress.mods.Option && !event.option) {
         return false;
     }
@@ -276,13 +367,5 @@ function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     return rtn;
 }
 
-export {
-    KeybindManager,
-    InitGlobalKeybindManager,
-    GetGlobalKeybindManager,
-    adaptFromElectronKeyEvent,
-    adaptFromReactOrNativeKeyEvent,
-    checkKeyPressed,
-    setKeyUtilPlatform,
-};
+export { KeybindManager, adaptFromElectronKeyEvent, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform };
 export type { WaveKeyboardEvent };

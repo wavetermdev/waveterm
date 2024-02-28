@@ -164,17 +164,19 @@ class SourceCodeRenderer extends React.Component<
         this.monacoEditor = editor;
         this.setInitialLanguage(editor);
         this.setEditorHeight();
-        GlobalModel.keybindManager.registerKeybinding("codeedit", "Cmd:s", (waveEvent) => {
+        GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "Cmd:s", (waveEvent) => {
             if (this.state.isSave) {
                 this.doSave();
             }
+            return true;
         });
-        GlobalModel.keybindManager.registerKeybinding("codeedit", "Cmd:d", (waveEvent) => {
+        GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "Cmd:d", (waveEvent) => {
             this.doClose();
+            return true;
         });
-        GlobalModel.keybindManager.registerKeybinding("codeedit", "Cmd:p", (waveEvent) => {
-            console.log("toggling preview");
+        GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "Cmd:p", (waveEvent) => {
             this.togglePreview();
+            return true;
         });
         editor.onDidScrollChange((e) => {
             if (!this.syncing && e.scrollTopChanged) {
