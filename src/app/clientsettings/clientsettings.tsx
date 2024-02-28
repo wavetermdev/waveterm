@@ -129,6 +129,11 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         return clientData?.clientopts?.globalshortcut ?? "";
     }
 
+    @boundMethod
+    handleClose() {
+        GlobalModel.clientSettingsViewModel.closeView();
+    }
+
     render() {
         const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
@@ -145,11 +150,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontFamily = GlobalModel.getTermFontFamily();
 
         return (
-            <MainView
-                viewName="clientsettings"
-                title="Client Settings"
-                onClose={GlobalModel.clientSettingsViewModel.closeView}
-            >
+            <MainView viewName="clientsettings" title="Client Settings" onClose={this.handleClose}>
                 <div className="content">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>

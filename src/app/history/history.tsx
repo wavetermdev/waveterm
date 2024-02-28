@@ -386,6 +386,11 @@ class HistoryView extends React.Component<{}, {}> {
         })();
     }
 
+    @boundMethod
+    handleClose() {
+        GlobalModel.historyViewModel.closeView();
+    }
+
     render() {
         let isHidden = GlobalModel.activeMainView.get() != "history";
         if (isHidden) {
@@ -408,7 +413,7 @@ class HistoryView extends React.Component<{}, {}> {
         let remoteId: string = null;
 
         return (
-            <MainView viewName="history" title="History" onClose={GlobalModel.historyViewModel.closeView}>
+            <MainView viewName="history" title="History" onClose={this.handleClose}>
                 <div key="search" className="history-search">
                     <div className="main-search field">
                         <TextField
