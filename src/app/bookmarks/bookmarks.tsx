@@ -181,6 +181,10 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
 @mobxReact.observer
 class BookmarksView extends React.Component<{}, {}> {
     render() {
+        const isHidden = GlobalModel.activeMainView.get() != "bookmarks";
+        if (isHidden) {
+            return null;
+        }
         let bookmarks = GlobalModel.bookmarksModel.bookmarks;
         let bookmark: BookmarkType = null;
         return (

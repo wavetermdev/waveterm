@@ -16,11 +16,6 @@ class MainView extends React.Component<{
     children: React.ReactNode;
 }> {
     render() {
-        const isHidden = GlobalModel.activeMainView.get() != this.props.viewName;
-        if (isHidden) {
-            return null;
-        }
-
         // TODO: This is a workaround for History view not honoring the sidebar width. This is rooted in the table width for the history view, which uses `calc(100%-20px)`. To properly fix this, History view needs a full overhaul.
         const width = window.innerWidth - 6 - GlobalModel.mainSidebarModel.getWidth();
 
