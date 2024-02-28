@@ -205,10 +205,6 @@
         font-size: var(--termfontsize);
         line-height: var(--termlineheight);
 
-        &.is-expanded {
-            height: auto;
-        }
-
         .meta + .meta {
             margin-top: 2px;
         }
@@ -247,37 +243,19 @@
                 margin-left: 8px;
                 white-space: nowrap;
             }
-
-            .cmdtext {
-                overflow: hidden;
-                margin-left: 0;
-            }
-
-            .cmdtext-overflow {
-                flex-shrink: 0;
-                padding-right: 2px;
-                color: var(--term-text-white);
-                cursor: pointer;
-            }
-
-            .meta-cmdtext {
-                color: var(--term-bright-white);
-                font-weight: bold;
-            }
         }
 
-        .cmdtext-expanded-wrapper {
-            padding-left: 6px;
-            overflow-y: auto;
-            max-height: 60px;
-            border-left: 2px solid #333;
-            margin-left: 3px;
+        .cmdtext-expanded {
+            overflow: auto;
+            max-height: calc(var(--termlineheight) * 3.3);
+            white-space: pre;
+            color: var(--term-bright-white);
+            font-weight: bold;
 
-            .cmdtext-expanded {
-                white-space: pre;
-
-                color: var(--term-bright-white);
-                padding-bottom: 5px;
+            &.is-multiline {
+                border-left: 2px solid #333;
+                margin-left: 3px;
+                padding-left: 6px;
             }
         }
     }

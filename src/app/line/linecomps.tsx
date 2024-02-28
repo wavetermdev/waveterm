@@ -182,56 +182,9 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
 
 @mobxReact.observer
 class LineHeader extends React.Component<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
-    cmdTextRef: React.RefObject<any> = React.createRef();
-    isCmdExpanded: OV<boolean> = mobx.observable.box(false, {
-        name: "cmd-expanded",
-    });
     isOverflow: OV<boolean> = mobx.observable.box(false, {
         name: "line-overflow",
     });
-
-    componentDidMount() {
-        this.componentDidUpdate(null, null, null);
-        this.checkCmdText();
-    }
-
-    componentDidUpdate(prevProps, prevState, snapshot: { height: number }): void {
-        this.checkCmdText();
-    }
-
-    @boundMethod
-    handleExpandCmd(): void {
-        mobx.action(() => {
-            this.isCmdExpanded.set(true);
-        })();
-    }
-
-    checkCmdText() {
-        const metaElem = this.cmdTextRef.current;
-        if (metaElem == null || metaElem.childNodes.length == 0) {
-            return;
-        }
-        const metaElemWidth = metaElem.offsetWidth;
-        if (metaElemWidth == 0) {
-            return;
-        }
-        const metaChild = metaElem.firstChild;
-        if (metaChild == null) {
-            return;
-        }
-        const children = metaChild.childNodes;
-        let childWidth = 0;
-        for (let i = 0; i < children.length; i++) {
-            let ch = children[i];
-            childWidth += ch.offsetWidth;
-        }
-        const isOverflow = childWidth > metaElemWidth;
-        if (isOverflow && isOverflow != this.isOverflow.get()) {
-            mobx.action(() => {
-                this.isOverflow.set(isOverflow);
-            })();
-        }
-    }
 
     renderCmdText(cmd: Cmd): any {
         if (cmd == null) {
@@ -241,32 +194,13 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
                 </div>
             );
         }
-        if (this.isCmdExpanded.get()) {
-            return (
-                <React.Fragment>
-                    <div key="meta2" className="meta meta-line2">
-                        <div className="metapart-mono cmdtext">
-                            <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()} color={true} />
-                        </div>
-                    </div>
-                    <div key="meta3" className="meta meta-line3 cmdtext-expanded-wrapper">
-                        <div className="cmdtext-expanded">{lineutil.getFullCmdText(cmd.getCmdStr())}</div>
-                    </div>
-                </React.Fragment>
-            );
-        }
         const isMultiLine = lineutil.isMultiLineCmdText(cmd.getCmdStr());
         return (
-            <div key="meta2" className="meta meta-line2" ref={this.cmdTextRef}>
-                <div className="metapart-mono cmdtext">
-                    <span className="meta-cmdtext">{lineutil.getSingleLineCmdText(cmd.getCmdStr())}</span>
+            <React.Fragment>
+                <div key="meta2" className={cn("meta meta-line2 cmdtext-expanded", { "is-multiline": isMultiLine })}>
+                    {lineutil.getFullCmdText(cmd.getCmdStr())}
                 </div>
-                <If condition={this.isOverflow.get() || isMultiLine}>
-                    <div className="cmdtext-overflow" onClick={this.handleExpandCmd}>
-                        ...&#x25BC;
-                    </div>
-                </If>
-            </div>
+            </React.Fragment>
         );
     }
 
@@ -305,13 +239,9 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
 
     render() {
         let { line, cmd } = this.props;
-        const isExpanded = this.isCmdExpanded.get();
         const hidePrompt = getIsHidePrompt(line);
         return (
-            <div
-                key="header"
-                className={cn("line-header", { "is-expanded": isExpanded }, { "hide-prompt": hidePrompt })}
-            >
+            <div key="header" className={cn("line-header", { "hide-prompt": hidePrompt })}>
                 {this.renderMeta1(cmd)}
                 <If condition={!hidePrompt}>{this.renderCmdText(cmd)}</If>
             </div>
