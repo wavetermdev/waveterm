@@ -85,17 +85,21 @@ class ScreenTab extends React.Component<
                 onContextMenu={(event) => this.openScreenSettings(event, screen)}
                 onDragEnd={this.handleDragEnd}
             >
-                <CenteredIcon className="front-icon">
-                    <TabIcon icon={screen.getTabIcon()} color={screen.getTabColor()} />
-                </CenteredIcon>
-                <div className="tab-name truncate">
-                    {archived}
-                    {screen.name.get()}
+                <div className="background"></div>
+                <div className="screen-tab-inner">
+                    <CenteredIcon className="front-icon">
+                        <TabIcon icon={screen.getTabIcon()} color={screen.getTabColor()} />
+                    </CenteredIcon>
+                    <div className="tab-name truncate">
+                        {archived}
+                        {screen.name.get()}
+                    </div>
+                    <div className="end-icons">
+                        <StatusIndicator level={statusIndicatorLevel} runningCommands={runningCommands} />
+                        <ActionsIcon onClick={(e) => this.openScreenSettings(e, screen)} />
+                    </div>
                 </div>
-                <div className="end-icons">
-                    <StatusIndicator level={statusIndicatorLevel} runningCommands={runningCommands} />
-                    <ActionsIcon onClick={(e) => this.openScreenSettings(e, screen)} />
-                </div>
+                <div className="vertical-line"></div>
             </Reorder.Item>
         );
     }

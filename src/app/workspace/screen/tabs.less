@@ -1,19 +1,16 @@
 @import "@/common/icons/icons.less";
 
+// Theming values
 #main .screen-tabs .screen-tab {
-    border-top: 1px solid transparent;
     font-size: var(--screentabs-font-size);
     line-height: var(--screentabs-line-height);
     font-family: var(--label-font-family);
     font-weight: var(--screentabs-font-weight);
 
-    &:not(:hover) .status-indicator {
-        .status-indicator-visible;
-    }
-
-    &:hover {
-        .actions {
-            .positional-icon-visible;
+    &.is-active {
+        .background {
+            border-top: 1px solid var(--tab-color);
+            background-color: var(--tab-color);
         }
     }
 
@@ -23,17 +20,6 @@
 
     .icon i {
         color: var(--tab-color);
-    }
-
-    &.is-active {
-        border-top: 1px solid var(--tab-color);
-        background-color: var(--tab-color);
-        background-image: linear-gradient(
-            rgba(0, 0, 0, 0),
-            rgba(0, 0, 0, 0.5) 15%,
-            rgba(0, 0, 0, 0.7) 30%,
-            rgba(0, 0, 0, 1) 100%
-        );
     }
 
     &.color-green,
@@ -76,15 +62,9 @@
     &.color-pink {
         --tab-color: var(--tab-pink);
     }
-
-    .web-share-icon {
-        position: relative;
-        top: 1px;
-        margin-right: 3px;
-    }
 }
 
-// #main for selectivity
+// Layout values
 #main .screen-tabs-container {
     display: flex;
     position: relative;
@@ -113,44 +93,73 @@
     .screen-tabs {
         display: flex;
         flex-direction: row;
-        align-items: center;
-
+        height: 100%;
         .screen-tab {
             display: flex;
             flex-direction: row;
-            min-width: 13.6em;
-            max-width: 13.6em;
-            align-items: center;
-            cursor: pointer;
-            padding: 8px 8px 4px 8px; // extra 4px of tab padding to account for horizontal scrollbar (to make tab text look centered)
-
-            .front-icon {
-                .positional-icon-visible;
+            position: relative;
+            .background {
+                // This applies a transparency mask to the background color, as set above, so that it will blend with whatever the theme's background color is.
+                z-index: 1;
+                width: var(--screen-tab-width);
+                mask-image: linear-gradient(
+                    rgba(0, 0, 0, 1),
+                    rgba(0, 0, 0, 0.7) 15%,
+                    rgba(0, 0, 0, 0.5) 30%,
+                    rgba(0, 0, 0, 0) 100%
+                );
             }
+            .screen-tab-inner {
+                display: flex;
+                flex-direction: row;
+                position: absolute;
+                min-width: var(--screen-tab-width);
+                max-width: var(--screen-tab-width);
+                align-items: center;
+                cursor: pointer;
+                padding: 8px 8px 4px 8px; // extra 4px of tab padding to account for horizontal scrollbar (to make tab text look centered)
+                .front-icon {
+                    .positional-icon-visible;
+                }
 
-            .tab-name {
-                flex-grow: 1;
-            }
+                .tab-name {
+                    flex-grow: 1;
+                }
 
-            &.is-active {
-                border-top: none;
-                opacity: 1;
-                font-weight: var(--screentabs-selected-font-weight);
-            }
+                &.is-active {
+                    border-top: none;
+                    opacity: 1;
+                    font-weight: var(--screentabs-selected-font-weight);
+                }
 
-            &.is-archived {
-                .fa.fa-archive {
-                    margin-right: 4px;
+                &.is-archived {
+                    .fa.fa-archive {
+                        margin-right: 4px;
+                    }
+                }
+
+                // Only one of these will be visible at a time
+                .end-icons {
+                    // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
+                    margin: 0 -8px 0 0;
+                    line-height: normal;
+                    .tab-index {
+                        font-size: 12.5px;
+                    }
                 }
             }
+            .vertical-line {
+                border-left: 1px solid var(--app-border-color);
+                margin: 8px 0 6px 0;
+            }
 
-            // Only one of these will be visible at a time
-            .end-icons {
-                // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
-                margin: 0 -8px 0 0;
-                line-height: normal;
-                .tab-index {
-                    font-size: 12.5px;
+            &:not(:hover) .status-indicator {
+                .status-indicator-visible;
+            }
+
+            &:hover {
+                .actions {
+                    .positional-icon-visible;
                 }
             }
         }
