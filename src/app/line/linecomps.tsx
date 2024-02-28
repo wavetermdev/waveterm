@@ -199,9 +199,12 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
             <React.Fragment>
                 <div
                     key="meta2"
-                    className={cn("meta meta-line2 cmdtext-expanded no-highlight-scrollbar", {
-                        "is-multiline": isMultiLine,
-                    })}
+                    className={cn(
+                        "meta meta-line2 cmdtext-expanded no-highlight-scrollbar scrollbar-hide-until-hover",
+                        {
+                            "is-multiline": isMultiLine,
+                        }
+                    )}
                 >
                     {lineutil.getFullCmdText(cmd.getCmdStr())}
                 </div>
