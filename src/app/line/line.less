@@ -198,7 +198,7 @@
 
     .line-header {
         display: flex;
-        flex-direction: row;
+        flex-direction: column;
         width: 100%;
         font-weight: normal;
         font-family: var(--termfontfamily);
@@ -207,14 +207,6 @@
 
         &.is-expanded {
             height: auto;
-        }
-
-        .meta-wrap {
-            flex: 1 1 0px;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
         }
 
         .meta + .meta {
@@ -249,24 +241,6 @@
             .termopts,
             .renderer {
                 display: flex;
-            }
-
-            .renderer {
-                margin-left: 3px;
-                svg {
-                    width: 1em;
-                    margin-right: 0.5em;
-                    fill: var(--line-svg-fill-color);
-                }
-            }
-
-            .termopts {
-                display: none;
-                .resize-button {
-                    cursor: pointer;
-                    padding-left: 3px;
-                    padding-right: 3px;
-                }
             }
 
             .metapart-mono {

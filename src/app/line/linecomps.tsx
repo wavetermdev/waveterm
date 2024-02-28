@@ -24,6 +24,7 @@ import { Prompt } from "@/common/prompt/prompt";
 import * as lineutil from "./lineutil";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as appconst from "@/app/appconst";
+import * as util from "@/util/util";
 
 import "./line.less";
 
@@ -281,6 +282,7 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
             formattedTime = lineutil.getLineDateTimeStr(line.ts);
         }
         let renderer = line.renderer;
+        let durationMs = cmd.getDurationMs();
         return (
             <div key="meta1" className="meta meta-line1">
                 <SmallLineAvatar line={line} cmd={cmd} />
@@ -288,9 +290,10 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
                 <Prompt rptr={cmd.remote} festate={cmd.getRemoteFeState()} color={false} />
                 <div className="meta-divider">|</div>
                 <div title={timeTitle} className="ts">
-                    {formattedTime}
+                    {formattedTime} <If condition={durationMs > 0}>({util.formatDuration(durationMs)})</If>
                 </div>
                 <If condition={!isBlank(renderer) && renderer != "terminal"}>
+                    <div className="meta-divider">|</div>
                     <div className="renderer">
                         <i className="fa-sharp fa-solid fa-fill" />
                         {renderer}
@@ -309,10 +312,8 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
                 key="header"
                 className={cn("line-header", { "is-expanded": isExpanded }, { "hide-prompt": hidePrompt })}
             >
-                <div key="meta" className="meta-wrap">
-                    {this.renderMeta1(cmd)}
-                    <If condition={!hidePrompt}>{this.renderCmdText(cmd)}</If>
-                </div>
+                {this.renderMeta1(cmd)}
+                <If condition={!hidePrompt}>{this.renderCmdText(cmd)}</If>
             </div>
         );
     }

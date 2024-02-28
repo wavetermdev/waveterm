@@ -94,11 +94,7 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
         if (remote && remote.remotecanonicalname) {
             remoteTitle = "connected to " + remote.remotecanonicalname;
         }
-        let cwdElem = (
-            <span title="current directory" className="term-prompt-cwd">
-                {cwd}
-            </span>
-        );
+        let cwdElem = <span className="term-prompt-cwd">{cwd}</span>;
         let remoteElem = null;
         if (remoteStr != "local") {
             remoteElem = (
