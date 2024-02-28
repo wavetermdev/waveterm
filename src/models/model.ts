@@ -12,8 +12,8 @@ import {
     genMergeSimpleData,
     isModKeyPress,
     isBlank,
-    loadFonts,
 } from "@/util/util";
+import { loadFonts } from "@/util/fontutil";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import * as appconst from "@/app/appconst";
