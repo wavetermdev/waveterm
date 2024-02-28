@@ -16,7 +16,6 @@ import { ReactComponent as TrashIcon } from "@/assets/icons/favourites/trash.svg
 import { ReactComponent as FavoritesIcon } from "@/assets/icons/favourites.svg";
 
 import "./bookmarks.less";
-import Main from "electron/main";
 import { MainView } from "../common/elements/mainview";
 
 type BookmarkProps = {

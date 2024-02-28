@@ -34,7 +34,7 @@ class MainView extends React.Component<{
                         </div>
                     </header>
                 </div>
-                <div className="content">{this.props.children}</div>
+                {this.props.children}
             </div>
         );
     }
