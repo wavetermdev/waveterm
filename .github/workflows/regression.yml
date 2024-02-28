@@ -24,16 +24,3 @@ jobs:
             3. type 'ls' into the input
             4. press return
             5. validate Wave shows the result of 'ls'
-      # - name: Send custom JSON data to Slack workflow
-      #   id: slack
-      #   if: ${{ always() }}
-      #   uses: slackapi/slack-github-action@v1.25.0
-      #   with:
-      #     # This data can be any valid JSON from a previous step in the GitHub Action
-      #     payload: |
-      #       {
-      #         "link": "${{ steps.testdriver.outputs.link }}",
-      #         "summary": ${{ toJSON(steps.testdriver.outputs.summary)}}
-      #       }
-      #   env:
-      #     SLACK_WEBHOOK_URL: "https://hooks.slack.com/triggers/xxx"
