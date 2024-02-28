@@ -115,6 +115,7 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
         }
         let branchElem = null;
         let pythonElem = null;
+        let condaElem = null;
         if (!isBlank(festate["PROMPTVAR_GITBRANCH"])) {
             let branchName = festate["PROMPTVAR_GITBRANCH"];
             branchElem = (
@@ -132,9 +133,17 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
                 </span>
             );
         }
+        if (!isBlank(festate["CONDA_DEFAULT_ENV"])) {
+            let condaEnv = festate["CONDA_DEFAULT_ENV"];
+            condaElem = (
+                <span title="conda env" className="term-prompt-python">
+                    conda:({condaEnv}){" "}
+                </span>
+            );
+        }
         return (
             <span className={cn("term-prompt", { "term-prompt-color": this.props.color })}>
-                {remoteElem} {pythonElem}
+                {remoteElem} {condaElem} {pythonElem}
                 {cwdElem} {branchElem} {rootIndicatorElem}
             </span>
         );
