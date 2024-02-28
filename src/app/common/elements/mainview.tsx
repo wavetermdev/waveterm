@@ -16,11 +16,13 @@ class MainView extends React.Component<{
     children: React.ReactNode;
 }> {
     render() {
-        // TODO: This is a workaround for History view not honoring the sidebar width. This is rooted in the table width for the history view, which uses `calc(100%-20px)`. To properly fix this, History view needs a full overhaul.
-        const width = window.innerWidth - 6 - GlobalModel.mainSidebarModel.getWidth();
-
+        const sidebarModel = GlobalModel.mainSidebarModel;
+        const maxWidthSubtractor = sidebarModel.getCollapsed() ? 0 : sidebarModel.getWidth();
         return (
-            <div className={cn("mainview", `${this.props.viewName}-view`)} style={{ maxWidth: width }}>
+            <div
+                className={cn("mainview", `${this.props.viewName}-view`)}
+                style={{ maxWidth: `calc(100vw - ${maxWidthSubtractor}px)` }}
+            >
                 <div className="header-container bottom-border">
                     <header className="header">
                         <div className="title text-primary">{this.props.title}</div>

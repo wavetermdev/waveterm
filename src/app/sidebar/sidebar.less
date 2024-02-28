@@ -5,7 +5,6 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    font-size: 12.5px;
     line-height: 20px;
     backdrop-filter: blur(4px);
     z-index: 20;
@@ -19,121 +18,36 @@
     .title-bar-drag {
         -webkit-app-region: drag;
         height: calc(var(--screentabs-height) + 1px);
-        top: 0;
-        left: 0;
-        width: 100%;
         border-bottom: 1px solid var(--app-border-color);
         position: relative;
+        display: flex;
+
+        .logo {
+            line-height: 15px;
+            margin: auto auto;
+            svg {
+                width: 88px;
+            }
+        }
 
         .close-button {
             -webkit-app-region: no-drag;
             position: absolute;
             right: 0;
-            top: 0;
             height: 100%;
-            padding: 5px;
+            padding: 10px;
             display: flex;
             align-items: center;
-            justify-content: center;
             cursor: pointer;
         }
     }
 
     &.collapsed {
         display: none;
-
-        width: 6em;
-        min-width: 6em;
-        .arrow-container,
-        .collapse-button {
-            transform: rotate(180deg);
-            margin-top: 20px;
-        }
-
-        .title-bar-drag {
-            .close-button {
-                display: none;
-            }
-        }
-
-        .contents {
-            .top,
-            .workspaces,
-            .middle,
-            .bottom,
-            .separator {
-                pointer-events: none;
-                opacity: 0;
-                visibility: hidden;
-            }
-
-            .logo {
-                display: flex;
-                flex-direction: column;
-                margin-left: 0;
-                justify-content: center;
-                align-items: center;
-
-                .logo-container {
-                    width: 45px;
-                }
-
-                .collapse-button {
-                    margin-right: 0;
-                }
-            }
-        }
-        overflow: hidden;
-    }
-
-    .arrow-container {
-        position: absolute;
-        top: 24px;
-        right: 15px;
-        width: 1.5em;
-        height: 1.5em;
-        border-radius: 50%;
-        transition: transform 0.3s ease-in-out;
-        z-index: 2;
-        svg {
-            width: 1.5em;
-            height: 1.5em;
-        }
     }
 
     .contents {
         margin-top: 16px;
-    }
-
-    .logo {
-        margin-left: 14px;
-        display: flex;
-        flex-direction: row;
-
-        .logo-container {
-            flex-shrink: 0;
-            img {
-                width: 40px;
-            }
-        }
-
-        .spacer {
-            flex-grow: 1;
-        }
-        img {
-            width: 100px;
-        }
-
-        .collapse-button {
-            transition: transform 0.3s ease-in-out;
-            margin-right: 14px;
-
-            svg {
-                margin-top: 3px;
-                width: 1.5em;
-                height: 1.5em;
-            }
-        }
     }
 
     .separator {
@@ -188,10 +102,12 @@
 
         .front-icon {
             .positional-icon-visible;
+            font-size: 15px;
         }
 
         .end-icons {
             height: 20px;
+            line-height: normal;
         }
 
         .item-contents {
@@ -232,14 +148,6 @@
                     font-size: 13px;
                 }
             }
-        }
-
-        .front-icon {
-            font-size: 15px;
-        }
-
-        .end-icons {
-            line-height: normal;
         }
 
         .fa-discord {
