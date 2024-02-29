@@ -1154,7 +1154,6 @@ class Model {
     }
 
     setClientData(clientData: ClientDataType) {
-        console.log("got here++++++++++++++++++++++++++++++");
         let newFontFamily = clientData?.feopts?.termfontfamily;
         if (newFontFamily == null) {
             newFontFamily = appconst.DefaultTermFontFamily;
