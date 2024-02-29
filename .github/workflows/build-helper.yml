@@ -36,7 +36,8 @@ jobs:
                       wavesrv/go.sum
                       waveshell/go.sum
                       scripthaus/go.sum
-            - run: |
+            - id: install-scripthaus
+              run: |
                   go work use ./scripthaus;
                   cd scripthaus;
                   go get ./...;
@@ -49,13 +50,16 @@ jobs:
               run: |
                   VERSION=$(node -e 'console.log(require("./version.js"))')
                   echo "WAVETERM_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
-            - id: install-rpm
+            - id: install-linux-build-deps
               if: matrix.platform == 'linux'
               run: |
                   sudo apt-get update
-                  sudo apt-get install rpm
+                  sudo apt-get install rpm flatpak flatpak-builder eu-strip snapcraft
             - run: yarn --frozen-lockfile
-            - run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
+            - id: run-build-package
+              run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
+            - id: tree
+              run: tree out/make
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}-${{ matrix.arch }}
@@ -70,9 +74,11 @@ jobs:
               with:
                   merge-multiple: true
                   path: buildtemp
-            - run: |
+            - id: set-version-txt
+              run: |
                   echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" > buildtemp/version.txt
-            - run: (cd buildtemp; zip ../waveterm-builds.zip *)
+            - id: zip-builds
+              run: (cd buildtemp; zip ../waveterm-builds.zip *)
             - run: aws s3 cp waveterm-builds.zip s3://waveterm-github-artifacts/
               env:
                   AWS_ACCESS_KEY_ID: "${{ secrets.S3_USERID }}"
