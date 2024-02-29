@@ -10,9 +10,9 @@ import { windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFro
 import { getRendererContext } from "@/app/line/lineutil";
 import { MagicLayout } from "@/app/magiclayout";
 import * as appconst from "@/app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { Model } from "./model";
-import { GlobalCommandRunner } from "./global";
+import { GlobalModel, GlobalCommandRunner } from "./global";
 import { Cmd } from "./cmd";
 import { ScreenLines } from "./screenlines";
 import { getTermPtyData } from "@/util/modelutil";
@@ -497,19 +497,20 @@ class Screen {
 
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "ArrowUp")) {
+        let keybindManager = GlobalModel.keybindManager;
+        if (keybindManager.checkKeyPressed(waveEvent, "generic:selectAbove")) {
             termWrap.terminal.scrollLines(-1);
             return;
         }
-        if (checkKeyPressed(waveEvent, "ArrowDown")) {
+        if (keybindManager.checkKeyPressed(waveEvent, "generic:selectBelow")) {
             termWrap.terminal.scrollLines(1);
             return;
         }
-        if (checkKeyPressed(waveEvent, "PageUp")) {
+        if (keybindManager.checkKeyPressed(waveEvent, "generic:selectPageAbove")) {
             termWrap.terminal.scrollPages(-1);
             return;
         }
-        if (checkKeyPressed(waveEvent, "PageDown")) {
+        if (keybindManager.checkKeyPressed(waveEvent, "generic:selectPageBelow")) {
             termWrap.terminal.scrollPages(1);
             return;
         }
@@ -517,11 +518,14 @@ class Screen {
 
     isTermCapturedKey(e: any): boolean {
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        let keybindManager = GlobalModel.keybindManager;
         if (
-            checkKeyPressed(waveEvent, "ArrowUp") ||
-            checkKeyPressed(waveEvent, "ArrowDown") ||
-            checkKeyPressed(waveEvent, "PageUp") ||
-            checkKeyPressed(waveEvent, "PageDown")
+            keybindManager.checkKeysPressed(waveEvent, [
+                "generic:selectAbove",
+                "generic:selectBelow",
+                "generic:selectPageAbove",
+                "generic:selectPageBelow",
+            ])
         ) {
             return true;
         }
@@ -530,14 +534,15 @@ class Screen {
 
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
+        let keybindManager = GlobalModel.keybindManager;
+        if (e.type == "keypress" && keybindManager.checkKeyPressed(waveEvent, "terminal:copy")) {
             e.stopPropagation();
             e.preventDefault();
             let sel = termWrap.terminal.getSelection();
             navigator.clipboard.writeText(sel);
             return false;
         }
-        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
+        if (e.type == "keypress" && keybindManager.checkKeyPressed(waveEvent, "terminal:paste")) {
             e.stopPropagation();
             e.preventDefault();
             let p = navigator.clipboard.readText();

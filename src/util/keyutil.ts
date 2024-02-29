@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as electron from "electron";
+import { parse } from "node:path";
 
 type KeyPressDecl = {
     mods: {
@@ -80,6 +81,7 @@ class KeybindManager {
         for (let index = 0; index < keybindsArray.length; index++) {
             let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
+                console.log("keybinding is equal: ", curKeybind.keybinding, keybinding);
                 return true;
             }
         }
@@ -87,7 +89,9 @@ class KeybindManager {
     }
 
     registerKeybinding(level: string, domain: string, keybinding: string, callback: KeybindCallback): boolean {
+        console.log("adding: ", keybinding);
         if (domain == "" || this.keybindingAlreadyAdded(level, domain, keybinding)) {
+            console.log("already added?", keybinding);
             return false;
         }
         // TODO: check if keybinding is valid
@@ -123,7 +127,9 @@ class KeybindManager {
             for (let curArrayIndex = 0; curArrayIndex < curKeybindArray.length; curArrayIndex++) {
                 let curKeybind = curKeybindArray[curArrayIndex];
                 if (curKeybind.domain == domain) {
+                    console.log("removing keybind: ", curKeybind.keybinding);
                     curKeybindArray.splice(curArrayIndex, 1);
+                    curArrayIndex--;
                     foundKeybind = true;
                 }
             }
@@ -152,8 +158,17 @@ class KeybindManager {
 
     initKeyDescriptionsMap() {
         this.keyDescriptionsMap = new Map();
-        this.keyDescriptionsMap.set("cancelModal", [parseKeyDescription("Escape")]);
-        this.keyDescriptionsMap.set("confirmModal", [parseKeyDescription("Enter")]);
+        this.keyDescriptionsMap.set("system:toggleDeveloperTools", [parseKeyDescription("Cmd:Option:i")]);
+        this.keyDescriptionsMap.set("generic:cancel", [parseKeyDescription("Escape")]);
+        this.keyDescriptionsMap.set("generic:confirm", [parseKeyDescription("Enter")]);
+        this.keyDescriptionsMap.set("generic:deleteItem", [
+            parseKeyDescription("Backspace"),
+            parseKeyDescription("Delete"),
+        ]);
+        this.keyDescriptionsMap.set("generic:selectAbove", [parseKeyDescription("ArrowUp")]);
+        this.keyDescriptionsMap.set("generic:selectBelow", [parseKeyDescription("ArrowDown")]);
+        this.keyDescriptionsMap.set("generic:selectPageAbove", [parseKeyDescription("PageUp")]);
+        this.keyDescriptionsMap.set("generic:selectPageBelow", [parseKeyDescription("PageDown")]);
         this.keyDescriptionsMap.set("app:openHistory", [parseKeyDescription("Cmd:h")]);
         this.keyDescriptionsMap.set("app:openTabSearchModal", [parseKeyDescription("Cmd:p")]);
         this.keyDescriptionsMap.set("app:newTab", [parseKeyDescription("Cmd:t")]);
@@ -189,6 +204,59 @@ class KeybindManager {
         this.keyDescriptionsMap.set("app:selectNumberedTab", selectNumberedTabKeyPressArray);
         this.keyDescriptionsMap.set("app:selectTabLeft", [parseKeyDescription("Cmd:[")]);
         this.keyDescriptionsMap.set("app:selectTabRight", [parseKeyDescription("Cmd:]")]);
+
+        this.keyDescriptionsMap.set("app:selectWorkspace-1", [parseKeyDescription("Cmd:Ctrl:1")]);
+        this.keyDescriptionsMap.set("app:selectWorkspace-2", [parseKeyDescription("Cmd:Ctrl:2")]);
+        this.keyDescriptionsMap.set("app:selectWorkspace-3", [parseKeyDescription("Cmd:Ctrl:3")]);
+        this.keyDescriptionsMap.set("app:selectWorkspace-4", [parseKeyDescription("Cmd:Ctrl:4")]);
+        this.keyDescriptionsMap.set("app:selectWorkspace-5", [parseKeyDescription("Cmd:Ctrl:5")]);
+        this.keyDescriptionsMap.set("app:selectWorkspace-6", [parseKeyDescription("Cmd:Ctrl:6")]);
+        this.keyDescriptionsMap.set("app:selectWorkspace-7", [parseKeyDescription("Cmd:Ctrl:7")]);
+        this.keyDescriptionsMap.set("app:selectWorkspace-8", [parseKeyDescription("Cmd:Ctrl:8")]);
+        this.keyDescriptionsMap.set("app:selectWorkspace-9", [parseKeyDescription("Cmd:Ctrl:9")]);
+        let selectNumberedWorkspaceKeyPressArray = [];
+        for (let num = 1; num <= 9; num++) {
+            // get all of the above 9 keybindings into one array
+            let curNumArray = this.keyDescriptionsMap.get("app:selectWorkspace-" + num);
+            selectNumberedWorkspaceKeyPressArray = selectNumberedWorkspaceKeyPressArray.concat(curNumArray);
+        }
+        // this keybinding will work for any of the above 9 keybindings. The user can then check for each one, allowing for slightly cleaner code
+        this.keyDescriptionsMap.set("app:selectNumberedWorkspace", selectNumberedWorkspaceKeyPressArray);
+        this.keyDescriptionsMap.set("app:toggleSidebar", [parseKeyDescription("Cmd:Ctrl:s")]);
+        this.keyDescriptionsMap.set("app:deleteActiveLine", [parseKeyDescription("Cmd:d")]);
+        this.keyDescriptionsMap.set("app:bookmarkActiveLine", [parseKeyDescription("Cmd:b")]);
+        this.keyDescriptionsMap.set("bookmarks:edit", [parseKeyDescription("e")]);
+        this.keyDescriptionsMap.set("bookmarks:copy", [parseKeyDescription("c")]);
+        this.keyDescriptionsMap.set("cmdinput:autocomplete", [parseKeyDescription("Tab")]);
+        this.keyDescriptionsMap.set("cmdinput:expandInput", [parseKeyDescription("Cmd:e")]);
+        this.keyDescriptionsMap.set("cmdinput:clearInput", [parseKeyDescription("Ctrl:c")]);
+        this.keyDescriptionsMap.set("cmdinput:cutLineLeftOfCursor", [parseKeyDescription("Ctrl:u")]);
+        this.keyDescriptionsMap.set("cmdinput:previousHistoryItem", [parseKeyDescription("Ctrl:p")]);
+        this.keyDescriptionsMap.set("cmdinput:nextHistoryItem", [parseKeyDescription("Ctrl:n")]);
+        this.keyDescriptionsMap.set("cmdinput:cutWordLeftOfCursor", [parseKeyDescription("Ctrl:w")]);
+        this.keyDescriptionsMap.set("cmdinput:paste", [parseKeyDescription("Ctrl:y")]);
+        this.keyDescriptionsMap.set("cmdinput:openHistory", [parseKeyDescription("Ctrl:r")]);
+        this.keyDescriptionsMap.set("cmdinput:openAIChat", [parseKeyDescription("Ctrl:Space")]);
+        this.keyDescriptionsMap.set("history:closeHistory", [
+            parseKeyDescription("Ctrl:g"),
+            parseKeyDescription("Ctrl:c"),
+        ]);
+        this.keyDescriptionsMap.set("history:toggleShowRemotes", [
+            parseKeyDescription("Cmd:r"),
+            parseKeyDescription("Ctrl:r"),
+        ]);
+        this.keyDescriptionsMap.set("history:changeScope", [
+            parseKeyDescription("Ctrl:s"),
+            parseKeyDescription("Cmd:s"),
+        ]);
+        this.keyDescriptionsMap.set("history:selectNextItem", [parseKeyDescription("Ctrl:n")]);
+        this.keyDescriptionsMap.set("history:selectPreviousItem", [parseKeyDescription("Ctrl:p")]);
+        this.keyDescriptionsMap.set("aichat:clearHistory", [parseKeyDescription("Ctrl:l")]);
+        this.keyDescriptionsMap.set("terminal:copy", [parseKeyDescription("Ctrl:Shift:c")]);
+        this.keyDescriptionsMap.set("terminal:paste", [parseKeyDescription("Ctrl:Shift:v")]);
+        this.keyDescriptionsMap.set("codeedit:save", [parseKeyDescription("Cmd:s")]);
+        this.keyDescriptionsMap.set("codeedit:close", [parseKeyDescription("Cmd:d")]);
+        this.keyDescriptionsMap.set("codeedit:togglePreview", [parseKeyDescription("Cmd:p")]);
     }
 
     checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
@@ -202,6 +270,17 @@ class KeybindManager {
         for (let index = 0; index < keyPressArray.length; index++) {
             let curKeyPress = keyPressArray[index];
             let pressed = checkKeyPressed(event, curKeyPress);
+            if (pressed) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    checkKeysPressed(event: WaveKeyboardEvent, keyDescriptions: Array<string>) {
+        for (let index = 0; index < keyDescriptions.length; index++) {
+            let curKeyDesc = keyDescriptions[index];
+            let pressed = this.checkKeyPressed(event, curKeyDesc);
             if (pressed) {
                 return true;
             }

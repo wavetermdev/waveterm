@@ -15,6 +15,7 @@ import { handleJsonFetchResponse } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
 import { KeybindManager, checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
+import Main from "electron/main";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
@@ -319,11 +320,8 @@ function createMainWindow(clientData: ClientDataType | null) {
         if (waveEvent.type != "keyDown") {
             return;
         }
-        if (checkKeyPressed(waveEvent, "Cmd:i")) {
-            if (waveEvent.alt) {
-                win.webContents.toggleDevTools();
-            }
-            return;
+        if (checkKeyPressed(waveEvent, "Cmd:Option:i")) {
+            win.webContents.toggleDevTools();
         }
     });
     win.webContents.on("will-navigate", shNavHandler);
@@ -429,10 +427,10 @@ app.on("window-all-closed", () => {
     if (unamePlatform !== "darwin") app.quit();
 });
 
-electron.ipcMain.on("get-keybind-manager", (event) => {
-    console.log("getting keybind manager", GlobalKeybindManager);
-    event.returnValue = GlobalKeybindManager;
-    return;
+electron.ipcMain.on("toggle-developer-tools", (event) => {
+    if (MainWindow != null) {
+        MainWindow.webContents.toggleDevTools();
+    }
 });
 
 electron.ipcMain.on("get-id", (event) => {

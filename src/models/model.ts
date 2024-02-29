@@ -169,6 +169,10 @@ class Model {
             return fontSize;
         });
         this.keybindManager.registerKeybinding("system", "electron", "any", (waveEvent) => {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "system:toggleDeveloperTools")) {
+                getApi().toggleDeveloperTools();
+                return true;
+            }
             return false;
         });
 
@@ -177,11 +181,11 @@ class Model {
                 return false;
             }
             if (this.alertMessage.get() != null) {
-                if (this.keybindManager.checkKeyPressed(waveEvent, "cancelModal")) {
+                if (this.keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
                     this.cancelAlert();
                     return true;
                 }
-                if (this.keybindManager.checkKeyPressed(waveEvent, "confirmModal")) {
+                if (this.keybindManager.checkKeyPressed(waveEvent, "generic:confirm")) {
                     this.confirmAlert();
                     return true;
                 }
@@ -229,7 +233,15 @@ class Model {
             if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectNumberedTab")) {
                 for (let digitNum = 1; digitNum <= 9; digitNum++) {
                     if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectTab-" + digitNum)) {
-                        this.onDigitCmd(digitNum, waveEvent);
+                        this.onTabDigitCmd(digitNum, waveEvent);
+                        return true;
+                    }
+                }
+            }
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectNumberedWorkspace")) {
+                for (let digitNum = 1; digitNum <= 9; digitNum++) {
+                    if (this.keybindManager.checkKeyPressed(waveEvent, "app:selectWorkspace-" + digitNum)) {
+                        this.onWorkspaceDigitCmd(digitNum, waveEvent);
                         return true;
                     }
                 }
@@ -255,7 +267,7 @@ class Model {
             if (this.activeMainView.get() == "clientsettings") {
                 return this.historyViewModel.handleDocKeyDown(waveEvent);
             }
-            if (this.keybindManager.checkKeyPressed(waveEvent, "cancelModal")) {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
                 if (this.activeMainView.get() == "webshare") {
                     this.showSessionView();
                     return true;
@@ -270,13 +282,13 @@ class Model {
                 }
                 return true;
             }
-            if (this.keybindManager.checkKeyPressed(waveEvent, "Cmd:b")) {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:bookmarkActiveLine")) {
                 GlobalCommandRunner.bookmarksView();
                 return true;
             }
             if (
                 this.activeMainView.get() == "session" &&
-                this.keybindManager.checkKeyPressed(waveEvent, "Cmd:Ctrl:s")
+                this.keybindManager.checkKeyPressed(waveEvent, "app:toggleSidebar")
             ) {
                 const activeScreen = this.getActiveScreen();
                 if (activeScreen != null) {
@@ -289,7 +301,7 @@ class Model {
                 }
                 return true;
             }
-            if (this.keybindManager.checkKeyPressed(waveEvent, "Cmd:d")) {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "app:deleteActiveLine")) {
                 const ranDelete = this.deleteActiveLine();
                 if (ranDelete) {
                     return true;
@@ -502,7 +514,7 @@ class Model {
 
     docKeyDownHandler(e: KeyboardEvent) {
         const waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        console.log("got keydown");
+        console.log("got keydown", waveEvent);
         this.keybindManager.processKeyEvent(e, waveEvent);
     }
 
@@ -792,12 +804,12 @@ class Model {
         }
     }
 
-    onDigitCmd(digit: number, waveEvent: WaveKeyboardEvent) {
-        if (waveEvent.meta && waveEvent.control) {
-            GlobalCommandRunner.switchSession(String(digit));
-            return;
-        }
+    onTabDigitCmd(digit: number, waveEvent: WaveKeyboardEvent) {
         GlobalCommandRunner.switchScreen(String(digit));
+    }
+
+    onWorkspaceDigitCmd(digit: number, waveEvent: WaveKeyboardEvent) {
+        GlobalCommandRunner.switchSession(String(digit));
     }
 
     isConnected(): boolean {

@@ -291,7 +291,7 @@ class HistoryViewModel {
     }
 
     handleDocKeyDown(waveEvent: any): boolean {
-        if (checkKeyPressed(waveEvent, "Escape")) {
+        if (checkKeyPressed(waveEvent, "generic:cancel")) {
             this.closeView();
             return true;
         }

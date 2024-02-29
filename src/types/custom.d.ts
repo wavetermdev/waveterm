@@ -852,7 +852,7 @@ declare global {
     };
 
     type ElectronApi = {
-        getKeybindManager: () => KeybindManager;
+        toggleDeveloperTools: () => void;
         getId: () => string;
         getIsDev: () => boolean;
         getPlatform: () => string;
@@ -863,22 +863,8 @@ declare global {
         reloadWindow: () => void;
         openExternalLink: (url: string) => void;
         reregisterGlobalShortcut: (shortcut: string) => void;
-        onTCmd: (callback: (mods: KeyModsType) => void) => void;
-        onICmd: (callback: (mods: KeyModsType) => void) => void;
-        onLCmd: (callback: (mods: KeyModsType) => void) => void;
-        onHCmd: (callback: (mods: KeyModsType) => void) => void;
-        onPCmd: (callback: (mods: KeyModsType) => void) => void;
-        onRCmd: (callback: (mods: KeyModsType) => void) => void;
-        onWCmd: (callback: (mods: KeyModsType) => void) => void;
         onZoomChanged: (callback: () => void) => void;
         onMenuItemAbout: (callback: () => void) => void;
-        onElectronKeyPress: (callback: (event: WaveKeyboardEvent) => void) => void;
-        onMetaArrowUp: (callback: () => void) => void;
-        onMetaArrowDown: (callback: () => void) => void;
-        onMetaPageUp: (callback: () => void) => void;
-        onMetaPageDown: (callback: () => void) => void;
-        onBracketCmd: (callback: (event: any, arg: { relative: number }, mods: KeyModsType) => void) => void;
-        onDigitCmd: (callback: (event: any, arg: { digit: number }, mods: KeyModsType) => void) => void;
         contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;
         contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
         onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;

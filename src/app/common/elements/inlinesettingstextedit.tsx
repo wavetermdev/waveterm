@@ -7,7 +7,8 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { GlobalModel } from "../../../models/global";
 
 import "./inlinesettingstextedit.less";
 
@@ -27,6 +28,23 @@ class InlineSettingsTextEdit extends React.Component<
     tempText: OV<string>;
     shouldFocus: boolean = false;
     inputRef: React.RefObject<any> = React.createRef();
+
+    componentDidMount(): void {
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("pane", "inlineedit", "generic:confirm", (waveEvent) => {
+            this.confirmChange();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "inlineedit", "generic:cancel", (waveEvent) => {
+            this.cancelChange();
+            return true;
+        });
+    }
+
+    componentWillUnmount(): void {
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.unregisterDomain("inlineedit");
+    }
 
     componentDidUpdate(): void {
         if (this.shouldFocus) {
@@ -60,24 +78,6 @@ class InlineSettingsTextEdit extends React.Component<
             this.isEditing.set(false);
             this.tempText = null;
         })();
-    }
-
-    @boundMethod
-    handleKeyDown(e: any): void {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Enter")) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.confirmChange();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.cancelChange();
-            return;
-        }
-        return;
     }
 
     @boundMethod

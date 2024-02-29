@@ -8,7 +8,7 @@ import { Markdown } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
-import { KeybindManager, checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./code.less";
 
@@ -164,20 +164,21 @@ class SourceCodeRenderer extends React.Component<
         this.monacoEditor = editor;
         this.setInitialLanguage(editor);
         this.setEditorHeight();
-        GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "Cmd:s", (waveEvent) => {
-            if (this.state.isSave) {
-                this.doSave();
+        editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
+            let waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
+            if (
+                GlobalModel.keybindManager.checkKeysPressed(waveEvent, [
+                    "codeedit:save",
+                    "codeedit:close",
+                    "codeedit:togglePreview",
+                ])
+            ) {
+                GlobalModel.keybindManager.processKeyEvent(e.browserEvent, waveEvent);
+                e.preventDefault();
+                e.stopPropagation();
             }
-            return true;
         });
-        GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "Cmd:d", (waveEvent) => {
-            this.doClose();
-            return true;
-        });
-        GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "Cmd:p", (waveEvent) => {
-            this.togglePreview();
-            return true;
-        });
+        this.registerKeybindings();
         editor.onDidScrollChange((e) => {
             if (!this.syncing && e.scrollTopChanged) {
                 this.syncing = true;
@@ -192,13 +193,33 @@ class SourceCodeRenderer extends React.Component<
         if (this.monacoEditor.onDidFocusEditorWidget) {
             this.monacoEditor.onDidFocusEditorWidget(() => {
                 this.props.rendererApi.onFocusChanged(true);
+                this.registerKeybindings();
             });
             this.monacoEditor.onDidBlurEditorWidget(() => {
                 this.props.rendererApi.onFocusChanged(false);
+                GlobalModel.keybindManager.unregisterDomain("codeedit");
             });
         }
         if (!this.getAllowEditing()) this.setState({ showReadonly: true });
     };
+
+    registerKeybindings() {
+        GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "codeedit:save", (waveEvent) => {
+            if (this.state.isSave) {
+                this.doSave();
+            }
+            return true;
+        });
+        GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "codeedit:close", (waveEvent) => {
+            console.log("closing");
+            this.doClose();
+            return true;
+        });
+        GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "codeedit:togglePreview", (waveEvent) => {
+            this.togglePreview();
+            return true;
+        });
+    }
 
     handleEditorScrollChange(e) {
         if (!this.state.showPreview) return;

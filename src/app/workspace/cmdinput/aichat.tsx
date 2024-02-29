@@ -10,7 +10,7 @@ import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 @mobxReact.observer
 class AIChat extends React.Component<{}, {}> {
@@ -36,6 +36,71 @@ class AIChat extends React.Component<{}, {}> {
             inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowScrollRef);
         }
         this.requestChatUpdate();
+
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("pane", "aichat", "any", (waveEvent) => {
+            mobx.action(() => {
+                let model = GlobalModel;
+                let inputModel = model.inputModel;
+                let textAreaRef = this.textAreaRef.current;
+                let ctrlMod = waveEvent.control || waveEvent.cmd || waveEvent.shift;
+                let resetCodeSelect = !ctrlMod;
+                if (keybindManager.checkKeyPressed(waveEvent, "generic:confirm")) {
+                    if (!ctrlMod) {
+                        if (inputModel.getCodeSelectSelectedIndex() == -1) {
+                            let messageStr = textAreaRef.value;
+                            this.submitChatMessage(messageStr);
+                            textAreaRef.value = "";
+                        } else {
+                            inputModel.grabCodeSelectSelection();
+                        }
+                    } else {
+                        textAreaRef.setRangeText("\n", textAreaRef.selectionStart, textAreaRef.selectionEnd, "end");
+                    }
+                    return true;
+                }
+                if (keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
+                    inputModel.closeAIAssistantChat(true);
+                    return true;
+                }
+
+                if (keybindManager.checkKeyPressed(waveEvent, "aichat:clearHistory")) {
+                    inputModel.clearAIAssistantChat();
+                    return true;
+                }
+                if (keybindManager.checkKeyPressed(waveEvent, "generic:selectAbove")) {
+                    if (this.getLinePos(textAreaRef).linePos > 1) {
+                        // normal up arrow
+                        return false;
+                    }
+                    inputModel.codeSelectSelectNextOldestCodeBlock();
+                    resetCodeSelect = false;
+                    return true;
+                }
+                if (keybindManager.checkKeyPressed(waveEvent, "generic:selectBelow")) {
+                    if (inputModel.getCodeSelectSelectedIndex() == inputModel.codeSelectBottom) {
+                        return false;
+                    }
+                    inputModel.codeSelectSelectNextNewestCodeBlock();
+                    resetCodeSelect = false;
+                    return true;
+                }
+
+                if (resetCodeSelect) {
+                    inputModel.codeSelectDeselectAll();
+                    return false;
+                }
+
+                // set height of textarea based on number of newlines
+                this.textAreaNumLines.set(textAreaRef.value.split(/\n/).length);
+            })();
+            return false;
+        });
+    }
+
+    componentWillUnmount() {
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.unregisterDomain("aichat");
     }
 
     componentDidUpdate() {
@@ -64,67 +129,6 @@ class AIChat extends React.Component<{}, {}> {
         let numLines = elem.value.split("\n").length;
         let linePos = elem.value.substr(0, elem.selectionStart).split("\n").length;
         return { numLines, linePos };
-    }
-
-    @mobx.action
-    @boundMethod
-    onKeyDown(e: any) {
-        mobx.action(() => {
-            let model = GlobalModel;
-            let inputModel = model.inputModel;
-            let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
-            let resetCodeSelect = !ctrlMod;
-            let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-            if (checkKeyPressed(waveEvent, "Enter")) {
-                e.preventDefault();
-                if (!ctrlMod) {
-                    if (inputModel.getCodeSelectSelectedIndex() == -1) {
-                        let messageStr = e.target.value;
-                        this.submitChatMessage(messageStr);
-                        e.target.value = "";
-                    } else {
-                        inputModel.grabCodeSelectSelection();
-                    }
-                } else {
-                    e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
-                }
-            }
-            if (checkKeyPressed(waveEvent, "Escape")) {
-                e.preventDefault();
-                e.stopPropagation();
-                inputModel.closeAIAssistantChat(true);
-            }
-
-            if (checkKeyPressed(waveEvent, "Ctrl:l")) {
-                e.preventDefault();
-                e.stopPropagation();
-                inputModel.clearAIAssistantChat();
-            }
-            if (checkKeyPressed(waveEvent, "ArrowUp")) {
-                if (this.getLinePos(e.target).linePos > 1) {
-                    // normal up arrow
-                    return;
-                }
-                e.preventDefault();
-                inputModel.codeSelectSelectNextOldestCodeBlock();
-                resetCodeSelect = false;
-            }
-            if (checkKeyPressed(waveEvent, "ArrowDown")) {
-                if (inputModel.getCodeSelectSelectedIndex() == inputModel.codeSelectBottom) {
-                    return;
-                }
-                e.preventDefault();
-                inputModel.codeSelectSelectNextNewestCodeBlock();
-                resetCodeSelect = false;
-            }
-
-            if (resetCodeSelect) {
-                inputModel.codeSelectDeselectAll();
-            }
-
-            // set height of textarea based on number of newlines
-            this.textAreaNumLines.set(e.target.value.split(/\n/).length);
-        })();
     }
 
     renderError(err: string): any {
@@ -205,7 +209,6 @@ class AIChat extends React.Component<{}, {}> {
                     autoComplete="off"
                     autoCorrect="off"
                     id="chat-cmd-input"
-                    onKeyDown={this.onKeyDown}
                     style={{ height: textAreaInnerHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
                     className={cn("chat-textarea")}
                     placeholder="Send a Message to ChatGPT..."

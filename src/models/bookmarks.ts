@@ -5,8 +5,8 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { genMergeSimpleData } from "@/util/util";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
-import { GlobalCommandRunner } from "./global";
+import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { GlobalCommandRunner, GlobalModel } from "./global";
 import { Model } from "./model";
 
 class BookmarksModel {
@@ -206,7 +206,8 @@ class BookmarksModel {
     }
 
     handleDocKeyDown(waveEvent: any): boolean {
-        if (checkKeyPressed(waveEvent, "Escape")) {
+        let keybindManager = GlobalModel.keybindManager;
+        if (keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
             if (this.editingBookmark.get() != null) {
                 this.cancelEdit();
                 return true;
@@ -217,7 +218,7 @@ class BookmarksModel {
         if (this.editingBookmark.get() != null) {
             return false;
         }
-        if (checkKeyPressed(waveEvent, "Backspace") || checkKeyPressed(waveEvent, "Delete")) {
+        if (keybindManager.checkKeyPressed(waveEvent, "generic:deleteItem")) {
             if (this.activeBookmark.get() == null) {
                 return false;
             }
@@ -226,18 +227,28 @@ class BookmarksModel {
         }
 
         if (
-            checkKeyPressed(waveEvent, "ArrowUp") ||
-            checkKeyPressed(waveEvent, "ArrowDown") ||
-            checkKeyPressed(waveEvent, "PageUp") ||
-            checkKeyPressed(waveEvent, "PageDown")
+            keybindManager.checkKeysPressed(waveEvent, [
+                "generic:selectAbove",
+                "generic:selectBelow",
+                "generic:selectPageAbove",
+                "generic:selectPageBelow",
+            ])
         ) {
             if (this.bookmarks.length == 0) {
                 return true;
             }
             let newPos = 0; // if active is null, then newPos will be 0 (select the first)
             if (this.activeBookmark.get() != null) {
-                let amtMap = { ArrowUp: -1, ArrowDown: 1, PageUp: -10, PageDown: 10 };
-                let amt = amtMap[e.code];
+                let amt = -1;
+                if (keybindManager.checkKeyPressed(waveEvent, "generic:selectBelow")) {
+                    amt = 1;
+                }
+                if (keybindManager.checkKeyPressed(waveEvent, "generic:selectPageAbove")) {
+                    amt = -10;
+                }
+                if (keybindManager.checkKeyPressed(waveEvent, "generic:selectPageBelow")) {
+                    amt = 10;
+                }
                 let curIdx = this.getBookmarkPos(this.activeBookmark.get());
                 newPos = curIdx + amt;
                 if (newPos < 0) {
@@ -253,7 +264,7 @@ class BookmarksModel {
             })();
             return true;
         }
-        if (checkKeyPressed(waveEvent, "Enter")) {
+        if (keybindManager.checkKeyPressed(waveEvent, "generic:confirm")) {
             if (this.activeBookmark.get() == null) {
                 return;
                 false;
@@ -261,14 +272,14 @@ class BookmarksModel {
             this.useBookmark(this.activeBookmark.get());
             return false;
         }
-        if (checkKeyPressed(waveEvent, "e")) {
+        if (keybindManager.checkKeyPressed(waveEvent, "bookmarks:edit")) {
             if (this.activeBookmark.get() == null) {
                 return false;
             }
             this.handleEditBookmark(this.activeBookmark.get());
             return true;
         }
-        if (checkKeyPressed(waveEvent, "c")) {
+        if (keybindManager.checkKeyPressed(waveEvent, "bookmarks:copy")) {
             if (this.activeBookmark.get() == null) {
                 return false;
             }
