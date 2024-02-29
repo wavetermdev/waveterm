@@ -73,15 +73,15 @@ module.exports = {
                 },
             },
         },
-        {
-            name: "@electron-forge/maker-flatpak",
-            config: {
-                options: {
-                    bin: pkg.productName,
-                    mimeType: ["text/plain"],
-                },
-            },
-        },
+        // {
+        //     name: "@electron-forge/maker-flatpak",
+        //     config: {
+        //         options: {
+        //             bin: pkg.productName,
+        //             mimeType: ["text/plain"],
+        //         },
+        //     },
+        // },
         // {
         //     name: "@electron-forge/maker-snap",
         //     config: {
