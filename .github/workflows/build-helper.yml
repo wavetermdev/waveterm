@@ -73,7 +73,12 @@ jobs:
             - uses: actions/download-artifact@v4
               with:
                   merge-multiple: true
-                  path: buildtemp
+                  path: download
+            - name: Move builds into buildtemp
+              run: |
+                  mkdir buildtemp
+                  # Will only move over the files, flattening the directory structure
+                  find download -mindepth 2 -type f -exec mv -t buildtemp -i '{}' +
             - name: Set `version.txt`
               run: |
                   echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" > buildtemp/version.txt
