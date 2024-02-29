@@ -126,21 +126,21 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
         const containerType = screen.getContainerType();
         return (
             <div className="line-actions">
-                <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
-                    <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
-                </div>
-                <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
-                    <i className="fa-sharp fa-regular fa-trash fa-fw" />
-                </div>
-                <div
-                    key="bookmark"
-                    title="Bookmark"
-                    className={cn("line-icon", "line-bookmark")}
-                    onClick={this.clickBookmark}
-                >
-                    <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
-                </div>
                 <If condition={containerType == appconst.LineContainer_Main}>
+                    <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
+                        <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
+                    </div>
+                    <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
+                        <i className="fa-sharp fa-regular fa-trash fa-fw" />
+                    </div>
+                    <div
+                        key="bookmark"
+                        title="Bookmark"
+                        className={cn("line-icon", "line-bookmark")}
+                        onClick={this.clickBookmark}
+                    >
+                        <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
+                    </div>
                     <div
                         key="minimize"
                         title={`${isMinimized ? "Show Output" : "Hide Output"}`}
@@ -167,6 +167,20 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
                     </div>
                 </If>
                 <If condition={containerType == appconst.LineContainer_Sidebar}>
+                    <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
+                        <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
+                    </div>
+                    <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
+                        <i className="fa-sharp fa-regular fa-trash fa-fw" />
+                    </div>
+                    <div
+                        key="bookmark"
+                        title="Bookmark"
+                        className={cn("line-icon", "line-bookmark")}
+                        onClick={this.clickBookmark}
+                    >
+                        <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
+                    </div>
                     <div
                         className="line-icon line-sidebar"
                         onClick={this.clickRemoveFromSidebar}

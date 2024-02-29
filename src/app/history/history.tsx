@@ -16,7 +16,6 @@ import { Line } from "@/app/line/linecomps";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { TextField } from "@/elements";
 
-import { ReactComponent as XmarkIcon } from "@/assets/icons/line/xmark.svg";
 import { ReactComponent as AngleDownIcon } from "@/assets/icons/history/angle-down.svg";
 import { ReactComponent as ChevronLeftIcon } from "@/assets/icons/history/chevron-left.svg";
 import { ReactComponent as ChevronRightIcon } from "@/assets/icons/history/chevron-right.svg";
