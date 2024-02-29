@@ -4,19 +4,8 @@
 import type React from "react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { isBlank } from "../util/util";
-import {
-    HistoryItem,
-    RemotePtrType,
-    InfoType,
-    HistoryInfoType,
-    HistoryQueryOpts,
-    HistoryTypeStrs,
-    OpenAICmdInfoChatMessageType,
-} from "../types/types";
-import { StrWithPos } from "../types/types";
-import * as appconst from "../app/appconst";
-import { OV } from "../types/types";
+import { isBlank } from "@/util/util";
+import * as appconst from "@/app/appconst";
 import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
 
@@ -207,7 +196,6 @@ class InputModel {
             this.historyQueryOpts.set(opts);
             let bestIndex = this.findBestNewIndex(oldItem);
             setTimeout(() => this.setHistoryIndex(bestIndex, true), 10);
-            return;
         })();
     }
 
@@ -624,13 +612,24 @@ class InputModel {
     }
 
     openAIAssistantChat(): void {
-        this.aIChatShow.set(true);
-        this.setAIChatFocus();
+        mobx.action(() => {
+            this.aIChatShow.set(true);
+            this.setAIChatFocus();
+        })();
     }
 
-    closeAIAssistantChat(): void {
-        this.aIChatShow.set(false);
-        this.giveFocus();
+    // pass true to give focus to the input (e.g. if this is an 'active' close of the chat)
+    // when resetting the input (when switching screens, don't give focus)
+    closeAIAssistantChat(giveFocus: boolean): void {
+        if (!this.aIChatShow.get()) {
+            return;
+        }
+        mobx.action(() => {
+            this.aIChatShow.set(false);
+            if (giveFocus) {
+                this.giveFocus();
+            }
+        })();
     }
 
     clearAIAssistantChat(): void {
@@ -721,14 +720,6 @@ class InputModel {
     setCurLine(val: string): void {
         let hidx = this.historyIndex.get();
         mobx.action(() => {
-            // if (val == "\" ") {
-            //     this.setInputMode("comment");
-            //     val = "";
-            // }
-            // if (val == "//") {
-            //     this.setInputMode("global");
-            //     val = "";
-            // }
             if (this.modHistory.length <= hidx) {
                 this.modHistory.length = hidx + 1;
             }
@@ -739,7 +730,7 @@ class InputModel {
     resetInput(): void {
         mobx.action(() => {
             this.setHistoryShow(false);
-            this.closeAIAssistantChat();
+            this.closeAIAssistantChat(false);
             this.infoShow.set(false);
             this.inputMode.set(null);
             this.resetHistory();

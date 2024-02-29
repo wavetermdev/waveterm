@@ -1,30 +1,20 @@
-@import "../../../app/common/themes/themes.less";
-
 .cmd-input {
-    border-radius: 6px;
     max-height: max(300px, 40%);
     display: flex;
     flex-direction: column;
     position: absolute;
-    bottom: 12px;
-    right: 12px;
-    width: calc(100% - 24px);
-    padding: 12px;
-    padding-bottom: 6px;
+    bottom: 0;
+    width: 100%;
+    padding: calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 3 - 1px);
     z-index: 100;
-    background: @background-session-components;
-    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.5), 0px 3px 8px 0px rgba(0, 0, 0, 0.35),
-        0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
-    backdrop-filter: blur(20px);
-    border: 1px solid transparent;
+    border-top: 1px solid var(--app-border-color);
+    background-color: var(--app-bg-color);
 
     &.active {
-        border: 1px solid rgba(@wave-green, 0.8) !important;
-        box-shadow: 0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
     }
 
     &.has-info {
-        padding-top: 10px;
+        padding-top: var(--termpad);
     }
 
     .focus-indicator {
@@ -34,7 +24,7 @@
     }
 
     &.has-history {
-        padding-top: 5px;
+        padding-top: var(--termpad);
         height: max(300px, 40%);
     }
 
@@ -49,7 +39,7 @@
     .remote-status-warning {
         display: flex;
         flex-direction: row;
-        color: @term-yellow;
+        color: var(--cmdinput-warning-color);
         align-items: center;
 
         .button {
@@ -61,7 +51,7 @@
         position: absolute;
         top: 5px;
         right: 5px;
-        color: @term-white;
+        color: var(--app-text-color);
 
         padding: 5px;
         cursor: pointer;
@@ -69,6 +59,10 @@
 
     .cmd-input-grow-spacer {
         flex-grow: 1;
+    }
+
+    .base-cmdinput:not(:first-child) {
+        margin-top: var(--termpad);
     }
 
     .cmd-input-context {
@@ -91,17 +85,21 @@
             height: 1em;
             margin: 0 0.5em;
             vertical-align: text-top;
-            fill: @base-color;
+            fill: var(--app-text-color);
         }
 
         .warning {
-            fill: @warning-yellow;
+            fill: var(--cmdinput-warning-color);
         }
     }
 
     .cmd-input-field {
         position: relative;
-        padding-right: 17em;
+        padding-right: var(--termpad);
+        font-family: var(--termfontfamily);
+        font-weight: normal;
+        line-height: var(--termlineheight);
+        font-size: var(--termfontsize);
 
         .cmd-hints {
             position: absolute;
@@ -115,29 +113,38 @@
         .textareainput-div {
             position: relative;
 
+            &.control {
+                padding: var(--termpad) 0;
+            }
+
             .shelltag {
                 position: absolute;
-                bottom: 4px;
-                right: 3px;
+                // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding (2px not sure?)
+                bottom: calc(-13px + var(--termpad));
+                right: 0px;
                 font-size: 10px;
-                color: @text-secondary;
+                color: var(--app-text-secondary-color);
                 line-height: 1;
-                padding: 0px 8px 3px 8px;
-                background-color: @textarea-background;
+                padding: 1px 8px 3px 8px;
+                background-color: var(--cmdinput-textarea-bg-color);
                 border-radius: 0 0 5px 5px;
             }
         }
 
         textarea {
-            color: @term-bright-white;
-            background-color: @textarea-background;
-            padding: 0.5em;
+            color: var(--app-text-primary-color);
+            background-color: var(--cmdinput-textarea-bg-color);
+            padding: var(--termpad);
             resize: none;
             overflow: auto;
             overflow-wrap: anywhere;
             border-color: transparent;
             border: none;
-            font-family: @terminal-font;
+            font-family: var(--termfontfamily);
+            line-height: var(--termlineheight);
+            font-size: var(--termfontsize);
+            border-radius: 4px 4px 0 4px; // 0 is for shelltag
+
             &.display-disabled {
                 background-color: #444;
             }
@@ -156,17 +163,17 @@
 
         .cmd-quick-context .button {
             background-color: #000 !important;
-            color: @term-white;
+            color: var(--app-text-color);
         }
 
         &.inputmode-global .cmd-quick-context .button {
-            color: @term-black;
-            background-color: @tab-green !important;
+            color: var(--app-bg-color);
+            background-color: var(--cmdinput-button-bg-color) !important;
         }
 
         &.inputmode-comment .cmd-quick-context .button {
-            color: @term-black;
-            background-color: @tab-blue !important;
+            color: var(--app-bg-color);
+            background-color: var(--cmdinput-comment-button-bg-color) !important;
         }
 
         .cmd-exec {
@@ -179,11 +186,11 @@
                 height: 2.5em;
                 cursor: pointer;
                 border-radius: 50%;
-                fill: @wave-green;
+                fill: var(--app-accent-color);
                 padding: 0.25em;
             }
             .icon.disabled {
-                fill: @disabled-background;
+                fill: var(--cmdinput-disabled-icon-color);
                 cursor: default;
             }
             .cmd-btn {
@@ -221,15 +228,16 @@
         }
 
         .chat-textarea {
-            color: @term-bright-white;
-            background-color: @textarea-background;
+            color: var(--app-text-primary-color);
+            background-color: var(--cmdinput-textarea-bg);
             padding: 0.5em;
             resize: none;
             overflow: auto;
             overflow-wrap: anywhere;
             border-color: transparent;
             border: none;
-            font-family: @terminal-font;
+            font-family: var(--termfontfamily);
+            font-weight: normal;
             flex-shrink: 0;
             flex-grow: 1;
             border-radius: 4px;
@@ -247,20 +255,20 @@
         }
 
         .chat-msg-assistant {
-            color: @term-white;
+            color: var(--app-text-color);
         }
 
         .chat-msg-user {
             .msg-text {
-                font-family: @markdown-font;
+                font-family: var(--markdown-font);
                 font-size: 14px;
                 white-space: pre-wrap;
             }
         }
 
         .chat-msg-error {
-            color: @term-bright-red;
-            font-family: @markdown-font;
+            color: var(--cmdinput-text-error);
+            font-family: var(--markdown-font);
             font-size: 14px;
         }
 
@@ -270,8 +278,9 @@
     }
 
     .cmd-history {
-        color: @term-white;
-        margin-bottom: 5px;
+        color: var(--app-text-color);
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
         overflow: auto;
         flex-shrink: 1;
 
@@ -279,14 +288,19 @@
             position: absolute;
             z-index: 102;
             top: 5px;
-            left: 20px;
-            background-color: @background-session-components-solid;
-            color: @soft-blue;
+            left: 0;
+            background-color: var(--app-bg-color);
+            color: var(--cmdinput-title-color);
             padding-bottom: 4px;
             display: flex;
             flex-direction: row;
-            width: calc(100% - 40px);
+            width: 100%;
             overflow-x: auto;
+            border-bottom: 1px solid var(--app-border-color);
+
+            div:first-child {
+                margin-left: var(--termpad);
+            }
 
             .history-opt {
                 white-space: nowrap;
@@ -308,7 +322,7 @@
 
         .history-items {
             margin-top: 24px;
-            color: @term-white;
+            color: var(--app-text-color);
 
             padding-bottom: 6px;
 
@@ -317,7 +331,7 @@
             }
 
             .history-item.history-haderror {
-                color: mix(@term-red, @term-white, 50%);
+                color: var(--cmdinput-history-item-error-color);
             }
 
             .history-line:first-child {
@@ -335,12 +349,12 @@
 
             .history-item.is-selected {
                 font-weight: bold;
-                color: @term-bright-white;
+                color: var(--app-text-primary-color);
                 background-color: #444;
             }
 
             .history-item.is-selected.history-haderror {
-                color: mix(@term-bright-red, @term-bright-white, 50%);
+                color: var(--cmdinput-history-item-selected-error-color);
             }
         }
     }
@@ -348,24 +362,42 @@
     .cmd-input-info {
         flex-shrink: 1;
         overflow-y: auto;
-        margin-bottom: 5px;
+        margin-bottom: var(--termpad);
+
+        .info-title {
+            position: absolute;
+            z-index: 102;
+            top: 5px;
+            left: 0;
+            background-color: var(--app-bg-color);
+            color: var(--cmdinput-title-color);
+            padding-bottom: 4px;
+            padding-left: calc(var(--termpad) * 2);
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--app-border-color);
+        }
+
+        .info-title + .info-msg,
+        .info-title + .info-lines,
+        .info-title + .info-comps,
+        .info-title + .info-error {
+            margin-top: 24px;
+        }
 
         .info-msg {
-            color: @soft-blue;
+            color: var(--cmdinput-history-title-color);
             padding-bottom: 2px;
 
             a {
-                color: @term-blue;
+                color: var(--term-blue);
             }
         }
 
-        .info-title {
-            color: @soft-blue;
-            padding-bottom: 2px;
-        }
-
         .info-lines {
-            color: @term-white;
+            color: var(--app-text-color);
             white-space: pre;
             padding-bottom: 6px;
         }
@@ -375,10 +407,13 @@
             flex-direction: row;
             flex-wrap: wrap;
             padding-bottom: 5px;
+            font-weight: normal;
+            font-family: var(--termfontfamily);
+            font-size: var(--termfontsize);
 
             .info-comp {
                 min-width: 200px;
-                color: @term-white;
+                color: var(--app-text-color);
                 margin-right: 10px;
 
                 &.has-space {
@@ -387,117 +422,13 @@
             }
 
             .metacmd-comp {
-                color: @term-bright-green;
+                color: var(--term-bright-green);
             }
         }
 
         .info-error {
-            color: @term-red;
+            color: var(--cmdinput-text-error-color);
             padding-bottom: 2px;
-        }
-
-        .info-remote-showall {
-            table.remotes-table {
-                th {
-                    color: @term-white;
-                    font-weight: bold;
-                }
-
-                th,
-                td {
-                    padding: 3px 8px 3px 8px;
-                }
-
-                td {
-                    cursor: pointer;
-                }
-
-                tr:hover td {
-                    background-color: #333;
-                }
-            }
-        }
-
-        .info-remote {
-            color: #d3d7cf;
-
-            .info-remote-title {
-                font-weight: bold;
-                color: @term-cyan;
-            }
-
-            .info-error,
-            .info-msg {
-                margin-top: 5px;
-                padding: 5px;
-            }
-
-            .remote-field {
-                display: flex;
-                flex-direction: row;
-
-                .remote-field-def {
-                    white-space: pre;
-                    width: 120px;
-                }
-
-                .remote-field-val {
-                    white-space: pre;
-                    display: flex;
-                    flex-direction: row;
-                }
-            }
-
-            .remote-input-field {
-                display: flex;
-                flex-direction: row;
-                height: 25px;
-                align-items: center;
-
-                .remote-field-label {
-                    white-space: pre;
-                    width: 140px;
-                    font-weight: bold;
-                    color: @term-bright-white;
-                }
-
-                .undo-icon {
-                    margin-left: 4px;
-                    cursor: pointer;
-                    padding: 2px;
-                }
-
-                .remote-field-control {
-                    &.text-input {
-                        input[type="text"],
-                        input[type="number"],
-                        input[type="password"] {
-                            background-color: @term-black;
-                            color: @term-white;
-                            width: 200px;
-                        }
-                    }
-
-                    &.checkbox-input {
-                        input[type="checkbox"] {
-                            position: relative;
-                            top: 3px;
-                        }
-                    }
-
-                    &.select-input {
-                        select {
-                            width: 200px;
-                            background-color: @term-black;
-                            color: @term-white;
-                        }
-                    }
-                }
-            }
-        }
-
-        .info-remote-showall {
-            color: #d3d7cf;
         }
     }
 }

@@ -3,17 +3,12 @@
 
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { stringToBase64 } from "../util/util";
-import { TermWrap } from "../plugins/terminal/term";
-import { RemoteInputPacketType, RemoteEditType } from "../types/types";
-import * as appconst from "../app/appconst";
-import { OV } from "../types/types";
+import { stringToBase64 } from "@/util/util";
+import { TermWrap } from "@/plugins/terminal/term";
+import * as appconst from "@/app/appconst";
 import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
-import { getTermPtyData } from "../util/modelutil";
-
-const RemotePtyRows = 8; // also in main.tsx
-const RemotePtyCols = 80;
+import { getTermPtyData } from "@/util/modelutil";
 
 class RemotesModel {
     globalModel: Model;
@@ -180,14 +175,14 @@ class RemotesModel {
             return;
         }
         let termOpts = {
-            rows: RemotePtyRows,
-            cols: RemotePtyCols,
+            rows: appconst.RemotePtyRows,
+            cols: appconst.RemotePtyCols,
             flexrows: false,
             maxptysize: 64 * 1024,
         };
         let termWrap = new TermWrap(elem, {
             termContext: { remoteId: remoteId },
-            usedRows: RemotePtyRows,
+            usedRows: appconst.RemotePtyRows,
             termOpts: termOpts,
             winSize: null,
             keyHandler: (e, termWrap) => {
@@ -195,7 +190,8 @@ class RemotesModel {
             },
             focusHandler: this.setRemoteTermWrapFocus.bind(this),
             isRunning: true,
-            fontSize: this.globalModel.termFontSize.get(),
+            fontSize: this.globalModel.getTermFontSize(),
+            fontFamily: this.globalModel.getTermFontFamily(),
             ptyDataSource: getTermPtyData,
             onUpdateContentHeight: null,
         });

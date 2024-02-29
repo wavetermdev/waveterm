@@ -2,17 +2,29 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as T from "../../types/types";
 import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import { Markdown } from "../../app/common/elements";
-import { GlobalModel, GlobalCommandRunner } from "../../models";
+import { Markdown } from "@/elements";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
-loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../../util/keyutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./code.less";
+
+document.addEventListener("DOMContentLoaded", () => {
+    loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
+    loader.init().then(() => {
+        monaco.editor.defineTheme("wave-theme", {
+            base: "hc-black",
+            inherit: true,
+            rules: [],
+            colors: {
+                "editor.background": "#000000",
+            },
+        });
+    });
+});
 
 function renderCmdText(text: string): any {
     return <span>&#x2318;{text}</span>;
@@ -23,20 +35,20 @@ declare var monaco: any;
 
 class SourceCodeRenderer extends React.Component<
     {
-        data: T.ExtBlob;
+        data: ExtBlob;
         cmdstr: string;
         cwd: string;
         readOnly: boolean;
         notFound: boolean;
         exitcode: number;
-        context: T.RendererContext;
-        opts: T.RendererOpts;
+        context: RendererContext;
+        opts: RendererOpts;
         savedHeight: number;
         scrollToBringIntoViewport: () => void;
-        lineState: T.LineStateType;
+        lineState: LineStateType;
         isSelected: boolean;
         shouldFocus: boolean;
-        rendererApi: T.RendererModelContainerApi;
+        rendererApi: RendererModelContainerApi;
     },
     {
         code: string;
@@ -308,7 +320,7 @@ class SourceCodeRenderer extends React.Component<
         let allowEditing = this.getAllowEditing();
         if (!allowEditing) {
             const noOfLines = Math.max(this.state.code.split("\n").length, 5);
-            const lineHeight = Math.ceil(GlobalModel.termFontSize.get() * 1.5);
+            const lineHeight = Math.ceil(GlobalModel.getTermFontSize() * 1.5);
             _editorHeight = Math.min(noOfLines * lineHeight + 10, fullWindowHeight);
         }
         this.setState({ editorHeight: _editorHeight }, () => {
@@ -331,15 +343,15 @@ class SourceCodeRenderer extends React.Component<
         <div style={{ maxHeight: this.props.opts.maxSize.height }}>
             {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
             <Editor
-                theme="hc-black"
+                theme="wave-theme"
                 height={this.state.editorHeight}
                 defaultLanguage={this.state.selectedLanguage}
                 value={this.state.code}
                 onMount={this.handleEditorDidMount}
                 options={{
                     scrollBeyondLastLine: false,
-                    fontSize: GlobalModel.termFontSize.get() * 0.9,
-                    /* fontFamily: "Martian Mono", */
+                    fontSize: GlobalModel.getTermFontSize(),
+                    fontFamily: GlobalModel.getTermFontFamily(),
                     readOnly: !this.getAllowEditing(),
                 }}
                 onChange={this.handleEditorChange}
@@ -435,7 +447,7 @@ class SourceCodeRenderer extends React.Component<
                 <div
                     className="code-renderer"
                     style={{
-                        fontSize: GlobalModel.termFontSize.get(),
+                        fontSize: GlobalModel.getTermFontSize(),
                         color: "white",
                     }}
                 >

@@ -6,20 +6,17 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "../common/elements";
-import * as types from "../../types/types";
-import { commandRtnHandler, isBlank } from "../../util/util";
-import * as appconst from "../appconst";
+import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
+import { commandRtnHandler, isBlank } from "@/util/util";
+import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
+import { MainView } from "../common/elements/mainview";
 
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
-    fontSizeDropdownActive: types.OV<boolean> = mobx.observable.box(false, {
-        name: "clientSettings-fontSizeDropdownActive",
-    });
-    errorMessage: types.OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
+    errorMessage: OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
 
     @boundMethod
     dismissError(): void {
@@ -30,25 +27,26 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeFontSize(fontSize: string): void {
-        let newFontSize = Number(fontSize);
-        this.fontSizeDropdownActive.set(false);
-        if (GlobalModel.termFontSize.get() == newFontSize) {
+        const newFontSize = Number(fontSize);
+        if (GlobalModel.getTermFontSize() == newFontSize) {
             return;
         }
-        let prtn = GlobalCommandRunner.setTermFontSize(newFontSize, false);
+        const prtn = GlobalCommandRunner.setTermFontSize(newFontSize, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
-    togglefontSizeDropdown(): void {
-        mobx.action(() => {
-            this.fontSizeDropdownActive.set(!this.fontSizeDropdownActive.get());
-        })();
+    handleChangeFontFamily(fontFamily: string): void {
+        if (GlobalModel.getTermFontFamily() == fontFamily) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setTermFontFamily(fontFamily, false);
+        commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     handleChangeTelemetry(val: boolean): void {
-        let prtn: Promise<types.CommandRtnType> = null;
+        let prtn: Promise<CommandRtnType> = null;
         if (val) {
             prtn = GlobalCommandRunner.telemetryOn(false);
         } else {
@@ -59,38 +57,46 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeReleaseCheck(val: boolean): void {
-        let prtn: Promise<types.CommandRtnType> = null;
+        let prtn: Promise<CommandRtnType> = null;
         if (val) {
             prtn = GlobalCommandRunner.releaseCheckAutoOn(false);
         } else {
             prtn = GlobalCommandRunner.releaseCheckAutoOff(false);
         }
         commandRtnHandler(prtn, this.errorMessage);
+        getApi().changeAutoUpdate(val);
     }
 
-    getFontSizes(): any {
-        let availableFontSizes: { label: string; value: number }[] = [];
+    getFontSizes(): DropdownItem[] {
+        const availableFontSizes: DropdownItem[] = [];
         for (let s = appconst.MinFontSize; s <= appconst.MaxFontSize; s++) {
-            availableFontSizes.push({ label: s + "px", value: s });
+            availableFontSizes.push({ label: s + "px", value: String(s) });
         }
         return availableFontSizes;
     }
 
+    getFontFamilies(): DropdownItem[] {
+        const availableFontFamilies: DropdownItem[] = [];
+        availableFontFamilies.push({ label: "JetBrains Mono", value: "JetBrains Mono" });
+        availableFontFamilies.push({ label: "Hack", value: "Hack" });
+        return availableFontFamilies;
+    }
+
     @boundMethod
     inlineUpdateOpenAIModel(newModel: string): void {
-        let prtn = GlobalCommandRunner.setClientOpenAISettings({ model: newModel });
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ model: newModel });
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     inlineUpdateOpenAIToken(newToken: string): void {
-        let prtn = GlobalCommandRunner.setClientOpenAISettings({ apitoken: newToken });
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ apitoken: newToken });
         commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
     inlineUpdateOpenAIMaxTokens(newMaxTokensStr: string): void {
-        let prtn = GlobalCommandRunner.setClientOpenAISettings({ maxtokens: newMaxTokensStr });
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ maxtokens: newMaxTokensStr });
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -102,32 +108,49 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
-    handleClose(): void {
+    handleChangeShortcut(newShortcut: string): void {
+        const prtn = GlobalCommandRunner.setGlobalShortcut(newShortcut);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    getFKeys(): DropdownItem[] {
+        const opts: DropdownItem[] = [];
+        opts.push({ label: "Disabled", value: "" });
+        const platform = GlobalModel.getPlatform();
+        for (let i = 1; i <= 12; i++) {
+            const shortcut = (platform == "darwin" ? "Cmd" : "Alt") + "+F" + String(i);
+            opts.push({ label: shortcut, value: shortcut });
+        }
+        return opts;
+    }
+
+    getCurrentShortcut(): string {
+        const clientData = GlobalModel.clientData.get();
+        return clientData?.clientopts?.globalshortcut ?? "";
+    }
+
+    @boundMethod
+    handleClose() {
         GlobalModel.clientSettingsViewModel.closeView();
     }
 
     render() {
-        let isHidden = GlobalModel.activeMainView.get() != "clientsettings";
+        const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
             return null;
         }
 
-        let cdata: types.ClientDataType = GlobalModel.clientData.get();
-        let openAIOpts = cdata.openaiopts ?? {};
-        let apiTokenStr = isBlank(openAIOpts.apitoken) ? "(not set)" : "********";
-        let maxTokensStr = String(
+        const cdata: ClientDataType = GlobalModel.clientData.get();
+        const openAIOpts = cdata.openaiopts ?? {};
+        const apiTokenStr = isBlank(openAIOpts.apitoken) ? "(not set)" : "********";
+        const maxTokensStr = String(
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
-        let curFontSize = GlobalModel.termFontSize.get();
+        const curFontSize = GlobalModel.getTermFontSize();
+        const curFontFamily = GlobalModel.getTermFontFamily();
 
         return (
-            <div className={cn("view clientsettings-view")}>
-                <header className="header">
-                    <div className="clientsettings-title text-primary">Client Settings</div>
-                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
-                        <i className="fa-sharp fa-solid fa-xmark"></i>
-                    </div>
-                </header>
+            <MainView viewName="clientsettings" title="Client Settings" onClose={this.handleClose}>
                 <div className="content">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>
@@ -137,6 +160,17 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 options={this.getFontSizes()}
                                 defaultValue={`${curFontSize}px`}
                                 onChange={this.handleChangeFontSize}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Term Font Family</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="font-size-dropdown"
+                                options={this.getFontFamilies()}
+                                defaultValue={curFontFamily}
+                                onChange={this.handleChangeFontFamily}
                             />
                         </div>
                     </div>
@@ -208,9 +242,20 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                             />
                         </div>
                     </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Global Hotkey</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="hotkey-dropdown"
+                                options={this.getFKeys()}
+                                defaultValue={this.getCurrentShortcut()}
+                                onChange={this.handleChangeShortcut}
+                            />
+                        </div>
+                    </div>
                     <SettingsError errorMessage={this.errorMessage} />
                 </div>
-            </div>
+            </MainView>
         );
     }
 }

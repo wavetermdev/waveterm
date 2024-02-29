@@ -5,15 +5,12 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel, GlobalCommandRunner } from "../../../models";
-import { SettingsError, Modal, Dropdown } from "../elements";
-import { LineType, RendererPluginType } from "../../../types/types";
-import { PluginModel } from "../../../plugins/plugins";
-import { commandRtnHandler } from "../../../util/util";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
+import { SettingsError, Modal, Dropdown } from "@/elements";
+import { PluginModel } from "@/plugins/plugins";
+import { commandRtnHandler } from "@/util/util";
 
 import "./linesettings.less";
-
-type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class LineSettingsModal extends React.Component<{}, {}> {

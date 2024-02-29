@@ -3,20 +3,11 @@
 
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { isBlank } from "../util/util";
-import {
-    LineType,
-    HistoryItem,
-    CmdDataType,
-    HistoryViewDataType,
-    HistorySearchParams,
-    CommandRtnType,
-} from "../types/types";
-import { termWidthFromCols, termHeightFromRows } from "../util/textmeasure";
+import { isBlank } from "@/util/util";
+import { termWidthFromCols, termHeightFromRows } from "@/util/textmeasure";
 import dayjs from "dayjs";
-import * as appconst from "../app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
-import { OV, OArr, OMap } from "../types/types";
+import * as appconst from "@/app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 import { Cmd } from "./cmd";
@@ -123,8 +114,8 @@ class HistoryViewModel {
                 this.specialLineContainer = null;
             } else {
                 this.activeItem.set(hitem.historyid);
-                let width = termWidthFromCols(80, this.globalModel.termFontSize.get());
-                let height = termHeightFromRows(25, this.globalModel.termFontSize.get());
+                let width = termWidthFromCols(80, this.globalModel.getTermFontSize());
+                let height = termHeightFromRows(25, this.globalModel.getTermFontSize(), 25);
                 this.specialLineContainer = new SpecialLineContainer(
                     this,
                     { width, height },
@@ -158,7 +149,7 @@ class HistoryViewModel {
     }
 
     _deleteSelected(): void {
-        let lineIds = Array.from(this.selectedItems.keys());
+        let lineIds: string[] = Array.from(this.selectedItems.keys());
         let prtn = GlobalCommandRunner.historyPurgeLines(lineIds);
         prtn.then((result: CommandRtnType) => {
             if (!result.success) {

@@ -17,7 +17,7 @@ interface DropdownDecorationProps {
 
 interface DropdownProps {
     label?: string;
-    options: { value: string; label: string }[];
+    options: DropdownItem[];
     value?: string;
     className?: string;
     onChange: (value: string) => void;

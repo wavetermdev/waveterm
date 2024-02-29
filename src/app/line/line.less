@@ -1,0 +1,342 @@
+.line {
+    margin: 0;
+    padding: calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 2 + 1px) calc(var(--termpad) * 3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+    position: relative;
+    font-weight: normal;
+    font-family: var(--termfontfamily);
+    scroll-margin-bottom: 20px;
+
+    &.line-invalid {
+        color: var(--term-text-white);
+        margin-left: 5px;
+    }
+
+    &.selected {
+        .line-mask {
+            border-left: 4px solid var(--line-selected-border-left-color);
+        }
+
+        &.has-error {
+            .line-mask {
+                border-left: 4px solid var(--line-selected-error-border-color);
+            }
+        }
+    }
+
+    &.active.selected {
+        .line-mask {
+            background-color: var(--line-selected-bg-color);
+            border: 2px solid var(--line-active-border-color);
+            border-left: 4px solid var(--line-active-border-color);
+        }
+
+        &.has-error {
+            .line-mask {
+                border: 2px solid var(--line-selected-error-border-color);
+                border-left: 4px solid var(--line-selected-error-border-color);
+            }
+        }
+    }
+
+    .line-mask {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: transparent;
+        z-index: 10;
+        pointer-events: none;
+
+        &.error-mask {
+            background-color: var(--line-error-bg-color);
+            border-left: 4px solid var(--line-error-border-left-color);
+        }
+    }
+
+    .load-error-text {
+        color: var(--term-text-red);
+        padding-top: 5px;
+    }
+
+    .renderer-loading {
+        padding-top: 5px;
+    }
+
+    .sidebar-message {
+        color: var(--term-text-yellow);
+    }
+
+    .focus-indicator {
+        height: calc(100% - 7px);
+        top: 5px;
+    }
+
+    &.line-simple {
+        font-size: 11px;
+        line-height: 1.2;
+        color: var(--line-text-color);
+
+        .simple-line-header {
+            display: flex;
+            margin-top: 5px;
+            flex-direction: row;
+        }
+
+        .ts {
+            display: flex;
+        }
+    }
+
+    .simple-line-status {
+        .linenum {
+            cursor: pointer;
+        }
+
+        .avatar {
+            display: inline-block;
+            height: 1em;
+            margin-left: 0.5em;
+            vertical-align: text-top;
+            fill: var(--primary-background-color);
+        }
+
+        .success {
+            color: var(--primary-accent-color);
+            fill: var(--primary-accent-color);
+        }
+
+        .fail {
+            color: var(--line-error-color);
+            fill: var(--line-error-color);
+        }
+
+        .warning {
+            color: var(--line-warning-color);
+            fill: var(--line-warning-color);
+        }
+    }
+
+    &.top-border {
+        border-top: 1px solid #777;
+        padding: 10px;
+    }
+
+    &:hover .meta .termopts {
+        display: block;
+    }
+
+    &:hover .meta .settings {
+        display: block;
+    }
+
+    .line-header + div:not(.zero-height) {
+        margin-top: calc(var(--termpad) + 2px);
+    }
+
+    &:hover .line-actions {
+        background-color: var(--app-panel-bg-color);
+        .line-icon {
+            visibility: visible;
+        }
+    }
+
+    .line-actions {
+        position: absolute;
+        right: calc(var(--termpad) * 2);
+        top: 0;
+        font-size: 14px;
+        color: var(--line-actions-inactive-color);
+        border-radius: 4px;
+        padding-left: 4px;
+        padding-right: 4px;
+        line-height: 1.2;
+
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        .line-icon {
+            visibility: hidden;
+
+            &.active {
+                visibility: visible;
+            }
+
+            &:hover {
+                color: var(--line-actions-active-color);
+            }
+
+            padding: 4px;
+            cursor: pointer;
+        }
+
+        .line-icon + .line-icon:not(.line-icon-shrink-left) {
+            margin-left: 3px;
+        }
+    }
+
+    .line-header {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        font-weight: normal;
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
+
+        .meta + .meta {
+            margin-top: 2px;
+        }
+
+        .meta {
+            display: flex;
+            flex-direction: row;
+
+            .user {
+                color: var(--line-meta-user-color);
+                font-weight: bold;
+                margin-top: 1px;
+                margin-right: 10px;
+            }
+
+            &.meta-line1 {
+                display: flex;
+                flex-direction: row;
+                font-size: var(--termfontsize-sm);
+                line-height: var(--termlineheight-sm);
+                color: var(--term-gray);
+            }
+
+            .meta-divider {
+                margin-left: var(--termpad);
+                margin-right: var(--termpad);
+            }
+
+            .ts,
+            .termopts,
+            .renderer {
+                display: flex;
+            }
+
+            .renderer .renderer-icon {
+                margin-right: 0.5em;
+            }
+
+            .metapart-mono {
+                margin-left: 8px;
+                white-space: nowrap;
+            }
+        }
+
+        .cmdtext-expanded {
+            overflow: auto;
+            max-height: calc(var(--termlineheight) * 3.3);
+            white-space: pre;
+            color: var(--term-bright-white);
+            font-weight: bold;
+            width: calc(100% - var(--termpad) * 2);
+
+            &.is-multiline {
+                border-left: 2px solid #333;
+                margin-left: 3px;
+                padding-left: 6px;
+            }
+        }
+    }
+
+    .cmd-hints {
+        position: absolute;
+        bottom: 0px;
+        right: 0px;
+        display: none;
+
+        .hint-item {
+            border-radius: 3px;
+        }
+    }
+
+    .image-wrapper {
+        .loading-div {
+            height: 20px;
+            margin-left: 50px;
+        }
+    }
+
+    &.has-rtnstate .terminal-wrapper {
+        padding-bottom: 0;
+    }
+
+    .terminal-wrapper {
+        line-height: normal;
+
+        &.zero-height {
+            padding: 0;
+            margin: 0;
+        }
+
+        .terminal-connectelem {
+            overflow-y: hidden;
+            overflow-x: hidden;
+        }
+
+        &.cmd-done .terminal .xterm-cursor {
+            display: none;
+        }
+
+        .terminal-loading-message {
+            position: absolute;
+            top: calc(40% - 8px);
+            left: 50px;
+            height: 20px;
+        }
+    }
+
+    .cmd-rtnstate {
+        position: relative;
+
+        .cmd-rtnstate-label {
+            font-family: var(--termfontfamily);
+            position: relative;
+            font-size: 10px;
+            z-index: 2;
+            margin: 6px 0 2px 10px;
+            padding: 2px 5px 0px 5px;
+            display: inline-block;
+            font-size: 10px;
+            color: var(--term-text-white);
+            background-color: #151715;
+        }
+
+        .cmd-rtnstate-diff {
+            font-family: var(--termfontfamily);
+            color: var(--term-text-white);
+            white-space: pre;
+            margin-left: 10px;
+            padding-left: 10px;
+            padding-bottom: 1px;
+            font-size: 11px;
+            line-height: 1.2;
+            max-height: 50px;
+            overflow-y: auto;
+            direction: rtl;
+
+            .cmd-rtnstate-diff-inner {
+                direction: ltr;
+            }
+        }
+
+        .cmd-rtnstate-sep {
+            height: 1px;
+            border-bottom: 1px solid #333;
+            position: relative;
+            top: -10px;
+            width: min(300px, 50%);
+            margin-bottom: -4px;
+        }
+    }
+}

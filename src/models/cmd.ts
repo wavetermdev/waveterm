@@ -2,20 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as mobx from "mobx";
-import { stringToBase64 } from "../util/util";
-import { TermWrap } from "../plugins/terminal/term";
-import {
-    RemotePtrType,
-    CmdDataType,
-    TermOptsType,
-    FeInputPacketType,
-    RendererModel,
-    WebCmd,
-    WebRemote,
-} from "../types/types";
-import { cmdStatusIsRunning } from "../app/line/lineutil";
+import { stringToBase64 } from "@/util/util";
+import { TermWrap } from "@/plugins/terminal/term";
+import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import { Model } from "./model";
-import { OV } from "../types/types";
 
 const InputChunkSize = 500;
 class Cmd {
@@ -45,6 +35,10 @@ class Cmd {
 
     getRestartTs(): number {
         return this.data.get().restartts;
+    }
+
+    getDurationMs(): number {
+        return this.data.get().durationms;
     }
 
     getAsWebCmd(lineid: string): WebCmd {
@@ -96,6 +90,11 @@ class Cmd {
 
     getTermOpts(): TermOptsType {
         return this.data.get().termopts;
+    }
+
+    getTermMaxRows(): number {
+        let termOpts = this.getTermOpts();
+        return termOpts?.rows;
     }
 
     getCmdStr(): string {

@@ -24,7 +24,7 @@ const DefaultMaxTokens = 1000
 const DefaultModel = "gpt-3.5-turbo"
 const DefaultStreamChanSize = 10
 
-const CloudWebsocketConnectTimeout = 5 * time.Second
+const CloudWebsocketConnectTimeout = 1 * time.Minute
 
 func convertUsage(resp openaiapi.ChatCompletionResponse) *packet.OpenAIUsageType {
 	if resp.Usage.TotalTokens == 0 {
@@ -86,7 +86,9 @@ func RunCloudCompletionStream(ctx context.Context, clientId string, opts *sstore
 	websocketContext, dialCancelFn := context.WithTimeout(context.Background(), CloudWebsocketConnectTimeout)
 	defer dialCancelFn()
 	conn, _, err := websocket.DefaultDialer.DialContext(websocketContext, pcloud.GetWSEndpoint(), nil)
-	if err != nil {
+	if err == context.DeadlineExceeded {
+		return nil, nil, fmt.Errorf("OpenAI request, timed out connected to cloud server: %v", err)
+	} else if err != nil {
 		return nil, nil, fmt.Errorf("OpenAI request, websocket connect error: %v", err)
 	}
 	reqPk := packet.MakeOpenAICloudReqPacket()

@@ -1,6 +1,5 @@
 {
     "include": ["src/**/*", "types/**/*"],
-    "exclude": ["src/electron/emain.ts"],
     "compilerOptions": {
         "target": "es5",
         "module": "commonjs",
@@ -13,6 +12,20 @@
         "resolveJsonModule": true,
         "isolatedModules": true,
         "experimentalDecorators": true,
-        "downlevelIteration": true
+        "downlevelIteration": true,
+        "baseUrl": "./", 
+        "paths": {
+            "@/app/*": ["src/app/*"], // Points to the src folder
+            "@/util/*": ["src/util/*"], // Points to the src folder
+            "@/models": ["src/models/index"], // Points directly to the index file
+            "@/models/*": ["src/models/*"], // For everything else inside models
+            "@/common/*": ["src/app/common/*"], // For everything else inside models
+            "@/elements": ["src/app/common/elements/index"], // Points directly to the index file
+            "@/elements/*": ["src/app/common/elements/*"], // For everything else inside models
+            "@/modals": ["src/app/common/modals/index"], // Points directly to the index file
+            "@/modals/*": ["src/app/common/modals/*"], // For everything else inside models
+            "@/assets/*": ["src/app/assets/*"], // For everything else inside models
+            "@/plugins/*": ["src/plugins/*"], // For everything else inside models
+        }
     }
 }

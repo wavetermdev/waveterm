@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import { GlobalModel } from "../../../models";
+import { GlobalModel } from "@/models";
 import { TosModal } from "./tos";
 
 @mobxReact.observer
@@ -17,7 +17,7 @@ class ModalsProvider extends React.Component {
         for (let i = 0; i < store.length; i++) {
             let entry = store[i];
             let Comp = entry.component;
-            rtn.push(<Comp key={entry.uniqueKey} />);
+            rtn.push(<Comp key={entry.uniqueKey} {...entry.props} />);
         }
         return <>{rtn}</>;
     }

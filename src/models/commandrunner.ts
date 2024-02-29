@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as mobx from "mobx";
-import { RendererContext, CommandRtnType, HistorySearchParams, LineStateType } from "../types/types";
 import { GlobalModel } from "./global";
 
 class CommandRunner {
     private constructor() {}
 
-    static getInstance() {
+    static getInstance(): CommandRunner {
         if (!(window as any).GlobalCommandRunner) {
             (window as any).GlobalCommandRunner = new CommandRunner();
         }
@@ -33,6 +32,12 @@ class CommandRunner {
     historyPurgeLines(lines: string[]): Promise<CommandRtnType> {
         let prtn = GlobalModel.submitCommand("history", "purge", lines, { nohist: "1" }, false);
         return prtn;
+    }
+
+    switchView(view: string) {
+        mobx.action(() => {
+            GlobalModel.activeMainView.set(view);
+        })();
     }
 
     switchSession(session: string) {
@@ -70,6 +75,11 @@ class CommandRunner {
 
     lineDelete(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
         return GlobalModel.submitCommand("line", "delete", [lineArg], { nohist: "1" }, interactive);
+    }
+
+    lineMinimize(lineId: string, minimize: boolean, interactive: boolean): Promise<CommandRtnType> {
+        let minimizeStr = minimize ? "1" : "0";
+        return GlobalModel.submitCommand("line", "minimize", [lineId, minimizeStr], { nohist: "1" }, interactive);
     }
 
     lineRestart(lineArg: string, interactive: boolean): Promise<CommandRtnType> {
@@ -343,6 +353,14 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
+    setTermFontFamily(fontFamily: string, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            termfontfamily: fontFamily,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
+    }
+
     setClientOpenAISettings(opts: { model?: string; apitoken?: string; maxtokens?: string }): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
@@ -425,6 +443,10 @@ class CommandRunner {
             kwargs.width = width;
         }
         GlobalModel.submitCommand("sidebar", "open", null, kwargs, false);
+    }
+
+    setGlobalShortcut(shortcut: string): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("client", "setglobalshortcut", [shortcut], { nohist: "1" }, false);
     }
 }
 

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
 // single          : <init, >run, >cmddata, >cmddone, <cmdstart, <>data, <>dataack, <cmddone
@@ -674,11 +675,8 @@ func MakeRawPacket(val string) *RawPacketType {
 }
 
 type LogPacketType struct {
-	Type     string `json:"type"`
-	Ts       int64  `json:"ts"`                 // log timestamp
-	ReqId    string `json:"reqid,omitempty"`    // if this log line is related to an rpc request
-	ProcInfo string `json:"procinfo,omitempty"` // server/single
-	LogLine  string `json:"logline"`            // the logline data
+	Type  string        `json:"type"`
+	Entry wlog.LogEntry `json:"entry"`
 }
 
 func (*LogPacketType) GetType() string {
@@ -689,8 +687,8 @@ func (p *LogPacketType) String() string {
 	return "log"
 }
 
-func MakeLogPacket() *LogPacketType {
-	return &LogPacketType{Type: LogPacketStr, Ts: time.Now().UnixMilli()}
+func MakeLogPacket(entry wlog.LogEntry) *LogPacketType {
+	return &LogPacketType{Type: LogPacketStr, Entry: entry}
 }
 
 type ShellStatePacketType struct {
@@ -1093,6 +1091,11 @@ type CommandPacketType interface {
 	GetCK() base.CommandKey
 }
 
+type ModelUpdatePacketType struct {
+	Type    string `json:"type"`
+	Updates []any  `json:"updates"`
+}
+
 func AsExtType(pk PacketType) string {
 	if rpcPacket, ok := pk.(RpcPacketType); ok {
 		return fmt.Sprintf("%s[%s]", rpcPacket.GetType(), rpcPacket.GetReqId())
@@ -1219,6 +1222,10 @@ func MakePacketSender(output io.Writer, errHandler func(*PacketSender, PacketTyp
 		}
 	}()
 	return sender
+}
+
+func (sender *PacketSender) SendLogPacket(entry wlog.LogEntry) {
+	sender.SendPacket(MakeLogPacket(entry))
 }
 
 func (sender *PacketSender) goHandleError(pk PacketType, err error) {

@@ -4,35 +4,18 @@
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { debounce } from "throttle-debounce";
-import { base64ToArray, boundInt, isModKeyPress, isBlank } from "../util/util";
-import { TermWrap } from "../plugins/terminal/term";
-import {
-    LineType,
-    RemoteInstanceType,
-    RemotePtrType,
-    ScreenDataType,
-    ScreenOptsType,
-    PtyDataUpdateType,
-    RendererContext,
-    RendererModel,
-    FocusTypeStrs,
-    WindowSize,
-    WebShareOpts,
-    StatusIndicatorLevel,
-    LineContainerStrs,
-    ScreenViewOptsType,
-} from "../types/types";
-import { windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows } from "../util/textmeasure";
-import { getRendererContext } from "../app/line/lineutil";
-import { MagicLayout } from "../app/magiclayout";
-import * as appconst from "../app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "../util/keyutil";
-import { OV } from "../types/types";
+import { base64ToArray, boundInt, isModKeyPress, isBlank } from "@/util/util";
+import { TermWrap } from "@/plugins/terminal/term";
+import { windowWidthToCols, windowHeightToRows, termWidthFromCols, termHeightFromRows } from "@/util/textmeasure";
+import { getRendererContext } from "@/app/line/lineutil";
+import { MagicLayout } from "@/app/magiclayout";
+import * as appconst from "@/app/appconst";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
 import { Cmd } from "./cmd";
 import { ScreenLines } from "./screenlines";
-import { getTermPtyData } from "../util/modelutil";
+import { getTermPtyData } from "@/util/modelutil";
 
 class Screen {
     globalModel: Model;
@@ -58,7 +41,7 @@ class Screen {
     shareMode: OV<string>;
     webShareOpts: OV<WebShareOpts>;
     filterRunning: OV<boolean>;
-    statusIndicator: OV<StatusIndicatorLevel>;
+    statusIndicator: OV<appconst.StatusIndicatorLevel>;
     numRunningCmds: OV<number>;
 
     constructor(sdata: ScreenDataType, globalModel: Model) {
@@ -101,7 +84,7 @@ class Screen {
         this.filterRunning = mobx.observable.box(false, {
             name: "screen-filter-running",
         });
-        this.statusIndicator = mobx.observable.box(StatusIndicatorLevel.None, {
+        this.statusIndicator = mobx.observable.box(appconst.StatusIndicatorLevel.None, {
             name: "screen-status-indicator",
         });
         this.numRunningCmds = mobx.observable.box(0, {
@@ -419,15 +402,15 @@ class Screen {
             return;
         }
         this.lastScreenSize = winSize;
-        let cols = windowWidthToCols(winSize.width, this.globalModel.termFontSize.get());
-        let rows = windowHeightToRows(winSize.height, this.globalModel.termFontSize.get());
+        let cols = windowWidthToCols(winSize.width, this.globalModel.getTermFontSize());
+        let rows = windowHeightToRows(winSize.height, this.globalModel.getTermFontSize());
         this._termSizeCallback(rows, cols);
     }
 
     getMaxContentSize(): WindowSize {
         if (this.lastScreenSize == null) {
-            let width = termWidthFromCols(80, this.globalModel.termFontSize.get());
-            let height = termHeightFromRows(25, this.globalModel.termFontSize.get());
+            let width = termWidthFromCols(80, this.globalModel.getTermFontSize());
+            let height = termHeightFromRows(25, this.globalModel.getTermFontSize(), 25);
             return { width, height };
         }
         let winSize = this.lastScreenSize;
@@ -440,8 +423,8 @@ class Screen {
 
     getIdealContentSize(): WindowSize {
         if (this.lastScreenSize == null) {
-            let width = termWidthFromCols(80, this.globalModel.termFontSize.get());
-            let height = termHeightFromRows(25, this.globalModel.termFontSize.get());
+            let width = termWidthFromCols(80, this.globalModel.getTermFontSize());
+            let height = termHeightFromRows(25, this.globalModel.getTermFontSize(), 25);
             return { width, height };
         }
         let winSize = this.lastScreenSize;
@@ -496,7 +479,7 @@ class Screen {
      * Set the status indicator for the screen.
      * @param indicator The value of the status indicator. One of "none", "error", "success", "output".
      */
-    setStatusIndicator(indicator: StatusIndicatorLevel): void {
+    setStatusIndicator(indicator: appconst.StatusIndicatorLevel): void {
         mobx.action(() => {
             this.statusIndicator.set(indicator);
         })();
@@ -605,7 +588,8 @@ class Screen {
             focusHandler: (focus: boolean) => this.setLineFocus(line.linenum, focus),
             isRunning: cmd.isRunning(),
             customKeyHandler: this.termCustomKeyHandler.bind(this),
-            fontSize: this.globalModel.termFontSize.get(),
+            fontSize: this.globalModel.getTermFontSize(),
+            fontFamily: this.globalModel.getTermFontFamily(),
             ptyDataSource: getTermPtyData,
             onUpdateContentHeight: (termContext: RendererContext, height: number) => {
                 this.globalModel.setContentHeight(termContext, height);

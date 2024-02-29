@@ -5,8 +5,8 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
-import { Markdown, Modal, Button, Checkbox } from "../elements";
-import { GlobalModel, GlobalCommandRunner } from "../../../models";
+import { Markdown, Modal, Button, Checkbox } from "@/elements";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
 
 import "./alert.less";
 
@@ -41,7 +41,7 @@ class AlertModal extends React.Component<{}, {}> {
                 <Modal.Header onClose={this.closeModal} title={title} />
                 <div className="wave-modal-body">
                     <If condition={message?.markdown}>
-                        <Markdown text={message?.message ?? ""} />
+                        <Markdown text={message?.message ?? ""} extraClassName="bottom-margin" />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
                     <If condition={message.confirmflag}>

@@ -1,5 +1,3 @@
-@import "../../../app/common/themes/themes.less";
-
 .checkbox-toggle {
     position: relative;
     display: inline-block;
@@ -20,7 +18,7 @@
         bottom: 0;
         left: 0;
         right: 0;
-        background-color: #333;
+        background-color: var(--toggle-bg-color);
         transition: 0.5s;
         border-radius: 33px;
     }
@@ -32,13 +30,13 @@
         width: 18px;
         left: 2px;
         bottom: 2px;
-        background-color: @term-white;
+        background-color: var(--toggle-thumb-color);
         transition: 0.5s;
         border-radius: 50%;
     }
 
     input:checked + .slider {
-        background-color: @term-green;
+        background-color: var(--toggle-checked-bg-color);
     }
 
     input:checked + .slider:before {

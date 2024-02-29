@@ -1,70 +1,67 @@
-@import "../../../app/common/themes/themes.less";
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 .term-prompt {
-    font-weight: 300;
-    .icon {
-        margin: 0 4px 0 2px;
-        vertical-align: middle;
-        width: 1.2em;
-        height: 1.2em;
-        fill: @wave-green;
-    }
+    // we are explicitly *not* setting font size properties here so prompt will inherit from caller
+    font-family: var(--termfontfamily);
+    font-weight: normal;
+    color: var(--term-gray);
 
+    i {
+        margin-right: 0.25em; // em for relative sizing
+    }
+}
+
+.term-prompt.term-prompt-color {
     .term-prompt-branch {
-        color: @term-white;
+        color: var(--term-white);
     }
 
     .term-prompt-python {
-        color: @term-bright-magenta;
+        color: var(--term-bright-magenta);
     }
 
     .term-prompt-remote {
-        i {
-            margin-right: 0;
-        }
-    }
-
-    .term-prompt-remote {
-        color: @term-bright-green;
+        color: var(--term-bright-green);
 
         &.color-green {
-            color: @term-bright-green;
+            color: var(--term-bright-green);
         }
 
         &.color-red {
-            color: @term-bright-red;
+            color: var(--term-bright-red);
         }
 
         &.color-blue {
-            color: @term-bright-blue;
+            color: var(--term-bright-blue);
         }
 
         &.color-yellow {
-            color: @term-bright-yellow;
+            color: var(--term-bright-yellow);
         }
 
         &.color-magenta {
-            color: @term-bright-magenta;
+            color: var(--term-bright-magenta);
         }
 
         &.color-cyan {
-            color: @term-bright-cyan;
+            color: var(--termt-bright-cyan);
         }
 
         &.color-white {
-            color: @term-bright-white;
+            color: var(--term-bright-white);
         }
 
         &.color-orange {
-            color: @tab-orange;
+            color: var(--term-orange);
         }
     }
 
     .term-prompt-cwd {
-        color: @term-bright-green;
+        color: var(--term-bright-green);
     }
 
-    .term-prompt-end {
-        color: @term-bright-green;
+    &.term-prompt-isroot .term-prompt-cwd {
+        color: var(--term-bright-red);
     }
 }

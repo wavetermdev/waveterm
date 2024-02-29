@@ -1,29 +1,10 @@
-@import "../../app/common/themes/themes.less";
-
 .clientsettings-view {
-    background-color: @background-session;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    overflow: auto;
-    margin-bottom: 10px;
-    margin-right: 10px;
-    border-radius: 8px;
-    border: 1px solid rgba(241, 246, 243, 0.08);
-    background: rgba(13, 13, 13, 0.85);
-
-    .header {
-        margin: 24px 18px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: 20px;
-        border-bottom: 1px solid white;
-    }
-
     .content {
         padding: 0 18px 0 30px;
+    }
+
+    .wave-dropdown {
+        width: 200px;
     }
 
     // just marked these as important since we're keeping the
@@ -54,12 +35,12 @@
         }
 
         &.settings-error {
-            color: @term-red;
+            color: var(--view-error-color);
             margin-top: 20px;
             padding: 10px;
             border-radius: 5px;
             background-color: #200707;
-            border: 1px solid @term-red;
+            border: 1px solid var(--view-error-color);
             font-weight: bold;
 
             .error-dismiss {
@@ -115,37 +96,37 @@
             }
 
             .tab-color-icon.color-default path {
-                fill: @tab-green;
+                fill: var(--tab-green);
             }
             .tab-color-icon.color-green path {
-                fill: @tab-green;
+                fill: var(--tab-green);
             }
             .tab-color-icon.color-orange path {
-                fill: @tab-orange;
+                fill: var(--tab-orange);
             }
             .tab-color-icon.color-red path {
-                fill: @tab-red;
+                fill: var(--tab-red);
             }
             .tab-color-icon.color-yellow path {
-                fill: @tab-yellow;
+                fill: var(--tab-yellow);
             }
             .tab-color-icon.color-blue path {
-                fill: @tab-blue;
+                fill: var(--tab-blue);
             }
             .tab-color-icon.color-mint path {
-                fill: @tab-mint;
+                fill: var(--tab-mint);
             }
             .tab-color-icon.color-cyan path {
-                fill: @tab-cyan;
+                fill: var(--tab-cyan);
             }
             .tab-color-icon.color-white path {
-                fill: @tab-white;
+                fill: var(--tab-white);
             }
             .tab-color-icon.color-violet path {
-                fill: @tab-violet;
+                fill: var(--tab-violet);
             }
             .tab-color-icon.color-pink path {
-                fill: @tab-pink;
+                fill: var(--tab-pink);
             }
 
             .tab-colors,
@@ -185,7 +166,7 @@
             .action-text {
                 margin-left: 20px;
 
-                color: @term-red;
+                color: var(--view-error-color);
             }
 
             .settings-share-link {

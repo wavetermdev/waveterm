@@ -15,7 +15,6 @@ import (
 	"os"
 	"os/user"
 	"path"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -28,9 +27,13 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+type RemotePtrType = scpacket.RemotePtrType
 
 const LineNoHeight = -1
 const DBFileName = "waveterm.db"
@@ -60,6 +63,7 @@ const (
 const (
 	LineState_Source   = "prompt:source"
 	LineState_File     = "prompt:file"
+	LineState_Min      = "wave:min"
 	LineState_Template = "template"
 	LineState_Mode     = "mode"
 	LineState_Lang     = "lang"
@@ -281,15 +285,18 @@ type SidebarValueType struct {
 }
 
 type ClientOptsType struct {
-	NoTelemetry    bool              `json:"notelemetry,omitempty"`
-	NoReleaseCheck bool              `json:"noreleasecheck,omitempty"`
-	AcceptedTos    int64             `json:"acceptedtos,omitempty"`
-	ConfirmFlags   map[string]bool   `json:"confirmflags,omitempty"`
-	MainSidebar    *SidebarValueType `json:"mainsidebar,omitempty"`
+	NoTelemetry           bool              `json:"notelemetry,omitempty"`
+	NoReleaseCheck        bool              `json:"noreleasecheck,omitempty"`
+	AcceptedTos           int64             `json:"acceptedtos,omitempty"`
+	ConfirmFlags          map[string]bool   `json:"confirmflags,omitempty"`
+	MainSidebar           *SidebarValueType `json:"mainsidebar,omitempty"`
+	GlobalShortcut        string            `json:"globalshortcut,omitempty"`
+	GlobalShortcutEnabled bool              `json:"globalshortcutenabled,omitempty"`
 }
 
 type FeOptsType struct {
-	TermFontSize int `json:"termfontsize,omitempty"`
+	TermFontSize   int    `json:"termfontsize,omitempty"`
+	TermFontFamily string `json:"termfontfamily,omitempty"`
 }
 
 type ReleaseInfoType struct {
@@ -334,6 +341,10 @@ func (cdata *ClientData) Clean() *ClientData {
 	return &rtn
 }
 
+func (ClientData) GetType() string {
+	return "clientdata"
+}
+
 type SessionType struct {
 	SessionId      string            `json:"sessionid"`
 	Name           string            `json:"name"`
@@ -347,7 +358,17 @@ type SessionType struct {
 
 	// only for updates
 	Remove bool `json:"remove,omitempty"`
-	Full   bool `json:"full,omitempty"`
+}
+
+func (SessionType) GetType() string {
+	return "session"
+}
+
+func MakeSessionUpdateForRemote(sessionId string, ri *RemoteInstance) SessionType {
+	return SessionType{
+		SessionId: sessionId,
+		Remotes:   []*RemoteInstance{ri},
+	}
 }
 
 type SessionTombstoneType struct {
@@ -358,6 +379,10 @@ type SessionTombstoneType struct {
 
 func (SessionTombstoneType) UseDBMap() {}
 
+func (SessionTombstoneType) GetType() string {
+	return "sessiontombstone"
+}
+
 type SessionStatsType struct {
 	SessionId          string              `json:"sessionid"`
 	NumScreens         int                 `json:"numscreens"`
@@ -365,68 +390,6 @@ type SessionStatsType struct {
 	NumLines           int                 `json:"numlines"`
 	NumCmds            int                 `json:"numcmds"`
 	DiskStats          SessionDiskSizeType `json:"diskstats"`
-}
-
-var RemoteNameRe = regexp.MustCompile("^\\*?[a-zA-Z0-9_-]+$")
-
-type RemotePtrType struct {
-	OwnerId  string `json:"ownerid"`
-	RemoteId string `json:"remoteid"`
-	Name     string `json:"name"`
-}
-
-func (r RemotePtrType) IsSessionScope() bool {
-	return strings.HasPrefix(r.Name, "*")
-}
-
-func (rptr *RemotePtrType) GetDisplayName(baseDisplayName string) string {
-	name := baseDisplayName
-	if rptr == nil {
-		return name
-	}
-	if rptr.Name != "" {
-		name = name + ":" + rptr.Name
-	}
-	if rptr.OwnerId != "" {
-		name = "@" + rptr.OwnerId + ":" + name
-	}
-	return name
-}
-
-func (r RemotePtrType) Validate() error {
-	if r.OwnerId != "" {
-		if _, err := uuid.Parse(r.OwnerId); err != nil {
-			return fmt.Errorf("invalid ownerid format: %v", err)
-		}
-	}
-	if r.RemoteId != "" {
-		if _, err := uuid.Parse(r.RemoteId); err != nil {
-			return fmt.Errorf("invalid remoteid format: %v", err)
-		}
-	}
-	if r.Name != "" {
-		ok := RemoteNameRe.MatchString(r.Name)
-		if !ok {
-			return fmt.Errorf("invalid remote name")
-		}
-	}
-	return nil
-}
-
-func (r RemotePtrType) MakeFullRemoteRef() string {
-	if r.RemoteId == "" {
-		return ""
-	}
-	if r.OwnerId == "" && r.Name == "" {
-		return r.RemoteId
-	}
-	if r.OwnerId != "" && r.Name == "" {
-		return fmt.Sprintf("@%s:%s", r.OwnerId, r.RemoteId)
-	}
-	if r.OwnerId == "" && r.Name != "" {
-		return fmt.Sprintf("%s:%s", r.RemoteId, r.Name)
-	}
-	return fmt.Sprintf("@%s:%s:%s", r.OwnerId, r.RemoteId, r.Name)
 }
 
 func (h *HistoryItemType) ToMap() map[string]interface{} {
@@ -489,6 +452,10 @@ type ScreenLinesType struct {
 
 func (ScreenLinesType) UseDBMap() {}
 
+func (ScreenLinesType) GetType() string {
+	return "screenlines"
+}
+
 type ScreenWebShareOpts struct {
 	ShareName string `json:"sharename"`
 	ViewKey   string `json:"viewkey"`
@@ -536,9 +503,7 @@ type ScreenType struct {
 	ArchivedTs     int64               `json:"archivedts,omitempty"`
 
 	// only for updates
-	Full            bool   `json:"full,omitempty"`
-	Remove          bool   `json:"remove,omitempty"`
-	StatusIndicator string `json:"statusindicator,omitempty"`
+	Remove bool `json:"remove,omitempty"`
 }
 
 func (s *ScreenType) ToMap() map[string]interface{} {
@@ -586,6 +551,24 @@ func (s *ScreenType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
+func (ScreenType) GetType() string {
+	return "screen"
+}
+
+func AddScreenUpdate(update *scbus.ModelUpdatePacketType, newScreen *ScreenType) {
+	if newScreen == nil {
+		return
+	}
+	screenUpdates := scbus.GetUpdateItems[ScreenType](update)
+	for _, screenUpdate := range screenUpdates {
+		if screenUpdate.ScreenId == newScreen.ScreenId {
+			screenUpdate = newScreen
+			return
+		}
+	}
+	update.AddUpdate(newScreen)
+}
+
 type ScreenTombstoneType struct {
 	ScreenId   string         `json:"screenid"`
 	SessionId  string         `json:"sessionid"`
@@ -595,6 +578,10 @@ type ScreenTombstoneType struct {
 }
 
 func (ScreenTombstoneType) UseDBMap() {}
+
+func (ScreenTombstoneType) GetType() string {
+	return "screentombstone"
+}
 
 const (
 	LayoutFull = "full"
@@ -761,6 +748,9 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 	envMap := shellenv.EnvMapFromState(state)
 	if envMap["VIRTUAL_ENV"] != "" {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
+	}
+	if envMap["CONDA_DEFAULT_ENV"] != "" {
+		rtn["CONDA_DEFAULT_ENV"] = envMap["CONDA_DEFAULT_ENV"]
 	}
 	for key, val := range envMap {
 		if strings.HasPrefix(key, "PROMPTVAR_") && envMap[key] != "" {
@@ -1020,6 +1010,7 @@ type RemoteRuntimeState struct {
 	DefaultFeState      map[string]string `json:"defaultfestate"`
 	Status              string            `json:"status"`
 	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
+	CountdownActive     bool              `json:"countdownactive"`
 	ErrorStr            string            `json:"errorstr,omitempty"`
 	InstallStatus       string            `json:"installstatus"`
 	InstallErrorStr     string            `json:"installerrorstr,omitempty"`
@@ -1073,6 +1064,10 @@ func (state RemoteRuntimeState) ExpandHomeDir(pathStr string) (string, error) {
 		return homeDir, nil
 	}
 	return path.Join(homeDir, pathStr[2:]), nil
+}
+
+func (RemoteRuntimeState) GetType() string {
+	return "remote"
 }
 
 type RemoteType struct {
@@ -1137,6 +1132,10 @@ type CmdType struct {
 	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
 	Remove       bool                `json:"remove,omitempty"`    // not persisted to DB
 	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
+}
+
+func (CmdType) GetType() string {
+	return "cmd"
 }
 
 func (r *RemoteType) ToMap() map[string]interface{} {
@@ -1486,7 +1485,7 @@ func SetReleaseInfo(ctx context.Context, releaseInfo ReleaseInfoType) error {
 }
 
 // Sets the in-memory status indicator for the given screenId to the given value and adds it to the ModelUpdate. By default, the active screen will be ignored when updating status. To force a status update for the active screen, set force=true.
-func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, screenId string, level StatusIndicatorLevel, force bool) error {
+func SetStatusIndicatorLevel_Update(ctx context.Context, update *scbus.ModelUpdatePacketType, screenId string, level StatusIndicatorLevel, force bool) error {
 	var newStatus StatusIndicatorLevel
 	if force {
 		// Force the update and set the new status to the given level, regardless of the current status or the active screen
@@ -1516,26 +1515,26 @@ func SetStatusIndicatorLevel_Update(ctx context.Context, update *ModelUpdate, sc
 		}
 	}
 
-	update.ScreenStatusIndicators = []*ScreenStatusIndicatorType{{
+	update.AddUpdate(ScreenStatusIndicatorType{
 		ScreenId: screenId,
 		Status:   newStatus,
-	}}
+	})
 	return nil
 }
 
 // Sets the in-memory status indicator for the given screenId to the given value and pushes the new value to the FE
 func SetStatusIndicatorLevel(ctx context.Context, screenId string, level StatusIndicatorLevel, force bool) error {
-	update := &ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, level, false)
 	if err != nil {
 		return err
 	}
-	MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 	return nil
 }
 
 // Resets the in-memory status indicator for the given screenId to StatusIndicatorLevel_None and adds it to the ModelUpdate
-func ResetStatusIndicator_Update(update *ModelUpdate, screenId string) error {
+func ResetStatusIndicator_Update(update *scbus.ModelUpdatePacketType, screenId string) error {
 	// We do not need to set context when resetting the status indicator because we will not need to call the DB
 	return SetStatusIndicatorLevel_Update(context.TODO(), update, screenId, StatusIndicatorLevel_None, true)
 }
@@ -1546,18 +1545,17 @@ func ResetStatusIndicator(screenId string) error {
 	return SetStatusIndicatorLevel(context.TODO(), screenId, StatusIndicatorLevel_None, true)
 }
 
-func IncrementNumRunningCmds_Update(update *ModelUpdate, screenId string, delta int) {
+func IncrementNumRunningCmds_Update(update *scbus.ModelUpdatePacketType, screenId string, delta int) {
 	newNum := ScreenMemIncrementNumRunningCommands(screenId, delta)
-	log.Printf("IncrementNumRunningCmds_Update: screenId=%s, newNum=%d\n", screenId, newNum)
-	update.ScreenNumRunningCommands = []*ScreenNumRunningCommandsType{{
+	update.AddUpdate(ScreenNumRunningCommandsType{
 		ScreenId: screenId,
 		Num:      newNum,
-	}}
+	})
+
 }
 
 func IncrementNumRunningCmds(screenId string, delta int) {
-	log.Printf("IncrementNumRunningCmds: screenId=%s, delta=%d\n", screenId, delta)
-	update := &ModelUpdate{}
+	update := scbus.MakeUpdatePacket()
 	IncrementNumRunningCmds_Update(update, screenId, delta)
-	MainBus.SendUpdate(update)
+	scbus.MainUpdateBus.DoUpdate(update)
 }

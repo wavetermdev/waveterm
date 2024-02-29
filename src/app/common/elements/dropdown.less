@@ -1,5 +1,3 @@
-@import "../../../app/common/themes/themes.less";
-
 .wave-dropdown {
     position: relative;
     height: 44px;
@@ -21,7 +19,7 @@
         top: 16px;
         font-size: 12.5px;
         transition: all 0.3s;
-        color: @term-white;
+        color: var(--dropdown-text-color);
         line-height: 10px;
 
         &.float {
@@ -94,11 +92,11 @@
     }
 
     &-error {
-        border-color: @term-red;
+        border-color: var(--dropdown-error-color);
     }
 
     &:focus {
-        border-color: @term-green;
+        border-color: var(--dropdown-focus-color);
     }
 }
 

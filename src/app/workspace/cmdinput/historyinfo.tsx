@@ -9,10 +9,9 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { HistoryItem, HistoryQueryOpts } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "../../../models";
-import { isBlank } from "../../../util/util";
+import { GlobalModel } from "@/models";
+import { isBlank } from "@/util/util";
 
 dayjs.extend(localizedFormat);
 
@@ -207,9 +206,9 @@ class HistoryInfo extends React.Component<{}, {}> {
             scrNames = GlobalModel.getScreenNames();
         }
         return (
-            <div className="cmd-history">
+            <div className="cmd-history hide-scrollbar">
                 <div className="history-title">
-                    <div>history</div>
+                    <div className="history-label">history</div>
                     <div className="spacer"></div>
                     <div className="history-opt">[for {opts.queryType} &#x2318;S]</div>
                     <div className="spacer"></div>

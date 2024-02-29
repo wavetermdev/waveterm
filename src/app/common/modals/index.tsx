@@ -9,3 +9,4 @@ export { TabSwitcherModal } from "./tabswitcher";
 export { SessionSettingsModal } from "./sessionsettings";
 export { ScreenSettingsModal } from "./screensettings";
 export { LineSettingsModal } from "./linesettings";
+export { UserInputModal } from "./userinput";

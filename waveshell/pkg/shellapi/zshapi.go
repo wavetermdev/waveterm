@@ -51,6 +51,7 @@ var ZshIgnoreVars = map[string]bool{
 	"EPOCHREALTIME":        true,
 	"SHLVL":                true,
 	"TTY":                  true,
+	"ZDOTDIR":              true,
 	"epochtime":            true,
 	"langinfo":             true,
 	"keymaps":              true,
@@ -257,10 +258,7 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		}
 		rcBuf.WriteString("\n")
 	}
-	if shellenv.FindVarDecl(varDecls, "ZDOTDIR") == nil {
-		rcBuf.WriteString("unset ZDOTDIR\n")
-		rcBuf.WriteString("\n")
-	}
+	// do NOT unset ZDOTDIR, otherwise initialization will start to read initialization files from ~/ again
 	for _, varName := range ZshUnsetVars {
 		rcBuf.WriteString("unset " + shellescape.Quote(varName) + "\n")
 	}

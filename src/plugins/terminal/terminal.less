@@ -1,12 +1,11 @@
-@import "../../app/common/themes/themes.less";
 @import "./xterm.less";
 
 .terminal-wrapper {
     .xterm-viewport {
-        overflow-y: hidden;
+        overflow: hidden;
     }
     &:hover .xterm-viewport,
     &:focus-within .xterm-viewport {
-        overflow-y: auto;
+        overflow: auto;
     }
 }

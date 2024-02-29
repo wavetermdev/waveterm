@@ -7,23 +7,23 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { ClientDataType, RemoteType } from "../../types/types";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
 
-import { ReactComponent as LeftChevronIcon } from "../assets/icons/chevron_left.svg";
-import { ReactComponent as AppsIcon } from "../assets/icons/apps.svg";
-import { ReactComponent as WorkspacesIcon } from "../assets/icons/workspaces.svg";
-import { ReactComponent as SettingsIcon } from "../assets/icons/settings.svg";
+import { ReactComponent as AppsIcon } from "@/assets/icons/apps.svg";
+import { ReactComponent as WorkspacesIcon } from "@/assets/icons/workspaces.svg";
+import { ReactComponent as SettingsIcon } from "@/assets/icons/settings.svg";
+import { ReactComponent as WaveLogoWord } from "@/assets/wave-logo_horizontal-coloronblack.svg";
+import { ReactComponent as WaveLogo } from "@/assets/waveterm-logo.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Session } from "../../models";
-import { isBlank, openLink } from "../../util/util";
-import { ResizableSidebar } from "../common/elements";
-import * as appconst from "../appconst";
+import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
+import { isBlank, openLink } from "@/util/util";
+import { ResizableSidebar } from "@/common/elements";
+import * as appconst from "@/app/appconst";
 
 import "./sidebar.less";
-import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "../common/icons/icons";
+import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "@/common/icons/icons";
 
 dayjs.extend(localizedFormat);
 
@@ -65,7 +65,7 @@ interface MainSideBarProps {
 
 @mobxReact.observer
 class MainSideBar extends React.Component<MainSideBarProps, {}> {
-    sidebarRef = React.createRef<HTMLDivElement>();
+    middleHeightSubtractor = mobx.observable.box(404);
 
     handleSessionClick(sessionId: string) {
         GlobalCommandRunner.switchSession(sessionId);
@@ -170,6 +170,44 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         GlobalModel.modalsModel.pushModal(appconst.SESSION_SETTINGS);
     }
 
+    /**
+     * Get the update banner for the app, if we need to show it.
+     * @returns Either a banner to install the ready update, a link to the download page, or null if no update is available.
+     */
+    @boundMethod
+    getUpdateAppBanner(): React.ReactNode {
+        if (GlobalModel.platform == "darwin") {
+            const status = GlobalModel.appUpdateStatus.get();
+            if (status == "ready") {
+                return (
+                    <SideBarItem
+                        key="update-ready"
+                        className="update-banner"
+                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                        contents="Click to Install Update"
+                        onClick={() => GlobalModel.installAppUpdate()}
+                    />
+                );
+            }
+        } else {
+            const clientData = this.props.clientData;
+            if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
+                if (compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0) {
+                    return (
+                        <SideBarItem
+                            key="update-available"
+                            className="update-banner"
+                            frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                            contents="Update Available"
+                            onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                        />
+                    );
+                }
+            }
+        }
+        return null;
+    }
+
     getSessions() {
         if (!GlobalModel.sessionListLoaded.get()) return <div className="item">loading ...</div>;
         const sessionList: Session[] = [];
@@ -204,14 +242,32 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         });
     }
 
-    render() {
-        let clientData = this.props.clientData;
-        let needsUpdate = false;
-        if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
-            needsUpdate = compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0;
+    /**
+     * Calculate the subtractor portion for the middle div's height calculation, which should be `100vh - subtractor`.
+     */
+    setMiddleHeightSubtractor() {
+        const windowHeight = window.innerHeight;
+        const bottomHeight = windowHeight - window.document.getElementById("sidebar-bottom")?.offsetTop;
+        const middleTop = document.getElementById("sidebar-middle")?.offsetTop;
+        const newMiddleHeightSubtractor = bottomHeight + middleTop;
+        if (!Number.isNaN(newMiddleHeightSubtractor)) {
+            mobx.action(() => {
+                this.middleHeightSubtractor.set(newMiddleHeightSubtractor);
+            })();
         }
-        let mainSidebar = GlobalModel.mainSidebarModel;
-        let isCollapsed = mainSidebar.getCollapsed();
+    }
+
+    componentDidMount() {
+        this.setMiddleHeightSubtractor();
+    }
+
+    componentDidUpdate() {
+        this.setMiddleHeightSubtractor();
+    }
+
+    render() {
+        const sidebarWidth = GlobalModel.mainSidebarModel.getWidth();
+
         return (
             <ResizableSidebar
                 className="main-sidebar"
@@ -221,25 +277,20 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             >
                 {(toggleCollapse) => (
                     <React.Fragment>
-                        <div className="title-bar-drag" />
-                        <div className="contents">
+                        <div className="title-bar-drag">
                             <div className="logo">
-                                <If condition={isCollapsed}>
-                                    <div className="logo-container" onClick={toggleCollapse}>
-                                        <img src="public/logos/wave-logo.png" />
-                                    </div>
+                                <If condition={sidebarWidth > 215}>
+                                    <WaveLogoWord />
                                 </If>
-                                <If condition={!isCollapsed}>
-                                    <div className="logo-container">
-                                        <img src="public/logos/wave-dark.png" />
-                                    </div>
-                                    <div className="spacer" />
-                                    <div className="collapse-button" onClick={toggleCollapse}>
-                                        <LeftChevronIcon className="icon" />
-                                    </div>
+                                <If condition={sidebarWidth <= 215}>
+                                    <WaveLogo />
                                 </If>
                             </div>
-                            <div className="separator" />
+                            <div className="close-button">
+                                <i className="fa-sharp fa-solid fa-xmark-large" onClick={toggleCollapse} />
+                            </div>
+                        </div>
+                        <div className="contents">
                             <div className="top">
                                 <SideBarItem
                                     key="history"
@@ -272,17 +323,17 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                     </CenteredIcon>,
                                 ]}
                             />
-                            <div className="middle hideScrollbarUntillHover">{this.getSessions()}</div>
-                            <div className="bottom">
-                                <If condition={needsUpdate}>
-                                    <SideBarItem
-                                        key="update-available"
-                                        className="updateBanner"
-                                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
-                                        contents="Update Available"
-                                        onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
-                                    />
-                                </If>
+                            <div
+                                className="middle scrollbar-hide-until-hover"
+                                id="sidebar-middle"
+                                style={{
+                                    maxHeight: `calc(100vh - ${this.middleHeightSubtractor.get()}px)`,
+                                }}
+                            >
+                                {this.getSessions()}
+                            </div>
+                            <div className="bottom" id="sidebar-bottom">
+                                {this.getUpdateAppBanner()}
                                 <If condition={GlobalModel.isDev}>
                                     <SideBarItem
                                         key="apps"

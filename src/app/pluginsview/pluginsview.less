@@ -1,7 +1,5 @@
-@import "../../app/common/themes/themes.less";
-
 .plugins-view {
-    background-color: @background-session;
+    background-color: var(--session-bg-color);
 
     .header {
         margin: 1.5em 1.5em 0.5em;
@@ -23,7 +21,7 @@
             svg {
                 width: 1.5em;
                 height: 1.5em;
-                fill: @base-color;
+                fill: var(--app-text-color);
             }
         }
     }
@@ -32,7 +30,7 @@
         display: flex;
         .plugins-list {
             padding: 1em;
-            border-right: 1px solid @base-border;
+            border-right: 1px solid var(--app-text-color);
             min-height: calc(100vh - 6em);
             max-height: calc(100vh - 6em);
             overflow-y: auto;
@@ -45,7 +43,7 @@
                 margin-bottom: 1em;
                 border: 1px solid transparent;
                 &.selected {
-                    border-color: @wave-green;
+                    border-color: var(--app-accent-color);
                 }
                 .plugin-summary-header {
                     display: flex;

@@ -8,16 +8,14 @@ import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
-import type { RemoteType, RemoteInstanceType, RemotePtrType } from "../../../types/types";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel, GlobalCommandRunner, Screen } from "../../../models";
-import { renderCmdText } from "../../common/elements";
+import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
+import { renderCmdText } from "@/elements";
 import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
-import { Prompt } from "../../common/prompt/prompt";
-import { ReactComponent as ExecIcon } from "../../assets/icons/exec.svg";
-import { RotateIcon } from "../../common/icons/icons";
+import { Prompt } from "@/common/prompt/prompt";
+import { RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
 
 import "./cmdinput.less";
@@ -183,67 +181,38 @@ class CmdInput extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </If>
-                <div key="prompt" className="cmd-input-context">
-                    <div className="has-text-white">
-                        <span ref={this.promptRef}>
-                            <Prompt rptr={rptr} festate={feState} />
-                        </span>
+                <div key="base-cmdinput" className="base-cmdinput">
+                    <div key="prompt" className="cmd-input-context">
+                        <div className="has-text-white">
+                            <span ref={this.promptRef}>
+                                <Prompt rptr={rptr} festate={feState} color={true} />
+                            </span>
+                        </div>
+                        <If condition={numRunningLines > 0}>
+                            <div onClick={() => this.toggleFilter(screen)} className="cmd-input-filter">
+                                {numRunningLines}
+                                <div className="avatar">
+                                    <RotateIcon className="warning spin" />
+                                </div>
+                            </div>
+                        </If>
                     </div>
-                    <If condition={numRunningLines > 0}>
-                        <div onClick={() => this.toggleFilter(screen)} className="cmd-input-filter">
-                            {numRunningLines}
-                            <div className="avatar">
-                                <RotateIcon className="warning spin" />
-                            </div>
-                        </div>
-                    </If>
-                </div>
-                <div
-                    key="input"
-                    className={cn(
-                        "cmd-input-field field has-addons",
-                        inputMode != null ? "inputmode-" + inputMode : null
-                    )}
-                >
-                    <If condition={inputMode != null}>
-                        <div className="control cmd-quick-context">
-                            <div className="button is-static">{inputMode}</div>
-                        </div>
-                    </If>
-                    <TextAreaInput
-                        key={textAreaInputKey}
-                        screen={screen}
-                        onHeightChange={this.handleInnerHeightUpdate}
-                    />
-                    <div className="control cmd-exec">
-                        {/**<div onClick={inputModel.toggleExpandInput} className="hint-item color-white">
-                            {inputModel.inputExpanded.get() ? "shrink" : "expand"} input ({renderCmdText("E")})
-                            </div>**/}
-                        {!focusVal && (
-                            <div onClick={this.clickFocusInputHint} className="cmd-btn hoverEffect">
-                                <div className="hint-elem">focus input ({renderCmdText("I")})</div>
-                            </div>
+                    <div
+                        key="input"
+                        className={cn(
+                            "cmd-input-field field has-addons",
+                            inputMode != null ? "inputmode-" + inputMode : null
                         )}
-                        {focusVal && (
-                            <div className="cmd-btn hoverEffect">
-                                <If condition={historyShow}>
-                                    <div className="hint-elem" onMouseDown={this.clickHistoryHint}>
-                                        close (esc)
-                                    </div>
-                                </If>
-                                <If condition={!historyShow}>
-                                    <div className="hint-elem" onMouseDown={this.clickHistoryHint}>
-                                        history (ctrl-r)
-                                    </div>
-                                    <div className="hint-elem" onMouseDown={this.clickAIHint}>
-                                        AI (ctrl-space)
-                                    </div>
-                                </If>
+                    >
+                        <If condition={inputMode != null}>
+                            <div className="control cmd-quick-context">
+                                <div className="button is-static">{inputMode}</div>
                             </div>
-                        )}
-                        <ExecIcon
-                            onClick={inputModel.uiSubmitCommand}
-                            className={`icon ${inputModel.getCurLine().trim() === "" ? "disabled" : "hoverEffect"}`}
+                        </If>
+                        <TextAreaInput
+                            key={textAreaInputKey}
+                            screen={screen}
+                            onHeightChange={this.handleInnerHeightUpdate}
                         />
                     </div>
                 </div>

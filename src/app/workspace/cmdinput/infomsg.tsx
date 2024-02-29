@@ -7,8 +7,8 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "../../../models";
-import { makeExternLink } from "../../../util/util";
+import { GlobalModel } from "@/models";
+import { makeExternLink } from "@/util/util";
 
 dayjs.extend(localizedFormat);
 
@@ -53,6 +53,9 @@ class InfoMsg extends React.Component<{}, {}> {
             titleStr = infoMsg.infotitle;
         }
         let activeScreen = model.getActiveScreen();
+        if (!infoShow) {
+            return null;
+        }
         return (
             <div className="cmd-input-info" style={{ display: infoShow ? "block" : "none" }}>
                 <If condition={infoMsg?.infotitle}>
@@ -66,14 +69,6 @@ class InfoMsg extends React.Component<{}, {}> {
                             <span dangerouslySetInnerHTML={{ __html: infoMsg.infomsg }} />
                         </If>
                         <If condition={!infoMsg.infomsghtml}>{infoMsg.infomsg}</If>
-                    </div>
-                </If>
-                <If condition={infoMsg?.websharelink && activeScreen != null}>
-                    <div key="infomsg" className="info-msg">
-                        started sharing screen at{" "}
-                        <a target="_blank" href={makeExternLink(activeScreen.getWebShareUrl())} rel={"noopener"}>
-                            [link]
-                        </a>
                     </div>
                 </If>
                 <If condition={infoMsg?.infolines}>

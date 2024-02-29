@@ -7,16 +7,13 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "../../../models";
-import * as T from "../../../types/types";
-import { Modal, Tooltip, Button, Status } from "../elements";
-import * as util from "../../../util/util";
-import * as textmeasure from "../../../util/textmeasure";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
+import { Modal, Tooltip, Button, Status } from "@/elements";
+import * as util from "@/util/util";
+import * as textmeasure from "@/util/textmeasure";
+import * as appconst from "@/app/appconst";
 
 import "./viewremoteconndetail.less";
-
-const RemotePtyRows = 9;
-const RemotePtyCols = 80;
 
 @mobxReact.observer
 class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
@@ -29,7 +26,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     @mobx.computed
-    getSelectedRemote(): T.RemoteType {
+    getSelectedRemote(): RemoteType {
         const selectedRemoteId = this.model.selectedRemoteId.get();
         return GlobalModel.getRemote(selectedRemoteId);
     }
@@ -60,7 +57,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         }
     }
 
-    getRemoteTypeStr(remote: T.RemoteType): string {
+    getRemoteTypeStr(remote: RemoteType): string {
         if (!util.isBlank(remote.uname)) {
             let unameStr = remote.uname;
             unameStr = unameStr.replace("|", ", ");
@@ -138,7 +135,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         this.model.setRecentConnAdded(false);
     }
 
-    renderInstallStatus(remote: T.RemoteType): any {
+    renderInstallStatus(remote: RemoteType): any {
         let statusStr: string = null;
         if (remote.installstatus == "disconnected") {
             if (remote.needsmshellupgrade) {
@@ -162,7 +159,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         );
     }
 
-    renderHeaderBtns(remote: T.RemoteType): React.ReactNode {
+    renderHeaderBtns(remote: RemoteType): React.ReactNode {
         let buttons: React.ReactNode[] = [];
         const disconnectButton = (
             <Button theme="secondary" onClick={() => this.disconnectRemote(remote.remoteid)}>
@@ -256,14 +253,16 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         );
     }
 
-    getMessage(remote: T.RemoteType): string {
+    getMessage(remote: RemoteType): string {
         let message = "";
         if (remote.status == "connected") {
             message = "Connected and ready to run commands.";
         } else if (remote.status == "connecting") {
             message = remote.waitingforpassword ? "Connecting, waiting for user-input..." : "Connecting...";
-            let connectTimeout = remote.connecttimeout ?? 0;
-            message = message + " (" + connectTimeout + "s)";
+            if (remote.countdownactive) {
+                let connectTimeout = remote.connecttimeout ?? 0;
+                message = message + " (" + connectTimeout + "s)";
+            }
         } else if (remote.status == "disconnected") {
             message = "Disconnected";
         } else if (remote.status == "error") {
@@ -292,8 +291,8 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
         let model = this.model;
         let isTermFocused = this.model.remoteTermWrapFocus.get();
-        let termFontSize = GlobalModel.termFontSize.get();
-        let termWidth = textmeasure.termWidthFromCols(RemotePtyCols, termFontSize);
+        let termFontSize = GlobalModel.getTermFontSize();
+        let termWidth = textmeasure.termWidthFromCols(appconst.RemotePtyCols, termFontSize);
         let remoteAliasText = util.isBlank(remote.remotealias) ? "(none)" : remote.remotealias;
         let selectedRemoteStatus = this.getSelectedRemote().status;
 
@@ -371,7 +370,11 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                                 ref={this.termRef}
                                 data-remoteid={remote.remoteid}
                                 style={{
-                                    height: textmeasure.termHeightFromRows(RemotePtyRows, termFontSize),
+                                    height: textmeasure.termHeightFromRows(
+                                        appconst.RemotePtyRows,
+                                        termFontSize,
+                                        appconst.RemotePtyTotalRows
+                                    ),
                                     width: termWidth,
                                 }}
                             ></div>
@@ -395,7 +398,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 }
 
-function getImportTooltip(remote: T.RemoteType): React.ReactElement<any, any> {
+function getImportTooltip(remote: RemoteType): React.ReactElement<any, any> {
     if (remote.sshconfigsrc == "sshconfig-import") {
         return (
             <Tooltip

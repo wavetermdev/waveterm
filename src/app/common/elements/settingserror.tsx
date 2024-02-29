@@ -6,8 +6,6 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 
-type OV<V> = mobx.IObservableValue<V>;
-
 @mobxReact.observer
 class SettingsError extends React.Component<{ errorMessage: OV<string> }, {}> {
     @boundMethod

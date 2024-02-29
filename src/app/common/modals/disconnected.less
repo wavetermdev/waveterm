@@ -1,5 +1,3 @@
-@import "../../../app/common/themes/themes.less";
-
 .disconnected-modal {
     .wave-modal-content {
         .wave-modal-body {
@@ -8,7 +6,7 @@
             .modal-content {
                 footer {
                     .footer-text-link {
-                        color: @term-white;
+                        color: var(--app-text-color);
                         cursor: pointer;
                     }
                 }
@@ -31,16 +29,10 @@
                     }
 
                     pre {
-                        color: @term-white;
-                        background-color: @term-black;
+                        color: var(--app-text-color);
+                        background-color: var(--pre-bg-color);
                     }
                 }
-            }
-        }
-
-        .wave-modal-footer {
-            button:first-child {
-                color: @term-green;
             }
         }
     }

@@ -3,41 +3,15 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import * as mobx from "mobx";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "../../../models";
-import type {
-    LineType,
-    RemoteType,
-    RemotePtrType,
-    LineHeightChangeCallbackType,
-    LineContainerType,
-} from "../../../types/types";
+import { GlobalModel } from "@/models";
 import cn from "classnames";
-import { isBlank } from "../../../util/util";
-import { ReactComponent as FolderIcon } from "../../assets/icons/folder.svg";
+import { isBlank } from "@/util/util";
 
 import "./prompt.less";
 
 dayjs.extend(localizedFormat);
-
-type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
-
-type RendererComponentProps = {
-    screen: LineContainerType;
-    line: LineType;
-    width: number;
-    staticRender: boolean;
-    visible: OV<boolean>;
-    onHeightChange: LineHeightChangeCallbackType;
-    collapsed: boolean;
-};
-type RendererComponentType = {
-    new (props: RendererComponentProps): React.Component<RendererComponentProps, {}>;
-};
 
 function makeFullRemoteRef(ownerName: string, remoteRef: string, name: string): string {
     if (isBlank(ownerName) && isBlank(name)) {
@@ -95,12 +69,13 @@ function getCwdStr(remote: RemoteType, state: Record<string, string>): string {
 }
 
 @mobxReact.observer
-class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<string, string> }, {}> {
+class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<string, string>; color: boolean }, {}> {
     render() {
         let rptr = this.props.rptr;
         if (rptr == null || isBlank(rptr.remoteid)) {
             return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>;
         }
+        let termFontSize = GlobalModel.getTermFontSize();
         let remote = GlobalModel.getRemote(this.props.rptr.remoteid);
         let remoteStr = getRemoteStr(rptr);
         let festate = this.props.festate ?? {};
@@ -119,26 +94,23 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
         if (remote && remote.remotecanonicalname) {
             remoteTitle = "connected to " + remote.remotecanonicalname;
         }
-        let cwdElem = (
-            <span title="current directory" className="term-prompt-cwd">
-                <FolderIcon className="icon" />
-                {cwd}
-            </span>
-        );
-        let remoteElem = (
-            <span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>
-                [{remoteStr}]{" "}
-            </span>
-        );
-        let rootIndicatorElem = <span className="term-prompt-end">{isRoot ? "#" : "$"}</span>;
+        let cwdElem = <span className="term-prompt-cwd">{cwd}</span>;
+        let remoteElem = null;
+        if (remoteStr != "local") {
+            remoteElem = (
+                <span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>
+                    [{remoteStr}]{" "}
+                </span>
+            );
+        }
         let branchElem = null;
         let pythonElem = null;
+        let condaElem = null;
         if (!isBlank(festate["PROMPTVAR_GITBRANCH"])) {
             let branchName = festate["PROMPTVAR_GITBRANCH"];
             branchElem = (
                 <span title="current git branch" className="term-prompt-branch">
-                    <i className="fa-sharp fa-solid fa-code-branch" />
-                    {branchName}{" "}
+                    git:({branchName}){" "}
                 </span>
             );
         }
@@ -147,16 +119,27 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
             let venv = getShortVEnv(venvDir);
             pythonElem = (
                 <span title="python venv" className="term-prompt-python">
-                    <i className="fa-brands fa-python" />
-                    {venv}{" "}
+                    venv:({venv}){" "}
+                </span>
+            );
+        }
+        if (!isBlank(festate["CONDA_DEFAULT_ENV"])) {
+            let condaEnv = festate["CONDA_DEFAULT_ENV"];
+            condaElem = (
+                <span title="conda env" className="term-prompt-python">
+                    conda:({condaEnv}){" "}
                 </span>
             );
         }
         return (
-            <span className="term-prompt">
-                {remoteElem} {pythonElem}
-                {branchElem}
-                {cwdElem} {rootIndicatorElem}
+            <span
+                className={cn(
+                    "term-prompt",
+                    { "term-prompt-color": this.props.color },
+                    { "term-prompt-isroot": isRoot }
+                )}
+            >
+                {remoteElem} {cwdElem} {branchElem} {condaElem} {pythonElem}
             </span>
         );
     }

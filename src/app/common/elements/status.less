@@ -1,5 +1,3 @@
-@import "../../../app/common/themes/themes.less";
-
 .wave-status-container {
     display: flex;
     align-items: center;
@@ -13,18 +11,18 @@
     }
 
     .dot.green {
-        background-color: @status-connected;
+        background-color: var(--status-connected-color);
     }
 
     .dot.red {
-        background-color: @status-error;
+        background-color: var(--status-error-color);
     }
 
     .dot.gray {
-        background-color: @status-disconnected;
+        background-color: var(--status-disconnected-color);
     }
 
     .dot.yellow {
-        background-color: @status-connecting;
+        background-color: var(--status-connecting-color);
     }
 }

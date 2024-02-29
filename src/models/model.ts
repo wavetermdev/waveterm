@@ -12,41 +12,13 @@ import {
     genMergeSimpleData,
     isModKeyPress,
     isBlank,
-} from "../util/util";
-import {
-    SessionDataType,
-    LineType,
-    RemoteType,
-    RemoteInstanceType,
-    CmdDataType,
-    FeCmdPacketType,
-    ScreenDataType,
-    PtyDataUpdateType,
-    ModelUpdateType,
-    UpdateMessage,
-    InfoType,
-    StrWithPos,
-    UIContextType,
-    ContextMenuOpts,
-    RendererContext,
-    ClientDataType,
-    AlertMessageType,
-    ScreenLinesType,
-    RemoteViewType,
-    CommandRtnType,
-    LineFocusType,
-    CmdInputTextPacketType,
-    FileInfoType,
-    ExtFile,
-    HistorySearchParams,
-    LineStateType,
-} from "../types/types";
+} from "@/util/util";
+import { loadFonts } from "@/util/fontutil";
 import { WSControl } from "./ws";
-import { cmdStatusIsRunning } from "../app/line/lineutil";
-import * as appconst from "../app/appconst";
-import { remotePtrToString, cmdPacketString } from "../util/modelutil";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "../util/keyutil";
-import { OV, OArr, OMap, CV } from "../types/types";
+import { cmdStatusIsRunning } from "@/app/line/lineutil";
+import * as appconst from "@/app/appconst";
+import { remotePtrToString, cmdPacketString } from "@/util/modelutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -61,50 +33,13 @@ import { MainSidebarModel } from "./mainsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
-
-type KeyModsType = {
-    meta?: boolean;
-    ctrl?: boolean;
-    alt?: boolean;
-    shift?: boolean;
-};
+import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
+import type { TermWrap } from "@/plugins/terminal/term";
 
 type SWLinePtr = {
     line: LineType;
     slines: ScreenLines;
     screen: Screen;
-};
-
-type ElectronApi = {
-    getId: () => string;
-    getIsDev: () => boolean;
-    getPlatform: () => string;
-    getAuthKey: () => string;
-    getWaveSrvStatus: () => boolean;
-    restartWaveSrv: () => boolean;
-    reloadWindow: () => void;
-    openExternalLink: (url: string) => void;
-    onTCmd: (callback: (mods: KeyModsType) => void) => void;
-    onICmd: (callback: (mods: KeyModsType) => void) => void;
-    onLCmd: (callback: (mods: KeyModsType) => void) => void;
-    onHCmd: (callback: (mods: KeyModsType) => void) => void;
-    onPCmd: (callback: (mods: KeyModsType) => void) => void;
-    onRCmd: (callback: (mods: KeyModsType) => void) => void;
-    onWCmd: (callback: (mods: KeyModsType) => void) => void;
-    onMenuItemAbout: (callback: () => void) => void;
-    onMetaArrowUp: (callback: () => void) => void;
-    onMetaArrowDown: (callback: () => void) => void;
-    onMetaPageUp: (callback: () => void) => void;
-    onMetaPageDown: (callback: () => void) => void;
-    onBracketCmd: (callback: (event: any, arg: { relative: number }, mods: KeyModsType) => void) => void;
-    onDigitCmd: (callback: (event: any, arg: { digit: number }, mods: KeyModsType) => void) => void;
-    contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;
-    contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
-    onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
-    getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
-    pathRelative: (fromPath: string, toPath: string) => string;
-    pathJoin: (basePath: string, newPath: string) => string;
-    pathDirName: (filePath: string) => string;
 };
 
 function getApi(): ElectronApi {
@@ -164,7 +99,10 @@ class Model {
     });
     lineSettingsModal: OV<number> = mobx.observable.box(null, {
         name: "lineSettingsModal",
-    }); // linenum
+    });
+    devicePixelRatio: OV<number> = mobx.observable.box(window.devicePixelRatio, {
+        name: "devicePixelRatio",
+    });
     remotesModel: RemotesModel;
 
     inputModel: InputModel;
@@ -183,12 +121,20 @@ class Model {
     });
     packetSeqNum: number = 0;
 
+    renderVersion: OV<number> = mobx.observable.box(0, {
+        name: "renderVersion",
+    });
+
+    appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
+        name: "appUpdateStatus",
+    });
+
     private constructor() {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
         this.authKey = getApi().getAuthKey();
         this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message: any) => {
-            let interactive = message?.interactive ?? false;
+            const interactive = message?.interactive ?? false;
             this.runUpdate(message, interactive);
         });
         this.ws.reconnect();
@@ -201,17 +147,17 @@ class Model {
         this.remotesModel = new RemotesModel(this);
         this.modalsModel = new ModalsModel();
         this.mainSidebarModel = new MainSidebarModel(this);
-        let isWaveSrvRunning = getApi().getWaveSrvStatus();
+        const isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
         });
         this.platform = this.getPlatform();
         this.termFontSize = mobx.computed(() => {
-            let cdata = this.clientData.get();
-            if (cdata == null || cdata.feopts == null || cdata.feopts.termfontsize == null) {
+            const cdata = this.clientData.get();
+            if (cdata?.feopts?.termfontsize == null) {
                 return appconst.DefaultTermFontSize;
             }
-            let fontSize = Math.ceil(cdata.feopts.termfontsize);
+            const fontSize = Math.ceil(cdata.feopts.termfontsize);
             if (fontSize < appconst.MinFontSize) {
                 return appconst.MinFontSize;
             }
@@ -227,6 +173,7 @@ class Model {
         getApi().onPCmd(this.onPCmd.bind(this));
         getApi().onWCmd(this.onWCmd.bind(this));
         getApi().onRCmd(this.onRCmd.bind(this));
+        getApi().onZoomChanged(this.onZoomChanged.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
         getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
@@ -235,16 +182,23 @@ class Model {
         getApi().onBracketCmd(this.onBracketCmd.bind(this));
         getApi().onDigitCmd(this.onDigitCmd.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
+        getApi().onAppUpdateStatus(this.onAppUpdateStatus.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
     }
 
-    static getInstance() {
+    static getInstance(): Model {
         if (!(window as any).GlobalModel) {
             (window as any).GlobalModel = new Model();
         }
         return (window as any).GlobalModel;
+    }
+
+    bumpRenderVersion() {
+        mobx.action(() => {
+            this.renderVersion.set(this.renderVersion.get() + 1);
+        })();
     }
 
     getNextPacketSeqNum(): number {
@@ -270,11 +224,11 @@ class Model {
     }
 
     needsTos(): boolean {
-        let cdata = this.clientData.get();
+        const cdata = this.clientData.get();
         if (cdata == null) {
             return false;
         }
-        return cdata.clientopts == null || !cdata.clientopts.acceptedtos;
+        return !cdata.clientopts?.acceptedtos;
     }
 
     refreshClient(): void {
@@ -293,7 +247,7 @@ class Model {
 
     refocus() {
         // givefocus() give back focus to cmd or input
-        let activeScreen = this.getActiveScreen();
+        const activeScreen = this.getActiveScreen();
         if (screen == null) {
             return;
         }
@@ -301,8 +255,8 @@ class Model {
     }
 
     getWebSharedScreens(): Screen[] {
-        let rtn: Screen[] = [];
-        for (let screen of this.screenMap.values()) {
+        const rtn: Screen[] = [];
+        for (const screen of this.screenMap.values()) {
             if (screen.shareMode.get() == "web") {
                 rtn.push(screen);
             }
@@ -314,7 +268,7 @@ class Model {
         if (this.clientData.get() == null) {
             return true;
         }
-        let cdata = this.clientData.get();
+        const cdata = this.clientData.get();
         if (cdata.cmdstoretype == "session") {
             return true;
         }
@@ -323,8 +277,8 @@ class Model {
 
     showAlert(alertMessage: AlertMessageType): Promise<boolean> {
         if (alertMessage.confirmflag != null) {
-            let cdata = this.clientData.get();
-            let noConfirm = cdata.clientopts?.confirmflags?.[alertMessage.confirmflag];
+            const cdata = this.clientData.get();
+            const noConfirm = cdata.clientopts?.confirmflags?.[alertMessage.confirmflag];
             if (noConfirm) {
                 return Promise.resolve(true);
             }
@@ -333,7 +287,7 @@ class Model {
             this.alertMessage.set(alertMessage);
             this.modalsModel.pushModal(appconst.ALERT);
         })();
-        let prtn = new Promise<boolean>((resolve, reject) => {
+        const prtn = new Promise<boolean>((resolve, reject) => {
             this.alertPromiseResolver = resolve;
         });
         return prtn;
@@ -380,16 +334,44 @@ class Model {
         return appconst.ProdServerEndpoint;
     }
 
-    setTermFontSize(fontSize: number) {
+    getTermFontFamily(): string {
+        let cdata = this.clientData.get();
+        let ff = cdata?.feopts?.termfontfamily;
+        if (ff == null) {
+            ff = appconst.DefaultTermFontFamily;
+        }
+        return ff;
+    }
+
+    getTermFontSize(): number {
+        return this.termFontSize.get();
+    }
+
+    updateTermFontSizeVars(fontSize: number, force: boolean) {
+        if (!force && fontSize == this.termFontSize.get()) {
+            return;
+        }
         if (fontSize < appconst.MinFontSize) {
             fontSize = appconst.MinFontSize;
         }
         if (fontSize > appconst.MaxFontSize) {
             fontSize = appconst.MaxFontSize;
         }
+        const fontSizeSm = fontSize - 2;
+        const monoFontSize = getMonoFontSize(fontSize);
+        const monoFontSizeSm = getMonoFontSize(fontSizeSm);
         mobx.action(() => {
-            this.termFontSize.set(fontSize);
+            this.bumpRenderVersion();
+            this.setStyleVar("--termfontsize", fontSize + "px");
+            this.setStyleVar("--termlineheight", monoFontSize.height + "px");
+            this.setStyleVar("--termpad", monoFontSize.pad + "px");
+            this.setStyleVar("--termfontsize-sm", fontSizeSm + "px");
+            this.setStyleVar("--termlineheight-sm", monoFontSizeSm.height + "px");
         })();
+    }
+
+    setStyleVar(name: string, value: string) {
+        document.documentElement.style.setProperty(name, value);
     }
 
     getBaseWsHostPort(): string {
@@ -410,7 +392,7 @@ class Model {
     }
 
     docKeyDownHandler(e: KeyboardEvent) {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        const waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (isModKeyPress(e)) {
             return;
         }
@@ -452,7 +434,7 @@ class Model {
             if (this.clearModals()) {
                 return;
             }
-            let inputModel = this.inputModel;
+            const inputModel = this.inputModel;
             inputModel.toggleInfoMsg();
             if (inputModel.inputMode.get() != null) {
                 inputModel.resetInputMode();
@@ -465,9 +447,9 @@ class Model {
         }
         if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
             e.preventDefault();
-            let activeScreen = this.getActiveScreen();
+            const activeScreen = this.getActiveScreen();
             if (activeScreen != null) {
-                let isSidebarOpen = activeScreen.isSidebarOpen();
+                const isSidebarOpen = activeScreen.isSidebarOpen();
                 if (isSidebarOpen) {
                     GlobalCommandRunner.screenSidebarClose();
                 } else {
@@ -476,7 +458,7 @@ class Model {
             }
         }
         if (checkKeyPressed(waveEvent, "Cmd:d")) {
-            let ranDelete = this.deleteActiveLine();
+            const ranDelete = this.deleteActiveLine();
             if (ranDelete) {
                 e.preventDefault();
             }
@@ -484,22 +466,22 @@ class Model {
     }
 
     deleteActiveLine(): boolean {
-        let activeScreen = this.getActiveScreen();
+        const activeScreen = this.getActiveScreen();
         if (activeScreen == null || activeScreen.getFocusType() != "cmd") {
             return false;
         }
-        let selectedLine = activeScreen.selectedLine.get();
+        const selectedLine = activeScreen.selectedLine.get();
         if (selectedLine == null || selectedLine <= 0) {
             return false;
         }
-        let line = activeScreen.getLineByNum(selectedLine);
+        const line = activeScreen.getLineByNum(selectedLine);
         if (line == null) {
             return false;
         }
-        let cmd = activeScreen.getCmd(line);
+        const cmd = activeScreen.getCmd(line);
         if (cmd != null) {
             if (cmd.isRunning()) {
-                let info: InfoType = { infomsg: "Cannot delete a running command" };
+                const info: InfoType = { infomsg: "Cannot delete a running command" };
                 this.inputModel.flashInfoMsg(info, 2000);
                 return false;
             }
@@ -512,11 +494,11 @@ class Model {
         if (this.activeMainView.get() != "session") {
             return;
         }
-        let activeScreen = this.getActiveScreen();
+        const activeScreen = this.getActiveScreen();
         if (activeScreen == null) {
             return;
         }
-        let rtnp = this.showAlert({
+        const rtnp = this.showAlert({
             message: "Are you sure you want to delete this screen?",
             confirm: true,
         });
@@ -532,7 +514,7 @@ class Model {
         if (this.activeMainView.get() != "session") {
             return;
         }
-        let activeScreen = this.getActiveScreen();
+        const activeScreen = this.getActiveScreen();
         if (activeScreen == null) {
             return;
         }
@@ -541,12 +523,36 @@ class Model {
             GlobalCommandRunner.lineRestart("E", true);
         } else {
             // restart selected line
-            let selectedLine = activeScreen.selectedLine.get();
+            const selectedLine = activeScreen.selectedLine.get();
             if (selectedLine == null || selectedLine == 0) {
                 return;
             }
             GlobalCommandRunner.lineRestart(String(selectedLine), true);
         }
+    }
+
+    onZoomChanged(): void {
+        mobx.action(() => {
+            this.devicePixelRatio.set(window.devicePixelRatio);
+            clearMonoFontCache();
+        })();
+    }
+
+    // for debuggin
+    getSelectedTermWrap(): TermWrap {
+        let screen = this.getActiveScreen();
+        if (screen == null) {
+            return null;
+        }
+        let lineNum = screen.selectedLine.get();
+        if (lineNum == null) {
+            return null;
+        }
+        let line = screen.getLineByNum(lineNum);
+        if (line == null) {
+            return null;
+        }
+        return screen.getTermWrap(line.lineid);
     }
 
     clearModals(): boolean {
@@ -590,7 +596,7 @@ class Model {
     }
 
     getCurRemoteInstance(): RemoteInstanceType {
-        let screen = this.getActiveScreen();
+        const screen = this.getActiveScreen();
         if (screen == null) {
             return null;
         }
@@ -608,12 +614,12 @@ class Model {
     }
 
     getContentHeight(context: RendererContext): number {
-        let key = context.screenId + "/" + context.lineId;
+        const key = context.screenId + "/" + context.lineId;
         return this.termUsedRowsCache[key];
     }
 
     setContentHeight(context: RendererContext, height: number): void {
-        let key = context.screenId + "/" + context.lineId;
+        const key = context.screenId + "/" + context.lineId;
         this.termUsedRowsCache[key] = height;
         GlobalCommandRunner.setTermUsedRows(context, height);
     }
@@ -627,7 +633,7 @@ class Model {
     }
 
     getUIContext(): UIContextType {
-        let rtn: UIContextType = {
+        const rtn: UIContextType = {
             sessionid: null,
             screenid: null,
             remote: null,
@@ -635,10 +641,10 @@ class Model {
             linenum: null,
             build: appconst.VERSION + " " + appconst.BUILD,
         };
-        let session = this.getActiveSession();
+        const session = this.getActiveSession();
         if (session != null) {
             rtn.sessionid = session.sessionId;
-            let screen = session.getActiveScreen();
+            const screen = session.getActiveScreen();
             if (screen != null) {
                 rtn.screenid = screen.screenId;
                 rtn.remote = screen.curRemote.get();
@@ -658,7 +664,7 @@ class Model {
     }
 
     onLCmd(e: any, mods: KeyModsType) {
-        let screen = this.getActiveScreen();
+        const screen = this.getActiveScreen();
         if (screen != null) {
             GlobalCommandRunner.screenSetFocus("cmd");
         }
@@ -676,11 +682,11 @@ class Model {
         if (this.inputModel.hasFocus()) {
             return { cmdInputFocus: true };
         }
-        let lineElem: any = document.activeElement.closest(".line[data-lineid]");
+        const lineElem: any = document.activeElement.closest(".line[data-lineid]");
         if (lineElem == null) {
             return { cmdInputFocus: false };
         }
-        let lineNum = parseInt(lineElem.dataset.linenum);
+        const lineNum = parseInt(lineElem.dataset.linenum);
         return {
             cmdInputFocus: false,
             lineid: lineElem.dataset.lineid,
@@ -690,17 +696,17 @@ class Model {
     }
 
     cmdStatusUpdate(screenId: string, lineId: string, origStatus: string, newStatus: string) {
-        let wasRunning = cmdStatusIsRunning(origStatus);
-        let isRunning = cmdStatusIsRunning(newStatus);
+        const wasRunning = cmdStatusIsRunning(origStatus);
+        const isRunning = cmdStatusIsRunning(newStatus);
         if (wasRunning && !isRunning) {
-            let ptr = this.getActiveLine(screenId, lineId);
+            const ptr = this.getActiveLine(screenId, lineId);
             if (ptr != null) {
-                let screen = ptr.screen;
-                let renderer = screen.getRenderer(lineId);
+                const screen = ptr.screen;
+                const renderer = screen.getRenderer(lineId);
                 if (renderer != null) {
                     renderer.setIsDone();
                 }
-                let term = screen.getTermWrap(lineId);
+                const term = screen.getTermWrap(lineId);
                 if (term != null) {
                     term.cmdDone();
                 }
@@ -750,23 +756,27 @@ class Model {
         return this.ws.open.get();
     }
 
-    runUpdate(genUpdate: UpdateMessage, interactive: boolean) {
+    runUpdate(genUpdate: UpdatePacket, interactive: boolean) {
         mobx.action(() => {
-            let oldContext = this.getUIContext();
+            const oldContext = this.getUIContext();
             try {
                 this.runUpdate_internal(genUpdate, oldContext, interactive);
             } catch (e) {
-                console.log("error running update", e, genUpdate);
+                console.warn("error running update", e, genUpdate);
                 throw e;
             }
-            let newContext = this.getUIContext();
+            const newContext = this.getUIContext();
             if (oldContext.sessionid != newContext.sessionid || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
-                if ("cmdline" in genUpdate) {
-                    // TODO a bit of a hack since this update gets applied in runUpdate_internal.
-                    //   we then undo that update with the resetInput, and then redo it with the line below
-                    //   not sure how else to handle this for now though
-                    this.inputModel.updateCmdLine(genUpdate.cmdline);
+                if (genUpdate.type == "model") {
+                    const reversedGenUpdate = genUpdate.data.slice().reverse();
+                    const lastCmdLine = reversedGenUpdate.find((update) => "cmdline" in update);
+                    if (lastCmdLine) {
+                        // TODO a bit of a hack since this update gets applied in runUpdate_internal.
+                        //   we then undo that update with the resetInput, and then redo it with the line below
+                        //   not sure how else to handle this for now though
+                        this.inputModel.updateCmdLine(lastCmdLine.cmdline);
+                    }
                 }
             } else if (remotePtrToString(oldContext.remote) != remotePtrToString(newContext.remote)) {
                 this.inputModel.resetHistory();
@@ -774,140 +784,193 @@ class Model {
         })();
     }
 
-    runUpdate_internal(genUpdate: UpdateMessage, uiContext: UIContextType, interactive: boolean) {
-        if ("ptydata64" in genUpdate) {
-            let ptyMsg: PtyDataUpdateType = genUpdate;
+    updateScreens(screens: ScreenDataType[]): void {
+        const mods = genMergeDataMap(
+            this.screenMap,
+            screens,
+            (s: Screen) => s.screenId,
+            (sdata: ScreenDataType) => sdata.screenid,
+            (sdata: ScreenDataType) => new Screen(sdata, this)
+        );
+        for (const screenId of mods.removed) {
+            this.removeScreenLinesByScreenId(screenId);
+        }
+    }
+
+    updateSessions(sessions: SessionDataType[]): void {
+        genMergeData(
+            this.sessionList,
+            sessions,
+            (s: Session) => s.sessionId,
+            (sdata: SessionDataType) => sdata.sessionid,
+            (sdata: SessionDataType) => new Session(sdata, this),
+            (s: Session) => s.sessionIdx.get()
+        );
+    }
+
+    updateActiveSession(sessionId: string): void {
+        if (sessionId != null) {
+            const newSessionId = sessionId;
+            if (this.activeSessionId.get() != newSessionId) {
+                this.activeSessionId.set(newSessionId);
+            }
+        }
+    }
+
+    updateScreenNumRunningCommands(numRunningCommandUpdates: ScreenNumRunningCommandsUpdateType[]) {
+        for (const update of numRunningCommandUpdates) {
+            this.getScreenById_single(update.screenid)?.setNumRunningCmds(update.num);
+        }
+    }
+
+    updateScreenStatusIndicators(screenStatusIndicators: ScreenStatusIndicatorUpdateType[]) {
+        for (const update of screenStatusIndicators) {
+            this.getScreenById_single(update.screenid)?.setStatusIndicator(update.status);
+        }
+    }
+
+    runUpdate_internal(genUpdate: UpdatePacket, uiContext: UIContextType, interactive: boolean) {
+        if (genUpdate.type == "pty") {
+            const ptyMsg = genUpdate.data;
             if (isBlank(ptyMsg.remoteid)) {
                 // regular update
                 this.updatePtyData(ptyMsg);
             } else {
                 // remote update
-                let ptyData = base64ToArray(ptyMsg.ptydata64);
+                const ptyData = base64ToArray(ptyMsg.ptydata64);
                 this.remotesModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
             }
-            return;
-        }
-        let update: ModelUpdateType = genUpdate;
-        if ("screens" in update) {
-            if (update.connect) {
-                this.screenMap.clear();
-            }
-            let mods = genMergeDataMap(
-                this.screenMap,
-                update.screens,
-                (s: Screen) => s.screenId,
-                (sdata: ScreenDataType) => sdata.screenid,
-                (sdata: ScreenDataType) => new Screen(sdata, this)
-            );
-            for (const screenId of mods.removed) {
-                this.removeScreenLinesByScreenId(screenId);
-            }
-        }
-        if ("sessions" in update || "activesessionid" in update) {
-            if (update.connect) {
-                this.sessionList.clear();
-            }
-            let [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
-            genMergeData(
-                this.sessionList,
-                update.sessions,
-                (s: Session) => s.sessionId,
-                (sdata: SessionDataType) => sdata.sessionid,
-                (sdata: SessionDataType) => new Session(sdata, this),
-                (s: Session) => s.sessionIdx.get()
-            );
-            if ("activesessionid" in update) {
-                let newSessionId = update.activesessionid;
-                if (this.activeSessionId.get() != newSessionId) {
-                    this.activeSessionId.set(newSessionId);
+        } else if (genUpdate.type == "model") {
+            const modelUpdateItems = genUpdate.data;
+
+            let showedRemotesModal = false;
+            const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
+            modelUpdateItems.forEach((update) => {
+                if (update.connect != null) {
+                    if (update.connect.screens != null) {
+                        this.screenMap.clear();
+                        this.updateScreens(update.connect.screens);
+                    }
+                    if (update.connect.sessions != null) {
+                        this.sessionList.clear();
+                        this.updateSessions(update.connect.sessions);
+                    }
+                    if (update.connect.remotes != null) {
+                        this.remotes.clear();
+                        this.updateRemotes(update.connect.remotes);
+                    }
+                    if (update.connect.activesessionid != null) {
+                        this.updateActiveSession(update.connect.activesessionid);
+                    }
+                    if (update.connect.screennumrunningcommands != null) {
+                        this.updateScreenNumRunningCommands(update.connect.screennumrunningcommands);
+                    }
+                    if (update.connect.screenstatusindicators != null) {
+                        this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
+                    }
+
+                    this.sessionListLoaded.set(true);
+                    this.remotesLoaded.set(true);
+                } else if (update.screen != null) {
+                    this.updateScreens([update.screen]);
+                } else if (update.session != null) {
+                    this.updateSessions([update.session]);
+                } else if (update.activesessionid != null) {
+                    this.updateActiveSession(update.activesessionid);
+                } else if (update.line != null) {
+                    this.addLineCmd(update.line.line, update.line.cmd, interactive);
+                } else if (update.cmd != null) {
+                    this.updateCmd(update.cmd);
+                } else if (update.screenlines != null) {
+                    this.updateScreenLines(update.screenlines, false);
+                } else if (update.remote != null) {
+                    this.updateRemotes([update.remote]);
+                    // This code's purpose is to show view remote connection modal when a new connection is added
+                    if (!showedRemotesModal && this.remotesModel.recentConnAddedState.get()) {
+                        showedRemotesModal = true;
+                        this.remotesModel.openReadModal(update.remote.remoteid);
+                    }
+                } else if (update.mainview != null) {
+                    switch (update.mainview.mainview) {
+                        case "session":
+                            this.activeMainView.set("session");
+                            break;
+                        case "history":
+                            if (update.mainview.historyview != null) {
+                                this.historyViewModel.showHistoryView(update.mainview.historyview);
+                            } else {
+                                console.warn("invalid historyview in update:", update.mainview);
+                            }
+                            break;
+                        case "bookmarks":
+                            if (update.mainview.bookmarksview != null) {
+                                this.bookmarksModel.showBookmarksView(
+                                    update.mainview.bookmarksview?.bookmarks ?? [],
+                                    update.mainview.bookmarksview?.selectedbookmark
+                                );
+                            } else {
+                                console.warn("invalid bookmarksview in update:", update.mainview);
+                            }
+                            break;
+                        case "plugins":
+                            this.pluginsModel.showPluginsView();
+                            break;
+                        default:
+                            console.warn("invalid mainview in update:", update.mainview);
+                    }
+                } else if (update.bookmarks != null) {
+                    if (update.bookmarks.bookmarks != null) {
+                        this.bookmarksModel.mergeBookmarks(update.bookmarks.bookmarks);
+                    }
+                } else if (update.clientdata != null) {
+                    this.setClientData(update.clientdata);
+                } else if (update.cmdline != null) {
+                    this.inputModel.updateCmdLine(update.cmdline);
+                } else if (update.openaicmdinfochat != null) {
+                    this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
+                } else if (update.screenstatusindicator != null) {
+                    this.updateScreenStatusIndicators([update.screenstatusindicator]);
+                } else if (update.screennumrunningcommands != null) {
+                    this.updateScreenNumRunningCommands([update.screennumrunningcommands]);
+                } else if (update.userinputrequest != null) {
+                    const userInputRequest: UserInputRequest = update.userinputrequest;
+                    this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (interactive) {
+                    if (update.info != null) {
+                        const info: InfoType = update.info;
+                        this.inputModel.flashInfoMsg(info, info.timeoutms);
+                    } else if (update.remoteview != null) {
+                        const rview: RemoteViewType = update.remoteview;
+                        if (rview.remoteedit != null) {
+                            this.remotesModel.openEditModal({ ...rview.remoteedit });
+                        }
+                    } else if (update.alertmessage != null) {
+                        const alertMessage: AlertMessageType = update.alertmessage;
+                        this.showAlert(alertMessage);
+                    } else if (update.history != null) {
+                        if (
+                            uiContext.sessionid == update.history.sessionid &&
+                            uiContext.screenid == update.history.screenid
+                        ) {
+                            this.inputModel.setHistoryInfo(update.history);
+                        }
+                    } else if (this.isDev) {
+                        console.log("did not match update", update);
+                    }
+                } else if (this.isDev) {
+                    console.log("did not match update", update);
                 }
-            }
-            let [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
+            });
+
+            // Check if the active session or screen has changed, and if so, watch the new screen
+            const [newActiveSessionId, newActiveScreenId] = this.getActiveIds();
             if (oldActiveSessionId != newActiveSessionId || oldActiveScreenId != newActiveScreenId) {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
             }
-        }
-        if ("line" in update) {
-            this.addLineCmd(update.line, update.cmd, interactive);
-        } else if ("cmd" in update) {
-            this.updateCmd(update.cmd);
-        }
-        if ("lines" in update) {
-            for (const line of update.lines) {
-                this.addLineCmd(line, null, interactive);
-            }
-        }
-        if ("screenlines" in update) {
-            this.updateScreenLines(update.screenlines, false);
-        }
-        if ("remotes" in update) {
-            if (update.connect) {
-                this.remotes.clear();
-            }
-            this.updateRemotes(update.remotes);
-            // This code's purpose is to show view remote connection modal when a new connection is added
-            if (update.remotes?.length && this.remotesModel.recentConnAddedState.get()) {
-                this.remotesModel.openReadModal(update.remotes[0].remoteid);
-            }
-        }
-        if ("mainview" in update) {
-            if (update.mainview == "plugins") {
-                this.pluginsModel.showPluginsView();
-            } else if (update.mainview == "bookmarks") {
-                this.bookmarksModel.showBookmarksView(update.bookmarks, update.selectedbookmark);
-            } else if (update.mainview == "session") {
-                this.activeMainView.set("session");
-            } else if (update.mainview == "history") {
-                this.historyViewModel.showHistoryView(update.historyviewdata);
-            } else {
-                console.log("invalid mainview in update:", update.mainview);
-            }
-        } else if ("bookmarks" in update) {
-            this.bookmarksModel.mergeBookmarks(update.bookmarks);
-        }
-        if ("clientdata" in update) {
-            this.clientData.set(update.clientdata);
-        }
-        if (interactive && "info" in update) {
-            let info: InfoType = update.info;
-            this.inputModel.flashInfoMsg(info, info.timeoutms);
-        }
-        if (interactive && "remoteview" in update) {
-            let rview: RemoteViewType = update.remoteview;
-            if (rview.remoteedit != null) {
-                this.remotesModel.openEditModal({ ...rview.remoteedit });
-            }
-        }
-        if (interactive && "alertmessage" in update) {
-            let alertMessage: AlertMessageType = update.alertmessage;
-            this.showAlert(alertMessage);
-        }
-        if ("cmdline" in update) {
-            this.inputModel.updateCmdLine(update.cmdline);
-        }
-        if (interactive && "history" in update) {
-            if (uiContext.sessionid == update.history.sessionid && uiContext.screenid == update.history.screenid) {
-                this.inputModel.setHistoryInfo(update.history);
-            }
-        }
-        if ("connect" in update) {
-            this.sessionListLoaded.set(true);
-            this.remotesLoaded.set(true);
-        }
-        if ("openaicmdinfochat" in update) {
-            this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
-        }
-        if ("screenstatusindicators" in update) {
-            for (const indicator of update.screenstatusindicators) {
-                this.getScreenById_single(indicator.screenid)?.setStatusIndicator(indicator.status);
-            }
-        }
-        if ("screennumrunningcommands" in update) {
-            for (const snc of update.screennumrunningcommands) {
-                this.getScreenById_single(snc.screenid)?.setNumRunningCmds(snc.num);
-            }
+        } else {
+            console.warn("unknown update", genUpdate);
         }
     }
 
@@ -920,7 +983,7 @@ class Model {
     }
 
     getSessionNames(): Record<string, string> {
-        let rtn: Record<string, string> = {};
+        const rtn: Record<string, string> = {};
         for (const session of this.sessionList) {
             rtn[session.sessionId] = session.name.get();
         }
@@ -928,8 +991,8 @@ class Model {
     }
 
     getScreenNames(): Record<string, string> {
-        let rtn: Record<string, string> = {};
-        for (let screen of this.screenMap.values()) {
+        const rtn: Record<string, string> = {};
+        for (const screen of this.screenMap.values()) {
             rtn[screen.screenId] = screen.name.get();
         }
         return rtn;
@@ -959,13 +1022,13 @@ class Model {
 
     updateScreenLines(slines: ScreenLinesType, load: boolean) {
         mobx.action(() => {
-            let existingWin = this.screenLines.get(slines.screenid);
+            const existingWin = this.screenLines.get(slines.screenid);
             if (existingWin == null) {
                 if (!load) {
                     console.log("cannot update screen-lines that does not exist", slines.screenid);
                     return;
                 }
-                let newWindow = new ScreenLines(slines.screenid);
+                const newWindow = new ScreenLines(slines.screenid);
                 this.screenLines.set(slines.screenid, newWindow);
                 newWindow.updateData(slines, load);
             } else {
@@ -990,8 +1053,8 @@ class Model {
     }
 
     getSessionScreens(sessionId: string): Screen[] {
-        let rtn: Screen[] = [];
-        for (let screen of this.screenMap.values()) {
+        const rtn: Screen[] = [];
+        for (const screen of this.screenMap.values()) {
             if (screen.sessionId == sessionId) {
                 rtn.push(screen);
             }
@@ -1000,7 +1063,7 @@ class Model {
     }
 
     getScreenLinesForActiveScreen(): ScreenLines {
-        let screen = this.getActiveScreen();
+        const screen = this.getActiveScreen();
         if (screen == null) {
             return null;
         }
@@ -1008,7 +1071,7 @@ class Model {
     }
 
     getActiveScreen(): Screen {
-        let session = this.getActiveSession();
+        const session = this.getActiveSession();
         if (session == null) {
             return null;
         }
@@ -1019,11 +1082,11 @@ class Model {
         if (cmd == null || !cmd.restarted) {
             return;
         }
-        let screen = this.screenMap.get(cmd.screenid);
+        const screen = this.screenMap.get(cmd.screenid);
         if (screen == null) {
             return;
         }
-        let termWrap = screen.getTermWrap(cmd.lineid);
+        const termWrap = screen.getTermWrap(cmd.lineid);
         if (termWrap == null) {
             return;
         }
@@ -1031,7 +1094,7 @@ class Model {
     }
 
     addLineCmd(line: LineType, cmd: CmdDataType, interactive: boolean) {
-        let slines = this.getScreenLinesById(line.screenid);
+        const slines = this.getScreenLinesById(line.screenid);
         if (slines == null) {
             return;
         }
@@ -1040,23 +1103,24 @@ class Model {
     }
 
     updateCmd(cmd: CmdDataType) {
-        let slines = this.screenLines.get(cmd.screenid);
+        const slines = this.screenLines.get(cmd.screenid);
         if (slines != null) {
             slines.updateCmd(cmd);
         }
         this.handleCmdRestart(cmd);
     }
 
-    isInfoUpdate(update: UpdateMessage): boolean {
-        if (update == null || "ptydata64" in update) {
+    isInfoUpdate(update: UpdatePacket): boolean {
+        if (update.type == "model") {
+            return update.data.some((u) => u.info != null || u.history != null);
+        } else {
             return false;
         }
-        return update.info != null || update.history != null;
     }
 
     getClientDataLoop(loopNum: number): void {
         this.getClientData();
-        let clientStop = this.getHasClientStop();
+        const clientStop = this.getHasClientStop();
         if (this.clientData.get() != null && !clientStop) {
             return;
         }
@@ -1074,19 +1138,49 @@ class Model {
     }
 
     getClientData(): void {
-        let url = new URL(this.getBaseHostPort() + "/api/get-client-data");
-        let fetchHeaders = this.getFetchHeaders();
+        const url = new URL(this.getBaseHostPort() + "/api/get-client-data");
+        const fetchHeaders = this.getFetchHeaders();
         fetch(url, { method: "post", body: null, headers: fetchHeaders })
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
-                mobx.action(() => {
-                    let clientData: ClientDataType = data.data;
-                    this.clientData.set(clientData);
-                })();
+                const clientData: ClientDataType = data.data;
+                this.setClientData(clientData);
             })
             .catch((err) => {
                 this.errorHandler("calling get-client-data", err, true);
             });
+    }
+
+    setClientData(clientData: ClientDataType) {
+        let newFontFamily = clientData?.feopts?.termfontfamily;
+        if (newFontFamily == null) {
+            newFontFamily = appconst.DefaultTermFontFamily;
+        }
+        let newFontSize = clientData?.feopts?.termfontsize;
+        if (newFontSize == null) {
+            newFontSize = appconst.DefaultTermFontSize;
+        }
+        const ffUpdated = newFontFamily != this.getTermFontFamily();
+        const fsUpdated = newFontSize != this.getTermFontSize();
+        mobx.action(() => {
+            this.clientData.set(clientData);
+        })();
+        let shortcut = null;
+        if (clientData?.clientopts?.globalshortcutenabled) {
+            shortcut = clientData?.clientopts?.globalshortcut;
+        }
+        getApi().reregisterGlobalShortcut(shortcut);
+        if (ffUpdated) {
+            // this also updates fontSize vars
+            loadFonts(newFontFamily);
+            document.fonts.ready.then(() => {
+                clearMonoFontCache();
+                this.updateTermFontSizeVars(this.termFontSize.get(), true); // forces an update of css vars
+                this.bumpRenderVersion();
+            });
+        } else if (fsUpdated) {
+            this.updateTermFontSizeVars(newFontSize, true);
+        }
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
@@ -1097,10 +1191,10 @@ class Model {
             }
         }
         // adding cmdStr for debugging only (easily filter run-command calls in the network tab of debugger)
-        let cmdStr = cmdPk.metacmd + (cmdPk.metasubcmd ? ":" + cmdPk.metasubcmd : "");
-        let url = new URL(this.getBaseHostPort() + "/api/run-command?cmd=" + cmdStr);
-        let fetchHeaders = this.getFetchHeaders();
-        let prtn = fetch(url, {
+        const cmdStr = cmdPk.metacmd + (cmdPk.metasubcmd ? ":" + cmdPk.metasubcmd : "");
+        const url = new URL(this.getBaseHostPort() + "/api/run-command?cmd=" + cmdStr);
+        const fetchHeaders = this.getFetchHeaders();
+        const prtn = fetch(url, {
             method: "post",
             body: JSON.stringify(cmdPk),
             headers: fetchHeaders,
@@ -1108,7 +1202,7 @@ class Model {
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
                 mobx.action(() => {
-                    let update = data.data;
+                    const update = data.data;
                     if (update != null) {
                         this.runUpdate(update, interactive);
                     }
@@ -1136,7 +1230,7 @@ class Model {
         kwargs: Record<string, string>,
         interactive: boolean
     ): Promise<CommandRtnType> {
-        let pk: FeCmdPacketType = {
+        const pk: FeCmdPacketType = {
             type: "fecmd",
             metacmd: metaCmd,
             metasubcmd: metaSubCmd,
@@ -1195,9 +1289,9 @@ class Model {
     }
 
     submitChatInfoCommand(chatMsg: string, curLineStr: string, clear: boolean): Promise<CommandRtnType> {
-        let commandStr = "/chat " + chatMsg;
-        let interactive = false;
-        let pk: FeCmdPacketType = {
+        const commandStr = "/chat " + chatMsg;
+        const interactive = false;
+        const pk: FeCmdPacketType = {
             type: "fecmd",
             metacmd: "eval",
             args: [commandStr],
@@ -1217,7 +1311,7 @@ class Model {
     }
 
     submitRawCommand(cmdStr: string, addToHistory: boolean, interactive: boolean): Promise<CommandRtnType> {
-        let pk: FeCmdPacketType = {
+        const pk: FeCmdPacketType = {
             type: "fecmd",
             metacmd: "eval",
             args: [cmdStr],
@@ -1234,16 +1328,16 @@ class Model {
 
     // returns [sessionId, screenId]
     getActiveIds(): [string, string] {
-        let activeSession = this.getActiveSession();
-        let activeScreen = this.getActiveScreen();
+        const activeSession = this.getActiveSession();
+        const activeScreen = this.getActiveScreen();
         return [activeSession?.sessionId, activeScreen?.screenId];
     }
 
     _loadScreenLinesAsync(newWin: ScreenLines) {
         this.screenLines.set(newWin.screenId, newWin);
-        let usp = new URLSearchParams({ screenid: newWin.screenId });
-        let url = new URL(this.getBaseHostPort() + "/api/get-screen-lines?" + usp.toString());
-        let fetchHeaders = this.getFetchHeaders();
+        const usp = new URLSearchParams({ screenid: newWin.screenId });
+        const url = new URL(this.getBaseHostPort() + "/api/get-screen-lines?" + usp.toString());
+        const fetchHeaders = this.getFetchHeaders();
         fetch(url, { headers: fetchHeaders })
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
@@ -1251,7 +1345,7 @@ class Model {
                     console.log("null screen-lines returned from get-screen-lines");
                     return;
                 }
-                let slines: ScreenLinesType = data.data;
+                const slines: ScreenLinesType = data.data;
                 this.updateScreenLines(slines, true);
             })
             .catch((err) => {
@@ -1260,7 +1354,7 @@ class Model {
     }
 
     loadScreenLines(screenId: string): ScreenLines {
-        let newWin = new ScreenLines(screenId);
+        const newWin = new ScreenLines(screenId);
         setTimeout(() => this._loadScreenLinesAsync(newWin), 0);
         return newWin;
     }
@@ -1273,7 +1367,7 @@ class Model {
     }
 
     getRemoteNames(): Record<string, string> {
-        let rtn: Record<string, string> = {};
+        const rtn: Record<string, string> = {};
         for (const remote of this.remotes) {
             if (!isBlank(remote.remotealias)) {
                 rtn[remote.remoteid] = remote.remotealias;
@@ -1298,7 +1392,7 @@ class Model {
     }
 
     getCmdByScreenLine(screenId: string, lineId: string): Cmd {
-        let slines = this.getScreenLinesById(screenId);
+        const slines = this.getScreenLinesById(screenId);
         if (slines == null) {
             return null;
         }
@@ -1306,14 +1400,14 @@ class Model {
     }
 
     getActiveLine(screenId: string, lineid: string): SWLinePtr {
-        let slines = this.screenLines.get(screenId);
+        const slines = this.screenLines.get(screenId);
         if (slines == null) {
             return null;
         }
         if (!slines.loaded.get()) {
             return null;
         }
-        let cmd = slines.getCmd(lineid);
+        const cmd = slines.getCmd(lineid);
         if (cmd == null) {
             return null;
         }
@@ -1327,12 +1421,12 @@ class Model {
         if (line == null) {
             return null;
         }
-        let screen = this.getScreenById_single(slines.screenId);
+        const screen = this.getScreenById_single(slines.screenId);
         return { line: line, slines: slines, screen: screen };
     }
 
     updatePtyData(ptyMsg: PtyDataUpdateType): void {
-        let linePtr = this.getActiveLine(ptyMsg.screenid, ptyMsg.lineid);
+        const linePtr = this.getActiveLine(ptyMsg.screenid, ptyMsg.lineid);
         if (linePtr != null) {
             linePtr.screen.updatePtyData(ptyMsg);
         }
@@ -1349,12 +1443,16 @@ class Model {
         }
     }
 
+    sendUserInput(userInputResponsePacket: UserInputResponsePacket) {
+        this.ws.pushMessage(userInputResponsePacket);
+    }
+
     sendInputPacket(inputPacket: any) {
         this.ws.pushMessage(inputPacket);
     }
 
     sendCmdInputText(screenId: string, sp: StrWithPos) {
-        let pk: CmdInputTextPacketType = {
+        const pk: CmdInputTextPacketType = {
             type: "cmdinputtext",
             seqnum: this.getNextPacketSeqNum(),
             screenid: screenId,
@@ -1368,7 +1466,7 @@ class Model {
     }
 
     resolveRemoteIdToRef(remoteId: string) {
-        let remote = this.getRemote(remoteId);
+        const remote = this.getRemote(remoteId);
         if (remote == null) {
             return "[unknown]";
         }
@@ -1379,7 +1477,7 @@ class Model {
     }
 
     resolveRemoteIdToFullRef(remoteId: string) {
-        let remote = this.getRemote(remoteId);
+        const remote = this.getRemote(remoteId);
         if (remote == null) {
             return "[unknown]";
         }
@@ -1390,17 +1488,17 @@ class Model {
     }
 
     readRemoteFile(screenId: string, lineId: string, path: string): Promise<ExtFile> {
-        let urlParams = {
+        const urlParams = {
             screenid: screenId,
             lineid: lineId,
             path: path,
         };
-        let usp = new URLSearchParams(urlParams);
-        let url = new URL(this.getBaseHostPort() + "/api/read-file?" + usp.toString());
-        let fetchHeaders = this.getFetchHeaders();
+        const usp = new URLSearchParams(urlParams);
+        const url = new URL(this.getBaseHostPort() + "/api/read-file?" + usp.toString());
+        const fetchHeaders = this.getFetchHeaders();
         let fileInfo: FileInfoType = null;
         let badResponseStr: string = null;
-        let prtn = fetch(url, { method: "get", headers: fetchHeaders })
+        const prtn = fetch(url, { method: "get", headers: fetchHeaders })
             .then((resp) => {
                 if (!resp.ok) {
                     badResponseStr = sprintf(
@@ -1415,14 +1513,14 @@ class Model {
             })
             .then((blobOrText: any) => {
                 if (blobOrText instanceof Blob) {
-                    let blob: Blob = blobOrText;
-                    let file = new File([blob], fileInfo.name, { type: blob.type, lastModified: fileInfo.modts });
-                    let isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
+                    const blob: Blob = blobOrText;
+                    const file = new File([blob], fileInfo.name, { type: blob.type, lastModified: fileInfo.modts });
+                    const isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
                     (file as any).readOnly = !isWriteable;
                     (file as any).notFound = !!fileInfo.notfound;
                     return file as ExtFile;
                 } else {
-                    let textError: string = blobOrText;
+                    const textError: string = blobOrText;
                     if (textError == null || textError.length == 0) {
                         throw new Error(badResponseStr);
                     }
@@ -1432,7 +1530,7 @@ class Model {
         return prtn;
     }
 
-    writeRemoteFile(
+    async writeRemoteFile(
         screenId: string,
         lineId: string,
         path: string,
@@ -1440,25 +1538,37 @@ class Model {
         opts?: { useTemp?: boolean }
     ): Promise<void> {
         opts = opts || {};
-        let params = {
+        const params = {
             screenid: screenId,
             lineid: lineId,
             path: path,
             usetemp: !!opts.useTemp,
         };
-        let formData = new FormData();
+        const formData = new FormData();
         formData.append("params", JSON.stringify(params));
-        let blob = new Blob([data], { type: "application/octet-stream" });
+        const blob = new Blob([data], { type: "application/octet-stream" });
         formData.append("data", blob);
-        let url = new URL(this.getBaseHostPort() + "/api/write-file");
-        let fetchHeaders = this.getFetchHeaders();
-        let prtn = fetch(url, { method: "post", headers: fetchHeaders, body: formData });
-        return prtn
-            .then((resp) => handleJsonFetchResponse(url, resp))
-            .then((_) => {
-                return;
-            });
+        const url = new URL(this.getBaseHostPort() + "/api/write-file");
+        const fetchHeaders = this.getFetchHeaders();
+        const prtn = fetch(url, { method: "post", headers: fetchHeaders, body: formData });
+        const resp = await prtn;
+        const _ = await handleJsonFetchResponse(url, resp);
+    }
+
+    /**
+     * Tell Electron to install the waiting app update. Will prompt for user input before restarting.
+     */
+    installAppUpdate(): void {
+        if (this.appUpdateStatus.get() == "ready") {
+            getApi().installAppUpdate();
+        }
+    }
+
+    onAppUpdateStatus(status: AppUpdateStatusType) {
+        mobx.action(() => {
+            this.appUpdateStatus.set(status);
+        })();
     }
 }
 
-export { Model };
+export { Model, getApi };

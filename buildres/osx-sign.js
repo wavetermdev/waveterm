@@ -1,10 +1,10 @@
 const { signAsync } = require("@electron/osx-sign");
-// DEBUG="electron-osx-sign*"
+const path = require("path");
 
 console.log("running osx-sign");
-let waveAppPath = "temp/Wave.app";
+const waveAppPath = path.resolve(__dirname, "temp", "Wave.app");
 signAsync({
-    app: "temp/Wave.app",
+    app: waveAppPath,
     binaries: [
         waveAppPath + "/Contents/Resources/app/bin/wavesrv",
         waveAppPath + "/Contents/Resources/app/bin/mshell/mshell-v0.4-linux.amd64",

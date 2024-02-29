@@ -1,5 +1,3 @@
-@import "../../../app/common/themes/themes.less";
-
 .wave-button {
     background: none;
     color: inherit;
@@ -15,35 +13,26 @@
     border-radius: 6px;
     height: auto;
 
-    &:hover {
-        color: @term-white;
-    }
-
-    i {
-        fill: rgba(255, 255, 255, 0.12);
-    }
-
     &.primary {
-        color: @term-green;
         background: none;
 
         i {
-            fill: @term-green;
+            fill: var(--button-primary-bg-color);
         }
 
         &.solid {
-            color: @term-bright-white;
-            background: @term-green;
+            color: var(--button-text-color);
+            background: var(--button-primary-bg-color);
             box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
                 0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
 
             i {
-                fill: @term-white;
+                fill: var(--app-text-color);
             }
         }
 
         &.outlined {
-            border: 1px solid @term-green;
+            border: 1px solid var(--button-primary-bg-color);
         }
 
         &.ghost {
@@ -51,65 +40,29 @@
         }
 
         &:hover {
-            color: @term-bright-white;
+            color: var(--button-text-color);
         }
     }
 
     &.secondary {
-        color: @term-white;
+        color: var(--app-text-color);
         background: none;
 
         &.solid {
-            background: rgba(255, 255, 255, 0.09);
+            background: var(--button-secondary-bg-color);
             box-shadow: none;
         }
 
         &.outlined {
-            border: 1px solid rgba(255, 255, 255, 0.09);
+            border: 1px solid var(--button-secondary-bg-color);
         }
 
         &.ghost {
             padding: 6px 10px;
 
             i {
-                fill: @term-green;
+                fill: var(--button-primary-bg-color);
             }
-        }
-    }
-
-    &.color-yellow {
-        &.solid {
-            border-color: @warning-yellow;
-            background-color: mix(@warning-yellow, @term-white, 50%);
-            box-shadow: none;
-        }
-
-        &.outlined {
-            color: @warning-yellow;
-            border-color: @warning-yellow;
-            &:hover {
-                color: @term-white;
-                border-color: @term-white;
-            }
-        }
-
-        &.ghost {
-        }
-    }
-
-    &.color-red {
-        &.solid {
-            border-color: @term-red;
-            background-color: mix(@term-red, @term-white, 50%);
-            box-shadow: none;
-        }
-
-        &.outlined {
-            color: @term-red;
-            border-color: @term-red;
-        }
-
-        &.ghost {
         }
     }
 

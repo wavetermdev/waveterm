@@ -1,37 +1,38 @@
-@import "../../app/common/themes/themes.less";
-
 .openai-renderer {
     .openai-message {
         display: flex;
         flex-direction: row;
         justify-content: flex-start;
+        font-weight: normal;
 
         .openai-role {
-            color: @term-bright-green;
+            color: var(--term-bright-green);
             font-weight: bold;
             width: 100px;
             flex-shrink: 0;
         }
 
         .openai-role.openai-role-assistant {
-            color: @term-bright-white;
+            color: var(--app-text-primary-color);
         }
 
         .openai-content-user {
-            white-space: pre;
-            color: @term-white;
+            color: var(--app-text-color);
+            font-family: var(--markdown-font);
+            font-size: var(--markdown-font-size);
+            font-weight: normal;
         }
 
         .openai-content-assistant {
-            color: @term-white;
+            color: var(--app-text-color);
         }
 
         .openai-role-error {
-            color: @term-bright-red;
+            color: var(--app-text-color);
         }
 
         .openai-content-error {
-            color: @term-bright-red;
+            color: var(--app-text-color);
         }
     }
 

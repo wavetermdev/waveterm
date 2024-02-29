@@ -7,19 +7,15 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Screen } from "../../../models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "../elements";
-import { RemoteType } from "../../../types/types";
-import * as util from "../../../util/util";
-import { commandRtnHandler } from "../../../util/util";
-import { ReactComponent as SquareIcon } from "../../assets/icons/tab/square.svg";
-import { ReactComponent as GlobeIcon } from "../../assets/icons/globe.svg";
-import { ReactComponent as StatusCircleIcon } from "../../assets/icons/statuscircle.svg";
-import * as appconst from "../../appconst";
+import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "@/elements";
+import * as util from "@/util/util";
+import { TabIcon } from "@/common/elements/tabicon";
+import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
+import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
+import * as appconst from "@/app/appconst";
 
 import "./screensettings.less";
-
-type OV<V> = mobx.IObservableValue<V>;
 
 const ScreenDeleteMessage = `
 Are you sure you want to delete this tab?
@@ -98,7 +94,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             return;
         }
         let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { tabcolor: color }, false);
-        commandRtnHandler(prtn, this.errorMessage);
+        util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -119,7 +115,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             return;
         }
         let prtn = GlobalCommandRunner.screenArchive(this.screenId, val);
-        commandRtnHandler(prtn, this.errorMessage);
+        util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -137,7 +133,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                 return;
             }
             let prtn = GlobalCommandRunner.screenWebShare(this.screen.screenId, val);
-            commandRtnHandler(prtn, this.errorMessage);
+            util.commandRtnHandler(prtn, this.errorMessage);
         });
     }
 
@@ -170,7 +166,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             return;
         }
         let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { name: val }, false);
-        commandRtnHandler(prtn, this.errorMessage);
+        util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -182,7 +178,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             return;
         }
         let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { sharename: val }, false);
-        commandRtnHandler(prtn, this.errorMessage);
+        util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -209,7 +205,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                 return;
             }
             let prtn = GlobalCommandRunner.screenDelete(this.screenId, false);
-            commandRtnHandler(prtn, this.errorMessage);
+            util.commandRtnHandler(prtn, this.errorMessage);
             GlobalModel.modalsModel.popModal();
         });
     }
@@ -278,7 +274,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-input">
                             <div className="tab-colors">
                                 <div className="tab-color-cur">
-                                    <SquareIcon className={cn("tab-color-icon", "color-" + screen.getTabColor())} />
+                                    <TabIcon icon={screen.getTabIcon()} color={screen.getTabColor()} />
                                     <span className="tab-color-name">{screen.getTabColor()}</span>
                                 </div>
                                 <div className="tab-color-sep">|</div>
@@ -288,7 +284,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                                         className="tab-color-select"
                                         onClick={() => this.selectTabColor(color)}
                                     >
-                                        <SquareIcon className={cn("tab-color-icon", "color-" + color)} />
+                                        <TabIcon icon="square" color={color} />
                                     </div>
                                 </For>
                             </div>
@@ -299,12 +295,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-input">
                             <div className="tab-icons">
                                 <div className="tab-icon-cur">
-                                    <If condition={screen.getTabIcon() == "default"}>
-                                        <SquareIcon className={cn("tab-color-icon", "color-white")} />
-                                    </If>
-                                    <If condition={screen.getTabIcon() != "default"}>
-                                        <i className={`fa-sharp fa-solid fa-${screen.getTabIcon()}`}></i>
-                                    </If>
+                                    <TabIcon icon={screen.getTabIcon()} color="white" />
                                     <span className="tab-icon-name">{screen.getTabIcon()}</span>
                                 </div>
                                 <div className="tab-icon-sep">|</div>
@@ -314,7 +305,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                                         className="tab-icon-select"
                                         onClick={() => this.selectTabIcon(icon)}
                                     >
-                                        <i className={`fa-sharp fa-solid fa-${icon}`}></i>
+                                        <TabIcon icon={icon} color="white" />
                                     </div>
                                 </For>
                             </div>

@@ -24,6 +24,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
 const MaxFileDataPacketSize = 16 * 1024
@@ -841,6 +842,13 @@ func RunServer() (int, error) {
 		WriteErrorChOnce:    &sync.Once{},
 		WriteFileContextMap: make(map[string]*WriteFileContext),
 	}
+	if debug {
+		packet.GlobalDebug = true
+	}
+	server.MainInput = packet.MakePacketParser(os.Stdin, nil)
+	server.Sender = packet.MakePacketSender(os.Stdout, server.packetSenderErrorHandler)
+	defer server.Close()
+	wlog.LogConsumer = server.Sender.SendLogPacket
 	go func() {
 		for {
 			if server.checkDone() {
@@ -850,12 +858,6 @@ func RunServer() (int, error) {
 			server.cleanWriteFileContexts()
 		}
 	}()
-	if debug {
-		packet.GlobalDebug = true
-	}
-	server.MainInput = packet.MakePacketParser(os.Stdin, nil)
-	server.Sender = packet.MakePacketSender(os.Stdout, server.packetSenderErrorHandler)
-	defer server.Close()
 	var err error
 	initPacket, err := shexec.MakeServerInitPacket()
 	if err != nil {

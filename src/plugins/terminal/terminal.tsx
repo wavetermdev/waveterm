@@ -8,19 +8,14 @@ import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel } from "../../models";
-import { termHeightFromRows } from "../../util/textmeasure";
-import type { LineType, LineContainerType } from "../../types/types";
+import { GlobalModel } from "@/models";
+import { termHeightFromRows } from "@/util/textmeasure";
 import cn from "classnames";
-import * as lineutil from "../../app/line/lineutil";
+import * as lineutil from "@/app/line/lineutil";
 
 import "./terminal.less";
 
 dayjs.extend(localizedFormat);
-
-type OV<V> = mobx.IObservableValue<V>;
-type OArr<V> = mobx.IObservableArray<V>;
-type OMap<K, V> = mobx.ObservableMap<K, V>;
 
 @mobxReact.observer
 class TerminalRenderer extends React.Component<
@@ -153,7 +148,7 @@ class TerminalRenderer extends React.Component<
             .get();
         let cmd = screen.getCmd(line); // will not be null
         let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-        let termHeight = termHeightFromRows(usedRows, GlobalModel.termFontSize.get());
+        let termHeight = termHeightFromRows(usedRows, GlobalModel.getTermFontSize(), cmd.getTermMaxRows());
         if (usedRows === 0) {
             termHeight = 0;
         }
@@ -169,6 +164,7 @@ class TerminalRenderer extends React.Component<
                     { "zero-height": termHeight == 0 },
                     { collapsed: collapsed }
                 )}
+                data-usedrows={usedRows}
             >
                 <If condition={!isFocused}>
                     <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>

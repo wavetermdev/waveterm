@@ -1,5 +1,3 @@
-@import "../../../app/common/themes/themes.less";
-
 .checkbox {
     display: flex;
 
@@ -12,7 +10,7 @@
         position: relative;
         display: flex;
         align-items: center;
-        color: @term-bright-white;
+        color: var(--checkbox-bg-color);
         transition: color 250ms cubic-bezier(0.4, 0, 0.23, 1);
     }
     input[type="checkbox"] + label > span {
@@ -38,7 +36,7 @@
     }
 
     input[type="checkbox"]:checked + label > span {
-        border: 10px solid @term-green;
+        border: 10px solid var(--button-primary-bg-color);
     }
     input[type="checkbox"]:checked + label > span:before {
         content: "";
@@ -47,8 +45,8 @@
         left: 3px;
         width: 7px;
         height: 12px;
-        border-right: 2px solid #fff;
-        border-bottom: 2px solid #fff;
+        border-right: 2px solid var(--checkbox-check-color);
+        border-bottom: 2px solid var(--checkbox-check-color);
         transform: rotate(45deg);
         transform-origin: 0% 100%;
         animation: checkbox-check 500ms cubic-bezier(0.4, 0, 0.23, 1);

@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
 type PacketParser struct {
@@ -241,6 +243,11 @@ func MakePacketParser(input io.Reader, opts *PacketParserOpts) *PacketParser {
 				return
 			}
 			if pk.GetType() == PingPacketStr {
+				continue
+			}
+			if pk.GetType() == LogPacketStr {
+				logPk := pk.(*LogPacketType)
+				wlog.LogLogEntry(logPk.Entry)
 				continue
 			}
 			if parser.RpcHandler {

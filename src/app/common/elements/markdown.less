@@ -1,32 +1,34 @@
-@import "../../../app/common/themes/themes.less";
-
 .markdown {
-    color: @term-white;
-    margin-bottom: 10px;
-    font-family: @markdown-font;
+    color: var(--app-text-color);
+    font-family: var(--markdown-font);
     font-size: 14px;
+    overflow-wrap: break-word;
+
+    &.bottom-margin {
+        margin-bottom: 10px;
+    }
 
     code {
-        background-color: @markdown-highlight;
-        color: @term-white;
-        font-family: @terminal-font;
+        background-color: var(--markdown-bg-color);
+        color: var(--app-text-color);
+        font-family: var(--termfontfamily);
         border-radius: 4px;
     }
 
     code.inline {
         padding-top: 0;
         padding-bottom: 0;
-        font-family: @terminal-font;
+        font-family: var(--termfontfamily);
     }
 
     .title {
-        color: @term-white;
+        color: var(--app-text-color);
         margin-top: 16px;
         margin-bottom: 8px;
     }
 
     strong {
-        color: @term-white;
+        color: var(--app-text-color);
     }
 
     a {
@@ -35,7 +37,7 @@
 
     table {
         tr th {
-            color: @term-white;
+            color: var(--app-text-color);
         }
     }
 
@@ -53,19 +55,19 @@
     blockquote {
         margin: 4px 10px 4px 10px;
         border-radius: 3px;
-        background-color: @markdown-highlight;
+        background-color: var(--markdown-bg-color);
         padding: 2px 4px 2px 6px;
     }
 
     pre {
-        background-color: @markdown-highlight;
+        background-color: var(--markdown-bg-color);
         margin: 4px 10px 4px 10px;
         padding: 6px 6px 6px 10px;
         border-radius: 4px;
     }
 
     pre.selected {
-        outline: 2px solid @term-green;
+        outline: 2px solid var(--markdown-outline-color);
     }
 
     .title.is-1 {

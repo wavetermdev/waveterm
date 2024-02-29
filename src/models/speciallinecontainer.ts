@@ -1,11 +1,10 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { TermWrap } from "../plugins/terminal/term";
-import { LineType, RendererContext, RendererModel, FocusTypeStrs, WindowSize, LineContainerStrs } from "../types/types";
-import { windowWidthToCols } from "../util/textmeasure";
-import { getRendererContext } from "../app/line/lineutil";
-import { getTermPtyData } from "../util/modelutil";
+import { TermWrap } from "@/plugins/terminal/term";
+import { windowWidthToCols } from "@/util/textmeasure";
+import { getRendererContext } from "@/app/line/lineutil";
+import { getTermPtyData } from "@/util/modelutil";
 import { Cmd } from "./cmd";
 import { Model } from "./model";
 
@@ -91,7 +90,8 @@ class SpecialLineContainer {
             focusHandler: null,
             isRunning: cmd.isRunning(),
             customKeyHandler: null,
-            fontSize: this.globalModel.termFontSize.get(),
+            fontSize: this.globalModel.getTermFontSize(),
+            fontFamily: this.globalModel.getTermFontFamily(),
             ptyDataSource: getTermPtyData,
             onUpdateContentHeight: null,
         });
@@ -127,7 +127,7 @@ class SpecialLineContainer {
         }
         let termWrap = this.getTermWrap(cmd.lineId);
         if (termWrap == null) {
-            let cols = windowWidthToCols(width, this.globalModel.termFontSize.get());
+            let cols = windowWidthToCols(width, this.globalModel.getTermFontSize());
             let usedRows = this.globalModel.getContentHeight(context);
             if (usedRows != null) {
                 return usedRows;

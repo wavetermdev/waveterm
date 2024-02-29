@@ -18,11 +18,9 @@ let MagicLayout = {
     ScreenMinContentSize: 100,
     ScreenMaxContentSize: 5000,
 
-    // the 3 is for descenders, which get cut off in the terminal without this
-    TermDescendersHeight: 3,
     TermWidthBuffer: 15,
 
-    TabWidth: 154,
+    TabWidth: 155,
 
     ScreenSidebarWidthPadding: 5,
     ScreenSidebarMinWidth: 200,

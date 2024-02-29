@@ -7,15 +7,12 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
-import { GlobalModel, RemotesModel, GlobalCommandRunner } from "../../models";
-import { Button, Status, ShowWaveShellInstallPrompt } from "../common/elements";
-import * as T from "../../types/types";
-import * as util from "../../util/util";
-import * as appconst from "../appconst";
+import { GlobalModel, RemotesModel, GlobalCommandRunner } from "@/models";
+import { Button, Status, ShowWaveShellInstallPrompt } from "@/common/elements";
+import * as util from "@/util/util";
 
 import "./connections.less";
-
-type OV<V> = mobx.IObservableValue<V>;
+import { MainView } from "../common/elements/mainview";
 
 @mobxReact.observer
 class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -54,13 +51,13 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
-    getName(item: T.RemoteType) {
+    getName(item: RemoteType) {
         const { remotealias, remotecanonicalname } = item;
         return remotealias ? `${remotealias} [${remotecanonicalname}]` : remotecanonicalname;
     }
 
     @boundMethod
-    getImportSymbol(item: T.RemoteType): React.ReactElement<any, any> {
+    getImportSymbol(item: RemoteType): React.ReactElement<any, any> {
         const { sshconfigsrc } = item;
         if (sshconfigsrc == "sshconfig-import") {
             return <i title="Connection Imported from SSH Config" className="fa-sharp fa-solid fa-file-import" />;
@@ -102,7 +99,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
-    handleClose(): void {
+    handleClose() {
         GlobalModel.connectionViewModel.closeView();
     }
 
@@ -131,16 +128,10 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         }
 
         let items = util.sortAndFilterRemotes(GlobalModel.remotes.slice());
-        let item: T.RemoteType = null;
+        let item: RemoteType = null;
 
         return (
-            <div className={cn("view connections-view")}>
-                <header className="header">
-                    <div className="connections-title text-primary">Connections</div>
-                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
-                        <i className="fa-sharp fa-solid fa-xmark"></i>
-                    </div>
-                </header>
+            <MainView viewName="connections" title="Connections" onClose={this.handleClose}>
                 <table
                     className="connections-table"
                     cellSpacing="0"
@@ -213,7 +204,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                         <div>No Connections Items Found</div>
                     </div>
                 </If>
-            </div>
+            </MainView>
         );
     }
 }

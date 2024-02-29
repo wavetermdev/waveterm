@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
-import { GlobalModel } from "../../../models";
+import { GlobalModel } from "@/models";
 
 import "./markdown.less";
 

@@ -3,23 +3,14 @@
 
 import * as mobx from "mobx";
 import { Terminal } from "xterm";
+import type { ITheme } from "xterm";
 //TODO: replace with `@xterm/addon-web-links` when it's available as stable
 import { WebLinksAddon } from "xterm-addon-web-links";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { windowWidthToCols, windowHeightToRows } from "../../util/textmeasure";
-import { boundInt } from "../../util/util";
-import { GlobalModel } from "../../models";
-import { Model } from "../../models/model";
-import type {
-    TermContextUnion,
-    TermOptsType,
-    TermWinSize,
-    RendererContext,
-    WindowSize,
-    PtyDataType,
-} from "../../types/types";
-import { getTheme } from "../../app/common/themes/themes";
+import { windowWidthToCols, windowHeightToRows } from "@/util/textmeasure";
+import { boundInt } from "@/util/util";
+import { GlobalModel } from "@/models";
 
 type DataUpdate = {
     data: Uint8Array;
@@ -40,9 +31,34 @@ type TermWrapOpts = {
     isRunning: boolean;
     customKeyHandler?: (event: any, termWrap: TermWrap) => boolean;
     fontSize: number;
+    fontFamily: string;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
 };
+
+function getThemeFromCSSVars(): ITheme {
+    let theme: ITheme = {};
+    let rootStyle = getComputedStyle(document.documentElement);
+    theme.foreground = rootStyle.getPropertyValue("--term-white");
+    theme.background = rootStyle.getPropertyValue("--term-black");
+    theme.black = rootStyle.getPropertyValue("--term-black");
+    theme.red = rootStyle.getPropertyValue("--term-red");
+    theme.green = rootStyle.getPropertyValue("--term-green");
+    theme.yellow = rootStyle.getPropertyValue("--term-yellow");
+    theme.blue = rootStyle.getPropertyValue("--term-blue");
+    theme.magenta = rootStyle.getPropertyValue("--term-magenta");
+    theme.cyan = rootStyle.getPropertyValue("--term-cyan");
+    theme.white = rootStyle.getPropertyValue("--term-white");
+    theme.brightBlack = rootStyle.getPropertyValue("--term-bright-black");
+    theme.brightRed = rootStyle.getPropertyValue("--term-bright-red");
+    theme.brightGreen = rootStyle.getPropertyValue("--term-bright-green");
+    theme.brightYellow = rootStyle.getPropertyValue("--term-bright-yellow");
+    theme.brightBlue = rootStyle.getPropertyValue("--term-bright-blue");
+    theme.brightMagenta = rootStyle.getPropertyValue("--term-bright-magenta");
+    theme.brightCyan = rootStyle.getPropertyValue("--term-bright-cyan");
+    theme.brightWhite = rootStyle.getPropertyValue("--term-bright-white");
+    return theme;
+}
 
 // cmd-instance
 class TermWrap {
@@ -62,6 +78,7 @@ class TermWrap {
     focusHandler: (focus: boolean) => void;
     isRunning: boolean;
     fontSize: number;
+    fontFamily: string;
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     initializing: boolean;
@@ -76,6 +93,7 @@ class TermWrap {
         this.focusHandler = opts.focusHandler;
         this.isRunning = opts.isRunning;
         this.fontSize = opts.fontSize;
+        this.fontFamily = opts.fontFamily;
         this.ptyDataSource = opts.ptyDataSource;
         this.onUpdateContentHeight = opts.onUpdateContentHeight;
         this.initializing = true;
@@ -92,13 +110,13 @@ class TermWrap {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
-        const { terminal } = getTheme();
+        let theme = getThemeFromCSSVars();
         this.terminal = new Terminal({
             rows: this.termSize.rows,
             cols: this.termSize.cols,
             fontSize: opts.fontSize,
-            fontFamily: "JetBrains Mono",
-            theme: { foreground: terminal.foreground, background: terminal.background },
+            fontFamily: opts.fontFamily,
+            theme: theme,
         });
         this.terminal.loadAddon(
             new WebLinksAddon((e, uri) => {
@@ -195,7 +213,7 @@ class TermWrap {
             return;
         }
         this.terminal.focus();
-        setTimeout(() => this.terminal._core.viewport.syncScrollArea(true), 0);
+        setTimeout(() => this.terminal?._core?.viewport?.syncScrollArea(true), 0);
     }
 
     disconnectElem() {

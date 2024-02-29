@@ -1,45 +1,16 @@
-@import "../../app/common/themes/themes.less";
-
 .bookmarks-view {
-    background-color: @background-session;
-
-    .close-button {
-        position: absolute;
-        right: 1em;
-        top: 0.8em;
-        cursor: pointer;
-        width: 1.5em;
-        height: 1.5em;
-        border-radius: 50%;
-        svg {
-            width: 1.5em;
-            height: 1.5em;
-            fill: @base-color;
-        }
-    }
-
-    .header {
-        margin: 1.5em 1.5em 0.5em;
-
-        .bookmarks-title {
-            margin-bottom: 0.5em;
-            font-weight: bold;
-            font-size: 1.5em;
-        }
-    }
-
     .icon {
         width: 1em;
         height: 1em;
-        fill: @base-color;
+        fill: var(--app-text-color);
     }
 
     .bookmarks-list {
-        color: @term-white;
+        color: var(--bookmarks-text-color);
         margin: 4px 10px 5px 5px;
 
         .no-bookmarks {
-            color: @term-white;
+            color: var(--bookmarks-text-color);
             padding: 30px 10px 35px 10px;
             border-bottom: 1px solid white;
         }
@@ -75,21 +46,21 @@
         }
 
         label {
-            color: @term-white;
+            color: var(--bookmarks-text-color);
             margin-bottom: 4px;
         }
 
         textarea {
             width: 80%;
             min-width: 50%;
-            color: @term-white;
-            background-color: @term-black;
+            color: var(--bookmarks-text-color);
+            background-color: var(--bookmarks-textarea-bg-color);
         }
 
         .bookmark-id-div {
             display: none;
             position: absolute;
-            color: @disabled-color;
+            color: var(--bookmarks-disabled-text-color);
             right: 5px;
             bottom: 2px;
             font-size: 0.8em;
@@ -104,7 +75,7 @@
             flex-direction: row;
 
             visibility: hidden;
-            color: @term-white;
+            color: var(--bookmarks-text-color);
 
             .bookmark-control:first-child {
                 margin-left: 0;
@@ -116,7 +87,7 @@
                 padding: 2px;
 
                 &:hover {
-                    color: @term-bright-white;
+                    color: var(--bookmarks-control-hover-color);
                 }
             }
         }

@@ -7,17 +7,15 @@ import * as mobx from "mobx";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "../../models";
+import { GlobalModel } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
-import { ErrorBoundary } from "../../app/common/error/errorboundary";
+import { ErrorBoundary } from "@/common/error/errorboundary";
 import { MagicLayout } from "../magiclayout";
 import "./workspace.less";
 
 dayjs.extend(localizedFormat);
-
-type OV<V> = mobx.IObservableValue<V>;
 
 @mobxReact.observer
 class WorkspaceView extends React.Component<{}, {}> {
@@ -38,7 +36,6 @@ class WorkspaceView extends React.Component<{}, {}> {
         if (cmdInputHeight == 0) {
             cmdInputHeight = MagicLayout.CmdInputHeight; // this is the base size of cmdInput (measured using devtools)
         }
-        cmdInputHeight += MagicLayout.CmdInputBottom; // reference to .cmd-input, bottom: 12px
         let isHidden = GlobalModel.activeMainView.get() != "session";
         let mainSidebarModel = GlobalModel.mainSidebarModel;
 
@@ -48,7 +45,7 @@ class WorkspaceView extends React.Component<{}, {}> {
 
         return (
             <div
-                className={cn("session-view", { "is-hidden": isHidden })}
+                className={cn("mainview", "session-view", { "is-hidden": isHidden })}
                 data-sessionid={session.sessionId}
                 style={{
                     width: `${width}px`,

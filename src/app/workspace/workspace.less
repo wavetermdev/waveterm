@@ -1,19 +1,5 @@
-@import "../../app/common/themes/themes.less";
-
 .session-view {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-    &.is-hidden {
-        display: none;
-    }
-    background: @background-session;
-    border: 1px solid @base-border;
-    border-radius: 8px;
-    // transition: width 0.2s ease;
-    margin-bottom: 0.5em;
-    margin-right: 0.5em;
+    overflow: hidden;
 
     .center-message {
         display: flex;
@@ -21,6 +7,6 @@
         justify-content: center;
         height: 100%;
         width: 100%;
-        color: @text-secondary;
+        color: var(--app-text-secondary-color);
     }
 }
