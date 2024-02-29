@@ -36,7 +36,7 @@ jobs:
                       wavesrv/go.sum
                       waveshell/go.sum
                       scripthaus/go.sum
-            - id: install-scripthaus
+            - name: Install Scripthaus
               run: |
                   go work use ./scripthaus;
                   cd scripthaus;
@@ -46,19 +46,20 @@ jobs:
               with:
                   node-version: ${{env.NODE_VERSION}}
                   cache: "yarn"
-            - id: set-version
+            - name: Set Version
+              id: set-version
               run: |
                   VERSION=$(node -e 'console.log(require("./version.js"))')
                   echo "WAVETERM_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
-            - id: install-linux-build-deps
+            - name: Install Linux Build Dependencies
               if: matrix.platform == 'linux'
               run: |
                   sudo apt-get update
-                  sudo apt-get install rpm flatpak flatpak-builder eu-strip snapcraft
+                  sudo apt-get install rpm flatpak flatpak-builder snapcraft
             - run: yarn --frozen-lockfile
-            - id: run-build-package
+            - name: Build
               run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
-            - id: tree
+            - id: Tree
               run: tree out/make
             - uses: actions/upload-artifact@v4
               with:
@@ -74,12 +75,13 @@ jobs:
               with:
                   merge-multiple: true
                   path: buildtemp
-            - id: set-version-txt
+            - name: Set `version.txt`
               run: |
                   echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" > buildtemp/version.txt
-            - id: zip-builds
+            - name: Zip Builds
               run: (cd buildtemp; zip ../waveterm-builds.zip *)
-            - run: aws s3 cp waveterm-builds.zip s3://waveterm-github-artifacts/
+            - name: Upload to S3
+              run: aws s3 cp waveterm-builds.zip s3://waveterm-github-artifacts/
               env:
                   AWS_ACCESS_KEY_ID: "${{ secrets.S3_USERID }}"
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRETKEY }}"
