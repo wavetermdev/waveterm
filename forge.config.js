@@ -62,6 +62,7 @@ module.exports = {
             config: {
                 options: {
                     bin: pkg.productName,
+                    name: pkg.name,
                     genericName: "Terminal Emulator",
                     productName: pkg.productName,
                     productDescription: pkg.description,
