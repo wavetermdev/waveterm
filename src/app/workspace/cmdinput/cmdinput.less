@@ -7,7 +7,7 @@
     width: 100%;
     padding: calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 3 - 1px);
     z-index: 100;
-    border-top: 1px solid var(--app-border-color);
+    border-top: 2px solid var(--app-border-color);
     background-color: var(--app-bg-color);
 
     &.active {
@@ -71,6 +71,9 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
     }
 
     .cmd-input-filter {
@@ -377,12 +380,16 @@
         flex-shrink: 1;
         overflow-y: auto;
         margin-bottom: var(--termpad);
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
 
         .info-title {
             position: absolute;
             z-index: 102;
             top: 5px;
             left: 0;
+            font-size: calc(var(--termfontsize) + 2px);
             background-color: var(--app-bg-color);
             color: var(--cmdinput-title-color);
             padding-bottom: 4px;
@@ -398,7 +405,7 @@
         .info-title + .info-lines,
         .info-title + .info-comps,
         .info-title + .info-error {
-            margin-top: 24px;
+            margin-top: 26px;
         }
 
         .info-msg {

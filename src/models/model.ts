@@ -931,6 +931,8 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (update.interactive) {
+                    // nothing (ignore)
                 } else if (interactive) {
                     if (update.info != null) {
                         const info: InfoType = update.info;
@@ -1107,6 +1109,9 @@ class Model {
     }
 
     isInfoUpdate(update: UpdatePacket): boolean {
+        if (update == null) {
+            return false;
+        }
         if (update.type == "model") {
             return update.data.some((u) => u.info != null || u.history != null);
         } else {

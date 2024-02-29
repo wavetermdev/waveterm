@@ -25,13 +25,33 @@ body .sidebar {
     background-color: var(--app-panel-bg-color);
 }
 
-textarea {
+body textarea,
+body textarea.textarea {
     overflow: hidden;
     font-family: var(--base-font-family);
     font-size: var(--base-font-size);
     font-weight: var(--base-font-weight);
     line-height: 1.5;
     color: var(--app-text-color);
+    background-color: var(--input-bg-color);
+
+    &::placeholder {
+        color: var(--input-placeholder-color);
+    }
+}
+
+body input,
+body input.input {
+    font-family: var(--base-font-family);
+    font-size: var(--base-font-size);
+    font-weight: var(--base-font-weight);
+    line-height: 1.5;
+    color: var(--app-text-color);
+    background-color: var(--input-bg-color);
+
+    &::placeholder {
+        color: var(--input-placeholder-color);
+    }
 }
 
 // typography
