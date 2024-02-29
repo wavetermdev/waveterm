@@ -279,12 +279,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                     <React.Fragment>
                         <div className="title-bar-drag">
                             <div className="logo">
-                                <If condition={sidebarWidth > 215}>
-                                    <WaveLogoWord />
-                                </If>
-                                <If condition={sidebarWidth <= 215}>
-                                    <WaveLogo />
-                                </If>
+                                <WaveLogo />
                             </div>
                             <div className="close-button">
                                 <i className="fa-sharp fa-solid fa-xmark-large" onClick={toggleCollapse} />

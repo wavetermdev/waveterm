@@ -102,13 +102,22 @@
                 // This applies a transparency mask to the background color, as set above, so that it will blend with whatever the theme's background color is.
                 z-index: 1;
                 width: var(--screen-tab-width);
-                mask-image: linear-gradient(
-                    rgba(0, 0, 0, 1),
-                    rgba(0, 0, 0, 0.7) 15%,
-                    rgba(0, 0, 0, 0.5) 30%,
-                    rgba(0, 0, 0, 0) 100%
-                );
+                mask-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0) 100%);
             }
+
+            &.is-active {
+                border-top: none;
+                opacity: 1;
+                font-weight: var(--screentabs-selected-font-weight);
+                border-top: 2px solid var(--tab-color);
+            }
+
+            &.is-archived {
+                .fa.fa-archive {
+                    margin-right: 4px;
+                }
+            }
+
             .screen-tab-inner {
                 display: flex;
                 flex-direction: row;
@@ -125,18 +134,6 @@
 
                 .tab-name {
                     flex-grow: 1;
-                }
-
-                &.is-active {
-                    border-top: none;
-                    opacity: 1;
-                    font-weight: var(--screentabs-selected-font-weight);
-                }
-
-                &.is-archived {
-                    .fa.fa-archive {
-                        margin-right: 4px;
-                    }
                 }
 
                 // Only one of these will be visible at a time
