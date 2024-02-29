@@ -62,6 +62,13 @@ module.exports = {
             config: {
                 options: {
                     bin: pkg.productName,
+                    genericName: "Terminal Emulator",
+                    productName: pkg.productName,
+                    productDescription: pkg.description,
+                    icon: "public/waveterm.icns",
+                    categories: ["Utility", "Development"],
+                    maintainer: pkg.author,
+                    homepage: pkg.homepage,
                 },
             },
         },
