@@ -29,6 +29,11 @@ jobs:
               with:
                   repository: scripthaus-dev/scripthaus
                   path: scripthaus
+            - name: Install Linux Build Dependencies
+              if: matrix.platform == 'linux'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install rpm flatpak flatpak-builder snapcraft
             - uses: actions/setup-go@v5
               with:
                   go-version: ${{env.GO_VERSION}}
@@ -51,15 +56,12 @@ jobs:
               run: |
                   VERSION=$(node -e 'console.log(require("./version.js"))')
                   echo "WAVETERM_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
-            - name: Install Linux Build Dependencies
-              if: matrix.platform == 'linux'
-              run: |
-                  sudo apt-get update
-                  sudo apt-get install rpm flatpak flatpak-builder snapcraft
-            - run: yarn --frozen-lockfile
+            - name: Install Yarn Dependencies
+              run: yarn --frozen-lockfile
             - name: Build
               run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
-            - id: Tree
+            - name: Tree
+              if: matrix.platform == 'linux'
               run: tree out/make
             - uses: actions/upload-artifact@v4
               with:
