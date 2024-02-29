@@ -268,6 +268,26 @@ function getDateStr(d: Date): string {
     return dowStr + " " + yearStr + "-" + monthStr + "-" + dayStr;
 }
 
+function formatDuration(ms: number): string {
+    if (ms < 1000) {
+        return ms + "ms";
+    }
+    if (ms < 10000) {
+        return (ms / 1000).toFixed(2) + "s";
+    }
+    if (ms < 100000) {
+        return (ms / 1000).toFixed(1) + "s";
+    }
+    if (ms < 60 * 60 * 1000) {
+        let mins = Math.floor(ms / 60000);
+        let secs = Math.floor((ms % 60000) / 1000);
+        return mins + "m" + secs + "s";
+    }
+    let hours = Math.floor(ms / (60 * 60 * 1000));
+    let mins = Math.floor((ms % (60 * 60 * 1000)) / 60000);
+    return hours + "h" + mins + "m";
+}
+
 function getRemoteConnVal(r: RemoteType): number {
     switch (r.status) {
         case "connected":
@@ -400,4 +420,5 @@ export {
     getRemoteName,
     ces,
     fireAndForget,
+    formatDuration,
 };

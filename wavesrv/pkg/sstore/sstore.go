@@ -749,6 +749,9 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 	if envMap["VIRTUAL_ENV"] != "" {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
 	}
+	if envMap["CONDA_DEFAULT_ENV"] != "" {
+		rtn["CONDA_DEFAULT_ENV"] = envMap["CONDA_DEFAULT_ENV"]
+	}
 	for key, val := range envMap {
 		if strings.HasPrefix(key, "PROMPTVAR_") && envMap[key] != "" {
 			rtn[key] = val

@@ -180,6 +180,11 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
 
 @mobxReact.observer
 class BookmarksView extends React.Component<{}, {}> {
+    @boundMethod
+    handleClose() {
+        GlobalModel.bookmarksModel.closeView();
+    }
+
     render() {
         const isHidden = GlobalModel.activeMainView.get() != "bookmarks";
         if (isHidden) {
@@ -188,7 +193,7 @@ class BookmarksView extends React.Component<{}, {}> {
         let bookmarks = GlobalModel.bookmarksModel.bookmarks;
         let bookmark: BookmarkType = null;
         return (
-            <MainView viewName="bookmarks" title="Bookmarks" onClose={GlobalModel.bookmarksModel.closeView}>
+            <MainView viewName="bookmarks" title="Bookmarks" onClose={this.handleClose}>
                 <div className="bookmarks-list">
                     <For index="idx" each="bookmark" of={bookmarks}>
                         <Bookmark key={bookmark.bookmarkid} bookmark={bookmark} />

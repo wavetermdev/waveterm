@@ -3,6 +3,7 @@
 
 import * as mobx from "mobx";
 import { Terminal } from "xterm";
+import type { ITheme } from "xterm";
 //TODO: replace with `@xterm/addon-web-links` when it's available as stable
 import { WebLinksAddon } from "xterm-addon-web-links";
 import { sprintf } from "sprintf-js";
@@ -10,7 +11,6 @@ import { boundMethod } from "autobind-decorator";
 import { windowWidthToCols, windowHeightToRows } from "@/util/textmeasure";
 import { boundInt } from "@/util/util";
 import { GlobalModel } from "@/models";
-import { getTheme } from "@/common/themes/themes";
 
 type DataUpdate = {
     data: Uint8Array;
@@ -35,6 +35,30 @@ type TermWrapOpts = {
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
 };
+
+function getThemeFromCSSVars(): ITheme {
+    let theme: ITheme = {};
+    let rootStyle = getComputedStyle(document.documentElement);
+    theme.foreground = rootStyle.getPropertyValue("--term-white");
+    theme.background = rootStyle.getPropertyValue("--term-black");
+    theme.black = rootStyle.getPropertyValue("--term-black");
+    theme.red = rootStyle.getPropertyValue("--term-red");
+    theme.green = rootStyle.getPropertyValue("--term-green");
+    theme.yellow = rootStyle.getPropertyValue("--term-yellow");
+    theme.blue = rootStyle.getPropertyValue("--term-blue");
+    theme.magenta = rootStyle.getPropertyValue("--term-magenta");
+    theme.cyan = rootStyle.getPropertyValue("--term-cyan");
+    theme.white = rootStyle.getPropertyValue("--term-white");
+    theme.brightBlack = rootStyle.getPropertyValue("--term-bright-black");
+    theme.brightRed = rootStyle.getPropertyValue("--term-bright-red");
+    theme.brightGreen = rootStyle.getPropertyValue("--term-bright-green");
+    theme.brightYellow = rootStyle.getPropertyValue("--term-bright-yellow");
+    theme.brightBlue = rootStyle.getPropertyValue("--term-bright-blue");
+    theme.brightMagenta = rootStyle.getPropertyValue("--term-bright-magenta");
+    theme.brightCyan = rootStyle.getPropertyValue("--term-bright-cyan");
+    theme.brightWhite = rootStyle.getPropertyValue("--term-bright-white");
+    return theme;
+}
 
 // cmd-instance
 class TermWrap {
@@ -86,13 +110,13 @@ class TermWrap {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
-        const { terminal } = getTheme();
+        let theme = getThemeFromCSSVars();
         this.terminal = new Terminal({
             rows: this.termSize.rows,
             cols: this.termSize.cols,
             fontSize: opts.fontSize,
             fontFamily: opts.fontFamily,
-            theme: { foreground: terminal.foreground, background: terminal.background },
+            theme: theme,
         });
         this.terminal.loadAddon(
             new WebLinksAddon((e, uri) => {

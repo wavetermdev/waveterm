@@ -22,10 +22,14 @@
     .line-sep-labeled {
         display: flex;
         align-items: center;
-        color: var(--line-meta-text-color);
+        color: var(--term-gray);
         font-family: var(--termfontfamily);
         line-height: var(--termlineheight);
         font-size: var(--termfontsize);
+    }
+
+    .lines-spacer + .line-sep-labeled {
+        margin-top: var(--termpad);
     }
 
     .line-sep-labeled::before,
@@ -33,7 +37,7 @@
         content: "";
         height: 1px;
         flex-grow: 1;
-        background-color: var(--app-text-color);
+        background-color: var(--term-gray);
     }
 
     .line-sep-labeled::before {

@@ -18,3 +18,4 @@ export { Status } from "./status";
 export { TextField } from "./textfield";
 export { Toggle } from "./toggle";
 export { Tooltip } from "./tooltip";
+export { TabIcon } from "./tabicon";
