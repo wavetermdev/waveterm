@@ -37,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
@@ -978,6 +979,45 @@ func (msh *MShellProc) isWaitingForPassphrase_nolock() bool {
 	return pwIdx != -1
 }
 
+func (msh *MShellProc) RunPasswordReadLoop(cmdPty *os.File) {
+	buf := make([]byte, PtyReadBufSize)
+	for {
+		_, readErr := cmdPty.Read(buf)
+		if readErr == io.EOF {
+			return
+		}
+		if readErr != nil {
+			msh.WriteToPtyBuffer("*error reading from controlling-pty: %v\n", readErr)
+			return
+		}
+		var newIsWaiting bool
+		msh.WithLock(func() {
+			newIsWaiting = msh.isWaitingForPassword_nolock()
+		})
+		if newIsWaiting {
+			break
+		}
+	}
+	request := &userinput.UserInputRequestType{
+		QueryText:    "Please enter your password",
+		ResponseType: "text",
+		Title:        "Sudo Password",
+		Markdown:     false,
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+	if err != nil {
+		msh.WriteToPtyBuffer("*error timed out waiting for password: %v\n", err)
+		return
+	}
+	msh.WithLock(func() {
+		curOffset := msh.PtyBuffer.TotalWritten()
+		msh.PtyBuffer.Write([]byte(response.Text))
+		sendRemotePtyUpdate(msh.Remote.RemoteId, curOffset, []byte(response.Text))
+	})
+}
+
 func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
 	buf := make([]byte, PtyReadBufSize)
 	var isWaiting bool
@@ -1002,6 +1042,123 @@ func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
 			go msh.NotifyRemoteUpdate()
 		}
 	}
+}
+
+func (msh *MShellProc) CheckPasswordRequested(ctx context.Context, requiresPassword chan bool) {
+	for {
+		msh.WithLock(func() {
+			if msh.isWaitingForPassword_nolock() {
+				select {
+				case requiresPassword <- true:
+				default:
+				}
+				return
+			}
+			if msh.Status != StatusConnecting {
+				select {
+				case requiresPassword <- false:
+				default:
+				}
+				return
+			}
+		})
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func (msh *MShellProc) SendPassword(pw string) {
+	msh.WithLock(func() {
+		if msh.ControllingPty == nil {
+			return
+		}
+		pwBytes := []byte(pw + "\r")
+		msh.writeToPtyBuffer_nolock("~[sent password]\r\n")
+		_, err := msh.ControllingPty.Write(pwBytes)
+		if err != nil {
+			msh.writeToPtyBuffer_nolock("*cannot write password to controlling pty: %v\n", err)
+		}
+	})
+}
+
+func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
+	requiresPassword := make(chan bool, 1)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelFn()
+	if pw != "" {
+		// do an extra check with the saved password if it is provided
+		go msh.CheckPasswordRequested(ctx, requiresPassword)
+		select {
+		case <-ctx.Done():
+			err := ctx.Err()
+			if err == context.Canceled {
+				msh.WriteToPtyBuffer("canceled by the user: %v\n", err)
+			} else {
+				msh.WriteToPtyBuffer("timed out waiting for password prompt: %v\n", err)
+			}
+			return
+		case required := <-requiresPassword:
+			if !required {
+				// we don't need user input in this case, so we exit early
+				return
+			}
+		}
+		msh.SendPassword(pw)
+	}
+
+	// ask for user input once
+	go msh.CheckPasswordRequested(ctx, requiresPassword)
+	select {
+	case <-ctx.Done():
+		err := ctx.Err()
+		if err == context.Canceled {
+			msh.WriteToPtyBuffer("canceled by the user: %v\n", err)
+		} else {
+			msh.WriteToPtyBuffer("timed out waiting for password prompt: %v\n", err)
+		}
+		return
+	case required := <-requiresPassword:
+		if !required {
+			// we don't need user input in this case, so we exit early
+			return
+		}
+	}
+
+	request := &userinput.UserInputRequestType{
+		QueryText:    "Please enter your password",
+		ResponseType: "text",
+		Title:        "Sudo Password",
+		Markdown:     false,
+	}
+	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+	if err != nil {
+		msh.WriteToPtyBuffer("*error timed out waiting for password: %v\n", err)
+		return
+	}
+	msh.SendPassword(response.Text)
+
+	//error out if requested again
+	go msh.CheckPasswordRequested(ctx, requiresPassword)
+	select {
+	case <-ctx.Done():
+		err := ctx.Err()
+		if err == context.Canceled {
+			msh.WriteToPtyBuffer("canceled by the user: %v\n", err)
+		} else {
+			msh.WriteToPtyBuffer("timed out waiting for password prompt: %v\n", err)
+		}
+		return
+	case required := <-requiresPassword:
+		if !required {
+			// we don't need user input in this case, so we exit early
+			return
+		}
+	}
+	//TODO return an error
 }
 
 func (msh *MShellProc) WaitAndSendPassword(pw string) {
@@ -1304,9 +1461,7 @@ func (msh *MShellProc) createWaveshellSession(remoteCopy sstore.RemoteType) (she
 			return nil, fmt.Errorf("cannot attach controlling tty to mshell command: %v", err)
 		}
 		go msh.RunPtyReadLoop(cmdPty)
-		if remoteCopy.SSHOpts.SSHPassword != "" {
-			go msh.WaitAndSendPassword(remoteCopy.SSHOpts.SSHPassword)
-		}
+		go msh.WaitAndSendPasswordNew(remoteCopy.SSHOpts.SSHPassword)
 		wsSession = shexec.CmdWrap{Cmd: ecmd}
 	} else if msh.Client == nil {
 		client, err := ConnectToClient(remoteCopy.SSHOpts)
