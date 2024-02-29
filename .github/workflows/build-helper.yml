@@ -60,13 +60,10 @@ jobs:
               run: yarn --frozen-lockfile
             - name: Build
               run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
-            - name: Tree
-              if: matrix.platform == 'linux'
-              run: tree out/make
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}-${{ matrix.arch }}
-                  path: out/make/zip/${{ matrix.platform }}/${{ matrix.arch }}/*.zip
+                  path: out/make/**/*
                   retention-days: 2
     upload:
         name: "Upload Builds"

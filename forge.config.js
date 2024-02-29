@@ -1,3 +1,4 @@
+const pkg = require("./package.json");
 let AllowedFirstParts = {
     "package.json": true,
     dist: true,
@@ -44,8 +45,6 @@ function ignoreFn(path) {
     return false;
 }
 
-const appName = "Wave";
-
 module.exports = {
     packagerConfig: {
         ignore: ignoreFn,
@@ -62,7 +61,7 @@ module.exports = {
             name: "@electron-forge/maker-deb",
             config: {
                 options: {
-                    bin: appName,
+                    bin: pkg.productName,
                 },
             },
         },
@@ -70,9 +69,28 @@ module.exports = {
             name: "@electron-forge/maker-rpm",
             config: {
                 options: {
-                    bin: appName,
+                    bin: pkg.productName,
                 },
             },
         },
+        {
+            name: "@electron-forge/maker-flatpak",
+            config: {
+                options: {
+                    bin: pkg.productName,
+                    mimeType: ["text/plain"],
+                },
+            },
+        },
+        // {
+        //     name: "@electron-forge/maker-snap",
+        //     config: {
+        //         features: {
+        //             audio: true,
+        //             mpris: "com.commandline.waveterm",
+        //             webgl: true,
+        //         },
+        //     },
+        // },
     ],
 };
