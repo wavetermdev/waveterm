@@ -1189,12 +1189,8 @@ class Model {
         } else if (fsUpdated) {
             this.updateTermFontSizeVars(newFontSize, true);
         }
-
-        console.log("themeUpdated", themeUpdated);
-        console.log("newTheme", newTheme);
         if (themeUpdated) {
             loadTheme(newTheme);
-            this.bumpRenderVersion();
         }
     }
 
