@@ -182,10 +182,6 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
 
 @mobxReact.observer
 class LineHeader extends React.Component<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
-    isOverflow: OV<boolean> = mobx.observable.box(false, {
-        name: "line-overflow",
-    });
-
     renderCmdText(cmd: Cmd): any {
         if (cmd == null) {
             return (
