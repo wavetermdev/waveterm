@@ -353,12 +353,16 @@ class Model {
         if (fontSize > appconst.MaxFontSize) {
             fontSize = appconst.MaxFontSize;
         }
+        const fontSizeSm = fontSize - 2;
         const monoFontSize = getMonoFontSize(fontSize);
+        const monoFontSizeSm = getMonoFontSize(fontSizeSm);
         mobx.action(() => {
             this.bumpRenderVersion();
             this.setStyleVar("--termfontsize", fontSize + "px");
             this.setStyleVar("--termlineheight", monoFontSize.height + "px");
-            this.setStyleVar("--termpad", Math.floor(monoFontSize.height / 2) + "px");
+            this.setStyleVar("--termpad", monoFontSize.pad + "px");
+            this.setStyleVar("--termfontsize-sm", fontSizeSm + "px");
+            this.setStyleVar("--termlineheight-sm", monoFontSizeSm.height + "px");
         })();
     }
 

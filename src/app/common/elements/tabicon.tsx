@@ -7,7 +7,7 @@ import cn from "classnames";
 
 class TabIcon extends React.Component<{ icon: string; color: string }> {
     render() {
-        let { icon, color, className } = this.props;
+        let { icon, color } = this.props;
         let iconClass = "";
         if (icon === "default" || icon === "square") {
             iconClass = "fa-solid fa-square fa-fw";
