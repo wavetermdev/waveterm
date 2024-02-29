@@ -58,7 +58,11 @@ module.exports = {
         },
         {
             name: "@electron-forge/maker-deb",
-            config: {},
+            config: {
+                options: {
+                    bin: "Wave",
+                },
+            },
         },
         {
             name: "@electron-forge/maker-rpm",

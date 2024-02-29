@@ -1,7 +1,6 @@
 {
     "name": "waveterm",
     "author": "Command Line Inc",
-    "executableName": "Wave",
     "productName": "Wave",
     "description": "An open-source, cross-platform, AI-integrated, modern terminal for seamless workflows.",
     "version": "0.6.1",
