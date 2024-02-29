@@ -9,7 +9,7 @@
 
 # Wave Terminal
 
-A open-source, cross-platform, AI-integrated, modern terminal for seamless workflows.
+An open-source, cross-platform, AI-integrated, modern terminal for seamless workflows.
 
 Wave isn't just another terminal emulator; it's a rethink on how terminals are built. Wave combines command line with the power of the open web to help veteran CLI users and new developers alike.
 
