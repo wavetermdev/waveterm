@@ -47,11 +47,7 @@ function ignoreFn(path) {
 module.exports = {
     packagerConfig: {
         ignore: ignoreFn,
-        files: [
-            "package.json",
-            "dist/*",
-            "public/*",
-        ],
+        files: ["package.json", "dist/*", "public/*"],
         icon: "public/waveterm.icns",
     },
     rebuildConfig: {},
@@ -59,6 +55,14 @@ module.exports = {
         {
             name: "@electron-forge/maker-zip",
             platforms: ["darwin", "linux"],
+        },
+        {
+            name: "@electron-forge/maker-deb",
+            config: {},
+        },
+        {
+            name: "@electron-forge/maker-rpm",
+            config: {},
         },
     ],
 };

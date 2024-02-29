@@ -49,6 +49,11 @@ jobs:
               run: |
                   VERSION=$(node -e 'console.log(require("./version.js"))')
                   echo "WAVETERM_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+            - id: install-rpm
+              if: matrix.platform == 'linux'
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install rpm
             - run: yarn --frozen-lockfile
             - run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
             - uses: actions/upload-artifact@v4
