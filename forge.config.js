@@ -44,6 +44,8 @@ function ignoreFn(path) {
     return false;
 }
 
+const appName = "Wave";
+
 module.exports = {
     packagerConfig: {
         ignore: ignoreFn,
@@ -60,13 +62,17 @@ module.exports = {
             name: "@electron-forge/maker-deb",
             config: {
                 options: {
-                    bin: "Wave",
+                    bin: appName,
                 },
             },
         },
         {
             name: "@electron-forge/maker-rpm",
-            config: {},
+            config: {
+                options: {
+                    bin: appName,
+                },
+            },
         },
     ],
 };
