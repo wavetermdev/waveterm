@@ -233,7 +233,7 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
                 <If condition={!isBlank(renderer) && renderer != "terminal"}>
                     <div className="meta-divider">|</div>
                     <div className="renderer">
-                        <i className="fa-sharp fa-solid fa-fill" />
+                        <i className="fa-sharp fa-solid fa-fill renderer-icon" />
                         {renderer}
                     </div>
                 </If>
@@ -828,7 +828,7 @@ class LineText extends React.Component<
                 name: "computed-isFocused",
             })
             .get();
-        const mainClass = cn("line", "line-text", "focus-parent");
+        const mainClass = cn("line", "line-text", "focus-parent", { selected: isSelected });
         return (
             <div
                 className={mainClass}
@@ -837,13 +837,18 @@ class LineText extends React.Component<
                 data-screenid={line.screenid}
                 onClick={this.clickHandler}
             >
-                <div className={cn("focus-indicator", { selected: isSelected }, { active: isSelected && isFocused })} />
-                <div className="line-content">
-                    <div className="meta">
+                <If condition={isSelected}>
+                    <div key="mask" className="line-mask"></div>
+                </If>
+                <div key="header" className="line-header">
+                    <div className="meta meta-line1">
                         <SmallLineAvatar line={line} cmd={null} onRightClick={this.onAvatarRightClick} />
+                        <div className="meta-divider">|</div>
                         <div className="ts">{formattedTime}</div>
                     </div>
-                    <div className="text">{line.text}</div>
+                </div>
+                <div key="text" className="text">
+                    {line.text}
                 </div>
             </div>
         );

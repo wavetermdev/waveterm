@@ -2,30 +2,13 @@
     margin: 0;
     padding: calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 2 + 1px) calc(var(--termpad) * 3);
     display: flex;
+    flex-direction: column;
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
     font-weight: normal;
     font-family: var(--termfontfamily);
-
-    &.line-cmd {
-        flex-direction: column;
-        scroll-margin-bottom: 20px;
-        position: relative;
-    }
-
-    &.line-text {
-        // old formatting for text lines (requires override)
-        flex-direction: row;
-        padding-top: 5px;
-
-        .line-content {
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-            margin-left: 10px;
-        }
-    }
+    scroll-margin-bottom: 20px;
 
     &.line-invalid {
         color: var(--term-text-white);
@@ -238,6 +221,10 @@
             .termopts,
             .renderer {
                 display: flex;
+            }
+
+            .renderer .renderer-icon {
+                margin-right: 0.5em;
             }
 
             .metapart-mono {
