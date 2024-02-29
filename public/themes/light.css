@@ -1,0 +1,17 @@
+/* Copyright 2024, Command Line Inc.
+   SPDX-License-Identifier: Apache-2.0 */
+
+@import "./default.css";
+
+:root {
+    /* sidebar colors */
+    --sidebar-bg-color: #ffffff;
+    --sidebar-dev-bg-color: #ffffff;
+    --sidebar-settings-color: #ffffff;
+    --sidebar-separator-color: var(--app-border-color);
+    --sidebar-highlight-color: rgba(241, 246, 243, 0.08);
+    --sidebar-font-size: 12.5px;
+    --sidebar-line-height: 1.5;
+    --sidebar-font-weight: 300;
+    --sidebar-highlight-font-weight: 300;
+}

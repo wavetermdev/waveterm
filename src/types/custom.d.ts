@@ -562,6 +562,7 @@ declare global {
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
+        theme: string;
     };
 
     type ConfirmFlagsType = {

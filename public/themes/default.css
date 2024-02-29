@@ -1,16 +1,16 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
+/* Copyright 2024, Command Line Inc.
+   SPDX-License-Identifier: Apache-2.0 */
 
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
 
-    // these variables are overridden by user settings
+    /* these variables are overridden by user settings */
     --termfontfamily: "JetBrains Mono", monospace;
     --termfontsize: 12px;
     --termlineheight: 15px;
-    --termpad: 7px; // padding value (scaled to termfontsize)
+    --termpad: 7px; /* padding value (scaled to termfontsize) */
 
-    // other fonts
+    /* other fonts */
     --fixed-font: "Martian Mono", sans-serif;
     --terminal-font: "JetBrains Mono", sans-serif;
     --text-s1-font: "Martian Mono", sans-serif;
@@ -20,18 +20,18 @@
 
     --markdown-font-size: 14px;
 
-    --screentabs-height: 38px; // magic
-    --screentabs-line-height: 21px; // magic
+    --screentabs-height: 38px; /* magic */
+    --screentabs-line-height: 21px; /* magic */
     --screentabs-font-size: 12.5px;
     --screentabs-font-weight: 300;
     --screentabs-selected-font-weight: 300;
 
-    // floating logo settings
+    /* floating logo settings */
     --floating-logo-width-darwin: 110px;
     --floating-logo-width: 40px;
     --floating-logo-height: var(--screentabs-height);
 
-    // global colors
+    /* global colors */
     --app-bg-color: #000000;
     --app-accent-color: #58c142;
     --app-error-color: #cc0000;
@@ -44,18 +44,18 @@
     --app-maincontent-bg-color: #333333;
     --app-border-radius: 10px;
 
-    // global generic colors
+    /* global generic colors */
     --app-black: #000000;
 
-    // scrollbar colors
+    /* scrollbar colors */
     --scrollbar-background-color: #030303;
     --scrollbar-thumb-color: #333333;
     --scrollbar-thumb-hover-color: #d3d7cf;
 
-    // code color
+    /* code color */
     --pre-bg-color: #000000;
 
-    // tab colors
+    /* tab colors */
     --tab-red: #e54d2e;
     --tab-orange: #ef713b;
     --tab-yellow: #e0b956;
@@ -67,7 +67,7 @@
     --tab-pink: #e05677;
     --tab-white: #ffffff;
 
-    // term colors
+    /* term colors */
     --term-black: #000000;
     --term-red: #cc0000;
     --term-green: #4e9a06;
@@ -84,67 +84,67 @@
     --term-bright-magenta: #ad7fa8;
     --term-bright-cyan: #34e2e2;
     --term-bright-white: #ffffff;
-    --term-gray: #8b918a; // not an official terminal color
+    --term-gray: #8b918a; /* not an official terminal color */
 
-    // button colors
+    /* button colors */
     --button-text-color: #ffffff;
     --button-primary-bg-color: #4e9a06;
     --button-secondary-bg-color: rgba(255, 255, 255, 0.09);
     --button-warning-bg-color: #cc0000;
 
-    // input colors
+    /* input colors */
     --checkbox-text-color: #ffffff;
     --checkbox-bg-color: #4e9a06;
     --checkbox-check-color: #ffffff;
 
-    // dropdown colors
+    /* dropdown colors */
     --dropdown-text-color: #d3d7cf;
     --dropdown-error-color: #e54d2e;
     --dropdown-focus-color: #4e9a06;
 
-    // textfield colors
+    /* textfield colors */
     --textfield-focused-border-color: #4e9a06;
     --textfield-error-border-color: #e54d2e;
     --textfield-label-color: #c3c8c2;
     --textfield-text-color: #ffffff;
     --textfield-bg-color: rgba(48, 49, 48, 0.6);
 
-    // toggle colors
+    /* toggle colors */
     --toggle-bg-color: #333333;
     --toggle-thumb-color: #d3d7cf;
     --toggle-checked-bg-color: #4e9a06;
 
-    // cmdstrcode colors
+    /* cmdstrcode colors */
     --cmdstrcode-bg-color: #000000;
     --cmdstrcode-text-color: #d3d7cf;
 
-    // markdown colors
+    /* markdown colors */
     --markdown-bg-color: #232323;
     --markdown-outline-color: #4e9a06;
 
-    // status(remote) colors
+    /* status(remote) colors */
     --status-connected-color: #46a758;
     --status-connecting-color: #f5d90a;
     --status-error-color: #e54d2e;
     --status-disconnected-color: #c3c8c2;
 
-    // status indicator colors
+    /* status indicator colors */
     --status-indicator-color: #d3d7cf;
     --status-indicator-error: #cc0000;
     --status-indicator-success: #4e9a06;
 
-    // status(version) colors
+    /* status(version) colors */
     --status-outdated-color: #c4a000;
     --status-updated-color: #4e9a06;
 
-    // term status colors
+    /* term status colors */
     --term-error-color: #cc0000;
     --term-warning-color: #c4a000;
 
-    // hotkey colors
+    /* hotkey colors */
     --hotkey-text-color: #c3c8c2;
 
-    // sidebar colors
+    /* sidebar colors */
     --sidebar-bg-color: rgba(21, 23, 21, 1);
     --sidebar-dev-bg-color: #151730;
     --sidebar-settings-color: #ffffff;
@@ -155,7 +155,7 @@
     --sidebar-font-weight: 300;
     --sidebar-highlight-font-weight: 300;
 
-    // line colors
+    /* line colors */
     --line-sidebar-message-color: #c4a000;
     --line-background: rgba(21, 23, 21, 1);
     --line-avatar-color: #eceeec;
@@ -182,20 +182,20 @@
     --line-status-error-fill: #cc0000;
     --line-status-warning-fill: #ffa500;
 
-    // bookmarks colors
+    /* bookmarks colors */
     --bookmarks-text-color: #d3d7cf;
     --bookmarks-textarea-bg-color: #000000;
     --bookmarks-disabled-text-color: #adadad;
     --bookmarks-control-hover-color: #ffffff;
 
-    // view colors
+    /* view colors */
     --view-error-color: #cc0000;
     --view-text-color: #c3c8c2;
 
-    // session colors
+    /* session colors */
     --session-bg-color: rgba(13, 13, 13, 0.85);
 
-    // cmdinput colors
+    /* cmdinput colors */
     --cmdinput-textarea-bg-color: #171717;
     --cmdinput-text-error-color: #ef2929;
     --cmdinput-title-color: #729fcf;
@@ -207,9 +207,9 @@
     --cmdinput-disabled-icon-color: #4c514b;
     --cmdinput-history-bg-color: rgba(21, 23, 21, 1);
 
-    // screen view color
+    /* screen view color */
     --screen-view-text-caption-color: #8b918a;
 
-    // plugins colors
+    /* plugins colors */
     --code-gutter-bg-color: rgba(88, 193, 66, 0.4);
 }
