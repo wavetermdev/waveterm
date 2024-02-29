@@ -228,7 +228,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
 
         return (
             <Modal className="screen-settings-modal">
-                <Modal.Header onClose={this.closeModal} title={`tab settings (${screen.name.get()})`} />
+                <Modal.Header onClose={this.closeModal} title={`Tab Settings (${screen.name.get()})`} />
                 <div className="wave-modal-body">
                     <div className="settings-field">
                         <div className="settings-label">Tab Id</div>
@@ -275,7 +275,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             <div className="tab-colors">
                                 <div className="tab-color-cur">
                                     <TabIcon icon={screen.getTabIcon()} color={screen.getTabColor()} />
-                                    <span className="tab-color-name">{screen.getTabColor()}</span>
+                                    <div className="tab-color-name">{screen.getTabColor()}</div>
                                 </div>
                                 <div className="tab-color-sep">|</div>
                                 <For each="color" of={appconst.TabColors}>
@@ -296,7 +296,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             <div className="tab-icons">
                                 <div className="tab-icon-cur">
                                     <TabIcon icon={screen.getTabIcon()} color="white" />
-                                    <span className="tab-icon-name">{screen.getTabIcon()}</span>
+                                    <div className="tab-icon-name">{screen.getTabIcon()}</div>
                                 </div>
                                 <div className="tab-icon-sep">|</div>
                                 <For each="icon" index="index" of={appconst.TabIcons}>

@@ -90,7 +90,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
         }
         return (
             <Modal className="session-settings-modal">
-                <Modal.Header onClose={this.closeModal} title={`workspace settings (${this.session.name.get()})`} />
+                <Modal.Header onClose={this.closeModal} title={`Workspace Settings (${this.session.name.get()})`} />
                 <div className="wave-modal-body">
                     <div className="settings-field">
                         <div className="settings-label">Name</div>

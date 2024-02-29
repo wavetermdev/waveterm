@@ -18,7 +18,7 @@ class TabIcon extends React.Component<{ icon: string; color: string }> {
             color = "green";
         }
         return (
-            <div className={cn("icon", "color-" + color)}>
+            <div className={cn("tabicon", "color-" + color)}>
                 <i className={iconClass} />
             </div>
         );
