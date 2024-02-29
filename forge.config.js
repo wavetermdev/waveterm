@@ -1,4 +1,4 @@
-var AllowedFirstParts = {
+let AllowedFirstParts = {
     "package.json": true,
     dist: true,
     public: true,
@@ -6,11 +6,11 @@ var AllowedFirstParts = {
     bin: true,
 };
 
-var AllowedNodeModules = {
+let AllowedNodeModules = {
     "monaco-editor": true,
 };
 
-var modCache = {};
+let modCache = {};
 
 function ignoreFn(path) {
     let parts = path.split("/");
