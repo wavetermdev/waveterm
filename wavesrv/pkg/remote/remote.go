@@ -1095,11 +1095,14 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 		select {
 		case <-ctx.Done():
 			err := ctx.Err()
+			var errMsg error
 			if err == context.Canceled {
-				msh.WriteToPtyBuffer("canceled by the user: %v\n", err)
+				errMsg = fmt.Errorf("canceled by the user: %v", err)
 			} else {
-				msh.WriteToPtyBuffer("timed out waiting for password prompt: %v\n", err)
+				errMsg = fmt.Errorf("timed out waiting for password prompt: %v", err)
 			}
+			msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+			msh.setErrorStatus(errMsg)
 			return
 		case required := <-requiresPassword:
 			if !required {
@@ -1115,11 +1118,14 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
+		var errMsg error
 		if err == context.Canceled {
-			msh.WriteToPtyBuffer("canceled by the user: %v\n", err)
+			errMsg = fmt.Errorf("canceled by the user")
 		} else {
-			msh.WriteToPtyBuffer("timed out waiting for password prompt: %v\n", err)
+			errMsg = fmt.Errorf("timed out waiting for password prompt")
 		}
+		msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+		msh.setErrorStatus(errMsg)
 		return
 	case required := <-requiresPassword:
 		if !required {
@@ -1136,7 +1142,14 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 	}
 	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	if err != nil {
-		msh.WriteToPtyBuffer("*error timed out waiting for password: %v\n", err)
+		var errMsg error
+		if err == context.Canceled {
+			errMsg = fmt.Errorf("canceled by the user")
+		} else {
+			errMsg = fmt.Errorf("timed out waiting for user input")
+		}
+		msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+		msh.setErrorStatus(errMsg)
 		return
 	}
 	msh.SendPassword(response.Text)
@@ -1146,11 +1159,14 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
+		var errMsg error
 		if err == context.Canceled {
-			msh.WriteToPtyBuffer("canceled by the user: %v\n", err)
+			errMsg = fmt.Errorf("canceled by the user")
 		} else {
-			msh.WriteToPtyBuffer("timed out waiting for password prompt: %v\n", err)
+			errMsg = fmt.Errorf("timed out waiting for password prompt")
 		}
+		msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+		msh.setErrorStatus(errMsg)
 		return
 	case required := <-requiresPassword:
 		if !required {
@@ -1158,7 +1174,9 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 			return
 		}
 	}
-	//TODO return an error
+	errMsg := fmt.Errorf("*error, incorrect password")
+	msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+	msh.setErrorStatus(errMsg)
 }
 
 func (msh *MShellProc) WaitAndSendPassword(pw string) {
@@ -1524,14 +1542,12 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 	var makeClientCtx context.Context
 	var makeClientCancelFn context.CancelFunc
 	msh.WithLock(func() {
-		deadlineTime := time.Now().Add(RemoteConnectTimeout)
-		makeClientCtx, makeClientCancelFn = context.WithDeadline(context.Background(), deadlineTime)
+		makeClientCtx, makeClientCancelFn = context.WithCancel(context.Background())
 		msh.MakeClientCancelFn = makeClientCancelFn
-		msh.MakeClientDeadline = &deadlineTime
+		msh.MakeClientDeadline = nil
 		go msh.NotifyRemoteUpdate()
 	})
 	defer makeClientCancelFn()
-	go msh.watchClientDeadlineTime()
 	cproc, err := shexec.MakeClientProc(makeClientCtx, wsSession)
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
