@@ -400,10 +400,9 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             .filter((r) => !r.archived)
             .map((remote) => ({
                 ...remote,
-                label:
-                    remote.remotealias && !util.isBlank(remote.remotealias)
-                        ? `${remote.remotecanonicalname}`
-                        : remote.remotecanonicalname,
+                label: !util.isBlank(remote.remotealias)
+                    ? `${remote.remotealias} - ${remote.remotecanonicalname}`
+                    : remote.remotecanonicalname,
                 value: remote.remotecanonicalname,
             }))
             .sort((a, b) => {
@@ -423,10 +422,10 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             curIcon = "square";
         }
         let icon: string | null = null;
-
+        let curColor = screen.getTabColor();
         return (
             <>
-                <div className="text-s1 unselectable">Select the icon</div>
+                <div className="bold unselectable">Tab Icon:</div>
                 <div className="control-iconlist tabicon-list">
                     <For each="icon" of={appconst.TabIcons}>
                         <div
@@ -435,7 +434,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                             title={icon || ""}
                             onClick={() => this.selectTabIcon(icon || "")}
                         >
-                            <TabIcon icon={icon} color="white" />
+                            <TabIcon icon={icon} color={curColor} />
                         </div>
                     </For>
                 </div>
@@ -453,7 +452,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
         return (
             <>
-                <div className="text-s1 unselectable">Select the color</div>
+                <div className="bold unselectable">Tab Color:</div>
                 <div className="control-iconlist">
                     <For each="color" of={appconst.TabColors}>
                         <div
@@ -490,13 +489,12 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 </div>
                 <div className="newtab-spacer" />
                 <div className="newtab-section conn-section">
-                    <div className="text-s1 unselectable">
+                    <div className="unselectable">
                         You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?
                     </div>
                     <div>
                         <Dropdown
                             className="conn-dropdown"
-                            label={curRemote.remotealias}
                             options={this.getOptions()}
                             defaultValue={curRemote.remotecanonicalname}
                             onChange={this.selectRemote}
