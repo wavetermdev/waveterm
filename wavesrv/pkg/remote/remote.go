@@ -1549,13 +1549,15 @@ func (msh *MShellProc) createWaveshellSession(remoteCopy sstore.RemoteType) (she
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot create session: %w", err)
 		}
-		wsSession = shexec.SessionWrap{Session: session, StartCmd: MakeServerCommandStr()}
+		cmd := fmt.Sprintf("%s -c %s", sapi.GetLocalShellPath(), shellescape.Quote(MakeServerCommandStr()))
+		wsSession = shexec.SessionWrap{Session: session, StartCmd: cmd}
 	} else {
 		session, err := msh.Client.NewSession()
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot create session: %w", err)
 		}
-		wsSession = shexec.SessionWrap{Session: session, StartCmd: MakeServerCommandStr()}
+		cmd := fmt.Sprintf(`%s -c %s`, sapi.GetLocalShellPath(), shellescape.Quote(MakeServerCommandStr()))
+		wsSession = shexec.SessionWrap{Session: session, StartCmd: cmd}
 	}
 	return wsSession, nil
 }
