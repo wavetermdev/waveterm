@@ -99,34 +99,48 @@
     --term-bright-white: #ffffff;
     --term-gray: rgb(139, 145, 138); /* not an official terminal color */
 
+    --form-element-border-color: rgba(241, 246, 243, 0.15);
+    --form-element-bg-color: var(--app-bg-color);
+    --form-element-text-color: #ffffff;
+    --form-element-label-color: rgb(195, 200, 194);
+    --form-element-primary-color: rgb(78, 154, 6);
+    --form-element-secondary-color: rgba(255, 255, 255, 0.09);
+    --form-element-error-color: rgb(204, 0, 0);
+
     /* button colors */
-    --button-text-color: rgb(255, 255, 255);
-    --button-primary-bg-color: rgb(78, 154, 6);
-    --button-secondary-bg-color: rgba(255, 255, 255, 0.09);
-    --button-warning-bg-color: rgb(204, 0, 0);
+    /* todo: use --form-element-* directly in elements */
+    --button-text-color: var(--form-element-text-color);
+    --button-primary-bg-color: var(--form-element-primary-color);
+    --button-secondary-bg-color: var(--form-element-secondary-color);
+    --button-warning-bg-color: var(--form-element-error-color);
 
     /* input colors */
-    --checkbox-text-color: rgb(255, 255, 255);
-    --checkbox-bg-color: rgb(78, 154, 6);
-    --checkbox-check-color: rgb(255, 255, 255);
+    /* todo: use --form-element-* directly in elements */
+    --checkbox-text-color: var(--form-element-text-color);
+    --checkbox-bg-color: var(--form-element-primary-color);
+    --checkbox-check-color: var(--form-element-text-color);
 
     /* dropdown colors */
-    --dropdown-text-color: rgb(211, 215, 207);
-    --dropdown-error-color: rgb(229, 77, 46);
-    --dropdown-focus-color: rgb(78, 154, 6);
+    /* todo: use --form-element-* directly in elements */
+    --dropdown-text-color: var(--form-element-text-color);
+    --dropdown-error-color: var(--form-element-error-color);
+    --dropdown-focus-color: var(--form-element-primary-color);
+    --dropdown-bg-color: var(--form-element-bg-color);
+    --dropdown-border-color: var(--form-element-border-color);
 
     /* textfield colors */
-    --textfield-border-color: rgba(241, 246, 243, 0.15);
-    --textfield-focused-border-color: rgb(78, 154, 6);
-    --textfield-error-border-color: rgb(229, 77, 46);
-    --textfield-label-color: rgb(195, 200, 194);
-    --textfield-text-color: rgb(255, 255, 255);
-    --textfield-bg-color: rgba(255, 255, 255, 0.06);
+    /* todo: use --form-element-* directly in elements */
+    --textfield-border-color: var(--form-element-border-color);
+    --textfield-focused-border-color: var(--form-element-primary-color);
+    --textfield-error-border-color: var(--form-element-error-color);
+    --textfield-label-color: var(--form-element-label-color);
+    --textfield-text-color: var(--form-element-text-color);
+    --textfield-bg-color: var(--form-element-bg-color);
 
     /* toggle colors */
     --toggle-bg-color: rgb(51, 51, 51);
     --toggle-thumb-color: rgb(211, 215, 207);
-    --toggle-checked-bg-color: rgb(78, 154, 6);
+    --toggle-checked-bg-color: var(--form-element-primary-color);
 
     /* cmdstrcode colors */
     --cmdstrcode-bg-color: rgb(0, 0, 0);
@@ -134,7 +148,7 @@
 
     /* markdown colors */
     --markdown-bg-color: rgb(35, 35, 35);
-    --markdown-outline-color: rgb(78, 154, 6);
+    --markdown-outline-color: var(--form-element-primary-color);
 
     /* status(remote) colors */
     /* todo: all status colors must be unified */
