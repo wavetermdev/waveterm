@@ -305,7 +305,7 @@ class TermWrap {
 
     resizeWindow(size: WindowSize): void {
         let cols = windowWidthToCols(size.width, this.fontSize);
-        let rows = windowHeightToRows(size.height, this.fontSize);
+        let rows = windowHeightToRows(GlobalModel.lineHeightEnv, size.height);
         this.resize({ rows, cols });
     }
 
