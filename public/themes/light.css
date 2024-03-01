@@ -13,4 +13,8 @@
 
     --term-black: #ffffff;
     --term-white: #000000;
+
+    /* button colors */
+    --button-text-color: rgb(50, 50, 50); /* Dark gray for light theme */
+    --button-secondary-bg-color: rgba(200, 200, 200, 0.3); /* Semi-transparent light gray */
 }
