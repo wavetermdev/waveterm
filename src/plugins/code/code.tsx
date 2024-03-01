@@ -211,7 +211,6 @@ class SourceCodeRenderer extends React.Component<
             return true;
         });
         GlobalModel.keybindManager.registerKeybinding("plugin", "codeedit", "codeedit:close", (waveEvent) => {
-            console.log("closing");
             this.doClose();
             return true;
         });
@@ -299,7 +298,6 @@ class SourceCodeRenderer extends React.Component<
         const { screenId, lineId } = this.props.context;
         GlobalCommandRunner.setLineState(screenId, lineId, { ...this.props.lineState, "prompt:closed": true }, false)
             .then(() => {
-                console.log("unregistering keybinding domain");
                 GlobalModel.keybindManager.unregisterDomain("codeedit");
                 this.setState({
                     isClosed: true,

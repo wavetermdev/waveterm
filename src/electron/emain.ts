@@ -13,7 +13,7 @@ import * as waveutil from "../util/util";
 import { sprintf } from "sprintf-js";
 import { handleJsonFetchResponse } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
-import { KeybindManager, checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
+import { setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
 import Main from "electron/main";
 
@@ -313,7 +313,6 @@ function createMainWindow(clientData: ClientDataType | null) {
     let indexHtml = isDev ? "index-dev.html" : "index.html";
     win.loadFile(path.join(getAppBasePath(), "public", indexHtml));
     win.webContents.on("before-input-event", (e, input) => {
-        let waveEvent = adaptFromElectronKeyEvent(input);
         if (win.isFocused()) {
             wasActive = true;
         }

@@ -90,9 +90,7 @@ class KeybindManager {
     }
 
     registerKeybinding(level: string, domain: string, keybinding: string, callback: KeybindCallback): boolean {
-        console.log("adding: ", keybinding);
         if (domain == "" || this.keybindingAlreadyAdded(level, domain, keybinding)) {
-            console.log("already added?", keybinding);
             return false;
         }
         // TODO: check if keybinding is valid
@@ -120,7 +118,6 @@ class KeybindManager {
         });
         this.processKeyEvent(nativeEvent, waveEvent);
         let didUnregister = this.unregisterKeybinding(level, curDomain, keybinding);
-        console.log("did unregister: ", didUnregister);
         return rtn;
     }
 
@@ -148,7 +145,6 @@ class KeybindManager {
             for (let curArrayIndex = 0; curArrayIndex < curKeybindArray.length; curArrayIndex++) {
                 let curKeybind = curKeybindArray[curArrayIndex];
                 if (curKeybind.domain == domain) {
-                    console.log("removing keybind: ", curKeybind.keybinding);
                     curKeybindArray.splice(curArrayIndex, 1);
                     curArrayIndex--;
                     foundKeybind = true;
