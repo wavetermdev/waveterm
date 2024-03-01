@@ -1082,31 +1082,6 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 	requiresPassword := make(chan bool, 1)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
-	if pw != "" {
-		// do an extra check with the saved password if it is provided
-		go msh.CheckPasswordRequested(ctx, requiresPassword)
-		select {
-		case <-ctx.Done():
-			err := ctx.Err()
-			var errMsg error
-			if err == context.Canceled {
-				errMsg = fmt.Errorf("canceled by the user: %v", err)
-			} else {
-				errMsg = fmt.Errorf("timed out waiting for password prompt: %v", err)
-			}
-			msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
-			msh.setErrorStatus(errMsg)
-			return
-		case required := <-requiresPassword:
-			if !required {
-				// we don't need user input in this case, so we exit early
-				return
-			}
-		}
-		msh.SendPassword(pw)
-	}
-
-	// ask for user input once
 	go msh.CheckPasswordRequested(ctx, requiresPassword)
 	select {
 	case <-ctx.Done():
