@@ -1633,7 +1633,7 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 		go msh.tryAutoInstall()
 		return
 	} else if err != nil {
-		msh.WriteToPtyBuffer("*error, %s\n", serr.Error())
+		msh.WriteToPtyBuffer("*error, %s\n", err.Error())
 		msh.setErrorStatus(err)
 		msh.WithLock(func() {
 			msh.Client = nil
