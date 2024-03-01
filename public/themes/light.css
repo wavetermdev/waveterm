@@ -6,6 +6,7 @@
 :root {
     --app-bg-color: #ffffff;
     --app-text-color: #000000;
+    --app-text-primary-color: rgb(0, 0, 0, 0.8);
 
     /* sidebar colors */
     --app-panel-bg-color: #cccccc;

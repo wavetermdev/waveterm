@@ -123,6 +123,7 @@
     /* dropdown colors */
     /* todo: use --form-element-* directly in elements */
     --dropdown-text-color: var(--form-element-text-color);
+    --dropdown-label-color: var(--form-element-label-color);
     --dropdown-error-color: var(--form-element-error-color);
     --dropdown-focus-color: var(--form-element-primary-color);
     --dropdown-bg-color: var(--form-element-bg-color);
@@ -250,4 +251,7 @@
 
     /* plugins colors */
     --code-gutter-bg-color: rgba(88, 193, 66, 0.4);
+
+    /* modals colors */
+    --modal-bg-color: var(--app-bg-color);
 }
