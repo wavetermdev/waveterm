@@ -437,6 +437,16 @@ func MakeMShellSingleCmd() (*exec.Cmd, error) {
 	return ecmd, nil
 }
 
+func MakeLocalExecCmd(cmdStr string, sapi shellapi.ShellApi) *exec.Cmd {
+	homeDir, _ := os.UserHomeDir() // ignore error
+	if homeDir == "" {
+		homeDir = "/"
+	}
+	ecmd := exec.Command(sapi.GetLocalShellPath(), "-c", cmdStr)
+	ecmd.Dir = homeDir
+	return ecmd
+}
+
 func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string, sapi shellapi.ShellApi) *exec.Cmd {
 	remoteCommand = strings.TrimSpace(remoteCommand)
 	if opts.SSHHost == "" {
@@ -587,7 +597,7 @@ func sendMShellBinary(input io.WriteCloser, mshellStream io.Reader) {
 	}()
 }
 
-func RunInstallFromCmd(ctx context.Context, ecmd *exec.Cmd, tryDetect bool, mshellStream io.Reader, mshellReaderFn MShellBinaryReaderFn, msgFn func(string)) error {
+func RunInstallFromCmd(ctx context.Context, ecmd ConnInterface, tryDetect bool, mshellStream io.Reader, mshellReaderFn MShellBinaryReaderFn, msgFn func(string)) error {
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("creating stdin pipe: %v", err)
