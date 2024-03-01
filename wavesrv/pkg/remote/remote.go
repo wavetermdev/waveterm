@@ -534,7 +534,7 @@ func (msh *MShellProc) tryAutoInstall() {
 		return
 	}
 	msh.writeToPtyBuffer_nolock("trying auto-install\n")
-	go msh.RunInstall()
+	go msh.RunInstall(true)
 }
 
 // if msh.IsConnected() then GetShellPref() should return a valid shell
@@ -1221,16 +1221,72 @@ func (msh *MShellProc) WaitAndSendPassword(pw string) {
 	}
 }
 
-func (msh *MShellProc) RunInstall() {
+func (msh *MShellProc) RunInstall(autoInstall bool) {
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
 		msh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
 		return
 	}
 	baseStatus := msh.GetStatus()
-	if baseStatus == StatusConnecting || baseStatus == StatusConnected {
+	if baseStatus == StatusConnecting && !autoInstall {
 		msh.WriteToPtyBuffer("*error: cannot install on remote that is connected/connecting, disconnect to install\n")
 		return
+	}
+	if baseStatus == StatusConnecting {
+		//this is the auto-install case
+		request := &userinput.UserInputRequestType{
+			ResponseType: "confirm",
+			QueryText:    "Waveshell must be reinstalled on the connection to continue. Would you like to install it?",
+			Title:        "Install Waveshell",
+		}
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			var errMsg error
+			if err == context.Canceled {
+				errMsg = fmt.Errorf("installation canceled by user")
+			} else {
+				errMsg = fmt.Errorf("timed out waiting for user input")
+			}
+			msh.WithLock(func() {
+				msh.Client = nil
+			})
+			msh.WriteToPtyBuffer("*error, %s\n", errMsg)
+			msh.setErrorStatus(errMsg)
+			return
+		}
+		if !response.Confirm {
+			errMsg := fmt.Errorf("installation canceled by user")
+			msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+			msh.setErrorStatus(err)
+			msh.WithLock(func() {
+				msh.Client = nil
+			})
+			return
+		}
+	}
+	if baseStatus == StatusConnected {
+		request := &userinput.UserInputRequestType{
+			ResponseType: "confirm",
+			QueryText:    "Waveshell is running on your connection and must be restarted to re-install. Would you like to continue?",
+			Title:        "Restart Waveshell",
+		}
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			if err == context.Canceled {
+				msh.WriteToPtyBuffer("installation canceled by user\n")
+			} else {
+				msh.WriteToPtyBuffer("timed out waiting for user input\n")
+			}
+			return
+		}
+		if !response.Confirm {
+			msh.WriteToPtyBuffer("installation canceled by user\n")
+			return
+		}
 	}
 	curStatus := msh.GetInstallStatus()
 	if curStatus == StatusConnecting {
@@ -1301,8 +1357,8 @@ func (msh *MShellProc) RunInstall() {
 	})
 	msh.WriteToPtyBuffer("successfully installed waveshell %s to ~/.mshell\n", scbase.MShellVersion)
 	go msh.NotifyRemoteUpdate()
-	if connectMode == sstore.ConnectModeStartup || connectMode == sstore.ConnectModeAuto {
-		// the install was successful, and we don't have a manual connect mode, try to connect
+	if connectMode == sstore.ConnectModeStartup || connectMode == sstore.ConnectModeAuto || autoInstall {
+		// the install was successful, and we didn't click the install button with manual connect mode, try to connect
 		go msh.Launch(true)
 	}
 }
