@@ -1,4 +1,8 @@
 .openai-renderer {
+    font-family: var(--termfontfamily);
+    font-size: var(--termfontsize);
+    line-height: var(--termlineheight);
+
     .openai-message {
         display: flex;
         flex-direction: row;
@@ -19,11 +23,11 @@
         .openai-content-user {
             color: var(--app-text-color);
             font-family: var(--markdown-font);
-            font-size: var(--markdown-font-size);
             font-weight: normal;
         }
 
         .openai-content-assistant {
+            font-family: var(--markdown-font);
             color: var(--app-text-color);
         }
 
