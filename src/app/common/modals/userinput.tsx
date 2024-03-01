@@ -55,7 +55,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
 
     return (
         <Modal className="userinput-modal">
-            <Modal.Header onClose={closeModal} title={userInputRequest.title + ` (${countdown})`} />
+            <Modal.Header onClose={closeModal} title={userInputRequest.title + ` (${countdown}s)`} />
             <div className="wave-modal-body">
                 <div className="userinput-query">
                     <If condition={userInputRequest.markdown}>
