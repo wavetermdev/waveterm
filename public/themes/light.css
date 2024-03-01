@@ -17,4 +17,13 @@
     /* button colors */
     --button-text-color: rgb(50, 50, 50); /* Dark gray for light theme */
     --button-secondary-bg-color: rgba(200, 200, 200, 0.3); /* Semi-transparent light gray */
+
+    /* view colors */
+    --view-text-color: var(--app-text-color);
+
+    /* table colors */
+    --table-thead-border-top-color: rgba(0, 0, 0, 0.2);
+    --table-thead-border-bottom-color: rgba(0, 0, 0, 0.3);
+    --table-thead-bg-color: rgba(250, 250, 250, 0.15);
+    --table-tr-border-bottom-color: rgba(0, 0, 0, 0.15);
 }
