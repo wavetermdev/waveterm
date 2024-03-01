@@ -1,0 +1,266 @@
+[
+    {
+      "command": "system:toggleDeveloperTools",
+      "keys": ["Cmd:Option:i"]
+    },
+    {
+      "command": "generic:cancel",
+      "keys": ["Escape"]
+    },
+    {
+      "command": "generic:confirm",
+      "keys": ["Enter"]
+    },
+    {
+      "command": "generic:deleteItem",
+      "keys": ["Backspace", "Delete"]
+    },
+    {
+      "command": "generic:selectAbove",
+      "keys": ["ArrowUp"]
+    },
+    {
+      "command": "generic:selectBelow",
+      "keys": ["ArrowDown"]
+    },
+    {
+      "command": "generic:selectPageAbove",
+      "keys": ["PageUp"]
+    },
+    {
+      "command": "generic:selectPageBelow",
+      "keys": ["PageDown"]
+    },
+    {
+      "command": "app:openHistory",
+      "keys": ["Cmd:h"]
+    },
+    {
+      "command": "app:openTabSearchModal",
+      "keys": ["Cmd:p"]
+    },
+    {
+      "command": "app:newTab",
+      "keys": ["Cmd:t"]
+    },
+    {
+      "command": "app:focusCmdInput",
+      "keys": ["Cmd:i"]
+    },
+    {
+      "command": "app:focusSelectedLine",
+      "keys": ["Cmd:l"]
+    },
+    {
+      "command": "app:restartCommand",
+      "keys": ["Cmd:r"]
+    },
+    {
+      "command": "app:restartLastCommand",
+      "keys": ["Cmd:Shift:r"]
+    },
+    {
+      "command": "app:closeCurrentTab",
+      "keys": ["Cmd:w"]
+    },
+    {
+      "command": "app:selectLineAbove",
+      "keys": ["Cmd:ArrowUp", "Cmd:PageUp"]
+    },
+    {
+      "command": "app:selectLineBelow",
+      "keys": ["Cmd:ArrowDown", "Cmd:PageDown"]
+    },
+    {
+      "command": "app:selectTab-1",
+      "keys": ["Cmd:1"]
+    },
+    {
+      "command": "app:selectTab-2",
+      "keys": ["Cmd:2"]
+    },
+    {
+      "command": "app:selectTab-3",
+      "keys": ["Cmd:3"]
+    },
+    {
+      "command": "app:selectTab-4",
+      "keys": ["Cmd:4"]
+    },
+    {
+      "command": "app:selectTab-5",
+      "keys": ["Cmd:5"]
+    },
+    {
+      "command": "app:selectTab-6",
+      "keys": ["Cmd:6"]
+    },
+    {
+      "command": "app:selectTab-7",
+      "keys": ["Cmd:7"]
+    },
+    {
+      "command": "app:selectTab-8",
+      "keys": ["Cmd:8"]
+    },
+    {
+      "command": "app:selectTab-9",
+      "keys": ["Cmd:9"]
+    },
+    {
+      "command": "app:selectNumberedTab",
+      "keys": ["Cmd:1", "Cmd:2", "Cmd:3", "Cmd:4", "Cmd:5", "Cmd:6", "Cmd:7", "Cmd:8", "Cmd:9"]
+    },
+    {
+      "command": "app:selectTabLeft",
+      "keys": ["Cmd:["]
+    },
+    {
+      "command": "app:selectTabRight",
+      "keys": ["Cmd:]"]
+    },
+    {
+      "command": "app:selectWorkspace-1",
+      "keys": ["Cmd:Ctrl:1"]
+    },
+    {
+      "command": "app:selectWorkspace-2",
+      "keys": ["Cmd:Ctrl:2"]
+    },
+    {
+      "command": "app:selectWorkspace-3",
+      "keys": ["Cmd:Ctrl:3"]
+    },
+    {
+      "command": "app:selectWorkspace-4",
+      "keys": ["Cmd:Ctrl:4"]
+    },
+    {
+      "command": "app:selectWorkspace-5",
+      "keys": ["Cmd:Ctrl:5"]
+    },
+    {
+      "command": "app:selectWorkspace-6",
+      "keys": ["Cmd:Ctrl:6"]
+    },
+    {
+      "command": "app:selectWorkspace-7",
+      "keys": ["Cmd:Ctrl:7"]
+    },
+    {
+      "command": "app:selectWorkspace-8",
+      "keys": ["Cmd:Ctrl:8"]
+    },
+    {
+      "command": "app:selectWorkspace-9",
+      "keys": ["Cmd:Ctrl:9"]
+    },
+    {
+      "command": "app:selectNumberedWorkspace",
+      "keys": ["Cmd:Ctrl:1", "Cmd:Ctrl:2", "Cmd:Ctrl:3", "Cmd:Ctrl:4", "Cmd:Ctrl:5", "Cmd:Ctrl:6", "Cmd:Ctrl:7", "Cmd:Ctrl:8", "Cmd:Ctrl:9"]
+    },
+    {
+      "command": "app:toggleSidebar",
+      "keys": ["Cmd:Ctrl:s"]
+    },
+    {
+      "command": "app:deleteActiveLine",
+      "keys": ["Cmd:d"]
+    },
+    {
+      "command": "app:bookmarkActiveLine",
+      "keys": ["Cmd:b"]
+    },
+    {
+      "command": "bookmarks:edit",
+      "keys": ["e"]
+    },
+    {
+      "command": "bookmarks:copy",
+      "keys": ["c"]
+    },
+    {
+      "command": "cmdinput:autocomplete",
+      "keys": ["Tab"]
+    },
+    {
+      "command": "cmdinput:expandInput",
+      "keys": ["Cmd:e"]
+    },
+    {
+      "command": "cmdinput:clearInput",
+      "keys": ["Ctrl:c"]
+    },
+    {
+      "command": "cmdinput:cutLineLeftOfCursor",
+      "keys": ["Ctrl:u"]
+    },
+    {
+      "command": "cmdinput:previousHistoryItem",
+      "keys": ["Ctrl:p"]
+    },
+    {
+      "command": "cmdinput:nextHistoryItem",
+      "keys": ["Ctrl:n"]
+    },
+    {
+      "command": "cmdinput:cutWordLeftOfCursor",
+      "keys": ["Ctrl:w"]
+    },
+    {
+      "command": "cmdinput:paste",
+      "keys": ["Ctrl:y"]
+    },
+    {
+      "command": "cmdinput:openHistory",
+      "keys": ["Ctrl:r"]
+    },
+    {
+      "command": "cmdinput:openAIChat",
+      "keys": ["Ctrl:Space"]
+    },
+    {
+      "command": "history:closeHistory",
+      "keys": ["Ctrl:g", "Ctrl:c"]
+    },
+    {
+      "command": "history:toggleShowRemotes",
+      "keys": ["Cmd:r", "Ctrl:r"]
+    },
+    {
+      "command": "history:changeScope",
+      "keys": ["Ctrl:s", "Cmd:s"]
+    },
+    {
+      "command": "history:selectNextItem",
+      "keys": ["Ctrl:n"]
+    },
+    {
+      "command": "history:selectPreviousItem",
+      "keys": ["Ctrl:p"]
+    },
+    {
+      "command": "aichat:clearHistory",
+      "keys": ["Ctrl:l"]
+    },
+    {
+      "command": "terminal:copy",
+      "keys": ["Ctrl:Shift:c"]
+    },
+    {
+      "command": "terminal:paste",
+      "keys": ["Ctrl:Shift:v"]
+    },
+    {
+      "command": "codeedit:save",
+      "keys": ["Cmd:s"]
+    },
+    {
+      "command": "codeedit:close",
+      "keys": ["Cmd:d"]
+    },
+    {
+      "command": "codeedit:togglePreview",
+      "keys": ["Cmd:p"]
+    }
+  ]
