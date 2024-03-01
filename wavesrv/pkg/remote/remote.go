@@ -1220,13 +1220,7 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 		msh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
 		return
 	}
-	baseStatus := msh.GetStatus()
-	if baseStatus == StatusConnecting && !autoInstall {
-		msh.WriteToPtyBuffer("*error: cannot install on remote that is connected/connecting, disconnect to install\n")
-		return
-	}
-	if baseStatus == StatusConnecting {
-		//this is the auto-install case
+	if autoInstall {
 		request := &userinput.UserInputRequestType{
 			ResponseType: "confirm",
 			QueryText:    "Waveshell must be reinstalled on the connection to continue. Would you like to install it?",
@@ -1259,6 +1253,7 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 			return
 		}
 	}
+	baseStatus := msh.GetStatus()
 	if baseStatus == StatusConnected {
 		request := &userinput.UserInputRequestType{
 			ResponseType: "confirm",
