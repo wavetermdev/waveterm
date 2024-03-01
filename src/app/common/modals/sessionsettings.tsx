@@ -111,7 +111,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                             <Tooltip
                                 className="session-settings-tooltip"
                                 message="Archive will hide the workspace from the active menu. Commands and output will be
-                                retained in history."
+                                retained, but hidden."
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                             >
                                 {<i className="fa-sharp fa-regular fa-circle-question" />}
@@ -126,7 +126,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                             <div>Actions</div>
                             <Tooltip
                                 className="session-settings-tooltip"
-                                message="Delete will remove the workspace, removing all commands and output from history."
+                                message="Delete will remove the workspace, deleting all commands and output."
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                             >
                                 {<i className="fa-sharp fa-regular fa-circle-question" />}

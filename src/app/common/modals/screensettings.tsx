@@ -61,10 +61,9 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             .filter((r) => !r.archived)
             .map((remote) => ({
                 ...remote,
-                label:
-                    remote.remotealias && !util.isBlank(remote.remotealias)
-                        ? `${remote.remotecanonicalname}`
-                        : remote.remotecanonicalname,
+                label: !util.isBlank(remote.remotealias)
+                    ? `${remote.remotealias} - ${remote.remotecanonicalname}`
+                    : remote.remotecanonicalname,
                 value: remote.remotecanonicalname,
             }))
             .sort((a, b) => {
@@ -252,7 +251,6 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-input">
                             <Dropdown
                                 className="screen-settings-dropdown"
-                                label={curRemote.remotealias}
                                 options={this.getOptions()}
                                 defaultValue={curRemote.remotecanonicalname}
                                 onChange={this.selectRemote}
@@ -315,7 +313,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-label archived-label">
                             <div className="">Archived</div>
                             <Tooltip
-                                message={`Archive will hide the tab. Commands and output will be retained in history.`}
+                                message={`Archive will hide the tab. Commands and output will be retained, but hidden.`}
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                 className="screen-settings-tooltip"
                             >
@@ -330,7 +328,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-label actions-label">
                             <div>Actions</div>
                             <Tooltip
-                                message={`Delete will remove the tab, removing all commands and output from history.`}
+                                message={`Delete will remove the tab, removing all commands and output.`}
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                 className="screen-settings-tooltip"
                             >
