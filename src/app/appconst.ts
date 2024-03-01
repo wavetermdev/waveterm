@@ -27,6 +27,7 @@ export const DevServerEndpoint = "http://127.0.0.1:8090";
 export const DevServerWsEndpoint = "ws://127.0.0.1:8091";
 export const DefaultTermFontSize = 12;
 export const DefaultTermFontFamily = "JetBrains Mono";
+export const DefaultTheme = "dark";
 export const MinFontSize = 8;
 export const MaxFontSize = 24;
 export const InputChunkSize = 500;

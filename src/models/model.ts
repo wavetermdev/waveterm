@@ -14,6 +14,7 @@ import {
     isBlank,
 } from "@/util/util";
 import { loadFonts } from "@/util/fontutil";
+import { loadTheme } from "@/util/themeutil";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import * as appconst from "@/app/appconst";
@@ -338,6 +339,15 @@ class Model {
             ff = appconst.DefaultTermFontFamily;
         }
         return ff;
+    }
+
+    getTheme(): string {
+        let cdata = this.clientData.get();
+        let theme = cdata?.feopts?.theme;
+        if (theme == null) {
+            theme = appconst.DefaultTheme;
+        }
+        return theme;
     }
 
     getTermFontSize(): number {
@@ -1173,6 +1183,12 @@ class Model {
         }
         const ffUpdated = newFontFamily != this.getTermFontFamily();
         const fsUpdated = newFontSize != this.getTermFontSize();
+
+        let newTheme = clientData?.feopts?.theme;
+        if (newTheme == null) {
+            newTheme = appconst.DefaultTheme;
+        }
+        const themeUpdated = newTheme != this.getTheme();
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1191,6 +1207,9 @@ class Model {
             });
         } else if (fsUpdated) {
             this.updateTermFontSizeVars();
+        }
+        if (themeUpdated) {
+            loadTheme(newTheme);
         }
     }
 
