@@ -1526,13 +1526,13 @@ func (msh *MShellProc) createWaveshellSession(remoteCopy sstore.RemoteType) (she
 	if remoteCopy.SSHOpts.SSHHost == "" && remoteCopy.Local {
 		cmdStr, err := MakeLocalMShellCommandStr(remoteCopy.IsSudo())
 		if err != nil {
-			return nil, fmt.Errorf("cannot find local mshell binary: %v", err)
+			return nil, fmt.Errorf("cannot find local waveshell binary: %v", err)
 		}
 		ecmd := shexec.MakeLocalExecCmd(cmdStr, sapi)
 		var cmdPty *os.File
 		cmdPty, err = msh.addControllingTty(ecmd)
 		if err != nil {
-			return nil, fmt.Errorf("cannot attach controlling tty to mshell command: %v", err)
+			return nil, fmt.Errorf("cannot attach controlling tty to waveshell command: %v", err)
 		}
 		go msh.RunPtyReadLoop(cmdPty)
 		go msh.WaitAndSendPasswordNew(remoteCopy.SSHOpts.SSHPassword)
