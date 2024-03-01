@@ -116,11 +116,12 @@
     --dropdown-focus-color: rgb(78, 154, 6);
 
     /* textfield colors */
+    --textfield-border-color: rgba(241, 246, 243, 0.15);
     --textfield-focused-border-color: rgb(78, 154, 6);
     --textfield-error-border-color: rgb(229, 77, 46);
     --textfield-label-color: rgb(195, 200, 194);
     --textfield-text-color: rgb(255, 255, 255);
-    --textfield-bg-color: rgba(48, 49, 48, 0.6);
+    --textfield-bg-color: rgba(255, 255, 255, 0.06);
 
     /* toggle colors */
     --toggle-bg-color: rgb(51, 51, 51);

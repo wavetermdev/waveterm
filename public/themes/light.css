@@ -26,4 +26,10 @@
     --table-thead-border-bottom-color: rgba(0, 0, 0, 0.3);
     --table-thead-bg-color: rgba(250, 250, 250, 0.15);
     --table-tr-border-bottom-color: rgba(0, 0, 0, 0.15);
+
+    /* textfield colors */
+    --textfield-label-color: rgb(0, 0, 0, 0.6);
+    --textfield-text-color: rgb(0, 0, 0, 1);
+    --textfield-bg-color: #ffffff;
+    --textfield-border-color: rgba(0, 0, 0, 0.3);
 }
