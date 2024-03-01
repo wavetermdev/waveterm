@@ -23,6 +23,7 @@ import { ReactComponent as Check12Icon } from "@/assets/icons/check12.svg";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
+import * as textmeasure from "@/util/textmeasure";
 
 import "./screenview.less";
 import "./tabs.less";
@@ -264,7 +265,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
             width: sidebarElem.offsetWidth,
             height:
                 sidebarElem.offsetHeight -
-                MagicLayout.ScreenMaxContentHeightBuffer -
+                textmeasure.calcMaxLineChromeHeight(GlobalModel.lineHeightEnv) -
                 MagicLayout.ScreenSidebarHeaderHeight,
         };
         mobx.action(() => this.sidebarSize.set(size))();
