@@ -188,6 +188,14 @@ class Model {
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
+        this.lineHeightEnv = {
+            // defaults
+            fontSize: 12,
+            fontSizeSm: 10,
+            lineHeight: 15,
+            lineHeightSm: 13,
+            pad: 7,
+        };
     }
 
     static getInstance(): Model {
