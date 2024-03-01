@@ -42,7 +42,7 @@ class PasswordField extends TextField {
     }
 
     render() {
-        const { decoration, className, placeholder, maxLength, label } = this.props;
+        const { decoration, className, placeholder, maxLength, label, autoFocus } = this.props;
         const { focused, internalValue, error, passwordVisible } = this.state;
         const inputValue = this.props.value ?? internalValue;
 
@@ -55,6 +55,7 @@ class PasswordField extends TextField {
             onChange: this.handleInputChange,
             onFocus: this.handleFocus,
             onBlur: this.handleBlur,
+            autoFocus: autoFocus,
             placeholder: placeholder,
             maxLength: maxLength,
         };

@@ -65,7 +65,12 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                 </div>
                 <Choose>
                     <When condition={userInputRequest.responsetype == "text"}>
-                        <PasswordField onChange={setResponseText} value={responseText} maxLength={400} />
+                        <PasswordField
+                            onChange={setResponseText}
+                            value={responseText}
+                            maxLength={400}
+                            autoFocus={true}
+                        />
                     </When>
                 </Choose>
             </div>
