@@ -25,6 +25,7 @@ import * as lineutil from "./lineutil";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as appconst from "@/app/appconst";
 import * as util from "@/util/util";
+import * as textmeasure from "@/util/textmeasure";
 
 import "./line.less";
 
@@ -695,6 +696,12 @@ class LineCmd extends React.Component<
         const termFontSize = GlobalModel.getTermFontSize();
         const containerType = screen.getContainerType();
         const isMinimized = line.linestate["wave:min"] && containerType == appconst.LineContainer_Main;
+        const lhv: LineChromeHeightVars = {
+            numCmdLines: lineutil.countCmdLines(cmd.getCmdStr()),
+            zeroHeight: isMinimized,
+            hasLine2: !hidePrompt,
+        };
+        const chromeHeight = textmeasure.calcLineChromeHeight(GlobalModel.lineHeightEnv, lhv);
         return (
             <div
                 className={mainDivCn}

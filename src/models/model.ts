@@ -104,6 +104,7 @@ class Model {
         name: "devicePixelRatio",
     });
     remotesModel: RemotesModel;
+    lineHeightEnv: LineHeightEnv;
 
     inputModel: InputModel;
     pluginsModel: PluginsModel;
@@ -343,27 +344,31 @@ class Model {
         return this.termFontSize.get();
     }
 
-    updateTermFontSizeVars(fontSize: number, force: boolean) {
-        if (!force && fontSize == this.termFontSize.get()) {
-            return;
-        }
-        if (fontSize < appconst.MinFontSize) {
-            fontSize = appconst.MinFontSize;
-        }
-        if (fontSize > appconst.MaxFontSize) {
-            fontSize = appconst.MaxFontSize;
-        }
+    updateTermFontSizeVars() {
+        let lhe = this.recomputeLineHeightEnv();
+        mobx.action(() => {
+            this.bumpRenderVersion();
+            this.setStyleVar("--termfontsize", lhe.fontSize + "px");
+            this.setStyleVar("--termlineheight", lhe.lineHeight + "px");
+            this.setStyleVar("--termpad", lhe.pad + "px");
+            this.setStyleVar("--termfontsize-sm", lhe.fontSizeSm + "px");
+            this.setStyleVar("--termlineheight-sm", lhe.lineHeightSm + "px");
+        })();
+    }
+
+    recomputeLineHeightEnv(): LineHeightEnv {
+        const fontSize = this.getTermFontSize();
         const fontSizeSm = fontSize - 2;
         const monoFontSize = getMonoFontSize(fontSize);
         const monoFontSizeSm = getMonoFontSize(fontSizeSm);
-        mobx.action(() => {
-            this.bumpRenderVersion();
-            this.setStyleVar("--termfontsize", fontSize + "px");
-            this.setStyleVar("--termlineheight", monoFontSize.height + "px");
-            this.setStyleVar("--termpad", monoFontSize.pad + "px");
-            this.setStyleVar("--termfontsize-sm", fontSizeSm + "px");
-            this.setStyleVar("--termlineheight-sm", monoFontSizeSm.height + "px");
-        })();
+        this.lineHeightEnv = {
+            fontSize: fontSize,
+            fontSizeSm: fontSizeSm,
+            lineHeight: monoFontSize.height,
+            lineHeightSm: monoFontSizeSm.height,
+            pad: monoFontSize.pad,
+        };
+        return this.lineHeightEnv;
     }
 
     setStyleVar(name: string, value: string) {
@@ -1181,11 +1186,11 @@ class Model {
             loadFonts(newFontFamily);
             document.fonts.ready.then(() => {
                 clearMonoFontCache();
-                this.updateTermFontSizeVars(this.termFontSize.get(), true); // forces an update of css vars
+                this.updateTermFontSizeVars(); // forces an update of css vars
                 this.bumpRenderVersion();
             });
         } else if (fsUpdated) {
-            this.updateTermFontSizeVars(newFontSize, true);
+            this.updateTermFontSizeVars();
         }
     }
 
