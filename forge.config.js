@@ -48,7 +48,7 @@ function ignoreFn(path) {
 module.exports = {
     packagerConfig: {
         ignore: ignoreFn,
-        files: ["package.json", "dist/*", "public/*"],
+        files: ["package.json", "dist/*", "public/*", "bin/*"],
         icon: "public/waveterm.icns",
     },
     rebuildConfig: {},
