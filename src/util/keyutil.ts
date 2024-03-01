@@ -2,7 +2,7 @@ import * as React from "react";
 import * as electron from "electron";
 import { parse } from "node:path";
 import { v4 as uuidv4 } from "uuid";
-import * as keybindings from "@/assets/default_keybindings.json";
+import * as keybindings from "../../assets/default-keybindings.json";
 
 type KeyPressDecl = {
     mods: {
@@ -30,7 +30,7 @@ class KeybindManager {
     domainCallbacks: Map<string, KeybindCallback>;
     levelMap: Map<string, Array<Keybind>>;
     levelArray: Array<string>;
-    keyDescriptionsMap: Map<string, Array<KeyPressDecl>>;
+    keyDescriptionsMap: Map<string, Array<string>>;
 
     processLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {
         // iterate through keybinds in backwards order
@@ -176,105 +176,10 @@ class KeybindManager {
 
     initKeyDescriptionsMap() {
         this.keyDescriptionsMap = new Map();
-        this.keyDescriptionsMap.set("system:toggleDeveloperTools", [parseKeyDescription("Cmd:Option:i")]);
-        this.keyDescriptionsMap.set("generic:cancel", [parseKeyDescription("Escape")]);
-        this.keyDescriptionsMap.set("generic:confirm", [parseKeyDescription("Enter")]);
-        this.keyDescriptionsMap.set("generic:deleteItem", [
-            parseKeyDescription("Backspace"),
-            parseKeyDescription("Delete"),
-        ]);
-        this.keyDescriptionsMap.set("generic:selectAbove", [parseKeyDescription("ArrowUp")]);
-        this.keyDescriptionsMap.set("generic:selectBelow", [parseKeyDescription("ArrowDown")]);
-        this.keyDescriptionsMap.set("generic:selectPageAbove", [parseKeyDescription("PageUp")]);
-        this.keyDescriptionsMap.set("generic:selectPageBelow", [parseKeyDescription("PageDown")]);
-        this.keyDescriptionsMap.set("app:openHistory", [parseKeyDescription("Cmd:h")]);
-        this.keyDescriptionsMap.set("app:openTabSearchModal", [parseKeyDescription("Cmd:p")]);
-        this.keyDescriptionsMap.set("app:newTab", [parseKeyDescription("Cmd:t")]);
-        this.keyDescriptionsMap.set("app:focusCmdInput", [parseKeyDescription("Cmd:i")]);
-        this.keyDescriptionsMap.set("app:focusSelectedLine", [parseKeyDescription("Cmd:l")]);
-        this.keyDescriptionsMap.set("app:restartCommand", [parseKeyDescription("Cmd:r")]);
-        this.keyDescriptionsMap.set("app:restartLastCommand", [parseKeyDescription("Cmd:Shift:r")]);
-        this.keyDescriptionsMap.set("app:closeCurrentTab", [parseKeyDescription("Cmd:w")]);
-        this.keyDescriptionsMap.set("app:selectLineAbove", [
-            parseKeyDescription("Cmd:ArrowUp"),
-            parseKeyDescription("Cmd:PageUp"),
-        ]);
-        this.keyDescriptionsMap.set("app:selectLineBelow", [
-            parseKeyDescription("Cmd:ArrowDown"),
-            parseKeyDescription("Cmd:PageDown"),
-        ]);
-        this.keyDescriptionsMap.set("app:selectTab-1", [parseKeyDescription("Cmd:1")]);
-        this.keyDescriptionsMap.set("app:selectTab-2", [parseKeyDescription("Cmd:2")]);
-        this.keyDescriptionsMap.set("app:selectTab-3", [parseKeyDescription("Cmd:3")]);
-        this.keyDescriptionsMap.set("app:selectTab-4", [parseKeyDescription("Cmd:4")]);
-        this.keyDescriptionsMap.set("app:selectTab-5", [parseKeyDescription("Cmd:5")]);
-        this.keyDescriptionsMap.set("app:selectTab-6", [parseKeyDescription("Cmd:6")]);
-        this.keyDescriptionsMap.set("app:selectTab-7", [parseKeyDescription("Cmd:7")]);
-        this.keyDescriptionsMap.set("app:selectTab-8", [parseKeyDescription("Cmd:8")]);
-        this.keyDescriptionsMap.set("app:selectTab-9", [parseKeyDescription("Cmd:9")]);
-        let selectNumberedTabKeyPressArray = [];
-        for (let num = 1; num <= 9; num++) {
-            // get all of the above 9 keybindings into one array
-            let curNumArray = this.keyDescriptionsMap.get("app:selectTab-" + num);
-            selectNumberedTabKeyPressArray = selectNumberedTabKeyPressArray.concat(curNumArray);
+        for (let index = 0; index < keybindings.length; index++) {
+            let curKeybind = keybindings[index];
+            this.keyDescriptionsMap.set(curKeybind.command, curKeybind.keys);
         }
-        // this keybinding will work for any of the above 9 keybindings. The user can then check for each one, allowing for slightly cleaner code
-        this.keyDescriptionsMap.set("app:selectNumberedTab", selectNumberedTabKeyPressArray);
-        this.keyDescriptionsMap.set("app:selectTabLeft", [parseKeyDescription("Cmd:[")]);
-        this.keyDescriptionsMap.set("app:selectTabRight", [parseKeyDescription("Cmd:]")]);
-
-        this.keyDescriptionsMap.set("app:selectWorkspace-1", [parseKeyDescription("Cmd:Ctrl:1")]);
-        this.keyDescriptionsMap.set("app:selectWorkspace-2", [parseKeyDescription("Cmd:Ctrl:2")]);
-        this.keyDescriptionsMap.set("app:selectWorkspace-3", [parseKeyDescription("Cmd:Ctrl:3")]);
-        this.keyDescriptionsMap.set("app:selectWorkspace-4", [parseKeyDescription("Cmd:Ctrl:4")]);
-        this.keyDescriptionsMap.set("app:selectWorkspace-5", [parseKeyDescription("Cmd:Ctrl:5")]);
-        this.keyDescriptionsMap.set("app:selectWorkspace-6", [parseKeyDescription("Cmd:Ctrl:6")]);
-        this.keyDescriptionsMap.set("app:selectWorkspace-7", [parseKeyDescription("Cmd:Ctrl:7")]);
-        this.keyDescriptionsMap.set("app:selectWorkspace-8", [parseKeyDescription("Cmd:Ctrl:8")]);
-        this.keyDescriptionsMap.set("app:selectWorkspace-9", [parseKeyDescription("Cmd:Ctrl:9")]);
-        let selectNumberedWorkspaceKeyPressArray = [];
-        for (let num = 1; num <= 9; num++) {
-            // get all of the above 9 keybindings into one array
-            let curNumArray = this.keyDescriptionsMap.get("app:selectWorkspace-" + num);
-            selectNumberedWorkspaceKeyPressArray = selectNumberedWorkspaceKeyPressArray.concat(curNumArray);
-        }
-        // this keybinding will work for any of the above 9 keybindings. The user can then check for each one, allowing for slightly cleaner code
-        this.keyDescriptionsMap.set("app:selectNumberedWorkspace", selectNumberedWorkspaceKeyPressArray);
-        this.keyDescriptionsMap.set("app:toggleSidebar", [parseKeyDescription("Cmd:Ctrl:s")]);
-        this.keyDescriptionsMap.set("app:deleteActiveLine", [parseKeyDescription("Cmd:d")]);
-        this.keyDescriptionsMap.set("app:bookmarkActiveLine", [parseKeyDescription("Cmd:b")]);
-        this.keyDescriptionsMap.set("bookmarks:edit", [parseKeyDescription("e")]);
-        this.keyDescriptionsMap.set("bookmarks:copy", [parseKeyDescription("c")]);
-        this.keyDescriptionsMap.set("cmdinput:autocomplete", [parseKeyDescription("Tab")]);
-        this.keyDescriptionsMap.set("cmdinput:expandInput", [parseKeyDescription("Cmd:e")]);
-        this.keyDescriptionsMap.set("cmdinput:clearInput", [parseKeyDescription("Ctrl:c")]);
-        this.keyDescriptionsMap.set("cmdinput:cutLineLeftOfCursor", [parseKeyDescription("Ctrl:u")]);
-        this.keyDescriptionsMap.set("cmdinput:previousHistoryItem", [parseKeyDescription("Ctrl:p")]);
-        this.keyDescriptionsMap.set("cmdinput:nextHistoryItem", [parseKeyDescription("Ctrl:n")]);
-        this.keyDescriptionsMap.set("cmdinput:cutWordLeftOfCursor", [parseKeyDescription("Ctrl:w")]);
-        this.keyDescriptionsMap.set("cmdinput:paste", [parseKeyDescription("Ctrl:y")]);
-        this.keyDescriptionsMap.set("cmdinput:openHistory", [parseKeyDescription("Ctrl:r")]);
-        this.keyDescriptionsMap.set("cmdinput:openAIChat", [parseKeyDescription("Ctrl:Space")]);
-        this.keyDescriptionsMap.set("history:closeHistory", [
-            parseKeyDescription("Ctrl:g"),
-            parseKeyDescription("Ctrl:c"),
-        ]);
-        this.keyDescriptionsMap.set("history:toggleShowRemotes", [
-            parseKeyDescription("Cmd:r"),
-            parseKeyDescription("Ctrl:r"),
-        ]);
-        this.keyDescriptionsMap.set("history:changeScope", [
-            parseKeyDescription("Ctrl:s"),
-            parseKeyDescription("Cmd:s"),
-        ]);
-        this.keyDescriptionsMap.set("history:selectNextItem", [parseKeyDescription("Ctrl:n")]);
-        this.keyDescriptionsMap.set("history:selectPreviousItem", [parseKeyDescription("Ctrl:p")]);
-        this.keyDescriptionsMap.set("aichat:clearHistory", [parseKeyDescription("Ctrl:l")]);
-        this.keyDescriptionsMap.set("terminal:copy", [parseKeyDescription("Ctrl:Shift:c")]);
-        this.keyDescriptionsMap.set("terminal:paste", [parseKeyDescription("Ctrl:Shift:v")]);
-        this.keyDescriptionsMap.set("codeedit:save", [parseKeyDescription("Cmd:s")]);
-        this.keyDescriptionsMap.set("codeedit:close", [parseKeyDescription("Cmd:d")]);
-        this.keyDescriptionsMap.set("codeedit:togglePreview", [parseKeyDescription("Cmd:p")]);
     }
 
     checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
@@ -287,7 +192,8 @@ class KeybindManager {
         let keyPressArray = this.keyDescriptionsMap.get(keyDescription);
         for (let index = 0; index < keyPressArray.length; index++) {
             let curKeyPress = keyPressArray[index];
-            let pressed = checkKeyPressed(event, curKeyPress);
+            let curKeyPressDecl = parseKeyDescription(curKeyPress);
+            let pressed = checkKeyPressed(event, curKeyPressDecl);
             if (pressed) {
                 return true;
             }
