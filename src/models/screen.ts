@@ -498,19 +498,19 @@ class Screen {
     termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         let keybindManager = GlobalModel.keybindManager;
-        if (keybindManager.checkKeyPressed(waveEvent, "generic:selectAbove")) {
+        if (keybindManager.registerAndCheckKeyPressed(e, waveEvent, "pane", "generic:selectAbove")) {
             termWrap.terminal.scrollLines(-1);
             return;
         }
-        if (keybindManager.checkKeyPressed(waveEvent, "generic:selectBelow")) {
+        if (keybindManager.registerAndCheckKeyPressed(e, waveEvent, "pane", "generic:selectBelow")) {
             termWrap.terminal.scrollLines(1);
             return;
         }
-        if (keybindManager.checkKeyPressed(waveEvent, "generic:selectPageAbove")) {
+        if (keybindManager.registerAndCheckKeyPressed(e, waveEvent, "pane", "generic:selectPageAbove")) {
             termWrap.terminal.scrollPages(-1);
             return;
         }
-        if (keybindManager.checkKeyPressed(waveEvent, "generic:selectPageBelow")) {
+        if (keybindManager.registerAndCheckKeyPressed(e, waveEvent, "pane", "generic:selectPageBelow")) {
             termWrap.terminal.scrollPages(1);
             return;
         }
@@ -535,14 +535,14 @@ class Screen {
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         let keybindManager = GlobalModel.keybindManager;
-        if (e.type == "keypress" && keybindManager.checkKeyPressed(waveEvent, "terminal:copy")) {
+        if (e.type == "keypress" && keybindManager.registerAndCheckKeyPressed(e, waveEvent, "pane", "terminal:copy")) {
             e.stopPropagation();
             e.preventDefault();
             let sel = termWrap.terminal.getSelection();
             navigator.clipboard.writeText(sel);
             return false;
         }
-        if (e.type == "keypress" && keybindManager.checkKeyPressed(waveEvent, "terminal:paste")) {
+        if (e.type == "keypress" && keybindManager.registerAndCheckKeyPressed(e, waveEvent, "pane", "terminal:paste")) {
             e.stopPropagation();
             e.preventDefault();
             let p = navigator.clipboard.readText();

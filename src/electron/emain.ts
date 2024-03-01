@@ -317,12 +317,6 @@ function createMainWindow(clientData: ClientDataType | null) {
         if (win.isFocused()) {
             wasActive = true;
         }
-        if (waveEvent.type != "keyDown") {
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:Option:i")) {
-            win.webContents.toggleDevTools();
-        }
     });
     win.webContents.on("will-navigate", shNavHandler);
     win.webContents.on("will-frame-navigate", shFrameNavHandler);

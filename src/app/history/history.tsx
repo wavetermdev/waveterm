@@ -202,9 +202,10 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     searchKeyDown(e: any) {
+        console.log("wtf 1");
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         let keybindManager = GlobalModel.keybindManager;
-        if (keybindManager.checkKeyPressed(waveEvent, "generic:confirm")) {
+        if (keybindManager.registerAndCheckKeyPressed(e, waveEvent, "pane", "generic:confirm")) {
             e.preventDefault();
             GlobalModel.historyViewModel.submitSearch();
             return;

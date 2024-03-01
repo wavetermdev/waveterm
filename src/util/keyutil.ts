@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as electron from "electron";
 import { parse } from "node:path";
+import { v4 as uuidv4 } from "uuid";
 
 type KeyPressDecl = {
     mods: {
@@ -81,7 +82,7 @@ class KeybindManager {
         for (let index = 0; index < keybindsArray.length; index++) {
             let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
-                console.log("keybinding is equal: ", curKeybind.keybinding, keybinding);
+                console.log("keybinding is equal: ", curKeybind.keybinding, keybinding, curKeybind.domain, domain);
                 return true;
             }
         }
@@ -101,7 +102,26 @@ class KeybindManager {
         }
         let curKeybindArray = this.levelMap.get(level);
         curKeybindArray.push(newKeybind);
+        this.levelMap.set(level, curKeybindArray);
         return true;
+    }
+
+    registerAndCheckKeyPressed(
+        nativeEvent: any,
+        waveEvent: WaveKeyboardEvent,
+        level: string,
+        keybinding: string
+    ): boolean {
+        let rtn = false;
+        let curDomain = String(uuidv4());
+        this.registerKeybinding(level, curDomain, keybinding, (waveEvent) => {
+            rtn = true;
+            return true;
+        });
+        this.processKeyEvent(nativeEvent, waveEvent);
+        let didUnregister = this.unregisterKeybinding(level, curDomain, keybinding);
+        console.log("did unregister: ", didUnregister);
+        return rtn;
     }
 
     unregisterKeybinding(level: string, domain: string, keybinding: string): boolean {
@@ -113,6 +133,7 @@ class KeybindManager {
             let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
                 keybindsArray.splice(index, 1);
+                this.levelMap.set(level, keybindsArray);
             }
             return true;
         }
