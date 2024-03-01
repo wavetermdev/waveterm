@@ -162,8 +162,6 @@
     --hotkey-text-color: rgb(195, 200, 194);
 
     /* sidebar colors */
-    --sidebar-settings-color: rgb(255, 255, 255);
-    --sidebar-separator-color: var(--app-border-color);
     --sidebar-highlight-color: rgba(241, 246, 243, 0.08);
     --sidebar-font-size: 15px;
     --sidebar-line-height: 1.5;
