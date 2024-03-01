@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .term-prompt {
-    font-weight: normal;
-    font-size: var(--termfontsize);
-    line-height: var(--termlineheight);
+    // we are explicitly *not* setting font size properties here so prompt will inherit from caller
     font-family: var(--termfontfamily);
+    font-weight: normal;
     color: var(--term-gray);
 
     i {
@@ -62,11 +61,7 @@
         color: var(--term-bright-green);
     }
 
-    .term-prompt-end-user {
-        color: var(--term-bright-green);
-    }
-
-    .term-prompt-end-root {
+    &.term-prompt-isroot .term-prompt-cwd {
         color: var(--term-bright-red);
     }
 }

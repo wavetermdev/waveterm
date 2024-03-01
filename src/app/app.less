@@ -6,31 +6,51 @@
 html,
 body {
     overflow: hidden;
-    font-family: var(--fixed-font);
-    font-size: 12px;
-    font-weight: 300;
-    line-height: 1.5;
+    font-family: var(--base-font-family);
+    font-size: var(--base-font-size);
+    font-weight: var(--base-font-weight);
+    line-height: normal;
     background-color: black;
     color: var(--app-text-color);
 }
 
 body {
     &.is-dev .sidebar {
-        background-color: var(--sidebar-dev-bg-color);
+        background-color: var(--app-panel-bg-color-dev);
     }
 }
 
 body .sidebar {
-    background-color: var(--sidebar-bg-color);
+    background-color: var(--app-panel-bg-color);
 }
 
-textarea {
+body textarea,
+body textarea.textarea {
     overflow: hidden;
-    font-family: var(--fixed-font);
-    font-size: 12px;
-    font-weight: 300;
+    font-family: var(--base-font-family);
+    font-size: var(--base-font-size);
+    font-weight: var(--base-font-weight);
     line-height: 1.5;
     color: var(--app-text-color);
+    background-color: var(--input-bg-color);
+
+    &::placeholder {
+        color: var(--input-placeholder-color);
+    }
+}
+
+body input,
+body input.input {
+    font-family: var(--base-font-family);
+    font-size: var(--base-font-size);
+    font-weight: var(--base-font-weight);
+    line-height: 1.5;
+    color: var(--app-text-color);
+    background-color: var(--input-bg-color);
+
+    &::placeholder {
+        color: var(--input-placeholder-color);
+    }
 }
 
 // typography
@@ -85,6 +105,10 @@ textarea {
     height: 16px;
 }
 
+.bold {
+    font-weight: bold;
+}
+
 body a {
     color: var(--app-accent-color);
     cursor: pointer;
@@ -116,7 +140,7 @@ svg.icon {
     cursor: pointer;
 }
 
-.hideScrollbarUntillHover {
+.scrollbar-hide-until-hover {
     overflow: scroll;
 
     &::-webkit-scrollbar-thumb,
@@ -509,6 +533,75 @@ a.a-block {
     }
 }
 
+.tab-color-cur,
+.tab-icon-cur {
+    display: flex;
+    flex-direction: row;
+}
+
+.tabicon {
+    &.color-default,
+    &.color-green {
+        i {
+            color: var(--tab-green);
+        }
+    }
+
+    &.color-red {
+        i {
+            color: var(--tab-red);
+        }
+    }
+
+    &.color-orange {
+        i {
+            color: var(--tab-orange);
+        }
+    }
+
+    &.color-blue {
+        i {
+            color: var(--tab-blue);
+        }
+    }
+
+    &.color-yellow {
+        i {
+            color: var(--tab-yellow);
+        }
+    }
+
+    &.color-pink {
+        i {
+            color: var(--tab-pink);
+        }
+    }
+
+    &.color-mint {
+        i {
+            color: var(--tab-mint);
+        }
+    }
+
+    &.color-cyan {
+        i {
+            color: var(--tab-cyan);
+        }
+    }
+
+    &.color-violet {
+        i {
+            color: var(--tab-violet);
+        }
+    }
+
+    &.color-white {
+        i {
+            color: var(--tab-white);
+        }
+    }
+}
+
 .icon.color-default,
 .icon.color-green {
     path,
@@ -669,6 +762,10 @@ a.a-block {
     }
 }
 
+.settings-field + .settings-field {
+    margin-top: 6px;
+}
+
 .settings-field {
     display: flex;
     flex-direction: row;
@@ -677,7 +774,6 @@ a.a-block {
     &.settings-field.sub-field {
         .settings-label {
             font-weight: normal;
-
             text-align: right;
             padding-right: 20px;
         }
@@ -737,44 +833,8 @@ a.a-block {
 
         .control {
             .icon {
-                width: 1.5em;
-                height: 1.5em;
                 margin: 0;
             }
-        }
-
-        .tab-color-icon.color-default path {
-            fill: var(--tab-green);
-        }
-        .tab-color-icon.color-green path {
-            fill: var(--tab-green);
-        }
-        .tab-color-icon.color-orange path {
-            fill: var(--tab-orange);
-        }
-        .tab-color-icon.color-red path {
-            fill: var(--tab-red);
-        }
-        .tab-color-icon.color-yellow path {
-            fill: var(--tab-yellow);
-        }
-        .tab-color-icon.color-blue path {
-            fill: var(--tab-blue);
-        }
-        .tab-color-icon.color-mint path {
-            fill: var(--tab-mint);
-        }
-        .tab-color-icon.color-cyan path {
-            fill: var(--tab-cyan);
-        }
-        .tab-color-icon.color-white path {
-            fill: var(--tab-white);
-        }
-        .tab-color-icon.color-violet path {
-            fill: var(--tab-violet);
-        }
-        .tab-color-icon.color-pink path {
-            fill: var(--tab-pink);
         }
 
         .tab-colors,
@@ -800,7 +860,7 @@ a.a-block {
             .tab-icon-name {
                 display: inline-block;
                 margin-left: 1em;
-                min-width: 80px;
+                min-width: 70px;
             }
 
             .tab-color-select,

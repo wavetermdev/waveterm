@@ -2,30 +2,13 @@
     margin: 0;
     padding: calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 2 + 1px) calc(var(--termpad) * 3);
     display: flex;
+    flex-direction: column;
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
     font-weight: normal;
     font-family: var(--termfontfamily);
-
-    &.line-cmd {
-        flex-direction: column;
-        scroll-margin-bottom: 20px;
-        position: relative;
-    }
-
-    &.line-text {
-        // old formatting for text lines (requires override)
-        flex-direction: row;
-        padding-top: 5px;
-
-        .line-content {
-            display: flex;
-            flex-direction: column;
-            flex-grow: 1;
-            margin-left: 10px;
-        }
-    }
+    scroll-margin-bottom: 20px;
 
     &.line-invalid {
         color: var(--term-text-white);
@@ -118,7 +101,6 @@
             display: inline-block;
             height: 1em;
             margin-left: 0.5em;
-            margin-right: 0.5em;
             vertical-align: text-top;
             fill: var(--primary-background-color);
         }
@@ -152,152 +134,118 @@
         display: block;
     }
 
-    .line-header {
+    .line-header + div:not(.zero-height) {
+        margin-top: calc(var(--termpad) + 2px);
+    }
+
+    &:hover .line-actions {
+        background-color: var(--app-panel-bg-color);
+        .line-icon {
+            visibility: visible;
+        }
+    }
+
+    .line-actions {
+        position: absolute;
+        right: calc(var(--termpad) * 2);
+        top: 0;
+        font-size: 14px;
+        color: var(--line-actions-inactive-color);
+        border-radius: 4px;
+        padding-left: 4px;
+        padding-right: 4px;
+        line-height: 1.2;
+
         display: flex;
         flex-direction: row;
+        align-items: center;
+
+        .line-icon {
+            visibility: hidden;
+
+            &.active {
+                visibility: visible;
+            }
+
+            &:hover {
+                color: var(--line-actions-active-color);
+            }
+
+            padding: 4px;
+            cursor: pointer;
+        }
+
+        .line-icon + .line-icon:not(.line-icon-shrink-left) {
+            margin-left: 3px;
+        }
+    }
+
+    .line-header {
+        display: flex;
+        flex-direction: column;
         width: 100%;
         font-weight: normal;
         font-family: var(--termfontfamily);
         font-size: var(--termfontsize);
         line-height: var(--termlineheight);
 
-        &.is-expanded {
-            height: auto;
+        .meta + .meta {
+            margin-top: 2px;
         }
 
-        .line-icon {
-            display: block;
-            visibility: hidden;
-            cursor: pointer;
-            padding: 3px;
-            border-radius: 50%;
-        }
-
-        .line-icon-show {
-            visibility: visible;
-        }
-
-        .line-icon + .line-icon {
-            margin-left: 5px;
-        }
-
-        .line-icon.active {
-            visibility: visible;
-            display: block;
-        }
-
-        &:hover .line-icon {
-            visibility: visible;
-            display: block;
-            opacity: 1;
-        }
-
-        .meta.meta-line1 {
-            color: var(--term-gray);
-        }
-
-        .meta.meta-line2 {
-            margin-left: -2px;
-        }
-    }
-
-    .line-header + div:not(.zero-height) {
-        margin-top: var(--termpad);
-    }
-
-    .meta-wrap {
-        flex: 1 1 0px;
-        min-width: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-    }
-
-    .meta {
-        display: flex;
-        flex-direction: row;
-
-        .user {
-            color: var(--line-meta-user-color);
-            font-weight: bold;
-            margin-top: 1px;
-            margin-right: 10px;
-        }
-
-        .ts,
-        .termopts,
-        .renderer {
+        .meta {
             display: flex;
-        }
+            flex-direction: row;
 
-        .renderer {
-            margin-left: 3px;
-            svg {
-                width: 1em;
+            .user {
+                color: var(--line-meta-user-color);
+                font-weight: bold;
+                margin-top: 1px;
+                margin-right: 10px;
+            }
+
+            &.meta-line1 {
+                display: flex;
+                flex-direction: row;
+                font-size: var(--termfontsize-sm);
+                line-height: var(--termlineheight-sm);
+                color: var(--term-gray);
+            }
+
+            .meta-divider {
+                margin-left: var(--termpad);
+                margin-right: var(--termpad);
+            }
+
+            .ts,
+            .termopts,
+            .renderer {
+                display: flex;
+            }
+
+            .renderer .renderer-icon {
                 margin-right: 0.5em;
-                fill: var(--line-svg-fill-color);
+            }
+
+            .metapart-mono {
+                margin-left: 8px;
+                white-space: nowrap;
             }
         }
-
-        .settings {
-            display: none;
-            margin-left: 0.5em;
-            cursor: pointer;
-            width: 1em;
-            height: 1em;
-            border-radius: 50%;
-            line-height: 1em;
-            svg {
-                fill: var(--line-svg-fill-color);
-                &:hover {
-                    fill: var(--line-svg-hover-fill-color);
-                }
-            }
-        }
-
-        .termopts {
-            display: none;
-            .resize-button {
-                cursor: pointer;
-                padding-left: 3px;
-                padding-right: 3px;
-            }
-        }
-
-        .metapart-mono {
-            margin-left: 8px;
-            white-space: nowrap;
-        }
-
-        .cmdtext {
-            overflow: hidden;
-            margin-left: 0;
-        }
-
-        .cmdtext-overflow {
-            flex-shrink: 0;
-            padding-right: 2px;
-            color: var(--term-text-white);
-            cursor: pointer;
-        }
-
-        .meta-cmdtext {
-            color: var(--term-bright-white);
-        }
-    }
-
-    .cmdtext-expanded-wrapper {
-        padding-left: 6px;
-        overflow-y: auto;
-        max-height: 60px;
-        border-left: 2px solid #333;
-        margin-left: 3px;
 
         .cmdtext-expanded {
+            overflow: auto;
+            max-height: calc(var(--termlineheight) * 3.3);
             white-space: pre;
+            color: var(--term-bright-white);
+            font-weight: bold;
+            width: calc(100% - var(--termpad) * 2);
 
-            color: var(--term-text-white);
-            padding-bottom: 5px;
+            &.is-multiline {
+                border-left: 2px solid #333;
+                margin-left: 3px;
+                padding-left: 6px;
+            }
         }
     }
 

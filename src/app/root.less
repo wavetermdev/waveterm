@@ -1,18 +1,18 @@
-/* Copyright 2024, Command Line Inc.
-   SPDX-License-Identifier: Apache-2.0 */
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
 
-    /* these variables are overridden by user settings */
+    // these variables are overridden by user settings
     --termfontfamily: "JetBrains Mono", monospace;
     --termfontsize: 12px;
     --termlineheight: 15px;
-    --termpad: 7px; /* padding value (scaled to termfontsize) */
+    --termpad: 7px; // padding value (scaled to termfontsize)
     --termfontsize-sm: 10px;
     --termlineheight-sm: 13px;
 
-    /* other fonts */
+    // other fonts
     --base-font-family: "Lato", sans-serif;
     --base-font-size: 15px;
     --base-font-weight: normal;
@@ -29,19 +29,19 @@
 
     --markdown-font-size: 14px;
 
-    --screentabs-height: 38px; /* magic */
-    --screentabs-line-height: 21px; /* magic */
+    --screentabs-height: 38px; // magic
+    --screentabs-line-height: 21px; // magic
     --screentabs-font-size: 15px;
     --screentabs-font-weight: normal;
     --screentabs-selected-font-weight: bold;
     --screen-tab-width: 11.4em;
 
-    /* floating logo settings */
+    // floating logo settings
     --floating-logo-width-darwin: 110px;
     --floating-logo-width: 40px;
     --floating-logo-height: var(--screentabs-height);
 
-    /* global colors */
+    // global colors
     --app-bg-color: black;
     --app-accent-color: rgb(88, 193, 66);
     --app-error-color: rgb(204, 0, 0);
@@ -56,19 +56,19 @@
     --app-panel-bg-color: rgba(21, 23, 21, 1);
     --app-panel-bg-color-dev: rgb(21, 23, 48);
 
-    /* global generic colors */
+    // global generic colors
     --app-black: rgb(0, 0, 0);
 
-    /* scrollbar colors */
-    /* --scrollbar-background-color: rgba(21, 23, 21, 1); */
+    // scrollbar colors
+    // --scrollbar-background-color: rgba(21, 23, 21, 1);
     --scrollbar-background-color: #030303;
     --scrollbar-thumb-color: #333;
     --scrollbar-thumb-hover-color: rgb(211, 215, 207);
 
-    /* code color */
+    // code color
     --pre-bg-color: rgb(0, 0, 0);
 
-    /* tab colors */
+    // tab colors
     --tab-red: rgb(229, 77, 46);
     --tab-orange: rgb(239, 113, 59);
     --tab-yellow: rgb(224, 185, 86);
@@ -80,7 +80,7 @@
     --tab-pink: rgb(224, 86, 119);
     --tab-white: rgb(255, 255, 255);
 
-    /* term colors */
+    // term colors
     --term-black: #000000;
     --term-red: #cc0000;
     --term-green: #4e9a06;
@@ -97,71 +97,71 @@
     --term-bright-magenta: #ad7fa8;
     --term-bright-cyan: #34e2e2;
     --term-bright-white: #ffffff;
-    --term-gray: rgb(139, 145, 138); /* not an official terminal color */
+    --term-gray: rgb(139, 145, 138); // not an official terminal color
 
-    /* button colors */
+    // button colors
     --button-text-color: rgb(255, 255, 255);
     --button-primary-bg-color: rgb(78, 154, 6);
     --button-secondary-bg-color: rgba(255, 255, 255, 0.09);
     --button-warning-bg-color: rgb(204, 0, 0);
 
-    /* input colors */
+    // input colors
     --checkbox-text-color: rgb(255, 255, 255);
     --checkbox-bg-color: rgb(78, 154, 6);
     --checkbox-check-color: rgb(255, 255, 255);
 
-    /* dropdown colors */
+    // dropdown colors
     --dropdown-text-color: rgb(211, 215, 207);
     --dropdown-error-color: rgb(229, 77, 46);
     --dropdown-focus-color: rgb(78, 154, 6);
 
-    /* textfield colors */
+    // textfield colors
     --textfield-focused-border-color: rgb(78, 154, 6);
     --textfield-error-border-color: rgb(229, 77, 46);
     --textfield-label-color: rgb(195, 200, 194);
     --textfield-text-color: rgb(255, 255, 255);
     --textfield-bg-color: rgba(48, 49, 48, 0.6);
 
-    /* toggle colors */
+    // toggle colors
     --toggle-bg-color: rgb(51, 51, 51);
     --toggle-thumb-color: rgb(211, 215, 207);
     --toggle-checked-bg-color: rgb(78, 154, 6);
 
-    /* cmdstrcode colors */
+    // cmdstrcode colors
     --cmdstrcode-bg-color: rgb(0, 0, 0);
     --cmdstrcode-text-color: rgb(211, 215, 207);
 
-    /* markdown colors */
+    // markdown colors
     --markdown-bg-color: rgb(35, 35, 35);
     --markdown-outline-color: rgb(78, 154, 6);
 
-    /* status(remote) colors */
-    /* todo: all status colors must be unified */
+    // status(remote) colors
+    // todo: all status colors must be unified
     --status-connected-color: rgb(70, 167, 88);
     --status-connecting-color: rgb(245, 217, 10);
     --status-error-color: rgb(229, 77, 46);
     --status-disconnected-color: rgb(195, 200, 194);
 
-    /* status indicator colors */
-    /* todo: all status colors must be unified */
+    // status indicator colors
+    // todo: all status colors must be unified
     --status-indicator-color: rgb(211, 215, 207);
     --status-indicator-error: rgb(204, 0, 0);
     --status-indicator-success: rgb(78, 154, 6);
 
-    /* status(version) colors */
-    /* todo: all status colors must be unified */
+    // status(version) colors
+    // todo: all status colors must be unified
     --status-outdated-color: rgb(196, 160, 0);
     --status-updated-color: rgb(78, 154, 6);
 
-    /* term status colors */
-    /* todo: all status colors must be unified */
+    // term status colors
+    // todo: all status colors must be unified
     --term-error-color: rgb(204, 0, 0);
     --term-warning-color: rgb(196, 160, 0);
 
-    /* hotkey colors */
+    // hotkey colors
     --hotkey-text-color: rgb(195, 200, 194);
 
-    /* sidebar colors */
+    // sidebar colors
     --sidebar-settings-color: rgb(255, 255, 255);
     --sidebar-separator-color: var(--app-border-color);
     --sidebar-highlight-color: rgba(241, 246, 243, 0.08);
@@ -170,7 +170,7 @@
     --sidebar-font-weight: normal;
     --sidebar-highlight-font-weight: bold;
 
-    /* line colors */
+    // line colors
     --line-sidebar-message-color: rgb(196, 160, 0);
     --line-background: rgba(21, 23, 21, 1);
     --line-avatar-color: #eceeec;
@@ -199,21 +199,21 @@
     --line-actions-inactive-color: rgba(255, 255, 255, 0.5);
     --line-actions-active-color: rgba(255, 255, 255, 1);
 
-    /* view colors */
-    /* todo: bookmarks is a view, colors must be unified with --view* colors */
+    // view colors
+    // todo: bookmarks is a view, colors must be unified with --view* colors
     --bookmarks-text-color: rgb(211, 215, 207);
     --bookmarks-textarea-bg-color: rgb(0, 0, 0);
     --bookmarks-disabled-text-color: rgb(173, 173, 173);
     --bookmarks-control-hover-color: rgb(255, 255, 255);
 
-    /* view colors */
+    // view colors
     --view-error-color: rgb(204, 0, 0);
     --view-text-color: rgb(195, 200, 194);
 
-    /* session colors */
+    // session colors
     --session-bg-color: rgba(13, 13, 13, 0.85);
 
-    /* cmdinput colors */
+    // cmdinput colors
     --cmdinput-textarea-bg-color: #171717;
     --cmdinput-text-error-color: rgb(239, 41, 41);
     --cmdinput-title-color: rgb(114, 159, 207);
@@ -225,9 +225,9 @@
     --cmdinput-disabled-icon-color: rgb(76, 81, 75, 1);
     --cmdinput-history-bg-color: rgb(21, 23, 21, 1);
 
-    /* screen view color */
+    // screen view color
     --screen-view-text-caption-color: rgb(139, 145, 138);
 
-    /* plugins colors */
+    // plugins colors
     --code-gutter-bg-color: rgba(88, 193, 66, 0.4);
 }

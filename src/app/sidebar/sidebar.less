@@ -12,7 +12,7 @@
     border-left: 1px solid var(--app-border-color);
     border-bottom: 1px solid var(--app-border-color);
     font-size: var(--sidebar-font-size);
-    font-family: var(--label-font-family);
+    font-family: var(--base-font-family);
     font-weight: var(--sidebar-font-weight);
 
     .title-bar-drag {
@@ -21,10 +21,12 @@
         border-bottom: 1px solid var(--app-border-color);
         position: relative;
         display: flex;
+        align-items: center;
 
         .logo {
-            line-height: 15px;
-            margin: auto auto;
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 4px;
             svg {
                 width: 88px;
             }

@@ -7,7 +7,7 @@ import cn from "classnames";
 
 class TabIcon extends React.Component<{ icon: string; color: string }> {
     render() {
-        let { icon, color, className } = this.props;
+        let { icon, color } = this.props;
         let iconClass = "";
         if (icon === "default" || icon === "square") {
             iconClass = "fa-solid fa-square fa-fw";
@@ -18,7 +18,7 @@ class TabIcon extends React.Component<{ icon: string; color: string }> {
             color = "green";
         }
         return (
-            <div className={cn("icon", "color-" + color)}>
+            <div className={cn("tabicon", "color-" + color)}>
                 <i className={iconClass} />
             </div>
         );

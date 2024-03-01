@@ -28,12 +28,16 @@
         font-size: var(--termfontsize);
     }
 
+    .lines-spacer + .line-sep-labeled {
+        margin-top: var(--termpad);
+    }
+
     .line-sep-labeled::before,
     .line-sep-labeled::after {
         content: "";
         height: 1px;
         flex-grow: 1;
-        background-color: var(--app-text-color);
+        background-color: var(--term-gray);
     }
 
     .line-sep-labeled::before {

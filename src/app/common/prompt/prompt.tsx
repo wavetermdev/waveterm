@@ -94,11 +94,7 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
         if (remote && remote.remotecanonicalname) {
             remoteTitle = "connected to " + remote.remotecanonicalname;
         }
-        let cwdElem = (
-            <span title="current directory" className="term-prompt-cwd">
-                {cwd}
-            </span>
-        );
+        let cwdElem = <span className="term-prompt-cwd">{cwd}</span>;
         let remoteElem = null;
         if (remoteStr != "local") {
             remoteElem = (
@@ -106,12 +102,6 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
                     [{remoteStr}]{" "}
                 </span>
             );
-        }
-        let rootIndicatorElem = null;
-        if (isRoot) {
-            rootIndicatorElem = <span className="term-prompt-end-root">#</span>;
-        } else {
-            rootIndicatorElem = <span className="term-prompt-end-user">$</span>;
         }
         let branchElem = null;
         let pythonElem = null;
@@ -142,9 +132,14 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
             );
         }
         return (
-            <span className={cn("term-prompt", { "term-prompt-color": this.props.color })}>
-                {remoteElem} {condaElem} {pythonElem}
-                {cwdElem} {branchElem} {rootIndicatorElem}
+            <span
+                className={cn(
+                    "term-prompt",
+                    { "term-prompt-color": this.props.color },
+                    { "term-prompt-isroot": isRoot }
+                )}
+            >
+                {remoteElem} {cwdElem} {branchElem} {condaElem} {pythonElem}
             </span>
         );
     }

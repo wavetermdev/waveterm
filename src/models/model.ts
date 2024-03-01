@@ -363,12 +363,16 @@ class Model {
         if (fontSize > appconst.MaxFontSize) {
             fontSize = appconst.MaxFontSize;
         }
+        const fontSizeSm = fontSize - 2;
         const monoFontSize = getMonoFontSize(fontSize);
+        const monoFontSizeSm = getMonoFontSize(fontSizeSm);
         mobx.action(() => {
             this.bumpRenderVersion();
             this.setStyleVar("--termfontsize", fontSize + "px");
             this.setStyleVar("--termlineheight", monoFontSize.height + "px");
-            this.setStyleVar("--termpad", Math.floor(monoFontSize.height / 2) + "px");
+            this.setStyleVar("--termpad", monoFontSize.pad + "px");
+            this.setStyleVar("--termfontsize-sm", fontSizeSm + "px");
+            this.setStyleVar("--termlineheight-sm", monoFontSizeSm.height + "px");
         })();
     }
 
@@ -937,30 +941,37 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
-                } else if (interactive) {
+                } else {
+                    // interactive-only updates follow below
+                    // we check interactive *inside* of the conditions because of isDev console.log message
                     if (update.info != null) {
                         const info: InfoType = update.info;
-                        this.inputModel.flashInfoMsg(info, info.timeoutms);
+                        if (interactive) {
+                            this.inputModel.flashInfoMsg(info, info.timeoutms);
+                        }
                     } else if (update.remoteview != null) {
                         const rview: RemoteViewType = update.remoteview;
-                        if (rview.remoteedit != null) {
+                        if (interactive && rview.remoteedit != null) {
                             this.remotesModel.openEditModal({ ...rview.remoteedit });
                         }
                     } else if (update.alertmessage != null) {
                         const alertMessage: AlertMessageType = update.alertmessage;
-                        this.showAlert(alertMessage);
+                        if (interactive) {
+                            this.showAlert(alertMessage);
+                        }
                     } else if (update.history != null) {
                         if (
+                            interactive &&
                             uiContext.sessionid == update.history.sessionid &&
                             uiContext.screenid == update.history.screenid
                         ) {
                             this.inputModel.setHistoryInfo(update.history);
                         }
+                    } else if (update.interactive) {
+                        // nothing (ignore)
                     } else if (this.isDev) {
                         console.log("did not match update", update);
                     }
-                } else if (this.isDev) {
-                    console.log("did not match update", update);
                 }
             });
 
@@ -1113,6 +1124,9 @@ class Model {
     }
 
     isInfoUpdate(update: UpdatePacket): boolean {
+        if (update == null) {
+            return false;
+        }
         if (update.type == "model") {
             return update.data.some((u) => u.info != null || u.history != null);
         } else {

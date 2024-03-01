@@ -123,7 +123,7 @@ class LineSettingsModal extends React.Component<{}, {}> {
 
         return (
             <Modal className="line-settings-modal">
-                <Modal.Header onClose={this.closeModal} title={`line settings (${line.linenum})`} />
+                <Modal.Header onClose={this.closeModal} title={`Block Settings (#${line.linenum})`} />
                 <div className="wave-modal-body">
                     <div className="settings-field">
                         <div className="settings-label">Renderer</div>
