@@ -278,7 +278,7 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 	}
 	if !response.Confirm {
 		f.Close()
-		return UserInputCancelError{Err: fmt.Errorf("Canceled by the user")}
+		return UserInputCancelError{Err: fmt.Errorf("canceled by the user")}
 	}
 
 	_, err = f.WriteString(newLine)
@@ -350,7 +350,18 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 	userKnownHostsFiles := strings.Fields(rawUserKnownHostsFiles) // TODO - smarter splitting escaped spaces and quotes
 	rawGlobalKnownHostsFiles, _ := ssh_config.GetStrict(opts.SSHHost, "GlobalKnownHostsFile")
 	globalKnownHostsFiles := strings.Fields(rawGlobalKnownHostsFiles) // TODO - smarter splitting escaped spaces and quotes
-	unexpandedKnownHostsFiles := append(userKnownHostsFiles, globalKnownHostsFiles...)
+
+	osUser, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	var unexpandedKnownHostsFiles []string
+	if osUser.Username == "root" {
+		unexpandedKnownHostsFiles = globalKnownHostsFiles
+	} else {
+		unexpandedKnownHostsFiles = append(userKnownHostsFiles, globalKnownHostsFiles...)
+	}
+
 	var knownHostsFiles []string
 	for _, filename := range unexpandedKnownHostsFiles {
 		knownHostsFiles = append(knownHostsFiles, base.ExpandHomeDir(filename))
@@ -658,6 +669,9 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 	// these are parsed as a single string and must be separated
 	// these are case sensitive in openssh so they are here too
 	preferredAuthenticationsRaw, err := ssh_config.GetStrict(hostPattern, "PreferredAuthentications")
+	if err != nil {
+		return nil, err
+	}
 	sshKeywords.PreferredAuthentications = strings.Split(preferredAuthenticationsRaw, ",")
 
 	return sshKeywords, nil
