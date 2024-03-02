@@ -160,7 +160,7 @@ function getBaseHostPort(): string {
 }
 
 function getWaveSrvPath(): string {
-    return path.join(getGoAppBasePath(), "bin", "wavesrv");
+    return path.join(getGoAppBasePath(), "bin", `wavesrv.${unameArch}`);
 }
 
 function getWaveSrvCmd(): string {
