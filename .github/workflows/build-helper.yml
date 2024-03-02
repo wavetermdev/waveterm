@@ -75,7 +75,7 @@ jobs:
               run: |
                   echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" > buildtemp/version.txt
             - name: Zip Builds
-              run: (cd buildtemp; zip -q ../waveterm-builds.zip *)
+              run: (cd buildtemp; zip -qr ../waveterm-builds.zip *)
             - name: Upload to S3
               run: aws s3 cp waveterm-builds.zip s3://waveterm-github-artifacts/
               env:
