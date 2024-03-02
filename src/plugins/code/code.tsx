@@ -86,7 +86,7 @@ class SourceCodeRenderer extends React.Component<
     constructor(props) {
         super(props);
         this.monacoEditor = null;
-        const editorHeight = Math.max(props.savedHeight - 25, 0); // must subtract the padding/margin to get the real editorHeight
+        const editorHeight = Math.max(props.savedHeight - this.getEditorHeightBuffer(), 0); // must subtract the padding/margin to get the real editorHeight
         this.markdownRef = React.createRef();
         this.syncing = false;
         let isClosed = props.lineState["prompt:closed"];
@@ -322,14 +322,19 @@ class SourceCodeRenderer extends React.Component<
         });
     };
 
+    getEditorHeightBuffer(): number {
+        const heightBuffer = GlobalModel.lineHeightEnv.lineHeight + 11;
+        return heightBuffer;
+    }
+
     setEditorHeight = () => {
-        const fullWindowHeight = this.props.opts.maxSize.height;
-        let _editorHeight = fullWindowHeight;
+        const maxEditorHeight = this.props.opts.maxSize.height - this.getEditorHeightBuffer();
+        let _editorHeight = maxEditorHeight;
         let allowEditing = this.getAllowEditing();
         if (!allowEditing) {
             const noOfLines = Math.max(this.state.code.split("\n").length, 5);
             const lineHeight = Math.ceil(GlobalModel.lineHeightEnv.lineHeight);
-            _editorHeight = Math.min(noOfLines * lineHeight + 10, fullWindowHeight);
+            _editorHeight = Math.min(noOfLines * lineHeight + 10, maxEditorHeight);
         }
         this.setState({ editorHeight: _editorHeight }, () => {
             if (this.props.isSelected) {
@@ -368,26 +373,28 @@ class SourceCodeRenderer extends React.Component<
         return opts;
     }
 
-    getCodeEditor = () => (
-        <div style={{ maxHeight: this.props.opts.maxSize.height }}>
-            {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
-            <Editor
-                theme="wave-theme"
-                height={this.state.editorHeight}
-                defaultLanguage={this.state.selectedLanguage}
-                value={this.state.code}
-                onMount={this.handleEditorDidMount}
-                options={this.getEditorOptions()}
-                onChange={this.handleEditorChange}
-            />
-        </div>
-    );
+    getCodeEditor = () => {
+        return (
+            <div className="editor-wrap" style={{ maxHeight: this.state.editorHeight }}>
+                {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
+                <Editor
+                    theme="wave-theme"
+                    height={this.state.editorHeight}
+                    defaultLanguage={this.state.selectedLanguage}
+                    value={this.state.code}
+                    onMount={this.handleEditorDidMount}
+                    options={this.getEditorOptions()}
+                    onChange={this.handleEditorChange}
+                />
+            </div>
+        );
+    };
 
     getPreviewer = () => {
         return (
             <div
                 className="scroller"
-                style={{ maxHeight: this.props.opts.maxSize.height }}
+                style={{ maxHeight: this.state.editorHeight }}
                 ref={this.markdownRef}
                 onScroll={() => this.handleDivScroll()}
             >
