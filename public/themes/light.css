@@ -7,6 +7,7 @@
     --app-bg-color: #ffffff;
     --app-text-color: #000000;
     --app-text-primary-color: rgb(0, 0, 0, 0.8);
+    --app-text-secondary-color: rgb(0, 0, 0, 0.6);
 
     /* sidebar colors */
     --app-panel-bg-color: #cccccc;
@@ -37,4 +38,8 @@
 
     /* modal colors */
     --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
+
+    /* cmd input */
+    --cmdinput-textarea-bg-color: rgba(0, 0, 0, 0.1);
+    --cmdinput-textarea-border-color: var(--form-element-border-color);
 }
