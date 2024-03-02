@@ -45,24 +45,14 @@
             overflow: auto;
         }
     }
-    section {
-        // transition: height 0.3s ease-in-out;
-    }
-    .messageContainer {
-        position: absolute;
-        bottom: -3px;
-        left: 14px;
-        .message {
-            background: var(--app-success-color);
-            border-radius: 6px;
-            margin-bottom: 1rem;
-            padding: 4px 1rem;
-            max-width: 80vw;
-            &.error {
-                background: var(--app-error-color);
-            }
+
+    .code-message {
+        color: var(--term-bright-green);
+        &.error {
+            color: var(--term-bright-red);
         }
     }
+
     .readonly {
         position: absolute;
         top: 0.2em;
@@ -83,12 +73,31 @@
     .split-horizontal {
         display: flex;
         width: 100%;
-        height: 100%;
+        height: calc(100% - var(--termlineheight) - 7px);
+        border-bottom: 1px solid var(--app-border-color);
     }
+
     .split-vertical {
         display: flex;
         flex-direction: column;
         height: 100%;
+    }
+
+    .code-statusbar {
+        display: flex;
+        gap: var(--termpad);
+        flex-direction: row;
+        align-items: center;
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
+        background-color: var(--app-panel-bg-color);
+        border-top: 1px solid var(--app-border-color);
+        padding: 3px var(--termpad) 3px var(--termpad);
+        height: calc(var(--termlineheight) + 11px);
+
+        .wave-button {
+            line-height: var(--termlineheight) !important;
+        }
     }
 
     .gutter {

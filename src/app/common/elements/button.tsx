@@ -22,6 +22,7 @@ interface ButtonProps {
     style?: React.CSSProperties;
     autoFocus?: boolean;
     className?: string;
+    termInline?: boolean;
 }
 
 class Button extends React.Component<ButtonProps> {
@@ -40,12 +41,31 @@ class Button extends React.Component<ButtonProps> {
     }
 
     render() {
-        const { leftIcon, rightIcon, theme, children, disabled, variant, color, style, autoFocus, className } =
-            this.props;
+        const {
+            leftIcon,
+            rightIcon,
+            theme,
+            children,
+            disabled,
+            variant,
+            color,
+            style,
+            autoFocus,
+            termInline,
+            className,
+        } = this.props;
 
         return (
             <button
-                className={cn("wave-button", theme, variant, color, { disabled: disabled }, className)}
+                className={cn(
+                    "wave-button",
+                    theme,
+                    variant,
+                    color,
+                    { disabled: disabled },
+                    { "term-inline": termInline },
+                    className
+                )}
                 onClick={this.handleClick}
                 disabled={disabled}
                 style={style}
