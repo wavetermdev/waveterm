@@ -1266,7 +1266,8 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 		return
 	}
 	if msh.Client == nil {
-		client, err := ConnectToClient(remoteCopy.SSHOpts)
+		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
+		client, err := ConnectToClient(remoteCopy.SSHOpts, remoteDisplayName)
 		if err != nil {
 			statusErr := fmt.Errorf("ssh cannot connect to client: %w", err)
 			msh.setInstallErrorStatus(statusErr)
@@ -1501,7 +1502,8 @@ func (msh *MShellProc) createWaveshellSession(remoteCopy sstore.RemoteType) (she
 		go msh.WaitAndSendPasswordNew(remoteCopy.SSHOpts.SSHPassword)
 		wsSession = shexec.CmdWrap{Cmd: ecmd}
 	} else if msh.Client == nil {
-		client, err := ConnectToClient(remoteCopy.SSHOpts)
+		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
+		client, err := ConnectToClient(remoteCopy.SSHOpts, remoteDisplayName)
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot connect to client: %w", err)
 		}

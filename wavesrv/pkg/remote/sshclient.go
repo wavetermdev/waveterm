@@ -150,15 +150,20 @@ func createDefaultPasswordCallbackPrompt(password string) func() (secret string,
 	}
 }
 
-func createInteractivePasswordCallbackPrompt() func() (secret string, err error) {
+func createInteractivePasswordCallbackPrompt(remoteDisplayName string) func() (secret string, err error) {
 	return func() (secret string, err error) {
 		// limited to 15 seconds for some reason. this should be investigated more
 		// in the future
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
+		queryText := fmt.Sprintf(
+			"Password Authentication requested from connection  \n"+
+				"%s\n\n"+
+				"Password:", remoteDisplayName)
 		request := &userinput.UserInputRequestType{
 			ResponseType: "text",
-			QueryText:    "Password:",
+			QueryText:    queryText,
+			Markdown:     true,
 			Title:        "Password Authentication",
 		}
 		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
@@ -169,13 +174,13 @@ func createInteractivePasswordCallbackPrompt() func() (secret string, err error)
 	}
 }
 
-func createCombinedPasswordCallbackPrompt(password string) func() (secret string, err error) {
+func createCombinedPasswordCallbackPrompt(password string, remoteDisplayName string) func() (secret string, err error) {
 	var once sync.Once
 	return func() (secret string, err error) {
 		var prompt func() (secret string, err error)
 		once.Do(func() { prompt = createDefaultPasswordCallbackPrompt(password) })
 		if prompt == nil {
-			prompt = createInteractivePasswordCallbackPrompt()
+			prompt = createInteractivePasswordCallbackPrompt(remoteDisplayName)
 		}
 		return prompt()
 	}
@@ -194,14 +199,14 @@ func createNaiveKbdInteractiveChallenge(password string) func(name, instruction 
 	}
 }
 
-func createInteractiveKbdInteractiveChallenge() func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
+func createInteractiveKbdInteractiveChallenge(remoteName string) func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 		if len(questions) != len(echos) {
 			return nil, fmt.Errorf("bad response from server: questions has len %d, echos has len %d", len(questions), len(echos))
 		}
 		for i, question := range questions {
 			echo := echos[i]
-			answer, err := promptChallengeQuestion(question, echo)
+			answer, err := promptChallengeQuestion(question, echo, remoteName)
 			if err != nil {
 				return nil, err
 			}
@@ -211,14 +216,19 @@ func createInteractiveKbdInteractiveChallenge() func(name, instruction string, q
 	}
 }
 
-func promptChallengeQuestion(question string, echo bool) (answer string, err error) {
+func promptChallengeQuestion(question string, echo bool, remoteName string) (answer string, err error) {
 	// limited to 15 seconds for some reason. this should be investigated more
 	// in the future
 	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
+	queryText := fmt.Sprintf(
+		"Keyboard Interactive Authentication requested from connection  \n"+
+			"%s\n\n"+
+			"%s", remoteName, question)
 	request := &userinput.UserInputRequestType{
 		ResponseType: "text",
-		QueryText:    question,
+		QueryText:    queryText,
+		Markdown:     true,
 		Title:        "Keyboard Interactive Authentication",
 	}
 	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
@@ -228,13 +238,13 @@ func promptChallengeQuestion(question string, echo bool) (answer string, err err
 	return response.Text, nil
 }
 
-func createCombinedKbdInteractiveChallenge(password string) ssh.KeyboardInteractiveChallenge {
+func createCombinedKbdInteractiveChallenge(password string, remoteName string) ssh.KeyboardInteractiveChallenge {
 	var once sync.Once
 	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 		var challenge ssh.KeyboardInteractiveChallenge
 		once.Do(func() { challenge = createNaiveKbdInteractiveChallenge(password) })
 		if challenge == nil {
-			challenge = createInteractiveKbdInteractiveChallenge()
+			challenge = createInteractiveKbdInteractiveChallenge(remoteName)
 		}
 		return challenge(name, instruction, questions, echos)
 	}
@@ -495,7 +505,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 	return waveHostKeyCallback, nil
 }
 
-func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
+func ConnectToClient(opts *sstore.SSHOpts, remoteDisplayName string) (*ssh.Client, error) {
 	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
 	if err != nil {
 		return nil, err
@@ -507,8 +517,8 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 	}
 
 	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(sshKeywords, opts.SSHPassword))
-	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword))
-	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword))
+	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword, remoteDisplayName))
+	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword, remoteDisplayName))
 
 	// batch mode turns off interactive input. this means the number of
 	// attemtps must drop to 1 with this setup
