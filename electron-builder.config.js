@@ -11,9 +11,8 @@ const config = {
     electronCompile: false,
     publish: {
         provider: "s3",
-        bucket: "dl.waveterm.dev",
-        endpoint: "https://dl.waveterm.dev/autoupdate",
-        publishAutoUpdate: true,
+        bucket: "waveterm-test-autoupdate",
+        endpoint: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
     },
     files: [
         {

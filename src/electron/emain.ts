@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
+import { autoUpdater } from "electron-updater";
 import * as path from "path";
 import * as fs from "fs";
 import fetch from "node-fetch";
@@ -803,8 +804,6 @@ function setAppUpdateStatus(status: string) {
  * @returns The interval at which the auto-updater checks for updates
  */
 function initUpdater(): NodeJS.Timeout {
-    const { autoUpdater } = electron;
-
     if (isDev) {
         console.log("skipping auto-updater in dev mode");
         return null;
@@ -818,12 +817,6 @@ function initUpdater(): NodeJS.Timeout {
         feedURL += "/RELEASES.json";
         serverType = "json";
     }
-
-    autoUpdater.setFeedURL({
-        url: feedURL,
-        headers: { "User-Agent": "Wave Auto-Update" },
-        serverType,
-    });
 
     autoUpdater.removeAllListeners();
 
@@ -844,10 +837,10 @@ function initUpdater(): NodeJS.Timeout {
         console.log("update-not-available");
     });
 
-    autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName, releaseDate, updateURL) => {
-        console.log("update-downloaded", [event, releaseNotes, releaseName, releaseDate, updateURL]);
-        availableUpdateReleaseName = releaseName;
-        availableUpdateReleaseNotes = releaseNotes;
+    autoUpdater.on("update-downloaded", (event) => {
+        console.log("update-downloaded", [event]);
+        availableUpdateReleaseName = event.releaseName;
+        availableUpdateReleaseNotes = event.releaseNotes as string | null;
 
         // Display the update banner and create a system notification
         setAppUpdateStatus("ready");
@@ -879,7 +872,7 @@ async function installAppUpdate() {
     };
 
     await electron.dialog.showMessageBox(MainWindow, dialogOpts).then(({ response }) => {
-        if (response === 0) electron.autoUpdater.quitAndInstall();
+        if (response === 0) autoUpdater.quitAndInstall();
     });
 }
 
