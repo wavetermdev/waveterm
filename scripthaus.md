@@ -50,7 +50,7 @@ GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 (cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-linux.amd64 main-waveshell.go)
 (cd waveshell; CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-v0.4-linux.arm64 main-waveshell.go)
 (cd wavesrv; CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv ./cmd)
-node_modules/.bin/electron-forge make
+yarn run electron-builder -c electron-builder.config.js
 ```
 
 ```bash
