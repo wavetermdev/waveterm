@@ -70,7 +70,6 @@ jobs:
         steps:
             - uses: actions/download-artifact@v4
               with:
-                  merge-multiple: true
                   path: buildtemp
             - name: Set `version.txt`
               run: |
