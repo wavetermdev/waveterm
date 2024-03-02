@@ -12,7 +12,7 @@ import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
-import { MagicLayout } from "../magiclayout";
+import * as textmeasure from "@/util/textmeasure";
 import "./workspace.less";
 
 dayjs.extend(localizedFormat);
@@ -34,7 +34,7 @@ class WorkspaceView extends React.Component<{}, {}> {
         let activeScreen = session.getActiveScreen();
         let cmdInputHeight = model.inputModel.cmdInputHeight.get();
         if (cmdInputHeight == 0) {
-            cmdInputHeight = MagicLayout.CmdInputHeight; // this is the base size of cmdInput (measured using devtools)
+            cmdInputHeight = textmeasure.baseCmdInputHeight(GlobalModel.lineHeightEnv); // this is the base size of cmdInput (measured using devtools)
         }
         let isHidden = GlobalModel.activeMainView.get() != "session";
         let mainSidebarModel = GlobalModel.mainSidebarModel;
@@ -45,7 +45,7 @@ class WorkspaceView extends React.Component<{}, {}> {
 
         return (
             <div
-                className={cn("session-view", { "is-hidden": isHidden })}
+                className={cn("mainview", "session-view", { "is-hidden": isHidden })}
                 data-sessionid={session.sessionId}
                 style={{
                     width: `${width}px`,

@@ -110,7 +110,8 @@ func createPublicKeyCallback(sshKeywords *SshKeywords, passphrase string) func()
 			QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
 			Title:        "Publickey Auth + Passphrase",
 		}
-		ctx, _ := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
 		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 		if err != nil {
 			// this is an error where we actually do want to stop
@@ -267,6 +268,10 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 	}
 
 	_, err = f.WriteString(newLine)
+	if err != nil {
+		f.Close()
+		return err
+	}
 	return f.Close()
 }
 

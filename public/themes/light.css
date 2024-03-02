@@ -1,0 +1,16 @@
+/* Copyright 2024, Command Line Inc.
+   SPDX-License-Identifier: Apache-2.0 */
+
+@import "./default.css";
+
+:root {
+    --app-bg-color: #ffffff;
+    --app-text-color: #000000;
+
+    /* sidebar colors */
+    --app-panel-bg-color: #cccccc;
+    --app-panel-bg-color-dev: #eeeeff;
+
+    --term-black: #ffffff;
+    --term-white: #000000;
+}

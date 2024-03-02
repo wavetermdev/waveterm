@@ -15,7 +15,6 @@ import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "@/common/prompt/prompt";
-import { ReactComponent as ExecIcon } from "@/assets/icons/exec.svg";
 import { RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
 
@@ -182,38 +181,40 @@ class CmdInput extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </If>
-                <div key="prompt" className="cmd-input-context">
-                    <div className="has-text-white">
-                        <span ref={this.promptRef}>
-                            <Prompt rptr={rptr} festate={feState} />
-                        </span>
-                    </div>
-                    <If condition={numRunningLines > 0}>
-                        <div onClick={() => this.toggleFilter(screen)} className="cmd-input-filter">
-                            {numRunningLines}
-                            <div className="avatar">
-                                <RotateIcon className="warning spin" />
+                <div key="base-cmdinput" className="base-cmdinput">
+                    <div key="prompt" className="cmd-input-context">
+                        <div className="has-text-white">
+                            <span ref={this.promptRef}>
+                                <Prompt rptr={rptr} festate={feState} color={true} />
+                            </span>
+                        </div>
+                        <If condition={numRunningLines > 0}>
+                            <div onClick={() => this.toggleFilter(screen)} className="cmd-input-filter">
+                                {numRunningLines}
+                                <div className="avatar">
+                                    <RotateIcon className="warning spin" />
+                                </div>
                             </div>
-                        </div>
-                    </If>
-                </div>
-                <div
-                    key="input"
-                    className={cn(
-                        "cmd-input-field field has-addons",
-                        inputMode != null ? "inputmode-" + inputMode : null
-                    )}
-                >
-                    <If condition={inputMode != null}>
-                        <div className="control cmd-quick-context">
-                            <div className="button is-static">{inputMode}</div>
-                        </div>
-                    </If>
-                    <TextAreaInput
-                        key={textAreaInputKey}
-                        screen={screen}
-                        onHeightChange={this.handleInnerHeightUpdate}
-                    />
+                        </If>
+                    </div>
+                    <div
+                        key="input"
+                        className={cn(
+                            "cmd-input-field field has-addons",
+                            inputMode != null ? "inputmode-" + inputMode : null
+                        )}
+                    >
+                        <If condition={inputMode != null}>
+                            <div className="control cmd-quick-context">
+                                <div className="button is-static">{inputMode}</div>
+                            </div>
+                        </If>
+                        <TextAreaInput
+                            key={textAreaInputKey}
+                            screen={screen}
+                            onHeightChange={this.handleInnerHeightUpdate}
+                        />
+                    </div>
                 </div>
             </div>
         );

@@ -6,7 +6,8 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { For } from "tsx-control-statements/components";
+import { For, If } from "tsx-control-statements/components";
+import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Session, Screen } from "@/models";
 import { ReactComponent as AddIcon } from "@/assets/icons/add.svg";
 import { Reorder } from "framer-motion";
@@ -176,11 +177,13 @@ class ScreenTabs extends React.Component<
         let screen: Screen | null = null;
         let index = 0;
         let activeScreenId = this.getActiveScreenId();
-
         return (
             <div className="screen-tabs-container">
                 {/* Inner container ensures that hovering over the scrollbar doesn't trigger the hover effect on the tabs. This prevents weird flickering of the icons when the mouse is moved over the scrollbar. */}
-                <div className="screen-tabs-container-inner hideScrollbarUntillHover">
+                <div
+                    key="container-inner"
+                    className="screen-tabs-container-inner no-highlight-scrollbar scrollbar-hide-until-hover"
+                >
                     <Reorder.Group
                         className="screen-tabs"
                         ref={this.tabsRef}
@@ -205,7 +208,7 @@ class ScreenTabs extends React.Component<
                 <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
                     <AddIcon className="icon hoverEffect" />
                 </div>
-                <div className="tabs-end-spacer" />
+                <div key="spacer" className="tabs-end-spacer" />
             </div>
         );
     }

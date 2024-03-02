@@ -10,13 +10,13 @@ import cn from "classnames";
 import { GlobalModel } from "@/models";
 import { CmdStrCode, Markdown } from "@/common/elements";
 
-import { ReactComponent as XmarkIcon } from "@/assets/icons/line/xmark.svg";
 import { ReactComponent as CopyIcon } from "@/assets/icons/favourites/copy.svg";
 import { ReactComponent as PenIcon } from "@/assets/icons/favourites/pen.svg";
 import { ReactComponent as TrashIcon } from "@/assets/icons/favourites/trash.svg";
 import { ReactComponent as FavoritesIcon } from "@/assets/icons/favourites.svg";
 
 import "./bookmarks.less";
+import { MainView } from "../common/elements/mainview";
 
 type BookmarkProps = {
     bookmark: BookmarkType;
@@ -24,10 +24,6 @@ type BookmarkProps = {
 
 @mobxReact.observer
 class Bookmark extends React.Component<BookmarkProps, {}> {
-    constructor(props: BookmarkProps) {
-        super(props);
-    }
-
     @boundMethod
     handleDeleteClick(): void {
         let { bookmark } = this.props;
@@ -46,14 +42,12 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
     handleEditCancel(): void {
         let model = GlobalModel.bookmarksModel;
         model.cancelEdit();
-        return;
     }
 
     @boundMethod
     handleEditUpdate(): void {
         let model = GlobalModel.bookmarksModel;
         model.confirmEdit();
-        return;
     }
 
     @boundMethod
@@ -186,31 +180,20 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
 
 @mobxReact.observer
 class BookmarksView extends React.Component<{}, {}> {
-    constructor(props: {}) {
-        super(props);
-    }
-
     @boundMethod
-    closeView(): void {
+    handleClose() {
         GlobalModel.bookmarksModel.closeView();
     }
 
     render() {
-        let isHidden = GlobalModel.activeMainView.get() != "bookmarks";
+        const isHidden = GlobalModel.activeMainView.get() != "bookmarks";
         if (isHidden) {
             return null;
         }
         let bookmarks = GlobalModel.bookmarksModel.bookmarks;
-        let idx: number = 0;
         let bookmark: BookmarkType = null;
         return (
-            <div className={cn("bookmarks-view", { "is-hidden": isHidden })}>
-                <div className="header">
-                    <div className="bookmarks-title">Favorites</div>
-                    <div className="close-button hoverEffect" title="Close (Escape)" onClick={this.closeView}>
-                        <XmarkIcon className={"icon"} />
-                    </div>
-                </div>
+            <MainView viewName="bookmarks" title="Bookmarks" onClose={this.handleClose}>
                 <div className="bookmarks-list">
                     <For index="idx" each="bookmark" of={bookmarks}>
                         <Bookmark key={bookmark.bookmarkid} bookmark={bookmark} />
@@ -239,7 +222,7 @@ class BookmarksView extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </If>
-            </div>
+            </MainView>
         );
     }
 }

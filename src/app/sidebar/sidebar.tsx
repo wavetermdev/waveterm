@@ -10,10 +10,11 @@ import dayjs from "dayjs";
 import { If } from "tsx-control-statements/components";
 import { compareLoose } from "semver";
 
-import { ReactComponent as LeftChevronIcon } from "@/assets/icons/chevron_left.svg";
 import { ReactComponent as AppsIcon } from "@/assets/icons/apps.svg";
 import { ReactComponent as WorkspacesIcon } from "@/assets/icons/workspaces.svg";
 import { ReactComponent as SettingsIcon } from "@/assets/icons/settings.svg";
+import { ReactComponent as WaveLogoWord } from "@/assets/wave-logo_horizontal-coloronblack.svg";
+import { ReactComponent as WaveLogo } from "@/assets/waveterm-logo.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
@@ -169,6 +170,44 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
         GlobalModel.modalsModel.pushModal(appconst.SESSION_SETTINGS);
     }
 
+    /**
+     * Get the update banner for the app, if we need to show it.
+     * @returns Either a banner to install the ready update, a link to the download page, or null if no update is available.
+     */
+    @boundMethod
+    getUpdateAppBanner(): React.ReactNode {
+        if (GlobalModel.platform == "darwin") {
+            const status = GlobalModel.appUpdateStatus.get();
+            if (status == "ready") {
+                return (
+                    <SideBarItem
+                        key="update-ready"
+                        className="update-banner"
+                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                        contents="Click to Install Update"
+                        onClick={() => GlobalModel.installAppUpdate()}
+                    />
+                );
+            }
+        } else {
+            const clientData = this.props.clientData;
+            if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
+                if (compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0) {
+                    return (
+                        <SideBarItem
+                            key="update-available"
+                            className="update-banner"
+                            frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                            contents="Update Available"
+                            onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
+                        />
+                    );
+                }
+            }
+        }
+        return null;
+    }
+
     getSessions() {
         if (!GlobalModel.sessionListLoaded.get()) return <div className="item">loading ...</div>;
         const sessionList: Session[] = [];
@@ -227,13 +266,8 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
-        const clientData = this.props.clientData;
-        let needsUpdate = false;
-        if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
-            needsUpdate = compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0;
-        }
-        const mainSidebar = GlobalModel.mainSidebarModel;
-        const isCollapsed = mainSidebar.getCollapsed();
+        const sidebarWidth = GlobalModel.mainSidebarModel.getWidth();
+
         return (
             <ResizableSidebar
                 className="main-sidebar"
@@ -243,25 +277,15 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             >
                 {(toggleCollapse) => (
                     <React.Fragment>
-                        <div className="title-bar-drag" />
-                        <div className="contents">
+                        <div className="title-bar-drag">
                             <div className="logo">
-                                <If condition={isCollapsed}>
-                                    <div className="logo-container" onClick={toggleCollapse}>
-                                        <img src="public/logos/wave-logo.png" />
-                                    </div>
-                                </If>
-                                <If condition={!isCollapsed}>
-                                    <div className="logo-container">
-                                        <img src="public/logos/wave-dark.png" />
-                                    </div>
-                                    <div className="spacer" />
-                                    <div className="collapse-button" onClick={toggleCollapse}>
-                                        <LeftChevronIcon className="icon" />
-                                    </div>
-                                </If>
+                                <WaveLogo />
                             </div>
-                            <div className="separator" />
+                            <div className="close-button">
+                                <i className="fa-sharp fa-solid fa-xmark-large" onClick={toggleCollapse} />
+                            </div>
+                        </div>
+                        <div className="contents">
                             <div className="top">
                                 <SideBarItem
                                     key="history"
@@ -295,7 +319,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 ]}
                             />
                             <div
-                                className="middle hideScrollbarUntillHover"
+                                className="middle scrollbar-hide-until-hover"
                                 id="sidebar-middle"
                                 style={{
                                     maxHeight: `calc(100vh - ${this.middleHeightSubtractor.get()}px)`,
@@ -304,15 +328,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 {this.getSessions()}
                             </div>
                             <div className="bottom" id="sidebar-bottom">
-                                <If condition={needsUpdate}>
-                                    <SideBarItem
-                                        key="update-available"
-                                        className="update-banner"
-                                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
-                                        contents="Update Available"
-                                        onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
-                                    />
-                                </If>
+                                {this.getUpdateAppBanner()}
                                 <If condition={GlobalModel.isDev}>
                                     <SideBarItem
                                         key="apps"

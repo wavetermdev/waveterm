@@ -142,9 +142,9 @@ class AIChat extends React.Component<{}, {}> {
         let msgClassName = "chat-msg " + senderClassName;
         let innerHTML: React.JSX.Element = (
             <span>
-                <div style={{ display: "flex", marginBottom: 2 }}>
-                    <i className="fa-sharp fa-solid fa-user" style={{ marginRight: "7px", marginTop: "2px" }}></i>
-                    <div style={{ marginRight: "5px" }}>You</div>
+                <div className="chat-msg-header">
+                    <i className="fa-sharp fa-solid fa-user"></i>
+                    <div className="chat-username">You</div>
                 </div>
                 <p className="msg-text">{chatItem.userquery}</p>
             </span>
@@ -155,12 +155,9 @@ class AIChat extends React.Component<{}, {}> {
             } else {
                 innerHTML = (
                     <span>
-                        <div style={{ display: "flex", marginBottom: 2 }}>
-                            <i
-                                className="fa-sharp fa-solid fa-headset"
-                                style={{ marginRight: "7px", marginTop: "3px" }}
-                            ></i>
-                            <div style={{ marginRight: "5px" }}>ChatGPT</div>
+                        <div className="chat-msg-header">
+                            <i className="fa-sharp fa-solid fa-headset"></i>
+                            <div className="chat-username">ChatGPT</div>
                         </div>
                         <Markdown text={chatItem.assistantresponse.message} codeSelect />
                     </span>

@@ -11,7 +11,7 @@ import { GlobalModel, GlobalCommandRunner } from "@/models";
 import { Modal, TextField, InputDecoration, Tooltip } from "@/elements";
 import * as util from "@/util/util";
 import { Screen } from "@/models";
-import { ReactComponent as SquareIcon } from "@/assets/icons/tab/square.svg";
+import { TabIcon } from "@/elements/tabicon";
 
 import "./tabswitcher.less";
 
@@ -279,15 +279,6 @@ class TabSwitcherModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    renderIcon(option: SwitcherDataType): React.ReactNode {
-        const tabIcon = option.icon;
-        if (tabIcon === "default" || tabIcon === "square") {
-            return <SquareIcon className="left-icon" />;
-        }
-        return <i className={`fa-sharp fa-solid fa-${tabIcon}`}></i>;
-    }
-
-    @boundMethod
     renderOption(option: SwitcherDataType, index: number): JSX.Element {
         if (!this.optionRefs[index]) {
             this.optionRefs[index] = React.createRef();
@@ -302,7 +293,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
                 onClick={() => this.handleSelect(index)}
             >
                 <If condition={option.sessionIdx != -1}>
-                    <div className={cn("icon", "color-" + option.color)}>{this.renderIcon(option)}</div>
+                    <TabIcon icon={option.icon} color={option.color} />
                     <div className="tabname">
                         #{option.sessionName} / {option.screenName}
                     </div>

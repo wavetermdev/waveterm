@@ -1,11 +1,10 @@
-@import "@/common/themes/themes.less";
-
 .history-view {
-    background-color: var(--session-bg-color);
+    padding-bottom: 10px;
 
     .icon {
-        width: 1.3em !important;
-        height: 1.3em !important;
+        width: 1.5em !important;
+        height: 1em !important;
+        padding-left: 5px;
         fill: var(--app-text-color);
     }
 
@@ -40,34 +39,17 @@
         top: 0.5em;
     }
 
-    .close-div {
-        position: absolute;
-        right: 1em;
-        top: 0.8em;
-        cursor: pointer;
-        width: 1.5em;
-        height: 1.5em;
-        border-radius: 50%;
-        svg {
-            width: 1.5em;
-            height: 1.5em;
-            fill: var(--app-text-color);
-        }
-    }
-
-    .header {
-        margin: 1.5em 1.5em 0.5em;
-
-        .history-title {
-            margin-bottom: 0.5em;
-            font-weight: bold;
-            font-size: 1.5em;
-        }
-    }
-
     .history-search {
-        flex-grow: 1;
-        margin-top: 5px;
+        padding: 0 10px 10px 10px;
+
+        input {
+            border: none;
+            border-radius: 4px;
+            font-size: 1em;
+            padding: 0.5em 1em;
+            background-color: var(--textfield-bg-color);
+            color: var(--app-text-color);
+        }
 
         .main-search {
             .field {
@@ -169,6 +151,7 @@
         margin-left: 10px;
         align-items: center;
         height: 32px;
+        flex-shrink: 0;
 
         .is-hidden {
             display: none;
@@ -251,6 +234,12 @@
         margin: 20px 50px 20px 20px;
     }
 
+    .history-scroll-region {
+        flex-grow: 1;
+        min-height: 200px;
+        overflow-y: auto;
+    }
+
     .history-table {
         margin: 0px 10px 10px 10px;
         table-layout: fixed;
@@ -264,7 +253,7 @@
                 .line-container {
                     padding: 0px 10px 10px 10px;
                     overflow-x: auto;
-                    background-color: var(--prompt-black);
+                    background-color: var(--term-black);
                 }
 
                 .line-context {

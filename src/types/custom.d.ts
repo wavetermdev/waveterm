@@ -11,6 +11,7 @@ declare global {
     type HistoryTypeStrs = "global" | "session" | "screen";
     type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error";
     type LineContainerStrs = "main" | "sidebar" | "history";
+    type AppUpdateStatusType = "unavailable" | "ready";
 
     type OV<V> = mobx.IObservableValue<V>;
     type OArr<V> = mobx.IObservableArray<V>;
@@ -561,6 +562,7 @@ declare global {
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
+        theme: string;
     };
 
     type ConfirmFlagsType = {
@@ -844,6 +846,29 @@ declare global {
         getContainerType(): LineContainerStrs;
     };
 
+    // the "environment" for computing a line's height (stays constant for a given term font family / size)
+    type LineHeightEnv = {
+        fontSize: number;
+        fontSizeSm: number;
+        lineHeight: number;
+        lineHeightSm: number;
+        pad: number;
+    };
+
+    // the "variables" for computing a line's height (changes per line)
+    type LineChromeHeightVars = {
+        numCmdLines: number;
+        zeroHeight: boolean;
+        hasLine2: boolean;
+    };
+
+    type MonoFontSize = {
+        height: number;
+        width: number;
+        fontSize: number;
+        pad: number;
+    };
+
     type KeyModsType = {
         meta?: boolean;
         ctrl?: boolean;
@@ -863,6 +888,10 @@ declare global {
         reloadWindow: () => void;
         openExternalLink: (url: string) => void;
         reregisterGlobalShortcut: (shortcut: string) => void;
+        changeAutoUpdate: (enabled: boolean) => void;
+        installAppUpdate: () => void;
+        getAppUpdateStatus: () => AppUpdateStatusType;
+        onAppUpdateStatus: (callback: (status: AppUpdateStatusType) => void) => void;
         onZoomChanged: (callback: () => void) => void;
         onMenuItemAbout: (callback: () => void) => void;
         contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;

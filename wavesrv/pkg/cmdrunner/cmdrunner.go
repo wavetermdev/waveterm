@@ -97,6 +97,7 @@ var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cy
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 var ConfirmFlags = []string{"hideshellprompt"}
 var SidebarNames = []string{"main"}
+var ThemeNames = []string{"light", "dark"}
 
 var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal", "chat"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
@@ -5197,6 +5198,26 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("error updating client feopts: %v", err)
 		}
 		varsUpdated = append(varsUpdated, "termfontfamily")
+	}
+	if themeStr, found := pk.Kwargs["theme"]; found {
+		newTheme := themeStr
+		found := false
+		for _, theme := range ThemeNames {
+			if newTheme == theme {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("invalid theme name")
+		}
+		feOpts := clientData.FeOpts
+		feOpts.Theme = newTheme
+		err = sstore.UpdateClientFeOpts(ctx, feOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client feopts: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "theme")
 	}
 	if apiToken, found := pk.Kwargs["openaiapitoken"]; found {
 		err = validateOpenAIAPIToken(apiToken)

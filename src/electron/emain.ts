@@ -11,7 +11,7 @@ import * as winston from "winston";
 import * as util from "util";
 import * as waveutil from "../util/util";
 import { sprintf } from "sprintf-js";
-import { handleJsonFetchResponse } from "@/util/util";
+import { handleJsonFetchResponse, fireAndForget } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
 import { setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
@@ -23,12 +23,13 @@ const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
 
-let isDev = process.env[WaveDevVarName] != null;
-let waveHome = getWaveHomeDir();
-let DistDir = isDev ? "dist-dev" : "dist";
+const isDev = process.env[WaveDevVarName] != null;
+const waveHome = getWaveHomeDir();
+const DistDir = isDev ? "dist-dev" : "dist";
+const instanceId = uuidv4();
+const oldConsoleLog = console.log;
+
 let GlobalAuthKey = "";
-let instanceId = uuidv4();
-let oldConsoleLog = console.log;
 let wasActive = true;
 let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
@@ -39,18 +40,18 @@ ensureDir(waveHome);
 
 // these are either "darwin/amd64" or "darwin/arm64"
 // normalize darwin/x64 to darwin/amd64 for GOARCH compatibility
-let unamePlatform = process.platform;
+const unamePlatform = process.platform;
 let unameArch: string = process.arch;
 if (unameArch == "x64") {
     unameArch = "amd64";
 }
-let loggerTransports: winston.transport[] = [
+const loggerTransports: winston.transport[] = [
     new winston.transports.File({ filename: path.join(waveHome, "waveterm-app.log"), level: "info" }),
 ];
 if (isDev) {
     loggerTransports.push(new winston.transports.Console());
 }
-let loggerConfig = {
+const loggerConfig = {
     level: "info",
     format: winston.format.combine(
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
@@ -58,8 +59,8 @@ let loggerConfig = {
     ),
     transports: loggerTransports,
 };
-let logger = winston.createLogger(loggerConfig);
-function log(...msg) {
+const logger = winston.createLogger(loggerConfig);
+function log(...msg: any[]) {
     try {
         logger.info(util.format(...msg));
     } catch (e) {
@@ -79,7 +80,7 @@ console.log(
 if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
 }
-let app = electron.app;
+const app = electron.app;
 app.setName(isDev ? "Wave (Dev)" : "Wave");
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 let waveSrvShouldRestart = false;
@@ -102,7 +103,7 @@ function getWaveHomeDir() {
 }
 
 function checkPromptMigrate() {
-    let waveHome = getWaveHomeDir();
+    const waveHome = getWaveHomeDir();
     if (isDev || fs.existsSync(waveHome)) {
         // don't migrate if we're running dev version or if wave home directory already exists
         return;
@@ -110,8 +111,8 @@ function checkPromptMigrate() {
     if (process.env.HOME == null) {
         return;
     }
-    let homeDir: string = process.env.HOME;
-    let promptHome: string = path.join(homeDir, "prompt");
+    const homeDir: string = process.env.HOME;
+    const promptHome: string = path.join(homeDir, "prompt");
     if (!fs.existsSync(promptHome) || !fs.existsSync(path.join(promptHome, "prompt.db"))) {
         // make sure we have a valid prompt home directory (prompt.db must exist inside)
         return;
@@ -148,39 +149,38 @@ function getWaveSrvPath() {
 }
 
 function getWaveSrvCmd() {
-    let waveSrvPath = getWaveSrvPath();
-    let waveHome = getWaveHomeDir();
-    let logFile = path.join(waveHome, "wavesrv.log");
+    const waveSrvPath = getWaveSrvPath();
+    const waveHome = getWaveHomeDir();
+    const logFile = path.join(waveHome, "wavesrv.log");
     return `"${waveSrvPath}" >> "${logFile}" 2>&1`;
 }
 
 function getWaveSrvCwd() {
-    let waveHome = getWaveHomeDir();
-    return waveHome;
+    return getWaveHomeDir();
 }
 
-function ensureDir(dir) {
+function ensureDir(dir: fs.PathLike) {
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 }
 
 function readAuthKey() {
-    let homeDir = getWaveHomeDir();
-    let authKeyFileName = path.join(homeDir, AuthKeyFile);
+    const homeDir = getWaveHomeDir();
+    const authKeyFileName = path.join(homeDir, AuthKeyFile);
     if (!fs.existsSync(authKeyFileName)) {
-        let authKeyStr = String(uuidv4());
+        const authKeyStr = String(uuidv4());
         fs.writeFileSync(authKeyFileName, authKeyStr, { mode: 0o600 });
         return authKeyStr;
     }
-    let authKeyData = fs.readFileSync(authKeyFileName);
-    let authKeyStr = String(authKeyData);
+    const authKeyData = fs.readFileSync(authKeyFileName);
+    const authKeyStr = String(authKeyData);
     if (authKeyStr == null || authKeyStr == "") {
         throw new Error("cannot read authkey");
     }
     return authKeyStr.trim();
 }
 const reloadAcceleratorKey = unamePlatform == "darwin" ? "Option+R" : "Super+R";
-let cmdOrAlt = process.platform === "darwin" ? "Cmd" : "Alt";
-let menuTemplate: Electron.MenuItemConstructorOptions[] = [
+const cmdOrAlt = process.platform === "darwin" ? "Cmd" : "Alt";
+const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {
         role: "appMenu",
         submenu: [
@@ -255,7 +255,7 @@ let menuTemplate: Electron.MenuItemConstructorOptions[] = [
     },
 ];
 
-let menu = electron.Menu.buildFromTemplate(menuTemplate);
+const menu = electron.Menu.buildFromTemplate(menuTemplate);
 electron.Menu.setApplicationMenu(menu);
 
 let MainWindow: Electron.BrowserWindow | null = null;
@@ -275,12 +275,12 @@ function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEven
 }
 
 function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNavigateEventParams>) {
-    if (!event.frame || event.frame.parent == null) {
+    if (!event.frame?.parent) {
         // only use this handler to process iframe events (non-iframe events go to shNavHandler)
         return;
     }
     event.preventDefault();
-    let url = event.url;
+    const url = event.url;
     console.log(`frame-navigation url=${url} frame=${event.frame.name}`);
     if (event.frame.name == "webview") {
         // "webview" links always open in new window
@@ -290,13 +290,12 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
         return;
     }
     console.log("frame navigation canceled");
-    return;
 }
 
 function createMainWindow(clientData: ClientDataType | null) {
-    let bounds = calcBounds(clientData);
+    const bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
-    let win = new electron.BrowserWindow({
+    const win = new electron.BrowserWindow({
         x: bounds.x,
         y: bounds.y,
         titleBarStyle: "hiddenInset",
@@ -310,7 +309,7 @@ function createMainWindow(clientData: ClientDataType | null) {
             preload: path.join(getAppBasePath(), DistDir, "preload.js"),
         },
     });
-    let indexHtml = isDev ? "index-dev.html" : "index.html";
+    const indexHtml = isDev ? "index-dev.html" : "index.html";
     win.loadFile(path.join(getAppBasePath(), "public", indexHtml));
     win.webContents.on("before-input-event", (e, input) => {
         if (win.isFocused()) {
@@ -345,9 +344,9 @@ function createMainWindow(clientData: ClientDataType | null) {
             console.log("openExternal discord", url);
             electron.shell.openExternal(url);
         } else if (url.startsWith("https://extern/?")) {
-            let qmark = url.indexOf("?");
-            let param = url.substr(qmark + 1);
-            let newUrl = decodeURIComponent(param);
+            const qmark = url.indexOf("?");
+            const param = url.substring(qmark + 1);
+            const newUrl = decodeURIComponent(param);
             console.log("openExternal extern", newUrl);
             electron.shell.openExternal(newUrl);
         } else if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://")) {
@@ -357,18 +356,18 @@ function createMainWindow(clientData: ClientDataType | null) {
         console.log("window-open denied", url);
         return { action: "deny" };
     });
+
     return win;
 }
 
-function mainResizeHandler(e, win) {
+function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
     if (win == null || win.isDestroyed() || win.fullScreen) {
         return;
     }
-    let bounds = win.getBounds();
-    // console.log("resize/move", win.getBounds());
-    let winSize = { width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x };
-    let url = new URL(getBaseHostPort() + "/api/set-winsize");
-    let fetchHeaders = getFetchHeaders();
+    const bounds = win.getBounds();
+    const winSize = { width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x };
+    const url = new URL(getBaseHostPort() + "/api/set-winsize");
+    const fetchHeaders = getFetchHeaders();
     fetch(url, { method: "post", body: JSON.stringify(winSize), headers: fetchHeaders })
         .then((resp) => handleJsonFetchResponse(url, resp))
         .catch((err) => {
@@ -377,11 +376,11 @@ function mainResizeHandler(e, win) {
 }
 
 function calcBounds(clientData: ClientDataType) {
-    let primaryDisplay = electron.screen.getPrimaryDisplay();
-    let pdBounds = primaryDisplay.bounds;
-    let size = { x: 100, y: 100, width: pdBounds.width - 200, height: pdBounds.height - 200 };
-    if (clientData != null && clientData.winsize != null && clientData.winsize.width > 0) {
-        let cwinSize = clientData.winsize;
+    const primaryDisplay = electron.screen.getPrimaryDisplay();
+    const pdBounds = primaryDisplay.bounds;
+    const size = { x: 100, y: 100, width: pdBounds.width - 200, height: pdBounds.height - 200 };
+    if (clientData?.winsize?.width > 0) {
+        const cwinSize = clientData.winsize;
         if (cwinSize.width > 0) {
             size.width = cwinSize.width;
         }
@@ -428,32 +427,26 @@ electron.ipcMain.on("toggle-developer-tools", (event) => {
 
 electron.ipcMain.on("get-id", (event) => {
     event.returnValue = instanceId + ":" + event.processId;
-    return;
 });
 
 electron.ipcMain.on("get-platform", (event) => {
     event.returnValue = unamePlatform;
-    return;
 });
 
 electron.ipcMain.on("get-isdev", (event) => {
     event.returnValue = isDev;
-    return;
 });
 
 electron.ipcMain.on("get-authkey", (event) => {
     event.returnValue = GlobalAuthKey;
-    return;
 });
 
 electron.ipcMain.on("wavesrv-status", (event) => {
     event.returnValue = waveSrvProc != null;
-    return;
 });
 
 electron.ipcMain.on("get-initial-termfontfamily", (event) => {
     event.returnValue = initialClientData?.feopts?.termfontfamily;
-    return;
 });
 
 electron.ipcMain.on("restart-server", (event) => {
@@ -465,7 +458,6 @@ electron.ipcMain.on("restart-server", (event) => {
         runWaveSrv();
     }
     event.returnValue = true;
-    return;
 });
 
 electron.ipcMain.on("reload-window", (event) => {
@@ -473,35 +465,29 @@ electron.ipcMain.on("reload-window", (event) => {
         MainWindow.reload();
     }
     event.returnValue = true;
-    return;
 });
 
-electron.ipcMain.on("open-external-link", async (_, url) => {
-    try {
-        await electron.shell.openExternal(url);
-    } catch (err) {
-        console.warn("error opening external link", err);
-    }
-});
+electron.ipcMain.on("open-external-link", (_, url) => fireAndForget(() => electron.shell.openExternal(url)));
 
 electron.ipcMain.on("reregister-global-shortcut", (event, shortcut: string) => {
     reregisterGlobalShortcut(shortcut);
     event.returnValue = true;
-    return;
 });
 
-electron.ipcMain.on("get-last-logs", async (event, numberOfLines) => {
-    try {
-        const logPath = path.join(getWaveHomeDir(), "wavesrv.log");
-        const lastLines = await readLastLinesOfFile(logPath, numberOfLines);
-        event.reply("last-logs", lastLines);
-    } catch (err) {
-        console.error("Error reading log file:", err);
-        event.reply("last-logs", "Error reading log file.");
-    }
+electron.ipcMain.on("get-last-logs", (event, numberOfLines) => {
+    fireAndForget(async () => {
+        try {
+            const logPath = path.join(getWaveHomeDir(), "wavesrv.log");
+            const lastLines = await readLastLinesOfFile(logPath, numberOfLines);
+            event.reply("last-logs", lastLines);
+        } catch (err) {
+            console.error("Error reading log file:", err);
+            event.reply("last-logs", "Error reading log file.");
+        }
+    });
 });
 
-function readLastLinesOfFile(filePath, lineCount) {
+function readLastLinesOfFile(filePath: string, lineCount: number) {
     return new Promise((resolve, reject) => {
         child_process.exec(`tail -n ${lineCount} "${filePath}"`, (err, stdout, stderr) => {
             if (err) {
@@ -518,8 +504,8 @@ function readLastLinesOfFile(filePath, lineCount) {
 }
 
 function getContextMenu(): any {
-    let menu = new electron.Menu();
-    let menuItem = new electron.MenuItem({ label: "Testing", click: () => console.log("click testing!") });
+    const menu = new electron.Menu();
+    const menuItem = new electron.MenuItem({ label: "Testing", click: () => console.log("click testing!") });
     menu.append(menuItem);
     return menu;
 }
@@ -531,8 +517,8 @@ function getFetchHeaders() {
 }
 
 async function getClientDataPoll(loopNum: number) {
-    let lastTime = loopNum >= 6;
-    let cdata = await getClientData(!lastTime, loopNum);
+    const lastTime = loopNum >= 6;
+    const cdata = await getClientData(!lastTime, loopNum);
     if (lastTime || cdata != null) {
         return cdata;
     }
@@ -540,9 +526,9 @@ async function getClientDataPoll(loopNum: number) {
     return getClientDataPoll(loopNum + 1);
 }
 
-function getClientData(willRetry: boolean, retryNum: number) {
-    let url = new URL(getBaseHostPort() + "/api/get-client-data");
-    let fetchHeaders = getFetchHeaders();
+async function getClientData(willRetry: boolean, retryNum: number) {
+    const url = new URL(getBaseHostPort() + "/api/get-client-data");
+    const fetchHeaders = getFetchHeaders();
     return fetch(url, { headers: fetchHeaders })
         .then((resp) => handleJsonFetchResponse(url, resp))
         .then((data) => {
@@ -554,9 +540,9 @@ function getClientData(willRetry: boolean, retryNum: number) {
         .catch((err) => {
             if (willRetry) {
                 console.log("error getting client-data from wavesrv, will retry", "(" + retryNum + ")");
-                return null;
+            } else {
+                console.log("error getting client-data from wavesrv, failed: ", err);
             }
-            console.log("error getting client-data from wavesrv, failed: ", err);
             return null;
         });
 }
@@ -574,18 +560,18 @@ function sendWSSC() {
 function runWaveSrv() {
     let pResolve: (value: unknown) => void;
     let pReject: (reason?: any) => void;
-    let rtnPromise = new Promise((argResolve, argReject) => {
+    const rtnPromise = new Promise((argResolve, argReject) => {
         pResolve = argResolve;
         pReject = argReject;
     });
-    let envCopy = Object.assign({}, process.env);
+    const envCopy = { ...process.env };
     envCopy[WaveAppPathVarName] = getAppBasePath();
     if (isDev) {
         envCopy[WaveDevVarName] = "1";
     }
-    let waveSrvCmd = getWaveSrvCmd();
+    const waveSrvCmd = getWaveSrvCmd();
     console.log("trying to run local server", waveSrvCmd);
-    let proc = child_process.spawn("bash", ["-c", waveSrvCmd], {
+    const proc = child_process.spawn("bash", ["-c", waveSrvCmd], {
         cwd: getWaveSrvCwd(),
         env: envCopy,
     });
@@ -610,29 +596,29 @@ function runWaveSrv() {
     proc.on("error", (e) => {
         console.log("error running wavesrv", e);
     });
-    proc.stdout.on("data", (output) => {
+    proc.stdout.on("data", (_) => {
         return;
     });
-    proc.stderr.on("data", (output) => {
+    proc.stderr.on("data", (_) => {
         return;
     });
     return rtnPromise;
 }
 
-electron.ipcMain.on("context-screen", (event, { screenId }, { x, y }) => {
+electron.ipcMain.on("context-screen", (_, { screenId }, { x, y }) => {
     console.log("context-screen", screenId);
-    let menu = getContextMenu();
+    const menu = getContextMenu();
     menu.popup({ x, y });
 });
 
-electron.ipcMain.on("context-editmenu", (event, { x, y }, opts) => {
+electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
     if (opts == null) {
         opts = {};
     }
     console.log("context-editmenu");
-    let menu = new electron.Menu();
+    const menu = new electron.Menu();
     if (opts.showCut) {
-        let menuItem = new electron.MenuItem({ label: "Cut", role: "cut" });
+        const menuItem = new electron.MenuItem({ label: "Cut", role: "cut" });
         menu.append(menuItem);
     }
     let menuItem = new electron.MenuItem({ label: "Copy", role: "copy" });
@@ -654,16 +640,17 @@ async function createMainWindowWrap() {
     if (clientData && clientData.winsize.fullscreen) {
         MainWindow.setFullScreen(true);
     }
+    configureAutoUpdaterStartup(clientData);
 }
 
-async function sleep(ms) {
-    return new Promise((resolve, reject) => setTimeout(resolve, ms));
+async function sleep(ms: number) {
+    return new Promise((resolve, _) => setTimeout(resolve, ms));
 }
 
 function logActiveState() {
-    let activeState = { fg: wasInFg, active: wasActive, open: true };
-    let url = new URL(getBaseHostPort() + "/api/log-active-state");
-    let fetchHeaders = getFetchHeaders();
+    const activeState = { fg: wasInFg, active: wasActive, open: true };
+    const url = new URL(getBaseHostPort() + "/api/log-active-state");
+    const fetchHeaders = getFetchHeaders();
     fetch(url, { method: "post", body: JSON.stringify(activeState), headers: fetchHeaders })
         .then((resp) => handleJsonFetchResponse(url, resp))
         .catch((err) => {
@@ -696,7 +683,7 @@ function reregisterGlobalShortcut(shortcut: string) {
         currentGlobalShortcut = null;
         return;
     }
-    let ok = electron.globalShortcut.register(shortcut, () => {
+    const ok = electron.globalShortcut.register(shortcut, () => {
         console.log("global shortcut triggered, showing window");
         MainWindow?.show();
     });
@@ -708,10 +695,161 @@ function reregisterGlobalShortcut(shortcut: string) {
     currentGlobalShortcut = shortcut;
 }
 
+// ====== AUTO-UPDATER ====== //
+let autoUpdateLock = false;
+let autoUpdateInterval: NodeJS.Timeout | null = null;
+let availableUpdateReleaseName: string | null = null;
+let availableUpdateReleaseNotes: string | null = null;
+let appUpdateStatus = "unavailable";
+
+/**
+ * Sets the app update status and sends it to the main window
+ * @param status The AppUpdateStatus to set, either "ready" or "unavailable"
+ */
+function setAppUpdateStatus(status: string) {
+    appUpdateStatus = status;
+    if (MainWindow != null) {
+        MainWindow.webContents.send("app-update-status", appUpdateStatus);
+    }
+}
+
+/**
+ * Initializes the auto-updater and sets up event listeners
+ * @returns The interval at which the auto-updater checks for updates
+ */
+function initUpdater(): NodeJS.Timeout {
+    const { autoUpdater } = electron;
+
+    if (isDev) {
+        console.log("skipping auto-updater in dev mode");
+        return null;
+    }
+
+    setAppUpdateStatus("unavailable");
+    let feedURL = `https://dl.waveterm.dev/autoupdate/${unamePlatform}/${unameArch}`;
+    let serverType: "default" | "json" = "default";
+
+    if (unamePlatform == "darwin") {
+        feedURL += "/RELEASES.json";
+        serverType = "json";
+    }
+
+    autoUpdater.setFeedURL({
+        url: feedURL,
+        headers: { "User-Agent": "Wave Auto-Update" },
+        serverType,
+    });
+
+    autoUpdater.removeAllListeners();
+
+    autoUpdater.on("error", (err) => {
+        console.log("updater error");
+        console.log(err);
+    });
+
+    autoUpdater.on("checking-for-update", () => {
+        console.log("checking-for-update");
+    });
+
+    autoUpdater.on("update-available", () => {
+        console.log("update-available; downloading...");
+    });
+
+    autoUpdater.on("update-not-available", () => {
+        console.log("update-not-available");
+    });
+
+    autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName, releaseDate, updateURL) => {
+        console.log("update-downloaded", [event, releaseNotes, releaseName, releaseDate, updateURL]);
+        availableUpdateReleaseName = releaseName;
+        availableUpdateReleaseNotes = releaseNotes;
+
+        // Display the update banner and create a system notification
+        setAppUpdateStatus("ready");
+        const updateNotification = new electron.Notification({
+            title: "Wave Terminal",
+            body: "A new version of Wave Terminal is ready to install.",
+        });
+        updateNotification.on("click", () => {
+            fireAndForget(installAppUpdate);
+        });
+        updateNotification.show();
+    });
+
+    // check for updates right away and keep checking later
+    autoUpdater.checkForUpdates();
+    return setInterval(autoUpdater.checkForUpdates, 600000); // 10 minutes in ms
+}
+
+/**
+ * Prompts the user to install the downloaded application update and restarts the application
+ */
+async function installAppUpdate() {
+    const dialogOpts: Electron.MessageBoxOptions = {
+        type: "info",
+        buttons: ["Restart", "Later"],
+        title: "Application Update",
+        message: process.platform === "win32" ? availableUpdateReleaseNotes : availableUpdateReleaseName,
+        detail: "A new version has been downloaded. Restart the application to apply the updates.",
+    };
+
+    await electron.dialog.showMessageBox(MainWindow, dialogOpts).then(({ response }) => {
+        if (response === 0) electron.autoUpdater.quitAndInstall();
+    });
+}
+
+electron.ipcMain.on("install-app-update", () => fireAndForget(installAppUpdate));
+electron.ipcMain.on("get-app-update-status", (event) => {
+    event.returnValue = appUpdateStatus;
+});
+
+electron.ipcMain.on("change-auto-update", (_, enable: boolean) => {
+    configureAutoUpdater(enable);
+});
+
+/**
+ * Configures the auto-updater based on the client data
+ * @param clientData The client data to use to configure the auto-updater. If the clientData has noreleasecheck set to true, the auto-updater will be disabled.
+ */
+function configureAutoUpdaterStartup(clientData: ClientDataType) {
+    configureAutoUpdater(!clientData.clientopts.noreleasecheck);
+}
+
+/**
+ * Configures the auto-updater based on the user's preference
+ * @param enabled Whether the auto-updater should be enabled
+ */
+function configureAutoUpdater(enabled: boolean) {
+    // simple lock to prevent multiple auto-update configuration attempts, this should be very rare
+    if (autoUpdateLock) {
+        console.log("auto-update configuration already in progress, skipping");
+        return;
+    }
+    autoUpdateLock = true;
+
+    // only configure auto-updater on macOS
+    if (unamePlatform == "darwin") {
+        if (enabled && autoUpdateInterval == null) {
+            try {
+                console.log("configuring auto updater");
+                autoUpdateInterval = initUpdater();
+            } catch (e) {
+                console.log("error configuring auto updater", e.toString());
+            }
+        } else if (autoUpdateInterval != null) {
+            console.log("user has disabled auto-updates, stopping updater");
+            clearInterval(autoUpdateInterval);
+            autoUpdateInterval = null;
+        }
+    }
+    autoUpdateLock = false;
+}
+// ====== AUTO-UPDATER ====== //
+
 // ====== MAIN ====== //
 
 (async () => {
-    let instanceLock = app.requestSingleInstanceLock();
+    const instanceLock = app.requestSingleInstanceLock();
     if (!instanceLock) {
         console.log("waveterm-app could not get single-instance-lock, shutting down");
         app.quit();

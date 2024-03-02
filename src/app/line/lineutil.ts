@@ -53,6 +53,18 @@ function isMultiLineCmdText(cmdText: string): boolean {
     return nlIdx != -1;
 }
 
+function countCmdLines(cmdText: string): number {
+    if (cmdText == null) {
+        return 1;
+    }
+    cmdText = cmdText.trim();
+    let nlIdx = cmdText.indexOf("\n");
+    if (nlIdx == -1) {
+        return 1;
+    }
+    return cmdText.split("\n").length;
+}
+
 function getFullCmdText(cmdText: string) {
     if (cmdText == null) {
         return "(none)";
@@ -98,6 +110,7 @@ export {
     getLineDateStr,
     getLineDateTimeStr,
     isMultiLineCmdText,
+    countCmdLines,
     getFullCmdText,
     getSingleLineCmdText,
     getRendererContext,

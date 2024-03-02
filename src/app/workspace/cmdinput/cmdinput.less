@@ -1,5 +1,3 @@
-@import "@/common/themes/themes.less";
-
 .cmd-input {
     max-height: max(300px, 40%);
     display: flex;
@@ -7,9 +5,10 @@
     position: absolute;
     bottom: 0;
     width: 100%;
-    padding: var(--termfontsize);
+    padding: calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 3 - 1px);
     z-index: 100;
-    border-top: 1px solid var(--app-border-color);
+    border-top: 2px solid var(--app-border-color);
+    background-color: var(--app-bg-color);
 
     &.active {
     }
@@ -62,12 +61,19 @@
         flex-grow: 1;
     }
 
+    .base-cmdinput:not(:first-child) {
+        margin-top: var(--termpad);
+    }
+
     .cmd-input-context {
         color: #fff;
         white-space: nowrap;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
     }
 
     .cmd-input-filter {
@@ -117,12 +123,12 @@
             .shelltag {
                 position: absolute;
                 // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding (2px not sure?)
-                bottom: calc(-13px + var(--termpad) + 2px);
+                bottom: calc(-13px + var(--termpad));
                 right: 0px;
                 font-size: 10px;
                 color: var(--app-text-secondary-color);
                 line-height: 1;
-                padding: 0px 8px 3px 8px;
+                padding: 1px 8px 3px 8px;
                 background-color: var(--cmdinput-textarea-bg-color);
                 border-radius: 0 0 5px 5px;
             }
@@ -137,8 +143,10 @@
             overflow-wrap: anywhere;
             border-color: transparent;
             border: none;
+            font-family: var(--termfontfamily);
             line-height: var(--termlineheight);
             font-size: var(--termfontsize);
+            border-radius: 4px 4px 0 4px; // 0 is for shelltag
 
             &.display-disabled {
                 background-color: #444;
@@ -162,12 +170,12 @@
         }
 
         &.inputmode-global .cmd-quick-context .button {
-            color: var(--app-black);
+            color: var(--app-bg-color);
             background-color: var(--cmdinput-button-bg-color) !important;
         }
 
         &.inputmode-comment .cmd-quick-context .button {
-            color: var(--app-black);
+            color: var(--app-bg-color);
             background-color: var(--cmdinput-comment-button-bg-color) !important;
         }
 
@@ -245,8 +253,22 @@
         }
 
         .chat-msg {
-            margin-top: 5px;
-            margin-bottom: 5px;
+            margin-top: calc(var(--termpad) * 2);
+            margin-bottom: calc(var(--termpad) * 2);
+
+            .chat-msg-header {
+                display: flex;
+                margin-bottom: 2px;
+
+                i {
+                    margin-right: 0.5em;
+                }
+
+                .chat-username {
+                    font-weight: bold;
+                    margin-right: 5px;
+                }
+            }
         }
 
         .chat-msg-assistant {
@@ -255,7 +277,7 @@
 
         .chat-msg-user {
             .msg-text {
-                font-family: @markdown-font;
+                font-family: var(--markdown-font);
                 font-size: 14px;
                 white-space: pre-wrap;
             }
@@ -263,7 +285,7 @@
 
         .chat-msg-error {
             color: var(--cmdinput-text-error);
-            font-family: @markdown-font;
+            font-family: var(--markdown-font);
             font-size: 14px;
         }
 
@@ -284,8 +306,8 @@
             z-index: 102;
             top: 5px;
             left: 0;
-            background-color: var(--app-black);
-            color: var(--cmdinput-history-title-color);
+            background-color: var(--app-bg-color);
+            color: var(--cmdinput-title-color);
             padding-bottom: 4px;
             display: flex;
             flex-direction: row;
@@ -358,13 +380,40 @@
         flex-shrink: 1;
         overflow-y: auto;
         margin-bottom: var(--termpad);
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
+
+        .info-title {
+            position: absolute;
+            z-index: 102;
+            top: 5px;
+            left: 0;
+            font-size: calc(var(--termfontsize) + 2px);
+            background-color: var(--app-bg-color);
+            color: var(--cmdinput-title-color);
+            padding-bottom: 4px;
+            padding-left: calc(var(--termpad) * 2);
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            overflow-x: auto;
+            border-bottom: 1px solid var(--app-border-color);
+        }
+
+        .info-title + .info-msg,
+        .info-title + .info-lines,
+        .info-title + .info-comps,
+        .info-title + .info-error {
+            margin-top: 26px;
+        }
 
         .info-msg {
             color: var(--cmdinput-history-title-color);
             padding-bottom: 2px;
 
             a {
-                color: var(--prompt-blue);
+                color: var(--term-blue);
             }
         }
 
@@ -394,117 +443,13 @@
             }
 
             .metacmd-comp {
-                color: var(--prompt-bright-green);
+                color: var(--term-bright-green);
             }
         }
 
         .info-error {
             color: var(--cmdinput-text-error-color);
             padding-bottom: 2px;
-        }
-
-        .info-remote-showall {
-            table.remotes-table {
-                th {
-                    color: var(--app-text-color);
-                    font-weight: bold;
-                }
-
-                th,
-                td {
-                    padding: 3px 8px 3px 8px;
-                }
-
-                td {
-                    cursor: pointer;
-                }
-
-                tr:hover td {
-                    background-color: #333;
-                }
-            }
-        }
-
-        .info-remote {
-            color: #d3d7cf;
-
-            .info-remote-title {
-                font-weight: bold;
-                color: var(--cmdinput-remote-title-color);
-            }
-
-            .info-error,
-            .info-msg {
-                margin-top: 5px;
-                padding: 5px;
-            }
-
-            .remote-field {
-                display: flex;
-                flex-direction: row;
-
-                .remote-field-def {
-                    white-space: pre;
-                    width: 120px;
-                }
-
-                .remote-field-val {
-                    white-space: pre;
-                    display: flex;
-                    flex-direction: row;
-                }
-            }
-
-            .remote-input-field {
-                display: flex;
-                flex-direction: row;
-                height: 25px;
-                align-items: center;
-
-                .remote-field-label {
-                    white-space: pre;
-                    width: 140px;
-                    font-weight: bold;
-                    color: var(--app-text-primary-color);
-                }
-
-                .undo-icon {
-                    margin-left: 4px;
-                    cursor: pointer;
-                    padding: 2px;
-                }
-
-                .remote-field-control {
-                    &.text-input {
-                        input[type="text"],
-                        input[type="number"],
-                        input[type="password"] {
-                            background-color: var(--app-black);
-                            color: var(--app-text-color);
-                            width: 200px;
-                        }
-                    }
-
-                    &.checkbox-input {
-                        input[type="checkbox"] {
-                            position: relative;
-                            top: 3px;
-                        }
-                    }
-
-                    &.select-input {
-                        select {
-                            width: 200px;
-                            background-color: var(--app-black);
-                            color: var(--app-text-color);
-                        }
-                    }
-                }
-            }
-        }
-
-        .info-remote-showall {
-            color: #d3d7cf;
         }
     }
 }
