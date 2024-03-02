@@ -9,7 +9,12 @@ const config = {
     npmRebuild: false,
     nodeGypRebuild: false,
     electronCompile: false,
-    publish: null,
+    publish: {
+        provider: "s3",
+        bucket: "dl.waveterm.dev",
+        endpoint: "https://dl.waveterm.dev/autoupdate",
+        publishAutoUpdate: true,
+    },
     files: [
         {
             from: "./dist",

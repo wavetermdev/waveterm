@@ -58,7 +58,7 @@ buildWaveShell linux amd64
 buildWaveShell linux arm64
 buildWaveSrv arm64
 buildWaveSrv amd64
-yarn run electron-builder -c electron-builder.config.js -m
+yarn run electron-builder -c electron-builder.config.js -m -p never
 ```
 
 ```bash
@@ -83,7 +83,7 @@ buildWaveShell darwin arm64
 buildWaveShell linux amd64
 buildWaveShell linux arm64
 buildWaveSrv $GOARCH
-yarn run electron-builder -c electron-builder.config.js -l
+yarn run electron-builder -c electron-builder.config.js -l -p never
 ```
 
 ```bash

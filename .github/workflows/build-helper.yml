@@ -71,7 +71,9 @@ jobs:
             - uses: actions/download-artifact@v4
               with:
                   merge-multiple: true
-                  path: buildtemp
+                  path: download
+            - name: Copy artifacts to buildtemp
+              run: cp download/* buildtemp
             - name: Set `version.txt`
               run: |
                   echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" > buildtemp/version.txt
