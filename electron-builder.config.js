@@ -11,7 +11,7 @@ const config = {
     electronCompile: false,
     publish: {
         provider: "generic",
-        endpoint: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
+        url: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
     },
     files: [
         {
