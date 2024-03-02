@@ -15,9 +15,11 @@ jobs:
                       runner: "macos-latest-xlarge"
                       scripthaus: "build-package"
                     - platform: "linux"
-                      arch:
-                          - "amd64"
-                          - "arm64"
+                      arch: "arm64"
+                      runner: "ubuntu-latest"
+                      scripthaus: "build-package-linux"
+                    - platform: "linux"
+                      arch: "amd64"
                       runner: "ubuntu-latest"
                       scripthaus: "build-package-linux"
         runs-on: ${{ matrix.runner }}
@@ -56,15 +58,13 @@ jobs:
                   echo "WAVETERM_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
             - name: Install Yarn Dependencies
               run: yarn --frozen-lockfile
-            - name: Build
-              run: |
-                  for arch in ${{ matrix.arch }}; do
-                      echo "Building for ${{ matrix.platform }}/$arch"
-                      GOARCH=$arch ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
-                  done
+            - name: Build ${{ matrix.platform }}/${{ matrix.arch }}
+              run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
+              env:
+                  GOARCH: ${{ matrix.arch }}
             - uses: actions/upload-artifact@v4
               with:
-                  name: waveterm-build-${{ matrix.platform }}-${{ matrix.arch }}
+                  name: waveterm-build-${{ matrix.platform }}
                   path: out/make/*
                   retention-days: 2
     upload:
