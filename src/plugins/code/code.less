@@ -47,6 +47,9 @@
     }
 
     .code-message {
+        text-wrap: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
         color: var(--term-bright-green);
         &.error {
             color: var(--term-bright-red);
@@ -97,6 +100,11 @@
 
         .wave-button {
             line-height: var(--termlineheight) !important;
+            text-wrap: nowrap;
+        }
+
+        select.dropdown {
+            max-width: 200px;
         }
     }
 

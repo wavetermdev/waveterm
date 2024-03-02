@@ -494,11 +494,6 @@ class SourceCodeRenderer extends React.Component<
                     <div className="flex-spacer" />
                     {this.getEditorControls()}
                 </div>
-
-                {/*
-                {this.getEditorControls()}
-                <If condition={message != null}>{this.getMessage()}</If>
-        */}
             </div>
         );
     }
