@@ -361,6 +361,14 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
+    setTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            theme: theme,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
+    }
+
     setClientOpenAISettings(opts: { model?: string; apitoken?: string; maxtokens?: string }): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",

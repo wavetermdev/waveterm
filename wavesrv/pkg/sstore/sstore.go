@@ -297,6 +297,7 @@ type ClientOptsType struct {
 type FeOptsType struct {
 	TermFontSize   int    `json:"termfontsize,omitempty"`
 	TermFontFamily string `json:"termfontfamily,omitempty"`
+	Theme          string `json:"theme,omitempty"`
 }
 
 type ReleaseInfoType struct {
@@ -748,6 +749,9 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 	envMap := shellenv.EnvMapFromState(state)
 	if envMap["VIRTUAL_ENV"] != "" {
 		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
+	}
+	if envMap["CONDA_DEFAULT_ENV"] != "" {
+		rtn["CONDA_DEFAULT_ENV"] = envMap["CONDA_DEFAULT_ENV"]
 	}
 	for key, val := range envMap {
 		if strings.HasPrefix(key, "PROMPTVAR_") && envMap[key] != "" {

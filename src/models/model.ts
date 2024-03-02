@@ -12,8 +12,9 @@ import {
     genMergeSimpleData,
     isModKeyPress,
     isBlank,
-    loadFonts,
 } from "@/util/util";
+import { loadFonts } from "@/util/fontutil";
+import { loadTheme } from "@/util/themeutil";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import * as appconst from "@/app/appconst";
@@ -108,6 +109,7 @@ class Model {
         name: "devicePixelRatio",
     });
     remotesModel: RemotesModel;
+    lineHeightEnv: LineHeightEnv;
 
     keybindManager: KeybindManager;
     inputModel: InputModel;
@@ -128,6 +130,10 @@ class Model {
 
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
+    });
+
+    appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
+        name: "appUpdateStatus",
     });
 
     private constructor() {
@@ -312,9 +318,18 @@ class Model {
         getApi().onZoomChanged(this.onZoomChanged.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
+        getApi().onAppUpdateStatus(this.onAppUpdateStatus.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
+        this.lineHeightEnv = {
+            // defaults
+            fontSize: 12,
+            fontSizeSm: 10,
+            lineHeight: 15,
+            lineHeightSm: 13,
+            pad: 7,
+        };
     }
 
     static getInstance(): Model {
@@ -468,27 +483,44 @@ class Model {
         return ff;
     }
 
+    getTheme(): string {
+        let cdata = this.clientData.get();
+        let theme = cdata?.feopts?.theme;
+        if (theme == null) {
+            theme = appconst.DefaultTheme;
+        }
+        return theme;
+    }
+
     getTermFontSize(): number {
         return this.termFontSize.get();
     }
 
-    updateTermFontSizeVars(fontSize: number, force: boolean) {
-        if (!force && fontSize == this.termFontSize.get()) {
-            return;
-        }
-        if (fontSize < appconst.MinFontSize) {
-            fontSize = appconst.MinFontSize;
-        }
-        if (fontSize > appconst.MaxFontSize) {
-            fontSize = appconst.MaxFontSize;
-        }
-        const monoFontSize = getMonoFontSize(fontSize);
+    updateTermFontSizeVars() {
+        let lhe = this.recomputeLineHeightEnv();
         mobx.action(() => {
             this.bumpRenderVersion();
-            this.setStyleVar("--termfontsize", fontSize + "px");
-            this.setStyleVar("--termlineheight", monoFontSize.height + "px");
-            this.setStyleVar("--termpad", Math.floor(monoFontSize.height / 2) + "px");
+            this.setStyleVar("--termfontsize", lhe.fontSize + "px");
+            this.setStyleVar("--termlineheight", lhe.lineHeight + "px");
+            this.setStyleVar("--termpad", lhe.pad + "px");
+            this.setStyleVar("--termfontsize-sm", lhe.fontSizeSm + "px");
+            this.setStyleVar("--termlineheight-sm", lhe.lineHeightSm + "px");
         })();
+    }
+
+    recomputeLineHeightEnv(): LineHeightEnv {
+        const fontSize = this.getTermFontSize();
+        const fontSizeSm = fontSize - 2;
+        const monoFontSize = getMonoFontSize(fontSize);
+        const monoFontSizeSm = getMonoFontSize(fontSizeSm);
+        this.lineHeightEnv = {
+            fontSize: fontSize,
+            fontSizeSm: fontSizeSm,
+            lineHeight: monoFontSize.height,
+            lineHeightSm: monoFontSizeSm.height,
+            pad: monoFontSize.pad,
+        };
+        return this.lineHeightEnv;
     }
 
     setStyleVar(name: string, value: string) {
@@ -829,8 +861,7 @@ class Model {
             if (oldContext.sessionid != newContext.sessionid || oldContext.screenid != newContext.screenid) {
                 this.inputModel.resetInput();
                 if (genUpdate.type == "model") {
-                    const modelUpdate = genUpdate as ModelUpdatePacket;
-                    const reversedGenUpdate = modelUpdate.data.slice().reverse();
+                    const reversedGenUpdate = genUpdate.data.slice().reverse();
                     const lastCmdLine = reversedGenUpdate.find((update) => "cmdline" in update);
                     if (lastCmdLine) {
                         // TODO a bit of a hack since this update gets applied in runUpdate_internal.
@@ -892,7 +923,7 @@ class Model {
 
     runUpdate_internal(genUpdate: UpdatePacket, uiContext: UIContextType, interactive: boolean) {
         if (genUpdate.type == "pty") {
-            const ptyMsg = genUpdate.data as PtyDataUpdateType;
+            const ptyMsg = genUpdate.data;
             if (isBlank(ptyMsg.remoteid)) {
                 // regular update
                 this.updatePtyData(ptyMsg);
@@ -902,7 +933,7 @@ class Model {
                 this.remotesModel.receiveData(ptyMsg.remoteid, ptyMsg.ptypos, ptyData);
             }
         } else if (genUpdate.type == "model") {
-            const modelUpdateItems = genUpdate.data as ModelUpdateItemType[];
+            const modelUpdateItems = genUpdate.data;
 
             let showedRemotesModal = false;
             const [oldActiveSessionId, oldActiveScreenId] = this.getActiveIds();
@@ -996,30 +1027,37 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
-                } else if (interactive) {
+                } else {
+                    // interactive-only updates follow below
+                    // we check interactive *inside* of the conditions because of isDev console.log message
                     if (update.info != null) {
                         const info: InfoType = update.info;
-                        this.inputModel.flashInfoMsg(info, info.timeoutms);
+                        if (interactive) {
+                            this.inputModel.flashInfoMsg(info, info.timeoutms);
+                        }
                     } else if (update.remoteview != null) {
                         const rview: RemoteViewType = update.remoteview;
-                        if (rview.remoteedit != null) {
+                        if (interactive && rview.remoteedit != null) {
                             this.remotesModel.openEditModal({ ...rview.remoteedit });
                         }
                     } else if (update.alertmessage != null) {
                         const alertMessage: AlertMessageType = update.alertmessage;
-                        this.showAlert(alertMessage);
+                        if (interactive) {
+                            this.showAlert(alertMessage);
+                        }
                     } else if (update.history != null) {
                         if (
+                            interactive &&
                             uiContext.sessionid == update.history.sessionid &&
                             uiContext.screenid == update.history.screenid
                         ) {
                             this.inputModel.setHistoryInfo(update.history);
                         }
+                    } else if (update.interactive) {
+                        // nothing (ignore)
                     } else if (this.isDev) {
                         console.log("did not match update", update);
                     }
-                } else if (this.isDev) {
-                    console.log("did not match update", update);
                 }
             });
 
@@ -1172,9 +1210,11 @@ class Model {
     }
 
     isInfoUpdate(update: UpdatePacket): boolean {
-        if (update != null && update.type == "model") {
-            const modelUpdate = update as ModelUpdatePacket;
-            return modelUpdate.data.some((u) => u.info != null || u.history != null);
+        if (update == null) {
+            return false;
+        }
+        if (update.type == "model") {
+            return update.data.some((u) => u.info != null || u.history != null);
         } else {
             return false;
         }
@@ -1224,6 +1264,12 @@ class Model {
         }
         const ffUpdated = newFontFamily != this.getTermFontFamily();
         const fsUpdated = newFontSize != this.getTermFontSize();
+
+        let newTheme = clientData?.feopts?.theme;
+        if (newTheme == null) {
+            newTheme = appconst.DefaultTheme;
+        }
+        const themeUpdated = newTheme != this.getTheme();
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1237,11 +1283,14 @@ class Model {
             loadFonts(newFontFamily);
             document.fonts.ready.then(() => {
                 clearMonoFontCache();
-                this.updateTermFontSizeVars(this.termFontSize.get(), true); // forces an update of css vars
+                this.updateTermFontSizeVars(); // forces an update of css vars
                 this.bumpRenderVersion();
             });
         } else if (fsUpdated) {
-            this.updateTermFontSizeVars(newFontSize, true);
+            this.updateTermFontSizeVars();
+        }
+        if (themeUpdated) {
+            loadTheme(newTheme);
         }
     }
 
@@ -1578,6 +1627,21 @@ class Model {
         const prtn = fetch(url, { method: "post", headers: fetchHeaders, body: formData });
         const resp = await prtn;
         const _ = await handleJsonFetchResponse(url, resp);
+    }
+
+    /**
+     * Tell Electron to install the waiting app update. Will prompt for user input before restarting.
+     */
+    installAppUpdate(): void {
+        if (this.appUpdateStatus.get() == "ready") {
+            getApi().installAppUpdate();
+        }
+    }
+
+    onAppUpdateStatus(status: AppUpdateStatusType) {
+        mobx.action(() => {
+            this.appUpdateStatus.set(status);
+        })();
     }
 }
 

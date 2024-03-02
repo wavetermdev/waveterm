@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "@/models";
+import { GlobalCommandRunner, GlobalModel } from "@/models";
 import { isBlank } from "@/util/util";
 import { WorkspaceView } from "./workspace/workspaceview";
 import { PluginsView } from "./pluginsview/pluginsview";
@@ -20,6 +20,7 @@ import { MainSideBar } from "./sidebar/sidebar";
 import { DisconnectedModal, ClientStopModal } from "./common/modals";
 import { ModalsProvider } from "./common/modals/provider";
 import { ErrorBoundary } from "./common/error/errorboundary";
+import cn from "classnames";
 import "./app.less";
 
 dayjs.extend(localizedFormat);
@@ -37,7 +38,7 @@ class App extends React.Component<{}, {}> {
     @boundMethod
     handleContextMenu(e: any) {
         let isInNonTermInput = false;
-        let activeElem = document.activeElement;
+        const activeElem = document.activeElement;
         if (activeElem != null && activeElem.nodeName == "TEXTAREA") {
             if (!activeElem.classList.contains("xterm-helper-textarea")) {
                 isInNonTermInput = true;
@@ -46,17 +47,13 @@ class App extends React.Component<{}, {}> {
         if (activeElem != null && activeElem.nodeName == "INPUT" && activeElem.getAttribute("type") == "text") {
             isInNonTermInput = true;
         }
-        let opts: ContextMenuOpts = {};
+        const opts: ContextMenuOpts = {};
         if (isInNonTermInput) {
             opts.showCut = true;
         }
-        let sel = window.getSelection();
-        if (!isBlank(sel?.toString())) {
+        const sel = window.getSelection();
+        if (!isBlank(sel?.toString()) || isInNonTermInput) {
             GlobalModel.contextEditMenu(e, opts);
-        } else {
-            if (isInNonTermInput) {
-                GlobalModel.contextEditMenu(e, opts);
-            }
         }
     }
 
@@ -67,13 +64,19 @@ class App extends React.Component<{}, {}> {
         })();
     }
 
+    @boundMethod
+    openSidebar() {
+        const width = GlobalModel.mainSidebarModel.getWidth(true);
+        GlobalCommandRunner.clientSetSidebar(width, false);
+    }
+
     render() {
-        let remotesModel = GlobalModel.remotesModel;
-        let disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
-        let hasClientStop = GlobalModel.getHasClientStop();
-        let dcWait = this.dcWait.get();
-        let platform = GlobalModel.getPlatform();
-        let clientData = GlobalModel.clientData.get();
+        const remotesModel = GlobalModel.remotesModel;
+        const disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
+        const hasClientStop = GlobalModel.getHasClientStop();
+        const dcWait = this.dcWait.get();
+        const platform = GlobalModel.getPlatform();
+        const clientData = GlobalModel.clientData.get();
 
         // Previously, this is done in sidebar.tsx but it causes flicker when clientData is null cos screen-view shifts around.
         // Doing it here fixes the flicker cos app is not rendered until clientData is populated.
@@ -106,14 +109,22 @@ class App extends React.Component<{}, {}> {
             setTimeout(() => this.updateDcWait(false), 0);
         }
         // used to force a full reload of the application
-        let renderVersion = GlobalModel.renderVersion.get();
+        const renderVersion = GlobalModel.renderVersion.get();
+        const sidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
         return (
             <div
                 key={"version-" + renderVersion}
                 id="main"
-                className={"platform-" + platform}
+                className={cn("platform-" + platform, { "sidebar-collapsed": sidebarCollapsed })}
                 onContextMenu={this.handleContextMenu}
             >
+                <If condition={sidebarCollapsed}>
+                    <div key="logo-button" className="logo-button-container">
+                        <div className="logo-button" onClick={this.openSidebar}>
+                            <img src="public/logos/wave-logo.png" alt="logo" />
+                        </div>
+                    </div>
+                </If>
                 <div ref={this.mainContentRef} className="main-content">
                     <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
                     <ErrorBoundary>

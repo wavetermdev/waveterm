@@ -2,7 +2,11 @@ import * as React from "react";
 import * as electron from "electron";
 import { parse } from "node:path";
 import { v4 as uuidv4 } from "uuid";
+<<<<<<< HEAD
 import * as keybindings from "../../assets/keybindings.json";
+=======
+import keybindings from "../../assets/keybindings.json";
+>>>>>>> 435c4e031035cdd93c407bb6c3ae6c60eb794cee
 
 type KeyPressDecl = {
     mods: {

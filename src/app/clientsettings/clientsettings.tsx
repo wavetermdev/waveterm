@@ -6,12 +6,13 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
+import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
+import { MainView } from "../common/elements/mainview";
 
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -44,6 +45,15 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
+    handleChangeTheme(theme: string): void {
+        if (GlobalModel.getTheme() == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setTheme(theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     handleChangeTelemetry(val: boolean): void {
         let prtn: Promise<CommandRtnType> = null;
         if (val) {
@@ -63,6 +73,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             prtn = GlobalCommandRunner.releaseCheckAutoOff(false);
         }
         commandRtnHandler(prtn, this.errorMessage);
+        getApi().changeAutoUpdate(val);
     }
 
     getFontSizes(): DropdownItem[] {
@@ -78,6 +89,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         availableFontFamilies.push({ label: "JetBrains Mono", value: "JetBrains Mono" });
         availableFontFamilies.push({ label: "Hack", value: "Hack" });
         return availableFontFamilies;
+    }
+
+    getThemes(): DropdownItem[] {
+        const themes: DropdownItem[] = [];
+        themes.push({ label: "Dark", value: "dark" });
+        themes.push({ label: "Light", value: "light" });
+        return themes;
     }
 
     @boundMethod
@@ -106,11 +124,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
-    handleClose(): void {
-        GlobalModel.clientSettingsViewModel.closeView();
-    }
-
-    @boundMethod
     handleChangeShortcut(newShortcut: string): void {
         const prtn = GlobalCommandRunner.setGlobalShortcut(newShortcut);
         commandRtnHandler(prtn, this.errorMessage);
@@ -132,6 +145,11 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         return clientData?.clientopts?.globalshortcut ?? "";
     }
 
+    @boundMethod
+    handleClose() {
+        GlobalModel.clientSettingsViewModel.closeView();
+    }
+
     render() {
         const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
@@ -146,15 +164,10 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         );
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
+        const curTheme = GlobalModel.getTheme();
 
         return (
-            <div className={cn("view clientsettings-view")}>
-                <header className="header">
-                    <div className="clientsettings-title text-primary">Client Settings</div>
-                    <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.handleClose}>
-                        <i className="fa-sharp fa-solid fa-xmark"></i>
-                    </div>
-                </header>
+            <MainView viewName="clientsettings" title="Client Settings" onClose={this.handleClose}>
                 <div className="content">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>
@@ -175,6 +188,17 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 options={this.getFontFamilies()}
                                 defaultValue={curFontFamily}
                                 onChange={this.handleChangeFontFamily}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Theme</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="theme-dropdown"
+                                options={this.getThemes()}
+                                defaultValue={curTheme}
+                                onChange={this.handleChangeTheme}
                             />
                         </div>
                     </div>
@@ -259,7 +283,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />
                 </div>
-            </div>
+            </MainView>
         );
     }
 }

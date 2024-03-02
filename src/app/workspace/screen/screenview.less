@@ -1,5 +1,3 @@
-@import "@/common/themes/themes.less";
-
 .main-content {
     .screen-view {
         flex-grow: 1;
@@ -82,7 +80,7 @@
                 padding: 5px 10px;
                 background-color: #333;
                 border-radius: 5px;
-                font-family: @fixed-font;
+                font-family: var(--fixed-font);
             }
         }
     }
@@ -232,6 +230,10 @@
                     top: 8px;
                 }
             }
+
+            .wave-dropdown-display {
+                bottom: 7px;
+            }
         }
 
         &.conn-section {
@@ -335,10 +337,6 @@
 
             .text-standard {
                 color: var(--app-text-secondary-color);
-            }
-
-            .text-caption {
-                color: var(--screen-view-text-caption-color);
             }
 
             .ellipsis {

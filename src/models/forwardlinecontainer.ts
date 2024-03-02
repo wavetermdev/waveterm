@@ -8,6 +8,7 @@ import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
 import { Cmd } from "./cmd";
 import { Screen } from "./screen";
+import * as lineutil from "@/app/line/lineutil";
 
 class ForwardLineContainer {
     globalModel: Model;
@@ -30,7 +31,7 @@ class ForwardLineContainer {
         if (termWrap != null) {
             let fontSize = this.globalModel.getTermFontSize();
             let cols = windowWidthToCols(winSize.width, fontSize);
-            let rows = windowHeightToRows(winSize.height, fontSize);
+            let rows = windowHeightToRows(Model.getInstance().lineHeightEnv, this.winSize.height);
             termWrap.resizeCols(cols);
             GlobalCommandRunner.resizeScreen(this.screen.screenId, rows, cols, { include: [this.lineId] });
         }

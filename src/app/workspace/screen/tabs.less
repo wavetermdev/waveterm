@@ -1,227 +1,75 @@
-@import "@/common/themes/themes.less";
 @import "@/common/icons/icons.less";
 
+// Theming values
 #main .screen-tabs .screen-tab {
-    border-top: 1px solid transparent;
-    font-size: 12.5px;
+    font-size: var(--screentabs-font-size);
+    line-height: var(--screentabs-line-height);
+    font-family: var(--base-font-family);
+    font-weight: var(--screentabs-font-weight);
 
-    // this comes back when we have a completely removable left-sidebar
-    // &:first-child {
-    //     border-radius: var(--app-border-radius) 0px 0px 0px;
-    // }
+    &.is-active {
+        .background {
+            border-top: 1px solid var(--tab-color);
+            background-color: var(--tab-color);
+        }
+    }
+
+    svg.svg-icon-inner path {
+        fill: var(--tab-color);
+    }
+
+    .tabicon i {
+        color: var(--tab-color);
+    }
 
     &.color-green,
     &.color-default {
-        svg.svg-icon-inner path {
-            fill: @tab-green;
-        }
-
-        .icon i {
-            color: @tab-green;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-green;
-            background: linear-gradient(
-                180deg,
-                rgba(88, 193, 66, 0.2) 9.34%,
-                rgba(88, 193, 66, 0.03) 44.16%,
-                rgba(88, 193, 66, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-green);
     }
 
     &.color-orange {
-        svg.svg-icon-inner path {
-            fill: @tab-orange;
-        }
-
-        .icon i {
-            color: @tab-orange;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-orange;
-            background: linear-gradient(
-                180deg,
-                rgba(239, 113, 59, 0.2) 9.34%,
-                rgba(239, 113, 59, 0.03) 44.16%,
-                rgba(239, 113, 59, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-orange);
     }
 
     &.color-red {
-        svg.svg-icon-inner path {
-            fill: @tab-red;
-        }
-
-        .icon i {
-            color: @tab-red;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-red;
-            background: linear-gradient(
-                180deg,
-                rgba(229, 77, 46, 0.2) 9.34%,
-                rgba(229, 77, 46, 0.03) 44.16%,
-                rgba(229, 77, 46, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-red);
     }
 
     &.color-yellow {
-        svg.svg-icon-inner path {
-            fill: @tab-yellow;
-        }
-
-        .icon i {
-            color: @tab-yellow;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-yellow;
-            background: linear-gradient(
-                180deg,
-                rgba(224, 185, 86, 0.2) 9.34%,
-                rgba(224, 185, 86, 0.03) 44.16%,
-                rgba(224, 185, 86, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-yellow);
     }
 
     &.color-blue {
-        svg.svg-icon-inner path {
-            fill: @tab-blue;
-        }
-
-        .icon i {
-            color: @tab-blue;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-blue;
-            background: linear-gradient(
-                180deg,
-                rgba(57, 113, 255, 0.2) 9.34%,
-                rgba(57, 113, 255, 0.03) 44.16%,
-                rgba(57, 113, 255, 0) 77.18%
-            );
-        }
+        --tab-color: var(--tab-blue);
     }
 
     &.color-mint {
-        svg.svg-icon-inner path {
-            fill: @tab-mint;
-        }
-
-        .icon i {
-            color: @tab-mint;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-mint;
-            background: linear-gradient(
-                180deg,
-                rgba(75, 255, 169, 0.2) 9.34%,
-                rgba(75, 255, 169, 0.03) 44.16%,
-                rgba(75, 255, 169, 0) 77.18%
-            );
-        }
+        --tab-color: var(--tab-mint);
     }
 
     &.color-cyan {
-        svg.svg-icon-inner path {
-            fill: @tab-cyan;
-        }
-
-        .icon i {
-            color: @tab-cyan;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-cyan;
-            background: linear-gradient(
-                180deg,
-                rgba(75, 223, 255, 0.2) 9.34%,
-                rgba(75, 223, 255, 0.03) 44.16%,
-                rgba(58, 186, 214, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-cyan);
     }
 
     &.color-white {
-        svg.svg-icon-inner path {
-            fill: @tab-white;
-        }
-
-        .icon i {
-            color: @tab-white;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-white;
-            background: linear-gradient(
-                180deg,
-                rgba(255, 255, 255, 0.2) 9.34%,
-                rgba(255, 255, 255, 0.03) 44.16%,
-                rgba(255, 255, 255, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-white);
     }
 
     &.color-violet {
-        svg.svg-icon-inner path {
-            fill: @tab-violet;
-        }
-
-        .icon i {
-            color: @tab-violet;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-violet;
-            background: linear-gradient(
-                180deg,
-                rgba(186, 118, 255, 0.2) 9.34%,
-                rgba(186, 118, 255, 0.03) 44.16%,
-                rgba(186, 118, 255, 0) 86.79%
-            );
-        }
+        --tab-color: var(--tab-violet);
     }
 
     &.color-pink {
-        svg.svg-icon-inner path {
-            fill: @tab-pink;
-        }
-
-        .icon i {
-            color: @tab-pink;
-        }
-
-        &.is-active {
-            border-top: 1px solid @tab-pink;
-            background: linear-gradient(
-                180deg,
-                rgba(255, 136, 165, 0.2) 9.34%,
-                rgba(255, 136, 165, 0.03) 44.16%,
-                rgba(255, 136, 165, 0) 86.79%
-            );
-        }
-    }
-
-    .web-share-icon {
-        position: relative;
-        top: 1px;
-        margin-right: 3px;
+        --tab-color: var(--tab-pink);
     }
 }
 
-.screen-tabs-container {
+// Layout values
+#main .screen-tabs-container {
     display: flex;
     position: relative;
     overflow: hidden;
+    height: var(--screentabs-height);
 
     &:hover {
         z-index: 200;
@@ -245,29 +93,23 @@
     .screen-tabs {
         display: flex;
         flex-direction: row;
-        align-items: center;
-
+        height: 100%;
         .screen-tab {
             display: flex;
             flex-direction: row;
-            height: 3em;
-            min-width: 13.6em;
-            max-width: 13.6em;
-            align-items: center;
-            cursor: pointer;
-            padding: 0 8px 0 8px;
-
-            .front-icon {
-                .positional-icon-visible;
-            }
-
-            .tab-name {
-                flex-grow: 1;
+            position: relative;
+            .background {
+                // This applies a transparency mask to the background color, as set above, so that it will blend with whatever the theme's background color is.
+                z-index: 1;
+                width: var(--screen-tab-width);
+                mask-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0) 100%);
             }
 
             &.is-active {
                 border-top: none;
                 opacity: 1;
+                font-weight: var(--screentabs-selected-font-weight);
+                border-top: 2px solid var(--tab-color);
             }
 
             &.is-archived {
@@ -276,27 +118,47 @@
                 }
             }
 
-            // Only one of these will be visible at a time
-            .end-icons {
-                // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
-                margin: 0 -8px 0 0;
-                line-height: normal;
-                .tab-index {
-                    font-size: 12.5px;
+            .screen-tab-inner {
+                display: flex;
+                flex-direction: row;
+                position: absolute;
+                z-index: 2;
+                min-width: var(--screen-tab-width);
+                max-width: var(--screen-tab-width);
+                align-items: center;
+                cursor: pointer;
+                padding: 8px 8px 4px 8px; // extra 4px of tab padding to account for horizontal scrollbar (to make tab text look centered)
+                .front-icon {
+                    .positional-icon-visible;
+                }
+
+                .tab-name {
+                    flex-grow: 1;
+                }
+
+                // Only one of these will be visible at a time
+                .end-icons {
+                    // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
+                    margin: 0 -5px 0 0;
+                    line-height: normal;
+                    .tab-index {
+                        font-size: 12.5px;
+                    }
                 }
             }
-        }
-
-        &:not(:hover) .status-indicator {
-            .status-indicator-visible;
-        }
-
-        &:hover {
-            .screen-tab:not(:hover) .tab-index {
-                .positional-icon-visible;
+            .vertical-line {
+                border-left: 1px solid var(--app-border-color);
+                margin: 10px 0 8px 0;
             }
-            .screen-tab:hover .actions {
-                .positional-icon-visible;
+
+            &:not(:hover) .status-indicator {
+                .status-indicator-visible;
+            }
+
+            &:hover {
+                .actions {
+                    .positional-icon-visible;
+                }
             }
         }
     }
@@ -306,7 +168,7 @@
         cursor: pointer;
         display: flex;
         align-items: center;
-        height: 37px;
+        height: 100%;
 
         .icon {
             height: 2rem;
@@ -318,7 +180,18 @@
 
     .tabs-end-spacer {
         flex-grow: 1;
-        min-width: 20px;
+        min-width: 30px;
         -webkit-app-region: drag;
+        height: 100%;
     }
+}
+
+// This ensures the tab bar does not collide with the floating logo. The floating logo sits above the sidebar when it is not collapsed, so no additional margin is needed in that case.
+// More margin is given on macOS to account for the traffic light buttons
+#main.platform-darwin.sidebar-collapsed .screen-tabs-container {
+    margin-left: var(--floating-logo-width-darwin);
+}
+
+#main:not(.platform-darwin).sidebar-collapsed .screen-tabs-container {
+    margin-left: var(--floating-logo-width);
 }

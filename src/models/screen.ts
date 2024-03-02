@@ -16,6 +16,7 @@ import { GlobalModel, GlobalCommandRunner } from "./global";
 import { Cmd } from "./cmd";
 import { ScreenLines } from "./screenlines";
 import { getTermPtyData } from "@/util/modelutil";
+import * as textmeasure from "@/util/textmeasure";
 
 class Screen {
     globalModel: Model;
@@ -402,8 +403,9 @@ class Screen {
             return;
         }
         this.lastScreenSize = winSize;
+        let useableHeight = winSize.height - textmeasure.calcMaxLineChromeHeight(this.globalModel.lineHeightEnv);
         let cols = windowWidthToCols(winSize.width, this.globalModel.getTermFontSize());
-        let rows = windowHeightToRows(winSize.height, this.globalModel.getTermFontSize());
+        let rows = windowHeightToRows(this.globalModel.lineHeightEnv, winSize.height);
         this._termSizeCallback(rows, cols);
     }
 
@@ -417,7 +419,8 @@ class Screen {
         let minSize = MagicLayout.ScreenMinContentSize;
         let maxSize = MagicLayout.ScreenMaxContentSize;
         let width = boundInt(winSize.width - MagicLayout.ScreenMaxContentWidthBuffer, minSize, maxSize);
-        let height = boundInt(winSize.height - MagicLayout.ScreenMaxContentHeightBuffer, minSize, maxSize);
+        let maxLineBuffer = textmeasure.calcMaxLineChromeHeight(this.globalModel.lineHeightEnv);
+        let height = boundInt(winSize.height - maxLineBuffer, minSize, maxSize);
         return { width, height };
     }
 

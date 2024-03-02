@@ -7,8 +7,8 @@ import { createRoot } from "react-dom/client";
 import { sprintf } from "sprintf-js";
 import { App } from "@/app/app";
 import * as DOMPurify from "dompurify";
-import { loadFonts } from "./util/util";
-import * as textmeasure from "./util/textmeasure";
+import { loadFonts } from "@/util/fontutil";
+import * as textmeasure from "@/util/textmeasure";
 import { getApi } from "@/models";
 
 // @ts-ignore

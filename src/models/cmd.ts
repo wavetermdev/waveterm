@@ -37,6 +37,10 @@ class Cmd {
         return this.data.get().restartts;
     }
 
+    getDurationMs(): number {
+        return this.data.get().durationms;
+    }
+
     getAsWebCmd(lineid: string): WebCmd {
         let cmd = this.data.get();
         let remote = this.model.getRemote(this.remote.remoteid);

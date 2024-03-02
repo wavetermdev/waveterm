@@ -10,7 +10,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "@/elements";
 import * as util from "@/util/util";
-import { ReactComponent as SquareIcon } from "@/assets/icons/tab/square.svg";
+import { TabIcon } from "@/common/elements/tabicon";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
@@ -61,10 +61,9 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             .filter((r) => !r.archived)
             .map((remote) => ({
                 ...remote,
-                label:
-                    remote.remotealias && !util.isBlank(remote.remotealias)
-                        ? `${remote.remotecanonicalname}`
-                        : remote.remotecanonicalname,
+                label: !util.isBlank(remote.remotealias)
+                    ? `${remote.remotealias} - ${remote.remotecanonicalname}`
+                    : remote.remotecanonicalname,
                 value: remote.remotecanonicalname,
             }))
             .sort((a, b) => {
@@ -228,7 +227,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
 
         return (
             <Modal className="screen-settings-modal">
-                <Modal.Header onClose={this.closeModal} title={`tab settings (${screen.name.get()})`} />
+                <Modal.Header onClose={this.closeModal} title={`Tab Settings (${screen.name.get()})`} />
                 <div className="wave-modal-body">
                     <div className="settings-field">
                         <div className="settings-label">Tab Id</div>
@@ -252,7 +251,6 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-input">
                             <Dropdown
                                 className="screen-settings-dropdown"
-                                label={curRemote.remotealias}
                                 options={this.getOptions()}
                                 defaultValue={curRemote.remotecanonicalname}
                                 onChange={this.selectRemote}
@@ -274,8 +272,8 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-input">
                             <div className="tab-colors">
                                 <div className="tab-color-cur">
-                                    <SquareIcon className={cn("tab-color-icon", "color-" + screen.getTabColor())} />
-                                    <span className="tab-color-name">{screen.getTabColor()}</span>
+                                    <TabIcon icon={screen.getTabIcon()} color={screen.getTabColor()} />
+                                    <div className="tab-color-name">{screen.getTabColor()}</div>
                                 </div>
                                 <div className="tab-color-sep">|</div>
                                 <For each="color" of={appconst.TabColors}>
@@ -284,7 +282,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                                         className="tab-color-select"
                                         onClick={() => this.selectTabColor(color)}
                                     >
-                                        <SquareIcon className={cn("tab-color-icon", "color-" + color)} />
+                                        <TabIcon icon="square" color={color} />
                                     </div>
                                 </For>
                             </div>
@@ -295,13 +293,8 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-input">
                             <div className="tab-icons">
                                 <div className="tab-icon-cur">
-                                    <If condition={screen.getTabIcon() == "default"}>
-                                        <SquareIcon className={cn("tab-color-icon", "color-white")} />
-                                    </If>
-                                    <If condition={screen.getTabIcon() != "default"}>
-                                        <i className={`fa-sharp fa-solid fa-${screen.getTabIcon()}`}></i>
-                                    </If>
-                                    <span className="tab-icon-name">{screen.getTabIcon()}</span>
+                                    <TabIcon icon={screen.getTabIcon()} color="white" />
+                                    <div className="tab-icon-name">{screen.getTabIcon()}</div>
                                 </div>
                                 <div className="tab-icon-sep">|</div>
                                 <For each="icon" index="index" of={appconst.TabIcons}>
@@ -310,7 +303,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                                         className="tab-icon-select"
                                         onClick={() => this.selectTabIcon(icon)}
                                     >
-                                        <i className={`fa-sharp fa-solid fa-${icon}`}></i>
+                                        <TabIcon icon={icon} color="white" />
                                     </div>
                                 </For>
                             </div>
@@ -320,7 +313,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-label archived-label">
                             <div className="">Archived</div>
                             <Tooltip
-                                message={`Archive will hide the tab. Commands and output will be retained in history.`}
+                                message={`Archive will hide the tab. Commands and output will be retained, but hidden.`}
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                 className="screen-settings-tooltip"
                             >
@@ -335,7 +328,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-label actions-label">
                             <div>Actions</div>
                             <Tooltip
-                                message={`Delete will remove the tab, removing all commands and output from history.`}
+                                message={`Delete will remove the tab, removing all commands and output.`}
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                 className="screen-settings-tooltip"
                             >
