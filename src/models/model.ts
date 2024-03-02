@@ -1172,7 +1172,7 @@ class Model {
     }
 
     isInfoUpdate(update: UpdatePacket): boolean {
-        if (update.type == "model") {
+        if (update != null && update.type == "model") {
             const modelUpdate = update as ModelUpdatePacket;
             return modelUpdate.data.some((u) => u.info != null || u.history != null);
         } else {

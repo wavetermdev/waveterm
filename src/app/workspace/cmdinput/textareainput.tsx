@@ -142,12 +142,12 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 let ctrlMod = waveEvent.control || waveEvent.cmd || waveEvent.shift;
                 let curLine = inputModel.getCurLine();
 
+                let lastTab = this.lastTab;
+                this.lastTab = keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete");
                 let lastHist = this.lastHistoryUpDown;
                 this.lastHistoryUpDown = false;
 
                 if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
-                    let lastTab = this.lastTab;
-                    this.lastTab = true;
                     if (lastTab) {
                         GlobalModel.submitCommand(
                             "_compgen",
@@ -188,8 +188,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 if (keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
                     let inputModel = GlobalModel.inputModel;
                     inputModel.toggleInfoMsg();
+                    console.log("hello?", inputModel.inputMode.get());
                     if (inputModel.inputMode.get() != null) {
                         inputModel.resetInputMode();
+                        console.log("hello? 2");
                     }
                     inputModel.closeAIAssistantChat(true);
                     return true;
