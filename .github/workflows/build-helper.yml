@@ -61,7 +61,7 @@ jobs:
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}
-                  path: make/**/*
+                  path: make/{*.deb,*.rpm,*.snap,*.AppImage,*.dmg,*.zip,*.yml,*.flatpak}
                   retention-days: 2
     upload:
         name: "Upload Builds"
@@ -71,11 +71,7 @@ jobs:
             - uses: actions/download-artifact@v4
               with:
                   merge-multiple: true
-                  path: download
-            - name: Copy artifacts to buildtemp
-              run: |
-                  mkdir buildtemp
-                  cp download/* buildtemp
+                  path: buildtemp
             - name: Set `version.txt`
               run: |
                   echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" > buildtemp/version.txt
