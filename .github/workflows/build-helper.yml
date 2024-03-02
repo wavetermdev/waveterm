@@ -61,7 +61,7 @@ jobs:
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}
-                  path: make/{*.deb,*.rpm,*.snap,*.AppImage,*.dmg,*.zip,*.yml,*.flatpak}
+                  path: make/{*.deb,*.rpm,*.snap,*.AppImage,*.dmg,*.zip,*.flatpak}
                   retention-days: 2
     upload:
         name: "Upload Builds"
@@ -70,12 +70,13 @@ jobs:
         steps:
             - uses: actions/download-artifact@v4
               with:
+                  merge-multiple: true
                   path: buildtemp
             - name: Set `version.txt`
               run: |
                   echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" > buildtemp/version.txt
             - name: Zip Builds
-              run: (cd buildtemp; zip -qr ../waveterm-builds.zip *)
+              run: (cd buildtemp; zip -q ../waveterm-builds.zip *)
             - name: Upload to S3
               run: aws s3 cp waveterm-builds.zip s3://waveterm-github-artifacts/
               env:
