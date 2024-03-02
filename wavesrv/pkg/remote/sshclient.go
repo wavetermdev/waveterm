@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/user"
@@ -65,19 +66,32 @@ func createDummySigner() ([]ssh.Signer, error) {
 // keys from being attempted. But if there's an error because of a dummy
 // file, the library can still try again with a new key.
 func createPublicKeyCallback(sshKeywords *SshKeywords, passphrase string) func() ([]ssh.Signer, error) {
-	identityFiles := make([]string, len(sshKeywords.IdentityFile))
-	copy(identityFiles, sshKeywords.IdentityFile)
+	var identityFiles []string
+	existingKeys := make(map[string][]byte)
+
+	// checking the file early prevents us from needing to send a
+	// dummy signer if there's a problem with the signer
+	for _, identityFile := range sshKeywords.IdentityFile {
+		privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
+		if err != nil {
+			// skip this key and try with the next
+			continue
+		}
+		existingKeys[identityFile] = privateKey
+		identityFiles = append(identityFiles, identityFile)
+	}
+	// require pointer to modify list in closure
 	identityFilesPtr := &identityFiles
 
 	return func() ([]ssh.Signer, error) {
 		if len(*identityFilesPtr) == 0 {
-			// skip this key and try with the next
-			return createDummySigner()
+			return nil, fmt.Errorf("no identity files remaining")
 		}
 		identityFile := (*identityFilesPtr)[0]
 		*identityFilesPtr = (*identityFilesPtr)[1:]
-		privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
-		if err != nil {
+		privateKey, ok := existingKeys[identityFile]
+		if !ok {
+			log.Printf("error with existingKeys, this should never happen")
 			// skip this key and try with the next
 			return createDummySigner()
 		}
