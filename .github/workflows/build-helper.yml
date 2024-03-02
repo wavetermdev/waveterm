@@ -74,6 +74,7 @@ jobs:
                   path: buildtemp
             - name: Set `version.txt`
               run: |
+                  touch buildtemp/version.txt
                   echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" >> buildtemp/version.txt
             - name: Zip Builds
               run: (cd buildtemp; zip -q ../waveterm-builds.zip *)
