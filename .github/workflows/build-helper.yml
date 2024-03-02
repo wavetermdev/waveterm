@@ -18,7 +18,7 @@ jobs:
                       arch:
                           - "amd64"
                           - "arm64"
-                      runner: "ubuntu-latest-large"
+                      runner: "ubuntu-latest"
                       scripthaus: "build-package-linux"
         runs-on: ${{ matrix.runner }}
         steps:
