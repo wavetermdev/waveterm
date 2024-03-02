@@ -10,8 +10,7 @@ const config = {
     nodeGypRebuild: false,
     electronCompile: false,
     publish: {
-        provider: "s3",
-        bucket: "waveterm-test-autoupdate",
+        provider: "generic",
         endpoint: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
     },
     files: [
