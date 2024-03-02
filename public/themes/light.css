@@ -42,4 +42,9 @@
     /* cmd input */
     --cmdinput-textarea-bg-color: rgba(0, 0, 0, 0.1);
     --cmdinput-textarea-border-color: var(--form-element-border-color);
+
+    /* scroll colors */
+    --scrollbar-background-color: rgba(0, 0, 0, 0.3);
+    --scrollbar-thumb-color: rgba(0, 0, 0, 0.4);
+    --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.5);
 }
