@@ -56,9 +56,11 @@ jobs:
                   echo "WAVETERM_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
             - name: Install Yarn Dependencies
               run: yarn --frozen-lockfile
-            - name: Build ${{ matrix.platform }} ${{ matrix.arch }}
+            - name: Build
               run: |
-                  GOARCH=${{ matrix.arch}} ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
+                  for arch in ${{ matrix.arch }}; do
+                      GOARCH=$arch ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
+                  done
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}-${{ matrix.arch }}
