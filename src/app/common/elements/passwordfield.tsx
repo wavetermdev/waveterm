@@ -55,6 +55,7 @@ class PasswordField extends TextField {
             onChange: this.handleInputChange,
             onFocus: this.handleFocus,
             onBlur: this.handleBlur,
+            onKeyDown: this.props.onKeyDown,
             autoFocus: autoFocus,
             placeholder: placeholder,
             maxLength: maxLength,

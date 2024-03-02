@@ -2,6 +2,7 @@ import * as React from "react";
 import { GlobalModel } from "@/models";
 import { Choose, When, If } from "tsx-control-statements/components";
 import { Modal, PasswordField, Markdown } from "@/elements";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./userinput.less";
 
@@ -9,7 +10,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = React.useState("");
     const [countdown, setCountdown] = React.useState(Math.floor(userInputRequest.timeoutms / 1000));
 
-    const closeModal = React.useCallback(() => {
+    const handleSendCancel = React.useCallback(() => {
         GlobalModel.sendUserInput({
             type: "userinputresp",
             requestid: userInputRequest.requestid,
@@ -39,6 +40,19 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
         [userInputRequest]
     );
 
+    function handleTextKeyDown(e: any) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Enter")) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSendText();
+        } else if (checkKeyPressed(waveEvent, "Escape")) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSendCancel();
+        }
+    }
+
     React.useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
         if (countdown == 0) {
@@ -55,7 +69,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
 
     return (
         <Modal className="userinput-modal">
-            <Modal.Header onClose={closeModal} title={userInputRequest.title + ` (${countdown}s)`} />
+            <Modal.Header onClose={handleSendCancel} title={userInputRequest.title + ` (${countdown}s)`} />
             <div className="wave-modal-body">
                 <div className="userinput-query">
                     <If condition={userInputRequest.markdown}>
@@ -70,13 +84,14 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                             value={responseText}
                             maxLength={400}
                             autoFocus={true}
+                            onKeyDown={(e) => handleTextKeyDown(e)}
                         />
                     </When>
                 </Choose>
             </div>
             <Choose>
                 <When condition={userInputRequest.responsetype == "text"}>
-                    <Modal.Footer onCancel={closeModal} onOk={handleSendText} okLabel="Continue" />
+                    <Modal.Footer onCancel={handleSendCancel} onOk={handleSendText} okLabel="Continue" />
                 </When>
                 <When condition={userInputRequest.responsetype == "confirm"}>
                     <Modal.Footer
