@@ -40,7 +40,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
         [userInputRequest]
     );
 
-    function handleTextKeyDown(e: any) {
+    function handleTextKeyDown(e: KeyboardEvent) {
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (checkKeyPressed(waveEvent, "Enter")) {
             e.preventDefault();
