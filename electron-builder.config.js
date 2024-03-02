@@ -9,6 +9,7 @@ const config = {
     npmRebuild: false,
     nodeGypRebuild: false,
     electronCompile: false,
+    publish: null,
     files: [
         {
             from: "./dist",
@@ -38,7 +39,7 @@ const config = {
         },
     ],
     directories: {
-        output: "buildres/builder",
+        output: "make",
     },
     appId: pkg.build.appId,
     productName: pkg.productName,

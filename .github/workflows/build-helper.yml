@@ -18,7 +18,7 @@ jobs:
                       arch:
                           - "amd64"
                           - "arm64"
-                      runner: "ubuntu-latest"
+                      runner: "ubuntu-latest-large"
                       scripthaus: "build-package-linux"
         runs-on: ${{ matrix.runner }}
         steps:
@@ -59,12 +59,13 @@ jobs:
             - name: Build
               run: |
                   for arch in ${{ matrix.arch }}; do
+                      echo "Building for ${{ matrix.platform }}/$arch"
                       GOARCH=$arch ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
                   done
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}-${{ matrix.arch }}
-                  path: out/make/**/*
+                  path: out/make/*
                   retention-days: 2
     upload:
         name: "Upload Builds"
