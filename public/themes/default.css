@@ -56,6 +56,8 @@
     --app-panel-bg-color: rgba(21, 23, 21, 1);
     --app-panel-bg-color-dev: rgb(21, 23, 48);
 
+    /* icon colors */
+
     /* global generic colors */
     --app-black: rgb(0, 0, 0);
 
@@ -106,6 +108,7 @@
     --form-element-primary-color: rgb(78, 154, 6);
     --form-element-secondary-color: rgba(255, 255, 255, 0.09);
     --form-element-error-color: rgb(204, 0, 0);
+    --form-element-icon-color: #fff;
 
     /* button colors */
     /* todo: use --form-element-* directly in elements */
@@ -230,6 +233,7 @@
     --table-thead-border-bottom-color: var(--table-border-color);
     --table-thead-bg-color: rgba(250, 250, 250, 0.02);
     --table-tr-border-bottom-color: rgba(241, 246, 243, 0.15);
+    --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
 
     /* session colors */
     --session-bg-color: rgba(13, 13, 13, 0.85);

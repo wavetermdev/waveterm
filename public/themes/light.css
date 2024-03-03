@@ -14,8 +14,12 @@
     --app-panel-bg-color: #cccccc;
     --app-panel-bg-color-dev: #eeeeff;
 
+    /* term colors */
     --term-black: #fefefe;
     --term-white: #000;
+
+    /* tab color */
+    --tab-white: rgb(0, 0, 0, 0.6);
 
     /* button colors */
     --button-text-color: rgb(50, 50, 50); /* Dark gray for light theme */
@@ -29,6 +33,7 @@
     --table-thead-border-bottom-color: rgba(0, 0, 0, 0.3);
     --table-thead-bg-color: rgba(250, 250, 250, 0.15);
     --table-tr-border-bottom-color: rgba(0, 0, 0, 0.15);
+    --table-tr-hover-bg-color: rgba(0, 0, 0, 0.15);
 
     /* form colors */
     --form-element-border-color: rgba(0, 0, 0, 0.3);
@@ -36,6 +41,7 @@
     --form-element-text-color: var(--app-text-color);
     --form-element-label-color: rgba(0, 0, 0, 0.6);
     --form-element-secondary-color: rgba(255, 255, 255, 0.09);
+    --form-element-icon-color: rgb(0, 0, 0, 0.6);
 
     /* modal colors */
     --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
@@ -48,4 +54,8 @@
     --scrollbar-background-color: rgba(0, 0, 0, 0.3);
     --scrollbar-thumb-color: rgba(0, 0, 0, 0.4);
     --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.5);
+
+    /* cmdstrcode colors */
+    --cmdstrcode-bg-color: var(--term-black);
+    --cmdstrcode-text-color: var(--term-white);
 }
