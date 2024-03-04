@@ -7,7 +7,7 @@ const pkg = require("./package.json");
 const config = {
     appId: pkg.build.appId,
     productName: pkg.productName,
-    artifactName: "${productName}-${version}-${platform}-${arch}.${ext}",
+    artifactName: "${productName}-${platform}-${arch}-${version}.${ext}",
     npmRebuild: false,
     nodeGypRebuild: false,
     electronCompile: false,
