@@ -9,10 +9,10 @@
     --app-text-primary-color: rgb(0, 0, 0, 0.9);
     --app-text-secondary-color: rgb(0, 0, 0, 0.7);
     --app-border-color: rgb(139 145 138);
-
-    /* sidebar colors */
     --app-panel-bg-color: #cccccc;
     --app-panel-bg-color-dev: #eeeeff;
+    --app-icon-color: rgb(80, 80, 80);
+    --app-icon-hover-color: rgb(100, 100, 100);
 
     /* term colors */
     --term-black: #fefefe;

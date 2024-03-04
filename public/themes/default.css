@@ -55,6 +55,8 @@
     --app-border-radius: 10px;
     --app-panel-bg-color: rgba(21, 23, 21, 1);
     --app-panel-bg-color-dev: rgb(21, 23, 48);
+    --app-icon-color: rgb(139, 145, 138);
+    --app-icon-hover-color: #fff;
 
     /* icon colors */
 
