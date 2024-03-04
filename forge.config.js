@@ -1,5 +1,4 @@
-const pkg = require("./package.json");
-let AllowedFirstParts = {
+var AllowedFirstParts = {
     "package.json": true,
     dist: true,
     public: true,
@@ -7,11 +6,11 @@ let AllowedFirstParts = {
     bin: true,
 };
 
-let AllowedNodeModules = {
+var AllowedNodeModules = {
     "monaco-editor": true,
 };
 
-let modCache = {};
+var modCache = {};
 
 function ignoreFn(path) {
     let parts = path.split("/");
@@ -48,7 +47,11 @@ function ignoreFn(path) {
 module.exports = {
     packagerConfig: {
         ignore: ignoreFn,
-        files: ["package.json", "dist/*", "public/*", "bin/*"],
+        files: [
+            "package.json",
+            "dist/*",
+            "public/*",
+        ],
         icon: "public/waveterm.icns",
     },
     rebuildConfig: {},
@@ -57,59 +60,5 @@ module.exports = {
             name: "@electron-forge/maker-zip",
             platforms: ["darwin", "linux"],
         },
-        {
-            name: "@electron-forge/maker-deb",
-            config: {
-                options: {
-                    bin: pkg.productName,
-                    name: pkg.name,
-                    genericName: "Terminal Emulator",
-                    productName: pkg.productName,
-                    productDescription: pkg.description,
-                    icon: "public/waveterm.icns",
-                    categories: ["Utility", "Development"],
-                    maintainer: pkg.author,
-                    homepage: pkg.homepage,
-                    license: pkg.license,
-                    version: pkg.version,
-                },
-            },
-        },
-        {
-            name: "@electron-forge/maker-rpm",
-            config: {
-                options: {
-                    bin: pkg.productName,
-                    name: pkg.name,
-                    genericName: "Terminal Emulator",
-                    productName: pkg.productName,
-                    description: pkg.description,
-                    productDescription: pkg.description,
-                    icon: "public/waveterm.icns",
-                    categories: ["Utility", "Development"],
-                    license: pkg.license,
-                    version: pkg.version,
-                },
-            },
-        },
-        // {
-        //     name: "@electron-forge/maker-flatpak",
-        //     config: {
-        //         options: {
-        //             bin: pkg.productName,
-        //             mimeType: ["text/plain"],
-        //         },
-        //     },
-        // },
-        // {
-        //     name: "@electron-forge/maker-snap",
-        //     config: {
-        //         features: {
-        //             audio: true,
-        //             mpris: "com.commandline.waveterm",
-        //             webgl: true,
-        //         },
-        //     },
-        // },
     ],
 };
