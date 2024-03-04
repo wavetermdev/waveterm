@@ -1,17 +1,14 @@
 const { signAsync } = require("@electron/osx-sign");
 const path = require("path");
+const fs = require("fs");
 
 console.log("running osx-sign");
 const waveAppPath = path.resolve(__dirname, "temp", "Wave.app");
+const binDirPath = path.resolve(__dirname, "temp", "Wave.app", "Contents", "Resources", "app.asar.unpacked", "bin");
+const binFilePaths = fs.readdirSync(binDirPath, { recursive: true }).map((f) => path.resolve(binDirPath, f));
 signAsync({
     app: waveAppPath,
-    binaries: [
-        waveAppPath + "/Contents/Resources/app/bin/wavesrv",
-        waveAppPath + "/Contents/Resources/app/bin/mshell/mshell-v0.4-linux.amd64",
-        waveAppPath + "/Contents/Resources/app/bin/mshell/mshell-v0.4-linux.arm64",
-        waveAppPath + "/Contents/Resources/app/bin/mshell/mshell-v0.4-darwin.amd64",
-        waveAppPath + "/Contents/Resources/app/bin/mshell/mshell-v0.4-darwin.arm64",
-    ],
+    binaries: binFilePaths,
 })
     .then(() => {
         console.log("signing success");
