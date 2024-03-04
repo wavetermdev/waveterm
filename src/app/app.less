@@ -55,7 +55,16 @@ body input.input {
 .platform-darwin {
     border-radius: var(--app-border-radius-darwin);
 
+    .main-content {
+        border-radius: var(--app-border-radius-darwin);
+    }
+
     .main-content > :first-child {
+        border-top-left-radius: var(--app-border-radius-darwin);
+        border-bottom-left-radius: var(--app-border-radius-darwin);
+    }
+
+    .main-content > .collapsed:first-child + div {
         border-top-left-radius: var(--app-border-radius-darwin);
         border-bottom-left-radius: var(--app-border-radius-darwin);
     }
