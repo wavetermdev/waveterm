@@ -5,14 +5,12 @@ const pkg = require("./package.json");
  * @see https://www.electron.build/configuration/configuration
  */
 const config = {
+    appId: pkg.build.appId,
+    productName: pkg.productName,
     artifactName: "${productName}-${version}-${platform}-${arch}.${ext}",
     npmRebuild: false,
     nodeGypRebuild: false,
     electronCompile: false,
-    publish: {
-        provider: "generic",
-        url: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
-    },
     files: [
         {
             from: "./dist",
@@ -44,8 +42,7 @@ const config = {
     directories: {
         output: "make",
     },
-    appId: pkg.build.appId,
-    productName: pkg.productName,
+    asarUnpack: ["bin/**/*"],
     mac: {
         target: {
             target: "zip",
@@ -54,20 +51,22 @@ const config = {
         icon: "public/waveterm.icns",
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
-        asarUnpack: ["bin/**/*"],
     },
     linux: {
         executableName: pkg.productName,
         category: "TerminalEmulator",
         icon: "public/waveterm.icns",
         target: ["zip", "deb", "rpm", "AppImage"],
-        asar: false,
         desktop: {
             Name: pkg.productName,
             Comment: pkg.description,
             Keywords: "developer;terminal;emulator;",
             category: "Development;Utility;",
         },
+    },
+    publish: {
+        provider: "generic",
+        url: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
     },
 };
 
