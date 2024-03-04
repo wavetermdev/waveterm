@@ -262,4 +262,8 @@
     /* modals colors */
     --modal-bg-color: var(--app-bg-color);
     --modal-header-bottom-border-color: rgba(241, 246, 243, 0.15);
+
+    --logo-button-hover-bg-color: #1e1e1e;
+
+    --xterm-viewport-border-color: rgba(241, 246, 243, 0.15);
 }
