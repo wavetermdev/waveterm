@@ -5,10 +5,11 @@ const pkg = require("./package.json");
  * @see https://www.electron.build/configuration/configuration
  */
 const config = {
-    artifactName: "${productName}-${version}-${arch}.${ext}",
+    artifactName: "${productName}-${version}-${platform}-${arch}.${ext}",
     npmRebuild: false,
     nodeGypRebuild: false,
     electronCompile: false,
+    license: pkg.license,
     publish: {
         provider: "generic",
         url: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
