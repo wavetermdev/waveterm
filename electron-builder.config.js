@@ -67,7 +67,7 @@ const config = {
         },
     },
     appImage: {
-        license: pkg.license,
+        license: "LICENSE",
     },
     publish: {
         provider: "generic",
