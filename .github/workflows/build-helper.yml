@@ -64,7 +64,7 @@ jobs:
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}
-                  path: make/*{.yml,.deb,.rpm,.snap,.AppImage,.dmg,.zip,.flatpak}
+                  path: make/*.* // only upload files from the make directory, not subdirectories
                   retention-days: 2
     upload:
         name: "Upload Builds"
