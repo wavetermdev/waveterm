@@ -58,10 +58,13 @@ jobs:
               run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
               env:
                   GOARCH: ${{ matrix.arch }}
+            - name: Tree
+              if: matrix.platform == 'linux'
+              run: tree make
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}
-                  path: make/{*.deb,*.rpm,*.snap,*.AppImage,*.dmg,*.zip,*.flatpak}
+                  path: make/*{.yml,.deb,.rpm,.snap,.AppImage,.dmg,.zip,.flatpak}
                   retention-days: 2
     upload:
         name: "Upload Builds"
