@@ -562,6 +562,7 @@ declare global {
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
+        theme: string;
     };
 
     type ConfirmFlagsType = {
@@ -843,6 +844,22 @@ declare global {
         isSidebarOpen(): boolean;
         isLineIdInSidebar(lineId: string): boolean;
         getContainerType(): LineContainerStrs;
+    };
+
+    // the "environment" for computing a line's height (stays constant for a given term font family / size)
+    type LineHeightEnv = {
+        fontSize: number;
+        fontSizeSm: number;
+        lineHeight: number;
+        lineHeightSm: number;
+        pad: number;
+    };
+
+    // the "variables" for computing a line's height (changes per line)
+    type LineChromeHeightVars = {
+        numCmdLines: number;
+        zeroHeight: boolean;
+        hasLine2: boolean;
     };
 
     type MonoFontSize = {

@@ -443,7 +443,7 @@ func parseFullRemoteRef(fullRemoteRef string) (string, string, string, error) {
 	if strings.HasPrefix(fullRemoteRef, "[") && strings.HasSuffix(fullRemoteRef, "]") {
 		fullRemoteRef = fullRemoteRef[1 : len(fullRemoteRef)-1]
 	}
-	fields := strings.Split(fullRemoteRef, ":")
+	fields := strings.Split(fullRemoteRef, "#")
 	if len(fields) > 3 {
 		return "", "", "", fmt.Errorf("invalid remote format '%s'", fullRemoteRef)
 	}

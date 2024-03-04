@@ -45,6 +45,15 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
+    handleChangeTheme(theme: string): void {
+        if (GlobalModel.getTheme() == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setTheme(theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     handleChangeTelemetry(val: boolean): void {
         let prtn: Promise<CommandRtnType> = null;
         if (val) {
@@ -80,6 +89,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         availableFontFamilies.push({ label: "JetBrains Mono", value: "JetBrains Mono" });
         availableFontFamilies.push({ label: "Hack", value: "Hack" });
         return availableFontFamilies;
+    }
+
+    getThemes(): DropdownItem[] {
+        const themes: DropdownItem[] = [];
+        themes.push({ label: "Dark", value: "dark" });
+        themes.push({ label: "Light", value: "light" });
+        return themes;
     }
 
     @boundMethod
@@ -148,6 +164,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         );
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
+        const curTheme = GlobalModel.getTheme();
 
         return (
             <MainView viewName="clientsettings" title="Client Settings" onClose={this.handleClose}>
@@ -171,6 +188,17 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 options={this.getFontFamilies()}
                                 defaultValue={curFontFamily}
                                 onChange={this.handleChangeFontFamily}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Theme</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="theme-dropdown"
+                                options={this.getThemes()}
+                                defaultValue={curTheme}
+                                onChange={this.handleChangeTheme}
                             />
                         </div>
                     </div>
