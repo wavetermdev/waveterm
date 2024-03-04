@@ -9,7 +9,6 @@ const config = {
     npmRebuild: false,
     nodeGypRebuild: false,
     electronCompile: false,
-    license: pkg.license,
     publish: {
         provider: "generic",
         url: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
