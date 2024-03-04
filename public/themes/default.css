@@ -12,10 +12,8 @@
     --termfontsize-sm: 10px;
     --termlineheight-sm: 13px;
 
-    /* other fonts */
-    --base-font-family: "Lato", sans-serif;
-    --base-font-size: 15px;
-    --base-font-weight: normal;
+    /* base fonts */
+    --base-font: normal 15px "Lato", sans-serif;
 
     --title-font-size: 18px;
     --input-bg-color: #171717;
