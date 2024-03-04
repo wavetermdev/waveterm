@@ -74,7 +74,14 @@ const PrintPingPacket = `printf "\n##N{\"type\": \"ping\"}\n"`
 
 const MShellServerCommandFmt = `
 PATH=$PATH:~/.mshell;
-mshell-[%VERSION%] --server 2> /dev/null || printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)"
+which mshell-[%VERSION%] > /dev/null;
+if [[ "$?" -ne 0 ]]
+then
+  printf "\n##N{\"type\": \"init\", \"notfound\": true, \"uname\": \"%s | %s\"}\n" "$(uname -s)" "$(uname -m)"
+else
+  [%PINGPACKET%]
+  mshell-[%VERSION%] --server
+fi
 `
 
 func MakeLocalMShellCommandStr(isSudo bool) (string, error) {
