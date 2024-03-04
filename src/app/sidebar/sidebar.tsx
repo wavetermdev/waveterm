@@ -13,7 +13,6 @@ import { compareLoose } from "semver";
 import { ReactComponent as AppsIcon } from "@/assets/icons/apps.svg";
 import { ReactComponent as WorkspacesIcon } from "@/assets/icons/workspaces.svg";
 import { ReactComponent as SettingsIcon } from "@/assets/icons/settings.svg";
-import { ReactComponent as WaveLogoWord } from "@/assets/wave-logo_horizontal-coloronblack.svg";
 import { ReactComponent as WaveLogo } from "@/assets/waveterm-logo.svg";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -176,36 +175,20 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
      */
     @boundMethod
     getUpdateAppBanner(): React.ReactNode {
-        if (GlobalModel.platform == "darwin") {
-            const status = GlobalModel.appUpdateStatus.get();
-            if (status == "ready") {
-                return (
-                    <SideBarItem
-                        key="update-ready"
-                        className="update-banner"
-                        frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
-                        contents="Click to Install Update"
-                        onClick={() => GlobalModel.installAppUpdate()}
-                    />
-                );
-            }
+        const status = GlobalModel.appUpdateStatus.get();
+        if (status == "ready") {
+            return (
+                <SideBarItem
+                    key="update-ready"
+                    className="update-banner"
+                    frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
+                    contents="Click to Install Update"
+                    onClick={() => GlobalModel.installAppUpdate()}
+                />
+            );
         } else {
-            const clientData = this.props.clientData;
-            if (!clientData?.clientopts.noreleasecheck && !isBlank(clientData?.releaseinfo?.latestversion)) {
-                if (compareLoose(appconst.VERSION, clientData.releaseinfo.latestversion) < 0) {
-                    return (
-                        <SideBarItem
-                            key="update-available"
-                            className="update-banner"
-                            frontIcon={<i className="fa-sharp fa-regular fa-circle-up icon" />}
-                            contents="Update Available"
-                            onClick={() => openLink("https://www.waveterm.dev/download?ref=upgrade")}
-                        />
-                    );
-                }
-            }
+            return null;
         }
-        return null;
     }
 
     getSessions() {

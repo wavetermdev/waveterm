@@ -905,19 +905,12 @@ function configureAutoUpdater(enabled: boolean) {
     }
     autoUpdateLock = true;
 
-    // only configure auto-updater on macOS
-    if (unamePlatform == "darwin") {
-        if (enabled && autoUpdateInterval == null) {
-            try {
-                console.log("configuring auto updater");
-                autoUpdateInterval = initUpdater();
-            } catch (e) {
-                console.log("error configuring auto updater", e.toString());
-            }
-        } else if (autoUpdateInterval != null) {
-            console.log("user has disabled auto-updates, stopping updater");
-            clearInterval(autoUpdateInterval);
-            autoUpdateInterval = null;
+    if (enabled && autoUpdateInterval == null) {
+        try {
+            console.log("configuring auto updater");
+            autoUpdateInterval = initUpdater();
+        } catch (e) {
+            console.log("error configuring auto updater", e.toString());
         }
     }
     autoUpdateLock = false;
