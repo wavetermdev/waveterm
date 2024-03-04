@@ -215,6 +215,7 @@
     --line-status-warning-fill: #ffa500;
     --line-actions-inactive-color: rgba(255, 255, 255, 0.5);
     --line-actions-active-color: rgba(255, 255, 255, 1);
+    --line-actions-bg-color: rgba(21, 23, 21, 1);
 
     /* view colors */
     /* todo: bookmarks is a view, colors must be unified with --view* colors */

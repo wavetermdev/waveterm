@@ -58,4 +58,7 @@
     /* cmdstrcode colors */
     --cmdstrcode-bg-color: var(--term-black);
     --cmdstrcode-text-color: var(--term-white);
+
+    /* line color */
+    --line-actions-bg-color: rgba(0, 0, 0, 0.4);
 }
