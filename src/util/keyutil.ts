@@ -14,7 +14,12 @@ type KeyPressDecl = {
         Meta?: boolean;
     };
     key: string;
+    keyType: string;
 };
+
+const KeyTypeCodeRegex = /:c{(.*)}/;
+const KeyTypeKey = "key";
+const KeyTypeCode = "code";
 
 type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
 
@@ -182,6 +187,31 @@ class KeybindManager {
             let curKeybind = keybindings[index];
             this.keyDescriptionsMap.set(curKeybind.command, curKeybind.keys);
         }
+        let error = false;
+        let numberedTabKeybinds = [];
+        for (let index = 1; index <= 9; index++) {
+            let curKeybind = this.keyDescriptionsMap.get("app:selectTab-" + index);
+            if (curKeybind == null) {
+                error = true;
+                break;
+            }
+            numberedTabKeybinds.push(curKeybind);
+        }
+        if (!error) {
+            this.keyDescriptionsMap.set("app:selectNumberedTab", numberedTabKeybinds);
+        }
+        let numberedWorkspaceKeybinds = [];
+        for (let index = 1; index <= 9; index++) {
+            let curKeybind = this.keyDescriptionsMap.get("app:selectTab-" + index);
+            if (curKeybind == null) {
+                error = true;
+                break;
+            }
+            numberedWorkspaceKeybinds.push(curKeybind);
+        }
+        if (!error) {
+            this.keyDescriptionsMap.set("app:selectNumberedTab", numberedWorkspaceKeybinds);
+        }
     }
 
     checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
@@ -243,8 +273,10 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
         } else if (key == "Meta") {
             rtn.mods.Meta = true;
         } else {
-            rtn.key = key;
-            if (key.length == 1) {
+            let { key: parsedKey, type: keyType } = parseKey(key);
+            rtn.key = parsedKey;
+            rtn.keyType = keyType;
+            if (rtn.keyType == KeyTypeKey && key.length == 1) {
                 // check for if key is upper case
                 if (/[A-Z]/.test(key.charAt(0))) {
                     // this key is an upper case A - Z - we should apply the shift key, even if it wasn't specified
@@ -257,6 +289,17 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
         }
     }
     return rtn;
+}
+
+function parseKey(key: string): { key: string; type: string } {
+    let regexMatch = key.match(KeyTypeCodeRegex);
+    if (regexMatch != null && regexMatch.length > 1) {
+        let code = regexMatch[1];
+        return { key: code, type: KeyTypeCode };
+    } else if (regexMatch != null) {
+        console.log("error: regexMatch is not null yet there is no captured group: ", regexMatch, key);
+    }
+    return { key: key, type: KeyTypeKey };
 }
 
 function checkKeyPressed(event: WaveKeyboardEvent, keyPress: KeyPressDecl): boolean {
@@ -278,16 +321,22 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyPress: KeyPressDecl): bool
     if (keyPress.mods.Meta && !event.meta) {
         return false;
     }
-    let eventKey = event.key;
+    let eventKey = "";
     let descKey = keyPress.key;
-    if (eventKey.length == 1 && /[A-Z]/.test(eventKey.charAt(0))) {
-        // key is upper case A-Z, this means shift is applied, we want to allow
-        // "Shift:e" as well as "Shift:E" or "E"
-        eventKey = eventKey.toLocaleLowerCase();
-        descKey = descKey.toLocaleLowerCase();
-    } else if (eventKey == " ") {
-        eventKey = "Space";
-        // a space key is shown as " ", we want users to be able to set space key as "Space" or " ", whichever they prefer
+    if (keyPress.keyType == KeyTypeCode) {
+        eventKey = event.code;
+    }
+    if (keyPress.keyType == KeyTypeKey) {
+        eventKey = event.key;
+        if (eventKey.length == 1 && /[A-Z]/.test(eventKey.charAt(0))) {
+            // key is upper case A-Z, this means shift is applied, we want to allow
+            // "Shift:e" as well as "Shift:E" or "E"
+            eventKey = eventKey.toLocaleLowerCase();
+            descKey = descKey.toLocaleLowerCase();
+        } else if (eventKey == " ") {
+            eventKey = "Space";
+            // a space key is shown as " ", we want users to be able to set space key as "Space" or " ", whichever they prefer
+        }
     }
     if (descKey != eventKey) {
         return false;
