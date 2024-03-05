@@ -4,12 +4,10 @@
 html,
 body {
     overflow: hidden;
-    font-family: var(--base-font-family);
-    font-size: var(--base-font-size);
-    font-weight: var(--base-font-weight);
-    line-height: normal;
+    font: var(--base-font);
     background-color: black;
     color: var(--app-text-color);
+    -webkit-font-smoothing: auto;
 }
 
 body {
@@ -25,9 +23,7 @@ body .sidebar {
 body textarea,
 body textarea.textarea {
     overflow: hidden;
-    font-family: var(--base-font-family);
-    font-size: var(--base-font-size);
-    font-weight: var(--base-font-weight);
+    font: var(--base-font);
     line-height: 1.5;
     color: var(--app-text-color);
     background-color: var(--input-bg-color);
@@ -39,9 +35,7 @@ body textarea.textarea {
 
 body input,
 body input.input {
-    font-family: var(--base-font-family);
-    font-size: var(--base-font-size);
-    font-weight: var(--base-font-weight);
+    font: var(--base-font);
     line-height: 1.5;
     color: var(--app-text-color);
     background-color: var(--input-bg-color);
@@ -249,9 +243,6 @@ svg.icon {
         background: var(--button-secondary-bg-color);
         opacity: 0.5;
         cursor: initial;
-        &:hover {
-            box-shadow: none;
-        }
     }
 }
 .dropdown {
@@ -325,7 +316,7 @@ a.a-block {
         pointer-events: all;
 
         &:hover {
-            background-color: #333;
+            background-color: var(--logo-button-hover-bg-color);
             border-radius: 4px;
         }
     }

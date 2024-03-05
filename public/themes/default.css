@@ -1,21 +1,21 @@
 /* Copyright 2024, Command Line Inc.
    SPDX-License-Identifier: Apache-2.0 */
 
+@import url("./term-dark.css");
+
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
 
     /* these variables are overridden by user settings */
-    --termfontfamily: "JetBrains Mono", monospace;
-    --termfontsize: 12px;
-    --termlineheight: 15px;
-    --termpad: 7px; /* padding value (scaled to termfontsize) */
-    --termfontsize-sm: 10px;
-    --termlineheight-sm: 13px;
+    --termfontfamily: "Hack";
+    --termfontsize: 13px;
+    --termlineheight: 18px;
+    --termpad: 9px; /* padding value (scaled to termfontsize) */
+    --termfontsize-sm: 11px;
+    --termlineheight-sm: 15px;
 
-    /* other fonts */
-    --base-font-family: "Lato", sans-serif;
-    --base-font-size: 15px;
-    --base-font-weight: normal;
+    /* base fonts */
+    --base-font: normal 15px "Lato", sans-serif;
 
     --title-font-size: 18px;
     --input-bg-color: #171717;
@@ -54,6 +54,10 @@
     --app-maincontent-bg-color: #333;
     --app-panel-bg-color: rgba(21, 23, 21, 1);
     --app-panel-bg-color-dev: rgb(21, 23, 48);
+    --app-icon-color: rgb(139, 145, 138);
+    --app-icon-hover-color: #fff;
+
+    /* icon colors */
 
     /* just for macos */
     --app-border-radius-darwin: 10px;
@@ -82,52 +86,41 @@
     --tab-pink: rgb(224, 86, 119);
     --tab-white: rgb(255, 255, 255);
 
-    /* term colors */
-    --term-black: #000000;
-    --term-red: #cc0000;
-    --term-green: #4e9a06;
-    --term-yellow: #c4a000;
-    --term-blue: #3465a4;
-    --term-magenta: #75507b;
-    --term-cyan: #06989a;
-    --term-white: #d3d7cf;
-    --term-bright-black: #555753;
-    --term-bright-red: #ef2929;
-    --term-bright-green: #58c142;
-    --term-bright-yellow: #fce94f;
-    --term-bright-blue: #32afff;
-    --term-bright-magenta: #ad7fa8;
-    --term-bright-cyan: #34e2e2;
-    --term-bright-white: #ffffff;
-    --term-gray: rgb(139, 145, 138); /* not an official terminal color */
+    --form-element-border-color: rgba(241, 246, 243, 0.15);
+    --form-element-bg-color: var(--app-bg-color);
+    --form-element-text-color: #ffffff;
+    --form-element-label-color: rgb(195, 200, 194);
+    --form-element-primary-color: rgb(78, 154, 6);
+    --form-element-secondary-color: rgba(255, 255, 255, 0.09);
+    --form-element-error-color: rgb(204, 0, 0);
+    --form-element-icon-color: #fff;
 
     /* button colors */
-    --button-text-color: rgb(255, 255, 255);
-    --button-primary-bg-color: rgb(78, 154, 6);
-    --button-secondary-bg-color: rgba(255, 255, 255, 0.09);
-    --button-warning-bg-color: rgb(204, 0, 0);
+    /* todo: use --form-element-* directly in elements */
+    --button-text-color: var(--form-element-text-color);
+    --button-primary-bg-color: var(--form-element-primary-color);
+    --button-secondary-bg-color: var(--form-element-secondary-color);
+    --button-warning-bg-color: var(--form-element-error-color);
 
     /* input colors */
-    --checkbox-text-color: rgb(255, 255, 255);
-    --checkbox-bg-color: rgb(78, 154, 6);
-    --checkbox-check-color: rgb(255, 255, 255);
+    /* todo: use --form-element-* directly in elements */
+    --checkbox-text-color: var(--form-element-text-color);
+    --checkbox-bg-color: var(--form-element-primary-color);
+    --checkbox-check-color: var(--form-element-text-color);
 
     /* dropdown colors */
-    --dropdown-text-color: rgb(211, 215, 207);
-    --dropdown-error-color: rgb(229, 77, 46);
-    --dropdown-focus-color: rgb(78, 154, 6);
-
-    /* textfield colors */
-    --textfield-focused-border-color: rgb(78, 154, 6);
-    --textfield-error-border-color: rgb(229, 77, 46);
-    --textfield-label-color: rgb(195, 200, 194);
-    --textfield-text-color: rgb(255, 255, 255);
-    --textfield-bg-color: rgba(48, 49, 48, 0.6);
+    /* todo: use --form-element-* directly in elements */
+    --dropdown-text-color: var(--form-element-text-color);
+    --dropdown-label-color: var(--form-element-label-color);
+    --dropdown-error-color: var(--form-element-error-color);
+    --dropdown-focus-color: var(--form-element-primary-color);
+    --dropdown-bg-color: var(--form-element-bg-color);
+    --dropdown-border-color: var(--form-element-border-color);
 
     /* toggle colors */
     --toggle-bg-color: rgb(51, 51, 51);
     --toggle-thumb-color: rgb(211, 215, 207);
-    --toggle-checked-bg-color: rgb(78, 154, 6);
+    --toggle-checked-bg-color: var(--form-element-primary-color);
 
     /* cmdstrcode colors */
     --cmdstrcode-bg-color: rgb(0, 0, 0);
@@ -135,7 +128,7 @@
 
     /* markdown colors */
     --markdown-bg-color: rgb(35, 35, 35);
-    --markdown-outline-color: rgb(78, 154, 6);
+    --markdown-outline-color: var(--form-element-primary-color);
 
     /* status(remote) colors */
     /* todo: all status colors must be unified */
@@ -198,6 +191,7 @@
     --line-status-warning-fill: #ffa500;
     --line-actions-inactive-color: rgba(255, 255, 255, 0.5);
     --line-actions-active-color: rgba(255, 255, 255, 1);
+    --line-actions-bg-color: rgba(21, 23, 21, 1);
 
     /* view colors */
     /* todo: bookmarks is a view, colors must be unified with --view* colors */
@@ -210,16 +204,22 @@
     --view-error-color: rgb(204, 0, 0);
     --view-text-color: rgb(195, 200, 194);
 
+    /* table colors */
+    --table-border-color: rgba(241, 246, 243, 0.15);
+    --table-thead-border-top-color: rgba(250, 250, 250, 0.1);
+    --table-thead-border-bottom-color: var(--table-border-color);
+    --table-thead-bg-color: rgba(250, 250, 250, 0.02);
+    --table-tr-border-bottom-color: rgba(241, 246, 243, 0.15);
+    --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
+
     /* session colors */
     --session-bg-color: rgba(13, 13, 13, 0.85);
 
     /* cmdinput colors */
     --cmdinput-textarea-bg-color: #171717;
-    --cmdinput-text-error-color: rgb(239, 41, 41);
-    --cmdinput-title-color: rgb(114, 159, 207);
-    --cmdinput-history-item-error-color: rgb(220, 119, 118);
-    --cmdinput-history-item-selected-error-color: rgb(247, 148, 148);
-    --cmdinput-warning-color: rgb(255, 165, 0);
+    --cmdinput-text-error-color: var(--term-red);
+    --cmdinput-history-item-error-color: var(--term-bright-red);
+    --cmdinput-history-item-selected-error-color: var(--term-bright-red);
     --cmdinput-button-bg-color: rgb(88, 193, 66);
     --cmdinput-comment-button-bg-color: rgb(57, 113, 255);
     --cmdinput-disabled-icon-color: rgb(76, 81, 75, 1);
@@ -230,4 +230,12 @@
 
     /* plugins colors */
     --code-gutter-bg-color: rgba(88, 193, 66, 0.4);
+
+    /* modals colors */
+    --modal-bg-color: var(--app-bg-color);
+    --modal-header-bottom-border-color: rgba(241, 246, 243, 0.15);
+
+    --logo-button-hover-bg-color: #1e1e1e;
+
+    --xterm-viewport-border-color: rgba(241, 246, 243, 0.15);
 }

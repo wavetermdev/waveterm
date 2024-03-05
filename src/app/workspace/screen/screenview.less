@@ -35,7 +35,10 @@
             color: var(--screen-view-text-caption-color);
 
             &:hover {
-                color: white;
+                color: var(--app-icon-hover-color);
+                i {
+                    color: var(--app-icon-hover-color);
+                }
             }
 
             div.pane-name {
@@ -248,7 +251,7 @@
 
     .newtab-spacer {
         height: 1px;
-        background: rgba(241, 246, 243, 0.15);
+        background: var(--app-border-color);
     }
 
     .control-iconlist {
