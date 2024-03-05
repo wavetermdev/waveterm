@@ -4,7 +4,7 @@
 :root {
     --term-black: #757575;
     --term-red: #cc685c;
-    --term-green: #72c85b;
+    --term-green: #58c142;
     --term-yellow: #cbca9b;
     --term-blue: #85aacb;
     --term-magenta: #cc72ca;
@@ -13,12 +13,12 @@
 
     --term-bright-black: #727272;
     --term-bright-red: #cc9d97;
-    --term-bright-green: #58c142;
+    --term-bright-green: #8ad47b;
     --term-bright-yellow: #cbcaaa;
     --term-bright-blue: #9ab6cb;
     --term-bright-magenta: #cc8ecb;
     --term-bright-cyan: #b7b8cb;
-    --term-bright-white: #cbcccc;
+    --term-bright-white: #f0f0f0;
 
     --term-gray: #8b918a;
     --term-foreground: #c1c1c1;
