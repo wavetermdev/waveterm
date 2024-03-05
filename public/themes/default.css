@@ -213,6 +213,8 @@
     --table-thead-bg-color: rgba(250, 250, 250, 0.02);
     --table-tr-border-bottom-color: rgba(241, 246, 243, 0.15);
     --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
+    --table-tr-selected-bg-color: #222;
+    --table-tr-selected-hover-bg-color: #333;
 
     /* session colors */
     --session-bg-color: rgba(13, 13, 13, 0.85);

@@ -31,6 +31,8 @@
     --table-thead-bg-color: rgba(250, 250, 250, 0.15);
     --table-tr-border-bottom-color: rgba(0, 0, 0, 0.15);
     --table-tr-hover-bg-color: rgba(0, 0, 0, 0.15);
+    --table-tr-selected-bg-color: #dddddd;
+    --table-tr-selected-hover-bg-color: #cccccc;
 
     /* form colors */
     --form-element-border-color: rgba(0, 0, 0, 0.3);

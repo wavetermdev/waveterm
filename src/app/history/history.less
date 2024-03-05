@@ -66,6 +66,11 @@
             flex-direction: row;
             align-items: center;
 
+            .workspace-dropdown,
+            .remote-dropdown {
+                width: 200px;
+            }
+
             .dropdown {
                 font-size: 0.8em;
                 padding: 0.5em 1em;
@@ -101,13 +106,14 @@
             }
 
             .search-checkbox {
-                margin-left: 15px;
+                margin: 0 15px;
                 padding: 5px 10px 5px 10px;
                 background: var(--button-secondary-bg-color);
                 border-radius: 4px;
                 display: flex;
                 flex-direction: row;
                 align-items: center;
+                height: 34px;
 
                 &.is-active {
                     background-color: #666;
@@ -135,9 +141,7 @@
             }
 
             .reset-button {
-                margin-left: 1em;
-                color: var(--app-text-color);
-                line-height: 1.75em;
+                height: 34px;
             }
         }
     }
@@ -290,16 +294,16 @@
         tr.history-item {
             padding: 0 10px 0 10px;
             display: flex;
-            border-bottom: 1px solid rgba(250, 250, 250, 0.1);
+            border-bottom: 1px solid var(--table-tr-border-bottom-color);
             align-items: center;
             color: var(--app-text-color);
 
             &.is-selected {
-                background-color: #222;
+                background-color: var(--table-tr-selected-bg-color);
             }
 
             &.is-selected:hover {
-                background-color: #333;
+                background-color: var(--table-tr-selected-hover-bg-color);
             }
 
             &:hover {
