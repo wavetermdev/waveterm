@@ -10,8 +10,8 @@
     --app-text-primary-color: rgb(0, 0, 0, 0.9);
     --app-text-secondary-color: rgb(0, 0, 0, 0.7);
     --app-border-color: rgb(139 145 138);
-    --app-panel-bg-color: #cccccc;
-    --app-panel-bg-color-dev: #eeeeff;
+    --app-panel-bg-color: #e0e0e0;
+    --app-panel-bg-color-dev: #e0e0e0;
     --app-icon-color: rgb(80, 80, 80);
     --app-icon-hover-color: rgb(100, 100, 100);
 
