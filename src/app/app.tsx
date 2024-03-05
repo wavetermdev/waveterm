@@ -32,7 +32,7 @@ class App extends React.Component<{}, {}> {
 
     constructor(props: {}) {
         super(props);
-        if (GlobalModel.isDev) document.body.className = "is-dev";
+        if (GlobalModel.isDev) document.body.classList.add("is-dev");
     }
 
     @boundMethod

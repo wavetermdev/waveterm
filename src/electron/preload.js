@@ -37,4 +37,5 @@ contextBridge.exposeInMainWorld("api", {
     contextScreen: (screenOpts, position) => ipcRenderer.send("context-screen", screenOpts, position),
     contextEditMenu: (position, opts) => ipcRenderer.send("context-editmenu", position, opts),
     onWaveSrvStatusChange: (callback) => ipcRenderer.on("wavesrv-status-change", callback),
+    onToggleDevUI: (callback) => ipcRenderer.on("toggle-devui", callback),
 });
