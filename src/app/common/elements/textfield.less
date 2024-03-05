@@ -6,15 +6,15 @@
     height: 44px;
     min-width: 412px;
     gap: 6px;
-    border: 1px solid var(--textfield-border-color);
-    background: var(--textfield-bg-color);
+    border: 1px solid var(--form-element-border-color);
+    background: var(--form-element-bg-color);
 
     &:hover {
         cursor: text;
     }
 
     &.focused {
-        border-color: var(--textfield-focused-border-color);
+        border-color: var(--form-element-primary-color);
     }
 
     &.disabled {
@@ -22,7 +22,7 @@
     }
 
     &.error {
-        border-color: var(--textfield-error-border-color);
+        border-color: var(--form-element-error-color);
     }
 
     &-inner {
@@ -38,7 +38,7 @@
             top: 16px;
             font-size: 12.5px;
             transition: all 0.3s;
-            color: var(--textfield-label-color);
+            color: var(--form-element-label-color);
             line-height: 10px;
 
             &.float {
@@ -59,7 +59,7 @@
             font-size: 16px;
             outline: none;
             background-color: transparent;
-            color: var(--textfield-text-color);
+            color: var(--form-element-text-color);
             line-height: 20px;
 
             &.offset-left {

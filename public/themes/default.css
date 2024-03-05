@@ -132,15 +132,6 @@
     --dropdown-bg-color: var(--form-element-bg-color);
     --dropdown-border-color: var(--form-element-border-color);
 
-    /* textfield colors */
-    /* todo: use --form-element-* directly in elements */
-    --textfield-border-color: var(--form-element-border-color);
-    --textfield-focused-border-color: var(--form-element-primary-color);
-    --textfield-error-border-color: var(--form-element-error-color);
-    --textfield-label-color: var(--form-element-label-color);
-    --textfield-text-color: var(--form-element-text-color);
-    --textfield-bg-color: var(--form-element-bg-color);
-
     /* toggle colors */
     --toggle-bg-color: rgb(51, 51, 51);
     --toggle-thumb-color: rgb(211, 215, 207);
