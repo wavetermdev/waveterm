@@ -7,12 +7,14 @@
     --fa-style-family: "Font Awesome 6 Sharp";
 
     /* these variables are overridden by user settings */
+    /*
     --termfontfamily: "Hack";
     --termfontsize: 13px;
-    --termlineheight: 18px;
-    --termpad: 9px; /* padding value (scaled to termfontsize) */
+    --termlineheight: 15px;
+    --termpad: 7px;
     --termfontsize-sm: 11px;
-    --termlineheight-sm: 15px;
+    --termlineheight-sm: 13px;
+    */
 
     /* base fonts */
     --base-font: normal 15px "Lato", sans-serif;

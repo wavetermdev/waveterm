@@ -1181,6 +1181,7 @@ class Model {
     }
 
     setClientData(clientData: ClientDataType) {
+        let curClientDataIsNull = this.clientData.get() == null;
         let newFontFamily = clientData?.feopts?.termfontfamily;
         if (newFontFamily == null) {
             newFontFamily = appconst.DefaultTermFontFamily;
@@ -1189,7 +1190,7 @@ class Model {
         if (newFontSize == null) {
             newFontSize = appconst.DefaultTermFontSize;
         }
-        const ffUpdated = newFontFamily != this.getTermFontFamily();
+        const ffUpdated = curClientDataIsNull || newFontFamily != this.getTermFontFamily();
         const fsUpdated = newFontSize != this.getTermFontSize();
 
         let newTheme = clientData?.feopts?.theme;

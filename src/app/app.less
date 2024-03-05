@@ -28,6 +28,10 @@ body textarea.textarea {
     color: var(--app-text-color);
     background-color: var(--input-bg-color);
 
+    &:focus {
+        box-shadow: none;
+    }
+
     &::placeholder {
         color: var(--input-placeholder-color);
     }
@@ -47,27 +51,6 @@ body input.input {
 
 // platform overrides
 .platform-darwin {
-    border-radius: var(--app-border-radius-darwin);
-
-    .main-content {
-        border-radius: var(--app-border-radius-darwin);
-    }
-
-    .main-content > :first-child {
-        border-top-left-radius: var(--app-border-radius-darwin);
-        border-bottom-left-radius: var(--app-border-radius-darwin);
-    }
-
-    .main-content > .collapsed:first-child + div {
-        border-top-left-radius: var(--app-border-radius-darwin);
-        border-bottom-left-radius: var(--app-border-radius-darwin);
-    }
-
-    .main-content > :last-child {
-        border-top-right-radius: var(--app-border-radius-darwin);
-        border-bottom-right-radius: var(--app-border-radius-darwin);
-    }
-
     .logo-button-container {
         width: var(--floating-logo-width-darwin);
     }
@@ -279,7 +262,6 @@ a.a-block {
     display: flex;
     flex-direction: column;
     background-color: var(--app-maincontent-bg-color);
-    border-top: 1px solid var(--app-border-color);
 
     .main-content {
         display: flex;
