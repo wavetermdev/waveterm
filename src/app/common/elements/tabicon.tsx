@@ -11,6 +11,8 @@ class TabIcon extends React.Component<{ icon: string; color: string }> {
         let iconClass = "";
         if (icon === "default" || icon === "square") {
             iconClass = "fa-solid fa-square fa-fw";
+        } else if (icon === "cloud") {
+            iconClass = "fa-solid fa-cloud fa-fw";
         } else {
             iconClass = `fa-sharp fa-solid fa-${icon} fa-fw`;
         }
