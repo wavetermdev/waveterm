@@ -24,8 +24,7 @@ fi
 
 # Remove files we don't want to upload
 rm $TEMP2_DIR/version.txt
-rm $TEMP2_DIR/*.zip.blockmap
-rm $TEMP2_DIR/builder-debug.yml
+rm $TEMP2_DIR/builder-*.yml
 
 # Upload the artifacts
 echo "Uploading build artifacts"
