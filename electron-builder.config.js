@@ -1,4 +1,5 @@
 const pkg = require("./package.json");
+const fs = require("fs");
 
 /**
  * @type {import('electron-builder').Configuration}
@@ -51,6 +52,10 @@ const config = {
         icon: "public/waveterm.icns",
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
+        binaries: fs
+            .readdirSync("bin", { recursive: true, withFileTypes: true })
+            .filter((f) => f.isFile())
+            .map((f) => path.resolve("bin", f.path, f.name)),
     },
     linux: {
         executableName: pkg.productName,
