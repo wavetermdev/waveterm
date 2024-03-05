@@ -147,14 +147,17 @@
 
     .line-actions {
         position: absolute;
-        right: calc(var(--termpad) * 2);
-        top: 0;
-        font-size: 14px;
         color: var(--line-actions-inactive-color);
         border-radius: 4px;
         padding-left: 4px;
         padding-right: 4px;
-        line-height: 1.2;
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
+
+        // we want to align to 2nd line of meta.  that's 2xPad + 1xLineHightSm
+        // height of actions is 1xLineHeight + 8px (2x2px padding on icons)
+        top: calc(var(--termpad) * 2 + var(--termlineheight-sm) - var(--termlineheight) - 8px);
+        right: calc(var(--termpad) * 2 + var(--termlineheight-sm) - var(--termlineheight) - 8px);
 
         display: flex;
         flex-direction: row;
@@ -171,7 +174,7 @@
                 color: var(--line-actions-active-color);
             }
 
-            padding: 4px;
+            padding: 4px 4px;
             cursor: pointer;
         }
 
