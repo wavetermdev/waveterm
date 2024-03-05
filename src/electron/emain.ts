@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
+import { autoUpdater } from "electron-updater";
 import * as path from "path";
 import * as fs from "fs";
 import fetch from "node-fetch";
@@ -69,9 +70,10 @@ function log(...msg: any[]) {
 console.log = log;
 console.log(
     sprintf(
-        "waveterm-app starting, WAVETERM_HOME=%s, apppath=%s arch=%s/%s",
+        "waveterm-app starting, WAVETERM_HOME=%s, electronpath=%s gopath=%s arch=%s/%s",
         waveHome,
-        getAppBasePath(),
+        getElectronAppBasePath(),
+        getGoAppBasePath(),
         unamePlatform,
         unameArch
     )
@@ -130,31 +132,49 @@ function checkPromptMigrate() {
     }
 }
 
-// for dev, this is just the waveterm directory
-// for prod, this is .../Wave.app/Contents/Resources/app
-function getAppBasePath() {
+/**
+ * Gets the base path to the Electron app resources. For dev, this is the root of the project. For packaged apps, this is the app.asar archive.
+ * @returns The base path of the Electron application
+ */
+function getElectronAppBasePath(): string {
     return path.dirname(__dirname);
 }
 
-function getBaseHostPort() {
+/**
+ * Gets the base path to the Go backend. If the app is packaged as an asar, the path will be in a separate unpacked directory.
+ * @returns The base path of the Go backend
+ */
+function getGoAppBasePath(): string {
+    const appDir = getElectronAppBasePath();
+    if (appDir.endsWith(".asar")) {
+        return `${appDir}.unpacked`;
+    } else {
+        return appDir;
+    }
+}
+
+function getBaseHostPort(): string {
     if (isDev) {
         return DevServerEndpoint;
     }
     return ProdServerEndpoint;
 }
 
-function getWaveSrvPath() {
-    return path.join(getAppBasePath(), "bin", "wavesrv");
+function getWaveSrvPath(): string {
+    if (isDev) {
+        return path.join(getGoAppBasePath(), "bin", "wavesrv");
+    }
+    return path.join(getGoAppBasePath(), "bin", `wavesrv.${unameArch}`);
 }
 
-function getWaveSrvCmd() {
+function getWaveSrvCmd(): string {
     const waveSrvPath = getWaveSrvPath();
     const waveHome = getWaveHomeDir();
     const logFile = path.join(waveHome, "wavesrv.log");
     return `"${waveSrvPath}" >> "${logFile}" 2>&1`;
 }
 
-function getWaveSrvCwd() {
+function getWaveSrvCwd(): string {
     return getWaveHomeDir();
 }
 
@@ -162,7 +182,7 @@ function ensureDir(dir: fs.PathLike) {
     fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 }
 
-function readAuthKey() {
+function readAuthKey(): string {
     const homeDir = getWaveHomeDir();
     const authKeyFileName = path.join(homeDir, AuthKeyFile);
     if (!fs.existsSync(authKeyFileName)) {
@@ -259,7 +279,7 @@ electron.Menu.setApplicationMenu(menu);
 
 let MainWindow: Electron.BrowserWindow | null = null;
 
-function getMods(input: any) {
+function getMods(input: any): object {
     return { meta: input.meta, shift: input.shift, ctrl: input.control, alt: input.alt };
 }
 
@@ -291,7 +311,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function createMainWindow(clientData: ClientDataType | null) {
+function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWindow {
     const bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
     const win = new electron.BrowserWindow({
@@ -305,11 +325,11 @@ function createMainWindow(clientData: ClientDataType | null) {
         transparent: true,
         icon: unamePlatform == "linux" ? "public/logos/wave-logo-dark.png" : undefined,
         webPreferences: {
-            preload: path.join(getAppBasePath(), DistDir, "preload.js"),
+            preload: path.join(getElectronAppBasePath(), DistDir, "preload.js"),
         },
     });
     const indexHtml = isDev ? "index-dev.html" : "index.html";
-    win.loadFile(path.join(getAppBasePath(), "public", indexHtml));
+    win.loadFile(path.join(getElectronAppBasePath(), "public", indexHtml));
     win.webContents.on("before-input-event", (e, input) => {
         const waveEvent = adaptFromElectronKeyEvent(input);
         if (win.isFocused()) {
@@ -450,7 +470,7 @@ function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
         });
 }
 
-function calcBounds(clientData: ClientDataType) {
+function calcBounds(clientData: ClientDataType): Electron.Rectangle {
     const primaryDisplay = electron.screen.getPrimaryDisplay();
     const pdBounds = primaryDisplay.bounds;
     const size = { x: 100, y: 100, width: pdBounds.width - 200, height: pdBounds.height - 200 };
@@ -572,7 +592,7 @@ function readLastLinesOfFile(filePath: string, lineCount: number) {
     });
 }
 
-function getContextMenu(): any {
+function getContextMenu(): electron.Menu {
     const menu = new electron.Menu();
     const menuItem = new electron.MenuItem({ label: "Testing", click: () => console.log("click testing!") });
     menu.append(menuItem);
@@ -585,7 +605,7 @@ function getFetchHeaders() {
     };
 }
 
-async function getClientDataPoll(loopNum: number) {
+async function getClientDataPoll(loopNum: number): Promise<ClientDataType | null> {
     const lastTime = loopNum >= 6;
     const cdata = await getClientData(!lastTime, loopNum);
     if (lastTime || cdata != null) {
@@ -595,7 +615,7 @@ async function getClientDataPoll(loopNum: number) {
     return getClientDataPoll(loopNum + 1);
 }
 
-async function getClientData(willRetry: boolean, retryNum: number) {
+async function getClientData(willRetry: boolean, retryNum: number): Promise<ClientDataType | null> {
     const url = new URL(getBaseHostPort() + "/api/get-client-data");
     const fetchHeaders = getFetchHeaders();
     return fetch(url, { headers: fetchHeaders })
@@ -634,13 +654,13 @@ function runWaveSrv() {
         pReject = argReject;
     });
     const envCopy = { ...process.env };
-    envCopy[WaveAppPathVarName] = getAppBasePath();
+    envCopy[WaveAppPathVarName] = getGoAppBasePath();
     if (isDev) {
         envCopy[WaveDevVarName] = "1";
     }
     const waveSrvCmd = getWaveSrvCmd();
     console.log("trying to run local server", waveSrvCmd);
-    const proc = child_process.spawn("bash", ["-c", waveSrvCmd], {
+    const proc = child_process.execFile("bash", ["-c", waveSrvCmd], {
         cwd: getWaveSrvCwd(),
         env: envCopy,
     });
@@ -787,8 +807,6 @@ function setAppUpdateStatus(status: string) {
  * @returns The interval at which the auto-updater checks for updates
  */
 function initUpdater(): NodeJS.Timeout {
-    const { autoUpdater } = electron;
-
     if (isDev) {
         console.log("skipping auto-updater in dev mode");
         return null;
@@ -802,12 +820,6 @@ function initUpdater(): NodeJS.Timeout {
         feedURL += "/RELEASES.json";
         serverType = "json";
     }
-
-    autoUpdater.setFeedURL({
-        url: feedURL,
-        headers: { "User-Agent": "Wave Auto-Update" },
-        serverType,
-    });
 
     autoUpdater.removeAllListeners();
 
@@ -828,10 +840,10 @@ function initUpdater(): NodeJS.Timeout {
         console.log("update-not-available");
     });
 
-    autoUpdater.on("update-downloaded", (event, releaseNotes, releaseName, releaseDate, updateURL) => {
-        console.log("update-downloaded", [event, releaseNotes, releaseName, releaseDate, updateURL]);
-        availableUpdateReleaseName = releaseName;
-        availableUpdateReleaseNotes = releaseNotes;
+    autoUpdater.on("update-downloaded", (event) => {
+        console.log("update-downloaded", [event]);
+        availableUpdateReleaseName = event.releaseName;
+        availableUpdateReleaseNotes = event.releaseNotes as string | null;
 
         // Display the update banner and create a system notification
         setAppUpdateStatus("ready");
@@ -847,7 +859,7 @@ function initUpdater(): NodeJS.Timeout {
 
     // check for updates right away and keep checking later
     autoUpdater.checkForUpdates();
-    return setInterval(autoUpdater.checkForUpdates, 600000); // 10 minutes in ms
+    return setInterval(autoUpdater.checkForUpdates, 3600000); // 1 hour in ms
 }
 
 /**
@@ -863,7 +875,7 @@ async function installAppUpdate() {
     };
 
     await electron.dialog.showMessageBox(MainWindow, dialogOpts).then(({ response }) => {
-        if (response === 0) electron.autoUpdater.quitAndInstall();
+        if (response === 0) autoUpdater.quitAndInstall();
     });
 }
 
@@ -896,19 +908,12 @@ function configureAutoUpdater(enabled: boolean) {
     }
     autoUpdateLock = true;
 
-    // only configure auto-updater on macOS
-    if (unamePlatform == "darwin") {
-        if (enabled && autoUpdateInterval == null) {
-            try {
-                console.log("configuring auto updater");
-                autoUpdateInterval = initUpdater();
-            } catch (e) {
-                console.log("error configuring auto updater", e.toString());
-            }
-        } else if (autoUpdateInterval != null) {
-            console.log("user has disabled auto-updates, stopping updater");
-            clearInterval(autoUpdateInterval);
-            autoUpdateInterval = null;
+    if (enabled && autoUpdateInterval == null) {
+        try {
+            console.log("configuring auto updater");
+            autoUpdateInterval = initUpdater();
+        } catch (e) {
+            console.log("error configuring auto updater", e.toString());
         }
     }
     autoUpdateLock = false;
