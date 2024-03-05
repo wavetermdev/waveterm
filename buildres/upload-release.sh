@@ -7,7 +7,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 BUILDS_DIR=$SCRIPT_DIR/builds
 TEMP2_DIR=$SCRIPT_DIR/temp2
 
-AUTOUPDATE_RELEASE_PATH="waveterm-test-autoupdate/autoupdate"
+AUTOUPDATE_RELEASE_PATH="dl.waveterm.dev/releases"
 
 # Copy the builds to the temp2 directory
 echo "Copying builds to temp2"
@@ -27,7 +27,7 @@ rm $TEMP2_DIR/version.txt
 rm $TEMP2_DIR/builder-*.yml
 
 # Upload the artifacts
-echo "Uploading build artifacts"
+echo "Uploading build artifacts to $AUTOUPDATE_RELEASE_PATH"
 aws s3 cp $TEMP2_DIR/ s3://$AUTOUPDATE_RELEASE_PATH/ --recursive
 
 # Clean up
