@@ -249,8 +249,6 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
-        const sidebarWidth = GlobalModel.mainSidebarModel.getWidth();
-
         return (
             <ResizableSidebar
                 className="main-sidebar"
