@@ -79,5 +79,10 @@ echo "success, created $DMG_NAME"
 mv $DMG_NAME $BUILDS_DIR/
 spctl -a -vvv -t install $TEMP_WAVE_DIR_UNIVERSAL/
 
+# Update latest-mac.yml
+echo "updating latest-mac.yml"
+LATEST_MAC_YML=$BUILDS_DIR/latest-mac.yml
+node $SCRIPT_DIR/update-latest-mac.js $MAC_ZIP $LATEST_MAC_YML
+
 # Clean up
 rm -rf $TEMP_DIR $ZIP_DIR
