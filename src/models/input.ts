@@ -690,8 +690,10 @@ class InputModel {
             let isShowing = this.infoShow.get();
             if (isShowing) {
                 this.infoShow.set(false);
+                console.log("toggling false");
             } else {
                 if (this.infoMsg.get() != null) {
+                    console.log("toggling true");
                     this.infoShow.set(true);
                 }
             }

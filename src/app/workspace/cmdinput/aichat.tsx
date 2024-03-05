@@ -39,7 +39,7 @@ class AIChat extends React.Component<{}, {}> {
 
         let keybindManager = GlobalModel.keybindManager;
         keybindManager.registerKeybinding("pane", "aichat", "any", (waveEvent) => {
-            mobx.action(() => {
+            return mobx.action(() => {
                 let model = GlobalModel;
                 let inputModel = model.inputModel;
                 let textAreaRef = this.textAreaRef.current;
@@ -93,8 +93,8 @@ class AIChat extends React.Component<{}, {}> {
 
                 // set height of textarea based on number of newlines
                 this.textAreaNumLines.set(textAreaRef.value.split(/\n/).length);
+                return false;
             })();
-            return false;
         });
     }
 

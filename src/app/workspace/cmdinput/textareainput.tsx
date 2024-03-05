@@ -132,7 +132,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         this.updateSP();
         let keybindManager = GlobalModel.keybindManager;
         keybindManager.registerKeybinding("pane", "cmdinput", "any", (waveEvent) => {
-            mobx.action(() => {
+            return mobx.action(() => {
                 let inputRef = this.mainInputRef.current;
                 if (util.isModKeyPress(waveEvent)) {
                     return false;
@@ -193,7 +193,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                         inputModel.resetInputMode();
                         console.log("hello? 2");
                     }
+                    console.log("hello 3?");
                     inputModel.closeAIAssistantChat(true);
+                    console.log("hello 4?");
                     return true;
                 }
                 if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:expandInput")) {
@@ -277,8 +279,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     return true;
                 }
                 // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
+                return false;
             })();
-            return false;
         });
     }
 

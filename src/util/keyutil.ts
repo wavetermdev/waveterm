@@ -39,7 +39,9 @@ class KeybindManager {
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
                 let shouldReturn = false;
                 if (curKeybind.callback != null) {
+                    console.log("Calling callback");
                     shouldReturn = curKeybind.callback(event);
+                    console.log("callback return value", shouldReturn);
                 }
                 if (!shouldReturn && this.domainCallbacks.has(curKeybind.domain)) {
                     let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
