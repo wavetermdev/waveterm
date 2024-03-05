@@ -2,6 +2,7 @@
    SPDX-License-Identifier: Apache-2.0 */
 
 @import "./default.css";
+@import "./term-light.css";
 
 :root {
     --app-bg-color: #fefefe;
@@ -13,13 +14,6 @@
     --app-panel-bg-color-dev: #eeeeff;
     --app-icon-color: rgb(80, 80, 80);
     --app-icon-hover-color: rgb(100, 100, 100);
-
-    /* term colors */
-    --term-foreground: #000000;
-    --term-background: #fefefe;
-    --term-black: #fefefe;
-    --term-white: #000000;
-    --term-cmdtext: #000000;
 
     /* tab color */
     --tab-white: rgb(0, 0, 0, 0.6);
