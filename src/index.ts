@@ -16,11 +16,7 @@ let VERSION = __WAVETERM_VERSION__;
 // @ts-ignore
 let BUILD = __WAVETERM_BUILD__;
 
-let initialFontFamily = getApi().getInitialTermFontFamily();
-if (initialFontFamily == null) {
-    initialFontFamily = "JetBrains Mono";
-}
-loadFonts(initialFontFamily);
+loadFonts();
 
 document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(App, null, null);

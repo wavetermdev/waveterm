@@ -39,8 +39,8 @@ type TermWrapOpts = {
 function getThemeFromCSSVars(): ITheme {
     let theme: ITheme = {};
     let rootStyle = getComputedStyle(document.documentElement);
-    theme.foreground = rootStyle.getPropertyValue("--term-white");
-    theme.background = rootStyle.getPropertyValue("--term-black");
+    theme.foreground = rootStyle.getPropertyValue("--term-foreground");
+    theme.background = rootStyle.getPropertyValue("--term-background");
     theme.black = rootStyle.getPropertyValue("--term-black");
     theme.red = rootStyle.getPropertyValue("--term-red");
     theme.green = rootStyle.getPropertyValue("--term-green");
@@ -116,6 +116,9 @@ class TermWrap {
             cols: this.termSize.cols,
             fontSize: opts.fontSize,
             fontFamily: opts.fontFamily,
+            drawBoldTextInBrightColors: false,
+            fontWeight: "normal",
+            fontWeightBold: "bold",
             theme: theme,
         });
         this.terminal.loadAddon(
