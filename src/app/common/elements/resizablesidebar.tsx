@@ -151,7 +151,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         const isCollapsed = mainSidebarModel.getCollapsed();
 
         return (
-            <div className={cn("sidebar", className, { collapsed: isCollapsed })} style={{ width }}>
+            <div className={cn("sidebar", className, { collapsed: isCollapsed })} style={{ width, minWidth: width }}>
                 <div className="sidebar-content">{children(this.toggleCollapsed)}</div>
                 <div
                     className="sidebar-handle"
