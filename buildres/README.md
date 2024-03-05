@@ -21,6 +21,13 @@ The [`prepare-macos.sh`](./prepare-macos.sh) script will download the latest bui
 artifacts from S3 and sign and notarize the macOS binaries within it. It will then
 generate a DMG and a new ZIP archive with the new signed app.
 
+This will call a few different JS scripts to perform more complicated operations.
+[`osx-sign.js`](./osx-sign.js) and [`osx-notarize.js`](./osx-notarize.js) call
+underlying Electron APIs to sign and notarize the package.
+[`update-latest-mac.js`](./update-latest-mac.js) will then update the `latest-mac.yml`
+file with the SHA512 checksum and file size of the new signed and notarized installer. This
+is important for the `electron-updater` auto-update mechanism to then find and validate new releases.
+
 ## Uploading release artifacts for distribution
 
 ### Upload script
@@ -54,3 +61,7 @@ of any dependencies for us. The one exception is `monaco-editor`.
 
 Thanks to `electron-updater`, we are able to provide automatic app updates for macOS and Linux,
 as long as the app was distributed as a DMG, AppImage, RPM, or DEB file.
+
+With each release, `latest-mac.yml` and `latest-linux.yml` files will be produced that point to the
+newest release. These also include file sizes and checksums to aid in validating the packages. The app
+will check these files in our S3 bucket every hour to see if a new version is available.

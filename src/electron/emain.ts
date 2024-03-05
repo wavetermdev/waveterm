@@ -856,7 +856,7 @@ function initUpdater(): NodeJS.Timeout {
 
     // check for updates right away and keep checking later
     autoUpdater.checkForUpdates();
-    return setInterval(autoUpdater.checkForUpdates, 600000); // 10 minutes in ms
+    return setInterval(autoUpdater.checkForUpdates, 3600000); // 1 hour in ms
 }
 
 /**
