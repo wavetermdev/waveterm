@@ -1,16 +1,18 @@
 /* Copyright 2024, Command Line Inc.
    SPDX-License-Identifier: Apache-2.0 */
 
+@import url("./term-dark.css");
+
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
 
     /* these variables are overridden by user settings */
-    --termfontfamily: "JetBrains Mono", monospace;
-    --termfontsize: 12px;
-    --termlineheight: 15px;
-    --termpad: 7px; /* padding value (scaled to termfontsize) */
-    --termfontsize-sm: 10px;
-    --termlineheight-sm: 13px;
+    --termfontfamily: "Hack";
+    --termfontsize: 13px;
+    --termlineheight: 18px;
+    --termpad: 9px; /* padding value (scaled to termfontsize) */
+    --termfontsize-sm: 11px;
+    --termlineheight-sm: 15px;
 
     /* other fonts */
     --base-font-family: "Lato", sans-serif;
@@ -81,25 +83,6 @@
     --tab-violet: rgb(186, 118, 255);
     --tab-pink: rgb(224, 86, 119);
     --tab-white: rgb(255, 255, 255);
-
-    /* term colors */
-    --term-black: #000000;
-    --term-red: #cc0000;
-    --term-green: #4e9a06;
-    --term-yellow: #c4a000;
-    --term-blue: #3465a4;
-    --term-magenta: #75507b;
-    --term-cyan: #06989a;
-    --term-white: #d3d7cf;
-    --term-bright-black: #555753;
-    --term-bright-red: #ef2929;
-    --term-bright-green: #58c142;
-    --term-bright-yellow: #fce94f;
-    --term-bright-blue: #32afff;
-    --term-bright-magenta: #ad7fa8;
-    --term-bright-cyan: #34e2e2;
-    --term-bright-white: #ffffff;
-    --term-gray: rgb(139, 145, 138); /* not an official terminal color */
 
     /* button colors */
     --button-text-color: rgb(255, 255, 255);
