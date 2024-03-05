@@ -217,11 +217,9 @@
 
     /* cmdinput colors */
     --cmdinput-textarea-bg-color: #171717;
-    --cmdinput-text-error-color: rgb(239, 41, 41);
-    --cmdinput-title-color: rgb(114, 159, 207);
-    --cmdinput-history-item-error-color: rgb(220, 119, 118);
-    --cmdinput-history-item-selected-error-color: rgb(247, 148, 148);
-    --cmdinput-warning-color: rgb(255, 165, 0);
+    --cmdinput-text-error-color: var(--term-red);
+    --cmdinput-history-item-error-color: var(--term-bright-red);
+    --cmdinput-history-item-selected-error-color: var(--term-bright-red);
     --cmdinput-button-bg-color: rgb(88, 193, 66);
     --cmdinput-comment-button-bg-color: rgb(57, 113, 255);
     --cmdinput-disabled-icon-color: rgb(76, 81, 75, 1);
