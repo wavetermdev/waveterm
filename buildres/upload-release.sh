@@ -29,11 +29,7 @@ rm $TEMP2_DIR/builder-debug.yml
 
 # Upload the artifacts
 echo "Uploading build artifacts"
-for FILE in $TEMP2_DIR/*; do
-    if [ -f "$FILE" ]; then
-        aws s3 cp $FILE s3://$AUTOUPDATE_RELEASE_PATH/$(basename $FILE)
-    fi
-done
+aws s3 cp $TEMP2_DIR/ s3://$AUTOUPDATE_RELEASE_PATH/ --recursive
 
 # Clean up
 echo "Cleaning up"
