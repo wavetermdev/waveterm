@@ -910,6 +910,7 @@ declare global {
         contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
         onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
         getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
+        onToggleDevUI: (callback: () => void) => void;
     };
 }
 

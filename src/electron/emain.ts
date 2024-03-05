@@ -34,6 +34,7 @@ let wasActive = true;
 let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
 let initialClientData: ClientDataType = null;
+let MainWindow: Electron.BrowserWindow | null = null;
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -199,6 +200,55 @@ function readAuthKey(): string {
 }
 const reloadAcceleratorKey = unamePlatform == "darwin" ? "Option+R" : "Super+R";
 const cmdOrAlt = process.platform === "darwin" ? "Cmd" : "Alt";
+let viewSubMenu: Electron.MenuItemConstructorOptions[] = [];
+viewSubMenu.push({ role: "reload", accelerator: reloadAcceleratorKey });
+viewSubMenu.push({ role: "toggleDevTools" });
+if (isDev) {
+    viewSubMenu.push({
+        label: "Toggle Dev UI",
+        click: () => {
+            MainWindow?.webContents.send("toggle-devui");
+        },
+    });
+}
+viewSubMenu.push({ type: "separator" });
+viewSubMenu.push({
+    label: "Actual Size",
+    accelerator: cmdOrAlt + "+0",
+    click: () => {
+        if (MainWindow == null) {
+            return;
+        }
+        MainWindow.webContents.setZoomFactor(1);
+        MainWindow.webContents.send("zoom-changed");
+    },
+});
+viewSubMenu.push({
+    label: "Zoom In",
+    accelerator: cmdOrAlt + "+Plus",
+    click: () => {
+        if (MainWindow == null) {
+            return;
+        }
+        const zoomFactor = MainWindow.webContents.getZoomFactor();
+        MainWindow.webContents.setZoomFactor(zoomFactor * 1.1);
+        MainWindow.webContents.send("zoom-changed");
+    },
+});
+viewSubMenu.push({
+    label: "Zoom Out",
+    accelerator: cmdOrAlt + "+-",
+    click: () => {
+        if (MainWindow == null) {
+            return;
+        }
+        const zoomFactor = MainWindow.webContents.getZoomFactor();
+        MainWindow.webContents.setZoomFactor(zoomFactor / 1.1);
+        MainWindow.webContents.send("zoom-changed");
+    },
+});
+viewSubMenu.push({ type: "separator" });
+viewSubMenu.push({ role: "togglefullscreen" });
 const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {
         role: "appMenu",
@@ -223,48 +273,7 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     },
     {
         role: "viewMenu",
-        submenu: [
-            { role: "reload", accelerator: reloadAcceleratorKey },
-            { role: "toggleDevTools" },
-            { type: "separator" },
-            {
-                label: "Actual Size",
-                accelerator: cmdOrAlt + "+0",
-                click: () => {
-                    if (MainWindow == null) {
-                        return;
-                    }
-                    MainWindow.webContents.setZoomFactor(1);
-                    MainWindow.webContents.send("zoom-changed");
-                },
-            },
-            {
-                label: "Zoom In",
-                accelerator: cmdOrAlt + "+Plus",
-                click: () => {
-                    if (MainWindow == null) {
-                        return;
-                    }
-                    const zoomFactor = MainWindow.webContents.getZoomFactor();
-                    MainWindow.webContents.setZoomFactor(zoomFactor * 1.1);
-                    MainWindow.webContents.send("zoom-changed");
-                },
-            },
-            {
-                label: "Zoom Out",
-                accelerator: cmdOrAlt + "+-",
-                click: () => {
-                    if (MainWindow == null) {
-                        return;
-                    }
-                    const zoomFactor = MainWindow.webContents.getZoomFactor();
-                    MainWindow.webContents.setZoomFactor(zoomFactor / 1.1);
-                    MainWindow.webContents.send("zoom-changed");
-                },
-            },
-            { type: "separator" },
-            { role: "togglefullscreen" },
-        ],
+        submenu: viewSubMenu,
     },
     {
         role: "windowMenu",
@@ -276,8 +285,6 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
 
 const menu = electron.Menu.buildFromTemplate(menuTemplate);
 electron.Menu.setApplicationMenu(menu);
-
-let MainWindow: Electron.BrowserWindow | null = null;
 
 function getMods(input: any): object {
     return { meta: input.meta, shift: input.shift, ctrl: input.control, alt: input.alt };

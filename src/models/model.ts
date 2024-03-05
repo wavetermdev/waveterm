@@ -135,6 +135,7 @@ class Model {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
         this.authKey = getApi().getAuthKey();
+        getApi().onToggleDevUI(this.toggleDevUI.bind(this));
         this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message: any) => {
             const interactive = message?.interactive ?? false;
             this.runUpdate(message, interactive);
@@ -203,6 +204,10 @@ class Model {
             (window as any).GlobalModel = new Model();
         }
         return (window as any).GlobalModel;
+    }
+
+    toggleDevUI(): void {
+        document.body.classList.toggle("is-dev");
     }
 
     bumpRenderVersion() {
