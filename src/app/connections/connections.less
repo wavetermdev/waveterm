@@ -28,11 +28,9 @@
 
         thead {
             border-radius: var(--sizing-2-xs, 4px);
-            border-top: 1px solid rgba(250, 250, 250, 0.1);
-            border-bottom: 1px solid rgba(241, 246, 243, 0.15);
-            background: var(--opacity-zinc-502, rgba(250, 250, 250, 0.02));
-            box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-                0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+            border-top: 1px solid var(--table-thead-border-top-color);
+            border-bottom: 1px solid var(--table-thead-border-bottom-color);
+            background: var(--table-thead-bg-color);
 
             th {
                 height: 32px;
@@ -42,12 +40,12 @@
         }
 
         tr.connections-item {
-            border-bottom: 1px solid rgba(241, 246, 243, 0.15);
+            border-bottom: 1px solid var(--table-tr-border-bottom-color);
             color: var(--view-text-color);
             cursor: pointer;
 
             &:hover {
-                background: rgba(255, 255, 255, 0.06);
+                background: var(--table-tr-hover-bg-color);
 
                 td.bookmark i {
                     display: block;

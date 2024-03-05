@@ -2,15 +2,64 @@
    SPDX-License-Identifier: Apache-2.0 */
 
 @import "./default.css";
+@import "./term-light.css";
 
 :root {
-    --app-bg-color: #ffffff;
-    --app-text-color: #000000;
+    --app-bg-color: #fefefe;
+    --app-text-color: #000;
+    --app-text-primary-color: rgb(0, 0, 0, 0.9);
+    --app-text-secondary-color: rgb(0, 0, 0, 0.7);
+    --app-border-color: rgb(139 145 138);
+    --app-panel-bg-color: #e0e0e0;
+    --app-panel-bg-color-dev: #e0e0e0;
+    --app-icon-color: rgb(80, 80, 80);
+    --app-icon-hover-color: rgb(100, 100, 100);
 
-    /* sidebar colors */
-    --app-panel-bg-color: #cccccc;
-    --app-panel-bg-color-dev: #eeeeff;
+    /* tab color */
+    --tab-white: rgb(0, 0, 0, 0.6);
 
-    --term-black: #ffffff;
-    --term-white: #000000;
+    /* button colors */
+    --button-text-color: rgb(50, 50, 50); /* Dark gray for light theme */
+    --button-secondary-bg-color: rgba(200, 200, 200, 0.3); /* Semi-transparent light gray */
+
+    /* view colors */
+    --view-text-color: var(--app-text-color);
+
+    /* table colors */
+    --table-thead-border-top-color: rgba(0, 0, 0, 0.2);
+    --table-thead-border-bottom-color: rgba(0, 0, 0, 0.3);
+    --table-thead-bg-color: rgba(250, 250, 250, 0.15);
+    --table-tr-border-bottom-color: rgba(0, 0, 0, 0.15);
+    --table-tr-hover-bg-color: rgba(0, 0, 0, 0.15);
+
+    /* form colors */
+    --form-element-border-color: rgba(0, 0, 0, 0.3);
+    --form-element-bg-color: var(--app-bg-color);
+    --form-element-text-color: var(--app-text-color);
+    --form-element-label-color: rgba(0, 0, 0, 0.6);
+    --form-element-secondary-color: rgba(255, 255, 255, 0.09);
+    --form-element-icon-color: rgb(0, 0, 0, 0.6);
+
+    /* modal colors */
+    --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
+
+    /* cmd input */
+    --cmdinput-textarea-bg-color: rgba(0, 0, 0, 0.1);
+    --cmdinput-textarea-border-color: var(--form-element-border-color);
+
+    /* scroll colors */
+    --scrollbar-background-color: rgba(0, 0, 0, 0.3);
+    --scrollbar-thumb-color: rgba(0, 0, 0, 0.4);
+    --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.5);
+
+    /* cmdstrcode colors */
+    --cmdstrcode-bg-color: var(--term-black);
+    --cmdstrcode-text-color: var(--term-white);
+
+    /* line color */
+    --line-actions-bg-color: rgba(0, 0, 0, 0.4);
+
+    --logo-button-hover-bg-color: #f0f0f0;
+
+    --xterm-viewport-border-color: rgba(0, 0, 0, 0.3);
 }
