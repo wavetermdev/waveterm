@@ -22,7 +22,9 @@
     --term-bright-magenta: #ad7fa8;
     --term-bright-cyan: #34e2e2;
     --term-bright-white: #ffffff;
+
     --term-gray: #8b918a; /* not an official terminal color */
+    --term-cmdtext: #ffffff;
     --term-foreground: #d3d7cf;
     --term-background: #000000;
 }

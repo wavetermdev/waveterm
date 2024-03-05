@@ -21,6 +21,7 @@
     --term-bright-white: #f0f0f0;
 
     --term-gray: #8b918a;
+    --term-cmdtext: #f0f0f0;
     --term-foreground: #c1c1c1;
     --term-background: #000000;
 }

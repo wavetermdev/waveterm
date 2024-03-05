@@ -15,8 +15,11 @@
     --app-icon-hover-color: rgb(100, 100, 100);
 
     /* term colors */
+    --term-foreground: #000000;
+    --term-background: #fefefe;
     --term-black: #fefefe;
-    --term-white: #000;
+    --term-white: #000000;
+    --term-cmdtext: #000000;
 
     /* tab color */
     --tab-white: rgb(0, 0, 0, 0.6);
