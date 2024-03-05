@@ -1215,6 +1215,7 @@ class Model {
         }
         if (themeUpdated) {
             loadTheme(newTheme);
+            this.bumpRenderVersion();
         }
     }
 
