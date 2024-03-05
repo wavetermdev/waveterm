@@ -90,13 +90,12 @@ yarn run electron-builder -c electron-builder.config.js -l -p never
 # @scripthaus command build-wavesrv
 WAVESRV_VERSION=$(node -e 'console.log(require("./version.js"))')
 cd wavesrv
-CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv.$GOARCH ./cmd
+CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion=$WAVESRV_VERSION" -o ../bin/wavesrv ./cmd
 ```
 
 ```bash
 # @scripthaus command fullbuild-waveshell
 set -e
-cd waveshell
 WAVESHELL_VERSION=v0.4
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 function buildWaveShell {
