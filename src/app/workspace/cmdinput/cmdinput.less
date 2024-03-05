@@ -39,7 +39,7 @@
     .remote-status-warning {
         display: flex;
         flex-direction: row;
-        color: var(--cmdinput-warning-color);
+        color: var(--term-yellow);
         align-items: center;
 
         .button {
@@ -51,7 +51,7 @@
         position: absolute;
         top: 5px;
         right: 5px;
-        color: var(--app-text-color);
+        color: var(--term-foreground);
 
         padding: 5px;
         cursor: pointer;
@@ -66,7 +66,7 @@
     }
 
     .cmd-input-context {
-        color: #fff;
+        color: var(--term-bright-white);
         white-space: nowrap;
         display: flex;
         justify-content: space-between;
@@ -88,11 +88,11 @@
             height: 1em;
             margin: 0 0.5em;
             vertical-align: text-top;
-            fill: var(--app-text-color);
+            fill: var(--term-foreground);
         }
 
         .warning {
-            fill: var(--cmdinput-warning-color);
+            fill: var(--term-yellow);
         }
     }
 
@@ -305,7 +305,7 @@
             top: 5px;
             left: 0;
             background-color: var(--app-bg-color);
-            color: var(--cmdinput-title-color);
+            color: var(--term-blue);
             padding-bottom: 4px;
             display: flex;
             flex-direction: row;
@@ -389,7 +389,7 @@
             left: 0;
             font-size: calc(var(--termfontsize) + 2px);
             background-color: var(--app-bg-color);
-            color: var(--cmdinput-title-color);
+            color: var(--term-blue);
             padding-bottom: 4px;
             padding-left: calc(var(--termpad) * 2);
             display: flex;
@@ -432,7 +432,7 @@
 
             .info-comp {
                 min-width: 200px;
-                color: var(--app-text-color);
+                color: var(--term-foreground);
                 margin-right: 10px;
 
                 &.has-space {

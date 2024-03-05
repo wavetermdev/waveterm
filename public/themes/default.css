@@ -1,16 +1,18 @@
 /* Copyright 2024, Command Line Inc.
    SPDX-License-Identifier: Apache-2.0 */
 
+@import url("./term-dark.css");
+
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
 
     /* these variables are overridden by user settings */
-    --termfontfamily: "JetBrains Mono", monospace;
-    --termfontsize: 12px;
-    --termlineheight: 15px;
-    --termpad: 7px; /* padding value (scaled to termfontsize) */
-    --termfontsize-sm: 10px;
-    --termlineheight-sm: 13px;
+    --termfontfamily: "Hack";
+    --termfontsize: 13px;
+    --termlineheight: 18px;
+    --termpad: 9px; /* padding value (scaled to termfontsize) */
+    --termfontsize-sm: 11px;
+    --termlineheight-sm: 15px;
 
     /* base fonts */
     --base-font: normal 15px "Lato", sans-serif;
@@ -35,7 +37,7 @@
     --screen-tab-width: 11.4em;
 
     /* floating logo settings */
-    --floating-logo-width-darwin: 110px;
+    --floating-logo-width-darwin: 105px;
     --floating-logo-width: 40px;
     --floating-logo-height: var(--screentabs-height);
 
@@ -50,13 +52,15 @@
     --app-text-secondary-color: rgb(195, 200, 194);
     --app-border-color: rgb(51, 51, 51);
     --app-maincontent-bg-color: #333;
-    --app-border-radius: 10px;
     --app-panel-bg-color: rgba(21, 23, 21, 1);
     --app-panel-bg-color-dev: rgb(21, 23, 48);
     --app-icon-color: rgb(139, 145, 138);
     --app-icon-hover-color: #fff;
 
     /* icon colors */
+
+    /* just for macos */
+    --app-border-radius-darwin: 10px;
 
     /* global generic colors */
     --app-black: rgb(0, 0, 0);
@@ -81,25 +85,6 @@
     --tab-violet: rgb(186, 118, 255);
     --tab-pink: rgb(224, 86, 119);
     --tab-white: rgb(255, 255, 255);
-
-    /* term colors */
-    --term-black: #000000;
-    --term-red: #cc0000;
-    --term-green: #4e9a06;
-    --term-yellow: #c4a000;
-    --term-blue: #3465a4;
-    --term-magenta: #75507b;
-    --term-cyan: #06989a;
-    --term-white: #d3d7cf;
-    --term-bright-black: #555753;
-    --term-bright-red: #ef2929;
-    --term-bright-green: #58c142;
-    --term-bright-yellow: #fce94f;
-    --term-bright-blue: #32afff;
-    --term-bright-magenta: #ad7fa8;
-    --term-bright-cyan: #34e2e2;
-    --term-bright-white: #ffffff;
-    --term-gray: rgb(139, 145, 138); /* not an official terminal color */
 
     --form-element-border-color: rgba(241, 246, 243, 0.15);
     --form-element-bg-color: var(--app-bg-color);

@@ -1206,13 +1206,10 @@ class Model {
         }
         getApi().reregisterGlobalShortcut(shortcut);
         if (ffUpdated) {
-            // this also updates fontSize vars
-            loadFonts(newFontFamily);
-            document.fonts.ready.then(() => {
-                clearMonoFontCache();
-                this.updateTermFontSizeVars(); // forces an update of css vars
-                this.bumpRenderVersion();
-            });
+            document.documentElement.style.setProperty("--termfontfamily", '"' + newFontFamily + '"');
+            clearMonoFontCache();
+            this.updateTermFontSizeVars(); // forces an update of css vars
+            this.bumpRenderVersion();
         } else if (fsUpdated) {
             this.updateTermFontSizeVars();
         }

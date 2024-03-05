@@ -99,14 +99,11 @@ function loadBaseFonts() {
     mmFont.load();
 }
 
-function loadFonts(termFont: string) {
+function loadFonts() {
     loadBaseFonts();
     loadLatoFont();
     loadJetBrainsMonoFont();
-    if (termFont == "Hack") {
-        loadHackFont();
-    }
-    document.documentElement.style.setProperty("--termfontfamily", '"' + termFont + '"');
+    loadHackFont();
 }
 
 export { loadFonts };

@@ -7,6 +7,7 @@ body {
     font: var(--base-font);
     background-color: black;
     color: var(--app-text-color);
+    -webkit-font-smoothing: auto;
 }
 
 body {
@@ -41,6 +42,34 @@ body input.input {
 
     &::placeholder {
         color: var(--input-placeholder-color);
+    }
+}
+
+// platform overrides
+.platform-darwin {
+    border-radius: var(--app-border-radius-darwin);
+
+    .main-content {
+        border-radius: var(--app-border-radius-darwin);
+    }
+
+    .main-content > :first-child {
+        border-top-left-radius: var(--app-border-radius-darwin);
+        border-bottom-left-radius: var(--app-border-radius-darwin);
+    }
+
+    .main-content > .collapsed:first-child + div {
+        border-top-left-radius: var(--app-border-radius-darwin);
+        border-bottom-left-radius: var(--app-border-radius-darwin);
+    }
+
+    .main-content > :last-child {
+        border-top-right-radius: var(--app-border-radius-darwin);
+        border-bottom-right-radius: var(--app-border-radius-darwin);
+    }
+
+    .logo-button-container {
+        width: var(--floating-logo-width-darwin);
     }
 }
 
@@ -261,7 +290,7 @@ a.a-block {
 }
 
 .logo-button-container {
-    width: 105px;
+    width: var(--floating-logo-width);
     flex-shrink: 0;
     position: absolute;
     z-index: 25;
@@ -269,10 +298,13 @@ a.a-block {
     left: 0px;
     display: flex;
     flex-direction: row;
-    justify-content: flex-end;
     align-items: center;
     -webkit-app-region: drag;
     pointer-events: none;
+
+    .logo-button-spacer {
+        flex-grow: 1;
+    }
 
     .logo-button {
         width: 25px;

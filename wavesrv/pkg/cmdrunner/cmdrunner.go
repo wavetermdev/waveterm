@@ -1689,7 +1689,7 @@ func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, err
 	}
 	mshell := ids.Remote.MShell
-	go mshell.RunInstall()
+	go mshell.RunInstall(false)
 	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
