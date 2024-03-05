@@ -108,10 +108,6 @@
       "keys": ["Cmd:9"]
     },
     {
-      "command": "app:selectNumberedTab",
-      "keys": ["Cmd:1", "Cmd:2", "Cmd:3", "Cmd:4", "Cmd:5", "Cmd:6", "Cmd:7", "Cmd:8", "Cmd:9"]
-    },
-    {
       "command": "app:selectTabLeft",
       "keys": ["Cmd:["]
     },
@@ -154,10 +150,6 @@
     {
       "command": "app:selectWorkspace-9",
       "keys": ["Cmd:Ctrl:9"]
-    },
-    {
-      "command": "app:selectNumberedWorkspace",
-      "keys": ["Cmd:Ctrl:1", "Cmd:Ctrl:2", "Cmd:Ctrl:3", "Cmd:Ctrl:4", "Cmd:Ctrl:5", "Cmd:Ctrl:6", "Cmd:Ctrl:7", "Cmd:Ctrl:8", "Cmd:Ctrl:9"]
     },
     {
       "command": "app:toggleSidebar",

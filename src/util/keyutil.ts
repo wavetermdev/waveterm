@@ -29,7 +29,7 @@ type Keybind = {
     callback: KeybindCallback;
 };
 
-const KeybindLevels = ["system", "app", "pane", "plugin"];
+const KeybindLevels = ["system", "modal", "app", "pane", "plugin"];
 
 class KeybindManager {
     domainCallbacks: Map<string, KeybindCallback>;
@@ -44,7 +44,7 @@ class KeybindManager {
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
                 let shouldReturn = false;
                 if (curKeybind.callback != null) {
-                    console.log("Calling callback");
+                    console.log("Calling callback", curKeybind.domain);
                     shouldReturn = curKeybind.callback(event);
                     console.log("callback return value", shouldReturn);
                 }
@@ -58,6 +58,7 @@ class KeybindManager {
                 }
                 if (shouldReturn) {
                     nativeEvent.preventDefault();
+                    nativeEvent.stopPropagation();
                     return true;
                 }
             }
@@ -66,6 +67,18 @@ class KeybindManager {
     }
 
     processKeyEvent(nativeEvent: any, event: WaveKeyboardEvent) {
+        let modalLevel = this.levelMap.get("modal");
+        if (modalLevel.length != 0) {
+            console.log("processing modal");
+            // special case when modal keybindings are present
+            let shouldReturn = this.processLevel(nativeEvent, event, modalLevel);
+            if (shouldReturn) {
+                return;
+            }
+            let systemLevel = this.levelMap.get("system");
+            this.processLevel(nativeEvent, event, systemLevel);
+            return;
+        }
         for (let index = this.levelArray.length - 1; index >= 0; index--) {
             let curLevel = this.levelArray[index];
             let curKeybindsArray;
@@ -129,6 +142,19 @@ class KeybindManager {
         return rtn;
     }
 
+    registerAndProcessKeyEvent(
+        nativeEvent: any,
+        waveEvent: WaveKeyboardEvent,
+        level: string,
+        domain: string,
+        keybinding: string,
+        callback: KeybindCallback
+    ) {
+        this.registerKeybinding(level, domain, keybinding, callback);
+        this.processKeyEvent(nativeEvent, waveEvent);
+        this.unregisterKeybinding(level, domain, keybinding);
+    }
+
     unregisterKeybinding(level: string, domain: string, keybinding: string): boolean {
         if (!this.levelMap.has(level)) {
             return false;
@@ -137,7 +163,9 @@ class KeybindManager {
         for (let index = 0; index < keybindsArray.length; index++) {
             let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
+                console.log("unregistering keybinding");
                 keybindsArray.splice(index, 1);
+                index--;
                 this.levelMap.set(level, keybindsArray);
             }
             return true;
@@ -195,7 +223,7 @@ class KeybindManager {
                 error = true;
                 break;
             }
-            numberedTabKeybinds.push(curKeybind);
+            numberedTabKeybinds = numberedTabKeybinds.concat(curKeybind);
         }
         if (!error) {
             this.keyDescriptionsMap.set("app:selectNumberedTab", numberedTabKeybinds);
@@ -207,7 +235,7 @@ class KeybindManager {
                 error = true;
                 break;
             }
-            numberedWorkspaceKeybinds.push(curKeybind);
+            numberedWorkspaceKeybinds = numberedWorkspaceKeybinds.concat(curKeybind);
         }
         if (!error) {
             this.keyDescriptionsMap.set("app:selectNumberedTab", numberedWorkspaceKeybinds);

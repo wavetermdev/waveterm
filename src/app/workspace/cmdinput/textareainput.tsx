@@ -11,7 +11,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
-import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { WaveKeyboardEvent, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -128,160 +128,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             }
             this.lastFocusType = focusType;
         }
+        GlobalModel.registerTextAreaInput(this);
         this.checkHeight(false);
         this.updateSP();
-        let keybindManager = GlobalModel.keybindManager;
-        keybindManager.registerKeybinding("pane", "cmdinput", "any", (waveEvent) => {
-            return mobx.action(() => {
-                let inputRef = this.mainInputRef.current;
-                if (util.isModKeyPress(waveEvent)) {
-                    return false;
-                }
-                let model = GlobalModel;
-                let inputModel = model.inputModel;
-                let ctrlMod = waveEvent.control || waveEvent.cmd || waveEvent.shift;
-                let curLine = inputModel.getCurLine();
-
-                let lastTab = this.lastTab;
-                this.lastTab = keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete");
-                let lastHist = this.lastHistoryUpDown;
-                this.lastHistoryUpDown = false;
-
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
-                    if (lastTab) {
-                        GlobalModel.submitCommand(
-                            "_compgen",
-                            null,
-                            [curLine],
-                            { comppos: String(curLine.length), compshow: "1", nohist: "1" },
-                            true
-                        );
-                    } else {
-                        GlobalModel.submitCommand(
-                            "_compgen",
-                            null,
-                            [curLine],
-                            { comppos: String(curLine.length), nohist: "1" },
-                            true
-                        );
-                    }
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "generic:confirm")) {
-                    if (!ctrlMod) {
-                        if (GlobalModel.inputModel.isEmpty()) {
-                            let activeWindow = GlobalModel.getScreenLinesForActiveScreen();
-                            let activeScreen = GlobalModel.getActiveScreen();
-                            if (activeScreen != null && activeWindow != null && activeWindow.lines.length > 0) {
-                                activeScreen.setSelectedLine(0);
-                                GlobalCommandRunner.screenSelectLine("E");
-                            }
-                        } else {
-                            setTimeout(() => GlobalModel.inputModel.uiSubmitCommand(), 0);
-                        }
-                        return true;
-                    }
-                    inputRef.setRangeText("\n", inputRef.selectionStart, inputRef.selectionEnd, "end");
-                    GlobalModel.inputModel.setCurLine(inputRef.value);
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
-                    let inputModel = GlobalModel.inputModel;
-                    inputModel.toggleInfoMsg();
-                    console.log("hello?", inputModel.inputMode.get());
-                    if (inputModel.inputMode.get() != null) {
-                        inputModel.resetInputMode();
-                        console.log("hello? 2");
-                    }
-                    console.log("hello 3?");
-                    inputModel.closeAIAssistantChat(true);
-                    console.log("hello 4?");
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:expandInput")) {
-                    let inputModel = GlobalModel.inputModel;
-                    inputModel.toggleExpandInput();
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:clearInput")) {
-                    inputModel.resetInput();
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:cutLineLeftOfCursor")) {
-                    this.controlU();
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:previousHistoryItem")) {
-                    this.controlP();
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:nextHistoryItem")) {
-                    this.controlN();
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:cutWordLeftOfCursor")) {
-                    this.controlW();
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:paste")) {
-                    this.controlY();
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:openHistory")) {
-                    inputModel.openHistory();
-                    return true;
-                }
-                if (keybindManager.checkKeysPressed(waveEvent, ["generic:selectAbove", "generic:selectBelow"])) {
-                    if (!inputModel.isHistoryLoaded()) {
-                        if (keybindManager.checkKeyPressed(waveEvent, "generic:selectAbove")) {
-                            this.lastHistoryUpDown = true;
-                            inputModel.loadHistory(false, 1, "screen");
-                        }
-                        return true;
-                    }
-                    // invisible history movement
-                    let linePos = this.getLinePos(inputRef);
-                    if (keybindManager.checkKeyPressed(waveEvent, "generic:selectAbove")) {
-                        if (!lastHist && linePos.linePos > 1) {
-                            // regular arrow
-                            return false;
-                        }
-                        inputModel.moveHistorySelection(1);
-                        this.lastHistoryUpDown = true;
-                        return true;
-                    }
-                    if (keybindManager.checkKeyPressed(waveEvent, "generic:selectBelow")) {
-                        if (!lastHist && linePos.linePos < linePos.numLines) {
-                            // regular arrow
-                            return false;
-                        }
-                        inputModel.moveHistorySelection(-1);
-                        this.lastHistoryUpDown = true;
-                        return true;
-                    }
-                }
-                if (
-                    keybindManager.checkKeysPressed(waveEvent, ["generic:selectPageAbove", "generic:selectPageBelow"])
-                ) {
-                    let infoScroll = inputModel.hasScrollingInfoMsg();
-                    if (infoScroll) {
-                        let div = document.querySelector(".cmd-input-info");
-                        let amt = pageSize(div);
-                        scrollDiv(
-                            div,
-                            keybindManager.checkKeyPressed(waveEvent, "generic:selectPageAbove") ? -amt : amt
-                        );
-                    }
-                    return true;
-                }
-                if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:openAIChat")) {
-                    inputModel.openAIAssistantChat();
-                    return true;
-                }
-                // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
-                return false;
-            })();
-        });
     }
 
     componentWillUnmount(): void {
@@ -421,6 +270,155 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             let cmdLineUpdate = { str: newValue, pos: selStart + clipText.length };
             GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
         });
+    }
+
+    @boundMethod
+    handleDocKeyDown(waveEvent: WaveKeyboardEvent) {
+        return mobx.action(() => {
+            let keybindManager = GlobalModel.keybindManager;
+            let inputRef = this.mainInputRef.current;
+            if (util.isModKeyPress(waveEvent)) {
+                return false;
+            }
+            let model = GlobalModel;
+            let inputModel = model.inputModel;
+            let ctrlMod = waveEvent.control || waveEvent.cmd || waveEvent.shift;
+            let curLine = inputModel.getCurLine();
+
+            let lastTab = this.lastTab;
+            this.lastTab = keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete");
+            let lastHist = this.lastHistoryUpDown;
+            this.lastHistoryUpDown = false;
+
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
+                if (lastTab) {
+                    GlobalModel.submitCommand(
+                        "_compgen",
+                        null,
+                        [curLine],
+                        { comppos: String(curLine.length), compshow: "1", nohist: "1" },
+                        true
+                    );
+                } else {
+                    GlobalModel.submitCommand(
+                        "_compgen",
+                        null,
+                        [curLine],
+                        { comppos: String(curLine.length), nohist: "1" },
+                        true
+                    );
+                }
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "generic:confirm")) {
+                if (!ctrlMod) {
+                    if (GlobalModel.inputModel.isEmpty()) {
+                        let activeWindow = GlobalModel.getScreenLinesForActiveScreen();
+                        let activeScreen = GlobalModel.getActiveScreen();
+                        if (activeScreen != null && activeWindow != null && activeWindow.lines.length > 0) {
+                            activeScreen.setSelectedLine(0);
+                            GlobalCommandRunner.screenSelectLine("E");
+                        }
+                    } else {
+                        setTimeout(() => GlobalModel.inputModel.uiSubmitCommand(), 0);
+                    }
+                    return true;
+                }
+                inputRef.setRangeText("\n", inputRef.selectionStart, inputRef.selectionEnd, "end");
+                GlobalModel.inputModel.setCurLine(inputRef.value);
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
+                let inputModel = GlobalModel.inputModel;
+                inputModel.toggleInfoMsg();
+                console.log("hello?", inputModel.inputMode.get());
+                if (inputModel.inputMode.get() != null) {
+                    inputModel.resetInputMode();
+                    console.log("hello? 2");
+                }
+                console.log("hello 3?");
+                inputModel.closeAIAssistantChat(true);
+                console.log("hello 4?");
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:expandInput")) {
+                let inputModel = GlobalModel.inputModel;
+                inputModel.toggleExpandInput();
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:clearInput")) {
+                inputModel.resetInput();
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:cutLineLeftOfCursor")) {
+                this.controlU();
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:previousHistoryItem")) {
+                this.controlP();
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:nextHistoryItem")) {
+                this.controlN();
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:cutWordLeftOfCursor")) {
+                this.controlW();
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:paste")) {
+                this.controlY();
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:openHistory")) {
+                inputModel.openHistory();
+                return true;
+            }
+            if (keybindManager.checkKeysPressed(waveEvent, ["generic:selectAbove", "generic:selectBelow"])) {
+                if (!inputModel.isHistoryLoaded()) {
+                    if (keybindManager.checkKeyPressed(waveEvent, "generic:selectAbove")) {
+                        this.lastHistoryUpDown = true;
+                        inputModel.loadHistory(false, 1, "screen");
+                    }
+                    return true;
+                }
+                // invisible history movement
+                let linePos = this.getLinePos(inputRef);
+                if (keybindManager.checkKeyPressed(waveEvent, "generic:selectAbove")) {
+                    if (!lastHist && linePos.linePos > 1) {
+                        // regular arrow
+                        return false;
+                    }
+                    inputModel.moveHistorySelection(1);
+                    this.lastHistoryUpDown = true;
+                    return true;
+                }
+                if (keybindManager.checkKeyPressed(waveEvent, "generic:selectBelow")) {
+                    if (!lastHist && linePos.linePos < linePos.numLines) {
+                        // regular arrow
+                        return false;
+                    }
+                    inputModel.moveHistorySelection(-1);
+                    this.lastHistoryUpDown = true;
+                    return true;
+                }
+            }
+            if (keybindManager.checkKeysPressed(waveEvent, ["generic:selectPageAbove", "generic:selectPageBelow"])) {
+                let infoScroll = inputModel.hasScrollingInfoMsg();
+                if (infoScroll) {
+                    let div = document.querySelector(".cmd-input-info");
+                    let amt = pageSize(div);
+                    scrollDiv(div, keybindManager.checkKeyPressed(waveEvent, "generic:selectPageAbove") ? -amt : amt);
+                }
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:openAIChat")) {
+                inputModel.openAIAssistantChat();
+                return true;
+            }
+            // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
+            return false;
+        })();
     }
 
     @boundMethod

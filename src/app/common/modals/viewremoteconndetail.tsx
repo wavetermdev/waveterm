@@ -32,6 +32,11 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("modal", "view-remote-conn-modal", "generic:cancel", (waveEvent) => {
+            this.handleClose();
+            return true;
+        });
         let elem = this.termRef.current;
         if (elem == null) {
             console.log("ERROR null term-remote element");
@@ -47,6 +52,8 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     }
 
     componentWillUnmount() {
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.unregisterDomain("view-remote-conn-modal");
         this.model.disposeTerm();
     }
 

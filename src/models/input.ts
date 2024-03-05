@@ -130,6 +130,7 @@ class InputModel {
         } else {
             this._focusCmdInput();
         }
+        GlobalModel.keybindManager.unregisterDomain("aichat");
     }
 
     setPhysicalInputFocused(isFocused: boolean): void {

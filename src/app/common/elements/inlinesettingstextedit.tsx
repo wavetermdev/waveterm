@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { KeybindManager, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { GlobalModel } from "../../../models/global";
 
 import "./inlinesettingstextedit.less";
@@ -29,23 +29,6 @@ class InlineSettingsTextEdit extends React.Component<
     shouldFocus: boolean = false;
     inputRef: React.RefObject<any> = React.createRef();
 
-    componentDidMount(): void {
-        let keybindManager = GlobalModel.keybindManager;
-        keybindManager.registerKeybinding("pane", "inlineedit", "generic:confirm", (waveEvent) => {
-            this.confirmChange();
-            return true;
-        });
-        keybindManager.registerKeybinding("pane", "inlineedit", "generic:cancel", (waveEvent) => {
-            this.cancelChange();
-            return true;
-        });
-    }
-
-    componentWillUnmount(): void {
-        let keybindManager = GlobalModel.keybindManager;
-        keybindManager.unregisterDomain("inlineedit");
-    }
-
     componentDidUpdate(): void {
         if (this.shouldFocus) {
             this.shouldFocus = false;
@@ -60,6 +43,25 @@ class InlineSettingsTextEdit extends React.Component<
         mobx.action(() => {
             this.tempText.set(e.target.value);
         })();
+    }
+
+    @boundMethod
+    handleKeyDown(e: any): void {
+        let keybindManager = GlobalModel.keybindManager;
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        keybindManager.registerAndProcessKeyEvent(e, waveEvent, "pane", "inlineedit", "any", (waveEvent) => {
+            console.log("inline edit keybind");
+            if (keybindManager.checkKeyPressed(waveEvent, "generic:confirm")) {
+                this.confirmChange();
+                return true;
+            }
+            if (keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
+                this.cancelChange();
+                return true;
+            }
+            return false;
+        });
+        return;
     }
 
     @boundMethod

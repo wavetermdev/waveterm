@@ -36,6 +36,7 @@ import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
+import { TextAreaInput } from "@/app/workspace/cmdinput/textareainput";
 
 type SWLinePtr = {
     line: LineType;
@@ -120,6 +121,7 @@ class Model {
     clientSettingsViewModel: ClientSettingsViewModel;
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
+    textAreaInput: TextAreaInput;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -155,6 +157,7 @@ class Model {
         this.remotesModel = new RemotesModel(this);
         this.modalsModel = new ModalsModel();
         this.mainSidebarModel = new MainSidebarModel(this);
+        this.textAreaInput = null;
         const isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -188,6 +191,7 @@ class Model {
             }
             if (this.alertMessage.get() != null) {
                 if (this.keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
+                    console.log("test?");
                     this.cancelAlert();
                     return true;
                 }
@@ -206,7 +210,6 @@ class Model {
                 return true;
             }
             if (this.keybindManager.checkKeyPressed(waveEvent, "app:openTabSearchModal")) {
-                console.log("on p cmd");
                 this.onOpenTabSearchModal(waveEvent);
                 return true;
             }
@@ -268,10 +271,18 @@ class Model {
                 return this.historyViewModel.handleDocKeyDown(waveEvent);
             }
             if (this.activeMainView.get() == "connections") {
+                console.log("test 2?");
                 return this.historyViewModel.handleDocKeyDown(waveEvent);
             }
             if (this.activeMainView.get() == "clientsettings") {
                 return this.historyViewModel.handleDocKeyDown(waveEvent);
+            }
+            if (this.activeMainView.get() == "session") {
+                console.log("session ??");
+                if (this.textAreaInput != null) {
+                    console.log("session?");
+                    return this.textAreaInput.handleDocKeyDown(waveEvent);
+                }
             }
             if (this.keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
                 if (this.activeMainView.get() == "webshare") {
@@ -337,6 +348,10 @@ class Model {
             (window as any).GlobalModel = new Model();
         }
         return (window as any).GlobalModel;
+    }
+
+    registerTextAreaInput(input: TextAreaInput) {
+        this.textAreaInput = input;
     }
 
     bumpRenderVersion() {

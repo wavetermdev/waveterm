@@ -36,9 +36,14 @@ class AIChat extends React.Component<{}, {}> {
             inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowScrollRef);
         }
         this.requestChatUpdate();
+    }
 
+    @mobx.action
+    @boundMethod
+    onKeyDown(e: any) {
         let keybindManager = GlobalModel.keybindManager;
-        keybindManager.registerKeybinding("pane", "aichat", "any", (waveEvent) => {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        keybindManager.registerAndProcessKeyEvent(e, waveEvent, "pane", "aichat", "any", (waveEvent) => {
             return mobx.action(() => {
                 let model = GlobalModel;
                 let inputModel = model.inputModel;
@@ -206,6 +211,7 @@ class AIChat extends React.Component<{}, {}> {
                     autoComplete="off"
                     autoCorrect="off"
                     id="chat-cmd-input"
+                    onKeyDown={this.onKeyDown}
                     style={{ height: textAreaInnerHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
                     className={cn("chat-textarea")}
                     placeholder="Send a Message to ChatGPT..."
