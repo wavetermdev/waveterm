@@ -14,7 +14,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "@/app/line/linecomps";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
-import { TextField, Dropdown } from "@/elements";
+import { TextField, Dropdown, Button } from "@/elements";
 
 import { ReactComponent as AngleDownIcon } from "@/assets/icons/history/angle-down.svg";
 import { ReactComponent as ChevronLeftIcon } from "@/assets/icons/history/chevron-left.svg";
@@ -495,9 +495,9 @@ class HistoryView extends React.Component<{}, {}> {
                                 Filter Cmds
                             </div>
                         </div>
-                        <div onClick={this.resetAllFilters} className="button reset-button hoverEffect">
+                        <Button className="secondary reset-button" onClick={this.resetAllFilters}>
                             Reset All
-                        </div>
+                        </Button>
                     </div>
                 </div>
                 <div key="control1" className={cn("control-bar", "is-top", { "is-hidden": items.length == 0 })}>
