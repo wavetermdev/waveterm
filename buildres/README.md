@@ -2,7 +2,7 @@
 
 ## Build Helper workflow
 
-Our release builds are managed by the "Build Helper" GitHub Action, which is defined 
+Our release builds are managed by the "Build Helper" GitHub Action, which is defined
 in [`build-helper.yml`](../.github/workflows/build-helper.yml).
 
 Under the hood, this will call the `build-package` and `build-package-linux` scripts in
@@ -11,29 +11,33 @@ WebPack and then the `wavesrv` and `mshell` binaries, then it will call `electro
 to generate the distributable app packages. The configuration for `electron-builder`
 is [`electron-builder.config.js`](../electron-builder.config.js).
 
-We are working to fully automate the building of release artifacts. For now,
-manual steps are still required to sign and notarize the macOS artifacts. The
-Linux artifacts do not require additional modification before being published.
+This will also sign and notarize the macOS app package.
 
-## Local signing and notarizing for macOS
+Once a build is complete, it will be placed in `s3://waveterm-github-artifacts/staging/<version>`.
+It can be downloaded for testing using the [`download-staged-artifact.sh`](./download-staged-artifact.sh)
+script. When you are ready to publish the artifacts to the public release feed, use the
+[`publish-from-staging.sh`](./publish-from-staging.sh) script to directly copy the artifacts from
+the staging bucket to the releases bucket.
 
-The [`prepare-macos.sh`](./prepare-macos.sh) script will download the latest build
+## Local signing and notarizing for macOS (Deprecated)
+
+The [`prepare-macos.sh`](./deprecated/prepare-macos.sh) script will download the latest build
 artifacts from S3 and sign and notarize the macOS binaries within it. It will then
 generate a DMG and a new ZIP archive with the new signed app.
 
 This will call a few different JS scripts to perform more complicated operations.
-[`osx-sign.js`](./osx-sign.js) and [`osx-notarize.js`](./osx-notarize.js) call
+[`osx-sign.js`](./deprecated/osx-sign.js) and [`osx-notarize.js`](./deprecated/osx-notarize.js) call
 underlying Electron APIs to sign and notarize the package.
-[`update-latest-mac.js`](./update-latest-mac.js) will then update the `latest-mac.yml`
+[`update-latest-mac.js`](./deprecated/update-latest-mac.js) will then update the `latest-mac.yml`
 file with the SHA512 checksum and file size of the new signed and notarized installer. This
 is important for the `electron-updater` auto-update mechanism to then find and validate new releases.
 
-## Uploading release artifacts for distribution
+## Uploading release artifacts for distribution (Deprecated)
 
 ### Upload script
 
 Once the build has been fully validated and is ready to be released, the
-[`upload-release.sh`](./upload-release.sh) script is then used to grab the completed
+[`upload-release.sh`](./deprecated/upload-release.sh) script is then used to grab the completed
 artifacts and upload them to the `dl.waveterm.dev` S3 bucket for distribution.
 
 ### Homebrew
