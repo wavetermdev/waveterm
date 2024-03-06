@@ -25,7 +25,7 @@ jobs:
               with:
                   repository: scripthaus-dev/scripthaus
                   path: scripthaus
-            - name: Install Linux Build Dependencies
+            - name: Install Linux Build Dependencies (Linux only)
               if: matrix.platform == 'linux'
               run: |
                   sudo apt-get update
@@ -57,6 +57,11 @@ jobs:
             - name: Build ${{ matrix.platform }}/${{ matrix.arch }}
               run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
               env:
+                  CSC_LINK: ${{ secrets.PROD_MACOS_CERTIFICATE}}
+                  CSC_KEY_PASSWORD: ${{ secrets.PROD_MACOS_CERTIFICATE_PWD }}
+                  CSC_IDENTITY_AUTO_DISCOVERY: false
+                  APPLE_ID: ${{ secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
+                  APPLE_ID_PASSWORD: ${{ secrets.PROD_MACOS_NOTARIZATION_PWD }}
                   GOARCH: ${{ matrix.arch }}
             - uses: actions/upload-artifact@v4
               with:
