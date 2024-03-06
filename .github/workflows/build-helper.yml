@@ -60,6 +60,7 @@ jobs:
                   GOARCH: ${{ matrix.arch }}
                   CSC_LINK: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE}}
                   CSC_KEY_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE_PWD }}
+                  CSC_IDENTITY_AUTO_DISCOVERY: false
                   APPLE_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_PWD }}
                   APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_TEAM_ID }}
