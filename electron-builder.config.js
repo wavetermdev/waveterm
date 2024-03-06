@@ -59,6 +59,11 @@ const config = {
         icon: "public/waveterm.icns",
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
+        notarize: process.env.APPLE_TEAM_ID
+            ? {
+                  teamId: process.env.APPLE_TEAM_ID,
+              }
+            : false,
         binaries: fs
             .readdirSync("bin", { recursive: true, withFileTypes: true })
             .filter((f) => f.isFile())
