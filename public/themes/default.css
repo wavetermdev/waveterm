@@ -17,7 +17,7 @@
     */
 
     /* base fonts */
-    --base-font: normal 15px "Lato", sans-serif;
+    --base-font: normal 15px / normal "Lato", sans-serif;
 
     --title-font-size: 18px;
     --input-bg-color: #171717;

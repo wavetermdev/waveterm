@@ -612,8 +612,14 @@ func combineSshKeywords(opts *sstore.SSHOpts, configKeywords *SshKeywords) (*Ssh
 		sshKeywords.Port = "22"
 	}
 
-	sshKeywords.IdentityFile = []string{opts.SSHIdentity}
-	sshKeywords.IdentityFile = append(sshKeywords.IdentityFile, configKeywords.IdentityFile...)
+	// this is more complicated than it needs to be since we are already storing the identity
+	// file for remotes, even if they come from the ssh config. it should be simplified with
+	// future rework to the connection user interface
+	if opts.SSHIdentity == "" || (len(configKeywords.IdentityFile) > 0 && configKeywords.IdentityFile[0] == opts.SSHIdentity) {
+		sshKeywords.IdentityFile = configKeywords.IdentityFile
+	} else {
+		sshKeywords.IdentityFile = []string{opts.SSHIdentity}
+	}
 
 	// these are not officially supported in the waveterm frontend but can be configured
 	// in ssh config files
