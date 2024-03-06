@@ -252,8 +252,7 @@ class KeybindManager {
         let keyPressArray = this.keyDescriptionsMap.get(keyDescription);
         for (let index = 0; index < keyPressArray.length; index++) {
             let curKeyPress = keyPressArray[index];
-            let curKeyPressDecl = parseKeyDescription(curKeyPress);
-            let pressed = checkKeyPressed(event, curKeyPressDecl);
+            let pressed = checkKeyPressed(event, curKeyPress);
             if (pressed) {
                 return true;
             }
@@ -330,7 +329,8 @@ function parseKey(key: string): { key: string; type: string } {
     return { key: key, type: KeyTypeKey };
 }
 
-function checkKeyPressed(event: WaveKeyboardEvent, keyPress: KeyPressDecl): boolean {
+function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
+    let keyPress = parseKeyDescription(keyDescription);
     if (keyPress.mods.Option && !event.option) {
         return false;
     }
