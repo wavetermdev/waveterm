@@ -19,7 +19,7 @@ import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import * as appconst from "@/app/appconst";
 import { remotePtrToString, cmdPacketString } from "@/util/modelutil";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
+import { KeybindManager, checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -107,6 +107,7 @@ class Model {
     remotesModel: RemotesModel;
     lineHeightEnv: LineHeightEnv;
 
+    keybindManager: KeybindManager;
     inputModel: InputModel;
     pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
@@ -141,6 +142,7 @@ class Model {
             this.runUpdate(message, interactive);
         });
         this.ws.reconnect();
+        this.keybindManager = new KeybindManager();
         this.inputModel = new InputModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
@@ -168,6 +170,13 @@ class Model {
                 return appconst.MaxFontSize;
             }
             return fontSize;
+        });
+        this.keybindManager.registerKeybinding("system", "electron", "any", (waveEvent) => {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "system:toggleDeveloperTools")) {
+                getApi().toggleDeveloperTools();
+                return true;
+            }
+            return false;
         });
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));

@@ -520,6 +520,12 @@ app.on("window-all-closed", () => {
     if (unamePlatform !== "darwin") app.quit();
 });
 
+electron.ipcMain.on("toggle-developer-tools", (event) => {
+    if (MainWindow != null) {
+        MainWindow.webContents.toggleDevTools();
+    }
+});
+
 electron.ipcMain.on("get-id", (event) => {
     event.returnValue = instanceId + ":" + event.processId;
 });
