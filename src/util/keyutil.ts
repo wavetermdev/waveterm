@@ -449,5 +449,11 @@ function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     return rtn;
 }
 
-export { KeybindManager, adaptFromElectronKeyEvent, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform };
+export {
+    KeybindManager,
+    adaptFromElectronKeyEvent,
+    adaptFromReactOrNativeKeyEvent,
+    setKeyUtilPlatform,
+    checkKeyPressed,
+};
 export type { WaveKeyboardEvent };
