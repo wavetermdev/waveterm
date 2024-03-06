@@ -6,6 +6,7 @@ package shellapi
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os/exec"
@@ -20,6 +21,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
@@ -56,7 +58,7 @@ var ZshIgnoreVars = map[string]bool{
 	"langinfo":             true,
 	"keymaps":              true,
 	"widgets":              true,
-
+	"options":              true,
 	"aliases":              true,
 	"dis_aliases":          true,
 	"saliases":             true,
@@ -86,6 +88,34 @@ var ZshIgnoreVars = map[string]bool{
 	"_postpatcomps":        true,
 }
 
+// only options we restore (other than ZshForceOptions)
+var ZshIgnoreOptions = map[string]bool{
+	"globalrcs":        true, // must stay off (otherwise /etc/zprofile runs)
+	"ksharrays":        true,
+	"kshtypeset":       true,
+	"kshautoload":      true,
+	"kshzerosubscript": true,
+	"interactive":      true,
+	"login":            true,
+	"zle":              true,
+	"shinstdin":        true,
+	"privileged":       true,
+	"restricted":       true,
+	"singlecommand":    true,
+}
+
+// force these options on/off at beginning of rcfile
+var ZshForceOptions = map[string]bool{
+	"globalrcs":        false,
+	"ksharrays":        false,
+	"kshtypeset":       false,
+	"kshautoload":      false,
+	"kshzerosubscript": false,
+	"xtrace":           false, // not in ZshIgnoreOptions
+	"verbose":          false, // not in ZshIgnoreOptions
+	"debugbeforecmd":   false, // not in ZshIgnoreOptions
+}
+
 var ZshUniqueArrayVars = map[string]bool{
 	"path":  true,
 	"fpath": true,
@@ -99,6 +129,11 @@ var ZshSpecialDecls = map[string]bool{
 var ZshUnsetVars = []string{
 	"HISTFILE",
 	"ZSH_EXECUTION_STRING",
+}
+
+var ZshLoadMods = []string{
+	"zsh/parameter",
+	"zsh/langinfo",
 }
 
 // do not use these directly, call GetLocalMajorVersion()
@@ -223,10 +258,19 @@ func isZshSafeNameStr(name string) bool {
 func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	var rcBuf bytes.Buffer
 	rcBuf.WriteString(z.GetBaseShellOpts() + "\n")
-	rcBuf.WriteString("unsetopt GLOBAL_RCS\n")
-	rcBuf.WriteString("unset KSH_ARRAYS\n")
-	rcBuf.WriteString("zmodload zsh/parameter\n")
+	// rcBuf.WriteString("echo 'running generated rcfile' $0 $ZSH_ARGZERO '|' $ZDOTDIR\n")
 	varDecls := shellenv.VarDeclsFromState(pk.State)
+	// force options come at the beginning of the file (other options come at the end)
+	for optName, optVal := range ZshForceOptions {
+		if optVal {
+			rcBuf.WriteString(fmt.Sprintf("setopt %s\n", optName))
+		} else {
+			rcBuf.WriteString(fmt.Sprintf("unsetopt %s\n", optName))
+		}
+	}
+	for _, modName := range ZshLoadMods {
+		rcBuf.WriteString(fmt.Sprintf("zmodload %s\n", modName))
+	}
 	var postDecls []*shellenv.DeclareDeclType
 	for _, varDecl := range varDecls {
 		if ZshIgnoreVars[varDecl.Name] {
@@ -294,14 +338,35 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 			}
 		}
 	}
-
 	// write postdecls
 	for _, varDecl := range postDecls {
 		rcBuf.WriteString(makeZshTypesetStmt(varDecl))
 		rcBuf.WriteString("\n")
 	}
-
+	writeZshOptions(&rcBuf, varDecls)
 	return rcBuf.String()
+}
+
+func writeZshOptions(rcBuf *bytes.Buffer, declArr []*shellenv.DeclareDeclType) {
+	optionDecl := getDeclByName(declArr, "options")
+	var optionsMap map[string]string
+	if optionDecl != nil {
+		var err error
+		optionsMap, err = parseSimpleZshOptions(optionDecl.Value)
+		if err != nil {
+			wlog.Logf("error decoding zsh options: %v\n", err)
+		}
+	}
+	for optName := range optionsMap {
+		if ZshIgnoreOptions[optName] {
+			continue
+		}
+		if optionsMap[optName] == "on" {
+			rcBuf.WriteString(fmt.Sprintf("setopt %s\n", optName))
+		} else {
+			rcBuf.WriteString(fmt.Sprintf("unsetopt %s\n", optName))
+		}
+	}
 }
 
 func writeZshId(buf *bytes.Buffer, idStr string) {
@@ -334,6 +399,7 @@ func GetZshShellStateCmd(fdNum int) string {
 exec > [%OUTPUTFD%]
 unsetopt SH_WORD_SPLIT;
 zmodload zsh/parameter;
+zmodload zsh/langinfo;
 [%ZSHVERSION%];
 printf "\x00[%SECTIONSEP%]";
 pwd;
@@ -852,4 +918,43 @@ func (zshShellApi) ApplyShellStateDiff(oldState *packet.ShellState, diff *packet
 		return nil, fmt.Errorf("applying diff 'funcs': %v", err)
 	}
 	return rtnState, nil
+}
+
+// this will *not* parse general zsh assoc arrays, used to parse zsh options (no spaces)
+// ( [posixargzero]=off [autolist]=on )
+func parseSimpleZshOptions(decl string) (map[string]string, error) {
+	decl = strings.TrimSpace(decl)
+	if !strings.HasPrefix(decl, "(") || !strings.HasSuffix(decl, ")") {
+		return nil, errors.New("invalid assoc array decl, must start and end with parens")
+	}
+	decl = decl[1 : len(decl)-1]
+	parts := strings.Split(decl, " ")
+	rtn := make(map[string]string)
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		eqIdx := strings.Index(part, "=")
+		if eqIdx == -1 {
+			return nil, fmt.Errorf("invalid assoc array decl part: %q", part)
+		}
+		bracketedKey := part[0:eqIdx]
+		val := part[eqIdx+1:]
+		if !strings.HasPrefix(bracketedKey, "[") || !strings.HasSuffix(bracketedKey, "]") {
+			return nil, fmt.Errorf("invalid assoc array decl part: %q", part)
+		}
+		key := bracketedKey[1 : len(bracketedKey)-1]
+		rtn[key] = val
+	}
+	return rtn, nil
+}
+
+func getDeclByName(decls []*shellenv.DeclareDeclType, name string) *shellenv.DeclareDeclType {
+	for _, decl := range decls {
+		if decl.Name == name {
+			return decl
+		}
+	}
+	return nil
 }
