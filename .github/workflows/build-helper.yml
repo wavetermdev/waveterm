@@ -57,12 +57,12 @@ jobs:
             - name: Build ${{ matrix.platform }}/${{ matrix.arch }}
               run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
               env:
-                  CSC_LINK: ${{ secrets.PROD_MACOS_CERTIFICATE}}
-                  CSC_KEY_PASSWORD: ${{ secrets.PROD_MACOS_CERTIFICATE_PWD }}
-                  APPLE_ID: ${{ secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
-                  APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.PROD_MACOS_NOTARIZATION_PWD }}
-                  APPLE_TEAM_ID: ${{ secrets.PROD_MACOS_NOTARIZATION_TEAM_ID }}
                   GOARCH: ${{ matrix.arch }}
+                  CSC_LINK: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE}}
+                  CSC_KEY_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE_PWD }}
+                  APPLE_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
+                  APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_PWD }}
+                  APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_TEAM_ID }}
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}
