@@ -31,6 +31,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -51,6 +52,7 @@ const SigKillWaitTime = 2 * time.Second
 const RtnStateFdNum = 20
 const ReturnStateReadWaitTime = 2 * time.Second
 const ForceDebugRcFile = false
+const ForceDebugReturnState = false
 
 const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
@@ -833,6 +835,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	}
 	shellVarMap := shellenv.ShellVarMapFromState(state)
 	if base.HasDebugFlag(shellVarMap, base.DebugFlag_LogRcFile) || ForceDebugRcFile {
+		wlog.Logf("debugrc file %q\n", base.GetDebugRcFileName())
 		debugRcFileName := base.GetDebugRcFileName()
 		err := os.WriteFile(debugRcFileName, []byte(rcFileStr), 0600)
 		if err != nil {
@@ -1196,6 +1199,10 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 			c.ReturnState.Reader.Close()
 		}()
 		<-c.ReturnState.DoneCh
+		if ForceDebugReturnState {
+			wlog.Logf("debug returnstate file %q\n", base.GetDebugReturnStateFileName())
+			os.WriteFile(base.GetDebugReturnStateFileName(), c.ReturnState.Buf, 0666)
+		}
 		state, _ := c.SAPI.ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
 		donePacket.FinalState = state
 	}
