@@ -354,8 +354,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
             e.preventDefault();
             if (!input.alt) {
                 win.webContents.send("i-cmd", mods);
-            } else {
-                win.webContents.toggleDevTools();
             }
             return;
         }

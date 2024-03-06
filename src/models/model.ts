@@ -496,6 +496,7 @@ class Model {
                 e.preventDefault();
             }
         }
+        this.keybindManager.processKeyEvent(e, waveEvent);
     }
 
     deleteActiveLine(): boolean {
