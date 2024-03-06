@@ -88,7 +88,7 @@ const config = {
     },
     publish: {
         provider: "generic",
-        url: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
+        url: "https://dl.waveterm.dev/releases",
     },
 };
 
