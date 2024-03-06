@@ -19,6 +19,15 @@ script. When you are ready to publish the artifacts to the public release feed, 
 [`publish-from-staging.sh`](./publish-from-staging.sh) script to directly copy the artifacts from
 the staging bucket to the releases bucket.
 
+## Automatic updates
+
+Thanks to `electron-updater`, we are able to provide automatic app updates for macOS and Linux,
+as long as the app was distributed as a DMG, AppImage, RPM, or DEB file.
+
+With each release, `latest-mac.yml` and `latest-linux.yml` files will be produced that point to the
+newest release. These also include file sizes and checksums to aid in validating the packages. The app
+will check these files in our S3 bucket every hour to see if a new version is available.
+
 ## Local signing and notarizing for macOS (Deprecated)
 
 The [`prepare-macos.sh`](./deprecated/prepare-macos.sh) script will download the latest build
@@ -60,12 +69,3 @@ command. More information can be found
 
 We also exclude most of our `node_modules` from packaging, as WebPack handles packaging
 of any dependencies for us. The one exception is `monaco-editor`.
-
-## Automatic updates
-
-Thanks to `electron-updater`, we are able to provide automatic app updates for macOS and Linux,
-as long as the app was distributed as a DMG, AppImage, RPM, or DEB file.
-
-With each release, `latest-mac.yml` and `latest-linux.yml` files will be produced that point to the
-newest release. These also include file sizes and checksums to aid in validating the packages. The app
-will check these files in our S3 bucket every hour to see if a new version is available.
