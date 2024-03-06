@@ -60,7 +60,7 @@ jobs:
                   CSC_LINK: ${{ secrets.PROD_MACOS_CERTIFICATE}}
                   CSC_KEY_PASSWORD: ${{ secrets.PROD_MACOS_CERTIFICATE_PWD }}
                   APPLE_ID: ${{ secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
-                  APPLE_ID_PASSWORD: ${{ secrets.PROD_MACOS_NOTARIZATION_PWD }}
+                  APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.PROD_MACOS_NOTARIZATION_PWD }}
                   GOARCH: ${{ matrix.arch }}
             - uses: actions/upload-artifact@v4
               with:
