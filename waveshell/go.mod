@@ -1,6 +1,6 @@
 module github.com/wavetermdev/waveterm/waveshell
 
-go 1.18
+go 1.22
 
 require (
 	github.com/alessio/shellescape v1.4.1

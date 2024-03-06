@@ -1,13 +1,15 @@
 module github.com/wavetermdev/waveterm/wavesrv
 
-go 1.18
+go 1.22
+
+toolchain go1.22.0
 
 require (
 	github.com/alessio/shellescape v1.4.1
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/creack/pty v1.1.18
 	github.com/golang-migrate/migrate/v4 v4.16.2
-	github.com/google/go-github/v59 v59.0.0
+	github.com/google/go-github/v60 v60.0.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/websocket v1.5.0
