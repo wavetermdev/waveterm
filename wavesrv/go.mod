@@ -34,4 +34,4 @@ require (
 
 replace github.com/wavetermdev/waveterm/waveshell => ../waveshell
 
-replace github.com/kevinburke/ssh_config => github.com/wavetermdev/ssh_config v0.0.0-20240109090616-36c8da3d7376
+replace github.com/kevinburke/ssh_config => github.com/wavetermdev/ssh_config v0.0.0-20240306041034-17e2087ebde2
