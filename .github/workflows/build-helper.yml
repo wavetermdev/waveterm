@@ -59,7 +59,6 @@ jobs:
               env:
                   CSC_LINK: ${{ secrets.PROD_MACOS_CERTIFICATE}}
                   CSC_KEY_PASSWORD: ${{ secrets.PROD_MACOS_CERTIFICATE_PWD }}
-                  CSC_IDENTITY_AUTO_DISCOVERY: false
                   APPLE_ID: ${{ secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
                   APPLE_ID_PASSWORD: ${{ secrets.PROD_MACOS_NOTARIZATION_PWD }}
                   GOARCH: ${{ matrix.arch }}
