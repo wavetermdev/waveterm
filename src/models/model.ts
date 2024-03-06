@@ -1444,7 +1444,11 @@ class Model {
             if (err?.message) {
                 errMsg = err.message;
             }
-            this.inputModel.flashInfoMsg({ infoerror: errMsg }, null);
+            let info: InfoType = { infoerror: errMsg };
+            if (err?.errorcode) {
+                info.infoerrorcode = err.errorcode;
+            }
+            this.inputModel.flashInfoMsg(info, null);
         }
     }
 

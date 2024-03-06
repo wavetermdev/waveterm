@@ -521,6 +521,9 @@ func (p *ResponsePacketType) Err() error {
 	}
 	if !p.Success {
 		if p.Error != "" {
+			if p.ErrorCode != "" {
+				return &base.CodedError{ErrorCode: p.ErrorCode, Err: errors.New(p.Error)}
+			}
 			return errors.New(p.Error)
 		}
 		return fmt.Errorf("rpc failed")
@@ -536,9 +539,10 @@ func (p *ResponsePacketType) String() string {
 }
 
 func MakeErrorResponsePacket(reqId string, err error) *ResponsePacketType {
-	rtn := &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: err.Error()}
-	rtn.ErrorCode = base.GetErrorCode(err)
-	return rtn
+	if codedErr, ok := err.(*base.CodedError); ok {
+		return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: codedErr.Err.Error(), ErrorCode: codedErr.ErrorCode}
+	}
+	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: err.Error()}
 }
 
 func MakeResponsePacket(reqId string, data interface{}) *ResponsePacketType {

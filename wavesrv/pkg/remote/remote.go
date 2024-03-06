@@ -2049,7 +2049,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 			return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 		}
 		if respPk.Error != "" {
-			return nil, nil, errors.New(respPk.Error)
+			return nil, nil, respPk.Err()
 		}
 		return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 	}
