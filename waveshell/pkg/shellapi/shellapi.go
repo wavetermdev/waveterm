@@ -48,6 +48,16 @@ type RunCommandOpts struct {
 	CommandStdinFdNum int // needed for SudoWithPass
 }
 
+const (
+	ShellStateOutputStatus_Done = "done"
+)
+
+type ShellStateOutput struct {
+	Status       string
+	StderrOutput []byte
+	ShellState   *packet.ShellState
+}
+
 type ShellApi interface {
 	GetShellType() string
 	MakeExitTrap(fdNum int) string
@@ -56,7 +66,7 @@ type ShellApi interface {
 	GetRemoteShellPath() string
 	MakeRunCommand(cmdStr string, opts RunCommandOpts) string
 	MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd
-	GetShellState() (*packet.ShellState, error)
+	GetShellState() (chan ShellStateOutput, error)
 	GetBaseShellOpts() string
 	ParseShellStateOutput(output []byte) (*packet.ShellState, error)
 	MakeRcFileStr(pk *packet.RunPacketType) string

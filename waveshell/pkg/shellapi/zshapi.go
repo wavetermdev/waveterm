@@ -168,7 +168,7 @@ func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty 
 	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 }
 
-func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
+func (z zshShellApi) GetShellState() (chan ShellStateOutput, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
 	cmdStr := BaseZshOpts + "; " + GetZshShellStateCmd(StateOutputFdNum)
@@ -181,7 +181,9 @@ func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
 	if err != nil {
 		return nil, err
 	}
-	return rtn, nil
+	rtnCh := make(chan ShellStateOutput, 10)
+	rtnCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, ShellState: rtn}
+	return rtnCh, nil
 }
 
 func (z zshShellApi) GetBaseShellOpts() string {
