@@ -56,6 +56,7 @@ type ShellStateOutput struct {
 	Status       string
 	StderrOutput []byte
 	ShellState   *packet.ShellState
+	Error        string
 }
 
 type ShellApi interface {
@@ -66,13 +67,16 @@ type ShellApi interface {
 	GetRemoteShellPath() string
 	MakeRunCommand(cmdStr string, opts RunCommandOpts) string
 	MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd
-	GetShellState() (chan ShellStateOutput, error)
+	GetShellState() chan ShellStateOutput
 	GetBaseShellOpts() string
 	ParseShellStateOutput(output []byte) (*packet.ShellState, error)
 	MakeRcFileStr(pk *packet.RunPacketType) string
 	MakeShellStateDiff(oldState *packet.ShellState, oldStateHash string, newState *packet.ShellState) (*packet.ShellStateDiff, error)
 	ApplyShellStateDiff(oldState *packet.ShellState, diff *packet.ShellStateDiff) (*packet.ShellState, error)
 }
+
+var _ ShellApi = &bashShellApi{}
+var _ ShellApi = &zshShellApi{}
 
 func DetectLocalShellType() string {
 	shellPath := GetMacUserShell()

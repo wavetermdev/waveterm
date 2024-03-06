@@ -61,3 +61,6 @@ export enum StatusIndicatorLevel {
     Success = 2,
     Error = 3,
 }
+
+// matches packet.go
+export const ErrorCode_InvalidCwd = "ERRCWD";

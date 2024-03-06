@@ -419,6 +419,7 @@ declare global {
         infomsghtml?: boolean;
         websharelink?: boolean;
         infoerror?: string;
+        infoerrorcode?: string;
         infolines?: string[];
         infocomps?: string[];
         infocompsmore?: boolean;

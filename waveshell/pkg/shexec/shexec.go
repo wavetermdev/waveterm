@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -368,14 +369,18 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 			return fmt.Errorf("cannot detach command, constant rundata input too large len=%d, max=%d", totalRunData, mpio.MaxTotalRunDataSize)
 		}
 	}
-	if pk.State != nil && pk.State.Cwd != "" {
-		realCwd := base.ExpandHomeDir(pk.State.Cwd)
+	if pk.State != nil {
+		pkCwd := pk.State.Cwd
+		if pkCwd == "" {
+			pkCwd = "~"
+		}
+		realCwd := base.ExpandHomeDir(pkCwd)
 		dirInfo, err := os.Stat(realCwd)
 		if err != nil {
-			return fmt.Errorf("invalid cwd '%s' for command: %v", realCwd, err)
+			return base.CodedErrorf(packet.EC_InvalidCwd, "invalid cwd '%s' for command: %v", realCwd, err)
 		}
 		if !dirInfo.IsDir() {
-			return fmt.Errorf("invalid cwd '%s' for command, not a directory", realCwd)
+			return base.CodedErrorf(packet.EC_InvalidCwd, "invalid cwd '%s' for command, not a directory", realCwd)
 		}
 	}
 	for _, runData := range pk.RunData {
@@ -896,7 +901,9 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if sapi.GetShellType() == packet.ShellType_zsh {
 		shellutil.UpdateCmdEnv(cmd.Cmd, map[string]string{"ZDOTDIR": zdotdir})
 	}
-	if state.Cwd != "" {
+	if state.Cwd == "" {
+		cmd.Cmd.Dir = base.ExpandHomeDir("~")
+	} else if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
 	err = ValidateRemoteFds(pk.Fds)
@@ -1237,12 +1244,13 @@ func MakeShellStatePacket(shellType string) (*packet.ShellStatePacketType, error
 	if err != nil {
 		return nil, err
 	}
-	shellState, err := sapi.GetShellState()
-	if err != nil {
-		return nil, err
+	rtnCh := sapi.GetShellState()
+	ssOutput := <-rtnCh
+	if ssOutput.Error != "" {
+		return nil, errors.New(ssOutput.Error)
 	}
 	rtn := packet.MakeShellStatePacket()
-	rtn.State = shellState
+	rtn.State = ssOutput.ShellState
 	return rtn, nil
 }
 

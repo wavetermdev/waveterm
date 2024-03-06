@@ -72,6 +72,10 @@ const (
 	ShellType_zsh  = "zsh"
 )
 
+const (
+	EC_InvalidCwd = "ERRCWD"
+)
+
 const PacketSenderQueueSize = 20
 
 const PacketEOFStr = "EOF"
@@ -491,11 +495,12 @@ func MakeCompGenPacket() *CompGenPacketType {
 }
 
 type ResponsePacketType struct {
-	Type    string      `json:"type"`
-	RespId  string      `json:"respid"`
-	Success bool        `json:"success"`
-	Error   string      `json:"error,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
+	Type      string      `json:"type"`
+	RespId    string      `json:"respid"`
+	Success   bool        `json:"success"`
+	Error     string      `json:"error,omitempty"`
+	ErrorCode string      `json:"errorcode,omitempty"` // can be used for structured errors
+	Data      interface{} `json:"data,omitempty"`
 }
 
 func (*ResponsePacketType) GetType() string {
@@ -531,7 +536,9 @@ func (p *ResponsePacketType) String() string {
 }
 
 func MakeErrorResponsePacket(reqId string, err error) *ResponsePacketType {
-	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: err.Error()}
+	rtn := &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: err.Error()}
+	rtn.ErrorCode = base.GetErrorCode(err)
+	return rtn
 }
 
 func MakeResponsePacket(reqId string, data interface{}) *ResponsePacketType {

@@ -48,6 +48,7 @@ func (CmdLineUpdate) GetType() string {
 type InfoMsgType struct {
 	InfoTitle     string   `json:"infotitle"`
 	InfoError     string   `json:"infoerror,omitempty"`
+	InfoErrorCode string   `json:"infoerrorcode,omitempty"`
 	InfoMsg       string   `json:"infomsg,omitempty"`
 	InfoMsgHtml   bool     `json:"infomsghtml,omitempty"`
 	WebShareLink  bool     `json:"websharelink,omitempty"`
