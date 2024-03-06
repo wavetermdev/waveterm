@@ -46,10 +46,16 @@ const config = {
     },
     asarUnpack: ["bin/**/*"],
     mac: {
-        target: {
-            target: "zip",
-            arch: "universal",
-        },
+        target: [
+            {
+                target: "zip",
+                arch: "universal",
+            },
+            {
+                target: "dmg",
+                arch: "universal",
+            },
+        ],
         icon: "public/waveterm.icns",
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
