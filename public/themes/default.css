@@ -94,7 +94,7 @@
     --form-element-text-color: var(--app-text-primary-color);
     --form-element-label-color: var(--app-text-secondary-color);
     --form-element-primary-color: var(--app-accent-color);
-    --form-element-secondary-color: rgba(255, 255, 255, 0.09);
+    --form-element-secondary-color: rgba(255, 255, 255, 0.2);
     --form-element-error-color: var(--app-error-color);
     --form-element-icon-color: var(--app-icon-hover-color);
 

@@ -44,7 +44,7 @@
     --form-element-bg-color: var(--app-bg-color);
     --form-element-text-color: var(--app-text-color);
     --form-element-label-color: rgba(0, 0, 0, 0.6);
-    --form-element-secondary-color: rgba(255, 255, 255, 0.09);
+    --form-element-secondary-color: rgba(0, 0, 0, 0.09);
     --form-element-icon-color: rgb(0, 0, 0, 0.6);
 
     /* modal colors */
