@@ -763,15 +763,11 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                 </If>
                 <If condition={screen.filterRunning.get()}>
                     <div className="filter-running">
-                        <Button
-                            variant="outlined"
-                            color="color-yellow"
-                            style={{ borderRadius: "999px" }}
-                            onClick={this.disableFilter}
-                        >
+                        <div className="filter-mask" />
+                        <div className="filter-content" onClick={this.disableFilter}>
                             Showing Running Commands &nbsp;
-                            <i className="fa-sharp fa-solid fa-xmark" />
-                        </Button>
+                            <i className="fa-sharp fa-solid fa-xmark-large" />
+                        </div>
                     </div>
                 </If>
             </div>

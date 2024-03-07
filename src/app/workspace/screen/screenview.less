@@ -181,8 +181,32 @@
         }
 
         .filter-running {
-            margin: auto 1rem 0 1rem;
-            align-self: center;
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            border-top: 1px solid var(--app-border-color);
+            padding: calc(var(--termpad) + 2px) var(--termpad) calc(var(--termpad) + 2px) var(--termpad);
+            align-items: center;
+            justify-content: center;
+
+            .filter-content {
+                cursor: pointer;
+                padding: 2px;
+                color: var(--app-text-primary-color);
+                z-index: 2;
+            }
+
+            .filter-mask {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: var(--app-accent-bg-color);
+                z-index: 1;
+                pointer-events: none;
+            }
         }
     }
 
