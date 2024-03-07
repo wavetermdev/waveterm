@@ -1,3 +1,5 @@
+@import "@/common/icons/icons.less";
+
 .cmd-input {
     max-height: max(300px, 40%);
     display: flex;
@@ -9,9 +11,6 @@
     z-index: 100;
     border-top: 2px solid var(--app-border-color);
     background-color: var(--app-bg-color);
-
-    &.active {
-    }
 
     &.has-info,
     &.has-aichat,
@@ -46,8 +45,11 @@
             color: var(--app-icon-hover-color);
             opacity: 0.5;
 
-            &.running-cmds i {
-                color: var(--app-warning-color);
+            &.running-cmds {
+                .positional-icon-visible;
+                .rotate {
+                    fill: var(--app-warning-color);
+                }
             }
 
             &.active {
