@@ -58,7 +58,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) =
     };
 
     const changeMonth = (delta: number) => {
-        setSelDate(selDate.add(delta, "month"));
+        const newDate = selDate.add(delta, "month");
+        setSelDate(newDate);
+        onSelectDate && onSelectDate(newDate.toDate());
     };
 
     const renderHeader = () => {
