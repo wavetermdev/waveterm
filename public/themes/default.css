@@ -243,4 +243,10 @@
     --logo-button-hover-bg-color: #1e1e1e;
 
     --xterm-viewport-border-color: rgba(241, 246, 243, 0.15);
+
+    --datepicker-cell-hover-bg-color: rgba(255, 255, 255, 0.06);
+    --datepicker-cell-other-text-color: rgba(255, 255, 255, 0.3);
+    --datepicker-header-fade-color: rgba(255, 255, 255, 0.4);
+    --datepicker-year-header-bg-color: rgba(255, 255, 255, 0.2); /* Light grey background */
+    --datepicker-year-header-border-color: rgba(241, 246, 243, 0.15); /* Light grey border */
 }

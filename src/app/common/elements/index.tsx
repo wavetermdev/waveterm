@@ -19,3 +19,4 @@ export { TextField } from "./textfield";
 export { Toggle } from "./toggle";
 export { Tooltip } from "./tooltip";
 export { TabIcon } from "./tabicon";
+export { DatePicker } from "./datepicker";
