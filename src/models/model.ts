@@ -142,6 +142,7 @@ class Model {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
         this.authKey = getApi().getAuthKey();
+        getApi().onToggleDevUI(this.toggleDevUI.bind(this));
         this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message: any) => {
             const interactive = message?.interactive ?? false;
             this.runUpdate(message, interactive);
@@ -176,6 +177,13 @@ class Model {
                 return appconst.MaxFontSize;
             }
             return fontSize;
+        });
+        this.keybindManager.registerKeybinding("system", "electron", "any", (waveEvent) => {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "system:toggleDeveloperTools")) {
+                getApi().toggleDeveloperTools();
+                return true;
+            }
+            return false;
         });
 
         this.keybindManager.registerKeybinding("app", "model", "any", (waveEvent) => {
@@ -341,6 +349,10 @@ class Model {
             (window as any).GlobalModel = new Model();
         }
         return (window as any).GlobalModel;
+    }
+
+    toggleDevUI(): void {
+        document.body.classList.toggle("is-dev");
     }
 
     registerTextAreaInput(input: TextAreaInput) {
@@ -1262,6 +1274,7 @@ class Model {
     }
 
     setClientData(clientData: ClientDataType) {
+        let curClientDataIsNull = this.clientData.get() == null;
         let newFontFamily = clientData?.feopts?.termfontfamily;
         if (newFontFamily == null) {
             newFontFamily = appconst.DefaultTermFontFamily;
@@ -1270,7 +1283,7 @@ class Model {
         if (newFontSize == null) {
             newFontSize = appconst.DefaultTermFontSize;
         }
-        const ffUpdated = newFontFamily != this.getTermFontFamily();
+        const ffUpdated = curClientDataIsNull || newFontFamily != this.getTermFontFamily();
         const fsUpdated = newFontSize != this.getTermFontSize();
 
         let newTheme = clientData?.feopts?.theme;
@@ -1287,18 +1300,16 @@ class Model {
         }
         getApi().reregisterGlobalShortcut(shortcut);
         if (ffUpdated) {
-            // this also updates fontSize vars
-            loadFonts(newFontFamily);
-            document.fonts.ready.then(() => {
-                clearMonoFontCache();
-                this.updateTermFontSizeVars(); // forces an update of css vars
-                this.bumpRenderVersion();
-            });
+            document.documentElement.style.setProperty("--termfontfamily", '"' + newFontFamily + '"');
+            clearMonoFontCache();
+            this.updateTermFontSizeVars(); // forces an update of css vars
+            this.bumpRenderVersion();
         } else if (fsUpdated) {
             this.updateTermFontSizeVars();
         }
         if (themeUpdated) {
             loadTheme(newTheme);
+            this.bumpRenderVersion();
         }
     }
 
@@ -1521,7 +1532,11 @@ class Model {
             if (err?.message) {
                 errMsg = err.message;
             }
-            this.inputModel.flashInfoMsg({ infoerror: errMsg }, null);
+            let info: InfoType = { infoerror: errMsg };
+            if (err?.errorcode) {
+                info.infoerrorcode = err.errorcode;
+            }
+            this.inputModel.flashInfoMsg(info, null);
         }
     }
 
