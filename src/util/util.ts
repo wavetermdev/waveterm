@@ -387,7 +387,7 @@ function ces(s: string) {
  * A wrapper function for running a promise and catching any errors
  * @param f The promise to run
  */
-function fireAndForget(f: () => Promise<void>) {
+function fireAndForget(f: () => Promise<any>) {
     f().catch((e) => {
         console.log("fireAndForget error", e);
     });

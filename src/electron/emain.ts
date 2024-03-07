@@ -819,13 +819,6 @@ function initUpdater(): NodeJS.Timeout {
     }
 
     setAppUpdateStatus("unavailable");
-    let feedURL = `https://dl.waveterm.dev/autoupdate/${unamePlatform}/${unameArch}`;
-    let serverType: "default" | "json" = "default";
-
-    if (unamePlatform == "darwin") {
-        feedURL += "/RELEASES.json";
-        serverType = "json";
-    }
 
     autoUpdater.removeAllListeners();
 
@@ -865,7 +858,7 @@ function initUpdater(): NodeJS.Timeout {
 
     // check for updates right away and keep checking later
     autoUpdater.checkForUpdates();
-    return setInterval(autoUpdater.checkForUpdates, 3600000); // 1 hour in ms
+    return setInterval(() => fireAndForget(autoUpdater.checkForUpdates), 3600000); // 1 hour in ms
 }
 
 /**

@@ -25,7 +25,7 @@ jobs:
               with:
                   repository: scripthaus-dev/scripthaus
                   path: scripthaus
-            - name: Install Linux Build Dependencies
+            - name: Install Linux Build Dependencies (Linux only)
               if: matrix.platform == 'linux'
               run: |
                   sudo apt-get update
@@ -58,6 +58,11 @@ jobs:
               run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
               env:
                   GOARCH: ${{ matrix.arch }}
+                  CSC_LINK: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE}}
+                  CSC_KEY_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE_PWD }}
+                  APPLE_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
+                  APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_PWD }}
+                  APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_TEAM_ID }}
             - uses: actions/upload-artifact@v4
               with:
                   name: waveterm-build-${{ matrix.platform }}
@@ -75,10 +80,8 @@ jobs:
             - name: Set `version.txt`
               run: |
                   echo "${{ needs.runbuild.outputs.WAVETERM_VERSION }}" >> buildtemp/version.txt
-            - name: Zip Builds
-              run: (cd buildtemp; zip -q ../waveterm-builds.zip *)
             - name: Upload to S3
-              run: aws s3 cp waveterm-builds.zip s3://waveterm-github-artifacts/
+              run: aws s3 cp buildtemp/ s3://waveterm-github-artifacts/staging/${{ needs.runbuild.outputs.WAVETERM_VERSION }}/ --recursive --exclude "builder-*.yml"
               env:
                   AWS_ACCESS_KEY_ID: "${{ secrets.S3_USERID }}"
                   AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRETKEY }}"

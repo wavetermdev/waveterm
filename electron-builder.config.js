@@ -46,13 +46,24 @@ const config = {
     },
     asarUnpack: ["bin/**/*"],
     mac: {
-        target: {
-            target: "zip",
-            arch: "universal",
-        },
+        target: [
+            {
+                target: "zip",
+                arch: "universal",
+            },
+            {
+                target: "dmg",
+                arch: "universal",
+            },
+        ],
         icon: "public/waveterm.icns",
         category: "public.app-category.developer-tools",
         minimumSystemVersion: "10.15.0",
+        notarize: process.env.APPLE_TEAM_ID
+            ? {
+                  teamId: process.env.APPLE_TEAM_ID,
+              }
+            : false,
         binaries: fs
             .readdirSync("bin", { recursive: true, withFileTypes: true })
             .filter((f) => f.isFile())
@@ -77,7 +88,7 @@ const config = {
     },
     publish: {
         provider: "generic",
-        url: "https://waveterm-test-autoupdate.s3.us-west-2.amazonaws.com/autoupdate",
+        url: "https://dl.waveterm.dev/releases",
     },
 };
 
