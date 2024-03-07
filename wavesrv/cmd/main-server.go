@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -618,6 +619,15 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func HandleConfig(w http.ResponseWriter, r *http.Request) {
+	qvals := r.URL.Query()
+	filePath := qvals.Get("path")
+	log.Printf("URL query: %v %v\n", qvals, filePath)
+	fullPath := path.Join(scbase.GetWaveHomeDir(), "config", filePath)
+	log.Printf("fullPath: %v", fullPath)
+	http.ServeFile(w, r, fullPath)
+}
+
 func WriteJsonError(w http.ResponseWriter, errVal error) {
 	w.Header().Set(ContentTypeHeaderKey, ContentTypeJson)
 	w.WriteHeader(200)
@@ -904,6 +914,7 @@ func main() {
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
 	gr.HandleFunc("/api/read-file", AuthKeyWrap(HandleReadFile))
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
+	gr.HandleFunc("/api/config", AuthKeyWrap(HandleConfig))
 	serverAddr := MainServerAddr
 	if scbase.IsDevMode() {
 		serverAddr = MainServerDevAddr
