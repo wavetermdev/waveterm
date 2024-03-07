@@ -1,7 +1,7 @@
 /* Copyright 2024, Command Line Inc.
    SPDX-License-Identifier: Apache-2.0 */
 
-@import url("./term-dark.css");
+@import url("./term-default.css");
 
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
