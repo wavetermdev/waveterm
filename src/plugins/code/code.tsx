@@ -15,15 +15,25 @@ import { Button, Dropdown } from "@/elements";
 
 import "./code.less";
 
+// TODO: need to update these on theme change (pull from CSS vars)
 document.addEventListener("DOMContentLoaded", () => {
     loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
     loader.init().then(() => {
-        monaco.editor.defineTheme("wave-theme", {
+        monaco.editor.defineTheme("wave-theme-dark", {
             base: "hc-black",
             inherit: true,
             rules: [],
             colors: {
                 "editor.background": "#000000",
+            },
+        });
+
+        monaco.editor.defineTheme("wave-theme-light", {
+            base: "hc-light",
+            inherit: true,
+            rules: [],
+            colors: {
+                "editor.background": "#fefefe",
             },
         });
     });
@@ -374,11 +384,13 @@ class SourceCodeRenderer extends React.Component<
     }
 
     getCodeEditor = () => {
+        let theme = GlobalModel.isThemeDark() ? "wave-theme-dark" : "wave-theme-light";
+        console.log("monaco theme", theme);
         return (
             <div className="editor-wrap" style={{ maxHeight: this.state.editorHeight }}>
                 {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
                 <Editor
-                    theme="wave-theme"
+                    theme={theme}
                     height={this.state.editorHeight}
                     defaultLanguage={this.state.selectedLanguage}
                     value={this.state.code}
