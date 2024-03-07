@@ -231,10 +231,25 @@ func (sdiff *ShellStateDiff) GetHashVal(force bool) string {
 	return sdiff.HashVal
 }
 
+func (state ShellState) Dump() {
+	fmt.Printf("ShellState:\n")
+	fmt.Printf("  version: %s\n", state.Version)
+	fmt.Printf("  shelltype: %s\n", state.GetShellType())
+	fmt.Printf("  hashval: %s\n", state.GetHashVal(false))
+	fmt.Printf("  cwd: %s\n", state.Cwd)
+	fmt.Printf("  vars: %d, aliases: %d, funcs: %d\n", len(state.ShellVars), len(state.Aliases), len(state.Funcs))
+	if state.Error != "" {
+		fmt.Printf("  error: %s\n", state.Error)
+	}
+}
+
 func (sdiff ShellStateDiff) Dump(vars bool, aliases bool, funcs bool) {
 	fmt.Printf("ShellStateDiff:\n")
 	fmt.Printf("  version: %s\n", sdiff.Version)
 	fmt.Printf("  base: %s\n", sdiff.BaseHash)
+	fmt.Printf("  diffhash: %s\n", sdiff.GetHashVal(false))
+	fmt.Printf("  diffhasharr: %v\n", sdiff.DiffHashArr)
+	fmt.Printf("  cwd: %s\n", sdiff.Cwd)
 	fmt.Printf("  vars: %d, aliases: %d, funcs: %d\n", len(sdiff.VarsDiff), len(sdiff.AliasesDiff), len(sdiff.FuncsDiff))
 	if sdiff.Error != "" {
 		fmt.Printf("  error: %s\n", sdiff.Error)
