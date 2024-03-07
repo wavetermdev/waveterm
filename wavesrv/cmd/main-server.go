@@ -620,11 +620,8 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleConfig(w http.ResponseWriter, r *http.Request) {
-	qvals := r.URL.Query()
-	filePath := qvals.Get("path")
-	log.Printf("URL query: %v %v\n", qvals, filePath)
-	fullPath := path.Join(scbase.GetWaveHomeDir(), "config", filePath)
-	log.Printf("fullPath: %v", fullPath)
+	filePath := r.URL.Path
+	fullPath := path.Join(scbase.GetWaveHomeDir(), filePath)
 	http.ServeFile(w, r, fullPath)
 }
 

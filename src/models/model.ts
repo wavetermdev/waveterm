@@ -1515,54 +1515,6 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    fetchConfigPath(configPath: string, json: boolean = false, noErrorOn404: boolean = false) {
-        const urlParams = {
-            path: configPath,
-        };
-        const usp = new URLSearchParams(urlParams);
-        const url = new URL(this.getBaseHostPort() + "/api/config?" + usp.toString());
-        let badResponseStr: string = null;
-        let errorSet = false;
-        let fileInfo: FileInfoType = null;
-        const prtn = fetch(url, { method: "get", headers: this.getFetchHeaders() })
-            .then((resp) => {
-                if (!resp.ok) {
-                    if (json && noErrorOn404 && resp.status == 404) {
-                        return [];
-                    }
-                    badResponseStr = sprintf("Bad fetch response for /api/config: %d %s", resp.status, resp.statusText);
-                    errorSet = true;
-                    return resp.text() as any;
-                }
-                if (json) {
-                    console.log("resp", resp);
-                    return resp.json();
-                } else {
-                    fileInfo = JSON.parse(base64ToString(resp.headers.get("X-FileInfo")));
-                    return resp.blob();
-                }
-            })
-            .then((data: any) => {
-                if (!json && data instanceof Blob) {
-                    const blob: Blob = data;
-                    const file = new File([blob], fileInfo.name, { type: blob.type, lastModified: fileInfo.modts });
-                    const isWriteable = (fileInfo.perm & 0o222) > 0; // checks for unix permission "w" bits
-                    (file as any).readOnly = !isWriteable;
-                    (file as any).notFound = !!fileInfo.notfound;
-                    return file as ExtFile;
-                } else if (!errorSet) {
-                    return data;
-                } else {
-                    const textError: string = data;
-                    if (textError == null || textError.length == 0) {
-                        throw new Error(badResponseStr);
-                    }
-                    throw new Error(textError);
-                }
-            });
-        return prtn;
-    }
-
     readRemoteFile(screenId: string, lineId: string, path: string): Promise<ExtFile> {
         const urlParams = {
             screenid: screenId,
