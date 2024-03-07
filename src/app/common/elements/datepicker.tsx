@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import dayjs from "dayjs";
 import cs from "classnames";
 import { Button } from "@/elements";
+import { If } from "tsx-control-statements/components";
 
 import "./datepicker.less";
 
@@ -75,7 +76,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) =
                     {selDate.format("MMMM YYYY")}
                     <span className={cs("dropdown-arrow", { fade: showYearAccordion })}></span>
                 </div>
-                {!showYearAccordion && (
+                <If condition={!showYearAccordion}>
                     <div className="arrows">
                         <Button className="secondary ghost" onClick={() => changeMonth(-1)}>
                             &uarr;
@@ -84,7 +85,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) =
                             &darr;
                         </Button>
                     </div>
-                )}
+                </If>
             </div>
         );
     };
@@ -210,7 +211,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) =
                             >
                                 {year}
                             </div>
-                            {expandedYear === year && (
+                            <If condition={expandedYear === year}>
                                 <div
                                     className={cs("month-container", {
                                         expanded: expandedYear === year,
@@ -228,7 +229,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) =
                                         </div>
                                     ))}
                                 </div>
-                            )}
+                            </If>
                         </div>
                     ))}
                 </div>
@@ -246,12 +247,12 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) =
               <div ref={modalRef} className="day-picker-modal" style={calculatePosition()}>
                   {renderHeader()}
                   {showYearAccordion && renderYearMonthAccordion()}
-                  {!showYearAccordion && (
+                  <If condition={!showYearAccordion}>
                       <>
                           {renderDayHeaders()}
                           <div className="day-picker">{renderDays()}</div>
                       </>
-                  )}
+                  </If>
               </div>,
               document.getElementById("app")!
           )
