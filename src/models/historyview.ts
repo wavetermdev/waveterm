@@ -7,8 +7,7 @@ import { isBlank } from "@/util/util";
 import { termWidthFromCols, termHeightFromRows } from "@/util/textmeasure";
 import dayjs from "dayjs";
 import * as appconst from "@/app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
-import { GlobalCommandRunner } from "./global";
+import { GlobalModel, GlobalCommandRunner } from "./global";
 import { Model } from "./model";
 import { Cmd } from "./cmd";
 import { SpecialLineContainer } from "./speciallinecontainer";
@@ -290,12 +289,11 @@ class HistoryViewModel {
         GlobalCommandRunner.historyView(this._getSearchParams(0, 0));
     }
 
-    handleDocKeyDown(e: any): void {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
+    handleDocKeyDown(waveEvent: any): boolean {
+        let keybindManager = GlobalModel.keybindManager;
+        if (keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
             this.closeView();
-            return;
+            return true;
         }
     }
 

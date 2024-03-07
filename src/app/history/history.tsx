@@ -13,8 +13,8 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "@/app/line/linecomps";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
-import { TextField, Dropdown, Button } from "@/elements";
+import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { TextField } from "@/elements";
 
 import { ReactComponent as AngleDownIcon } from "@/assets/icons/history/angle-down.svg";
 import { ReactComponent as ChevronLeftIcon } from "@/assets/icons/history/chevron-left.svg";
@@ -198,7 +198,8 @@ class HistoryView extends React.Component<{}, {}> {
     @boundMethod
     searchKeyDown(e: any) {
         let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Enter")) {
+        let keybindManager = GlobalModel.keybindManager;
+        if (keybindManager.registerAndCheckKeyPressed(e, waveEvent, "pane", "generic:confirm")) {
             e.preventDefault();
             GlobalModel.historyViewModel.submitSearch();
         }
@@ -390,41 +391,6 @@ class HistoryView extends React.Component<{}, {}> {
         GlobalModel.historyViewModel.closeView();
     }
 
-    @boundMethod
-    getDefaultWorkspace(sessionId: string, names: Record<string, string>): string {
-        if (sessionId == null) {
-            return "Limit Workspace";
-        }
-        return formatSessionName(names, sessionId);
-    }
-
-    @boundMethod
-    getWorkspaceItems(snames: Record<string, string>, sessionIds: string[]): { label: string; value: string }[] {
-        return sessionIds.reduce<{ label: string; value: string }[]>((items, sessionId) => {
-            items.push({ label: "#" + snames[sessionId], value: sessionId });
-            return items;
-        }, []);
-    }
-
-    @boundMethod
-    getDefaultRemote(remoteId: string, names: Record<string, string>): string {
-        if (remoteId == null) {
-            return "Limit Remote";
-        }
-        return formatRemoteName(names, { remoteid: remoteId });
-    }
-
-    @boundMethod
-    getRemoteItems(rnames: Record<string, string>, remoteIds: string[]): { label: string; value: string }[] {
-        return remoteIds.reduce<{ label: string; value: string }[]>(
-            (items, remoteId) => {
-                items.push({ label: "[" + rnames[remoteId] + "]", value: remoteId });
-                return items;
-            },
-            [{ label: "(all remotes)", value: null }]
-        );
-    }
-
     render() {
         let isHidden = GlobalModel.activeMainView.get() != "history";
         if (isHidden) {
@@ -458,18 +424,74 @@ class HistoryView extends React.Component<{}, {}> {
                         />
                     </div>
                     <div className="advanced-search">
-                        <Dropdown
-                            className="workspace-dropdown"
-                            defaultValue={this.getDefaultWorkspace(hvm.searchSessionId.get(), snames)}
-                            options={this.getWorkspaceItems(snames, sessionIds)}
-                            onChange={this.clickLimitSession}
-                        />
-                        <Dropdown
-                            className="remote-dropdown"
-                            defaultValue={this.getDefaultRemote(hvm.searchRemoteId.get(), rnames)}
-                            options={this.getRemoteItems(rnames, remoteIds)}
-                            onChange={this.clickLimitRemote}
-                        />
+                        <div
+                            className={cn("dropdown", "session-dropdown", {
+                                "is-active": this.sessionDropdownActive.get(),
+                            })}
+                        >
+                            <div onClick={this.toggleSessionDropdown}>
+                                <span className="label">
+                                    {hvm.searchSessionId.get() == null
+                                        ? "Limit Workspace"
+                                        : formatSessionName(snames, hvm.searchSessionId.get())}
+                                </span>
+                                <AngleDownIcon className="icon" />
+                            </div>
+                            <div className="dropdown-menu" role="menu">
+                                <div className="dropdown-content has-background-black-ter">
+                                    <div
+                                        onClick={() => this.clickLimitSession(null)}
+                                        key="all"
+                                        className="dropdown-item"
+                                    >
+                                        (all workspaces)
+                                    </div>
+                                    <For each="sessionId" of={sessionIds}>
+                                        <div
+                                            onClick={() => this.clickLimitSession(sessionId)}
+                                            key={sessionId}
+                                            className="dropdown-item"
+                                        >
+                                            #{snames[sessionId]}
+                                        </div>
+                                    </For>
+                                </div>
+                            </div>
+                        </div>
+                        <div
+                            className={cn("dropdown", "remote-dropdown", {
+                                "is-active": this.remoteDropdownActive.get(),
+                            })}
+                        >
+                            <div onClick={this.toggleRemoteDropdown}>
+                                <span className="label">
+                                    {hvm.searchRemoteId.get() == null
+                                        ? "Limit Remote"
+                                        : formatRemoteName(rnames, { remoteid: hvm.searchRemoteId.get() })}
+                                </span>
+                                <AngleDownIcon className="icon" />
+                            </div>
+                            <div className="dropdown-menu" role="menu">
+                                <div className="dropdown-content has-background-black-ter">
+                                    <div
+                                        onClick={() => this.clickLimitRemote(null)}
+                                        key="all"
+                                        className="dropdown-item"
+                                    >
+                                        (all remotes)
+                                    </div>
+                                    <For each="remoteId" of={remoteIds}>
+                                        <div
+                                            onClick={() => this.clickLimitRemote(remoteId)}
+                                            key={remoteId}
+                                            className="dropdown-item"
+                                        >
+                                            [{rnames[remoteId]}]
+                                        </div>
+                                    </For>
+                                </div>
+                            </div>
+                        </div>
                         <div className="fromts">
                             <div className="fromts-text">From:&nbsp;</div>
                             <div className="hoverEffect">
@@ -495,9 +517,9 @@ class HistoryView extends React.Component<{}, {}> {
                                 Filter Cmds
                             </div>
                         </div>
-                        <Button className="secondary reset-button" onClick={this.resetAllFilters}>
+                        <div onClick={this.resetAllFilters} className="button reset-button hoverEffect">
                             Reset All
-                        </Button>
+                        </div>
                     </div>
                 </div>
                 <div key="control1" className={cn("control-bar", "is-top", { "is-hidden": items.length == 0 })}>
