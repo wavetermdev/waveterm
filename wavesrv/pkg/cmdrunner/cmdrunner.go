@@ -89,6 +89,7 @@ const (
 	KwArgState    = "state"
 	KwArgTemplate = "template"
 	KwArgLang     = "lang"
+	KwArgMinimap  = "minimap"
 )
 
 var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
@@ -4758,6 +4759,9 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	}
 	if langArg != "" {
 		lineState[sstore.LineState_Lang] = langArg
+	}
+	if _, ok := pk.Kwargs[KwArgMinimap]; ok {
+		lineState[sstore.LineState_Minimap] = resolveBool(pk.Kwargs[KwArgMinimap], false)
 	}
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), true, ids, cmd, "code", lineState)
 	if err != nil {
