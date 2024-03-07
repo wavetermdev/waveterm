@@ -98,29 +98,6 @@
     --form-element-error-color: var(--app-error-color);
     --form-element-icon-color: var(--app-icon-hover-color);
 
-    /* button colors */
-    /* todo: use --form-element-* directly in elements */
-    --button-text-color: var(--form-element-text-color);
-    --button-primary-bg-color: var(--form-element-primary-color);
-    --button-primary-color: var(--form-element-text-color);
-    --button-secondary-bg-color: var(--form-element-secondary-color);
-    --button-warning-bg-color: var(--form-element-error-color);
-
-    /* input colors */
-    /* todo: use --form-element-* directly in elements */
-    --checkbox-text-color: var(--form-element-text-color);
-    --checkbox-bg-color: var(--form-element-primary-color);
-    --checkbox-check-color: var(--form-element-text-color);
-
-    /* dropdown colors */
-    /* todo: use --form-element-* directly in elements */
-    --dropdown-text-color: var(--form-element-text-color);
-    --dropdown-label-color: var(--form-element-label-color);
-    --dropdown-error-color: var(--form-element-error-color);
-    --dropdown-focus-color: var(--form-element-primary-color);
-    --dropdown-bg-color: var(--form-element-bg-color);
-    --dropdown-border-color: var(--form-element-border-color);
-
     /* toggle colors */
     --toggle-bg-color: var(--app-border-color);
     --toggle-thumb-color: var(--app-text-color);
@@ -158,7 +135,7 @@
     --term-warning-color: var(--status-connecting-color);
 
     /* hotkey colors */
-    --hotkey-text-color: rgb(195, 200, 194);
+    --hotkey-text-color: var(--app-text-secondary-color);
 
     /* sidebar colors */
     --sidebar-highlight-color: rgba(241, 246, 243, 0.08);
