@@ -878,6 +878,7 @@ declare global {
     };
 
     type ElectronApi = {
+        toggleDeveloperTools: () => void;
         getId: () => string;
         getIsDev: () => boolean;
         getPlatform: () => string;

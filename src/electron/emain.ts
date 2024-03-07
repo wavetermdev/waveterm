@@ -354,8 +354,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
             e.preventDefault();
             if (!input.alt) {
                 win.webContents.send("i-cmd", mods);
-            } else {
-                win.webContents.toggleDevTools();
             }
             return;
         }
@@ -518,6 +516,13 @@ function calcBounds(clientData: ClientDataType): Electron.Rectangle {
 
 app.on("window-all-closed", () => {
     if (unamePlatform !== "darwin") app.quit();
+});
+
+electron.ipcMain.on("toggle-developer-tools", (event) => {
+    if (MainWindow != null) {
+        MainWindow.webContents.toggleDevTools();
+    }
+    event.returnValue = true;
 });
 
 electron.ipcMain.on("get-id", (event) => {
