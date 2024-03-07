@@ -522,6 +522,7 @@ electron.ipcMain.on("toggle-developer-tools", (event) => {
     if (MainWindow != null) {
         MainWindow.webContents.toggleDevTools();
     }
+    event.returnValue = true;
 });
 
 electron.ipcMain.on("get-id", (event) => {
