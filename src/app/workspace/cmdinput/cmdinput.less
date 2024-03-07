@@ -13,6 +13,99 @@
     &.active {
     }
 
+    &.has-info,
+    &.has-aichat,
+    &.has-history {
+        .cmdinput-actions {
+            display: none;
+        }
+    }
+
+    .titlebar-spacer {
+        height: 31px;
+    }
+
+    .cmdinput-actions {
+        position: absolute;
+        border-radius: 4px;
+        padding-left: 4px;
+        padding-right: 4px;
+        font-size: calc(var(--termfontsize) + 2px);
+        line-height: 1.2;
+
+        // we want to align to 2nd line of meta.  that's 2xPad + 1xLineHightSm
+        // height of actions is 1xLineHeight + 8px (2x2px padding on icons)
+        top: calc(var(--termpad));
+        right: calc(var(--termpad) * 2);
+
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        .cmdinput-icon {
+            color: var(--app-icon-hover-color);
+            opacity: 0.5;
+
+            &.running-cmds i {
+                color: var(--app-warning-color);
+            }
+
+            &.active {
+                opacity: 1;
+            }
+
+            &:hover {
+                opacity: 1;
+            }
+
+            padding: 4px 6px;
+            cursor: pointer;
+        }
+
+        .line-icon + .line-icon:not(.line-icon-shrink-left) {
+            margin-left: 3px;
+        }
+    }
+
+    .cmdinput-titlebar {
+        position: absolute;
+        z-index: 22;
+        top: 0;
+        left: 0;
+        background-color: var(--app-panel-bg-color);
+        color: var(--term-blue);
+        padding: 6px 10px 6px 10px;
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--app-border-color);
+        font: var(--base-font);
+
+        .title-icon {
+            margin-right: 10px;
+        }
+
+        .title-string {
+            font-weight: bold;
+        }
+
+        .close-button {
+            cursor: pointer;
+            i {
+                color: var(--app-icon-color);
+
+                &:hover {
+                    color: var(--app-icon-hover-color);
+                }
+            }
+        }
+
+        .spacer {
+            flex: 0 0 10px;
+        }
+    }
+
     &.has-info {
         padding-top: var(--termpad);
     }
@@ -23,23 +116,20 @@
         left: 4px;
     }
 
-    &.has-history {
+    &.has-history,
+    &.has-aichat {
         padding-top: var(--termpad);
-        height: max(300px, 40%);
+        height: max(300px, 70%);
     }
 
     &.has-remote {
         max-height: max(300px, 70%);
     }
 
-    &.has-aichat {
-        max-height: max(300px, 70%);
-    }
-
     .remote-status-warning {
         display: flex;
         flex-direction: row;
-        color: var(--term-yellow);
+        color: var(--app-warning-color);
         align-items: center;
 
         .button {
@@ -300,19 +390,6 @@
         flex-shrink: 1;
 
         .history-title {
-            position: absolute;
-            z-index: 102;
-            top: 5px;
-            left: 0;
-            background-color: var(--app-bg-color);
-            color: var(--term-blue);
-            padding-bottom: 4px;
-            display: flex;
-            flex-direction: row;
-            width: 100%;
-            overflow-x: auto;
-            border-bottom: 1px solid var(--app-border-color);
-
             div:first-child {
                 margin-left: var(--termpad);
             }
@@ -322,21 +399,20 @@
             }
 
             .history-clickable-opt {
+                cursor: pointer;
+
+                &:hover {
+                    color: var(--app-text-primary-color);
+                }
+            }
+
+            .history-clickable-opt {
                 white-space: nowrap;
                 cursor: pointer;
-            }
-
-            .grow-spacer {
-                flex: 1 0 10px;
-            }
-
-            .spacer {
-                flex: 0 0 10px;
             }
         }
 
         .history-items {
-            margin-top: 24px;
             color: var(--app-text-color);
 
             padding-bottom: 6px;

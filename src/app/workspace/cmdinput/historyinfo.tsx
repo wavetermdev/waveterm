@@ -189,6 +189,18 @@ class HistoryInfo extends React.Component<{}, {}> {
         }, 3000);
     }
 
+    @boundMethod
+    handleClickType() {
+        let inputModel = GlobalModel.inputModel;
+        inputModel.toggleHistoryType();
+    }
+
+    @boundMethod
+    handleClickRemote() {
+        let inputModel = GlobalModel.inputModel;
+        inputModel.toggleRemoteType();
+    }
+
     render() {
         let inputModel = GlobalModel.inputModel;
         let idx: number = 0;
@@ -207,19 +219,27 @@ class HistoryInfo extends React.Component<{}, {}> {
         }
         return (
             <div className="cmd-history hide-scrollbar">
-                <div className="history-title">
-                    <div className="history-label">history</div>
+                <div className="cmdinput-titlebar history-title">
+                    <div className="title-icon">
+                        <i className="fa-sharp fa-solid fa-clock-rotate-left" />
+                    </div>
+                    <div className="title-string">History</div>
                     <div className="spacer"></div>
-                    <div className="history-opt">[for {opts.queryType} &#x2318;S]</div>
-                    <div className="spacer"></div>
-                    <div className="history-opt">[containing '{opts.queryStr}']</div>
-                    <div className="spacer"></div>
-                    <div className="history-opt">[{opts.limitRemote ? "this" : "any"} remote &#x2318;R]</div>
-                    <div className="grow-spacer"></div>
-                    <div className="history-clickable-opt" onClick={this.handleClose}>
-                        (ESC)
+                    <div className="history-opt history-clickable-opt" onClick={this.handleClickType}>
+                        [for {opts.queryType} &#x2318;S]
                     </div>
                     <div className="spacer"></div>
+                    <div className="history-opt" title="type to search">
+                        [containing '{opts.queryStr}']
+                    </div>
+                    <div className="spacer"></div>
+                    <div className="history-opt history-clickable-opt" onClick={this.handleClickRemote}>
+                        [{opts.limitRemote ? "this" : "any"} remote &#x2318;R]
+                    </div>
+                    <div className="flex-spacer"></div>
+                    <div className="close-button" title="Close (ESC)">
+                        <i className="fa-sharp fa-solid fa-xmark-large" onClick={this.handleClose}></i>
+                    </div>
                 </div>
                 <div
                     className={cn(
@@ -228,6 +248,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                         { "show-sessions": opts.queryType == "global" }
                     )}
                 >
+                    <div className="titlebar-spacer" />
                     <If condition={hitems.length == 0}>[no history]</If>
                     <If condition={hitems.length > 0}>
                         <For each="hitem" index="idx" of={hitems}>

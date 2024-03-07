@@ -152,8 +152,8 @@ class AIChat extends React.Component<{}, {}> {
                 innerHTML = (
                     <span>
                         <div className="chat-msg-header">
-                            <i className="fa-sharp fa-solid fa-headset"></i>
-                            <div className="chat-username">ChatGPT</div>
+                            <i className="fa-sharp fa-solid fa-sparkles"></i>
+                            <div className="chat-username">AI Assistant</div>
                         </div>
                         <Markdown text={chatItem.assistantresponse.message} codeSelect />
                     </span>
@@ -195,6 +195,21 @@ class AIChat extends React.Component<{}, {}> {
 
         return (
             <div className="cmd-aichat">
+                <div className="cmdinput-titlebar">
+                    <div className="title-icon">
+                        <i className="fa-sharp fa-solid fa-sparkles" />
+                    </div>
+                    <div className="title-string">Wave AI</div>
+                    <div className="flex-spacer"></div>
+                    <div
+                        className="close-button"
+                        title="Close (ESC)"
+                        onClick={() => inputModel.closeAIAssistantChat(true)}
+                    >
+                        <i className="fa-sharp fa-solid fa-xmark-large" />
+                    </div>
+                </div>
+                <div className="titlebar-spacer" />
                 {this.renderChatWindow()}
                 <textarea
                     key="main"
@@ -205,7 +220,7 @@ class AIChat extends React.Component<{}, {}> {
                     onKeyDown={this.onKeyDown}
                     style={{ height: textAreaInnerHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
                     className={cn("chat-textarea")}
-                    placeholder="Send a Message to ChatGPT..."
+                    placeholder="Send a Message..."
                 ></textarea>
             </div>
         );
