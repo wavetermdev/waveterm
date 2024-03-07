@@ -50,7 +50,11 @@ function fetchJsonData(resp: any, ctErr: boolean): Promise<any> {
                 throw rtnErr;
             }
             if (rtnData?.error) {
-                throw new Error(rtnData.error);
+                let err = new Error(rtnData.error);
+                if (rtnData.errorcode) {
+                    err["errorcode"] = rtnData.errorcode;
+                }
+                throw err;
             }
             return rtnData;
         });
@@ -387,7 +391,7 @@ function ces(s: string) {
  * A wrapper function for running a promise and catching any errors
  * @param f The promise to run
  */
-function fireAndForget(f: () => Promise<void>) {
+function fireAndForget(f: () => Promise<any>) {
     f().catch((e) => {
         console.log("fireAndForget error", e);
     });

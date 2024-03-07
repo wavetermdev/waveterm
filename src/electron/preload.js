@@ -1,7 +1,7 @@
 let { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
-    toggleDeveloperTools: () => ipcRenderer.sendSync("toggle-developer-tools"),
+    toggleDeveloperTools: () => ipcRenderer.send("toggle-developer-tools"),
     getId: () => ipcRenderer.sendSync("get-id"),
     getPlatform: () => ipcRenderer.sendSync("get-platform"),
     getIsDev: () => ipcRenderer.sendSync("get-isdev"),
@@ -25,4 +25,5 @@ contextBridge.exposeInMainWorld("api", {
     contextScreen: (screenOpts, position) => ipcRenderer.send("context-screen", screenOpts, position),
     contextEditMenu: (position, opts) => ipcRenderer.send("context-editmenu", position, opts),
     onWaveSrvStatusChange: (callback) => ipcRenderer.on("wavesrv-status-change", callback),
+    onToggleDevUI: (callback) => ipcRenderer.on("toggle-devui", callback),
 });

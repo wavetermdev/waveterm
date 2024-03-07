@@ -3,6 +3,9 @@ import * as electron from "electron";
 import { parse } from "node:path";
 import { v4 as uuidv4 } from "uuid";
 import keybindings from "../../assets/keybindings.json";
+import { parse } from "node:path";
+import { v4 as uuidv4 } from "uuid";
+import keybindings from "../../assets/keybindings.json";
 
 type KeyPressDecl = {
     mods: {
@@ -17,7 +20,7 @@ type KeyPressDecl = {
     keyType: string;
 };
 
-const KeyTypeCodeRegex = /:c{(.*)}/;
+const KeyTypeCodeRegex = /c{(.*)}/;
 const KeyTypeKey = "key";
 const KeyTypeCode = "code";
 
@@ -44,9 +47,7 @@ class KeybindManager {
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
                 let shouldReturn = false;
                 if (curKeybind.callback != null) {
-                    console.log("Calling callback", curKeybind.domain);
                     shouldReturn = curKeybind.callback(event);
-                    console.log("callback return value", shouldReturn);
                 }
                 if (!shouldReturn && this.domainCallbacks.has(curKeybind.domain)) {
                     let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
@@ -69,7 +70,7 @@ class KeybindManager {
     processKeyEvent(nativeEvent: any, event: WaveKeyboardEvent) {
         let modalLevel = this.levelMap.get("modal");
         if (modalLevel.length != 0) {
-            console.log("processing modal");
+            // console.log("processing modal");
             // special case when modal keybindings are present
             let shouldReturn = this.processLevel(nativeEvent, event, modalLevel);
             if (shouldReturn) {
@@ -163,7 +164,7 @@ class KeybindManager {
         for (let index = 0; index < keybindsArray.length; index++) {
             let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
-                console.log("unregistering keybinding");
+                // console.log("unregistering keybinding");
                 keybindsArray.splice(index, 1);
                 index--;
                 this.levelMap.set(level, keybindsArray);
@@ -449,5 +450,11 @@ function adaptFromElectronKeyEvent(event: any): WaveKeyboardEvent {
     return rtn;
 }
 
-export { KeybindManager, adaptFromElectronKeyEvent, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform };
+export {
+    KeybindManager,
+    adaptFromElectronKeyEvent,
+    adaptFromReactOrNativeKeyEvent,
+    setKeyUtilPlatform,
+    checkKeyPressed,
+};
 export type { WaveKeyboardEvent };

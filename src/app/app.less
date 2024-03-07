@@ -4,12 +4,10 @@
 html,
 body {
     overflow: hidden;
-    font-family: var(--base-font-family);
-    font-size: var(--base-font-size);
-    font-weight: var(--base-font-weight);
-    line-height: normal;
+    font: var(--base-font);
     background-color: black;
     color: var(--app-text-color);
+    -webkit-font-smoothing: auto;
 }
 
 body {
@@ -25,9 +23,23 @@ body .sidebar {
 body textarea,
 body textarea.textarea {
     overflow: hidden;
-    font-family: var(--base-font-family);
-    font-size: var(--base-font-size);
-    font-weight: var(--base-font-weight);
+    font: var(--base-font);
+    line-height: 1.5;
+    color: var(--app-text-color);
+    background-color: var(--input-bg-color);
+
+    &:focus {
+        box-shadow: none;
+    }
+
+    &::placeholder {
+        color: var(--input-placeholder-color);
+    }
+}
+
+body input,
+body input.input {
+    font: var(--base-font);
     line-height: 1.5;
     color: var(--app-text-color);
     background-color: var(--input-bg-color);
@@ -37,17 +49,10 @@ body textarea.textarea {
     }
 }
 
-body input,
-body input.input {
-    font-family: var(--base-font-family);
-    font-size: var(--base-font-size);
-    font-weight: var(--base-font-weight);
-    line-height: 1.5;
-    color: var(--app-text-color);
-    background-color: var(--input-bg-color);
-
-    &::placeholder {
-        color: var(--input-placeholder-color);
+// platform overrides
+.platform-darwin {
+    .logo-button-container {
+        width: var(--floating-logo-width-darwin);
     }
 }
 
@@ -139,8 +144,6 @@ svg.icon {
 }
 
 .scrollbar-hide-until-hover {
-    overflow: scroll;
-
     &::-webkit-scrollbar-thumb,
     &::-webkit-scrollbar-track {
         display: none;
@@ -221,9 +224,6 @@ svg.icon {
         background: var(--button-secondary-bg-color);
         opacity: 0.5;
         cursor: initial;
-        &:hover {
-            box-shadow: none;
-        }
     }
 }
 .dropdown {
@@ -260,7 +260,6 @@ a.a-block {
     display: flex;
     flex-direction: column;
     background-color: var(--app-maincontent-bg-color);
-    border-top: 1px solid var(--app-border-color);
 
     .main-content {
         display: flex;
@@ -271,7 +270,7 @@ a.a-block {
 }
 
 .logo-button-container {
-    width: 105px;
+    width: var(--floating-logo-width);
     flex-shrink: 0;
     position: absolute;
     z-index: 25;
@@ -279,10 +278,13 @@ a.a-block {
     left: 0px;
     display: flex;
     flex-direction: row;
-    justify-content: flex-end;
     align-items: center;
     -webkit-app-region: drag;
     pointer-events: none;
+
+    .logo-button-spacer {
+        flex-grow: 1;
+    }
 
     .logo-button {
         width: 25px;
@@ -294,7 +296,7 @@ a.a-block {
         pointer-events: all;
 
         &:hover {
-            background-color: #333;
+            background-color: var(--logo-button-hover-bg-color);
             border-radius: 4px;
         }
     }

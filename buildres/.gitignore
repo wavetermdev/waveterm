@@ -1,3 +1,4 @@
-*/
+*builds/
+*-staged/
 *.zip
 *.dmg

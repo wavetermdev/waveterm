@@ -88,6 +88,31 @@ class InputModel {
         })();
     }
 
+    toggleHistoryType(): void {
+        let opts = mobx.toJS(this.historyQueryOpts.get());
+        let htype = opts.queryType;
+        if (htype == "screen") {
+            htype = "session";
+        } else if (htype == "session") {
+            htype = "global";
+        } else {
+            htype = "screen";
+        }
+        this.setHistoryType(htype);
+    }
+
+    toggleRemoteType(): void {
+        let opts = mobx.toJS(this.historyQueryOpts.get());
+        if (opts.limitRemote) {
+            opts.limitRemote = false;
+            opts.limitRemoteInstance = false;
+        } else {
+            opts.limitRemote = true;
+            opts.limitRemoteInstance = true;
+        }
+        this.setHistoryQueryOpts(opts);
+    }
+
     onInputFocus(isFocused: boolean): void {
         mobx.action(() => {
             if (isFocused) {

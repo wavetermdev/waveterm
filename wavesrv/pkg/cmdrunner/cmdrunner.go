@@ -124,7 +124,7 @@ var SetVarScopes = []SetVarScope{
 	{ScopeName: "remote", VarNames: []string{}},
 }
 
-var userHostRe = regexp.MustCompile(`^(sudo@)?([a-z][a-z0-9._@\\-]*)@([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
+var userHostRe = regexp.MustCompile(`^(sudo@)?([a-zA-Z0-9][a-zA-Z0-9._@\\-]*)@([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
 var remoteAliasRe = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var rendererRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_.:-]*$")
@@ -167,6 +167,7 @@ func init() {
 	registerCmdFn("_compgen", CompGenCommand)
 	registerCmdFn("clear", ClearCommand)
 	registerCmdFn("reset", RemoteResetCommand)
+	registerCmdFn("reset:cwd", ResetCwdCommand)
 	registerCmdFn("signal", SignalCommand)
 	registerCmdFn("sync", SyncCommand)
 
@@ -190,6 +191,7 @@ func init() {
 	registerCmdFn("screen:reset", ScreenResetCommand)
 	registerCmdFn("screen:webshare", ScreenWebShareCommand)
 	registerCmdFn("screen:reorder", ScreenReorderCommand)
+	registerCmdFn("screen:show", ScreenShowCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -707,7 +709,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	if rtnErr == nil {
 		update, rtnErr = HandleCommand(ctxWithHistory, newPk)
 	} else {
-		return nil, fmt.Errorf("error in Eval Meta Command: %v", rtnErr)
+		return nil, fmt.Errorf("error in Eval Meta Command: %w", rtnErr)
 	}
 	if !resolveBool(pk.Kwargs["nohist"], false) {
 		// TODO should this be "pk" or "newPk" (2nd arg)
@@ -1689,7 +1691,7 @@ func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 		return nil, err
 	}
 	mshell := ids.Remote.MShell
-	go mshell.RunInstall()
+	go mshell.RunInstall(false)
 	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
@@ -3419,6 +3421,40 @@ func SessionArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	}
 }
 
+func ScreenShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get screen: %v", err)
+	}
+	if screen == nil {
+		return nil, fmt.Errorf("screen not found")
+	}
+	statePtr, err := remote.ResolveCurrentScreenStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot resolve current screen stateptr: %v", err)
+	}
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "screenid", screen.ScreenId))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "name", screen.Name))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "screenidx", screen.ScreenIdx))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "tabcolor", screen.ScreenOpts.TabColor))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "tabicon", screen.ScreenOpts.TabIcon))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "selectedline", screen.SelectedLine))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "curremote", GetFullRemoteDisplayName(&screen.CurRemote, &ids.Remote.RState)))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "stateptr-base", statePtr.BaseHash))
+	buf.WriteString(fmt.Sprintf("  %-15s %v\n", "stateptr-diff", statePtr.DiffHashArr))
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.InfoMsgType{
+		InfoTitle: "screen info",
+		InfoLines: splitLinesForInfo(buf.String()),
+	})
+	return update, nil
+}
+
 func SessionShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
 	if err != nil {
@@ -3597,6 +3633,33 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, err
 	}
 	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst), sstore.InteractiveUpdate(pk.Interactive))
+	return update, nil
+}
+
+func ResetCwdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	statePtr, err := remote.ResolveCurrentScreenStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr)
+	if err != nil {
+		return nil, err
+	}
+	stateDiff, err := sstore.GetCurStateDiffFromPtr(ctx, statePtr)
+	if err != nil {
+		return nil, err
+	}
+	feState := ids.Remote.FeState
+	feState["cwd"] = "~"
+	stateDiff.Cwd = "~"
+	stateDiff.GetHashVal(true)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, nil, stateDiff)
+	if err != nil {
+		return nil, fmt.Errorf("could not update remote state: %v", err)
+	}
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst), sstore.InteractiveUpdate(pk.Interactive))
+	update.AddUpdate(sstore.InfoMsgType{InfoMsg: "reset cwd to ~"})
 	return update, nil
 }
 
@@ -3958,13 +4021,13 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		NoCreateCmdPtyFile: true,
 	}
 	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
-	sstore.IncrementNumRunningCmds(cmd.ScreenId, 1)
 	if callback != nil {
 		defer callback()
 	}
 	if err != nil {
 		return nil, err
 	}
+	sstore.IncrementNumRunningCmds(cmd.ScreenId, 1)
 	newTs := time.Now().UnixMilli()
 	err = sstore.UpdateCmdForRestart(ctx, runPacket.CK, newTs, cmd.CmdPid, cmd.RemotePid, convertTermOpts(runPacket.TermOpts))
 	if err != nil {

@@ -534,7 +534,7 @@ func (msh *MShellProc) tryAutoInstall() {
 		return
 	}
 	msh.writeToPtyBuffer_nolock("trying auto-install\n")
-	go msh.RunInstall()
+	go msh.RunInstall(true)
 }
 
 // if msh.IsConnected() then GetShellPref() should return a valid shell
@@ -1089,31 +1089,6 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 	requiresPassword := make(chan bool, 1)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
-	if pw != "" {
-		// do an extra check with the saved password if it is provided
-		go msh.CheckPasswordRequested(ctx, requiresPassword)
-		select {
-		case <-ctx.Done():
-			err := ctx.Err()
-			var errMsg error
-			if err == context.Canceled {
-				errMsg = fmt.Errorf("canceled by the user: %v", err)
-			} else {
-				errMsg = fmt.Errorf("timed out waiting for password prompt: %v", err)
-			}
-			msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
-			msh.setErrorStatus(errMsg)
-			return
-		case required := <-requiresPassword:
-			if !required {
-				// we don't need user input in this case, so we exit early
-				return
-			}
-		}
-		msh.SendPassword(pw)
-	}
-
-	// ask for user input once
 	go msh.CheckPasswordRequested(ctx, requiresPassword)
 	select {
 	case <-ctx.Done():
@@ -1221,16 +1196,67 @@ func (msh *MShellProc) WaitAndSendPassword(pw string) {
 	}
 }
 
-func (msh *MShellProc) RunInstall() {
+func (msh *MShellProc) RunInstall(autoInstall bool) {
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
 		msh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
 		return
 	}
+	if autoInstall {
+		request := &userinput.UserInputRequestType{
+			ResponseType: "confirm",
+			QueryText:    "Waveshell must be reinstalled on the connection to continue. Would you like to install it?",
+			Title:        "Install Waveshell",
+		}
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			var errMsg error
+			if err == context.Canceled {
+				errMsg = fmt.Errorf("installation canceled by user")
+			} else {
+				errMsg = fmt.Errorf("timed out waiting for user input")
+			}
+			msh.WithLock(func() {
+				msh.Client = nil
+			})
+			msh.WriteToPtyBuffer("*error, %s\n", errMsg)
+			msh.setErrorStatus(errMsg)
+			return
+		}
+		if !response.Confirm {
+			errMsg := fmt.Errorf("installation canceled by user")
+			msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+			msh.setErrorStatus(err)
+			msh.WithLock(func() {
+				msh.Client = nil
+			})
+			return
+		}
+	}
 	baseStatus := msh.GetStatus()
-	if baseStatus == StatusConnecting || baseStatus == StatusConnected {
-		msh.WriteToPtyBuffer("*error: cannot install on remote that is connected/connecting, disconnect to install\n")
-		return
+	if baseStatus == StatusConnected {
+		request := &userinput.UserInputRequestType{
+			ResponseType: "confirm",
+			QueryText:    "Waveshell is running on your connection and must be restarted to re-install. Would you like to continue?",
+			Title:        "Restart Waveshell",
+		}
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			if err == context.Canceled {
+				msh.WriteToPtyBuffer("installation canceled by user\n")
+			} else {
+				msh.WriteToPtyBuffer("timed out waiting for user input\n")
+			}
+			return
+		}
+		if !response.Confirm {
+			msh.WriteToPtyBuffer("installation canceled by user\n")
+			return
+		}
 	}
 	curStatus := msh.GetInstallStatus()
 	if curStatus == StatusConnecting {
@@ -1247,7 +1273,8 @@ func (msh *MShellProc) RunInstall() {
 		return
 	}
 	if msh.Client == nil {
-		client, err := ConnectToClient(remoteCopy.SSHOpts)
+		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
+		client, err := ConnectToClient(remoteCopy.SSHOpts, remoteDisplayName)
 		if err != nil {
 			statusErr := fmt.Errorf("ssh cannot connect to client: %w", err)
 			msh.setInstallErrorStatus(statusErr)
@@ -1301,8 +1328,8 @@ func (msh *MShellProc) RunInstall() {
 	})
 	msh.WriteToPtyBuffer("successfully installed waveshell %s to ~/.mshell\n", scbase.MShellVersion)
 	go msh.NotifyRemoteUpdate()
-	if connectMode == sstore.ConnectModeStartup || connectMode == sstore.ConnectModeAuto {
-		// the install was successful, and we don't have a manual connect mode, try to connect
+	if connectMode == sstore.ConnectModeStartup || connectMode == sstore.ConnectModeAuto || autoInstall {
+		// the install was successful, and we didn't click the install button with manual connect mode, try to connect
 		go msh.Launch(true)
 	}
 }
@@ -1470,19 +1497,20 @@ func (msh *MShellProc) createWaveshellSession(remoteCopy sstore.RemoteType) (she
 	if remoteCopy.SSHOpts.SSHHost == "" && remoteCopy.Local {
 		cmdStr, err := MakeLocalMShellCommandStr(remoteCopy.IsSudo())
 		if err != nil {
-			return nil, fmt.Errorf("cannot find local mshell binary: %v", err)
+			return nil, fmt.Errorf("cannot find local waveshell binary: %v", err)
 		}
 		ecmd := shexec.MakeLocalExecCmd(cmdStr, sapi)
 		var cmdPty *os.File
 		cmdPty, err = msh.addControllingTty(ecmd)
 		if err != nil {
-			return nil, fmt.Errorf("cannot attach controlling tty to mshell command: %v", err)
+			return nil, fmt.Errorf("cannot attach controlling tty to waveshell command: %v", err)
 		}
 		go msh.RunPtyReadLoop(cmdPty)
 		go msh.WaitAndSendPasswordNew(remoteCopy.SSHOpts.SSHPassword)
 		wsSession = shexec.CmdWrap{Cmd: ecmd}
 	} else if msh.Client == nil {
-		client, err := ConnectToClient(remoteCopy.SSHOpts)
+		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
+		client, err := ConnectToClient(remoteCopy.SSHOpts, remoteDisplayName)
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot connect to client: %w", err)
 		}
@@ -1493,13 +1521,15 @@ func (msh *MShellProc) createWaveshellSession(remoteCopy sstore.RemoteType) (she
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot create session: %w", err)
 		}
-		wsSession = shexec.SessionWrap{Session: session, StartCmd: MakeServerCommandStr()}
+		cmd := fmt.Sprintf("%s -c %s", sapi.GetLocalShellPath(), shellescape.Quote(MakeServerCommandStr()))
+		wsSession = shexec.SessionWrap{Session: session, StartCmd: cmd}
 	} else {
 		session, err := msh.Client.NewSession()
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot create session: %w", err)
 		}
-		wsSession = shexec.SessionWrap{Session: session, StartCmd: MakeServerCommandStr()}
+		cmd := fmt.Sprintf(`%s -c %s`, sapi.GetLocalShellPath(), shellescape.Quote(MakeServerCommandStr()))
+		wsSession = shexec.SessionWrap{Session: session, StartCmd: cmd}
 	}
 	return wsSession, nil
 }
@@ -1582,7 +1612,7 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 		go msh.tryAutoInstall()
 		return
 	} else if err != nil {
-		msh.WriteToPtyBuffer("*error, %s\n", serr.Error())
+		msh.WriteToPtyBuffer("*error, %s\n", err.Error())
 		msh.setErrorStatus(err)
 		msh.WithLock(func() {
 			msh.Client = nil
@@ -1889,6 +1919,25 @@ func (msh *MShellProc) removePendingStateCmd(screenId string, rptr sstore.Remote
 	}
 }
 
+func ResolveCurrentScreenStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr sstore.RemotePtrType) (*sstore.ShellStatePtr, error) {
+	statePtr, err := sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get current connection stateptr: %w", err)
+	}
+	if statePtr == nil {
+		msh := GetRemoteById(remotePtr.RemoteId)
+		err := msh.EnsureShellType(ctx, msh.GetShellPref()) // make sure shellType is initialized
+		if err != nil {
+			return nil, err
+		}
+		statePtr = msh.GetDefaultStatePtr(msh.GetShellPref())
+		if statePtr == nil {
+			return nil, fmt.Errorf("no valid default connection stateptr")
+		}
+	}
+	return statePtr, nil
+}
+
 type RunCommandOpts struct {
 	SessionId string
 	ScreenId  string
@@ -1963,19 +2012,9 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		statePtr = rcOpts.StatePtr
 	} else {
 		var err error
-		statePtr, err = sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
+		statePtr, err = ResolveCurrentScreenStatePtr(ctx, sessionId, screenId, remotePtr)
 		if err != nil {
-			return nil, nil, fmt.Errorf("cannot get current connection stateptr: %w", err)
-		}
-	}
-	if statePtr == nil { // can be null if there is no remote-instance (screen has unchanged state from default)
-		err := msh.EnsureShellType(ctx, msh.GetShellPref()) // make sure shellType is initialized
-		if err != nil {
-			return nil, nil, err
-		}
-		statePtr = msh.GetDefaultStatePtr(msh.GetShellPref())
-		if statePtr == nil {
-			return nil, nil, fmt.Errorf("cannot run command, no valid connection stateptr")
+			return nil, nil, fmt.Errorf("cannot run command: %w", err)
 		}
 	}
 	currentState, err := sstore.GetFullState(ctx, *statePtr)
@@ -2019,7 +2058,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 			return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 		}
 		if respPk.Error != "" {
-			return nil, nil, errors.New(respPk.Error)
+			return nil, nil, respPk.Err()
 		}
 		return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 	}

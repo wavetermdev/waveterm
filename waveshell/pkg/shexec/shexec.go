@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,6 +32,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -51,6 +53,7 @@ const SigKillWaitTime = 2 * time.Second
 const RtnStateFdNum = 20
 const ReturnStateReadWaitTime = 2 * time.Second
 const ForceDebugRcFile = false
+const ForceDebugReturnState = false
 
 const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
@@ -366,14 +369,18 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 			return fmt.Errorf("cannot detach command, constant rundata input too large len=%d, max=%d", totalRunData, mpio.MaxTotalRunDataSize)
 		}
 	}
-	if pk.State != nil && pk.State.Cwd != "" {
-		realCwd := base.ExpandHomeDir(pk.State.Cwd)
+	if pk.State != nil {
+		pkCwd := pk.State.Cwd
+		if pkCwd == "" {
+			pkCwd = "~"
+		}
+		realCwd := base.ExpandHomeDir(pkCwd)
 		dirInfo, err := os.Stat(realCwd)
 		if err != nil {
-			return fmt.Errorf("invalid cwd '%s' for command: %v", realCwd, err)
+			return base.CodedErrorf(packet.EC_InvalidCwd, "invalid cwd '%s' for command: %v", realCwd, err)
 		}
 		if !dirInfo.IsDir() {
-			return fmt.Errorf("invalid cwd '%s' for command, not a directory", realCwd)
+			return base.CodedErrorf(packet.EC_InvalidCwd, "invalid cwd '%s' for command, not a directory", realCwd)
 		}
 	}
 	for _, runData := range pk.RunData {
@@ -833,6 +840,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	}
 	shellVarMap := shellenv.ShellVarMapFromState(state)
 	if base.HasDebugFlag(shellVarMap, base.DebugFlag_LogRcFile) || ForceDebugRcFile {
+		wlog.Logf("debugrc file %q\n", base.GetDebugRcFileName())
 		debugRcFileName := base.GetDebugRcFileName()
 		err := os.WriteFile(debugRcFileName, []byte(rcFileStr), 0600)
 		if err != nil {
@@ -893,7 +901,9 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if sapi.GetShellType() == packet.ShellType_zsh {
 		shellutil.UpdateCmdEnv(cmd.Cmd, map[string]string{"ZDOTDIR": zdotdir})
 	}
-	if state.Cwd != "" {
+	if state.Cwd == "" {
+		cmd.Cmd.Dir = base.ExpandHomeDir("~")
+	} else if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
 	err = ValidateRemoteFds(pk.Fds)
@@ -1196,6 +1206,10 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 			c.ReturnState.Reader.Close()
 		}()
 		<-c.ReturnState.DoneCh
+		if ForceDebugReturnState {
+			wlog.Logf("debug returnstate file %q\n", base.GetDebugReturnStateFileName())
+			os.WriteFile(base.GetDebugReturnStateFileName(), c.ReturnState.Buf, 0666)
+		}
 		state, _ := c.SAPI.ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
 		donePacket.FinalState = state
 	}
@@ -1230,12 +1244,13 @@ func MakeShellStatePacket(shellType string) (*packet.ShellStatePacketType, error
 	if err != nil {
 		return nil, err
 	}
-	shellState, err := sapi.GetShellState()
-	if err != nil {
-		return nil, err
+	rtnCh := sapi.GetShellState()
+	ssOutput := <-rtnCh
+	if ssOutput.Error != "" {
+		return nil, errors.New(ssOutput.Error)
 	}
 	rtn := packet.MakeShellStatePacket()
-	rtn.State = shellState
+	rtn.State = ssOutput.ShellState
 	return rtn, nil
 }
 

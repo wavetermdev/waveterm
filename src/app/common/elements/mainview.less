@@ -3,10 +3,6 @@
     display: flex;
     flex-direction: column;
     position: relative;
-    border-radius: 0 var(--app-border-radius) var(--app-border-radius) 0;
-    border-bottom: 1px solid var(--app-border-color);
-    border-right: 1px solid var(--app-border-color);
-    border-left: 1px solid var(--app-border-color);
     background-color: var(--app-bg-color);
 
     &.is-hidden {
@@ -22,6 +18,7 @@
         vertical-align: middle;
         padding: 0 10px 0 10px;
         margin: 0;
+        border-bottom: 1px solid var(--app-border-color);
 
         .title {
             font-size: var(--title-font-size);
@@ -38,9 +35,8 @@
         }
     }
 
-    .bottom-border {
-        border-bottom: 1px solid var(--app-border-color);
-        margin-bottom: 10px;
+    .mainview-content {
+        padding-top: 14px;
     }
 }
 

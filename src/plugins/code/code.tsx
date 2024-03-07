@@ -4,11 +4,14 @@
 import * as React from "react";
 import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
+import cn from "classnames";
+import { If } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
 import { adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { Button, Dropdown } from "@/elements";
 
 import "./code.less";
 
@@ -57,7 +60,7 @@ class SourceCodeRenderer extends React.Component<
         isSave: boolean;
         isClosed: boolean;
         editorHeight: number;
-        message: { status: string; text: string };
+        message: { status: "success" | "error"; text: string };
         isPreviewerAvailable: boolean;
         showPreview: boolean;
         editorFraction: number;
@@ -71,18 +74,19 @@ class SourceCodeRenderer extends React.Component<
     static codeCache = new Map();
 
     // which languages have preview options
-    languagesWithPreviewer = ["markdown"];
-    filePath;
-    cacheKey;
-    originalCode;
-    monacoEditor: any; // reference to mounted monaco editor.  TODO need the correct type
-    markdownRef;
-    syncing;
+    languagesWithPreviewer: string[] = ["markdown", "mdx"];
+    filePath: string;
+    cacheKey: string;
+    originalCode: string;
+    monacoEditor: MonacoTypes.editor.IStandaloneCodeEditor; // reference to mounted monaco editor.  TODO need the correct type
+    markdownRef: React.RefObject<HTMLDivElement>;
+    syncing: boolean;
+    monacoOptions: MonacoTypes.editor.IEditorOptions & MonacoTypes.editor.IGlobalEditorOptions;
 
     constructor(props) {
         super(props);
         this.monacoEditor = null;
-        const editorHeight = Math.max(props.savedHeight - 25, 0); // must subtract the padding/margin to get the real editorHeight
+        const editorHeight = Math.max(props.savedHeight - this.getEditorHeightBuffer(), 0); // must subtract the padding/margin to get the real editorHeight
         this.markdownRef = React.createRef();
         this.syncing = false;
         let isClosed = props.lineState["prompt:closed"];
@@ -164,6 +168,10 @@ class SourceCodeRenderer extends React.Component<
         this.monacoEditor = editor;
         this.setInitialLanguage(editor);
         this.setEditorHeight();
+        setTimeout(() => {
+            let opts = this.getEditorOptions();
+            editor.updateOptions(opts);
+        }, 2000);
         editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             let waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
             if (
@@ -248,8 +256,8 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
-    handleLanguageChange = (event) => {
-        const selectedLanguage = event.target.value;
+    handleLanguageChange = (e: any) => {
+        const selectedLanguage = e.target.value;
         this.setState({
             selectedLanguage,
             isPreviewerAvailable: this.languagesWithPreviewer.includes(selectedLanguage),
@@ -331,14 +339,19 @@ class SourceCodeRenderer extends React.Component<
         });
     };
 
+    getEditorHeightBuffer(): number {
+        const heightBuffer = GlobalModel.lineHeightEnv.lineHeight + 11;
+        return heightBuffer;
+    }
+
     setEditorHeight = () => {
-        const fullWindowHeight = this.props.opts.maxSize.height;
-        let _editorHeight = fullWindowHeight;
+        const maxEditorHeight = this.props.opts.maxSize.height - this.getEditorHeightBuffer();
+        let _editorHeight = maxEditorHeight;
         let allowEditing = this.getAllowEditing();
         if (!allowEditing) {
             const noOfLines = Math.max(this.state.code.split("\n").length, 5);
-            const lineHeight = Math.ceil(GlobalModel.getTermFontSize() * 1.5);
-            _editorHeight = Math.min(noOfLines * lineHeight + 10, fullWindowHeight);
+            const lineHeight = Math.ceil(GlobalModel.lineHeightEnv.lineHeight);
+            _editorHeight = Math.min(noOfLines * lineHeight + 10, maxEditorHeight);
         }
         this.setState({ editorHeight: _editorHeight }, () => {
             if (this.props.isSelected) {
@@ -356,31 +369,49 @@ class SourceCodeRenderer extends React.Component<
         return !(this.props.readOnly || this.state.isClosed);
     }
 
-    getCodeEditor = () => (
-        <div style={{ maxHeight: this.props.opts.maxSize.height }}>
-            {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
-            <Editor
-                theme="wave-theme"
-                height={this.state.editorHeight}
-                defaultLanguage={this.state.selectedLanguage}
-                value={this.state.code}
-                onMount={this.handleEditorDidMount}
-                options={{
-                    scrollBeyondLastLine: false,
-                    fontSize: GlobalModel.getTermFontSize(),
-                    fontFamily: GlobalModel.getTermFontFamily(),
-                    readOnly: !this.getAllowEditing(),
-                }}
-                onChange={this.handleEditorChange}
-            />
-        </div>
-    );
+    updateEditorOpts(): void {
+        if (!this.monacoEditor) {
+            return;
+        }
+        let opts = this.getEditorOptions();
+        this.monacoEditor.updateOptions(opts);
+    }
+
+    getEditorOptions(): MonacoTypes.editor.IEditorOptions {
+        let opts: MonacoTypes.editor.IEditorOptions = {
+            scrollBeyondLastLine: false,
+            fontSize: GlobalModel.getTermFontSize(),
+            fontFamily: GlobalModel.getTermFontFamily(),
+            readOnly: !this.getAllowEditing(),
+        };
+        if (this.state.showPreview) {
+            opts.minimap = { enabled: false };
+        }
+        return opts;
+    }
+
+    getCodeEditor = () => {
+        return (
+            <div className="editor-wrap" style={{ maxHeight: this.state.editorHeight }}>
+                {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
+                <Editor
+                    theme="wave-theme"
+                    height={this.state.editorHeight}
+                    defaultLanguage={this.state.selectedLanguage}
+                    value={this.state.code}
+                    onMount={this.handleEditorDidMount}
+                    options={this.getEditorOptions()}
+                    onChange={this.handleEditorChange}
+                />
+            </div>
+        );
+    };
 
     getPreviewer = () => {
         return (
             <div
                 className="scroller"
-                style={{ maxHeight: this.props.opts.maxSize.height }}
+                style={{ maxHeight: this.state.editorHeight }}
                 ref={this.markdownRef}
                 onScroll={() => this.handleDivScroll()}
             >
@@ -392,22 +423,23 @@ class SourceCodeRenderer extends React.Component<
     togglePreview = () => {
         this.saveLineState({ showPreview: !this.state.showPreview });
         this.setState({ showPreview: !this.state.showPreview });
+        setTimeout(() => this.updateEditorOpts(), 0);
     };
 
     getEditorControls = () => {
         const { selectedLanguage, isSave, languages, isPreviewerAvailable, showPreview } = this.state;
         let allowEditing = this.getAllowEditing();
         return (
-            <div className="buttonContainer">
-                {isPreviewerAvailable && (
-                    <div className="button">
+            <>
+                <If condition={isPreviewerAvailable}>
+                    <Button theme="primary" termInline={true}>
                         <div onClick={this.togglePreview} className={`preview`}>
                             {`${showPreview ? "hide" : "show"} preview (`}
                             {renderCmdText("P")}
                             {`)`}
                         </div>
-                    </div>
-                )}
+                    </Button>
+                </If>
                 <select className="dropdown" value={selectedLanguage} onChange={this.handleLanguageChange}>
                     {languages.map((lang, index) => (
                         <option key={index} value={lang}>
@@ -415,25 +447,23 @@ class SourceCodeRenderer extends React.Component<
                         </option>
                     ))}
                 </select>
-                {allowEditing && (
-                    <div className={`button ${isSave ? "" : "disabled"}`}>
+                <If condition={allowEditing}>
+                    <Button theme="primary" termInline={true}>
                         <div onClick={() => this.doSave()}>
                             {`save (`}
                             {renderCmdText("S")}
                             {`)`}
                         </div>
-                    </div>
-                )}
-                {allowEditing && (
-                    <div className="button">
+                    </Button>
+                    <Button className="primary" termInline={true}>
                         <div onClick={this.doClose} className={`close`}>
                             {`close (`}
                             {renderCmdText("D")}
                             {`)`}
                         </div>
-                    </div>
-                )}
-            </div>
+                    </Button>
+                </If>
+            </>
         );
     };
 
@@ -478,8 +508,16 @@ class SourceCodeRenderer extends React.Component<
                     {this.getCodeEditor()}
                     {isPreviewerAvailable && showPreview && this.getPreviewer()}
                 </Split>
-                {this.getEditorControls()}
-                {message && this.getMessage()}
+                <div className="flex-spacer" />
+                <div className="code-statusbar">
+                    <If condition={message != null}>
+                        <div className={cn("code-message", { error: message.status == "error" })}>
+                            {this.state.message.text}
+                        </div>
+                    </If>
+                    <div className="flex-spacer" />
+                    {this.getEditorControls()}
+                </div>
             </div>
         );
     }

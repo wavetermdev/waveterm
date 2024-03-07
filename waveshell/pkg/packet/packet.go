@@ -72,6 +72,10 @@ const (
 	ShellType_zsh  = "zsh"
 )
 
+const (
+	EC_InvalidCwd = "ERRCWD"
+)
+
 const PacketSenderQueueSize = 20
 
 const PacketEOFStr = "EOF"
@@ -491,11 +495,12 @@ func MakeCompGenPacket() *CompGenPacketType {
 }
 
 type ResponsePacketType struct {
-	Type    string      `json:"type"`
-	RespId  string      `json:"respid"`
-	Success bool        `json:"success"`
-	Error   string      `json:"error,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
+	Type      string      `json:"type"`
+	RespId    string      `json:"respid"`
+	Success   bool        `json:"success"`
+	Error     string      `json:"error,omitempty"`
+	ErrorCode string      `json:"errorcode,omitempty"` // can be used for structured errors
+	Data      interface{} `json:"data,omitempty"`
 }
 
 func (*ResponsePacketType) GetType() string {
@@ -516,6 +521,9 @@ func (p *ResponsePacketType) Err() error {
 	}
 	if !p.Success {
 		if p.Error != "" {
+			if p.ErrorCode != "" {
+				return &base.CodedError{ErrorCode: p.ErrorCode, Err: errors.New(p.Error)}
+			}
 			return errors.New(p.Error)
 		}
 		return fmt.Errorf("rpc failed")
@@ -531,6 +539,9 @@ func (p *ResponsePacketType) String() string {
 }
 
 func MakeErrorResponsePacket(reqId string, err error) *ResponsePacketType {
+	if codedErr, ok := err.(*base.CodedError); ok {
+		return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: codedErr.Err.Error(), ErrorCode: codedErr.ErrorCode}
+	}
 	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: err.Error()}
 }
 

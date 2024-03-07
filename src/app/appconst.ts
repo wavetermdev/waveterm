@@ -25,8 +25,8 @@ export const ProdServerEndpoint = "http://127.0.0.1:1619";
 export const ProdServerWsEndpoint = "ws://127.0.0.1:1623";
 export const DevServerEndpoint = "http://127.0.0.1:8090";
 export const DevServerWsEndpoint = "ws://127.0.0.1:8091";
-export const DefaultTermFontSize = 12;
-export const DefaultTermFontFamily = "JetBrains Mono";
+export const DefaultTermFontSize = 13;
+export const DefaultTermFontFamily = "Hack";
 export const DefaultTheme = "dark";
 export const MinFontSize = 8;
 export const MaxFontSize = 24;
@@ -61,3 +61,6 @@ export enum StatusIndicatorLevel {
     Success = 2,
     Error = 3,
 }
+
+// matches packet.go
+export const ErrorCode_InvalidCwd = "ERRCWD";

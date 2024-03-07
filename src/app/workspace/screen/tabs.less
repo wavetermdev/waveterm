@@ -2,10 +2,9 @@
 
 // Theming values
 #main .screen-tabs .screen-tab {
+    font: var(--base-font);
     font-size: var(--screentabs-font-size);
     line-height: var(--screentabs-line-height);
-    font-family: var(--base-font-family);
-    font-weight: var(--screentabs-font-weight);
 
     &.is-active {
         .background {
@@ -88,6 +87,7 @@
 
     .screen-tabs-container-inner {
         overflow-x: scroll;
+        overflow-y: hidden;
     }
 
     .screen-tabs {
@@ -98,6 +98,8 @@
             display: flex;
             flex-direction: row;
             position: relative;
+            border-top: 2px solid transparent;
+
             .background {
                 // This applies a transparency mask to the background color, as set above, so that it will blend with whatever the theme's background color is.
                 z-index: 1;
@@ -106,7 +108,6 @@
             }
 
             &.is-active {
-                border-top: none;
                 opacity: 1;
                 font-weight: var(--screentabs-selected-font-weight);
                 border-top: 2px solid var(--tab-color);

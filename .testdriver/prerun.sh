@@ -1,12 +1,9 @@
 rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt
+cd ~/actions-runner/_work/testdriver/testdriver/
 brew install go
 brew tap scripthaus-dev/scripthaus
 brew install scripthaus
 npm install -g yarn
-mkdir ~/build
-cd ~/build
-git clone https://github.com/wavetermdev/waveterm.git
-cd waveterm
 scripthaus run build-backend
 echo "Yarn"
 yarn

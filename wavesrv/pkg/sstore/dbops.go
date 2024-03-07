@@ -2023,6 +2023,71 @@ func StoreStateDiff(ctx context.Context, diff *packet.ShellStateDiff) error {
 	return nil
 }
 
+func GetStateBaseVersion(ctx context.Context, baseHash string) (string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		query := `SELECT version FROM state_base WHERE basehash = ?`
+		rtn := tx.GetString(query, baseHash)
+		return rtn, nil
+	})
+}
+
+func GetCurStateDiffFromPtr(ctx context.Context, ssPtr *ShellStatePtr) (*packet.ShellStateDiff, error) {
+	if ssPtr == nil {
+		return nil, fmt.Errorf("cannot resolve state, empty stateptr")
+	}
+	if len(ssPtr.DiffHashArr) == 0 {
+		baseVersion, err := GetStateBaseVersion(ctx, ssPtr.BaseHash)
+		if err != nil {
+			return nil, fmt.Errorf("cannot get base version: %v", err)
+		}
+		// return an empty diff
+		return &packet.ShellStateDiff{Version: baseVersion, BaseHash: ssPtr.BaseHash}, nil
+	}
+	lastDiffHash := ssPtr.DiffHashArr[len(ssPtr.DiffHashArr)-1]
+	return GetStateDiff(ctx, lastDiffHash)
+}
+
+func GetStateBase(ctx context.Context, baseHash string) (*packet.ShellState, error) {
+	stateBase, txErr := WithTxRtn(ctx, func(tx *TxWrap) (*StateBase, error) {
+		var stateBase StateBase
+		query := `SELECT * FROM state_base WHERE basehash = ?`
+		found := tx.Get(&stateBase, query, baseHash)
+		if !found {
+			return nil, fmt.Errorf("StateBase %s not found", baseHash)
+		}
+		return &stateBase, nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	state := &packet.ShellState{}
+	err := state.DecodeShellState(stateBase.Data)
+	if err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+func GetStateDiff(ctx context.Context, diffHash string) (*packet.ShellStateDiff, error) {
+	stateDiff, txErr := WithTxRtn(ctx, func(tx *TxWrap) (*StateDiff, error) {
+		query := `SELECT * FROM state_diff WHERE diffhash = ?`
+		stateDiff := dbutil.GetMapGen[*StateDiff](tx, query, diffHash)
+		if stateDiff == nil {
+			return nil, fmt.Errorf("StateDiff %s not found", diffHash)
+		}
+		return stateDiff, nil
+	})
+	if txErr != nil {
+		return nil, txErr
+	}
+	state := &packet.ShellStateDiff{}
+	err := state.DecodeShellStateDiff(stateDiff.Data)
+	if err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
 // returns error when not found
 func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState, error) {
 	var state *packet.ShellState

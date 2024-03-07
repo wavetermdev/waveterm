@@ -32,7 +32,7 @@ class App extends React.Component<{}, {}> {
 
     constructor(props: {}) {
         super(props);
-        if (GlobalModel.isDev) document.body.className = "is-dev";
+        if (GlobalModel.isDev) document.body.classList.add("is-dev");
     }
 
     @boundMethod
@@ -120,6 +120,7 @@ class App extends React.Component<{}, {}> {
             >
                 <If condition={sidebarCollapsed}>
                     <div key="logo-button" className="logo-button-container">
+                        <div className="logo-button-spacer" />
                         <div className="logo-button" onClick={this.openSidebar}>
                             <img src="public/logos/wave-logo.png" alt="logo" />
                         </div>
