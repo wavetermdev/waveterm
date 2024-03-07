@@ -272,16 +272,13 @@ class Model {
                 return this.historyViewModel.handleDocKeyDown(waveEvent);
             }
             if (this.activeMainView.get() == "connections") {
-                console.log("test 2?");
                 return this.historyViewModel.handleDocKeyDown(waveEvent);
             }
             if (this.activeMainView.get() == "clientsettings") {
                 return this.historyViewModel.handleDocKeyDown(waveEvent);
             }
             if (this.activeMainView.get() == "session") {
-                console.log("session ??");
                 if (this.textAreaInput != null) {
-                    console.log("session?");
                     return this.textAreaInput.handleDocKeyDown(waveEvent);
                 }
             }
