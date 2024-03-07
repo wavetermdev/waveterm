@@ -5,6 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
+import { If } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
@@ -191,17 +192,19 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                             />
                         </div>
                     </div>
-                    <div className="settings-field">
-                        <div className="settings-label">Theme</div>
-                        <div className="settings-input">
-                            <Dropdown
-                                className="theme-dropdown"
-                                options={this.getThemes()}
-                                defaultValue={curTheme}
-                                onChange={this.handleChangeTheme}
-                            />
+                    <If condition={GlobalModel.isDev}>
+                        <div className="settings-field">
+                            <div className="settings-label">Theme</div>
+                            <div className="settings-input">
+                                <Dropdown
+                                    className="theme-dropdown"
+                                    options={this.getThemes()}
+                                    defaultValue={curTheme}
+                                    onChange={this.handleChangeTheme}
+                                />
+                            </div>
                         </div>
-                    </div>
+                    </If>
                     <div className="settings-field">
                         <div className="settings-label">Client ID</div>
                         <div className="settings-input">{cdata.clientid}</div>
