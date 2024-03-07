@@ -102,6 +102,7 @@
     /* todo: use --form-element-* directly in elements */
     --button-text-color: var(--form-element-text-color);
     --button-primary-bg-color: var(--form-element-primary-color);
+    --button-primary-color: var(--form-element-text-color);
     --button-secondary-bg-color: var(--form-element-secondary-color);
     --button-warning-bg-color: var(--form-element-error-color);
 
