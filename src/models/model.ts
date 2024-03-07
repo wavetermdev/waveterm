@@ -187,6 +187,7 @@ class Model {
         });
 
         this.keybindManager.registerKeybinding("app", "model", "any", (waveEvent) => {
+            console.log("do we get here? 2");
             if (isModKeyPress(waveEvent)) {
                 return false;
             }
@@ -277,11 +278,16 @@ class Model {
             if (this.activeMainView.get() == "clientsettings") {
                 return this.historyViewModel.handleDocKeyDown(waveEvent);
             }
+            console.log("do we get here? 3");
             if (this.activeMainView.get() == "session") {
                 if (this.textAreaInput != null) {
-                    return this.textAreaInput.handleDocKeyDown(waveEvent);
+                    let rtnVal = this.textAreaInput.handleDocKeyDown(waveEvent);
+                    if (rtnVal) {
+                        return true;
+                    }
                 }
             }
+            console.log("do we get here? 4");
             if (this.keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
                 if (this.activeMainView.get() == "webshare") {
                     this.showSessionView();
@@ -297,7 +303,9 @@ class Model {
                 }
                 return true;
             }
+            console.log("do we get here? 5");
             if (this.keybindManager.checkKeyPressed(waveEvent, "app:bookmarkActiveLine")) {
+                console.log("do we get here");
                 GlobalCommandRunner.bookmarksView();
                 return true;
             }

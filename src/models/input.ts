@@ -7,7 +7,7 @@ import { boundMethod } from "autobind-decorator";
 import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import { Model } from "./model";
-import { GlobalCommandRunner } from "./global";
+import { GlobalModel, GlobalCommandRunner } from "./global";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
     return {
@@ -234,6 +234,9 @@ class InputModel {
             return;
         }
         mobx.action(() => {
+            if (show == false) {
+                GlobalModel.keybindManager.unregisterDomain("history");
+            }
             this.historyShow.set(show);
             if (this.hasFocus()) {
                 this.giveFocus();

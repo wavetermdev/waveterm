@@ -290,6 +290,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             let lastHist = this.lastHistoryUpDown;
             this.lastHistoryUpDown = false;
 
+            console.log("do we get here? 6");
             if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
                 if (lastTab) {
                     GlobalModel.submitCommand(
@@ -331,14 +332,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             if (keybindManager.checkKeyPressed(waveEvent, "generic:cancel")) {
                 let inputModel = GlobalModel.inputModel;
                 inputModel.toggleInfoMsg();
-                console.log("hello?", inputModel.inputMode.get());
                 if (inputModel.inputMode.get() != null) {
                     inputModel.resetInputMode();
-                    console.log("hello? 2");
                 }
-                console.log("hello 3?");
                 inputModel.closeAIAssistantChat(true);
-                console.log("hello 4?");
                 return true;
             }
             if (keybindManager.checkKeyPressed(waveEvent, "cmdinput:expandInput")) {
@@ -416,6 +413,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 inputModel.openAIAssistantChat();
                 return true;
             }
+            console.log("do we get here? 7");
             // console.log(e.code, e.keyCode, e.key, event.which, ctrlMod, e);
             return false;
         })();
