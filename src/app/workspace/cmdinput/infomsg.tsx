@@ -8,7 +8,7 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
-import { makeExternLink } from "@/util/util";
+import * as appconst from "@/app/appconst";
 
 dayjs.extend(localizedFormat);
 
@@ -104,6 +104,9 @@ class InfoMsg extends React.Component<{}, {}> {
                     <div key="infoerror" className="info-error">
                         [error] {infoMsg.infoerror}
                     </div>
+                    <If condition={infoMsg.infoerrorcode == appconst.ErrorCode_InvalidCwd}>
+                        <div className="info-error">to reset, run: /reset:cwd</div>
+                    </If>
                 </If>
             </div>
         );

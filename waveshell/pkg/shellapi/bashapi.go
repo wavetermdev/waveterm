@@ -79,8 +79,22 @@ func (b bashShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty
 	return MakeBashShExecCommand(cmdStr, rcFileName, usePty)
 }
 
-func (b bashShellApi) GetShellState() (*packet.ShellState, error) {
-	return GetBashShellState()
+func (b bashShellApi) GetShellState() chan ShellStateOutput {
+	ch := make(chan ShellStateOutput, 1)
+	defer close(ch)
+	ssPk, err := GetBashShellState()
+	if err != nil {
+		ch <- ShellStateOutput{
+			Status: ShellStateOutputStatus_Done,
+			Error:  err.Error(),
+		}
+		return ch
+	}
+	ch <- ShellStateOutput{
+		Status:     ShellStateOutputStatus_Done,
+		ShellState: ssPk,
+	}
+	return ch
 }
 
 func (b bashShellApi) GetBaseShellOpts() string {

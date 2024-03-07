@@ -203,20 +203,25 @@ func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty 
 	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 }
 
-func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
+func (z zshShellApi) GetShellState() chan ShellStateOutput {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
+	rtnCh := make(chan ShellStateOutput, 1)
+	defer close(rtnCh)
 	cmdStr := BaseZshOpts + "; " + GetZshShellStateCmd(StateOutputFdNum)
 	ecmd := exec.CommandContext(ctx, GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 	_, outputBytes, err := RunCommandWithExtraFd(ecmd, StateOutputFdNum)
 	if err != nil {
-		return nil, err
+		rtnCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, Error: err.Error()}
+		return rtnCh
 	}
 	rtn, err := z.ParseShellStateOutput(outputBytes)
 	if err != nil {
-		return nil, err
+		rtnCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, Error: err.Error()}
+		return rtnCh
 	}
-	return rtn, nil
+	rtnCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, ShellState: rtn}
+	return rtnCh
 }
 
 func (z zshShellApi) GetBaseShellOpts() string {

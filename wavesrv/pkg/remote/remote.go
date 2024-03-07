@@ -1919,6 +1919,25 @@ func (msh *MShellProc) removePendingStateCmd(screenId string, rptr sstore.Remote
 	}
 }
 
+func ResolveCurrentScreenStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr sstore.RemotePtrType) (*sstore.ShellStatePtr, error) {
+	statePtr, err := sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get current connection stateptr: %w", err)
+	}
+	if statePtr == nil {
+		msh := GetRemoteById(remotePtr.RemoteId)
+		err := msh.EnsureShellType(ctx, msh.GetShellPref()) // make sure shellType is initialized
+		if err != nil {
+			return nil, err
+		}
+		statePtr = msh.GetDefaultStatePtr(msh.GetShellPref())
+		if statePtr == nil {
+			return nil, fmt.Errorf("no valid default connection stateptr")
+		}
+	}
+	return statePtr, nil
+}
+
 type RunCommandOpts struct {
 	SessionId string
 	ScreenId  string
@@ -1993,19 +2012,9 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		statePtr = rcOpts.StatePtr
 	} else {
 		var err error
-		statePtr, err = sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
+		statePtr, err = ResolveCurrentScreenStatePtr(ctx, sessionId, screenId, remotePtr)
 		if err != nil {
-			return nil, nil, fmt.Errorf("cannot get current connection stateptr: %w", err)
-		}
-	}
-	if statePtr == nil { // can be null if there is no remote-instance (screen has unchanged state from default)
-		err := msh.EnsureShellType(ctx, msh.GetShellPref()) // make sure shellType is initialized
-		if err != nil {
-			return nil, nil, err
-		}
-		statePtr = msh.GetDefaultStatePtr(msh.GetShellPref())
-		if statePtr == nil {
-			return nil, nil, fmt.Errorf("cannot run command, no valid connection stateptr")
+			return nil, nil, fmt.Errorf("cannot run command: %w", err)
 		}
 	}
 	currentState, err := sstore.GetFullState(ctx, *statePtr)
@@ -2049,7 +2058,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 			return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 		}
 		if respPk.Error != "" {
-			return nil, nil, errors.New(respPk.Error)
+			return nil, nil, respPk.Err()
 		}
 		return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 	}

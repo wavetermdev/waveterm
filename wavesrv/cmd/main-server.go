@@ -623,6 +623,10 @@ func WriteJsonError(w http.ResponseWriter, errVal error) {
 	w.WriteHeader(200)
 	errMap := make(map[string]interface{})
 	errMap["error"] = errVal.Error()
+	errorCode := base.GetErrorCode(errVal)
+	if errorCode != "" {
+		errMap["errorcode"] = errorCode
+	}
 	barr, _ := json.Marshal(errMap)
 	w.Write(barr)
 }
