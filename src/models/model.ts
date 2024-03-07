@@ -372,6 +372,11 @@ class Model {
         return theme;
     }
 
+    isThemeDark(): boolean {
+        let cdata = this.clientData.get();
+        return cdata?.feopts?.theme != "light";
+    }
+
     getTermFontSize(): number {
         return this.termFontSize.get();
     }
