@@ -17,7 +17,7 @@ type KeyPressDecl = {
     keyType: string;
 };
 
-const KeyTypeCodeRegex = /:c{(.*)}/;
+const KeyTypeCodeRegex = /c{(.*)}/;
 const KeyTypeKey = "key";
 const KeyTypeCode = "code";
 
