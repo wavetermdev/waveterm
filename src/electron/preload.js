@@ -1,7 +1,6 @@
 let { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
-    toggleDeveloperTools: () => ipcRenderer.send("toggle-developer-tools"),
     getId: () => ipcRenderer.sendSync("get-id"),
     getPlatform: () => ipcRenderer.sendSync("get-platform"),
     getIsDev: () => ipcRenderer.sendSync("get-isdev"),
@@ -20,23 +19,9 @@ contextBridge.exposeInMainWorld("api", {
     installAppUpdate: () => ipcRenderer.send("install-app-update"),
     getAppUpdateStatus: () => ipcRenderer.sendSync("get-app-update-status"),
     onAppUpdateStatus: (callback) => ipcRenderer.on("app-update-status", (_, val) => callback(val)),
-    onTCmd: (callback) => ipcRenderer.on("t-cmd", callback),
-    onICmd: (callback) => ipcRenderer.on("i-cmd", callback),
-    onLCmd: (callback) => ipcRenderer.on("l-cmd", callback),
-    onHCmd: (callback) => ipcRenderer.on("h-cmd", callback),
-    onWCmd: (callback) => ipcRenderer.on("w-cmd", callback),
-    onPCmd: (callback) => ipcRenderer.on("p-cmd", callback),
-    onRCmd: (callback) => ipcRenderer.on("r-cmd", callback),
     onZoomChanged: (callback) => ipcRenderer.on("zoom-changed", callback),
-    onMetaArrowUp: (callback) => ipcRenderer.on("meta-arrowup", callback),
-    onMetaArrowDown: (callback) => ipcRenderer.on("meta-arrowdown", callback),
-    onMetaPageUp: (callback) => ipcRenderer.on("meta-pageup", callback),
-    onMetaPageDown: (callback) => ipcRenderer.on("meta-pagedown", callback),
-    onBracketCmd: (callback) => ipcRenderer.on("bracket-cmd", callback),
-    onDigitCmd: (callback) => ipcRenderer.on("digit-cmd", callback),
     onMenuItemAbout: (callback) => ipcRenderer.on("menu-item-about", callback),
     contextScreen: (screenOpts, position) => ipcRenderer.send("context-screen", screenOpts, position),
     contextEditMenu: (position, opts) => ipcRenderer.send("context-editmenu", position, opts),
     onWaveSrvStatusChange: (callback) => ipcRenderer.on("wavesrv-status-change", callback),
-    onToggleDevUI: (callback) => ipcRenderer.on("toggle-devui", callback),
 });
