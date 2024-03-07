@@ -67,6 +67,7 @@ const (
 	LineState_Template = "template"
 	LineState_Mode     = "mode"
 	LineState_Lang     = "lang"
+	LineState_Minimap  = "minimap"
 )
 
 const (

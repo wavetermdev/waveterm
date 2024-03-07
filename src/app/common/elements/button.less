@@ -22,11 +22,11 @@
         }
 
         &.solid {
-            color: var(--button-text-color);
+            color: var(--button-primary-color);
             background: var(--button-primary-bg-color);
 
             i {
-                fill: var(--app-text-color);
+                fill: var(--button-primary-color);
             }
         }
 
@@ -39,15 +39,16 @@
         }
 
         &:hover {
-            color: var(--button-text-color);
+            color: var(--button-primary-color);
         }
     }
 
     &.secondary {
-        color: var(--app-text-color);
+        color: var(--button-text-color);
         background: none;
 
         &.solid {
+            color: var(--button-text-color);
             background: var(--button-secondary-bg-color);
             box-shadow: none;
         }
