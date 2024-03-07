@@ -6,6 +6,8 @@
 
 :root {
     --app-bg-color: #fefefe;
+    --app-accent-color: rgb(75, 166, 57);
+    --app-accent-bg-color: rgba(75, 166, 57, 0.2);
     --app-text-color: #000;
     --app-text-primary-color: rgb(0, 0, 0, 0.9);
     --app-text-secondary-color: rgb(0, 0, 0, 0.7);
@@ -53,16 +55,21 @@
     --cmdinput-textarea-border-color: var(--form-element-border-color);
 
     /* scroll colors */
-    --scrollbar-background-color: rgba(0, 0, 0, 0.3);
-    --scrollbar-thumb-color: rgba(0, 0, 0, 0.4);
-    --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.5);
+    --scrollbar-background-color: var(--app-bg-color);
+    --scrollbar-thumb-color: rgba(0, 0, 0, 0.2);
+    --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.4);
 
     /* cmdstrcode colors */
     --cmdstrcode-bg-color: var(--term-black);
     --cmdstrcode-text-color: var(--term-white);
 
     /* line color */
-    --line-actions-bg-color: rgba(0, 0, 0, 0.4);
+    --line-actions-bg-color: rgba(0, 0, 0, 0.1);
+    --line-actions-inactive-color: rgba(0, 0, 0, 0.3);
+    --line-actions-active-color: rgba(0, 0, 0, 1);
+
+    /* toggle colors */
+    --toggle-thumb-color: var(--app-bg-color);
 
     --logo-button-hover-bg-color: #f0f0f0;
 
