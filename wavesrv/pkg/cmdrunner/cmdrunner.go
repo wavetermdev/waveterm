@@ -3659,6 +3659,7 @@ func ResetCwdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst), sstore.InteractiveUpdate(pk.Interactive))
+	update.AddUpdate(sstore.InfoMsgType{InfoMsg: "reset cwd to ~"})
 	return update, nil
 }
 
