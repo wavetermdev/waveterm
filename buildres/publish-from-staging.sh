@@ -9,4 +9,4 @@ if [ -z "$VERSION" ]; then
     exit
 fi
 
-aws s3 cp s3://waveterm-github-artifacts/staging/$VERSION/ s3://dl.waveterm.dev/releases/ --recursive
+aws s3 cp s3://waveterm-github-artifacts/staging/$VERSION/ s3://dl.waveterm.dev/releases/ --recursive --profile $AWS_PROFILE
