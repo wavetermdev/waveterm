@@ -1,3 +1,5 @@
+@import "@/common/icons/icons.less";
+
 .line {
     margin: 0;
     padding: calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 2 + 1px) calc(var(--termpad) * 3);
@@ -6,6 +8,7 @@
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
+    line-height: 11px;
     font-weight: normal;
     font-family: var(--termfontfamily);
     scroll-margin-bottom: 20px;
@@ -23,6 +26,31 @@
         &.has-error {
             .line-mask {
                 border-left: 4px solid var(--line-selected-error-border-color);
+            }
+        }
+    }
+
+    .avatar {
+        display: inline-block;
+        margin-left: 5px;
+        height: var(--termlineheight-sm);
+        line-height: var(--termlineheight-sm);
+        .rotate {
+            fill: var(--app-warning-color);
+            height: 11px;
+            width: 11px;
+        }
+    }
+
+    .centered-icon {
+        .positional-icon-visible;
+        height: 15px;
+        width: 15px;
+        .positional-icon-inner {
+            height: 15px;
+            width: 15px;
+            &:first-child {
+                font-size: var(--termfontsize-sm);
             }
         }
     }
@@ -97,10 +125,6 @@
         }
 
         .avatar {
-            display: inline-block;
-            height: 1em;
-            margin-left: 0.5em;
-            vertical-align: text-top;
             fill: var(--primary-background-color);
         }
 
@@ -202,7 +226,6 @@
             .user {
                 color: var(--line-meta-user-color);
                 font-weight: bold;
-                margin-top: 1px;
                 margin-right: 10px;
             }
 
@@ -212,6 +235,11 @@
                 font-size: var(--termfontsize-sm);
                 line-height: var(--termlineheight-sm);
                 color: var(--term-gray);
+                > div,
+                > span {
+                    margin-top: auto;
+                    margin-bottom: auto;
+                }
             }
 
             .meta-divider {
@@ -309,7 +337,6 @@
             margin: 6px 0 2px 10px;
             padding: 2px 5px 0px 5px;
             display: inline-block;
-            font-size: 10px;
             color: var(--term-text-white);
             background-color: #151715;
         }

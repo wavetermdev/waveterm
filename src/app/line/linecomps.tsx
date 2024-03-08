@@ -28,7 +28,7 @@ import * as util from "@/util/util";
 import * as textmeasure from "@/util/textmeasure";
 
 import "./line.less";
-import { RotateIcon } from "../common/icons/icons";
+import { CenteredIcon, RotateIcon } from "../common/icons/icons";
 
 const DebugHeightProblems = false;
 const MinLine = 0;
@@ -318,7 +318,7 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
             icon = <i className="fail fa-sharp fa-solid fa-xmark" />;
             iconTitle = "error";
         } else if (status == "running" || status == "detached") {
-            icon = <RotateIcon className="warning spin" />;
+            icon = <RotateIcon className="spin rotate" />;
             iconTitle = "running";
         } else {
             icon = <i className="fail fa-sharp fa-solid fa-question" />;
@@ -330,8 +330,12 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
                 title={iconTitle}
                 className={cn("simple-line-status", "status-" + status)}
             >
-                <span className="linenum">{lineNumStr}</span>
-                <div className="avatar">{icon}</div>
+                <span className="linenum">
+                    <CenteredIcon>{lineNumStr}</CenteredIcon>
+                </span>
+                <div className="avatar">
+                    <CenteredIcon>{icon}</CenteredIcon>
+                </div>
             </div>
         );
     }

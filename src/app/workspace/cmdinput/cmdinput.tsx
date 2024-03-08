@@ -155,7 +155,7 @@ class CmdInput extends React.Component<{}, {}> {
                             title="Filter for Running Commands"
                             onClick={() => this.toggleFilter(screen)}
                         >
-                            {numRunningLines}{" "}
+                            <CenteredIcon>{numRunningLines}</CenteredIcon>{" "}
                             <CenteredIcon>
                                 <RotateIcon className="rotate warning spin" />
                             </CenteredIcon>

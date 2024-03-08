@@ -42,11 +42,15 @@
         align-items: center;
 
         .cmdinput-icon {
+            display: inline-flex;
             color: var(--app-icon-hover-color);
             opacity: 0.5;
 
-            &.running-cmds {
+            .centered-icon {
                 .positional-icon-visible;
+            }
+
+            &.running-cmds {
                 .rotate {
                     fill: var(--app-warning-color);
                 }
