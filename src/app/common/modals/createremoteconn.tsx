@@ -7,16 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
-import {
-    Modal,
-    TextField,
-    NumberField,
-    InputDecoration,
-    Dropdown,
-    PasswordField,
-    Tooltip,
-    ShowWaveShellInstallPrompt,
-} from "@/elements";
+import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "@/elements";
 import * as util from "@/util/util";
 
 import "./createremoteconn.less";
@@ -73,12 +64,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleOk(): void {
-        ShowWaveShellInstallPrompt(this.submitRemote);
-    }
-
-    @boundMethod
-    submitRemote(): void {
+    handleSubmitRemote(): void {
         mobx.action(() => {
             this.errorStr.set(null);
         })();
@@ -375,7 +361,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
                 </div>
-                <Modal.Footer onCancel={this.model.closeModal} onOk={this.handleOk} okLabel="Connect" />
+                <Modal.Footer onCancel={this.model.closeModal} onOk={this.handleSubmitRemote} okLabel="Connect" />
             </Modal>
         );
     }
