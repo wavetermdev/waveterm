@@ -111,11 +111,12 @@ class App extends React.Component<{}, {}> {
         // used to force a full reload of the application
         const renderVersion = GlobalModel.renderVersion.get();
         const sidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
+        const lightDarkClass = GlobalModel.isThemeDark() ? "is-dark" : "is-light";
         return (
             <div
                 key={"version-" + renderVersion}
                 id="main"
-                className={cn("platform-" + platform, { "sidebar-collapsed": sidebarCollapsed })}
+                className={cn("platform-" + platform, { "sidebar-collapsed": sidebarCollapsed }, lightDarkClass)}
                 onContextMenu={this.handleContextMenu}
             >
                 <If condition={sidebarCollapsed}>
