@@ -279,9 +279,6 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     {
         role: "windowMenu",
     },
-    {
-        role: "help",
-    },
 ];
 
 const menu = electron.Menu.buildFromTemplate(menuTemplate);
