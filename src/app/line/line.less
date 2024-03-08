@@ -30,18 +30,6 @@
         }
     }
 
-    .avatar {
-        display: inline-block;
-        margin-left: 5px;
-        height: var(--termlineheight-sm);
-        line-height: var(--termlineheight-sm);
-        .rotate {
-            fill: var(--app-warning-color);
-            height: 11px;
-            width: 11px;
-        }
-    }
-
     .centered-icon {
         .positional-icon-visible;
         height: 15px;
@@ -116,31 +104,6 @@
 
         .ts {
             display: flex;
-        }
-    }
-
-    .simple-line-status {
-        .linenum {
-            cursor: pointer;
-        }
-
-        .avatar {
-            fill: var(--primary-background-color);
-        }
-
-        .success {
-            color: var(--primary-accent-color);
-            fill: var(--primary-accent-color);
-        }
-
-        .fail {
-            color: var(--line-error-color);
-            fill: var(--line-error-color);
-        }
-
-        .warning {
-            color: var(--line-warning-color);
-            fill: var(--line-warning-color);
         }
     }
 
@@ -235,10 +198,30 @@
                 font-size: var(--termfontsize-sm);
                 line-height: var(--termlineheight-sm);
                 color: var(--term-gray);
-                > div,
-                > span {
-                    margin-top: auto;
-                    margin-bottom: auto;
+                align-items: center;
+
+                .status-icon {
+                    display: inline-block;
+                    margin-left: 0.5em;
+                    height: var(--termfontsize-sm);
+                    line-height: 1;
+
+                    svg {
+                        height: var(--termfontsize-sm);
+                        width: var(--termfontsize-sm);
+                        vertical-align: baseline;
+                    }
+                }
+
+                i.fail {
+                    color: var(--line-error-color);
+                    fill: var(--line-error-color);
+                }
+
+                i.warning,
+                svg.warning {
+                    color: var(--line-warning-color);
+                    fill: var(--line-warning-color);
                 }
             }
 

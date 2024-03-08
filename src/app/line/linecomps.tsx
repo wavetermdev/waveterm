@@ -318,25 +318,19 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
             icon = <i className="fail fa-sharp fa-solid fa-xmark" />;
             iconTitle = "error";
         } else if (status == "running" || status == "detached") {
-            icon = <RotateIcon className="spin rotate" />;
+            icon = <RotateIcon className="warning spin rotate" />;
             iconTitle = "running";
         } else {
             icon = <i className="fail fa-sharp fa-solid fa-question" />;
             iconTitle = "unknown";
         }
         return (
-            <div
-                onContextMenu={this.props.onRightClick}
-                title={iconTitle}
-                className={cn("simple-line-status", "status-" + status)}
-            >
-                <span className="linenum">
-                    <CenteredIcon>{lineNumStr}</CenteredIcon>
-                </span>
-                <div className="avatar">
-                    <CenteredIcon>{icon}</CenteredIcon>
+            <>
+                <div className="linenum">{lineNumStr}</div>
+                <div title={iconTitle} className={cn("status-icon", "status-" + status)}>
+                    {icon}
                 </div>
-            </div>
+            </>
         );
     }
 }
