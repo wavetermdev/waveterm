@@ -27,14 +27,14 @@
 
     &-inner {
         display: flex;
-        align-items: flex-end;
+        flex-direction: column;
         position: relative;
         flex-grow: 1;
+        --inner-padding: 5px 0 5px 16px;
 
         &-label {
-            position: absolute;
-            left: 16px;
-            top: 16px;
+            padding: var(--inner-padding);
+            margin-bottom: -5px;
             font-size: 12.5px;
             transition: all 0.3s;
             color: var(--form-element-label-color);
@@ -54,7 +54,7 @@
             width: 100%;
             height: 30px;
             border: none;
-            padding: 5px 0 5px 16px;
+            padding: var(--inner-padding);
             font-size: 16px;
             outline: none;
             background-color: transparent;
