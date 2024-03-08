@@ -91,12 +91,13 @@
 
     --form-element-border-color: rgba(241, 246, 243, 0.15);
     --form-element-bg-color: var(--app-bg-color);
-    --form-element-text-color: #ffffff;
+    --form-element-text-color: var(--app-text-color);
     --form-element-label-color: rgb(195, 200, 194);
     --form-element-primary-color: rgb(78, 154, 6);
     --form-element-secondary-color: rgba(255, 255, 255, 0.09);
     --form-element-error-color: rgb(204, 0, 0);
     --form-element-icon-color: #fff;
+    --form-element-disabled-text-color: #777;
 
     /* button colors */
     /* todo: use --form-element-* directly in elements */
@@ -211,7 +212,7 @@
     /* table colors */
     --table-border-color: rgba(241, 246, 243, 0.15);
     --table-thead-border-top-color: rgba(250, 250, 250, 0.1);
-    --table-thead-border-bottom-color: var(--table-border-color);
+    --table-thead-bright-border-color: #ccc;
     --table-thead-bg-color: rgba(250, 250, 250, 0.02);
     --table-tr-border-bottom-color: rgba(241, 246, 243, 0.15);
     --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
