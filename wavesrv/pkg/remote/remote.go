@@ -1202,14 +1202,45 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 		msh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
 		return
 	}
-	if autoInstall {
+	ctx := context.Background()
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		msh.WriteToPtyBuffer("*error: cannot obtain client data: %v", err)
+		return
+	}
+	hideShellPrompt := clientData.ClientOpts.ConfirmFlags["hideshellprompt"]
+	baseStatus := msh.GetStatus()
+
+	if baseStatus == StatusConnected {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		request := &userinput.UserInputRequestType{
+			ResponseType: "confirm",
+			QueryText:    "Waveshell is running on your connection and must be restarted to re-install. Would you like to continue?",
+			Title:        "Restart Waveshell",
+		}
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			if err == context.Canceled {
+				msh.WriteToPtyBuffer("installation canceled by user\n")
+			} else {
+				msh.WriteToPtyBuffer("timed out waiting for user input\n")
+			}
+			return
+		}
+		if !response.Confirm {
+			msh.WriteToPtyBuffer("installation canceled by user\n")
+			return
+		}
+	} else if !hideShellPrompt {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
 		request := &userinput.UserInputRequestType{
 			ResponseType: "confirm",
 			QueryText:    "Waveshell must be reinstalled on the connection to continue. Would you like to install it?",
 			Title:        "Install Waveshell",
+			CheckBoxMsg:  "Don't show me this again",
 		}
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancelFn()
 		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 		if err != nil {
 			var errMsg error
@@ -1234,28 +1265,25 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 			})
 			return
 		}
-	}
-	baseStatus := msh.GetStatus()
-	if baseStatus == StatusConnected {
-		request := &userinput.UserInputRequestType{
-			ResponseType: "confirm",
-			QueryText:    "Waveshell is running on your connection and must be restarted to re-install. Would you like to continue?",
-			Title:        "Restart Waveshell",
-		}
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancelFn()
-		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
-		if err != nil {
-			if err == context.Canceled {
-				msh.WriteToPtyBuffer("installation canceled by user\n")
-			} else {
-				msh.WriteToPtyBuffer("timed out waiting for user input\n")
+		if response.CheckboxStat {
+			clientData.ClientOpts.ConfirmFlags["hideshellprompt"] = true
+			ctx := context.Background()
+			err = sstore.SetClientOpts(ctx, clientData.ClientOpts)
+			if err != nil {
+				msh.WriteToPtyBuffer("*error, %s\n", err)
+				msh.setErrorStatus(err)
+				return
 			}
-			return
-		}
-		if !response.Confirm {
-			msh.WriteToPtyBuffer("installation canceled by user\n")
-			return
+
+			//reload updated clientdata before sending
+			clientData, err = sstore.EnsureClientData(ctx)
+			if err != nil {
+				msh.WriteToPtyBuffer("*error, %s\n", err)
+				msh.setErrorStatus(err)
+				return
+			}
+			update := scbus.MakeUpdatePacket()
+			update.AddUpdate(*clientData)
 		}
 	}
 	curStatus := msh.GetInstallStatus()
@@ -1267,7 +1295,7 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 		msh.WriteToPtyBuffer("*error: cannot install on a local remote\n")
 		return
 	}
-	_, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	_, err = shellapi.MakeShellApi(packet.ShellType_bash)
 	if err != nil {
 		msh.WriteToPtyBuffer("*error: %v\n", err)
 		return
