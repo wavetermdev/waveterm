@@ -544,7 +544,7 @@ class HistoryView extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div key="hsr" className="history-scroll-region">
-                    <table className="history-table" cellSpacing="0" cellPadding="0" border={0} ref={this.tableRef}>
+                    {/* <table className="history-table" cellSpacing="0" cellPadding="0" border={0} ref={this.tableRef}>
                         <tbody>
                             <For index="idx" each="item" of={items}>
                                 <tr
@@ -613,7 +613,77 @@ class HistoryView extends React.Component<{}, {}> {
                                 </If>
                             </For>
                         </tbody>
-                    </table>
+                    </table> */}
+                    <div className="history-table" ref={this.tableRef}>
+                        <For index="idx" each="item" of={items}>
+                            <div
+                                key={item.historyid}
+                                className={cn("row history-item", {
+                                    "is-selected": hvm.selectedItems.get(item.historyid),
+                                })}
+                            >
+                                <div className="cell selectbox" onClick={() => this.handleSelect(item.historyid)}>
+                                    <HistoryCheckbox checked={hvm.selectedItems.get(item.historyid)} />
+                                </div>
+                                <div className="cell cmdstr">
+                                    <HistoryCmdStr
+                                        cmdstr={item.cmdstr}
+                                        onUse={() => this.handleUse(item)}
+                                        onCopy={() => this.handleCopy(item)}
+                                        isCopied={this.copiedItemId.get() == item.historyid}
+                                        fontSize="normal"
+                                        limitHeight={true}
+                                    />
+                                </div>
+                                <div className="cell workspace text-standard">
+                                    {formatSSName(snames, scrnames, item)}
+                                </div>
+                                <div className="cell remote text-standard">{formatRemoteName(rnames, item.remote)}</div>
+                                <div className="cell ts text-standard">{getHistoryViewTs(nowDate, item.ts)}</div>
+                                <div className="cell downarrow" onClick={() => this.activateItem(item.historyid)}>
+                                    <If condition={activeItemId != item.historyid}>
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 16 16"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M12.1297 6.62492C12.3999 6.93881 12.3645 7.41237 12.0506 7.68263L8.48447 10.7531C8.20296 10.9955 7.78645 10.9952 7.50519 10.7526L3.94636 7.68213C3.63274 7.41155 3.59785 6.93796 3.86843 6.62434C4.13901 6.31072 4.6126 6.27583 4.92622 6.54641L7.99562 9.19459L11.0719 6.54591C11.3858 6.27565 11.8594 6.31102 12.1297 6.62492Z"
+                                                fill="#C3C8C2"
+                                            />
+                                        </svg>
+                                    </If>
+                                    <If condition={activeItemId == item.historyid}>
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 16 16"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M3.87035 9.37508C3.60009 9.06119 3.63546 8.58763 3.94936 8.31737L7.51553 5.24692C7.79704 5.00455 8.21355 5.00476 8.49481 5.24742L12.0536 8.31787C12.3673 8.58845 12.4022 9.06204 12.1316 9.37566C11.861 9.68928 11.3874 9.72417 11.0738 9.45359L8.00438 6.80541L4.92806 9.45409C4.61416 9.72435 4.14061 9.68898 3.87035 9.37508Z"
+                                                fill="#C3C8C2"
+                                            />
+                                        </svg>
+                                    </If>
+                                </div>
+                            </div>
+                            <If condition={activeItemId == item.historyid}>
+                                <div className="row active-history-item">
+                                    <div className="cell">
+                                        <LineContainer
+                                            key={activeItemId}
+                                            historyId={activeItemId}
+                                            width={this.tableWidth.get()}
+                                        />
+                                    </div>
+                                </div>
+                            </If>
+                        </For>
+                    </div>
                 </div>
                 <div key="control2" className={cn("control-bar", { "is-hidden": items.length == 0 || !hasMore })}>
                     <div className="spacer" />

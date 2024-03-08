@@ -156,6 +156,7 @@
         align-items: center;
         height: 32px;
         flex-shrink: 0;
+        border-bottom: 2px solid #ccc;
 
         .is-hidden {
             display: none;
@@ -242,16 +243,23 @@
         flex-grow: 1;
         min-height: 200px;
         overflow-y: auto;
+        height: calc(100vh - 186px); // 186px is sum of all the heights above the history-scroll-region
     }
 
     .history-table {
         margin: 0px 10px 10px 10px;
-        table-layout: fixed;
-        border-top: 2px solid #ccc;
+        display: flex;
+        flex-direction: column;
         width: calc(100% - 20px);
 
-        tr.active-history-item {
-            td {
+        .row.active-history-item {
+            display: flex;
+            border-bottom: 1px solid var(--table-tr-border-bottom-color);
+            align-items: center;
+            padding: 0 10px;
+            /* Other styles... */
+
+            .cell {
                 padding-right: 10px;
 
                 .line-container {
@@ -290,7 +298,7 @@
             }
         }
 
-        tr.history-item {
+        .row.history-item {
             padding: 0 10px 0 10px;
             display: flex;
             border-bottom: 1px solid var(--table-tr-border-bottom-color);
@@ -313,41 +321,27 @@
                 }
             }
 
-            td {
+            .cell {
+                display: flex;
                 padding-top: 5px;
                 padding-bottom: 5px;
                 padding-left: 5px;
             }
 
-            td.selectbox {
-                flex: 0 0 auto;
-                flex-basis: 25px;
+            .selectbox {
+                flex: 0 0 20px;
                 cursor: pointer;
             }
 
-            td.bookmark {
-                flex: 0 0 auto;
-                flex-basis: 20px;
-                margin-right: 1em;
-                cursor: pointer;
-            }
-
-            td.ts {
-                flex: 0 0 auto;
-                flex-basis: 86px;
-                margin-left: 24px;
-            }
-
-            td.workspace {
-                flex: 0 0 auto;
-                flex-basis: 120px;
+            .workspace {
+                flex: 0 0 120px;
                 text-overflow: ellipsis;
                 margin-left: 24px;
+                overflow: hidden;
             }
 
-            td.remote {
-                flex: 0 0 auto;
-                flex-basis: 150px;
+            .remote {
+                flex: 0 0 150px;
                 text-overflow: ellipsis;
                 padding-right: 5px;
                 max-width: 150px;
@@ -355,16 +349,21 @@
                 margin-left: 24px;
             }
 
-            td.cmdstr {
-                color: var(--app-text-color);
-                flex: 1 0 0;
+            .ts {
+                flex: 0 0 86px;
+                margin-left: 24px;
+            }
+
+            .cmdstr {
+                flex-grow: 1;
                 border-radius: 3px;
                 white-space: pre;
                 max-height: 70px;
                 min-width: 300px;
                 padding-top: 4px;
                 padding-bottom: 4px;
-                overflow: hidden;
+                overflow-x: scroll;
+                position: relative;
 
                 .use-button {
                     visibility: hidden;
@@ -375,9 +374,8 @@
                 }
             }
 
-            td.downarrow {
-                display: flex;
-                width: 32px;
+            .downarrow {
+                flex: 0 0 32px;
                 justify-content: center;
                 align-items: center;
                 align-self: stretch;
