@@ -98,6 +98,7 @@
     --form-element-error-color: rgb(204, 0, 0);
     --form-element-icon-color: #fff;
     --form-element-disabled-text-color: #777;
+    --form-element-placeholder-color: #777;
 
     /* button colors */
     /* todo: use --form-element-* directly in elements */
