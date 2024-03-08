@@ -2,6 +2,7 @@
    SPDX-License-Identifier: Apache-2.0 */
 
 @import url("./term-default.css");
+@import url("./term-dark.css");
 
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
@@ -104,7 +105,6 @@
     --toggle-checked-bg-color: var(--app-accent-color);
 
     /* cmdstrcode colors */
-    --cmdstrcode-bg-color: var(--app-bg-color);
     --cmdstrcode-text-color: var(--app-text-color);
 
     /* markdown colors */

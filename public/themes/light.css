@@ -60,10 +60,6 @@
     --scrollbar-thumb-color: rgba(0, 0, 0, 0.2);
     --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.4);
 
-    /* cmdstrcode colors */
-    --cmdstrcode-bg-color: var(--term-black);
-    --cmdstrcode-text-color: var(--term-white);
-
     /* line color */
     --line-actions-bg-color: rgba(0, 0, 0, 0.1);
     --line-actions-inactive-color: rgba(0, 0, 0, 0.3);
