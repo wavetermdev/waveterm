@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If, For } from "tsx-control-statements/components";
+import { For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "@/elements";
@@ -38,15 +38,13 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
     screen: Screen;
-    sessionId: string;
     screenId: string;
     remotes: RemoteType[];
 
     constructor(props) {
         super(props);
-        let screenSettingsModal = GlobalModel.screenSettingsModal.get();
-        let { sessionId, screenId } = screenSettingsModal;
-        this.sessionId = sessionId;
+        const screenSettingsModal = GlobalModel.screenSettingsModal.get();
+        const { sessionId, screenId } = screenSettingsModal;
         this.screenId = screenId;
         this.screen = GlobalModel.getScreenById(sessionId, screenId);
         if (this.screen == null || sessionId == null || screenId == null) {
@@ -67,8 +65,8 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                 value: remote.remotecanonicalname,
             }))
             .sort((a, b) => {
-                let connValA = util.getRemoteConnVal(a);
-                let connValB = util.getRemoteConnVal(b);
+                const connValA = util.getRemoteConnVal(a);
+                const connValB = util.getRemoteConnVal(b);
                 if (connValA !== connValB) {
                     return connValA - connValB;
                 }
@@ -92,7 +90,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen.getTabColor() == color) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { tabcolor: color }, false);
+        const prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { tabcolor: color }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -101,7 +99,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen.getTabIcon() == icon) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screen.screenId, { tabicon: icon }, false);
+        const prtn = GlobalCommandRunner.screenSetSettings(this.screen.screenId, { tabicon: icon }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -113,7 +111,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen.archived.get() == val) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenArchive(this.screenId, val);
+        const prtn = GlobalCommandRunner.screenArchive(this.screenId, val);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -125,13 +123,13 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen.isWebShared() == val) {
             return;
         }
-        let message = val ? WebShareConfirmMarkdown : WebStopShareConfirmMarkdown;
-        let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
+        const message = val ? WebShareConfirmMarkdown : WebStopShareConfirmMarkdown;
+        const alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
         alertRtn.then((result) => {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenWebShare(this.screen.screenId, val);
+            const prtn = GlobalCommandRunner.screenWebShare(this.screen.screenId, val);
             util.commandRtnHandler(prtn, this.errorMessage);
         });
     }
@@ -141,7 +139,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen == null) {
             return null;
         }
-        let shareLink = this.screen.getWebShareUrl();
+        const shareLink = this.screen.getWebShareUrl();
         if (shareLink == null) {
             return;
         }
@@ -164,7 +162,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (util.isStrEq(val, this.screen.name.get())) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { name: val }, false);
+        const prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { name: val }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -176,7 +174,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (util.isStrEq(val, this.screen.getShareName())) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { sharename: val }, false);
+        const prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { sharename: val }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -216,14 +214,14 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
     }
 
     render() {
-        let screen = this.screen;
+        const screen = this.screen;
         if (screen == null) {
             return null;
         }
         let color: string = null;
         let icon: string = null;
         let index: number = 0;
-        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+        const curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
 
         return (
             <Modal className="screen-settings-modal">

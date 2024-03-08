@@ -2202,7 +2202,7 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	home := base.GetHomeDir()
 	localConfig := filepath.Join(home, ".ssh", "config")
-	systemConfig := filepath.Join("/", "ssh", "config")
+	systemConfig := filepath.Join("/etc", "ssh", "config")
 	sshConfigFiles := []string{localConfig, systemConfig}
 	ssh_config.ReloadConfigs()
 	hostPatterns, hostPatternsErr := resolveSshConfigPatterns(sshConfigFiles)

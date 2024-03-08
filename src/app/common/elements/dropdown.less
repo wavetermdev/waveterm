@@ -3,10 +3,10 @@
     height: 44px;
     min-width: 150px;
     width: 100%;
-    border: 1px solid var(--dropdown-border-color);
+    border: 2px solid var(--form-element-border-color);
     border-radius: 6px;
-    background: var(--dropdown-bg-color);
     line-height: 22px;
+    background: var(--form-element-bg-color);
 
     &.no-label {
         height: 34px;
@@ -18,7 +18,7 @@
         top: 16px;
         font-size: 12.5px;
         transition: all 0.3s;
-        color: var(--dropdown-label-color);
+        color: var(--form-element-label-color);
         line-height: 10px;
 
         &.float {
@@ -89,11 +89,15 @@
     }
 
     &-error {
-        border-color: var(--dropdown-error-color);
+        border-color: var(--form-element-error-color);
     }
 
     &:focus {
-        border-color: var(--dropdown-focus-color);
+        border-color: var(--form-element-primary-color);
+    }
+
+    .lefticon {
+        color: var(--app-text-color);
     }
 }
 
@@ -110,13 +114,13 @@
     align-items: flex-start;
     gap: 4px;
     border-radius: 6px;
-    border: 1px solid var(--dropdown-border-color);
-    background: var(--dropdown-bg-color);
+    border: 2px solid var(--form-element-border-color);
+    background: var(--form-element-bg-color);
     // box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.5), 0px 3px 8px 0px rgba(0, 0, 0, 0.35), 0px 0px 0.5px 0px #fff inset,
     // 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
     animation-fill-mode: forwards;
     z-index: 1000;
-    color: var(--dropdown-text-color);
+    color: var(--form-element-text-color);
 }
 
 .wave-dropdown-menu-close {

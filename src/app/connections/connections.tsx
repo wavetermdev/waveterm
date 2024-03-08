@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, RemotesModel, GlobalCommandRunner } from "@/models";
-import { Button, Status, ShowWaveShellInstallPrompt } from "@/common/elements";
+import { Button, Status } from "@/common/elements";
 import * as util from "@/util/util";
 
 import "./connections.less";
@@ -72,13 +72,8 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
-    importSshConfig(): void {
-        GlobalCommandRunner.importSshConfig();
-    }
-
-    @boundMethod
     handleImportSshConfig(): void {
-        ShowWaveShellInstallPrompt(this.importSshConfig);
+        GlobalCommandRunner.importSshConfig();
     }
 
     @boundMethod

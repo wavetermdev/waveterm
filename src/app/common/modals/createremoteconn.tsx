@@ -7,16 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
-import {
-    Modal,
-    TextField,
-    NumberField,
-    InputDecoration,
-    Dropdown,
-    PasswordField,
-    Tooltip,
-    ShowWaveShellInstallPrompt,
-} from "@/elements";
+import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "@/elements";
 import * as util from "@/util/util";
 
 import "./createremoteconn.less";
@@ -73,12 +64,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleOk(): void {
-        ShowWaveShellInstallPrompt(this.submitRemote);
-    }
-
-    @boundMethod
-    submitRemote(): void {
+    handleSubmitRemote(): void {
         mobx.action(() => {
             this.errorStr.set(null);
         })();
@@ -275,7 +261,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                                 { value: "none", label: "none" },
                                 { value: "key", label: "key" },
                                 { value: "password", label: "password" },
-                                { value: "key+password", label: "key+password" },
+                                { value: "key+password", label: "key+passphrase" },
                             ]}
                             value={this.tempAuthMode.get()}
                             onChange={(val: string) => {
@@ -288,17 +274,18 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                                             message={
                                                 <ul>
                                                     <li>
-                                                        <b>none</b> - no authentication, or authentication is already
-                                                        configured in your ssh config.
+                                                        <b>none</b> - no authentication details are stored.
                                                     </li>
                                                     <li>
-                                                        <b>key</b> - use a private key.
+                                                        <b>key</b> - provide a custom private key for authentication.
                                                     </li>
                                                     <li>
-                                                        <b>password</b> - use a password.
+                                                        <b>password</b> - provide a password (to save) for
+                                                        authentication.
                                                     </li>
                                                     <li>
-                                                        <b>key+password</b> - use a key with a passphrase.
+                                                        <b>key+passphrase</b> - provide a custom private key with a
+                                                        passphrase (to save) for authentication.
                                                     </li>
                                                 </ul>
                                             }
@@ -374,7 +361,7 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
                 </div>
-                <Modal.Footer onCancel={this.model.closeModal} onOk={this.handleOk} okLabel="Connect" />
+                <Modal.Footer onCancel={this.model.closeModal} onOk={this.handleSubmitRemote} okLabel="Connect" />
             </Modal>
         );
     }

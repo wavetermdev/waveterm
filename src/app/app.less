@@ -12,7 +12,7 @@ body {
 
 body {
     &.is-dev .sidebar {
-        background-color: var(--app-panel-bg-color-dev);
+        --app-panel-bg-color: var(--app-panel-bg-color-dev);
     }
 }
 
@@ -210,10 +210,10 @@ svg.icon {
 .dropdown,
 .button {
     display: inline-block;
-    border: 1px solid var(--button-secondary-bg-color) !important;
+    border: 1px solid var(--form-element-secondary-color) !important;
     border-radius: 5px;
     cursor: pointer;
-    background-color: var(--button-secondary-bg-color) !important;
+    background-color: var(--form-element-secondary-color) !important;
     color: var(--app-accent-color);
     .hoverEffect;
     &:hover {
@@ -221,7 +221,7 @@ svg.icon {
     }
     &.disabled {
         color: var(--app-text-color);
-        background: var(--button-secondary-bg-color);
+        background: var(--form-element-secondary-color);
         opacity: 0.5;
         cursor: initial;
     }
@@ -382,9 +382,9 @@ a.a-block {
     }
 
     &.connect-button {
-        color: var(--button-primary-bg-color);
+        color: var(--form-element-primary-color);
         &:hover {
-            color: var(--button-primary-bg-color);
+            color: var(--form-element-primary-color);
         }
     }
 
@@ -396,9 +396,9 @@ a.a-block {
     }
 
     &.success-button {
-        color: var(--button-primary-bg-color);
+        color: var(--form-element-primary-color);
         &:hover {
-            color: var(--button-primary-bg-color);
+            color: var(--form-element-primary-color);
         }
     }
 
