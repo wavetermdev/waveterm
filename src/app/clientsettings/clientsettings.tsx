@@ -168,7 +168,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curTheme = GlobalModel.getTheme();
 
         return (
-            <MainView viewName="clientsettings" title="Client Settings" onClose={this.handleClose}>
+            <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
                 <div className="content">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>

@@ -153,15 +153,15 @@ class HistoryCmdStr extends React.Component<
                         <div>copied</div>
                     </div>
                 </If>
-                <div key="use" className="use-button hoverEffect" title="Use Command" onClick={this.handleUse}>
-                    <CheckIcon className="icon" />
-                </div>
                 <div key="code" className="code-div">
                     <code>{cmdstr}</code>
                 </div>
-                <div key="copy" className="copy-control hoverEffect">
-                    <div className="inner-copy" onClick={this.handleCopy} title="copy">
+                <div key="copy" className="actions-block">
+                    <div className="action-item" onClick={this.handleCopy} title="copy">
                         <CopyIcon className="icon" />
+                    </div>
+                    <div key="use" className="action-item" title="Use Command" onClick={this.handleUse}>
+                        <CheckIcon className="icon" />
                     </div>
                 </div>
             </div>
@@ -447,7 +447,7 @@ class HistoryView extends React.Component<{}, {}> {
         let remoteId: string = null;
 
         return (
-            <MainView viewName="history" title="History" onClose={this.handleClose}>
+            <MainView className="history-view" title="History" onClose={this.handleClose}>
                 <div key="search" className="history-search">
                     <div className="main-search field">
                         <TextField
@@ -634,12 +634,14 @@ class HistoryView extends React.Component<{}, {}> {
                                         fontSize="normal"
                                         limitHeight={true}
                                     />
+                                    <div
+                                        className="flex-spacer activate-item-spacer"
+                                        onClick={() => this.activateItem(item.historyid)}
+                                    />
                                 </div>
-                                <div className="cell workspace text-standard">
-                                    {formatSSName(snames, scrnames, item)}
-                                </div>
-                                <div className="cell remote text-standard">{formatRemoteName(rnames, item.remote)}</div>
-                                <div className="cell ts text-standard">{getHistoryViewTs(nowDate, item.ts)}</div>
+                                <div className="cell workspace">{formatSSName(snames, scrnames, item)}</div>
+                                <div className="cell remote">{formatRemoteName(rnames, item.remote)}</div>
+                                <div className="cell ts">{getHistoryViewTs(nowDate, item.ts)}</div>
                                 <div className="cell downarrow" onClick={() => this.activateItem(item.historyid)}>
                                     <If condition={activeItemId != item.historyid}>
                                         <svg
@@ -685,7 +687,10 @@ class HistoryView extends React.Component<{}, {}> {
                         </For>
                     </div>
                 </div>
-                <div key="control2" className={cn("control-bar", { "is-hidden": items.length == 0 || !hasMore })}>
+                <div
+                    key="control2"
+                    className={cn("control-bar", "is-bottom", { "is-hidden": items.length == 0 || !hasMore })}
+                >
                     <div className="spacer" />
                     <div className="showing-text">
                         Showing {offset + 1}-{offset + items.length}

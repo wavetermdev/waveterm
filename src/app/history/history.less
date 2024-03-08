@@ -1,11 +1,20 @@
 .history-view {
     padding-bottom: 10px;
+    min-height: 0;
 
     .icon {
         width: 1.5em !important;
         height: 1em !important;
         padding-left: 5px;
         fill: var(--app-text-color);
+    }
+
+    .mainview-content {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        padding: 10px 10px 0 10px;
+        min-height: 0;
     }
 
     .history-checkbox {
@@ -154,17 +163,22 @@
         margin-top: 10px;
         margin-left: 10px;
         align-items: center;
-        height: 32px;
+        height: 35px;
         flex-shrink: 0;
-        border-bottom: 2px solid #ccc;
 
         .is-hidden {
             display: none;
         }
 
         &.is-top {
+            border-bottom: 2px solid #ccc;
             border-top: 1px solid #333;
             padding-top: 4px;
+            padding-bottom: 4px;
+        }
+
+        &.is-bottom {
+            border-top: 2px solid #ccc;
         }
 
         .trash-icon {
@@ -251,6 +265,8 @@
         display: flex;
         flex-direction: column;
         width: calc(100% - 20px);
+        flex-grow: 1;
+        min-height: 200px;
 
         .row.active-history-item {
             display: flex;
@@ -303,6 +319,7 @@
             border-bottom: 1px solid var(--table-tr-border-bottom-color);
             align-items: center;
             color: var(--app-text-color);
+            font: var(--base-font);
 
             &.is-selected {
                 background-color: var(--table-tr-selected-bg-color);
@@ -328,7 +345,7 @@
             }
 
             .selectbox {
-                flex: 0 0 20px;
+                flex: 0 0 30px;
                 cursor: pointer;
             }
 
@@ -359,18 +376,38 @@
                 white-space: pre;
                 max-height: 70px;
                 min-width: 300px;
-                padding-top: 4px;
-                padding-bottom: 4px;
+                padding-top: 0;
+                padding-bottom: 0;
                 overflow-x: scroll;
                 position: relative;
 
-                .use-button {
+                .cmdstr-code {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: flex-end;
+                    padding-top: 4px;
+                    padding-bottom: 4px;
+                }
+
+                .actions-block {
+                    display: flex;
+                    flex-direction: row;
+
+                    .action-item:hover {
+                        color: var(--app-text-color);
+                        cursor: pointer;
+                    }
+
                     visibility: hidden;
                 }
 
-                &:hover .use-button {
-                    visibility: visible;
+                .activate-item-spacer {
+                    cursor: pointer;
                 }
+            }
+
+            &:hover .cmdstr .actions-block {
+                visibility: visible;
             }
 
             .downarrow {
