@@ -47,6 +47,8 @@
     --form-element-label-color: rgba(0, 0, 0, 0.6);
     --form-element-secondary-color: rgba(0, 0, 0, 0.09);
     --form-element-icon-color: rgb(0, 0, 0, 0.6);
+    --form-element-disabled-text-color: #b7b7b7;
+    --form-element-placeholder-color: #b7b7b7;
 
     /* modal colors */
     --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
