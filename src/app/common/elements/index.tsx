@@ -13,7 +13,6 @@ export { NumberField } from "./numberfield";
 export { PasswordField } from "./passwordfield";
 export { ResizableSidebar } from "./resizablesidebar";
 export { SettingsError } from "./settingserror";
-export { ShowWaveShellInstallPrompt } from "./showwaveshellinstallprompt";
 export { Status } from "./status";
 export { TextField } from "./textfield";
 export { Toggle } from "./toggle";

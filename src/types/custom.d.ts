@@ -666,6 +666,7 @@ declare global {
         title: string;
         markdown: boolean;
         timeoutms: number;
+        checkboxmsg: string;
     };
 
     type UserInputResponsePacket = {
@@ -674,6 +675,7 @@ declare global {
         text?: string;
         confirm?: boolean;
         errormsg?: string;
+        checkboxstat?: boolean;
     };
 
     type RenderModeType = "normal" | "collapsed" | "expanded";

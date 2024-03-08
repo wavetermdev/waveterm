@@ -1202,14 +1202,54 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 		msh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
 		return
 	}
-	if autoInstall {
+
+	var makeClientCtx context.Context
+	var makeClientCancelFn context.CancelFunc
+	msh.WithLock(func() {
+		makeClientCtx, makeClientCancelFn = context.WithCancel(context.Background())
+		msh.MakeClientCancelFn = makeClientCancelFn
+		msh.MakeClientDeadline = nil
+		go msh.NotifyRemoteUpdate()
+	})
+	defer makeClientCancelFn()
+	clientData, err := sstore.EnsureClientData(makeClientCtx)
+	if err != nil {
+		msh.WriteToPtyBuffer("*error: cannot obtain client data: %v", err)
+		return
+	}
+	hideShellPrompt := clientData.ClientOpts.ConfirmFlags["hideshellprompt"]
+	baseStatus := msh.GetStatus()
+
+	if baseStatus == StatusConnected {
+		ctx, cancelFn := context.WithTimeout(makeClientCtx, 60*time.Second)
+		defer cancelFn()
+		request := &userinput.UserInputRequestType{
+			ResponseType: "confirm",
+			QueryText:    "Waveshell is running on your connection and must be restarted to re-install. Would you like to continue?",
+			Title:        "Restart Waveshell",
+		}
+		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			if err == context.Canceled {
+				msh.WriteToPtyBuffer("installation canceled by user\n")
+			} else {
+				msh.WriteToPtyBuffer("timed out waiting for user input\n")
+			}
+			return
+		}
+		if !response.Confirm {
+			msh.WriteToPtyBuffer("installation canceled by user\n")
+			return
+		}
+	} else if !hideShellPrompt {
+		ctx, cancelFn := context.WithTimeout(makeClientCtx, 60*time.Second)
+		defer cancelFn()
 		request := &userinput.UserInputRequestType{
 			ResponseType: "confirm",
 			QueryText:    "Waveshell must be reinstalled on the connection to continue. Would you like to install it?",
 			Title:        "Install Waveshell",
+			CheckBoxMsg:  "Don't show me this again",
 		}
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancelFn()
 		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 		if err != nil {
 			var errMsg error
@@ -1234,28 +1274,24 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 			})
 			return
 		}
-	}
-	baseStatus := msh.GetStatus()
-	if baseStatus == StatusConnected {
-		request := &userinput.UserInputRequestType{
-			ResponseType: "confirm",
-			QueryText:    "Waveshell is running on your connection and must be restarted to re-install. Would you like to continue?",
-			Title:        "Restart Waveshell",
-		}
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
-		defer cancelFn()
-		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
-		if err != nil {
-			if err == context.Canceled {
-				msh.WriteToPtyBuffer("installation canceled by user\n")
-			} else {
-				msh.WriteToPtyBuffer("timed out waiting for user input\n")
+		if response.CheckboxStat {
+			clientData.ClientOpts.ConfirmFlags["hideshellprompt"] = true
+			err = sstore.SetClientOpts(makeClientCtx, clientData.ClientOpts)
+			if err != nil {
+				msh.WriteToPtyBuffer("*error, %s\n", err)
+				msh.setErrorStatus(err)
+				return
 			}
-			return
-		}
-		if !response.Confirm {
-			msh.WriteToPtyBuffer("installation canceled by user\n")
-			return
+
+			//reload updated clientdata before sending
+			clientData, err = sstore.EnsureClientData(makeClientCtx)
+			if err != nil {
+				msh.WriteToPtyBuffer("*error, %s\n", err)
+				msh.setErrorStatus(err)
+				return
+			}
+			update := scbus.MakeUpdatePacket()
+			update.AddUpdate(*clientData)
 		}
 	}
 	curStatus := msh.GetInstallStatus()
@@ -1267,14 +1303,14 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 		msh.WriteToPtyBuffer("*error: cannot install on a local remote\n")
 		return
 	}
-	_, err := shellapi.MakeShellApi(packet.ShellType_bash)
+	_, err = shellapi.MakeShellApi(packet.ShellType_bash)
 	if err != nil {
 		msh.WriteToPtyBuffer("*error: %v\n", err)
 		return
 	}
 	if msh.Client == nil {
 		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
-		client, err := ConnectToClient(remoteCopy.SSHOpts, remoteDisplayName)
+		client, err := ConnectToClient(makeClientCtx, remoteCopy.SSHOpts, remoteDisplayName)
 		if err != nil {
 			statusErr := fmt.Errorf("ssh cannot connect to client: %w", err)
 			msh.setInstallErrorStatus(statusErr)
@@ -1481,7 +1517,7 @@ func (msh *MShellProc) getActiveShellTypes(ctx context.Context) ([]string, error
 	return utilfn.CombineStrArrays(rtn, activeShells), nil
 }
 
-func (msh *MShellProc) createWaveshellSession(remoteCopy sstore.RemoteType) (shexec.ConnInterface, error) {
+func (msh *MShellProc) createWaveshellSession(clientCtx context.Context, remoteCopy sstore.RemoteType) (shexec.ConnInterface, error) {
 	msh.WithLock(func() {
 		msh.Err = nil
 		msh.ErrNoInitPk = false
@@ -1510,7 +1546,7 @@ func (msh *MShellProc) createWaveshellSession(remoteCopy sstore.RemoteType) (she
 		wsSession = shexec.CmdWrap{Cmd: ecmd}
 	} else if msh.Client == nil {
 		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
-		client, err := ConnectToClient(remoteCopy.SSHOpts, remoteDisplayName)
+		client, err := ConnectToClient(clientCtx, remoteCopy.SSHOpts, remoteDisplayName)
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot connect to client: %w", err)
 		}
@@ -1559,16 +1595,6 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 		msh.WriteToPtyBuffer("remote is trying to install, cancel install before trying to connect again\n")
 		return
 	}
-	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
-	wsSession, err := msh.createWaveshellSession(remoteCopy)
-	if err != nil {
-		msh.WriteToPtyBuffer("*error, %s\n", err.Error())
-		msh.setErrorStatus(err)
-		msh.WithLock(func() {
-			msh.Client = nil
-		})
-		return
-	}
 	var makeClientCtx context.Context
 	var makeClientCancelFn context.CancelFunc
 	msh.WithLock(func() {
@@ -1578,6 +1604,16 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 		go msh.NotifyRemoteUpdate()
 	})
 	defer makeClientCancelFn()
+	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
+	wsSession, err := msh.createWaveshellSession(makeClientCtx, remoteCopy)
+	if err != nil {
+		msh.WriteToPtyBuffer("*error, %s\n", err.Error())
+		msh.setErrorStatus(err)
+		msh.WithLock(func() {
+			msh.Client = nil
+		})
+		return
+	}
 	cproc, err := shexec.MakeClientProc(makeClientCtx, wsSession)
 	msh.WithLock(func() {
 		msh.MakeClientCancelFn = nil
