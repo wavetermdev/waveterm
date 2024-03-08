@@ -9,4 +9,13 @@ if [ -z "$VERSION" ]; then
     exit
 fi
 
-aws s3 cp s3://waveterm-github-artifacts/staging/$VERSION/ s3://dl.waveterm.dev/releases/ --recursive --profile $AWS_PROFILE
+ORIGIN="waveterm-github-artifacts/staging/$VERSION/"
+DESTINATION="dl.waveterm.dev/releases/"
+
+OUTPUT=$(aws s3 cp s3://$ORIGIN s3://$DESTINATION --recursive --profile $AWS_PROFILE)
+
+for line in $OUTPUT; do
+    PREFIX=${line%%${DESTINATION}*}
+    SUFFIX=${line:${#PREFIX}}
+    echo "https://$SUFFIX"
+done
