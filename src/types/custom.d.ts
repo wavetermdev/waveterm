@@ -667,6 +667,7 @@ declare global {
         markdown: boolean;
         timeoutms: number;
         checkboxmsg: string;
+        publictext: boolean;
     };
 
     type UserInputResponsePacket = {

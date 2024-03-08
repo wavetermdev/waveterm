@@ -1,7 +1,7 @@
 import * as React from "react";
 import { GlobalModel } from "@/models";
 import { Choose, When, If } from "tsx-control-statements/components";
-import { Modal, PasswordField, Markdown, Checkbox } from "@/elements";
+import { Modal, PasswordField, TextField, Markdown, Checkbox } from "@/elements";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./userinput.less";
@@ -82,8 +82,17 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                         </If>
                         <If condition={!userInputRequest.markdown}>{userInputRequest.querytext}</If>
                     </div>
-                    <Choose>
-                        <When condition={userInputRequest.responsetype == "text"}>
+                    <If condition={userInputRequest.responsetype == "text"}>
+                        <If condition={userInputRequest.publictext}>
+                            <TextField
+                                onChange={setResponseText}
+                                value={responseText}
+                                maxLength={400}
+                                autoFocus={true}
+                                onKeyDown={(e) => handleTextKeyDown(e)}
+                            />
+                        </If>
+                        <If condition={!userInputRequest.publictext}>
                             <PasswordField
                                 onChange={setResponseText}
                                 value={responseText}
@@ -91,8 +100,8 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                                 autoFocus={true}
                                 onKeyDown={(e) => handleTextKeyDown(e)}
                             />
-                        </When>
-                    </Choose>
+                        </If>
+                    </If>
                 </div>
                 <If condition={userInputRequest.checkboxmsg != ""}>
                     <Checkbox
