@@ -330,7 +330,10 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         height: bounds.height,
         minWidth: 800,
         minHeight: 600,
-        icon: unamePlatform == "linux" ? "public/logos/wave-logo-dark.png" : undefined,
+        icon:
+            unamePlatform == "linux"
+                ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
+                : undefined,
         webPreferences: {
             preload: path.join(getElectronAppBasePath(), DistDir, "preload.js"),
         },
