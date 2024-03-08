@@ -22,6 +22,7 @@ const WaveDevVarName = "WAVETERM_DEV";
 const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
+const startTs = Date.now();
 
 const isDev = process.env[WaveDevVarName] != null;
 const waveHome = getWaveHomeDir();
@@ -333,6 +334,10 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         webPreferences: {
             preload: path.join(getElectronAppBasePath(), DistDir, "preload.js"),
         },
+        show: false,
+    });
+    win.once("ready-to-show", () => {
+        win.show();
     });
     const indexHtml = isDev ? "index-dev.html" : "index.html";
     win.loadFile(path.join(getElectronAppBasePath(), "public", indexHtml));
@@ -617,12 +622,12 @@ function getFetchHeaders() {
 }
 
 async function getClientDataPoll(loopNum: number): Promise<ClientDataType | null> {
-    const lastTime = loopNum >= 6;
+    const lastTime = loopNum >= 30;
     const cdata = await getClientData(!lastTime, loopNum);
     if (lastTime || cdata != null) {
         return cdata;
     }
-    await sleep(1000);
+    await sleep(200);
     return getClientDataPoll(loopNum + 1);
 }
 
@@ -897,6 +902,10 @@ electron.ipcMain.on("change-auto-update", (_, enable: boolean) => {
  * @param clientData The client data to use to configure the auto-updater. If the clientData has noreleasecheck set to true, the auto-updater will be disabled.
  */
 function configureAutoUpdaterStartup(clientData: ClientDataType) {
+    if (clientData == null) {
+        configureAutoUpdater(false);
+        return;
+    }
     configureAutoUpdater(!clientData.clientopts.noreleasecheck);
 }
 
