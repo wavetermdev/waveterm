@@ -87,7 +87,7 @@ class AboutModal extends React.Component<{}, {}> {
                         <div className="text-wrapper">
                             <div>Wave Terminal</div>
                             <div className="text-standard">
-                                Open Source AI-Native Terminal
+                                Open-Source AI-Native Terminal
                                 <br />
                                 Built for Seamless Workflows
                             </div>
