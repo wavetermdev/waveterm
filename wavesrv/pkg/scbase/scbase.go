@@ -36,7 +36,7 @@ const WaveDirName = ".waveterm"        // must match emain.ts
 const WaveDevDirName = ".waveterm-dev" // must match emain.ts
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const WaveAuthKeyFileName = "waveterm.authkey"
-const MShellVersion = "v0.4.0"
+const MShellVersion = "v0.5.0"
 
 var SessionDirCache = make(map[string]string)
 var ScreenDirCache = make(map[string]string)

@@ -377,7 +377,14 @@ class SourceCodeRenderer extends React.Component<
             fontFamily: GlobalModel.getTermFontFamily(),
             readOnly: !this.getAllowEditing(),
         };
+        let lineState = this.props.lineState;
+        let minimap = true;
         if (this.state.showPreview) {
+            minimap = false;
+        } else if ("minimap" in lineState && !lineState["minimap"]) {
+            minimap = false;
+        }
+        if (!minimap) {
             opts.minimap = { enabled: false };
         }
         return opts;
@@ -385,7 +392,6 @@ class SourceCodeRenderer extends React.Component<
 
     getCodeEditor = () => {
         let theme = GlobalModel.isThemeDark() ? "wave-theme-dark" : "wave-theme-light";
-        console.log("monaco theme", theme);
         return (
             <div className="editor-wrap" style={{ maxHeight: this.state.editorHeight }}>
                 {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
