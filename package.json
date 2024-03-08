@@ -5,7 +5,7 @@
         "email": "info@commandline.dev"
     },
     "productName": "Wave",
-    "description": "An open-source, cross-platform, AI-integrated, modern terminal for seamless workflows.",
+    "description": "An Open-Source, AI-Native, Terminal Built for Seamless Workflows",
     "version": "0.7.0",
     "main": "dist/emain.js",
     "license": "Apache-2.0",
