@@ -680,17 +680,20 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 func AuthKeyMiddleWare(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqAuthKey := r.Header.Get("X-AuthKey")
+		w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 		if reqAuthKey == "" {
+			log.Printf("mk2\n")
 			w.WriteHeader(500)
 			w.Write([]byte("no x-authkey header"))
 			return
 		}
 		if reqAuthKey != GlobalAuthKey {
+			log.Printf("mk1\n")
 			w.WriteHeader(500)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
 		}
-		w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
+		log.Printf("mk3\n")
 		next.ServeHTTP(w, r)
 	})
 }

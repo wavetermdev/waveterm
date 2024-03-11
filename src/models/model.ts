@@ -36,6 +36,7 @@ import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
+import * as util from "@/util/util";
 
 type SWLinePtr = {
     line: LineType;
@@ -143,6 +144,8 @@ class Model {
         });
         this.ws.reconnect();
         this.keybindManager = new KeybindManager();
+        this.readConfigKeybindings();
+        this.initSystemKeybindings();
         this.inputModel = new InputModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
@@ -201,8 +204,22 @@ class Model {
         };
     }
 
-    initKeybindings(userKeybindings: any) {
-        this.keybindManager = new KeybindManager(userKeybindings);
+    readConfigKeybindings() {
+        const url = new URL(this.getBaseHostPort() + "/config/keybindings.json");
+        let prtn = fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() });
+        prtn.then((resp) => {
+            if (resp.status == 404) {
+                return [];
+            } else if (!resp.ok) {
+                util.handleNotOkResp(resp, url);
+            }
+            return resp.json();
+        }).then((userKeybindings) => {
+            this.keybindManager.setUserKeybindings(userKeybindings);
+        });
+    }
+
+    initSystemKeybindings() {
         this.keybindManager.registerKeybinding("system", "electron", "any", (waveEvent) => {
             if (this.keybindManager.checkKeyPressed(waveEvent, "system:toggleDeveloperTools")) {
                 getApi().toggleDeveloperTools();

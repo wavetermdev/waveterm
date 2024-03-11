@@ -398,6 +398,7 @@ function fireAndForget(f: () => Promise<any>) {
 }
 
 export {
+    handleNotOkResp,
     handleJsonFetchResponse,
     base64ToString,
     stringToBase64,
