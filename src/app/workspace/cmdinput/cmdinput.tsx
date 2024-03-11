@@ -161,7 +161,7 @@ class CmdInput extends React.Component<{}, {}> {
                             </CenteredIcon>
                         </div>
                     </If>
-                    <div key="ai" title="Wave AI (Cmd-Space)" className="cmdinput-icon" onClick={this.clickAIAction}>
+                    <div key="ai" title="Wave AI (Ctrl-Space)" className="cmdinput-icon" onClick={this.clickAIAction}>
                         <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
                     </div>
                     <div

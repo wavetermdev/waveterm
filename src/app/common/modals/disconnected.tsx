@@ -90,7 +90,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                         onClick={this.restartServer}
                         leftIcon={<i className="fa-sharp fa-solid fa-triangle-exclamation"></i>}
                     >
-                        Restart Server
+                        Restart Wave Backend
                     </Button>
                 </div>
             </Modal>

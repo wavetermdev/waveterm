@@ -60,6 +60,7 @@
     --app-panel-bg-color-dev: rgb(21, 23, 48);
     --app-icon-color: rgb(139, 145, 138);
     --app-icon-hover-color: #fff;
+    --app-selected-mask-color: rgba(255, 255, 255, 0.06);
 
     /* icon colors */
 
