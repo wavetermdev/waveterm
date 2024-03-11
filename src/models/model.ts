@@ -36,6 +36,7 @@ import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
+import * as util from "@/util/util";
 
 type SWLinePtr = {
     line: LineType;
@@ -143,6 +144,8 @@ class Model {
         });
         this.ws.reconnect();
         this.keybindManager = new KeybindManager();
+        this.readConfigKeybindings();
+        this.initSystemKeybindings();
         this.inputModel = new InputModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
@@ -170,13 +173,6 @@ class Model {
                 return appconst.MaxFontSize;
             }
             return fontSize;
-        });
-        this.keybindManager.registerKeybinding("system", "electron", "any", (waveEvent) => {
-            if (this.keybindManager.checkKeyPressed(waveEvent, "system:toggleDeveloperTools")) {
-                getApi().toggleDeveloperTools();
-                return true;
-            }
-            return false;
         });
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onICmd(this.onICmd.bind(this));
@@ -206,6 +202,31 @@ class Model {
             lineHeightSm: 13,
             pad: 7,
         };
+    }
+
+    readConfigKeybindings() {
+        const url = new URL(this.getBaseHostPort() + "/config/keybindings.json");
+        let prtn = fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() });
+        prtn.then((resp) => {
+            if (resp.status == 404) {
+                return [];
+            } else if (!resp.ok) {
+                util.handleNotOkResp(resp, url);
+            }
+            return resp.json();
+        }).then((userKeybindings) => {
+            this.keybindManager.setUserKeybindings(userKeybindings);
+        });
+    }
+
+    initSystemKeybindings() {
+        this.keybindManager.registerKeybinding("system", "electron", "any", (waveEvent) => {
+            if (this.keybindManager.checkKeyPressed(waveEvent, "system:toggleDeveloperTools")) {
+                getApi().toggleDeveloperTools();
+                return true;
+            }
+            return false;
+        });
     }
 
     static getInstance(): Model {
@@ -1298,7 +1319,7 @@ class Model {
         };
         /** 
         console.log(
-            "CMD",
+            "CMD"
             pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
             pk.args,
             pk.kwargs,
@@ -1526,7 +1547,7 @@ class Model {
             .then((resp) => {
                 if (!resp.ok) {
                     badResponseStr = sprintf(
-                        "Bad fetch response for /api/read-file: %d %s",
+                        "Bad fetch response for /apiread-file: %d %s",
                         resp.status,
                         resp.statusText
                     );

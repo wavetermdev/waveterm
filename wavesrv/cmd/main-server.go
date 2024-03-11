@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -676,6 +677,24 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 	WriteJsonSuccess(w, update)
 }
 
+func AuthKeyMiddleWare(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqAuthKey := r.Header.Get("X-AuthKey")
+		w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
+		if reqAuthKey == "" {
+			w.WriteHeader(500)
+			w.Write([]byte("no x-authkey header"))
+			return
+		}
+		if reqAuthKey != GlobalAuthKey {
+			w.WriteHeader(500)
+			w.Write([]byte("x-authkey header is invalid"))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func AuthKeyWrap(fn WebFnType) WebFnType {
 	return func(w http.ResponseWriter, r *http.Request) {
 		reqAuthKey := r.Header.Get("X-AuthKey")
@@ -904,6 +923,10 @@ func main() {
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
 	gr.HandleFunc("/api/read-file", AuthKeyWrap(HandleReadFile))
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
+	configPath := path.Join(scbase.GetWaveHomeDir(), "config") + "/"
+	log.Printf("[wave] config path: %q\n", configPath)
+	gr.PathPrefix("/config/").Handler(AuthKeyMiddleWare(http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))))
+
 	serverAddr := MainServerAddr
 	if scbase.IsDevMode() {
 		serverAddr = MainServerDevAddr
