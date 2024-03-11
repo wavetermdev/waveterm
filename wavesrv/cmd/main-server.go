@@ -619,12 +619,6 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func HandleConfig(w http.ResponseWriter, r *http.Request) {
-	filePath := r.URL.Path
-	fullPath := path.Join(scbase.GetWaveHomeDir(), filePath)
-	http.ServeFile(w, r, fullPath)
-}
-
 func WriteJsonError(w http.ResponseWriter, errVal error) {
 	w.Header().Set(ContentTypeHeaderKey, ContentTypeJson)
 	w.WriteHeader(200)
