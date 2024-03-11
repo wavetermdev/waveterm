@@ -8,19 +8,6 @@
         margin-bottom: 10px;
     }
 
-    code {
-        background-color: var(--markdown-bg-color);
-        color: var(--app-text-color);
-        font-family: var(--termfontfamily);
-        border-radius: 4px;
-    }
-
-    code.inline {
-        padding-top: 0;
-        padding-bottom: 0;
-        font-family: var(--termfontfamily);
-    }
-
     .title {
         color: var(--app-text-color);
         margin-top: 16px;
@@ -64,10 +51,21 @@
         margin: 4px 10px 4px 10px;
         padding: 6px 6px 6px 10px;
         border-radius: 4px;
+
+        code {
+            background-color: transparent;
+        }
     }
 
     pre.selected {
         outline: 2px solid var(--markdown-outline-color);
+    }
+
+    code {
+        color: var(--app-text-color);
+        font-family: var(--termfontfamily);
+        border-radius: 4px;
+        background-color: var(--markdown-bg-color);
     }
 
     .title {
