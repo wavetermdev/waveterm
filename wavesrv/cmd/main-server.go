@@ -682,18 +682,15 @@ func AuthKeyMiddleWare(next http.Handler) http.Handler {
 		reqAuthKey := r.Header.Get("X-AuthKey")
 		w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 		if reqAuthKey == "" {
-			log.Printf("mk2\n")
 			w.WriteHeader(500)
 			w.Write([]byte("no x-authkey header"))
 			return
 		}
 		if reqAuthKey != GlobalAuthKey {
-			log.Printf("mk1\n")
 			w.WriteHeader(500)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
 		}
-		log.Printf("mk3\n")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -927,7 +924,7 @@ func main() {
 	gr.HandleFunc("/api/read-file", AuthKeyWrap(HandleReadFile))
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
 	configPath := path.Join(scbase.GetWaveHomeDir(), "config") + "/"
-	log.Printf("config path: %v\n", configPath)
+	log.Printf("[wave] config path: %q\n", configPath)
 	gr.PathPrefix("/config/").Handler(AuthKeyMiddleWare(http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))))
 
 	serverAddr := MainServerAddr
