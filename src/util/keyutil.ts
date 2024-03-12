@@ -3,7 +3,7 @@ import * as mobx from "mobx";
 import * as electron from "electron";
 import { parse } from "node:path";
 import { v4 as uuidv4 } from "uuid";
-import defaultKeybindingsFile from "../../assets/keybindings.json";
+import defaultKeybindingsFile from "../../assets/default-keybindings.json";
 const defaultKeybindings: KeybindConfig = defaultKeybindingsFile;
 
 type KeyPressDecl = {
@@ -68,7 +68,6 @@ class KeybindManager {
         let curUserCommand = "";
         if (this.userKeybindings != null && this.userKeybindings instanceof Array) {
             try {
-                console.log("setting user keybindings");
                 for (let index = 0; index < this.userKeybindings.length; index++) {
                     let curKeybind = this.userKeybindings[index];
                     if (curKeybind == null) {
@@ -97,7 +96,6 @@ class KeybindManager {
             }
         }
         this.keyDescriptionsMap = newKeyDescriptions;
-        console.log("key desc map:", this.keyDescriptionsMap);
     }
 
     processLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {

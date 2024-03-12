@@ -355,13 +355,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
             e.preventDefault();
             return;
         }
-        if (checkKeyPressed(waveEvent, "Cmd:i")) {
-            e.preventDefault();
-            if (!input.alt) {
-                win.webContents.send("i-cmd", mods);
-            }
-            return;
-        }
         if (checkKeyPressed(waveEvent, "Cmd:r")) {
             e.preventDefault();
             win.webContents.send("r-cmd", mods);
@@ -375,11 +368,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         if (checkKeyPressed(waveEvent, "Cmd:w")) {
             e.preventDefault();
             win.webContents.send("w-cmd", mods);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:h")) {
-            win.webContents.send("h-cmd", mods);
-            e.preventDefault();
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:p")) {
@@ -405,7 +393,7 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
             e.preventDefault();
             return;
         }
-        if (input.code.startsWith("Digit") && input.meta) {
+        if (input.code.startsWith("Digit") && input.meta && !input.control) {
             const digitNum = parseInt(input.code.substring(5));
             if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
                 return;
