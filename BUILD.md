@@ -53,12 +53,6 @@ Install modules (we use yarn):
 yarn
 ```
 
-Electron also requires specific builds of node_modules to work (because Electron embeds a specific node.js version that might not match your development node.js version). We use a special electron command to cross-compile those modules:
-
-```
-scripthaus run electron-rebuild
-```
-
 ## Running WebPack
 
 We use webpack to build both the React and Electron App Wrapper code. They are both run together using:
