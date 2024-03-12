@@ -2246,6 +2246,10 @@ func (msh *MShellProc) notifyHangups_nolock() {
 }
 
 func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDonePacketType) {
+	if rct == nil {
+		log.Printf("cmddone packet received, but no running command found for it %q\n", donePk.CK)
+		return
+	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	// this will remove from RunningCmds and from PendingStateCmds
@@ -2270,7 +2274,7 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 		update.AddUpdate(*screen)
 	}
 	var statePtr *sstore.ShellStatePtr
-	if donePk.FinalState != nil && rct != nil {
+	if donePk.FinalState != nil {
 		feState := sstore.FeStateFromShellState(donePk.FinalState)
 		remoteInst, err := sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, donePk.FinalState, nil)
 		if err != nil {
@@ -2281,7 +2285,7 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 			update.AddUpdate(sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
 		}
 		statePtr = &sstore.ShellStatePtr{BaseHash: donePk.FinalState.GetHashVal(false)}
-	} else if donePk.FinalStateDiff != nil && rct != nil {
+	} else if donePk.FinalStateDiff != nil {
 		feState, err := msh.getFeStateFromDiff(donePk.FinalStateDiff)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
@@ -2316,6 +2320,10 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 }
 
 func (msh *MShellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.CmdFinalPacketType) {
+	if rct == nil {
+		// this is somewhat expected, since cmddone should have removed the running command
+		return
+	}
 	defer msh.RemoveRunningCmd(finalPk.CK)
 	rtnCmd, err := sstore.GetCmdByScreenId(context.Background(), finalPk.CK.GetGroupId(), finalPk.CK.GetCmdId())
 	if err != nil {
@@ -2354,6 +2362,11 @@ func (msh *MShellProc) ResetDataPos(ck base.CommandKey) {
 }
 
 func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) {
+	if rct == nil {
+		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, fmt.Errorf("no running cmd found"))
+		msh.ServerProc.Input.SendPacket(ack)
+		return
+	}
 	realData, err := base64.StdEncoding.DecodeString(dataPk.Data64)
 	if err != nil {
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
@@ -2363,8 +2376,7 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 	var ack *packet.DataAckPacketType
 	if len(realData) > 0 {
 		dataPos := dataPosMap.Get(dataPk.CK)
-		rcmd := msh.GetRunningCmd(dataPk.CK)
-		update, err := sstore.AppendToCmdPtyBlob(context.Background(), rcmd.ScreenId, dataPk.CK.GetCmdId(), realData, dataPos)
+		update, err := sstore.AppendToCmdPtyBlob(context.Background(), rct.ScreenId, dataPk.CK.GetCmdId(), realData, dataPos)
 		if err != nil {
 			ack = makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
 		} else {
@@ -2396,23 +2408,23 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		return
 	}
 	if dataPk, ok := pk.(*packet.DataPacketType); ok {
-		rct := msh.GetRunningCmd(dataPk.CK)
 		runCmdUpdateFn(dataPk.CK, func() {
+			rct := msh.GetRunningCmd(dataPk.CK)
 			msh.handleDataPacket(rct, dataPk, msh.DataPosMap)
 		})
 		go pushStatusIndicatorUpdate(&dataPk.CK, sstore.StatusIndicatorLevel_Output)
 		return
 	}
 	if donePk, ok := pk.(*packet.CmdDonePacketType); ok {
-		rct := msh.GetRunningCmd(donePk.CK)
 		runCmdUpdateFn(donePk.CK, func() {
+			rct := msh.GetRunningCmd(donePk.CK)
 			msh.handleCmdDonePacket(rct, donePk)
 		})
 		return
 	}
 	if finalPk, ok := pk.(*packet.CmdFinalPacketType); ok {
-		rct := msh.GetRunningCmd(finalPk.CK)
 		runCmdUpdateFn(finalPk.CK, func() {
+			rct := msh.GetRunningCmd(finalPk.CK)
 			msh.handleCmdFinalPacket(rct, finalPk)
 		})
 		return
