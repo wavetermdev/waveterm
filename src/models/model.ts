@@ -457,7 +457,7 @@ class Model {
         if (this.alertMessage.get() != null) {
             if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
-                this.cancelAlert();
+                this.modalsModel.popModal(() => this.cancelAlert());
                 return;
             }
             if (checkKeyPressed(waveEvent, "Enter")) {
@@ -465,6 +465,10 @@ class Model {
                 this.confirmAlert();
                 return;
             }
+            return;
+        }
+        if (checkKeyPressed(waveEvent, "Escape") && this.modalsModel.store.length > 0) {
+            this.modalsModel.popModal();
             return;
         }
         if (this.activeMainView.get() == "bookmarks") {
@@ -476,14 +480,13 @@ class Model {
             return;
         }
         if (this.activeMainView.get() == "connections") {
-            this.historyViewModel.handleDocKeyDown(e);
+            this.connectionViewModel.handleDocKeyDown(e);
             return;
         }
         if (this.activeMainView.get() == "clientsettings") {
-            this.historyViewModel.handleDocKeyDown(e);
+            this.clientSettingsViewModel.handleDocKeyDown(e);
             return;
         }
-
         if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             if (this.activeMainView.get() == "webshare") {

@@ -206,7 +206,7 @@ class BookmarksModel {
     }
 
     handleDocKeyDown(e: any): void {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        const waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             if (this.editingBookmark.get() != null) {
