@@ -40,6 +40,14 @@
       "keys": ["Cmd:p"]
     },
     {
+      "command": "app:openConnectionsView", 
+      "keys": []
+    },
+    {
+      "command": "app:openSettingsView", 
+      "keys": []
+    },
+    {
       "command": "app:newTab",
       "keys": ["Cmd:t"]
     },
