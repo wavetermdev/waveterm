@@ -57,6 +57,7 @@ function getThemeFromCSSVars(): ITheme {
     theme.brightMagenta = rootStyle.getPropertyValue("--term-bright-magenta");
     theme.brightCyan = rootStyle.getPropertyValue("--term-bright-cyan");
     theme.brightWhite = rootStyle.getPropertyValue("--term-bright-white");
+    theme.selectionBackground = rootStyle.getPropertyValue("--term-selection-background");
     return theme;
 }
 

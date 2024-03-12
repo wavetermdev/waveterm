@@ -6,4 +6,5 @@
     --term-foreground: #000000;
     --term-background: #fefefe;
     --term-cmdtext: #000000;
+    --term-selection-background: #00000018;
 }

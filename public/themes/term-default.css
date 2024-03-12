@@ -27,4 +27,5 @@
     --term-cmdtext: #ffffff;
     --term-foreground: #d3d7cf;
     --term-background: #000000;
+    --term-selection-background: #ffffff40;
 }
