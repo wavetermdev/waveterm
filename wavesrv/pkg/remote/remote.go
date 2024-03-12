@@ -2382,30 +2382,48 @@ func (msh *MShellProc) handleDataPacket(dataPk *packet.DataPacketType, dataPosMa
 	// log.Printf("data %s fd=%d len=%d eof=%v err=%v\n", dataPk.CK, dataPk.FdNum, len(realData), dataPk.Eof, dataPk.Error)
 }
 
-func (msh *MShellProc) makeHandleDataPacketClosure(dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) func() {
-	return func() {
-		msh.handleDataPacket(dataPk, dataPosMap)
-	}
-}
-
-func (msh *MShellProc) makeHandleCmdDonePacketClosure(donePk *packet.CmdDonePacketType) func() {
-	return func() {
-		msh.handleCmdDonePacket(donePk)
-	}
-}
-
-func (msh *MShellProc) makeHandleCmdFinalPacketClosure(finalPk *packet.CmdFinalPacketType) func() {
-	return func() {
-		msh.handleCmdFinalPacket(finalPk)
-	}
-}
-
 func sendScreenUpdates(screens []*sstore.ScreenType) {
 	for _, screen := range screens {
 		update := scbus.MakeUpdatePacket()
 		update.AddUpdate(*screen)
 		scbus.MainUpdateBus.DoUpdate(update)
 	}
+}
+
+func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
+	if _, ok := pk.(*packet.DataAckPacketType); ok {
+		// TODO process ack (need to keep track of buffer size for sending)
+		// this is low priority though since most input is coming from keyboard and won't overflow this buffer
+		return
+	}
+	if dataPk, ok := pk.(*packet.DataPacketType); ok {
+		runCmdUpdateFn(dataPk.CK, func() {
+			msh.handleDataPacket(dataPk, msh.DataPosMap)
+		})
+		go pushStatusIndicatorUpdate(&dataPk.CK, sstore.StatusIndicatorLevel_Output)
+		return
+	}
+	if donePk, ok := pk.(*packet.CmdDonePacketType); ok {
+		runCmdUpdateFn(donePk.CK, func() {
+			msh.handleCmdDonePacket(donePk)
+		})
+		return
+	}
+	if finalPk, ok := pk.(*packet.CmdFinalPacketType); ok {
+		runCmdUpdateFn(finalPk.CK, func() {
+			msh.handleCmdFinalPacket(finalPk)
+		})
+		return
+	}
+	if msgPk, ok := pk.(*packet.MessagePacketType); ok {
+		msh.WriteToPtyBuffer("msg> [remote %s] [%s] %s\n", msh.GetRemoteName(), msgPk.CK, msgPk.Message)
+		return
+	}
+	if rawPk, ok := pk.(*packet.RawPacketType); ok {
+		msh.WriteToPtyBuffer("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPk.Data)
+		return
+	}
+	msh.WriteToPtyBuffer("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
 }
 
 func (msh *MShellProc) ProcessPackets() {
@@ -2424,38 +2442,7 @@ func (msh *MShellProc) ProcessPackets() {
 		}
 	})
 	for pk := range msh.ServerProc.Output.MainCh {
-		if pk.GetType() == packet.DataPacketStr {
-			dataPk := pk.(*packet.DataPacketType)
-			runCmdUpdateFn(dataPk.CK, msh.makeHandleDataPacketClosure(dataPk, msh.DataPosMap))
-			go pushStatusIndicatorUpdate(&dataPk.CK, sstore.StatusIndicatorLevel_Output)
-			continue
-		}
-		if pk.GetType() == packet.DataAckPacketStr {
-			// TODO process ack (need to keep track of buffer size for sending)
-			// this is low priority though since most input is coming from keyboard and won't overflow this buffer
-			continue
-		}
-		if pk.GetType() == packet.CmdDonePacketStr {
-			donePk := pk.(*packet.CmdDonePacketType)
-			runCmdUpdateFn(donePk.CK, msh.makeHandleCmdDonePacketClosure(donePk))
-			continue
-		}
-		if pk.GetType() == packet.CmdFinalPacketStr {
-			finalPk := pk.(*packet.CmdFinalPacketType)
-			runCmdUpdateFn(finalPk.CK, msh.makeHandleCmdFinalPacketClosure(finalPk))
-			continue
-		}
-		if pk.GetType() == packet.MessagePacketStr {
-			msgPacket := pk.(*packet.MessagePacketType)
-			msh.WriteToPtyBuffer("msg> [remote %s] [%s] %s\n", msh.GetRemoteName(), msgPacket.CK, msgPacket.Message)
-			continue
-		}
-		if pk.GetType() == packet.RawPacketStr {
-			rawPacket := pk.(*packet.RawPacketType)
-			msh.WriteToPtyBuffer("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPacket.Data)
-			continue
-		}
-		msh.WriteToPtyBuffer("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
+		msh.processSinglePacket(pk)
 	}
 }
 
