@@ -13,7 +13,7 @@ The license disclaimers for the frontend are generated using the [`yarn licenses
 
 These three disclaimer files linked above will be periodically regenerated to reflect new dependencies.
 
-The [`scripthaus.md` file](../scripthaus.md) contains scripts to genrate the disclaimers and package them. To manually generate the disclaimers, run the following from the repository root directory:
+The [`scripthaus.md` file](../scripthaus.md) contains scripts to generate the disclaimers and package them. To manually generate the disclaimers, run the following from the repository root directory:
 
 ```bash
 scripthaus run generate-license-disclaimers
