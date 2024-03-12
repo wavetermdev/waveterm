@@ -337,7 +337,6 @@ class Model {
     cancelAlert(): void {
         mobx.action(() => {
             this.alertMessage.set(null);
-            this.modalsModel.popModal();
         })();
         if (this.alertPromiseResolver != null) {
             this.alertPromiseResolver(false);
@@ -484,13 +483,11 @@ class Model {
             this.historyViewModel.handleDocKeyDown(e);
             return;
         }
+
         if (checkKeyPressed(waveEvent, "Escape")) {
             e.preventDefault();
             if (this.activeMainView.get() == "webshare") {
                 this.showSessionView();
-                return;
-            }
-            if (this.clearModals()) {
                 return;
             }
             const inputModel = this.inputModel;
@@ -613,33 +610,6 @@ class Model {
             return null;
         }
         return screen.getTermWrap(line.lineid);
-    }
-
-    clearModals(): boolean {
-        let didSomething = false;
-        mobx.action(() => {
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.sessionSettingsModal.get()) {
-                this.sessionSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.clientSettingsModal.get()) {
-                this.clientSettingsModal.set(false);
-                didSomething = true;
-            }
-            if (this.lineSettingsModal.get()) {
-                this.lineSettingsModal.set(null);
-                didSomething = true;
-            }
-        })();
-        return didSomething;
     }
 
     restartWaveSrv(): void {
