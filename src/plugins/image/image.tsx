@@ -53,6 +53,9 @@ class SimpleImageRenderer extends React.Component<
                 </div>
             );
         }
+        if (dataBlob.name.endsWith(".svg")) {
+            dataBlob = new Blob([dataBlob], { type: "image/svg+xml" }) as ExtBlob;
+        }
         if (this.objUrl == null) {
             this.objUrl = URL.createObjectURL(dataBlob);
         }
