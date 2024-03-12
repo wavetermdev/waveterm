@@ -177,8 +177,6 @@ class Model {
         });
         getApi().onTCmd(this.onTCmd.bind(this));
         getApi().onLCmd(this.onLCmd.bind(this));
-        getApi().onHCmd(this.onOpenHistoryPressed.bind(this));
-        getApi().onPCmd(this.onOpenTabSearchModalPressed.bind(this));
         getApi().onWCmd(this.onWCmd.bind(this));
         getApi().onRCmd(this.onRCmd.bind(this));
         getApi().onZoomChanged(this.onZoomChanged.bind(this));

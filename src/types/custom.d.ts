@@ -896,10 +896,7 @@ declare global {
         getAppUpdateStatus: () => AppUpdateStatusType;
         onAppUpdateStatus: (callback: (status: AppUpdateStatusType) => void) => void;
         onTCmd: (callback: (mods: KeyModsType) => void) => void;
-        onICmd: (callback: (mods: KeyModsType) => void) => void;
         onLCmd: (callback: (mods: KeyModsType) => void) => void;
-        onHCmd: (callback: (mods: KeyModsType) => void) => void;
-        onPCmd: (callback: (mods: KeyModsType) => void) => void;
         onRCmd: (callback: (mods: KeyModsType) => void) => void;
         onWCmd: (callback: (mods: KeyModsType) => void) => void;
         onZoomChanged: (callback: () => void) => void;
