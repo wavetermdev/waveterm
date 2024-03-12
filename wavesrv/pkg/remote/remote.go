@@ -160,17 +160,19 @@ type MShellProc struct {
 	InstallCancelFn    context.CancelFunc
 	InstallErr         error
 
-	RunningCmds      map[base.CommandKey]RunCmdType
+	RunningCmds      map[base.CommandKey]*RunCmdType
 	PendingStateCmds map[pendingStateKey]base.CommandKey // key=[remoteinstance name]
 	launcher         Launcher                            // for conditional launch method based on ssh library in use. remove once ssh library is stabilized
 	Client           *ssh.Client
 }
 
 type RunCmdType struct {
+	CK        base.CommandKey
 	SessionId string
 	ScreenId  string
 	RemotePtr sstore.RemotePtrType
 	RunPacket *packet.RunPacketType
+	Ephemeral bool
 }
 
 type RemoteRuntimeState = sstore.RemoteRuntimeState
@@ -704,7 +706,7 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 		Status:           StatusDisconnected,
 		PtyBuffer:        buf,
 		InstallStatus:    StatusDisconnected,
-		RunningCmds:      make(map[base.CommandKey]RunCmdType),
+		RunningCmds:      make(map[base.CommandKey]*RunCmdType),
 		PendingStateCmds: make(map[pendingStateKey]base.CommandKey),
 		StateMap:         server.MakeShellStateMap(),
 		launcher:         LegacyLauncher{}, // for conditional launch method based on ssh library in use. remove once ssh library is stabilized
@@ -1986,6 +1988,10 @@ type RunCommandOpts struct {
 
 	// set to true to skip creating the pty file (for restarted commands)
 	NoCreateCmdPtyFile bool
+
+	// this command will not go into the DB, and will not have a ptyout file created
+	// forces special packet handling (sets RunCommandType.Ephemeral)
+	Ephemeral bool
 }
 
 // returns (CmdType, allow-updates-callback, err)
@@ -2128,17 +2134,19 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 			return nil, nil, fmt.Errorf("cannot create local ptyout file for running command: %v", err)
 		}
 	}
-	msh.AddRunningCmd(RunCmdType{
+	msh.AddRunningCmd(&RunCmdType{
+		CK:        runPacket.CK,
 		SessionId: sessionId,
 		ScreenId:  screenId,
 		RemotePtr: remotePtr,
 		RunPacket: runPacket,
+		Ephemeral: true,
 	})
 
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
 }
 
-func (msh *MShellProc) AddRunningCmd(rct RunCmdType) {
+func (msh *MShellProc) AddRunningCmd(rct *RunCmdType) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	msh.RunningCmds[rct.RunPacket.CK] = rct
@@ -2147,11 +2155,7 @@ func (msh *MShellProc) AddRunningCmd(rct RunCmdType) {
 func (msh *MShellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	rct, found := msh.RunningCmds[ck]
-	if !found {
-		return nil
-	}
-	return &rct
+	return msh.RunningCmds[ck]
 }
 
 func (msh *MShellProc) RemoveRunningCmd(ck base.CommandKey) {
@@ -2241,7 +2245,7 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		scbus.MainUpdateBus.DoScreenUpdate(ck.GetGroupId(), update)
 		go pushNumRunningCmdsUpdate(&ck, -1)
 	}
-	msh.RunningCmds = make(map[base.CommandKey]RunCmdType)
+	msh.RunningCmds = make(map[base.CommandKey]*RunCmdType)
 	msh.PendingStateCmds = make(map[pendingStateKey]base.CommandKey)
 }
 
