@@ -20,7 +20,7 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 -   CodeEdit, to edit local and remote files with a VSCode-like inline editor
 -   AI Integration with ChatGPT (or ChatGPT compatible APIs) to help write commands and get answers inline
 
-![WaveTerm Screenshot](./assets/wave-screenshot.jpeg)
+![WaveTerm Screenshot](./assets/wave-screenshot.png)
 
 ## Installation
 
