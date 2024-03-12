@@ -991,18 +991,6 @@ func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr ShellSt
 	return nil
 }
 
-func AppendCmdErrorPk(ctx context.Context, errPk *packet.CmdErrorPacketType) error {
-	if errPk == nil || errPk.CK.IsEmpty() {
-		return fmt.Errorf("invalid cmderror packet (no ck)")
-	}
-	screenId := errPk.CK.GetGroupId()
-	return WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE cmd SET runout = json_insert(runout, '$[#]', ?) WHERE screenid = ? AND lineid = ?`
-		tx.Exec(query, quickJson(errPk), screenId, lineIdFromCK(errPk.CK))
-		return nil
-	})
-}
-
 func ReInitFocus(ctx context.Context) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE screen SET focustype = 'input'`

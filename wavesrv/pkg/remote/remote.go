@@ -2350,15 +2350,6 @@ func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) 
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
-// TODO notify FE about cmd errors
-func (msh *MShellProc) handleCmdErrorPacket(errPk *packet.CmdErrorPacketType) {
-	err := sstore.AppendCmdErrorPk(context.Background(), errPk)
-	if err != nil {
-		msh.WriteToPtyBuffer("cmderr> [remote %s] [error] adding cmderr: %v\n", msh.GetRemoteName(), err)
-		return
-	}
-}
-
 func (msh *MShellProc) ResetDataPos(ck base.CommandKey) {
 	msh.DataPosMap.Delete(ck)
 }
@@ -2444,12 +2435,6 @@ func (msh *MShellProc) ProcessPackets() {
 			// this is low priority though since most input is coming from keyboard and won't overflow this buffer
 			continue
 		}
-		if pk.GetType() == packet.CmdDataPacketStr {
-			dataPacket := pk.(*packet.CmdDataPacketType)
-			go msh.WriteToPtyBuffer("cmd-data> [remote %s] [%s] pty=%d run=%d\n", msh.GetRemoteName(), dataPacket.CK, dataPacket.PtyDataLen, dataPacket.RunDataLen)
-			go pushStatusIndicatorUpdate(&dataPacket.CK, sstore.StatusIndicatorLevel_Output)
-			continue
-		}
 		if pk.GetType() == packet.CmdDonePacketStr {
 			donePk := pk.(*packet.CmdDonePacketType)
 			runCmdUpdateFn(donePk.CK, msh.makeHandleCmdDonePacketClosure(donePk))
@@ -2458,10 +2443,6 @@ func (msh *MShellProc) ProcessPackets() {
 		if pk.GetType() == packet.CmdFinalPacketStr {
 			finalPk := pk.(*packet.CmdFinalPacketType)
 			runCmdUpdateFn(finalPk.CK, msh.makeHandleCmdFinalPacketClosure(finalPk))
-			continue
-		}
-		if pk.GetType() == packet.CmdErrorPacketStr {
-			msh.handleCmdErrorPacket(pk.(*packet.CmdErrorPacketType))
 			continue
 		}
 		if pk.GetType() == packet.MessagePacketStr {
