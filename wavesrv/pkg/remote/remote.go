@@ -2455,11 +2455,6 @@ func (msh *MShellProc) ProcessPackets() {
 			msh.WriteToPtyBuffer("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPacket.Data)
 			continue
 		}
-		if pk.GetType() == packet.CmdStartPacketStr {
-			startPk := pk.(*packet.CmdStartPacketType)
-			msh.WriteToPtyBuffer("start> [remote %s] reqid=%s (%p)\n", msh.GetRemoteName(), startPk.RespId, msh.ServerProc.Output)
-			continue
-		}
 		msh.WriteToPtyBuffer("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
 	}
 }
