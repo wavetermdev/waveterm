@@ -370,11 +370,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
             win.webContents.send("w-cmd", mods);
             return;
         }
-        if (checkKeyPressed(waveEvent, "Cmd:p")) {
-            win.webContents.send("p-cmd", mods);
-            e.preventDefault();
-            return;
-        }
         if (checkKeyPressed(waveEvent, "Cmd:ArrowUp") || checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
             if (checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
                 win.webContents.send("meta-arrowup");
