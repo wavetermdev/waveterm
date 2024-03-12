@@ -2245,7 +2245,7 @@ func (msh *MShellProc) notifyHangups_nolock() {
 	msh.PendingStateCmds = make(map[pendingStateKey]base.CommandKey)
 }
 
-func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
+func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDonePacketType) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	// this will remove from RunningCmds and from PendingStateCmds
@@ -2269,7 +2269,6 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	if screen != nil {
 		update.AddUpdate(*screen)
 	}
-	rct := msh.GetRunningCmd(donePk.CK)
 	var statePtr *sstore.ShellStatePtr
 	if donePk.FinalState != nil && rct != nil {
 		feState := sstore.FeStateFromShellState(donePk.FinalState)
@@ -2316,7 +2315,7 @@ func (msh *MShellProc) handleCmdDonePacket(donePk *packet.CmdDonePacketType) {
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
-func (msh *MShellProc) handleCmdFinalPacket(finalPk *packet.CmdFinalPacketType) {
+func (msh *MShellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.CmdFinalPacketType) {
 	defer msh.RemoveRunningCmd(finalPk.CK)
 	rtnCmd, err := sstore.GetCmdByScreenId(context.Background(), finalPk.CK.GetGroupId(), finalPk.CK.GetCmdId())
 	if err != nil {
@@ -2354,7 +2353,7 @@ func (msh *MShellProc) ResetDataPos(ck base.CommandKey) {
 	msh.DataPosMap.Delete(ck)
 }
 
-func (msh *MShellProc) handleDataPacket(dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) {
+func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) {
 	realData, err := base64.StdEncoding.DecodeString(dataPk.Data64)
 	if err != nil {
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
@@ -2397,21 +2396,24 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		return
 	}
 	if dataPk, ok := pk.(*packet.DataPacketType); ok {
+		rct := msh.GetRunningCmd(dataPk.CK)
 		runCmdUpdateFn(dataPk.CK, func() {
-			msh.handleDataPacket(dataPk, msh.DataPosMap)
+			msh.handleDataPacket(rct, dataPk, msh.DataPosMap)
 		})
 		go pushStatusIndicatorUpdate(&dataPk.CK, sstore.StatusIndicatorLevel_Output)
 		return
 	}
 	if donePk, ok := pk.(*packet.CmdDonePacketType); ok {
+		rct := msh.GetRunningCmd(donePk.CK)
 		runCmdUpdateFn(donePk.CK, func() {
-			msh.handleCmdDonePacket(donePk)
+			msh.handleCmdDonePacket(rct, donePk)
 		})
 		return
 	}
 	if finalPk, ok := pk.(*packet.CmdFinalPacketType); ok {
+		rct := msh.GetRunningCmd(finalPk.CK)
 		runCmdUpdateFn(finalPk.CK, func() {
-			msh.handleCmdFinalPacket(finalPk)
+			msh.handleCmdFinalPacket(rct, finalPk)
 		})
 		return
 	}
