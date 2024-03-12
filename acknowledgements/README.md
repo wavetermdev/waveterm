@@ -11,7 +11,7 @@ The license disclaimers for the backend are generated using the [go-licenses](ht
 
 The license disclaimers for the frontend are generated using the [`yarn licenses` tool](https://classic.yarnpkg.com/lang/en/docs/cli/licenses/). This outputs to the file [`frontend.md`](./disclaimers/frontend.md).
 
-These three disclaimer files linked above will be periodically regenerated to reflect new dependencies.
+These disclaimer files linked above will be periodically regenerated to reflect new dependencies.
 
 The [`scripthaus.md` file](../scripthaus.md) contains scripts to generate the disclaimers and package them. To manually generate the disclaimers, run the following from the repository root directory:
 
