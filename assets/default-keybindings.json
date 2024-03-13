@@ -55,7 +55,8 @@
     },
     {
       "command": "app:focusCmdInput",
-      "keys": ["Cmd:i"]
+      "keys": ["Cmd:i"],
+      "commandStr":"/mainview session,/screen:set focus=cmd,/screen:set focus=input"
     },
     {
       "command": "app:focusSelectedLine",

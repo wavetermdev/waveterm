@@ -116,12 +116,10 @@ class KeybindManager {
 
     runSlashCommand(curKeybind: Keybind): boolean {
         let curConfigKeybind = this.keyDescriptionsMap.get(curKeybind.keybinding);
-        console.log("slash command?", curKeybind, curConfigKeybind);
         if (curConfigKeybind == null || curConfigKeybind.commandStr == null || curKeybind.commandStr == "") {
-            console.log("curKeybind: ", curKeybind);
             return false;
         }
-        let commandsList = curConfigKeybind.commandStr.split("\n");
+        let commandsList = curConfigKeybind.commandStr.trim().split(",");
         this.runIndividualSlashCommand(commandsList);
         return true;
     }
@@ -131,6 +129,7 @@ class KeybindManager {
             return true;
         }
         let curCommand = commandsList.shift();
+        console.log("running: ", curCommand);
         let prtn = this.globalModel.submitRawCommand(curCommand, false, false);
         prtn.then((rtn) => {
             if (!rtn.success) {

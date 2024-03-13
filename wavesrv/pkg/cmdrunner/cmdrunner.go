@@ -171,6 +171,7 @@ func init() {
 	registerCmdFn("reset:cwd", ResetCwdCommand)
 	registerCmdFn("signal", SignalCommand)
 	registerCmdFn("sync", SyncCommand)
+	registerCmdFn("sleep", SleepCommand)
 
 	registerCmdFn("mainview", MainViewCommand)
 
@@ -3559,6 +3560,23 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
 	})
+	return update, nil
+}
+
+func SleepCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	if len(pk.Args) < 1 {
+		return nil, fmt.Errorf("no argument found - usage: /sleep [ms]")
+	}
+	sleepArg := pk.Args[0]
+	sleepArgInt, err := strconv.Atoi(sleepArg)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't parse sleep arg: %v", err)
+	}
+	if sleepArgInt > 1000 {
+		return nil, fmt.Errorf("sleep arg is too long, max value is 1000")
+	}
+	time.Sleep(time.Duration(sleepArgInt) * time.Millisecond)
+	update := scbus.MakeUpdatePacket()
 	return update, nil
 }
 
