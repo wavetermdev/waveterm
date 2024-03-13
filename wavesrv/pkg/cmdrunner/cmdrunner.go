@@ -172,6 +172,8 @@ func init() {
 	registerCmdFn("signal", SignalCommand)
 	registerCmdFn("sync", SyncCommand)
 
+	registerCmdFn("mainview", MainViewCommand)
+
 	registerCmdFn("session", SessionCommand)
 	registerCmdFn("session:open", SessionOpenCommand)
 	registerCmdAlias("session:new", SessionOpenCommand)
@@ -3557,6 +3559,28 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
 		TimeoutMs: 2000,
 	})
+	return update, nil
+}
+
+func MainViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	if len(pk.Args) < 1 {
+		return nil, fmt.Errorf("no argument found - usage: /mainview [view]")
+	}
+	update := scbus.MakeUpdatePacket()
+	mainViewArg := pk.Args[0]
+	if mainViewArg == sstore.MainViewSession {
+		update.AddUpdate(&sstore.MainViewUpdate{MainView: sstore.MainViewSession})
+	} else if mainViewArg == sstore.MainViewConnections {
+		update.AddUpdate(&sstore.MainViewUpdate{MainView: sstore.MainViewConnections})
+	} else if mainViewArg == sstore.MainViewSettings {
+		update.AddUpdate(&sstore.MainViewUpdate{MainView: sstore.MainViewSettings})
+	} else if mainViewArg == sstore.MainViewHistory {
+		return nil, fmt.Errorf("use /history instead")
+	} else if mainViewArg == sstore.MainViewBookmarks {
+		return nil, fmt.Errorf("use /bookmarks instead")
+	} else {
+		return nil, fmt.Errorf("unrecognized main view")
+	}
 	return update, nil
 }
 

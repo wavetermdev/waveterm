@@ -71,9 +71,11 @@ const (
 )
 
 const (
-	MainViewSession   = "session"
-	MainViewBookmarks = "bookmarks"
-	MainViewHistory   = "history"
+	MainViewSession     = "session"
+	MainViewBookmarks   = "bookmarks"
+	MainViewHistory     = "history"
+	MainViewConnections = "connections"
+	MainViewSettings    = "clientsettings"
 )
 
 const (

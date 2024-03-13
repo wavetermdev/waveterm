@@ -240,10 +240,7 @@ class Model {
             return true;
         });
         this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", null);
-        this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", (waveEvent) => {
-            this.onOpenSettingsViewPressed();
-            return true;
-        });
+        this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", null);
     }
 
     static getInstance(): Model {
@@ -1004,6 +1001,12 @@ class Model {
                             } else {
                                 console.warn("invalid bookmarksview in update:", update.mainview);
                             }
+                            break;
+                        case "clientsettings":
+                            this.activeMainView.set("clientsettings");
+                            break;
+                        case "connections":
+                            this.activeMainView.set("connections");
                             break;
                         case "plugins":
                             this.pluginsModel.showPluginsView();

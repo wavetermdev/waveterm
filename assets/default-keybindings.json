@@ -42,11 +42,12 @@
     {
       "command": "app:openConnectionsView", 
       "keys": [],
-      "commandStr": "/remote:show"
+      "commandStr": "/mainview connections"
     },
     {
       "command": "app:openSettingsView", 
-      "keys": []
+      "keys": [],
+      "commandStr": "/mainview clientsettings"
     },
     {
       "command": "app:newTab",
