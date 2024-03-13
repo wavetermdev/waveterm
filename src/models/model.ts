@@ -223,7 +223,7 @@ class Model {
             return true;
         });
         this.keybindManager.registerKeybinding("system", "electron", "system:minimizeWindow", (waveEvent) => {
-            getApi().minimizeWindow();
+            getApi().hideWindow();
             return true;
         });
     }

@@ -1,7 +1,7 @@
 let { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
-    minimizeWindow: () => ipc.Renderer.send("minimize-window"),
+    hideWindow: () => ipc.Renderer.send("hide-window"),
     toggleDeveloperTools: () => ipcRenderer.send("toggle-developer-tools"),
     getId: () => ipcRenderer.sendSync("get-id"),
     getPlatform: () => ipcRenderer.sendSync("get-platform"),

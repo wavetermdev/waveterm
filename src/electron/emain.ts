@@ -512,7 +512,7 @@ electron.ipcMain.on("toggle-developer-tools", (event) => {
     event.returnValue = true;
 });
 
-electron.ipcMain.on("minimize-window", (event) => {
+electron.ipcMain.on("hide-window", (event) => {
     if (MainWindow != null) {
         MainWindow.hide();
     }

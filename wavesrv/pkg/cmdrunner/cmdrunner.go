@@ -3564,6 +3564,7 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 }
 
 func SleepCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	sleepTimeLimit := 10000
 	if len(pk.Args) < 1 {
 		return nil, fmt.Errorf("no argument found - usage: /sleep [ms]")
 	}
@@ -3572,8 +3573,8 @@ func SleepCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse sleep arg: %v", err)
 	}
-	if sleepArgInt > 10000 {
-		return nil, fmt.Errorf("sleep arg is too long, max value is 1000")
+	if sleepArgInt > sleepTimeLimit {
+		return nil, fmt.Errorf("sleep arg is too long, max value is %v", sleepTimeLimit)
 	}
 	time.Sleep(time.Duration(sleepArgInt) * time.Millisecond)
 	update := scbus.MakeUpdatePacket()
