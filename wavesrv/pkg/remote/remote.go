@@ -2144,7 +2144,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		ScreenId:  screenId,
 		RemotePtr: remotePtr,
 		RunPacket: runPacket,
-		Ephemeral: true,
+		Ephemeral: rcOpts.Ephemeral,
 	})
 
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
