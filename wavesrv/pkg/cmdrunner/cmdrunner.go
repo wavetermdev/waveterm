@@ -493,7 +493,7 @@ func getEvalDepth(ctx context.Context) int {
 func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
-		return nil, fmt.Errorf("/run error: %w", err)
+		return nil, fmt.Errorf("/sync error: %w", err)
 	}
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
