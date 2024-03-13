@@ -276,6 +276,7 @@ func init() {
 	registerCmdFn("imageview", ImageViewCommand)
 	registerCmdFn("mdview", MarkdownViewCommand)
 	registerCmdFn("markdownview", MarkdownViewCommand)
+	registerCmdFn("pdfview", PdfViewCommand)
 
 	registerCmdFn("csvview", CSVViewCommand)
 }
@@ -4830,6 +4831,37 @@ func ImageViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	lineState[sstore.LineState_Source] = "file"
 	lineState[sstore.LineState_File] = pk.Args[0]
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "image", lineState)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
+	return update, nil
+}
+
+func PdfViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("%s requires an argument (file name)", GetCmdStr(pk))
+	}
+	// TODO more error checking on filename format?
+	if pk.Args[0] == "" {
+		return nil, fmt.Errorf("%s argument cannot be empty", GetCmdStr(pk))
+	}
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	outputStr := fmt.Sprintf("%s %q", GetCmdStr(pk), pk.Args[0])
+	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	// set the line state
+	lineState := make(map[string]any)
+	lineState[sstore.LineState_Source] = "file"
+	lineState[sstore.LineState_File] = pk.Args[0]
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "pdf", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
