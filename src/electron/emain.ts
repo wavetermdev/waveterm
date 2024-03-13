@@ -263,7 +263,7 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
             { type: "separator" },
             { role: "services" },
             { type: "separator" },
-            { role: "hide" },
+            { role: "hide", accelerator: cmdOrAlt + "m" },
             { role: "hideOthers" },
             { type: "separator" },
             { role: "quit" },
