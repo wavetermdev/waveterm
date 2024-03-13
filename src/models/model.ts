@@ -143,7 +143,7 @@ class Model {
             this.runUpdate(message, interactive);
         });
         this.ws.reconnect();
-        this.keybindManager = new KeybindManager();
+        this.keybindManager = new KeybindManager(this);
         this.readConfigKeybindings();
         this.initSystemKeybindings();
         this.initAppKeybindings();
@@ -226,38 +226,20 @@ class Model {
 
     initAppKeybindings() {
         for (let index = 1; index <= 9; index++) {
-            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, (waveEvent) => {
-                this.onSwitchSessionCmd(index);
-                return true;
-            });
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
         }
-
         this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
             console.log("focus cmd input callback");
             this.onFocusCmdInputPressed();
             return true;
         });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:bookmarkActiveLine", (waveEvent) => {
-            this.onBookmarkViewPressed();
-            return true;
-        });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:openHistory", (waveEvent) => {
-            this.onOpenHistoryPressed();
-            return true;
-        });
-
+        this.keybindManager.registerKeybinding("app", "model", "app:bookmarkActiveLine", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openHistory", null);
         this.keybindManager.registerKeybinding("app", "model", "app:openTabSearchModal", (waveEvent) => {
             this.onOpenTabSearchModalPressed();
             return true;
         });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", (waveEvent) => {
-            this.onOpenConnectionsViewPressed();
-            return true;
-        });
-
+        this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", null);
         this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", (waveEvent) => {
             this.onOpenSettingsViewPressed();
             return true;

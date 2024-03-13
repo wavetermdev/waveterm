@@ -41,7 +41,8 @@
     },
     {
       "command": "app:openConnectionsView", 
-      "keys": []
+      "keys": [],
+      "commandStr": "/remote:show"
     },
     {
       "command": "app:openSettingsView", 
@@ -125,39 +126,48 @@
     },
     {
       "command": "app:selectWorkspace-1",
-      "keys": ["Cmd:Ctrl:1"]
+      "keys": ["Cmd:Ctrl:1"],
+      "commandStr": "/session 1"
     },
     {
       "command": "app:selectWorkspace-2",
-      "keys": ["Cmd:Ctrl:2"]
+      "keys": ["Cmd:Ctrl:2"],
+      "commandStr": "/session 2"
     },
     {
       "command": "app:selectWorkspace-3",
-      "keys": ["Cmd:Ctrl:3"]
+      "keys": ["Cmd:Ctrl:3"],
+      "commandStr": "/session 3"
     },
     {
       "command": "app:selectWorkspace-4",
-      "keys": ["Cmd:Ctrl:4"]
+      "keys": ["Cmd:Ctrl:4"],
+      "commandStr": "/session 4"
     },
     {
       "command": "app:selectWorkspace-5",
-      "keys": ["Cmd:Ctrl:5"]
+      "keys": ["Cmd:Ctrl:5"],
+      "commandStr": "/session 5"
     },
     {
       "command": "app:selectWorkspace-6",
-      "keys": ["Cmd:Ctrl:6"]
+      "keys": ["Cmd:Ctrl:6"],
+      "commandStr": "/session 6"
     },
     {
       "command": "app:selectWorkspace-7",
-      "keys": ["Cmd:Ctrl:7"]
+      "keys": ["Cmd:Ctrl:7"],
+      "commandStr": "/session 7"
     },
     {
       "command": "app:selectWorkspace-8",
-      "keys": ["Cmd:Ctrl:8"]
+      "keys": ["Cmd:Ctrl:8"],
+      "commandStr": "/session 8"
     },
     {
       "command": "app:selectWorkspace-9",
-      "keys": ["Cmd:Ctrl:9"]
+      "keys": ["Cmd:Ctrl:9"],
+      "commandStr": "/session 9"
     },
     {
       "command": "app:toggleSidebar",
@@ -169,7 +179,8 @@
     },
     {
       "command": "app:bookmarkActiveLine",
-      "keys": ["Cmd:b"]
+      "keys": ["Cmd:b"],
+      "commandStr": "/bookmarks:show"
     },
     {
       "command": "bookmarks:edit",
@@ -213,7 +224,8 @@
     },
     {
       "command": "cmdinput:openHistory",
-      "keys": ["Ctrl:r"]
+      "keys": ["Ctrl:r"],
+      "commandStr": "/history"
     },
     {
       "command": "cmdinput:openAIChat",
