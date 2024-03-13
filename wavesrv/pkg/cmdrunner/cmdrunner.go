@@ -3572,7 +3572,7 @@ func SleepCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.
 	if err != nil {
 		return nil, fmt.Errorf("couldn't parse sleep arg: %v", err)
 	}
-	if sleepArgInt > 1000 {
+	if sleepArgInt > 10000 {
 		return nil, fmt.Errorf("sleep arg is too long, max value is 1000")
 	}
 	time.Sleep(time.Duration(sleepArgInt) * time.Millisecond)

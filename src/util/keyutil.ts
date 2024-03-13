@@ -119,7 +119,7 @@ class KeybindManager {
         if (curConfigKeybind == null || curConfigKeybind.commandStr == null || curKeybind.commandStr == "") {
             return false;
         }
-        let commandsList = curConfigKeybind.commandStr.trim().split(",");
+        let commandsList = curConfigKeybind.commandStr.trim().split(";");
         this.runIndividualSlashCommand(commandsList);
         return true;
     }
