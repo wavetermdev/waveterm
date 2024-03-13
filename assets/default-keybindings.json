@@ -4,6 +4,10 @@
       "keys": ["Cmd:Option:i"]
     },
     {
+      "command": "system:minimizeWindow",
+      "keys": ["Cmd:m"]
+    },
+    {
       "command": "generic:cancel",
       "keys": ["Escape"]
     },

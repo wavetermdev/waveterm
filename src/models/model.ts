@@ -222,6 +222,10 @@ class Model {
             getApi().toggleDeveloperTools();
             return true;
         });
+        this.keybindManager.registerKeybinding("system", "electron", "system:minimizeWindow", (waveEvent) => {
+            getApi().minimizeWindow();
+            return true;
+        });
     }
 
     initAppKeybindings() {

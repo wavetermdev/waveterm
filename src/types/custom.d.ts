@@ -880,6 +880,7 @@ declare global {
     };
 
     type ElectronApi = {
+        minimizeWindow: () => void;
         toggleDeveloperTools: () => void;
         getId: () => string;
         getIsDev: () => boolean;
