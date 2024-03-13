@@ -228,7 +228,11 @@ class Model {
         for (let index = 1; index <= 9; index++) {
             this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
         }
-        this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
+            console.log("focus cmd input callback");
+            this.onFocusCmdInputPressed();
+            return true;
+        });
         this.keybindManager.registerKeybinding("app", "model", "app:bookmarkActiveLine", null);
         this.keybindManager.registerKeybinding("app", "model", "app:openHistory", null);
         this.keybindManager.registerKeybinding("app", "model", "app:openTabSearchModal", (waveEvent) => {
