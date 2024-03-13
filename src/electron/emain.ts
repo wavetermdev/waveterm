@@ -263,6 +263,12 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
             { type: "separator" },
             { role: "services" },
             { type: "separator" },
+            {
+                label: "Hide",
+                click: () => {
+                    MainWindow?.hide();
+                },
+            },
             { role: "hideOthers" },
             { type: "separator" },
             { role: "quit" },

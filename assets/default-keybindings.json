@@ -4,7 +4,7 @@
       "keys": ["Cmd:Option:i"]
     },
     {
-      "command": "system:minimizeWindow",
+      "command": "system:hideWindow",
       "keys": ["Cmd:m"]
     },
     {
