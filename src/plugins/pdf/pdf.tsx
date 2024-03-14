@@ -32,15 +32,15 @@ class SimplePdfRenderer extends React.Component<
             );
         }
         if (this.objUrl == null) {
-            let pdfBlob = new Blob([dataBlob], { type: "application/pdf" });
+            const pdfBlob = new File([dataBlob], "test.pdf", { type: "application/pdf" });
             this.objUrl = URL.createObjectURL(pdfBlob);
         }
-        let opts = this.props.opts;
-        let maxHeight = opts.maxSize.height - 10;
-        let maxWidth = opts.maxSize.width - 10;
+        const opts = this.props.opts;
+        const maxHeight = opts.maxSize.height - 10;
+        const maxWidth = opts.maxSize.width - 10;
         return (
             <div className="pdf-renderer">
-                <embed height={maxHeight} width={maxWidth} type="application/pdf" src={this.objUrl} />
+                <iframe src={this.objUrl} width={maxWidth} height={maxHeight} name="pdfview" />
             </div>
         );
     }
