@@ -12,7 +12,7 @@ import (
 )
 
 func ComputeUrlHmac(key []byte, baseUrl string, qvals url.Values) (string, error) {
-	if qvals.Has("nonce") {
+	if !qvals.Has("nonce") {
 		return "", fmt.Errorf("nonce is required for hmac")
 	}
 	if qvals.Has("hmac") {
@@ -37,7 +37,7 @@ func ValidateUrlHmac(key []byte, baseUrl string, qvalsOrig url.Values) (bool, er
 	qvals := copyUrlValues(qvalsOrig)
 	hmacStr := qvals.Get("hmac")
 	if hmacStr == "" {
-		return false, fmt.Errorf("no hmac key found"))
+		return false, fmt.Errorf("no hmac key found")
 	}
 	qvals.Del("hmac")
 	encStr := baseUrl + "?" + qvals.Encode()
