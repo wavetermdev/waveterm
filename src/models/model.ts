@@ -143,7 +143,7 @@ class Model {
             this.runUpdate(message, interactive);
         });
         this.ws.reconnect();
-        this.keybindManager = new KeybindManager();
+        this.keybindManager = new KeybindManager(this);
         this.readConfigKeybindings();
         this.initSystemKeybindings();
         this.initAppKeybindings();
@@ -222,46 +222,31 @@ class Model {
             getApi().toggleDeveloperTools();
             return true;
         });
+        this.keybindManager.registerKeybinding("system", "electron", "system:minimizeWindow", (waveEvent) => {
+            getApi().hideWindow();
+            return true;
+        });
     }
 
     initAppKeybindings() {
         for (let index = 1; index <= 9; index++) {
-            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, (waveEvent) => {
-                this.onSwitchSessionCmd(index);
-                return true;
-            });
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
         }
-
         this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
-            console.log("focus cmd input callback");
             this.onFocusCmdInputPressed();
             return true;
         });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:bookmarkActiveLine", (waveEvent) => {
-            this.onBookmarkViewPressed();
-            return true;
-        });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:openHistory", (waveEvent) => {
+        this.keybindManager.registerKeybinding("app", "model", "app:openBookmarksView", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openHistoryView", (waveEvent) => {
             this.onOpenHistoryPressed();
             return true;
         });
-
         this.keybindManager.registerKeybinding("app", "model", "app:openTabSearchModal", (waveEvent) => {
             this.onOpenTabSearchModalPressed();
             return true;
         });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", (waveEvent) => {
-            this.onOpenConnectionsViewPressed();
-            return true;
-        });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", (waveEvent) => {
-            this.onOpenSettingsViewPressed();
-            return true;
-        });
+        this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", null);
     }
 
     static getInstance(): Model {
@@ -372,7 +357,6 @@ class Model {
     cancelAlert(): void {
         mobx.action(() => {
             this.alertMessage.set(null);
-            this.modalsModel.popModal();
         })();
         if (this.alertPromiseResolver != null) {
             this.alertPromiseResolver(false);
@@ -493,7 +477,7 @@ class Model {
         if (this.alertMessage.get() != null) {
             if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
-                this.cancelAlert();
+                this.modalsModel.popModal(() => this.cancelAlert());
                 return;
             }
             if (checkKeyPressed(waveEvent, "Enter")) {
@@ -503,6 +487,10 @@ class Model {
             }
             return;
         }
+        if (checkKeyPressed(waveEvent, "Escape") && this.modalsModel.store.length > 0) {
+            this.modalsModel.popModal();
+            return;
+        }
         if (this.activeMainView.get() == "bookmarks") {
             this.bookmarksModel.handleDocKeyDown(e);
         }
@@ -510,18 +498,15 @@ class Model {
             this.historyViewModel.handleDocKeyDown(e);
         }
         if (this.activeMainView.get() == "connections") {
-            this.historyViewModel.handleDocKeyDown(e);
+            this.connectionViewModel.handleDocKeyDown(e);
         }
         if (this.activeMainView.get() == "clientsettings") {
-            this.historyViewModel.handleDocKeyDown(e);
+            this.clientSettingsViewModel.handleDocKeyDown(e);
         } else {
             if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
                 if (this.activeMainView.get() == "webshare") {
                     this.showSessionView();
-                    return;
-                }
-                if (this.clearModals()) {
                     return;
                 }
                 const inputModel = this.inputModel;
@@ -641,33 +626,6 @@ class Model {
             return null;
         }
         return screen.getTermWrap(line.lineid);
-    }
-
-    clearModals(): boolean {
-        let didSomething = false;
-        mobx.action(() => {
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.sessionSettingsModal.get()) {
-                this.sessionSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.clientSettingsModal.get()) {
-                this.clientSettingsModal.set(false);
-                didSomething = true;
-            }
-            if (this.lineSettingsModal.get()) {
-                this.lineSettingsModal.set(null);
-                didSomething = true;
-            }
-        })();
-        return didSomething;
     }
 
     restartWaveSrv(): void {
@@ -1023,6 +981,12 @@ class Model {
                                 console.warn("invalid bookmarksview in update:", update.mainview);
                             }
                             break;
+                        case "clientsettings":
+                            this.activeMainView.set("clientsettings");
+                            break;
+                        case "connections":
+                            this.activeMainView.set("connections");
+                            break;
                         case "plugins":
                             this.pluginsModel.showPluginsView();
                             break;
@@ -1086,6 +1050,9 @@ class Model {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+                setTimeout(() => {
+                    GlobalCommandRunner.syncShellState();
+                }, 100);
             }
         } else {
             console.warn("unknown update", genUpdate);
@@ -1583,12 +1550,15 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    readRemoteFile(screenId: string, lineId: string, path: string): Promise<ExtFile> {
-        const urlParams = {
+    readRemoteFile(screenId: string, lineId: string, path: string, mimetype?: string): Promise<ExtFile> {
+        const urlParams: Record<string, string> = {
             screenid: screenId,
             lineid: lineId,
             path: path,
         };
+        if (mimetype != null) {
+            urlParams["mimetype"] = mimetype;
+        }
         const usp = new URLSearchParams(urlParams);
         const url = new URL(this.getBaseHostPort() + "/api/read-file?" + usp.toString());
         const fetchHeaders = this.getFetchHeaders();

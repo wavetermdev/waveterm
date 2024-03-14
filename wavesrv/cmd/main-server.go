@@ -37,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
@@ -73,7 +74,6 @@ var BuildTime = "0"
 
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
-var GlobalAuthKey string
 var shutdownOnce sync.Once
 var ContentTypeHeaderValidRe = regexp.MustCompile(`^\w+/[\w.+-]+$`)
 
@@ -139,7 +139,7 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	}
 	state := getWSState(clientId)
 	if state == nil {
-		state = scws.MakeWSState(clientId, GlobalAuthKey)
+		state = scws.MakeWSState(clientId, scbase.WaveAuthKey)
 		state.ReplaceShell(shell)
 		setWSState(state)
 	} else {
@@ -686,13 +686,42 @@ func AuthKeyMiddleWare(next http.Handler) http.Handler {
 			w.Write([]byte("no x-authkey header"))
 			return
 		}
-		if reqAuthKey != GlobalAuthKey {
+		if reqAuthKey != scbase.WaveAuthKey {
 			w.WriteHeader(500)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+func AuthKeyWrapAllowHmac(fn WebFnType) WebFnType {
+	return func(w http.ResponseWriter, r *http.Request) {
+		reqAuthKey := r.Header.Get("X-AuthKey")
+		if reqAuthKey == "" {
+			// try hmac
+			qvals := r.URL.Query()
+			if !qvals.Has("hmac") {
+				w.WriteHeader(500)
+				w.Write([]byte("no x-authkey header"))
+				return
+			}
+			hmacOk, err := promptenc.ValidateUrlHmac([]byte(scbase.WaveAuthKey), r.URL.Path, qvals)
+			if err != nil || !hmacOk {
+				w.WriteHeader(500)
+				w.Write([]byte(fmt.Sprintf("error validating hmac")))
+				return
+			}
+			// fallthrough (hmac is valid)
+		} else if reqAuthKey != scbase.WaveAuthKey {
+			w.WriteHeader(500)
+			w.Write([]byte("x-authkey header is invalid"))
+			return
+		}
+		w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
+		fn(w, r)
+	}
+
 }
 
 func AuthKeyWrap(fn WebFnType) WebFnType {
@@ -703,7 +732,7 @@ func AuthKeyWrap(fn WebFnType) WebFnType {
 			w.Write([]byte("no x-authkey header"))
 			return
 		}
-		if reqAuthKey != GlobalAuthKey {
+		if reqAuthKey != scbase.WaveAuthKey {
 			w.WriteHeader(500)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
@@ -860,12 +889,11 @@ func main() {
 		}
 		return
 	}
-	authKey, err := scbase.ReadWaveAuthKey()
+	err = scbase.InitializeWaveAuthKey()
 	if err != nil {
 		log.Printf("[error] %v\n", err)
 		return
 	}
-	GlobalAuthKey = authKey
 	err = sstore.TryMigrateUp()
 	if err != nil {
 		log.Printf("[error] migrate up: %v\n", err)
@@ -921,7 +949,7 @@ func main() {
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
-	gr.HandleFunc("/api/read-file", AuthKeyWrap(HandleReadFile))
+	gr.HandleFunc("/api/read-file", AuthKeyWrapAllowHmac(HandleReadFile))
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
 	configPath := path.Join(scbase.GetWaveHomeDir(), "config") + "/"
 	log.Printf("[wave] config path: %q\n", configPath)

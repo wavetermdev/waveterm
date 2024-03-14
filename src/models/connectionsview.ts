@@ -3,6 +3,7 @@
 
 import * as mobx from "mobx";
 import { Model } from "./model";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 class ConnectionsViewModel {
     globalModel: Model;
@@ -20,6 +21,15 @@ class ConnectionsViewModel {
         mobx.action(() => {
             this.globalModel.activeMainView.set("connections");
         })();
+    }
+
+    handleDocKeyDown(e: any): void {
+        const waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Escape")) {
+            e.preventDefault();
+            this.closeView();
+            return;
+        }
     }
 }
 

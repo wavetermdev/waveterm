@@ -193,7 +193,7 @@ class BookmarksView extends React.Component<{}, {}> {
         let bookmarks = GlobalModel.bookmarksModel.bookmarks;
         let bookmark: BookmarkType = null;
         return (
-            <MainView viewName="bookmarks" title="Bookmarks" onClose={this.handleClose}>
+            <MainView className="bookmarks-view" title="Bookmarks" onClose={this.handleClose}>
                 <div className="bookmarks-list">
                     <For index="idx" each="bookmark" of={bookmarks}>
                         <Bookmark key={bookmark.bookmarkid} bookmark={bookmark} />

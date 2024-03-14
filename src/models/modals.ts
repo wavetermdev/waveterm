@@ -18,10 +18,11 @@ class ModalsModel {
         }
     }
 
-    popModal() {
+    popModal(callback?: () => void) {
         mobx.action(() => {
             this.store.pop();
         })();
+        callback && callback();
     }
 }
 
