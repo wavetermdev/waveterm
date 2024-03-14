@@ -4,6 +4,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
+import * as util from "@/util/util";
 import { GlobalModel } from "@/models";
 
 import "./media.less";
@@ -32,14 +33,24 @@ class SimpleMediaRenderer extends React.Component<
                 </div>
             );
         }
-        let videoUrl = GlobalModel.getBaseHostPort() + this.props.lineState["wave:fileurl"];
+        let fileUrl = this.props.lineState["wave:fileurl"];
+        if (util.isBlank(fileUrl)) {
+            return (
+                <div className="media-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
+                    <div className="load-error-text">
+                        ERROR: no fileurl found (please use `mediaview` to view media files)
+                    </div>
+                </div>
+            );
+        }
+        let fullVideoUrl = GlobalModel.getBaseHostPort() + fileUrl;
         const opts = this.props.opts;
-        const maxHeight = opts.maxSize.height - 10;
-        const maxWidth = opts.maxSize.width - 10;
+        const height = opts.idealSize.height - 10;
+        const width = opts.maxSize.width - 10;
         return (
-            <div className="media-renderer">
-                <video width="320" height="240" controls>
-                    <source src={videoUrl} />
+            <div className="media-renderer" style={{ height: height, width: width }}>
+                <video controls>
+                    <source src={fullVideoUrl} />
                 </video>
             </div>
         );
