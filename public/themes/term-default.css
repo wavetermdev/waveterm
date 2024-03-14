@@ -3,7 +3,7 @@
 
 :root {
     /* 
-     * term colors (16 + 2) form the base terminal theme 
+     * term colors (16 + 6) form the base terminal theme 
      * for consistency these colors should be used by plugins/applications
      */
     --term-black: #000000;
@@ -27,4 +27,6 @@
     --term-cmdtext: #ffffff;
     --term-foreground: #d3d7cf;
     --term-background: #000000;
+    --term-selection-background: #ffffff90;
+    --term-cursor-accent: #000000;
 }
