@@ -24,7 +24,7 @@ function HeaderRenderer(props: any, hnum: number): any {
 }
 
 function CodeRenderer(props: any): any {
-    return <code className={cn({ inline: props.inline })}>{props.children}</code>;
+    return <code>{props.children}</code>;
 }
 
 @mobxReact.observer

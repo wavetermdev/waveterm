@@ -5,6 +5,7 @@ let isJetBrainsMonoLoaded = false;
 let isLatoFontLoaded = false;
 let isHackFontLoaded = false;
 let isBaseFontsLoaded = false;
+let isFiraCodeLoaded = false;
 
 function addToFontFaceSet(fontFaceSet: FontFaceSet, fontFace: FontFace) {
     // any cast to work around typing issue
@@ -53,6 +54,25 @@ function loadLatoFont() {
     addToFontFaceSet(document.fonts, latoFontBold);
     latoFont.load();
     latoFontBold.load();
+}
+
+function loadFiraCodeFont() {
+    if (isFiraCodeLoaded) {
+        return;
+    }
+    isFiraCodeLoaded = true;
+    let firaCodeRegular = new FontFace("Fira Code", "url('public/fonts/firacode-regular.woff2')", {
+        style: "normal",
+        weight: "400",
+    });
+    let firaCodeBold = new FontFace("Fira Code", "url('public/fonts/firacode-bold.woff2')", {
+        style: "normal",
+        weight: "700",
+    });
+    addToFontFaceSet(document.fonts, firaCodeRegular);
+    addToFontFaceSet(document.fonts, firaCodeBold);
+    firaCodeRegular.load();
+    firaCodeBold.load();
 }
 
 function loadHackFont() {
@@ -104,6 +124,7 @@ function loadFonts() {
     loadLatoFont();
     loadJetBrainsMonoFont();
     loadHackFont();
+    loadFiraCodeFont();
 }
 
 export { loadFonts };

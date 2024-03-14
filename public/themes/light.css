@@ -17,6 +17,7 @@
     --app-panel-bg-color-dev: #e0e0e0;
     --app-icon-color: rgb(80, 80, 80);
     --app-icon-hover-color: rgb(100, 100, 100);
+    --app-selected-mask-color: rgba(0, 0, 0, 0.06);
 
     --input-bg-color: #eeeeee;
 
@@ -47,6 +48,10 @@
     --form-element-label-color: rgba(0, 0, 0, 0.6);
     --form-element-secondary-color: rgba(0, 0, 0, 0.09);
     --form-element-icon-color: rgb(0, 0, 0, 0.6);
+    --form-element-disabled-text-color: #b7b7b7;
+    --form-element-placeholder-color: #b7b7b7;
+
+    --markdown-bg-color: rgb(0, 0, 0, 0.1);
 
     /* modal colors */
     --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
@@ -69,6 +74,4 @@
     --toggle-thumb-color: var(--app-bg-color);
 
     --logo-button-hover-bg-color: #f0f0f0;
-
-    --xterm-viewport-border-color: rgba(0, 0, 0, 0.3);
 }

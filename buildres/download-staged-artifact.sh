@@ -13,4 +13,4 @@ fi
 DOWNLOAD_DIR=$VERSION-staged
 rm -rf $DOWNLOAD_DIR
 mkdir -p $DOWNLOAD_DIR
-aws s3 cp s3://waveterm-github-artifacts/staging/$VERSION/ $DOWNLOAD_DIR/ --recursive
+aws s3 cp s3://waveterm-github-artifacts/staging/$VERSION/ $DOWNLOAD_DIR/ --recursive --profile $AWS_PROFILE

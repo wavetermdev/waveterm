@@ -60,6 +60,7 @@
     --app-panel-bg-color-dev: rgb(21, 23, 48);
     --app-icon-color: rgb(139, 145, 138);
     --app-icon-hover-color: #fff;
+    --app-selected-mask-color: rgba(255, 255, 255, 0.06);
 
     /* icon colors */
 
@@ -188,7 +189,7 @@
     /* table colors */
     --table-border-color: rgba(241, 246, 243, 0.15);
     --table-thead-border-top-color: rgba(250, 250, 250, 0.1);
-    --table-thead-border-bottom-color: var(--table-border-color);
+    --table-thead-bright-border-color: #ccc;
     --table-thead-bg-color: rgba(250, 250, 250, 0.02);
     --table-tr-border-bottom-color: rgba(241, 246, 243, 0.15);
     --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
@@ -219,6 +220,4 @@
     --modal-header-bottom-border-color: rgba(241, 246, 243, 0.15);
 
     --logo-button-hover-bg-color: #1e1e1e;
-
-    --xterm-viewport-border-color: rgba(241, 246, 243, 0.15);
 }

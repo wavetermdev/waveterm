@@ -27,7 +27,7 @@ jobs:
               if: matrix.platform == 'linux'
               run: |
                   sudo apt-get update
-                  sudo apt-get install rpm
+                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm
             - uses: actions/setup-go@v5
               with:
                   go-version: ${{env.GO_VERSION}}

@@ -2863,10 +2863,13 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 	if promptStr == "" {
 		return nil, fmt.Errorf("openai error, prompt string is blank")
 	}
+	update := scbus.MakeUpdatePacket()
+	sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
 	line, err := sstore.AddOpenAILine(ctx, ids.ScreenId, DefaultUserId, cmd)
 	if err != nil {
 		return nil, fmt.Errorf("cannot add new line: %v", err)
 	}
+
 	if resolveBool(pk.Kwargs["stream"], true) {
 		go doOpenAIStreamCompletion(cmd, clientData.ClientId, opts, prompt)
 	} else {
@@ -2881,7 +2884,6 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		// ignore error again (nothing to do)
 		log.Printf("openai error updating screen selected line: %v\n", err)
 	}
-	update := scbus.MakeUpdatePacket()
 	sstore.AddLineUpdate(update, line, cmd)
 	update.AddUpdate(*screen)
 	return update, nil
@@ -3016,7 +3018,9 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 	update := scbus.MakeUpdatePacket()
 	sstore.AddLineUpdate(update, rtnLine, cmd)
 	update.AddUpdate(*screen)
-	sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
+	if cmd.Status == sstore.CmdStatusRunning {
+		sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
+	}
 	updateHistoryContext(ctx, rtnLine, cmd, cmd.FeState)
 	return update, nil
 }

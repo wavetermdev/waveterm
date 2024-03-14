@@ -10,17 +10,17 @@ import "./mainview.less";
 
 @mobxReact.observer
 class MainView extends React.Component<{
-    viewName: string;
     title: string;
     onClose: () => void;
     children: React.ReactNode;
+    className?: string;
 }> {
     render() {
         const sidebarModel = GlobalModel.mainSidebarModel;
         const maxWidthSubtractor = sidebarModel.getCollapsed() ? 0 : sidebarModel.getWidth();
         return (
             <div
-                className={cn("mainview", `${this.props.viewName}-view`)}
+                className={cn("mainview", this.props.className)}
                 style={{ maxWidth: `calc(100vw - ${maxWidthSubtractor}px)` }}
             >
                 <div className="header-container bottom-border">
