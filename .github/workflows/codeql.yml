@@ -83,6 +83,7 @@ jobs:
                       scripthaus/go.sum
 
             - name: Install Scripthaus (Go only)
+              if: matrix.language == 'go'
               run: |
                   go work use ./scripthaus;
                   cd scripthaus;
