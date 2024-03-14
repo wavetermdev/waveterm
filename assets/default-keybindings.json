@@ -36,7 +36,7 @@
       "keys": ["PageDown"]
     },
     {
-      "command": "app:openHistory",
+      "command": "app:openHistoryView",
       "keys": ["Cmd:h"]
     },
     {
@@ -183,7 +183,7 @@
       "keys": ["Cmd:d"]
     },
     {
-      "command": "app:bookmarkActiveLine",
+      "command": "app:openBookmarksView",
       "keys": ["Cmd:b"],
       "commandStr": "/bookmarks:show"
     },

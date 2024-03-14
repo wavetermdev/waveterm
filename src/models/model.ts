@@ -233,12 +233,14 @@ class Model {
             this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
         }
         this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
-            console.log("focus cmd input callback");
             this.onFocusCmdInputPressed();
             return true;
         });
-        this.keybindManager.registerKeybinding("app", "model", "app:bookmarkActiveLine", null);
-        this.keybindManager.registerKeybinding("app", "model", "app:openHistory", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openBookmarksView", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openHistoryView", (waveEvent) => {
+            this.onOpenHistoryPressed();
+            return true;
+        });
         this.keybindManager.registerKeybinding("app", "model", "app:openTabSearchModal", (waveEvent) => {
             this.onOpenTabSearchModalPressed();
             return true;
