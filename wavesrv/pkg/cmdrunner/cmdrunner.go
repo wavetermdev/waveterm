@@ -4861,11 +4861,12 @@ func ImageViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	if pk.Args[0] == "" {
 		return nil, fmt.Errorf("%s argument cannot be empty", GetCmdStr(pk))
 	}
+	filePath := pk.Args[0]
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
 		return nil, err
 	}
-	outputStr := fmt.Sprintf("%s %q", GetCmdStr(pk), pk.Args[0])
+	outputStr := fmt.Sprintf("%s %q", GetCmdStr(pk), filePath)
 	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -4874,7 +4875,7 @@ func ImageViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	// set the line state
 	lineState := make(map[string]any)
 	lineState[sstore.LineState_Source] = "file"
-	lineState[sstore.LineState_File] = pk.Args[0]
+	lineState[sstore.LineState_File] = filePath
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "image", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output

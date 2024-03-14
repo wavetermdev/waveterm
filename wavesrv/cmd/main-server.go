@@ -74,7 +74,6 @@ var BuildTime = "0"
 
 var GlobalLock = &sync.Mutex{}
 var WSStateMap = make(map[string]*scws.WSState) // clientid -> WsState
-var GlobalAuthKey string
 var shutdownOnce sync.Once
 var ContentTypeHeaderValidRe = regexp.MustCompile(`^\w+/[\w.+-]+$`)
 
@@ -140,7 +139,7 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	}
 	state := getWSState(clientId)
 	if state == nil {
-		state = scws.MakeWSState(clientId, GlobalAuthKey)
+		state = scws.MakeWSState(clientId, scbase.WaveAuthKey)
 		state.ReplaceShell(shell)
 		setWSState(state)
 	} else {
@@ -687,7 +686,7 @@ func AuthKeyMiddleWare(next http.Handler) http.Handler {
 			w.Write([]byte("no x-authkey header"))
 			return
 		}
-		if reqAuthKey != GlobalAuthKey {
+		if reqAuthKey != scbase.WaveAuthKey {
 			w.WriteHeader(500)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
@@ -707,14 +706,14 @@ func AuthKeyWrapAllowHmac(fn WebFnType) WebFnType {
 				w.Write([]byte("no x-authkey header"))
 				return
 			}
-			hmacOk, err := promptenc.ValidateUrlHmac([]byte(GlobalAuthKey), r.URL.Path, qvals)
+			hmacOk, err := promptenc.ValidateUrlHmac([]byte(scbase.WaveAuthKey), r.URL.Path, qvals)
 			if err != nil || !hmacOk {
 				w.WriteHeader(500)
 				w.Write([]byte(fmt.Sprintf("error validating hmac")))
 				return
 			}
 			// fallthrough (hmac is valid)
-		} else if reqAuthKey != GlobalAuthKey {
+		} else if reqAuthKey != scbase.WaveAuthKey {
 			w.WriteHeader(500)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
@@ -733,7 +732,7 @@ func AuthKeyWrap(fn WebFnType) WebFnType {
 			w.Write([]byte("no x-authkey header"))
 			return
 		}
-		if reqAuthKey != GlobalAuthKey {
+		if reqAuthKey != scbase.WaveAuthKey {
 			w.WriteHeader(500)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
@@ -890,12 +889,11 @@ func main() {
 		}
 		return
 	}
-	authKey, err := scbase.ReadWaveAuthKey()
+	err = scbase.InitializeWaveAuthKey()
 	if err != nil {
 		log.Printf("[error] %v\n", err)
 		return
 	}
-	GlobalAuthKey = authKey
 	err = sstore.TryMigrateUp()
 	if err != nil {
 		log.Printf("[error] migrate up: %v\n", err)
