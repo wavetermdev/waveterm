@@ -357,7 +357,6 @@ class Model {
     cancelAlert(): void {
         mobx.action(() => {
             this.alertMessage.set(null);
-            this.modalsModel.popModal();
         })();
         if (this.alertPromiseResolver != null) {
             this.alertPromiseResolver(false);
@@ -478,7 +477,7 @@ class Model {
         if (this.alertMessage.get() != null) {
             if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
-                this.cancelAlert();
+                this.modalsModel.popModal(() => this.cancelAlert());
                 return;
             }
             if (checkKeyPressed(waveEvent, "Enter")) {
@@ -488,6 +487,10 @@ class Model {
             }
             return;
         }
+        if (checkKeyPressed(waveEvent, "Escape") && this.modalsModel.store.length > 0) {
+            this.modalsModel.popModal();
+            return;
+        }
         if (this.activeMainView.get() == "bookmarks") {
             this.bookmarksModel.handleDocKeyDown(e);
         }
@@ -495,18 +498,15 @@ class Model {
             this.historyViewModel.handleDocKeyDown(e);
         }
         if (this.activeMainView.get() == "connections") {
-            this.historyViewModel.handleDocKeyDown(e);
+            this.connectionViewModel.handleDocKeyDown(e);
         }
         if (this.activeMainView.get() == "clientsettings") {
-            this.historyViewModel.handleDocKeyDown(e);
+            this.clientSettingsViewModel.handleDocKeyDown(e);
         } else {
             if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
                 if (this.activeMainView.get() == "webshare") {
                     this.showSessionView();
-                    return;
-                }
-                if (this.clearModals()) {
                     return;
                 }
                 const inputModel = this.inputModel;
@@ -626,33 +626,6 @@ class Model {
             return null;
         }
         return screen.getTermWrap(line.lineid);
-    }
-
-    clearModals(): boolean {
-        let didSomething = false;
-        mobx.action(() => {
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.sessionSettingsModal.get()) {
-                this.sessionSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.clientSettingsModal.get()) {
-                this.clientSettingsModal.set(false);
-                didSomething = true;
-            }
-            if (this.lineSettingsModal.get()) {
-                this.lineSettingsModal.set(null);
-                didSomething = true;
-            }
-        })();
-        return didSomething;
     }
 
     restartWaveSrv(): void {
