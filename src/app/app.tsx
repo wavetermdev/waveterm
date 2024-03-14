@@ -17,6 +17,7 @@ import { HistoryView } from "./history/history";
 import { ConnectionsView } from "./connections/connections";
 import { ClientSettingsView } from "./clientsettings/clientsettings";
 import { MainSideBar } from "./sidebar/main";
+import { RightSideBar } from "./sidebar/right";
 import { DisconnectedModal, ClientStopModal } from "./common/modals";
 import { ModalsProvider } from "./common/modals/provider";
 import { ErrorBoundary } from "./common/error/errorboundary";
@@ -137,6 +138,7 @@ class App extends React.Component<{}, {}> {
                         <ConnectionsView model={remotesModel} />
                         <ClientSettingsView model={remotesModel} />
                     </ErrorBoundary>
+                    <RightSideBar parentRef={this.mainContentRef} clientData={clientData} />
                 </div>
                 <ModalsProvider />
             </div>

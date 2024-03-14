@@ -4,6 +4,7 @@
 import * as mobx from "mobx";
 import { MagicLayout } from "@/app/magiclayout";
 import { Model } from "./model";
+import { GlobalCommandRunner } from "@/models";
 
 interface SidebarModel {}
 
@@ -81,6 +82,14 @@ class RightSidebarModel implements SidebarModel {
             return this.tempCollapsed.get();
         }
         return collapsed;
+    }
+
+    saveState(width: number, collapsed: boolean): void {
+        GlobalCommandRunner.clientSetRightSidebar(width, collapsed).finally(() => {
+            mobx.action(() => {
+                this.isDragging.set(false);
+            })();
+        });
     }
 }
 

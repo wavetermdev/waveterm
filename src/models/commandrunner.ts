@@ -399,9 +399,14 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
-    clientSetSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
+    clientSetMainSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
         let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
-        return GlobalModel.submitCommand("client", "setsidebar", null, kwargs, false);
+        return GlobalModel.submitCommand("client", "setmainsidebar", null, kwargs, false);
+    }
+
+    clientSetRightSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
+        return GlobalModel.submitCommand("client", "setrightsidebar", null, kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

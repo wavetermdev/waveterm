@@ -119,11 +119,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     stopResizing() {
         const { model } = this.props;
 
-        GlobalCommandRunner.clientSetSidebar(model.tempWidth.get(), model.tempCollapsed.get()).finally(() => {
-            mobx.action(() => {
-                model.isDragging.set(false);
-            })();
-        });
+        model.saveState(model.tempWidth.get(), model.tempCollapsed.get());
 
         document.removeEventListener("mousemove", this.onMouseMove);
         document.removeEventListener("mouseup", this.stopResizing);
@@ -137,7 +133,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         const tempCollapsed = model.getCollapsed();
         const width = model.getWidth(true);
         model.setTempWidthAndTempCollapsed(width, !tempCollapsed);
-        GlobalCommandRunner.clientSetSidebar(width, !tempCollapsed);
+        model.saveState(width, !tempCollapsed);
     }
 
     render() {

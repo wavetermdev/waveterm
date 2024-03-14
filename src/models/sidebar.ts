@@ -9,4 +9,5 @@ export interface SidebarModel {
     setTempWidthAndTempCollapsed(newWidth: number, newCollapsed: boolean): void;
     getWidth(ignoreCollapse?: boolean): number;
     getCollapsed(): boolean;
+    saveState(width: number, collapsed: boolean): void;
 }
