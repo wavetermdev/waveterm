@@ -92,7 +92,7 @@ jobs:
 
             - name: Build (Go only)
               if: matrix.language == 'go'
-              run: scripthaus run build-backend
+              run: ./scripthaus/scripthaus run build-backend
 
             # ℹ️ Command-line programs to run using the OS shell.
             # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
