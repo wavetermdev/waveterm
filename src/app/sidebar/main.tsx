@@ -21,7 +21,7 @@ import { isBlank, openLink } from "@/util/util";
 import { ResizableSidebar } from "@/common/elements";
 import * as appconst from "@/app/appconst";
 
-import "./sidebar.less";
+import "./main.less";
 import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "@/common/icons/icons";
 
 dayjs.extend(localizedFormat);
