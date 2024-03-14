@@ -263,7 +263,12 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
             { type: "separator" },
             { role: "services" },
             { type: "separator" },
-            { role: "hide" },
+            {
+                label: "Hide",
+                click: () => {
+                    app.hide();
+                },
+            },
             { role: "hideOthers" },
             { type: "separator" },
             { role: "quit" },
@@ -509,6 +514,13 @@ app.on("window-all-closed", () => {
 electron.ipcMain.on("toggle-developer-tools", (event) => {
     if (MainWindow != null) {
         MainWindow.webContents.toggleDevTools();
+    }
+    event.returnValue = true;
+});
+
+electron.ipcMain.on("hide-window", (event) => {
+    if (MainWindow != null) {
+        MainWindow.hide();
     }
     event.returnValue = true;
 });

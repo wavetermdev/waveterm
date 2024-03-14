@@ -143,7 +143,7 @@ class Model {
             this.runUpdate(message, interactive);
         });
         this.ws.reconnect();
-        this.keybindManager = new KeybindManager();
+        this.keybindManager = new KeybindManager(this);
         this.readConfigKeybindings();
         this.initSystemKeybindings();
         this.initAppKeybindings();
@@ -222,46 +222,31 @@ class Model {
             getApi().toggleDeveloperTools();
             return true;
         });
+        this.keybindManager.registerKeybinding("system", "electron", "system:minimizeWindow", (waveEvent) => {
+            getApi().hideWindow();
+            return true;
+        });
     }
 
     initAppKeybindings() {
         for (let index = 1; index <= 9; index++) {
-            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, (waveEvent) => {
-                this.onSwitchSessionCmd(index);
-                return true;
-            });
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
         }
-
         this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
-            console.log("focus cmd input callback");
             this.onFocusCmdInputPressed();
             return true;
         });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:bookmarkActiveLine", (waveEvent) => {
-            this.onBookmarkViewPressed();
-            return true;
-        });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:openHistory", (waveEvent) => {
+        this.keybindManager.registerKeybinding("app", "model", "app:openBookmarksView", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openHistoryView", (waveEvent) => {
             this.onOpenHistoryPressed();
             return true;
         });
-
         this.keybindManager.registerKeybinding("app", "model", "app:openTabSearchModal", (waveEvent) => {
             this.onOpenTabSearchModalPressed();
             return true;
         });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", (waveEvent) => {
-            this.onOpenConnectionsViewPressed();
-            return true;
-        });
-
-        this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", (waveEvent) => {
-            this.onOpenSettingsViewPressed();
-            return true;
-        });
+        this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", null);
     }
 
     static getInstance(): Model {
@@ -1022,6 +1007,12 @@ class Model {
                             } else {
                                 console.warn("invalid bookmarksview in update:", update.mainview);
                             }
+                            break;
+                        case "clientsettings":
+                            this.activeMainView.set("clientsettings");
+                            break;
+                        case "connections":
+                            this.activeMainView.set("connections");
                             break;
                         case "plugins":
                             this.pluginsModel.showPluginsView();
