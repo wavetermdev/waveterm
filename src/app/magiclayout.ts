@@ -16,11 +16,17 @@ let MagicLayout = {
     ScreenSidebarMinWidth: 200,
     ScreenSidebarHeaderHeight: 26,
 
-    MainSidebarMinWidth: 75,
+    MainSidebarMinWidth: 0,
     MainSidebarMaxWidth: 300,
     MainSidebarSnapThreshold: 90,
     MainSidebarDragResistance: 50,
     MainSidebarDefaultWidth: 240,
+
+    RightSidebarMinWidth: 0,
+    RightSidebarMaxWidth: 300,
+    RightSidebarSnapThreshold: 90,
+    RightSidebarDragResistance: 50,
+    RightSidebarDefaultWidth: 240,
 };
 
 let m = MagicLayout;
