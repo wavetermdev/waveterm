@@ -393,7 +393,9 @@ func determineLang() string {
 			log.Printf("error executing 'defaults read -g AppleLocale': %v\n", err)
 			return ""
 		}
-		return strings.TrimSpace(string(out)) + ".UTF-8"
+		strOut := string(out)
+		truncOut := strings.Split(strOut, "@")[0]
+		return strings.TrimSpace(truncOut) + ".UTF-8"
 	} else {
 		// this is specifically to get the wavesrv LANG so waveshell
 		// on a remote uses the same LANG
