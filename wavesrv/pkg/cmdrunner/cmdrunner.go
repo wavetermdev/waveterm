@@ -37,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/comp"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote/openai"
@@ -280,6 +281,7 @@ func init() {
 	registerCmdFn("mdview", MarkdownViewCommand)
 	registerCmdFn("markdownview", MarkdownViewCommand)
 	registerCmdFn("pdfview", PdfViewCommand)
+	registerCmdFn("mediaview", MediaViewCommand)
 
 	registerCmdFn("csvview", CSVViewCommand)
 }
@@ -4908,6 +4910,58 @@ func PdfViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	lineState[sstore.LineState_Source] = "file"
 	lineState[sstore.LineState_File] = pk.Args[0]
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "pdf", lineState)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
+	return update, nil
+}
+
+func MakeReadFileUrl(screenId string, lineId string, filePath string) (string, error) {
+	qvals := make(url.Values)
+	qvals.Set("screenid", screenId)
+	qvals.Set("lineid", lineId)
+	qvals.Set("path", filePath)
+	qvals.Set("nonce", uuid.New().String())
+	hmacStr, err := promptenc.ComputeUrlHmac([]byte(scbase.WaveAuthKey), "/api/read-file", qvals)
+	if err != nil {
+		return "", fmt.Errorf("error computing hmac-url: %v", err)
+	}
+	qvals.Set("hmac", hmacStr)
+	return "/api/read-file?" + qvals.Encode(), nil
+}
+
+func MediaViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	if len(pk.Args) == 0 {
+		return nil, fmt.Errorf("%s requires an argument (file name)", GetCmdStr(pk))
+	}
+	// TODO more error checking on filename format?
+	if pk.Args[0] == "" {
+		return nil, fmt.Errorf("%s argument cannot be empty", GetCmdStr(pk))
+	}
+	fileName := pk.Args[0]
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	outputStr := fmt.Sprintf("%s %q", GetCmdStr(pk), fileName)
+	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, err
+	}
+	// compute hmac read-file URL
+	readFileUrl, err := MakeReadFileUrl(ids.ScreenId, cmd.LineId, fileName)
+	if err != nil {
+		// TODO tricky error since the command was a success, but we can't show the output
+		return nil, fmt.Errorf("error making read-file url: %v", err)
+	}
+	// set the line state
+	lineState := make(map[string]any)
+	lineState[sstore.LineState_FileUrl] = readFileUrl
+	lineState[sstore.LineState_File] = fileName
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "media", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
