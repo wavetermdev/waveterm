@@ -65,6 +65,13 @@ jobs:
               if: matrix.language != 'go'
               uses: github/codeql-action/autobuild@v3
 
+            - name: Checkout Scripthaus (Go only)
+              if: matrix.language == 'go'
+              uses: actions/checkout@v4
+              with:
+                  repository: scripthaus-dev/scripthaus
+                  path: scripthaus
+
             - name: Setup Go (Go only)
               uses: actions/setup-go@v5
               if: matrix.language == 'go'
