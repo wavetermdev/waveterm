@@ -36,6 +36,7 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
     render() {
         return (
             <ResizableSidebar
+                model={GlobalModel.rightSidebarModel}
                 className="main-sidebar"
                 position="right"
                 enableSnap={true}

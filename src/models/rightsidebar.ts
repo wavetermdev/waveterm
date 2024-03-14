@@ -5,7 +5,9 @@ import * as mobx from "mobx";
 import { MagicLayout } from "@/app/magiclayout";
 import { Model } from "./model";
 
-class RightSidebarModel {
+interface SidebarModel {}
+
+class RightSidebarModel implements SidebarModel {
     globalModel: Model = null;
     tempWidth: OV<number> = mobx.observable.box(null, {
         name: "RightSidebarModel-tempWidth",

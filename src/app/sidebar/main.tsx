@@ -251,6 +251,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     render() {
         return (
             <ResizableSidebar
+                model={GlobalModel.mainSidebarModel}
                 className="main-sidebar"
                 position="left"
                 enableSnap={true}
