@@ -266,7 +266,7 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
             {
                 label: "Hide",
                 click: () => {
-                    MainWindow?.hide();
+                    app.hide();
                 },
             },
             { role: "hideOthers" },
