@@ -61,8 +61,30 @@ jobs:
 
             # Autobuild attempts to build any compiled languages (C/C++, C#, Go, Java, or Swift).
             # If this step fails, then you should remove it and run the build manually (see below)
-            - name: Autobuild
+            - name: Autobuild (not Go)
+              if: matrix.language != 'go'
               uses: github/codeql-action/autobuild@v3
+
+            - name: Setup Go (Go only)
+              uses: actions/setup-go@v5
+              if: matrix.language == 'go'
+              with:
+                  go-version: stable
+                  cache-dependency-path: |
+                      wavesrv/go.sum
+                      waveshell/go.sum
+                      scripthaus/go.sum
+
+            - name: Install Scripthaus (Go only)
+              run: |
+                  go work use ./scripthaus;
+                  cd scripthaus;
+                  go get ./...;
+                  CGO_ENABLED=1 go build -o scripthaus cmd/main.go
+
+            - name: Build (Go only)
+              if: matrix.language == 'go'
+              run: scripthaus run build-backend
 
             # ℹ️ Command-line programs to run using the OS shell.
             # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
