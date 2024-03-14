@@ -66,10 +66,17 @@ class App extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    openSidebar() {
+    openMainSidebar() {
         const mainSidebarModel = GlobalModel.mainSidebarModel;
         const width = mainSidebarModel.getWidth(true);
         mainSidebarModel.saveState(width, false);
+    }
+
+    @boundMethod
+    openRightSidebar() {
+        const rightSidebarModel = GlobalModel.rightSidebarModel;
+        const width = rightSidebarModel.getWidth(true);
+        rightSidebarModel.saveState(width, false);
     }
 
     render() {
@@ -112,22 +119,26 @@ class App extends React.Component<{}, {}> {
         }
         // used to force a full reload of the application
         const renderVersion = GlobalModel.renderVersion.get();
-        const sidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
+        const mainSidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
+        const rightSidebarCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
         const lightDarkClass = GlobalModel.isThemeDark() ? "is-dark" : "is-light";
         return (
             <div
                 key={"version-" + renderVersion}
                 id="main"
-                className={cn("platform-" + platform, { "sidebar-collapsed": sidebarCollapsed }, lightDarkClass)}
+                className={cn("platform-" + platform, { "sidebar-collapsed": rightSidebarCollapsed }, lightDarkClass)}
                 onContextMenu={this.handleContextMenu}
             >
-                <If condition={sidebarCollapsed}>
+                <If condition={mainSidebarCollapsed}>
                     <div key="logo-button" className="logo-button-container">
                         <div className="logo-button-spacer" />
-                        <div className="logo-button" onClick={this.openSidebar}>
+                        <div className="logo-button" onClick={this.openMainSidebar}>
                             <img src="public/logos/wave-logo.png" alt="logo" />
                         </div>
                     </div>
+                </If>
+                <If condition={rightSidebarCollapsed}>
+                    <i className="fa-sharp fa-regular fa-sparkles fa-fw"></i>
                 </If>
                 <div ref={this.mainContentRef} className="main-content">
                     <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
