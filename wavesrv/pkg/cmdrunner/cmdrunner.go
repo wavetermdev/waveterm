@@ -496,7 +496,7 @@ func getEvalDepth(ctx context.Context) int {
 func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
-		return nil, fmt.Errorf("/run error: %w", err)
+		return nil, fmt.Errorf("/sync error: %w", err)
 	}
 	runPacket := packet.MakeRunPacket()
 	runPacket.ReqId = uuid.New().String()
@@ -513,22 +513,21 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 		SessionId: ids.SessionId,
 		ScreenId:  ids.ScreenId,
 		RemotePtr: ids.Remote.RemotePtr,
+		Ephemeral: true,
 	}
-	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
+	_, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
 	if callback != nil {
 		defer callback()
 	}
 	if err != nil {
 		return nil, err
 	}
-	cmd.RawCmdStr = pk.GetRawStr()
-	update, err := addLineForCmd(ctx, "/sync", true, ids, cmd, "terminal", nil)
-	if err != nil {
-		return nil, err
-	}
-	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
-	scbus.MainUpdateBus.DoScreenUpdate(ids.ScreenId, update)
-	return nil, nil
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.InfoMsgType{
+		InfoMsg:   "syncing state",
+		TimeoutMs: 2000,
+	})
+	return update, nil
 }
 
 func getRendererArg(pk *scpacket.FeCommandPacketType) (string, error) {
@@ -1178,7 +1177,8 @@ func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime tim
 	donePk.Ts = time.Now().UnixMilli()
 	donePk.ExitCode = exitCode
 	donePk.DurationMs = duration.Milliseconds()
-	update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, donePk, cmdStatus)
+	update := scbus.MakeUpdatePacket()
+	err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
 	if err != nil {
 		// nothing to do
 		log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
@@ -2554,7 +2554,8 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 		donePk.Ts = time.Now().UnixMilli()
 		donePk.ExitCode = exitCode
 		donePk.DurationMs = duration.Milliseconds()
-		update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, donePk, cmdStatus)
+		update := scbus.MakeUpdatePacket()
+		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
 		if err != nil {
 			// nothing to do
 			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
@@ -2713,7 +2714,8 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 		donePk.Ts = time.Now().UnixMilli()
 		donePk.ExitCode = exitCode
 		donePk.DurationMs = duration.Milliseconds()
-		update, err := sstore.UpdateCmdDoneInfo(context.Background(), ck, donePk, cmdStatus)
+		update := scbus.MakeUpdatePacket()
+		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
 		if err != nil {
 			// nothing to do
 			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)

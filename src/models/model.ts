@@ -1050,6 +1050,9 @@ class Model {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+                setTimeout(() => {
+                    GlobalCommandRunner.syncShellState();
+                }, 100);
             }
         } else {
             console.warn("unknown update", genUpdate);

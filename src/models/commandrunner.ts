@@ -304,6 +304,10 @@ class CommandRunner {
         GlobalModel.clientSettingsViewModel.showClientSettingsView();
     }
 
+    syncShellState() {
+        GlobalModel.submitCommand("sync", null, null, { nohist: "1" }, false);
+    }
+
     historyView(params: HistorySearchParams) {
         let kwargs = { nohist: "1" };
         kwargs["offset"] = String(params.offset);
