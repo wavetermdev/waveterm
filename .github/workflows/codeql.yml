@@ -89,10 +89,11 @@ jobs:
                   cd scripthaus;
                   go get ./...;
                   CGO_ENABLED=1 go build -o scripthaus cmd/main.go
+                  echo $PWD >> $GITHUB_PATH
 
             - name: Build (Go only)
               if: matrix.language == 'go'
-              run: ./scripthaus/scripthaus run build-backend
+              run: scripthaus run build-backend
 
             # ℹ️ Command-line programs to run using the OS shell.
             # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
