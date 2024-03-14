@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -1176,6 +1177,15 @@ func (msh *MShellProc) WaitAndSendPassword(pw string) {
 }
 
 func (msh *MShellProc) RunInstall(autoInstall bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			errMsg := fmt.Errorf("this should not happen. if it does, please reach out to us in our discord or open an issue on our github\n\n"+
+				"error:\n%v\n\nstack trace:\n%s", r, string(debug.Stack()))
+			log.Printf("fatal error, %s\n", errMsg)
+			msh.WriteToPtyBuffer("*fatal error, %s\n", errMsg)
+			msh.setErrorStatus(errMsg)
+		}
+	}()
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
 		msh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
@@ -1550,6 +1560,15 @@ func (msh *MShellProc) createWaveshellSession(clientCtx context.Context, remoteC
 }
 
 func (msh *MShellProc) Launch(interactive bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			errMsg := fmt.Errorf("this should not happen. if it does, please reach out to us in our discord or open an issue on our github\n\n"+
+				"error:\n%v\n\nstack trace:\n%s", r, string(debug.Stack()))
+			log.Printf("fatal error, %s\n", errMsg)
+			msh.WriteToPtyBuffer("*fatal error, %s\n", errMsg)
+			msh.setErrorStatus(errMsg)
+		}
+	}()
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
 		msh.WriteToPtyBuffer("cannot launch archived remote\n")
