@@ -7,7 +7,7 @@ import dayjs from "dayjs";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
-import { ResizableSidebar } from "@/common/elements";
+import { ResizableSidebar, Button } from "@/elements";
 
 import "./right.less";
 
@@ -24,12 +24,20 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
         return (
             <ResizableSidebar
                 model={GlobalModel.rightSidebarModel}
-                className="main-sidebar"
+                className="right-sidebar"
                 position="right"
                 enableSnap={true}
                 parentRef={this.props.parentRef}
             >
-                {(toggleCollapse) => <React.Fragment></React.Fragment>}
+                {(toggleCollapse) => (
+                    <React.Fragment>
+                        <div className="header">
+                            <Button className="secondary ghost" onClick={toggleCollapse}>
+                                <i className="fa-sharp fa-regular fa-xmark"></i>
+                            </Button>
+                        </div>
+                    </React.Fragment>
+                )}
             </ResizableSidebar>
         );
     }

@@ -6,7 +6,6 @@ import * as mobx from "mobx";
 import { If } from "tsx-control-statements/components";
 import ReactDOM from "react-dom";
 import { Button } from "./button";
-import { IconButton } from "./iconbutton";
 
 import "./modal.less";
 
@@ -19,9 +18,9 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, title }) => (
     <div className="wave-modal-header">
         {<div className="wave-modal-title">{title}</div>}
         <If condition={onClose}>
-            <IconButton theme="secondary" variant="ghost" onClick={onClose}>
+            <Button className="secondary ghost" onClick={onClose}>
                 <i className="fa-sharp fa-solid fa-xmark"></i>
-            </IconButton>
+            </Button>
         </If>
     </div>
 );
@@ -36,11 +35,15 @@ interface ModalFooterProps {
 const ModalFooter: React.FC<ModalFooterProps> = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }) => (
     <div className="wave-modal-footer">
         {onCancel && (
-            <Button theme="secondary" onClick={onCancel}>
+            <Button className="secondary" onClick={onCancel}>
                 {cancelLabel}
             </Button>
         )}
-        {onOk && <Button onClick={onOk}>{okLabel}</Button>}
+        {onOk && (
+            <Button className="primary" onClick={onOk}>
+                {okLabel}
+            </Button>
+        )}
     </div>
 );
 

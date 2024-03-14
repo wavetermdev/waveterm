@@ -182,7 +182,6 @@
     .tabs-end-spacer {
         flex-grow: 1;
         min-width: 30px;
-        margin-right: 100px;
         -webkit-app-region: drag;
         height: 100%;
     }
@@ -190,10 +189,19 @@
 
 // This ensures the tab bar does not collide with the floating logo. The floating logo sits above the sidebar when it is not collapsed, so no additional margin is needed in that case.
 // More margin is given on macOS to account for the traffic light buttons
-#main.platform-darwin.sidebar-collapsed .screen-tabs-container {
+#main.platform-darwin.mainsidebar-collapsed .screen-tabs-container {
     margin-left: var(--floating-logo-width-darwin);
 }
 
-#main:not(.platform-darwin).sidebar-collapsed .screen-tabs-container {
+#main:not(.platform-darwin).mainsidebar-collapsed .screen-tabs-container {
     margin-left: var(--floating-logo-width);
+}
+
+// This ensures the tab bar does not collide with the right sidebar triggers.
+#main.platform-darwin.rightsidebar-collapsed .screen-tabs-container {
+    margin-right: var(--floating-right-sidebar-triggers-width-darwin);
+}
+
+#main:not(.platform-darwin).rightsidebar-collapsed .screen-tabs-container {
+    margin-left: var(--floating-right-sidebar-triggers-width);
 }

@@ -18,9 +18,10 @@ import { ConnectionsView } from "./connections/connections";
 import { ClientSettingsView } from "./clientsettings/clientsettings";
 import { MainSideBar } from "./sidebar/main";
 import { RightSideBar } from "./sidebar/right";
-import { DisconnectedModal, ClientStopModal } from "./common/modals";
-import { ModalsProvider } from "./common/modals/provider";
-import { ErrorBoundary } from "./common/error/errorboundary";
+import { DisconnectedModal, ClientStopModal } from "@/modals";
+import { ModalsProvider } from "@/modals/provider";
+import { Button } from "@/elements";
+import { ErrorBoundary } from "@/common/error/errorboundary";
 import cn from "classnames";
 import "./app.less";
 
@@ -74,6 +75,7 @@ class App extends React.Component<{}, {}> {
 
     @boundMethod
     openRightSidebar() {
+        console.log("openRightSidebar called");
         const rightSidebarModel = GlobalModel.rightSidebarModel;
         const width = rightSidebarModel.getWidth(true);
         rightSidebarModel.saveState(width, false);
@@ -121,12 +123,17 @@ class App extends React.Component<{}, {}> {
         const renderVersion = GlobalModel.renderVersion.get();
         const mainSidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
         const rightSidebarCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
+        const activeMainView = GlobalModel.activeMainView.get();
         const lightDarkClass = GlobalModel.isThemeDark() ? "is-dark" : "is-light";
         return (
             <div
                 key={"version-" + renderVersion}
                 id="main"
-                className={cn("platform-" + platform, { "sidebar-collapsed": rightSidebarCollapsed }, lightDarkClass)}
+                className={cn(
+                    "platform-" + platform,
+                    { "mainsidebar-collapsed": mainSidebarCollapsed, "rightsidebar-collapsed": rightSidebarCollapsed },
+                    lightDarkClass
+                )}
                 onContextMenu={this.handleContextMenu}
             >
                 <If condition={mainSidebarCollapsed}>
@@ -137,8 +144,12 @@ class App extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </If>
-                <If condition={rightSidebarCollapsed}>
-                    <i className="fa-sharp fa-regular fa-sparkles fa-fw"></i>
+                <If condition={rightSidebarCollapsed && activeMainView == "session"}>
+                    <div className="right-sidebar-triggers">
+                        <Button className="secondary ghost right-sidebar-trigger" onClick={this.openRightSidebar}>
+                            <i className="fa-sharp fa-regular fa-lightbulb"></i>
+                        </Button>
+                    </div>
                 </If>
                 <div ref={this.mainContentRef} className="main-content">
                     <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />

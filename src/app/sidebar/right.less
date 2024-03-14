@@ -1,6 +1,6 @@
 @import "@/common/icons/icons.less";
 
-.main-sidebar {
+.right-sidebar {
     padding: 0;
     display: flex;
     flex-direction: column;
@@ -11,157 +11,18 @@
     font-size: var(--sidebar-font-size);
     font-family: var(--base-font-family);
     font-weight: var(--sidebar-font-weight);
-    border-right: 1px solid var(--app-border-color);
+    border-left: 1px solid var(--app-border-color);
 
-    .title-bar-drag {
-        -webkit-app-region: drag;
-        height: calc(var(--screentabs-height) + 1px);
-        border-bottom: 1px solid var(--app-border-color);
-        position: relative;
+    .header {
+        height: 39px;
         display: flex;
         align-items: center;
-
-        .logo {
-            margin-left: auto;
-            margin-right: auto;
-            margin-top: 4px;
-            svg {
-                width: 88px;
-            }
-        }
-
-        .close-button {
-            -webkit-app-region: no-drag;
-            position: absolute;
-            right: 0;
-            height: 100%;
-            padding: 10px;
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-        }
+        justify-content: flex-end;
+        padding: 0 5px;
+        border-bottom: 1px solid var(--app-border-color);
     }
 
     &.collapsed {
         display: none;
-    }
-
-    .contents {
-        margin-top: 16px;
-    }
-
-    .separator {
-        height: 1px;
-        margin: 16px 0;
-        background-color: var(--app-border-color);
-    }
-
-    .item.workspaces-item {
-        margin-bottom: -4px;
-    }
-
-    .middle {
-        padding: 4px 6px 8px 6px;
-        border-bottom: 1px solid var(--app-border-color);
-        overflow-y: auto;
-        .item {
-            &.active {
-                background-color: var(--sidebar-highlight-color);
-                font-weight: var(--sidebar-highlight-font-weight);
-            }
-            .index {
-                font-size: 10px;
-            }
-            .hotkey {
-                float: left !important;
-                margin-right: 0 !important;
-                visibility: hidden;
-                letter-spacing: 0 !important;
-            }
-        }
-    }
-
-    .bottom {
-        position: absolute;
-        bottom: 2rem;
-        left: 0;
-        width: 100%;
-        padding-top: 0.8rem;
-    }
-
-    .item {
-        padding: 5px;
-        margin-left: 6px;
-        border-radius: 4px;
-        opacity: 1;
-        width: inherit;
-        max-width: inherit;
-        min-width: inherit;
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-
-        .front-icon {
-            .positional-icon-visible;
-            font-size: 15px;
-        }
-
-        .end-icons {
-            height: 20px;
-            line-height: normal;
-        }
-
-        .item-contents {
-            flex-grow: 1;
-        }
-        .icon {
-            width: 16px;
-            height: 16px;
-        }
-        .hotkey {
-            float: right;
-            margin-right: 6px;
-            letter-spacing: 6px;
-            margin-left: auto;
-        }
-        &:hover {
-            :not(.disabled) .hotkey {
-                .positional-icon-visible;
-            }
-            .actions {
-                .positional-icon-visible;
-            }
-        }
-
-        &:not(:hover) .status-indicator {
-            .status-indicator-visible;
-        }
-
-        &.workspaces {
-            cursor: default;
-            .add-workspace {
-                cursor: pointer;
-                .positional-icon-visible;
-                float: right;
-                padding: 2px;
-                margin-right: 6px;
-                .fa-plus {
-                    font-size: 13px;
-                }
-            }
-        }
-
-        .fa-discord {
-            font-size: 13px;
-        }
-    }
-
-    .update-banner {
-        font-weight: bold;
-
-        .icon {
-            font-weight: normal;
-            font-size: 16px;
-        }
     }
 }

@@ -1,24 +1,15 @@
-// Copyright 2023, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
 import * as React from "react";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 
 import "./button.less";
 
-type ButtonVariantType = "outlined" | "solid" | "ghost";
-type ButtonThemeType = "primary" | "secondary";
-
 interface ButtonProps {
-    theme?: ButtonThemeType;
     children: React.ReactNode;
     onClick?: () => void;
     disabled?: boolean;
-    variant?: ButtonVariantType;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
-    color?: string;
     style?: React.CSSProperties;
     autoFocus?: boolean;
     className?: string;
@@ -27,45 +18,23 @@ interface ButtonProps {
 
 class Button extends React.Component<ButtonProps> {
     static defaultProps = {
-        theme: "primary",
-        variant: "solid",
-        color: "",
         style: {},
     };
 
     @boundMethod
     handleClick() {
+        console.log("goes here+++++++");
         if (this.props.onClick && !this.props.disabled) {
             this.props.onClick();
         }
     }
 
     render() {
-        const {
-            leftIcon,
-            rightIcon,
-            theme,
-            children,
-            disabled,
-            variant,
-            color,
-            style,
-            autoFocus,
-            termInline,
-            className,
-        } = this.props;
+        const { leftIcon, rightIcon, children, disabled, style, autoFocus, termInline, className } = this.props;
 
         return (
             <button
-                className={cn(
-                    "wave-button",
-                    theme,
-                    variant,
-                    color,
-                    { disabled: disabled },
-                    { "term-inline": termInline },
-                    className
-                )}
+                className={cn("wave-button", { disabled }, { "term-inline": termInline }, className)}
                 onClick={this.handleClick}
                 disabled={disabled}
                 style={style}
