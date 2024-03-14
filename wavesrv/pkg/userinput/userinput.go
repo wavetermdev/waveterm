@@ -22,6 +22,7 @@ type UserInputRequestType struct {
 	Markdown     bool   `json:"markdown"`
 	TimeoutMs    int    `json:"timeoutms"`
 	CheckBoxMsg  string `json:"checkboxmsg"`
+	PublicText   bool   `json:"publictext"`
 }
 
 func (*UserInputRequestType) GetType() string {

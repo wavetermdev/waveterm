@@ -126,7 +126,7 @@ var SetVarScopes = []SetVarScope{
 	{ScopeName: "remote", VarNames: []string{}},
 }
 
-var userHostRe = regexp.MustCompile(`^(sudo@)?([a-zA-Z0-9][a-zA-Z0-9._@\\-]*)@([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
+var userHostRe = regexp.MustCompile(`^(sudo@)?([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
 var remoteAliasRe = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
 var rendererRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_.:-]*$")
@@ -1796,6 +1796,7 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 			return nil, fmt.Errorf("invalid format of user@host argument")
 		}
 		sudoStr, remoteUser, remoteHost, remotePortStr := m[1], m[2], m[3], m[4]
+		remoteUser = strings.Trim(remoteUser, "@")
 		var uhPort int
 		if remotePortStr != "" {
 			var err error
@@ -1837,7 +1838,11 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 			return nil, fmt.Errorf("invalid port argument, \"%d\" is not in the range of 1 to 65535", portVal)
 		}
 		sshOpts.SSHPort = portVal
-		canonicalName = remoteUser + "@" + remoteHost
+		if remoteUser == "" {
+			canonicalName = remoteHost
+		} else {
+			canonicalName = remoteUser + "@" + remoteHost
+		}
 		if portVal != 0 && portVal != 22 {
 			canonicalName = canonicalName + ":" + strconv.Itoa(portVal)
 		}
@@ -2136,17 +2141,17 @@ func createSshImportSummary(changeList map[string][]string) string {
 
 func NewHostInfo(hostName string) (*HostInfoType, error) {
 	userName, _ := ssh_config.GetStrict(hostName, "User")
-	if userName == "" {
-		// we cannot store a remote with a missing user
-		// in the current setup
-		return nil, fmt.Errorf("could not parse \"%s\" - no User in config\n", hostName)
+	var canonicalName string
+	if userName != "" {
+		canonicalName = userName + "@" + hostName
+	} else {
+		canonicalName = hostName
 	}
-	canonicalName := userName + "@" + hostName
 
-	// check if user and host are okay
+	// check if canonicalname is okay
 	m := userHostRe.FindStringSubmatch(canonicalName)
-	if m == nil || m[2] == "" || m[3] == "" {
-		return nil, fmt.Errorf("could not parse \"%s\" - %s did not fit user@host requirement\n", hostName, canonicalName)
+	if m == nil {
+		return nil, fmt.Errorf("could not parse \"%s\" - %s did not fit user@host requirement", hostName, canonicalName)
 	}
 
 	portStr, _ := ssh_config.GetStrict(hostName, "Port")
@@ -2157,10 +2162,10 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 		portVal, err = strconv.Atoi(portStr)
 		if err != nil {
 			// do not make assumptions about port if incorrectly configured
-			return nil, fmt.Errorf("could not parse \"%s\" (%s) - %s could not be converted to a valid port\n", hostName, canonicalName, portStr)
+			return nil, fmt.Errorf("could not parse \"%s\" (%s) - %s could not be converted to a valid port", hostName, canonicalName, portStr)
 		}
 		if portVal <= 0 || portVal > 65535 {
-			return nil, fmt.Errorf("could not parse port \"%d\": number is not valid for a port\n", portVal)
+			return nil, fmt.Errorf("could not parse port \"%d\": number is not valid for a port", portVal)
 		}
 	}
 	identityFile, _ := ssh_config.GetStrict(hostName, "IdentityFile")
