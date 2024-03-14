@@ -1550,12 +1550,15 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    readRemoteFile(screenId: string, lineId: string, path: string): Promise<ExtFile> {
-        const urlParams = {
+    readRemoteFile(screenId: string, lineId: string, path: string, mimetype?: string): Promise<ExtFile> {
+        const urlParams: Record<string, string> = {
             screenid: screenId,
             lineid: lineId,
             path: path,
         };
+        if (mimetype != null) {
+            urlParams["mimetype"] = mimetype;
+        }
         const usp = new URLSearchParams(urlParams);
         const url = new URL(this.getBaseHostPort() + "/api/read-file?" + usp.toString());
         const fetchHeaders = this.getFetchHeaders();
