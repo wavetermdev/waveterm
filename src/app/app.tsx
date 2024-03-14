@@ -67,8 +67,9 @@ class App extends React.Component<{}, {}> {
 
     @boundMethod
     openSidebar() {
-        const width = GlobalModel.mainSidebarModel.getWidth(true);
-        GlobalCommandRunner.clientSetSidebar(width, false);
+        const mainSidebarModel = GlobalModel.mainSidebarModel;
+        const width = mainSidebarModel.getWidth(true);
+        mainSidebarModel.saveState(width, false);
     }
 
     render() {

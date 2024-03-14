@@ -40,7 +40,7 @@ class RightSidebarModel implements SidebarModel {
      */
     getWidth(ignoreCollapse: boolean = false): number {
         const clientData = this.globalModel.clientData.get();
-        let width = clientData?.clientopts?.mainsidebar?.width ?? MagicLayout.RightSidebarDefaultWidth;
+        let width = clientData?.clientopts?.rightsidebar?.width ?? MagicLayout.RightSidebarDefaultWidth;
         if (this.isDragging.get()) {
             if (this.tempWidth.get() == null && width == null) {
                 return MagicLayout.RightSidebarDefaultWidth;
@@ -71,7 +71,7 @@ class RightSidebarModel implements SidebarModel {
 
     getCollapsed(): boolean {
         const clientData = this.globalModel.clientData.get();
-        const collapsed = clientData?.clientopts?.mainsidebar?.collapsed;
+        const collapsed = clientData?.clientopts?.rightsidebar?.collapsed;
         if (this.isDragging.get()) {
             if (this.tempCollapsed.get() == null && collapsed == null) {
                 return false;
