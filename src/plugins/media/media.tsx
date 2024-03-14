@@ -46,10 +46,10 @@ class SimpleMediaRenderer extends React.Component<
         let fullVideoUrl = GlobalModel.getBaseHostPort() + fileUrl;
         const opts = this.props.opts;
         const height = opts.idealSize.height - 10;
-        const width = opts.idealSize.width - 10;
+        const width = opts.maxSize.width - 10;
         return (
-            <div className="media-renderer">
-                <video width={width} height={height} controls>
+            <div className="media-renderer" style={{ height: height, width: width }}>
+                <video controls>
                     <source src={fullVideoUrl} />
                 </video>
             </div>
