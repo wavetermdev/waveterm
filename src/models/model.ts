@@ -491,9 +491,7 @@ class Model {
             this.modalsModel.popModal();
             return;
         }
-        if (this.activeMainView.get() == "bookmarks") {
-            this.bookmarksModel.handleDocKeyDown(e);
-        }
+        this.keybindManager.processKeyEvent(e, waveEvent);
         if (this.activeMainView.get() == "history") {
             this.historyViewModel.handleDocKeyDown(e);
         }
@@ -535,7 +533,6 @@ class Model {
                 }
             }
         }
-        this.keybindManager.processKeyEvent(e, waveEvent);
     }
 
     deleteActiveLine(): boolean {
