@@ -1,8 +1,6 @@
 .wave-button {
     background: none;
-    color: inherit;
     border: none;
-    font: inherit;
     cursor: pointer;
     outline: inherit;
     display: flex;
@@ -13,63 +11,61 @@
     height: auto;
     line-height: 1.5;
 
+    color: var(--form-element-text-color);
+    background: var(--form-element-primary-color);
+    i {
+        fill: var(--form-element-text-color);
+    }
+
     &.primary {
         color: var(--form-element-text-color);
         background: var(--form-element-primary-color);
+        i {
+            fill: var(--form-element-text-color);
+        }
+    }
+
+    &.primary.outlined {
+        background: none;
+        border: 1px solid var(--form-element-primary-color);
 
         i {
             fill: var(--form-element-primary-color);
         }
+    }
 
-        &.solid {
-            color: var(--form-element-text-color);
-            background: var(--form-element-primary-color);
-
-            i {
-                fill: var(--form-element-text-color);
-            }
-        }
-
-        &.outlined {
-            background: none;
-            border: 1px solid var(--form-element-primary-color);
-        }
-
-        &.ghost {
-            background: none;
-        }
-
-        &:hover {
-            color: var(--form-element-text-color);
+    &.primary.ghost {
+        background: none;
+        i {
+            fill: var(--form-element-primary-color);
         }
     }
 
     &.secondary {
         color: var(--form-element-text-color);
-        background: none;
-        color: var(--form-element-text-color);
         background: var(--form-element-secondary-color);
-        box-shadow: none;
-
-        &.solid {
-            color: var(--form-element-text-color);
-            background: var(--form-element-secondary-color);
-            box-shadow: none;
+        i {
+            fill: var(--form-element-text-color);
         }
+    }
 
-        &.outlined {
-            background: none;
-            border: 1px solid var(--form-element-secondary-color);
-        }
+    &.secondary.outlined {
+        background: none;
+        border: 1px solid var(--form-element-text-color);
+    }
 
-        &.ghost {
-            background: none;
-            padding: 6px 10px;
+    &.secondary.ghost {
+        background: none;
+    }
 
-            i {
-                fill: var(--form-element-primary-color);
-            }
-        }
+    &.secondary.danger {
+        color: var(--app-error-color);
+    }
+
+    &.small {
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 3px;
     }
 
     &.term-inline {

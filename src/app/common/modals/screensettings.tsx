@@ -10,7 +10,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "@/elements";
 import * as util from "@/util/util";
-import { TabIcon } from "@/common/elements/tabicon";
+import { TabIcon, Button } from "@/elements";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
@@ -334,12 +334,9 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             </Tooltip>
                         </div>
                         <div className="settings-input">
-                            <div
-                                onClick={this.handleDeleteScreen}
-                                className="button is-prompt-danger is-outlined is-small"
-                            >
+                            <Button onClick={this.handleDeleteScreen} className="secondary solid small danger">
                                 Delete Tab
-                            </div>
+                            </Button>
                         </div>
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />
