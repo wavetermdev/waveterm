@@ -22,15 +22,6 @@ class ClientSettingsViewModel {
             this.globalModel.activeMainView.set("clientsettings");
         })();
     }
-
-    handleDocKeyDown(e: any): void {
-        const waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            this.closeView();
-            return;
-        }
-    }
 }
 
 export { ClientSettingsViewModel };

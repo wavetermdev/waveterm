@@ -38,7 +38,7 @@ type Keybind = {
     commandStr: string;
 };
 
-const KeybindLevels = ["system", "modal", "app", "pane", "plugin"];
+const KeybindLevels = ["system", "modal", "app", "mainview", "pane", "plugin"];
 
 class KeybindManager {
     domainCallbacks: Map<string, KeybindCallback>;
@@ -129,7 +129,6 @@ class KeybindManager {
             return true;
         }
         let curCommand = commandsList.shift();
-        console.log("running: ", curCommand);
         let prtn = this.globalModel.submitRawCommand(curCommand, false, false);
         prtn.then((rtn) => {
             if (!rtn.success) {
@@ -176,18 +175,17 @@ class KeybindManager {
         return false;
     }
 
-    processKeyEvent(nativeEvent: any, event: WaveKeyboardEvent) {
+    processKeyEvent(nativeEvent: any, event: WaveKeyboardEvent): boolean {
         let modalLevel = this.levelMap.get("modal");
         if (modalLevel.length != 0) {
             // console.log("processing modal");
             // special case when modal keybindings are present
             let shouldReturn = this.processLevel(nativeEvent, event, modalLevel);
             if (shouldReturn) {
-                return;
+                return true;
             }
             let systemLevel = this.levelMap.get("system");
-            this.processLevel(nativeEvent, event, systemLevel);
-            return;
+            return this.processLevel(nativeEvent, event, systemLevel);
         }
         for (let index = this.levelArray.length - 1; index >= 0; index--) {
             let curLevel = this.levelArray[index];
@@ -200,9 +198,10 @@ class KeybindManager {
             }
             let shouldReturn = this.processLevel(nativeEvent, event, curKeybindsArray);
             if (shouldReturn) {
-                return;
+                return true;
             }
         }
+        return false;
     }
 
     keybindingAlreadyAdded(level: string, domain: string, keybinding: string) {

@@ -491,51 +491,43 @@ class Model {
             this.modalsModel.popModal();
             return;
         }
+        if (this.keybindManager.processKeyEvent(e, waveEvent)) {
+            return;
+        }
         if (this.activeMainView.get() == "bookmarks") {
             this.bookmarksModel.handleDocKeyDown(e);
         }
-        if (this.activeMainView.get() == "history") {
-            this.historyViewModel.handleDocKeyDown(e);
-        }
-        if (this.activeMainView.get() == "connections") {
-            this.connectionViewModel.handleDocKeyDown(e);
-        }
-        if (this.activeMainView.get() == "clientsettings") {
-            this.clientSettingsViewModel.handleDocKeyDown(e);
-        } else {
-            if (checkKeyPressed(waveEvent, "Escape")) {
-                e.preventDefault();
-                if (this.activeMainView.get() == "webshare") {
-                    this.showSessionView();
-                    return;
-                }
-                const inputModel = this.inputModel;
-                inputModel.toggleInfoMsg();
-                if (inputModel.inputMode.get() != null) {
-                    inputModel.resetInputMode();
-                }
+        if (checkKeyPressed(waveEvent, "Escape")) {
+            e.preventDefault();
+            if (this.activeMainView.get() == "webshare") {
+                this.showSessionView();
                 return;
             }
-            if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
-                e.preventDefault();
-                const activeScreen = this.getActiveScreen();
-                if (activeScreen != null) {
-                    const isSidebarOpen = activeScreen.isSidebarOpen();
-                    if (isSidebarOpen) {
-                        GlobalCommandRunner.screenSidebarClose();
-                    } else {
-                        GlobalCommandRunner.screenSidebarOpen();
-                    }
-                }
+            const inputModel = this.inputModel;
+            inputModel.toggleInfoMsg();
+            if (inputModel.inputMode.get() != null) {
+                inputModel.resetInputMode();
             }
-            if (checkKeyPressed(waveEvent, "Cmd:d")) {
-                const ranDelete = this.deleteActiveLine();
-                if (ranDelete) {
-                    e.preventDefault();
+            return;
+        }
+        if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
+            e.preventDefault();
+            const activeScreen = this.getActiveScreen();
+            if (activeScreen != null) {
+                const isSidebarOpen = activeScreen.isSidebarOpen();
+                if (isSidebarOpen) {
+                    GlobalCommandRunner.screenSidebarClose();
+                } else {
+                    GlobalCommandRunner.screenSidebarOpen();
                 }
             }
         }
-        this.keybindManager.processKeyEvent(e, waveEvent);
+        if (checkKeyPressed(waveEvent, "Cmd:d")) {
+            const ranDelete = this.deleteActiveLine();
+            if (ranDelete) {
+                e.preventDefault();
+            }
+        }
     }
 
     deleteActiveLine(): boolean {
