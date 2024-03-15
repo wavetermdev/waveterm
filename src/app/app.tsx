@@ -143,7 +143,7 @@ class App extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </If>
-                <If condition={rightSidebarCollapsed && activeMainView == "session"}>
+                <If condition={GlobalModel.isDev && rightSidebarCollapsed && activeMainView == "session"}>
                     <div className="right-sidebar-triggers">
                         <Button className="secondary ghost right-sidebar-trigger" onClick={this.openRightSidebar}>
                             <i className="fa-sharp fa-regular fa-lightbulb"></i>
