@@ -579,6 +579,10 @@ declare global {
             collapsed: boolean;
             width: number;
         };
+        rightsidebar: {
+            collapsed: boolean;
+            width: number;
+        };
         globalshortcut: string;
         globalshortcutenabled: boolean;
     };

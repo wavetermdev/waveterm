@@ -39,16 +39,12 @@ class WorkspaceView extends React.Component<{}, {}> {
         let isHidden = GlobalModel.activeMainView.get() != "session";
         let mainSidebarModel = GlobalModel.mainSidebarModel;
 
-        // Has to calc manually because when tabs overflow, the width of the session view is increased for some reason causing inconsistent width.
-        // 6px is the right margin of session view.
-        let width = window.innerWidth - 6 - mainSidebarModel.getWidth();
-
         return (
             <div
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
                 data-sessionid={session.sessionId}
                 style={{
-                    width: `${width}px`,
+                    width: `${window.innerWidth - mainSidebarModel.getWidth()}px`,
                 }}
             >
                 <ScreenTabs key={"tabs-" + session.sessionId} session={session} />

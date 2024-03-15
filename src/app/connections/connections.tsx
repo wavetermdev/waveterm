@@ -180,14 +180,14 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                 </table>
                 <footer>
                     <Button
-                        theme="secondary"
+                        className="secondary"
                         leftIcon={<i className="fa-sharp fa-solid fa-plus"></i>}
                         onClick={this.handleAddConnection}
                     >
                         New Connection
                     </Button>
                     <Button
-                        theme="secondary"
+                        className="secondary"
                         leftIcon={<i className="fa-sharp fa-solid fa-fw fa-file-import"></i>}
                         onClick={this.handleImportSshConfig}
                     >

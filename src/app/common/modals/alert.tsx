@@ -54,7 +54,7 @@ class AlertModal extends React.Component<{}, {}> {
                 </div>
                 <div className="wave-modal-footer">
                     <If condition={isConfirm}>
-                        <Button theme="secondary" onClick={this.closeModal}>
+                        <Button className="secondary" onClick={this.closeModal}>
                             Cancel
                         </Button>
                         <Button autoFocus={true} onClick={this.handleOK}>

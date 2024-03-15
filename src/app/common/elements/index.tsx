@@ -3,7 +3,6 @@ export { Checkbox } from "./checkbox";
 export { CmdStrCode } from "./cmdstrcode";
 export { renderCmdText } from "./cmdtext";
 export { Dropdown } from "./dropdown";
-export { IconButton } from "./iconbutton";
 export { InlineSettingsTextEdit } from "./inlinesettingstextedit";
 export { InputDecoration } from "./inputdecoration";
 export { LinkButton } from "./linkbutton";

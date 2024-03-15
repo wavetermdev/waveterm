@@ -433,7 +433,7 @@ class SourceCodeRenderer extends React.Component<
         return (
             <>
                 <If condition={isPreviewerAvailable}>
-                    <Button theme="primary" termInline={true}>
+                    <Button className="primary" termInline={true}>
                         <div onClick={this.togglePreview} className={`preview`}>
                             {`${showPreview ? "hide" : "show"} preview (`}
                             {renderCmdText("P")}
@@ -449,7 +449,7 @@ class SourceCodeRenderer extends React.Component<
                     ))}
                 </select>
                 <If condition={allowEditing}>
-                    <Button theme="primary" termInline={true}>
+                    <Button className="primary" termInline={true}>
                         <div onClick={() => this.doSave()}>
                             {`save (`}
                             {renderCmdText("S")}

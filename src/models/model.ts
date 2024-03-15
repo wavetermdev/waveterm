@@ -13,7 +13,6 @@ import {
     isModKeyPress,
     isBlank,
 } from "@/util/util";
-import { loadFonts } from "@/util/fontutil";
 import { loadTheme } from "@/util/themeutil";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
@@ -31,6 +30,7 @@ import { ClientSettingsViewModel } from "./clientsettingsview";
 import { RemotesModel } from "./remotes";
 import { ModalsModel } from "./modals";
 import { MainSidebarModel } from "./mainsidebar";
+import { RightSidebarModel } from "./rightsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
@@ -117,6 +117,7 @@ class Model {
     clientSettingsViewModel: ClientSettingsViewModel;
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
+    rightSidebarModel: RightSidebarModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -156,6 +157,7 @@ class Model {
         this.remotesModel = new RemotesModel(this);
         this.modalsModel = new ModalsModel();
         this.mainSidebarModel = new MainSidebarModel(this);
+        this.rightSidebarModel = new RightSidebarModel(this);
         const isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",

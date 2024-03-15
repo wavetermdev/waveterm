@@ -1,3 +1,4 @@
+export type { SidebarModel } from "./sidebar";
 export * from "./global";
 export * from "./model";
 export { BookmarksModel } from "./bookmarks";
@@ -6,6 +7,7 @@ export { Cmd } from "./cmd";
 export { ConnectionsViewModel } from "./connectionsview";
 export { InputModel } from "./input";
 export { MainSidebarModel } from "./mainsidebar";
+export { RightSidebarModel } from "./rightsidebar";
 export { ModalsModel } from "./modals";
 export { PluginsModel } from "./plugins";
 export { RemotesModel } from "./remotes";

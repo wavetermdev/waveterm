@@ -6,16 +6,18 @@ import { MagicLayout } from "@/app/magiclayout";
 import { Model } from "./model";
 import { GlobalCommandRunner } from "@/models";
 
-class MainSidebarModel {
+interface SidebarModel {}
+
+class RightSidebarModel implements SidebarModel {
     globalModel: Model = null;
     tempWidth: OV<number> = mobx.observable.box(null, {
-        name: "MainSidebarModel-tempWidth",
+        name: "RightSidebarModel-tempWidth",
     });
     tempCollapsed: OV<boolean> = mobx.observable.box(null, {
-        name: "MainSidebarModel-tempCollapsed",
+        name: "RightSidebarModel-tempCollapsed",
     });
     isDragging: OV<boolean> = mobx.observable.box(false, {
-        name: "MainSidebarModel-isDragging",
+        name: "RightSidebarModel-isDragging",
     });
 
     constructor(globalModel: Model) {
@@ -23,7 +25,7 @@ class MainSidebarModel {
     }
 
     setTempWidthAndTempCollapsed(newWidth: number, newCollapsed: boolean): void {
-        const width = Math.max(MagicLayout.MainSidebarMinWidth, Math.min(newWidth, MagicLayout.MainSidebarMaxWidth));
+        const width = Math.max(MagicLayout.RightSidebarMinWidth, Math.min(newWidth, MagicLayout.RightSidebarMaxWidth));
 
         mobx.action(() => {
             this.tempWidth.set(width);
@@ -38,10 +40,10 @@ class MainSidebarModel {
      */
     getWidth(ignoreCollapse: boolean = false): number {
         const clientData = this.globalModel.clientData.get();
-        let width = clientData?.clientopts?.mainsidebar?.width ?? MagicLayout.MainSidebarDefaultWidth;
+        let width = clientData?.clientopts?.rightsidebar?.width ?? MagicLayout.RightSidebarDefaultWidth;
         if (this.isDragging.get()) {
             if (this.tempWidth.get() == null && width == null) {
-                return MagicLayout.MainSidebarDefaultWidth;
+                return MagicLayout.RightSidebarDefaultWidth;
             }
             if (this.tempWidth.get() == null) {
                 return width;
@@ -53,23 +55,27 @@ class MainSidebarModel {
             if (ignoreCollapse) {
                 return width;
             } else {
-                return MagicLayout.MainSidebarMinWidth;
+                return MagicLayout.RightSidebarMinWidth;
             }
         } else {
-            if (width <= MagicLayout.MainSidebarMinWidth) {
-                width = MagicLayout.MainSidebarDefaultWidth;
+            if (width <= MagicLayout.RightSidebarMinWidth) {
+                width = MagicLayout.RightSidebarDefaultWidth;
             }
-            const snapPoint = MagicLayout.MainSidebarMinWidth + MagicLayout.MainSidebarSnapThreshold;
-            if (width < snapPoint || width > MagicLayout.MainSidebarMaxWidth) {
-                width = MagicLayout.MainSidebarDefaultWidth;
+            const snapPoint = MagicLayout.RightSidebarMinWidth + MagicLayout.RightSidebarSnapThreshold;
+            if (width < snapPoint || width > MagicLayout.RightSidebarMaxWidth) {
+                width = MagicLayout.RightSidebarDefaultWidth;
             }
         }
         return width;
     }
 
     getCollapsed(): boolean {
+        // disable right sidebar in production
+        if (!this.globalModel.isDev) {
+            return true;
+        }
         const clientData = this.globalModel.clientData.get();
-        const collapsed = clientData?.clientopts?.mainsidebar?.collapsed;
+        const collapsed = clientData?.clientopts?.rightsidebar?.collapsed;
         if (this.isDragging.get()) {
             if (this.tempCollapsed.get() == null && collapsed == null) {
                 return false;
@@ -83,7 +89,7 @@ class MainSidebarModel {
     }
 
     saveState(width: number, collapsed: boolean): void {
-        GlobalCommandRunner.clientSetMainSidebar(width, collapsed).finally(() => {
+        GlobalCommandRunner.clientSetRightSidebar(width, collapsed).finally(() => {
             mobx.action(() => {
                 this.isDragging.set(false);
             })();
@@ -91,4 +97,4 @@ class MainSidebarModel {
     }
 }
 
-export { MainSidebarModel };
+export { RightSidebarModel };
