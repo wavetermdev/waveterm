@@ -54,7 +54,7 @@
     --markdown-bg-color: rgb(0, 0, 0, 0.1);
 
     /* modal colors */
-    --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
+    --modal-header-bottom-border-color: var(--app-border-color);
 
     /* cmd input */
     --cmdinput-textarea-bg-color: rgba(0, 0, 0, 0.1);
@@ -72,6 +72,4 @@
 
     /* toggle colors */
     --toggle-thumb-color: var(--app-bg-color);
-
-    --logo-button-hover-bg-color: #f0f0f0;
 }
