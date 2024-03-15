@@ -25,7 +25,6 @@ type BookmarkProps = {
 class BookmarkKeybindings extends React.Component<{}, {}> {
     @boundMethod
     componentDidMount(): void {
-        console.log("component did mount");
         let keybindManager = GlobalModel.keybindManager;
         let bookmarksModel = GlobalModel.bookmarksModel;
         keybindManager.registerKeybinding("mainview", "bookmarks", "generic:cancel", (waveEvent) => {
