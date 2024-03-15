@@ -175,18 +175,8 @@ class Model {
             }
             return fontSize;
         });
-        getApi().onTCmd(this.onTCmd.bind(this));
-        getApi().onLCmd(this.onLCmd.bind(this));
-        getApi().onWCmd(this.onWCmd.bind(this));
-        getApi().onRCmd(this.onRCmd.bind(this));
         getApi().onZoomChanged(this.onZoomChanged.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
-        getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
-        getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
-        getApi().onMetaPageUp(this.onMetaPageUp.bind(this));
-        getApi().onMetaPageDown(this.onMetaPageDown.bind(this));
-        getApi().onBracketCmd(this.onBracketCmd.bind(this));
-        getApi().onDigitCmd(this.onDigitCmd.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
         getApi().onAppUpdateStatus(this.onAppUpdateStatus.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
@@ -552,7 +542,7 @@ class Model {
         return true;
     }
 
-    onWCmd(e: any, mods: KeyModsType) {
+    onCloseCurrentTab() {
         if (this.activeMainView.get() != "session") {
             return;
         }
@@ -572,7 +562,7 @@ class Model {
         });
     }
 
-    onRCmd(e: any, mods: KeyModsType) {
+    onRestartLastCommand() {
         if (this.activeMainView.get() != "session") {
             return;
         }
@@ -580,17 +570,22 @@ class Model {
         if (activeScreen == null) {
             return;
         }
-        if (mods.shift) {
-            // restart last line
-            GlobalCommandRunner.lineRestart("E", true);
-        } else {
-            // restart selected line
-            const selectedLine = activeScreen.selectedLine.get();
-            if (selectedLine == null || selectedLine == 0) {
-                return;
-            }
-            GlobalCommandRunner.lineRestart(String(selectedLine), true);
+        GlobalCommandRunner.lineRestart("E", true);
+    }
+
+    onRestartCommand() {
+        if (this.activeMainView.get() != "session") {
+            return;
         }
+        const activeScreen = this.getActiveScreen();
+        if (activeScreen == null) {
+            return;
+        }
+        const selectedLine = activeScreen.selectedLine.get();
+        if (selectedLine == null || selectedLine == 0) {
+            return;
+        }
+        GlobalCommandRunner.lineRestart(String(selectedLine), true);
     }
 
     onZoomChanged(): void {
@@ -690,7 +685,7 @@ class Model {
         return rtn;
     }
 
-    onTCmd(e: any, mods: KeyModsType) {
+    onNewTab() {
         GlobalCommandRunner.createNewScreen();
     }
 
@@ -712,7 +707,7 @@ class Model {
         }
     }
 
-    onLCmd(e: any, mods: KeyModsType) {
+    onFocusSelectedLine() {
         const screen = this.getActiveScreen();
         if (screen != null) {
             GlobalCommandRunner.screenSetFocus("cmd");
@@ -777,26 +772,19 @@ class Model {
         })();
     }
 
-    onMetaPageUp(): void {
-        GlobalCommandRunner.screenSelectLine("-1");
-    }
-
-    onMetaPageDown(): void {
-        GlobalCommandRunner.screenSelectLine("+1");
-    }
-
     onMetaArrowUp(): void {
         GlobalCommandRunner.screenSelectLine("-1");
     }
 
     onMetaArrowDown(): void {
+        console.log("meta arrow down?");
         GlobalCommandRunner.screenSelectLine("+1");
     }
 
-    onBracketCmd(e: any, arg: { relative: number }, mods: KeyModsType) {
-        if (arg.relative == 1) {
+    onBracketCmd(relative: number) {
+        if (relative == 1) {
             GlobalCommandRunner.switchScreen("+");
-        } else if (arg.relative == -1) {
+        } else if (relative == -1) {
             GlobalCommandRunner.switchScreen("-");
         }
     }
