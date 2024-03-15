@@ -1069,6 +1069,23 @@ func copyToCirFile(dest *cirfile.File, src io.Reader) error {
 	}
 }
 
+func GetCmdExitCode(cmd *exec.Cmd, err error) int {
+	if cmd == nil || cmd.ProcessState == nil {
+		return GetExitCode(err)
+	}
+	status, ok := cmd.ProcessState.Sys().(syscall.WaitStatus)
+	if !ok {
+		return cmd.ProcessState.ExitCode()
+	}
+	signaled := status.Signaled()
+	if signaled {
+		signal := status.Signal()
+		return 128 + int(signal)
+	}
+	exitStatus := status.ExitStatus()
+	return exitStatus
+}
+
 func GetExitCode(err error) int {
 	if err == nil {
 		return 0
@@ -1082,7 +1099,6 @@ func GetExitCode(err error) int {
 
 func (c *ShExecType) ProcWait() error {
 	exitErr := c.Cmd.Wait()
-	base.Logf("procwait: %v\n", exitErr)
 	c.Lock.Lock()
 	c.Exited = true
 	c.Lock.Unlock()
@@ -1095,6 +1111,7 @@ func (c *ShExecType) IsExited() bool {
 	return c.Exited
 }
 
+// called in waveshell --single mode (returns the real cmddone packet)
 func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	donePacket := packet.MakeCmdDonePacket(c.CK)
 	exitErr := c.ProcWait()
@@ -1116,7 +1133,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	endTs := time.Now()
 	cmdDuration := endTs.Sub(c.StartTs)
 	donePacket.Ts = endTs.UnixMilli()
-	donePacket.ExitCode = GetExitCode(exitErr)
+	donePacket.ExitCode = GetCmdExitCode(c.Cmd, exitErr)
 	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 	if c.FileNames != nil {
 		os.Remove(c.FileNames.StdinFifo) // best effort (no need to check error)

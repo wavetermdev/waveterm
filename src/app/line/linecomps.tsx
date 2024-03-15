@@ -53,8 +53,16 @@ let heightLog = {};
 
 dayjs.extend(localizedFormat);
 
-function cmdHasError(cmd: Cmd): boolean {
-    return cmd.getStatus() == "error" || cmd.getExitCode() != 0;
+function cmdShouldMarkError(cmd: Cmd): boolean {
+    if (cmd.getStatus() == "error") {
+        return true;
+    }
+    let exitCode = cmd.getExitCode();
+    // 0, SIGINT, or SIGPIPE
+    if (exitCode == 0 || exitCode == 130 || exitCode == 141) {
+        return false;
+    }
+    return true;
 }
 
 function getIsHidePrompt(line: LineType): boolean {
@@ -701,7 +709,7 @@ class LineCmd extends React.Component<
             )
             .get();
         const isRunning = cmd.isRunning();
-        const cmdError = cmdHasError(cmd);
+        const cmdError = cmdShouldMarkError(cmd);
         const mainDivCn = cn(
             "line",
             "line-cmd",
