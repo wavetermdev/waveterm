@@ -29,39 +29,16 @@ class SessionKeybindings extends React.Component<{}, {}> {
             GlobalModel.handleToggleSidebar();
             return true;
         });
-        keybindManager.registerKeybinding("mainview", "session", "app:deleteActiveLine", (waveEvent) => {
-            return GlobalModel.handleDeleteActiveLine();
-        });
         keybindManager.registerKeybinding("mainview", "session", "app:newTab", (waveEvent) => {
             GlobalModel.onNewTab();
-            return true;
-        });
-        keybindManager.registerKeybinding("mainview", "session", "app:focusSelectedLine", (waveEvent) => {
-            GlobalModel.onFocusSelectedLine();
-            return true;
-        });
-        keybindManager.registerKeybinding("mainview", "session", "app:restartCommand", (waveEvent) => {
-            GlobalModel.onRestartCommand();
-            return true;
-        });
-        keybindManager.registerKeybinding("mainview", "session", "app:restartLastCommand", (waveEvent) => {
-            GlobalModel.onRestartLastCommand();
             return true;
         });
         keybindManager.registerKeybinding("mainview", "session", "app:closeCurrentTab", (waveEvent) => {
             GlobalModel.onCloseCurrentTab();
             return true;
         });
-        keybindManager.registerKeybinding("mainview", "session", "app:selectLineAbove", (waveEvent) => {
-            GlobalModel.onMetaArrowUp();
-            return true;
-        });
-        keybindManager.registerKeybinding("mainview", "session", "app:selectLineBelow", (waveEvent) => {
-            GlobalModel.onMetaArrowDown();
-            return true;
-        });
         for (let index = 1; index <= 9; index++) {
-            keybindManager.registerKeybinding("mainview", "model", "app:selectTab-" + index, null);
+            keybindManager.registerKeybinding("mainview", "session", "app:selectTab-" + index, null);
         }
         keybindManager.registerKeybinding("mainview", "session", "app:selectTabLeft", (waveEvent) => {
             GlobalModel.onBracketCmd(-1);
@@ -70,6 +47,29 @@ class SessionKeybindings extends React.Component<{}, {}> {
         keybindManager.registerKeybinding("mainview", "session", "app:selectTabRight", (waveEvent) => {
             GlobalModel.onBracketCmd(1);
             return true;
+        });
+        keybindManager.registerKeybinding("pane", "session", "app:selectLineAbove", (waveEvent) => {
+            GlobalModel.onMetaArrowUp();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "session", "app:selectLineBelow", (waveEvent) => {
+            GlobalModel.onMetaArrowDown();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "session", "app:restartCommand", (waveEvent) => {
+            GlobalModel.onRestartCommand();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "session", "app:restartLastCommand", (waveEvent) => {
+            GlobalModel.onRestartLastCommand();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "session", "app:focusSelectedLine", (waveEvent) => {
+            GlobalModel.onFocusSelectedLine();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "session", "app:deleteActiveLine", (waveEvent) => {
+            return GlobalModel.handleDeleteActiveLine();
         });
     }
 
