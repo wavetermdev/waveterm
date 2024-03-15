@@ -205,17 +205,16 @@ class BookmarksModel {
         })();
     }
 
-    handleDocKeyDown(e: any): void {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            if (this.editingBookmark.get() != null) {
-                this.cancelEdit();
-                return;
-            }
-            this.closeView();
+    handleUserClose() {
+        if (this.editingBookmark.get() != null) {
+            this.cancelEdit();
             return;
         }
+        this.closeView();
+    }
+
+    handleDocKeyDown(e: any): void {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (this.editingBookmark.get() != null) {
             return;
         }

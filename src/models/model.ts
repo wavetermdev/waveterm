@@ -503,6 +503,7 @@ class Model {
             }
             return;
         }
+        this.keybindManager.processKeyEvent(e, waveEvent);
         if (this.activeMainView.get() == "bookmarks") {
             this.bookmarksModel.handleDocKeyDown(e);
         }
@@ -550,7 +551,6 @@ class Model {
                 }
             }
         }
-        this.keybindManager.processKeyEvent(e, waveEvent);
     }
 
     deleteActiveLine(): boolean {

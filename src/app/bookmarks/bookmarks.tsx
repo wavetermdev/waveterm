@@ -22,6 +22,30 @@ type BookmarkProps = {
     bookmark: BookmarkType;
 };
 
+class BookmarkKeybindings extends React.Component<{}, {}> {
+    @boundMethod
+    componentDidMount(): void {
+        console.log("component did mount");
+        let keybindManager = GlobalModel.keybindManager;
+        let bookmarksModel = GlobalModel.bookmarksModel;
+
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:cancel", (waveEvent) => {
+            console.log("generic cancel?");
+            bookmarksModel.handleUserClose();
+            return true;
+        });
+    }
+
+    @boundMethod
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("bookmarks");
+    }
+
+    render() {
+        return null;
+    }
+}
+
 @mobxReact.observer
 class Bookmark extends React.Component<BookmarkProps, {}> {
     @boundMethod
@@ -194,6 +218,9 @@ class BookmarksView extends React.Component<{}, {}> {
         let bookmark: BookmarkType = null;
         return (
             <MainView viewName="bookmarks" title="Bookmarks" onClose={this.handleClose}>
+                <If condition={!isHidden}>
+                    <BookmarkKeybindings></BookmarkKeybindings>
+                </If>
                 <div className="bookmarks-list">
                     <For index="idx" each="bookmark" of={bookmarks}>
                         <Bookmark key={bookmark.bookmarkid} bookmark={bookmark} />

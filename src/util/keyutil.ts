@@ -32,7 +32,7 @@ type Keybind = {
     callback: KeybindCallback;
 };
 
-const KeybindLevels = ["system", "modal", "app", "pane", "plugin"];
+const KeybindLevels = ["system", "modal", "app", "mainview", "pane", "plugin"];
 
 class KeybindManager {
     domainCallbacks: Map<string, KeybindCallback>;
@@ -111,8 +111,6 @@ class KeybindManager {
                     let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
                     if (curDomainCallback != null) {
                         shouldReturn = curDomainCallback(event);
-                    } else {
-                        console.log("domain callback for ", curKeybind.domain, " is null. This should never happen");
                     }
                 }
                 if (shouldReturn) {
