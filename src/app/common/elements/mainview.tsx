@@ -23,7 +23,7 @@ class MainView extends React.Component<{
                 className={cn("mainview", this.props.className)}
                 style={{ maxWidth: `calc(100vw - ${maxWidthSubtractor}px)` }}
             >
-                <div className="header-container bottom-border">
+                <div className="header-container">
                     <header className="header">
                         <div className="title text-primary">{this.props.title}</div>
                         <div className="close-div hoverEffect" title="Close (Escape)" onClick={this.props.onClose}>
