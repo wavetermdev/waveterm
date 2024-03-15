@@ -156,7 +156,6 @@
     --line-text-color: rgb(211, 215, 207);
     --line-svg-fill-color: rgb(150, 152, 150);
     --line-svg-hover-fill-color: #eceeec;
-    --line-selected-border-color: rgb(193, 195, 193);
     --line-separator-color: rgb(126, 126, 126);
     --line-error-color: var(--app-error-color);
     --line-warning-color: var(--app-warning-color);
