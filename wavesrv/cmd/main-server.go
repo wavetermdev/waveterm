@@ -677,6 +677,24 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 	WriteJsonSuccess(w, update)
 }
 
+func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		configPath := r.URL.Path
+		configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
+		fstat, err := os.Stat(configFullPath)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("file stat err", err)))
+			return
+		}
+		if fstat.IsDir() {
+			AuthKeyMiddleWare(dirHandler).ServeHTTP(w, r)
+		} else {
+			AuthKeyMiddleWare(fileHandler).ServeHTTP(w, r)
+		}
+	})
+}
+
 func AuthKeyMiddleWare(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqAuthKey := r.Header.Get("X-AuthKey")
@@ -857,6 +875,32 @@ func doShutdown(reason string) {
 	})
 }
 
+func configDirHandler(w http.ResponseWriter, r *http.Request) {
+	configPath := r.URL.Path
+	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
+	dirFile, err := os.Open(configFullPath)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error opening specified dir: ", err)))
+		return
+	}
+	entries, err := dirFile.Readdirnames(0)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error getting files: ", err)))
+		return
+	}
+	dirListJson, err := json.Marshal(entries)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("json err: ", err)))
+		return
+	}
+	w.WriteHeader(200)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(dirListJson)
+}
+
 func main() {
 	scbase.BuildTime = BuildTime
 	scbase.WaveVersion = WaveVersion
@@ -953,7 +997,9 @@ func main() {
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
 	configPath := path.Join(scbase.GetWaveHomeDir(), "config") + "/"
 	log.Printf("[wave] config path: %q\n", configPath)
-	gr.PathPrefix("/config/").Handler(AuthKeyMiddleWare(http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))))
+	isFileHandler := http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))
+	isDirHandler := http.HandlerFunc(configDirHandler)
+	gr.PathPrefix("/config/").Handler(CheckIsDir(isDirHandler, isFileHandler))
 
 	serverAddr := MainServerAddr
 	if scbase.IsDevMode() {

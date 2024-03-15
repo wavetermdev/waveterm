@@ -216,6 +216,23 @@ class Model {
             return resp.json();
         }).then((userKeybindings) => {
             this.keybindManager.setUserKeybindings(userKeybindings);
+            this.testConfigListDir();
+        });
+    }
+
+    testConfigListDir() {
+        const url = new URL(this.getBaseHostPort() + "/config/");
+        let prtn = fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() });
+        prtn.then((resp) => {
+            if (resp.status == 404) {
+                return [];
+            } else if (!resp.ok) {
+                console.log("resp not ok", resp);
+                util.handleNotOkResp(resp, url);
+            }
+            return resp.json();
+        }).then((configDirList) => {
+            console.log("got json: ", configDirList);
         });
     }
 
