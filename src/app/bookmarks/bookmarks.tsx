@@ -28,10 +28,40 @@ class BookmarkKeybindings extends React.Component<{}, {}> {
         console.log("component did mount");
         let keybindManager = GlobalModel.keybindManager;
         let bookmarksModel = GlobalModel.bookmarksModel;
-
         keybindManager.registerKeybinding("mainview", "bookmarks", "generic:cancel", (waveEvent) => {
-            console.log("generic cancel?");
             bookmarksModel.handleUserClose();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:deleteItem", (waveEvent) => {
+            bookmarksModel.handleUserDelete();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectAbove", (waveEvent) => {
+            bookmarksModel.handleUserNavigate(1);
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectBelow", (waveEvent) => {
+            bookmarksModel.handleUserNavigate(-1);
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectPageAbove", (waveEvent) => {
+            bookmarksModel.handleUserNavigate(10);
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectPageBelow", (waveEvent) => {
+            bookmarksModel.handleUserNavigate(-10);
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:confirm", (waveEvent) => {
+            bookmarksModel.handleUserConfirm();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "bookmarks:edit", (waveEvent) => {
+            bookmarksModel.handleUserEdit();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "bookmarks:copy", (waveEvent) => {
+            bookmarksModel.handleUserCopy();
             return true;
         });
     }

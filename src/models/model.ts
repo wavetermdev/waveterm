@@ -504,9 +504,6 @@ class Model {
             return;
         }
         this.keybindManager.processKeyEvent(e, waveEvent);
-        if (this.activeMainView.get() == "bookmarks") {
-            this.bookmarksModel.handleDocKeyDown(e);
-        }
         if (this.activeMainView.get() == "history") {
             this.historyViewModel.handleDocKeyDown(e);
         }
