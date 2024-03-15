@@ -23,6 +23,7 @@
 
     /* tab color */
     --tab-white: rgb(0, 0, 0, 0.6);
+    --tab-mint: rgb(70, 235, 156);
 
     /* button colors */
     --button-text-color: rgb(50, 50, 50); /* Dark gray for light theme */
