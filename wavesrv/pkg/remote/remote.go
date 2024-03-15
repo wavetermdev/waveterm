@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path"
 	"regexp"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -43,8 +44,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
 )
-
-const UseSshLibrary = true
 
 const RemoteTypeMShell = "mshell"
 const DefaultTerm = "xterm-256color"
@@ -129,12 +128,6 @@ type pendingStateKey struct {
 	RemotePtr sstore.RemotePtrType
 }
 
-// for conditional launch method based on ssh library in use
-// remove once ssh library is stabilized
-type Launcher interface {
-	Launch(*MShellProc, bool)
-}
-
 type MShellProc struct {
 	Lock   *sync.Mutex
 	Remote *sstore.RemoteType
@@ -163,7 +156,6 @@ type MShellProc struct {
 
 	RunningCmds      map[base.CommandKey]*RunCmdType
 	PendingStateCmds map[pendingStateKey]base.CommandKey // key=[remoteinstance name]
-	launcher         Launcher                            // for conditional launch method based on ssh library in use. remove once ssh library is stabilized
 	Client           *ssh.Client
 }
 
@@ -186,12 +178,6 @@ func CanComplete(remoteType string) bool {
 	default:
 		return false
 	}
-}
-
-// for conditional launch method based on ssh library in use
-// remove once ssh library is stabilized
-func (msh *MShellProc) Launch(interactive bool) {
-	msh.launcher.Launch(msh, interactive)
 }
 
 func (msh *MShellProc) GetStatus() string {
@@ -711,13 +697,7 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 		RunningCmds:      make(map[base.CommandKey]*RunCmdType),
 		PendingStateCmds: make(map[pendingStateKey]base.CommandKey),
 		StateMap:         server.MakeShellStateMap(),
-		launcher:         LegacyLauncher{}, // for conditional launch method based on ssh library in use. remove once ssh library is stabilized
 		DataPosMap:       utilfn.MakeSyncMap[base.CommandKey, int64](),
-	}
-	// for conditional launch method based on ssh library in use
-	// remove once ssh library is stabilized
-	if UseSshLibrary {
-		rtn.launcher = NewLauncher{}
 	}
 
 	rtn.WriteToPtyBuffer("console for connection [%s]\n", r.GetName())
@@ -1201,6 +1181,15 @@ func (msh *MShellProc) WaitAndSendPassword(pw string) {
 }
 
 func (msh *MShellProc) RunInstall(autoInstall bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			errMsg := fmt.Errorf("this should not happen. if it does, please reach out to us in our discord or open an issue on our github\n\n"+
+				"error:\n%v\n\nstack trace:\n%s", r, string(debug.Stack()))
+			log.Printf("fatal error, %s\n", errMsg)
+			msh.WriteToPtyBuffer("*fatal error, %s\n", errMsg)
+			msh.setErrorStatus(errMsg)
+		}
+	}()
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
 		msh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
@@ -1574,12 +1563,16 @@ func (msh *MShellProc) createWaveshellSession(clientCtx context.Context, remoteC
 	return wsSession, nil
 }
 
-// for conditional launch method based on ssh library in use
-// remove once ssh library is stabilized
-type NewLauncher struct{}
-
-// func (msh *MShellProc) LaunchNew(interactive bool) {
-func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
+func (msh *MShellProc) Launch(interactive bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			errMsg := fmt.Errorf("this should not happen. if it does, please reach out to us in our discord or open an issue on our github\n\n"+
+				"error:\n%v\n\nstack trace:\n%s", r, string(debug.Stack()))
+			log.Printf("fatal error, %s\n", errMsg)
+			msh.WriteToPtyBuffer("*fatal error, %s\n", errMsg)
+			msh.setErrorStatus(errMsg)
+		}
+	}()
 	remoteCopy := msh.GetRemoteCopy()
 	if remoteCopy.Archived {
 		msh.WriteToPtyBuffer("cannot launch archived remote\n")
@@ -1665,146 +1658,6 @@ func (NewLauncher) Launch(msh *MShellProc, interactive bool) {
 		msh.StateMap.Clear()
 		// no notify here, because we'll call notify in either case below
 	})
-
-	msh.updateRemoteStateVars(context.Background(), msh.RemoteId, cproc.InitPk)
-	msh.WithLock(func() {
-		msh.ServerProc = cproc
-		msh.Status = StatusConnected
-	})
-	go func() {
-		exitErr := cproc.Cmd.Wait()
-		exitCode := shexec.GetExitCode(exitErr)
-		msh.WithLock(func() {
-			if msh.Status == StatusConnected || msh.Status == StatusConnecting {
-				msh.Status = StatusDisconnected
-				go msh.NotifyRemoteUpdate()
-			}
-		})
-		msh.WriteToPtyBuffer("*disconnected exitcode=%d\n", exitCode)
-	}()
-	go msh.ProcessPackets()
-	msh.initActiveShells()
-	go msh.NotifyRemoteUpdate()
-}
-
-// for conditional launch method based on ssh library in use
-// remove once ssh library is stabilized
-type LegacyLauncher struct{}
-
-// func (msh *MShellProc) LaunchLegacy(interactive bool) {
-func (LegacyLauncher) Launch(msh *MShellProc, interactive bool) {
-	remoteCopy := msh.GetRemoteCopy()
-	if remoteCopy.Archived {
-		msh.WriteToPtyBuffer("cannot launch archived remote\n")
-		return
-	}
-	curStatus := msh.GetStatus()
-	if curStatus == StatusConnected {
-		msh.WriteToPtyBuffer("remote is already connected (no action taken)\n")
-		return
-	}
-	if curStatus == StatusConnecting {
-		msh.WriteToPtyBuffer("remote is already connecting, disconnect before trying to connect again\n")
-		return
-	}
-	sapi, err := shellapi.MakeShellApi(msh.GetShellType())
-	if err != nil {
-		msh.WriteToPtyBuffer("*error, %v\n", err)
-		return
-	}
-	istatus := msh.GetInstallStatus()
-	if istatus == StatusConnecting {
-		msh.WriteToPtyBuffer("remote is trying to install, cancel install before trying to connect again\n")
-		return
-	}
-	if remoteCopy.SSHOpts.SSHPort != 0 && remoteCopy.SSHOpts.SSHPort != 22 {
-		msh.WriteToPtyBuffer("connecting to %s (port %d)...\n", remoteCopy.RemoteCanonicalName, remoteCopy.SSHOpts.SSHPort)
-	} else {
-		msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
-	}
-	sshOpts := convertSSHOpts(remoteCopy.SSHOpts)
-	sshOpts.SSHErrorsToTty = true
-	if remoteCopy.ConnectMode != sstore.ConnectModeManual && remoteCopy.SSHOpts.SSHPassword == "" && !interactive {
-		sshOpts.BatchMode = true
-	}
-	var cmdStr string
-	if sshOpts.SSHHost == "" && remoteCopy.Local {
-		var err error
-		cmdStr, err = MakeLocalMShellCommandStr(remoteCopy.IsSudo())
-		if err != nil {
-			msh.WriteToPtyBuffer("*error, cannot find local mshell binary: %v\n", err)
-			return
-		}
-	} else {
-		cmdStr = MakeServerCommandStr()
-	}
-	ecmd := sshOpts.MakeSSHExecCmd(cmdStr, sapi)
-	cmdPty, err := msh.addControllingTty(ecmd)
-	if err != nil {
-		statusErr := fmt.Errorf("cannot attach controlling tty to mshell command: %w", err)
-		msh.WriteToPtyBuffer("*error, %s\n", statusErr.Error())
-		msh.setErrorStatus(statusErr)
-		return
-	}
-	defer func() {
-		if len(ecmd.ExtraFiles) > 0 {
-			ecmd.ExtraFiles[len(ecmd.ExtraFiles)-1].Close()
-		}
-	}()
-	go msh.RunPtyReadLoop(cmdPty)
-	if remoteCopy.SSHOpts.SSHPassword != "" {
-		go msh.WaitAndSendPassword(remoteCopy.SSHOpts.SSHPassword)
-	}
-	var makeClientCtx context.Context
-	var makeClientCancelFn context.CancelFunc
-	msh.WithLock(func() {
-		deadlineTime := time.Now().Add(RemoteConnectTimeout)
-		makeClientCtx, makeClientCancelFn = context.WithDeadline(context.Background(), deadlineTime)
-		defer makeClientCancelFn()
-		msh.Err = nil
-		msh.ErrNoInitPk = false
-		msh.Status = StatusConnecting
-		msh.MakeClientCancelFn = makeClientCancelFn
-		msh.MakeClientDeadline = &deadlineTime
-		go msh.NotifyRemoteUpdate()
-	})
-	go msh.watchClientDeadlineTime()
-	cproc, err := shexec.MakeClientProc(makeClientCtx, shexec.CmdWrap{Cmd: ecmd})
-	msh.WithLock(func() {
-		msh.MakeClientCancelFn = nil
-		msh.MakeClientDeadline = nil
-		msh.StateMap.Clear()
-		// no notify here, because we'll call notify in either case below
-	})
-	if err == context.DeadlineExceeded {
-		msh.WriteToPtyBuffer("*connect timeout\n")
-		msh.setErrorStatus(errors.New("connect timeout"))
-		return
-	} else if err == context.Canceled {
-		msh.WriteToPtyBuffer("*forced disconnection\n")
-		msh.WithLock(func() {
-			msh.Status = StatusDisconnected
-			go msh.NotifyRemoteUpdate()
-		})
-		return
-	} else if serr, ok := err.(shexec.WaveshellLaunchError); ok {
-		msh.WithLock(func() {
-			msh.UName = serr.InitPk.UName
-			if semver.Compare(serr.InitPk.Version, scbase.MShellVersion) < 0 {
-				// only set NeedsMShellUpgrade if we got an InitPk
-				msh.NeedsMShellUpgrade = true
-			}
-			msh.InitPkShellType = serr.InitPk.Shell
-		})
-		msh.WriteToPtyBuffer("*error, %s\n", serr.Error())
-		msh.setErrorStatus(serr)
-		go msh.tryAutoInstall()
-		return
-	} else if err != nil {
-		msh.WriteToPtyBuffer("*error, %s\n", serr.Error())
-		msh.setErrorStatus(err)
-		return
-	}
 
 	msh.updateRemoteStateVars(context.Background(), msh.RemoteId, cproc.InitPk)
 	msh.WithLock(func() {

@@ -69,7 +69,6 @@
 
         &.error-mask {
             background-color: var(--line-error-bg-color);
-            border-left: 4px solid var(--line-error-border-left-color);
         }
     }
 
@@ -126,6 +125,7 @@
 
     &:hover .line-actions {
         background-color: var(--line-actions-bg-color);
+        backdrop-filter: blur(8px);
         .line-icon {
             visibility: visible;
         }

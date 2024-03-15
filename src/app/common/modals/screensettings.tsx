@@ -334,7 +334,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             </Tooltip>
                         </div>
                         <div className="settings-input">
-                            <Button onClick={this.handleDeleteScreen} className="secondary solid small danger">
+                            <Button onClick={this.handleDeleteScreen} className="secondary small danger">
                                 Delete Tab
                             </Button>
                         </div>

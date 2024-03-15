@@ -19,6 +19,7 @@ interface ButtonProps {
 class Button extends React.Component<ButtonProps> {
     static defaultProps = {
         style: {},
+        className: "primary",
     };
 
     @boundMethod

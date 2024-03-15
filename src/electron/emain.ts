@@ -308,16 +308,21 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
         // only use this handler to process iframe events (non-iframe events go to shNavHandler)
         return;
     }
-    event.preventDefault();
     const url = event.url;
     console.log(`frame-navigation url=${url} frame=${event.frame.name}`);
     if (event.frame.name == "webview") {
         // "webview" links always open in new window
         // this will *not* effect the initial load because srcdoc does not count as an electron navigation
         console.log("open external, frameNav", url);
+        event.preventDefault();
         electron.shell.openExternal(url);
         return;
     }
+    if (event.frame.name == "pdfview" && url.startsWith("blob:file:///")) {
+        // allowed
+        return;
+    }
+    event.preventDefault();
     console.log("frame navigation canceled");
 }
 
