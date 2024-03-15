@@ -14,7 +14,7 @@ import "./alert.less";
 class AlertModal extends React.Component<{}, {}> {
     @boundMethod
     closeModal(): void {
-        GlobalModel.cancelAlert();
+        GlobalModel.modalsModel.popModal(() => GlobalModel.cancelAlert());
     }
 
     @boundMethod
