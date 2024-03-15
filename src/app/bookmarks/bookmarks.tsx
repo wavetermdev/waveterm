@@ -246,7 +246,7 @@ class BookmarksView extends React.Component<{}, {}> {
         let bookmarks = GlobalModel.bookmarksModel.bookmarks;
         let bookmark: BookmarkType = null;
         return (
-            <MainView viewName="bookmarks" title="Bookmarks" onClose={this.handleClose}>
+            <MainView className="bookmarks-view" title="Bookmarks" onClose={this.handleClose}>
                 <If condition={!isHidden}>
                     <BookmarkKeybindings></BookmarkKeybindings>
                 </If>

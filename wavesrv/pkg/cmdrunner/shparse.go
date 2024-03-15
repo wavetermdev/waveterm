@@ -35,6 +35,8 @@ var BareMetaCmds = []BareMetaCmdDecl{
 	{"markdownview", "markdownview"},
 	{"mdview", "markdownview"},
 	{"csvview", "csvview"},
+	{"pdfview", "pdfview"},
+	{"mediaview", "mediaview"},
 }
 
 const (

@@ -667,6 +667,7 @@ declare global {
         markdown: boolean;
         timeoutms: number;
         checkboxmsg: string;
+        publictext: boolean;
     };
 
     type UserInputResponsePacket = {
@@ -880,6 +881,7 @@ declare global {
     };
 
     type ElectronApi = {
+        hideWindow: () => void;
         toggleDeveloperTools: () => void;
         getId: () => string;
         getIsDev: () => boolean;

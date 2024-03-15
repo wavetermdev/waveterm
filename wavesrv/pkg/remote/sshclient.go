@@ -230,6 +230,7 @@ func promptChallengeQuestion(connCtx context.Context, question string, echo bool
 		QueryText:    queryText,
 		Markdown:     true,
 		Title:        "Keyboard Interactive Authentication",
+		PublicText:   echo,
 	}
 	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	if err != nil {

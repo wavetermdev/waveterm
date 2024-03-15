@@ -4,7 +4,7 @@ import * as electron from "electron";
 import { parse } from "node:path";
 import { v4 as uuidv4 } from "uuid";
 import defaultKeybindingsFile from "../../assets/default-keybindings.json";
-const defaultKeybindings: KeybindConfig = defaultKeybindingsFile;
+const defaultKeybindings: KeybindConfigArray = defaultKeybindingsFile;
 
 type KeyPressDecl = {
     mods: {
@@ -24,12 +24,18 @@ const KeyTypeKey = "key";
 const KeyTypeCode = "code";
 
 type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
-type KeybindConfig = Array<{ command: string; keys: Array<string> }>;
+type KeybindConfigArray = Array<KeybindConfig>;
+type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string };
+
+const Callback = "callback";
+const Command = "command";
 
 type Keybind = {
     domain: string;
     keybinding: string;
+    action: string;
     callback: KeybindCallback;
+    commandStr: string;
 };
 
 const KeybindLevels = ["system", "modal", "app", "mainview", "pane", "plugin"];
@@ -38,11 +44,12 @@ class KeybindManager {
     domainCallbacks: Map<string, KeybindCallback>;
     levelMap: Map<string, Array<Keybind>>;
     levelArray: Array<string>;
-    keyDescriptionsMap: Map<string, Array<string>>;
-    userKeybindings: KeybindConfig;
+    keyDescriptionsMap: Map<string, KeybindConfig>;
+    userKeybindings: KeybindConfigArray;
     userKeybindingError: OV<string>;
+    globalModel: any;
 
-    constructor() {
+    constructor(GlobalModel: any) {
         this.levelMap = new Map();
         this.domainCallbacks = new Map();
         this.levelArray = KeybindLevels;
@@ -53,6 +60,7 @@ class KeybindManager {
         this.userKeybindingError = mobx.observable.box(null, {
             name: "keyutil-userKeybindingError",
         });
+        this.globalModel = GlobalModel;
         this.initKeyDescriptionsMap();
     }
 
@@ -63,7 +71,7 @@ class KeybindManager {
         let newKeyDescriptions = new Map();
         for (let index = 0; index < defaultKeybindings.length; index++) {
             let curKeybind = defaultKeybindings[index];
-            newKeyDescriptions.set(curKeybind.command, curKeybind.keys);
+            newKeyDescriptions.set(curKeybind.command, curKeybind);
         }
         let curUserCommand = "";
         if (this.userKeybindings != null && this.userKeybindings instanceof Array) {
@@ -85,7 +93,15 @@ class KeybindManager {
                             throw new Error("invalid keybind key");
                         }
                     }
-                    newKeyDescriptions.set(curKeybind.command, curKeybind.keys);
+                    let defaultCmd = this.keyDescriptionsMap.get(curKeybind.command);
+                    if (
+                        defaultCmd != null &&
+                        defaultCmd.commandStr != null &&
+                        (curKeybind.commandStr == null || curKeybind.commandStr == "")
+                    ) {
+                        curKeybind.commandStr = this.keyDescriptionsMap.get(curKeybind.command).commandStr;
+                    }
+                    newKeyDescriptions.set(curKeybind.command, curKeybind);
                 }
             } catch (e) {
                 let userError = `${curUserCommand} is invalid: error: ${e}`;
@@ -98,20 +114,55 @@ class KeybindManager {
         this.keyDescriptionsMap = newKeyDescriptions;
     }
 
+    runSlashCommand(curKeybind: Keybind): boolean {
+        let curConfigKeybind = this.keyDescriptionsMap.get(curKeybind.keybinding);
+        if (curConfigKeybind == null || curConfigKeybind.commandStr == null || curKeybind.commandStr == "") {
+            return false;
+        }
+        let commandsList = curConfigKeybind.commandStr.trim().split(";");
+        this.runIndividualSlashCommand(commandsList);
+        return true;
+    }
+
+    runIndividualSlashCommand(commandsList: Array<string>): boolean {
+        if (commandsList.length == 0) {
+            return true;
+        }
+        let curCommand = commandsList.shift();
+        console.log("running: ", curCommand);
+        let prtn = this.globalModel.submitRawCommand(curCommand, false, false);
+        prtn.then((rtn) => {
+            if (!rtn.success) {
+                console.log("error running command ", curCommand);
+                return false;
+            }
+            return this.runIndividualSlashCommand(commandsList);
+        }).catch((error) => {
+            console.log("caught error running command ", curCommand, ": ", error);
+            return false;
+        });
+    }
+
     processLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {
         // iterate through keybinds in backwards order
         for (let index = keybindsArray.length - 1; index >= 0; index--) {
             let curKeybind = keybindsArray[index];
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
                 let shouldReturn = false;
+                let shouldRunCommand = true;
                 if (curKeybind.callback != null) {
                     shouldReturn = curKeybind.callback(event);
+                    shouldRunCommand = false;
                 }
                 if (!shouldReturn && this.domainCallbacks.has(curKeybind.domain)) {
+                    shouldRunCommand = false;
                     let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
                     if (curDomainCallback != null) {
                         shouldReturn = curDomainCallback(event);
                     }
+                }
+                if (shouldRunCommand) {
+                    shouldReturn = this.runSlashCommand(curKeybind);
                 }
                 if (shouldReturn) {
                     nativeEvent.preventDefault();
@@ -267,7 +318,7 @@ class KeybindManager {
         if (!this.keyDescriptionsMap.has(keyDescription)) {
             return false;
         }
-        let keyPressArray = this.keyDescriptionsMap.get(keyDescription);
+        let keyPressArray = this.keyDescriptionsMap.get(keyDescription).keys;
         for (let index = 0; index < keyPressArray.length; index++) {
             let curKeyPress = keyPressArray[index];
             let pressed = checkKeyPressed(event, curKeyPress);

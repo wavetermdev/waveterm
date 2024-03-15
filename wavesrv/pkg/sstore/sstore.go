@@ -63,6 +63,7 @@ const (
 const (
 	LineState_Source   = "prompt:source"
 	LineState_File     = "prompt:file"
+	LineState_FileUrl  = "wave:fileurl"
 	LineState_Min      = "wave:min"
 	LineState_Template = "template"
 	LineState_Mode     = "mode"
@@ -71,9 +72,11 @@ const (
 )
 
 const (
-	MainViewSession   = "session"
-	MainViewBookmarks = "bookmarks"
-	MainViewHistory   = "history"
+	MainViewSession     = "session"
+	MainViewBookmarks   = "bookmarks"
+	MainViewHistory     = "history"
+	MainViewConnections = "connections"
+	MainViewSettings    = "clientsettings"
 )
 
 const (
