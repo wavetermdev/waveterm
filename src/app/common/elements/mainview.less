@@ -42,10 +42,10 @@
 
 // This ensures the tab bar does not collide with the floating logo. The floating logo sits above the sidebar when it is not collapsed, so no additional margin is needed in that case.
 // More margin is given on macOS to account for the traffic light buttons
-#main.platform-darwin.sidebar-collapsed .header {
+#main.platform-darwin.mainsidebar-collapsed .header {
     margin-left: var(--floating-logo-width-darwin);
 }
 
-#main:not(.platform-darwin).sidebar-collapsed .header {
+#main:not(.platform-darwin).mainsidebar-collapsed .header {
     margin-left: var(--floating-logo-width);
 }
