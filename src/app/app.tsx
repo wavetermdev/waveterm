@@ -75,7 +75,6 @@ class App extends React.Component<{}, {}> {
 
     @boundMethod
     openRightSidebar() {
-        console.log("openRightSidebar called");
         const rightSidebarModel = GlobalModel.rightSidebarModel;
         const width = rightSidebarModel.getWidth(true);
         rightSidebarModel.saveState(width, false);
