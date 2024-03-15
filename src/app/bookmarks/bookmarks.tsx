@@ -36,19 +36,19 @@ class BookmarkKeybindings extends React.Component<{}, {}> {
             return true;
         });
         keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectAbove", (waveEvent) => {
-            bookmarksModel.handleUserNavigate(1);
-            return true;
-        });
-        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectBelow", (waveEvent) => {
             bookmarksModel.handleUserNavigate(-1);
             return true;
         });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectBelow", (waveEvent) => {
+            bookmarksModel.handleUserNavigate(1);
+            return true;
+        });
         keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectPageAbove", (waveEvent) => {
-            bookmarksModel.handleUserNavigate(10);
+            bookmarksModel.handleUserNavigate(-10);
             return true;
         });
         keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectPageBelow", (waveEvent) => {
-            bookmarksModel.handleUserNavigate(-10);
+            bookmarksModel.handleUserNavigate(10);
             return true;
         });
         keybindManager.registerKeybinding("mainview", "bookmarks", "generic:confirm", (waveEvent) => {
