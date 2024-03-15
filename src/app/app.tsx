@@ -143,13 +143,13 @@ class App extends React.Component<{}, {}> {
                         </div>
                     </div>
                 </If>
-                <If condition={rightSidebarCollapsed && activeMainView == "session"}>
+                {/* <If condition={rightSidebarCollapsed && activeMainView == "session"}>
                     <div className="right-sidebar-triggers">
                         <Button className="secondary ghost right-sidebar-trigger" onClick={this.openRightSidebar}>
                             <i className="fa-sharp fa-regular fa-lightbulb"></i>
                         </Button>
                     </div>
-                </If>
+                </If> */}
                 <div ref={this.mainContentRef} className="main-content">
                     <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
                     <ErrorBoundary>
