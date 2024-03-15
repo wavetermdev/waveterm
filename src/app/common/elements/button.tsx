@@ -19,11 +19,11 @@ interface ButtonProps {
 class Button extends React.Component<ButtonProps> {
     static defaultProps = {
         style: {},
+        className: "primary",
     };
 
     @boundMethod
     handleClick() {
-        console.log("goes here+++++++");
         if (this.props.onClick && !this.props.disabled) {
             this.props.onClick();
         }
