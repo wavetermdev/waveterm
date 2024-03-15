@@ -469,6 +469,34 @@ class Model {
         // nothing for now
     }
 
+    handleToggleSidebar() {
+        const activeScreen = this.getActiveScreen();
+        if (activeScreen != null) {
+            const isSidebarOpen = activeScreen.isSidebarOpen();
+            if (isSidebarOpen) {
+                GlobalCommandRunner.screenSidebarClose();
+            } else {
+                GlobalCommandRunner.screenSidebarOpen();
+            }
+        }
+    }
+
+    handleSessionCancel() {
+        if (this.activeMainView.get() == "webshare") {
+            this.showSessionView();
+            return;
+        }
+        const inputModel = this.inputModel;
+        inputModel.toggleInfoMsg();
+        if (inputModel.inputMode.get() != null) {
+            inputModel.resetInputMode();
+        }
+    }
+
+    handleDeleteActiveLine(): boolean {
+        return this.deleteActiveLine();
+    }
+
     docKeyDownHandler(e: KeyboardEvent) {
         const waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (isModKeyPress(e)) {
@@ -496,37 +524,6 @@ class Model {
         }
         if (this.activeMainView.get() == "bookmarks") {
             this.bookmarksModel.handleDocKeyDown(e);
-        }
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            if (this.activeMainView.get() == "webshare") {
-                this.showSessionView();
-                return;
-            }
-            const inputModel = this.inputModel;
-            inputModel.toggleInfoMsg();
-            if (inputModel.inputMode.get() != null) {
-                inputModel.resetInputMode();
-            }
-            return;
-        }
-        if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
-            e.preventDefault();
-            const activeScreen = this.getActiveScreen();
-            if (activeScreen != null) {
-                const isSidebarOpen = activeScreen.isSidebarOpen();
-                if (isSidebarOpen) {
-                    GlobalCommandRunner.screenSidebarClose();
-                } else {
-                    GlobalCommandRunner.screenSidebarOpen();
-                }
-            }
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:d")) {
-            const ranDelete = this.deleteActiveLine();
-            if (ranDelete) {
-                e.preventDefault();
-            }
         }
     }
 

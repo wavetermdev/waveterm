@@ -7,6 +7,7 @@ import * as mobx from "mobx";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
+import { If } from "tsx-control-statements/components";
 import { GlobalModel } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
@@ -16,6 +17,31 @@ import * as textmeasure from "@/util/textmeasure";
 import "./workspace.less";
 
 dayjs.extend(localizedFormat);
+
+class SessionKeybindings extends React.Component<{}, {}> {
+    componentDidMount() {
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("mainview", "session", "generic:cancel", (waveEvent) => {
+            GlobalModel.handleSessionCancel();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "session", "app:toggleSidebar", (waveEvent) => {
+            GlobalModel.handleToggleSidebar();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "session", "app:deleteActiveLine", (waveEvent) => {
+            return GlobalModel.handleDeleteActiveLine();
+        });
+    }
+
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("session");
+    }
+
+    render() {
+        return null;
+    }
+}
 
 @mobxReact.observer
 class WorkspaceView extends React.Component<{}, {}> {
@@ -51,6 +77,9 @@ class WorkspaceView extends React.Component<{}, {}> {
                     width: `${width}px`,
                 }}
             >
+                <If condition={!isHidden}>
+                    <SessionKeybindings></SessionKeybindings>
+                </If>
                 <ScreenTabs key={"tabs-" + session.sessionId} session={session} />
                 <ErrorBoundary>
                     <ScreenView key={"screenview-" + session.sessionId} session={session} screen={activeScreen} />
