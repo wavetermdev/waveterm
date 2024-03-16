@@ -1,8 +1,10 @@
 import * as React from "react";
+import * as mobx from "mobx";
 import * as electron from "electron";
 import { parse } from "node:path";
 import { v4 as uuidv4 } from "uuid";
-import keybindings from "../../assets/keybindings.json";
+import defaultKeybindingsFile from "../../assets/default-keybindings.json";
+const defaultKeybindings: KeybindConfigArray = defaultKeybindingsFile;
 
 type KeyPressDecl = {
     mods: {
@@ -22,20 +24,124 @@ const KeyTypeKey = "key";
 const KeyTypeCode = "code";
 
 type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
+type KeybindConfigArray = Array<KeybindConfig>;
+type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string };
+
+const Callback = "callback";
+const Command = "command";
 
 type Keybind = {
     domain: string;
     keybinding: string;
+    action: string;
     callback: KeybindCallback;
+    commandStr: string;
 };
 
-const KeybindLevels = ["system", "modal", "app", "pane", "plugin"];
+const KeybindLevels = ["system", "modal", "app", "mainview", "pane", "plugin"];
 
 class KeybindManager {
     domainCallbacks: Map<string, KeybindCallback>;
     levelMap: Map<string, Array<Keybind>>;
     levelArray: Array<string>;
-    keyDescriptionsMap: Map<string, Array<string>>;
+    keyDescriptionsMap: Map<string, KeybindConfig>;
+    userKeybindings: KeybindConfigArray;
+    userKeybindingError: OV<string>;
+    globalModel: any;
+
+    constructor(GlobalModel: any) {
+        this.levelMap = new Map();
+        this.domainCallbacks = new Map();
+        this.levelArray = KeybindLevels;
+        for (let index = 0; index < this.levelArray.length; index++) {
+            let curLevel = this.levelArray[index];
+            this.levelMap.set(curLevel, new Array<Keybind>());
+        }
+        this.userKeybindingError = mobx.observable.box(null, {
+            name: "keyutil-userKeybindingError",
+        });
+        this.globalModel = GlobalModel;
+        this.initKeyDescriptionsMap();
+    }
+
+    initKeyDescriptionsMap() {
+        mobx.action(() => {
+            this.userKeybindingError.set(null);
+        })();
+        let newKeyDescriptions = new Map();
+        for (let index = 0; index < defaultKeybindings.length; index++) {
+            let curKeybind = defaultKeybindings[index];
+            newKeyDescriptions.set(curKeybind.command, curKeybind);
+        }
+        let curUserCommand = "";
+        if (this.userKeybindings != null && this.userKeybindings instanceof Array) {
+            try {
+                for (let index = 0; index < this.userKeybindings.length; index++) {
+                    let curKeybind = this.userKeybindings[index];
+                    if (curKeybind == null) {
+                        throw new Error("keybind entry is null");
+                    }
+                    curUserCommand = curKeybind.command;
+                    if (typeof curKeybind.command != "string") {
+                        throw new Error("invalid keybind command");
+                    }
+                    if (curKeybind.keys == null || !(curKeybind.keys instanceof Array)) {
+                        throw new Error("invalid keybind keys");
+                    }
+                    for (let key of curKeybind.keys) {
+                        if (typeof key != "string") {
+                            throw new Error("invalid keybind key");
+                        }
+                    }
+                    let defaultCmd = this.keyDescriptionsMap.get(curKeybind.command);
+                    if (
+                        defaultCmd != null &&
+                        defaultCmd.commandStr != null &&
+                        (curKeybind.commandStr == null || curKeybind.commandStr == "")
+                    ) {
+                        curKeybind.commandStr = this.keyDescriptionsMap.get(curKeybind.command).commandStr;
+                    }
+                    newKeyDescriptions.set(curKeybind.command, curKeybind);
+                }
+            } catch (e) {
+                let userError = `${curUserCommand} is invalid: error: ${e}`;
+                console.log(userError);
+                mobx.action(() => {
+                    this.userKeybindingError.set(userError);
+                })();
+            }
+        }
+        this.keyDescriptionsMap = newKeyDescriptions;
+    }
+
+    runSlashCommand(curKeybind: Keybind): boolean {
+        let curConfigKeybind = this.keyDescriptionsMap.get(curKeybind.keybinding);
+        if (curConfigKeybind == null || curConfigKeybind.commandStr == null || curKeybind.commandStr == "") {
+            return false;
+        }
+        let commandsList = curConfigKeybind.commandStr.trim().split(";");
+        this.runIndividualSlashCommand(commandsList);
+        return true;
+    }
+
+    runIndividualSlashCommand(commandsList: Array<string>): boolean {
+        if (commandsList.length == 0) {
+            return true;
+        }
+        let curCommand = commandsList.shift();
+        console.log("running: ", curCommand);
+        let prtn = this.globalModel.submitRawCommand(curCommand, false, false);
+        prtn.then((rtn) => {
+            if (!rtn.success) {
+                console.log("error running command ", curCommand);
+                return false;
+            }
+            return this.runIndividualSlashCommand(commandsList);
+        }).catch((error) => {
+            console.log("caught error running command ", curCommand, ": ", error);
+            return false;
+        });
+    }
 
     processLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {
         // iterate through keybinds in backwards order
@@ -43,16 +149,20 @@ class KeybindManager {
             let curKeybind = keybindsArray[index];
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
                 let shouldReturn = false;
+                let shouldRunCommand = true;
                 if (curKeybind.callback != null) {
                     shouldReturn = curKeybind.callback(event);
+                    shouldRunCommand = false;
                 }
                 if (!shouldReturn && this.domainCallbacks.has(curKeybind.domain)) {
+                    shouldRunCommand = false;
                     let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
                     if (curDomainCallback != null) {
                         shouldReturn = curDomainCallback(event);
-                    } else {
-                        console.log("domain callback for ", curKeybind.domain, " is null. This should never happen");
                     }
+                }
+                if (shouldRunCommand) {
+                    shouldReturn = this.runSlashCommand(curKeybind);
                 }
                 if (shouldReturn) {
                     nativeEvent.preventDefault();
@@ -196,48 +306,9 @@ class KeybindManager {
         this.domainCallbacks.set(domain, callback);
     }
 
-    constructor() {
-        this.levelMap = new Map();
-        this.domainCallbacks = new Map();
-        this.levelArray = KeybindLevels;
-        for (let index = 0; index < this.levelArray.length; index++) {
-            let curLevel = this.levelArray[index];
-            this.levelMap.set(curLevel, new Array<Keybind>());
-        }
+    setUserKeybindings(userKeybindings) {
+        this.userKeybindings = userKeybindings;
         this.initKeyDescriptionsMap();
-    }
-
-    initKeyDescriptionsMap() {
-        this.keyDescriptionsMap = new Map();
-        for (let index = 0; index < keybindings.length; index++) {
-            let curKeybind = keybindings[index];
-            this.keyDescriptionsMap.set(curKeybind.command, curKeybind.keys);
-        }
-        let error = false;
-        let numberedTabKeybinds = [];
-        for (let index = 1; index <= 9; index++) {
-            let curKeybind = this.keyDescriptionsMap.get("app:selectTab-" + index);
-            if (curKeybind == null) {
-                error = true;
-                break;
-            }
-            numberedTabKeybinds = numberedTabKeybinds.concat(curKeybind);
-        }
-        if (!error) {
-            this.keyDescriptionsMap.set("app:selectNumberedTab", numberedTabKeybinds);
-        }
-        let numberedWorkspaceKeybinds = [];
-        for (let index = 1; index <= 9; index++) {
-            let curKeybind = this.keyDescriptionsMap.get("app:selectTab-" + index);
-            if (curKeybind == null) {
-                error = true;
-                break;
-            }
-            numberedWorkspaceKeybinds = numberedWorkspaceKeybinds.concat(curKeybind);
-        }
-        if (!error) {
-            this.keyDescriptionsMap.set("app:selectNumberedTab", numberedWorkspaceKeybinds);
-        }
     }
 
     checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
@@ -247,7 +318,7 @@ class KeybindManager {
         if (!this.keyDescriptionsMap.has(keyDescription)) {
             return false;
         }
-        let keyPressArray = this.keyDescriptionsMap.get(keyDescription);
+        let keyPressArray = this.keyDescriptionsMap.get(keyDescription).keys;
         for (let index = 0; index < keyPressArray.length; index++) {
             let curKeyPress = keyPressArray[index];
             let pressed = checkKeyPressed(event, curKeyPress);

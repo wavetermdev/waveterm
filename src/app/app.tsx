@@ -16,10 +16,12 @@ import { BookmarksView } from "./bookmarks/bookmarks";
 import { HistoryView } from "./history/history";
 import { ConnectionsView } from "./connections/connections";
 import { ClientSettingsView } from "./clientsettings/clientsettings";
-import { MainSideBar } from "./sidebar/sidebar";
-import { DisconnectedModal, ClientStopModal } from "./common/modals";
-import { ModalsProvider } from "./common/modals/provider";
-import { ErrorBoundary } from "./common/error/errorboundary";
+import { MainSideBar } from "./sidebar/main";
+import { RightSideBar } from "./sidebar/right";
+import { DisconnectedModal, ClientStopModal } from "@/modals";
+import { ModalsProvider } from "@/modals/provider";
+import { Button } from "@/elements";
+import { ErrorBoundary } from "@/common/error/errorboundary";
 import cn from "classnames";
 import "./app.less";
 
@@ -65,9 +67,17 @@ class App extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    openSidebar() {
-        const width = GlobalModel.mainSidebarModel.getWidth(true);
-        GlobalCommandRunner.clientSetSidebar(width, false);
+    openMainSidebar() {
+        const mainSidebarModel = GlobalModel.mainSidebarModel;
+        const width = mainSidebarModel.getWidth(true);
+        mainSidebarModel.saveState(width, false);
+    }
+
+    @boundMethod
+    openRightSidebar() {
+        const rightSidebarModel = GlobalModel.rightSidebarModel;
+        const width = rightSidebarModel.getWidth(true);
+        rightSidebarModel.saveState(width, false);
     }
 
     render() {
@@ -110,20 +120,34 @@ class App extends React.Component<{}, {}> {
         }
         // used to force a full reload of the application
         const renderVersion = GlobalModel.renderVersion.get();
-        const sidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
+        const mainSidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
+        const rightSidebarCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
+        const activeMainView = GlobalModel.activeMainView.get();
+        const lightDarkClass = GlobalModel.isThemeDark() ? "is-dark" : "is-light";
         return (
             <div
                 key={"version-" + renderVersion}
                 id="main"
-                className={cn("platform-" + platform, { "sidebar-collapsed": sidebarCollapsed })}
+                className={cn(
+                    "platform-" + platform,
+                    { "mainsidebar-collapsed": mainSidebarCollapsed, "rightsidebar-collapsed": rightSidebarCollapsed },
+                    lightDarkClass
+                )}
                 onContextMenu={this.handleContextMenu}
             >
-                <If condition={sidebarCollapsed}>
+                <If condition={mainSidebarCollapsed}>
                     <div key="logo-button" className="logo-button-container">
                         <div className="logo-button-spacer" />
-                        <div className="logo-button" onClick={this.openSidebar}>
+                        <div className="logo-button" onClick={this.openMainSidebar}>
                             <img src="public/logos/wave-logo.png" alt="logo" />
                         </div>
+                    </div>
+                </If>
+                <If condition={GlobalModel.isDev && rightSidebarCollapsed && activeMainView == "session"}>
+                    <div className="right-sidebar-triggers">
+                        <Button className="secondary ghost right-sidebar-trigger" onClick={this.openRightSidebar}>
+                            <i className="fa-sharp fa-regular fa-lightbulb"></i>
+                        </Button>
                     </div>
                 </If>
                 <div ref={this.mainContentRef} className="main-content">
@@ -136,6 +160,7 @@ class App extends React.Component<{}, {}> {
                         <ConnectionsView model={remotesModel} />
                         <ClientSettingsView model={remotesModel} />
                     </ErrorBoundary>
+                    <RightSideBar parentRef={this.mainContentRef} clientData={clientData} />
                 </div>
                 <ModalsProvider />
             </div>

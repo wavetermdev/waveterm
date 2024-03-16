@@ -22,6 +22,7 @@ const WaveDevVarName = "WAVETERM_DEV";
 const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
+const startTs = Date.now();
 
 const isDev = process.env[WaveDevVarName] != null;
 const waveHome = getWaveHomeDir();
@@ -262,7 +263,12 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
             { type: "separator" },
             { role: "services" },
             { type: "separator" },
-            { role: "hide" },
+            {
+                label: "Hide",
+                click: () => {
+                    app.hide();
+                },
+            },
             { role: "hideOthers" },
             { type: "separator" },
             { role: "quit" },
@@ -277,9 +283,6 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
     },
     {
         role: "windowMenu",
-    },
-    {
-        role: "help",
     },
 ];
 
@@ -305,16 +308,21 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
         // only use this handler to process iframe events (non-iframe events go to shNavHandler)
         return;
     }
-    event.preventDefault();
     const url = event.url;
     console.log(`frame-navigation url=${url} frame=${event.frame.name}`);
     if (event.frame.name == "webview") {
         // "webview" links always open in new window
         // this will *not* effect the initial load because srcdoc does not count as an electron navigation
         console.log("open external, frameNav", url);
+        event.preventDefault();
         electron.shell.openExternal(url);
         return;
     }
+    if (event.frame.name == "pdfview" && url.startsWith("blob:file:///")) {
+        // allowed
+        return;
+    }
+    event.preventDefault();
     console.log("frame navigation canceled");
 }
 
@@ -329,10 +337,17 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         height: bounds.height,
         minWidth: 800,
         minHeight: 600,
-        icon: unamePlatform == "linux" ? "public/logos/wave-logo-dark.png" : undefined,
+        icon:
+            unamePlatform == "linux"
+                ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
+                : undefined,
         webPreferences: {
             preload: path.join(getElectronAppBasePath(), DistDir, "preload.js"),
         },
+        show: false,
+    });
+    win.once("ready-to-show", () => {
+        win.show();
     });
     const indexHtml = isDev ? "index-dev.html" : "index.html";
     win.loadFile(path.join(getElectronAppBasePath(), "public", indexHtml));
@@ -350,13 +365,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
             e.preventDefault();
             return;
         }
-        if (checkKeyPressed(waveEvent, "Cmd:i")) {
-            e.preventDefault();
-            if (!input.alt) {
-                win.webContents.send("i-cmd", mods);
-            }
-            return;
-        }
         if (checkKeyPressed(waveEvent, "Cmd:r")) {
             e.preventDefault();
             win.webContents.send("r-cmd", mods);
@@ -370,16 +378,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         if (checkKeyPressed(waveEvent, "Cmd:w")) {
             e.preventDefault();
             win.webContents.send("w-cmd", mods);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:h")) {
-            win.webContents.send("h-cmd", mods);
-            e.preventDefault();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:p")) {
-            win.webContents.send("p-cmd", mods);
-            e.preventDefault();
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:ArrowUp") || checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
@@ -400,7 +398,7 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
             e.preventDefault();
             return;
         }
-        if (input.code.startsWith("Digit") && input.meta) {
+        if (input.code.startsWith("Digit") && input.meta && !input.control) {
             const digitNum = parseInt(input.code.substring(5));
             if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
                 return;
@@ -525,6 +523,13 @@ electron.ipcMain.on("toggle-developer-tools", (event) => {
     event.returnValue = true;
 });
 
+electron.ipcMain.on("hide-window", (event) => {
+    if (MainWindow != null) {
+        MainWindow.hide();
+    }
+    event.returnValue = true;
+});
+
 electron.ipcMain.on("get-id", (event) => {
     event.returnValue = instanceId + ":" + event.processId;
 });
@@ -617,12 +622,12 @@ function getFetchHeaders() {
 }
 
 async function getClientDataPoll(loopNum: number): Promise<ClientDataType | null> {
-    const lastTime = loopNum >= 6;
+    const lastTime = loopNum >= 30;
     const cdata = await getClientData(!lastTime, loopNum);
     if (lastTime || cdata != null) {
         return cdata;
     }
-    await sleep(1000);
+    await sleep(200);
     return getClientDataPoll(loopNum + 1);
 }
 
@@ -897,6 +902,10 @@ electron.ipcMain.on("change-auto-update", (_, enable: boolean) => {
  * @param clientData The client data to use to configure the auto-updater. If the clientData has noreleasecheck set to true, the auto-updater will be disabled.
  */
 function configureAutoUpdaterStartup(clientData: ClientDataType) {
+    if (clientData == null) {
+        configureAutoUpdater(false);
+        return;
+    }
     configureAutoUpdater(!clientData.clientopts.noreleasecheck);
 }
 

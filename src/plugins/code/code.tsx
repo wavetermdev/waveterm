@@ -15,15 +15,25 @@ import { Button, Dropdown } from "@/elements";
 
 import "./code.less";
 
+// TODO: need to update these on theme change (pull from CSS vars)
 document.addEventListener("DOMContentLoaded", () => {
     loader.config({ paths: { vs: "./node_modules/monaco-editor/min/vs" } });
     loader.init().then(() => {
-        monaco.editor.defineTheme("wave-theme", {
+        monaco.editor.defineTheme("wave-theme-dark", {
             base: "hc-black",
             inherit: true,
             rules: [],
             colors: {
                 "editor.background": "#000000",
+            },
+        });
+
+        monaco.editor.defineTheme("wave-theme-light", {
+            base: "hc-light",
+            inherit: true,
+            rules: [],
+            colors: {
+                "editor.background": "#fefefe",
             },
         });
     });
@@ -367,18 +377,26 @@ class SourceCodeRenderer extends React.Component<
             fontFamily: GlobalModel.getTermFontFamily(),
             readOnly: !this.getAllowEditing(),
         };
+        let lineState = this.props.lineState;
+        let minimap = true;
         if (this.state.showPreview) {
+            minimap = false;
+        } else if ("minimap" in lineState && !lineState["minimap"]) {
+            minimap = false;
+        }
+        if (!minimap) {
             opts.minimap = { enabled: false };
         }
         return opts;
     }
 
     getCodeEditor = () => {
+        let theme = GlobalModel.isThemeDark() ? "wave-theme-dark" : "wave-theme-light";
         return (
             <div className="editor-wrap" style={{ maxHeight: this.state.editorHeight }}>
                 {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
                 <Editor
-                    theme="wave-theme"
+                    theme={theme}
                     height={this.state.editorHeight}
                     defaultLanguage={this.state.selectedLanguage}
                     value={this.state.code}
@@ -415,7 +433,7 @@ class SourceCodeRenderer extends React.Component<
         return (
             <>
                 <If condition={isPreviewerAvailable}>
-                    <Button theme="primary" termInline={true}>
+                    <Button className="primary" termInline={true}>
                         <div onClick={this.togglePreview} className={`preview`}>
                             {`${showPreview ? "hide" : "show"} preview (`}
                             {renderCmdText("P")}
@@ -431,7 +449,7 @@ class SourceCodeRenderer extends React.Component<
                     ))}
                 </select>
                 <If condition={allowEditing}>
-                    <Button theme="primary" termInline={true}>
+                    <Button className="primary" termInline={true}>
                         <div onClick={() => this.doSave()}>
                             {`save (`}
                             {renderCmdText("S")}

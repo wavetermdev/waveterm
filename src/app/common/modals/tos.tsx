@@ -48,8 +48,15 @@ class TosModal extends React.Component<{}, {}> {
                                 <div className="item-inner">
                                     <div className="item-title">Telemetry</div>
                                     <div className="item-text">
-                                        We only collect minimal <i>anonymous</i> telemetry data to help us understand
-                                        how many people are using Wave.
+                                        We only collect minimal <i>anonymous</i>
+                                        <a
+                                            target="_blank"
+                                            href={util.makeExternLink("https://docs.waveterm.dev/reference/telemetry")}
+                                            rel={"noopener"}
+                                        >
+                                            &nbsp;telemetry data&nbsp;
+                                        </a>
+                                        to help us understand how many people are using Wave.
                                     </div>
                                     <div className="item-field" style={{ marginTop: 2 }}>
                                         <Toggle

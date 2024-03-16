@@ -579,6 +579,10 @@ declare global {
             collapsed: boolean;
             width: number;
         };
+        rightsidebar: {
+            collapsed: boolean;
+            width: number;
+        };
         globalshortcut: string;
         globalshortcutenabled: boolean;
     };
@@ -666,6 +670,8 @@ declare global {
         title: string;
         markdown: boolean;
         timeoutms: number;
+        checkboxmsg: string;
+        publictext: boolean;
     };
 
     type UserInputResponsePacket = {
@@ -674,6 +680,7 @@ declare global {
         text?: string;
         confirm?: boolean;
         errormsg?: string;
+        checkboxstat?: boolean;
     };
 
     type RenderModeType = "normal" | "collapsed" | "expanded";
@@ -878,6 +885,7 @@ declare global {
     };
 
     type ElectronApi = {
+        hideWindow: () => void;
         toggleDeveloperTools: () => void;
         getId: () => string;
         getIsDev: () => boolean;
@@ -894,10 +902,7 @@ declare global {
         getAppUpdateStatus: () => AppUpdateStatusType;
         onAppUpdateStatus: (callback: (status: AppUpdateStatusType) => void) => void;
         onTCmd: (callback: (mods: KeyModsType) => void) => void;
-        onICmd: (callback: (mods: KeyModsType) => void) => void;
         onLCmd: (callback: (mods: KeyModsType) => void) => void;
-        onHCmd: (callback: (mods: KeyModsType) => void) => void;
-        onPCmd: (callback: (mods: KeyModsType) => void) => void;
         onRCmd: (callback: (mods: KeyModsType) => void) => void;
         onWCmd: (callback: (mods: KeyModsType) => void) => void;
         onZoomChanged: (callback: () => void) => void;

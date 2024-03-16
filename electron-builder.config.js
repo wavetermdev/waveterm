@@ -73,7 +73,7 @@ const config = {
         executableName: pkg.productName,
         category: "TerminalEmulator",
         icon: "public/waveterm.icns",
-        target: ["zip", "deb", "rpm", "AppImage"],
+        target: ["zip", "deb", "rpm", "AppImage", "pacman"],
         synopsis: pkg.description,
         description: null,
         desktop: {

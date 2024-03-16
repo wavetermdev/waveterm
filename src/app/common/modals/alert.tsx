@@ -44,7 +44,7 @@ class AlertModal extends React.Component<{}, {}> {
                         <Markdown text={message?.message ?? ""} extraClassName="bottom-margin" />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
-                    <If condition={message.confirmflag}>
+                    <If condition={message?.confirmflag}>
                         <Checkbox
                             onChange={this.handleDontShowAgain}
                             label={"Don't show me this again"}
@@ -54,7 +54,7 @@ class AlertModal extends React.Component<{}, {}> {
                 </div>
                 <div className="wave-modal-footer">
                     <If condition={isConfirm}>
-                        <Button theme="secondary" onClick={this.closeModal}>
+                        <Button className="secondary" onClick={this.closeModal}>
                             Cancel
                         </Button>
                         <Button autoFocus={true} onClick={this.handleOK}>

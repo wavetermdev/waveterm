@@ -28,6 +28,7 @@ import * as util from "@/util/util";
 import * as textmeasure from "@/util/textmeasure";
 
 import "./line.less";
+import { CenteredIcon, RotateIcon } from "../common/icons/icons";
 
 const DebugHeightProblems = false;
 const MinLine = 0;
@@ -52,8 +53,16 @@ let heightLog = {};
 
 dayjs.extend(localizedFormat);
 
-function cmdHasError(cmd: Cmd): boolean {
-    return cmd.getStatus() == "error" || cmd.getExitCode() != 0;
+function cmdShouldMarkError(cmd: Cmd): boolean {
+    if (cmd.getStatus() == "error") {
+        return true;
+    }
+    let exitCode = cmd.getExitCode();
+    // 0, SIGINT, or SIGPIPE
+    if (exitCode == 0 || exitCode == 130 || exitCode == 141) {
+        return false;
+    }
+    return true;
 }
 
 function getIsHidePrompt(line: LineType): boolean {
@@ -317,21 +326,19 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
             icon = <i className="fail fa-sharp fa-solid fa-xmark" />;
             iconTitle = "error";
         } else if (status == "running" || status == "detached") {
-            icon = <i className="warning fa-sharp fa-solid fa-rotate fa-spin" />;
+            icon = <RotateIcon className="warning spin rotate" />;
             iconTitle = "running";
         } else {
             icon = <i className="fail fa-sharp fa-solid fa-question" />;
             iconTitle = "unknown";
         }
         return (
-            <div
-                onContextMenu={this.props.onRightClick}
-                title={iconTitle}
-                className={cn("simple-line-status", "status-" + status)}
-            >
-                <span className="linenum">{lineNumStr}</span>
-                <div className="avatar">{icon}</div>
-            </div>
+            <>
+                <div className="linenum">{lineNumStr}</div>
+                <div title={iconTitle} className={cn("status-icon", "status-" + status)}>
+                    {icon}
+                </div>
+            </>
         );
     }
 }
@@ -702,7 +709,7 @@ class LineCmd extends React.Component<
             )
             .get();
         const isRunning = cmd.isRunning();
-        const cmdError = cmdHasError(cmd);
+        const cmdError = cmdShouldMarkError(cmd);
         const mainDivCn = cn(
             "line",
             "line-cmd",

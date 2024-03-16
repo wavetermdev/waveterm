@@ -13,7 +13,6 @@ import {
     isModKeyPress,
     isBlank,
 } from "@/util/util";
-import { loadFonts } from "@/util/fontutil";
 import { loadTheme } from "@/util/themeutil";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
@@ -31,11 +30,13 @@ import { ClientSettingsViewModel } from "./clientsettingsview";
 import { RemotesModel } from "./remotes";
 import { ModalsModel } from "./modals";
 import { MainSidebarModel } from "./mainsidebar";
+import { RightSidebarModel } from "./rightsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
 import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
+import * as util from "@/util/util";
 
 type SWLinePtr = {
     line: LineType;
@@ -116,6 +117,7 @@ class Model {
     clientSettingsViewModel: ClientSettingsViewModel;
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
+    rightSidebarModel: RightSidebarModel;
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -142,7 +144,10 @@ class Model {
             this.runUpdate(message, interactive);
         });
         this.ws.reconnect();
-        this.keybindManager = new KeybindManager();
+        this.keybindManager = new KeybindManager(this);
+        this.readConfigKeybindings();
+        this.initSystemKeybindings();
+        this.initAppKeybindings();
         this.inputModel = new InputModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
@@ -152,6 +157,7 @@ class Model {
         this.remotesModel = new RemotesModel(this);
         this.modalsModel = new ModalsModel();
         this.mainSidebarModel = new MainSidebarModel(this);
+        this.rightSidebarModel = new RightSidebarModel(this);
         const isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -171,18 +177,8 @@ class Model {
             }
             return fontSize;
         });
-        this.keybindManager.registerKeybinding("system", "electron", "any", (waveEvent) => {
-            if (this.keybindManager.checkKeyPressed(waveEvent, "system:toggleDeveloperTools")) {
-                getApi().toggleDeveloperTools();
-                return true;
-            }
-            return false;
-        });
         getApi().onTCmd(this.onTCmd.bind(this));
-        getApi().onICmd(this.onICmd.bind(this));
         getApi().onLCmd(this.onLCmd.bind(this));
-        getApi().onHCmd(this.onHCmd.bind(this));
-        getApi().onPCmd(this.onPCmd.bind(this));
         getApi().onWCmd(this.onWCmd.bind(this));
         getApi().onRCmd(this.onRCmd.bind(this));
         getApi().onZoomChanged(this.onZoomChanged.bind(this));
@@ -206,6 +202,53 @@ class Model {
             lineHeightSm: 13,
             pad: 7,
         };
+    }
+
+    readConfigKeybindings() {
+        const url = new URL(this.getBaseHostPort() + "/config/keybindings.json");
+        let prtn = fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() });
+        prtn.then((resp) => {
+            if (resp.status == 404) {
+                return [];
+            } else if (!resp.ok) {
+                util.handleNotOkResp(resp, url);
+            }
+            return resp.json();
+        }).then((userKeybindings) => {
+            this.keybindManager.setUserKeybindings(userKeybindings);
+        });
+    }
+
+    initSystemKeybindings() {
+        this.keybindManager.registerKeybinding("system", "electron", "system:toggleDeveloperTools", (waveEvent) => {
+            getApi().toggleDeveloperTools();
+            return true;
+        });
+        this.keybindManager.registerKeybinding("system", "electron", "system:minimizeWindow", (waveEvent) => {
+            getApi().hideWindow();
+            return true;
+        });
+    }
+
+    initAppKeybindings() {
+        for (let index = 1; index <= 9; index++) {
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
+        }
+        this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
+            this.onFocusCmdInputPressed();
+            return true;
+        });
+        this.keybindManager.registerKeybinding("app", "model", "app:openBookmarksView", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openHistoryView", (waveEvent) => {
+            this.onOpenHistoryPressed();
+            return true;
+        });
+        this.keybindManager.registerKeybinding("app", "model", "app:openTabSearchModal", (waveEvent) => {
+            this.onOpenTabSearchModalPressed();
+            return true;
+        });
+        this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", null);
     }
 
     static getInstance(): Model {
@@ -316,7 +359,6 @@ class Model {
     cancelAlert(): void {
         mobx.action(() => {
             this.alertMessage.set(null);
-            this.modalsModel.popModal();
         })();
         if (this.alertPromiseResolver != null) {
             this.alertPromiseResolver(false);
@@ -370,6 +412,11 @@ class Model {
             theme = appconst.DefaultTheme;
         }
         return theme;
+    }
+
+    isThemeDark(): boolean {
+        let cdata = this.clientData.get();
+        return cdata?.feopts?.theme != "light";
     }
 
     getTermFontSize(): number {
@@ -432,7 +479,7 @@ class Model {
         if (this.alertMessage.get() != null) {
             if (checkKeyPressed(waveEvent, "Escape")) {
                 e.preventDefault();
-                this.cancelAlert();
+                this.modalsModel.popModal(() => this.cancelAlert());
                 return;
             }
             if (checkKeyPressed(waveEvent, "Enter")) {
@@ -442,61 +489,52 @@ class Model {
             }
             return;
         }
-        if (this.activeMainView.get() == "bookmarks") {
-            this.bookmarksModel.handleDocKeyDown(e);
+        if (checkKeyPressed(waveEvent, "Escape") && this.modalsModel.store.length > 0) {
+            this.modalsModel.popModal();
             return;
         }
+        this.keybindManager.processKeyEvent(e, waveEvent);
         if (this.activeMainView.get() == "history") {
             this.historyViewModel.handleDocKeyDown(e);
-            return;
         }
         if (this.activeMainView.get() == "connections") {
-            this.historyViewModel.handleDocKeyDown(e);
-            return;
+            this.connectionViewModel.handleDocKeyDown(e);
         }
         if (this.activeMainView.get() == "clientsettings") {
-            this.historyViewModel.handleDocKeyDown(e);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            if (this.activeMainView.get() == "webshare") {
-                this.showSessionView();
+            this.clientSettingsViewModel.handleDocKeyDown(e);
+        } else {
+            if (checkKeyPressed(waveEvent, "Escape")) {
+                e.preventDefault();
+                if (this.activeMainView.get() == "webshare") {
+                    this.showSessionView();
+                    return;
+                }
+                const inputModel = this.inputModel;
+                inputModel.toggleInfoMsg();
+                if (inputModel.inputMode.get() != null) {
+                    inputModel.resetInputMode();
+                }
                 return;
             }
-            if (this.clearModals()) {
-                return;
+            if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
+                e.preventDefault();
+                const activeScreen = this.getActiveScreen();
+                if (activeScreen != null) {
+                    const isSidebarOpen = activeScreen.isSidebarOpen();
+                    if (isSidebarOpen) {
+                        GlobalCommandRunner.screenSidebarClose();
+                    } else {
+                        GlobalCommandRunner.screenSidebarOpen();
+                    }
+                }
             }
-            const inputModel = this.inputModel;
-            inputModel.toggleInfoMsg();
-            if (inputModel.inputMode.get() != null) {
-                inputModel.resetInputMode();
-            }
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:b")) {
-            e.preventDefault();
-            GlobalCommandRunner.bookmarksView();
-        }
-        if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
-            e.preventDefault();
-            const activeScreen = this.getActiveScreen();
-            if (activeScreen != null) {
-                const isSidebarOpen = activeScreen.isSidebarOpen();
-                if (isSidebarOpen) {
-                    GlobalCommandRunner.screenSidebarClose();
-                } else {
-                    GlobalCommandRunner.screenSidebarOpen();
+            if (checkKeyPressed(waveEvent, "Cmd:d")) {
+                const ranDelete = this.deleteActiveLine();
+                if (ranDelete) {
+                    e.preventDefault();
                 }
             }
         }
-        if (checkKeyPressed(waveEvent, "Cmd:d")) {
-            const ranDelete = this.deleteActiveLine();
-            if (ranDelete) {
-                e.preventDefault();
-            }
-        }
-        this.keybindManager.processKeyEvent(e, waveEvent);
     }
 
     deleteActiveLine(): boolean {
@@ -589,33 +627,6 @@ class Model {
         return screen.getTermWrap(line.lineid);
     }
 
-    clearModals(): boolean {
-        let didSomething = false;
-        mobx.action(() => {
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.sessionSettingsModal.get()) {
-                this.sessionSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.clientSettingsModal.get()) {
-                this.clientSettingsModal.set(false);
-                didSomething = true;
-            }
-            if (this.lineSettingsModal.get()) {
-                this.lineSettingsModal.set(null);
-                didSomething = true;
-            }
-        })();
-        return didSomething;
-    }
-
     restartWaveSrv(): void {
         getApi().restartWaveSrv();
     }
@@ -693,8 +704,22 @@ class Model {
         GlobalCommandRunner.createNewScreen();
     }
 
-    onICmd(e: any, mods: KeyModsType) {
-        this.inputModel.giveFocus();
+    onBookmarkViewPressed() {
+        GlobalCommandRunner.bookmarksView();
+    }
+
+    onFocusCmdInputPressed() {
+        if (this.activeMainView.get() != "session") {
+            mobx.action(() => {
+                this.activeMainView.set("session");
+                setTimeout(() => {
+                    // allows for the session view to load
+                    this.inputModel.giveFocus();
+                }, 100);
+            })();
+        } else {
+            this.inputModel.giveFocus();
+        }
     }
 
     onLCmd(e: any, mods: KeyModsType) {
@@ -704,12 +729,20 @@ class Model {
         }
     }
 
-    onHCmd(e: any, mods: KeyModsType) {
+    onOpenHistoryPressed() {
         this.historyViewModel.reSearch();
     }
 
-    onPCmd(e: any, mods: KeyModsType) {
+    onOpenTabSearchModalPressed() {
         this.modalsModel.pushModal(appconst.TAB_SWITCHER);
+    }
+
+    onOpenConnectionsViewPressed() {
+        this.activeMainView.set("connections");
+    }
+
+    onOpenSettingsViewPressed() {
+        this.activeMainView.set("clientsettings");
     }
 
     getFocusedLine(): LineFocusType {
@@ -778,11 +811,12 @@ class Model {
         }
     }
 
+    onSwitchSessionCmd(digit: number) {
+        console.log("switching to ", digit);
+        GlobalCommandRunner.switchSession(String(digit));
+    }
+
     onDigitCmd(e: any, arg: { digit: number }, mods: KeyModsType) {
-        if (mods.meta && mods.ctrl) {
-            GlobalCommandRunner.switchSession(String(arg.digit));
-            return;
-        }
         GlobalCommandRunner.switchScreen(String(arg.digit));
     }
 
@@ -946,6 +980,12 @@ class Model {
                                 console.warn("invalid bookmarksview in update:", update.mainview);
                             }
                             break;
+                        case "clientsettings":
+                            this.activeMainView.set("clientsettings");
+                            break;
+                        case "connections":
+                            this.activeMainView.set("connections");
+                            break;
                         case "plugins":
                             this.pluginsModel.showPluginsView();
                             break;
@@ -1009,6 +1049,9 @@ class Model {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+                setTimeout(() => {
+                    GlobalCommandRunner.syncShellState();
+                }, 100);
             }
         } else {
             console.warn("unknown update", genUpdate);
@@ -1293,7 +1336,7 @@ class Model {
         };
         /** 
         console.log(
-            "CMD",
+            "CMD"
             pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
             pk.args,
             pk.kwargs,
@@ -1506,12 +1549,15 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    readRemoteFile(screenId: string, lineId: string, path: string): Promise<ExtFile> {
-        const urlParams = {
+    readRemoteFile(screenId: string, lineId: string, path: string, mimetype?: string): Promise<ExtFile> {
+        const urlParams: Record<string, string> = {
             screenid: screenId,
             lineid: lineId,
             path: path,
         };
+        if (mimetype != null) {
+            urlParams["mimetype"] = mimetype;
+        }
         const usp = new URLSearchParams(urlParams);
         const url = new URL(this.getBaseHostPort() + "/api/read-file?" + usp.toString());
         const fetchHeaders = this.getFetchHeaders();
@@ -1521,7 +1567,7 @@ class Model {
             .then((resp) => {
                 if (!resp.ok) {
                     badResponseStr = sprintf(
-                        "Bad fetch response for /api/read-file: %d %s",
+                        "Bad fetch response for /apiread-file: %d %s",
                         resp.status,
                         resp.statusText
                     );

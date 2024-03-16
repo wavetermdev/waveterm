@@ -916,12 +916,12 @@ func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdP
 	})
 }
 
-func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) (*scbus.ModelUpdatePacketType, error) {
+func UpdateCmdDoneInfo(ctx context.Context, update *scbus.ModelUpdatePacketType, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) error {
 	if donePk == nil {
-		return nil, fmt.Errorf("invalid cmddone packet")
+		return fmt.Errorf("invalid cmddone packet")
 	}
 	if ck.IsEmpty() {
-		return nil, fmt.Errorf("cannot update cmddoneinfo, empty ck")
+		return fmt.Errorf("cannot update cmddoneinfo, empty ck")
 	}
 	screenId := ck.GetGroupId()
 	var rtnCmd *CmdType
@@ -944,15 +944,12 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 		return nil
 	})
 	if txErr != nil {
-		return nil, txErr
+		return txErr
 	}
 	if rtnCmd == nil {
-		return nil, fmt.Errorf("cmd data not found for ck[%s]", ck)
+		return fmt.Errorf("cmd data not found for ck[%s]", ck)
 	}
-
-	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*rtnCmd)
-
 	// Update in-memory screen indicator status
 	var indicator StatusIndicatorLevel
 	if rtnCmd.ExitCode == 0 {
@@ -960,15 +957,13 @@ func UpdateCmdDoneInfo(ctx context.Context, ck base.CommandKey, donePk *packet.C
 	} else {
 		indicator = StatusIndicatorLevel_Error
 	}
-
 	err := SetStatusIndicatorLevel_Update(ctx, update, screenId, indicator, false)
 	if err != nil {
 		// This is not a fatal error, so just log it
 		log.Printf("error setting status indicator level after done packet: %v\n", err)
 	}
 	IncrementNumRunningCmds_Update(update, screenId, -1)
-
-	return update, nil
+	return nil
 }
 
 func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr ShellStatePtr) error {
@@ -989,18 +984,6 @@ func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr ShellSt
 		return txErr
 	}
 	return nil
-}
-
-func AppendCmdErrorPk(ctx context.Context, errPk *packet.CmdErrorPacketType) error {
-	if errPk == nil || errPk.CK.IsEmpty() {
-		return fmt.Errorf("invalid cmderror packet (no ck)")
-	}
-	screenId := errPk.CK.GetGroupId()
-	return WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE cmd SET runout = json_insert(runout, '$[#]', ?) WHERE screenid = ? AND lineid = ?`
-		tx.Exec(query, quickJson(errPk), screenId, lineIdFromCK(errPk.CK))
-		return nil
-	})
 }
 
 func ReInitFocus(ctx context.Context) error {

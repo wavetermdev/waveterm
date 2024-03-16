@@ -205,80 +205,76 @@ class BookmarksModel {
         })();
     }
 
-    handleDocKeyDown(e: any): void {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            if (this.editingBookmark.get() != null) {
-                this.cancelEdit();
-                return;
-            }
-            this.closeView();
+    handleUserClose() {
+        if (this.editingBookmark.get() != null) {
+            this.cancelEdit();
             return;
         }
+        this.closeView();
+    }
+
+    handleUserDelete() {
         if (this.editingBookmark.get() != null) {
             return;
         }
-        if (checkKeyPressed(waveEvent, "Backspace") || checkKeyPressed(waveEvent, "Delete")) {
-            if (this.activeBookmark.get() == null) {
-                return;
-            }
-            e.preventDefault();
-            this.handleDeleteBookmark(this.activeBookmark.get());
+        if (this.activeBookmark.get() == null) {
             return;
         }
+        this.handleDeleteBookmark(this.activeBookmark.get());
+    }
 
-        if (
-            checkKeyPressed(waveEvent, "ArrowUp") ||
-            checkKeyPressed(waveEvent, "ArrowDown") ||
-            checkKeyPressed(waveEvent, "PageUp") ||
-            checkKeyPressed(waveEvent, "PageDown")
-        ) {
-            e.preventDefault();
-            if (this.bookmarks.length == 0) {
-                return;
-            }
-            let newPos = 0; // if active is null, then newPos will be 0 (select the first)
-            if (this.activeBookmark.get() != null) {
-                let amtMap = { ArrowUp: -1, ArrowDown: 1, PageUp: -10, PageDown: 10 };
-                let amt = amtMap[e.code];
-                let curIdx = this.getBookmarkPos(this.activeBookmark.get());
-                newPos = curIdx + amt;
-                if (newPos < 0) {
-                    newPos = 0;
-                }
-                if (newPos >= this.bookmarks.length) {
-                    newPos = this.bookmarks.length - 1;
-                }
-            }
-            let bm = this.bookmarks[newPos];
-            mobx.action(() => {
-                this.activeBookmark.set(bm.bookmarkid);
-            })();
+    handleUserNavigate(amt: number) {
+        if (this.editingBookmark.get() != null) {
             return;
         }
-        if (checkKeyPressed(waveEvent, "Enter")) {
-            if (this.activeBookmark.get() == null) {
-                return;
-            }
-            this.useBookmark(this.activeBookmark.get());
+        if (this.bookmarks.length == 0) {
             return;
         }
-        if (checkKeyPressed(waveEvent, "e")) {
-            if (this.activeBookmark.get() == null) {
-                return;
+        let newPos = 0; // if active is null, then newPos will be 0 (select the first)
+        if (this.activeBookmark.get() != null) {
+            let curIdx = this.getBookmarkPos(this.activeBookmark.get());
+            newPos = curIdx + amt;
+            if (newPos < 0) {
+                newPos = 0;
             }
-            e.preventDefault();
-            this.handleEditBookmark(this.activeBookmark.get());
+            if (newPos >= this.bookmarks.length) {
+                newPos = this.bookmarks.length - 1;
+            }
+        }
+        let bm = this.bookmarks[newPos];
+        mobx.action(() => {
+            this.activeBookmark.set(bm.bookmarkid);
+        })();
+    }
+
+    handleUserConfirm() {
+        if (this.editingBookmark.get() != null) {
             return;
         }
-        if (checkKeyPressed(waveEvent, "c")) {
-            if (this.activeBookmark.get() == null) {
-                return;
-            }
-            e.preventDefault();
-            this.handleCopyBookmark(this.activeBookmark.get());
+        if (this.activeBookmark.get() == null) {
+            return;
         }
+        this.useBookmark(this.activeBookmark.get());
+    }
+
+    handleUserEdit() {
+        if (this.editingBookmark.get() != null) {
+            return;
+        }
+        if (this.activeBookmark.get() == null) {
+            return;
+        }
+        this.handleEditBookmark(this.activeBookmark.get());
+    }
+
+    handleUserCopy() {
+        if (this.editingBookmark.get() != null) {
+            return;
+        }
+        if (this.activeBookmark.get() == null) {
+            return;
+        }
+        this.handleCopyBookmark(this.activeBookmark.get());
     }
 }
 

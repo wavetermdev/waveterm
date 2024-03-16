@@ -5,8 +5,6 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If } from "tsx-control-statements/components";
-import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
@@ -89,6 +87,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const availableFontFamilies: DropdownItem[] = [];
         availableFontFamilies.push({ label: "JetBrains Mono", value: "JetBrains Mono" });
         availableFontFamilies.push({ label: "Hack", value: "Hack" });
+        availableFontFamilies.push({ label: "Fira Code", value: "Fira Code" });
         return availableFontFamilies;
     }
 
@@ -168,7 +167,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curTheme = GlobalModel.getTheme();
 
         return (
-            <MainView viewName="clientsettings" title="Client Settings" onClose={this.handleClose}>
+            <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
                 <div className="content">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>
@@ -192,19 +191,17 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                             />
                         </div>
                     </div>
-                    <If condition={GlobalModel.isDev}>
-                        <div className="settings-field">
-                            <div className="settings-label">Theme</div>
-                            <div className="settings-input">
-                                <Dropdown
-                                    className="theme-dropdown"
-                                    options={this.getThemes()}
-                                    defaultValue={curTheme}
-                                    onChange={this.handleChangeTheme}
-                                />
-                            </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Theme</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="theme-dropdown"
+                                options={this.getThemes()}
+                                defaultValue={curTheme}
+                                onChange={this.handleChangeTheme}
+                            />
                         </div>
-                    </If>
+                    </div>
                     <div className="settings-field">
                         <div className="settings-label">Client ID</div>
                         <div className="settings-input">{cdata.clientid}</div>

@@ -15,7 +15,7 @@ import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "@/common/prompt/prompt";
-import { RotateIcon } from "@/common/icons/icons";
+import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
 
 import "./cmdinput.less";
@@ -155,10 +155,13 @@ class CmdInput extends React.Component<{}, {}> {
                             title="Filter for Running Commands"
                             onClick={() => this.toggleFilter(screen)}
                         >
-                            {numRunningLines} <i className="fa-sharp fa-regular fa-rotate fa-spin fa-fw" />
+                            <CenteredIcon>{numRunningLines}</CenteredIcon>{" "}
+                            <CenteredIcon>
+                                <RotateIcon className="rotate warning spin" />
+                            </CenteredIcon>
                         </div>
                     </If>
-                    <div key="ai" title="Wave AI (Cmd-Space)" className="cmdinput-icon" onClick={this.clickAIAction}>
+                    <div key="ai" title="Wave AI (Ctrl-Space)" className="cmdinput-icon" onClick={this.clickAIAction}>
                         <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
                     </div>
                     <div

@@ -43,12 +43,10 @@ const (
 	DataEndPacketStr        = "dataend"
 	ResponsePacketStr       = "resp" // rpc-response
 	DonePacketStr           = "done"
-	CmdErrorPacketStr       = "cmderror" // command
 	MessagePacketStr        = "message"
 	GetCmdPacketStr         = "getcmd"    // rpc
 	UntailCmdPacketStr      = "untailcmd" // rpc
 	CdPacketStr             = "cd"        // rpc
-	CmdDataPacketStr        = "cmddata"   // rpc-response
 	RawPacketStr            = "raw"
 	SpecialInputPacketStr   = "sinput"         // command
 	CompGenPacketStr        = "compgen"        // rpc
@@ -90,7 +88,6 @@ func init() {
 	TypeStrToFactory[PingPacketStr] = reflect.TypeOf(PingPacketType{})
 	TypeStrToFactory[ResponsePacketStr] = reflect.TypeOf(ResponsePacketType{})
 	TypeStrToFactory[DonePacketStr] = reflect.TypeOf(DonePacketType{})
-	TypeStrToFactory[CmdErrorPacketStr] = reflect.TypeOf(CmdErrorPacketType{})
 	TypeStrToFactory[MessagePacketStr] = reflect.TypeOf(MessagePacketType{})
 	TypeStrToFactory[CmdStartPacketStr] = reflect.TypeOf(CmdStartPacketType{})
 	TypeStrToFactory[CmdDonePacketStr] = reflect.TypeOf(CmdDonePacketType{})
@@ -98,7 +95,6 @@ func init() {
 	TypeStrToFactory[UntailCmdPacketStr] = reflect.TypeOf(UntailCmdPacketType{})
 	TypeStrToFactory[InitPacketStr] = reflect.TypeOf(InitPacketType{})
 	TypeStrToFactory[CdPacketStr] = reflect.TypeOf(CdPacketType{})
-	TypeStrToFactory[CmdDataPacketStr] = reflect.TypeOf(CmdDataPacketType{})
 	TypeStrToFactory[RawPacketStr] = reflect.TypeOf(RawPacketType{})
 	TypeStrToFactory[SpecialInputPacketStr] = reflect.TypeOf(SpecialInputPacketType{})
 	TypeStrToFactory[DataPacketStr] = reflect.TypeOf(DataPacketType{})
@@ -128,7 +124,6 @@ func init() {
 
 	var _ RpcResponsePacketType = (*CmdStartPacketType)(nil)
 	var _ RpcResponsePacketType = (*ResponsePacketType)(nil)
-	var _ RpcResponsePacketType = (*CmdDataPacketType)(nil)
 	var _ RpcResponsePacketType = (*StreamFileResponseType)(nil)
 	var _ RpcResponsePacketType = (*FileDataPacketType)(nil)
 	var _ RpcResponsePacketType = (*WriteFileReadyPacketType)(nil)
@@ -153,36 +148,6 @@ func MakePacket(packetType string) (PacketType, error) {
 	}
 	rtn := reflect.New(rtype)
 	return rtn.Interface().(PacketType), nil
-}
-
-type CmdDataPacketType struct {
-	Type       string          `json:"type"`
-	RespId     string          `json:"respid"`
-	CK         base.CommandKey `json:"ck"`
-	PtyPos     int64           `json:"ptypos"`
-	PtyLen     int64           `json:"ptylen"`
-	RunPos     int64           `json:"runpos"`
-	RunLen     int64           `json:"runlen"`
-	PtyData64  string          `json:"ptydata64"`
-	PtyDataLen int             `json:"ptydatalen"`
-	RunData64  string          `json:"rundata64"`
-	RunDataLen int             `json:"rundatalen"`
-}
-
-func (*CmdDataPacketType) GetType() string {
-	return CmdDataPacketStr
-}
-
-func (p *CmdDataPacketType) GetResponseId() string {
-	return p.RespId
-}
-
-func (*CmdDataPacketType) GetResponseDone() bool {
-	return false
-}
-
-func MakeCmdDataPacket(reqId string) *CmdDataPacketType {
-	return &CmdDataPacketType{Type: CmdDataPacketStr, RespId: reqId}
 }
 
 type PingPacketType struct {
@@ -830,28 +795,6 @@ type BarePacketType struct {
 	Type string `json:"type"`
 }
 
-type CmdErrorPacketType struct {
-	Type  string          `json:"type"`
-	CK    base.CommandKey `json:"ck"`
-	Error string          `json:"error"`
-}
-
-func (*CmdErrorPacketType) GetType() string {
-	return CmdErrorPacketStr
-}
-
-func (p *CmdErrorPacketType) GetCK() base.CommandKey {
-	return p.CK
-}
-
-func (p *CmdErrorPacketType) String() string {
-	return fmt.Sprintf("error[%s]", p.Error)
-}
-
-func MakeCmdErrorPacket(ck base.CommandKey, err error) *CmdErrorPacketType {
-	return &CmdErrorPacketType{Type: CmdErrorPacketStr, CK: ck, Error: err.Error()}
-}
-
 type WriteFilePacketType struct {
 	Type    string `json:"type"`
 	ReqId   string `json:"reqid"`
@@ -1074,10 +1017,6 @@ func SendPacket(w io.Writer, packet PacketType) error {
 	return nil
 }
 
-func SendCmdError(w io.Writer, ck base.CommandKey, err error) error {
-	return SendPacket(w, MakeCmdErrorPacket(ck, err))
-}
-
 type PacketSender struct {
 	Lock       *sync.Mutex
 	SendCh     chan PacketType
@@ -1197,10 +1136,6 @@ func (sender *PacketSender) SendPacket(pk PacketType) error {
 	return nil
 }
 
-func (sender *PacketSender) SendCmdError(ck base.CommandKey, err error) error {
-	return sender.SendPacket(MakeCmdErrorPacket(ck, err))
-}
-
 func (sender *PacketSender) SendErrorResponse(reqId string, err error) error {
 	pk := MakeErrorResponsePacket(reqId, err)
 	return sender.SendPacket(pk)
@@ -1222,17 +1157,13 @@ type UnknownPacketReporter interface {
 type DefaultUPR struct{}
 
 func (DefaultUPR) UnknownPacket(pk PacketType) {
-	if pk.GetType() == CmdErrorPacketStr {
-		errPacket := pk.(*CmdErrorPacketType)
-		// at this point, just send the error packet to stderr rather than try to do something special
-		fmt.Fprintf(os.Stderr, "[error] %s\n", errPacket.Error)
-	} else if pk.GetType() == RawPacketStr {
+	if pk.GetType() == RawPacketStr {
 		rawPacket := pk.(*RawPacketType)
 		fmt.Fprintf(os.Stderr, "%s\n", rawPacket.Data)
 	} else if pk.GetType() == CmdStartPacketStr {
 		return // do nothing
 	} else {
-		fmt.Fprintf(os.Stderr, "[error] invalid packet received '%s'", AsExtType(pk))
+		wlog.Logf("[upr] invalid packet received '%s'", AsExtType(pk))
 	}
 }
 

@@ -1,11 +1,20 @@
 .history-view {
     padding-bottom: 10px;
+    min-height: 0;
 
     .icon {
         width: 1.5em !important;
         height: 1em !important;
         padding-left: 5px;
         fill: var(--app-text-color);
+    }
+
+    .mainview-content {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        padding: 10px 10px 0 10px;
+        min-height: 0;
     }
 
     .history-checkbox {
@@ -51,16 +60,6 @@
             color: var(--app-text-color);
         }
 
-        .main-search {
-            .field {
-                width: 80%;
-            }
-
-            input::placeholder {
-                color: #777;
-            }
-        }
-
         .advanced-search {
             display: flex;
             flex-direction: row;
@@ -68,37 +67,7 @@
 
             .workspace-dropdown,
             .remote-dropdown {
-                width: 200px;
-            }
-
-            .dropdown {
-                font-size: 0.8em;
-                padding: 0.5em 1em;
-                .label {
-                    display: inline;
-                    vertical-align: middle;
-                    color: var(--app-text-color);
-                }
-                .icon {
-                    vertical-align: middle;
-                    margin-left: 1em;
-                }
-            }
-
-            .session-dropdown,
-            .remote-dropdown {
-                .dropdown-item {
-                    color: var(--app-text-color);
-                    cursor: pointer;
-                    &:hover {
-                        background-color: #666;
-                    }
-                }
-
-                .dropdown-content {
-                    border-radius: 0 0 4px 4px;
-                    width: 16em;
-                }
+                width: 170px;
             }
 
             .remote-dropdown {
@@ -108,16 +77,12 @@
             .search-checkbox {
                 margin: 0 15px;
                 padding: 5px 10px 5px 10px;
-                background: var(--button-secondary-bg-color);
+                background: var(--form-element-secondary-color);
                 border-radius: 4px;
                 display: flex;
                 flex-direction: row;
                 align-items: center;
                 height: 34px;
-
-                &.is-active {
-                    background-color: #666;
-                }
 
                 .checkbox-container {
                     position: relative;
@@ -135,9 +100,6 @@
                 flex-direction: row;
                 align-items: center;
                 margin-left: 15px;
-
-                .fromts-text {
-                }
             }
 
             .reset-button {
@@ -154,7 +116,7 @@
         margin-top: 10px;
         margin-left: 10px;
         align-items: center;
-        height: 32px;
+        height: 35px;
         flex-shrink: 0;
 
         .is-hidden {
@@ -162,8 +124,14 @@
         }
 
         &.is-top {
-            border-top: 1px solid #333;
+            border-bottom: 2px solid var(--table-thead-bright-border-color);
+            border-top: 1px solid var(--table-thead-border-top-color);
             padding-top: 4px;
+            padding-bottom: 4px;
+        }
+
+        &.is-bottom {
+            border-top: 2px solid var(--table-thead-bright-border-color);
         }
 
         .trash-icon {
@@ -178,7 +146,7 @@
 
         .control-button {
             cursor: pointer;
-            color: #aaa;
+            color: var(--form-element-label-color);
             margin-left: 12px;
 
             .icon {
@@ -218,8 +186,11 @@
 
             &.is-disabled {
                 cursor: default;
-                color: #777;
                 font-weight: normal;
+
+                .icon {
+                    fill: var(--form-element-disabled-text-color);
+                }
             }
         }
 
@@ -233,7 +204,7 @@
         flex-direction: row;
         justify-content: center;
         padding: 30px 0 30px 0;
-        border: 1px solid white;
+        border: 1px solid var(--app-border-color);
         border-radius: 3px;
         margin: 20px 50px 20px 20px;
     }
@@ -242,16 +213,24 @@
         flex-grow: 1;
         min-height: 200px;
         overflow-y: auto;
+        height: calc(100vh - 186px); // 186px is sum of all the heights above the history-scroll-region
     }
 
     .history-table {
         margin: 0px 10px 10px 10px;
-        table-layout: fixed;
-        border-top: 2px solid #ccc;
+        display: flex;
+        flex-direction: column;
         width: calc(100% - 20px);
+        flex-grow: 1;
+        min-height: 200px;
 
-        tr.active-history-item {
-            td {
+        .row.active-history-item {
+            display: flex;
+            border-bottom: 1px solid var(--table-tr-border-bottom-color);
+            align-items: center;
+            padding: 0 10px;
+
+            .cell {
                 padding-right: 10px;
 
                 .line-container {
@@ -290,12 +269,13 @@
             }
         }
 
-        tr.history-item {
+        .row.history-item {
             padding: 0 10px 0 10px;
             display: flex;
             border-bottom: 1px solid var(--table-tr-border-bottom-color);
             align-items: center;
             color: var(--app-text-color);
+            font: var(--base-font);
 
             &.is-selected {
                 background-color: var(--table-tr-selected-bg-color);
@@ -313,41 +293,27 @@
                 }
             }
 
-            td {
+            .cell {
+                display: flex;
                 padding-top: 5px;
                 padding-bottom: 5px;
                 padding-left: 5px;
             }
 
-            td.selectbox {
-                flex: 0 0 auto;
-                flex-basis: 25px;
+            .selectbox {
+                flex: 0 0 30px;
                 cursor: pointer;
             }
 
-            td.bookmark {
-                flex: 0 0 auto;
-                flex-basis: 20px;
-                margin-right: 1em;
-                cursor: pointer;
-            }
-
-            td.ts {
-                flex: 0 0 auto;
-                flex-basis: 86px;
-                margin-left: 24px;
-            }
-
-            td.workspace {
-                flex: 0 0 auto;
-                flex-basis: 120px;
+            .workspace {
+                flex: 0 0 120px;
                 text-overflow: ellipsis;
                 margin-left: 24px;
+                overflow: hidden;
             }
 
-            td.remote {
-                flex: 0 0 auto;
-                flex-basis: 150px;
+            .remote {
+                flex: 0 0 150px;
                 text-overflow: ellipsis;
                 padding-right: 5px;
                 max-width: 150px;
@@ -355,29 +321,53 @@
                 margin-left: 24px;
             }
 
-            td.cmdstr {
-                color: var(--app-text-color);
-                flex: 1 0 0;
+            .ts {
+                flex: 0 0 86px;
+                margin-left: 24px;
+            }
+
+            .cmdstr {
+                flex-grow: 1;
                 border-radius: 3px;
                 white-space: pre;
                 max-height: 70px;
                 min-width: 300px;
-                padding-top: 4px;
-                padding-bottom: 4px;
-                overflow: hidden;
+                padding-top: 0;
+                padding-bottom: 0;
+                overflow-x: auto;
+                position: relative;
 
-                .use-button {
+                .cmdstr-code {
+                    display: flex;
+                    flex-direction: row;
+                    align-items: flex-end;
+                    padding-top: 4px;
+                    padding-bottom: 4px;
+                }
+
+                .actions-block {
+                    display: flex;
+                    flex-direction: row;
+
+                    .action-item:hover {
+                        color: var(--app-text-color);
+                        cursor: pointer;
+                    }
+
                     visibility: hidden;
                 }
 
-                &:hover .use-button {
-                    visibility: visible;
+                .activate-item-spacer {
+                    cursor: pointer;
                 }
             }
 
-            td.downarrow {
-                display: flex;
-                width: 32px;
+            &:hover .cmdstr .actions-block {
+                visibility: visible;
+            }
+
+            .downarrow {
+                flex: 0 0 32px;
                 justify-content: center;
                 align-items: center;
                 align-self: stretch;

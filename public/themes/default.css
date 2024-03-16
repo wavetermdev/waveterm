@@ -1,6 +1,7 @@
 /* Copyright 2024, Command Line Inc.
    SPDX-License-Identifier: Apache-2.0 */
 
+@import url("./term-default.css");
 @import url("./term-dark.css");
 
 :root {
@@ -43,13 +44,17 @@
     --floating-logo-width: 40px;
     --floating-logo-height: var(--screentabs-height);
 
+    /* right sidebar triggers */
+    --floating-right-sidebar-triggers-width-darwin: 50px;
+    --floating-right-sidebar-triggers-width: 40px;
+
     /* global colors */
     --app-bg-color: black;
     --app-accent-color: rgb(88, 193, 66);
-    --app-accent-bg-color: rgba(88, 193, 66, 0.2);
-    --app-error-color: rgb(204, 0, 0);
-    --app-warning-color: rgb(255, 165, 0);
-    --app-success-color: rgb(38, 97, 26);
+    --app-accent-bg-color: rgba(88, 193, 66, 0.25);
+    --app-error-color: rgb(229, 77, 46);
+    --app-warning-color: rgb(224, 185, 86);
+    --app-success-color: rgb(78, 154, 6);
     --app-text-color: rgb(211, 215, 207);
     --app-text-primary-color: rgb(255, 255, 255);
     --app-text-secondary-color: rgb(195, 200, 194);
@@ -59,6 +64,7 @@
     --app-panel-bg-color-dev: rgb(21, 23, 48);
     --app-icon-color: rgb(139, 145, 138);
     --app-icon-hover-color: #fff;
+    --app-selected-mask-color: rgba(255, 255, 255, 0.06);
 
     /* icon colors */
 
@@ -70,9 +76,9 @@
 
     /* scrollbar colors */
     /* --scrollbar-background-color: rgba(21, 23, 21, 1); */
-    --scrollbar-background-color: #030303;
-    --scrollbar-thumb-color: #333;
-    --scrollbar-thumb-hover-color: rgb(211, 215, 207);
+    --scrollbar-background-color: var(--app-bg-color);
+    --scrollbar-thumb-color: rgba(255, 255, 255, 0.3);
+    --scrollbar-thumb-hover-color: rgba(255, 255, 255, 0.5);
 
     /* code color */
     --pre-bg-color: rgb(0, 0, 0);
@@ -91,43 +97,20 @@
 
     --form-element-border-color: rgba(241, 246, 243, 0.15);
     --form-element-bg-color: var(--app-bg-color);
-    --form-element-text-color: #ffffff;
-    --form-element-label-color: rgb(195, 200, 194);
-    --form-element-primary-color: rgb(78, 154, 6);
-    --form-element-secondary-color: rgba(255, 255, 255, 0.09);
-    --form-element-error-color: rgb(204, 0, 0);
-    --form-element-icon-color: #fff;
-
-    /* button colors */
-    /* todo: use --form-element-* directly in elements */
-    --button-text-color: var(--form-element-text-color);
-    --button-primary-bg-color: var(--form-element-primary-color);
-    --button-secondary-bg-color: var(--form-element-secondary-color);
-    --button-warning-bg-color: var(--form-element-error-color);
-
-    /* input colors */
-    /* todo: use --form-element-* directly in elements */
-    --checkbox-text-color: var(--form-element-text-color);
-    --checkbox-bg-color: var(--form-element-primary-color);
-    --checkbox-check-color: var(--form-element-text-color);
-
-    /* dropdown colors */
-    /* todo: use --form-element-* directly in elements */
-    --dropdown-text-color: var(--form-element-text-color);
-    --dropdown-label-color: var(--form-element-label-color);
-    --dropdown-error-color: var(--form-element-error-color);
-    --dropdown-focus-color: var(--form-element-primary-color);
-    --dropdown-bg-color: var(--form-element-bg-color);
-    --dropdown-border-color: var(--form-element-border-color);
+    --form-element-text-color: var(--app-text-primary-color);
+    --form-element-label-color: var(--app-text-secondary-color);
+    --form-element-primary-color: var(--app-accent-color);
+    --form-element-secondary-color: rgba(255, 255, 255, 0.2);
+    --form-element-error-color: var(--app-error-color);
+    --form-element-icon-color: var(--app-icon-hover-color);
 
     /* toggle colors */
-    --toggle-bg-color: rgb(51, 51, 51);
-    --toggle-thumb-color: rgb(211, 215, 207);
-    --toggle-checked-bg-color: var(--form-element-primary-color);
+    --toggle-bg-color: var(--app-border-color);
+    --toggle-thumb-color: var(--app-text-color);
+    --toggle-checked-bg-color: var(--app-accent-color);
 
     /* cmdstrcode colors */
-    --cmdstrcode-bg-color: rgb(0, 0, 0);
-    --cmdstrcode-text-color: rgb(211, 215, 207);
+    --cmdstrcode-text-color: var(--app-text-color);
 
     /* markdown colors */
     --markdown-bg-color: rgb(35, 35, 35);
@@ -135,29 +118,29 @@
 
     /* status(remote) colors */
     /* todo: all status colors must be unified */
-    --status-connected-color: rgb(70, 167, 88);
-    --status-connecting-color: rgb(245, 217, 10);
-    --status-error-color: rgb(229, 77, 46);
-    --status-disconnected-color: rgb(195, 200, 194);
+    --status-connected-color: var(--app-success-color);
+    --status-connecting-color: var(--app-warning-color);
+    --status-error-color: var(--app-error-color);
+    --status-disconnected-color: var(--app-text-secondary-color);
 
     /* status indicator colors */
     /* todo: all status colors must be unified */
-    --status-indicator-color: rgb(211, 215, 207);
-    --status-indicator-error: rgb(204, 0, 0);
-    --status-indicator-success: rgb(78, 154, 6);
+    --status-indicator-color: var(--app-text-color);
+    --status-indicator-error: var(--status-error-color);
+    --status-indicator-success: var(--status-connected-color);
 
     /* status(version) colors */
     /* todo: all status colors must be unified */
-    --status-outdated-color: rgb(196, 160, 0);
-    --status-updated-color: rgb(78, 154, 6);
+    --status-outdated-color: var(--status-connecting-color);
+    --status-updated-color: var(--status-connected-color);
 
     /* term status colors */
     /* todo: all status colors must be unified */
-    --term-error-color: rgb(204, 0, 0);
-    --term-warning-color: rgb(196, 160, 0);
+    --term-error-color: var(--status-error-color);
+    --term-warning-color: var(--status-connecting-color);
 
     /* hotkey colors */
-    --hotkey-text-color: rgb(195, 200, 194);
+    --hotkey-text-color: var(--app-text-secondary-color);
 
     /* sidebar colors */
     --sidebar-highlight-color: rgba(241, 246, 243, 0.08);
@@ -173,12 +156,11 @@
     --line-text-color: rgb(211, 215, 207);
     --line-svg-fill-color: rgb(150, 152, 150);
     --line-svg-hover-fill-color: #eceeec;
-    --line-selected-border-color: rgb(193, 195, 193);
     --line-separator-color: rgb(126, 126, 126);
-    --line-error-color: #cc0000;
-    --line-warning-color: #ffa500;
+    --line-error-color: var(--app-error-color);
+    --line-warning-color: var(--app-warning-color);
     --line-base-soft-blue-color: #729fcf;
-    --line-active-border-color: rgb(97, 158, 72);
+    --line-active-border-color: var(--app-accent-color);
     --line-selected-bg-color: rgba(255, 255, 255, 0.05);
     --line-selected-border-left-color: #777777;
     --line-selected-error-border-color: rgba(204, 0, 0, 0.8);
@@ -189,12 +171,12 @@
     --line-meta-user-color: rgba(140, 184, 232);
     --line-svg-color: rgba(236, 238, 236, 0.6);
     --line-svg-hover-color: rgba(236, 238, 236, 1);
-    --line-status-success-fill: rgb(88, 193, 66);
-    --line-status-error-fill: #cc0000;
-    --line-status-warning-fill: #ffa500;
+    --line-status-success-fill: var(--app-success-color);
+    --line-status-error-fill: var(--app-error-color);
+    --line-status-warning-fill: var(--app-warning-color);
     --line-actions-inactive-color: rgba(255, 255, 255, 0.5);
     --line-actions-active-color: rgba(255, 255, 255, 1);
-    --line-actions-bg-color: rgba(21, 23, 21, 1);
+    --line-actions-bg-color: rgba(255, 255, 255, 0.15);
 
     /* view colors */
     /* todo: bookmarks is a view, colors must be unified with --view* colors */
@@ -204,13 +186,13 @@
     --bookmarks-control-hover-color: rgb(255, 255, 255);
 
     /* view colors */
-    --view-error-color: rgb(204, 0, 0);
-    --view-text-color: rgb(195, 200, 194);
+    --view-error-color: var(--app-error-color);
+    --view-text-color: var(--app-text-color);
 
     /* table colors */
     --table-border-color: rgba(241, 246, 243, 0.15);
     --table-thead-border-top-color: rgba(250, 250, 250, 0.1);
-    --table-thead-border-bottom-color: var(--table-border-color);
+    --table-thead-bright-border-color: #ccc;
     --table-thead-bg-color: rgba(250, 250, 250, 0.02);
     --table-tr-border-bottom-color: rgba(241, 246, 243, 0.15);
     --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
@@ -240,7 +222,7 @@
     --modal-bg-color: var(--app-bg-color);
     --modal-header-bottom-border-color: rgba(241, 246, 243, 0.15);
 
-    --logo-button-hover-bg-color: #1e1e1e;
+    --logo-button-hover-bg-color: var(--app-accent-bg-color);
 
     --xterm-viewport-border-color: rgba(241, 246, 243, 0.15);
 

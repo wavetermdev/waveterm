@@ -21,6 +21,8 @@ type UserInputRequestType struct {
 	Title        string `json:"title"`
 	Markdown     bool   `json:"markdown"`
 	TimeoutMs    int    `json:"timeoutms"`
+	CheckBoxMsg  string `json:"checkboxmsg"`
+	PublicText   bool   `json:"publictext"`
 }
 
 func (*UserInputRequestType) GetType() string {
@@ -39,11 +41,12 @@ const UserInputResponsePacketStr = "userinputresp"
 
 // An RpcResponse for user input requests
 type UserInputResponsePacketType struct {
-	Type      string `json:"type"`
-	RequestId string `json:"requestid"`
-	Text      string `json:"text,omitempty"`
-	Confirm   bool   `json:"confirm,omitempty"`
-	ErrorMsg  string `json:"errormsg,omitempty"`
+	Type         string `json:"type"`
+	RequestId    string `json:"requestid"`
+	Text         string `json:"text,omitempty"`
+	Confirm      bool   `json:"confirm,omitempty"`
+	ErrorMsg     string `json:"errormsg,omitempty"`
+	CheckboxStat bool   `json:"checkboxstat,omitempty"`
 }
 
 func (*UserInputResponsePacketType) GetType() string {

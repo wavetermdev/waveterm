@@ -75,6 +75,7 @@ class AboutModal extends React.Component<{}, {}> {
     }
 
     render() {
+        const currentDate = new Date();
         return (
             <Modal className="about-modal">
                 <Modal.Header onClose={this.closeModal} title="About" />
@@ -86,9 +87,9 @@ class AboutModal extends React.Component<{}, {}> {
                         <div className="text-wrapper">
                             <div>Wave Terminal</div>
                             <div className="text-standard">
-                                Modern Terminal for
+                                Open-Source AI-Native Terminal
                                 <br />
-                                Seamless Workflow
+                                Built for Seamless Workflows
                             </div>
                         </div>
                     </div>
@@ -122,7 +123,9 @@ class AboutModal extends React.Component<{}, {}> {
                             Acknowledgements
                         </LinkButton>
                     </div>
-                    <div className="about-section text-standard">&copy; 2023 Command Line Inc.</div>
+                    <div className="about-section text-standard">
+                        &copy; {currentDate.getFullYear()} Command Line Inc.
+                    </div>
                 </div>
             </Modal>
         );

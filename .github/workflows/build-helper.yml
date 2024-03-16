@@ -27,7 +27,7 @@ jobs:
               if: matrix.platform == 'linux'
               run: |
                   sudo apt-get update
-                  sudo apt-get install rpm
+                  sudo apt-get install --no-install-recommends -y libarchive-tools libopenjp2-tools rpm
             - uses: actions/setup-go@v5
               with:
                   go-version: ${{env.GO_VERSION}}
@@ -41,6 +41,7 @@ jobs:
                   cd scripthaus;
                   go get ./...;
                   CGO_ENABLED=1 go build -o scripthaus cmd/main.go
+                  echo $PWD >> $GITHUB_PATH
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
@@ -53,7 +54,7 @@ jobs:
             - name: Install Yarn Dependencies
               run: yarn --frozen-lockfile
             - name: Build ${{ matrix.platform }}/${{ matrix.arch }}
-              run: ./scripthaus/scripthaus run ${{ matrix.scripthaus }}
+              run: scripthaus run ${{ matrix.scripthaus }}
               env:
                   GOARCH: ${{ matrix.arch }}
                   CSC_LINK: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE}}

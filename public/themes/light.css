@@ -2,10 +2,13 @@
    SPDX-License-Identifier: Apache-2.0 */
 
 @import "./default.css";
+@import "./term-default.css";
 @import "./term-light.css";
 
 :root {
     --app-bg-color: #fefefe;
+    --app-accent-color: rgb(75, 166, 57);
+    --app-accent-bg-color: rgba(75, 166, 57, 0.2);
     --app-text-color: #000;
     --app-text-primary-color: rgb(0, 0, 0, 0.9);
     --app-text-secondary-color: rgb(0, 0, 0, 0.7);
@@ -14,12 +17,17 @@
     --app-panel-bg-color-dev: #e0e0e0;
     --app-icon-color: rgb(80, 80, 80);
     --app-icon-hover-color: rgb(100, 100, 100);
+    --app-selected-mask-color: rgba(0, 0, 0, 0.06);
+
+    --input-bg-color: #eeeeee;
 
     /* tab color */
     --tab-white: rgb(0, 0, 0, 0.6);
+    --tab-mint: rgb(70, 235, 156);
 
     /* button colors */
     --button-text-color: rgb(50, 50, 50); /* Dark gray for light theme */
+    --button-primary-color: #fefefe;
     --button-secondary-bg-color: rgba(200, 200, 200, 0.3); /* Semi-transparent light gray */
 
     /* view colors */
@@ -39,8 +47,12 @@
     --form-element-bg-color: var(--app-bg-color);
     --form-element-text-color: var(--app-text-color);
     --form-element-label-color: rgba(0, 0, 0, 0.6);
-    --form-element-secondary-color: rgba(255, 255, 255, 0.09);
+    --form-element-secondary-color: rgba(0, 0, 0, 0.09);
     --form-element-icon-color: rgb(0, 0, 0, 0.6);
+    --form-element-disabled-text-color: #b7b7b7;
+    --form-element-placeholder-color: #b7b7b7;
+
+    --markdown-bg-color: rgb(0, 0, 0, 0.1);
 
     /* modal colors */
     --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
@@ -50,16 +62,14 @@
     --cmdinput-textarea-border-color: var(--form-element-border-color);
 
     /* scroll colors */
-    --scrollbar-background-color: rgba(0, 0, 0, 0.3);
-    --scrollbar-thumb-color: rgba(0, 0, 0, 0.4);
-    --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.5);
-
-    /* cmdstrcode colors */
-    --cmdstrcode-bg-color: var(--term-black);
-    --cmdstrcode-text-color: var(--term-white);
+    --scrollbar-background-color: var(--app-bg-color);
+    --scrollbar-thumb-color: rgba(0, 0, 0, 0.2);
+    --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.4);
 
     /* line color */
-    --line-actions-bg-color: rgba(0, 0, 0, 0.4);
+    --line-actions-bg-color: rgba(0, 0, 0, 0.1);
+    --line-actions-inactive-color: rgba(0, 0, 0, 0.3);
+    --line-actions-active-color: rgba(0, 0, 0, 1);
 
     --logo-button-hover-bg-color: #f0f0f0;
 
@@ -70,4 +80,7 @@
     --datepicker-header-fade-color: rgba(0, 0, 0, 0.4);
     --datepicker-year-header-bg-color: #f5f5f5;
     --datepicker-year-header-border-color: #dcdcdc;
+
+    /* toggle colors */
+    --toggle-thumb-color: var(--app-bg-color);
 }
