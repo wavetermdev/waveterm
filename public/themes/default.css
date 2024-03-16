@@ -7,16 +7,6 @@
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
 
-    /* these variables are overridden by user settings */
-    /*
-    --termfontfamily: "Hack";
-    --termfontsize: 13px;
-    --termlineheight: 15px;
-    --termpad: 7px;
-    --termfontsize-sm: 11px;
-    --termlineheight-sm: 13px;
-    */
-
     /* base fonts */
     --base-font: normal 15px / normal "Lato", sans-serif;
 
