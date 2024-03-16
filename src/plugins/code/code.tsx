@@ -6,12 +6,11 @@ import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
-import { Markdown } from "@/elements";
+import { Markdown, Button } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
-import { Button, Dropdown } from "@/elements";
 
 import "./code.less";
 
@@ -81,7 +80,7 @@ class SourceCodeRenderer extends React.Component<
      * codeCache is a Hashmap with key=screenId:lineId:filepath and value=code
      * Editor should never read the code directly from the filesystem. it should read from the cache.
      */
-    static codeCache = new Map();
+    static readonly codeCache = new Map();
 
     // which languages have preview options
     languagesWithPreviewer: string[] = ["markdown", "mdx"];
@@ -91,7 +90,6 @@ class SourceCodeRenderer extends React.Component<
     monacoEditor: MonacoTypes.editor.IStandaloneCodeEditor; // reference to mounted monaco editor.  TODO need the correct type
     markdownRef: React.RefObject<HTMLDivElement>;
     syncing: boolean;
-    monacoOptions: MonacoTypes.editor.IEditorOptions & MonacoTypes.editor.IGlobalEditorOptions;
 
     constructor(props) {
         super(props);
@@ -153,7 +151,7 @@ class SourceCodeRenderer extends React.Component<
         // if not found, we try to grab the filename from with filePath (coming from lineState["prompt:file"]) or cmdstr
         if (!detectedLanguage) {
             const strForFilePath = this.filePath || this.props.cmdstr;
-            const extension = strForFilePath.match(/(?:[^\\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/)?.[1] || "";
+            const extension = RegExp(/(?:[^\\/:*?"<>|\r\n]+\.)([a-zA-Z0-9]+)\b/).exec(strForFilePath)?.[1] || "";
             const detectedLanguageObj = monaco.languages
                 .getLanguages()
                 .find((lang) => lang.extensions?.includes("." + extension));
@@ -179,11 +177,11 @@ class SourceCodeRenderer extends React.Component<
         this.setInitialLanguage(editor);
         this.setEditorHeight();
         setTimeout(() => {
-            let opts = this.getEditorOptions();
+            const opts = this.getEditorOptions();
             editor.updateOptions(opts);
         }, 2000);
         editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
-            let waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
+            const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
             if (checkKeyPressed(waveEvent, "Cmd:s") && this.state.isSave) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -340,7 +338,7 @@ class SourceCodeRenderer extends React.Component<
     setEditorHeight = () => {
         const maxEditorHeight = this.props.opts.maxSize.height - this.getEditorHeightBuffer();
         let _editorHeight = maxEditorHeight;
-        let allowEditing = this.getAllowEditing();
+        const allowEditing = this.getAllowEditing();
         if (!allowEditing) {
             const noOfLines = Math.max(this.state.code.split("\n").length, 5);
             const lineHeight = Math.ceil(GlobalModel.lineHeightEnv.lineHeight);
@@ -354,8 +352,8 @@ class SourceCodeRenderer extends React.Component<
     };
 
     getAllowEditing(): boolean {
-        let lineState = this.props.lineState;
-        let mode = lineState["mode"] || "view";
+        const lineState = this.props.lineState;
+        const mode = lineState["mode"] || "view";
         if (mode == "view") {
             return false;
         }
@@ -366,32 +364,26 @@ class SourceCodeRenderer extends React.Component<
         if (!this.monacoEditor) {
             return;
         }
-        let opts = this.getEditorOptions();
+        const opts = this.getEditorOptions();
         this.monacoEditor.updateOptions(opts);
     }
 
     getEditorOptions(): MonacoTypes.editor.IEditorOptions {
-        let opts: MonacoTypes.editor.IEditorOptions = {
+        const opts: MonacoTypes.editor.IEditorOptions = {
             scrollBeyondLastLine: false,
             fontSize: GlobalModel.getTermFontSize(),
             fontFamily: GlobalModel.getTermFontFamily(),
             readOnly: !this.getAllowEditing(),
         };
-        let lineState = this.props.lineState;
-        let minimap = true;
-        if (this.state.showPreview) {
-            minimap = false;
-        } else if ("minimap" in lineState && !lineState["minimap"]) {
-            minimap = false;
-        }
-        if (!minimap) {
+        const lineState = this.props.lineState;
+        if (this.state.showPreview || ("minimap" in lineState && !lineState["minimap"])) {
             opts.minimap = { enabled: false };
         }
         return opts;
     }
 
     getCodeEditor = () => {
-        let theme = GlobalModel.isThemeDark() ? "wave-theme-dark" : "wave-theme-light";
+        const theme = `wave-theme-${GlobalModel.getTheme()}`;
         return (
             <div className="editor-wrap" style={{ maxHeight: this.state.editorHeight }}>
                 {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
@@ -422,13 +414,16 @@ class SourceCodeRenderer extends React.Component<
     };
 
     togglePreview = () => {
-        this.saveLineState({ showPreview: !this.state.showPreview });
-        this.setState({ showPreview: !this.state.showPreview });
+        this.setState((prevState) => {
+            const newPreviewState = { showPreview: !prevState.showPreview };
+            this.saveLineState(newPreviewState);
+            return newPreviewState;
+        });
         setTimeout(() => this.updateEditorOpts(), 0);
     };
 
     getEditorControls = () => {
-        const { selectedLanguage, isSave, languages, isPreviewerAvailable, showPreview } = this.state;
+        const { selectedLanguage, languages, isPreviewerAvailable, showPreview } = this.state;
         let allowEditing = this.getAllowEditing();
         return (
             <>
@@ -476,7 +471,7 @@ class SourceCodeRenderer extends React.Component<
         </div>
     );
 
-    setSizes = (sizes) => {
+    setSizes = (sizes: number[]) => {
         this.setState({ editorFraction: sizes[0] });
         this.saveLineState({ editorFraction: sizes[0] });
     };

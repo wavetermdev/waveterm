@@ -95,6 +95,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const themes: DropdownItem[] = [];
         themes.push({ label: "Dark", value: "dark" });
         themes.push({ label: "Light", value: "light" });
+        themes.push({ label: "System", value: "system" });
         return themes;
     }
 
