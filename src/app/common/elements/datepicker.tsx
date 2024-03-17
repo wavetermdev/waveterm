@@ -324,6 +324,12 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
             return;
         }
 
+        if (key === " ") {
+            // Handle spacebar press to toggle the modal
+            toggleModal();
+            return;
+        }
+
         if (key.match(/[0-9]/)) {
             // Handle numeric keys
             event.preventDefault();
@@ -356,6 +362,12 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         handleFocus(event);
     };
 
+    const handleIconKeyDown = (event) => {
+        if (event.key === "Enter") {
+            toggleModal();
+        }
+    };
+
     const renderDatePickerInput = () => {
         return (
             <div className="day-picker-input">
@@ -383,7 +395,15 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
                         </React.Fragment>
                     );
                 })}
-                <i ref={calendarIconRef} className="fa-sharp fa-regular fa-calendar" onClick={toggleModal}></i>
+                <i
+                    ref={calendarIconRef}
+                    className="fa-sharp fa-regular fa-calendar"
+                    onClick={toggleModal}
+                    onKeyDown={handleIconKeyDown}
+                    tabIndex={0} // Makes the icon focusable
+                    role="button" // Semantic role for accessibility
+                    aria-label="Toggle date picker" // Accessible label for screen readers
+                />
             </div>
         );
     };
