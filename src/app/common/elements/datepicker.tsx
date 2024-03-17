@@ -368,11 +368,39 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         }
     };
 
+    const setInputWidth = (inputRef, value) => {
+        const span = document.createElement("span");
+        document.body.appendChild(span);
+        span.style.font = "inherit";
+        span.style.visibility = "hidden";
+        span.style.position = "absolute";
+        span.textContent = value;
+        const textWidth = span.offsetWidth;
+        document.body.removeChild(span);
+
+        if (inputRef.current) {
+            inputRef.current.style.width = `${textWidth}px`;
+        }
+    };
+
+    useEffect(() => {
+        // This timeout ensures that the effect runs after the DOM updates
+        const timeoutId = setTimeout(() => {
+            formatParts.forEach((part) => {
+                const inputRef = inputRefs.current[part];
+                if (inputRef && inputRef.current) {
+                    setInputWidth(inputRef, dateParts[part]);
+                }
+            });
+        }, 0);
+
+        return () => clearTimeout(timeoutId); // Cleanup timeout on unmount
+    }, []);
+
     const renderDatePickerInput = () => {
         return (
             <div className="day-picker-input">
                 {formatParts.map((part, index) => {
-                    const multiplier = part === "YYYY" ? 12 : 15;
                     const inputRef = inputRefs.current[part];
 
                     return (
@@ -390,7 +418,6 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
                                 maxLength={part === "YYYY" ? 4 : 2}
                                 className="date-input"
                                 placeholder={part}
-                                style={{ width: `${part.length * multiplier}px` }}
                             />
                         </React.Fragment>
                     );
