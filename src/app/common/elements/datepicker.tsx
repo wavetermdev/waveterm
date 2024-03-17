@@ -14,9 +14,10 @@ interface YearRefs {
 type DatePickerProps = {
     selectedDate: Date;
     onSelectDate: (date: Date) => void;
+    format: string;
 };
 
-const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) => {
+const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/YYYY", onSelectDate }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [selDate, setSelDate] = useState(dayjs(selectedDate)); // Initialize with dayjs object
     const [showYearAccordion, setShowYearAccordion] = useState(false);
@@ -24,6 +25,16 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) =
     const yearRefs = useRef<YearRefs>({});
     const wrapperRef = useRef<HTMLDivElement>(null);
     const modalRef = useRef<HTMLDivElement>(null);
+    const calendarIconRef = useRef<HTMLDivElement>(null);
+    // Extract delimiter using regex
+    const delimiter = format.replace(/[0-9YMD]/g, "")[0] || "/";
+    // Split format and create state for each part
+    const formatParts = format.split(delimiter);
+    const [dateParts, setDateParts] = useState({
+        YYYY: selDate.format("YYYY"),
+        MM: selDate.format("MM"),
+        DD: selDate.format("DD"),
+    });
 
     useEffect(() => {
         if (showYearAccordion && expandedYear && yearRefs.current[expandedYear]) {
@@ -38,15 +49,24 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) =
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        setDateParts({
+            YYYY: selDate.format("YYYY"),
+            MM: selDate.format("MM"),
+            DD: selDate.format("DD"),
+        });
+    }, [selDate]);
+
     const handleClickOutside = (event: MouseEvent) => {
-        // Check if the click is outside both the wrapper and the menu
-        if (
-            wrapperRef.current &&
-            !wrapperRef.current.contains(event.target as Node) &&
-            modalRef.current &&
-            !modalRef.current.contains(event.target as Node)
-        ) {
-            setIsOpen(false);
+        // Check if the click is on the calendar icon
+        if (calendarIconRef.current && calendarIconRef.current.contains(event.target as Node)) {
+            // Click is on the calendar icon, do nothing
+            return;
+        }
+
+        // Check if the click is outside the modal
+        if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+            setIsOpen(false); // Close the modal
         }
     };
 
@@ -260,12 +280,38 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, onSelectDate }) =
           )
         : null;
 
+    const handleDatePartChange = (part, value) => {
+        setDateParts((prevParts) => ({ ...prevParts, [part]: value }));
+    };
+
+    const renderDatePickerInput = () => {
+        return (
+            <div className="day-picker-input">
+                {formatParts.map((part, index) => {
+                    const multiplier = part === "YYYY" ? 12 : 15;
+                    return (
+                        <React.Fragment key={part}>
+                            {index > 0 && <span>{delimiter}</span>}
+                            <input
+                                type="text"
+                                value={dateParts[part]}
+                                onChange={(e) => handleDatePartChange(part, e.target.value)}
+                                maxLength={part === "YYYY" ? 4 : 2}
+                                className="date-input"
+                                placeholder={part}
+                                style={{ width: `${part.length * multiplier}px` }}
+                            />
+                        </React.Fragment>
+                    );
+                })}
+                <i ref={calendarIconRef} className="fa-sharp fa-regular fa-calendar" onClick={toggleModal}></i>
+            </div>
+        );
+    };
+
     return (
         <div ref={wrapperRef}>
-            <div className="day-picker-input" onClick={toggleModal}>
-                <div>{selDate.format("YYYY-MM-DD")}</div>
-                <i className="fa-sharp fa-regular fa-calendar"></i>
-            </div>
+            {renderDatePickerInput()}
             {dayPickerModal}
         </div>
     );

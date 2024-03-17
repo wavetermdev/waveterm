@@ -13,13 +13,24 @@
     cursor: default;
     border: 1px solid var(--form-element-border-color) !important;
     height: 34px;
-    width: 130px;
+    width: 150px;
     user-select: none;
     display: flex;
     border-radius: 4px;
     justify-content: space-between;
     align-items: center;
-    padding: 0 10px;
+    padding: 0 10px 0 5px;
+
+    input {
+        outline: none !important;
+        border: none !important;
+        height: 100%;
+        padding: 0 5px !important;
+    }
+
+    .fa-calendar {
+        cursor: pointer;
+    }
 }
 
 .day-picker-header {
