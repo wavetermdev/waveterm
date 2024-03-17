@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, createRef } from "react";
 import ReactDOM from "react-dom";
 import dayjs from "dayjs";
 import cs from "classnames";
@@ -25,7 +25,8 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
     const yearRefs = useRef<YearRefs>({});
     const wrapperRef = useRef<HTMLDivElement>(null);
     const modalRef = useRef<HTMLDivElement>(null);
-    const calendarIconRef = useRef<HTMLDivElement>(null);
+    const calendarIconRef = useRef(null);
+    const inputRefs = useRef({ YYYY: null, MM: null, DD: null });
     // Extract delimiter using regex
     const delimiter = format.replace(/[0-9YMD]/g, "")[0] || "/";
     // Split format and create state for each part
@@ -35,6 +36,14 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         MM: selDate.format("MM"),
         DD: selDate.format("DD"),
     });
+
+    useEffect(() => {
+        inputRefs.current = {
+            YYYY: createRef(),
+            MM: createRef(),
+            DD: createRef(),
+        };
+    }, []);
 
     useEffect(() => {
         if (showYearAccordion && expandedYear && yearRefs.current[expandedYear]) {
@@ -281,7 +290,70 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         : null;
 
     const handleDatePartChange = (part, value) => {
-        setDateParts((prevParts) => ({ ...prevParts, [part]: value }));
+        const newDateParts = { ...dateParts, [part]: value };
+        setDateParts(newDateParts);
+
+        // Construct a new date from the updated parts
+        const newDate = dayjs(`${newDateParts.YYYY}-${newDateParts.MM}-${newDateParts.DD}`);
+        if (newDate.isValid()) {
+            onSelectDate(newDate.toDate()); // Call onSelectDate with the new date
+        }
+    };
+
+    const handleArrowNavigation = (event, currentPart) => {
+        const currentIndex = formatParts.indexOf(currentPart);
+        let targetInput;
+
+        if (event.key === "ArrowLeft" && currentIndex > 0) {
+            targetInput = inputRefs.current[formatParts[currentIndex - 1]].current;
+        } else if (event.key === "ArrowRight" && currentIndex < formatParts.length - 1) {
+            targetInput = inputRefs.current[formatParts[currentIndex + 1]].current;
+        }
+
+        if (targetInput) {
+            targetInput.focus();
+        }
+    };
+
+    const handleKeyDown = (event, currentPart) => {
+        const key = event.key;
+
+        if (key === "ArrowLeft" || key === "ArrowRight") {
+            // Handle arrow navigation without selecting text
+            handleArrowNavigation(event, currentPart);
+            return;
+        }
+
+        if (key.match(/[0-9]/)) {
+            // Handle numeric keys
+            event.preventDefault();
+            const maxLength = currentPart === "YYYY" ? 4 : 2;
+            const newValue = event.target.value.length < maxLength ? event.target.value + key : key;
+            let selectionTimeoutId = null;
+            handleDatePartChange(currentPart, newValue);
+
+            // Clear any existing timeout
+            if (selectionTimeoutId !== null) {
+                clearTimeout(selectionTimeoutId);
+            }
+
+            // Re-focus and select the input after state update
+            selectionTimeoutId = setTimeout(() => {
+                event.target.focus();
+                event.target.select();
+            }, 0);
+        }
+    };
+
+    const handleFocus = (event) => {
+        event.target.select();
+    };
+
+    // Prevent use from selecting text in the input
+    const handleMouseDown = (event) => {
+        event.preventDefault();
+
+        handleFocus(event);
     };
 
     const renderDatePickerInput = () => {
@@ -289,13 +361,20 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
             <div className="day-picker-input">
                 {formatParts.map((part, index) => {
                     const multiplier = part === "YYYY" ? 12 : 15;
+                    const inputRef = inputRefs.current[part];
+
                     return (
                         <React.Fragment key={part}>
                             {index > 0 && <span>{delimiter}</span>}
                             <input
+                                readOnly
+                                ref={inputRef}
                                 type="text"
                                 value={dateParts[part]}
                                 onChange={(e) => handleDatePartChange(part, e.target.value)}
+                                onKeyDown={(e) => handleKeyDown(e, part)}
+                                onMouseDown={handleMouseDown}
+                                onFocus={handleFocus}
                                 maxLength={part === "YYYY" ? 4 : 2}
                                 className="date-input"
                                 placeholder={part}
