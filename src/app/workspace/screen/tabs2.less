@@ -1,0 +1,31 @@
+.screen-tabs-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 100;
+}
+
+.tab-container-inner {
+    position: relative; // Needed for absolute positioning of child tabs
+    min-height: 48px; // Adjust as necessary to fit the height of tabs
+    white-space: nowrap;
+    width: calc(100vw - 104px);
+    overflow: hidden;
+}
+
+.add-tab-button {
+    width: 42px;
+    height: 40px;
+    background-color: var(--app-bg-color);
+    cursor: pointer;
+    transition: background-color 0.3s;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 100%;
+    font-size: 20px;
+    text-align: center;
+    line-height: 38px;
+    user-select: none;
+}

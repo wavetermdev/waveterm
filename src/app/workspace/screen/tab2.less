@@ -1,0 +1,29 @@
+.screen-tab {
+    position: absolute;
+    border: 1px solid #ccc;
+    background-color: @tabBackgroundColor;
+    cursor: pointer;
+    user-select: none;
+    width: 100px;
+    height: 46px;
+    color: black;
+    border-radius: 0;
+    position: relative;
+    box-sizing: border-box;
+
+    &:hover {
+        background-color: @tabHoverColor;
+    }
+
+    &.active-screen-tab {
+        background-color: @activeTabColor;
+        border-bottom: 2px solid @buttonBackgroundColor;
+    }
+}
+
+.screen-tab-inner {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+}
