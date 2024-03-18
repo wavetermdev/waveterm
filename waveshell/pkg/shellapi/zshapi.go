@@ -69,6 +69,7 @@ var ZshIgnoreVars = map[string]bool{
 	"SHLVL":                true,
 	"TTY":                  true,
 	"ZDOTDIR":              true,
+	"PPID":                 true,
 	"epochtime":            true,
 	"langinfo":             true,
 	"keymaps":              true,
@@ -92,6 +93,8 @@ var ZshIgnoreVars = map[string]bool{
 	"funcsourcetrace":      true,
 	"funcstack":            true,
 	"functrace":            true,
+	"nameddirs":            true,
+	"userdirs":             true,
 	"parameters":           true,
 	"commands":             true,
 	"functions":            true,
@@ -101,6 +104,25 @@ var ZshIgnoreVars = map[string]bool{
 	"_comps":               true,
 	"_patcomps":            true,
 	"_postpatcomps":        true,
+
+	// zsh/system
+	"errnos":    true,
+	"sysparams": true,
+
+	// zsh/curses
+	"ZCURSES_COLORS":      true,
+	"ZCURSES_COLOR_PAIRS": true,
+	"zcurses_attrs":       true,
+	"zcurses_colors":      true,
+	"zcurses_keycodes":    true,
+	"zcurses_windows":     true,
+
+	// not listed, but we also exclude all ZFTP_* variables
+}
+
+var ZshIgnoreFuncs = map[string]bool{
+	"zftp_chpwd":    true,
+	"zftp_progress": true,
 }
 
 // only options we restore (other than ZshForceOptions)
@@ -146,10 +168,12 @@ var ZshUnsetVars = []string{
 	"ZSH_EXECUTION_STRING",
 }
 
-var ZshLoadMods = []string{
-	"zsh/parameter",
-	"zsh/langinfo",
+var ZshForceLoadMods = map[string]bool{
+	"zsh/parameter": true,
+	"zsh/langinfo":  true,
 }
+
+const ZModsVarName = "WAVESTATE_ZMODS"
 
 // do not use these directly, call GetLocalMajorVersion()
 var localZshMajorVersionOnce = &sync.Once{}
@@ -288,12 +312,24 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 			rcBuf.WriteString(fmt.Sprintf("unsetopt %s\n", optName))
 		}
 	}
-	for _, modName := range ZshLoadMods {
+	for modName := range ZshForceLoadMods {
 		rcBuf.WriteString(fmt.Sprintf("zmodload %s\n", modName))
+	}
+	modDecl := getDeclByName(varDecls, ZModsVarName)
+	if modDecl != nil {
+		modsArr := utilfn.QuickParseJson[[]string](modDecl.Value)
+		for _, modName := range modsArr {
+			if !ZshForceLoadMods[modName] {
+				rcBuf.WriteString(fmt.Sprintf("zmodload %s\n", modName))
+			}
+		}
 	}
 	var postDecls []*shellenv.DeclareDeclType
 	for _, varDecl := range varDecls {
 		if ZshIgnoreVars[varDecl.Name] {
+			continue
+		}
+		if strings.HasPrefix(varDecl.Name, "ZFTP_") {
 			continue
 		}
 		if varDecl.IsExtVar {
@@ -350,6 +386,9 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		rcBuf.WriteString("# error decoding zsh functions\n")
 	} else {
 		for fnKey, fnValue := range fnMap {
+			if ZshIgnoreFuncs[fnKey.ParamName] {
+				continue
+			}
 			if fnValue == ZshFnAutoLoad {
 				rcBuf.WriteString(fmt.Sprintf("autoload %s\n", shellescape.Quote(fnKey.ParamName)))
 			} else {
@@ -625,6 +664,9 @@ func ParseZshFunctions(fpathArr []string, fnBytes []byte, partSeparator []byte) 
 		if fnName == "zshexit" {
 			continue
 		}
+		if ZshIgnoreFuncs[fnName] {
+			continue
+		}
 		if fnType == "functions" || fnType == "dis_functions" {
 			fnBody[ZshParamKey{ParamType: fnType, ParamName: fnName}] = fnValue
 		}
@@ -635,10 +677,13 @@ func ParseZshFunctions(fpathArr []string, fnBytes []byte, partSeparator []byte) 
 	// ok, so the trick here is that we want to only include functions that are *not* autoloaded
 	// the ones that are pending autoloading or come from a source file in fpath, can just be set to autoload
 	for fnKey := range fnBody {
+		var inFpath bool
 		source := fnSource[fnKey.ParamName]
-		if isSourceFileInFpath(fpathArr, source) {
-			fnBody[fnKey] = ZshFnAutoLoad
-		} else if strings.TrimSpace(fnBody[fnKey]) == ZshAutoloadFnBody {
+		if source != "" {
+			inFpath = isSourceFileInFpath(fpathArr, source)
+		}
+		isAutoloadFnBody := strings.TrimSpace(fnBody[fnKey]) == ZshAutoloadFnBody
+		if inFpath || isAutoloadFnBody {
 			fnBody[fnKey] = ZshFnAutoLoad
 		}
 	}
@@ -701,7 +746,6 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	pvarMap := parseExtVarOutput(sections[ZshSection_PVars], string(sections[ZshSection_Prompt]), string(sections[ZshSection_Mods]))
 	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
-	base.Logf("parse shellstate done\n")
 	return rtn, nil
 }
 

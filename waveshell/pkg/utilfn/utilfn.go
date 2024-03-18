@@ -544,3 +544,11 @@ func QuickParseJson[T any](s string) T {
 	_ = json.Unmarshal([]byte(s), &v)
 	return v
 }
+
+func StrArrayToMap(sarr []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, s := range sarr {
+		m[s] = true
+	}
+	return m
+}

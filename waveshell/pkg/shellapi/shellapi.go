@@ -279,7 +279,7 @@ func parseExtVarOutput(pvarBytes []byte, promptOutput string, zmodsOutput string
 			zmods = append(zmods, fields[1])
 		}
 		decl := &DeclareDeclType{IsExtVar: true}
-		decl.Name = "WAVESTATE_ZMODS"
+		decl.Name = ZModsVarName
 		decl.Value = utilfn.QuickJson(zmods)
 		declMap[decl.Name] = decl
 	}
