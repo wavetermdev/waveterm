@@ -10,7 +10,7 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
-import { renderCmdText } from "@/elements";
+import { Button } from "@/elements";
 import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
@@ -188,12 +188,12 @@ class CmdInput extends React.Component<{}, {}> {
                         <span className="remote-name">[{GlobalModel.resolveRemoteIdToFullRef(remote.remoteid)}]</span>
                         &nbsp;is {remote.status}
                         <If condition={remote.status != "connecting"}>
-                            <div
-                                className="button is-wave-green is-outlined is-small"
+                            <Button
+                                className="secondary small connect"
                                 onClick={() => this.clickConnectRemote(remote.remoteid)}
                             >
                                 connect now
-                            </div>
+                            </Button>
                         </If>
                     </div>
                 </If>
