@@ -680,7 +680,20 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		configPath := r.URL.Path
-		configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
+		configAbsPath, err := filepath.Abs(configPath)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("error getting absolute path", err)))
+			return
+		}
+		configBaseDir := path.Join(scbase.GetWaveHomeDir(), "config")
+		configFullPath := path.Join(scbase.GetWaveHomeDir(), configAbsPath)
+		log.Printf("base dir: %v full path: %v", configBaseDir, configFullPath)
+		if !strings.HasPrefix(configFullPath, configBaseDir) {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("error: path is not in config folder")))
+			return
+		}
 		fstat, err := os.Stat(configFullPath)
 		if err != nil {
 			w.WriteHeader(500)
@@ -876,6 +889,7 @@ func doShutdown(reason string) {
 }
 
 func configDirHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("running?")
 	configPath := r.URL.Path
 	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
 	dirFile, err := os.Open(configFullPath)
@@ -884,13 +898,19 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("error opening specified dir: ", err)))
 		return
 	}
-	entries, err := dirFile.Readdirnames(0)
+	entries, err := dirFile.Readdir(0)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(fmt.Sprintf("error getting files: ", err)))
 		return
 	}
-	dirListJson, err := json.Marshal(entries)
+	var files []*packet.FileStatPacketType
+	for index := 0; index < len(entries); index++ {
+		curEntry := entries[index]
+		curFile := packet.MakeFileStatPacketFromFileInfo(curEntry, "", false)
+		files = append(files, curFile)
+	}
+	dirListJson, err := json.Marshal(files)
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte(fmt.Sprintf("json err: ", err)))
