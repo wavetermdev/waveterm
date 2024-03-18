@@ -759,10 +759,7 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 		rtn["CONDA_DEFAULT_ENV"] = decl.UnescapedValue()
 	}
 	for _, decl := range declMap {
-		if decl.IsExtVar {
-			rtn[decl.Name] = decl.UnescapedValue()
-		}
-		// legacy
+		// works for both legacy and new IsExtVar decls
 		if strings.HasPrefix(decl.Name, "PROMPTVAR_") {
 			rtn[decl.Name] = decl.UnescapedValue()
 		}

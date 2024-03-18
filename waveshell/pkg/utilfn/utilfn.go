@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -531,4 +532,15 @@ func CombineStrArrays(sarr1 []string, sarr2 []string) []string {
 		rtn = append(rtn, s)
 	}
 	return rtn
+}
+
+func QuickJson(v interface{}) string {
+	barr, _ := json.Marshal(v)
+	return string(barr)
+}
+
+func QuickParseJson[T any](s string) T {
+	var v T
+	_ = json.Unmarshal([]byte(s), &v)
+	return v
 }

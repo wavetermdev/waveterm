@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 const GetStateTimeout = 5 * time.Second
@@ -241,7 +242,7 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	return outputBuf.Bytes(), nil
 }
 
-func parsePVarOutput(pvarBytes []byte, promptOutput string) map[string]*DeclareDeclType {
+func parseExtVarOutput(pvarBytes []byte, promptOutput string, zmodsOutput string) map[string]*DeclareDeclType {
 	declMap := make(map[string]*DeclareDeclType)
 	pvars := bytes.Split(pvarBytes, []byte{0})
 	for _, pvarBA := range pvars {
@@ -265,6 +266,21 @@ func parsePVarOutput(pvarBytes []byte, promptOutput string) map[string]*DeclareD
 		decl := &DeclareDeclType{IsExtVar: true}
 		decl.Name = "PROMPTVAR_PS1"
 		decl.Value = promptOutput
+		declMap[decl.Name] = decl
+	}
+	if zmodsOutput != "" {
+		var zmods []string
+		lines := strings.Split(zmodsOutput, "\n")
+		for _, line := range lines {
+			fields := strings.Fields(line)
+			if len(fields) != 2 || fields[0] != "zmodload" {
+				continue
+			}
+			zmods = append(zmods, fields[1])
+		}
+		decl := &DeclareDeclType{IsExtVar: true}
+		decl.Name = "WAVESTATE_ZMODS"
+		decl.Value = utilfn.QuickJson(zmods)
 		declMap[decl.Name] = decl
 	}
 	return declMap

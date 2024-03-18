@@ -698,7 +698,7 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	fpathArr := strings.Split(fpathStr, ":")
 	zshFuncs := ParseZshFunctions(fpathArr, sections[ZshSection_Funcs], partSeparator)
 	rtn.Funcs = string(EncodeZshMap(zshFuncs))
-	pvarMap := parsePVarOutput(sections[ZshSection_PVars], string(sections[ZshSection_Prompt]))
+	pvarMap := parseExtVarOutput(sections[ZshSection_PVars], string(sections[ZshSection_Prompt]), string(sections[ZshSection_Mods]))
 	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
 	base.Logf("parse shellstate done\n")
