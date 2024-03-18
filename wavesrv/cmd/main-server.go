@@ -688,14 +688,17 @@ func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler 
 		}
 		configBaseDir := path.Join(scbase.GetWaveHomeDir(), "config")
 		configFullPath := path.Join(scbase.GetWaveHomeDir(), configAbsPath)
-		log.Printf("base dir: %v full path: %v", configBaseDir, configFullPath)
 		if !strings.HasPrefix(configFullPath, configBaseDir) {
 			w.WriteHeader(500)
 			w.Write([]byte(fmt.Sprintf("error: path is not in config folder")))
 			return
 		}
 		fstat, err := os.Stat(configFullPath)
-		if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			w.WriteHeader(404)
+			w.Write([]byte(fmt.Sprintf("file not found: ", configAbsPath)))
+			return
+		} else if err != nil {
 			w.WriteHeader(500)
 			w.Write([]byte(fmt.Sprintf("file stat err", err)))
 			return
