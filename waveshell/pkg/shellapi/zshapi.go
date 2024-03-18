@@ -296,7 +296,7 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		if ZshIgnoreVars[varDecl.Name] {
 			continue
 		}
-		if varDecl.IsPVar {
+		if varDecl.IsExtVar {
 			continue
 		}
 		if ZshUniqueArrayVars[varDecl.Name] && !varDecl.IsUniqueArray() {

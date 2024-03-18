@@ -759,7 +759,7 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 		rtn["CONDA_DEFAULT_ENV"] = decl.UnescapedValue()
 	}
 	for _, decl := range declMap {
-		if decl.IsPVar {
+		if decl.IsExtVar {
 			rtn[decl.Name] = decl.UnescapedValue()
 		}
 		// legacy

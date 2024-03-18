@@ -22,7 +22,7 @@ const (
 
 type DeclareDeclType struct {
 	IsZshDecl bool
-	IsPVar    bool
+	IsExtVar  bool // set for "special" wave internal variables
 
 	Args string
 	Name string
@@ -37,31 +37,31 @@ type DeclareDeclType struct {
 }
 
 func (d *DeclareDeclType) IsExport() bool {
-	return strings.Index(d.Args, "x") >= 0
+	return strings.Contains(d.Args, "x")
 }
 
 func (d *DeclareDeclType) IsReadOnly() bool {
-	return strings.Index(d.Args, "r") >= 0
+	return strings.Contains(d.Args, "r")
 }
 
 func (d *DeclareDeclType) IsZshScalarBound() bool {
-	return strings.Index(d.Args, "T") >= 0
+	return strings.Contains(d.Args, "T")
 }
 
 func (d *DeclareDeclType) IsArray() bool {
-	return strings.Index(d.Args, "a") >= 0
+	return strings.Contains(d.Args, "a")
 }
 
 func (d *DeclareDeclType) IsAssocArray() bool {
-	return strings.Index(d.Args, "A") >= 0
+	return strings.Contains(d.Args, "A")
 }
 
 func (d *DeclareDeclType) IsUniqueArray() bool {
-	return d.IsArray() && strings.Index(d.Args, "U") >= 0
+	return d.IsArray() && strings.Contains(d.Args, "U")
 }
 
 func (d *DeclareDeclType) AddFlag(flag string) {
-	if strings.Index(d.Args, flag) >= 0 {
+	if strings.Contains(d.Args, flag) {
 		return
 	}
 	d.Args += flag
@@ -102,13 +102,13 @@ func (d *DeclareDeclType) SortZshFlags() {
 }
 
 func (d *DeclareDeclType) DataType() string {
-	if strings.Index(d.Args, "a") >= 0 {
+	if strings.Contains(d.Args, "a") {
 		return DeclTypeArray
 	}
-	if strings.Index(d.Args, "A") >= 0 {
+	if strings.Contains(d.Args, "A") {
 		return DeclTypeAssocArray
 	}
-	if strings.Index(d.Args, "i") >= 0 {
+	if strings.Contains(d.Args, "i") {
 		return DeclTypeInt
 	}
 	return DeclTypeNormal
@@ -125,9 +125,10 @@ func FindVarDecl(decls []*DeclareDeclType, name string) *DeclareDeclType {
 
 // NOTE Serialize no longer writes the final null byte
 func (d *DeclareDeclType) Serialize() []byte {
-	if d.IsPVar {
+	if d.IsExtVar {
 		parts := []string{
-			"p1",
+			"e1",
+			d.Args,
 			d.Name,
 			d.Value,
 		}
@@ -158,7 +159,7 @@ func (d *DeclareDeclType) Serialize() []byte {
 }
 
 func (d *DeclareDeclType) UnescapedValue() string {
-	if d.IsPVar {
+	if d.IsExtVar {
 		return d.Value
 	}
 	ectx := simpleexpand.SimpleExpandContext{}
@@ -181,7 +182,8 @@ func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool
 
 // envline should be valid
 func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
-	if utilfn.EncodedStringArrayHasFirstKey(envLineBytes, "z1") {
+	esFirstVal := utilfn.EncodedStringArrayGetFirstVal(envLineBytes)
+	if esFirstVal == "z1" {
 		parts, err := utilfn.DecodeStringArray(envLineBytes)
 		if err != nil {
 			return nil
@@ -197,7 +199,7 @@ func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 			ZshBoundScalar: parts[4],
 			ZshEnvValue:    parts[5],
 		}
-	} else if utilfn.EncodedStringArrayHasFirstKey(envLineBytes, "b1") {
+	} else if esFirstVal == "b1" {
 		parts, err := utilfn.DecodeStringArray(envLineBytes)
 		if err != nil {
 			return nil
@@ -210,21 +212,25 @@ func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 			Name:  parts[2],
 			Value: parts[3],
 		}
-	} else if utilfn.EncodedStringArrayHasFirstKey(envLineBytes, "p1") {
+	} else if esFirstVal == "e1" {
 		parts, err := utilfn.DecodeStringArray(envLineBytes)
 		if err != nil {
 			return nil
 		}
-		if len(parts) != 3 {
+		if len(parts) != 4 {
 			return nil
 		}
 		return &DeclareDeclType{
-			IsPVar: true,
-			Name:   parts[1],
-			Value:  parts[2],
+			IsExtVar: true,
+			Args:     parts[1],
+			Name:     parts[2],
+			Value:    parts[3],
 		}
+	} else if esFirstVal == "p1" {
+		// deprecated
+		return nil
 	}
-	// legacy decoding (v0)
+	// legacy decoding (v0) (not an encoded string array)
 	envLine := string(envLineBytes)
 	eqIdx := strings.Index(envLine, "=")
 	if eqIdx == -1 {

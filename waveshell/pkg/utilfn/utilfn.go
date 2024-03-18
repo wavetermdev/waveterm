@@ -400,7 +400,7 @@ func DecodeStringArray(barr []byte) ([]string, error) {
 	return rtn, nil
 }
 
-func EncodedStringArrayHasFirstKey(encoded []byte, firstKey string) bool {
+func EncodedStringArrayHasFirstVal(encoded []byte, firstKey string) bool {
 	firstKeyBytes := NullEncodeStr(firstKey)
 	if !bytes.HasPrefix(encoded, firstKeyBytes) {
 		return false
@@ -409,6 +409,18 @@ func EncodedStringArrayHasFirstKey(encoded []byte, firstKey string) bool {
 		return true
 	}
 	return false
+}
+
+// on encoding error returns ""
+// this is used to perform logic on first value without decoding the entire array
+func EncodedStringArrayGetFirstVal(encoded []byte) string {
+	sepIdx := bytes.IndexByte(encoded, nullEncodeSepByte)
+	if sepIdx == -1 {
+		str, _ := NullDecodeStr(encoded)
+		return str
+	}
+	str, _ := NullDecodeStr(encoded[0:sepIdx])
+	return str
 }
 
 // encodes a string, removing null/zero bytes (and separators '|')

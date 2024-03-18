@@ -113,7 +113,7 @@ func (b bashShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		if varDecl.IsExport() || varDecl.IsReadOnly() {
 			continue
 		}
-		if varDecl.IsPVar {
+		if varDecl.IsExtVar {
 			continue
 		}
 		rcBuf.WriteString(BashDeclareStmt(varDecl))

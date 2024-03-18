@@ -256,13 +256,13 @@ func parsePVarOutput(pvarBytes []byte, promptOutput string) map[string]*DeclareD
 		if pvarFields[1] == "" {
 			continue
 		}
-		decl := &DeclareDeclType{IsPVar: true}
+		decl := &DeclareDeclType{IsExtVar: true}
 		decl.Name = "PROMPTVAR_" + pvarFields[0]
 		decl.Value = shellescape.Quote(pvarFields[1])
 		declMap[decl.Name] = decl
 	}
 	if promptOutput != "" {
-		decl := &DeclareDeclType{IsPVar: true}
+		decl := &DeclareDeclType{IsExtVar: true}
 		decl.Name = "PROMPTVAR_PS1"
 		decl.Value = promptOutput
 		declMap[decl.Name] = decl
