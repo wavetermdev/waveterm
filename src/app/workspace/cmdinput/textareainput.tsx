@@ -140,7 +140,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             inputObject.scrollPage(true);
             return true;
         });
-        keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageAbove", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageBelow", (waveEvent) => {
             inputObject.scrollPage(false);
             return true;
         });
@@ -314,7 +314,11 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         if (!inputModel.isHistoryLoaded()) {
             return true;
         }
-        let linePos = this.getLinePos(this.mainInputRef);
+        let currentRef = this.mainInputRef.current;
+        if (currentRef == null) {
+            return true;
+        }
+        let linePos = this.getLinePos(currentRef);
         let lastHist = this.lastHistoryUpDown;
         if (!lastHist && linePos.linePos < linePos.numLines) {
             // regular arrow
@@ -343,6 +347,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
         GlobalModel.inputModel.setCurLine(currentRef.value);
     }
+
+    @mobx.action
+    @boundMethod
+    onKeyDown(e: any) {}
 
     @boundMethod
     onChange(e: any) {
@@ -624,6 +632,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onBlur={this.handleMainBlur}
                     style={{ height: computedInnerHeight, minHeight: computedInnerHeight, fontSize: termFontSize }}
                     value={curLine}
+                    onKeyDown={this.onKeyDown}
                     onChange={this.onChange}
                     onSelect={this.onSelect}
                     className={cn("textarea", { "display-disabled": disabled })}

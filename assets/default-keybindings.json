@@ -17,7 +17,7 @@
     },
     {
       "command": "generic:expandTextInput",
-      "keys": ["Ctrl:Enter"]
+      "keys": ["Shift:Enter", "Ctrl:Enter"]
     },
     {
       "command": "generic:deleteItem",
