@@ -30,6 +30,21 @@ const BaseZshOpts = ``
 const ZshShellVersionCmdStr = `echo zsh v$ZSH_VERSION`
 const StateOutputFdNum = 20
 
+const (
+	ZshSection_Version = iota
+	ZshSection_Cwd
+	ZshSection_Env
+	ZshSection_Mods
+	ZshSection_Vars
+	ZshSection_Aliases
+	ZshSection_Fpath
+	ZshSection_Funcs
+	ZshSection_PVars
+	ZshSection_Prompt
+
+	ZshSection_NumFieldsExpected // must be last
+)
+
 // TODO these need updating
 const RunZshSudoCommandFmt = `sudo -n -C %d zsh /dev/fd/%d`
 const RunZshSudoPasswordCommandFmt = `cat /dev/fd/%d | sudo -k -S -C %d zsh -c "echo '[from-mshell]'; exec %d>&-; zsh /dev/fd/%d < /dev/fd/%d"`
@@ -281,6 +296,9 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		if ZshIgnoreVars[varDecl.Name] {
 			continue
 		}
+		if varDecl.IsPVar {
+			continue
+		}
 		if ZshUniqueArrayVars[varDecl.Name] && !varDecl.IsUniqueArray() {
 			varDecl.AddFlag("U")
 		}
@@ -411,6 +429,8 @@ pwd;
 printf "[%SECTIONSEP%]";
 env -0;
 printf "[%SECTIONSEP%]";
+zmodload -L
+printf "[%SECTIONSEP%]";
 typeset -p +H -m '*';
 printf "[%SECTIONSEP%]";
 for var in "${(@k)aliases}"; do
@@ -448,10 +468,16 @@ for var in "${(@k)dis_functions_source}"; do
 done
 printf "[%SECTIONSEP%]";
 [%GITBRANCH%]
+[%K8SCONTEXT%]
+[%K8SNAMESPACE%]
+printf "[%SECTIONSEP%]";
+print -P "$PS1"
 `
 	cmd = strings.TrimSpace(cmd)
 	cmd = strings.ReplaceAll(cmd, "[%ZSHVERSION%]", ZshShellVersionCmdStr)
 	cmd = strings.ReplaceAll(cmd, "[%GITBRANCH%]", GetGitBranchCmdStr)
+	cmd = strings.ReplaceAll(cmd, "[%K8SCONTEXT%]", GetK8sContextCmdStr)
+	cmd = strings.ReplaceAll(cmd, "[%K8SNAMESPACE%]", GetK8sNamespaceCmdStr)
 	cmd = strings.ReplaceAll(cmd, "[%PARTSEP%]", utilfn.ShellHexEscape(string(sectionSeparator[0:len(sectionSeparator)-1])))
 	cmd = strings.ReplaceAll(cmd, "[%SECTIONSEP%]", utilfn.ShellHexEscape(string(sectionSeparator)))
 	cmd = strings.ReplaceAll(cmd, "[%OUTPUTFD%]", fmt.Sprintf("/dev/fd/%d", fdNum))
@@ -639,11 +665,11 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	versionStr := string(outputBytes[0:firstZeroIdx])
 	sectionSeparator := outputBytes[firstZeroIdx+1 : firstDZeroIdx+2]
 	partSeparator := sectionSeparator[0 : len(sectionSeparator)-1]
-	// 8 fields: version [0], cwd [1], env [2], vars [3], aliases [4], fpath [5], functions [6], pvars [7]
-	fields := bytes.Split(outputBytes, sectionSeparator)
-	if len(fields) != 8 {
+	// sections: see ZshSection_* consts
+	sections := bytes.Split(outputBytes, sectionSeparator)
+	if len(sections) != ZshSection_NumFieldsExpected {
 		base.Logf("invalid -- numfields\n")
-		return nil, fmt.Errorf("invalid zsh shell state output, wrong number of fields, fields=%d", len(fields))
+		return nil, fmt.Errorf("invalid zsh shell state output, wrong number of sections, section=%d", len(sections))
 	}
 	rtn := &packet.ShellState{}
 	rtn.Version = strings.TrimSpace(versionStr)
@@ -653,10 +679,10 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	if _, _, err := packet.ParseShellStateVersion(rtn.Version); err != nil {
 		return nil, fmt.Errorf("invalid zsh shell state output, invalid version: %v", err)
 	}
-	cwdStr := stripNewLineChars(string(fields[1]))
+	cwdStr := stripNewLineChars(string(sections[ZshSection_Cwd]))
 	rtn.Cwd = cwdStr
-	zshEnv := parseZshEnv(fields[2])
-	zshDecls, err := parseZshDecls(fields[3])
+	zshEnv := parseZshEnv(sections[ZshSection_Env])
+	zshDecls, err := parseZshDecls(sections[ZshSection_Vars])
 	if err != nil {
 		base.Logf("invalid - parsedecls %v\n", err)
 		return nil, err
@@ -666,13 +692,13 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 			decl.ZshEnvValue = zshEnv[decl.ZshBoundScalar]
 		}
 	}
-	aliasMap := parseZshAliasStateOutput(fields[4], partSeparator)
+	aliasMap := parseZshAliasStateOutput(sections[ZshSection_Aliases], partSeparator)
 	rtn.Aliases = string(EncodeZshMap(aliasMap))
-	fpathStr := stripNewLineChars(string(string(fields[5])))
+	fpathStr := stripNewLineChars(string(string(sections[ZshSection_Fpath])))
 	fpathArr := strings.Split(fpathStr, ":")
-	zshFuncs := ParseZshFunctions(fpathArr, fields[6], partSeparator)
+	zshFuncs := ParseZshFunctions(fpathArr, sections[ZshSection_Funcs], partSeparator)
 	rtn.Funcs = string(EncodeZshMap(zshFuncs))
-	pvarMap := parsePVarOutput(fields[7], true)
+	pvarMap := parsePVarOutput(sections[ZshSection_PVars], string(sections[ZshSection_Prompt]))
 	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
 	base.Logf("parse shellstate done\n")

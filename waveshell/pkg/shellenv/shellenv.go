@@ -22,6 +22,7 @@ const (
 
 type DeclareDeclType struct {
 	IsZshDecl bool
+	IsPVar    bool
 
 	Args string
 	Name string
@@ -124,7 +125,14 @@ func FindVarDecl(decls []*DeclareDeclType, name string) *DeclareDeclType {
 
 // NOTE Serialize no longer writes the final null byte
 func (d *DeclareDeclType) Serialize() []byte {
-	if d.IsZshDecl {
+	if d.IsPVar {
+		parts := []string{
+			"p1",
+			d.Name,
+			d.Value,
+		}
+		return utilfn.EncodeStringArray(parts)
+	} else if d.IsZshDecl {
 		d.SortZshFlags()
 		parts := []string{
 			"z1",
@@ -147,6 +155,15 @@ func (d *DeclareDeclType) Serialize() []byte {
 	// this is the v0 encoding (keeping here for reference since we still need to decode this)
 	// rtn := fmt.Sprintf("%s|%s=%s\x00", d.Args, d.Name, d.Value)
 	// return []byte(rtn)
+}
+
+func (d *DeclareDeclType) UnescapedValue() string {
+	if d.IsPVar {
+		return d.Value
+	}
+	ectx := simpleexpand.SimpleExpandContext{}
+	rtn, _ := simpleexpand.SimpleExpandPartialWord(ectx, d.Value, false)
+	return rtn
 }
 
 func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool {
@@ -192,6 +209,19 @@ func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 			Args:  parts[1],
 			Name:  parts[2],
 			Value: parts[3],
+		}
+	} else if utilfn.EncodedStringArrayHasFirstKey(envLineBytes, "p1") {
+		parts, err := utilfn.DecodeStringArray(envLineBytes)
+		if err != nil {
+			return nil
+		}
+		if len(parts) != 3 {
+			return nil
+		}
+		return &DeclareDeclType{
+			IsPVar: true,
+			Name:   parts[1],
+			Value:  parts[2],
 		}
 	}
 	// legacy decoding (v0)
