@@ -16,6 +16,10 @@
       "keys": ["Enter"]
     },
     {
+      "command": "generic:expandTextInput",
+      "keys": ["Ctrl:Enter"]
+    },
+    {
       "command": "generic:deleteItem",
       "keys": ["Backspace", "Delete"]
     },
