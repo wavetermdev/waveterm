@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import "./styles.less";
+import "./tab2.less";
 
 type ScreenTabProps = {
     name: string;
@@ -17,7 +17,7 @@ const ScreenTab: React.FC<ScreenTabProps> = ({ name, onSelect, active, onDragSta
             className={`screen-tab ${active ? "active-screen-tab" : ""}`}
             onMouseDown={() => onDragStart(name, ref)}
             onClick={() => onSelect(name)}
-            data-tab-name={name}
+            data-screentab-name={name}
         >
             <div className="screen-tab-inner">{name}</div>
         </div>

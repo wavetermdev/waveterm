@@ -1,11 +1,18 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { computed } from "mobx";
 import { ScreenTab } from "./tab2";
+import { observer } from "mobx-react";
+import { GlobalModel, GlobalCommandRunner, Session, Screen } from "@/models";
 
 import "./tabs2.less";
 
-const DEFAULT_TAB_WIDTH = 100;
+const DEFAULT_TAB_WIDTH = 170;
 
-const TabsContainer: React.FC = () => {
+type ScreenTabsProps = {
+    session: Session;
+};
+
+const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
     const [tabs, setTabs] = useState(["Tab1"]);
     const [activeTab, setActiveTab] = useState("Tab1");
     const [tabWidth, setTabWidth] = useState(DEFAULT_TAB_WIDTH);
@@ -13,14 +20,43 @@ const TabsContainer: React.FC = () => {
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const tabContainerRef = useRef<HTMLDivElement>(null);
     const addBtnRef = useRef<HTMLDivElement>(null);
+    const mainSidebarWidth = GlobalModel.mainSidebarModel.getWidth();
+    const rightSidebarWidth = GlobalModel.rightSidebarModel.getWidth();
     let prevDelta: number;
     let prevDragDirection: string;
     let draggedRemoved: boolean;
     let shrunk: boolean;
 
+    const getActiveScreenId = (): string | null => {
+        if (session) {
+            return session.activeScreenId.get();
+        }
+        return null;
+    };
+
+    const getScreens = computed((): Screen[] => {
+        let activeScreenId = getActiveScreenId();
+        if (!activeScreenId) {
+            return [];
+        }
+
+        let screens = GlobalModel.getSessionScreens(session.sessionId);
+        let showingScreens = [];
+
+        for (const screen of screens) {
+            if (!screen.archived.get() || activeScreenId === screen.screenId) {
+                showingScreens.push(screen);
+            }
+        }
+
+        showingScreens.sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
+
+        return showingScreens;
+    });
+
     const updateTabPositions = useCallback(() => {
         if (tabContainerRef.current) {
-            const tabElements = Array.from(tabContainerRef.current.querySelectorAll(".tab"));
+            const tabElements = Array.from(tabContainerRef.current.querySelectorAll(".screen-tab"));
             let newStartPositions = [];
             let cumulativeLeft = 0; // Start from the left edge
 
@@ -49,7 +85,9 @@ const TabsContainer: React.FC = () => {
                 const newTabWidth = containerWidth / numberOfTabs;
                 setTabWidth(newTabWidth);
                 tabs.forEach((tab, index) => {
-                    const tabElement = tabContainerRef.current.querySelector(`[data-tab-name="${tab}"]`) as HTMLElement;
+                    const tabElement = tabContainerRef.current.querySelector(
+                        `[data-screentab-name="${tab}"]`
+                    ) as HTMLElement;
                     tabElement.style.width = `${newTabWidth}px`;
                     tabElement.style.left = `${index * newTabWidth}px`;
                 });
@@ -58,7 +96,9 @@ const TabsContainer: React.FC = () => {
                 shrunk = false;
                 setTabWidth(DEFAULT_TAB_WIDTH);
                 tabs.forEach((tab, index) => {
-                    const tabElement = tabContainerRef.current.querySelector(`[data-tab-name="${tab}"]`) as HTMLElement;
+                    const tabElement = tabContainerRef.current.querySelector(
+                        `[data-screentab-name="${tab}"]`
+                    ) as HTMLElement;
                     tabElement.style.width = `${DEFAULT_TAB_WIDTH}px`;
                     tabElement.style.left = `${index * DEFAULT_TAB_WIDTH}px`;
                 });
@@ -66,14 +106,18 @@ const TabsContainer: React.FC = () => {
 
             // Update the position of the Add Tab button
             const addButtonElement = addBtnRef.current;
-            if (addButtonElement) {
-                const tabElements = Array.from(tabContainerRef.current.querySelectorAll(".tab"));
+            if (addButtonElement && tabContainerRef.current) {
+                const tabElements = Array.from(tabContainerRef.current.querySelectorAll(".screen-tab"));
                 const lastTab = tabElements[tabElements.length - 1];
-                const lastTabRect = lastTab.getBoundingClientRect();
-                addButtonElement.style.position = "absolute";
-                addButtonElement.style.left = `${lastTabRect.right - containerWidth + containerWidth}px`;
-            }
 
+                if (lastTab) {
+                    const lastTabRect = lastTab.getBoundingClientRect();
+                    const containerRect = tabContainerRef.current.getBoundingClientRect();
+
+                    // Calculate the left position relative to the tab container
+                    addButtonElement.style.left = `${lastTabRect.right - containerRect.left}px`;
+                }
+            }
             updateTabPositions();
         }
     }, [tabs.length, updateTabPositions]);
@@ -87,6 +131,10 @@ const TabsContainer: React.FC = () => {
             window.removeEventListener("resize", resizeTabs);
         };
     }, [resizeTabs]);
+
+    useEffect(() => {
+        resizeTabs();
+    }, [mainSidebarWidth, rightSidebarWidth]);
 
     const onDragStart = useCallback(
         (name: string, ref: React.RefObject<HTMLDivElement>) => {
@@ -178,7 +226,7 @@ const TabsContainer: React.FC = () => {
                         // Update visual positions of the tabs
                         tabs.forEach((tempTab, index) => {
                             const tabElement = tabContainerRef.current.querySelector(
-                                `[data-tab-name="${tempTab}"]`
+                                `[data-screentab-name="${tempTab}"]`
                             ) as HTMLElement;
                             if (tempTab !== name) {
                                 tabElement.style.left = `${index * tabWidth}px`;
@@ -197,7 +245,7 @@ const TabsContainer: React.FC = () => {
 
                     if (ref.current) {
                         // Reset transform for all tabs
-                        const tabElements = tabContainerRef.current.querySelectorAll(".tab");
+                        const tabElements = tabContainerRef.current.querySelectorAll(".screen-tab");
                         tabElements.forEach((tab) => {
                             const htmlTab = tab as HTMLElement;
                             htmlTab.style.transform = "";
@@ -208,7 +256,7 @@ const TabsContainer: React.FC = () => {
                         const draggedTab = tabs[tabIndex];
                         const finalLeftPosition = tabIndex * tabWidth;
                         const draggedTabElement = tabContainerRef.current.querySelector(
-                            `[data-tab-name="${draggedTab}"]`
+                            `[data-screentab-name="${draggedTab}"]`
                         ) as HTMLElement;
                         if (draggedTabElement) {
                             draggedTabElement.style.left = `${finalLeftPosition}px`;
@@ -236,8 +284,8 @@ const TabsContainer: React.FC = () => {
     };
 
     return (
-        <div className="tabs-top-container">
-            <div className="tab-container" ref={tabContainerRef}>
+        <div className="screen-tabs-container">
+            <div className="screen-tabs-container-inner" ref={tabContainerRef}>
                 {tabs.map((tab) => (
                     <ScreenTab
                         key={tab}
@@ -248,11 +296,11 @@ const TabsContainer: React.FC = () => {
                     />
                 ))}
             </div>
-            <div ref={addBtnRef} className="add-tab-button" onClick={addTab} style={{ left: DEFAULT_TAB_WIDTH }}>
+            <div ref={addBtnRef} className="new-screen-button" onClick={addTab} style={{ left: DEFAULT_TAB_WIDTH }}>
                 +
             </div>
         </div>
     );
-};
+});
 
-export default TabsContainer;
+export { ScreenTabs };

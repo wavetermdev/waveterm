@@ -26,7 +26,7 @@ import * as appconst from "@/app/appconst";
 import * as textmeasure from "@/util/textmeasure";
 
 import "./screenview.less";
-import "./tabs.less";
+// import "./tabs.less";
 import { MagicLayout } from "../../magiclayout";
 
 dayjs.extend(localizedFormat);
