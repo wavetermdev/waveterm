@@ -72,9 +72,6 @@ class ScreenTab extends React.Component<
                 ref={this.tabRef}
                 value={screen}
                 id={"screentab-" + screen.screenId}
-                whileDrag={{
-                    backgroundColor: "rgba(13, 13, 13, 0.85)",
-                }}
                 data-screenid={screen.screenId}
                 className={cn(
                     "screen-tab",

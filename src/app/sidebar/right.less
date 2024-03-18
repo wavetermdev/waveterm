@@ -1,0 +1,28 @@
+@import "@/common/icons/icons.less";
+
+.right-sidebar {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    line-height: 20px;
+    backdrop-filter: blur(4px);
+    z-index: 20;
+    font-size: var(--sidebar-font-size);
+    font-family: var(--base-font-family);
+    font-weight: var(--sidebar-font-weight);
+    border-left: 1px solid var(--app-border-color);
+
+    .header {
+        height: 39px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 0 5px;
+        border-bottom: 1px solid var(--app-border-color);
+    }
+
+    &.collapsed {
+        display: none;
+    }
+}

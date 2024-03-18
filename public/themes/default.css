@@ -44,10 +44,14 @@
     --floating-logo-width: 40px;
     --floating-logo-height: var(--screentabs-height);
 
+    /* right sidebar triggers */
+    --floating-right-sidebar-triggers-width-darwin: 50px;
+    --floating-right-sidebar-triggers-width: 40px;
+
     /* global colors */
     --app-bg-color: black;
     --app-accent-color: rgb(88, 193, 66);
-    --app-accent-bg-color: rgba(88, 193, 66, 0.2);
+    --app-accent-bg-color: rgba(88, 193, 66, 0.25);
     --app-error-color: rgb(229, 77, 46);
     --app-warning-color: rgb(224, 185, 86);
     --app-success-color: rgb(78, 154, 6);
@@ -152,7 +156,6 @@
     --line-text-color: rgb(211, 215, 207);
     --line-svg-fill-color: rgb(150, 152, 150);
     --line-svg-hover-fill-color: #eceeec;
-    --line-selected-border-color: rgb(193, 195, 193);
     --line-separator-color: rgb(126, 126, 126);
     --line-error-color: var(--app-error-color);
     --line-warning-color: var(--app-warning-color);
@@ -219,5 +222,5 @@
     --modal-bg-color: var(--app-bg-color);
     --modal-header-bottom-border-color: rgba(241, 246, 243, 0.15);
 
-    --logo-button-hover-bg-color: #1e1e1e;
+    --logo-button-hover-bg-color: var(--app-accent-bg-color);
 }

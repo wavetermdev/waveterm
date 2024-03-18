@@ -294,6 +294,7 @@ type ClientOptsType struct {
 	AcceptedTos           int64             `json:"acceptedtos,omitempty"`
 	ConfirmFlags          map[string]bool   `json:"confirmflags,omitempty"`
 	MainSidebar           *SidebarValueType `json:"mainsidebar,omitempty"`
+	RightSidebar          *SidebarValueType `json:"rightsidebar,omitempty"`
 	GlobalShortcut        string            `json:"globalshortcut,omitempty"`
 	GlobalShortcutEnabled bool              `json:"globalshortcutenabled,omitempty"`
 }

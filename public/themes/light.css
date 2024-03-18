@@ -23,6 +23,7 @@
 
     /* tab color */
     --tab-white: rgb(0, 0, 0, 0.6);
+    --tab-mint: rgb(70, 235, 156);
 
     /* button colors */
     --button-text-color: rgb(50, 50, 50); /* Dark gray for light theme */
@@ -72,6 +73,4 @@
 
     /* toggle colors */
     --toggle-thumb-color: var(--app-bg-color);
-
-    --logo-button-hover-bg-color: #f0f0f0;
 }

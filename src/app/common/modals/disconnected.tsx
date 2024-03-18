@@ -75,7 +75,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                 </div>
                 <div className="wave-modal-footer">
                     <Button
-                        theme="secondary"
+                        className="secondary"
                         onClick={this.tryReconnect}
                         leftIcon={
                             <span className="icon">
@@ -86,7 +86,7 @@ class DisconnectedModal extends React.Component<{}, {}> {
                         Try Reconnect
                     </Button>
                     <Button
-                        theme="secondary"
+                        className="secondary"
                         onClick={this.restartServer}
                         leftIcon={<i className="fa-sharp fa-solid fa-triangle-exclamation"></i>}
                     >

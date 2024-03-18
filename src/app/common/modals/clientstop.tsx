@@ -31,7 +31,7 @@ class ClientStopModal extends React.Component<{}, {}> {
                             </If>
                             <div>
                                 <Button
-                                    theme="secondary"
+                                    className="secondary"
                                     onClick={this.refreshClient}
                                     leftIcon={<i className="fa-sharp fa-solid fa-rotate"></i>}
                                 >

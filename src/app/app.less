@@ -302,6 +302,25 @@ a.a-block {
     }
 }
 
+.right-sidebar-triggers {
+    position: absolute;
+    z-index: 25;
+    right: 0px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    pointer-events: none;
+    height: 38px;
+    padding: 0 5px;
+
+    .right-sidebar-trigger {
+        cursor: pointer;
+        user-select: none;
+        -webkit-app-region: no-drag;
+        pointer-events: all;
+    }
+}
+
 .copied-indicator {
     position: absolute;
     top: 0;

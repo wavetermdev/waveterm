@@ -5,7 +5,6 @@
     font: inherit;
     cursor: pointer;
     outline: inherit;
-
     display: flex;
     padding: 6px 16px;
     align-items: center;
@@ -15,7 +14,8 @@
     line-height: 1.5;
 
     &.primary {
-        background: none;
+        color: var(--form-element-text-color);
+        background: var(--form-element-primary-color);
 
         i {
             fill: var(--form-element-primary-color);
@@ -31,11 +31,12 @@
         }
 
         &.outlined {
+            background: none;
             border: 1px solid var(--form-element-primary-color);
         }
 
         &.ghost {
-            // Styles for .ghost are already defined above
+            background: none;
         }
 
         &:hover {
@@ -46,6 +47,9 @@
     &.secondary {
         color: var(--form-element-text-color);
         background: none;
+        color: var(--form-element-text-color);
+        background: var(--form-element-secondary-color);
+        box-shadow: none;
 
         &.solid {
             color: var(--form-element-text-color);
@@ -54,10 +58,12 @@
         }
 
         &.outlined {
+            background: none;
             border: 1px solid var(--form-element-secondary-color);
         }
 
         &.ghost {
+            background: none;
             padding: 6px 10px;
 
             i {

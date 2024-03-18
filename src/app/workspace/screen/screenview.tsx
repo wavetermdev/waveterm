@@ -325,7 +325,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
                             <br />
                         </div>
                         <div onClick={this.sidebarClose} className="close-button-container">
-                            <Button theme="secondary" onClick={this.sidebarClose}>
+                            <Button className="secondary" onClick={this.sidebarClose}>
                                 Close Sidebar
                             </Button>
                         </div>
