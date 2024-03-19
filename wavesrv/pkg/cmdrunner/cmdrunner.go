@@ -3675,6 +3675,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		}
 		shellType = shellArg
 	}
+	verbose := resolveBool(pk.Kwargs["verbose"], false)
 	termOpts, err := GetUITermOpts(pk.UIContext.WinSize, DefaultPTERM)
 	if err != nil {
 		return nil, fmt.Errorf("cannot make termopts: %w", err)
@@ -3688,11 +3689,11 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	go doResetCommand(ids, shellType, cmd)
+	go doResetCommand(ids, shellType, cmd, verbose)
 	return update, nil
 }
 
-func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType) {
+func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verbose bool) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelFn()
 	startTime := time.Now()
@@ -3709,7 +3710,7 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType) {
 	dataFn := func(data []byte) {
 		writeStringToPty(ctx, cmd, string(data), &outputPos)
 	}
-	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType, dataFn)
+	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType, dataFn, verbose)
 	if err != nil {
 		rtnErr = err
 		return
@@ -3724,8 +3725,6 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType) {
 		rtnErr = err
 		return
 	}
-	outputStr := fmt.Sprintf("\r\nreset remote state (shell:%s)\r\n", ssPk.State.GetShellType())
-	writeStringToPty(ctx, cmd, outputStr, &outputPos)
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))
 	scbus.MainUpdateBus.DoUpdate(update)

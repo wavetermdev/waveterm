@@ -34,6 +34,7 @@ const GetK8sNamespaceCmdStr = `printf "K8SNAMESPACE %s\x00" "$(kubectl config vi
 const RunCommandFmt = `%s`
 const DebugState = false
 const StateOutputFdNum = 20
+const NumRandomEndBytes = 8
 
 var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
 

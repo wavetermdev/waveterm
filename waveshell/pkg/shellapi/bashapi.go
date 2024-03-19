@@ -118,7 +118,7 @@ func (b bashShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 }
 
 func GetBashShellStateCmd(fdNum int) (string, []byte) {
-	endBytes := utilfn.AppendNonZeroRandomBytes([]byte{'\n'}, 8)
+	endBytes := utilfn.AppendNonZeroRandomBytes(nil, NumRandomEndBytes)
 	endBytes = append(endBytes, '\n')
 	cmdStr := strings.TrimSpace(`
 exec 2> /dev/null;

@@ -444,7 +444,6 @@ func writeZshId(buf *bytes.Buffer, idStr string) {
 }
 
 const numRandomBytes = 4
-const numEndRandomBytes = 8
 
 // returns (cmd-string, endbytes)
 func GetZshShellStateCmd(fdNum int) (string, []byte) {
@@ -453,7 +452,7 @@ func GetZshShellStateCmd(fdNum int) (string, []byte) {
 	sectionSeparator = append(sectionSeparator, byte('\n'))
 	sectionSeparator = utilfn.AppendNonZeroRandomBytes(sectionSeparator, numRandomBytes)
 	sectionSeparator = append(sectionSeparator, 0, 0)
-	endBytes := utilfn.AppendNonZeroRandomBytes([]byte{'\n'}, numEndRandomBytes)
+	endBytes := utilfn.AppendNonZeroRandomBytes(nil, NumRandomEndBytes)
 	endBytes = append(endBytes, byte('\n'))
 	// we have to use these crazy separators because zsh allows basically anything in
 	// variable names and values (including nulls).
@@ -762,6 +761,8 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 		VarCount:   int(len(zshDecls)),
 		EnvCount:   int(len(zshEnv)),
 		HashVal:    rtn.GetHashVal(false),
+		OutputSize: int64(len(outputBytes)),
+		StateSize:  rtn.ApproximateSize(),
 	}
 	return rtn, stats, nil
 }

@@ -26,6 +26,8 @@ type ShellStateStats struct {
 	VarCount   int    `json:"varcount"`
 	FuncCount  int    `json:"funccount"`
 	HashVal    string `json:"hashval"`
+	OutputSize int64  `json:"outputsize"`
+	StateSize  int64  `json:"statesize"`
 }
 
 type ShellState struct {
@@ -36,6 +38,10 @@ type ShellState struct {
 	Funcs     string `json:"funcs,omitempty"`
 	Error     string `json:"error,omitempty"`
 	HashVal   string `json:"-"`
+}
+
+func (state ShellState) ApproximateSize() int64 {
+	return int64(len(state.Version) + len(state.Cwd) + len(state.ShellVars) + len(state.Aliases) + len(state.Funcs) + len(state.Error))
 }
 
 type ShellStateDiff struct {

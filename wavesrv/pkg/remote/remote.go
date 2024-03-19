@@ -196,7 +196,7 @@ func (msh *MShellProc) EnsureShellType(ctx context.Context, shellType string) er
 		return nil
 	}
 	// try to reinit the shell
-	_, err := msh.ReInit(ctx, shellType, nil)
+	_, err := msh.ReInit(ctx, shellType, nil, false)
 	if err != nil {
 		return fmt.Errorf("error trying to initialize shell %q: %v", shellType, err)
 	}
@@ -1401,7 +1401,7 @@ func makeReinitErrorUpdate(shellType string) sstore.ActivityUpdate {
 	return rtn
 }
 
-func (msh *MShellProc) ReInit(ctx context.Context, shellType string, dataFn func([]byte)) (rtnPk *packet.ShellStatePacketType, rtnErr error) {
+func (msh *MShellProc) ReInit(ctx context.Context, shellType string, dataFn func([]byte), verbose bool) (rtnPk *packet.ShellStatePacketType, rtnErr error) {
 	if !msh.IsConnected() {
 		return nil, fmt.Errorf("cannot reinit, remote is not connected")
 	}
@@ -1466,29 +1466,25 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string, dataFn func
 	}
 	msh.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
 	timeDur := time.Since(startTs)
-	dataFn([]byte(makeShellInitOutputMsg(ssPk.State, ssPk.Stats, timeDur, false)))
-	msh.WriteToPtyBuffer("%s", makeShellInitOutputMsg(ssPk.State, ssPk.Stats, timeDur, true))
+	dataFn([]byte(makeShellInitOutputMsg(verbose, ssPk.State, ssPk.Stats, timeDur, false)))
+	msh.WriteToPtyBuffer("%s", makeShellInitOutputMsg(false, ssPk.State, ssPk.Stats, timeDur, true))
 	return ssPk, nil
 }
 
-func makeShellInitOutputMsg(state *packet.ShellState, stats *packet.ShellStateStats, dur time.Duration, ptyMsg bool) string {
+func makeShellInitOutputMsg(verbose bool, state *packet.ShellState, stats *packet.ShellStateStats, dur time.Duration, ptyMsg bool) string {
+	if !verbose || ptyMsg {
+		if ptyMsg {
+			return fmt.Sprintf("initialized state shell:%s statehash:%s %dms\n", state.GetShellType(), state.GetHashVal(false), dur.Milliseconds())
+		} else {
+			return fmt.Sprintf("initialized connection state (shell:%s)\r\n", state.GetShellType())
+		}
+	}
 	var buf bytes.Buffer
-	if !ptyMsg {
-		buf.WriteString("-----\r\n")
+	buf.WriteString("-----\r\n")
+	buf.WriteString(fmt.Sprintf("initialized connection shell:%s statehash:%s %dms\r\n", state.GetShellType(), state.GetHashVal(false), dur.Milliseconds()))
+	if stats != nil {
+		buf.WriteString(fmt.Sprintf("  outsize:%s size:%s env:%d, vars:%d, aliases:%d, funcs:%d\r\n", scbase.NumFormatDec(stats.OutputSize), scbase.NumFormatDec(stats.StateSize), stats.EnvCount, stats.VarCount, stats.AliasCount, stats.FuncCount))
 	}
-	// state is not nil
-	buf.WriteString(fmt.Sprintf("initialized state shell:%s statehash:%s", state.GetShellType(), state.GetHashVal(false)))
-	if ptyMsg {
-		buf.WriteString(fmt.Sprintf(" %dms", dur.Milliseconds()))
-	}
-	if !ptyMsg && stats != nil {
-		buf.WriteString("\r\n")
-		buf.WriteString(fmt.Sprintf("  env:%d, vars:%d, aliases:%d, funcs:%d", stats.EnvCount, stats.VarCount, stats.AliasCount, stats.FuncCount))
-	}
-	if !ptyMsg {
-		buf.WriteString("\r")
-	}
-	buf.WriteString("\n")
 	return buf.String()
 }
 
@@ -1740,7 +1736,7 @@ func (msh *MShellProc) initActiveShells() {
 		return
 	}
 	for _, shellType := range activeShells {
-		_, err = msh.ReInit(ctx, shellType, nil)
+		_, err = msh.ReInit(ctx, shellType, nil, false)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error reiniting shell %q: %v\n", shellType, err)
 		}
