@@ -1648,8 +1648,12 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	}
 	var outputPos int64
 	outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
-	termopts := sstore.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
-	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
+	termOpts, err := GetUITermOpts(pk.UIContext.WinSize, DefaultPTERM)
+	if err != nil {
+		return nil, fmt.Errorf("cannot make termopts: %w", err)
+	}
+	pkTermOpts := convertTermOpts(termOpts)
+	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), *pkTermOpts)
 	writeStringToPty(ctx, cmd, outputStr, &outputPos)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -3655,7 +3659,7 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	return update, nil
 }
 
-func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnUpdate scbus.UpdatePacket, rtnErr error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
@@ -3668,31 +3672,57 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		}
 		shellType = shellArg
 	}
-	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType)
+	termOpts, err := GetUITermOpts(pk.UIContext.WinSize, DefaultPTERM)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot make termopts: %w", err)
 	}
-	if ssPk == nil || ssPk.State == nil {
-		return nil, fmt.Errorf("invalid initpk received from remote (no remote state)")
-	}
-	feState := sstore.FeStateFromShellState(ssPk.State)
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, ssPk.State, nil)
+	pkTermOpts := convertTermOpts(termOpts)
+	cmd, err := makeDynCmd(ctx, "reset", ids, pk.GetRawStr(), *pkTermOpts)
 	if err != nil {
-		return nil, err
-	}
-	outputStr := fmt.Sprintf("reset remote state (shell:%s)", ssPk.State.GetShellType())
-	cmd, err := makeStaticCmd(ctx, "reset", ids, pk.GetRawStr(), []byte(outputStr))
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
 	update, err := addLineForCmd(ctx, "/reset", false, ids, cmd, "", nil)
 	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
 		return nil, err
 	}
-	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst), sstore.InteractiveUpdate(pk.Interactive))
+	go doResetCommand(ids, shellType, cmd)
 	return update, nil
+}
+
+func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelFn()
+	startTime := time.Now()
+	var outputPos int64
+	var rtnErr error
+	exitSuccess := true
+	defer func() {
+		if rtnErr != nil {
+			exitSuccess = false
+			writeStringToPty(ctx, cmd, fmt.Sprintf("\r\nerror: %v", rtnErr), &outputPos)
+		}
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+	}()
+	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType)
+	if err != nil {
+		rtnErr = err
+		return
+	}
+	if ssPk == nil || ssPk.State == nil {
+		rtnErr = fmt.Errorf("invalid initpk received from remote (no remote state)")
+		return
+	}
+	feState := sstore.FeStateFromShellState(ssPk.State)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, ssPk.State, nil)
+	if err != nil {
+		rtnErr = err
+		return
+	}
+	outputStr := fmt.Sprintf("reset remote state (shell:%s)\r\n", ssPk.State.GetShellType())
+	writeStringToPty(ctx, cmd, outputStr, &outputPos)
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))
+	scbus.MainUpdateBus.DoUpdate(update)
 }
 
 func ResetCwdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {

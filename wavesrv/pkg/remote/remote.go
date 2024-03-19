@@ -1408,6 +1408,7 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 	if shellType != packet.ShellType_bash && shellType != packet.ShellType_zsh {
 		return nil, fmt.Errorf("invalid shell type %q", shellType)
 	}
+	startTs := time.Now()
 	reinitPk := packet.MakeReInitPacket()
 	reinitPk.ReqId = uuid.New().String()
 	reinitPk.ShellType = shellType
@@ -1438,7 +1439,8 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 		return nil, fmt.Errorf("error storing remote state: %w", err)
 	}
 	msh.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
-	msh.WriteToPtyBuffer("initialized shell:%s state:%s\n", shellType, ssPk.State.GetHashVal(false))
+	timeDur := time.Since(startTs)
+	msh.WriteToPtyBuffer("initialized shell:%s state:%s %dms\n", shellType, ssPk.State.GetHashVal(false), timeDur.Milliseconds())
 	return ssPk, nil
 }
 
