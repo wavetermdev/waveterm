@@ -137,6 +137,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
+    inlineUpdateOpenAIBaseURL(newBaseURL: string): void {
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ baseurl: newBaseURL });
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     setErrorMessage(msg: string): void {
         mobx.action(() => {
             this.errorMessage.set(msg);
@@ -255,7 +261,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">OpenAI Token</div>
+                        <div className="settings-label">AI Token</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
                                 placeholder=""
@@ -268,7 +274,20 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">OpenAI Model</div>
+                        <div className="settings-label">AI Base URL</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={isBlank(openAIOpts.baseurl) ? "openai default" : openAIOpts.baseurl}
+                                value={openAIOpts.baseurl ?? ""}
+                                onChange={this.inlineUpdateOpenAIBaseURL}
+                                maxLength={10}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">AI Model</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
                                 placeholder="gpt-3.5-turbo"
@@ -281,7 +300,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">OpenAI MaxTokens</div>
+                        <div className="settings-label">AI MaxTokens</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
                                 placeholder=""
