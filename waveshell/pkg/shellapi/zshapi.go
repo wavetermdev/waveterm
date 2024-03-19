@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os/exec"
 	"strings"
 	"sync"
@@ -28,7 +27,6 @@ import (
 const BaseZshOpts = ``
 
 const ZshShellVersionCmdStr = `echo zsh v$ZSH_VERSION`
-const StateOutputFdNum = 20
 
 const (
 	ZshSection_Version = iota
@@ -41,6 +39,7 @@ const (
 	ZshSection_Funcs
 	ZshSection_PVars
 	ZshSection_Prompt
+	ZshSection_EndBytes
 
 	ZshSection_NumFieldsExpected // must be last
 )
@@ -118,6 +117,11 @@ var ZshIgnoreVars = map[string]bool{
 	"zcurses_windows":     true,
 
 	// not listed, but we also exclude all ZFTP_* variables
+
+	// powerlevel10k
+	"_GITSTATUS_CLIENT_PID_POWERLEVEL9K":  true,
+	"GITSTATUS_DAEMON_PID_POWERLEVEL9K":   true,
+	"_GITSTATUS_FILE_PREFIX_POWERLEVEL9K": true,
 }
 
 var ZshIgnoreFuncs = map[string]bool{
@@ -211,7 +215,7 @@ func (z zshShellApi) GetShellType() string {
 	return packet.ShellType_zsh
 }
 
-func (z zshShellApi) MakeExitTrap(fdNum int) string {
+func (z zshShellApi) MakeExitTrap(fdNum int) (string, []byte) {
 	return MakeZshExitTrap(fdNum)
 }
 
@@ -242,25 +246,34 @@ func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty 
 	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 }
 
-func (z zshShellApi) GetShellState() chan ShellStateOutput {
+func (z zshShellApi) GetShellState(outCh chan ShellStateOutput) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
-	rtnCh := make(chan ShellStateOutput, 1)
-	defer close(rtnCh)
-	cmdStr := BaseZshOpts + "; " + GetZshShellStateCmd(StateOutputFdNum)
+	defer close(outCh)
+	stateCmd, endBytes := GetZshShellStateCmd(StateOutputFdNum)
+	cmdStr := BaseZshOpts + "; " + stateCmd
 	ecmd := exec.CommandContext(ctx, GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
-	_, outputBytes, err := RunCommandWithExtraFd(ecmd, StateOutputFdNum)
+	outputCh := make(chan []byte, 10)
+	var outputWg sync.WaitGroup
+	outputWg.Add(1)
+	go func() {
+		defer outputWg.Done()
+		for outputBytes := range outputCh {
+			outCh <- ShellStateOutput{Output: outputBytes}
+		}
+	}()
+	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes)
+	outputWg.Wait()
 	if err != nil {
-		rtnCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, Error: err.Error()}
-		return rtnCh
+		outCh <- ShellStateOutput{Error: err.Error()}
+		return
 	}
-	rtn, err := z.ParseShellStateOutput(outputBytes)
+	rtn, stats, err := z.ParseShellStateOutput(outputBytes)
 	if err != nil {
-		rtnCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, Error: err.Error()}
-		return rtnCh
+		outCh <- ShellStateOutput{Error: err.Error()}
+		return
 	}
-	rtnCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, ShellState: rtn}
-	return rtnCh
+	outCh <- ShellStateOutput{ShellState: rtn, Stats: stats}
 }
 
 func (z zshShellApi) GetBaseShellOpts() string {
@@ -437,19 +450,15 @@ func writeZshId(buf *bytes.Buffer, idStr string) {
 
 const numRandomBytes = 4
 
-// returns (cmd-string)
-func GetZshShellStateCmd(fdNum int) string {
+// returns (cmd-string, endbytes)
+func GetZshShellStateCmd(fdNum int) (string, []byte) {
 	var sectionSeparator []byte
 	// adding this extra "\n" helps with debuging and readability of output
 	sectionSeparator = append(sectionSeparator, byte('\n'))
-	for len(sectionSeparator) < numRandomBytes {
-		// any character *except* null (0)
-		rn := rand.Intn(256)
-		if rn > 0 && rn < 256 { // exclude 0, also helps to suppress security warning to have a guard here
-			sectionSeparator = append(sectionSeparator, byte(rn))
-		}
-	}
+	sectionSeparator = utilfn.AppendNonZeroRandomBytes(sectionSeparator, numRandomBytes)
 	sectionSeparator = append(sectionSeparator, 0, 0)
+	endBytes := utilfn.AppendNonZeroRandomBytes(nil, NumRandomEndBytes)
+	endBytes = append(endBytes, byte('\n'))
 	// we have to use these crazy separators because zsh allows basically anything in
 	// variable names and values (including nulls).
 	// note that we don't need crazy separators for "env" or "typeset".
@@ -511,6 +520,8 @@ printf "[%SECTIONSEP%]";
 [%K8SNAMESPACE%]
 printf "[%SECTIONSEP%]";
 print -P "$PS1"
+printf "[%SECTIONSEP%]";
+printf "[%ENDBYTES%]"
 `
 	cmd = strings.TrimSpace(cmd)
 	cmd = strings.ReplaceAll(cmd, "[%ZSHVERSION%]", ZshShellVersionCmdStr)
@@ -520,17 +531,19 @@ print -P "$PS1"
 	cmd = strings.ReplaceAll(cmd, "[%PARTSEP%]", utilfn.ShellHexEscape(string(sectionSeparator[0:len(sectionSeparator)-1])))
 	cmd = strings.ReplaceAll(cmd, "[%SECTIONSEP%]", utilfn.ShellHexEscape(string(sectionSeparator)))
 	cmd = strings.ReplaceAll(cmd, "[%OUTPUTFD%]", fmt.Sprintf("/dev/fd/%d", fdNum))
-	return cmd
+	cmd = strings.ReplaceAll(cmd, "[%OUTPUTFDNUM%]", fmt.Sprintf("%d", fdNum))
+	cmd = strings.ReplaceAll(cmd, "[%ENDBYTES%]", utilfn.ShellHexEscape(string(endBytes)))
+	return cmd, endBytes
 }
 
-func MakeZshExitTrap(fdNum int) string {
-	stateCmd := GetZshShellStateCmd(fdNum)
+func MakeZshExitTrap(fdNum int) (string, []byte) {
+	stateCmd, endBytes := GetZshShellStateCmd(fdNum)
 	fmtStr := `
 zshexit () {
     %s
 }
 `
-	return fmt.Sprintf(fmtStr, stateCmd)
+	return fmt.Sprintf(fmtStr, stateCmd), endBytes
 }
 
 func execGetLocalZshShellVersion() string {
@@ -698,14 +711,14 @@ func makeZshFuncsStrForShellState(fnMap map[ZshParamKey]string) string {
 	return buf.String()
 }
 
-func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
+func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, *packet.ShellStateStats, error) {
 	if scbase.IsDevMode() && DebugState {
 		writeStateToFile(packet.ShellType_zsh, outputBytes)
 	}
 	firstZeroIdx := bytes.Index(outputBytes, []byte{0})
 	firstDZeroIdx := bytes.Index(outputBytes, []byte{0, 0})
 	if firstZeroIdx == -1 || firstDZeroIdx == -1 {
-		return nil, fmt.Errorf("invalid zsh shell state output, could not parse separator bytes")
+		return nil, nil, fmt.Errorf("invalid zsh shell state output, could not parse separator bytes")
 	}
 	versionStr := string(outputBytes[0:firstZeroIdx])
 	sectionSeparator := outputBytes[firstZeroIdx+1 : firstDZeroIdx+2]
@@ -714,15 +727,15 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	sections := bytes.Split(outputBytes, sectionSeparator)
 	if len(sections) != ZshSection_NumFieldsExpected {
 		base.Logf("invalid -- numfields\n")
-		return nil, fmt.Errorf("invalid zsh shell state output, wrong number of sections, section=%d", len(sections))
+		return nil, nil, fmt.Errorf("invalid zsh shell state output, wrong number of sections, section=%d", len(sections))
 	}
 	rtn := &packet.ShellState{}
 	rtn.Version = strings.TrimSpace(versionStr)
 	if rtn.GetShellType() != packet.ShellType_zsh {
-		return nil, fmt.Errorf("invalid zsh shell state output, wrong shell type")
+		return nil, nil, fmt.Errorf("invalid zsh shell state output, wrong shell type")
 	}
 	if _, _, err := packet.ParseShellStateVersion(rtn.Version); err != nil {
-		return nil, fmt.Errorf("invalid zsh shell state output, invalid version: %v", err)
+		return nil, nil, fmt.Errorf("invalid zsh shell state output, invalid version: %v", err)
 	}
 	cwdStr := stripNewLineChars(string(sections[ZshSection_Cwd]))
 	rtn.Cwd = cwdStr
@@ -730,7 +743,7 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	zshDecls, err := parseZshDecls(sections[ZshSection_Vars])
 	if err != nil {
 		base.Logf("invalid - parsedecls %v\n", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for _, decl := range zshDecls {
 		if decl.IsZshScalarBound() {
@@ -746,7 +759,17 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	pvarMap := parseExtVarOutput(sections[ZshSection_PVars], string(sections[ZshSection_Prompt]), string(sections[ZshSection_Mods]))
 	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
-	return rtn, nil
+	stats := &packet.ShellStateStats{
+		Version:    rtn.Version,
+		AliasCount: int(len(aliasMap)),
+		FuncCount:  int(len(zshFuncs)),
+		VarCount:   int(len(zshDecls)),
+		EnvCount:   int(len(zshEnv)),
+		HashVal:    rtn.GetHashVal(false),
+		OutputSize: int64(len(outputBytes)),
+		StateSize:  rtn.ApproximateSize(),
+	}
+	return rtn, stats, nil
 }
 
 func parseZshEnv(output []byte) map[string]string {

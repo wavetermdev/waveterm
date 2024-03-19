@@ -10,7 +10,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
+	mathrand "math/rand"
 	"regexp"
 	"sort"
 	"strings"
@@ -551,4 +553,61 @@ func StrArrayToMap(sarr []string) map[string]bool {
 		m[s] = true
 	}
 	return m
+}
+
+func AppendNonZeroRandomBytes(b []byte, randLen int) []byte {
+	if randLen <= 0 {
+		return b
+	}
+	numAdded := 0
+	for numAdded < randLen {
+		rn := mathrand.Intn(256)
+		if rn > 0 && rn < 256 { // exclude 0, also helps to suppress security warning to have a guard here
+			b = append(b, byte(rn))
+			numAdded++
+		}
+	}
+	return b
+}
+
+// returns (isEOF, error)
+func CopyWithEndBytes(outputBuf *bytes.Buffer, reader io.Reader, endBytes []byte) (bool, error) {
+	buf := make([]byte, 4096)
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			outputBuf.Write(buf[:n])
+			obytes := outputBuf.Bytes()
+			if bytes.HasSuffix(obytes, endBytes) {
+				outputBuf.Truncate(len(obytes) - len(endBytes))
+				return (err == io.EOF), nil
+			}
+		}
+		if err == io.EOF {
+			return true, nil
+		}
+		if err != nil {
+			return false, err
+		}
+	}
+}
+
+// does *not* close outputCh on EOF or error
+func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
+	buf := make([]byte, 4096)
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			// copy so client can use []byte without it being overwritten
+			bufCopy := make([]byte, n)
+			copy(bufCopy, buf[:n])
+			outputCh <- bufCopy
+		}
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+	}
 }

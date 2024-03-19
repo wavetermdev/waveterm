@@ -20,6 +20,19 @@ import (
 	"mvdan.cc/sh/v3/syntax"
 )
 
+const (
+	BashSection_Ignored = iota
+	BashSection_Version
+	BashSection_Cwd
+	BashSection_Vars
+	BashSection_Aliases
+	BashSection_Funcs
+	BashSection_PVars
+	BashSection_EndBytes
+
+	BashSection_Count // must be last
+)
+
 type DeclareDeclType = shellenv.DeclareDeclType
 
 func doCmdSubst(commandStr string, w io.Writer, word *syntax.CmdSubst) error {
@@ -214,38 +227,37 @@ func bashParseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarB
 	return nil
 }
 
-func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
+func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, *packet.ShellStateStats, error) {
 	if scbase.IsDevMode() && DebugState {
 		writeStateToFile(packet.ShellType_bash, outputBytes)
 	}
-	// 7 fields: ignored [0], version [1], cwd [2], env/vars [3], aliases [4], funcs [5], pvars [6]
-	fields := bytes.Split(outputBytes, []byte{0, 0})
-	if len(fields) != 7 {
-		return nil, fmt.Errorf("invalid bash shell state output, wrong number of fields, fields=%d", len(fields))
+	sections := bytes.Split(outputBytes, []byte{0, 0})
+	if len(sections) != BashSection_Count {
+		return nil, nil, fmt.Errorf("invalid bash shell state output, wrong number of fields, fields=%d", len(sections))
 	}
 	rtn := &packet.ShellState{}
-	rtn.Version = strings.TrimSpace(string(fields[1]))
+	rtn.Version = strings.TrimSpace(string(sections[BashSection_Version]))
 	if rtn.GetShellType() != packet.ShellType_bash {
-		return nil, fmt.Errorf("invalid bash shell state output, wrong shell type: %q", rtn.Version)
+		return nil, nil, fmt.Errorf("invalid bash shell state output, wrong shell type: %q", rtn.Version)
 	}
 	if _, _, err := packet.ParseShellStateVersion(rtn.Version); err != nil {
-		return nil, fmt.Errorf("invalid bash shell state output, invalid version: %v", err)
+		return nil, nil, fmt.Errorf("invalid bash shell state output, invalid version: %v", err)
 	}
-	cwdStr := string(fields[2])
+	cwdStr := string(sections[BashSection_Cwd])
 	if strings.HasSuffix(cwdStr, "\r\n") {
 		cwdStr = cwdStr[0 : len(cwdStr)-2]
-	} else if strings.HasSuffix(cwdStr, "\n") {
-		cwdStr = cwdStr[0 : len(cwdStr)-1]
+	} else {
+		cwdStr = strings.TrimSuffix(cwdStr, "\n")
 	}
 	rtn.Cwd = string(cwdStr)
-	err := bashParseDeclareOutput(rtn, fields[3], fields[6])
+	err := bashParseDeclareOutput(rtn, sections[BashSection_Vars], sections[BashSection_PVars])
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	rtn.Aliases = strings.ReplaceAll(string(fields[4]), "\r\n", "\n")
-	rtn.Funcs = strings.ReplaceAll(string(fields[5]), "\r\n", "\n")
+	rtn.Aliases = strings.ReplaceAll(string(sections[BashSection_Aliases]), "\r\n", "\n")
+	rtn.Funcs = strings.ReplaceAll(string(sections[BashSection_Funcs]), "\r\n", "\n")
 	rtn.Funcs = shellenv.RemoveFunc(rtn.Funcs, "_waveshell_exittrap")
-	return rtn, nil
+	return rtn, nil, nil
 }
 
 func bashNormalize(d *DeclareDeclType) error {

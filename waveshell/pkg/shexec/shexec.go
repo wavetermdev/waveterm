@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -89,13 +88,14 @@ func MakeInstallCommandStr() string {
 type MShellBinaryReaderFn func(version string, goos string, goarch string) (io.ReadCloser, error)
 
 type ReturnStateBuf struct {
-	Lock   *sync.Mutex
-	Buf    []byte
-	Done   bool
-	Err    error
-	Reader *os.File
-	FdNum  int
-	DoneCh chan bool
+	Lock     *sync.Mutex
+	Buf      []byte
+	Done     bool
+	Err      error
+	Reader   *os.File
+	FdNum    int
+	EndBytes []byte
+	DoneCh   chan bool
 }
 
 func MakeReturnStateBuf() *ReturnStateBuf {
@@ -835,7 +835,8 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		cmd.ReturnState.FdNum = RtnStateFdNum
 		rtnStateWriter = pw
 		defer pw.Close()
-		trapCmdStr := sapi.MakeExitTrap(cmd.ReturnState.FdNum)
+		trapCmdStr, endBytes := sapi.MakeExitTrap(cmd.ReturnState.FdNum)
+		cmd.ReturnState.EndBytes = endBytes
 		rcFileStr += trapCmdStr
 	}
 	shellVarMap := shellenv.ShellVarMapFromState(state)
@@ -1021,6 +1022,11 @@ func (rs *ReturnStateBuf) Run() {
 		}
 		rs.Lock.Lock()
 		rs.Buf = append(rs.Buf, buf[0:n]...)
+		if bytes.HasSuffix(rs.Buf, rs.EndBytes) {
+			rs.Buf = rs.Buf[:len(rs.Buf)-len(rs.EndBytes)]
+			rs.Lock.Unlock()
+			break
+		}
 		rs.Lock.Unlock()
 	}
 }
@@ -1127,7 +1133,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 			wlog.Logf("debug returnstate file %q\n", base.GetDebugReturnStateFileName())
 			os.WriteFile(base.GetDebugReturnStateFileName(), c.ReturnState.Buf, 0666)
 		}
-		state, _ := c.SAPI.ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
+		state, _, _ := c.SAPI.ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
 		donePacket.FinalState = state
 	}
 	endTs := time.Now()
@@ -1154,21 +1160,6 @@ func MakeInitPacket() *packet.InitPacketType {
 	initPacket.UName = fmt.Sprintf("%s|%s", runtime.GOOS, runtime.GOARCH)
 	initPacket.Shell = shellapi.DetectLocalShellType()
 	return initPacket
-}
-
-func MakeShellStatePacket(shellType string) (*packet.ShellStatePacketType, error) {
-	sapi, err := shellapi.MakeShellApi(shellType)
-	if err != nil {
-		return nil, err
-	}
-	rtnCh := sapi.GetShellState()
-	ssOutput := <-rtnCh
-	if ssOutput.Error != "" {
-		return nil, errors.New(ssOutput.Error)
-	}
-	rtn := packet.MakeShellStatePacket()
-	rtn.State = ssOutput.ShellState
-	return rtn, nil
 }
 
 func MakeServerInitPacket() (*packet.InitPacketType, error) {
