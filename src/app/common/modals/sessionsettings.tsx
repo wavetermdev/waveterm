@@ -6,6 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
+import { Button } from "@/elements";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip } from "@/elements";
 import * as util from "@/util/util";
 
@@ -133,12 +134,9 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                             </Tooltip>
                         </div>
                         <div className="settings-input">
-                            <div
-                                onClick={this.handleDeleteSession}
-                                className="button is-prompt-danger is-outlined is-small"
-                            >
+                            <Button onClick={this.handleDeleteSession} className="secondary small danger">
                                 Delete Workspace
-                            </div>
+                            </Button>
                         </div>
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />
