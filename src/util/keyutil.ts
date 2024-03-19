@@ -357,6 +357,7 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
     for (let key of keys) {
         if (key == "Cmd") {
             rtn.mods.Cmd = true;
+            rtn.mods.Meta = true;
         } else if (key == "Shift") {
             rtn.mods.Shift = true;
         } else if (key == "Ctrl") {
@@ -397,24 +398,31 @@ function parseKey(key: string): { key: string; type: string } {
     return { key: key, type: KeyTypeKey };
 }
 
+function notMod(keyPressMod, eventMod) {
+    if (keyPressMod != true) {
+        keyPressMod = false;
+    }
+    return (keyPressMod && !eventMod) || (eventMod && !keyPressMod);
+}
+
 function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
     let keyPress = parseKeyDescription(keyDescription);
-    if (keyPress.mods.Option && !event.option) {
+    if (notMod(keyPress.mods.Option, event.option)) {
         return false;
     }
-    if (keyPress.mods.Cmd && !event.cmd) {
+    if (notMod(keyPress.mods.Cmd, event.cmd)) {
         return false;
     }
-    if (keyPress.mods.Shift && !event.shift) {
+    if (notMod(keyPress.mods.Shift, event.shift)) {
         return false;
     }
-    if (keyPress.mods.Ctrl && !event.control) {
+    if (notMod(keyPress.mods.Ctrl, event.control)) {
         return false;
     }
-    if (keyPress.mods.Alt && !event.alt) {
+    if (notMod(keyPress.mods.Alt, event.alt)) {
         return false;
     }
-    if (keyPress.mods.Meta && !event.meta) {
+    if (notMod(keyPress.mods.Meta, event.meta)) {
         return false;
     }
     let eventKey = "";
