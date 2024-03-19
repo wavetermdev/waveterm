@@ -694,20 +694,6 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         let renderMode = this.renderMode.get();
         return (
             <div className="window-view" ref={this.windowViewRef} style={{ width: this.props.width }}>
-                <div
-                    key="rendermode-tag"
-                    className={cn("rendermode-tag", { "is-active": isActive })}
-                    style={{ display: "none" }}
-                >
-                    <div className="render-mode" onClick={this.toggleRenderMode}>
-                        <If condition={renderMode == "normal"}>
-                            <i title="collapse" className="fa-sharp fa-solid fa-arrows-to-line" />
-                        </If>
-                        <If condition={renderMode == "collapsed"}>
-                            <i title="expand" className="fa-sharp fa-solid fa-arrows-from-line" />
-                        </If>
-                    </div>
-                </div>
                 <If condition={lines.length == 0}>
                     <If condition={screen.nextLineNum.get() == 1}>
                         <NewTabSettings screen={screen} />
@@ -718,39 +704,12 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                             <div key="window-empty" className={cn("window-empty")}>
                                 <div>
                                     <code className="text-standard">
-                                        [workspace="{session.name.get()}" screen="{screen.name.get()}"]
+                                        [workspace="{session.name.get()}" tab="{screen.name.get()}"]
                                     </code>
                                 </div>
                             </div>
                         </div>
                     </If>
-                </If>
-                <If condition={screen.isWebShared()}>
-                    <div key="share-tag" className="share-tag">
-                        <If condition={this.shareCopied.get()}>
-                            <div className="copied-indicator" />
-                        </If>
-                        <div className="share-tag-title">
-                            <i title="archived" className="fa-sharp fa-solid fa-share-nodes" /> web shared
-                        </div>
-                        <div className="share-tag-link">
-                            <div className="button is-wave-green is-outlined is-small" onClick={this.copyShareLink}>
-                                <span>copy link</span>
-                                <span className="icon">
-                                    <i className="fa-sharp fa-solid fa-copy" />
-                                </span>
-                            </div>
-                            <div
-                                className="button is-wave-green is-outlined is-small"
-                                onClick={this.openScreenSettings}
-                            >
-                                <span>open settings</span>
-                                <span className="icon">
-                                    <i className="fa-sharp fa-solid fa-cog" />
-                                </span>
-                            </div>
-                        </div>
-                    </div>
                 </If>
                 <If condition={lines.length > 0}>
                     <LinesView

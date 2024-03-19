@@ -205,7 +205,7 @@ func bashParseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarB
 			declMap[decl.Name] = decl
 		}
 	}
-	pvarMap := parsePVarOutput(pvarBytes, false)
+	pvarMap := parseExtVarOutput(pvarBytes, "", "")
 	utilfn.CombineMaps(declMap, pvarMap)
 	state.ShellVars = shellenv.SerializeDeclMap(declMap) // this writes out the decls in a canonical order
 	if firstParseErr != nil {

@@ -31,7 +31,7 @@
     --button-secondary-bg-color: rgba(200, 200, 200, 0.3); /* Semi-transparent light gray */
 
     /* view colors */
-    --view-text-color: var(--app-text-color);
+    --app-text-color: var(--app-text-color);
 
     /* table colors */
     --table-thead-border-top-color: rgba(0, 0, 0, 0.2);
@@ -70,6 +70,16 @@
     --line-actions-bg-color: rgba(0, 0, 0, 0.1);
     --line-actions-inactive-color: rgba(0, 0, 0, 0.3);
     --line-actions-active-color: rgba(0, 0, 0, 1);
+
+    --logo-button-hover-bg-color: #f0f0f0;
+
+    --xterm-viewport-border-color: rgba(0, 0, 0, 0.3);
+
+    --datepicker-cell-hover-bg-color: #f0f0f0;
+    --datepicker-cell-other-text-color: rgba(0, 0, 0, 0.3);
+    --datepicker-header-fade-color: rgba(0, 0, 0, 0.4);
+    --datepicker-year-header-bg-color: #f5f5f5;
+    --datepicker-year-header-border-color: #dcdcdc;
 
     /* toggle colors */
     --toggle-thumb-color: var(--app-bg-color);

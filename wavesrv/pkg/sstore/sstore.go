@@ -751,16 +751,17 @@ func FeStateFromShellState(state *packet.ShellState) map[string]string {
 	}
 	rtn := make(map[string]string)
 	rtn["cwd"] = state.Cwd
-	envMap := shellenv.EnvMapFromState(state)
-	if envMap["VIRTUAL_ENV"] != "" {
-		rtn["VIRTUAL_ENV"] = envMap["VIRTUAL_ENV"]
+	declMap := shellenv.DeclMapFromState(state)
+	if decl, ok := declMap["VIRTUAL_ENV"]; ok {
+		rtn["VIRTUAL_ENV"] = decl.UnescapedValue()
 	}
-	if envMap["CONDA_DEFAULT_ENV"] != "" {
-		rtn["CONDA_DEFAULT_ENV"] = envMap["CONDA_DEFAULT_ENV"]
+	if decl, ok := declMap["CONDA_DEFAULT_ENV"]; ok {
+		rtn["CONDA_DEFAULT_ENV"] = decl.UnescapedValue()
 	}
-	for key, val := range envMap {
-		if strings.HasPrefix(key, "PROMPTVAR_") && envMap[key] != "" {
-			rtn[key] = val
+	for _, decl := range declMap {
+		// works for both legacy and new IsExtVar decls
+		if strings.HasPrefix(decl.Name, "PROMPTVAR_") {
+			rtn[decl.Name] = decl.UnescapedValue()
 		}
 	}
 	_, _, err := packet.ParseShellStateVersion(state.Version)

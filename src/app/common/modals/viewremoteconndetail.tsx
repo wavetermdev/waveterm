@@ -192,7 +192,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             </Button>
         );
         let archiveButton = (
-            <Button className="secondary" onClick={() => this.clickArchive()}>
+            <Button className="secondary danger" onClick={() => this.clickArchive()}>
                 Delete
             </Button>
         );
@@ -207,7 +207,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         }
         if (remote.sshconfigsrc == "sshconfig-import") {
             archiveButton = (
-                <Button className="secondary" onClick={() => this.clickArchive()}>
+                <Button className="secondary danger" onClick={() => this.clickArchive()}>
                     Delete
                     <Tooltip
                         message={

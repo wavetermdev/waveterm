@@ -11,9 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
@@ -58,6 +60,7 @@ const (
 	WriteFileReadyPacketStr = "writefileready" // rpc-response
 	WriteFileDonePacketStr  = "writefiledone"  // rpc-response
 	FileDataPacketStr       = "filedata"
+	FileStatPacketStr       = "filestat"
 	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
 	ShellStatePacketStr     = "shellstate"
 
@@ -112,6 +115,7 @@ func init() {
 	TypeStrToFactory[WriteFileDonePacketStr] = reflect.TypeOf(WriteFileDonePacketType{})
 	TypeStrToFactory[LogPacketStr] = reflect.TypeOf(LogPacketType{})
 	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
+	TypeStrToFactory[FileStatPacketStr] = reflect.TypeOf(FileStatPacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -377,6 +381,51 @@ func (p *ReInitPacketType) GetReqId() string {
 
 func MakeReInitPacket() *ReInitPacketType {
 	return &ReInitPacketType{Type: ReInitPacketStr}
+}
+
+type FileStatPacketType struct {
+	Type    string    `json:"type"`
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	ModTs   time.Time `json:"modts"`
+	IsDir   bool      `json:"isdir"`
+	Perm    int       `json:"perm"`
+	ModeStr string    `json:"modestr"`
+	Error   string    `json:"error"`
+	Done    bool      `json:"done"`
+	RespId  string    `json:"respid"`
+	Path    string    `json:"path"`
+}
+
+func (*FileStatPacketType) GetType() string {
+	return FileStatPacketStr
+}
+
+func (p *FileStatPacketType) GetResponseDone() bool {
+	return p.Done
+}
+
+func (p *FileStatPacketType) GetResponseId() string {
+	return p.RespId
+}
+
+func MakeFileStatPacketType() *FileStatPacketType {
+	return &FileStatPacketType{Type: FileStatPacketStr}
+}
+
+func MakeFileStatPacketFromFileInfo(finfo fs.FileInfo, err string, done bool) *FileStatPacketType {
+	resp := MakeFileStatPacketType()
+	resp.Error = err
+	resp.Done = done
+
+	resp.IsDir = finfo.IsDir()
+	resp.Name = finfo.Name()
+
+	resp.Size = finfo.Size()
+	resp.ModTs = finfo.ModTime()
+	resp.Perm = int(finfo.Mode().Perm())
+	resp.ModeStr = finfo.Mode().String()
+	return resp
 }
 
 type StreamFilePacketType struct {

@@ -3825,7 +3825,8 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if pk.Kwargs["fromts"] != "" {
 		fromTs, err := resolvePosInt(pk.Kwargs["fromts"], 0)
 		if err != nil {
-			return nil, fmt.Errorf("invalid fromts (must be unixtime (milliseconds): %v", err)
+			// no error here anymore (otherwise it jams up the frontend, just ignore and set to 0)
+			opts.FromTs = 0
 		}
 		if fromTs > 0 {
 			opts.FromTs = int64(fromTs)
