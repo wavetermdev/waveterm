@@ -1332,7 +1332,7 @@ class Model {
             type: "fecmd",
             metacmd: "eval",
             args: [cmdStr],
-            kwargs: null,
+            kwargs: {},
             uicontext: this.getUIContext(),
             interactive: interactive,
             rawstr: cmdStr,
