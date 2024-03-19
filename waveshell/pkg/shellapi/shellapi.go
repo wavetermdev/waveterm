@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"os/user"
@@ -192,44 +191,15 @@ func StreamCommandWithExtraFd(ecmd *exec.Cmd, outputCh chan []byte, extraFdNum i
 	go func() {
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer outputWg.Done()
-		buf := make([]byte, 4096)
-		for {
-			n, err := cmdPty.Read(buf)
-			if n > 0 {
-				chBuf := make([]byte, n)
-				copy(chBuf, buf[:n])
-				outputCh <- chBuf
-			}
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				errStr := fmt.Sprintf("\r\nerror reading from pty: %v\r\n", err)
-				outputCh <- []byte(errStr)
-				break
-			}
+		err := utilfn.CopyToChannel(outputCh, cmdPty)
+		if err != nil {
+			errStr := fmt.Sprintf("\r\nerror reading from pty: %v\r\n", err)
+			outputCh <- []byte(errStr)
 		}
 	}()
 	go func() {
 		defer outputWg.Done()
-		buf := make([]byte, 4096)
-		for {
-			n, err := pipeReader.Read(buf)
-			if n > 0 {
-				extraFdOutputBuf.Write(buf[:n])
-				obytes := extraFdOutputBuf.Bytes()
-				if bytes.HasSuffix(obytes, endBytes) {
-					extraFdOutputBuf.Truncate(len(obytes) - len(endBytes))
-					break
-				}
-			}
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				break
-			}
-		}
+		utilfn.CopyWithEndBytes(&extraFdOutputBuf, pipeReader, endBytes)
 	}()
 	exitErr := ecmd.Wait()
 	if exitErr != nil {
@@ -265,24 +235,7 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, endBytes []byte) ([]byte, error) {
 	go func() {
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer close(ioDone)
-		buf := make([]byte, 4096)
-		for {
-			n, err := cmdPty.Read(buf)
-			if n > 0 {
-				outputBuf.Write(buf[:n])
-				obytes := outputBuf.Bytes()
-				if bytes.HasSuffix(obytes, endBytes) {
-					outputBuf.Truncate(len(obytes) - len(endBytes))
-					break
-				}
-			}
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				break
-			}
-		}
+		utilfn.CopyWithEndBytes(&outputBuf, cmdPty, endBytes)
 	}()
 	exitErr := ecmd.Wait()
 	if exitErr != nil {
