@@ -21,10 +21,6 @@ dayjs.extend(localizedFormat);
 class SessionKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
         let keybindManager = GlobalModel.keybindManager;
-        keybindManager.registerKeybinding("mainview", "session", "generic:cancel", (waveEvent) => {
-            GlobalModel.handleSessionCancel();
-            return true;
-        });
         keybindManager.registerKeybinding("mainview", "session", "app:toggleSidebar", (waveEvent) => {
             GlobalModel.handleToggleSidebar();
             return true;

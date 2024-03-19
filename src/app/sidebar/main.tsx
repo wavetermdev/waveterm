@@ -142,15 +142,6 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     @boundMethod
-    handleWebSharingClick(): void {
-        if (GlobalModel.activeMainView.get() == "webshare") {
-            GlobalModel.showSessionView();
-            return;
-        }
-        GlobalModel.showWebShareView();
-    }
-
-    @boundMethod
     handleSettingsClick(): void {
         if (GlobalModel.activeMainView.get() == "clientsettings") {
             GlobalModel.showSessionView();
