@@ -168,9 +168,6 @@
     --table-tr-selected-bg-color: #222;
     --table-tr-selected-hover-bg-color: #333;
 
-    /* session colors */
-    --session-bg-color: rgba(13, 13, 13, 0.85);
-
     /* cmdinput colors */
     --cmdinput-textarea-bg-color: #171717;
     --cmdinput-text-error-color: var(--term-red);
