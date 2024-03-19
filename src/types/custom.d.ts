@@ -797,12 +797,16 @@ declare global {
     };
 
     type FileInfoType = {
+        type: string;
         name: string;
         size: number;
         modts: number;
         isdir: boolean;
         perm: number;
         notfound: boolean;
+        modestr?: string;
+        path?: string;
+        outputpos?: number;
     };
 
     type ExtBlob = Blob & {
