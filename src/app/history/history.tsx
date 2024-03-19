@@ -14,7 +14,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "@/app/line/linecomps";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
-import { TextField, Dropdown, Button } from "@/elements";
+import { TextField, Dropdown, Button, DatePicker } from "@/elements";
 
 import { ReactComponent as AngleDownIcon } from "@/assets/icons/history/angle-down.svg";
 import { ReactComponent as ChevronLeftIcon } from "@/assets/icons/history/chevron-left.svg";
@@ -286,15 +286,16 @@ class HistoryView extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleFromTsChange(e: any): void {
+    handleFromTsChange(date: Date): void {
         let hvm = GlobalModel.historyViewModel;
-        let newDate = e.target.value;
+        let newDate = dayjs(date).format("YYYY-MM-DD");
         let today = dayjs().format("YYYY-MM-DD");
         if (newDate == "" || newDate == today) {
             hvm.setFromDate(null);
             return;
         }
-        hvm.setFromDate(e.target.value);
+        console.log;
+        hvm.setFromDate(newDate);
     }
 
     @boundMethod
@@ -472,13 +473,7 @@ class HistoryView extends React.Component<{}, {}> {
                         />
                         <div className="fromts">
                             <div className="fromts-text">From:&nbsp;</div>
-                            <div className="hoverEffect">
-                                <input
-                                    type="date"
-                                    onChange={this.handleFromTsChange}
-                                    value={this.searchFromTsInputValue()}
-                                />
-                            </div>
+                            <DatePicker selectedDate={new Date()} onSelectDate={this.handleFromTsChange} />
                         </div>
                         <div
                             className="filter-cmds search-checkbox hoverEffect"
