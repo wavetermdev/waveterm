@@ -7,16 +7,6 @@
 :root {
     --fa-style-family: "Font Awesome 6 Sharp";
 
-    /* these variables are overridden by user settings */
-    /*
-    --termfontfamily: "Hack";
-    --termfontsize: 13px;
-    --termlineheight: 15px;
-    --termpad: 7px;
-    --termfontsize-sm: 11px;
-    --termlineheight-sm: 13px;
-    */
-
     /* base fonts */
     --base-font: normal 15px / normal "Lato", sans-serif;
 
@@ -52,12 +42,10 @@
     --app-bg-color: black;
     --app-accent-color: rgb(88, 193, 66);
     --app-accent-bg-color: rgba(88, 193, 66, 0.25);
-    --app-error-color: rgb(229, 77, 46);
-    --app-warning-color: rgb(224, 185, 86);
-    --app-success-color: rgb(78, 154, 6);
     --app-text-color: rgb(211, 215, 207);
     --app-text-primary-color: rgb(255, 255, 255);
     --app-text-secondary-color: rgb(195, 200, 194);
+    --app-text-disabled-color: rgb(173, 173, 173);
     --app-border-color: rgb(51, 51, 51);
     --app-maincontent-bg-color: #333;
     --app-panel-bg-color: rgba(21, 23, 21, 1);
@@ -65,17 +53,15 @@
     --app-icon-color: rgb(139, 145, 138);
     --app-icon-hover-color: #fff;
     --app-selected-mask-color: rgba(255, 255, 255, 0.06);
-
-    /* icon colors */
+    --app-error-color: rgb(229, 77, 46);
+    --app-warning-color: rgb(224, 185, 86);
+    --app-success-color: rgb(78, 154, 6);
+    --app-idle-color: var(--app-text-secondary-color);
 
     /* just for macos */
     --app-border-radius-darwin: 10px;
 
-    /* global generic colors */
-    --app-black: rgb(0, 0, 0);
-
     /* scrollbar colors */
-    /* --scrollbar-background-color: rgba(21, 23, 21, 1); */
     --scrollbar-background-color: var(--app-bg-color);
     --scrollbar-thumb-color: rgba(255, 255, 255, 0.3);
     --scrollbar-thumb-hover-color: rgba(255, 255, 255, 0.5);
@@ -116,28 +102,9 @@
     --markdown-bg-color: rgb(35, 35, 35);
     --markdown-outline-color: var(--form-element-primary-color);
 
-    /* status(remote) colors */
-    /* todo: all status colors must be unified */
-    --status-connected-color: var(--app-success-color);
-    --status-connecting-color: var(--app-warning-color);
-    --status-error-color: var(--app-error-color);
-    --status-disconnected-color: var(--app-text-secondary-color);
-
-    /* status indicator colors */
-    /* todo: all status colors must be unified */
-    --status-indicator-color: var(--app-text-color);
-    --status-indicator-error: var(--status-error-color);
-    --status-indicator-success: var(--status-connected-color);
-
-    /* status(version) colors */
-    /* todo: all status colors must be unified */
-    --status-outdated-color: var(--status-connecting-color);
-    --status-updated-color: var(--status-connected-color);
-
     /* term status colors */
-    /* todo: all status colors must be unified */
-    --term-error-color: var(--status-error-color);
-    --term-warning-color: var(--status-connecting-color);
+    --term-error-color: var(--app-error-color);
+    --term-warning-color: var(--app-warning-color);
 
     /* hotkey colors */
     --hotkey-text-color: var(--app-text-secondary-color);
@@ -178,17 +145,6 @@
     --line-actions-active-color: rgba(255, 255, 255, 1);
     --line-actions-bg-color: rgba(255, 255, 255, 0.15);
 
-    /* view colors */
-    /* todo: bookmarks is a view, colors must be unified with --view* colors */
-    --bookmarks-text-color: rgb(211, 215, 207);
-    --bookmarks-textarea-bg-color: rgb(0, 0, 0);
-    --bookmarks-disabled-text-color: rgb(173, 173, 173);
-    --bookmarks-control-hover-color: rgb(255, 255, 255);
-
-    /* view colors */
-    --view-error-color: var(--app-error-color);
-    --view-text-color: var(--app-text-color);
-
     /* table colors */
     --table-border-color: rgba(241, 246, 243, 0.15);
     --table-thead-border-top-color: rgba(250, 250, 250, 0.1);
@@ -198,9 +154,6 @@
     --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
     --table-tr-selected-bg-color: #222;
     --table-tr-selected-hover-bg-color: #333;
-
-    /* session colors */
-    --session-bg-color: rgba(13, 13, 13, 0.85);
 
     /* cmdinput colors */
     --cmdinput-textarea-bg-color: #171717;
