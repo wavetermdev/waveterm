@@ -373,12 +373,6 @@ class Model {
         })();
     }
 
-    showWebShareView(): void {
-        mobx.action(() => {
-            this.activeMainView.set("webshare");
-        })();
-    }
-
     getBaseHostPort(): string {
         if (this.isDev) {
             return appconst.DevServerEndpoint;
@@ -473,18 +467,6 @@ class Model {
         }
     }
 
-    handleSessionCancel() {
-        if (this.activeMainView.get() == "webshare") {
-            this.showSessionView();
-            return;
-        }
-        const inputModel = this.inputModel;
-        inputModel.toggleInfoMsg();
-        if (inputModel.inputMode.get() != null) {
-            inputModel.resetInputMode();
-        }
-    }
-
     handleDeleteActiveLine(): boolean {
         return this.deleteActiveLine();
     }
@@ -513,9 +495,6 @@ class Model {
         }
         if (this.keybindManager.processKeyEvent(e, waveEvent)) {
             return;
-        }
-        if (this.activeMainView.get() == "bookmarks") {
-            this.bookmarksModel.handleDocKeyDown(e);
         }
     }
 
