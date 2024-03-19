@@ -104,15 +104,9 @@
     --markdown-bg-color: rgb(35, 35, 35);
     --markdown-outline-color: var(--form-element-primary-color);
 
-    /* status(version) colors */
-    /* todo: all status colors must be unified */
-    --status-outdated-color: var(--status-connecting-color);
-    --status-updated-color: var(--status-connected-color);
-
     /* term status colors */
-    /* todo: all status colors must be unified */
-    --term-error-color: var(--status-error-color);
-    --term-warning-color: var(--status-connecting-color);
+    --term-error-color: var(--app-error-color);
+    --term-warning-color: var(--app-warning-color);
 
     /* hotkey colors */
     --hotkey-text-color: var(--app-text-secondary-color);
