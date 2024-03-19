@@ -1412,7 +1412,12 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string) (*packet.Sh
 	reinitPk := packet.MakeReInitPacket()
 	reinitPk.ReqId = uuid.New().String()
 	reinitPk.ShellType = shellType
-	resp, err := msh.PacketRpcRaw(ctx, reinitPk)
+	rpcIter, err := msh.PacketRpcIter(ctx, reinitPk)
+	if err != nil {
+		return nil, err
+	}
+	defer rpcIter.Close()
+	resp, err := rpcIter.Next(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -3664,6 +3664,9 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
+	if !ids.Remote.MShell.IsConnected() {
+		return nil, fmt.Errorf("cannot reinit, remote is not connected")
+	}
 	shellType := ids.Remote.ShellType
 	if pk.Kwargs["shell"] != "" {
 		shellArg := pk.Kwargs["shell"]
