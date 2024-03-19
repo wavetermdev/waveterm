@@ -5,6 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
+import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
@@ -12,6 +13,25 @@ import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
 import { MainView } from "../common/elements/mainview";
+
+class ClientSettingsKeybindings extends React.Component<{}, {}> {
+    componentDidMount() {
+        let clientSettingsViewModel = GlobalModel.clientSettingsViewModel;
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("mainview", "clientsettings", "generic:cancel", (waveEvent) => {
+            clientSettingsViewModel.closeView();
+            return true;
+        });
+    }
+
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("clientsettings");
+    }
+
+    render() {
+        return null;
+    }
+}
 
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -168,6 +188,9 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
+                <If condition={!isHidden}>
+                    <ClientSettingsKeybindings></ClientSettingsKeybindings>
+                </If>
                 <div className="content">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>

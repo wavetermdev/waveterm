@@ -169,6 +169,27 @@ class HistoryCmdStr extends React.Component<
     }
 }
 
+class HistoryKeybindings extends React.Component<{}, {}> {
+    @boundMethod
+    componentDidMount() {
+        let historyViewModel = GlobalModel.historyViewModel;
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("mainview", "history", "generic:cancel", (waveEvent) => {
+            historyViewModel.handleUserClose();
+            return true;
+        });
+    }
+
+    @boundMethod
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("history");
+    }
+
+    render() {
+        return null;
+    }
+}
+
 @mobxReact.observer
 class HistoryView extends React.Component<{}, {}> {
     tableRef: React.RefObject<any> = React.createRef();
@@ -449,6 +470,9 @@ class HistoryView extends React.Component<{}, {}> {
 
         return (
             <MainView className="history-view" title="History" onClose={this.handleClose}>
+                <If condition={!isHidden}>
+                    <HistoryKeybindings></HistoryKeybindings>
+                </If>
                 <div key="search" className="history-search">
                     <div className="main-search field">
                         <TextField

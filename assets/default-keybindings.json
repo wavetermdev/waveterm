@@ -87,39 +87,48 @@
     },
     {
       "command": "app:selectTab-1",
-      "keys": ["Cmd:1"]
+      "keys": ["Cmd:1"],
+      "commandStr":"/screen 1"
     },
     {
       "command": "app:selectTab-2",
-      "keys": ["Cmd:2"]
+      "keys": ["Cmd:2"],
+      "commandStr":"/screen 2"
     },
     {
       "command": "app:selectTab-3",
-      "keys": ["Cmd:3"]
+      "keys": ["Cmd:3"],
+      "commandStr":"/screen 3"
     },
     {
       "command": "app:selectTab-4",
-      "keys": ["Cmd:4"]
+      "keys": ["Cmd:4"],
+      "commandStr":"/screen 4"
     },
     {
       "command": "app:selectTab-5",
-      "keys": ["Cmd:5"]
+      "keys": ["Cmd:5"],
+      "commandStr":"/screen 5"
     },
     {
       "command": "app:selectTab-6",
-      "keys": ["Cmd:6"]
+      "keys": ["Cmd:6"],
+      "commandStr":"/screen 6"
     },
     {
       "command": "app:selectTab-7",
-      "keys": ["Cmd:7"]
+      "keys": ["Cmd:7"],
+      "commandStr":"/screen 7"
     },
     {
       "command": "app:selectTab-8",
-      "keys": ["Cmd:8"]
+      "keys": ["Cmd:8"],
+      "commandStr":"/screen 8"
     },
     {
       "command": "app:selectTab-9",
-      "keys": ["Cmd:9"]
+      "keys": ["Cmd:9"],
+      "commandStr":"/screen 9"
     },
     {
       "command": "app:selectTabLeft",
