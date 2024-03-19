@@ -1784,16 +1784,22 @@ func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
 	return sstore.TermOpts{Rows: int64(runPk.TermOpts.Rows), Cols: int64(runPk.TermOpts.Cols), FlexRows: runPk.TermOpts.FlexRows, MaxPtySize: DefaultMaxPtySize}
 }
 
-// returns (ok, currentPSC)
-// if ok is true, currentPSC will be nil
-// if ok is false, currentPSC will be the existing pending state command (not nil)
-func (msh *MShellProc) testAndSetPendingStateCmd(screenId string, rptr sstore.RemotePtrType, newCK *base.CommandKey) (bool, *base.CommandKey) {
+// returns (ok, rct)
+// if ok is true, rct will be nil
+// if ok is false, rct will be the existing pending state command (not nil)
+func (msh *MShellProc) testAndSetPendingStateCmd(screenId string, rptr sstore.RemotePtrType, newCK *base.CommandKey) (bool, *RunCmdType) {
 	key := pendingStateKey{ScreenId: screenId, RemotePtr: rptr}
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	ck, found := msh.PendingStateCmds[key]
 	if found {
-		return false, &ck
+		// we don't call GetRunningCmd here because we already hold msh.Lock
+		rct := msh.RunningCmds[ck]
+		if rct != nil {
+			return false, rct
+		}
+		// ok, so rct is nil (that's strange).  allow command to proceed, but log
+		log.Printf("[warning] found pending state cmd with no running cmd: %s\n", ck)
 	}
 	if newCK != nil {
 		msh.PendingStateCmds[key] = *newCK
@@ -1883,15 +1889,14 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		if runPacket.ReturnState {
 			newPSC = &runPacket.CK
 		}
-		ok, existingPSC := msh.testAndSetPendingStateCmd(screenId, remotePtr, newPSC)
+		ok, existingRct := msh.testAndSetPendingStateCmd(screenId, remotePtr, newPSC)
 		if !ok {
-			rct := msh.GetRunningCmd(*existingPSC)
-			if rct.Ephemeral {
+			if existingRct.Ephemeral {
 				// if the existing command is ephemeral, we cancel it and continue
-				rct.EphCancled.Store(true)
+				existingRct.EphCancled.Store(true)
 			} else {
-				line, _, err := sstore.GetLineCmdByLineId(ctx, screenId, existingPSC.GetCmdId())
-				return nil, nil, makePSCLineError(*existingPSC, line, err)
+				line, _, err := sstore.GetLineCmdByLineId(ctx, screenId, existingRct.CK.GetCmdId())
+				return nil, nil, makePSCLineError(existingRct.CK, line, err)
 			}
 		}
 		if newPSC != nil {
