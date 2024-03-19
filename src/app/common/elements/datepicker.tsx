@@ -14,7 +14,7 @@ interface YearRefs {
 type DatePickerProps = {
     selectedDate: Date;
     onSelectDate: (date: Date) => void;
-    format: string;
+    format?: string;
 };
 
 const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/YYYY", onSelectDate }) => {
