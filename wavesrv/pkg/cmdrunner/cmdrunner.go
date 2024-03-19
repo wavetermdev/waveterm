@@ -41,6 +41,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote/openai"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
@@ -3710,6 +3711,7 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verb
 	dataFn := func(data []byte) {
 		writeStringToPty(ctx, cmd, string(data), &outputPos)
 	}
+	origStatePtr := ids.Remote.MShell.GetDefaultStatePtr(shellType)
 	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType, dataFn, verbose)
 	if err != nil {
 		rtnErr = err
@@ -3724,6 +3726,20 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verb
 	if err != nil {
 		rtnErr = err
 		return
+	}
+	newStatePtr := ids.Remote.MShell.GetDefaultStatePtr(shellType)
+	if verbose && origStatePtr != nil && newStatePtr != nil {
+		statePtrDiff := fmt.Sprintf("oldstate: %v, newstate: %v\r\n", origStatePtr.BaseHash, newStatePtr.BaseHash)
+		writeStringToPty(ctx, cmd, statePtrDiff, &outputPos)
+		origFullState, _ := sstore.GetFullState(ctx, *origStatePtr)
+		newFullState, _ := sstore.GetFullState(ctx, *newStatePtr)
+		if origFullState != nil && newFullState != nil {
+			var diffBuf bytes.Buffer
+			rtnstate.DisplayStateUpdateDiff(&diffBuf, *origFullState, *newFullState)
+			diffStr := diffBuf.String()
+			diffStr = strings.ReplaceAll(diffStr, "\n", "\r\n")
+			writeStringToPty(ctx, cmd, diffStr, &outputPos)
+		}
 	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))

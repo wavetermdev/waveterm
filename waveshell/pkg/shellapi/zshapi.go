@@ -117,6 +117,11 @@ var ZshIgnoreVars = map[string]bool{
 	"zcurses_windows":     true,
 
 	// not listed, but we also exclude all ZFTP_* variables
+
+	// powerlevel10k
+	"_GITSTATUS_CLIENT_PID_POWERLEVEL9K":  true,
+	"GITSTATUS_DAEMON_PID_POWERLEVEL9K":   true,
+	"_GITSTATUS_FILE_PREFIX_POWERLEVEL9K": true,
 }
 
 var ZshIgnoreFuncs = map[string]bool{
