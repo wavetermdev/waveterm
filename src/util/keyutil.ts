@@ -129,7 +129,6 @@ class KeybindManager {
             return true;
         }
         let curCommand = commandsList.shift();
-        console.log("running: ", curCommand);
         let prtn = this.globalModel.submitRawCommand(curCommand, false, false);
         prtn.then((rtn) => {
             if (!rtn.success) {
@@ -174,18 +173,17 @@ class KeybindManager {
         return false;
     }
 
-    processKeyEvent(nativeEvent: any, event: WaveKeyboardEvent) {
+    processKeyEvent(nativeEvent: any, event: WaveKeyboardEvent): boolean {
         let modalLevel = this.levelMap.get("modal");
         if (modalLevel.length != 0) {
             // console.log("processing modal");
             // special case when modal keybindings are present
             let shouldReturn = this.processLevel(nativeEvent, event, modalLevel);
             if (shouldReturn) {
-                return;
+                return true;
             }
             let systemLevel = this.levelMap.get("system");
-            this.processLevel(nativeEvent, event, systemLevel);
-            return;
+            return this.processLevel(nativeEvent, event, systemLevel);
         }
         for (let index = this.levelArray.length - 1; index >= 0; index--) {
             let curLevel = this.levelArray[index];
@@ -198,9 +196,10 @@ class KeybindManager {
             }
             let shouldReturn = this.processLevel(nativeEvent, event, curKeybindsArray);
             if (shouldReturn) {
-                return;
+                return true;
             }
         }
+        return false;
     }
 
     keybindingAlreadyAdded(level: string, domain: string, keybinding: string) {
@@ -358,6 +357,7 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
     for (let key of keys) {
         if (key == "Cmd") {
             rtn.mods.Cmd = true;
+            rtn.mods.Meta = true;
         } else if (key == "Shift") {
             rtn.mods.Shift = true;
         } else if (key == "Ctrl") {
@@ -398,24 +398,31 @@ function parseKey(key: string): { key: string; type: string } {
     return { key: key, type: KeyTypeKey };
 }
 
+function notMod(keyPressMod, eventMod) {
+    if (keyPressMod != true) {
+        keyPressMod = false;
+    }
+    return (keyPressMod && !eventMod) || (eventMod && !keyPressMod);
+}
+
 function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
     let keyPress = parseKeyDescription(keyDescription);
-    if (keyPress.mods.Option && !event.option) {
+    if (notMod(keyPress.mods.Option, event.option)) {
         return false;
     }
-    if (keyPress.mods.Cmd && !event.cmd) {
+    if (notMod(keyPress.mods.Cmd, event.cmd)) {
         return false;
     }
-    if (keyPress.mods.Shift && !event.shift) {
+    if (notMod(keyPress.mods.Shift, event.shift)) {
         return false;
     }
-    if (keyPress.mods.Ctrl && !event.control) {
+    if (notMod(keyPress.mods.Ctrl, event.control)) {
         return false;
     }
-    if (keyPress.mods.Alt && !event.alt) {
+    if (notMod(keyPress.mods.Alt, event.alt)) {
         return false;
     }
-    if (keyPress.mods.Meta && !event.meta) {
+    if (notMod(keyPress.mods.Meta, event.meta)) {
         return false;
     }
     let eventKey = "";
