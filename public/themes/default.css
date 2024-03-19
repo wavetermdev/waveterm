@@ -61,9 +61,6 @@
     /* just for macos */
     --app-border-radius-darwin: 10px;
 
-    /* global generic colors */
-    --app-black: rgb(0, 0, 0);
-
     /* scrollbar colors */
     --scrollbar-background-color: var(--app-bg-color);
     --scrollbar-thumb-color: rgba(255, 255, 255, 0.3);
