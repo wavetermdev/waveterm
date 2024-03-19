@@ -244,11 +244,10 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 		appendSlashes(comps)
 	}
 	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": comps, "hasmore": hasMore})
-	return
 }
 
 func (m *MServer) reinit(reqId string, shellType string) {
-	ssPk, err := shexec.MakeShellStatePacket(shellType)
+	ssPk, err := m.MakeShellStatePacket(reqId, shellType)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
 		return
@@ -260,6 +259,32 @@ func (m *MServer) reinit(reqId string, shellType string) {
 	}
 	ssPk.RespId = reqId
 	m.Sender.SendPacket(ssPk)
+}
+
+func (m *MServer) MakeShellStatePacket(reqId string, shellType string) (*packet.ShellStatePacketType, error) {
+	sapi, err := shellapi.MakeShellApi(shellType)
+	if err != nil {
+		return nil, err
+	}
+	rtnCh := make(chan shellapi.ShellStateOutput, 1)
+	go sapi.GetShellState(rtnCh)
+	for ssOutput := range rtnCh {
+		if ssOutput.Error != "" {
+			return nil, errors.New(ssOutput.Error)
+		}
+		if ssOutput.ShellState != nil {
+			rtn := packet.MakeShellStatePacket()
+			rtn.State = ssOutput.ShellState
+			rtn.Stats = ssOutput.Stats
+			return rtn, nil
+		}
+		if ssOutput.Output != nil {
+			dataPk := packet.MakeFileDataPacket(reqId)
+			dataPk.Data = ssOutput.Output
+			m.Sender.SendPacket(dataPk)
+		}
+	}
+	return nil, nil
 }
 
 func makeTemp(path string, mode fs.FileMode) (*os.File, error) {

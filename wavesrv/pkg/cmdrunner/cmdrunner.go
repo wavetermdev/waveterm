@@ -3706,7 +3706,10 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType) {
 		}
 		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
 	}()
-	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType)
+	dataFn := func(data []byte) {
+		writeStringToPty(ctx, cmd, string(data), &outputPos)
+	}
+	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType, dataFn)
 	if err != nil {
 		rtnErr = err
 		return
@@ -3721,7 +3724,7 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType) {
 		rtnErr = err
 		return
 	}
-	outputStr := fmt.Sprintf("reset remote state (shell:%s)\r\n", ssPk.State.GetShellType())
+	outputStr := fmt.Sprintf("\r\nreset remote state (shell:%s)\r\n", ssPk.State.GetShellType())
 	writeStringToPty(ctx, cmd, outputStr, &outputPos)
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))

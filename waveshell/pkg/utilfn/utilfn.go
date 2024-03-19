@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	mathrand "math/rand"
 	"regexp"
 	"sort"
 	"strings"
@@ -551,4 +552,19 @@ func StrArrayToMap(sarr []string) map[string]bool {
 		m[s] = true
 	}
 	return m
+}
+
+func AppendNonZeroRandomBytes(b []byte, randLen int) []byte {
+	if randLen <= 0 {
+		return b
+	}
+	numAdded := 0
+	for numAdded < randLen {
+		rn := mathrand.Intn(256)
+		if rn > 0 && rn < 256 { // exclude 0, also helps to suppress security warning to have a guard here
+			b = append(b, byte(rn))
+			numAdded++
+		}
+	}
+	return b
 }

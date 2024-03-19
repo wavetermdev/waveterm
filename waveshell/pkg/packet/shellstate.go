@@ -19,6 +19,15 @@ import (
 const ShellStatePackVersion = 0
 const ShellStateDiffPackVersion = 0
 
+type ShellStateStats struct {
+	Version    string `json:"version"`
+	AliasCount int    `json:"aliascount"`
+	EnvCount   int    `json:"envcount"`
+	VarCount   int    `json:"varcount"`
+	FuncCount  int    `json:"funccount"`
+	HashVal    string `json:"hashval"`
+}
+
 type ShellState struct {
 	Version   string `json:"version"` // [type] [semver]
 	Cwd       string `json:"cwd,omitempty"`

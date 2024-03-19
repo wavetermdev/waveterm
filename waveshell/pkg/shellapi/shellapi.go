@@ -28,7 +28,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
-const GetStateTimeout = 5 * time.Second
+const GetStateTimeout = 15 * time.Second
 const GetGitBranchCmdStr = `printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`
 const GetK8sContextCmdStr = `printf "K8SCONTEXT %s\x00" "$(kubectl config current-context 2>/dev/null)"`
 const GetK8sNamespaceCmdStr = `printf "K8SNAMESPACE %s\x00" "$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)"`
@@ -56,23 +56,24 @@ const (
 )
 
 type ShellStateOutput struct {
-	Status       string
-	StderrOutput []byte
-	ShellState   *packet.ShellState
-	Error        string
+	Status     string
+	Output     []byte
+	ShellState *packet.ShellState
+	Stats      *packet.ShellStateStats
+	Error      string
 }
 
 type ShellApi interface {
 	GetShellType() string
-	MakeExitTrap(fdNum int) string
+	MakeExitTrap(fdNum int) (string, []byte)
 	GetLocalMajorVersion() string
 	GetLocalShellPath() string
 	GetRemoteShellPath() string
 	MakeRunCommand(cmdStr string, opts RunCommandOpts) string
 	MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd
-	GetShellState() chan ShellStateOutput
+	GetShellState(chan ShellStateOutput)
 	GetBaseShellOpts() string
-	ParseShellStateOutput(output []byte) (*packet.ShellState, error)
+	ParseShellStateOutput(output []byte) (*packet.ShellState, *packet.ShellStateStats, error)
 	MakeRcFileStr(pk *packet.RunPacketType) string
 	MakeShellStateDiff(oldState *packet.ShellState, oldStateHash string, newState *packet.ShellState) (*packet.ShellStateDiff, error)
 	ApplyShellStateDiff(oldState *packet.ShellState, diff *packet.ShellStateDiff) (*packet.ShellState, error)
@@ -153,12 +154,13 @@ func internalMacUserShell() string {
 const FirstExtraFilesFdNum = 3
 
 // returns output(stdout+stderr), extraFdOutput, error
-func RunCommandWithExtraFd(ecmd *exec.Cmd, extraFdNum int) ([]byte, []byte, error) {
+func StreamCommandWithExtraFd(ecmd *exec.Cmd, outputCh chan []byte, extraFdNum int, endBytes []byte) ([]byte, error) {
+	defer close(outputCh)
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
-		return nil, nil, fmt.Errorf("opening new pty: %w", err)
+		return nil, fmt.Errorf("opening new pty: %w", err)
 	}
 	defer cmdTty.Close()
 	defer cmdPty.Close()
@@ -171,42 +173,73 @@ func RunCommandWithExtraFd(ecmd *exec.Cmd, extraFdNum int) ([]byte, []byte, erro
 	ecmd.SysProcAttr.Setctty = true
 	pipeReader, pipeWriter, err := os.Pipe()
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not create pipe: %w", err)
+		return nil, fmt.Errorf("could not create pipe: %w", err)
 	}
 	defer pipeWriter.Close()
 	defer pipeReader.Close()
 	extraFiles := make([]*os.File, extraFdNum+1)
 	extraFiles[extraFdNum] = pipeWriter
 	ecmd.ExtraFiles = extraFiles[FirstExtraFilesFdNum:]
-	defer pipeReader.Close()
-	ecmd.Start()
+	err = ecmd.Start()
 	cmdTty.Close()
 	pipeWriter.Close()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	var outputWg sync.WaitGroup
-	var outputBuf bytes.Buffer
 	var extraFdOutputBuf bytes.Buffer
 	outputWg.Add(2)
 	go func() {
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer outputWg.Done()
-		io.Copy(&outputBuf, cmdPty)
+		buf := make([]byte, 4096)
+		for {
+			n, err := cmdPty.Read(buf)
+			if n > 0 {
+				chBuf := make([]byte, n)
+				copy(chBuf, buf[:n])
+				outputCh <- chBuf
+			}
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				errStr := fmt.Sprintf("\r\nerror reading from pty: %v\r\n", err)
+				outputCh <- []byte(errStr)
+				break
+			}
+		}
 	}()
 	go func() {
 		defer outputWg.Done()
-		io.Copy(&extraFdOutputBuf, pipeReader)
+		buf := make([]byte, 4096)
+		for {
+			n, err := pipeReader.Read(buf)
+			if n > 0 {
+				extraFdOutputBuf.Write(buf[:n])
+				obytes := extraFdOutputBuf.Bytes()
+				if bytes.HasSuffix(obytes, endBytes) {
+					extraFdOutputBuf.Truncate(len(obytes) - len(endBytes))
+					break
+				}
+			}
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				break
+			}
+		}
 	}()
 	exitErr := ecmd.Wait()
 	if exitErr != nil {
-		return nil, nil, exitErr
+		return nil, exitErr
 	}
 	outputWg.Wait()
-	return outputBuf.Bytes(), extraFdOutputBuf.Bytes(), nil
+	return extraFdOutputBuf.Bytes(), nil
 }
 
-func RunSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
+func RunSimpleCmdInPty(ecmd *exec.Cmd, endBytes []byte) ([]byte, error) {
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
 	cmdPty, cmdTty, err := pty.Open()
@@ -231,8 +264,25 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	var outputBuf bytes.Buffer
 	go func() {
 		// ignore error (/dev/ptmx has read error when process is done)
-		io.Copy(&outputBuf, cmdPty)
-		close(ioDone)
+		defer close(ioDone)
+		buf := make([]byte, 4096)
+		for {
+			n, err := cmdPty.Read(buf)
+			if n > 0 {
+				outputBuf.Write(buf[:n])
+				obytes := outputBuf.Bytes()
+				if bytes.HasSuffix(obytes, endBytes) {
+					outputBuf.Truncate(len(obytes) - len(endBytes))
+					break
+				}
+			}
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				break
+			}
+		}
 	}()
 	exitErr := ecmd.Wait()
 	if exitErr != nil {

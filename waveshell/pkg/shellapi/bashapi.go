@@ -16,6 +16,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 )
 
 const BaseBashOpts = `set +m; set +H; shopt -s extglob`
@@ -48,7 +49,7 @@ func (b bashShellApi) GetShellType() string {
 	return packet.ShellType_bash
 }
 
-func (b bashShellApi) MakeExitTrap(fdNum int) string {
+func (b bashShellApi) MakeExitTrap(fdNum int) (string, []byte) {
 	return MakeBashExitTrap(fdNum)
 }
 
@@ -79,29 +80,28 @@ func (b bashShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty
 	return MakeBashShExecCommand(cmdStr, rcFileName, usePty)
 }
 
-func (b bashShellApi) GetShellState() chan ShellStateOutput {
-	ch := make(chan ShellStateOutput, 1)
+func (b bashShellApi) GetShellState(ch chan ShellStateOutput) {
 	defer close(ch)
-	ssPk, err := GetBashShellState()
+	ssPk, stats, err := GetBashShellState()
 	if err != nil {
 		ch <- ShellStateOutput{
 			Status: ShellStateOutputStatus_Done,
 			Error:  err.Error(),
 		}
-		return ch
+		return
 	}
 	ch <- ShellStateOutput{
 		Status:     ShellStateOutputStatus_Done,
 		ShellState: ssPk,
+		Stats:      stats,
 	}
-	return ch
 }
 
 func (b bashShellApi) GetBaseShellOpts() string {
 	return BaseBashOpts
 }
 
-func (b bashShellApi) ParseShellStateOutput(output []byte) (*packet.ShellState, error) {
+func (b bashShellApi) ParseShellStateOutput(output []byte) (*packet.ShellState, *packet.ShellStateStats, error) {
 	return parseBashShellStateOutput(output)
 }
 
@@ -130,8 +130,12 @@ func (b bashShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	return rcBuf.String()
 }
 
-func GetBashShellStateCmd() string {
-	return strings.Join(GetBashShellStateCmds, ` printf "\x00\x00";`)
+func GetBashShellStateCmd() (string, []byte) {
+	rtn := strings.Join(GetBashShellStateCmds, ` printf "\x00\x00";`)
+	endBytes := utilfn.AppendNonZeroRandomBytes([]byte{'\n'}, 8)
+	endBytes = append(endBytes, '\n')
+	rtn += fmt.Sprintf("\nprintf \"%s\";", utilfn.ShellHexEscape(string(endBytes)))
+	return rtn, endBytes
 }
 
 func execGetLocalBashShellVersion() string {
@@ -158,14 +162,15 @@ func GetLocalBashMajorVersion() string {
 	return localBashMajorVersion
 }
 
-func GetBashShellState() (*packet.ShellState, error) {
+func GetBashShellState() (*packet.ShellState, *packet.ShellStateStats, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
-	cmdStr := BaseBashOpts + "; " + GetBashShellStateCmd()
+	stateCmd, endBytes := GetBashShellStateCmd()
+	cmdStr := BaseBashOpts + "; " + stateCmd
 	ecmd := exec.CommandContext(ctx, GetLocalBashPath(), "-l", "-i", "-c", cmdStr)
-	outputBytes, err := RunSimpleCmdInPty(ecmd)
+	outputBytes, err := RunSimpleCmdInPty(ecmd, endBytes)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return parseBashShellStateOutput(outputBytes)
 }
@@ -190,19 +195,20 @@ func GetLocalZshPath() string {
 	return "zsh"
 }
 
-func GetBashShellStateRedirectCommandStr(outputFdNum int) string {
-	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", GetBashShellStateCmd(), outputFdNum)
+func GetBashShellStateRedirectCommandStr(outputFdNum int) (string, []byte) {
+	cmdStr, endBytes := GetBashShellStateCmd()
+	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", cmdStr, outputFdNum), endBytes
 }
 
-func MakeBashExitTrap(fdNum int) string {
-	stateCmd := GetBashShellStateRedirectCommandStr(fdNum)
+func MakeBashExitTrap(fdNum int) (string, []byte) {
+	stateCmd, endBytes := GetBashShellStateRedirectCommandStr(fdNum)
 	fmtStr := `
 _waveshell_exittrap () {
     %s
 }
 trap _waveshell_exittrap EXIT
 `
-	return fmt.Sprintf(fmtStr, stateCmd)
+	return fmt.Sprintf(fmtStr, stateCmd), endBytes
 }
 
 func MakeBashShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {

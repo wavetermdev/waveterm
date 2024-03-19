@@ -598,11 +598,12 @@ func MakeLogPacket(entry wlog.LogEntry) *LogPacketType {
 }
 
 type ShellStatePacketType struct {
-	Type      string      `json:"type"`
-	ShellType string      `json:"shelltype"`
-	RespId    string      `json:"respid,omitempty"`
-	State     *ShellState `json:"state"`
-	Error     string      `json:"error,omitempty"`
+	Type      string           `json:"type"`
+	ShellType string           `json:"shelltype"`
+	RespId    string           `json:"respid,omitempty"`
+	State     *ShellState      `json:"state"`
+	Stats     *ShellStateStats `json:"stats"`
+	Error     string           `json:"error,omitempty"`
 }
 
 func (*ShellStatePacketType) GetType() string {
