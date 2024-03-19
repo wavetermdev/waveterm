@@ -138,9 +138,9 @@ class AIChat extends React.Component<{}, {}> {
         let msgClassName = "chat-msg " + senderClassName;
         let innerHTML: React.JSX.Element = (
             <span>
-                <div style={{ display: "flex", marginBottom: 2 }}>
-                    <i className="fa-sharp fa-solid fa-user" style={{ marginRight: "7px", marginTop: "2px" }}></i>
-                    <div style={{ marginRight: "5px" }}>You</div>
+                <div className="chat-msg-header">
+                    <i className="fa-sharp fa-solid fa-user"></i>
+                    <div className="chat-username">You</div>
                 </div>
                 <p className="msg-text">{chatItem.userquery}</p>
             </span>
@@ -151,12 +151,9 @@ class AIChat extends React.Component<{}, {}> {
             } else {
                 innerHTML = (
                     <span>
-                        <div style={{ display: "flex", marginBottom: 2 }}>
-                            <i
-                                className="fa-sharp fa-solid fa-headset"
-                                style={{ marginRight: "7px", marginTop: "3px" }}
-                            ></i>
-                            <div style={{ marginRight: "5px" }}>ChatGPT</div>
+                        <div className="chat-msg-header">
+                            <i className="fa-sharp fa-solid fa-sparkles"></i>
+                            <div className="chat-username">AI Assistant</div>
                         </div>
                         <Markdown text={chatItem.assistantresponse.message} codeSelect />
                     </span>
@@ -198,6 +195,21 @@ class AIChat extends React.Component<{}, {}> {
 
         return (
             <div className="cmd-aichat">
+                <div className="cmdinput-titlebar">
+                    <div className="title-icon">
+                        <i className="fa-sharp fa-solid fa-sparkles" />
+                    </div>
+                    <div className="title-string">Wave AI</div>
+                    <div className="flex-spacer"></div>
+                    <div
+                        className="close-button"
+                        title="Close (ESC)"
+                        onClick={() => inputModel.closeAIAssistantChat(true)}
+                    >
+                        <i className="fa-sharp fa-solid fa-xmark-large" />
+                    </div>
+                </div>
+                <div className="titlebar-spacer" />
                 {this.renderChatWindow()}
                 <textarea
                     key="main"
@@ -208,7 +220,7 @@ class AIChat extends React.Component<{}, {}> {
                     onKeyDown={this.onKeyDown}
                     style={{ height: textAreaInnerHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
                     className={cn("chat-textarea")}
-                    placeholder="Send a Message to ChatGPT..."
+                    placeholder="Send a Message..."
                 ></textarea>
             </div>
         );

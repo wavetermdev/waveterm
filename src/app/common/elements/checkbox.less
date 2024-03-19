@@ -10,7 +10,7 @@
         position: relative;
         display: flex;
         align-items: center;
-        color: var(--checkbox-bg-color);
+        color: var(--form-element-primary-color);
         transition: color 250ms cubic-bezier(0.4, 0, 0.23, 1);
     }
     input[type="checkbox"] + label > span {
@@ -36,7 +36,7 @@
     }
 
     input[type="checkbox"]:checked + label > span {
-        border: 10px solid var(--button-primary-bg-color);
+        border: 10px solid var(--form-element-primary-color);
     }
     input[type="checkbox"]:checked + label > span:before {
         content: "";
@@ -45,8 +45,8 @@
         left: 3px;
         width: 7px;
         height: 12px;
-        border-right: 2px solid var(--checkbox-check-color);
-        border-bottom: 2px solid var(--checkbox-check-color);
+        border-right: 2px solid var(--form-element-text-color);
+        border-bottom: 2px solid var(--form-element-text-color);
         transform: rotate(45deg);
         transform-origin: 0% 100%;
         animation: checkbox-check 500ms cubic-bezier(0.4, 0, 0.23, 1);

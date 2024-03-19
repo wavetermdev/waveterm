@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -31,6 +32,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -51,6 +53,7 @@ const SigKillWaitTime = 2 * time.Second
 const RtnStateFdNum = 20
 const ReturnStateReadWaitTime = 2 * time.Second
 const ForceDebugRcFile = false
+const ForceDebugReturnState = false
 
 const ClientCommandFmt = `
 PATH=$PATH:~/.mshell;
@@ -366,14 +369,18 @@ func ValidateRunPacket(pk *packet.RunPacketType) error {
 			return fmt.Errorf("cannot detach command, constant rundata input too large len=%d, max=%d", totalRunData, mpio.MaxTotalRunDataSize)
 		}
 	}
-	if pk.State != nil && pk.State.Cwd != "" {
-		realCwd := base.ExpandHomeDir(pk.State.Cwd)
+	if pk.State != nil {
+		pkCwd := pk.State.Cwd
+		if pkCwd == "" {
+			pkCwd = "~"
+		}
+		realCwd := base.ExpandHomeDir(pkCwd)
 		dirInfo, err := os.Stat(realCwd)
 		if err != nil {
-			return fmt.Errorf("invalid cwd '%s' for command: %v", realCwd, err)
+			return base.CodedErrorf(packet.EC_InvalidCwd, "invalid cwd '%s' for command: %v", realCwd, err)
 		}
 		if !dirInfo.IsDir() {
-			return fmt.Errorf("invalid cwd '%s' for command, not a directory", realCwd)
+			return base.CodedErrorf(packet.EC_InvalidCwd, "invalid cwd '%s' for command, not a directory", realCwd)
 		}
 	}
 	for _, runData := range pk.RunData {
@@ -833,6 +840,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	}
 	shellVarMap := shellenv.ShellVarMapFromState(state)
 	if base.HasDebugFlag(shellVarMap, base.DebugFlag_LogRcFile) || ForceDebugRcFile {
+		wlog.Logf("debugrc file %q\n", base.GetDebugRcFileName())
 		debugRcFileName := base.GetDebugRcFileName()
 		err := os.WriteFile(debugRcFileName, []byte(rcFileStr), 0600)
 		if err != nil {
@@ -893,7 +901,9 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if sapi.GetShellType() == packet.ShellType_zsh {
 		shellutil.UpdateCmdEnv(cmd.Cmd, map[string]string{"ZDOTDIR": zdotdir})
 	}
-	if state.Cwd != "" {
+	if state.Cwd == "" {
+		cmd.Cmd.Dir = base.ExpandHomeDir("~")
+	} else if state.Cwd != "" {
 		cmd.Cmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
 	err = ValidateRemoteFds(pk.Fds)
@@ -1059,104 +1069,21 @@ func copyToCirFile(dest *cirfile.File, src io.Reader) error {
 	}
 }
 
-func (cmd *ShExecType) DetachedWait(startPacket *packet.CmdStartPacketType) {
-	// after Start(), any output/errors must go to DetachedOutput
-	// close stdin, redirect stdout/stderr to /dev/null, but wait for cmdstart packet to get sent
-	cmd.DetachedOutput.SendPacket(startPacket)
-	err := os.Stdin.Close()
-	if err != nil {
-		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot close stdin: %w", err))
+func GetCmdExitCode(cmd *exec.Cmd, err error) int {
+	if cmd == nil || cmd.ProcessState == nil {
+		return GetExitCode(err)
 	}
-	err = unix.Dup2(int(cmd.RunnerOutFd.Fd()), int(os.Stdout.Fd()))
-	if err != nil {
-		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to runout: %w", err))
+	status, ok := cmd.ProcessState.Sys().(syscall.WaitStatus)
+	if !ok {
+		return cmd.ProcessState.ExitCode()
 	}
-	err = unix.Dup2(int(cmd.RunnerOutFd.Fd()), int(os.Stderr.Fd()))
-	if err != nil {
-		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot dup2 stdin to runout: %w", err))
+	signaled := status.Signaled()
+	if signaled {
+		signal := status.Signal()
+		return 128 + int(signal)
 	}
-	ptyOutFile, err := cirfile.CreateCirFile(cmd.FileNames.PtyOutFile, cmd.MaxPtySize)
-	if err != nil {
-		cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("cannot open ptyout file '%s': %w", cmd.FileNames.PtyOutFile, err))
-		// don't return (command is already running)
-	}
-	ptyCopyDone := make(chan bool)
-	go func() {
-		// copy pty output to .ptyout file
-		defer close(ptyCopyDone)
-		defer ptyOutFile.Close()
-		copyErr := copyToCirFile(ptyOutFile, cmd.CmdPty)
-		if copyErr != nil {
-			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("copying pty output to ptyout file: %w", copyErr))
-		}
-	}()
-	go func() {
-		// copy .stdin fifo contents to pty input
-		copyFifoErr := MakeAndCopyStdinFifo(cmd.CmdPty, cmd.FileNames.StdinFifo)
-		if copyFifoErr != nil {
-			cmd.DetachedOutput.SendCmdError(cmd.CK, fmt.Errorf("reading from stdin fifo: %w", copyFifoErr))
-		}
-	}()
-	donePacket := cmd.WaitForCommand()
-	cmd.DetachedOutput.SendPacket(donePacket)
-	<-ptyCopyDone
-	cmd.Close()
-}
-
-func RunCommandDetached(pk *packet.RunPacketType, sender *packet.PacketSender) (*ShExecType, *packet.CmdStartPacketType, error) {
-	sapi, err := shellapi.MakeShellApi(pk.ShellType)
-	if err != nil {
-		return nil, nil, err
-	}
-	fileNames, err := base.GetCommandFileNames(pk.CK)
-	if err != nil {
-		return nil, nil, err
-	}
-	runOutInfo, err := os.Stat(fileNames.RunnerOutFile)
-	if err == nil { // non-nil error will be caught by regular OpenFile below
-		// must have size 0
-		if runOutInfo.Size() != 0 {
-			return nil, nil, fmt.Errorf("cmdkey '%s' was already used (runout len=%d)", pk.CK, runOutInfo.Size())
-		}
-	}
-	cmdPty, cmdTty, err := pty.Open()
-	if err != nil {
-		return nil, nil, fmt.Errorf("opening new pty: %w", err)
-	}
-	pty.Setsize(cmdPty, GetWinsize(pk))
-	defer func() {
-		cmdTty.Close()
-	}()
-	cmd := MakeShExec(pk.CK, nil, sapi)
-	cmd.FileNames = fileNames
-	cmd.CmdPty = cmdPty
-	cmd.Detached = true
-	cmd.MaxPtySize = DefaultMaxPtySize
-	if pk.TermOpts != nil && pk.TermOpts.MaxPtySize > 0 {
-		cmd.MaxPtySize = base.BoundInt64(pk.TermOpts.MaxPtySize, MinMaxPtySize, MaxMaxPtySize)
-	}
-	cmd.RunnerOutFd, err = os.OpenFile(fileNames.RunnerOutFile, os.O_TRUNC|os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot open runout file '%s': %w", fileNames.RunnerOutFile, err)
-	}
-	cmd.DetachedOutput = packet.MakePacketSender(cmd.RunnerOutFd, nil)
-	ecmd, err := MakeDetachedExecCmd(pk, cmdTty)
-	if err != nil {
-		return nil, nil, err
-	}
-	cmd.Cmd = ecmd
-	SetupSignalsForDetach()
-	err = ecmd.Start()
-	if err != nil {
-		return nil, nil, fmt.Errorf("starting command: %w", err)
-	}
-	for _, fd := range ecmd.ExtraFiles {
-		if fd != cmdTty {
-			fd.Close()
-		}
-	}
-	startPacket := cmd.MakeCmdStartPacket(pk.ReqId)
-	return cmd, startPacket, nil
+	exitStatus := status.ExitStatus()
+	return exitStatus
 }
 
 func GetExitCode(err error) int {
@@ -1172,7 +1099,6 @@ func GetExitCode(err error) int {
 
 func (c *ShExecType) ProcWait() error {
 	exitErr := c.Cmd.Wait()
-	base.Logf("procwait: %v\n", exitErr)
 	c.Lock.Lock()
 	c.Exited = true
 	c.Lock.Unlock()
@@ -1185,6 +1111,7 @@ func (c *ShExecType) IsExited() bool {
 	return c.Exited
 }
 
+// called in waveshell --single mode (returns the real cmddone packet)
 func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	donePacket := packet.MakeCmdDonePacket(c.CK)
 	exitErr := c.ProcWait()
@@ -1196,13 +1123,17 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 			c.ReturnState.Reader.Close()
 		}()
 		<-c.ReturnState.DoneCh
+		if ForceDebugReturnState {
+			wlog.Logf("debug returnstate file %q\n", base.GetDebugReturnStateFileName())
+			os.WriteFile(base.GetDebugReturnStateFileName(), c.ReturnState.Buf, 0666)
+		}
 		state, _ := c.SAPI.ParseShellStateOutput(c.ReturnState.Buf) // TODO what to do with error?
 		donePacket.FinalState = state
 	}
 	endTs := time.Now()
 	cmdDuration := endTs.Sub(c.StartTs)
 	donePacket.Ts = endTs.UnixMilli()
-	donePacket.ExitCode = GetExitCode(exitErr)
+	donePacket.ExitCode = GetCmdExitCode(c.Cmd, exitErr)
 	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 	if c.FileNames != nil {
 		os.Remove(c.FileNames.StdinFifo) // best effort (no need to check error)
@@ -1230,12 +1161,13 @@ func MakeShellStatePacket(shellType string) (*packet.ShellStatePacketType, error
 	if err != nil {
 		return nil, err
 	}
-	shellState, err := sapi.GetShellState()
-	if err != nil {
-		return nil, err
+	rtnCh := sapi.GetShellState()
+	ssOutput := <-rtnCh
+	if ssOutput.Error != "" {
+		return nil, errors.New(ssOutput.Error)
 	}
 	rtn := packet.MakeShellStatePacket()
-	rtn.State = shellState
+	rtn.State = ssOutput.ShellState
 	return rtn, nil
 }
 

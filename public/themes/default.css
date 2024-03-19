@@ -1,0 +1,187 @@
+/* Copyright 2024, Command Line Inc.
+   SPDX-License-Identifier: Apache-2.0 */
+
+@import url("./term-default.css");
+@import url("./term-dark.css");
+
+:root {
+    --fa-style-family: "Font Awesome 6 Sharp";
+
+    /* base fonts */
+    --base-font: normal 15px / normal "Lato", sans-serif;
+
+    --title-font-size: 18px;
+    --input-bg-color: #171717;
+    --input-placeholder-color: #777;
+
+    --fixed-font: "Martian Mono", sans-serif;
+    --terminal-font: "JetBrains Mono", sans-serif;
+    --text-s1-font: "Martian Mono", sans-serif;
+    --markdown-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji";
+
+    --markdown-font-size: 14px;
+
+    --screentabs-height: 38px; /* magic */
+    --screentabs-line-height: 21px; /* magic */
+    --screentabs-font-size: 15px;
+    --screentabs-font-weight: normal;
+    --screentabs-selected-font-weight: bold;
+    --screen-tab-width: 11.4em;
+
+    /* floating logo settings */
+    --floating-logo-width-darwin: 105px;
+    --floating-logo-width: 40px;
+    --floating-logo-height: var(--screentabs-height);
+
+    /* right sidebar triggers */
+    --floating-right-sidebar-triggers-width-darwin: 50px;
+    --floating-right-sidebar-triggers-width: 40px;
+
+    /* global colors */
+    --app-bg-color: black;
+    --app-accent-color: rgb(88, 193, 66);
+    --app-accent-bg-color: rgba(88, 193, 66, 0.25);
+    --app-text-color: rgb(211, 215, 207);
+    --app-text-primary-color: rgb(255, 255, 255);
+    --app-text-secondary-color: rgb(195, 200, 194);
+    --app-text-disabled-color: rgb(173, 173, 173);
+    --app-border-color: rgb(51, 51, 51);
+    --app-maincontent-bg-color: #333;
+    --app-panel-bg-color: rgba(21, 23, 21, 1);
+    --app-panel-bg-color-dev: rgb(21, 23, 48);
+    --app-icon-color: rgb(139, 145, 138);
+    --app-icon-hover-color: #fff;
+    --app-selected-mask-color: rgba(255, 255, 255, 0.06);
+    --app-error-color: rgb(229, 77, 46);
+    --app-warning-color: rgb(224, 185, 86);
+    --app-success-color: rgb(78, 154, 6);
+    --app-idle-color: var(--app-text-secondary-color);
+
+    /* just for macos */
+    --app-border-radius-darwin: 10px;
+
+    /* scrollbar colors */
+    --scrollbar-background-color: var(--app-bg-color);
+    --scrollbar-thumb-color: rgba(255, 255, 255, 0.3);
+    --scrollbar-thumb-hover-color: rgba(255, 255, 255, 0.5);
+
+    /* code color */
+    --pre-bg-color: rgb(0, 0, 0);
+
+    /* tab colors */
+    --tab-red: rgb(229, 77, 46);
+    --tab-orange: rgb(239, 113, 59);
+    --tab-yellow: rgb(224, 185, 86);
+    --tab-green: rgb(88, 193, 66);
+    --tab-mint: rgb(75, 255, 169);
+    --tab-cyan: rgb(75, 223, 255);
+    --tab-blue: rgb(57, 113, 255);
+    --tab-violet: rgb(186, 118, 255);
+    --tab-pink: rgb(224, 86, 119);
+    --tab-white: rgb(255, 255, 255);
+
+    --form-element-border-color: rgba(241, 246, 243, 0.15);
+    --form-element-bg-color: var(--app-bg-color);
+    --form-element-text-color: var(--app-text-primary-color);
+    --form-element-label-color: var(--app-text-secondary-color);
+    --form-element-primary-color: var(--app-accent-color);
+    --form-element-secondary-color: rgba(255, 255, 255, 0.2);
+    --form-element-error-color: var(--app-error-color);
+    --form-element-icon-color: var(--app-icon-hover-color);
+
+    /* toggle colors */
+    --toggle-bg-color: var(--app-border-color);
+    --toggle-thumb-color: var(--app-text-color);
+    --toggle-checked-bg-color: var(--app-accent-color);
+
+    /* cmdstrcode colors */
+    --cmdstrcode-text-color: var(--app-text-color);
+
+    /* markdown colors */
+    --markdown-bg-color: rgb(35, 35, 35);
+    --markdown-outline-color: var(--form-element-primary-color);
+
+    /* term status colors */
+    --term-error-color: var(--app-error-color);
+    --term-warning-color: var(--app-warning-color);
+
+    /* hotkey colors */
+    --hotkey-text-color: var(--app-text-secondary-color);
+
+    /* sidebar colors */
+    --sidebar-highlight-color: rgba(241, 246, 243, 0.08);
+    --sidebar-font-size: 15px;
+    --sidebar-line-height: 1.5;
+    --sidebar-font-weight: normal;
+    --sidebar-highlight-font-weight: bold;
+
+    /* line colors */
+    --line-sidebar-message-color: rgb(196, 160, 0);
+    --line-background: rgba(21, 23, 21, 1);
+    --line-avatar-color: #eceeec;
+    --line-text-color: rgb(211, 215, 207);
+    --line-svg-fill-color: rgb(150, 152, 150);
+    --line-svg-hover-fill-color: #eceeec;
+    --line-separator-color: rgb(126, 126, 126);
+    --line-error-color: var(--app-error-color);
+    --line-warning-color: var(--app-warning-color);
+    --line-base-soft-blue-color: #729fcf;
+    --line-active-border-color: var(--app-accent-color);
+    --line-selected-bg-color: rgba(255, 255, 255, 0.05);
+    --line-selected-border-left-color: #777777;
+    --line-selected-error-border-color: rgba(204, 0, 0, 0.8);
+    --line-selected-error-bg-color: rgb(19, 4, 3);
+    --line-error-bg-color: rgba(200, 0, 0, 0.1);
+    --line-error-border-left-color: rgba(204, 0, 0, 0.8);
+    --line-simple-text-color: rgba(236, 238, 236, 0.6);
+    --line-meta-user-color: rgba(140, 184, 232);
+    --line-svg-color: rgba(236, 238, 236, 0.6);
+    --line-svg-hover-color: rgba(236, 238, 236, 1);
+    --line-status-success-fill: var(--app-success-color);
+    --line-status-error-fill: var(--app-error-color);
+    --line-status-warning-fill: var(--app-warning-color);
+    --line-actions-inactive-color: rgba(255, 255, 255, 0.5);
+    --line-actions-active-color: rgba(255, 255, 255, 1);
+    --line-actions-bg-color: rgba(255, 255, 255, 0.15);
+
+    /* table colors */
+    --table-border-color: rgba(241, 246, 243, 0.15);
+    --table-thead-border-top-color: rgba(250, 250, 250, 0.1);
+    --table-thead-bright-border-color: #ccc;
+    --table-thead-bg-color: rgba(250, 250, 250, 0.02);
+    --table-tr-border-bottom-color: rgba(241, 246, 243, 0.15);
+    --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
+    --table-tr-selected-bg-color: #222;
+    --table-tr-selected-hover-bg-color: #333;
+
+    /* cmdinput colors */
+    --cmdinput-textarea-bg-color: #171717;
+    --cmdinput-text-error-color: var(--term-red);
+    --cmdinput-history-item-error-color: var(--term-bright-red);
+    --cmdinput-history-item-selected-error-color: var(--term-bright-red);
+    --cmdinput-button-bg-color: rgb(88, 193, 66);
+    --cmdinput-comment-button-bg-color: rgb(57, 113, 255);
+    --cmdinput-disabled-icon-color: rgb(76, 81, 75, 1);
+    --cmdinput-history-bg-color: rgb(21, 23, 21, 1);
+
+    /* screen view color */
+    --screen-view-text-caption-color: rgb(139, 145, 138);
+
+    /* plugins colors */
+    --code-gutter-bg-color: rgba(88, 193, 66, 0.4);
+
+    /* modals colors */
+    --modal-bg-color: var(--app-bg-color);
+    --modal-header-bottom-border-color: rgba(241, 246, 243, 0.15);
+
+    --logo-button-hover-bg-color: var(--app-accent-bg-color);
+
+    --xterm-viewport-border-color: rgba(241, 246, 243, 0.15);
+
+    --datepicker-cell-hover-bg-color: rgba(255, 255, 255, 0.06);
+    --datepicker-cell-other-text-color: rgba(255, 255, 255, 0.3);
+    --datepicker-header-fade-color: rgba(255, 255, 255, 0.4);
+    --datepicker-year-header-bg-color: rgba(255, 255, 255, 0.2); /* Light grey background */
+    --datepicker-year-header-border-color: rgba(241, 246, 243, 0.15); /* Light grey border */
+}

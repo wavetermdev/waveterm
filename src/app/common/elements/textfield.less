@@ -3,20 +3,18 @@
     align-items: center;
     border-radius: 6px;
     position: relative;
-    height: 44px;
+    min-height: 44px;
     min-width: 412px;
     gap: 6px;
-    border: 1px solid rgba(241, 246, 243, 0.15);
-    background: rgba(255, 255, 255, 0.06);
-    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-        0px 0px 0.5px 0px rgba(255, 255, 255, 0.5) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.2) inset;
+    border: 2px solid var(--form-element-border-color);
+    background: var(--form-element-bg-color);
 
     &:hover {
         cursor: text;
     }
 
     &.focused {
-        border-color: var(--textfield-focused-border-color);
+        border-color: var(--form-element-primary-color);
     }
 
     &.disabled {
@@ -24,23 +22,22 @@
     }
 
     &.error {
-        border-color: var(--textfield-error-border-color);
+        border-color: var(--form-element-error-color);
     }
 
     &-inner {
         display: flex;
-        align-items: flex-end;
-        height: 100%;
+        flex-direction: column;
         position: relative;
         flex-grow: 1;
+        --inner-padding: 5px 0 5px 16px;
 
         &-label {
-            position: absolute;
-            left: 16px;
-            top: 16px;
+            padding: var(--inner-padding);
+            margin-bottom: -10px;
             font-size: 12.5px;
             transition: all 0.3s;
-            color: var(--textfield-label-color);
+            color: var(--form-element-label-color);
             line-height: 10px;
 
             &.float {
@@ -57,15 +54,19 @@
             width: 100%;
             height: 30px;
             border: none;
-            padding: 5px 0 5px 16px;
+            padding: var(--inner-padding);
             font-size: 16px;
             outline: none;
             background-color: transparent;
-            color: var(--textfield-text-color);
+            color: var(--form-element-text-color);
             line-height: 20px;
 
             &.offset-left {
                 padding: 5px 16px 5px 0;
+            }
+
+            input::placeholder {
+                color: var(--form-element-placeholder-color);
             }
         }
     }

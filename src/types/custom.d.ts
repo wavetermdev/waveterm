@@ -419,6 +419,7 @@ declare global {
         infomsghtml?: boolean;
         websharelink?: boolean;
         infoerror?: string;
+        infoerrorcode?: string;
         infolines?: string[];
         infocomps?: string[];
         infocompsmore?: boolean;
@@ -562,6 +563,7 @@ declare global {
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
+        theme: string;
     };
 
     type ConfirmFlagsType = {
@@ -574,6 +576,10 @@ declare global {
         acceptedtos: number;
         confirmflags: ConfirmFlagsType;
         mainsidebar: {
+            collapsed: boolean;
+            width: number;
+        };
+        rightsidebar: {
             collapsed: boolean;
             width: number;
         };
@@ -664,6 +670,8 @@ declare global {
         title: string;
         markdown: boolean;
         timeoutms: number;
+        checkboxmsg: string;
+        publictext: boolean;
     };
 
     type UserInputResponsePacket = {
@@ -672,6 +680,7 @@ declare global {
         text?: string;
         confirm?: boolean;
         errormsg?: string;
+        checkboxstat?: boolean;
     };
 
     type RenderModeType = "normal" | "collapsed" | "expanded";
@@ -856,6 +865,22 @@ declare global {
         getContainerType(): LineContainerStrs;
     };
 
+    // the "environment" for computing a line's height (stays constant for a given term font family / size)
+    type LineHeightEnv = {
+        fontSize: number;
+        fontSizeSm: number;
+        lineHeight: number;
+        lineHeightSm: number;
+        pad: number;
+    };
+
+    // the "variables" for computing a line's height (changes per line)
+    type LineChromeHeightVars = {
+        numCmdLines: number;
+        zeroHeight: boolean;
+        hasLine2: boolean;
+    };
+
     type MonoFontSize = {
         height: number;
         width: number;
@@ -871,6 +896,8 @@ declare global {
     };
 
     type ElectronApi = {
+        hideWindow: () => void;
+        toggleDeveloperTools: () => void;
         getId: () => string;
         getIsDev: () => boolean;
         getPlatform: () => string;
@@ -886,10 +913,7 @@ declare global {
         getAppUpdateStatus: () => AppUpdateStatusType;
         onAppUpdateStatus: (callback: (status: AppUpdateStatusType) => void) => void;
         onTCmd: (callback: (mods: KeyModsType) => void) => void;
-        onICmd: (callback: (mods: KeyModsType) => void) => void;
         onLCmd: (callback: (mods: KeyModsType) => void) => void;
-        onHCmd: (callback: (mods: KeyModsType) => void) => void;
-        onPCmd: (callback: (mods: KeyModsType) => void) => void;
         onRCmd: (callback: (mods: KeyModsType) => void) => void;
         onWCmd: (callback: (mods: KeyModsType) => void) => void;
         onZoomChanged: (callback: () => void) => void;
@@ -907,6 +931,7 @@ declare global {
         pathRelative: (fromPath: string, toPath: string) => string;
         pathJoin: (basePath: string, newPath: string) => string;
         pathDirName: (filePath: string) => string;
+        onToggleDevUI: (callback: () => void) => void;
     };
 }
 

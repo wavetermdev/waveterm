@@ -6,6 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
+import { Button } from "@/elements";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip } from "@/elements";
 import * as util from "@/util/util";
 
@@ -90,7 +91,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
         }
         return (
             <Modal className="session-settings-modal">
-                <Modal.Header onClose={this.closeModal} title={`workspace settings (${this.session.name.get()})`} />
+                <Modal.Header onClose={this.closeModal} title={`Workspace Settings (${this.session.name.get()})`} />
                 <div className="wave-modal-body">
                     <div className="settings-field">
                         <div className="settings-label">Name</div>
@@ -111,7 +112,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                             <Tooltip
                                 className="session-settings-tooltip"
                                 message="Archive will hide the workspace from the active menu. Commands and output will be
-                                retained in history."
+                                retained, but hidden."
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                             >
                                 {<i className="fa-sharp fa-regular fa-circle-question" />}
@@ -126,19 +127,16 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                             <div>Actions</div>
                             <Tooltip
                                 className="session-settings-tooltip"
-                                message="Delete will remove the workspace, removing all commands and output from history."
+                                message="Delete will remove the workspace, deleting all commands and output."
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                             >
                                 {<i className="fa-sharp fa-regular fa-circle-question" />}
                             </Tooltip>
                         </div>
                         <div className="settings-input">
-                            <div
-                                onClick={this.handleDeleteSession}
-                                className="button is-prompt-danger is-outlined is-small"
-                            >
+                            <Button onClick={this.handleDeleteSession} className="secondary small danger">
                                 Delete Workspace
-                            </div>
+                            </Button>
                         </div>
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />

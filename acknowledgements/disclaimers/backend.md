@@ -179,11 +179,11 @@ THE SOFTWARE.
 
 -----
 
-## github.com/google/go-github/v59/github
+## github.com/google/go-github/v60/github
 
-* Name: github.com/google/go-github/v59/github
-* Version: v59.0.0
-* License: [BSD-3-Clause](https://github.com/google/go-github/blob/v59.0.0/LICENSE)
+* Name: github.com/google/go-github/v60/github
+* Version: v60.0.0
+* License: [BSD-3-Clause](https://github.com/google/go-github/blob/v60.0.0/LICENSE)
 
 ```txt
 Copyright (c) 2013 The go-github AUTHORS. All rights reserved.
@@ -1138,8 +1138,8 @@ Exhibit B - “Incompatible With Secondary Licenses” Notice
 ## github.com/kevinburke/ssh_config
 
 * Name: github.com/kevinburke/ssh_config
-* Version: v0.0.0-20240109090616-36c8da3d7376
-* License: [MIT](https://github.com/wavetermdev/ssh_config/blob/36c8da3d7376/LICENSE)
+* Version: v0.0.0-20240306041034-17e2087ebde2
+* License: [MIT](https://github.com/wavetermdev/ssh_config/blob/17e2087ebde2/LICENSE)
 
 ```txt
 Copyright (c) 2017 Kevin Burke.

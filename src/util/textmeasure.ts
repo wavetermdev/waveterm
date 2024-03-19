@@ -71,9 +71,8 @@ function windowWidthToCols(width: number, fontSize: number): number {
     return cols;
 }
 
-function windowHeightToRows(height: number, fontSize: number): number {
-    let dr = getMonoFontSize(fontSize);
-    let rows = Math.floor((height - MagicLayout.ScreenMaxContentHeightBuffer) / dr.height) - 1;
+function windowHeightToRows(lhe: LineHeightEnv, height: number): number {
+    let rows = Math.floor((height - calcMaxLineChromeHeight(lhe)) / lhe.lineHeight) - 1;
     if (rows <= 0) {
         rows = 1;
     }
@@ -99,6 +98,28 @@ function termHeightFromRows(rows: number, fontSize: number, totalRows: number): 
     return Math.ceil(realHeight * rows);
 }
 
+function calcLineChromeHeight(lhe: LineHeightEnv, lhv: LineChromeHeightVars): number {
+    const topPadding = lhe.pad * 2;
+    const botPadding = lhe.pad * 2 + 1;
+    const headerLine1 = lhe.lineHeightSm;
+    const headerLine2 = lhv.hasLine2 ? lhe.lineHeight * Math.min(lhv.numCmdLines, 3) + 2 : 0;
+    const contentSpacer = lhv.zeroHeight ? 0 : lhe.pad + 2;
+    return topPadding + botPadding + headerLine1 + headerLine2 + contentSpacer;
+}
+
+function calcMaxLineChromeHeight(lhe: LineHeightEnv): number {
+    return calcLineChromeHeight(lhe, { numCmdLines: 3, hasLine2: true, zeroHeight: false });
+}
+
+function baseCmdInputHeight(lhe: LineHeightEnv): number {
+    const topPadding = lhe.pad * 2;
+    const botPadding = lhe.pad * 2;
+    const border = 2;
+    const cmdInputContext = lhe.lineHeight;
+    const textArea = lhe.lineHeight + lhe.pad * 2 + lhe.pad * 2; // lineHeight + innerPad + outerPad
+    return topPadding + botPadding + border + cmdInputContext + textArea;
+}
+
 export {
     measureText,
     getMonoFontSize,
@@ -108,4 +129,7 @@ export {
     termHeightFromRows,
     clearMonoFontCache,
     MonoFontSizes,
+    calcLineChromeHeight,
+    calcMaxLineChromeHeight,
+    baseCmdInputHeight,
 };

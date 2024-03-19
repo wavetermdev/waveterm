@@ -39,8 +39,8 @@ type TermWrapOpts = {
 function getThemeFromCSSVars(): ITheme {
     let theme: ITheme = {};
     let rootStyle = getComputedStyle(document.documentElement);
-    theme.foreground = rootStyle.getPropertyValue("--term-white");
-    theme.background = rootStyle.getPropertyValue("--term-black");
+    theme.foreground = rootStyle.getPropertyValue("--term-foreground");
+    theme.background = rootStyle.getPropertyValue("--term-background");
     theme.black = rootStyle.getPropertyValue("--term-black");
     theme.red = rootStyle.getPropertyValue("--term-red");
     theme.green = rootStyle.getPropertyValue("--term-green");
@@ -57,6 +57,10 @@ function getThemeFromCSSVars(): ITheme {
     theme.brightMagenta = rootStyle.getPropertyValue("--term-bright-magenta");
     theme.brightCyan = rootStyle.getPropertyValue("--term-bright-cyan");
     theme.brightWhite = rootStyle.getPropertyValue("--term-bright-white");
+    theme.selectionBackground = rootStyle.getPropertyValue("--term-selection-background");
+    theme.selectionInactiveBackground = rootStyle.getPropertyValue("--term-selection-background");
+    theme.cursor = rootStyle.getPropertyValue("--term-selection-background");
+    theme.cursorAccent = rootStyle.getPropertyValue("--term-cursor-accent");
     return theme;
 }
 
@@ -116,6 +120,9 @@ class TermWrap {
             cols: this.termSize.cols,
             fontSize: opts.fontSize,
             fontFamily: opts.fontFamily,
+            drawBoldTextInBrightColors: false,
+            fontWeight: "normal",
+            fontWeightBold: "bold",
             theme: theme,
         });
         this.terminal.loadAddon(
@@ -305,7 +312,7 @@ class TermWrap {
 
     resizeWindow(size: WindowSize): void {
         let cols = windowWidthToCols(size.width, this.fontSize);
-        let rows = windowHeightToRows(size.height, this.fontSize);
+        let rows = windowHeightToRows(GlobalModel.lineHeightEnv, size.height);
         this.resize({ rows, cols });
     }
 

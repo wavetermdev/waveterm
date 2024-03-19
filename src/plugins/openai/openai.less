@@ -1,4 +1,8 @@
 .openai-renderer {
+    font-family: var(--termfontfamily);
+    font-size: var(--termfontsize);
+    line-height: var(--termlineheight);
+
     .openai-message {
         display: flex;
         flex-direction: row;
@@ -7,9 +11,9 @@
 
         .openai-role {
             color: var(--term-bright-green);
-            font-weight: bold;
             width: 100px;
             flex-shrink: 0;
+            font: var(--base-font);
         }
 
         .openai-role.openai-role-assistant {
@@ -19,11 +23,12 @@
         .openai-content-user {
             color: var(--app-text-color);
             font-family: var(--markdown-font);
-            font-size: var(--markdown-font-size);
             font-weight: normal;
+            font-size: var(--markdown-font-size);
         }
 
         .openai-content-assistant {
+            font-family: var(--markdown-font);
             color: var(--app-text-color);
         }
 

@@ -23,6 +23,7 @@ import { ReactComponent as Check12Icon } from "@/assets/icons/check12.svg";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
+import * as textmeasure from "@/util/textmeasure";
 
 import "./screenview.less";
 import "./tabs.less";
@@ -264,7 +265,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
             width: sidebarElem.offsetWidth,
             height:
                 sidebarElem.offsetHeight -
-                MagicLayout.ScreenMaxContentHeightBuffer -
+                textmeasure.calcMaxLineChromeHeight(GlobalModel.lineHeightEnv) -
                 MagicLayout.ScreenSidebarHeaderHeight,
         };
         mobx.action(() => this.sidebarSize.set(size))();
@@ -324,7 +325,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
                             <br />
                         </div>
                         <div onClick={this.sidebarClose} className="close-button-container">
-                            <Button theme="secondary" onClick={this.sidebarClose}>
+                            <Button className="secondary" onClick={this.sidebarClose}>
                                 Close Sidebar
                             </Button>
                         </div>
@@ -400,10 +401,9 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             .filter((r) => !r.archived)
             .map((remote) => ({
                 ...remote,
-                label:
-                    remote.remotealias && !util.isBlank(remote.remotealias)
-                        ? `${remote.remotecanonicalname}`
-                        : remote.remotecanonicalname,
+                label: !util.isBlank(remote.remotealias)
+                    ? `${remote.remotealias} - ${remote.remotecanonicalname}`
+                    : remote.remotecanonicalname,
                 value: remote.remotecanonicalname,
             }))
             .sort((a, b) => {
@@ -423,10 +423,10 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
             curIcon = "square";
         }
         let icon: string | null = null;
-
+        let curColor = screen.getTabColor();
         return (
             <>
-                <div className="text-s1 unselectable">Select the icon</div>
+                <div className="bold unselectable">Tab Icon:</div>
                 <div className="control-iconlist tabicon-list">
                     <For each="icon" of={appconst.TabIcons}>
                         <div
@@ -435,7 +435,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                             title={icon || ""}
                             onClick={() => this.selectTabIcon(icon || "")}
                         >
-                            <TabIcon icon={icon} color="white" />
+                            <TabIcon icon={icon} color={curColor} />
                         </div>
                     </For>
                 </div>
@@ -453,7 +453,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 
         return (
             <>
-                <div className="text-s1 unselectable">Select the color</div>
+                <div className="bold unselectable">Tab Color:</div>
                 <div className="control-iconlist">
                     <For each="color" of={appconst.TabColors}>
                         <div
@@ -490,13 +490,12 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 </div>
                 <div className="newtab-spacer" />
                 <div className="newtab-section conn-section">
-                    <div className="text-s1 unselectable">
+                    <div className="unselectable">
                         You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?
                     </div>
                     <div>
                         <Dropdown
                             className="conn-dropdown"
-                            label={curRemote.remotealias}
                             options={this.getOptions()}
                             defaultValue={curRemote.remotecanonicalname}
                             onChange={this.selectRemote}
@@ -695,20 +694,6 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         let renderMode = this.renderMode.get();
         return (
             <div className="window-view" ref={this.windowViewRef} style={{ width: this.props.width }}>
-                <div
-                    key="rendermode-tag"
-                    className={cn("rendermode-tag", { "is-active": isActive })}
-                    style={{ display: "none" }}
-                >
-                    <div className="render-mode" onClick={this.toggleRenderMode}>
-                        <If condition={renderMode == "normal"}>
-                            <i title="collapse" className="fa-sharp fa-solid fa-arrows-to-line" />
-                        </If>
-                        <If condition={renderMode == "collapsed"}>
-                            <i title="expand" className="fa-sharp fa-solid fa-arrows-from-line" />
-                        </If>
-                    </div>
-                </div>
                 <If condition={lines.length == 0}>
                     <If condition={screen.nextLineNum.get() == 1}>
                         <NewTabSettings screen={screen} />
@@ -719,39 +704,12 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                             <div key="window-empty" className={cn("window-empty")}>
                                 <div>
                                     <code className="text-standard">
-                                        [workspace="{session.name.get()}" screen="{screen.name.get()}"]
+                                        [workspace="{session.name.get()}" tab="{screen.name.get()}"]
                                     </code>
                                 </div>
                             </div>
                         </div>
                     </If>
-                </If>
-                <If condition={screen.isWebShared()}>
-                    <div key="share-tag" className="share-tag">
-                        <If condition={this.shareCopied.get()}>
-                            <div className="copied-indicator" />
-                        </If>
-                        <div className="share-tag-title">
-                            <i title="archived" className="fa-sharp fa-solid fa-share-nodes" /> web shared
-                        </div>
-                        <div className="share-tag-link">
-                            <div className="button is-wave-green is-outlined is-small" onClick={this.copyShareLink}>
-                                <span>copy link</span>
-                                <span className="icon">
-                                    <i className="fa-sharp fa-solid fa-copy" />
-                                </span>
-                            </div>
-                            <div
-                                className="button is-wave-green is-outlined is-small"
-                                onClick={this.openScreenSettings}
-                            >
-                                <span>open settings</span>
-                                <span className="icon">
-                                    <i className="fa-sharp fa-solid fa-cog" />
-                                </span>
-                            </div>
-                        </div>
-                    </div>
                 </If>
                 <If condition={lines.length > 0}>
                     <LinesView
@@ -764,15 +722,11 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                 </If>
                 <If condition={screen.filterRunning.get()}>
                     <div className="filter-running">
-                        <Button
-                            variant="outlined"
-                            color="color-yellow"
-                            style={{ borderRadius: "999px" }}
-                            onClick={this.disableFilter}
-                        >
+                        <div className="filter-mask" />
+                        <div className="filter-content" onClick={this.disableFilter}>
                             Showing Running Commands &nbsp;
-                            <i className="fa-sharp fa-solid fa-xmark" />
-                        </Button>
+                            <i className="fa-sharp fa-solid fa-xmark-large" />
+                        </div>
                     </div>
                 </If>
             </div>

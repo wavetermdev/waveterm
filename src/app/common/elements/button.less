@@ -1,69 +1,78 @@
 .wave-button {
     background: none;
-    color: inherit;
     border: none;
-    font: inherit;
     cursor: pointer;
     outline: inherit;
-
     display: flex;
     padding: 6px 16px;
     align-items: center;
     gap: 4px;
     border-radius: 6px;
     height: auto;
+    line-height: 1.5;
+    display: block;
+    white-space: nowrap;
+
+    color: var(--form-element-text-color);
+    background: var(--form-element-primary-color);
+    i {
+        fill: var(--form-element-text-color);
+    }
 
     &.primary {
+        color: var(--form-element-text-color);
+        background: var(--form-element-primary-color);
+        i {
+            fill: var(--form-element-text-color);
+        }
+    }
+
+    &.primary.outlined {
         background: none;
+        border: 1px solid var(--form-element-primary-color);
 
         i {
-            fill: var(--button-primary-bg-color);
+            fill: var(--form-element-primary-color);
         }
+    }
 
-        &.solid {
-            color: var(--button-text-color);
-            background: var(--button-primary-bg-color);
-            box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.4), 0px 0px 0.5px 0px rgba(0, 0, 0, 0.5),
-                0px 0px 0.5px 0px rgba(255, 255, 255, 0.8) inset, 0px 0.5px 0px 0px rgba(255, 255, 255, 0.6) inset;
-
-            i {
-                fill: var(--app-text-color);
-            }
-        }
-
-        &.outlined {
-            border: 1px solid var(--button-primary-bg-color);
-        }
-
-        &.ghost {
-            // Styles for .ghost are already defined above
-        }
-
-        &:hover {
-            color: var(--button-text-color);
+    &.primary.ghost {
+        background: none;
+        i {
+            fill: var(--form-element-primary-color);
         }
     }
 
     &.secondary {
-        color: var(--app-text-color);
+        color: var(--form-element-text-color);
+        background: var(--form-element-secondary-color);
+        i {
+            fill: var(--form-element-text-color);
+        }
+    }
+
+    &.secondary.outlined {
         background: none;
+        border: 1px solid var(--form-element-text-color);
+    }
 
-        &.solid {
-            background: var(--button-secondary-bg-color);
-            box-shadow: none;
-        }
+    &.secondary.ghost {
+        background: none;
+    }
 
-        &.outlined {
-            border: 1px solid var(--button-secondary-bg-color);
-        }
+    &.secondary.danger {
+        color: var(--app-text-disabled-color);
+    }
 
-        &.ghost {
-            padding: 6px 10px;
+    &.small {
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 3.6px;
+    }
 
-            i {
-                fill: var(--button-primary-bg-color);
-            }
-        }
+    &.term-inline {
+        padding: 2px 8px;
+        border-radius: 3px;
     }
 
     &.disabled {

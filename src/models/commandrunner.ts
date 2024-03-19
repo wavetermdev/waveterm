@@ -304,6 +304,10 @@ class CommandRunner {
         GlobalModel.clientSettingsViewModel.showClientSettingsView();
     }
 
+    syncShellState() {
+        GlobalModel.submitCommand("sync", null, null, { nohist: "1" }, false);
+    }
+
     historyView(params: HistorySearchParams) {
         let kwargs = { nohist: "1" };
         kwargs["offset"] = String(params.offset);
@@ -361,6 +365,14 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
+    setTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            theme: theme,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
+    }
+
     setClientOpenAISettings(opts: { model?: string; apitoken?: string; maxtokens?: string }): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
@@ -387,9 +399,14 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
-    clientSetSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
+    clientSetMainSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
         let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
-        return GlobalModel.submitCommand("client", "setsidebar", null, kwargs, false);
+        return GlobalModel.submitCommand("client", "setmainsidebar", null, kwargs, false);
+    }
+
+    clientSetRightSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
+        return GlobalModel.submitCommand("client", "setrightsidebar", null, kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

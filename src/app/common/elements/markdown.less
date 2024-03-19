@@ -8,19 +8,6 @@
         margin-bottom: 10px;
     }
 
-    code {
-        background-color: var(--markdown-bg-color);
-        color: var(--app-text-color);
-        font-family: var(--termfontfamily);
-        border-radius: 4px;
-    }
-
-    code.inline {
-        padding-top: 0;
-        padding-bottom: 0;
-        font-family: var(--termfontfamily);
-    }
-
     .title {
         color: var(--app-text-color);
         margin-top: 16px;
@@ -62,29 +49,55 @@
     pre {
         background-color: var(--markdown-bg-color);
         margin: 4px 10px 4px 10px;
-        padding: 6px 6px 6px 10px;
+        padding: 0.7em;
         border-radius: 4px;
+
+        code {
+            background-color: transparent;
+            padding: 0;
+            line-height: normal;
+        }
     }
 
     pre.selected {
         outline: 2px solid var(--markdown-outline-color);
     }
 
+    code {
+        color: var(--app-text-color);
+        font-family: var(--termfontfamily);
+        border-radius: 4px;
+        background-color: var(--markdown-bg-color);
+        padding: 0.15em 0.5em;
+        line-height: 1.5;
+    }
+
+    .title {
+        font-weight: semibold;
+        padding-top: 6px;
+    }
+
     .title.is-1 {
         border-bottom: 1px solid #777;
         padding-bottom: 6px;
+        font-size: 2em;
     }
     .title.is-2 {
         border-bottom: 1px solid #777;
         padding-bottom: 6px;
+        font-size: 1.5em;
     }
     .title.is-3 {
+        font-size: 1.25em;
     }
     .title.is-4 {
+        font-size: 1em;
     }
     .title.is-5 {
+        font-size: 0.875em;
     }
     .title.is-6 {
+        font-size: 0.85em;
     }
 }
 

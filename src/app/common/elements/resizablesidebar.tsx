@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner } from "@/models";
+import { GlobalCommandRunner, SidebarModel } from "@/models";
 import { MagicLayout } from "@/app/magiclayout";
 
 import "./resizablesidebar.less";
@@ -14,6 +14,7 @@ import "./resizablesidebar.less";
 interface ResizableSidebarProps {
     parentRef: React.RefObject<HTMLElement>;
     position: "left" | "right";
+    model: SidebarModel;
     enableSnap?: boolean;
     className?: string;
     children?: (toggleCollapsed: () => void) => React.ReactNode;
@@ -32,7 +33,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     startResizing(event: React.MouseEvent<HTMLDivElement>) {
         event.preventDefault();
 
-        const { parentRef, position } = this.props;
+        const { parentRef, position, model } = this.props;
         const parentRect = parentRef.current?.getBoundingClientRect();
 
         if (!parentRect) return;
@@ -43,17 +44,16 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
             this.startX = event.clientX - parentRect.left;
         }
 
-        const mainSidebarModel = GlobalModel.mainSidebarModel;
-        const collapsed = mainSidebarModel.getCollapsed();
+        const collapsed = model.getCollapsed();
 
-        this.resizeStartWidth = mainSidebarModel.getWidth();
+        this.resizeStartWidth = model.getWidth();
         document.addEventListener("mousemove", this.onMouseMove);
         document.addEventListener("mouseup", this.stopResizing);
 
         document.body.style.cursor = "col-resize";
         mobx.action(() => {
-            mainSidebarModel.setTempWidthAndTempCollapsed(this.resizeStartWidth, collapsed);
-            mainSidebarModel.isDragging.set(true);
+            model.setTempWidthAndTempCollapsed(this.resizeStartWidth, collapsed);
+            model.isDragging.set(true);
         })();
     }
 
@@ -61,11 +61,10 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
     onMouseMove(event: MouseEvent) {
         event.preventDefault();
 
-        const { parentRef, enableSnap, position } = this.props;
+        const { parentRef, enableSnap, position, model } = this.props;
         const parentRect = parentRef.current?.getBoundingClientRect();
-        const mainSidebarModel = GlobalModel.mainSidebarModel;
 
-        if (!mainSidebarModel.isDragging.get() || !parentRect) return;
+        if (!model.isDragging.get() || !parentRect) return;
 
         let delta: number, newWidth: number;
 
@@ -100,34 +99,27 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
             if (newWidth - dragResistance > minWidth && newWidth < snapPoint && dragDirection == "+") {
                 newWidth = snapPoint;
-                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, false);
+                model.setTempWidthAndTempCollapsed(newWidth, false);
             } else if (newWidth + dragResistance < snapPoint && dragDirection == "-") {
                 newWidth = minWidth;
-                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, true);
+                model.setTempWidthAndTempCollapsed(newWidth, true);
             } else if (newWidth > snapPoint) {
-                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, false);
+                model.setTempWidthAndTempCollapsed(newWidth, false);
             }
         } else {
             if (newWidth <= MagicLayout.MainSidebarMinWidth) {
-                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, true);
+                model.setTempWidthAndTempCollapsed(newWidth, true);
             } else {
-                mainSidebarModel.setTempWidthAndTempCollapsed(newWidth, false);
+                model.setTempWidthAndTempCollapsed(newWidth, false);
             }
         }
     }
 
     @boundMethod
     stopResizing() {
-        let mainSidebarModel = GlobalModel.mainSidebarModel;
+        const { model } = this.props;
 
-        GlobalCommandRunner.clientSetSidebar(
-            mainSidebarModel.tempWidth.get(),
-            mainSidebarModel.tempCollapsed.get()
-        ).finally(() => {
-            mobx.action(() => {
-                mainSidebarModel.isDragging.set(false);
-            })();
-        });
+        model.saveState(model.tempWidth.get(), model.tempCollapsed.get());
 
         document.removeEventListener("mousemove", this.onMouseMove);
         document.removeEventListener("mouseup", this.stopResizing);
@@ -136,22 +128,21 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
 
     @boundMethod
     toggleCollapsed() {
-        const mainSidebarModel = GlobalModel.mainSidebarModel;
+        const { model } = this.props;
 
-        const tempCollapsed = mainSidebarModel.getCollapsed();
-        const width = mainSidebarModel.getWidth(true);
-        mainSidebarModel.setTempWidthAndTempCollapsed(width, !tempCollapsed);
-        GlobalCommandRunner.clientSetSidebar(width, !tempCollapsed);
+        const tempCollapsed = model.getCollapsed();
+        const width = model.getWidth(true);
+        model.setTempWidthAndTempCollapsed(width, !tempCollapsed);
+        model.saveState(width, !tempCollapsed);
     }
 
     render() {
-        const { className, children } = this.props;
-        const mainSidebarModel = GlobalModel.mainSidebarModel;
-        const width = mainSidebarModel.getWidth();
-        const isCollapsed = mainSidebarModel.getCollapsed();
+        const { className, children, model } = this.props;
+        const width = model.getWidth();
+        const isCollapsed = model.getCollapsed();
 
         return (
-            <div className={cn("sidebar", className, { collapsed: isCollapsed })} style={{ width }}>
+            <div className={cn("sidebar", className, { collapsed: isCollapsed })} style={{ width, minWidth: width }}>
                 <div className="sidebar-content">{children(this.toggleCollapsed)}</div>
                 <div
                     className="sidebar-handle"

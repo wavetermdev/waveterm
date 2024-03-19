@@ -8,12 +8,10 @@
     line-height: 20px;
     backdrop-filter: blur(4px);
     z-index: 20;
-    border-radius: var(--app-border-radius) 0 0 var(--app-border-radius);
-    border-left: 1px solid var(--app-border-color);
-    border-bottom: 1px solid var(--app-border-color);
     font-size: var(--sidebar-font-size);
-    font-family: var(--label-font-family);
+    font-family: var(--base-font-family);
     font-weight: var(--sidebar-font-weight);
+    border-right: 1px solid var(--app-border-color);
 
     .title-bar-drag {
         -webkit-app-region: drag;
@@ -24,7 +22,8 @@
         align-items: center;
 
         .logo {
-            margin-left: 45px;
+            margin-left: auto;
+            margin-right: auto;
             margin-top: 4px;
             svg {
                 width: 88px;
@@ -54,7 +53,7 @@
     .separator {
         height: 1px;
         margin: 16px 0;
-        background-color: var(--sidebar-separator-color);
+        background-color: var(--app-border-color);
     }
 
     .item.workspaces-item {
@@ -63,7 +62,8 @@
 
     .middle {
         padding: 4px 6px 8px 6px;
-        border-bottom: 1px solid var(--sidebar-separator-color);
+        border-bottom: 1px solid var(--app-border-color);
+        overflow-y: auto;
         .item {
             &.active {
                 background-color: var(--sidebar-highlight-color);

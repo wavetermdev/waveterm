@@ -63,16 +63,20 @@ const (
 const (
 	LineState_Source   = "prompt:source"
 	LineState_File     = "prompt:file"
+	LineState_FileUrl  = "wave:fileurl"
 	LineState_Min      = "wave:min"
 	LineState_Template = "template"
 	LineState_Mode     = "mode"
 	LineState_Lang     = "lang"
+	LineState_Minimap  = "minimap"
 )
 
 const (
-	MainViewSession   = "session"
-	MainViewBookmarks = "bookmarks"
-	MainViewHistory   = "history"
+	MainViewSession     = "session"
+	MainViewBookmarks   = "bookmarks"
+	MainViewHistory     = "history"
+	MainViewConnections = "connections"
+	MainViewSettings    = "clientsettings"
 )
 
 const (
@@ -290,6 +294,7 @@ type ClientOptsType struct {
 	AcceptedTos           int64             `json:"acceptedtos,omitempty"`
 	ConfirmFlags          map[string]bool   `json:"confirmflags,omitempty"`
 	MainSidebar           *SidebarValueType `json:"mainsidebar,omitempty"`
+	RightSidebar          *SidebarValueType `json:"rightsidebar,omitempty"`
 	GlobalShortcut        string            `json:"globalshortcut,omitempty"`
 	GlobalShortcutEnabled bool              `json:"globalshortcutenabled,omitempty"`
 }
@@ -297,6 +302,7 @@ type ClientOptsType struct {
 type FeOptsType struct {
 	TermFontSize   int    `json:"termfontsize,omitempty"`
 	TermFontFamily string `json:"termfontfamily,omitempty"`
+	Theme          string `json:"theme,omitempty"`
 }
 
 type ReleaseInfoType struct {

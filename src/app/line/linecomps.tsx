@@ -25,13 +25,44 @@ import * as lineutil from "./lineutil";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as appconst from "@/app/appconst";
 import * as util from "@/util/util";
+import * as textmeasure from "@/util/textmeasure";
 
 import "./line.less";
+import { CenteredIcon, RotateIcon } from "../common/icons/icons";
+
+const DebugHeightProblems = false;
+const MinLine = 0;
+const MaxLine = 1000;
+let heightLog = {};
+(window as any).heightLog = heightLog;
+(window as any).findHeightProblems = function () {
+    for (let linenum in heightLog) {
+        let lh = heightLog[linenum];
+        if (lh.heightArr == null || lh.heightArr.length < 2) {
+            continue;
+        }
+        let firstHeight = lh.heightArr[0];
+        for (let i = 1; i < lh.heightArr.length; i++) {
+            if (lh.heightArr[i] != firstHeight) {
+                console.log("line", linenum, "heights", lh.heightArr);
+                break;
+            }
+        }
+    }
+};
 
 dayjs.extend(localizedFormat);
 
-function cmdHasError(cmd: Cmd): boolean {
-    return cmd.getStatus() == "error" || cmd.getExitCode() != 0;
+function cmdShouldMarkError(cmd: Cmd): boolean {
+    if (cmd.getStatus() == "error") {
+        return true;
+    }
+    let exitCode = cmd.getExitCode();
+    // 0, SIGINT, or SIGPIPE
+    if (exitCode == 0 || exitCode == 130 || exitCode == 141) {
+        return false;
+    }
+    return true;
 }
 
 function getIsHidePrompt(line: LineType): boolean {
@@ -126,21 +157,21 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
         const containerType = screen.getContainerType();
         return (
             <div className="line-actions">
-                <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
-                    <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
-                </div>
-                <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
-                    <i className="fa-sharp fa-regular fa-trash fa-fw" />
-                </div>
-                <div
-                    key="bookmark"
-                    title="Bookmark"
-                    className={cn("line-icon", "line-bookmark")}
-                    onClick={this.clickBookmark}
-                >
-                    <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
-                </div>
                 <If condition={containerType == appconst.LineContainer_Main}>
+                    <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
+                        <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
+                    </div>
+                    <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
+                        <i className="fa-sharp fa-regular fa-trash fa-fw" />
+                    </div>
+                    <div
+                        key="bookmark"
+                        title="Bookmark"
+                        className={cn("line-icon", "line-bookmark")}
+                        onClick={this.clickBookmark}
+                    >
+                        <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
+                    </div>
                     <div
                         key="minimize"
                         title={`${isMinimized ? "Show Output" : "Hide Output"}`}
@@ -167,6 +198,20 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
                     </div>
                 </If>
                 <If condition={containerType == appconst.LineContainer_Sidebar}>
+                    <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
+                        <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
+                    </div>
+                    <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
+                        <i className="fa-sharp fa-regular fa-trash fa-fw" />
+                    </div>
+                    <div
+                        key="bookmark"
+                        title="Bookmark"
+                        className={cn("line-icon", "line-bookmark")}
+                        onClick={this.clickBookmark}
+                    >
+                        <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
+                    </div>
                     <div
                         className="line-icon line-sidebar"
                         onClick={this.clickRemoveFromSidebar}
@@ -281,21 +326,19 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
             icon = <i className="fail fa-sharp fa-solid fa-xmark" />;
             iconTitle = "error";
         } else if (status == "running" || status == "detached") {
-            icon = <i className="warning fa-sharp fa-solid fa-rotate fa-spin" />;
+            icon = <RotateIcon className="warning spin rotate" />;
             iconTitle = "running";
         } else {
             icon = <i className="fail fa-sharp fa-solid fa-question" />;
             iconTitle = "unknown";
         }
         return (
-            <div
-                onContextMenu={this.props.onRightClick}
-                title={iconTitle}
-                className={cn("simple-line-status", "status-" + status)}
-            >
-                <span className="linenum">{lineNumStr}</span>
-                <div className="avatar">{icon}</div>
-            </div>
+            <>
+                <div className="linenum">{lineNumStr}</div>
+                <div title={iconTitle} className={cn("status-icon", "status-" + status)}>
+                    {icon}
+                </div>
+            </>
         );
     }
 }
@@ -445,6 +488,12 @@ class LineCmd extends React.Component<
         if (elem != null) {
             curHeight = elem.offsetHeight;
         }
+        let linenum = line.linenum;
+        if (DebugHeightProblems && linenum >= MinLine && linenum <= MaxLine) {
+            heightLog[linenum] = heightLog[linenum] || {};
+            heightLog[linenum].heightArr = heightLog[linenum].heightArr || [];
+            heightLog[linenum].heightArr.push(curHeight);
+        }
         if (this.lastHeight == curHeight) {
             return;
         }
@@ -472,12 +521,11 @@ class LineCmd extends React.Component<
 
     getTerminalRendererHeight(cmd: Cmd): number {
         const { screen, line, width } = this.props;
-        let height = 45 + 24; // height of zero height terminal
         const usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-        if (usedRows > 0) {
-            height = 48 + 24 + termHeightFromRows(usedRows, GlobalModel.getTermFontSize(), cmd.getTermMaxRows());
+        if (usedRows == 0) {
+            return 0;
         }
-        return height;
+        return termHeightFromRows(usedRows, GlobalModel.getTermFontSize(), cmd.getTermMaxRows());
     }
 
     @boundMethod
@@ -498,18 +546,18 @@ class LineCmd extends React.Component<
     renderSimple() {
         const { screen, line } = this.props;
         const cmd = screen.getCmd(line);
-        let height: number = 0;
+        let contentHeight: number = 0;
         if (isBlank(line.renderer) || line.renderer == "terminal") {
-            height = this.getTerminalRendererHeight(cmd);
+            contentHeight = this.getTerminalRendererHeight(cmd);
         } else {
-            // header is 16px tall with hide-prompt, 36px otherwise
             const { screen, line, width } = this.props;
-            const hidePrompt = getIsHidePrompt(line);
-            const usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
-            height = (hidePrompt ? 16 + 6 : 36 + 6) + usedRows;
+            contentHeight = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         }
-        const formattedTime = lineutil.getLineDateTimeStr(line.ts);
-        const mainDivCn = cn("line", "line-cmd", "line-simple");
+        const mainDivCn = cn("line", "line-cmd");
+        if (DebugHeightProblems && line.linenum >= MinLine && line.linenum <= MaxLine) {
+            heightLog[line.linenum] = heightLog[line.linenum] || {};
+            heightLog[line.linenum].contentHeight = contentHeight;
+        }
         return (
             <div
                 className={mainDivCn}
@@ -517,12 +565,12 @@ class LineCmd extends React.Component<
                 data-lineid={line.lineid}
                 data-linenum={line.linenum}
                 data-screenid={line.screenid}
-                style={{ height: height }}
             >
-                <div className="simple-line-header">
-                    <SmallLineAvatar line={line} cmd={cmd} />
-                    <div className="ts">{formattedTime}</div>
-                </div>
+                <LineHeader screen={screen} line={line} cmd={cmd} />
+                <div
+                    className={cn("line-content", { "zero-height": contentHeight == 0 })}
+                    style={{ height: contentHeight }}
+                />
             </div>
         );
     }
@@ -661,7 +709,7 @@ class LineCmd extends React.Component<
             )
             .get();
         const isRunning = cmd.isRunning();
-        const cmdError = cmdHasError(cmd);
+        const cmdError = cmdShouldMarkError(cmd);
         const mainDivCn = cn(
             "line",
             "line-cmd",
@@ -681,6 +729,12 @@ class LineCmd extends React.Component<
         const termFontSize = GlobalModel.getTermFontSize();
         const containerType = screen.getContainerType();
         const isMinimized = line.linestate["wave:min"] && containerType == appconst.LineContainer_Main;
+        const lhv: LineChromeHeightVars = {
+            numCmdLines: lineutil.countCmdLines(cmd.getCmdStr()),
+            zeroHeight: isMinimized,
+            hasLine2: !hidePrompt,
+        };
+        const chromeHeight = textmeasure.calcLineChromeHeight(GlobalModel.lineHeightEnv, lhv);
         return (
             <div
                 className={mainDivCn}

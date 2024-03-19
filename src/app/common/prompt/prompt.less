@@ -12,56 +12,42 @@
     }
 }
 
-.term-prompt.term-prompt-color {
+.is-dark .term-prompt.term-prompt-color {
     .term-prompt-branch {
         color: var(--term-white);
     }
 
-    .term-prompt-python {
-        color: var(--term-bright-magenta);
-    }
-
     .term-prompt-remote {
         color: var(--term-bright-green);
-
-        &.color-green {
-            color: var(--term-bright-green);
-        }
-
-        &.color-red {
-            color: var(--term-bright-red);
-        }
-
-        &.color-blue {
-            color: var(--term-bright-blue);
-        }
-
-        &.color-yellow {
-            color: var(--term-bright-yellow);
-        }
-
-        &.color-magenta {
-            color: var(--term-bright-magenta);
-        }
-
-        &.color-cyan {
-            color: var(--termt-bright-cyan);
-        }
-
-        &.color-white {
-            color: var(--term-bright-white);
-        }
-
-        &.color-orange {
-            color: var(--term-orange);
-        }
     }
 
     .term-prompt-cwd {
         color: var(--term-bright-green);
     }
-
     &.term-prompt-isroot .term-prompt-cwd {
-        color: var(--term-bright-red);
+        color: var(--term-red);
+    }
+}
+
+.is-light .term-prompt.term-prompt-color {
+    .term-prompt-branch {
+        color: var(--term-black);
+    }
+
+    .term-prompt-remote {
+        color: var(--term-green);
+    }
+
+    .term-prompt-cwd {
+        color: var(--term-green);
+    }
+    &.term-prompt-isroot .term-prompt-cwd {
+        color: var(--term-red);
+    }
+}
+
+.term-prompt.term-prompt-color {
+    .term-prompt-python {
+        color: var(--term-magenta);
     }
 }

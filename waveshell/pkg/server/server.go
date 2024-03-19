@@ -152,7 +152,7 @@ func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 	cproc := m.ClientMap[ck]
 	m.Lock.Unlock()
 	if cproc == nil {
-		m.Sender.SendCmdError(ck, fmt.Errorf("no client proc for ck '%s', pk=%s", ck, packet.AsString(pk)))
+		wlog.Logf("no client proc for ck %q, pk=%s", ck, packet.AsString(pk))
 		return
 	}
 	cproc.Input.SendPacket(pk)

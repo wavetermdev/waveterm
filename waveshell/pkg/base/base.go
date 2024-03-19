@@ -30,14 +30,15 @@ const SSHCommandVarName = "SSH_COMMAND"
 const MShellDebugVarName = "MSHELL_DEBUG"
 const SessionsDirBaseName = "sessions"
 const RcFilesDirBaseName = "rcfiles"
-const MShellVersion = "v0.4.0"
+const MShellVersion = "v0.5.0"
 const RemoteIdFile = "remoteid"
 const DefaultMShellInstallBinDir = "/opt/mshell/bin"
 const LogFileName = "mshell.log"
 const ForceDebugLog = false
 
 const DebugFlag_LogRcFile = "logrc"
-const LogRcFileName = "debug.rcfile"
+const DebugRcFileName = "debug.rcfile"
+const DebugReturnStateFileName = "debug.returnstate"
 
 const (
 	ProcessType_Unknown         = "unknown"
@@ -175,7 +176,12 @@ func HasDebugFlag(envMap map[string]string, flagName string) bool {
 
 func GetDebugRcFileName() string {
 	msHome := GetMShellHomeDir()
-	return path.Join(msHome, LogRcFileName)
+	return path.Join(msHome, DebugRcFileName)
+}
+
+func GetDebugReturnStateFileName() string {
+	msHome := GetMShellHomeDir()
+	return path.Join(msHome, DebugReturnStateFileName)
 }
 
 func GetHomeDir() string {

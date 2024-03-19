@@ -11,6 +11,8 @@ class TabIcon extends React.Component<{ icon: string; color: string }> {
         let iconClass = "";
         if (icon === "default" || icon === "square") {
             iconClass = "fa-solid fa-square fa-fw";
+        } else if (icon === "cloud") {
+            iconClass = "fa-solid fa-cloud fa-fw";
         } else {
             iconClass = `fa-sharp fa-solid fa-${icon} fa-fw`;
         }
@@ -18,7 +20,7 @@ class TabIcon extends React.Component<{ icon: string; color: string }> {
             color = "green";
         }
         return (
-            <div className={cn("icon", "color-" + color)}>
+            <div className={cn("tabicon", "color-" + color)}>
                 <i className={iconClass} />
             </div>
         );

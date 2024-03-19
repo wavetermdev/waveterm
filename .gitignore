@@ -20,3 +20,5 @@ temp.sql
 .idea/
 test/
 .vscode/
+make/
+waveterm-builds.zip

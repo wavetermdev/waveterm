@@ -1,3 +1,5 @@
+@import "@/common/icons/icons.less";
+
 .cmd-input {
     max-height: max(300px, 40%);
     display: flex;
@@ -7,10 +9,107 @@
     width: 100%;
     padding: calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 3 - 1px);
     z-index: 100;
-    border-top: 1px solid var(--app-border-color);
+    border-top: 2px solid var(--app-border-color);
     background-color: var(--app-bg-color);
 
-    &.active {
+    &.has-info,
+    &.has-aichat,
+    &.has-history {
+        .cmdinput-actions {
+            display: none;
+        }
+    }
+
+    .titlebar-spacer {
+        height: 31px;
+    }
+
+    .cmdinput-actions {
+        position: absolute;
+        border-radius: 4px;
+        padding-left: 4px;
+        padding-right: 4px;
+        font-size: calc(var(--termfontsize) + 2px);
+        line-height: 1.2;
+
+        // we want to align to 2nd line of meta.  that's 2xPad + 1xLineHightSm
+        // height of actions is 1xLineHeight + 8px (2x2px padding on icons)
+        top: calc(var(--termpad));
+        right: calc(var(--termpad) * 2);
+
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+
+        .cmdinput-icon {
+            display: inline-flex;
+            color: var(--app-icon-hover-color);
+            opacity: 0.5;
+
+            .centered-icon {
+                .positional-icon-visible;
+            }
+
+            &.running-cmds {
+                .rotate {
+                    fill: var(--app-warning-color);
+                }
+            }
+
+            &.active {
+                opacity: 1;
+            }
+
+            &:hover {
+                opacity: 1;
+            }
+
+            padding: 4px 6px;
+            cursor: pointer;
+        }
+
+        .line-icon + .line-icon:not(.line-icon-shrink-left) {
+            margin-left: 3px;
+        }
+    }
+
+    .cmdinput-titlebar {
+        position: absolute;
+        z-index: 22;
+        top: 0;
+        left: 0;
+        background-color: var(--app-panel-bg-color);
+        color: var(--term-blue);
+        padding: 6px 10px 6px 10px;
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--app-border-color);
+        font: var(--base-font);
+
+        .title-icon {
+            margin-right: 10px;
+        }
+
+        .title-string {
+            font-weight: bold;
+        }
+
+        .close-button {
+            cursor: pointer;
+            i {
+                color: var(--app-icon-color);
+
+                &:hover {
+                    color: var(--app-icon-hover-color);
+                }
+            }
+        }
+
+        .spacer {
+            flex: 0 0 10px;
+        }
     }
 
     &.has-info {
@@ -23,26 +122,23 @@
         left: 4px;
     }
 
-    &.has-history {
+    &.has-history,
+    &.has-aichat {
         padding-top: var(--termpad);
-        height: max(300px, 40%);
+        height: max(300px, 70%);
     }
 
     &.has-remote {
         max-height: max(300px, 70%);
     }
 
-    &.has-aichat {
-        max-height: max(300px, 70%);
-    }
-
     .remote-status-warning {
         display: flex;
         flex-direction: row;
-        color: var(--cmdinput-warning-color);
+        color: var(--app-warning-color);
         align-items: center;
 
-        .button {
+        .wave-button {
             margin-left: 10px;
         }
     }
@@ -51,7 +147,7 @@
         position: absolute;
         top: 5px;
         right: 5px;
-        color: var(--app-text-color);
+        color: var(--term-foreground);
 
         padding: 5px;
         cursor: pointer;
@@ -66,11 +162,14 @@
     }
 
     .cmd-input-context {
-        color: #fff;
+        color: var(--term-bright-white);
         white-space: nowrap;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
     }
 
     .cmd-input-filter {
@@ -85,11 +184,11 @@
             height: 1em;
             margin: 0 0.5em;
             vertical-align: text-top;
-            fill: var(--app-text-color);
+            fill: var(--term-foreground);
         }
 
         .warning {
-            fill: var(--cmdinput-warning-color);
+            fill: var(--term-yellow);
         }
     }
 
@@ -150,7 +249,6 @@
             }
 
             &:focus {
-                box-shadow: none;
                 border: none;
             }
         }
@@ -243,15 +341,28 @@
             border-radius: 4px;
 
             &:focus {
-                box-shadow: none;
                 border: none;
                 outline: none;
             }
         }
 
         .chat-msg {
-            margin-top: 5px;
-            margin-bottom: 5px;
+            margin-top: calc(var(--termpad) * 2);
+            margin-bottom: calc(var(--termpad) * 2);
+
+            .chat-msg-header {
+                display: flex;
+                margin-bottom: 2px;
+
+                i {
+                    margin-right: 0.5em;
+                }
+
+                .chat-username {
+                    font-weight: bold;
+                    margin-right: 5px;
+                }
+            }
         }
 
         .chat-msg-assistant {
@@ -285,19 +396,6 @@
         flex-shrink: 1;
 
         .history-title {
-            position: absolute;
-            z-index: 102;
-            top: 5px;
-            left: 0;
-            background-color: var(--app-bg-color);
-            color: var(--cmdinput-title-color);
-            padding-bottom: 4px;
-            display: flex;
-            flex-direction: row;
-            width: 100%;
-            overflow-x: auto;
-            border-bottom: 1px solid var(--app-border-color);
-
             div:first-child {
                 margin-left: var(--termpad);
             }
@@ -307,21 +405,20 @@
             }
 
             .history-clickable-opt {
+                cursor: pointer;
+
+                &:hover {
+                    color: var(--app-text-primary-color);
+                }
+            }
+
+            .history-clickable-opt {
                 white-space: nowrap;
                 cursor: pointer;
-            }
-
-            .grow-spacer {
-                flex: 1 0 10px;
-            }
-
-            .spacer {
-                flex: 0 0 10px;
             }
         }
 
         .history-items {
-            margin-top: 24px;
             color: var(--app-text-color);
 
             padding-bottom: 6px;
@@ -363,14 +460,18 @@
         flex-shrink: 1;
         overflow-y: auto;
         margin-bottom: var(--termpad);
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
 
         .info-title {
             position: absolute;
             z-index: 102;
             top: 5px;
             left: 0;
+            font-size: calc(var(--termfontsize) + 2px);
             background-color: var(--app-bg-color);
-            color: var(--cmdinput-title-color);
+            color: var(--term-blue);
             padding-bottom: 4px;
             padding-left: calc(var(--termpad) * 2);
             display: flex;
@@ -384,11 +485,11 @@
         .info-title + .info-lines,
         .info-title + .info-comps,
         .info-title + .info-error {
-            margin-top: 24px;
+            margin-top: 26px;
         }
 
         .info-msg {
-            color: var(--cmdinput-history-title-color);
+            color: var(--term-blue);
             padding-bottom: 2px;
 
             a {
@@ -413,7 +514,7 @@
 
             .info-comp {
                 min-width: 200px;
-                color: var(--app-text-color);
+                color: var(--term-foreground);
                 margin-right: 10px;
 
                 &.has-space {

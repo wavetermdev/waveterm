@@ -1,3 +1,5 @@
+@import "@/common/icons/icons.less";
+
 .line {
     margin: 0;
     padding: calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 2 + 1px) calc(var(--termpad) * 3);
@@ -6,6 +8,7 @@
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
+    line-height: 11px;
     font-weight: normal;
     font-family: var(--termfontfamily);
     scroll-margin-bottom: 20px;
@@ -27,9 +30,21 @@
         }
     }
 
+    .centered-icon {
+        .positional-icon-visible;
+        height: 15px;
+        width: 15px;
+        .positional-icon-inner {
+            height: 15px;
+            width: 15px;
+            &:first-child {
+                font-size: var(--termfontsize-sm);
+            }
+        }
+    }
+
     &.active.selected {
         .line-mask {
-            background-color: var(--line-selected-bg-color);
             border: 2px solid var(--line-active-border-color);
             border-left: 4px solid var(--line-active-border-color);
         }
@@ -54,7 +69,6 @@
 
         &.error-mask {
             background-color: var(--line-error-bg-color);
-            border-left: 4px solid var(--line-error-border-left-color);
         }
     }
 
@@ -92,35 +106,6 @@
         }
     }
 
-    .simple-line-status {
-        .linenum {
-            cursor: pointer;
-        }
-
-        .avatar {
-            display: inline-block;
-            height: 1em;
-            margin-left: 0.5em;
-            vertical-align: text-top;
-            fill: var(--primary-background-color);
-        }
-
-        .success {
-            color: var(--primary-accent-color);
-            fill: var(--primary-accent-color);
-        }
-
-        .fail {
-            color: var(--line-error-color);
-            fill: var(--line-error-color);
-        }
-
-        .warning {
-            color: var(--line-warning-color);
-            fill: var(--line-warning-color);
-        }
-    }
-
     &.top-border {
         border-top: 1px solid #777;
         padding: 10px;
@@ -139,7 +124,8 @@
     }
 
     &:hover .line-actions {
-        background-color: var(--app-panel-bg-color);
+        background-color: var(--line-actions-bg-color);
+        backdrop-filter: blur(8px);
         .line-icon {
             visibility: visible;
         }
@@ -147,14 +133,17 @@
 
     .line-actions {
         position: absolute;
-        right: calc(var(--termpad) * 2);
-        top: 0;
-        font-size: 14px;
         color: var(--line-actions-inactive-color);
         border-radius: 4px;
         padding-left: 4px;
         padding-right: 4px;
-        line-height: 1.2;
+        font-size: var(--termfontsize);
+        line-height: var(--termlineheight);
+
+        // we want to align to 2nd line of meta.  that's 2xPad + 1xLineHightSm
+        // height of actions is 1xLineHeight + 8px (2x2px padding on icons)
+        top: calc(var(--termpad) * 2 + var(--termlineheight-sm) - var(--termlineheight) - 8px);
+        right: calc(var(--termpad) * 2 + var(--termlineheight-sm) - var(--termlineheight) - 8px);
 
         display: flex;
         flex-direction: row;
@@ -171,7 +160,7 @@
                 color: var(--line-actions-active-color);
             }
 
-            padding: 4px;
+            padding: 4px 4px;
             cursor: pointer;
         }
 
@@ -200,7 +189,6 @@
             .user {
                 color: var(--line-meta-user-color);
                 font-weight: bold;
-                margin-top: 1px;
                 margin-right: 10px;
             }
 
@@ -210,6 +198,31 @@
                 font-size: var(--termfontsize-sm);
                 line-height: var(--termlineheight-sm);
                 color: var(--term-gray);
+                align-items: center;
+
+                .status-icon {
+                    display: inline-block;
+                    margin-left: 0.5em;
+                    height: var(--termfontsize-sm);
+                    line-height: 1;
+
+                    svg {
+                        height: var(--termfontsize-sm);
+                        width: var(--termfontsize-sm);
+                        vertical-align: baseline;
+                    }
+                }
+
+                i.fail {
+                    color: var(--line-error-color);
+                    fill: var(--line-error-color);
+                }
+
+                i.warning,
+                svg.warning {
+                    color: var(--line-warning-color);
+                    fill: var(--line-warning-color);
+                }
             }
 
             .meta-divider {
@@ -235,9 +248,9 @@
 
         .cmdtext-expanded {
             overflow: auto;
-            max-height: calc(var(--termlineheight) * 3.3);
+            max-height: calc(var(--termlineheight) * 3);
             white-space: pre;
-            color: var(--term-bright-white);
+            color: var(--term-cmdtext);
             font-weight: bold;
             width: calc(100% - var(--termpad) * 2);
 
@@ -307,7 +320,6 @@
             margin: 6px 0 2px 10px;
             padding: 2px 5px 0px 5px;
             display: inline-block;
-            font-size: 10px;
             color: var(--term-text-white);
             background-color: #151715;
         }

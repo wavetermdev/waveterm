@@ -1,15 +1,17 @@
 import * as React from "react";
 import { GlobalModel } from "@/models";
 import { Choose, When, If } from "tsx-control-statements/components";
-import { Modal, PasswordField, Markdown } from "@/elements";
+import { Modal, PasswordField, TextField, Markdown, Checkbox } from "@/elements";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./userinput.less";
 
 export const UserInputModal = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = React.useState("");
     const [countdown, setCountdown] = React.useState(Math.floor(userInputRequest.timeoutms / 1000));
+    const checkboxStatus = React.useRef(false);
 
-    const closeModal = React.useCallback(() => {
+    const handleSendCancel = React.useCallback(() => {
         GlobalModel.sendUserInput({
             type: "userinputresp",
             requestid: userInputRequest.requestid,
@@ -23,21 +25,37 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
             type: "userinputresp",
             requestid: userInputRequest.requestid,
             text: responseText,
+            checkboxstat: checkboxStatus.current,
         });
         GlobalModel.remotesModel.closeModal();
     }, [responseText, userInputRequest]);
 
     const handleSendConfirm = React.useCallback(
         (response: boolean) => {
+            console.log(`checkbox ${checkboxStatus}\n\n`);
             GlobalModel.sendUserInput({
                 type: "userinputresp",
                 requestid: userInputRequest.requestid,
                 confirm: response,
+                checkboxstat: checkboxStatus.current,
             });
             GlobalModel.remotesModel.closeModal();
         },
         [userInputRequest]
     );
+
+    function handleTextKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (checkKeyPressed(waveEvent, "Enter")) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSendText();
+        } else if (checkKeyPressed(waveEvent, "Escape")) {
+            e.preventDefault();
+            e.stopPropagation();
+            handleSendCancel();
+        }
+    }
 
     React.useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
@@ -55,23 +73,47 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
 
     return (
         <Modal className="userinput-modal">
-            <Modal.Header onClose={closeModal} title={userInputRequest.title + ` (${countdown})`} />
+            <Modal.Header onClose={handleSendCancel} title={userInputRequest.title + ` (${countdown}s)`} />
             <div className="wave-modal-body">
-                <div className="userinput-query">
-                    <If condition={userInputRequest.markdown}>
-                        <Markdown text={userInputRequest.querytext} extraClassName="bottom-margin" />
+                <div className="wave-modal-dialog">
+                    <div className="userinput-query">
+                        <If condition={userInputRequest.markdown}>
+                            <Markdown text={userInputRequest.querytext} extraClassName="bottom-margin" />
+                        </If>
+                        <If condition={!userInputRequest.markdown}>{userInputRequest.querytext}</If>
+                    </div>
+                    <If condition={userInputRequest.responsetype == "text"}>
+                        <If condition={userInputRequest.publictext}>
+                            <TextField
+                                onChange={setResponseText}
+                                value={responseText}
+                                maxLength={400}
+                                autoFocus={true}
+                                onKeyDown={(e) => handleTextKeyDown(e)}
+                            />
+                        </If>
+                        <If condition={!userInputRequest.publictext}>
+                            <PasswordField
+                                onChange={setResponseText}
+                                value={responseText}
+                                maxLength={400}
+                                autoFocus={true}
+                                onKeyDown={(e) => handleTextKeyDown(e)}
+                            />
+                        </If>
                     </If>
-                    <If condition={!userInputRequest.markdown}>{userInputRequest.querytext}</If>
                 </div>
-                <Choose>
-                    <When condition={userInputRequest.responsetype == "text"}>
-                        <PasswordField onChange={setResponseText} value={responseText} maxLength={400} />
-                    </When>
-                </Choose>
+                <If condition={userInputRequest.checkboxmsg != ""}>
+                    <Checkbox
+                        onChange={() => (checkboxStatus.current = !checkboxStatus.current)}
+                        label={userInputRequest.checkboxmsg}
+                        className="checkbox-text"
+                    />
+                </If>
             </div>
             <Choose>
                 <When condition={userInputRequest.responsetype == "text"}>
-                    <Modal.Footer onCancel={closeModal} onOk={handleSendText} okLabel="Continue" />
+                    <Modal.Footer onCancel={handleSendCancel} onOk={handleSendText} okLabel="Continue" />
                 </When>
                 <When condition={userInputRequest.responsetype == "confirm"}>
                     <Modal.Footer

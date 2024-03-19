@@ -48,12 +48,15 @@ class SimpleImageRenderer extends React.Component<
             return (
                 <div className="image-renderer" style={{ fontSize: this.props.opts.termFontSize }}>
                     <div className="load-error-text">
-                        ERROR: file {dataBlob && dataBlob.name ? JSON.stringify(dataBlob.name) : ""} not found
+                        ERROR: file {dataBlob?.name ? JSON.stringify(dataBlob.name) : ""} not found
                     </div>
                 </div>
             );
         }
         if (this.objUrl == null) {
+            if (dataBlob.name?.endsWith(".svg")) {
+                dataBlob = new Blob([dataBlob], { type: "image/svg+xml" }) as ExtBlob;
+            }
             this.objUrl = URL.createObjectURL(dataBlob);
         }
         let opts = this.props.opts;

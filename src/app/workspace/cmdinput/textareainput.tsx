@@ -362,29 +362,14 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
         if (checkKeyPressed(waveEvent, "Cmd:r") || checkKeyPressed(waveEvent, "Ctrl:r")) {
             e.preventDefault();
-            let opts = mobx.toJS(inputModel.historyQueryOpts.get());
-            if (opts.limitRemote) {
-                opts.limitRemote = false;
-                opts.limitRemoteInstance = false;
-            } else {
-                opts.limitRemote = true;
-                opts.limitRemoteInstance = true;
-            }
-            inputModel.setHistoryQueryOpts(opts);
+            e.stopPropagation();
+            inputModel.toggleRemoteType();
             return;
         }
         if (checkKeyPressed(waveEvent, "Cmd:s") || checkKeyPressed(waveEvent, "Ctrl:s")) {
             e.preventDefault();
-            let opts = mobx.toJS(inputModel.historyQueryOpts.get());
-            let htype = opts.queryType;
-            if (htype == "screen") {
-                htype = "session";
-            } else if (htype == "session") {
-                htype = "global";
-            } else {
-                htype = "screen";
-            }
-            inputModel.setHistoryType(htype);
+            e.stopPropagation();
+            inputModel.toggleHistoryType();
             return;
         }
         if (checkKeyPressed(waveEvent, "Tab")) {
@@ -581,7 +566,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
         let termFontSize = GlobalModel.getTermFontSize();
         let fontSize = getMonoFontSize(termFontSize);
-        let termPad = Math.floor(fontSize.height / 2);
+        let termPad = fontSize.pad;
         let computedInnerHeight = displayLines * fontSize.height + 2 * termPad;
         let computedOuterHeight = computedInnerHeight + 2 * termPad;
         let shellType: string = "";

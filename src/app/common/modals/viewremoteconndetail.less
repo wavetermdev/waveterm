@@ -1,5 +1,6 @@
 .rconndetail-modal {
-    width: 631px;
+    width: auto;
+    max-width: 80vw;
     min-height: 565px;
 
     .wave-modal-content {
@@ -45,7 +46,6 @@
 
                     .wave-button {
                         padding: 4px 15px;
-                        font-size: 11px;
                         margin-right: 8px;
                     }
                 }
@@ -75,10 +75,6 @@
                     }
                 }
 
-                .settings-field:not(:first-child) {
-                    margin-top: 4px;
-                }
-
                 .status {
                     display: flex;
                     height: 30px;
@@ -94,25 +90,12 @@
                     margin-top: 5px;
                     overflow-x: auto;
                     overflow-y: hidden;
+                    border: 1px solid var(--app-border-color);
+                    border-radius: 6px;
+                    padding: 6px 10px;
 
                     .terminal-connectelem {
                         height: 163px !important; // Needed to override plugin height
-
-                        .xterm-viewport {
-                            display: flex;
-                            padding: 6px 10px;
-                            gap: 8px;
-                            align-items: flex-start;
-                            align-self: stretch;
-                            border-radius: 6px;
-                            border: 1px solid var(--element-separator, rgba(241, 246, 243, 0.15));
-                            background: #080a08;
-                            height: 163px !important; // Needed to override plugin height
-                        }
-
-                        .xterm-screen {
-                            padding: 10px;
-                        }
                     }
                 }
             }

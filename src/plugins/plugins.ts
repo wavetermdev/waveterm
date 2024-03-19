@@ -8,6 +8,8 @@ import { SimpleMustacheRenderer } from "./mustache/mustache";
 import { CSVRenderer } from "./csv/csv";
 import { OpenAIRenderer, OpenAIRendererModel } from "./openai/openai";
 import { FileViewRenderer, FileViewRendererModel } from "./fileview/fileview";
+import { SimplePdfRenderer } from "./pdf/pdf";
+import { SimpleMediaRenderer } from "./media/media";
 import { isBlank } from "@/util/util";
 import { sprintf } from "sprintf-js";
 
@@ -89,6 +91,26 @@ const PluginConfigs: RendererPluginType[] = [
         mimeTypes: ["application/json"],
         modelCtor: () => new FileViewRendererModel(),
         fullComponent: FileViewRenderer,
+    },
+    {
+        name: "pdf",
+        rendererType: "simple",
+        heightType: "pixels",
+        dataType: "blob",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: ["application/pdf"],
+        simpleComponent: SimplePdfRenderer,
+    },
+    {
+        name: "media",
+        rendererType: "simple",
+        heightType: "pixels",
+        dataType: "blob",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: ["video/*", "audio/*"],
+        simpleComponent: SimpleMediaRenderer,
     },
 ];
 

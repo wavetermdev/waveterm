@@ -73,18 +73,18 @@ The following accounts for a debounce in the status indicator. We will only disp
         visibility: hidden;
     }
     .spin #spinner {
-        stroke: var(--status-indicator-color);
+        stroke: var(--app-text-color);
     }
     &.error #indicator {
         visibility: visible;
-        fill: var(--status-indicator-error);
+        fill: var(--app-text-disabled-color);
     }
     &.success #indicator {
         visibility: visible;
-        fill: var(--status-indicator-success);
+        fill: var(--app-success-color);
     }
     &.output #indicator {
         visibility: visible;
-        fill: var(--status-indicator-color);
+        fill: var(--app-text-color);
     }
 }

@@ -12,7 +12,7 @@ import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
-import { MagicLayout } from "../magiclayout";
+import * as textmeasure from "@/util/textmeasure";
 import "./workspace.less";
 
 dayjs.extend(localizedFormat);
@@ -34,21 +34,17 @@ class WorkspaceView extends React.Component<{}, {}> {
         let activeScreen = session.getActiveScreen();
         let cmdInputHeight = model.inputModel.cmdInputHeight.get();
         if (cmdInputHeight == 0) {
-            cmdInputHeight = MagicLayout.CmdInputHeight; // this is the base size of cmdInput (measured using devtools)
+            cmdInputHeight = textmeasure.baseCmdInputHeight(GlobalModel.lineHeightEnv); // this is the base size of cmdInput (measured using devtools)
         }
         let isHidden = GlobalModel.activeMainView.get() != "session";
         let mainSidebarModel = GlobalModel.mainSidebarModel;
-
-        // Has to calc manually because when tabs overflow, the width of the session view is increased for some reason causing inconsistent width.
-        // 6px is the right margin of session view.
-        let width = window.innerWidth - 6 - mainSidebarModel.getWidth();
 
         return (
             <div
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
                 data-sessionid={session.sessionId}
                 style={{
-                    width: `${width}px`,
+                    width: `${window.innerWidth - mainSidebarModel.getWidth()}px`,
                 }}
             >
                 <ScreenTabs key={"tabs-" + session.sessionId} session={session} />

@@ -35,6 +35,8 @@ var BareMetaCmds = []BareMetaCmdDecl{
 	{"markdownview", "markdownview"},
 	{"mdview", "markdownview"},
 	{"csvview", "csvview"},
+	{"pdfview", "pdfview"},
+	{"mediaview", "mediaview"},
 }
 
 const (
@@ -258,7 +260,7 @@ func isRtnStateCmd(cmd syntax.Command) bool {
 		}
 		arg1 := getCallExprLitArg(callExpr, 1)
 		if arg0 == "git" {
-			if arg1 == "checkout" || arg1 == "switch" {
+			if arg1 == "checkout" || arg1 == "co" || arg1 == "switch" {
 				return true
 			}
 		}

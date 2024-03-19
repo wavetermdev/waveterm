@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/user"
@@ -64,20 +65,33 @@ func createDummySigner() ([]ssh.Signer, error) {
 // they were successes. An error in this function prevents any other
 // keys from being attempted. But if there's an error because of a dummy
 // file, the library can still try again with a new key.
-func createPublicKeyCallback(sshKeywords *SshKeywords, passphrase string) func() ([]ssh.Signer, error) {
-	identityFiles := make([]string, len(sshKeywords.IdentityFile))
-	copy(identityFiles, sshKeywords.IdentityFile)
+func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, passphrase string) func() ([]ssh.Signer, error) {
+	var identityFiles []string
+	existingKeys := make(map[string][]byte)
+
+	// checking the file early prevents us from needing to send a
+	// dummy signer if there's a problem with the signer
+	for _, identityFile := range sshKeywords.IdentityFile {
+		privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
+		if err != nil {
+			// skip this key and try with the next
+			continue
+		}
+		existingKeys[identityFile] = privateKey
+		identityFiles = append(identityFiles, identityFile)
+	}
+	// require pointer to modify list in closure
 	identityFilesPtr := &identityFiles
 
 	return func() ([]ssh.Signer, error) {
 		if len(*identityFilesPtr) == 0 {
-			// skip this key and try with the next
-			return createDummySigner()
+			return nil, fmt.Errorf("no identity files remaining")
 		}
 		identityFile := (*identityFilesPtr)[0]
 		*identityFilesPtr = (*identityFilesPtr)[1:]
-		privateKey, err := os.ReadFile(base.ExpandHomeDir(identityFile))
-		if err != nil {
+		privateKey, ok := existingKeys[identityFile]
+		if !ok {
+			log.Printf("error with existingKeys, this should never happen")
 			// skip this key and try with the next
 			return createDummySigner()
 		}
@@ -110,7 +124,7 @@ func createPublicKeyCallback(sshKeywords *SshKeywords, passphrase string) func()
 			QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
 			Title:        "Publickey Auth + Passphrase",
 		}
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 		defer cancelFn()
 		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 		if err != nil {
@@ -136,15 +150,20 @@ func createDefaultPasswordCallbackPrompt(password string) func() (secret string,
 	}
 }
 
-func createInteractivePasswordCallbackPrompt() func() (secret string, err error) {
+func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string) func() (secret string, err error) {
 	return func() (secret string, err error) {
 		// limited to 15 seconds for some reason. this should be investigated more
 		// in the future
-		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 		defer cancelFn()
+		queryText := fmt.Sprintf(
+			"Password Authentication requested from connection  \n"+
+				"%s\n\n"+
+				"Password:", remoteDisplayName)
 		request := &userinput.UserInputRequestType{
 			ResponseType: "text",
-			QueryText:    "Password:",
+			QueryText:    queryText,
+			Markdown:     true,
 			Title:        "Password Authentication",
 		}
 		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
@@ -155,13 +174,13 @@ func createInteractivePasswordCallbackPrompt() func() (secret string, err error)
 	}
 }
 
-func createCombinedPasswordCallbackPrompt(password string) func() (secret string, err error) {
+func createCombinedPasswordCallbackPrompt(connCtx context.Context, password string, remoteDisplayName string) func() (secret string, err error) {
 	var once sync.Once
 	return func() (secret string, err error) {
 		var prompt func() (secret string, err error)
 		once.Do(func() { prompt = createDefaultPasswordCallbackPrompt(password) })
 		if prompt == nil {
-			prompt = createInteractivePasswordCallbackPrompt()
+			prompt = createInteractivePasswordCallbackPrompt(connCtx, remoteDisplayName)
 		}
 		return prompt()
 	}
@@ -180,14 +199,14 @@ func createNaiveKbdInteractiveChallenge(password string) func(name, instruction 
 	}
 }
 
-func createInteractiveKbdInteractiveChallenge() func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
+func createInteractiveKbdInteractiveChallenge(connCtx context.Context, remoteName string) func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 		if len(questions) != len(echos) {
 			return nil, fmt.Errorf("bad response from server: questions has len %d, echos has len %d", len(questions), len(echos))
 		}
 		for i, question := range questions {
 			echo := echos[i]
-			answer, err := promptChallengeQuestion(question, echo)
+			answer, err := promptChallengeQuestion(connCtx, question, echo, remoteName)
 			if err != nil {
 				return nil, err
 			}
@@ -197,15 +216,21 @@ func createInteractiveKbdInteractiveChallenge() func(name, instruction string, q
 	}
 }
 
-func promptChallengeQuestion(question string, echo bool) (answer string, err error) {
+func promptChallengeQuestion(connCtx context.Context, question string, echo bool, remoteName string) (answer string, err error) {
 	// limited to 15 seconds for some reason. this should be investigated more
 	// in the future
-	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
 	defer cancelFn()
+	queryText := fmt.Sprintf(
+		"Keyboard Interactive Authentication requested from connection  \n"+
+			"%s\n\n"+
+			"%s", remoteName, question)
 	request := &userinput.UserInputRequestType{
 		ResponseType: "text",
-		QueryText:    question,
+		QueryText:    queryText,
+		Markdown:     true,
 		Title:        "Keyboard Interactive Authentication",
+		PublicText:   echo,
 	}
 	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	if err != nil {
@@ -214,13 +239,13 @@ func promptChallengeQuestion(question string, echo bool) (answer string, err err
 	return response.Text, nil
 }
 
-func createCombinedKbdInteractiveChallenge(password string) ssh.KeyboardInteractiveChallenge {
+func createCombinedKbdInteractiveChallenge(connCtx context.Context, password string, remoteName string) ssh.KeyboardInteractiveChallenge {
 	var once sync.Once
 	return func(name, instruction string, questions []string, echos []bool) (answers []string, err error) {
 		var challenge ssh.KeyboardInteractiveChallenge
 		once.Do(func() { challenge = createNaiveKbdInteractiveChallenge(password) })
 		if challenge == nil {
-			challenge = createInteractiveKbdInteractiveChallenge()
+			challenge = createInteractiveKbdInteractiveChallenge(connCtx, remoteName)
 		}
 		return challenge(name, instruction, questions, echos)
 	}
@@ -264,7 +289,7 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 	}
 	if !response.Confirm {
 		f.Close()
-		return UserInputCancelError{Err: fmt.Errorf("Canceled by the user")}
+		return UserInputCancelError{Err: fmt.Errorf("canceled by the user")}
 	}
 
 	_, err = f.WriteString(newLine)
@@ -336,7 +361,18 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 	userKnownHostsFiles := strings.Fields(rawUserKnownHostsFiles) // TODO - smarter splitting escaped spaces and quotes
 	rawGlobalKnownHostsFiles, _ := ssh_config.GetStrict(opts.SSHHost, "GlobalKnownHostsFile")
 	globalKnownHostsFiles := strings.Fields(rawGlobalKnownHostsFiles) // TODO - smarter splitting escaped spaces and quotes
-	unexpandedKnownHostsFiles := append(userKnownHostsFiles, globalKnownHostsFiles...)
+
+	osUser, err := user.Current()
+	if err != nil {
+		return nil, err
+	}
+	var unexpandedKnownHostsFiles []string
+	if osUser.Username == "root" {
+		unexpandedKnownHostsFiles = globalKnownHostsFiles
+	} else {
+		unexpandedKnownHostsFiles = append(userKnownHostsFiles, globalKnownHostsFiles...)
+	}
+
 	var knownHostsFiles []string
 	for _, filename := range unexpandedKnownHostsFiles {
 		knownHostsFiles = append(knownHostsFiles, base.ExpandHomeDir(filename))
@@ -470,7 +506,20 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 	return waveHostKeyCallback, nil
 }
 
-func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
+func DialContext(ctx context.Context, network string, addr string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	d := net.Dialer{Timeout: config.Timeout}
+	conn, err := d.DialContext(ctx, network, addr)
+	if err != nil {
+		return nil, err
+	}
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.NewClient(c, chans, reqs), nil
+}
+
+func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDisplayName string) (*ssh.Client, error) {
 	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
 	if err != nil {
 		return nil, err
@@ -481,9 +530,9 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 		return nil, err
 	}
 
-	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(sshKeywords, opts.SSHPassword))
-	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(opts.SSHPassword))
-	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(opts.SSHPassword))
+	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, opts.SSHPassword))
+	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(connCtx, opts.SSHPassword, remoteDisplayName))
+	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(connCtx, opts.SSHPassword, remoteDisplayName))
 
 	// batch mode turns off interactive input. this means the number of
 	// attemtps must drop to 1 with this setup
@@ -531,7 +580,7 @@ func ConnectToClient(opts *sstore.SSHOpts) (*ssh.Client, error) {
 		HostKeyCallback: hostKeyCallback,
 	}
 	networkAddr := sshKeywords.HostName + ":" + sshKeywords.Port
-	return ssh.Dial("tcp", networkAddr, clientConfig)
+	return DialContext(connCtx, "tcp", networkAddr, clientConfig)
 }
 
 type SshKeywords struct {
@@ -577,8 +626,14 @@ func combineSshKeywords(opts *sstore.SSHOpts, configKeywords *SshKeywords) (*Ssh
 		sshKeywords.Port = "22"
 	}
 
-	sshKeywords.IdentityFile = []string{opts.SSHIdentity}
-	sshKeywords.IdentityFile = append(sshKeywords.IdentityFile, configKeywords.IdentityFile...)
+	// this is more complicated than it needs to be since we are already storing the identity
+	// file for remotes, even if they come from the ssh config. it should be simplified with
+	// future rework to the connection user interface
+	if opts.SSHIdentity == "" || (len(configKeywords.IdentityFile) > 0 && configKeywords.IdentityFile[0] == opts.SSHIdentity) {
+		sshKeywords.IdentityFile = configKeywords.IdentityFile
+	} else {
+		sshKeywords.IdentityFile = []string{opts.SSHIdentity}
+	}
 
 	// these are not officially supported in the waveterm frontend but can be configured
 	// in ssh config files
@@ -644,6 +699,9 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 	// these are parsed as a single string and must be separated
 	// these are case sensitive in openssh so they are here too
 	preferredAuthenticationsRaw, err := ssh_config.GetStrict(hostPattern, "PreferredAuthentications")
+	if err != nil {
+		return nil, err
+	}
 	sshKeywords.PreferredAuthentications = strings.Split(preferredAuthenticationsRaw, ",")
 
 	return sshKeywords, nil

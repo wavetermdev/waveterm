@@ -1,5 +1,3 @@
-@import "../../app/common/themes/themes.less";
-
 .fileview-toplevel {
     .fileInput {
         display: none;
@@ -7,7 +5,7 @@
 
     .status-bar {
         box-sizing: border-box;
-        border: 1px solid @term-green;
+        border: 1px solid var(--term-green);
         width: 100%;
         font-size: 12px;
         padding: 3px;
@@ -16,7 +14,7 @@
             width: 30px;
             float: right;
             text-align: center;
-            border-left: 1px solid @term-green;
+            border-left: 1px solid var(--term-green);
 
             &:hover {
                 background-color: rgba(77, 153, 5, 0.58);
@@ -25,9 +23,9 @@
     }
 
     .fileview-container {
-        border-left: 1px solid @term-green;
-        border-right: 1px solid @term-green;
-        border-bottom: 1px solid @term-green;
+        border-left: 1px solid var(--term-green);
+        border-right: 1px solid var(--term-green);
+        border-bottom: 1px solid var(--term-green);
 
         .file-container {
             font-size: 11px;
@@ -35,11 +33,11 @@
             padding: 3px;
 
             &:hover {
-                outline: 2px solid @term-green;
+                outline: 2px solid var(--term-green);
                 outline-offset: -2px;
 
                 .download-button {
-                    outline: 1px solid @term-green;
+                    outline: 1px solid var(--term-green);
                     outline-offset: -2px;
                 }
             }
@@ -62,13 +60,13 @@
         }
 
         .dir-container {
-            color: @term-green;
+            color: var(--term-green);
         }
     }
 
     .bottom-info-panel {
         box-sizing: border-box;
-        border: 1px solid @term-green;
+        border: 1px solid var(--term-green);
         width: 100%;
         height: 24px;
         font-size: 11px;

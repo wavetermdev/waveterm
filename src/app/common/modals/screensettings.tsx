@@ -5,12 +5,12 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If, For } from "tsx-control-statements/components";
+import { For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "@/elements";
 import * as util from "@/util/util";
-import { TabIcon } from "@/common/elements/tabicon";
+import { TabIcon, Button } from "@/elements";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
@@ -38,15 +38,13 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
     screen: Screen;
-    sessionId: string;
     screenId: string;
     remotes: RemoteType[];
 
     constructor(props) {
         super(props);
-        let screenSettingsModal = GlobalModel.screenSettingsModal.get();
-        let { sessionId, screenId } = screenSettingsModal;
-        this.sessionId = sessionId;
+        const screenSettingsModal = GlobalModel.screenSettingsModal.get();
+        const { sessionId, screenId } = screenSettingsModal;
         this.screenId = screenId;
         this.screen = GlobalModel.getScreenById(sessionId, screenId);
         if (this.screen == null || sessionId == null || screenId == null) {
@@ -61,15 +59,14 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
             .filter((r) => !r.archived)
             .map((remote) => ({
                 ...remote,
-                label:
-                    remote.remotealias && !util.isBlank(remote.remotealias)
-                        ? `${remote.remotecanonicalname}`
-                        : remote.remotecanonicalname,
+                label: !util.isBlank(remote.remotealias)
+                    ? `${remote.remotealias} - ${remote.remotecanonicalname}`
+                    : remote.remotecanonicalname,
                 value: remote.remotecanonicalname,
             }))
             .sort((a, b) => {
-                let connValA = util.getRemoteConnVal(a);
-                let connValB = util.getRemoteConnVal(b);
+                const connValA = util.getRemoteConnVal(a);
+                const connValB = util.getRemoteConnVal(b);
                 if (connValA !== connValB) {
                     return connValA - connValB;
                 }
@@ -93,7 +90,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen.getTabColor() == color) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { tabcolor: color }, false);
+        const prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { tabcolor: color }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -102,7 +99,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen.getTabIcon() == icon) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screen.screenId, { tabicon: icon }, false);
+        const prtn = GlobalCommandRunner.screenSetSettings(this.screen.screenId, { tabicon: icon }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -114,7 +111,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen.archived.get() == val) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenArchive(this.screenId, val);
+        const prtn = GlobalCommandRunner.screenArchive(this.screenId, val);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -126,13 +123,13 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen.isWebShared() == val) {
             return;
         }
-        let message = val ? WebShareConfirmMarkdown : WebStopShareConfirmMarkdown;
-        let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
+        const message = val ? WebShareConfirmMarkdown : WebStopShareConfirmMarkdown;
+        const alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
         alertRtn.then((result) => {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenWebShare(this.screen.screenId, val);
+            const prtn = GlobalCommandRunner.screenWebShare(this.screen.screenId, val);
             util.commandRtnHandler(prtn, this.errorMessage);
         });
     }
@@ -142,7 +139,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen == null) {
             return null;
         }
-        let shareLink = this.screen.getWebShareUrl();
+        const shareLink = this.screen.getWebShareUrl();
         if (shareLink == null) {
             return;
         }
@@ -165,7 +162,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (util.isStrEq(val, this.screen.name.get())) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { name: val }, false);
+        const prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { name: val }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -177,7 +174,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (util.isStrEq(val, this.screen.getShareName())) {
             return;
         }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { sharename: val }, false);
+        const prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { sharename: val }, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -217,18 +214,18 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
     }
 
     render() {
-        let screen = this.screen;
+        const screen = this.screen;
         if (screen == null) {
             return null;
         }
         let color: string = null;
         let icon: string = null;
         let index: number = 0;
-        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+        const curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
 
         return (
             <Modal className="screen-settings-modal">
-                <Modal.Header onClose={this.closeModal} title={`tab settings (${screen.name.get()})`} />
+                <Modal.Header onClose={this.closeModal} title={`Tab Settings (${screen.name.get()})`} />
                 <div className="wave-modal-body">
                     <div className="settings-field">
                         <div className="settings-label">Tab Id</div>
@@ -252,7 +249,6 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-input">
                             <Dropdown
                                 className="screen-settings-dropdown"
-                                label={curRemote.remotealias}
                                 options={this.getOptions()}
                                 defaultValue={curRemote.remotecanonicalname}
                                 onChange={this.selectRemote}
@@ -275,7 +271,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             <div className="tab-colors">
                                 <div className="tab-color-cur">
                                     <TabIcon icon={screen.getTabIcon()} color={screen.getTabColor()} />
-                                    <span className="tab-color-name">{screen.getTabColor()}</span>
+                                    <div className="tab-color-name">{screen.getTabColor()}</div>
                                 </div>
                                 <div className="tab-color-sep">|</div>
                                 <For each="color" of={appconst.TabColors}>
@@ -296,7 +292,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             <div className="tab-icons">
                                 <div className="tab-icon-cur">
                                     <TabIcon icon={screen.getTabIcon()} color="white" />
-                                    <span className="tab-icon-name">{screen.getTabIcon()}</span>
+                                    <div className="tab-icon-name">{screen.getTabIcon()}</div>
                                 </div>
                                 <div className="tab-icon-sep">|</div>
                                 <For each="icon" index="index" of={appconst.TabIcons}>
@@ -315,7 +311,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-label archived-label">
                             <div className="">Archived</div>
                             <Tooltip
-                                message={`Archive will hide the tab. Commands and output will be retained in history.`}
+                                message={`Archive will hide the tab. Commands and output will be retained, but hidden.`}
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                 className="screen-settings-tooltip"
                             >
@@ -330,7 +326,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                         <div className="settings-label actions-label">
                             <div>Actions</div>
                             <Tooltip
-                                message={`Delete will remove the tab, removing all commands and output from history.`}
+                                message={`Delete will remove the tab, removing all commands and output.`}
                                 icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                 className="screen-settings-tooltip"
                             >
@@ -338,12 +334,9 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             </Tooltip>
                         </div>
                         <div className="settings-input">
-                            <div
-                                onClick={this.handleDeleteScreen}
-                                className="button is-prompt-danger is-outlined is-small"
-                            >
+                            <Button onClick={this.handleDeleteScreen} className="secondary small danger">
                                 Delete Tab
-                            </div>
+                            </Button>
                         </div>
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />

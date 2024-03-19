@@ -1,0 +1,11 @@
+/* Copyright 2024, Command Line Inc.
+   SPDX-License-Identifier: Apache-2.0 */
+
+:root {
+    /* term colors */
+    --term-foreground: #000000;
+    --term-background: #fefefe;
+    --term-cmdtext: #000000;
+    --term-selection-background: #00000040;
+    --term-cursor-accent: #000000;
+}
