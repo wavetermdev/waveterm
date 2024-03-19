@@ -623,6 +623,7 @@ declare global {
         apitoken?: string;
         maxtokens?: number;
         maxchoices?: number;
+        baseurl?: string;
     };
 
     type PlaybookType = {
