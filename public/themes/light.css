@@ -30,9 +30,6 @@
     --button-primary-color: #fefefe;
     --button-secondary-bg-color: rgba(200, 200, 200, 0.3); /* Semi-transparent light gray */
 
-    /* view colors */
-    --app-text-color: var(--app-text-color);
-
     /* table colors */
     --table-thead-border-top-color: rgba(0, 0, 0, 0.2);
     --table-thead-border-bottom-color: rgba(0, 0, 0, 0.3);

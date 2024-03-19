@@ -53,6 +53,8 @@
     --app-icon-color: rgb(139, 145, 138);
     --app-icon-hover-color: #fff;
     --app-selected-mask-color: rgba(255, 255, 255, 0.06);
+
+    /* global status colors */
     --app-error-color: rgb(229, 77, 46);
     --app-warning-color: rgb(224, 185, 86);
     --app-success-color: rgb(78, 154, 6);
