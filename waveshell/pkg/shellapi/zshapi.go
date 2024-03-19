@@ -27,7 +27,6 @@ import (
 const BaseZshOpts = ``
 
 const ZshShellVersionCmdStr = `echo zsh v$ZSH_VERSION`
-const StateOutputFdNum = 20
 
 const (
 	ZshSection_Version = iota
@@ -246,7 +245,7 @@ func (z zshShellApi) GetShellState(outCh chan ShellStateOutput) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
 	defer close(outCh)
-	stateCmd, endBytes := GetZshShellStateCmd(StateOutputFdNum, false)
+	stateCmd, endBytes := GetZshShellStateCmd(StateOutputFdNum)
 	cmdStr := BaseZshOpts + "; " + stateCmd
 	ecmd := exec.CommandContext(ctx, GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 	outputCh := make(chan []byte, 10)
@@ -261,15 +260,15 @@ func (z zshShellApi) GetShellState(outCh chan ShellStateOutput) {
 	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes)
 	outputWg.Wait()
 	if err != nil {
-		outCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, Error: err.Error()}
+		outCh <- ShellStateOutput{Error: err.Error()}
 		return
 	}
 	rtn, stats, err := z.ParseShellStateOutput(outputBytes)
 	if err != nil {
-		outCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, Error: err.Error()}
+		outCh <- ShellStateOutput{Error: err.Error()}
 		return
 	}
-	outCh <- ShellStateOutput{Status: ShellStateOutputStatus_Done, ShellState: rtn, Stats: stats}
+	outCh <- ShellStateOutput{ShellState: rtn, Stats: stats}
 }
 
 func (z zshShellApi) GetBaseShellOpts() string {
@@ -448,7 +447,7 @@ const numRandomBytes = 4
 const numEndRandomBytes = 8
 
 // returns (cmd-string, endbytes)
-func GetZshShellStateCmd(fdNum int, verbose bool) (string, []byte) {
+func GetZshShellStateCmd(fdNum int) (string, []byte) {
 	var sectionSeparator []byte
 	// adding this extra "\n" helps with debuging and readability of output
 	sectionSeparator = append(sectionSeparator, byte('\n'))
@@ -534,7 +533,7 @@ printf "[%ENDBYTES%]"
 }
 
 func MakeZshExitTrap(fdNum int) (string, []byte) {
-	stateCmd, endBytes := GetZshShellStateCmd(fdNum, false)
+	stateCmd, endBytes := GetZshShellStateCmd(fdNum)
 	fmtStr := `
 zshexit () {
     %s

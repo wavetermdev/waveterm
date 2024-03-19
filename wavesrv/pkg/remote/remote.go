@@ -1474,7 +1474,7 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string, dataFn func
 func makeShellInitOutputMsg(state *packet.ShellState, stats *packet.ShellStateStats, dur time.Duration, ptyMsg bool) string {
 	var buf bytes.Buffer
 	if !ptyMsg {
-		buf.WriteString("\r\n-----\r\n")
+		buf.WriteString("-----\r\n")
 	}
 	// state is not nil
 	buf.WriteString(fmt.Sprintf("initialized state shell:%s statehash:%s", state.GetShellType(), state.GetHashVal(false)))

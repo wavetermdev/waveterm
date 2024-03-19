@@ -80,21 +80,8 @@ func (b bashShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty
 	return MakeBashShExecCommand(cmdStr, rcFileName, usePty)
 }
 
-func (b bashShellApi) GetShellState(ch chan ShellStateOutput) {
-	defer close(ch)
-	ssPk, stats, err := GetBashShellState()
-	if err != nil {
-		ch <- ShellStateOutput{
-			Status: ShellStateOutputStatus_Done,
-			Error:  err.Error(),
-		}
-		return
-	}
-	ch <- ShellStateOutput{
-		Status:     ShellStateOutputStatus_Done,
-		ShellState: ssPk,
-		Stats:      stats,
-	}
+func (b bashShellApi) GetShellState(outCh chan ShellStateOutput) {
+	GetBashShellState(outCh)
 }
 
 func (b bashShellApi) GetBaseShellOpts() string {
@@ -130,12 +117,32 @@ func (b bashShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	return rcBuf.String()
 }
 
-func GetBashShellStateCmd() (string, []byte) {
-	rtn := strings.Join(GetBashShellStateCmds, ` printf "\x00\x00";`)
+func GetBashShellStateCmd(fdNum int) (string, []byte) {
 	endBytes := utilfn.AppendNonZeroRandomBytes([]byte{'\n'}, 8)
 	endBytes = append(endBytes, '\n')
-	rtn += fmt.Sprintf("\nprintf \"%s\";", utilfn.ShellHexEscape(string(endBytes)))
-	return rtn, endBytes
+	cmdStr := strings.TrimSpace(`
+exec 2> /dev/null;
+exec > [%OUTPUTFD%];
+printf "\x00\x00";
+[%BASHVERSIONCMD%];
+printf "\x00\x00";
+pwd;
+printf "\x00\x00";
+declare -p $(compgen -A variable);
+printf "\x00\x00";
+alias -p;
+printf "\x00\x00";
+declare -f;
+printf "\x00\x00";
+[%GITBRANCHCMD%];
+printf "\x00\x00";
+printf "[%ENDBYTES%]";
+`)
+	cmdStr = strings.ReplaceAll(cmdStr, "[%OUTPUTFD%]", fmt.Sprintf("/dev/fd/%d", fdNum))
+	cmdStr = strings.ReplaceAll(cmdStr, "[%BASHVERSIONCMD%]", BashShellVersionCmdStr)
+	cmdStr = strings.ReplaceAll(cmdStr, "[%GITBRANCHCMD%]", GetGitBranchCmdStr)
+	cmdStr = strings.ReplaceAll(cmdStr, "[%ENDBYTES%]", utilfn.ShellHexEscape(string(endBytes)))
+	return cmdStr, endBytes
 }
 
 func execGetLocalBashShellVersion() string {
@@ -162,17 +169,34 @@ func GetLocalBashMajorVersion() string {
 	return localBashMajorVersion
 }
 
-func GetBashShellState() (*packet.ShellState, *packet.ShellStateStats, error) {
+func GetBashShellState(outCh chan ShellStateOutput) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
-	stateCmd, endBytes := GetBashShellStateCmd()
+	defer close(outCh)
+	stateCmd, endBytes := GetBashShellStateCmd(StateOutputFdNum)
 	cmdStr := BaseBashOpts + "; " + stateCmd
 	ecmd := exec.CommandContext(ctx, GetLocalBashPath(), "-l", "-i", "-c", cmdStr)
-	outputBytes, err := RunSimpleCmdInPty(ecmd, endBytes)
+	outputCh := make(chan []byte, 10)
+	var outputWg sync.WaitGroup
+	outputWg.Add(1)
+	go func() {
+		defer outputWg.Done()
+		for outputBytes := range outputCh {
+			outCh <- ShellStateOutput{Output: outputBytes}
+		}
+	}()
+	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes)
+	outputWg.Wait()
 	if err != nil {
-		return nil, nil, err
+		outCh <- ShellStateOutput{Error: err.Error()}
+		return
 	}
-	return parseBashShellStateOutput(outputBytes)
+	rtn, stats, err := parseBashShellStateOutput(outputBytes)
+	if err != nil {
+		outCh <- ShellStateOutput{Error: err.Error()}
+		return
+	}
+	outCh <- ShellStateOutput{ShellState: rtn, Stats: stats}
 }
 
 func GetLocalBashPath() string {
@@ -196,8 +220,8 @@ func GetLocalZshPath() string {
 }
 
 func GetBashShellStateRedirectCommandStr(outputFdNum int) (string, []byte) {
-	cmdStr, endBytes := GetBashShellStateCmd()
-	return fmt.Sprintf("cat <(%s) > /dev/fd/%d", cmdStr, outputFdNum), endBytes
+	cmdStr, endBytes := GetBashShellStateCmd(outputFdNum)
+	return cmdStr, endBytes
 }
 
 func MakeBashExitTrap(fdNum int) (string, []byte) {

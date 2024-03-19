@@ -33,6 +33,7 @@ const GetK8sContextCmdStr = `printf "K8SCONTEXT %s\x00" "$(kubectl config curren
 const GetK8sNamespaceCmdStr = `printf "K8SNAMESPACE %s\x00" "$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)"`
 const RunCommandFmt = `%s`
 const DebugState = false
+const StateOutputFdNum = 20
 
 var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
 
@@ -55,7 +56,6 @@ const (
 )
 
 type ShellStateOutput struct {
-	Status     string
 	Output     []byte
 	ShellState *packet.ShellState
 	Stats      *packet.ShellStateStats
