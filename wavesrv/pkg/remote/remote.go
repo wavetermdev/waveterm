@@ -1450,6 +1450,14 @@ func (msh *MShellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFi
 	return msh.PacketRpcIter(ctx, streamPk)
 }
 
+func (msh *MShellProc) ListDir(ctx context.Context, listDirPk *packet.ListDirPacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, listDirPk)
+}
+
+func (msh *MShellProc) SearchDir(ctx context.Context, searchDirPk *packet.SearchDirPacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, searchDirPk)
+}
+
 func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	if state == nil {
 		return nil
@@ -2049,6 +2057,7 @@ func (msh *MShellProc) PacketRpcIter(ctx context.Context, pk packet.RpcPacketTyp
 	if pk == nil {
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
+	log.Printf("sending packet: %v", pk)
 	reqId := pk.GetReqId()
 	msh.ServerProc.Output.RegisterRpcSz(reqId, RpcIterChannelSize)
 	err := msh.ServerProc.Input.SendPacketCtx(ctx, pk)

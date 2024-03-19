@@ -270,6 +270,7 @@ func init() {
 	registerCmdFn("set", SetCommand)
 
 	registerCmdFn("view:stat", ViewStatCommand)
+	registerCmdFn("view:dir", ViewDirCommand)
 	registerCmdFn("view:test", ViewTestCommand)
 
 	registerCmdFn("edit:test", EditTestCommand)
@@ -278,6 +279,9 @@ func init() {
 	registerCmdFn("codeedit", CodeEditCommand)
 	registerCmdFn("codeview", CodeEditCommand)
 
+	registerCmdFn("fileview", FileViewCommand)
+	registerCmdFn("searchdir", SearchDirCommand)
+
 	registerCmdFn("imageview", ImageViewCommand)
 	registerCmdFn("mdview", MarkdownViewCommand)
 	registerCmdFn("markdownview", MarkdownViewCommand)
@@ -285,6 +289,7 @@ func init() {
 	registerCmdFn("mediaview", MediaViewCommand)
 
 	registerCmdFn("csvview", CSVViewCommand)
+
 }
 
 func getValidCommands() []string {
@@ -1162,12 +1167,15 @@ func prettyPrintByteSize(size int64) string {
 }
 
 // this can only be called in a defer func, because recover() only works inside of a defe
-func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime time.Time, exitSuccess bool, outputPos int64) {
+func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime time.Time, exitSuccess bool, outputPos int64, outputPty bool) {
+	if outputPty {
+		return
+	}
 	r := recover()
 	if r != nil {
 		panicMsg := fmt.Sprintf("panic: %v", r)
 		log.Printf("panic: %v\n", panicMsg)
-		writeStringToPty(ctx, cmd, panicMsg, &outputPos)
+		writeStringToPty(ctx, cmd, panicMsg, &outputPos, outputPty)
 	}
 	duration := time.Since(startTime)
 	cmdStatus := sstore.CmdStatusDone
@@ -1190,6 +1198,34 @@ func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime tim
 	}
 	scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
 }
+
+func writeProgressToFileView(ctx context.Context, cmd *sstore.CmdType, progress float64, fileViewConfig *FileViewConfig) {
+	log.Printf("writing progress to fileview %v\n", progress)
+	progressPercent := int(progress * 100)
+	if !fileViewConfig.OutputPty {
+		return
+	}
+	statePk := packet.MakeFileViewStatePacket()
+	statePk.Progress = progressPercent
+	statePk.File = fileViewConfig.FileName
+	err := writePacketToPty(ctx, cmd, statePk, &fileViewConfig.OutputPos)
+	if err != nil {
+		log.Printf("err writing fileview progress to pty: %v\n", err)
+	}
+}
+
+/*func writeErrorToFileView(ctx context.Context, cmd *sstore.CmdType, err error, fileViewConfig *FileViewConfig) {
+	if !fileViewConfig.OutputPty {
+		return
+	}
+	statePk := packet.MakeFileViewStatePacket()
+	statePk.Error = fmt.Sprintf("%v", err)
+	statePk.File = fileViewConfig.FileName
+	err = writePacketToPty(ctx, cmd, statePk, &fileViewConfig.OutputPos)
+	if err != nil {
+		log.Printf("err writing fileview progress to pty: %v\n", err)
+	}
+} */
 
 func checkForWriteReady(ctx context.Context, iter *packet.RpcResponseIter) (string, error) {
 	readyIf, err := iter.Next(ctx)
@@ -1221,43 +1257,47 @@ func checkForWriteFinished(ctx context.Context, iter *packet.RpcResponseIter) er
 	return nil
 }
 
-func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, localPath string, destPath string, outputPos int64) {
+func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, localPath string, destPath string, outputPos int64, fileViewConfig *FileViewConfig) {
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
-		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos, fileViewConfig.OutputPty)
 	}()
 	localFile, err := os.Open(localPath)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error, unable to open file %v: %v\r\n", localFile, localPath), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error, unable to open file %v: %v\r\n", localFile, localPath), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	defer localFile.Close()
+	fileStat, err := localFile.Stat()
+	if err != nil {
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error: could not get file stat: %v", err), &outputPos, fileViewConfig.OutputPty)
+		return
+	}
+	if fileStat.IsDir() {
+		writeStringToPty(ctx, cmd, "Cant copy a directory, try zipping it up first", &outputPos, fileViewConfig.OutputPty)
+		return
+	}
 	writePk := packet.MakeWriteFilePacket()
 	writePk.ReqId = uuid.New().String()
 	writePk.Path = destPath
 	iter, err := remote_msh.WriteFile(ctx, writePk)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error starting file write: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error starting file write: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	defer iter.Close()
 	_, err = checkForWriteReady(ctx, iter)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos)
-		return
-	}
-	fileStat, err := localFile.Stat()
-	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("error: could not get file stat: %v", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	fileSizeBytes := fileStat.Size()
 	bytesWritten := int64(0)
 	lastFileTransferPercentage := float64(0)
 	fileTransferPercentage := float64(0)
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
-	writeStringToPty(ctx, cmd, "[", &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos, fileViewConfig.OutputPty)
+	writeStringToPty(ctx, cmd, "[", &outputPos, fileViewConfig.OutputPty)
 	var buffer [server.MaxFileDataPacketSize]byte
 	bufSlice := buffer[:]
 	for {
@@ -1269,7 +1309,7 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_ms
 			dataErr := fmt.Sprintf("error reading file data: %v", err)
 			dataPk.Error = dataErr
 			remote_msh.SendFileData(dataPk)
-			writeStringToPty(ctx, cmd, dataErr, &outputPos)
+			writeStringToPty(ctx, cmd, dataErr, &outputPos, fileViewConfig.OutputPty)
 			return
 		}
 		if bytesRead > 0 {
@@ -1279,7 +1319,8 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_ms
 			fileTransferPercentage = float64(bytesWritten) / float64(fileSizeBytes)
 
 			if fileTransferPercentage-lastFileTransferPercentage > float64(0.05) {
-				writeStringToPty(ctx, cmd, "-", &outputPos)
+				writeProgressToFileView(ctx, cmd, fileTransferPercentage, fileViewConfig)
+				writeStringToPty(ctx, cmd, "-", &outputPos, fileViewConfig.OutputPty)
 				lastFileTransferPercentage = fileTransferPercentage
 			}
 		}
@@ -1290,11 +1331,12 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_ms
 	}
 	err = checkForWriteFinished(ctx, iter)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Write finished packet error %v", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Write finished packet error %v", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
-	writeStringToPty(ctx, cmd, "] done. \r\n", &outputPos)
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", fileSizeBytes), &outputPos)
+	writeProgressToFileView(ctx, cmd, 1, fileViewConfig)
+	writeStringToPty(ctx, cmd, "] done. \r\n", &outputPos, fileViewConfig.OutputPty)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", fileSizeBytes), &outputPos, fileViewConfig.OutputPty)
 	exitSuccess = true
 }
 
@@ -1315,59 +1357,63 @@ func getStatusBarString(filePercentageInt int) string {
 	return statusBarString
 }
 
-func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMsh *remote.MShellProc, destMsh *remote.MShellProc, sourcePath string, destPath string, outputPos int64) {
+func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMsh *remote.MShellProc, destMsh *remote.MShellProc, sourcePath string, destPath string, outputPos int64, fileViewConfig *FileViewConfig) {
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
-		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos, fileViewConfig.OutputPty)
 	}()
 	streamPk := packet.MakeStreamFilePacket()
 	streamPk.ReqId = uuid.New().String()
 	streamPk.Path = sourcePath
 	sourceStreamIter, err := sourceMsh.StreamFile(ctx, streamPk)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting file data packet: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting file data packet: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	defer sourceStreamIter.Close()
 	respIf, err := sourceStreamIter.Next(ctx)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting next packet: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting next packet: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	resp, ok := respIf.(*packet.StreamFileResponseType)
 	if !ok {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error in getting packet response: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error in getting packet response: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	if resp == nil || resp.Error != "" {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
+		return
+	}
+	if resp.Info.IsDir {
+		writeStringToPty(ctx, cmd, "Cant copy a directory, try zipping it up first", &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	fileSizeBytes := resp.Info.Size
 	if fileSizeBytes == 0 {
-		writeStringToPty(ctx, cmd, "Source file does not exist or is empty - exiting\r\n", &outputPos)
+		writeStringToPty(ctx, cmd, "Source file does not exist or is empty - exiting\r\n", &outputPos, fileViewConfig.OutputPty)
 		return
 	}
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos, fileViewConfig.OutputPty)
 	writePk := packet.MakeWriteFilePacket()
 	writePk.ReqId = uuid.New().String()
 	writePk.Path = destPath
 	destWriteIter, err := destMsh.WriteFile(ctx, writePk)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error starting file write: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error starting file write: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	defer destWriteIter.Close()
 	_, err = checkForWriteReady(ctx, destWriteIter)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	bytesWritten := int64(0)
 	lastFilePercentageInt := int(0)
 	fileTransferPercentage := float64(0)
-	writeStringToPty(ctx, cmd, "[", &outputPos)
+	writeStringToPty(ctx, cmd, "[", &outputPos, fileViewConfig.OutputPty)
 	for {
 		dataPkIf, err := sourceStreamIter.Next(ctx)
 		if err != nil {
@@ -1379,11 +1425,11 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		}
 		dataPk, ok := dataPkIf.(*packet.FileDataPacketType)
 		if !ok {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T\r\n", dataPkIf), &outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T\r\n", dataPkIf), &outputPos, fileViewConfig.OutputPty)
 			return
 		}
 		if dataPk.Error != "" {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("in read-file, data packet error: %s\r\n", dataPk.Error), &outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("in read-file, data packet error: %s\r\n", dataPk.Error), &outputPos, fileViewConfig.OutputPty)
 			return
 		}
 		writeDataPk := packet.MakeFileDataPacket(writePk.ReqId)
@@ -1394,7 +1440,7 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		copy(writeDataPk.Data, dataPk.Data)
 		err = destMsh.SendFileData(writeDataPk)
 		if err != nil {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("error sending file to dest: %v\r\n", err), &outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error sending file to dest: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 			return
 		}
 		bytesWritten += int64(len(dataPk.Data))
@@ -1402,101 +1448,111 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMs
 		filePercentageInt := int(fileTransferPercentage * 100)
 		if filePercentageInt-lastFilePercentageInt > 5 {
 			statusBarString := getStatusBarString(filePercentageInt)
-			writeStringToPty(ctx, cmd, statusBarString, &outputPos)
+			writeStringToPty(ctx, cmd, statusBarString, &outputPos, fileViewConfig.OutputPty)
+			writeProgressToFileView(ctx, cmd, fileTransferPercentage, fileViewConfig)
 			lastFilePercentageInt = filePercentageInt
 		}
 	}
 	err = checkForWriteFinished(ctx, destWriteIter)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("\r\nWrite finished packet error %v", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("\r\nWrite finished packet error %v", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
-	writeStringToPty(ctx, cmd, getStatusBarString(100), &outputPos)
-	writeStringToPty(ctx, cmd, " done. \r\n", &outputPos)
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
+	writeStringToPty(ctx, cmd, getStatusBarString(100), &outputPos, fileViewConfig.OutputPty)
+	writeStringToPty(ctx, cmd, " done. \r\n", &outputPos, fileViewConfig.OutputPty)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos, fileViewConfig.OutputPty)
 	exitSuccess = true
 }
 
-func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath string, destPath string, outputPos int64) {
+func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath string, destPath string, outputPos int64, fileViewConfig *FileViewConfig) {
 	var exitSuccess bool
 	var bytesWritten int64
 	startTime := time.Now()
 	defer func() {
-		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos, fileViewConfig.OutputPty)
 	}()
 	sourceFile, err := os.Open(sourcePath)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("error opening source file %v", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error opening source file %v", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	defer sourceFile.Close()
 	sourceFileStat, err := sourceFile.Stat()
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("error getting filestat %v", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error getting filestat %v", err), &outputPos, fileViewConfig.OutputPty)
+		return
+	}
+	if sourceFileStat.IsDir() {
+		writeStringToPty(ctx, cmd, "Cant copy a directory, try zipping it up first", &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	fileSizeBytes := sourceFileStat.Size()
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %v\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos, fileViewConfig.OutputPty)
 	destFile, err := os.Create(destPath)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("error creating dest file %v", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error creating dest file %v", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	defer destFile.Close()
 	bytesWritten, err = io.Copy(destFile, sourceFile)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("error copying files %v", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("error copying files %v", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos)
+	writeProgressToFileView(ctx, cmd, 1, fileViewConfig)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\r\n", bytesWritten), &outputPos, fileViewConfig.OutputPty)
 	exitSuccess = true
 }
 
-func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, sourcePath string, localPath string, outputPos int64) {
+func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, sourcePath string, localPath string, outputPos int64, fileViewConfig *FileViewConfig) {
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
-		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos, fileViewConfig.OutputPty)
 	}()
 	streamPk := packet.MakeStreamFilePacket()
 	streamPk.ReqId = uuid.New().String()
 	streamPk.Path = sourcePath
 	iter, err := remote_msh.StreamFile(ctx, streamPk)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting file data packet: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting file data packet: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	defer iter.Close()
 	respIf, err := iter.Next(ctx)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting next packet: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error getting next packet: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	resp, ok := respIf.(*packet.StreamFileResponseType)
 	if !ok {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error in getting packet response: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error in getting packet response: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	if resp == nil || resp.Error != "" {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Response packet has error: %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
+		return
+	}
+	if resp.Info.IsDir {
+		writeStringToPty(ctx, cmd, "Cant copy a directory, try zipping it up first", &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	fileSizeBytes := resp.Info.Size
 	if fileSizeBytes == 0 {
-		writeStringToPty(ctx, cmd, "Source file doesn't exist or file is empty - exiting\r\n", &outputPos)
+		writeStringToPty(ctx, cmd, "Source file doesn't exist or file is empty - exiting\r\n", &outputPos, fileViewConfig.OutputPty)
 		return
 	}
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos, fileViewConfig.OutputPty)
 	localFile, err := os.Create(localPath)
 	if err != nil {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Error creating file on local %v\r\n", err), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Error creating file on local %v\r\n", err), &outputPos, fileViewConfig.OutputPty)
 		return
 	}
 	defer localFile.Close()
 	bytesWritten := int64(0)
 	lastFileTransferPercentage := float64(0)
 	fileTransferPercentage := float64(0)
-	writeStringToPty(ctx, cmd, "[", &outputPos)
+	writeStringToPty(ctx, cmd, "[", &outputPos, fileViewConfig.OutputPty)
 	for {
 		dataPkIf, err := iter.Next(ctx)
 		if err != nil {
@@ -1508,11 +1564,11 @@ func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_ms
 		}
 		dataPk, ok := dataPkIf.(*packet.FileDataPacketType)
 		if !ok {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T\r\n", dataPkIf), &outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("error in read-file, invalid data packet type: %T\r\n", dataPkIf), &outputPos, fileViewConfig.OutputPty)
 			return
 		}
 		if dataPk.Error != "" {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("in read-file, data packet error: %s", dataPk.Error), &outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("in read-file, data packet error: %s", dataPk.Error), &outputPos, fileViewConfig.OutputPty)
 			return
 		}
 		localFile.Write(dataPk.Data)
@@ -1520,16 +1576,22 @@ func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_ms
 		fileTransferPercentage = float64(bytesWritten) / float64(fileSizeBytes)
 
 		if fileTransferPercentage-lastFileTransferPercentage > float64(0.05) {
-			writeStringToPty(ctx, cmd, "-", &outputPos)
+			log.Printf("updating percentage\n")
+			writeStringToPty(ctx, cmd, "-", &outputPos, fileViewConfig.OutputPty)
+			writeProgressToFileView(ctx, cmd, fileTransferPercentage, fileViewConfig)
 			lastFileTransferPercentage = fileTransferPercentage
 		}
 	}
-	writeStringToPty(ctx, cmd, "] done. \r\n", &outputPos)
-	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\n", fileSizeBytes), &outputPos)
+	writeProgressToFileView(ctx, cmd, 1, fileViewConfig)
+	writeStringToPty(ctx, cmd, "] done. \r\n", &outputPos, fileViewConfig.OutputPty)
+	writeStringToPty(ctx, cmd, fmt.Sprintf("Finished transferring. Transferred %v bytes\n", fileSizeBytes), &outputPos, fileViewConfig.OutputPty)
 	exitSuccess = true
 }
 
-func writeStringToPty(ctx context.Context, cmd *sstore.CmdType, outputString string, outputPos *int64) {
+func writeStringToPty(ctx context.Context, cmd *sstore.CmdType, outputString string, outputPos *int64, outputPty bool) {
+	if outputPty {
+		return
+	}
 	outBytes := []byte(outputString)
 	update, err := sstore.AppendToCmdPtyBlob(ctx, cmd.ScreenId, cmd.LineId, outBytes, *outputPos)
 	*outputPos += int64(len(outBytes))
@@ -1555,6 +1617,15 @@ func parseCopyFileParam(info string) (remote string, path string, err error) {
 	} else {
 		return "error", "error", fmt.Errorf("malformed arguments")
 	}
+}
+
+func fileIsDir(ctx context.Context, ids resolvedIds, remote *ResolvedRemote, filePath string) bool {
+	fileStat, err := getSingleFileStat(ctx, ids, remote, filePath)
+	log.Printf("file is dir: %v", err)
+	if err != nil {
+		return false
+	}
+	return fileStat.IsDir
 }
 
 func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
@@ -1626,9 +1697,10 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 			sourceFullPath = filepath.Join(sourceCwd, sourcePathWithHome)
 		}
 	}
-	if destPath[len(destPath)-1:] == "/" {
+	if destPath[len(destPath)-1:] == "/" || fileIsDir(ctx, ids, destRemoteId, destPath) {
 		sourceFileName := filepath.Base(sourceFullPath)
 		destPath = filepath.Join(destPath, sourceFileName)
+		log.Printf("destPath: %v", destPath)
 	}
 	destMsh := destRemoteId.MShell
 	if destMsh == nil {
@@ -1647,48 +1719,70 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 		}
 	}
 	var outputPos int64
-	outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
-	termopts := sstore.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
-	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
-	writeStringToPty(ctx, cmd, outputStr, &outputPos)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
+	var cmd *sstore.CmdType
+	update := scbus.MakeUpdatePacket()
+	fileViewConfig := MakeFileViewConfig("", "")
+	outputPty := resolveBool(pk.Kwargs["outputpty"], false)
+	fileViewConfig.OutputPty = outputPty
+	if !outputPty {
+		outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
+		termopts := sstore.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
+		cmd, err = makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
+		writeStringToPty(ctx, cmd, outputStr, &outputPos, fileViewConfig.OutputPty)
+		if err != nil {
+			// TODO tricky error since the command was a success, but we can't show the output
+			return nil, err
+		}
+		update, err := addLineForCmd(ctx, "/copy file", false, ids, cmd, "", nil)
+		if err != nil {
+			// TODO tricky error since the command was a success, but we can't show the output
+			return nil, err
+		}
+		update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
+		scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
+	} else {
+		fileViewConfig.FileName = sourceFullPath
+		fileViewConfig.LineId = pk.Kwargs["lineid"]
+		fileViewConfig.ScreenId = pk.Kwargs["screenid"]
+		ids.Remote.MShell.ResetDataPos(base.MakeCommandKey(fileViewConfig.ScreenId, fileViewConfig.LineId))
+		err = sstore.ClearCmdPtyFile(ctx, fileViewConfig.ScreenId, fileViewConfig.LineId)
+		if err != nil {
+			return nil, fmt.Errorf("error clearing existing pty file: %v", err)
+		}
+		cmd, err = sstore.GetCmdByScreenId(ctx, fileViewConfig.ScreenId, fileViewConfig.LineId)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("CopyFileCommand: %v\n", fileViewConfig)
 	}
-	update, err := addLineForCmd(ctx, "/copy file", false, ids, cmd, "", nil)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	if destRemote != ConnectedRemote && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos, fileViewConfig.OutputPty)
 		err = destRemoteId.MShell.TryAutoConnect()
 		if err != nil {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos, fileViewConfig.OutputPty)
 		} else {
-			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
+			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos, fileViewConfig.OutputPty)
 		}
 	}
 	if sourceRemote != LocalRemote && sourceRemoteId != nil && !sourceRemoteId.RState.IsConnected() {
-		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", sourceRemote), &outputPos)
+		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", sourceRemote), &outputPos, fileViewConfig.OutputPty)
 		err = sourceRemoteId.MShell.TryAutoConnect()
 		if err != nil {
-			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos)
+			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos, fileViewConfig.OutputPty)
 		} else {
-			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos)
+			writeStringToPty(ctx, cmd, "Auto connect successful\r\n", &outputPos, fileViewConfig.OutputPty)
 		}
 	}
 	scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
 	update = scbus.MakeUpdatePacket()
 	if destRemote == LocalRemote && sourceRemote == LocalRemote {
-		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos)
+		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos, fileViewConfig)
 	} else if destRemote == LocalRemote && sourceRemote != LocalRemote {
-		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos, fileViewConfig)
 	} else if destRemote != LocalRemote && sourceRemote == LocalRemote {
-		go doCopyLocalFileToRemote(context.Background(), cmd, destMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyLocalFileToRemote(context.Background(), cmd, destMsh, sourceFullPath, destFullPath, outputPos, fileViewConfig)
 	} else if destRemote != LocalRemote && sourceRemote != LocalRemote {
-		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceMsh, destMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceMsh, destMsh, sourceFullPath, destFullPath, outputPos, fileViewConfig)
 	}
 	return update, nil
 }
@@ -4659,6 +4753,10 @@ func SetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 func makeStreamFilePk(ids resolvedIds, pk *scpacket.FeCommandPacketType) (*packet.StreamFilePacketType, error) {
 	cwd := ids.Remote.FeState["cwd"]
 	fileArg := pk.Args[0]
+	return makeStreamFilePkFromParams(cwd, fileArg)
+}
+
+func makeStreamFilePkFromParams(cwd string, fileArg string) (*packet.StreamFilePacketType, error) {
 	if fileArg == "" {
 		return nil, fmt.Errorf("/view:stat file argument must be set (cannot be empty)")
 	}
@@ -4670,6 +4768,7 @@ func makeStreamFilePk(ids resolvedIds, pk *scpacket.FeCommandPacketType) (*packe
 		streamPk.Path = filepath.Join(cwd, fileArg)
 	}
 	return streamPk, nil
+
 }
 
 func ViewStatCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
@@ -4680,48 +4779,80 @@ func ViewStatCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	if err != nil {
 		return nil, err
 	}
-	streamPk, err := makeStreamFilePk(ids, pk)
+	fileArg := pk.Args[0]
+	statPk, streamPk, err := getFileStat(ctx, ids, fileArg)
 	if err != nil {
 		return nil, err
 	}
-	streamPk.StatOnly = true
-	msh := ids.Remote.MShell
-	iter, err := msh.StreamFile(ctx, streamPk)
-	if err != nil {
-		return nil, fmt.Errorf("/view:stat error: %v", err)
-	}
-	defer iter.Close()
-	respIf, err := iter.Next(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("/view:stat error getting response: %v", err)
-	}
-	resp, ok := respIf.(*packet.StreamFileResponseType)
-	if !ok {
-		return nil, fmt.Errorf("/view:stat error, bad response packet type: %T", respIf)
-	}
-	if resp.Error != "" {
-		return nil, fmt.Errorf("/view:stat error: %s", resp.Error)
-	}
-	if resp.Info == nil {
-		return nil, fmt.Errorf("/view:stat error, no file info")
-	}
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "path", resp.Info.Name))
-	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "size", resp.Info.Size))
-	modTs := time.UnixMilli(resp.Info.ModTs)
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "path", statPk.Name))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "size", statPk.Size))
+	modTs := statPk.ModTs
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "modts", modTs.Format(TsFormatStr)))
-	buf.WriteString(fmt.Sprintf("  %-15s %v\n", "isdir", resp.Info.IsDir))
-	modeStr := fs.FileMode(resp.Info.Perm).String()
-	if len(modeStr) > 9 {
-		modeStr = modeStr[len(modeStr)-9:]
-	}
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "perms", modeStr))
+	buf.WriteString(fmt.Sprintf("  %-15s %v\n", "isdir", statPk.IsDir))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "perms", statPk.ModeStr))
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("view stat %q", streamPk.Path),
 		InfoLines: splitLinesForInfo(buf.String()),
 	})
 	return update, nil
+}
+
+func getSingleFileStat(ctx context.Context, ids resolvedIds, remote *ResolvedRemote, fileArg string) (*packet.FileStatPacketType, error) {
+	if remote.RemoteCopy.IsLocal() {
+		fileStat, err := os.Stat(fileArg)
+		if err != nil {
+			return nil, err
+		}
+		statPk := packet.MakeFileStatPacketFromFileInfo(nil, fileStat, "", true)
+		return statPk, nil
+	} else {
+		statPk, _, err := getFileStat(ctx, ids, fileArg)
+		if err != nil {
+			return nil, err
+		}
+		return statPk, nil
+	}
+}
+
+func getFileStat(ctx context.Context, ids resolvedIds, fileArg string) (*packet.FileStatPacketType, *packet.StreamFilePacketType, error) {
+	streamPk, err := makeStreamFilePkFromParams(ids.Remote.FeState["cwd"], fileArg)
+	if err != nil {
+		return nil, nil, err
+	}
+	streamPk.StatOnly = true
+	msh := ids.Remote.MShell
+	iter, err := msh.StreamFile(ctx, streamPk)
+	if err != nil {
+		return nil, nil, fmt.Errorf("/view:stat error: %v", err)
+	}
+	defer iter.Close()
+	respIf, err := iter.Next(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("/view:stat error getting response: %v", err)
+	}
+	resp, ok := respIf.(*packet.StreamFileResponseType)
+	if !ok {
+		return nil, nil, fmt.Errorf("/view:stat error, bad response packet type: %T", respIf)
+	}
+	if resp.Error != "" {
+		return nil, nil, fmt.Errorf("/view:stat error: %s", resp.Error)
+	}
+	if resp.Info == nil {
+		return nil, nil, fmt.Errorf("/view:stat error, no file info")
+	}
+	statPk := packet.MakeFileStatPacketType()
+	statPk.Name = resp.Info.Name
+	statPk.Size = resp.Info.Size
+	statPk.ModTs = time.UnixMilli(resp.Info.ModTs)
+	statPk.IsDir = resp.Info.IsDir
+	statPk.Perm = resp.Info.Perm
+	statPk.ModeStr = fs.FileMode(statPk.Perm).String()
+	if len(statPk.ModeStr) > 9 {
+		statPk.ModeStr = statPk.ModeStr[len(statPk.ModeStr)-9:]
+	}
+	return statPk, streamPk, nil
 }
 
 func ViewTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
@@ -5005,6 +5136,259 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		return nil, err
 	}
 	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
+	return update, nil
+}
+
+func StatDir(ctx context.Context, ids resolvedIds, path string, fileCallback func(pk *packet.FileStatPacketType, done bool, err error)) {
+	statPk, _, err := getFileStat(ctx, ids, path)
+	log.Printf("statPk: %\n", statPk)
+	if err != nil {
+		fileCallback(nil, true, err)
+		return
+	}
+	if !statPk.IsDir {
+		fileCallback(statPk, true, nil)
+		return
+	} else {
+		cwd := ids.Remote.FeState["cwd"]
+		listDirPk := packet.MakeListDirPacket()
+		listDirPk.ReqId = uuid.New().String()
+		if filepath.IsAbs(path) {
+			listDirPk.Path = path
+		} else {
+			listDirPk.Path = filepath.Join(cwd, path)
+		}
+		msh := ids.Remote.MShell
+		listDirIter, err := msh.ListDir(ctx, listDirPk)
+		if err != nil {
+			fileCallback(nil, true, err)
+			return
+		}
+		defer listDirIter.Close()
+		for {
+			respIf, err := listDirIter.Next(ctx)
+			if err != nil {
+				fileCallback(nil, true, err)
+				return
+			}
+			resp, ok := respIf.(*packet.FileStatPacketType)
+			if !ok || resp == nil {
+				fileCallback(nil, true, fmt.Errorf("error unmarshalling file stat response type %v %v", resp, respIf))
+				return
+			}
+			if resp.Error != "" {
+				err = fmt.Errorf(resp.Error)
+			} else {
+				err = nil
+			}
+			fileCallback(resp, resp.Done, err)
+			if resp.Done {
+				return
+			}
+		}
+	}
+}
+
+func SearchDir(ctx context.Context, ids resolvedIds, path string, searchQuery string, fileCallback func(pk *packet.FileStatPacketType, done bool, err error)) {
+	log.Printf("running searchdir %v %v \n", path, searchQuery)
+	statPk, _, err := getFileStat(ctx, ids, path)
+	if err != nil {
+		fileCallback(nil, true, err)
+		return
+	}
+	if !statPk.IsDir {
+		match, err := regexp.MatchString(searchQuery, statPk.Name)
+		if err != nil {
+			fileCallback(nil, true, err)
+		}
+		if match {
+			fileCallback(statPk, true, nil)
+		} else {
+			fileCallback(nil, true, nil)
+		}
+		return
+	}
+
+	cwd := ids.Remote.FeState["cwd"]
+	searchDirPk := packet.MakeSearchDirPacket()
+	searchDirPk.ReqId = uuid.New().String()
+	if filepath.IsAbs(path) {
+		searchDirPk.Path = path
+	} else {
+		searchDirPk.Path = filepath.Join(cwd, path)
+	}
+	searchDirPk.SearchQuery = searchQuery
+	msh := ids.Remote.MShell
+	searchDirIter, err := msh.SearchDir(ctx, searchDirPk)
+	if err != nil {
+		fileCallback(nil, true, err)
+		return
+	}
+	defer searchDirIter.Close()
+	for {
+		respIf, err := searchDirIter.Next(ctx)
+		log.Printf("got next\n")
+		if err != nil {
+			fileCallback(nil, true, err)
+			return
+		}
+		resp, ok := respIf.(*packet.FileStatPacketType)
+		if !ok || resp == nil {
+			fileCallback(nil, true, fmt.Errorf("error unmarshalling file stat response type %v %v", resp, respIf))
+			return
+		}
+		log.Printf("resp: %v\n", resp)
+		if resp.Error == "none" {
+			fileCallback(nil, true, nil)
+			return
+		} else if resp.Error != "" {
+			err = fmt.Errorf(resp.Error)
+		} else {
+			err = nil
+		}
+		if resp.Done {
+			return
+		}
+		fileCallback(resp, resp.Done, err)
+	}
+}
+
+func SearchDirCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	path := ids.Remote.FeState["cwd"]
+	if len(pk.Args) > 0 {
+		path = pk.Args[0]
+	}
+	var searchQuery string
+	if len(pk.Args) > 1 {
+		searchQuery = pk.Args[1]
+	} else {
+		return nil, fmt.Errorf("no search query specified - usage /searchdir [path] [query]")
+	}
+	lineId := pk.Kwargs["lineid"]
+	screenId := pk.Kwargs["screenid"]
+	cmd, err := sstore.GetCmdByScreenId(ctx, screenId, lineId)
+	if err != nil {
+		return nil, err
+	}
+	outputPty := resolveBool(pk.Kwargs["outputpty"], false)
+	if outputPty {
+		ids.Remote.MShell.ResetDataPos(base.MakeCommandKey(screenId, lineId))
+		err = sstore.ClearCmdPtyFile(ctx, screenId, lineId)
+		if err != nil {
+			return nil, fmt.Errorf("error clearing existing pty file: %v", err)
+		}
+	}
+	go func() {
+		var outputPos int64
+		searchCtx := context.Background()
+		SearchDir(searchCtx, ids, path, searchQuery, func(statPk *packet.FileStatPacketType, done bool, err error) {
+			log.Printf("got callback\n")
+			if err != nil {
+				log.Printf("got error: %v\n", err)
+			} else {
+				err = writePacketToPty(searchCtx, cmd, statPk, &outputPos)
+				if err != nil {
+					log.Printf("err writing packet to pty: %v\n", err)
+				}
+			}
+		})
+	}()
+	update := scbus.MakeUpdatePacket()
+	return update, nil
+}
+
+func ViewDirCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	path := ids.Remote.FeState["cwd"]
+	if len(pk.Args) > 0 {
+		path = pk.Args[0]
+	}
+	lineId := pk.Kwargs["lineid"]
+	screenId := pk.Kwargs["screenid"]
+	cmd, err := sstore.GetCmdByScreenId(ctx, screenId, lineId)
+	if err != nil {
+		return nil, err
+	}
+	outputPty := resolveBool(pk.Kwargs["outputpty"], false)
+	if outputPty {
+		ids.Remote.MShell.ResetDataPos(base.MakeCommandKey(screenId, lineId))
+		err = sstore.ClearCmdPtyFile(ctx, screenId, lineId)
+		if err != nil {
+			return nil, fmt.Errorf("error clearing existing pty file: %v", err)
+		}
+	}
+	go func() {
+		var outputPos int64
+		statCtx := context.Background()
+		StatDir(statCtx, ids, path, func(statPk *packet.FileStatPacketType, done bool, err error) {
+			if err != nil {
+				log.Printf("got error: %v\n", err)
+			} else {
+				err = writePacketToPty(statCtx, cmd, statPk, &outputPos)
+				if err != nil {
+					log.Printf("err writing packet to pty: %v\n", err)
+				}
+			}
+		})
+	}()
+	update := scbus.MakeUpdatePacket()
+	return update, nil
+}
+
+type FileViewConfig struct {
+	FileName  string
+	OutputPty bool
+	LineId    string
+	ScreenId  string
+	OutputPos int64
+}
+
+func MakeFileViewConfig(lineId string, screenId string) *FileViewConfig {
+	return &FileViewConfig{OutputPty: true, LineId: lineId, ScreenId: screenId, OutputPos: 0}
+}
+
+func FileViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
+	if err != nil {
+		return nil, err
+	}
+	path := ids.Remote.FeState["cwd"]
+	if len(pk.Args) > 0 {
+		path = pk.Args[0]
+	}
+	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), nil)
+	if err != nil {
+		return nil, err
+	}
+	lineState := make(map[string]any)
+	lineState[sstore.LineState_File] = path
+	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "fileview", lineState)
+	if err != nil {
+		return nil, err
+	}
+	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
+	scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
+
+	go func() {
+		var outputPos int64
+		statCtx := context.Background()
+		StatDir(statCtx, ids, path, func(statPk *packet.FileStatPacketType, done bool, err error) {
+			if err != nil {
+				log.Printf("got error: %v\n", err)
+			} else {
+				writePacketToPty(statCtx, cmd, statPk, &outputPos)
+			}
+		})
+	}()
+
+	update = scbus.MakeUpdatePacket()
 	return update, nil
 }
 

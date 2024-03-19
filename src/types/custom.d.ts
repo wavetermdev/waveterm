@@ -810,6 +810,13 @@ declare global {
         outputpos?: number;
     };
 
+    type FileViewStateType = {
+        type: string;
+        progress: number;
+        file: string;
+        error: string;
+    };
+
     type ExtBlob = Blob & {
         notFound: boolean;
         name?: string;
@@ -912,6 +919,9 @@ declare global {
         contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
         onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
         getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
+        pathRelative: (fromPath: string, toPath: string) => string;
+        pathJoin: (basePath: string, newPath: string) => string;
+        pathDirName: (filePath: string) => string;
         onToggleDevUI: (callback: () => void) => void;
     };
 }

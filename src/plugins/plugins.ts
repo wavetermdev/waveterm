@@ -7,6 +7,7 @@ import { SourceCodeRenderer } from "./code/code";
 import { SimpleMustacheRenderer } from "./mustache/mustache";
 import { CSVRenderer } from "./csv/csv";
 import { OpenAIRenderer, OpenAIRendererModel } from "./openai/openai";
+import { FileViewRenderer, FileViewRendererModel } from "./fileview/fileview";
 import { SimplePdfRenderer } from "./pdf/pdf";
 import { SimpleMediaRenderer } from "./media/media";
 import { isBlank } from "@/util/util";
@@ -79,6 +80,17 @@ const PluginConfigs: RendererPluginType[] = [
         globalCss: null,
         mimeTypes: ["image/*"],
         simpleComponent: SimpleImageRenderer,
+    },
+    {
+        name: "fileview",
+        rendererType: "full",
+        heightType: "pixels",
+        dataType: "model",
+        collapseType: "hide",
+        globalCss: null,
+        mimeTypes: ["application/json"],
+        modelCtor: () => new FileViewRendererModel(),
+        fullComponent: FileViewRenderer,
     },
     {
         name: "pdf",

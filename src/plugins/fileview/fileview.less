@@ -1,0 +1,75 @@
+.fileview-toplevel {
+    .fileInput {
+        display: none;
+    }
+
+    .status-bar {
+        box-sizing: border-box;
+        border: 1px solid var(--term-green);
+        width: 100%;
+        font-size: 12px;
+        padding: 3px;
+
+        .status-bar-icon {
+            width: 30px;
+            float: right;
+            text-align: center;
+            border-left: 1px solid var(--term-green);
+
+            &:hover {
+                background-color: rgba(77, 153, 5, 0.58);
+            }
+        }
+    }
+
+    .fileview-container {
+        border-left: 1px solid var(--term-green);
+        border-right: 1px solid var(--term-green);
+        border-bottom: 1px solid var(--term-green);
+
+        .file-container {
+            font-size: 11px;
+            box-sizing: border-box;
+            padding: 3px;
+
+            &:hover {
+                outline: 2px solid var(--term-green);
+                outline-offset: -2px;
+
+                .download-button {
+                    outline: 1px solid var(--term-green);
+                    outline-offset: -2px;
+                }
+            }
+
+            .download-button {
+                width: 25px;
+                float: right;
+                text-align: center;
+
+                &:hover {
+                    background-color: rgba(77, 153, 5, 0.58);
+                }
+            }
+
+            .dir-icon {
+                width: 25px;
+                float: right;
+                text-align: center;
+            }
+        }
+
+        .dir-container {
+            color: var(--term-green);
+        }
+    }
+
+    .bottom-info-panel {
+        box-sizing: border-box;
+        border: 1px solid var(--term-green);
+        width: 100%;
+        height: 24px;
+        font-size: 11px;
+        padding: 3px;
+    }
+}

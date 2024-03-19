@@ -61,8 +61,11 @@ const (
 	WriteFileDonePacketStr  = "writefiledone"  // rpc-response
 	FileDataPacketStr       = "filedata"
 	FileStatPacketStr       = "filestat"
+	FileViewStatePacketStr  = "fileviewstate"
 	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
 	ShellStatePacketStr     = "shellstate"
+	ListDirPacketStr        = "listdir"
+	SearchDirPacketStr      = "searchdir"
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
@@ -115,6 +118,8 @@ func init() {
 	TypeStrToFactory[WriteFileDonePacketStr] = reflect.TypeOf(WriteFileDonePacketType{})
 	TypeStrToFactory[LogPacketStr] = reflect.TypeOf(LogPacketType{})
 	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
+	TypeStrToFactory[ListDirPacketStr] = reflect.TypeOf(ListDirPacketType{})
+	TypeStrToFactory[SearchDirPacketStr] = reflect.TypeOf(SearchDirPacketType{})
 	TypeStrToFactory[FileStatPacketStr] = reflect.TypeOf(FileStatPacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
@@ -125,6 +130,8 @@ func init() {
 	var _ RpcPacketType = (*ReInitPacketType)(nil)
 	var _ RpcPacketType = (*StreamFilePacketType)(nil)
 	var _ RpcPacketType = (*WriteFilePacketType)(nil)
+	var _ RpcPacketType = (*ListDirPacketType)(nil)
+	var _ RpcPacketType = (*SearchDirPacketType)(nil)
 
 	var _ RpcResponsePacketType = (*CmdStartPacketType)(nil)
 	var _ RpcResponsePacketType = (*ResponsePacketType)(nil)
@@ -383,6 +390,21 @@ func MakeReInitPacket() *ReInitPacketType {
 	return &ReInitPacketType{Type: ReInitPacketStr}
 }
 
+type FileViewStatePacketType struct {
+	Type     string `json:"type"`
+	File     string `json:"file"`
+	Progress int    `json:"progress"`
+	Error    string `json:"error"`
+}
+
+func MakeFileViewStatePacket() *FileViewStatePacketType {
+	return &FileViewStatePacketType{Type: FileViewStatePacketStr}
+}
+
+func (p *FileViewStatePacketType) GetType() string {
+	return FileViewStatePacketStr
+}
+
 type FileStatPacketType struct {
 	Type    string    `json:"type"`
 	Name    string    `json:"name"`
@@ -413,8 +435,12 @@ func MakeFileStatPacketType() *FileStatPacketType {
 	return &FileStatPacketType{Type: FileStatPacketStr}
 }
 
-func MakeFileStatPacketFromFileInfo(finfo fs.FileInfo, err string, done bool) *FileStatPacketType {
+func MakeFileStatPacketFromFileInfo(listDirPk *ListDirPacketType, finfo fs.FileInfo, err string, done bool) *FileStatPacketType {
 	resp := MakeFileStatPacketType()
+	if listDirPk != nil {
+		resp.RespId = listDirPk.ReqId
+		resp.Path = listDirPk.Path
+	}
 	resp.Error = err
 	resp.Done = done
 
@@ -426,6 +452,50 @@ func MakeFileStatPacketFromFileInfo(finfo fs.FileInfo, err string, done bool) *F
 	resp.Perm = int(finfo.Mode().Perm())
 	resp.ModeStr = finfo.Mode().String()
 	return resp
+}
+
+type ListDirPacketType struct {
+	Type  string `json:"type"`
+	ReqId string `json:"reqid"`
+	Path  string `json:"path"`
+}
+
+func (*ListDirPacketType) GetType() string {
+	return ListDirPacketStr
+}
+
+func (p *ListDirPacketType) GetReqId() string {
+	return p.ReqId
+}
+
+func MakeListDirPacket() *ListDirPacketType {
+	return &ListDirPacketType{Type: ListDirPacketStr}
+}
+
+type SearchDirPacketType struct {
+	Type        string `json:"type"`
+	ReqId       string `json:"reqid"`
+	Path        string `json:"path"`
+	SearchQuery string `json:"searchquery"`
+}
+
+func (*SearchDirPacketType) GetType() string {
+	return SearchDirPacketStr
+}
+
+func (p *SearchDirPacketType) GetReqId() string {
+	return p.ReqId
+}
+
+func (p *SearchDirPacketType) ConvertToListDir() *ListDirPacketType {
+	rtn := MakeListDirPacket()
+	rtn.ReqId = p.ReqId
+	rtn.Path = p.Path
+	return rtn
+}
+
+func MakeSearchDirPacket() *SearchDirPacketType {
+	return &SearchDirPacketType{Type: SearchDirPacketStr}
 }
 
 type StreamFilePacketType struct {
