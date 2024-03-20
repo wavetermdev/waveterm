@@ -25,6 +25,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
 const GetStateTimeout = 15 * time.Second
@@ -71,7 +72,7 @@ type ShellApi interface {
 	GetRemoteShellPath() string
 	MakeRunCommand(cmdStr string, opts RunCommandOpts) string
 	MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd
-	GetShellState(chan ShellStateOutput)
+	GetShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte)
 	GetBaseShellOpts() string
 	ParseShellStateOutput(output []byte) (*packet.ShellState, *packet.ShellStateStats, error)
 	MakeRcFileStr(pk *packet.RunPacketType) string
@@ -154,7 +155,7 @@ func internalMacUserShell() string {
 const FirstExtraFilesFdNum = 3
 
 // returns output(stdout+stderr), extraFdOutput, error
-func StreamCommandWithExtraFd(ecmd *exec.Cmd, outputCh chan []byte, extraFdNum int, endBytes []byte) ([]byte, error) {
+func StreamCommandWithExtraFd(ecmd *exec.Cmd, outputCh chan []byte, extraFdNum int, endBytes []byte, stdinDataCh chan []byte) ([]byte, error) {
 	defer close(outputCh)
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
@@ -202,6 +203,22 @@ func StreamCommandWithExtraFd(ecmd *exec.Cmd, outputCh chan []byte, extraFdNum i
 		defer outputWg.Done()
 		utilfn.CopyWithEndBytes(&extraFdOutputBuf, pipeReader, endBytes)
 	}()
+	if stdinDataCh != nil {
+		go func() {
+			// continue this loop even after an error to drain stdinDataCh
+			hadErr := false
+			for stdinData := range stdinDataCh {
+				if hadErr {
+					continue
+				}
+				_, err := cmdPty.Write(stdinData)
+				if err != nil {
+					wlog.Logf("error writing to shellstate cmdpty (stdin): %v\n", err)
+					hadErr = true
+				}
+			}
+		}()
+	}
 	exitErr := ecmd.Wait()
 	if exitErr != nil {
 		return nil, exitErr

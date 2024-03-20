@@ -71,11 +71,11 @@ func IsWaveSrv() bool {
 	return ProcessType == ProcessType_WaveSrv
 }
 
-func MakeCommandKey(sessionId string, cmdId string) CommandKey {
-	if sessionId == "" && cmdId == "" {
+func MakeCommandKey(screenId string, lineId string) CommandKey {
+	if screenId == "" && lineId == "" {
 		return CommandKey("")
 	}
-	return CommandKey(fmt.Sprintf("%s/%s", sessionId, cmdId))
+	return CommandKey(fmt.Sprintf("%s/%s", screenId, lineId))
 }
 
 func (ckey CommandKey) IsEmpty() bool {

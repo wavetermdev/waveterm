@@ -180,6 +180,22 @@ type RunCmdType struct {
 	EphCancled atomic.Bool // only for Ephemeral commands, if true, then the command result should be discarded
 }
 
+type ReinitCommandSink struct {
+	Remote *MShellProc
+	ReqId  string
+}
+
+func (rcs *ReinitCommandSink) HandleInput(feInput *scpacket.FeInputPacketType) error {
+	realData, err := base64.StdEncoding.DecodeString(feInput.InputData64)
+	if err != nil {
+		return fmt.Errorf("error decoding input data: %v", err)
+	}
+	inputPk := packet.MakeRpcInputPacket(rcs.ReqId)
+	inputPk.Data = realData
+	rcs.Remote.ServerProc.Input.SendPacket(inputPk)
+	return nil
+}
+
 type RemoteRuntimeState = sstore.RemoteRuntimeState
 
 func CanComplete(remoteType string) bool {
@@ -207,7 +223,7 @@ func (msh *MShellProc) EnsureShellType(ctx context.Context, shellType string) er
 		return nil
 	}
 	// try to reinit the shell
-	_, err := msh.ReInit(ctx, shellType, nil, false)
+	_, err := msh.ReInit(ctx, base.CommandKey(""), shellType, nil, false)
 	if err != nil {
 		return fmt.Errorf("error trying to initialize shell %q: %v", shellType, err)
 	}
@@ -1413,7 +1429,7 @@ func makeReinitErrorUpdate(shellType string) sstore.ActivityUpdate {
 	return rtn
 }
 
-func (msh *MShellProc) ReInit(ctx context.Context, shellType string, dataFn func([]byte), verbose bool) (rtnPk *packet.ShellStatePacketType, rtnErr error) {
+func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType string, dataFn func([]byte), verbose bool) (rtnPk *packet.ShellStatePacketType, rtnErr error) {
 	if !msh.IsConnected() {
 		return nil, fmt.Errorf("cannot reinit, remote is not connected")
 	}
@@ -1437,6 +1453,14 @@ func (msh *MShellProc) ReInit(ctx context.Context, shellType string, dataFn func
 		return nil, err
 	}
 	defer rpcIter.Close()
+	if ck != "" {
+		reinitSink := &ReinitCommandSink{
+			Remote: msh,
+			ReqId:  reinitPk.ReqId,
+		}
+		msh.registerInputSink(ck, reinitSink)
+		defer msh.unregisterInputSink(ck)
+	}
 	var ssPk *packet.ShellStatePacketType
 	for {
 		resp, err := rpcIter.Next(ctx)
@@ -1751,7 +1775,7 @@ func (msh *MShellProc) initActiveShells() {
 		return
 	}
 	for _, shellType := range activeShells {
-		_, err = msh.ReInit(ctx, shellType, nil, false)
+		_, err = msh.ReInit(ctx, base.CommandKey(""), shellType, nil, false)
 		if err != nil {
 			msh.WriteToPtyBuffer("*error reiniting shell %q: %v\n", shellType, err)
 		}

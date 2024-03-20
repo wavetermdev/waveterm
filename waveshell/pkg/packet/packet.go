@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"log"
 	"os"
 	"reflect"
 	"sync"
@@ -1213,6 +1214,14 @@ func (sender *PacketSender) SendPacketCtx(ctx context.Context, pk PacketType) er
 }
 
 func (sender *PacketSender) SendPacket(pk PacketType) error {
+	if pk == nil {
+		log.Printf("tried to send nil packet\n")
+		return fmt.Errorf("tried to send nil packet")
+	}
+	if pk.GetType() == "" {
+		log.Printf("tried to send invalid packet: %T\n", pk)
+		return fmt.Errorf("tried to send packet without a type: %T", pk)
+	}
 	err := sender.checkStatus()
 	if err != nil {
 		return err

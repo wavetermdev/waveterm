@@ -3712,7 +3712,7 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verb
 		writeStringToPty(ctx, cmd, string(data), &outputPos)
 	}
 	origStatePtr := ids.Remote.MShell.GetDefaultStatePtr(shellType)
-	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType, dataFn, verbose)
+	ssPk, err := ids.Remote.MShell.ReInit(ctx, base.MakeCommandKey(cmd.ScreenId, cmd.LineId), shellType, dataFn, verbose)
 	if err != nil {
 		rtnErr = err
 		return

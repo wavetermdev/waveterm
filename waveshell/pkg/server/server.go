@@ -207,7 +207,6 @@ func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 		return
 	}
 	cproc.Input.SendPacket(pk)
-	return
 }
 
 func runSingleCompGen(cwd string, compType string, prefix string) ([]string, bool, error) {
@@ -278,7 +277,6 @@ func (m *MServer) runMixedCompGen(compPk *packet.CompGenPacketType) {
 	}
 	sort.Strings(comps) // resort
 	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": comps, "hasmore": (hasMoreFiles || hasMoreDirs)})
-	return
 }
 
 func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
@@ -298,8 +296,44 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": comps, "hasmore": hasMore})
 }
 
+type ReinitRpcHandler struct {
+	ReqId       string
+	TimeoutTime time.Time
+	StdinDataCh chan []byte
+}
+
+func (rh *ReinitRpcHandler) GetTimeoutTime() time.Time {
+	return rh.TimeoutTime
+}
+
+func (rh *ReinitRpcHandler) DispatchPacket(reqId string, pkArg packet.RpcFollowUpPacketType) {
+	rpcInput, ok := pkArg.(*packet.RpcInputPacketType)
+	if !ok {
+		wlog.Logf("reinit rpc handler: invalid packet type: %T", pkArg)
+		return
+	}
+	// nonblocking send
+	select {
+	case rh.StdinDataCh <- rpcInput.Data:
+	default:
+		wlog.Logf("reinit rpc handler: stdin data channel full, dropping data")
+	}
+}
+
+func (rh *ReinitRpcHandler) UnRegisterCallback() {
+	close(rh.StdinDataCh)
+}
+
 func (m *MServer) reinit(reqId string, shellType string) {
-	ssPk, err := m.MakeShellStatePacket(reqId, shellType)
+	stdinDataCh := make(chan []byte, 10)
+	rh := &ReinitRpcHandler{
+		ReqId:       reqId,
+		TimeoutTime: time.Now().Add(30 * time.Second),
+		StdinDataCh: stdinDataCh,
+	}
+	m.registerRpcHandler(reqId, rh)
+	defer m.unregisterRpcHandler(reqId)
+	ssPk, err := m.MakeShellStatePacket(reqId, shellType, stdinDataCh)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
 		return
@@ -313,13 +347,13 @@ func (m *MServer) reinit(reqId string, shellType string) {
 	m.Sender.SendPacket(ssPk)
 }
 
-func (m *MServer) MakeShellStatePacket(reqId string, shellType string) (*packet.ShellStatePacketType, error) {
+func (m *MServer) MakeShellStatePacket(reqId string, shellType string, stdinDataCh chan []byte) (*packet.ShellStatePacketType, error) {
 	sapi, err := shellapi.MakeShellApi(shellType)
 	if err != nil {
 		return nil, err
 	}
 	rtnCh := make(chan shellapi.ShellStateOutput, 1)
-	go sapi.GetShellState(rtnCh)
+	go sapi.GetShellState(rtnCh, stdinDataCh)
 	for ssOutput := range rtnCh {
 		if ssOutput.Error != "" {
 			return nil, errors.New(ssOutput.Error)
@@ -530,7 +564,6 @@ func (m *MServer) returnStreamFileNewFileResponse(pk *packet.StreamFilePacketTyp
 		Perm:     int(dirInfo.Mode().Perm()),
 		NotFound: true,
 	}
-	return
 }
 
 func (m *MServer) streamFile(pk *packet.StreamFilePacketType) {

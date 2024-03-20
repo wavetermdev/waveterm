@@ -246,7 +246,7 @@ func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty 
 	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 }
 
-func (z zshShellApi) GetShellState(outCh chan ShellStateOutput) {
+func (z zshShellApi) GetShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
 	defer close(outCh)
@@ -262,7 +262,7 @@ func (z zshShellApi) GetShellState(outCh chan ShellStateOutput) {
 			outCh <- ShellStateOutput{Output: outputBytes}
 		}
 	}()
-	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes)
+	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes, stdinDataCh)
 	outputWg.Wait()
 	if err != nil {
 		outCh <- ShellStateOutput{Error: err.Error()}

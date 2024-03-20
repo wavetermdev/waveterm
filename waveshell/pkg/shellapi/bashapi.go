@@ -80,7 +80,8 @@ func (b bashShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty
 	return MakeBashShExecCommand(cmdStr, rcFileName, usePty)
 }
 
-func (b bashShellApi) GetShellState(outCh chan ShellStateOutput) {
+func (b bashShellApi) GetShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte) {
+	// TODO integrate stdinWriter
 	GetBashShellState(outCh)
 }
 
@@ -185,7 +186,7 @@ func GetBashShellState(outCh chan ShellStateOutput) {
 			outCh <- ShellStateOutput{Output: outputBytes}
 		}
 	}()
-	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes)
+	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes, nil)
 	outputWg.Wait()
 	if err != nil {
 		outCh <- ShellStateOutput{Error: err.Error()}
