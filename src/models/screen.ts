@@ -12,7 +12,7 @@ import { MagicLayout } from "@/app/magiclayout";
 import * as appconst from "@/app/appconst";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { Model } from "./model";
-import { GlobalCommandRunner } from "./global";
+import { GlobalCommandRunner, GlobalModel } from "./global";
 import { Cmd } from "./cmd";
 import { ScreenLines } from "./screenlines";
 import { getTermPtyData } from "@/util/modelutil";
@@ -469,12 +469,59 @@ class Screen {
         this.renderers[lineId] = renderer;
     }
 
-    setLineFocus(lineNum: number, focus: boolean): void {
+    registerKeybindings(lineid: string) {
+        console.log("registering keybindings");
+        let keybindManager = GlobalModel.keybindManager;
+        let domain = "line-" + lineid;
+        let termWrap = this.terminals[lineid];
+        keybindManager.registerKeybinding("plugin", domain, "terminal:copy", (waveEvent) => {
+            let sel = termWrap.terminal.getSelection();
+            navigator.clipboard.writeText(sel);
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "terminal:paste", (waveEvent) => {
+            let p = navigator.clipboard.readText();
+            p.then((text) => {
+                termWrap.dataHandler?.(text, termWrap);
+            });
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "generic:selectAbove", (waveEvent) => {
+            console.log("arrow key pressed");
+            termWrap.terminal.scrollLines(-1);
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "generic:selectBelow", (waveEvent) => {
+            termWrap.terminal.scrollLines(1);
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "generic:selectPageAbove", (waveEvent) => {
+            termWrap.terminal.scrollLines(-10);
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "generic:selectPageBelow", (waveEvent) => {
+            termWrap.terminal.scrollLines(10);
+            return true;
+        });
+    }
+
+    unregisterKeybindings(lineid: string) {
+        console.log("unregister keybindings");
+        let domain = "line-" + lineid;
+        GlobalModel.keybindManager.unregisterDomain(domain);
+    }
+
+    setLineFocus(lineNum: number, lineid: string, focus: boolean): void {
         mobx.action(() => this.termLineNumFocus.set(focus ? lineNum : 0))();
         if (focus && this.selectedLine.get() != lineNum) {
             GlobalCommandRunner.screenSelectLine(String(lineNum), "cmd");
         } else if (focus && this.focusType.get() == "input") {
             GlobalCommandRunner.screenSetFocus("cmd");
+        }
+        if (focus) {
+            this.registerKeybindings(lineid);
+        } else {
+            this.unregisterKeybindings(lineid);
         }
     }
 
@@ -498,70 +545,7 @@ class Screen {
         })();
     }
 
-    termCustomKeyHandlerInternal(e: any, termWrap: TermWrap): void {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "ArrowUp")) {
-            termWrap.terminal.scrollLines(-1);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "ArrowDown")) {
-            termWrap.terminal.scrollLines(1);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "PageUp")) {
-            termWrap.terminal.scrollPages(-1);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "PageDown")) {
-            termWrap.terminal.scrollPages(1);
-            return;
-        }
-    }
-
-    isTermCapturedKey(e: any): boolean {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (
-            checkKeyPressed(waveEvent, "ArrowUp") ||
-            checkKeyPressed(waveEvent, "ArrowDown") ||
-            checkKeyPressed(waveEvent, "PageUp") ||
-            checkKeyPressed(waveEvent, "PageDown")
-        ) {
-            return true;
-        }
-        return false;
-    }
-
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:c")) {
-            e.stopPropagation();
-            e.preventDefault();
-            let sel = termWrap.terminal.getSelection();
-            navigator.clipboard.writeText(sel);
-            return false;
-        }
-        if (e.type == "keypress" && checkKeyPressed(waveEvent, "Ctrl:Shift:v")) {
-            e.stopPropagation();
-            e.preventDefault();
-            let p = navigator.clipboard.readText();
-            p.then((text) => {
-                termWrap.dataHandler?.(text, termWrap);
-            });
-            return false;
-        }
-        if (termWrap.isRunning) {
-            return true;
-        }
-        let isCaptured = this.isTermCapturedKey(e);
-        if (!isCaptured) {
-            return true;
-        }
-        if (e.type != "keydown" || isModKeyPress(e)) {
-            return false;
-        }
-        e.stopPropagation();
-        e.preventDefault();
-        this.termCustomKeyHandlerInternal(e, termWrap);
         return false;
     }
 
@@ -588,7 +572,7 @@ class Screen {
             termOpts: cmd.getTermOpts(),
             winSize: { height: 0, width: width },
             dataHandler: cmd.handleData.bind(cmd),
-            focusHandler: (focus: boolean) => this.setLineFocus(line.linenum, focus),
+            focusHandler: (focus: boolean) => this.setLineFocus(line.linenum, line.lineid, focus),
             isRunning: cmd.isRunning(),
             customKeyHandler: this.termCustomKeyHandler.bind(this),
             fontSize: this.globalModel.getTermFontSize(),
