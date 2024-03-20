@@ -3975,14 +3975,14 @@ func splitLinesForInfo(str string) []string {
 }
 
 func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int) error {
-	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-	siPk.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
+	feInput := scpacket.MakeFeInputPacket()
+	feInput.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	feInput.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
 	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
 	if msh == nil {
 		return fmt.Errorf("cannot resize, cmd remote not found")
 	}
-	err := msh.SendSpecialInput(siPk)
+	err := msh.HandleFeInput(feInput)
 	if err != nil {
 		return err
 	}
@@ -5178,10 +5178,10 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 	if !msh.IsConnected() {
 		return nil, fmt.Errorf("cannot send signal, remote is not connected")
 	}
-	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-	siPk.SigName = sigArg
-	err = msh.SendSpecialInput(siPk)
+	inputPk := scpacket.MakeFeInputPacket()
+	inputPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	inputPk.SigName = sigArg
+	err = msh.HandleFeInput(inputPk)
 	if err != nil {
 		return nil, fmt.Errorf("cannot send signal: %v", err)
 	}

@@ -54,6 +54,7 @@ const RemoteTermCols = 80
 const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
 const RpcIterChannelSize = 100
+const MaxInputDataSize = 1000
 
 var envVarsToStrip map[string]bool = map[string]bool{
 	"PROMPT":               true,
@@ -128,6 +129,7 @@ type pendingStateKey struct {
 	RemotePtr sstore.RemotePtrType
 }
 
+// provides state, acccess, and control for a waveshell server process
 type MShellProc struct {
 	Lock   *sync.Mutex
 	Remote *sstore.RemoteType
@@ -135,7 +137,7 @@ type MShellProc struct {
 	// runtime
 	RemoteId           string // can be read without a lock
 	Status             string
-	ServerProc         *shexec.ClientProc
+	ServerProc         *shexec.ClientProc // the server process
 	UName              string
 	Err                error
 	ErrNoInitPk        bool
@@ -154,9 +156,18 @@ type MShellProc struct {
 	InstallCancelFn    context.CancelFunc
 	InstallErr         error
 
+	// for synthetic commands (not run through RunCommand), this provides a way for them
+	// to register to receive input events from the frontend (e.g. ReInit)
+	CommandInputMap map[base.CommandKey]CommandInputSink
+
 	RunningCmds      map[base.CommandKey]*RunCmdType
-	PendingStateCmds map[pendingStateKey]base.CommandKey // key=[remoteinstance name]
-	Client           *ssh.Client
+	PendingStateCmds map[pendingStateKey]base.CommandKey // key=[remoteinstance name] (in progress commands that might update the state)
+
+	Client *ssh.Client
+}
+
+type CommandInputSink interface {
+	HandleInput(feInput *scpacket.FeInputPacketType) error
 }
 
 type RunCmdType struct {
@@ -694,6 +705,7 @@ func MakeMShell(r *sstore.RemoteType) *MShellProc {
 		Status:           StatusDisconnected,
 		PtyBuffer:        buf,
 		InstallStatus:    StatusDisconnected,
+		CommandInputMap:  make(map[base.CommandKey]CommandInputSink),
 		RunningCmds:      make(map[base.CommandKey]*RunCmdType),
 		PendingStateCmds: make(map[pendingStateKey]base.CommandKey),
 		StateMap:         server.MakeShellStateMap(),
@@ -1778,24 +1790,14 @@ func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {
 	return ok
 }
 
-func (msh *MShellProc) SendInput(dataPk *packet.DataPacketType) error {
-	if !msh.IsConnected() {
-		return fmt.Errorf("remote is not connected, cannot send input")
-	}
-	if !msh.IsCmdRunning(dataPk.CK) {
-		return fmt.Errorf("cannot send input, cmd is not running")
-	}
-	return msh.ServerProc.Input.SendPacket(dataPk)
-}
-
 func (msh *MShellProc) KillRunningCommandAndWait(ctx context.Context, ck base.CommandKey) error {
 	if !msh.IsCmdRunning(ck) {
 		return nil
 	}
-	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = ck
-	siPk.SigName = "SIGTERM"
-	err := msh.SendSpecialInput(siPk)
+	feiPk := scpacket.MakeFeInputPacket()
+	feiPk.CK = ck
+	feiPk.SigName = "SIGTERM"
+	err := msh.HandleFeInput(feiPk)
 	if err != nil {
 		return fmt.Errorf("error trying to kill running cmd: %w", err)
 	}
@@ -1810,16 +1812,6 @@ func (msh *MShellProc) KillRunningCommandAndWait(ctx context.Context, ck base.Co
 		// not a huge deal though since this is not processor intensive and not widely used
 		time.Sleep(100 * time.Millisecond)
 	}
-}
-
-func (msh *MShellProc) SendSpecialInput(siPk *packet.SpecialInputPacketType) error {
-	if !msh.IsConnected() {
-		return fmt.Errorf("remote is not connected, cannot send input")
-	}
-	if !msh.IsCmdRunning(siPk.CK) {
-		return fmt.Errorf("cannot send input, cmd is not running")
-	}
-	return msh.ServerProc.Input.SendPacket(siPk)
 }
 
 func (msh *MShellProc) SendFileData(dataPk *packet.FileDataPacketType) error {
@@ -2066,6 +2058,62 @@ func makePSCLineError(existingPSC base.CommandKey, line *sstore.LineType, lineEr
 		return fmt.Errorf("cannot run command while a stateful command is still running %s", existingPSC)
 	}
 	return fmt.Errorf("cannot run command while a stateful command (linenum=%d) is still running", line.LineNum)
+}
+
+func (msh *MShellProc) registerInputSink(ck base.CommandKey, sink CommandInputSink) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	msh.CommandInputMap[ck] = sink
+}
+
+func (msh *MShellProc) unregisterInputSink(ck base.CommandKey) {
+	msh.Lock.Lock()
+	defer msh.Lock.Unlock()
+	delete(msh.CommandInputMap, ck)
+}
+
+func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error {
+	if inputPk == nil {
+		return nil
+	}
+	if !msh.IsConnected() {
+		return fmt.Errorf("connection is not connected, cannot send input")
+	}
+	if msh.IsCmdRunning(inputPk.CK) {
+		if len(inputPk.InputData64) > 0 {
+			inputLen := packet.B64DecodedLen(inputPk.InputData64)
+			if inputLen > MaxInputDataSize {
+				return fmt.Errorf("input data size too large, len=%d (max=%d)", inputLen, MaxInputDataSize)
+			}
+			dataPk := packet.MakeDataPacket()
+			dataPk.CK = inputPk.CK
+			dataPk.FdNum = 0 // stdin
+			dataPk.Data64 = inputPk.InputData64
+			err := msh.ServerProc.Input.SendPacket(dataPk)
+			if err != nil {
+				return err
+			}
+		}
+		if inputPk.SigName != "" || inputPk.WinSize != nil {
+			siPk := packet.MakeSpecialInputPacket()
+			siPk.CK = inputPk.CK
+			siPk.SigName = inputPk.SigName
+			siPk.WinSize = inputPk.WinSize
+			err := msh.ServerProc.Input.SendPacket(siPk)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	msh.Lock.Lock()
+	sink := msh.CommandInputMap[inputPk.CK]
+	msh.Lock.Unlock()
+	if sink == nil {
+		// no sink and no running command
+		return fmt.Errorf("cannot send input, cmd is not running")
+	}
+	return sink.HandleInput(inputPk)
 }
 
 func (msh *MShellProc) AddRunningCmd(rct *RunCmdType) {
