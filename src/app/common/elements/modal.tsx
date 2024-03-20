@@ -10,6 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 import { GlobalModel } from "@/models";
 
 import "./modal.less";
+import { boundMethod } from "autobind-decorator";
 
 interface ModalHeaderProps {
     onClose?: () => void;
@@ -37,6 +38,7 @@ interface ModalFooterProps {
 class ModalKeybindings extends React.Component<{ onOk; onCancel }, {}> {
     curId: string;
 
+    @boundMethod
     componentDidMount(): void {
         console.log("mounted?");
         this.curId = uuidv4();
@@ -55,6 +57,8 @@ class ModalKeybindings extends React.Component<{ onOk; onCancel }, {}> {
             });
         }
     }
+
+    @boundMethod
     componentWillUnmount(): void {
         GlobalModel.keybindManager.unregisterDomain("modal-" + this.curId);
     }
@@ -112,4 +116,4 @@ class Modal extends React.Component<ModalProps> {
     }
 }
 
-export { Modal };
+export { Modal, ModalKeybindings };

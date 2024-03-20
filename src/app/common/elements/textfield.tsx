@@ -80,7 +80,9 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     @boundMethod
     handleFocus() {
         this.setState({ focused: true });
-        this.props.onFocus();
+        if (this.props.onFocus) {
+            this.props.onFocus();
+        }
     }
 
     @boundMethod
@@ -94,7 +96,9 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                 this.setState({ error: false, focused: false });
             }
         }
-        this.props.onBlur();
+        if (this.props.onBlur) {
+            this.props.onBlur();
+        }
     }
 
     @boundMethod

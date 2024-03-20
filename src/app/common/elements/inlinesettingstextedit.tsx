@@ -8,6 +8,8 @@ import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { GlobalModel } from "@/models";
+import { v4 as uuidv4 } from "uuid";
 
 import "./inlinesettingstextedit.less";
 
@@ -27,6 +29,11 @@ class InlineSettingsTextEdit extends React.Component<
     tempText: OV<string>;
     shouldFocus: boolean = false;
     inputRef: React.RefObject<any> = React.createRef();
+    curId: string;
+
+    componentDidMount(): void {
+        this.curId = uuidv4();
+    }
 
     componentDidUpdate(): void {
         if (this.shouldFocus) {
@@ -52,6 +59,7 @@ class InlineSettingsTextEdit extends React.Component<
             this.tempText = null;
             this.props.onChange(newText);
         })();
+        this.unregisterKeybindings();
     }
 
     @boundMethod
@@ -60,24 +68,40 @@ class InlineSettingsTextEdit extends React.Component<
             this.isEditing.set(false);
             this.tempText = null;
         })();
+        this.unregisterKeybindings();
     }
 
-    @boundMethod
-    handleKeyDown(e: any): void {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Enter")) {
-            e.preventDefault();
-            e.stopPropagation();
+    handleFocus() {
+        this.registerKeybindings();
+    }
+
+    registerKeybindings() {
+        let keybindManager = GlobalModel.keybindManager;
+        let domain = "inline-settings" + this.curId;
+        keybindManager.registerKeybinding("mainview", domain, "generic:confirm", (waveEvent) => {
             this.confirmChange();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            e.stopPropagation();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", domain, "generic:cancel", (waveEvent) => {
             this.cancelChange();
-            return;
-        }
-        return;
+            return true;
+        });
+    }
+
+    unregisterKeybindings() {
+        let domain = "inline-settings" + this.curId;
+        GlobalModel.keybindManager.unregisterDomain(domain);
+    }
+
+    handleBlur() {
+        console.log("handle blur");
+        this.unregisterKeybindings();
+        this.cancelChange();
+    }
+
+    componentWillUnmount(): void {
+        console.log("handle unmoount");
+        this.unregisterKeybindings();
     }
 
     @boundMethod
@@ -99,7 +123,8 @@ class InlineSettingsTextEdit extends React.Component<
                                 ref={this.inputRef}
                                 className="input"
                                 type="text"
-                                onKeyDown={this.handleKeyDown}
+                                onFocus={this.handleFocus.bind(this)}
+                                onBlur={this.handleBlur.bind(this)}
                                 placeholder={this.props.placeholder}
                                 onChange={this.handleChangeText}
                                 value={this.tempText.get()}
