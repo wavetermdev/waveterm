@@ -247,7 +247,7 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		err := RemoteInputMapQueue.Enqueue(feInputPk.Remote.RemoteId, func() {
 			sendErr := sendCmdInput(feInputPk)
 			if sendErr != nil {
-				log.Printf("[scws] sending command input: %v\n", err)
+				log.Printf("[scws] sending command input: %v\n", sendErr)
 			}
 		})
 		if err != nil {
@@ -263,7 +263,7 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		go func() {
 			sendErr := remote.SendRemoteInput(inputPk)
 			if sendErr != nil {
-				log.Printf("[scws] error processing remote input: %v\n", err)
+				log.Printf("[scws] error processing remote input: %v\n", sendErr)
 			}
 		}()
 		return nil
