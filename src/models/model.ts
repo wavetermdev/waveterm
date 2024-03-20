@@ -489,10 +489,10 @@ class Model {
             }
             return;
         }
-        if (checkKeyPressed(waveEvent, "Escape") && this.modalsModel.store.length > 0) {
+        /*if (checkKeyPressed(waveEvent, "Escape") && this.modalsModel.store.length > 0) {
             this.modalsModel.popModal();
             return;
-        }
+        }*/
         if (this.keybindManager.processKeyEvent(e, waveEvent)) {
             return;
         }

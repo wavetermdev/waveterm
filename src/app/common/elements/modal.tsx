@@ -6,6 +6,8 @@ import * as mobx from "mobx";
 import { If } from "tsx-control-statements/components";
 import ReactDOM from "react-dom";
 import { Button } from "./button";
+import { v4 as uuidv4 } from "uuid";
+import { GlobalModel } from "@/models";
 
 import "./modal.less";
 
@@ -32,8 +34,39 @@ interface ModalFooterProps {
     okLabel?: string;
 }
 
+class ModalKeybindings extends React.Component<{ onOk; onCancel }, {}> {
+    curId: string;
+
+    componentDidMount(): void {
+        console.log("mounted?");
+        this.curId = uuidv4();
+        let domain = "modal-" + this.curId;
+        let keybindManager = GlobalModel.keybindManager;
+        if (this.props.onOk) {
+            keybindManager.registerKeybinding("modal", domain, "generic:confirm", (waveEvent) => {
+                this.props.onOk();
+                return true;
+            });
+        }
+        if (this.props.onCancel) {
+            keybindManager.registerKeybinding("modal", domain, "generic:cancel", (waveEvent) => {
+                this.props.onCancel();
+                return true;
+            });
+        }
+    }
+    componentWillUnmount(): void {
+        GlobalModel.keybindManager.unregisterDomain("modal-" + this.curId);
+    }
+
+    render(): React.ReactNode {
+        return null;
+    }
+}
+
 const ModalFooter: React.FC<ModalFooterProps> = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }) => (
     <div className="wave-modal-footer">
+        <ModalKeybindings onOk={onOk} onCancel={onCancel}></ModalKeybindings>
         {onCancel && (
             <Button className="secondary" onClick={onCancel}>
                 {cancelLabel}

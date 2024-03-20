@@ -2,7 +2,7 @@ import * as React from "react";
 import { GlobalModel } from "@/models";
 import { Choose, When, If } from "tsx-control-statements/components";
 import { Modal, PasswordField, TextField, Markdown, Checkbox } from "@/elements";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, KeybindManager } from "@/util/keyutil";
 
 import "./userinput.less";
 
@@ -44,17 +44,20 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
         [userInputRequest]
     );
 
-    function handleTextKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Enter")) {
-            e.preventDefault();
-            e.stopPropagation();
+    function handleTextFocus() {
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("modal", "userinput", "generic:confirm", (waveEvent) => {
             handleSendText();
-        } else if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            e.stopPropagation();
+            return true;
+        });
+        keybindManager.registerKeybinding("modal", "userinput", "generic:confirm", (waveEvent) => {
             handleSendCancel();
-        }
+            return true;
+        });
+    }
+
+    function handleTextBlur() {
+        GlobalModel.keybindManager.unregisterDomain("userinput");
     }
 
     React.useEffect(() => {
@@ -89,7 +92,8 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                                 value={responseText}
                                 maxLength={400}
                                 autoFocus={true}
-                                onKeyDown={(e) => handleTextKeyDown(e)}
+                                onFocus={() => handleTextFocus()}
+                                onBlur={() => handleTextBlur()}
                             />
                         </If>
                         <If condition={!userInputRequest.publictext}>
@@ -98,7 +102,8 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                                 value={responseText}
                                 maxLength={400}
                                 autoFocus={true}
-                                onKeyDown={(e) => handleTextKeyDown(e)}
+                                onFocus={() => handleTextFocus()}
+                                onBlur={() => handleTextBlur()}
                             />
                         </If>
                     </If>

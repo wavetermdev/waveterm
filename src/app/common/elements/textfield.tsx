@@ -18,6 +18,8 @@ interface TextFieldProps {
     className?: string;
     onChange?: (value: string) => void;
     onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+    onFocus?: () => void;
+    onBlur?: () => void;
     placeholder?: string;
     defaultValue?: string;
     decoration?: TextFieldDecorationProps;
@@ -78,6 +80,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     @boundMethod
     handleFocus() {
         this.setState({ focused: true });
+        this.props.onFocus();
     }
 
     @boundMethod
@@ -91,6 +94,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                 this.setState({ error: false, focused: false });
             }
         }
+        this.props.onBlur();
     }
 
     @boundMethod
