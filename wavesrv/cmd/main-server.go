@@ -683,7 +683,7 @@ func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler 
 		configAbsPath, err := filepath.Abs(configPath)
 		if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("error getting absolute path", err)))
+			w.Write([]byte(fmt.Sprintf("error getting absolute path: %v", err)))
 			return
 		}
 		configBaseDir := path.Join(scbase.GetWaveHomeDir(), "config")
@@ -696,11 +696,11 @@ func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler 
 		fstat, err := os.Stat(configFullPath)
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(404)
-			w.Write([]byte(fmt.Sprintf("file not found: ", configAbsPath)))
+			w.Write([]byte(fmt.Sprintf("file not found: %v", configAbsPath)))
 			return
 		} else if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("file stat err", err)))
+			w.Write([]byte(fmt.Sprintf("file stat err: %v", err)))
 			return
 		}
 		if fstat.IsDir() {
