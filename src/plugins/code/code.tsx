@@ -10,7 +10,12 @@ import { Markdown } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import {
+    checkKeyPressed,
+    adaptFromReactOrNativeKeyEvent,
+    KeybindManager,
+    adaptFromElectronKeyEvent,
+} from "@/util/keyutil";
 import { Button, Dropdown } from "@/elements";
 
 import "./code.less";
@@ -131,6 +136,10 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
+    componentWillUnmount() {
+        this.unregisterKeybindings();
+    }
+
     componentDidUpdate(prevProps: any): void {
         if (!prevProps.shouldFocus && this.props.shouldFocus) {
             if (this.monacoEditor) {
@@ -174,6 +183,41 @@ class SourceCodeRenderer extends React.Component<
         }
     };
 
+    registerKeybindings() {
+        const { lineId } = this.props.context;
+        let domain = "code-" + lineId;
+        let keybindManager = GlobalModel.keybindManager;
+        console.log("registering keybindings");
+        keybindManager.registerKeybinding("plugin", domain, "codeedit:save", (waveEvent) => {
+            this.doSave();
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "codeedit:close", (waveEvent) => {
+            console.log("closing");
+            this.doClose();
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "codeedit:togglePreview", (waveEvent) => {
+            this.togglePreview();
+            return true;
+        });
+    }
+
+    unregisterKeybindings() {
+        const { lineId } = this.props.context;
+        let domain = "code-" + lineId;
+        console.log("unregistering keybindings?", domain);
+        GlobalModel.keybindManager.unregisterDomain(domain);
+    }
+
+    handleFocus() {
+        this.registerKeybindings();
+    }
+
+    handleBlur() {
+        this.unregisterKeybindings();
+    }
+
     handleEditorDidMount = (editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => {
         this.monacoEditor = editor;
         this.setInitialLanguage(editor);
@@ -184,20 +228,16 @@ class SourceCodeRenderer extends React.Component<
         }, 2000);
         editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             let waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
-            if (checkKeyPressed(waveEvent, "Cmd:s") && this.state.isSave) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.doSave();
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:d")) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.doClose();
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:p")) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.togglePreview();
+            console.log("keydown?", waveEvent);
+            if (
+                GlobalModel.keybindManager.checkKeysPressed(waveEvent, [
+                    "codeedit:save",
+                    "codeedit:close",
+                    "codeedit:togglePreview",
+                ])
+            ) {
+                console.log("keydown??");
+                GlobalModel.keybindManager.processKeyEvent(e.browserEvent, waveEvent);
             }
         });
         editor.onDidScrollChange((e) => {
@@ -210,13 +250,17 @@ class SourceCodeRenderer extends React.Component<
         if (this.props.shouldFocus) {
             this.monacoEditor.focus();
             this.props.rendererApi.onFocusChanged(true);
+            this.handleFocus();
         }
         if (this.monacoEditor.onDidFocusEditorWidget) {
             this.monacoEditor.onDidFocusEditorWidget(() => {
                 this.props.rendererApi.onFocusChanged(true);
+                this.handleFocus();
             });
             this.monacoEditor.onDidBlurEditorWidget(() => {
+                console.log("blur?");
                 this.props.rendererApi.onFocusChanged(false);
+                this.handleBlur();
             });
         }
         if (!this.getAllowEditing()) this.setState({ showReadonly: true });
