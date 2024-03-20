@@ -33,6 +33,7 @@ interface ModalFooterProps {
     onOk?: () => void;
     cancelLabel?: string;
     okLabel?: string;
+    keybindings?: boolean;
 }
 
 class ModalKeybindings extends React.Component<{ onOk; onCancel }, {}> {
@@ -68,9 +69,17 @@ class ModalKeybindings extends React.Component<{ onOk; onCancel }, {}> {
     }
 }
 
-const ModalFooter: React.FC<ModalFooterProps> = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }) => (
+const ModalFooter: React.FC<ModalFooterProps> = ({
+    onCancel,
+    onOk,
+    cancelLabel = "Cancel",
+    okLabel = "Ok",
+    keybindings = true,
+}) => (
     <div className="wave-modal-footer">
-        <ModalKeybindings onOk={onOk} onCancel={onCancel}></ModalKeybindings>
+        <If condition={keybindings}>
+            <ModalKeybindings onOk={onOk} onCancel={onCancel}></ModalKeybindings>
+        </If>
         {onCancel && (
             <Button className="secondary" onClick={onCancel}>
                 {cancelLabel}
