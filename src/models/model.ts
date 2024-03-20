@@ -242,7 +242,7 @@ class Model {
             .then((resp) => resp.json())
             .then((themeVars) => {
                 Object.keys(themeVars).forEach((key) => {
-                    element.style.setProperty(`--term-${key}`, themeVars[key]);
+                    this.setStyleVar(element, `--term-${key}`, themeVars[key]);
                 });
             })
             .catch((error) => {
