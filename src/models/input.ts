@@ -630,6 +630,9 @@ class InputModel {
     }
 
     codeSelectDeselectAll(direction: number = this.codeSelectBottom) {
+        if (this.codeSelectSelectedIndex.get() == direction) {
+            return;
+        }
         mobx.action(() => {
             this.codeSelectSelectedIndex.set(direction);
             this.codeSelectBlockRefArray = [];

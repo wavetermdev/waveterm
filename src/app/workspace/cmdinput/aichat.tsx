@@ -8,9 +8,48 @@ import { GlobalModel } from "@/models";
 import { isBlank } from "@/util/util";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { For } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+
+class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
+    componentDidMount(): void {
+        let AIChatObject = this.props.AIChatObject;
+        let keybindManager = GlobalModel.keybindManager;
+        let inputModel = GlobalModel.inputModel;
+
+        keybindManager.registerKeybinding("pane", "aichat", "generic:confirm", (waveEvent) => {
+            AIChatObject.onEnterKeyPressed();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "generic:expandTextInput", (waveEvent) => {
+            AIChatObject.onExpandInputPressed();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "generic:cancel", (waveEvent) => {
+            inputModel.closeAIAssistantChat(true);
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "aichat:clearHistory", (waveEvent) => {
+            inputModel.clearAIAssistantChat();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "generic:selectAbove", (waveEvent) => {
+            return AIChatObject.onArrowUpPressed();
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "generic:selectBelow", (waveEvent) => {
+            return AIChatObject.onArrowDownPressed();
+        });
+    }
+
+    componentWillUnmount(): void {
+        GlobalModel.keybindManager.unregisterDomain("aichat");
+    }
+
+    render() {
+        return null;
+    }
+}
 
 @mobxReact.observer
 class AIChat extends React.Component<{}, {}> {
@@ -18,11 +57,16 @@ class AIChat extends React.Component<{}, {}> {
     textAreaNumLines: mobx.IObservableValue<number> = mobx.observable.box(1, { name: "textAreaNumLines" });
     chatWindowScrollRef: React.RefObject<HTMLDivElement>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
+    isFocused: OV<boolean>;
 
     constructor(props: any) {
         super(props);
         this.chatWindowScrollRef = React.createRef();
         this.textAreaRef = React.createRef();
+        this.isFocused = mobx.observable.box(false, {
+            name: "aichat-isfocused",
+        });
+        console.log("isFocused?", this.isFocused);
     }
 
     componentDidMount() {
@@ -66,66 +110,81 @@ class AIChat extends React.Component<{}, {}> {
         return { numLines, linePos };
     }
 
-    @mobx.action
-    @boundMethod
-    onKeyDown(e: any) {
+    onTextAreaFocused(e: any) {
         mobx.action(() => {
-            let model = GlobalModel;
-            let inputModel = model.inputModel;
-            let ctrlMod = e.getModifierState("Control") || e.getModifierState("Meta") || e.getModifierState("Shift");
-            let resetCodeSelect = !ctrlMod;
-            let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-            if (checkKeyPressed(waveEvent, "Enter")) {
-                e.preventDefault();
-                if (!ctrlMod) {
-                    if (inputModel.getCodeSelectSelectedIndex() == -1) {
-                        let messageStr = e.target.value;
-                        this.submitChatMessage(messageStr);
-                        e.target.value = "";
-                    } else {
-                        inputModel.grabCodeSelectSelection();
-                    }
-                } else {
-                    e.target.setRangeText("\n", e.target.selectionStart, e.target.selectionEnd, "end");
-                }
-            }
-            if (checkKeyPressed(waveEvent, "Escape")) {
-                e.preventDefault();
-                e.stopPropagation();
-                inputModel.closeAIAssistantChat(true);
-            }
-
-            if (checkKeyPressed(waveEvent, "Ctrl:l")) {
-                e.preventDefault();
-                e.stopPropagation();
-                inputModel.clearAIAssistantChat();
-            }
-            if (checkKeyPressed(waveEvent, "ArrowUp")) {
-                if (this.getLinePos(e.target).linePos > 1) {
-                    // normal up arrow
-                    return;
-                }
-                e.preventDefault();
-                inputModel.codeSelectSelectNextOldestCodeBlock();
-                resetCodeSelect = false;
-            }
-            if (checkKeyPressed(waveEvent, "ArrowDown")) {
-                if (inputModel.getCodeSelectSelectedIndex() == inputModel.codeSelectBottom) {
-                    return;
-                }
-                e.preventDefault();
-                inputModel.codeSelectSelectNextNewestCodeBlock();
-                resetCodeSelect = false;
-            }
-
-            if (resetCodeSelect) {
-                inputModel.codeSelectDeselectAll();
-            }
-
-            // set height of textarea based on number of newlines
-            this.textAreaNumLines.set(e.target.value.split(/\n/).length);
+            this.isFocused.set(true);
         })();
     }
+
+    onTextAreaBlur(e: any) {
+        mobx.action(() => {
+            this.isFocused.set(false);
+        })();
+    }
+
+    onTextAreaChange(e: any) {
+        // set height of textarea based on number of newlines
+        mobx.action(() => {
+            this.textAreaNumLines.set(e.target.value.split(/\n/).length);
+            GlobalModel.inputModel.codeSelectDeselectAll();
+        })();
+    }
+
+    onEnterKeyPressed() {
+        let inputModel = GlobalModel.inputModel;
+        let currentRef = this.textAreaRef.current;
+        if (currentRef == null) {
+            return;
+        }
+        if (inputModel.getCodeSelectSelectedIndex() == -1) {
+            let messageStr = currentRef.value;
+            this.submitChatMessage(messageStr);
+            currentRef.value = "";
+        } else {
+            inputModel.grabCodeSelectSelection();
+        }
+    }
+
+    onExpandInputPressed() {
+        let currentRef = this.textAreaRef.current;
+        if (currentRef == null) {
+            return;
+        }
+        currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
+        GlobalModel.inputModel.codeSelectDeselectAll();
+    }
+
+    onArrowUpPressed(): boolean {
+        let currentRef = this.textAreaRef.current;
+        if (currentRef == null) {
+            return false;
+        }
+        if (this.getLinePos(currentRef).linePos > 1) {
+            // normal up arrow
+            GlobalModel.inputModel.codeSelectDeselectAll();
+            return false;
+        }
+        GlobalModel.inputModel.codeSelectSelectNextOldestCodeBlock();
+        return true;
+    }
+
+    onArrowDownPressed(): boolean {
+        let currentRef = this.textAreaRef.current;
+        let inputModel = GlobalModel.inputModel;
+        if (currentRef == null) {
+            return false;
+        }
+        if (inputModel.getCodeSelectSelectedIndex() == inputModel.codeSelectBottom) {
+            GlobalModel.inputModel.codeSelectDeselectAll();
+            return false;
+        }
+        inputModel.codeSelectSelectNextNewestCodeBlock();
+        return true;
+    }
+
+    @mobx.action
+    @boundMethod
+    onKeyDown(e: any) {}
 
     renderError(err: string): any {
         return <div className="chat-msg-error">{err}</div>;
@@ -192,9 +251,13 @@ class AIChat extends React.Component<{}, {}> {
         const textAreaPadding = 2 * 0.5 * termFontSize;
         let textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines + textAreaPadding;
         let textAreaInnerHeight = this.textAreaNumLines.get() * textAreaLineHeight + textAreaPadding;
+        let isFocused = this.isFocused.get();
 
         return (
             <div className="cmd-aichat">
+                <If condition={isFocused}>
+                    <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
+                </If>
                 <div className="cmdinput-titlebar">
                     <div className="title-icon">
                         <i className="fa-sharp fa-solid fa-sparkles" />
@@ -217,6 +280,9 @@ class AIChat extends React.Component<{}, {}> {
                     autoComplete="off"
                     autoCorrect="off"
                     id="chat-cmd-input"
+                    onFocus={this.onTextAreaFocused.bind(this)}
+                    onBlur={this.onTextAreaBlur.bind(this)}
+                    onChange={this.onTextAreaChange.bind(this)}
                     onKeyDown={this.onKeyDown}
                     style={{ height: textAreaInnerHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
                     className={cn("chat-textarea")}
