@@ -29,6 +29,7 @@ type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string
 
 const Callback = "callback";
 const Command = "command";
+const DumpLogs = false;
 
 type Keybind = {
     domain: string;
@@ -147,7 +148,9 @@ class KeybindManager {
         for (let index = keybindsArray.length - 1; index >= 0; index--) {
             let curKeybind = keybindsArray[index];
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
-                console.log("keybind found", curKeybind);
+                if (DumpLogs) {
+                    console.log("keybind found", curKeybind);
+                }
                 let shouldReturn = false;
                 let shouldRunCommand = true;
                 if (curKeybind.callback != null) {
@@ -186,7 +189,9 @@ class KeybindManager {
             let systemLevel = this.levelMap.get("system");
             return this.processLevel(nativeEvent, event, systemLevel);
         }
-        console.log("levels:", this.levelMap, "event:", event);
+        if (DumpLogs) {
+            console.log("levels:", this.levelMap, "event:", event);
+        }
         for (let index = this.levelArray.length - 1; index >= 0; index--) {
             let curLevel = this.levelArray[index];
             let curKeybindsArray;

@@ -470,7 +470,6 @@ class Screen {
     }
 
     registerKeybindings(lineid: string) {
-        console.log("registering keybindings");
         let keybindManager = GlobalModel.keybindManager;
         let domain = "line-" + lineid;
         let termWrap = this.terminals[lineid];
@@ -487,7 +486,6 @@ class Screen {
             return true;
         });
         keybindManager.registerKeybinding("plugin", domain, "generic:selectAbove", (waveEvent) => {
-            console.log("arrow key pressed");
             termWrap.terminal.scrollLines(-1);
             return true;
         });
@@ -506,7 +504,6 @@ class Screen {
     }
 
     unregisterKeybindings(lineid: string) {
-        console.log("unregister keybindings");
         let domain = "line-" + lineid;
         GlobalModel.keybindManager.unregisterDomain(domain);
     }
