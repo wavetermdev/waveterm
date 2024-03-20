@@ -125,11 +125,13 @@ class Model {
         name: "model-showLinks",
     });
     packetSeqNum: number = 0;
-
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
-
+    terminalThemes: OArr<string> = mobx.observable.array([], {
+        name: "terminalThemes",
+        deep: false,
+    });
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
@@ -146,6 +148,7 @@ class Model {
         this.ws.reconnect();
         this.keybindManager = new KeybindManager(this);
         this.readConfigKeybindings();
+        this.fetchTerminalThemes();
         this.initSystemKeybindings();
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
@@ -194,6 +197,13 @@ class Model {
         };
     }
 
+    static getInstance(): Model {
+        if (!(window as any).GlobalModel) {
+            (window as any).GlobalModel = new Model();
+        }
+        return (window as any).GlobalModel;
+    }
+
     readConfigKeybindings() {
         const url = new URL(this.getBaseHostPort() + "/config/keybindings.json");
         let prtn = fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() });
@@ -207,6 +217,37 @@ class Model {
         }).then((userKeybindings) => {
             this.keybindManager.setUserKeybindings(userKeybindings);
         });
+    }
+
+    fetchTerminalThemes() {
+        const url = new URL(this.getBaseHostPort() + "/config/terminal-themes");
+        fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => {
+                if (resp.status == 404) {
+                    return [];
+                } else if (!resp.ok) {
+                    util.handleNotOkResp(resp, url);
+                }
+                return resp.json();
+            })
+            .then((themes) => {
+                const tt = themes.map((theme) => theme.name.split(".")[0]);
+                this.terminalThemes.replace(tt);
+            });
+    }
+
+    applyTerminalTheme(element: HTMLElement, themeFileName = "mytheme.json") {
+        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}`);
+        fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => resp.json())
+            .then((themeVars) => {
+                Object.keys(themeVars).forEach((key) => {
+                    element.style.setProperty(`--term-${key}`, themeVars[key]);
+                });
+            })
+            .catch((error) => {
+                console.error("error applying theme:", error);
+            });
     }
 
     initSystemKeybindings() {
@@ -239,13 +280,6 @@ class Model {
         });
         this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", null);
         this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", null);
-    }
-
-    static getInstance(): Model {
-        if (!(window as any).GlobalModel) {
-            (window as any).GlobalModel = new Model();
-        }
-        return (window as any).GlobalModel;
     }
 
     toggleDevUI(): void {
@@ -411,11 +445,11 @@ class Model {
         let lhe = this.recomputeLineHeightEnv();
         mobx.action(() => {
             this.bumpRenderVersion();
-            this.setStyleVar("--termfontsize", lhe.fontSize + "px");
-            this.setStyleVar("--termlineheight", lhe.lineHeight + "px");
-            this.setStyleVar("--termpad", lhe.pad + "px");
-            this.setStyleVar("--termfontsize-sm", lhe.fontSizeSm + "px");
-            this.setStyleVar("--termlineheight-sm", lhe.lineHeightSm + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize", lhe.fontSize + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight", lhe.lineHeight + "px");
+            this.setStyleVar(document.documentElement, "--termpad", lhe.pad + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize-sm", lhe.fontSizeSm + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight-sm", lhe.lineHeightSm + "px");
         })();
     }
 
@@ -434,8 +468,8 @@ class Model {
         return this.lineHeightEnv;
     }
 
-    setStyleVar(name: string, value: string) {
-        document.documentElement.style.setProperty(name, value);
+    setStyleVar(element: HTMLElement, name: string, value: string): void {
+        element.style.setProperty(name, value);
     }
 
     getBaseWsHostPort(): string {
