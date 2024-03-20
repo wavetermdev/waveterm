@@ -1186,8 +1186,16 @@ func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime tim
 	err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
 	if err != nil {
 		// nothing to do
-		log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
+		log.Printf("error updating cmddoneinfo: %v\n", err)
 		return
+	}
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, cmd.ScreenId, cmd.LineId)
+	if err != nil {
+		log.Printf("error trying to update screen focus type: %v\n", err)
+		// fall-through (nothing to do)
+	}
+	if screen != nil {
+		update.AddUpdate(*screen)
 	}
 	scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
 }
@@ -3686,7 +3694,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/reset", false, ids, cmd, "", nil)
+	update, err := addLineForCmd(ctx, "/reset", true, ids, cmd, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3695,7 +3703,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 }
 
 func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verbose bool) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancelFn()
 	startTime := time.Now()
 	var outputPos int64
