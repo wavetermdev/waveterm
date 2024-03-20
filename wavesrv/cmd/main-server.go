@@ -898,13 +898,13 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	dirFile, err := os.Open(configFullPath)
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("error opening specified dir: ", err)))
+		w.Write([]byte(fmt.Sprintf("error opening specified dir: %v", err)))
 		return
 	}
 	entries, err := dirFile.Readdir(0)
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("error getting files: ", err)))
+		w.Write([]byte(fmt.Sprintf("error getting files: %v", err)))
 		return
 	}
 	var files []*packet.FileStatPacketType
@@ -916,7 +916,7 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	dirListJson, err := json.Marshal(files)
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("json err: ", err)))
+		w.Write([]byte(fmt.Sprintf("json err: %v", err)))
 		return
 	}
 	w.WriteHeader(200)
