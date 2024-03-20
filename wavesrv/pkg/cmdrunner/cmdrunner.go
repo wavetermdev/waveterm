@@ -119,8 +119,8 @@ var SetVarNameMap map[string]string = map[string]string{
 var SetVarScopes = []SetVarScope{
 	{ScopeName: "global", VarNames: []string{}},
 	{ScopeName: "client", VarNames: []string{"telemetry"}},
-	{ScopeName: "session", VarNames: []string{"name", "pos"}},
-	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line", "index"}},
+	{ScopeName: "session", VarNames: []string{"name", "pos", "theme"}},
+	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line", "index", "theme"}},
 	{ScopeName: "line", VarNames: []string{}},
 	// connection = remote, remote = remoteinstance
 	{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
@@ -186,6 +186,7 @@ func init() {
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
 	registerCmdFn("session:openshared", SessionOpenSharedCommand)
+	registerCmdFn("session:theme", TermSetThemeCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:archive", ScreenArchiveCommand)
@@ -198,6 +199,7 @@ func init() {
 	registerCmdFn("screen:webshare", ScreenWebShareCommand)
 	registerCmdFn("screen:reorder", ScreenReorderCommand)
 	registerCmdFn("screen:show", ScreenShowCommand)
+	registerCmdFn("screen:theme", TermSetThemeCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -3476,6 +3478,37 @@ func ScreenShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		InfoTitle: "screen info",
 		InfoLines: splitLinesForInfo(buf.String()),
 	})
+	return update, nil
+}
+
+func TermSetThemeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	sessionID, ok := pk.Kwargs["id"]
+	if !ok {
+		return nil, fmt.Errorf("id key not provided")
+	}
+	themeName, ok := pk.Kwargs["name"]
+	if !ok {
+		return nil, fmt.Errorf("name key not provided")
+	}
+	feOpts := clientData.FeOpts
+	if feOpts.TermTheme == nil {
+		feOpts.TermTheme = make(map[string]string)
+	}
+	feOpts.TermTheme[sessionID] = themeName
+	err = sstore.UpdateClientFeOpts(ctx, feOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client feopts: %v", err)
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(*clientData)
 	return update, nil
 }
 

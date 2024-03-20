@@ -118,6 +118,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         return themes;
     }
 
+    getTerminalThemes(): DropdownItem[] {
+        return GlobalModel.terminalThemes.map((themeName) => ({
+            label: themeName.charAt(0).toUpperCase() + themeName.slice(1),
+            value: themeName,
+        }));
+    }
+
     @boundMethod
     inlineUpdateOpenAIModel(newModel: string): void {
         const prtn = GlobalCommandRunner.setClientOpenAISettings({ model: newModel });
@@ -191,8 +198,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getTheme();
-
-        console.log("Global themes", GlobalModel.terminalThemes[0]);
+        const currTerminalTheme = GlobalModel.getTerminalTheme();
+        const terminalThemes = GlobalModel.terminalThemes;
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
@@ -233,6 +240,19 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                             />
                         </div>
                     </div>
+                    <If condition={terminalThemes.length > 0}>
+                        <div className="settings-field">
+                            <div className="settings-label">Terminal Theme</div>
+                            <div className="settings-input">
+                                <Dropdown
+                                    className="terminal-theme-dropdown"
+                                    options={this.getTerminalThemes()}
+                                    defaultValue={currTerminalTheme}
+                                    onChange={this.handleChangeTheme}
+                                />
+                            </div>
+                        </div>
+                    </If>
                     <div className="settings-field">
                         <div className="settings-label">Client ID</div>
                         <div className="settings-input">{cdata.clientid}</div>

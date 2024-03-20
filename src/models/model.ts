@@ -128,7 +128,7 @@ class Model {
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
-    terminalThemes: OArr<string> = mobx.observable.array([], {
+    termThemes: OArr<string> = mobx.observable.array([], {
         name: "terminalThemes",
         deep: false,
     });
@@ -232,11 +232,11 @@ class Model {
             })
             .then((themes) => {
                 const tt = themes.map((theme) => theme.name.split(".")[0]);
-                this.terminalThemes.replace(tt);
+                this.termThemes.replace(tt);
             });
     }
 
-    applyTerminalTheme(element: HTMLElement, themeFileName = "mytheme.json") {
+    applyTermTheme(element: HTMLElement, themeFileName: string) {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}`);
         fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
             .then((resp) => resp.json())
@@ -430,6 +430,14 @@ class Model {
             theme = appconst.DefaultTheme;
         }
         return theme;
+    }
+
+    getTermTheme(): string {
+        let cdata = this.clientData.get();
+        if (cdata?.feopts?.terminaltheme && this.termThemes.includes(cdata.feopts.termtheme)) {
+            return cdata.feopts.termtheme;
+        }
+        return "";
     }
 
     isThemeDark(): boolean {
@@ -1249,6 +1257,10 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getTheme();
+
+        let newTermTheme = clientData?.feopts?.termtheme;
+        const ttUpdated = this.isTermThemeUpdated(newTermTheme);
+
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1269,6 +1281,44 @@ class Model {
             loadTheme(newTheme);
             this.bumpRenderVersion();
         }
+        if (ttUpdated) {
+            if (ttUpdated) {
+                Object.keys(newTermTheme).forEach((id) => {
+                    const sessionEl = document.querySelector(`[data-sessionid='${id}']`) as HTMLElement;
+                    const screenEl = document.querySelector(`[data-screenid='${id}']`) as HTMLElement;
+                    if (sessionEl) {
+                        this.applyTermTheme(sessionEl, newTermTheme[id]);
+                    } else if (screenEl) {
+                        this.applyTermTheme(screenEl, newTermTheme[id]);
+                    }
+                });
+                this.bumpRenderVersion();
+            }
+            this.bumpRenderVersion();
+        }
+    }
+
+    isTermThemeUpdated(newTermTheme: { [k: string]: string } | undefined) {
+        const currTermTheme = this.getTermTheme();
+        if (newTermTheme == null && currTermTheme == null) {
+            return false;
+        }
+        if (newTermTheme == null || currTermTheme == null) {
+            return true;
+        }
+        const keysNew = Object.keys(newTermTheme);
+        const keysCurrent = Object.keys(currTermTheme);
+
+        if (keysNew.length !== keysCurrent.length) {
+            return true;
+        }
+
+        for (let key of keysNew) {
+            if (newTermTheme[key] !== currTermTheme[key]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
