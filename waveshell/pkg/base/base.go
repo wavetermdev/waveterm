@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -200,51 +199,6 @@ func GetMShellHomeDir() string {
 	return ExpandHomeDir(DefaultMShellHome)
 }
 
-func GetCommandFileNames(ck CommandKey) (*CommandFileNames, error) {
-	if err := ck.Validate("ck"); err != nil {
-		return nil, fmt.Errorf("cannot get command files: %w", err)
-	}
-	sessionId, cmdId := ck.Split()
-	sdir, err := EnsureSessionDir(sessionId)
-	if err != nil {
-		return nil, err
-	}
-	base := path.Join(sdir, cmdId)
-	return &CommandFileNames{
-		PtyOutFile:    base + ".ptyout",
-		StdinFifo:     base + ".stdin",
-		RunnerOutFile: base + ".runout",
-	}, nil
-}
-
-func CleanUpCmdFiles(sessionId string, cmdId string) error {
-	if cmdId == "" {
-		return fmt.Errorf("bad cmdid, cannot clean up")
-	}
-	sdir, err := EnsureSessionDir(sessionId)
-	if err != nil {
-		return err
-	}
-	cmdFileGlob := path.Join(sdir, cmdId+".*")
-	matches, err := filepath.Glob(cmdFileGlob)
-	if err != nil {
-		return err
-	}
-	for _, file := range matches {
-		rmErr := os.Remove(file)
-		if err == nil && rmErr != nil {
-			err = rmErr
-		}
-	}
-	return err
-}
-
-func GetSessionsDir() string {
-	mhome := GetMShellHomeDir()
-	sdir := path.Join(mhome, SessionsDirBaseName)
-	return sdir
-}
-
 func EnsureRcFilesDir() (string, error) {
 	mhome := GetMShellHomeDir()
 	dirName := path.Join(mhome, RcFilesDirBaseName)
@@ -253,19 +207,6 @@ func EnsureRcFilesDir() (string, error) {
 		return "", err
 	}
 	return dirName, nil
-}
-
-func EnsureSessionDir(sessionId string) (string, error) {
-	if sessionId == "" {
-		return "", fmt.Errorf("Bad sessionid, cannot be empty")
-	}
-	mhome := GetMShellHomeDir()
-	sdir := path.Join(mhome, SessionsDirBaseName, sessionId)
-	err := CacheEnsureDir(sdir, sessionId, 0777, "mshell session dir")
-	if err != nil {
-		return "", err
-	}
-	return sdir, nil
 }
 
 func GetMShellPath() (string, error) {
@@ -280,11 +221,6 @@ func GetMShellPath() (string, error) {
 		return msPath, nil
 	}
 	return exec.LookPath(DefaultMShellName) // standard path lookup for 'mshell'
-}
-
-func GetMShellSessionsDir() (string, error) {
-	mhome := GetMShellHomeDir()
-	return path.Join(mhome, SessionsDirBaseName), nil
 }
 
 func ExpandHomeDir(pathStr string) string {
@@ -313,22 +249,6 @@ func GoArchOptFile(version string, goos string, goarch string) string {
 	}
 	binBaseName := fmt.Sprintf("mshell-%s-%s.%s", versionStr, goos, goarch)
 	return fmt.Sprintf(path.Join(installBinDir, binBaseName))
-}
-
-func MShellBinaryFromOptDir(version string, goos string, goarch string) (io.ReadCloser, error) {
-	if !ValidGoArch(goos, goarch) {
-		return nil, fmt.Errorf("invalid goos/goarch combination: %s/%s", goos, goarch)
-	}
-	versionStr := semver.MajorMinor(version)
-	if versionStr == "" {
-		return nil, fmt.Errorf("invalid mshell version: %q", version)
-	}
-	fileName := GoArchOptFile(version, goos, goarch)
-	fd, err := os.Open(fileName)
-	if err != nil {
-		return nil, fmt.Errorf("cannot open mshell binary %q: %v", fileName, err)
-	}
-	return fd, nil
 }
 
 func GetRemoteId() (string, error) {
