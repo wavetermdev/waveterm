@@ -134,6 +134,8 @@ func init() {
 	var _ RpcResponsePacketType = (*WriteFileDonePacketType)(nil)
 	var _ RpcResponsePacketType = (*ShellStatePacketType)(nil)
 
+	var _ RpcFollowUpPacketType = (*FileDataPacketType)(nil)
+
 	var _ CommandPacketType = (*DataPacketType)(nil)
 	var _ CommandPacketType = (*DataAckPacketType)(nil)
 	var _ CommandPacketType = (*CmdDonePacketType)(nil)
@@ -166,6 +168,8 @@ func MakePingPacket() *PingPacketType {
 	return &PingPacketType{Type: PingPacketStr}
 }
 
+// these packets can travel either direction
+// so it is both a RpcResponsePacketType and an RpcFollowUpPacketType
 type FileDataPacketType struct {
 	Type   string `json:"type"`
 	RespId string `json:"respid"`
@@ -183,6 +187,10 @@ func MakeFileDataPacket(reqId string) *FileDataPacketType {
 		Type:   FileDataPacketStr,
 		RespId: reqId,
 	}
+}
+
+func (p *FileDataPacketType) GetAssociatedReqId() string {
+	return p.RespId
 }
 
 func (p *FileDataPacketType) GetResponseId() string {
@@ -974,6 +982,12 @@ type RpcResponsePacketType interface {
 type CommandPacketType interface {
 	GetType() string
 	GetCK() base.CommandKey
+}
+
+// RpcPackets initiate an Rpc.  these can be part of the data passed back and forth
+type RpcFollowUpPacketType interface {
+	GetType() string
+	GetAssociatedReqId() string
 }
 
 type ModelUpdatePacketType struct {
