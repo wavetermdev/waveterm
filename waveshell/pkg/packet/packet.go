@@ -63,6 +63,7 @@ const (
 	FileStatPacketStr       = "filestat"
 	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
 	ShellStatePacketStr     = "shellstate"
+	RpcInputPacketStr       = "rpcinput" // rpc-followup
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
@@ -116,6 +117,7 @@ func init() {
 	TypeStrToFactory[LogPacketStr] = reflect.TypeOf(LogPacketType{})
 	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
 	TypeStrToFactory[FileStatPacketStr] = reflect.TypeOf(FileStatPacketType{})
+	TypeStrToFactory[RpcInputPacketStr] = reflect.TypeOf(RpcInputPacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -135,6 +137,7 @@ func init() {
 	var _ RpcResponsePacketType = (*ShellStatePacketType)(nil)
 
 	var _ RpcFollowUpPacketType = (*FileDataPacketType)(nil)
+	var _ RpcFollowUpPacketType = (*RpcInputPacketType)(nil)
 
 	var _ CommandPacketType = (*DataPacketType)(nil)
 	var _ CommandPacketType = (*DataAckPacketType)(nil)
@@ -166,6 +169,24 @@ func (*PingPacketType) GetType() string {
 
 func MakePingPacket() *PingPacketType {
 	return &PingPacketType{Type: PingPacketStr}
+}
+
+type RpcInputPacketType struct {
+	Type  string `json:"type"`
+	ReqId string `json:"reqid"`
+	Data  []byte `json:"data"`
+}
+
+func (*RpcInputPacketType) GetType() string {
+	return RpcInputPacketStr
+}
+
+func (p *RpcInputPacketType) GetAssociatedReqId() string {
+	return p.ReqId
+}
+
+func MakeRpcInputPacket(reqId string) *RpcInputPacketType {
+	return &RpcInputPacketType{Type: RpcInputPacketStr, ReqId: reqId}
 }
 
 // these packets can travel either direction

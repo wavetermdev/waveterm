@@ -795,15 +795,15 @@ func (server *MServer) runReadLoop() {
 			}
 			continue
 		}
-		if cmdPk, ok := pk.(packet.CommandPacketType); ok {
+		if cmdPk, ok := pk.(packet.CommandPacketType); ok && cmdPk.GetCK() != "" {
 			server.ProcessCommandPacket(cmdPk)
 			continue
 		}
-		if rpcPk, ok := pk.(packet.RpcPacketType); ok {
+		if rpcPk, ok := pk.(packet.RpcPacketType); ok && rpcPk.GetReqId() != "" {
 			server.ProcessRpcPacket(rpcPk)
 			continue
 		}
-		if rpcFollowUp, ok := pk.(packet.RpcFollowUpPacketType); ok {
+		if rpcFollowUp, ok := pk.(packet.RpcFollowUpPacketType); ok && rpcFollowUp.GetAssociatedReqId() != "" {
 			ok := server.dispatchRpcFollowUp(rpcFollowUp)
 			if !ok {
 				server.sendInboundRpcError(rpcFollowUp.GetAssociatedReqId(), fmt.Errorf("no handler for rpc follow-up packet"))
