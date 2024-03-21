@@ -28,7 +28,8 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
-const GetStateTimeout = 15 * time.Second
+const GetStateTimeout = 10 * time.Second
+const ReInitTimeout = GetStateTimeout + 2*time.Second
 const GetGitBranchCmdStr = `printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`
 const GetK8sContextCmdStr = `printf "K8SCONTEXT %s\x00" "$(kubectl config current-context 2>/dev/null)"`
 const GetK8sNamespaceCmdStr = `printf "K8SNAMESPACE %s\x00" "$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)"`
@@ -155,7 +156,7 @@ func internalMacUserShell() string {
 const FirstExtraFilesFdNum = 3
 
 // returns output(stdout+stderr), extraFdOutput, error
-func StreamCommandWithExtraFd(ecmd *exec.Cmd, outputCh chan []byte, extraFdNum int, endBytes []byte, stdinDataCh chan []byte) ([]byte, error) {
+func StreamCommandWithExtraFd(ctx context.Context, ecmd *exec.Cmd, outputCh chan []byte, extraFdNum int, endBytes []byte, stdinDataCh chan []byte) ([]byte, error) {
 	defer close(outputCh)
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
@@ -221,6 +222,9 @@ func StreamCommandWithExtraFd(ecmd *exec.Cmd, outputCh chan []byte, extraFdNum i
 	}
 	exitErr := ecmd.Wait()
 	if exitErr != nil {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("%w (%w)", ctx.Err(), exitErr)
+		}
 		return nil, exitErr
 	}
 	outputWg.Wait()

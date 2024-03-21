@@ -30,6 +30,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -3703,7 +3704,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 }
 
 func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verbose bool) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), shellapi.ReInitTimeout)
 	defer cancelFn()
 	startTime := time.Now()
 	var outputPos int64

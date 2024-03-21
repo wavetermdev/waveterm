@@ -1766,20 +1766,28 @@ func (msh *MShellProc) Launch(interactive bool) {
 }
 
 func (msh *MShellProc) initActiveShells() {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	gasCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	activeShells, err := msh.getActiveShellTypes(ctx)
+	activeShells, err := msh.getActiveShellTypes(gasCtx)
 	if err != nil {
 		// we're not going to fail the connect for this error (it will be unusable, but technically connected)
 		msh.WriteToPtyBuffer("*error getting active shells: %v\n", err)
 		return
 	}
-	for _, shellType := range activeShells {
-		_, err = msh.ReInit(ctx, base.CommandKey(""), shellType, nil, false)
-		if err != nil {
-			msh.WriteToPtyBuffer("*error reiniting shell %q: %v\n", shellType, err)
-		}
+	var wg sync.WaitGroup
+	for _, shellTypeForVar := range activeShells {
+		wg.Add(1)
+		go func(shellType string) {
+			defer wg.Done()
+			reinitCtx, cancelFn := context.WithTimeout(context.Background(), shellapi.ReInitTimeout)
+			defer cancelFn()
+			_, err = msh.ReInit(reinitCtx, base.CommandKey(""), shellType, nil, false)
+			if err != nil {
+				msh.WriteToPtyBuffer("*error reiniting shell %q: %v\n", shellType, err)
+			}
+		}(shellTypeForVar)
 	}
+	wg.Wait()
 }
 
 func (msh *MShellProc) IsConnected() bool {

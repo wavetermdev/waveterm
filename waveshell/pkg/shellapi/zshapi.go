@@ -262,7 +262,7 @@ func (z zshShellApi) GetShellState(outCh chan ShellStateOutput, stdinDataCh chan
 			outCh <- ShellStateOutput{Output: outputBytes}
 		}
 	}()
-	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes, stdinDataCh)
+	outputBytes, err := StreamCommandWithExtraFd(ctx, ecmd, outputCh, StateOutputFdNum, endBytes, stdinDataCh)
 	outputWg.Wait()
 	if err != nil {
 		outCh <- ShellStateOutput{Error: err.Error()}
@@ -726,7 +726,6 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	// sections: see ZshSection_* consts
 	sections := bytes.Split(outputBytes, sectionSeparator)
 	if len(sections) != ZshSection_NumFieldsExpected {
-		base.Logf("invalid -- numfields\n")
 		return nil, nil, fmt.Errorf("invalid zsh shell state output, wrong number of sections, section=%d", len(sections))
 	}
 	rtn := &packet.ShellState{}

@@ -335,7 +335,7 @@ func (m *MServer) reinit(reqId string, shellType string) {
 	defer m.unregisterRpcHandler(reqId)
 	ssPk, err := m.MakeShellStatePacket(reqId, shellType, stdinDataCh)
 	if err != nil {
-		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
+		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error initializing shell: %w", err))
 		return
 	}
 	err = m.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
