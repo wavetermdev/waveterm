@@ -434,7 +434,7 @@ class Model {
 
     getTermTheme(): { [k: string]: string } {
         let cdata = this.clientData.get();
-        if (cdata?.feopts?.terminaltheme && this.termThemes.includes(cdata.feopts.termtheme)) {
+        if (cdata?.feopts?.termtheme) {
             return cdata.feopts.termtheme;
         }
         return {};

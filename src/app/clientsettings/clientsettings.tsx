@@ -210,7 +210,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getTheme();
-        const currTerTheme = GlobalModel.getTermTheme()["global"];
+        const currTermTheme = GlobalModel.getTermTheme()["global"];
         const terminalThemes = GlobalModel.termThemes;
 
         return (
@@ -259,7 +259,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 <Dropdown
                                     className="terminal-theme-dropdown"
                                     options={this.getTermThemes()}
-                                    defaultValue={currTerTheme}
+                                    defaultValue={currTermTheme}
                                     onChange={this.handleChangeTermTheme}
                                 />
                             </div>
