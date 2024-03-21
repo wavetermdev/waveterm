@@ -2948,17 +2948,6 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Upd
 	if err != nil {
 		return nil, fmt.Errorf("/%s error: cannot update curremote: %w", GetCmdStr(pk), err)
 	}
-	noHist := resolveBool(pk.Kwargs["nohist"], false)
-	if noHist {
-		// this case covers the newtab change remote flow
-		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
-		if err != nil {
-			return nil, fmt.Errorf("/%s error: cannot resolve screen for update: %w", GetCmdStr(pk), err)
-		}
-		update := scbus.MakeUpdatePacket()
-		update.AddUpdate(*screen, sstore.InteractiveUpdate(pk.Interactive))
-		return update, nil
-	}
 	ri, err := sstore.GetRemoteStatePtr(ctx, ids.SessionId, ids.ScreenId, *rptr)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error looking up connection state: %w", GetCmdStr(pk), err)
