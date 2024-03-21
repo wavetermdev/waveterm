@@ -6,8 +6,9 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
-import { Button } from "@/elements";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip } from "@/elements";
+import { If } from "tsx-control-statements/components";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip, Button, Dropdown } from "@/elements";
+import { commandRtnHandler } from "@/util/util";
 import * as util from "@/util/util";
 
 import "./sessionsettings.less";
@@ -79,16 +80,36 @@ class SessionSettingsModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    handleChangeTermTheme(theme: string): void {
+        const currTheme = GlobalModel.getTermTheme()[this.sessionId];
+        if (currTheme == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setSessionTermTheme(this.sessionId, theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     dismissError(): void {
         mobx.action(() => {
             this.errorMessage.set(null);
         })();
     }
 
+    getTermThemes(): DropdownItem[] {
+        return GlobalModel.termThemes.map((themeName) => ({
+            label: themeName,
+            value: themeName,
+        }));
+    }
+
     render() {
         if (this.session == null) {
             return null;
         }
+        const currTermTheme = GlobalModel.getTermTheme()[this.sessionId];
+        const terminalThemes = GlobalModel.termThemes;
+
         return (
             <Modal className="session-settings-modal">
                 <Modal.Header onClose={this.closeModal} title={`Workspace Settings (${this.session.name.get()})`} />
@@ -106,6 +127,19 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                             />
                         </div>
                     </div>
+                    <If condition={terminalThemes.length > 0}>
+                        <div className="settings-field">
+                            <div className="settings-label">Terminal Theme</div>
+                            <div className="settings-input">
+                                <Dropdown
+                                    className="terminal-theme-dropdown"
+                                    options={this.getTermThemes()}
+                                    defaultValue={currTermTheme}
+                                    onChange={this.handleChangeTermTheme}
+                                />
+                            </div>
+                        </div>
+                    </If>
                     <div className="settings-field">
                         <div className="settings-label">
                             <div>Archived</div>

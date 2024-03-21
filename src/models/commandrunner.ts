@@ -381,6 +381,24 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
+    setSessionTermTheme(sessionId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            id: sessionId,
+            name: name,
+        };
+        return GlobalModel.submitCommand("session", "termtheme", null, kwargs, interactive);
+    }
+
+    setScreenTermTheme(screenId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            id: screenId,
+            name: name,
+        };
+        return GlobalModel.submitCommand("screen", "termtheme", null, kwargs, interactive);
+    }
+
     setClientOpenAISettings(opts: {
         model?: string;
         apitoken?: string;

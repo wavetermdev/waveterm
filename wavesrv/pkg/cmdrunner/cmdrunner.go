@@ -186,7 +186,7 @@ func init() {
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
 	registerCmdFn("session:openshared", SessionOpenSharedCommand)
-	registerCmdFn("session:theme", TermSetThemeCommand)
+	registerCmdFn("session:termtheme", TermSetThemeCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:archive", ScreenArchiveCommand)
@@ -199,7 +199,7 @@ func init() {
 	registerCmdFn("screen:webshare", ScreenWebShareCommand)
 	registerCmdFn("screen:reorder", ScreenReorderCommand)
 	registerCmdFn("screen:show", ScreenShowCommand)
-	registerCmdFn("screen:theme", TermSetThemeCommand)
+	registerCmdFn("screen:termtheme", TermSetThemeCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
