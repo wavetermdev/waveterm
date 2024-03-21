@@ -103,6 +103,7 @@ class WorkspaceView extends React.Component<{}, {}> {
         return (
             <div
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
+                id={session.sessionId}
                 data-sessionid={session.sessionId}
                 style={{
                     width: `${window.innerWidth - mainSidebarModel.getWidth()}px`,

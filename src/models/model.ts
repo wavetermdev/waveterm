@@ -242,6 +242,7 @@ class Model {
             .then((resp) => resp.json())
             .then((themeVars) => {
                 Object.keys(themeVars).forEach((key) => {
+                    console.log(`--term-${key}`, themeVars[key]);
                     this.setStyleVar(element, `--term-${key}`, themeVars[key]);
                 });
             })
@@ -1288,16 +1289,18 @@ class Model {
                     console.log("got here");
                     this.applyTermTheme(document.documentElement, updatedtt[id]);
                 } else {
-                    const sessionEl = document.querySelector(`[data-sessionid='${id}']`) as HTMLElement;
+                    console.log("id", id);
+                    const sessionEl = document.documentElement.querySelector(`[data-sessionid="${id}"]`) as HTMLElement;
                     const screenEl = document.querySelector(`[data-screenid='${id}']`) as HTMLElement;
+                    console.log("xxxxx", sessionEl, document.getElementById(id));
                     if (sessionEl) {
+                        console.log("updatedtt[id]", updatedtt[id]);
                         this.applyTermTheme(sessionEl, updatedtt[id]);
                     } else if (screenEl) {
                         this.applyTermTheme(screenEl, updatedtt[id]);
                     }
                 }
             });
-            this.bumpRenderVersion();
         }
     }
 
