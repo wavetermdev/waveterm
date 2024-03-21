@@ -94,13 +94,11 @@ class InlineSettingsTextEdit extends React.Component<
     }
 
     handleBlur() {
-        console.log("handle blur");
         this.unregisterKeybindings();
         this.cancelChange();
     }
 
     componentWillUnmount(): void {
-        console.log("handle unmoount");
         this.unregisterKeybindings();
     }
 
