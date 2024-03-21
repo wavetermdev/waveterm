@@ -1283,12 +1283,16 @@ class Model {
         }
         if (Object.keys(updatedtt).length > 0) {
             Object.keys(updatedtt).forEach((id) => {
-                const sessionEl = document.querySelector(`[data-sessionid='${id}']`) as HTMLElement;
-                const screenEl = document.querySelector(`[data-screenid='${id}']`) as HTMLElement;
-                if (sessionEl) {
-                    this.applyTermTheme(sessionEl, updatedtt[id]);
-                } else if (screenEl) {
-                    this.applyTermTheme(screenEl, updatedtt[id]);
+                if (id == "global") {
+                    this.applyTermTheme(document.documentElement, updatedtt[id]);
+                } else {
+                    const sessionEl = document.querySelector(`[data-sessionid='${id}']`) as HTMLElement;
+                    const screenEl = document.querySelector(`[data-screenid='${id}']`) as HTMLElement;
+                    if (sessionEl) {
+                        this.applyTermTheme(sessionEl, updatedtt[id]);
+                    } else if (screenEl) {
+                        this.applyTermTheme(screenEl, updatedtt[id]);
+                    }
                 }
             });
             this.bumpRenderVersion();
