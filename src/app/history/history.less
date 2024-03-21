@@ -57,7 +57,6 @@
             font-size: 1em;
             padding: 0.5em 1em;
             background-color: var(--form-element-bg-color);
-            color: var(--app-text-color);
         }
 
         .advanced-search {
@@ -92,10 +91,15 @@
                 .checkbox-text {
                     padding-left: 8px;
                     cursor: pointer;
+                    user-select: none;
                 }
             }
 
             .fromts {
+                .fromts-text {
+                    user-select: none;
+                    margin-right: 5px;
+                }
                 display: flex;
                 flex-direction: row;
                 align-items: center;
