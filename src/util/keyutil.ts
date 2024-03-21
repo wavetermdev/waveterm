@@ -25,7 +25,8 @@ const KeyTypeCode = "code";
 
 type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
 type KeybindConfigArray = Array<KeybindConfig>;
-type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string };
+type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string; info?: string };
+type KeybindUIDescription = { keys: Array<string>; info: string };
 
 const Callback = "callback";
 const Command = "command";
@@ -93,6 +94,7 @@ class KeybindManager {
                             throw new Error("invalid keybind key");
                         }
                     }
+                    // if user doesn't specify a command string or a description, we will revert to the old one
                     let defaultCmd = this.keyDescriptionsMap.get(curKeybind.command);
                     if (
                         defaultCmd != null &&
@@ -100,6 +102,13 @@ class KeybindManager {
                         (curKeybind.commandStr == null || curKeybind.commandStr == "")
                     ) {
                         curKeybind.commandStr = this.keyDescriptionsMap.get(curKeybind.command).commandStr;
+                    }
+                    if (
+                        defaultCmd != null &&
+                        defaultCmd.info != null &&
+                        (curKeybind.info == null || curKeybind.info == "")
+                    ) {
+                        curKeybind.info = this.keyDescriptionsMap.get(curKeybind.command).info;
                     }
                     newKeyDescriptions.set(curKeybind.command, curKeybind);
                 }
@@ -139,6 +148,19 @@ class KeybindManager {
         return returnString;
     }
 
+    getUIDescription(keyDescription: string, prettyPrint: boolean = true): KeybindUIDescription {
+        let keybinds = this.getKeybindsFromDescription(keyDescription, prettyPrint);
+        if (!this.keyDescriptionsMap.has(keyDescription)) {
+            return { keys: keybinds, info: "" };
+        }
+        let curKeybindConfig = this.keyDescriptionsMap.get(keyDescription);
+        let curInfo = "";
+        if (curKeybindConfig.info) {
+            curInfo = curKeybindConfig.info;
+        }
+        return { keys: keybinds, info: curInfo };
+    }
+
     getKeybindsFromDescription(keyDescription: string, prettyPrint: boolean = true): Array<string> {
         if (!this.keyDescriptionsMap.has(keyDescription)) {
             return [];
@@ -154,6 +176,15 @@ class KeybindManager {
             keybindsArray.push(curPrettyPrintString);
         }
         return keybindsArray;
+    }
+
+    getAllKeybindUIDescriptions(prettyPrint: boolean = true): Array<KeybindUIDescription> {
+        let keybindsList = [];
+        let keybindDescriptions = this.keyDescriptionsMap.keys();
+        for (let keyDesc of keybindDescriptions) {
+            keybindsList.push(this.getUIDescription(keyDesc, prettyPrint));
+        }
+        return keybindsList;
     }
 
     getAllKeybinds(prettyPrint: boolean = true): Array<Array<string>> {
