@@ -786,6 +786,44 @@ a.a-block {
     margin-top: 6px;
 }
 
+.tab-colors,
+.tab-icons {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    .tab-color-sep,
+    .tab-icon-sep {
+        padding-left: 10px;
+        padding-right: 10px;
+        font-weight: bold;
+        user-select: none;
+    }
+
+    .tab-color-icon,
+    .tab-icon-icon {
+        width: 1.1em;
+        vertical-align: middle;
+    }
+
+    .tab-color-name,
+    .tab-icon-name {
+        display: inline-block;
+        margin-left: 1em;
+        min-width: 70px;
+        user-select: none;
+    }
+
+    .tab-color-select,
+    .tab-icon-select {
+        cursor: pointer;
+        margin: 3px;
+        &:hover {
+            outline: 2px solid white;
+        }
+    }
+}
+
 .settings-field {
     display: flex;
     flex-direction: row;
@@ -855,44 +893,6 @@ a.a-block {
         .control {
             .icon {
                 margin: 0;
-            }
-        }
-
-        .tab-colors,
-        .tab-icons {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-
-            .tab-color-sep,
-            .tab-icon-sep {
-                padding-left: 10px;
-                padding-right: 10px;
-                font-weight: bold;
-                user-select: none;
-            }
-
-            .tab-color-icon,
-            .tab-icon-icon {
-                width: 1.1em;
-                vertical-align: middle;
-            }
-
-            .tab-color-name,
-            .tab-icon-name {
-                display: inline-block;
-                margin-left: 1em;
-                min-width: 70px;
-                user-select: none;
-            }
-
-            .tab-color-select,
-            .tab-icon-select {
-                cursor: pointer;
-                margin: 3px;
-                &:hover {
-                    outline: 2px solid white;
-                }
             }
         }
 

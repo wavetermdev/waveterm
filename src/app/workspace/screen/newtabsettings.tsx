@@ -100,25 +100,18 @@ class TabColorSelector extends React.Component<{ screen: Screen; errorMessage?: 
             curColor = "green";
         }
         let color: string | null = null;
-
         return (
-            <div>
-                <div className="bold unselectable">Tab Color:</div>
-                <div className="control-iconlist">
-                    <For each="color" of={appconst.TabColors}>
-                        <div
-                            className="icondiv"
-                            key={color}
-                            title={color || ""}
-                            onClick={() => this.selectTabColor(color || "")}
-                        >
-                            <EllipseIcon className={cn("icon", "color-" + color)} />
-                            <If condition={color == curColor}>
-                                <Check12Icon className="check-icon" />
-                            </If>
-                        </div>
-                    </For>
+            <div className="tab-colors">
+                <div className="tab-color-cur">
+                    <TabIcon icon={screen.getTabIcon()} color={screen.getTabColor()} />
+                    <div className="tab-color-name">{screen.getTabColor()}</div>
                 </div>
+                <div className="tab-color-sep">|</div>
+                <For each="color" of={appconst.TabColors}>
+                    <div key={color} className="tab-color-select" onClick={() => this.selectTabColor(color)}>
+                        <TabIcon icon="square" color={color} />
+                    </div>
+                </For>
             </div>
         );
     }
@@ -145,20 +138,17 @@ class TabIconSelector extends React.Component<{ screen: Screen; errorMessage?: O
         let icon: string | null = null;
         let curColor = screen.getTabColor();
         return (
-            <div>
-                <div className="bold unselectable">Tab Icon:</div>
-                <div className="control-iconlist tabicon-list">
-                    <For each="icon" of={appconst.TabIcons}>
-                        <div
-                            className="icondiv tabicon"
-                            key={icon}
-                            title={icon || ""}
-                            onClick={() => this.selectTabIcon(icon || "")}
-                        >
-                            <TabIcon icon={icon} color={curColor} />
-                        </div>
-                    </For>
+            <div className="tab-icons">
+                <div className="tab-icon-cur">
+                    <TabIcon icon={screen.getTabIcon()} color={curColor} />
+                    <div className="tab-icon-name">{screen.getTabIcon()}</div>
                 </div>
+                <div className="tab-icon-sep">|</div>
+                <For each="icon" index="index" of={appconst.TabIcons}>
+                    <div key={icon} className="tab-icon-select" onClick={() => this.selectTabIcon(icon)}>
+                        <TabIcon icon={icon} color={curColor} />
+                    </div>
+                </For>
             </div>
         );
     }
@@ -216,4 +206,4 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
     }
 }
 
-export { NewTabSettings };
+export { NewTabSettings, TabColorSelector, TabIconSelector, TabNameTextField, TabRemoteSelector };
