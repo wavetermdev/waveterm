@@ -187,13 +187,11 @@ class SourceCodeRenderer extends React.Component<
         const { lineId } = this.props.context;
         let domain = "code-" + lineId;
         let keybindManager = GlobalModel.keybindManager;
-        console.log("registering keybindings");
         keybindManager.registerKeybinding("plugin", domain, "codeedit:save", (waveEvent) => {
             this.doSave();
             return true;
         });
         keybindManager.registerKeybinding("plugin", domain, "codeedit:close", (waveEvent) => {
-            console.log("closing");
             this.doClose();
             return true;
         });
@@ -206,7 +204,6 @@ class SourceCodeRenderer extends React.Component<
     unregisterKeybindings() {
         const { lineId } = this.props.context;
         let domain = "code-" + lineId;
-        console.log("unregistering keybindings?", domain);
         GlobalModel.keybindManager.unregisterDomain(domain);
     }
 
@@ -236,7 +233,6 @@ class SourceCodeRenderer extends React.Component<
                     "codeedit:togglePreview",
                 ])
             ) {
-                console.log("keydown??");
                 GlobalModel.keybindManager.processKeyEvent(e.browserEvent, waveEvent);
             }
         });
@@ -258,7 +254,6 @@ class SourceCodeRenderer extends React.Component<
                 this.handleFocus();
             });
             this.monacoEditor.onDidBlurEditorWidget(() => {
-                console.log("blur?");
                 this.props.rendererApi.onFocusChanged(false);
                 this.handleBlur();
             });
