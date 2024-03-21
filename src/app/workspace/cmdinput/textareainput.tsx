@@ -39,6 +39,69 @@ function scrollDiv(div: any, amt: number) {
     div.scrollTo({ top: newScrollTop, behavior: "smooth" });
 }
 
+class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
+    componentDidMount(): void {
+        let inputModel = GlobalModel.inputModel;
+        let keybindManager = GlobalModel.keybindManager;
+
+        keybindManager.registerKeybinding("pane", "history", "generic:cancel", (waveEvent) => {
+            inputModel.resetHistory();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "generic:confirm", (waveEvent) => {
+            inputModel.grabSelectedHistoryItem();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "history:closeHistory", (waveEvent) => {
+            inputModel.resetInput();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "history:toggleShowRemotes", (waveEvent) => {
+            inputModel.toggleRemoteType();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "history:changeScope", (waveEvent) => {
+            inputModel.toggleHistoryType();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "cmdinput:autocomplete", (waveEvent) => {
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "generic:selectAbove", (waveEvent) => {
+            inputModel.moveHistorySelection(1);
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "generic:selectBelow", (waveEvent) => {
+            inputModel.moveHistorySelection(-1);
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "generic:selectPageAbove", (waveEvent) => {
+            inputModel.moveHistorySelection(10);
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "generic:selectPageBelow", (waveEvent) => {
+            inputModel.moveHistorySelection(-10);
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "history:selectPreviousItem", (waveEvent) => {
+            inputModel.moveHistorySelection(1);
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "history", "history:selectNextItem", (waveEvent) => {
+            inputModel.moveHistorySelection(-1);
+            return true;
+        });
+    }
+
+    componentWillUnmount(): void {
+        GlobalModel.keybindManager.unregisterDomain("history");
+    }
+
+    render() {
+        return null;
+    }
+}
+
 class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
     lastTab: boolean;
 
@@ -71,7 +134,6 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:confirm", (waveEvent) => {
-            console.log("running?");
             if (GlobalModel.inputModel.isEmpty()) {
                 let activeWindow = GlobalModel.getScreenLinesForActiveScreen();
                 let activeScreen = GlobalModel.getActiveScreen();
@@ -171,7 +233,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     lastHeight: number = 0;
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0); // forces render updates
-    isFocused: OV<boolean> = mobx.observable.box(true);
+    mainInputFocused: OV<boolean> = mobx.observable.box(true);
+    historyFocused: OV<boolean> = mobx.observable.box(false);
 
     incVersion(): void {
         let v = this.version.get();
@@ -209,7 +272,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             this.mainInputRef.current.focus();
         }
         mobx.action(() => {
-            this.isFocused.set(true);
+            this.mainInputFocused.set(true);
         })();
     }
 
@@ -365,66 +428,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     @boundMethod
-    onHistoryKeyDown(e: any) {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        let inputModel = GlobalModel.inputModel;
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            inputModel.resetHistory();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Enter")) {
-            e.preventDefault();
-            inputModel.grabSelectedHistoryItem();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Ctrl:g")) {
-            e.preventDefault();
-            inputModel.resetInput();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Ctrl:c")) {
-            e.preventDefault();
-            inputModel.resetInput();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:r") || checkKeyPressed(waveEvent, "Ctrl:r")) {
-            e.preventDefault();
-            e.stopPropagation();
-            inputModel.toggleRemoteType();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:s") || checkKeyPressed(waveEvent, "Ctrl:s")) {
-            e.preventDefault();
-            e.stopPropagation();
-            inputModel.toggleHistoryType();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Tab")) {
-            e.preventDefault();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "ArrowUp") || checkKeyPressed(waveEvent, "ArrowDown")) {
-            e.preventDefault();
-            inputModel.moveHistorySelection(checkKeyPressed(waveEvent, "ArrowUp") ? 1 : -1);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "PageUp") || checkKeyPressed(waveEvent, "PageDown")) {
-            e.preventDefault();
-            inputModel.moveHistorySelection(checkKeyPressed(waveEvent, "PageUp") ? 10 : -10);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Ctrl:p")) {
-            e.preventDefault();
-            inputModel.moveHistorySelection(1);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Ctrl:n")) {
-            e.preventDefault();
-            inputModel.moveHistorySelection(-1);
-            return;
-        }
-    }
+    onHistoryKeyDown(e: any) {}
 
     @boundMethod
     controlU() {
@@ -537,6 +541,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         inputModel.setPhysicalInputFocused(true);
+        mobx.action(() => {
+            this.mainInputFocused.set(false);
+        })();
     }
 
     @boundMethod
@@ -546,7 +553,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
         GlobalModel.inputModel.setPhysicalInputFocused(false);
         mobx.action(() => {
-            this.isFocused.set(false);
+            this.mainInputFocused.set(false);
         })();
     }
 
@@ -561,6 +568,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         inputModel.setPhysicalInputFocused(true);
+        mobx.action(() => {
+            this.historyFocused.set(true);
+        })();
     }
 
     @boundMethod
@@ -569,6 +579,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         GlobalModel.inputModel.setPhysicalInputFocused(false);
+        mobx.action(() => {
+            this.historyFocused.set(false);
+        })();
     }
 
     render() {
@@ -608,16 +621,21 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 shellType = ri.shelltype;
             }
         }
-        let isFocused = this.isFocused.get();
+        let isMainInputFocused = this.mainInputFocused.get();
+        let isHistoryFocused = this.historyFocused.get();
         return (
             <div
                 className="textareainput-div control is-expanded"
                 ref={this.controlRef}
                 style={{ height: computedOuterHeight }}
             >
-                <If condition={isFocused}>
+                <If condition={isMainInputFocused}>
                     <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
                 </If>
+                <If condition={isHistoryFocused}>
+                    <HistoryKeybindings inputObject={this}></HistoryKeybindings>
+                </If>
+
                 <If condition={!disabled && !util.isBlank(shellType)}>
                     <div className="shelltag">{shellType}</div>
                 </If>
@@ -646,6 +664,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     className="history-input"
                     type="text"
                     onFocus={this.handleHistoryFocus}
+                    onBlur={this.handleHistoryBlur}
                     onKeyDown={this.onHistoryKeyDown}
                     onChange={this.handleHistoryInput}
                     value={inputModel.historyQueryOpts.get().queryStr}
