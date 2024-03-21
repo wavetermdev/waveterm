@@ -41,7 +41,7 @@ type ResolvedRemote struct {
 	MShell      *remote.MShellProc
 	RState      remote.RemoteRuntimeState
 	RemoteCopy  *sstore.RemoteType
-	ShellType   string
+	ShellType   string // default remote shell preference
 	StatePtr    *sstore.ShellStatePtr
 	FeState     map[string]string
 }

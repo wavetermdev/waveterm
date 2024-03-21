@@ -1508,18 +1508,18 @@ func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType
 }
 
 func makeShellInitOutputMsg(verbose bool, state *packet.ShellState, stats *packet.ShellStateStats, dur time.Duration, ptyMsg bool) string {
+	waveStr := fmt.Sprintf("%swave>%s", utilfn.AnsiGreenColor(), utilfn.AnsiResetColor())
 	if !verbose || ptyMsg {
 		if ptyMsg {
 			return fmt.Sprintf("initialized state shell:%s statehash:%s %dms\n", state.GetShellType(), state.GetHashVal(false), dur.Milliseconds())
 		} else {
-			return fmt.Sprintf("initialized connection state (shell:%s)\r\n", state.GetShellType())
+			return fmt.Sprintf("%s initialized connection state (shell:%s)\r\n", waveStr, state.GetShellType())
 		}
 	}
 	var buf bytes.Buffer
-	buf.WriteString("-----\r\n")
-	buf.WriteString(fmt.Sprintf("initialized connection shell:%s statehash:%s %dms\r\n", state.GetShellType(), state.GetHashVal(false), dur.Milliseconds()))
+	buf.WriteString(fmt.Sprintf("%s initialized connection shell:%s statehash:%s %dms\r\n", waveStr, state.GetShellType(), state.GetHashVal(false), dur.Milliseconds()))
 	if stats != nil {
-		buf.WriteString(fmt.Sprintf("  outsize:%s size:%s env:%d, vars:%d, aliases:%d, funcs:%d\r\n", scbase.NumFormatDec(stats.OutputSize), scbase.NumFormatDec(stats.StateSize), stats.EnvCount, stats.VarCount, stats.AliasCount, stats.FuncCount))
+		buf.WriteString(fmt.Sprintf("%s   outsize:%s size:%s env:%d, vars:%d, aliases:%d, funcs:%d\r\n", waveStr, scbase.NumFormatDec(stats.OutputSize), scbase.NumFormatDec(stats.StateSize), stats.EnvCount, stats.VarCount, stats.AliasCount, stats.FuncCount))
 	}
 	return buf.String()
 }
@@ -1893,19 +1893,21 @@ func (msh *MShellProc) removePendingStateCmd(screenId string, rptr sstore.Remote
 	}
 }
 
-func ResolveCurrentScreenStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr sstore.RemotePtrType) (*sstore.ShellStatePtr, error) {
+func ResolveCurrentScreenStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr sstore.RemotePtrType, nilOk bool) (*sstore.ShellStatePtr, error) {
 	statePtr, err := sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get current connection stateptr: %w", err)
 	}
 	if statePtr == nil {
 		msh := GetRemoteById(remotePtr.RemoteId)
-		err := msh.EnsureShellType(ctx, msh.GetShellPref()) // make sure shellType is initialized
-		if err != nil {
-			return nil, err
+		if !nilOk {
+			err := msh.EnsureShellType(ctx, msh.GetShellPref()) // make sure shellType is initialized
+			if err != nil {
+				return nil, err
+			}
 		}
 		statePtr = msh.GetDefaultStatePtr(msh.GetShellPref())
-		if statePtr == nil {
+		if statePtr == nil && !nilOk {
 			return nil, fmt.Errorf("no valid default connection stateptr")
 		}
 	}
@@ -1989,7 +1991,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		statePtr = rcOpts.StatePtr
 	} else {
 		var err error
-		statePtr, err = ResolveCurrentScreenStatePtr(ctx, sessionId, screenId, remotePtr)
+		statePtr, err = ResolveCurrentScreenStatePtr(ctx, sessionId, screenId, remotePtr, false)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot run command: %w", err)
 		}
@@ -2460,7 +2462,7 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		msh.WriteToPtyBuffer("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPk.Data)
 		return
 	}
-	msh.WriteToPtyBuffer("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
+	msh.WriteToPtyBuffer("*[remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
 }
 
 func (msh *MShellProc) ProcessPackets() {
