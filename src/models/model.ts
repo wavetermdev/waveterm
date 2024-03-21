@@ -237,7 +237,7 @@ class Model {
     }
 
     applyTermTheme(element: HTMLElement, themeFileName: string) {
-        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}`);
+        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
         fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
             .then((resp) => resp.json())
             .then((themeVars) => {
@@ -1282,6 +1282,7 @@ class Model {
             this.bumpRenderVersion();
         }
         if (Object.keys(updatedtt).length > 0) {
+            console.log("updatedtt", updatedtt);
             Object.keys(updatedtt).forEach((id) => {
                 if (id == "global") {
                     console.log("got here");
