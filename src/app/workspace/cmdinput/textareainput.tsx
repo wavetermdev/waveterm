@@ -64,9 +64,6 @@ class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput },
             inputModel.toggleHistoryType();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "history", "cmdinput:autocomplete", (waveEvent) => {
-            return true;
-        });
         keybindManager.registerKeybinding("pane", "history", "generic:selectAbove", (waveEvent) => {
             inputModel.moveHistorySelection(1);
             return true;
