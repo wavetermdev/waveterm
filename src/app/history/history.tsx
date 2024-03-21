@@ -16,7 +16,6 @@ import { Line } from "@/app/line/linecomps";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { TextField, Dropdown, Button, DatePicker } from "@/elements";
 
-import { ReactComponent as AngleDownIcon } from "@/assets/icons/history/angle-down.svg";
 import { ReactComponent as ChevronLeftIcon } from "@/assets/icons/history/chevron-left.svg";
 import { ReactComponent as ChevronRightIcon } from "@/assets/icons/history/chevron-right.svg";
 import { ReactComponent as RightIcon } from "@/assets/icons/history/right.svg";
@@ -37,7 +36,7 @@ function isBlank(s: string) {
 }
 
 function getHistoryViewTs(nowDate: Date, ts: number): string {
-    let itemDate = new Date(ts);
+    const itemDate = new Date(ts);
     if (nowDate.getFullYear() != itemDate.getFullYear()) {
         return dayjs(itemDate).format("M/D/YY");
     } else if (nowDate.getMonth() != itemDate.getMonth() || nowDate.getDate() != itemDate.getDate()) {
@@ -53,7 +52,7 @@ function formatRemoteName(rnames: Record<string, string>, rptr: RemotePtrType): 
     }
     let rname = rnames[rptr.remoteid];
     if (rname == null) {
-        rname = rptr.remoteid.substr(0, 8);
+        rname = rptr.remoteid.substring(0, 8);
     }
     if (!isBlank(rptr.name)) {
         rname = rname + ":" + rptr.name;
@@ -65,22 +64,16 @@ function formatSSName(snames: Record<string, string>, scrnames: Record<string, s
     if (isBlank(item.sessionid)) {
         return "";
     }
-    let sessionName = "#" + (snames[item.sessionid] ?? item.sessionid.substr(0, 8));
-    if (isBlank(item.screenid)) {
-        return sessionName;
-    }
-    // let screenName = "/" + (scrnames[item.screenid] ?? item.screenid.substr(0, 8));
-    // return sessionName + screenName;
-    return sessionName;
+    return "#" + (snames[item.sessionid] ?? item.sessionid.substring(0, 8));
 }
 
 function formatSessionName(snames: Record<string, string>, sessionId: string): string {
     if (isBlank(sessionId)) {
         return "";
     }
-    let sname = snames[sessionId];
+    const sname = snames[sessionId];
     if (sname == null) {
-        return sessionId.substr(0, 8);
+        return sessionId.substring(0, 8);
     }
     return "#" + sname;
 }
@@ -145,7 +138,7 @@ class HistoryCmdStr extends React.Component<
     }
 
     render() {
-        let { isCopied, cmdstr, fontSize, limitHeight } = this.props;
+        const { isCopied, cmdstr, fontSize, limitHeight } = this.props;
         return (
             <div className={cn("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
                 <If condition={isCopied}>
@@ -172,8 +165,8 @@ class HistoryCmdStr extends React.Component<
 class HistoryKeybindings extends React.Component<{}, {}> {
     @boundMethod
     componentDidMount() {
-        let historyViewModel = GlobalModel.historyViewModel;
-        let keybindManager = GlobalModel.keybindManager;
+        const historyViewModel = GlobalModel.historyViewModel;
+        const keybindManager = GlobalModel.keybindManager;
         keybindManager.registerKeybinding("mainview", "history", "generic:cancel", (waveEvent) => {
             historyViewModel.handleUserClose();
             return true;
@@ -218,7 +211,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     searchKeyDown(e: any) {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        const waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (checkKeyPressed(waveEvent, "Enter")) {
             e.preventDefault();
             GlobalModel.historyViewModel.submitSearch();
@@ -227,7 +220,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     handleSelect(historyId: string) {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             if (hvm.selectedItems.get(historyId)) {
                 hvm.selectedItems.delete(historyId);
@@ -239,9 +232,9 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     handleControlCheckbox() {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
-            let numSelected = hvm.selectedItems.size;
+            const numSelected = hvm.selectedItems.size;
             if (numSelected > 0) {
                 hvm.selectedItems.clear();
             } else {
@@ -298,8 +291,8 @@ class HistoryView extends React.Component<{}, {}> {
     }
 
     searchFromTsInputValue(): string {
-        let hvm = GlobalModel.historyViewModel;
-        let fromDate = hvm.searchFromDate.get();
+        const hvm = GlobalModel.historyViewModel;
+        const fromDate = hvm.searchFromDate.get();
         if (fromDate == null) {
             return dayjs().format("YYYY-MM-DD");
         }
@@ -308,9 +301,9 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     handleFromTsChange(date: Date): void {
-        let hvm = GlobalModel.historyViewModel;
-        let newDate = dayjs(date).format("YYYY-MM-DD");
-        let today = dayjs().format("YYYY-MM-DD");
+        const hvm = GlobalModel.historyViewModel;
+        const newDate = dayjs(date).format("YYYY-MM-DD");
+        const today = dayjs().format("YYYY-MM-DD");
         if (newDate == "" || newDate == today) {
             hvm.setFromDate(null);
             return;
@@ -331,7 +324,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     clickLimitSession(sessionId: string): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             this.sessionDropdownActive.set(false);
             hvm.setSearchSessionId(sessionId);
@@ -350,7 +343,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     clickLimitRemote(remoteId: string): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             this.remoteDropdownActive.set(false);
             hvm.setSearchRemoteId(remoteId);
@@ -359,7 +352,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     toggleShowMeta(): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             hvm.setSearchShowMeta(!hvm.searchShowMeta.get());
         })();
@@ -367,7 +360,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     toggleFilterCmds(): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             hvm.setSearchFilterCmds(!hvm.searchFilterCmds.get());
         })();
@@ -375,7 +368,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     resetAllFilters(): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         hvm.resetAllFilters();
     }
 
@@ -448,25 +441,23 @@ class HistoryView extends React.Component<{}, {}> {
     }
 
     render() {
-        let isHidden = GlobalModel.activeMainView.get() != "history";
+        const isHidden = GlobalModel.activeMainView.get() != "history";
         if (isHidden) {
             return null;
         }
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         let item: HistoryItem = null;
-        let items = hvm.items.slice();
-        let nowDate = new Date();
-        let snames = GlobalModel.getSessionNames();
-        let rnames = GlobalModel.getRemoteNames();
-        let scrnames = GlobalModel.getScreenNames();
-        let hasMore = hvm.hasMore.get();
-        let offset = hvm.offset.get();
-        let numSelected = hvm.selectedItems.size;
-        let activeItemId = hvm.activeItem.get();
-        let sessionIds = Object.keys(snames);
-        let sessionId: string = null;
-        let remoteIds = Object.keys(rnames);
-        let remoteId: string = null;
+        const items = hvm.items.slice();
+        const nowDate = new Date();
+        const snames = GlobalModel.getSessionNames();
+        const rnames = GlobalModel.getRemoteNames();
+        const scrnames = GlobalModel.getScreenNames();
+        const hasMore = hvm.hasMore.get();
+        const offset = hvm.offset.get();
+        const numSelected = hvm.selectedItems.size;
+        const activeItemId = hvm.activeItem.get();
+        const sessionIds = Object.keys(snames);
+        const remoteIds = Object.keys(rnames);
 
         return (
             <MainView className="history-view" title="History" onClose={this.handleClose}>
@@ -671,7 +662,7 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
 
     constructor(props: any) {
         super(props);
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         this.historyItem = hvm.getHistoryItemById(props.historyId);
         if (this.historyItem == null) {
             return;
@@ -686,7 +677,7 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
 
     @boundMethod
     viewInContext() {
-        let screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
+        const screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
         if (screen == null) {
             return null;
         }
@@ -695,7 +686,7 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
     }
 
     render() {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         if (this.historyItem == null || this.props.width == 0) {
             return null;
         }
@@ -711,8 +702,8 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
         if (width < 400) {
             width = 400;
         }
-        let session = GlobalModel.getSessionById(this.historyItem.sessionid);
-        let screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
+        const session = GlobalModel.getSessionById(this.historyItem.sessionid);
+        const screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
         let ssStr = "";
         let canViewInContext = false;
         if (session != null && screen != null) {
