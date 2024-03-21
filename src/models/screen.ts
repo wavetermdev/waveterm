@@ -542,7 +542,27 @@ class Screen {
         })();
     }
 
+    isWaveCapturedKey(e: any): boolean {
+        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        if (
+            GlobalModel.keybindManager.checkKeysPressed(waveEvent, [
+                "terminal:copy",
+                "terminal:paste",
+                "generic:selectAbove",
+                "generic:selectBelow",
+                "generic:selectPageAbove",
+                "generic:selectPageBelow",
+            ])
+        ) {
+            return true;
+        }
+        return false;
+    }
+
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
+        if (this.isWaveCapturedKey(e)) {
+            return true;
+        }
         return false;
     }
 
