@@ -25,9 +25,11 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
-const GetStateTimeout = 15 * time.Second
+const GetStateTimeout = 10 * time.Second
+const ReInitTimeout = GetStateTimeout + 2*time.Second
 const GetGitBranchCmdStr = `printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`
 const GetK8sContextCmdStr = `printf "K8SCONTEXT %s\x00" "$(kubectl config current-context 2>/dev/null)"`
 const GetK8sNamespaceCmdStr = `printf "K8SNAMESPACE %s\x00" "$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)"`
@@ -71,7 +73,7 @@ type ShellApi interface {
 	GetRemoteShellPath() string
 	MakeRunCommand(cmdStr string, opts RunCommandOpts) string
 	MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd
-	GetShellState(chan ShellStateOutput)
+	GetShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte)
 	GetBaseShellOpts() string
 	ParseShellStateOutput(output []byte) (*packet.ShellState, *packet.ShellStateStats, error)
 	MakeRcFileStr(pk *packet.RunPacketType) string
@@ -154,7 +156,7 @@ func internalMacUserShell() string {
 const FirstExtraFilesFdNum = 3
 
 // returns output(stdout+stderr), extraFdOutput, error
-func StreamCommandWithExtraFd(ecmd *exec.Cmd, outputCh chan []byte, extraFdNum int, endBytes []byte) ([]byte, error) {
+func StreamCommandWithExtraFd(ctx context.Context, ecmd *exec.Cmd, outputCh chan []byte, extraFdNum int, endBytes []byte, stdinDataCh chan []byte) ([]byte, error) {
 	defer close(outputCh)
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
@@ -202,8 +204,27 @@ func StreamCommandWithExtraFd(ecmd *exec.Cmd, outputCh chan []byte, extraFdNum i
 		defer outputWg.Done()
 		utilfn.CopyWithEndBytes(&extraFdOutputBuf, pipeReader, endBytes)
 	}()
+	if stdinDataCh != nil {
+		go func() {
+			// continue this loop even after an error to drain stdinDataCh
+			hadErr := false
+			for stdinData := range stdinDataCh {
+				if hadErr {
+					continue
+				}
+				_, err := cmdPty.Write(stdinData)
+				if err != nil {
+					wlog.Logf("error writing to shellstate cmdpty (stdin): %v\n", err)
+					hadErr = true
+				}
+			}
+		}()
+	}
 	exitErr := ecmd.Wait()
 	if exitErr != nil {
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("%w (%w)", ctx.Err(), exitErr)
+		}
 		return nil, exitErr
 	}
 	outputWg.Wait()

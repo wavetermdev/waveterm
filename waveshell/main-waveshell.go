@@ -135,6 +135,7 @@ func main() {
 		base.ProcessType = base.ProcessType_WaveShellServer
 		wlog.GlobalSubsystem = base.ProcessType_WaveShellServer
 		base.InitDebugLog("server")
+		base.EnsureRcFilesDir()
 		rtnCode, err := server.RunServer()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
