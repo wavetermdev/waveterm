@@ -1014,7 +1014,6 @@ type RemoteRuntimeState struct {
 	RemoteAlias         string            `json:"remotealias,omitempty"`
 	RemoteCanonicalName string            `json:"remotecanonicalname"`
 	RemoteVars          map[string]string `json:"remotevars"`
-	DefaultFeState      map[string]string `json:"defaultfestate"`
 	Status              string            `json:"status"`
 	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
 	CountdownActive     bool              `json:"countdownactive"`
@@ -1035,7 +1034,6 @@ type RemoteRuntimeState struct {
 	Local               bool              `json:"local,omitempty"`
 	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
 	CanComplete         bool              `json:"cancomplete,omitempty"`
-	ActiveShells        []string          `json:"activeshells,omitempty"`
 	ShellPref           string            `json:"shellpref,omitempty"`
 	DefaultShellType    string            `json:"defaultshelltype,omitempty"`
 }

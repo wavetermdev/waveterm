@@ -2469,10 +2469,16 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 	if err != nil {
 		return nil, fmt.Errorf("cannot get remote instances: %w", err)
 	}
-	rmap := remote.GetRemoteMap()
+	if len(riArr) == 0 {
+		update := scbus.MakeUpdatePacket()
+		update.AddUpdate(sstore.InfoMsgType{
+			InfoMsg: "this tab has no shell states",
+		})
+		return update, nil
+	}
 	for _, ri := range riArr {
 		rptr := sstore.RemotePtrType{RemoteId: ri.RemoteId, Name: ri.Name}
-		msh := rmap[ri.RemoteId]
+		msh := remote.GetRemoteById(ri.RemoteId)
 		if msh == nil {
 			continue
 		}
@@ -2484,28 +2490,9 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 		}
 		buf.WriteString(fmt.Sprintf("%-30s %-50s\n", displayName, cwdStr))
 	}
-	riBaseMap := make(map[string]bool)
-	for _, ri := range riArr {
-		if ri.Name == "" {
-			riBaseMap[ri.RemoteId] = true
-		}
-	}
-	for remoteId, msh := range rmap {
-		if riBaseMap[remoteId] {
-			continue
-		}
-		feState := msh.GetDefaultFeState(msh.GetShellPref())
-		if feState == nil {
-			continue
-		}
-		cwdStr := "-"
-		if feState["cwd"] != "" {
-			cwdStr = feState["cwd"]
-		}
-		buf.WriteString(fmt.Sprintf("%-30s %-50s (default)\n", msh.GetDisplayName(), cwdStr))
-	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
+		InfoTitle: "shell states for tab",
 		InfoLines: splitLinesForInfo(buf.String()),
 	})
 	return update, nil
@@ -3528,7 +3515,7 @@ func ScreenShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if screen == nil {
 		return nil, fmt.Errorf("screen not found")
 	}
-	statePtr, err := remote.ResolveCurrentScreenStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, false)
+	statePtr, err := sstore.GetRemoteStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot resolve current screen stateptr: %v", err)
 	}
@@ -3540,8 +3527,10 @@ func ScreenShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "tabicon", screen.ScreenOpts.TabIcon))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "selectedline", screen.SelectedLine))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "curremote", GetFullRemoteDisplayName(&screen.CurRemote, &ids.Remote.RState)))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "stateptr-base", statePtr.BaseHash))
-	buf.WriteString(fmt.Sprintf("  %-15s %v\n", "stateptr-diff", statePtr.DiffHashArr))
+	if statePtr != nil {
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "stateptr-base", statePtr.BaseHash))
+		buf.WriteString(fmt.Sprintf("  %-15s %v\n", "stateptr-diff", statePtr.DiffHashArr))
+	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: "screen info",
@@ -3794,7 +3783,7 @@ func doAsyncResetCommand(msh *remote.MShellProc, opts connectOptsType, cmd *ssto
 	dataFn := func(data []byte) {
 		writeStringToPty(ctx, cmd, string(data), &outputPos)
 	}
-	origStatePtr, _ := remote.ResolveCurrentScreenStatePtr(ctx, opts.SessionId, opts.ScreenId, opts.RPtr, true)
+	origStatePtr, _ := sstore.GetRemoteStatePtr(ctx, opts.SessionId, opts.ScreenId, opts.RPtr)
 	ssPk, err := msh.ReInit(ctx, base.MakeCommandKey(cmd.ScreenId, cmd.LineId), opts.ShellType, dataFn, opts.Verbose)
 	if err != nil {
 		rtnErr = err
@@ -3810,12 +3799,14 @@ func doAsyncResetCommand(msh *remote.MShellProc, opts connectOptsType, cmd *ssto
 		rtnErr = err
 		return
 	}
-	newStatePtr := msh.GetDefaultStatePtr(opts.ShellType)
-	if opts.Verbose && origStatePtr != nil && newStatePtr != nil {
+	newStatePtr := sstore.ShellStatePtr{
+		BaseHash: ssPk.State.GetHashVal(false),
+	}
+	if opts.Verbose && origStatePtr != nil {
 		statePtrDiff := fmt.Sprintf("oldstate: %v, newstate: %v\r\n", origStatePtr.BaseHash, newStatePtr.BaseHash)
 		writeStringToPty(ctx, cmd, statePtrDiff, &outputPos)
 		origFullState, _ := sstore.GetFullState(ctx, *origStatePtr)
-		newFullState, _ := sstore.GetFullState(ctx, *newStatePtr)
+		newFullState, _ := sstore.GetFullState(ctx, newStatePtr)
 		if origFullState != nil && newFullState != nil {
 			var diffBuf bytes.Buffer
 			rtnstate.DisplayStateUpdateDiff(&diffBuf, *origFullState, *newFullState)
@@ -3834,9 +3825,12 @@ func ResetCwdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	if err != nil {
 		return nil, err
 	}
-	statePtr, err := remote.ResolveCurrentScreenStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, false)
+	statePtr, err := sstore.GetRemoteStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr)
 	if err != nil {
 		return nil, err
+	}
+	if statePtr == nil {
+		return nil, fmt.Errorf("no shell state found, cannot reset cwd (run /reset)")
 	}
 	stateDiff, err := sstore.GetCurStateDiffFromPtr(ctx, statePtr)
 	if err != nil {

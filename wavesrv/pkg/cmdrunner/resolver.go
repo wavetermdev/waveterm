@@ -488,8 +488,8 @@ func ResolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 		} else {
 			if ri == nil {
 				rtn.ShellType = msh.GetShellPref()
-				rtn.StatePtr = msh.GetDefaultStatePtr(rtn.ShellType)
-				rtn.FeState = msh.GetDefaultFeState(rtn.ShellType)
+				rtn.StatePtr = nil
+				rtn.FeState = nil
 			} else {
 				rtn.StatePtr = &sstore.ShellStatePtr{BaseHash: ri.StateBaseHash, DiffHashArr: ri.StateDiffHashArr}
 				rtn.FeState = ri.FeState
