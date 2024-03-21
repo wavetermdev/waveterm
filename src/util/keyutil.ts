@@ -488,10 +488,10 @@ function notMod(keyPressMod, eventMod) {
 
 function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
     let keyPress = parseKeyDescription(keyDescription);
-    if (notMod(keyPress.mods.Option, event.option)) {
+    if (!keyPress.mods.Alt && notMod(keyPress.mods.Option, event.option)) {
         return false;
     }
-    if (notMod(keyPress.mods.Cmd, event.cmd)) {
+    if (!keyPress.mods.Meta && notMod(keyPress.mods.Cmd, event.cmd)) {
         return false;
     }
     if (notMod(keyPress.mods.Shift, event.shift)) {
