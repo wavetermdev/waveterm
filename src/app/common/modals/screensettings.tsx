@@ -13,14 +13,17 @@ import * as util from "@/util/util";
 import { Button } from "@/elements";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
-import { TabColorSelector, TabIconSelector, TabNameTextField } from "@/app/workspace/screen/newtabsettings";
+import {
+    TabColorSelector,
+    TabIconSelector,
+    TabNameTextField,
+    TabRemoteSelector,
+} from "@/app/workspace/screen/newtabsettings";
 
 import "./screensettings.less";
 
 const ScreenDeleteMessage = `
 Are you sure you want to delete this tab?
-
-All commands and output will be deleted.  To hide the tab, and retain the commands and output, use 'archive'.
 `.trim();
 
 const WebShareConfirmMarkdown = `
@@ -150,12 +153,6 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         });
     }
 
-    @boundMethod
-    selectRemote(cname: string): void {
-        let prtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
-        util.commandRtnHandler(prtn, this.errorMessage);
-    }
-
     render() {
         const screen = this.screen;
         if (screen == null) {
@@ -183,22 +180,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                     <div className="settings-field">
                         <div className="settings-label">Connection</div>
                         <div className="settings-input">
-                            <Dropdown
-                                className="screen-settings-dropdown"
-                                options={this.getOptions()}
-                                defaultValue={curRemote.remotecanonicalname}
-                                onChange={this.selectRemote}
-                                decoration={{
-                                    startDecoration: (
-                                        <div className="lefticon">
-                                            <GlobeIcon className="globe-icon" />
-                                            <StatusCircleIcon
-                                                className={cn("status-icon", "status-" + curRemote.status)}
-                                            />
-                                        </div>
-                                    ),
-                                }}
-                            />
+                            <TabRemoteSelector screen={screen} errorMessage={this.errorMessage} />
                         </div>
                     </div>
                     <div className="settings-field">

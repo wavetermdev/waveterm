@@ -14,8 +14,6 @@ import "./sessionsettings.less";
 
 const SessionDeleteMessage = `
 Are you sure you want to delete this workspace?
-
-All commands and output will be deleted.  To hide the workspace, and retain the commands and output, use 'archive'.
 `.trim();
 
 @mobxReact.observer

@@ -532,7 +532,7 @@ class Model {
             return;
         }
         const rtnp = this.showAlert({
-            message: "Are you sure you want to delete this screen?",
+            message: "Are you sure you want to delete this tab?",
             confirm: true,
         });
         rtnp.then((result) => {
