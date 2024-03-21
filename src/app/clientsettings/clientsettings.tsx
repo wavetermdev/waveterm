@@ -73,6 +73,15 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
+    handleChangeTerminalTheme(theme: string): void {
+        if (GlobalModel.getTermTheme() == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setTerminalTheme(theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     handleChangeTelemetry(val: boolean): void {
         let prtn: Promise<CommandRtnType> = null;
         if (val) {
@@ -119,8 +128,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     getTerminalThemes(): DropdownItem[] {
-        return GlobalModel.terminalThemes.map((themeName) => ({
-            label: themeName.charAt(0).toUpperCase() + themeName.slice(1),
+        return GlobalModel.termThemes.map((themeName) => ({
+            label: themeName,
             value: themeName,
         }));
     }

@@ -5568,6 +5568,16 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		}
 		varsUpdated = append(varsUpdated, "theme")
 	}
+	if termthemeStr, found := pk.Kwargs["termtheme"]; found {
+		newTermTheme := termthemeStr
+		feOpts := clientData.FeOpts
+		feOpts.TermTheme["global"] = newTermTheme
+		err = sstore.UpdateClientFeOpts(ctx, feOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client feopts: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "termtheme")
+	}
 	if apiToken, found := pk.Kwargs["openaiapitoken"]; found {
 		err = validateOpenAIAPIToken(apiToken)
 		if err != nil {

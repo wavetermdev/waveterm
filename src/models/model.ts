@@ -128,7 +128,7 @@ class Model {
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
-    termThemes: OArr<string> = mobx.observable.array([], {
+    termThemes: OMap<string, string> = mobx.observable.array([], {
         name: "terminalThemes",
         deep: false,
     });
@@ -432,12 +432,12 @@ class Model {
         return theme;
     }
 
-    getTermTheme(): string {
+    getTermTheme(): { [k: string]: string } {
         let cdata = this.clientData.get();
         if (cdata?.feopts?.terminaltheme && this.termThemes.includes(cdata.feopts.termtheme)) {
             return cdata.feopts.termtheme;
         }
-        return "";
+        return {};
     }
 
     isThemeDark(): boolean {
@@ -1259,7 +1259,7 @@ class Model {
         const themeUpdated = newTheme != this.getTheme();
 
         let newTermTheme = clientData?.feopts?.termtheme;
-        const ttUpdated = this.isTermThemeUpdated(newTermTheme);
+        const updatedtt = this.getUpdatedTermTheme(newTermTheme);
 
         mobx.action(() => {
             this.clientData.set(clientData);
@@ -1281,44 +1281,37 @@ class Model {
             loadTheme(newTheme);
             this.bumpRenderVersion();
         }
-        if (ttUpdated) {
-            if (ttUpdated) {
-                Object.keys(newTermTheme).forEach((id) => {
-                    const sessionEl = document.querySelector(`[data-sessionid='${id}']`) as HTMLElement;
-                    const screenEl = document.querySelector(`[data-screenid='${id}']`) as HTMLElement;
-                    if (sessionEl) {
-                        this.applyTermTheme(sessionEl, newTermTheme[id]);
-                    } else if (screenEl) {
-                        this.applyTermTheme(screenEl, newTermTheme[id]);
-                    }
-                });
-                this.bumpRenderVersion();
-            }
+        if (Object.keys(updatedtt).length > 0) {
+            Object.keys(updatedtt).forEach((id) => {
+                const sessionEl = document.querySelector(`[data-sessionid='${id}']`) as HTMLElement;
+                const screenEl = document.querySelector(`[data-screenid='${id}']`) as HTMLElement;
+                if (sessionEl) {
+                    this.applyTermTheme(sessionEl, updatedtt[id]);
+                } else if (screenEl) {
+                    this.applyTermTheme(screenEl, updatedtt[id]);
+                }
+            });
             this.bumpRenderVersion();
         }
     }
 
-    isTermThemeUpdated(newTermTheme: { [k: string]: string } | undefined) {
-        const currTermTheme = this.getTermTheme();
-        if (newTermTheme == null && currTermTheme == null) {
-            return false;
-        }
-        if (newTermTheme == null || currTermTheme == null) {
-            return true;
-        }
-        const keysNew = Object.keys(newTermTheme);
-        const keysCurrent = Object.keys(currTermTheme);
+    getUpdatedTermTheme(newTermTheme: { [k: string]: string }): { [k: string]: string } {
+        let currTermTheme = this.getTermTheme();
+        let updatedTermTheme: { [k: string]: string } = {};
 
-        if (keysNew.length !== keysCurrent.length) {
-            return true;
+        if (newTermTheme == null) {
+            newTermTheme = {};
         }
-
-        for (let key of keysNew) {
+        if (currTermTheme == null) {
+            currTermTheme = {};
+        }
+        const allKeys = new Set([...Object.keys(newTermTheme), ...Object.keys(currTermTheme)]);
+        for (let key of allKeys) {
             if (newTermTheme[key] !== currTermTheme[key]) {
-                return true;
+                updatedTermTheme[key] = newTermTheme[key];
             }
         }
-        return false;
+        return updatedTermTheme;
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
