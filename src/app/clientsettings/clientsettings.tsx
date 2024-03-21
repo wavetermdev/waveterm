@@ -73,11 +73,14 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
-    handleChangeTerminalTheme(theme: string): void {
-        if (GlobalModel.getTermTheme() == theme) {
+    handleChangeTermTheme(theme: string): void {
+        // For global terminal theme, the key is global, otherwise it's either
+        // sessionId or screenId.
+        const currTheme = GlobalModel.getTermTheme()["global"];
+        if (currTheme == theme) {
             return;
         }
-        const prtn = GlobalCommandRunner.setTerminalTheme(theme, false);
+        const prtn = GlobalCommandRunner.setGlobalTermTheme(theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -127,7 +130,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         return themes;
     }
 
-    getTerminalThemes(): DropdownItem[] {
+    getTermThemes(): DropdownItem[] {
         return GlobalModel.termThemes.map((themeName) => ({
             label: themeName,
             value: themeName,
@@ -207,8 +210,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getTheme();
-        const currTerminalTheme = GlobalModel.getTerminalTheme();
-        const terminalThemes = GlobalModel.terminalThemes;
+        const currTerTheme = GlobalModel.getTermTheme()["global"];
+        const terminalThemes = GlobalModel.termThemes;
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
@@ -255,9 +258,9 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                             <div className="settings-input">
                                 <Dropdown
                                     className="terminal-theme-dropdown"
-                                    options={this.getTerminalThemes()}
-                                    defaultValue={currTerminalTheme}
-                                    onChange={this.handleChangeTheme}
+                                    options={this.getTermThemes()}
+                                    defaultValue={currTerTheme}
+                                    onChange={this.handleChangeTermTheme}
                                 />
                             </div>
                         </div>

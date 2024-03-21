@@ -5571,6 +5571,9 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	if termthemeStr, found := pk.Kwargs["termtheme"]; found {
 		newTermTheme := termthemeStr
 		feOpts := clientData.FeOpts
+		if feOpts.TermTheme == nil {
+			feOpts.TermTheme = make(map[string]string)
+		}
 		feOpts.TermTheme["global"] = newTermTheme
 		err = sstore.UpdateClientFeOpts(ctx, feOpts)
 		if err != nil {

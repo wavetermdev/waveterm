@@ -373,10 +373,10 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
-    setTerminalTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+    setGlobalTermTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
-            terminaltheme: theme,
+            termtheme: theme,
         };
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }

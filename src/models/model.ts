@@ -1284,6 +1284,7 @@ class Model {
         if (Object.keys(updatedtt).length > 0) {
             Object.keys(updatedtt).forEach((id) => {
                 if (id == "global") {
+                    console.log("got here");
                     this.applyTermTheme(document.documentElement, updatedtt[id]);
                 } else {
                     const sessionEl = document.querySelector(`[data-sessionid='${id}']`) as HTMLElement;
