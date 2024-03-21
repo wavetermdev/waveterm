@@ -69,6 +69,9 @@ class TabNameTextField extends React.Component<{ screen: Screen; errorMessage?: 
     @boundMethod
     updateName(val: string): void {
         let { screen } = this.props;
+        if (util.isStrEq(val, screen.name.get())) {
+            return;
+        }
         let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { name: val }, false);
         util.commandRtnHandler(prtn, this.props.errorMessage);
     }
