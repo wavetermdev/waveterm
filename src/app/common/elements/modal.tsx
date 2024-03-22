@@ -41,7 +41,6 @@ class ModalKeybindings extends React.Component<{ onOk; onCancel }, {}> {
 
     @boundMethod
     componentDidMount(): void {
-        console.log("mounted?");
         this.curId = uuidv4();
         let domain = "modal-" + this.curId;
         let keybindManager = GlobalModel.keybindManager;
