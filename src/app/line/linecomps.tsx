@@ -757,7 +757,6 @@ class LineCmd extends React.Component<
                 <If condition={!isMinimized && !isInSidebar}>
                     <ErrorBoundary plugin={rendererPlugin?.name} lineContext={lineutil.getRendererContext(line)}>
                         <If condition={rendererPlugin == null && !isNoneRenderer}>
-                            <If condition={line.linenum == 1}>first line!</If>
                             <TerminalRenderer
                                 screen={screen}
                                 line={line}

@@ -893,9 +893,9 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 			realStr = realStr + "\r\n"
 		}
 		if strings.HasPrefix(realStr, "*") {
-			realStr = "\033[0m\033[31mprompt>\033[0m " + realStr[1:]
+			realStr = "\033[0m\033[31mwave>\033[0m " + realStr[1:]
 		} else {
-			realStr = "\033[0m\033[32mprompt>\033[0m " + realStr
+			realStr = "\033[0m\033[32mwave>\033[0m " + realStr
 		}
 		barr := msh.PtyBuffer.Bytes()
 		if len(barr) > 0 && barr[len(barr)-1] != '\n' {
