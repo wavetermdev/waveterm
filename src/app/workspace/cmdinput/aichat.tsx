@@ -66,7 +66,6 @@ class AIChat extends React.Component<{}, {}> {
         this.isFocused = mobx.observable.box(false, {
             name: "aichat-isfocused",
         });
-        console.log("isFocused?", this.isFocused);
     }
 
     componentDidMount() {
