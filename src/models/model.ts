@@ -206,7 +206,6 @@ class Model {
             return resp.json();
         }).then((userKeybindings) => {
             this.keybindManager.setUserKeybindings(userKeybindings);
-            console.log("all keybindings:", this.keybindManager.getAllKeybindUIDescriptions());
         });
     }
 

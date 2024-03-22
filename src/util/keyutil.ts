@@ -26,7 +26,6 @@ const KeyTypeCode = "code";
 type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
 type KeybindConfigArray = Array<KeybindConfig>;
 type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string; info?: string };
-type KeybindUIDescription = { keys: Array<string>; info: string };
 
 const Callback = "callback";
 const Command = "command";
@@ -148,17 +147,21 @@ class KeybindManager {
         return returnString;
     }
 
-    getUIDescription(keyDescription: string, prettyPrint: boolean = true): KeybindUIDescription {
+    getUIDescription(keyDescription: string, prettyPrint: boolean = true): KeybindConfig {
         let keybinds = this.getKeybindsFromDescription(keyDescription, prettyPrint);
         if (!this.keyDescriptionsMap.has(keyDescription)) {
-            return { keys: keybinds, info: "" };
+            return { keys: keybinds, info: "", command: keyDescription, commandStr: "" };
         }
         let curKeybindConfig = this.keyDescriptionsMap.get(keyDescription);
         let curInfo = "";
         if (curKeybindConfig.info) {
             curInfo = curKeybindConfig.info;
         }
-        return { keys: keybinds, info: curInfo };
+        let curCommandStr = "";
+        if (curKeybindConfig.commandStr) {
+            curCommandStr = curKeybindConfig.commandStr;
+        }
+        return { keys: keybinds, info: curInfo, commandStr: curCommandStr, command: keyDescription };
     }
 
     getKeybindsFromDescription(keyDescription: string, prettyPrint: boolean = true): Array<string> {
@@ -178,7 +181,7 @@ class KeybindManager {
         return keybindsArray;
     }
 
-    getAllKeybindUIDescriptions(prettyPrint: boolean = true): Array<KeybindUIDescription> {
+    getAllKeybindUIDescriptions(prettyPrint: boolean = true): KeybindConfigArray {
         let keybindsList = [];
         let keybindDescriptions = this.keyDescriptionsMap.keys();
         for (let keyDesc of keybindDescriptions) {
