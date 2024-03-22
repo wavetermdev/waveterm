@@ -7,6 +7,8 @@ import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
 import ReactDOM from "react-dom";
+import { v4 as uuidv4 } from "uuid";
+import { GlobalModel } from "@/models";
 
 import "./dropdown.less";
 
@@ -39,6 +41,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     wrapperRef: React.RefObject<HTMLDivElement>;
     menuRef: React.RefObject<HTMLDivElement>;
     timeoutId: any;
+    curUuid: string;
 
     constructor(props: DropdownProps) {
         super(props);
@@ -50,6 +53,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         };
         this.wrapperRef = React.createRef();
         this.menuRef = React.createRef();
+        this.curUuid == uuidv4();
     }
 
     componentDidMount() {
@@ -102,49 +106,74 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     @boundMethod
     handleFocus() {
         this.setState({ isTouched: true });
+        this.registerKeybindings();
+    }
+
+    registerKeybindings() {
+        const { options } = this.props;
+        const { isOpen } = this.state;
+        let keybindManager = GlobalModel.keybindManager;
+        let domain = "dropdown-" + this.curUuid;
+        keybindManager.registerKeybinding("control", domain, "generic:confirm", (waveEvent) => {
+            this.handleConfirm();
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:space", (waveEvent) => {
+            this.handleConfirm();
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:cancel", (waveEvent) => {
+            this.setState({ isOpen: false });
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:selectAbove", (waveEvent) => {
+            if (isOpen) {
+                this.setState((prevState) => ({
+                    highlightedIndex:
+                        prevState.highlightedIndex > 0 ? prevState.highlightedIndex - 1 : options.length - 1,
+                }));
+            }
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:selectBelow", (waveEvent) => {
+            if (isOpen) {
+                this.setState((prevState) => ({
+                    highlightedIndex:
+                        prevState.highlightedIndex < options.length - 1 ? prevState.highlightedIndex + 1 : 0,
+                }));
+            }
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:tab", (waveEvent) => {
+            this.setState({ isOpen: false });
+            return true;
+        });
+    }
+
+    handleConfirm() {
+        const { options } = this.props;
+        const { isOpen, highlightedIndex } = this.state;
+        if (isOpen) {
+            const option = options[highlightedIndex];
+            if (option) {
+                this.handleSelect(option.value, undefined);
+            }
+        } else {
+            this.toggleDropdown();
+        }
+    }
+
+    handleBlur() {
+        this.unregisterKeybindings();
+    }
+
+    unregisterKeybindings() {
+        let domain = "dropdown-" + this.curUuid;
+        GlobalModel.keybindManager.unregisterDomain(domain);
     }
 
     @boundMethod
-    handleKeyDown(event: React.KeyboardEvent) {
-        const { options } = this.props;
-        const { isOpen, highlightedIndex } = this.state;
-
-        switch (event.key) {
-            case "Enter":
-            case " ":
-                if (isOpen) {
-                    const option = options[highlightedIndex];
-                    if (option) {
-                        this.handleSelect(option.value, undefined);
-                    }
-                } else {
-                    this.toggleDropdown();
-                }
-                break;
-            case "Escape":
-                this.setState({ isOpen: false });
-                break;
-            case "ArrowUp":
-                if (isOpen) {
-                    this.setState((prevState) => ({
-                        highlightedIndex:
-                            prevState.highlightedIndex > 0 ? prevState.highlightedIndex - 1 : options.length - 1,
-                    }));
-                }
-                break;
-            case "ArrowDown":
-                if (isOpen) {
-                    this.setState((prevState) => ({
-                        highlightedIndex:
-                            prevState.highlightedIndex < options.length - 1 ? prevState.highlightedIndex + 1 : 0,
-                    }));
-                }
-                break;
-            case "Tab":
-                this.setState({ isOpen: false });
-                break;
-        }
-    }
+    handleKeyDown(event: React.KeyboardEvent) {}
 
     @boundMethod
     handleSelect(value: string, event?: React.MouseEvent | React.KeyboardEvent) {
@@ -228,7 +257,8 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                 tabIndex={0}
                 onKeyDown={this.handleKeyDown}
                 onClick={this.handleClick}
-                onFocus={this.handleFocus}
+                onFocus={this.handleFocus.bind(this)}
+                onBlur={this.handleBlur.bind(this)}
             >
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <If condition={label}>
