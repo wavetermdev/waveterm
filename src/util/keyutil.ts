@@ -29,7 +29,7 @@ type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string
 
 const Callback = "callback";
 const Command = "command";
-const DumpLogs = true;
+const DumpLogs = false;
 
 type Keybind = {
     domain: string;

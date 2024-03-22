@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
+import * as mobx from "mobx";
 import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import cn from "classnames";
@@ -50,6 +51,18 @@ function renderCmdText(text: string): any {
 
 // there is a global monaco variable (TODO get the correct TS type)
 declare var monaco: any;
+
+class CodeKeybindings extends React.Component<{ codeObject: SourceCodeRenderer }, {}> {
+    componentDidMount(): void {
+        this.props.codeObject.registerKeybindings();
+    }
+    componentWillUnmount(): void {
+        this.props.codeObject.unregisterKeybindings();
+    }
+    render() {
+        return null;
+    }
+}
 
 class SourceCodeRenderer extends React.Component<
     {
@@ -207,14 +220,6 @@ class SourceCodeRenderer extends React.Component<
         GlobalModel.keybindManager.unregisterDomain(domain);
     }
 
-    handleFocus() {
-        this.registerKeybindings();
-    }
-
-    handleBlur() {
-        this.unregisterKeybindings();
-    }
-
     handleEditorDidMount = (editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => {
         this.monacoEditor = editor;
         this.setInitialLanguage(editor);
@@ -246,16 +251,13 @@ class SourceCodeRenderer extends React.Component<
         if (this.props.shouldFocus) {
             this.monacoEditor.focus();
             this.props.rendererApi.onFocusChanged(true);
-            this.handleFocus();
         }
         if (this.monacoEditor.onDidFocusEditorWidget) {
             this.monacoEditor.onDidFocusEditorWidget(() => {
                 this.props.rendererApi.onFocusChanged(true);
-                this.handleFocus();
             });
             this.monacoEditor.onDidBlurEditorWidget(() => {
                 this.props.rendererApi.onFocusChanged(false);
-                this.handleBlur();
             });
         }
         if (!this.getAllowEditing()) this.setState({ showReadonly: true });
@@ -542,8 +544,20 @@ class SourceCodeRenderer extends React.Component<
                 </div>
             );
         }
+        let { lineNum } = this.props.context;
+        let screen = GlobalModel.getActiveScreen();
+        let lineIsSelected = mobx.computed(
+            () => screen.getSelectedLine() == lineNum && screen.getFocusType() == "cmd",
+            {
+                name: "code-lineisselected",
+            }
+        );
+        console.log("lineis selected:", lineIsSelected.get());
         return (
             <div className="code-renderer">
+                <If condition={lineIsSelected.get()}>
+                    <CodeKeybindings codeObject={this}></CodeKeybindings>
+                </If>
                 <Split sizes={[editorFraction, 1 - editorFraction]} onSetSizes={this.setSizes}>
                     {this.getCodeEditor()}
                     {isPreviewerAvailable && showPreview && this.getPreviewer()}
