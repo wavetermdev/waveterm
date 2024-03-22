@@ -168,10 +168,6 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                 <Modal.Header onClose={this.closeModal} title={`Tab Settings (${screen.name.get()})`} />
                 <div className="wave-modal-body">
                     <div className="settings-field">
-                        <div className="settings-label">Tab Id</div>
-                        <div className="settings-input">{screen.screenId}</div>
-                    </div>
-                    <div className="settings-field">
                         <div className="settings-label">Name</div>
                         <div className="settings-input">
                             <TabNameTextField screen={screen} errorMessage={this.errorMessage} />

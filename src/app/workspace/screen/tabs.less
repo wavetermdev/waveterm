@@ -112,6 +112,27 @@
                 opacity: 1;
                 font-weight: var(--screentabs-selected-font-weight);
                 border-top: 2px solid var(--tab-color);
+
+                .screen-tab-inner {
+                    cursor: default;
+                }
+            }
+
+            &:not(.is-active) .status-indicator {
+                .status-indicator-visible;
+            }
+
+            &.is-active:not(:hover) .status-indicator {
+                .status-indicator-visible;
+            }
+
+            &.is-active:hover .actions {
+                .positional-icon-visible;
+
+                &:hover {
+                    background-color: var(--app-selected-mask-color);
+                    border-radius: 4px;
+                }
             }
 
             &.is-archived {
@@ -148,19 +169,10 @@
                     }
                 }
             }
+
             .vertical-line {
                 border-left: 1px solid var(--app-border-color);
                 margin: 10px 0 8px 0;
-            }
-
-            &:not(:hover) .status-indicator {
-                .status-indicator-visible;
-            }
-
-            &:hover {
-                .actions {
-                    .positional-icon-visible;
-                }
             }
         }
     }
