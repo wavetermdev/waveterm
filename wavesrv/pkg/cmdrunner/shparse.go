@@ -314,7 +314,7 @@ func IsReturnStateCommand(cmdStr string) bool {
 func EvalBracketArgs(origCmdStr string) (map[string]string, string, error) {
 	rtn := make(map[string]string)
 	if strings.HasPrefix(origCmdStr, " ") {
-		rtn["nohist"] = "1"
+		rtn[KwArgNoHist] = "1"
 	}
 	cmdStr := strings.TrimSpace(origCmdStr)
 	if !strings.HasPrefix(cmdStr, "[") {

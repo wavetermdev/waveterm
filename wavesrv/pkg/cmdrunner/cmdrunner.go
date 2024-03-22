@@ -93,6 +93,7 @@ const (
 	KwArgTemplate = "template"
 	KwArgLang     = "lang"
 	KwArgMinimap  = "minimap"
+	KwArgNoHist   = "nohist"
 )
 
 var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
@@ -730,7 +731,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	} else {
 		return nil, fmt.Errorf("error in Eval Meta Command: %w", rtnErr)
 	}
-	if !resolveBool(pk.Kwargs["nohist"], false) {
+	if !resolveBool(pk.Kwargs[KwArgNoHist], false) {
 		// TODO should this be "pk" or "newPk" (2nd arg)
 		err := addToHistory(ctx, pk, historyContext, (newPk.MetaCmd != "run"), (rtnErr != nil))
 		if err != nil {
