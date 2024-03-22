@@ -9,6 +9,7 @@ import { Markdown, Modal, Button, Checkbox } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 
 import "./alert.less";
+import { ModalKeybindings } from "../elements/modal";
 
 @mobxReact.observer
 class AlertModal extends React.Component<{}, {}> {
@@ -54,6 +55,7 @@ class AlertModal extends React.Component<{}, {}> {
                 </div>
                 <div className="wave-modal-footer">
                     <If condition={isConfirm}>
+                        <ModalKeybindings onOk={this.handleOK} onCancel={this.closeModal}></ModalKeybindings>
                         <Button className="secondary" onClick={this.closeModal}>
                             Cancel
                         </Button>
@@ -62,6 +64,7 @@ class AlertModal extends React.Component<{}, {}> {
                         </Button>
                     </If>
                     <If condition={!isConfirm}>
+                        <ModalKeybindings onOk={this.handleOK} onCancel={null}></ModalKeybindings>
                         <Button autoFocus={true} onClick={this.handleOK}>
                             Ok
                         </Button>
