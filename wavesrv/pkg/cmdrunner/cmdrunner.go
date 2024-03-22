@@ -833,7 +833,7 @@ func ScreenDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
 	if err != nil {
-		return nil, fmt.Errorf("/screen:open cannot open screen: %w", err)
+		return nil, err
 	}
 	activate := resolveBool(pk.Kwargs["activate"], true)
 	newName := pk.Kwargs["name"]
@@ -843,10 +843,26 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 			return nil, err
 		}
 	}
-	update, err := sstore.InsertScreen(ctx, ids.SessionId, newName, sstore.ScreenCreateOpts{}, activate)
+	sco := sstore.ScreenCreateOpts{RtnScreenId: new(string)}
+	update, err := sstore.InsertScreen(ctx, ids.SessionId, newName, sco, activate)
 	if err != nil {
 		return nil, err
 	}
+	if sco.RtnScreenId == nil {
+		return nil, fmt.Errorf("error creating tab, no tab id returned")
+	}
+	crPk := scpacket.MakeFeCommandPacket()
+	crPk.MetaCmd = "cr"
+	crPk.Args = []string{"local"}
+	crPk.RawStr = "/cr local"
+	uiContextCopy := *pk.UIContext
+	crPk.UIContext = &uiContextCopy
+	crPk.UIContext.ScreenId = *sco.RtnScreenId
+	crUpdate, err := CrCommand(ctx, crPk)
+	if err != nil {
+		return nil, fmt.Errorf("error creating tab, cannot connect to remote: %w", err)
+	}
+	update.Merge(crUpdate)
 	return update, nil
 }
 

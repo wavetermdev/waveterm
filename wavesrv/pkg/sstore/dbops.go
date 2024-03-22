@@ -562,7 +562,6 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 	return session, nil
 }
 
-// returns sessionId
 // if sessionName == "", it will be generated
 func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*scbus.ModelUpdatePacketType, error) {
 	var newScreen *ScreenType
@@ -744,6 +743,9 @@ func InsertScreen(ctx context.Context, sessionId string, origScreenName string, 
 		if activate {
 			query = `UPDATE session SET activescreenid = ? WHERE sessionid = ?`
 			tx.Exec(query, newScreenId, sessionId)
+		}
+		if opts.RtnScreenId != nil {
+			*opts.RtnScreenId = newScreenId
 		}
 		return nil
 	})

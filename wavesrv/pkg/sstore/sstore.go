@@ -472,6 +472,7 @@ type ScreenCreateOpts struct {
 	CopyRemote   bool
 	CopyCwd      bool
 	CopyEnv      bool
+	RtnScreenId  *string
 }
 
 func (sco ScreenCreateOpts) HasCopy() bool {
