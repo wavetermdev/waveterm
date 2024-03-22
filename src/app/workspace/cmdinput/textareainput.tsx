@@ -268,9 +268,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         } else {
             this.mainInputRef.current.focus();
         }
-        mobx.action(() => {
-            this.mainInputFocused.set(true);
-        })();
     }
 
     getTextAreaMaxCols(): number {
@@ -539,7 +536,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
         inputModel.setPhysicalInputFocused(true);
         mobx.action(() => {
-            this.mainInputFocused.set(false);
+            this.mainInputFocused.set(true);
         })();
     }
 
