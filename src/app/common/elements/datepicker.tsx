@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef, createRef } from "react";
+import * as mobx from "mobx";
 import ReactDOM from "react-dom";
 import dayjs from "dayjs";
 import cs from "classnames";
 import { Button } from "@/elements";
 import { If } from "tsx-control-statements/components";
+import { GlobalModel } from "@/models";
+import { v4 as uuidv4 } from "uuid";
 
 import "./datepicker.less";
 
@@ -36,6 +39,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         MM: selDate.format("MM"),
         DD: selDate.format("DD"),
     });
+    let curUuid = uuidv4();
 
     useEffect(() => {
         inputRefs.current = {
@@ -300,13 +304,13 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         }
     };
 
-    const handleArrowNavigation = (event, currentPart) => {
+    const handleArrowNavigation = (key, currentPart) => {
         const currentIndex = formatParts.indexOf(currentPart);
         let targetInput;
 
-        if (event.key === "ArrowLeft" && currentIndex > 0) {
+        if (key == "ArrowLeft" && currentIndex > 0) {
             targetInput = inputRefs.current[formatParts[currentIndex - 1]].current;
-        } else if (event.key === "ArrowRight" && currentIndex < formatParts.length - 1) {
+        } else if (key == "ArrowRight" && currentIndex < formatParts.length - 1) {
             targetInput = inputRefs.current[formatParts[currentIndex + 1]].current;
         }
 
@@ -315,51 +319,74 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         }
     };
 
-    const handleKeyDown = (event, currentPart) => {
-        const key = event.key;
+    const handleKeyDown = (event, currentPart) => {};
 
-        if (key === "ArrowLeft" || key === "ArrowRight") {
-            // Handle arrow navigation without selecting text
-            handleArrowNavigation(event, currentPart);
-            return;
-        }
+    const handleFocus = (event, part) => {
+        event.target.select();
+        registerKeybindings(event, part);
+    };
 
-        if (key === " ") {
-            // Handle spacebar press to toggle the modal
+    const registerKeybindings = (event: any, part: string) => {
+        let keybindManager = GlobalModel.keybindManager;
+        let domain = "datepicker-" + curUuid + "-" + part;
+        keybindManager.registerKeybinding("control", domain, "generic:selectLeft", (waveEvent) => {
+            handleArrowNavigation("ArrowLeft", part);
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:selectRight", (waveEvent) => {
+            handleArrowNavigation("ArrowRight", part);
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:space", (waveEvent) => {
             toggleModal();
-            return;
-        }
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:tab", (waveEvent) => {
+            handleArrowNavigation("ArrowRight", part);
+            return true;
+        });
+        for (let numpadKey = 0; numpadKey <= 9; numpadKey++) {
+            keybindManager.registerKeybinding(
+                "control",
+                domain,
+                "generic:numpad-" + numpadKey.toString(),
+                (waveEvent) => {
+                    let currentPart = part;
+                    const maxLength = currentPart === "YYYY" ? 4 : 2;
+                    const newValue = event.target.value.length < maxLength ? event.target.value + numpadKey : numpadKey;
+                    let selectionTimeoutId = null;
+                    handleDatePartChange(currentPart, newValue);
 
-        if (key.match(/[0-9]/)) {
-            // Handle numeric keys
-            event.preventDefault();
-            const maxLength = currentPart === "YYYY" ? 4 : 2;
-            const newValue = event.target.value.length < maxLength ? event.target.value + key : key;
-            let selectionTimeoutId = null;
-            handleDatePartChange(currentPart, newValue);
+                    // Clear any existing timeout
+                    if (selectionTimeoutId !== null) {
+                        clearTimeout(selectionTimeoutId);
+                    }
 
-            // Clear any existing timeout
-            if (selectionTimeoutId !== null) {
-                clearTimeout(selectionTimeoutId);
-            }
-
-            // Re-focus and select the input after state update
-            selectionTimeoutId = setTimeout(() => {
-                event.target.focus();
-                event.target.select();
-            }, 0);
+                    // Re-focus and select the input after state update
+                    selectionTimeoutId = setTimeout(() => {
+                        event.target.focus();
+                        event.target.select();
+                    }, 0);
+                    return true;
+                }
+            );
         }
     };
 
-    const handleFocus = (event) => {
-        event.target.select();
+    const handleBlur = (event, part) => {
+        unregisterKeybindings(part);
+    };
+
+    const unregisterKeybindings = (part) => {
+        let domain = "datepicker-" + curUuid + "-" + part;
+        GlobalModel.keybindManager.unregisterDomain(domain);
     };
 
     // Prevent use from selecting text in the input
-    const handleMouseDown = (event) => {
+    const handleMouseDown = (event, part) => {
         event.preventDefault();
 
-        handleFocus(event);
+        handleFocus(event, part);
     };
 
     const handleIconKeyDown = (event) => {
@@ -413,8 +440,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
                                 value={dateParts[part]}
                                 onChange={(e) => handleDatePartChange(part, e.target.value)}
                                 onKeyDown={(e) => handleKeyDown(e, part)}
-                                onMouseDown={handleMouseDown}
-                                onFocus={handleFocus}
+                                onMouseDown={(e) => handleMouseDown(e, part)}
+                                onFocus={(e) => handleFocus(e, part)}
+                                onBlur={(e) => handleBlur(e, part)}
                                 maxLength={part === "YYYY" ? 4 : 2}
                                 className="date-input"
                                 placeholder={part}

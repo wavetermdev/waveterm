@@ -38,7 +38,7 @@ type Keybind = {
     commandStr: string;
 };
 
-const KeybindLevels = ["system", "modal", "app", "mainview", "pane", "plugin"];
+const KeybindLevels = ["system", "modal", "app", "mainview", "pane", "plugin", "control"];
 
 class KeybindManager {
     domainCallbacks: Map<string, KeybindCallback>;
@@ -178,7 +178,12 @@ class KeybindManager {
         if (modalLevel.length != 0) {
             // console.log("processing modal");
             // special case when modal keybindings are present
-            let shouldReturn = this.processLevel(nativeEvent, event, modalLevel);
+            let controlLevel = this.levelMap.get("control");
+            let shouldReturn = this.processLevel(nativeEvent, event, controlLevel);
+            if (shouldReturn) {
+                return true;
+            }
+            shouldReturn = this.processLevel(nativeEvent, event, modalLevel);
             if (shouldReturn) {
                 return true;
             }
