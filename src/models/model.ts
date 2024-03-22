@@ -519,23 +519,6 @@ class Model {
         if (isModKeyPress(e)) {
             return;
         }
-        if (this.alertMessage.get() != null) {
-            if (checkKeyPressed(waveEvent, "Escape")) {
-                e.preventDefault();
-                this.modalsModel.popModal(() => this.cancelAlert());
-                return;
-            }
-            if (checkKeyPressed(waveEvent, "Enter")) {
-                e.preventDefault();
-                this.confirmAlert();
-                return;
-            }
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Escape") && this.modalsModel.store.length > 0) {
-            this.modalsModel.popModal();
-            return;
-        }
         if (this.keybindManager.processKeyEvent(e, waveEvent)) {
             return;
         }

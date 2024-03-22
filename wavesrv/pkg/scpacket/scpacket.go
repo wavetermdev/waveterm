@@ -4,6 +4,7 @@
 package scpacket
 
 import (
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -189,6 +190,14 @@ func (*FeInputPacketType) GetType() string {
 
 func MakeFeInputPacket() *FeInputPacketType {
 	return &FeInputPacketType{Type: FeInputPacketStr}
+}
+
+func (pk *FeInputPacketType) DecodeData() ([]byte, error) {
+	return base64.StdEncoding.DecodeString(pk.InputData64)
+}
+
+func (pk *FeInputPacketType) SetData(data []byte) {
+	pk.InputData64 = base64.StdEncoding.EncodeToString(data)
 }
 
 func (*WatchScreenPacketType) GetType() string {

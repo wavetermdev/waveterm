@@ -30,6 +30,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -1188,8 +1189,16 @@ func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime tim
 	err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
 	if err != nil {
 		// nothing to do
-		log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
+		log.Printf("error updating cmddoneinfo: %v\n", err)
 		return
+	}
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, cmd.ScreenId, cmd.LineId)
+	if err != nil {
+		log.Printf("error trying to update screen focus type: %v\n", err)
+		// fall-through (nothing to do)
+	}
+	if screen != nil {
+		update.AddUpdate(*screen)
 	}
 	scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
 }
@@ -2618,7 +2627,7 @@ func getCmdInfoEngineeredPrompt(userQuery string, curLineStr string, shellType s
 		// Enclose the command in triple backticks to format it as a code block.
 		promptCurrentCommand = " The user is currently working with the command: ```\n" + curLineStr + "\n```\n\n"
 	}
-	promptFormattingInstruction := "Please ensure any command line suggestions or code snippets that are meant to be run by the user are enclosed in triple backquotes for easy copy and paste into the terminal."
+	promptFormattingInstruction := "Please ensure any command line suggestions or code snippets or scripts that are meant to be run by the user are enclosed in triple backquotes for easy copy and paste into the terminal.  Also note that any response you give will be rendered in markdown."
 	promptQuestion := " The user's question is:\n\n" + userQuery + ""
 
 	return promptBase + promptCurrentCommand + promptFormattingInstruction + promptQuestion
@@ -2868,7 +2877,9 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		update := scbus.MakeUpdatePacket()
 		return update, nil
 	}
-	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
+	osType := GetOsTypeFromRuntime()
+	engineeredQuery := getCmdInfoEngineeredPrompt(promptStr, "", ids.Remote.ShellType, osType)
+	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: engineeredQuery}}
 	if resolveBool(pk.Kwargs["cmdinfoclear"], false) {
 		update := sstore.UpdateWithClearOpenAICmdInfo(cmd.ScreenId)
 		if err != nil {
@@ -3719,7 +3730,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	update, err := addLineForCmd(ctx, "/reset", false, ids, cmd, "", nil)
+	update, err := addLineForCmd(ctx, "/reset", true, ids, cmd, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3728,7 +3739,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 }
 
 func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verbose bool) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancelFn := context.WithTimeout(context.Background(), shellapi.ReInitTimeout)
 	defer cancelFn()
 	startTime := time.Now()
 	var outputPos int64
@@ -3745,7 +3756,7 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verb
 		writeStringToPty(ctx, cmd, string(data), &outputPos)
 	}
 	origStatePtr := ids.Remote.MShell.GetDefaultStatePtr(shellType)
-	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType, dataFn, verbose)
+	ssPk, err := ids.Remote.MShell.ReInit(ctx, base.MakeCommandKey(cmd.ScreenId, cmd.LineId), shellType, dataFn, verbose)
 	if err != nil {
 		rtnErr = err
 		return
@@ -4008,14 +4019,14 @@ func splitLinesForInfo(str string) []string {
 }
 
 func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int) error {
-	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-	siPk.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
+	feInput := scpacket.MakeFeInputPacket()
+	feInput.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	feInput.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
 	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
 	if msh == nil {
 		return fmt.Errorf("cannot resize, cmd remote not found")
 	}
-	err := msh.SendSpecialInput(siPk)
+	err := msh.HandleFeInput(feInput)
 	if err != nil {
 		return err
 	}
@@ -5211,10 +5222,10 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 	if !msh.IsConnected() {
 		return nil, fmt.Errorf("cannot send signal, remote is not connected")
 	}
-	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-	siPk.SigName = sigArg
-	err = msh.SendSpecialInput(siPk)
+	inputPk := scpacket.MakeFeInputPacket()
+	inputPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	inputPk.SigName = sigArg
+	err = msh.HandleFeInput(inputPk)
 	if err != nil {
 		return nil, fmt.Errorf("cannot send signal: %v", err)
 	}

@@ -80,8 +80,8 @@ func (b bashShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty
 	return MakeBashShExecCommand(cmdStr, rcFileName, usePty)
 }
 
-func (b bashShellApi) GetShellState(outCh chan ShellStateOutput) {
-	GetBashShellState(outCh)
+func (b bashShellApi) GetShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte) {
+	GetBashShellState(outCh, stdinDataCh)
 }
 
 func (b bashShellApi) GetBaseShellOpts() string {
@@ -169,7 +169,7 @@ func GetLocalBashMajorVersion() string {
 	return localBashMajorVersion
 }
 
-func GetBashShellState(outCh chan ShellStateOutput) {
+func GetBashShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
 	defer close(outCh)
@@ -185,7 +185,7 @@ func GetBashShellState(outCh chan ShellStateOutput) {
 			outCh <- ShellStateOutput{Output: outputBytes}
 		}
 	}()
-	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes)
+	outputBytes, err := StreamCommandWithExtraFd(ctx, ecmd, outputCh, StateOutputFdNum, endBytes, stdinDataCh)
 	outputWg.Wait()
 	if err != nil {
 		outCh <- ShellStateOutput{Error: err.Error()}

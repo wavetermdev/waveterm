@@ -246,7 +246,7 @@ func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty 
 	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 }
 
-func (z zshShellApi) GetShellState(outCh chan ShellStateOutput) {
+func (z zshShellApi) GetShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
 	defer cancelFn()
 	defer close(outCh)
@@ -262,7 +262,7 @@ func (z zshShellApi) GetShellState(outCh chan ShellStateOutput) {
 			outCh <- ShellStateOutput{Output: outputBytes}
 		}
 	}()
-	outputBytes, err := StreamCommandWithExtraFd(ecmd, outputCh, StateOutputFdNum, endBytes)
+	outputBytes, err := StreamCommandWithExtraFd(ctx, ecmd, outputCh, StateOutputFdNum, endBytes, stdinDataCh)
 	outputWg.Wait()
 	if err != nil {
 		outCh <- ShellStateOutput{Error: err.Error()}
@@ -726,7 +726,6 @@ func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellSta
 	// sections: see ZshSection_* consts
 	sections := bytes.Split(outputBytes, sectionSeparator)
 	if len(sections) != ZshSection_NumFieldsExpected {
-		base.Logf("invalid -- numfields\n")
 		return nil, nil, fmt.Errorf("invalid zsh shell state output, wrong number of sections, section=%d", len(sections))
 	}
 	rtn := &packet.ShellState{}

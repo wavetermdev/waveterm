@@ -115,6 +115,7 @@ var IgnoreVars = map[string]bool{
 	"WAVESHELL_VERSION":    true,
 	"WAVETERM":             true,
 	"WAVETERM_VERSION":     true,
+	"WAVETERM_DEV":         true,
 	"TERM_PROGRAM":         true,
 	"TERM_PROGRAM_VERSION": true,
 	"TERM_SESSION_ID":      true,
