@@ -110,8 +110,6 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     }
 
     registerKeybindings() {
-        const { options } = this.props;
-        const { isOpen } = this.state;
         let keybindManager = GlobalModel.keybindManager;
         let domain = "dropdown-" + this.curUuid;
         keybindManager.registerKeybinding("control", domain, "generic:confirm", (waveEvent) => {
@@ -127,6 +125,8 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
             return true;
         });
         keybindManager.registerKeybinding("control", domain, "generic:selectAbove", (waveEvent) => {
+            const { isOpen } = this.state;
+            const { options } = this.props;
             if (isOpen) {
                 this.setState((prevState) => ({
                     highlightedIndex:
@@ -136,6 +136,8 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
             return true;
         });
         keybindManager.registerKeybinding("control", domain, "generic:selectBelow", (waveEvent) => {
+            const { isOpen } = this.state;
+            const { options } = this.props;
             if (isOpen) {
                 this.setState((prevState) => ({
                     highlightedIndex:
