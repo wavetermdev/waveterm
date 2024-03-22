@@ -50,7 +50,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
             handleSendText();
             return true;
         });
-        keybindManager.registerKeybinding("modal", "userinput", "generic:confirm", (waveEvent) => {
+        keybindManager.registerKeybinding("modal", "userinput", "generic:cancel", (waveEvent) => {
             handleSendCancel();
             return true;
         });
