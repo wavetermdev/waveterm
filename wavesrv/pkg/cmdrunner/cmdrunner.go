@@ -2625,7 +2625,7 @@ func getCmdInfoEngineeredPrompt(userQuery string, curLineStr string, shellType s
 		// Enclose the command in triple backticks to format it as a code block.
 		promptCurrentCommand = " The user is currently working with the command: ```\n" + curLineStr + "\n```\n\n"
 	}
-	promptFormattingInstruction := "Please ensure any command line suggestions or code snippets or scripts that are meant to be run by the user are enclosed in triple backquotes for easy copy and paste into the terminal."
+	promptFormattingInstruction := "Please ensure any command line suggestions or code snippets or scripts that are meant to be run by the user are enclosed in triple backquotes for easy copy and paste into the terminal.  Also note that any response you give will be rendered in markdown."
 	promptQuestion := " The user's question is:\n\n" + userQuery + ""
 
 	return promptBase + promptCurrentCommand + promptFormattingInstruction + promptQuestion
