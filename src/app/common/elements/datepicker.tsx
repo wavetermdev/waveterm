@@ -280,6 +280,11 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         setShowYearAccordion(false);
     };
 
+    const closeModal = () => {
+        setIsOpen(false);
+        setShowYearAccordion(false);
+    };
+
     const dayPickerModal = isOpen
         ? ReactDOM.createPortal(
               <div ref={modalRef} className="day-picker-modal" style={calculatePosition()}>
@@ -348,6 +353,14 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         });
         keybindManager.registerKeybinding("control", domain, "generic:space", (waveEvent) => {
             toggleModal();
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:confirm", (waveEvent) => {
+            toggleModal();
+            return true;
+        });
+        keybindManager.registerKeybinding("control", domain, "generic:cancel", (waveEvent) => {
+            closeModal();
             return true;
         });
         keybindManager.registerKeybinding("control", domain, "generic:tab", (waveEvent) => {
