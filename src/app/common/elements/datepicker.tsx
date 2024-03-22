@@ -40,6 +40,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         DD: selDate.format("DD"),
     });
     let curUuid = uuidv4();
+    let keybindsRegistered = mobx.observable.box(false, {
+        name: "datepicker-keybinds-registered",
+    });
 
     useEffect(() => {
         inputRefs.current = {
@@ -327,6 +330,12 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
     };
 
     const registerKeybindings = (event: any, part: string) => {
+        if (keybindsRegistered.get() == true) {
+            return;
+        }
+        mobx.action(() => {
+            keybindsRegistered.set(true);
+        })();
         let keybindManager = GlobalModel.keybindManager;
         let domain = "datepicker-" + curUuid + "-" + part;
         keybindManager.registerKeybinding("control", domain, "generic:selectLeft", (waveEvent) => {
@@ -378,6 +387,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
     };
 
     const unregisterKeybindings = (part) => {
+        mobx.action(() => {
+            keybindsRegistered.set(false);
+        })();
         let domain = "datepicker-" + curUuid + "-" + part;
         GlobalModel.keybindManager.unregisterDomain(domain);
     };
