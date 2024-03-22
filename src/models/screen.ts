@@ -469,56 +469,12 @@ class Screen {
         this.renderers[lineId] = renderer;
     }
 
-    registerKeybindings(lineid: string) {
-        let keybindManager = GlobalModel.keybindManager;
-        let domain = "line-" + lineid;
-        let termWrap = this.terminals[lineid];
-        keybindManager.registerKeybinding("plugin", domain, "terminal:copy", (waveEvent) => {
-            let sel = termWrap.terminal.getSelection();
-            navigator.clipboard.writeText(sel);
-            return true;
-        });
-        keybindManager.registerKeybinding("plugin", domain, "terminal:paste", (waveEvent) => {
-            let p = navigator.clipboard.readText();
-            p.then((text) => {
-                termWrap.dataHandler?.(text, termWrap);
-            });
-            return true;
-        });
-        keybindManager.registerKeybinding("plugin", domain, "generic:selectAbove", (waveEvent) => {
-            termWrap.terminal.scrollLines(-1);
-            return true;
-        });
-        keybindManager.registerKeybinding("plugin", domain, "generic:selectBelow", (waveEvent) => {
-            termWrap.terminal.scrollLines(1);
-            return true;
-        });
-        keybindManager.registerKeybinding("plugin", domain, "generic:selectPageAbove", (waveEvent) => {
-            termWrap.terminal.scrollLines(-10);
-            return true;
-        });
-        keybindManager.registerKeybinding("plugin", domain, "generic:selectPageBelow", (waveEvent) => {
-            termWrap.terminal.scrollLines(10);
-            return true;
-        });
-    }
-
-    unregisterKeybindings(lineid: string) {
-        let domain = "line-" + lineid;
-        GlobalModel.keybindManager.unregisterDomain(domain);
-    }
-
     setLineFocus(lineNum: number, lineid: string, focus: boolean): void {
         mobx.action(() => this.termLineNumFocus.set(focus ? lineNum : 0))();
         if (focus && this.selectedLine.get() != lineNum) {
             GlobalCommandRunner.screenSelectLine(String(lineNum), "cmd");
         } else if (focus && this.focusType.get() == "input") {
             GlobalCommandRunner.screenSetFocus("cmd");
-        }
-        if (focus) {
-            this.registerKeybindings(lineid);
-        } else {
-            this.unregisterKeybindings(lineid);
         }
     }
 
@@ -542,28 +498,8 @@ class Screen {
         })();
     }
 
-    isWaveCapturedKey(e: any): boolean {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (
-            GlobalModel.keybindManager.checkKeysPressed(waveEvent, [
-                "terminal:copy",
-                "terminal:paste",
-                "generic:selectAbove",
-                "generic:selectBelow",
-                "generic:selectPageAbove",
-                "generic:selectPageBelow",
-            ])
-        ) {
-            return true;
-        }
-        return false;
-    }
-
     termCustomKeyHandler(e: any, termWrap: TermWrap): boolean {
-        if (this.isWaveCapturedKey(e)) {
-            return true;
-        }
-        return false;
+        return true;
     }
 
     loadTerminalRenderer(elem: Element, line: LineType, cmd: Cmd, width: number) {
