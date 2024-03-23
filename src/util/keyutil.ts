@@ -25,7 +25,7 @@ const KeyTypeCode = "code";
 
 type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
 type KeybindConfigArray = Array<KeybindConfig>;
-type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string };
+type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string; info?: string };
 
 const Callback = "callback";
 const Command = "command";
@@ -94,6 +94,7 @@ class KeybindManager {
                             throw new Error("invalid keybind key");
                         }
                     }
+                    // if user doesn't specify a command string or a description, we will revert to the old one
                     let defaultCmd = this.keyDescriptionsMap.get(curKeybind.command);
                     if (
                         defaultCmd != null &&
@@ -101,6 +102,13 @@ class KeybindManager {
                         (curKeybind.commandStr == null || curKeybind.commandStr == "")
                     ) {
                         curKeybind.commandStr = this.keyDescriptionsMap.get(curKeybind.command).commandStr;
+                    }
+                    if (
+                        defaultCmd != null &&
+                        defaultCmd.info != null &&
+                        (curKeybind.info == null || curKeybind.info == "")
+                    ) {
+                        curKeybind.info = this.keyDescriptionsMap.get(curKeybind.command).info;
                     }
                     newKeyDescriptions.set(curKeybind.command, curKeybind);
                 }
@@ -113,6 +121,83 @@ class KeybindManager {
             }
         }
         this.keyDescriptionsMap = newKeyDescriptions;
+    }
+
+    prettyPrintKeybind(keyDescription: string): string {
+        let keyPress = parseKeyDescription(keyDescription);
+        let returnString = "";
+        if (keyPress.mods.Cmd) {
+            returnString += "⌘";
+        }
+        if (keyPress.mods.Ctrl) {
+            returnString += "⌃";
+        }
+        if (keyPress.mods.Option) {
+            returnString += "⌥";
+        }
+        if (keyPress.mods.Shift) {
+            returnString += "⇧";
+        }
+        if (keyPress.mods.Meta) {
+            returnString += "M";
+        }
+        if (keyPress.mods.Alt) {
+            returnString += "⌥";
+        }
+        returnString += keyPress.key;
+        return returnString;
+    }
+
+    getUIDescription(keyDescription: string, prettyPrint: boolean = true): KeybindConfig {
+        let keybinds = this.getKeybindsFromDescription(keyDescription, prettyPrint);
+        if (!this.keyDescriptionsMap.has(keyDescription)) {
+            return { keys: keybinds, info: "", command: keyDescription, commandStr: "" };
+        }
+        let curKeybindConfig = this.keyDescriptionsMap.get(keyDescription);
+        let curInfo = "";
+        if (curKeybindConfig.info) {
+            curInfo = curKeybindConfig.info;
+        }
+        let curCommandStr = "";
+        if (curKeybindConfig.commandStr) {
+            curCommandStr = curKeybindConfig.commandStr;
+        }
+        return { keys: keybinds, info: curInfo, commandStr: curCommandStr, command: keyDescription };
+    }
+
+    getKeybindsFromDescription(keyDescription: string, prettyPrint: boolean = true): Array<string> {
+        if (!this.keyDescriptionsMap.has(keyDescription)) {
+            return [];
+        }
+        let keyBinds = this.keyDescriptionsMap.get(keyDescription).keys;
+        if (!prettyPrint) {
+            return keyBinds;
+        }
+        let keybindsArray = [];
+        for (let index = 0; index < keyBinds.length; index++) {
+            let curKeybind = keyBinds[index];
+            let curPrettyPrintString = this.prettyPrintKeybind(curKeybind);
+            keybindsArray.push(curPrettyPrintString);
+        }
+        return keybindsArray;
+    }
+
+    getAllKeybindUIDescriptions(prettyPrint: boolean = true): KeybindConfigArray {
+        let keybindsList = [];
+        let keybindDescriptions = this.keyDescriptionsMap.keys();
+        for (let keyDesc of keybindDescriptions) {
+            keybindsList.push(this.getUIDescription(keyDesc, prettyPrint));
+        }
+        return keybindsList;
+    }
+
+    getAllKeybinds(prettyPrint: boolean = true): Array<Array<string>> {
+        let keybindsList = [];
+        let keybindDescriptions = this.keyDescriptionsMap.keys();
+        for (let keyDesc of keybindDescriptions) {
+            keybindsList.push(this.getKeybindsFromDescription(keyDesc, prettyPrint));
+        }
+        return keybindsList;
     }
 
     runSlashCommand(curKeybind: Keybind): boolean {
@@ -369,7 +454,6 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
     for (let key of keys) {
         if (key == "Cmd") {
             rtn.mods.Cmd = true;
-            rtn.mods.Meta = true;
         } else if (key == "Shift") {
             rtn.mods.Shift = true;
         } else if (key == "Ctrl") {
@@ -419,10 +503,10 @@ function notMod(keyPressMod, eventMod) {
 
 function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
     let keyPress = parseKeyDescription(keyDescription);
-    if (notMod(keyPress.mods.Option, event.option)) {
+    if (!keyPress.mods.Alt && notMod(keyPress.mods.Option, event.option)) {
         return false;
     }
-    if (notMod(keyPress.mods.Cmd, event.cmd)) {
+    if (!keyPress.mods.Meta && notMod(keyPress.mods.Cmd, event.cmd)) {
         return false;
     }
     if (notMod(keyPress.mods.Shift, event.shift)) {
@@ -431,10 +515,10 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): bool
     if (notMod(keyPress.mods.Ctrl, event.control)) {
         return false;
     }
-    if (notMod(keyPress.mods.Alt, event.alt)) {
+    if (keyPress.mods.Alt && !event.alt) {
         return false;
     }
-    if (notMod(keyPress.mods.Meta, event.meta)) {
+    if (keyPress.mods.Meta && !event.meta) {
         return false;
     }
     let eventKey = "";

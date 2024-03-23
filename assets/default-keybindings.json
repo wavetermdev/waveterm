@@ -1,7 +1,8 @@
 [
     {
       "command": "system:toggleDeveloperTools",
-      "keys": ["Cmd:Option:i"]
+      "keys": ["Cmd:Option:i"],
+      "info": "Opens the chrome developer tool menu"
     },
     {
       "command": "system:hideWindow",
@@ -127,7 +128,8 @@
     },
     {
       "command": "app:restartCommand",
-      "keys": ["Cmd:r"]
+      "keys": ["Cmd:r"],
+      "info": "Restarts the command running in the current selected line"
     },
     {
       "command": "app:restartLastCommand",
