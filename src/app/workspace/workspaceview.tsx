@@ -80,9 +80,21 @@ class SessionKeybindings extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class WorkspaceView extends React.Component<{}, {}> {
+    sessionRef = React.createRef<HTMLDivElement>();
+    theme: string;
+
+    componentDidUpdate(): void {
+        const session = GlobalModel.getActiveSession();
+        const clientData = GlobalModel.clientData.get();
+        const { termtheme } = clientData?.feopts;
+        if (termtheme && this.sessionRef.current && this.theme != termtheme[session.sessionId]) {
+            this.theme = termtheme[session.sessionId];
+            GlobalModel.applyTermTheme(this.sessionRef.current, this.theme);
+        }
+    }
+
     render() {
-        let model = GlobalModel;
-        let session = model.getActiveSession();
+        const session = GlobalModel.getActiveSession();
         if (session == null) {
             return (
                 <div className="session-view">
@@ -92,18 +104,18 @@ class WorkspaceView extends React.Component<{}, {}> {
                 </div>
             );
         }
-        let activeScreen = session.getActiveScreen();
-        let cmdInputHeight = model.inputModel.cmdInputHeight.get();
+        const activeScreen = session.getActiveScreen();
+        let cmdInputHeight = GlobalModel.inputModel.cmdInputHeight.get();
         if (cmdInputHeight == 0) {
             cmdInputHeight = textmeasure.baseCmdInputHeight(GlobalModel.lineHeightEnv); // this is the base size of cmdInput (measured using devtools)
         }
-        let isHidden = GlobalModel.activeMainView.get() != "session";
-        let mainSidebarModel = GlobalModel.mainSidebarModel;
+        const isHidden = GlobalModel.activeMainView.get() != "session";
+        const mainSidebarModel = GlobalModel.mainSidebarModel;
 
         return (
             <div
+                ref={this.sessionRef}
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
-                id={session.sessionId}
                 data-sessionid={session.sessionId}
                 style={{
                     width: `${window.innerWidth - mainSidebarModel.getWidth()}px`,

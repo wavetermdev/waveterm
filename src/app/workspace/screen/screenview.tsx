@@ -539,6 +539,8 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     renderMode: OV<RenderModeType> = mobx.observable.box("normal", { name: "renderMode" });
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "sw-shareCopied" });
 
+    theme: string;
+
     constructor(props: any) {
         super(props);
         this.setSize_debounced = debounce(1000, this.setSize.bind(this));
@@ -568,6 +570,17 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             this.setSize(width, height);
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(wvElem);
+        }
+    }
+
+    componentDidUpdate(): void {
+        const clientData = GlobalModel.clientData.get();
+        const { termtheme } = clientData?.feopts;
+        const { screen } = this.props;
+        if (termtheme && this.windowViewRef.current && this.theme != termtheme[screen.screenId]) {
+            console.log("got here screen view");
+            this.theme = termtheme[screen.screenId];
+            GlobalModel.applyTermTheme(this.windowViewRef.current, this.theme);
         }
     }
 
