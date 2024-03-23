@@ -24,12 +24,68 @@
       "keys": ["Backspace", "Delete"]
     },
     {
+      "command": "generic:space",
+      "keys": ["Space"]
+    },
+    {
+      "command": "generic:tab",
+      "keys": ["Tab"]
+    },
+    {
+      "command": "generic:numpad-0",
+      "keys": ["0"]
+    },
+    {
+      "command": "generic:numpad-1",
+      "keys": ["1"]
+    },
+    {
+      "command": "generic:numpad-2",
+      "keys": ["2"]
+    },
+    {
+      "command": "generic:numpad-3",
+      "keys": ["3"]
+    },
+    {
+      "command": "generic:numpad-4",
+      "keys": ["4"]
+    },
+    {
+      "command": "generic:numpad-5",
+      "keys": ["5"]
+    },
+    {
+      "command": "generic:numpad-6",
+      "keys": ["6"]
+    },
+    {
+      "command": "generic:numpad-7",
+      "keys": ["7"]
+    },
+    {
+      "command": "generic:numpad-8",
+      "keys": ["8"]
+    },
+    {
+      "command": "generic:numpad-9",
+      "keys": ["9"]
+    },
+    {
       "command": "generic:selectAbove",
       "keys": ["ArrowUp"]
     },
     {
       "command": "generic:selectBelow",
       "keys": ["ArrowDown"]
+    },
+    {
+      "command": "generic:selectLeft",
+      "keys": ["ArrowLeft"]
+    },
+    {
+      "command": "generic:selectRight",
+      "keys": ["ArrowRight"]
     },
     {
       "command": "generic:selectPageAbove",
