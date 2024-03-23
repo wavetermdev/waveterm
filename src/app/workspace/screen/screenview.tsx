@@ -578,7 +578,6 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         const { termtheme } = clientData?.feopts;
         const { screen } = this.props;
         if (termtheme && this.windowViewRef.current && this.theme != termtheme[screen.screenId]) {
-            console.log("got here screen view");
             this.theme = termtheme[screen.screenId];
             GlobalModel.applyTermTheme(this.windowViewRef.current, this.theme);
         }
