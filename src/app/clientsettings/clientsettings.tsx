@@ -9,6 +9,7 @@ import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
@@ -130,13 +131,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         return themes;
     }
 
-    getTermThemes(): DropdownItem[] {
-        return GlobalModel.termThemes.map((themeName) => ({
-            label: themeName,
-            value: themeName,
-        }));
-    }
-
     @boundMethod
     inlineUpdateOpenAIModel(newModel: string): void {
         const prtn = GlobalCommandRunner.setClientOpenAISettings({ model: newModel });
@@ -211,7 +205,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getTheme();
         const currTermTheme = GlobalModel.getTermTheme()["global"];
-        const terminalThemes = GlobalModel.termThemes;
+        const termThemes = getTermThemes(GlobalModel.termThemes);
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
@@ -252,13 +246,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                             />
                         </div>
                     </div>
-                    <If condition={terminalThemes.length > 0}>
+                    <If condition={termThemes.length > 0}>
                         <div className="settings-field">
                             <div className="settings-label">Terminal Theme</div>
                             <div className="settings-input">
                                 <Dropdown
                                     className="terminal-theme-dropdown"
-                                    options={this.getTermThemes()}
+                                    options={termThemes}
                                     defaultValue={currTermTheme}
                                     onChange={this.handleChangeTermTheme}
                                 />

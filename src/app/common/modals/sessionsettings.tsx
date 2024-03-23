@@ -9,6 +9,7 @@ import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
 import { If } from "tsx-control-statements/components";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip, Button, Dropdown } from "@/elements";
 import { commandRtnHandler } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
 import * as util from "@/util/util";
 
 import "./sessionsettings.less";
@@ -96,19 +97,12 @@ class SessionSettingsModal extends React.Component<{}, {}> {
         })();
     }
 
-    getTermThemes(): DropdownItem[] {
-        return GlobalModel.termThemes.map((themeName) => ({
-            label: themeName,
-            value: themeName,
-        }));
-    }
-
     render() {
         if (this.session == null) {
             return null;
         }
         const currTermTheme = GlobalModel.getTermTheme()[this.sessionId];
-        const terminalThemes = GlobalModel.termThemes;
+        const termThemes = getTermThemes(GlobalModel.termThemes);
 
         return (
             <Modal className="session-settings-modal">
@@ -127,13 +121,13 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                             />
                         </div>
                     </div>
-                    <If condition={terminalThemes.length > 0}>
+                    <If condition={termThemes.length > 0}>
                         <div className="settings-field">
                             <div className="settings-label">Terminal Theme</div>
                             <div className="settings-input">
                                 <Dropdown
                                     className="terminal-theme-dropdown"
-                                    options={this.getTermThemes()}
+                                    options={termThemes}
                                     defaultValue={currTermTheme}
                                     onChange={this.handleChangeTermTheme}
                                 />

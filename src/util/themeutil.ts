@@ -7,4 +7,11 @@ function loadTheme(theme: string) {
     }
 }
 
-export { loadTheme };
+function getTermThemes(termThemes: string[]): DropdownItem[] {
+    return termThemes.map((themeName) => ({
+        label: themeName,
+        value: themeName,
+    }));
+}
+
+export { loadTheme, getTermThemes };

@@ -13,6 +13,7 @@ import * as util from "@/util/util";
 import { TabIcon, Button } from "@/elements";
 import { If } from "tsx-control-statements/components";
 import { commandRtnHandler } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
@@ -225,13 +226,6 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
-    getTermThemes(): DropdownItem[] {
-        return GlobalModel.termThemes.map((themeName) => ({
-            label: themeName,
-            value: themeName,
-        }));
-    }
-
     render() {
         const screen = this.screen;
         if (screen == null) {
@@ -242,7 +236,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         let index: number = 0;
         const curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         const currTermTheme = GlobalModel.getTermTheme()[this.screenId];
-        const terminalThemes = GlobalModel.termThemes;
+        const termThemes = getTermThemes(GlobalModel.termThemes);
 
         return (
             <Modal className="screen-settings-modal">
@@ -328,13 +322,13 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             </div>
                         </div>
                     </div>
-                    <If condition={terminalThemes.length > 0}>
+                    <If condition={termThemes.length > 0}>
                         <div className="settings-field">
                             <div className="settings-label">Terminal Theme</div>
                             <div className="settings-input">
                                 <Dropdown
                                     className="terminal-theme-dropdown"
-                                    options={this.getTermThemes()}
+                                    options={termThemes}
                                     defaultValue={currTermTheme}
                                     onChange={this.handleChangeTermTheme}
                                 />
