@@ -8,10 +8,18 @@ function loadTheme(theme: string) {
 }
 
 function getTermThemes(termThemes: string[]): DropdownItem[] {
-    return termThemes.map((themeName) => ({
-        label: themeName,
-        value: themeName,
-    }));
+    const tt: DropdownItem[] = [];
+    tt.push({
+        label: "None",
+        value: null,
+    });
+    for (const themeName of termThemes) {
+        tt.push({
+            label: themeName,
+            value: themeName,
+        });
+    }
+    return tt;
 }
 
 export { loadTheme, getTermThemes };

@@ -3497,19 +3497,20 @@ func TermSetThemeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
 	}
-	sessionID, ok := pk.Kwargs["id"]
+	id, ok := pk.Kwargs["id"]
 	if !ok {
 		return nil, fmt.Errorf("id key not provided")
 	}
-	themeName, ok := pk.Kwargs["name"]
-	if !ok {
-		return nil, fmt.Errorf("name key not provided")
-	}
+	themeName, themeNameOk := pk.Kwargs["name"]
 	feOpts := clientData.FeOpts
 	if feOpts.TermTheme == nil {
 		feOpts.TermTheme = make(map[string]string)
 	}
-	feOpts.TermTheme[sessionID] = themeName
+	if themeNameOk && themeName != "" {
+		feOpts.TermTheme[id] = themeName
+	} else {
+		delete(feOpts.TermTheme, id)
+	}
 	err = sstore.UpdateClientFeOpts(ctx, feOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error updating client feopts: %v", err)
@@ -5580,12 +5581,15 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		varsUpdated = append(varsUpdated, "theme")
 	}
 	if termthemeStr, found := pk.Kwargs["termtheme"]; found {
-		newTermTheme := termthemeStr
 		feOpts := clientData.FeOpts
 		if feOpts.TermTheme == nil {
 			feOpts.TermTheme = make(map[string]string)
 		}
-		feOpts.TermTheme["global"] = newTermTheme
+		if termthemeStr == "" {
+			delete(feOpts.TermTheme, "global")
+		} else {
+			feOpts.TermTheme["global"] = termthemeStr
+		}
 		err = sstore.UpdateClientFeOpts(ctx, feOpts)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client feopts: %v", err)

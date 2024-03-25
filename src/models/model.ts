@@ -236,13 +236,20 @@ class Model {
             });
     }
 
-    applyTermTheme(element: HTMLElement, themeFileName: string) {
+    applyTermTheme(element: HTMLElement, themeFileName: string, reset?: boolean) {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
+        // console.log("themeFileName", themeFileName);
+        // console.log("element", element);
         fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
             .then((resp) => resp.json())
             .then((themeVars) => {
                 Object.keys(themeVars).forEach((key) => {
-                    this.setStyleVar(element, `--term-${key}`, themeVars[key]);
+                    if (reset) {
+                        this.resetStyleVar(element, `--term-${key}`);
+                        this.bumpRenderVersion;
+                    } else {
+                        this.setStyleVar(element, `--term-${key}`, themeVars[key]);
+                    }
                 });
             })
             .catch((error) => {
@@ -478,6 +485,11 @@ class Model {
 
     setStyleVar(element: HTMLElement, name: string, value: string): void {
         element.style.setProperty(name, value);
+    }
+
+    resetStyleVar(element: HTMLElement, name: string): void {
+        console.log(element, name);
+        element.style.removeProperty(name);
     }
 
     getBaseWsHostPort(): string {
@@ -1240,6 +1252,7 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getTheme();
+        const oldTermTheme = this.getTermTheme();
 
         mobx.action(() => {
             this.clientData.set(clientData);
@@ -1261,29 +1274,15 @@ class Model {
             loadTheme(newTheme);
             this.bumpRenderVersion();
         }
+
         const newTermTheme = clientData?.feopts?.termtheme;
-        if (Object.keys(newTermTheme).length > 0) {
-            this.applyTermTheme(document.documentElement, newTermTheme["global"]);
-        }
-    }
-
-    getUpdatedTermTheme(newTermTheme: { [k: string]: string }): { [k: string]: string } {
-        let currTermTheme = this.getTermTheme();
-        let updatedTermTheme: { [k: string]: string } = {};
-
-        if (newTermTheme == null) {
-            newTermTheme = {};
-        }
-        if (currTermTheme == null) {
-            currTermTheme = {};
-        }
-        const allKeys = new Set([...Object.keys(newTermTheme), ...Object.keys(currTermTheme)]);
-        for (let key of allKeys) {
-            if (newTermTheme[key] !== currTermTheme[key]) {
-                updatedTermTheme[key] = newTermTheme[key];
+        if ((Object.keys(newTermTheme).length > 0, oldTermTheme)) {
+            const termTheme = newTermTheme["global"] ?? oldTermTheme["global"];
+            const reset = newTermTheme["global"] == null;
+            if (termTheme) {
+                this.applyTermTheme(document.documentElement, termTheme, reset);
             }
         }
-        return updatedTermTheme;
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {

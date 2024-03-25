@@ -39,6 +39,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     handleResize_debounced: () => void;
     sidebarShowing: OV<boolean> = mobx.observable.box(false, { name: "screenview-sidebarShowing" });
     sidebarShowingTimeoutId: any = null;
+    theme: string;
 
     constructor(props: any) {
         super(props);
@@ -61,6 +62,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     }
 
     componentDidUpdate(): void {
+        console.log("got here");
         let { screen } = this.props;
         let viewOpts = screen.viewOpts.get();
         let hasSidebar = viewOpts?.sidebar?.open;
@@ -77,6 +79,19 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
                 this.sidebarShowingTimeoutId = null;
             }
             mobx.action(() => this.sidebarShowing.set(false))();
+        }
+
+        const clientData = GlobalModel.clientData.get();
+        const { termtheme } = clientData?.feopts;
+        if (termtheme && this.screenViewRef.current && this.theme != termtheme[screen.screenId]) {
+            console.log("screenview.tsx: theme changed");
+            this.theme = termtheme[screen.screenId] ?? this.theme;
+            const reset = termtheme[screen.screenId] == null;
+            console.log("reset ======", reset);
+            console.log("this.theme", this.theme);
+            if (this.theme) {
+                GlobalModel.applyTermTheme(this.screenViewRef.current, this.theme, reset);
+            }
         }
     }
 
@@ -144,6 +159,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             winWidth = screenWidth - realWidth + "px";
             sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
         }
+        console.log("rendered");
         return (
             <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
                 <ScreenWindowView
@@ -539,8 +555,6 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     renderMode: OV<RenderModeType> = mobx.observable.box("normal", { name: "renderMode" });
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "sw-shareCopied" });
 
-    theme: string;
-
     constructor(props: any) {
         super(props);
         this.setSize_debounced = debounce(1000, this.setSize.bind(this));
@@ -570,16 +584,6 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             this.setSize(width, height);
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(wvElem);
-        }
-    }
-
-    componentDidUpdate(): void {
-        const clientData = GlobalModel.clientData.get();
-        const { termtheme } = clientData?.feopts;
-        const { screen } = this.props;
-        if (termtheme && this.windowViewRef.current && this.theme != termtheme[screen.screenId]) {
-            this.theme = termtheme[screen.screenId];
-            GlobalModel.applyTermTheme(this.windowViewRef.current, this.theme);
         }
     }
 
