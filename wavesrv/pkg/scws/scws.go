@@ -23,7 +23,6 @@ import (
 )
 
 const WSStatePacketChSize = 20
-const MaxInputDataSize = 1000
 const RemoteInputQueueSize = 100
 
 var RemoteInputMapQueue *mapqueue.MapQueue
@@ -247,7 +246,7 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		err := RemoteInputMapQueue.Enqueue(feInputPk.Remote.RemoteId, func() {
 			sendErr := sendCmdInput(feInputPk)
 			if sendErr != nil {
-				log.Printf("[scws] sending command input: %v\n", err)
+				log.Printf("[scws] sending command input: %v\n", sendErr)
 			}
 		})
 		if err != nil {
@@ -263,7 +262,7 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		go func() {
 			sendErr := remote.SendRemoteInput(inputPk)
 			if sendErr != nil {
-				log.Printf("[scws] error processing remote input: %v\n", err)
+				log.Printf("[scws] error processing remote input: %v\n", sendErr)
 			}
 		}()
 		return nil
@@ -319,29 +318,5 @@ func sendCmdInput(pk *scpacket.FeInputPacketType) error {
 	if msh == nil {
 		return fmt.Errorf("remote %s not found", pk.Remote.RemoteId)
 	}
-	if len(pk.InputData64) > 0 {
-		inputLen := packet.B64DecodedLen(pk.InputData64)
-		if inputLen > MaxInputDataSize {
-			return fmt.Errorf("input data size too large, len=%d (max=%d)", inputLen, MaxInputDataSize)
-		}
-		dataPk := packet.MakeDataPacket()
-		dataPk.CK = pk.CK
-		dataPk.FdNum = 0 // stdin
-		dataPk.Data64 = pk.InputData64
-		err = msh.SendInput(dataPk)
-		if err != nil {
-			return err
-		}
-	}
-	if pk.SigName != "" || pk.WinSize != nil {
-		siPk := packet.MakeSpecialInputPacket()
-		siPk.CK = pk.CK
-		siPk.SigName = pk.SigName
-		siPk.WinSize = pk.WinSize
-		err = msh.SendSpecialInput(siPk)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return msh.HandleFeInput(pk)
 }

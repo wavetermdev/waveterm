@@ -359,59 +359,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         if (input.type != "keyDown") {
             return;
         }
-        const mods = getMods(input);
-        if (checkKeyPressed(waveEvent, "Cmd:t")) {
-            win.webContents.send("t-cmd", mods);
-            e.preventDefault();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:r")) {
-            e.preventDefault();
-            win.webContents.send("r-cmd", mods);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:l")) {
-            win.webContents.send("l-cmd", mods);
-            e.preventDefault();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:w")) {
-            e.preventDefault();
-            win.webContents.send("w-cmd", mods);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:ArrowUp") || checkKeyPressed(waveEvent, "Cmd:ArrowDown")) {
-            if (checkKeyPressed(waveEvent, "Cmd:ArrowUp")) {
-                win.webContents.send("meta-arrowup");
-            } else {
-                win.webContents.send("meta-arrowdown");
-            }
-            e.preventDefault();
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:PageUp") || checkKeyPressed(waveEvent, "Cmd:PageDown")) {
-            if (checkKeyPressed(waveEvent, "Cmd:PageUp")) {
-                win.webContents.send("meta-pageup");
-            } else {
-                win.webContents.send("meta-pagedown");
-            }
-            e.preventDefault();
-            return;
-        }
-        if (input.code.startsWith("Digit") && input.meta && !input.control) {
-            const digitNum = parseInt(input.code.substring(5));
-            if (isNaN(digitNum) || digitNum < 1 || digitNum > 9) {
-                return;
-            }
-            e.preventDefault();
-            win.webContents.send("digit-cmd", { digit: digitNum }, mods);
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:[") || checkKeyPressed(waveEvent, "Cmd:]")) {
-            const rel = checkKeyPressed(waveEvent, "Cmd:]") ? 1 : -1;
-            win.webContents.send("bracket-cmd", { relative: rel }, mods);
-            e.preventDefault();
-            return;
-        }
     });
     win.webContents.on("will-navigate", shNavHandler);
     win.webContents.on("will-frame-navigate", shFrameNavHandler);

@@ -30,6 +30,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -41,6 +42,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote/openai"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
@@ -1185,8 +1187,16 @@ func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime tim
 	err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
 	if err != nil {
 		// nothing to do
-		log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
+		log.Printf("error updating cmddoneinfo: %v\n", err)
 		return
+	}
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, cmd.ScreenId, cmd.LineId)
+	if err != nil {
+		log.Printf("error trying to update screen focus type: %v\n", err)
+		// fall-through (nothing to do)
+	}
+	if screen != nil {
+		update.AddUpdate(*screen)
 	}
 	scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
 }
@@ -1648,8 +1658,12 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	}
 	var outputPos int64
 	outputStr := fmt.Sprintf("Copying [%v]:%v to [%v]:%v\r\n", sourceRemoteId.DisplayName, sourceFullPath, destRemoteId.DisplayName, destFullPath)
-	termopts := sstore.TermOpts{Rows: shellutil.DefaultTermRows, Cols: shellutil.DefaultTermCols, FlexRows: true, MaxPtySize: remote.DefaultMaxPtySize}
-	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), termopts)
+	termOpts, err := GetUITermOpts(pk.UIContext.WinSize, DefaultPTERM)
+	if err != nil {
+		return nil, fmt.Errorf("cannot make termopts: %w", err)
+	}
+	pkTermOpts := convertTermOpts(termOpts)
+	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), *pkTermOpts)
 	writeStringToPty(ctx, cmd, outputStr, &outputPos)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -2611,7 +2625,7 @@ func getCmdInfoEngineeredPrompt(userQuery string, curLineStr string, shellType s
 		// Enclose the command in triple backticks to format it as a code block.
 		promptCurrentCommand = " The user is currently working with the command: ```\n" + curLineStr + "\n```\n\n"
 	}
-	promptFormattingInstruction := "Please ensure any command line suggestions or code snippets that are meant to be run by the user are enclosed in triple backquotes for easy copy and paste into the terminal."
+	promptFormattingInstruction := "Please ensure any command line suggestions or code snippets or scripts that are meant to be run by the user are enclosed in triple backquotes for easy copy and paste into the terminal.  Also note that any response you give will be rendered in markdown."
 	promptQuestion := " The user's question is:\n\n" + userQuery + ""
 
 	return promptBase + promptCurrentCommand + promptFormattingInstruction + promptQuestion
@@ -2861,7 +2875,9 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		update := scbus.MakeUpdatePacket()
 		return update, nil
 	}
-	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: promptStr}}
+	osType := GetOsTypeFromRuntime()
+	engineeredQuery := getCmdInfoEngineeredPrompt(promptStr, "", ids.Remote.ShellType, osType)
+	prompt := []packet.OpenAIPromptMessageType{{Role: sstore.OpenAIRoleUser, Content: engineeredQuery}}
 	if resolveBool(pk.Kwargs["cmdinfoclear"], false) {
 		update := sstore.UpdateWithClearOpenAICmdInfo(cmd.ScreenId)
 		if err != nil {
@@ -3655,10 +3671,13 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	return update, nil
 }
 
-func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnUpdate scbus.UpdatePacket, rtnErr error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
 		return nil, err
+	}
+	if !ids.Remote.MShell.IsConnected() {
+		return nil, fmt.Errorf("cannot reinit, remote is not connected")
 	}
 	shellType := ids.Remote.ShellType
 	if pk.Kwargs["shell"] != "" {
@@ -3668,31 +3687,74 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		}
 		shellType = shellArg
 	}
-	ssPk, err := ids.Remote.MShell.ReInit(ctx, shellType)
+	verbose := resolveBool(pk.Kwargs["verbose"], false)
+	termOpts, err := GetUITermOpts(pk.UIContext.WinSize, DefaultPTERM)
+	if err != nil {
+		return nil, fmt.Errorf("cannot make termopts: %w", err)
+	}
+	pkTermOpts := convertTermOpts(termOpts)
+	cmd, err := makeDynCmd(ctx, "reset", ids, pk.GetRawStr(), *pkTermOpts)
 	if err != nil {
 		return nil, err
 	}
+	update, err := addLineForCmd(ctx, "/reset", true, ids, cmd, "", nil)
+	if err != nil {
+		return nil, err
+	}
+	go doResetCommand(ids, shellType, cmd, verbose)
+	return update, nil
+}
+
+func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verbose bool) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), shellapi.ReInitTimeout)
+	defer cancelFn()
+	startTime := time.Now()
+	var outputPos int64
+	var rtnErr error
+	exitSuccess := true
+	defer func() {
+		if rtnErr != nil {
+			exitSuccess = false
+			writeStringToPty(ctx, cmd, fmt.Sprintf("\r\nerror: %v", rtnErr), &outputPos)
+		}
+		deferWriteCmdStatus(ctx, cmd, startTime, exitSuccess, outputPos)
+	}()
+	dataFn := func(data []byte) {
+		writeStringToPty(ctx, cmd, string(data), &outputPos)
+	}
+	origStatePtr := ids.Remote.MShell.GetDefaultStatePtr(shellType)
+	ssPk, err := ids.Remote.MShell.ReInit(ctx, base.MakeCommandKey(cmd.ScreenId, cmd.LineId), shellType, dataFn, verbose)
+	if err != nil {
+		rtnErr = err
+		return
+	}
 	if ssPk == nil || ssPk.State == nil {
-		return nil, fmt.Errorf("invalid initpk received from remote (no remote state)")
+		rtnErr = fmt.Errorf("invalid initpk received from remote (no remote state)")
+		return
 	}
 	feState := sstore.FeStateFromShellState(ssPk.State)
 	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, ssPk.State, nil)
 	if err != nil {
-		return nil, err
+		rtnErr = err
+		return
 	}
-	outputStr := fmt.Sprintf("reset remote state (shell:%s)", ssPk.State.GetShellType())
-	cmd, err := makeStaticCmd(ctx, "reset", ids, pk.GetRawStr(), []byte(outputStr))
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
+	newStatePtr := ids.Remote.MShell.GetDefaultStatePtr(shellType)
+	if verbose && origStatePtr != nil && newStatePtr != nil {
+		statePtrDiff := fmt.Sprintf("oldstate: %v, newstate: %v\r\n", origStatePtr.BaseHash, newStatePtr.BaseHash)
+		writeStringToPty(ctx, cmd, statePtrDiff, &outputPos)
+		origFullState, _ := sstore.GetFullState(ctx, *origStatePtr)
+		newFullState, _ := sstore.GetFullState(ctx, *newStatePtr)
+		if origFullState != nil && newFullState != nil {
+			var diffBuf bytes.Buffer
+			rtnstate.DisplayStateUpdateDiff(&diffBuf, *origFullState, *newFullState)
+			diffStr := diffBuf.String()
+			diffStr = strings.ReplaceAll(diffStr, "\n", "\r\n")
+			writeStringToPty(ctx, cmd, diffStr, &outputPos)
+		}
 	}
-	update, err := addLineForCmd(ctx, "/reset", false, ids, cmd, "", nil)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst), sstore.InteractiveUpdate(pk.Interactive))
-	return update, nil
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))
+	scbus.MainUpdateBus.DoUpdate(update)
 }
 
 func ResetCwdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
@@ -3924,14 +3986,14 @@ func splitLinesForInfo(str string) []string {
 }
 
 func resizeRunningCommand(ctx context.Context, cmd *sstore.CmdType, newCols int) error {
-	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-	siPk.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
+	feInput := scpacket.MakeFeInputPacket()
+	feInput.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	feInput.WinSize = &packet.WinSize{Rows: int(cmd.TermOpts.Rows), Cols: newCols}
 	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
 	if msh == nil {
 		return fmt.Errorf("cannot resize, cmd remote not found")
 	}
-	err := msh.SendSpecialInput(siPk)
+	err := msh.HandleFeInput(feInput)
 	if err != nil {
 		return err
 	}
@@ -5127,10 +5189,10 @@ func SignalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 	if !msh.IsConnected() {
 		return nil, fmt.Errorf("cannot send signal, remote is not connected")
 	}
-	siPk := packet.MakeSpecialInputPacket()
-	siPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-	siPk.SigName = sigArg
-	err = msh.SendSpecialInput(siPk)
+	inputPk := scpacket.MakeFeInputPacket()
+	inputPk.CK = base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	inputPk.SigName = sigArg
+	err = msh.HandleFeInput(inputPk)
 	if err != nil {
 		return nil, fmt.Errorf("cannot send signal: %v", err)
 	}

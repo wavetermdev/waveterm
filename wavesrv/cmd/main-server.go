@@ -683,7 +683,7 @@ func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler 
 		configAbsPath, err := filepath.Abs(configPath)
 		if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("error getting absolute path", err)))
+			w.Write([]byte(fmt.Sprintf("error getting absolute path: %v", err)))
 			return
 		}
 		configBaseDir := path.Join(scbase.GetWaveHomeDir(), "config")
@@ -696,11 +696,11 @@ func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler 
 		fstat, err := os.Stat(configFullPath)
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(404)
-			w.Write([]byte(fmt.Sprintf("file not found: ", configAbsPath)))
+			w.Write([]byte(fmt.Sprintf("file not found: %v", configAbsPath)))
 			return
 		} else if err != nil {
 			w.WriteHeader(500)
-			w.Write([]byte(fmt.Sprintf("file stat err", err)))
+			w.Write([]byte(fmt.Sprintf("file stat err: %v", err)))
 			return
 		}
 		if fstat.IsDir() {
@@ -898,13 +898,13 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	dirFile, err := os.Open(configFullPath)
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("error opening specified dir: ", err)))
+		w.Write([]byte(fmt.Sprintf("error opening specified dir: %v", err)))
 		return
 	}
 	entries, err := dirFile.Readdir(0)
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("error getting files: ", err)))
+		w.Write([]byte(fmt.Sprintf("error getting files: %v", err)))
 		return
 	}
 	var files []*packet.FileStatPacketType
@@ -916,7 +916,7 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	dirListJson, err := json.Marshal(files)
 	if err != nil {
 		w.WriteHeader(500)
-		w.Write([]byte(fmt.Sprintf("json err: ", err)))
+		w.Write([]byte(fmt.Sprintf("json err: %v", err)))
 		return
 	}
 	w.WriteHeader(200)

@@ -6,8 +6,11 @@ import * as mobx from "mobx";
 import { If } from "tsx-control-statements/components";
 import ReactDOM from "react-dom";
 import { Button } from "./button";
+import { v4 as uuidv4 } from "uuid";
+import { GlobalModel } from "@/models";
 
 import "./modal.less";
+import { boundMethod } from "autobind-decorator";
 
 interface ModalHeaderProps {
     onClose?: () => void;
@@ -30,10 +33,52 @@ interface ModalFooterProps {
     onOk?: () => void;
     cancelLabel?: string;
     okLabel?: string;
+    keybindings?: boolean;
 }
 
-const ModalFooter: React.FC<ModalFooterProps> = ({ onCancel, onOk, cancelLabel = "Cancel", okLabel = "Ok" }) => (
+class ModalKeybindings extends React.Component<{ onOk; onCancel }, {}> {
+    curId: string;
+
+    @boundMethod
+    componentDidMount(): void {
+        this.curId = uuidv4();
+        let domain = "modal-" + this.curId;
+        let keybindManager = GlobalModel.keybindManager;
+        if (this.props.onOk) {
+            keybindManager.registerKeybinding("modal", domain, "generic:confirm", (waveEvent) => {
+                this.props.onOk();
+                return true;
+            });
+        }
+        if (this.props.onCancel) {
+            keybindManager.registerKeybinding("modal", domain, "generic:cancel", (waveEvent) => {
+                this.props.onCancel();
+                return true;
+            });
+        }
+    }
+
+    @boundMethod
+    componentWillUnmount(): void {
+        GlobalModel.keybindManager.unregisterDomain("modal-" + this.curId);
+    }
+
+    render(): React.ReactNode {
+        return null;
+    }
+}
+
+const ModalFooter: React.FC<ModalFooterProps> = ({
+    onCancel,
+    onOk,
+    cancelLabel = "Cancel",
+    okLabel = "Ok",
+    keybindings = true,
+}) => (
     <div className="wave-modal-footer">
+        <If condition={keybindings}>
+            <ModalKeybindings onOk={onOk} onCancel={onCancel}></ModalKeybindings>
+        </If>
         {onCancel && (
             <Button className="secondary" onClick={onCancel}>
                 {cancelLabel}
@@ -79,4 +124,4 @@ class Modal extends React.Component<ModalProps> {
     }
 }
 
-export { Modal };
+export { Modal, ModalKeybindings };

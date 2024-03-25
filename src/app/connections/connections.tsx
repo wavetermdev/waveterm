@@ -14,6 +14,25 @@ import * as util from "@/util/util";
 import "./connections.less";
 import { MainView } from "../common/elements/mainview";
 
+class ConnectionsKeybindings extends React.Component<{}, {}> {
+    componentDidMount() {
+        let connectionViewModel = GlobalModel.connectionViewModel;
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("mainview", "connections", "generic:cancel", (waveEvent) => {
+            connectionViewModel.closeView();
+            return true;
+        });
+    }
+
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("connections");
+    }
+
+    render() {
+        return null;
+    }
+}
+
 @mobxReact.observer
 class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
     tableRef: React.RefObject<any> = React.createRef();
@@ -127,6 +146,9 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
 
         return (
             <MainView className="connections-view" title="Connections" onClose={this.handleClose}>
+                <If condition={!isHidden}>
+                    <ConnectionsKeybindings></ConnectionsKeybindings>
+                </If>
                 <table
                     className="connections-table"
                     cellSpacing="0"
