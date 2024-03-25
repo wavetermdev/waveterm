@@ -238,15 +238,12 @@ class Model {
 
     applyTermTheme(element: HTMLElement, themeFileName: string, reset?: boolean) {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
-        // console.log("themeFileName", themeFileName);
-        // console.log("element", element);
         fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
             .then((resp) => resp.json())
             .then((themeVars) => {
                 Object.keys(themeVars).forEach((key) => {
                     if (reset) {
                         this.resetStyleVar(element, `--term-${key}`);
-                        this.bumpRenderVersion;
                     } else {
                         this.setStyleVar(element, `--term-${key}`, themeVars[key]);
                     }
