@@ -235,8 +235,8 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         let icon: string = null;
         let index: number = 0;
         const curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
-        const currTermTheme = GlobalModel.getTermTheme()[this.screenId];
         const termThemes = getTermThemes(GlobalModel.termThemes);
+        const currTermTheme = GlobalModel.getTermTheme()[this.screenId] ?? termThemes[0].label;
 
         return (
             <Modal className="screen-settings-modal">

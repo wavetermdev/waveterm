@@ -62,7 +62,6 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     }
 
     componentDidUpdate(): void {
-        // console.log("got here");
         let { screen } = this.props;
         let viewOpts = screen.viewOpts.get();
         let hasSidebar = viewOpts?.sidebar?.open;

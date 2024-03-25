@@ -308,7 +308,6 @@ class HistoryView extends React.Component<{}, {}> {
             hvm.setFromDate(null);
             return;
         }
-        console.log;
         hvm.setFromDate(newDate);
     }
 
