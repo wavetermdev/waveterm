@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { computed } from "mobx";
+import { reaction } from "mobx";
 import { ScreenTab } from "./tab2";
-import { observer } from "mobx-react";
+import { observer, useLocalObservable } from "mobx-react";
+import { For } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, Session, Screen } from "@/models";
+import AddIcon from "@/assets/icons/add.svg";
 
 import "./tabs2.less";
 
@@ -13,10 +15,9 @@ type ScreenTabsProps = {
 };
 
 const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
-    const [tabs, setTabs] = useState(["Tab1"]);
-    const [activeTab, setActiveTab] = useState("Tab1");
+    const [screens, setScreens] = useState<Screen[]>([]);
     const [tabWidth, setTabWidth] = useState(DEFAULT_TAB_WIDTH);
-    const [draggedTab, setDraggedTab] = useState<string | null>(null);
+    const [_, setDraggedTab] = useState<string | null>(null);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const tabContainerRef = useRef<HTMLDivElement>(null);
     const addBtnRef = useRef<HTMLDivElement>(null);
@@ -27,32 +28,46 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
     let draggedRemoved: boolean;
     let shrunk: boolean;
 
+    const store = useLocalObservable(() => ({
+        get activeScreenId() {
+            return session?.activeScreenId.get();
+        },
+        get screens() {
+            let activeScreenId = store.activeScreenId;
+            if (!activeScreenId) {
+                return [];
+            }
+
+            let screens = GlobalModel.getSessionScreens(session.sessionId);
+            let filteredScreens = screens.filter(
+                (screen) => !screen.archived.get() || activeScreenId === screen.screenId
+            );
+
+            filteredScreens.sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
+            return filteredScreens;
+        },
+    }));
+
+    useEffect(() => {
+        // Update tabs when screens change
+        const dispose = reaction(
+            () => store.screens,
+            (screens) => {
+                setScreens(screens);
+            }
+        );
+        // Clean up
+        return () => {
+            if (dispose) dispose();
+        };
+    }, [screens.length]);
+
     const getActiveScreenId = (): string | null => {
         if (session) {
             return session.activeScreenId.get();
         }
         return null;
     };
-
-    const getScreens = computed((): Screen[] => {
-        let activeScreenId = getActiveScreenId();
-        if (!activeScreenId) {
-            return [];
-        }
-
-        let screens = GlobalModel.getSessionScreens(session.sessionId);
-        let showingScreens = [];
-
-        for (const screen of screens) {
-            if (!screen.archived.get() || activeScreenId === screen.screenId) {
-                showingScreens.push(screen);
-            }
-        }
-
-        showingScreens.sort((a, b) => a.screenIdx.get() - b.screenIdx.get());
-
-        return showingScreens;
-    });
 
     const updateTabPositions = useCallback(() => {
         if (tabContainerRef.current) {
@@ -67,16 +82,16 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
 
             setDragStartPositions(newStartPositions);
         }
-    }, [tabs]);
+    }, [screens]);
 
     useEffect(() => {
         updateTabPositions();
-    }, [tabs, updateTabPositions]);
+    }, [screens, updateTabPositions]);
 
     const resizeTabs = useCallback(() => {
         if (tabContainerRef.current) {
             const containerWidth = tabContainerRef.current.getBoundingClientRect().width;
-            const numberOfTabs = tabs.length;
+            const numberOfTabs = screens.length;
             const totalDefaultTabWidth = numberOfTabs * DEFAULT_TAB_WIDTH;
 
             if (totalDefaultTabWidth > containerWidth) {
@@ -84,9 +99,9 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
                 shrunk = true;
                 const newTabWidth = containerWidth / numberOfTabs;
                 setTabWidth(newTabWidth);
-                tabs.forEach((tab, index) => {
+                screens.forEach((screen, index) => {
                     const tabElement = tabContainerRef.current.querySelector(
-                        `[data-screentab-name="${tab}"]`
+                        `[data-screentab-name="${screen.name.get()}"]`
                     ) as HTMLElement;
                     tabElement.style.width = `${newTabWidth}px`;
                     tabElement.style.left = `${index * newTabWidth}px`;
@@ -95,9 +110,9 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
                 // Case where tabs were previously shrunk or there is enough space for default width tabs
                 shrunk = false;
                 setTabWidth(DEFAULT_TAB_WIDTH);
-                tabs.forEach((tab, index) => {
+                screens.forEach((screen, index) => {
                     const tabElement = tabContainerRef.current.querySelector(
-                        `[data-screentab-name="${tab}"]`
+                        `[data-screentab-name="${screen.name.get()}"]`
                     ) as HTMLElement;
                     tabElement.style.width = `${DEFAULT_TAB_WIDTH}px`;
                     tabElement.style.left = `${index * DEFAULT_TAB_WIDTH}px`;
@@ -120,7 +135,7 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
             }
             updateTabPositions();
         }
-    }, [tabs.length, updateTabPositions]);
+    }, [screens.length, updateTabPositions]);
 
     // Resize tabs when the number of tabs or the window size changes
     useEffect(() => {
@@ -137,9 +152,9 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
     }, [mainSidebarWidth, rightSidebarWidth]);
 
     const onDragStart = useCallback(
-        (name: string, ref: React.RefObject<HTMLDivElement>) => {
-            setDraggedTab(name);
-            let tabIndex = tabs.indexOf(name);
+        (screenId: string, ref: React.RefObject<HTMLDivElement>) => {
+            setDraggedTab(screenId);
+            let tabIndex = screens.findIndex((screen) => screen.screenId === screenId);
             const tabStartX = dragStartPositions[tabIndex]; // Starting X position of the tab
             const containerWidth = tabContainerRef.current.getBoundingClientRect().width;
 
@@ -154,7 +169,7 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
 
                     // Constrain movement within the container bounds
                     if (tabContainerRef.current) {
-                        const numberOfTabs = tabs.length;
+                        const numberOfTabs = screens.length;
                         const totalDefaultTabWidth = numberOfTabs * DEFAULT_TAB_WIDTH;
                         const containerRect = tabContainerRef.current.getBoundingClientRect();
                         let containerRectWidth = containerRect.width;
@@ -188,7 +203,7 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
 
                     if (dragDirection === "+") {
                         // Dragging to the right
-                        for (let i = tabIndex + 1; i < tabs.length; i++) {
+                        for (let i = tabIndex + 1; i < screens.length; i++) {
                             const otherTabStart = dragStartPositions[i];
                             if (currentX + tabWidth > otherTabStart + tabWidth / 2) {
                                 newTabIndex = i;
@@ -206,11 +221,11 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
 
                     // Rearrange the tabs temporarily
                     if (newTabIndex !== tabIndex) {
-                        const tempTabs = Array.from(tabs);
+                        const tempTabs = Array.from(screens);
 
                         // Remove the dragged tab if not already done
                         if (!draggedRemoved) {
-                            tabs.splice(tabIndex, 1);
+                            screens.splice(tabIndex, 1);
                             draggedRemoved = true;
                         }
 
@@ -253,10 +268,10 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
                         });
 
                         // Update the final position of the dragged tab
-                        const draggedTab = tabs[tabIndex];
+                        const draggedTab = screens[tabIndex];
                         const finalLeftPosition = tabIndex * tabWidth;
                         const draggedTabElement = tabContainerRef.current.querySelector(
-                            `[data-screentab-name="${draggedTab}"]`
+                            `[data-screentab-name="${draggedTab.name.get()}"]`
                         ) as HTMLElement;
                         if (draggedTabElement) {
                             draggedTabElement.style.left = `${finalLeftPosition}px`;
@@ -270,34 +285,48 @@ const ScreenTabs: React.FC<ScreenTabsProps> = observer(({ session }) => {
                 document.addEventListener("mouseup", handleMouseUp);
             }
         },
-        [tabs, dragStartPositions]
+        [screens, dragStartPositions]
     );
 
-    const selectTab = (tabName: string) => {
-        setActiveTab(tabName);
+    const onSwitchScreen = (screenId: string) => {
+        if (session == null) {
+            return;
+        }
+        if (session.activeScreenId.get() == screenId) {
+            return;
+        }
+        let screen = session.getScreenById(screenId);
+        if (screen == null) {
+            return;
+        }
+        GlobalCommandRunner.switchScreen(screenId);
     };
 
-    const addTab = () => {
-        const newTabName = `Tab${tabs.length + 1}`;
-        setTabs([...tabs, newTabName]);
-        setActiveTab(newTabName);
+    const handleNewScreen = () => {
+        GlobalCommandRunner.createNewScreen();
     };
+
+    if (session == null) {
+        return null;
+    }
+    const screen: Screen | null = null;
+    const activeScreenId = getActiveScreenId();
 
     return (
         <div className="screen-tabs-container">
             <div className="screen-tabs-container-inner" ref={tabContainerRef}>
-                {tabs.map((tab) => (
+                <For each="screen" of={tabs}>
                     <ScreenTab
-                        key={tab}
-                        name={tab}
-                        onSelect={selectTab}
-                        active={activeTab === tab}
+                        key={screen.screenId}
+                        screen={screen}
+                        activeScreenId={activeScreenId}
+                        onSwitchScreen={onSwitchScreen}
                         onDragStart={onDragStart}
                     />
-                ))}
+                </For>
             </div>
-            <div ref={addBtnRef} className="new-screen-button" onClick={addTab} style={{ left: DEFAULT_TAB_WIDTH }}>
-                +
+            <div ref={addBtnRef} className="new-screen" onClick={handleNewScreen} style={{ left: DEFAULT_TAB_WIDTH }}>
+                <AddIcon className="icon hoverEffect" />
             </div>
         </div>
     );

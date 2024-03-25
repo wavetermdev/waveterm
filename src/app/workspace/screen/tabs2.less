@@ -1,28 +1,28 @@
 .screen-tabs-container {
     position: relative;
     height: var(--screentabs-height);
-}
 
-.screen-tabs-container-inner {
-    position: relative; // Needed for absolute positioning of child tabs
-    white-space: nowrap;
-    height: 100%;
-    margin-right: 42px;
-    overflow: hidden;
-}
+    .screen-tabs-container-inner {
+        position: relative; // Needed for absolute positioning of child tabs
+        white-space: nowrap;
+        height: 100%;
+        margin-right: 42px;
+        overflow: hidden;
+    }
 
-.new-screen-button {
-    width: 42px;
-    height: 40px;
-    background-color: var(--app-bg-color);
-    cursor: pointer;
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 20px;
-    text-align: center;
-    line-height: 38px;
-    user-select: none;
+    .new-screen {
+        width: 42px;
+        height: 40px;
+        background-color: var(--app-bg-color);
+        cursor: pointer;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 20px;
+        text-align: center;
+        line-height: 38px;
+        user-select: none;
+    }
 }
 
 // This ensures the tab bar does not collide with the floating logo. The floating logo sits above the sidebar when it is not collapsed, so no additional margin is needed in that case.

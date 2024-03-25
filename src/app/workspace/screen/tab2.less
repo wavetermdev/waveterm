@@ -1,24 +1,100 @@
 .screen-tab {
-    position: absolute;
-    border: 1px solid #ccc;
-    background-color: var(--app-bg-color);
-    cursor: pointer;
-    user-select: none;
-    width: 100px;
-    height: 46px;
-    color: var(--app-text-primary-color);
-    border-radius: 0;
-    box-sizing: border-box;
-
-    &.active-screen-tab {
-        // background-color: @activeTabColor;
-        // border-bottom: 2px solid @buttonBackgroundColor;
+    font: var(--base-font);
+    font-size: var(--screentabs-font-size);
+    line-height: var(--screentabs-line-height);
+    border-top: 2px solid transparent;
+    background: var(--app-bg-color);
+    .background {
+        // This applies a transparency mask to the background color, as set above, so that it will blend with whatever the theme's background color is.
+        z-index: 1;
+        width: var(--screen-tab-width);
+        mask-image: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0) 100%);
     }
-}
+    &.is-active {
+        opacity: 1;
+        font-weight: var(--screentabs-selected-font-weight);
+        border-top: 2px solid var(--tab-color);
+    }
+    &.is-archived {
+        .fa.fa-archive {
+            margin-right: 4px;
+        }
+    }
+    svg.svg-icon-inner path {
+        fill: var(--tab-color);
+    }
+    .tabicon i {
+        color: var(--tab-color);
+    }
+    &.color-green,
+    &.color-default {
+        --tab-color: var(--tab-green);
+    }
+    &.color-orange {
+        --tab-color: var(--tab-orange);
+    }
+    &.color-red {
+        --tab-color: var(--tab-red);
+    }
+    &.color-yellow {
+        --tab-color: var(--tab-yellow);
+    }
+    &.color-blue {
+        --tab-color: var(--tab-blue);
+    }
+    &.color-mint {
+        --tab-color: var(--tab-mint);
+    }
+    &.color-cyan {
+        --tab-color: var(--tab-cyan);
+    }
+    &.color-white {
+        --tab-color: var(--tab-white);
+    }
+    &.color-violet {
+        --tab-color: var(--tab-violet);
+    }
+    &.color-pink {
+        --tab-color: var(--tab-pink);
+    }
+    .screen-tab-inner {
+        display: flex;
+        flex-direction: row;
+        position: absolute;
+        z-index: 2;
+        min-width: var(--screen-tab-width);
+        max-width: var(--screen-tab-width);
+        align-items: center;
+        cursor: pointer;
+        padding: 8px 8px 4px 8px; // extra 4px of tab padding to account for horizontal scrollbar (to make tab text look centered)
+        .front-icon {
+            .positional-icon-visible;
+        }
 
-.screen-tab-inner {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
+        .tab-name {
+            flex-grow: 1;
+        }
+
+        // Only one of these will be visible at a time
+        .end-icons {
+            // This adjusts the position of the icon to account for the default 8px margin on the parent. We want the positional calculations for this icon to assume it is flush with the edge of the screen tab.
+            margin: 0 -5px 0 0;
+            line-height: normal;
+            .tab-index {
+                font-size: 12.5px;
+            }
+        }
+    }
+    .vertical-line {
+        border-left: 1px solid var(--app-border-color);
+        margin: 10px 0 8px 0;
+    }
+    &:not(:hover) .status-indicator {
+        .status-indicator-visible;
+    }
+    &:hover {
+        .actions {
+            .positional-icon-visible;
+        }
+    }
 }
