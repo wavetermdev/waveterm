@@ -485,7 +485,6 @@ class Model {
     }
 
     resetStyleVar(element: HTMLElement, name: string): void {
-        console.log(element, name);
         element.style.removeProperty(name);
     }
 
