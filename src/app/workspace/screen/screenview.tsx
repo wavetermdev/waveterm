@@ -62,7 +62,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     }
 
     componentDidUpdate(): void {
-        console.log("got here");
+        // console.log("got here");
         let { screen } = this.props;
         let viewOpts = screen.viewOpts.get();
         let hasSidebar = viewOpts?.sidebar?.open;
@@ -84,11 +84,11 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         const clientData = GlobalModel.clientData.get();
         const { termtheme } = clientData?.feopts;
         if (termtheme && this.screenViewRef.current && this.theme != termtheme[screen.screenId]) {
-            console.log("screenview.tsx: theme changed");
+            // console.log("screenview.tsx: theme changed");
             this.theme = termtheme[screen.screenId] ?? this.theme;
             const reset = termtheme[screen.screenId] == null;
-            console.log("reset ======", reset);
-            console.log("this.theme", this.theme);
+            // console.log("reset ======", reset);
+            // console.log("this.theme", this.theme);
             if (this.theme) {
                 GlobalModel.applyTermTheme(this.screenViewRef.current, this.theme, reset);
             }
@@ -547,6 +547,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 class ScreenWindowView extends React.Component<{ session: Session; screen: Screen; width: string }, {}> {
     rszObs: ResizeObserver;
     windowViewRef: React.RefObject<any>;
+    linesRef = React.createRef<HTMLDivElement>();
 
     width: mobx.IObservableValue<number> = mobx.observable.box(0, { name: "sw-view-width" });
     height: mobx.IObservableValue<number> = mobx.observable.box(0, { name: "sw-view-height" });

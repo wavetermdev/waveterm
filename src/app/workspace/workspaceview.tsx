@@ -87,8 +87,7 @@ class WorkspaceView extends React.Component<{}, {}> {
         const session = GlobalModel.getActiveSession();
         const clientData = GlobalModel.clientData.get();
         const { termtheme } = clientData?.feopts;
-        if (termtheme && this.sessionRef.current && this.theme != termtheme[session.sessionId]) {
-            // console.log("workspaceview.tsx: theme changed");
+        if (termtheme && this.sessionRef.current) {
             this.theme = termtheme[session.sessionId] ?? this.theme;
             const reset = termtheme[session.sessionId] == null;
             if (this.theme) {
