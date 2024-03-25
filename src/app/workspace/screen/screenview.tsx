@@ -39,6 +39,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     handleResize_debounced: () => void;
     sidebarShowing: OV<boolean> = mobx.observable.box(false, { name: "screenview-sidebarShowing" });
     sidebarShowingTimeoutId: any = null;
+    theme: string;
 
     constructor(props: any) {
         super(props);
@@ -531,6 +532,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
 class ScreenWindowView extends React.Component<{ session: Session; screen: Screen; width: string }, {}> {
     rszObs: ResizeObserver;
     windowViewRef: React.RefObject<any>;
+    linesRef = React.createRef<HTMLDivElement>();
 
     width: mobx.IObservableValue<number> = mobx.observable.box(0, { name: "sw-view-width" });
     height: mobx.IObservableValue<number> = mobx.observable.box(0, { name: "sw-view-height" });
@@ -538,6 +540,8 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
 
     renderMode: OV<RenderModeType> = mobx.observable.box("normal", { name: "renderMode" });
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "sw-shareCopied" });
+
+    theme: string;
 
     constructor(props: any) {
         super(props);
@@ -558,6 +562,21 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             this.height.set(height);
             screen.screenSizeCallback({ height: height, width: width });
         })();
+    }
+
+    componentDidUpdate(): void {
+        const { screen } = this.props;
+        const clientData = GlobalModel.clientData.get();
+        const { termtheme } = clientData?.feopts;
+        if (termtheme && this.windowViewRef.current && this.theme != termtheme[screen.screenId]) {
+            const newTermTheme = termtheme[screen.screenId];
+            this.theme = newTermTheme ?? this.theme;
+            const reset = newTermTheme == null;
+            GlobalModel.applyTermTheme(this.windowViewRef.current, this.theme, reset);
+            if (reset) {
+                this.theme = null;
+            }
+        }
     }
 
     componentDidMount() {

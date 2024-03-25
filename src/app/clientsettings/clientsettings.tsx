@@ -9,6 +9,7 @@ import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
@@ -69,6 +70,18 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             return;
         }
         const prtn = GlobalCommandRunner.setTheme(theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    handleChangeTermTheme(theme: string): void {
+        // For global terminal theme, the key is global, otherwise it's either
+        // sessionId or screenId.
+        const currTheme = GlobalModel.getTermTheme()["global"];
+        if (currTheme == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setGlobalTermTheme(theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -191,6 +204,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getTheme();
+        const termThemes = getTermThemes(GlobalModel.termThemes);
+        const currTermTheme = GlobalModel.getTermTheme()["global"] ?? termThemes[0].label;
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
@@ -231,6 +246,19 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                             />
                         </div>
                     </div>
+                    <If condition={termThemes.length > 0}>
+                        <div className="settings-field">
+                            <div className="settings-label">Terminal Theme</div>
+                            <div className="settings-input">
+                                <Dropdown
+                                    className="terminal-theme-dropdown"
+                                    options={termThemes}
+                                    defaultValue={currTermTheme}
+                                    onChange={this.handleChangeTermTheme}
+                                />
+                            </div>
+                        </div>
+                    </If>
                     <div className="settings-field">
                         <div className="settings-label">Client ID</div>
                         <div className="settings-input">{cdata.clientid}</div>

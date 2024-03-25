@@ -11,6 +11,9 @@ import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "@/elements";
 import * as util from "@/util/util";
 import { TabIcon, Button } from "@/elements";
+import { If } from "tsx-control-statements/components";
+import { commandRtnHandler } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
@@ -208,6 +211,16 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    handleChangeTermTheme(theme: string): void {
+        const currTheme = GlobalModel.getTermTheme()[this.screenId];
+        if (currTheme == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setScreenTermTheme(this.screenId, theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     selectRemote(cname: string): void {
         let prtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
         util.commandRtnHandler(prtn, this.errorMessage);
@@ -222,6 +235,8 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         let icon: string = null;
         let index: number = 0;
         const curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
+        const termThemes = getTermThemes(GlobalModel.termThemes);
+        const currTermTheme = GlobalModel.getTermTheme()[this.screenId] ?? termThemes[0].label;
 
         return (
             <Modal className="screen-settings-modal">
@@ -307,6 +322,19 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             </div>
                         </div>
                     </div>
+                    <If condition={termThemes.length > 0}>
+                        <div className="settings-field">
+                            <div className="settings-label">Terminal Theme</div>
+                            <div className="settings-input">
+                                <Dropdown
+                                    className="terminal-theme-dropdown"
+                                    options={termThemes}
+                                    defaultValue={currTermTheme}
+                                    onChange={this.handleChangeTermTheme}
+                                />
+                            </div>
+                        </div>
+                    </If>
                     <div className="settings-field">
                         <div className="settings-label archived-label">
                             <div className="">Archived</div>

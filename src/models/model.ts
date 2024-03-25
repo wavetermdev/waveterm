@@ -125,11 +125,13 @@ class Model {
         name: "model-showLinks",
     });
     packetSeqNum: number = 0;
-
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
-
+    termThemes: OMap<string, string> = mobx.observable.array([], {
+        name: "terminalThemes",
+        deep: false,
+    });
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
@@ -146,6 +148,7 @@ class Model {
         this.ws.reconnect();
         this.keybindManager = new KeybindManager(this);
         this.readConfigKeybindings();
+        this.fetchTerminalThemes();
         this.initSystemKeybindings();
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
@@ -194,6 +197,13 @@ class Model {
         };
     }
 
+    static getInstance(): Model {
+        if (!(window as any).GlobalModel) {
+            (window as any).GlobalModel = new Model();
+        }
+        return (window as any).GlobalModel;
+    }
+
     readConfigKeybindings() {
         const url = new URL(this.getBaseHostPort() + "/config/keybindings.json");
         let prtn = fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() });
@@ -207,6 +217,41 @@ class Model {
         }).then((userKeybindings) => {
             this.keybindManager.setUserKeybindings(userKeybindings);
         });
+    }
+
+    fetchTerminalThemes() {
+        const url = new URL(this.getBaseHostPort() + "/config/terminal-themes");
+        fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => {
+                if (resp.status == 404) {
+                    return [];
+                } else if (!resp.ok) {
+                    util.handleNotOkResp(resp, url);
+                }
+                return resp.json();
+            })
+            .then((themes) => {
+                const tt = themes.map((theme) => theme.name.split(".")[0]);
+                this.termThemes.replace(tt);
+            });
+    }
+
+    applyTermTheme(element: HTMLElement, themeFileName: string, reset?: boolean) {
+        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
+        fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => resp.json())
+            .then((themeVars) => {
+                Object.keys(themeVars).forEach((key) => {
+                    if (reset) {
+                        this.resetStyleVar(element, `--term-${key}`);
+                    } else {
+                        this.setStyleVar(element, `--term-${key}`, themeVars[key]);
+                    }
+                });
+            })
+            .catch((error) => {
+                console.error("error applying theme:", error);
+            });
     }
 
     initSystemKeybindings() {
@@ -239,13 +284,6 @@ class Model {
         });
         this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", null);
         this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", null);
-    }
-
-    static getInstance(): Model {
-        if (!(window as any).GlobalModel) {
-            (window as any).GlobalModel = new Model();
-        }
-        return (window as any).GlobalModel;
     }
 
     toggleDevUI(): void {
@@ -398,6 +436,14 @@ class Model {
         return theme;
     }
 
+    getTermTheme(): { [k: string]: string } {
+        let cdata = this.clientData.get();
+        if (cdata?.feopts?.termtheme) {
+            return cdata.feopts.termtheme;
+        }
+        return {};
+    }
+
     isThemeDark(): boolean {
         let cdata = this.clientData.get();
         return cdata?.feopts?.theme != "light";
@@ -411,11 +457,11 @@ class Model {
         let lhe = this.recomputeLineHeightEnv();
         mobx.action(() => {
             this.bumpRenderVersion();
-            this.setStyleVar("--termfontsize", lhe.fontSize + "px");
-            this.setStyleVar("--termlineheight", lhe.lineHeight + "px");
-            this.setStyleVar("--termpad", lhe.pad + "px");
-            this.setStyleVar("--termfontsize-sm", lhe.fontSizeSm + "px");
-            this.setStyleVar("--termlineheight-sm", lhe.lineHeightSm + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize", lhe.fontSize + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight", lhe.lineHeight + "px");
+            this.setStyleVar(document.documentElement, "--termpad", lhe.pad + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize-sm", lhe.fontSizeSm + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight-sm", lhe.lineHeightSm + "px");
         })();
     }
 
@@ -434,8 +480,12 @@ class Model {
         return this.lineHeightEnv;
     }
 
-    setStyleVar(name: string, value: string) {
-        document.documentElement.style.setProperty(name, value);
+    setStyleVar(element: HTMLElement, name: string, value: string): void {
+        element.style.setProperty(name, value);
+    }
+
+    resetStyleVar(element: HTMLElement, name: string): void {
+        element.style.removeProperty(name);
     }
 
     getBaseWsHostPort(): string {
@@ -1198,6 +1248,8 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getTheme();
+        const oldTermTheme = this.getTermTheme();
+
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1217,6 +1269,15 @@ class Model {
         if (themeUpdated) {
             loadTheme(newTheme);
             this.bumpRenderVersion();
+        }
+
+        const newTermTheme = clientData?.feopts?.termtheme;
+        if ((Object.keys(newTermTheme).length > 0, oldTermTheme)) {
+            const termTheme = newTermTheme["global"] ?? oldTermTheme["global"];
+            const reset = newTermTheme["global"] == null;
+            if (termTheme) {
+                this.applyTermTheme(document.documentElement, termTheme, reset);
+            }
         }
     }
 
