@@ -178,6 +178,7 @@ type RunCmdType struct {
 	RunPacket  *packet.RunPacketType
 	Ephemeral  bool
 	EphCancled atomic.Bool // only for Ephemeral commands, if true, then the command result should be discarded
+	EphWriter  *io.WriteCloser
 }
 
 type ReinitCommandSink struct {

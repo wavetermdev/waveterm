@@ -94,6 +94,8 @@ type FeCommandPacketType struct {
 	RawStr      string            `json:"rawstr,omitempty"`
 	UIContext   *UIContextType    `json:"uicontext,omitempty"`
 	Interactive bool              `json:"interactive"`
+	Ephemeral   bool              `json:"ephemeral"`
+	OverrideCwd string            `json:"overridecwd,omitempty"`
 }
 
 func (pk *FeCommandPacketType) GetRawStr() string {

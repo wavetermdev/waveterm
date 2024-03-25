@@ -194,6 +194,8 @@ declare global {
         rawstr?: string;
         uicontext: UIContextType;
         interactive: boolean;
+        ephemeral: boolean;
+        overridecwd?: string;
     };
 
     type FeInputPacketType = {
