@@ -80,19 +80,6 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             }
             mobx.action(() => this.sidebarShowing.set(false))();
         }
-
-        const clientData = GlobalModel.clientData.get();
-        const { termtheme } = clientData?.feopts;
-        if (termtheme && this.screenViewRef.current && this.theme != termtheme[screen.screenId]) {
-            // console.log("screenview.tsx: theme changed");
-            this.theme = termtheme[screen.screenId] ?? this.theme;
-            const reset = termtheme[screen.screenId] == null;
-            // console.log("reset ======", reset);
-            // console.log("this.theme", this.theme);
-            if (this.theme) {
-                GlobalModel.applyTermTheme(this.screenViewRef.current, this.theme, reset);
-            }
-        }
     }
 
     componentWillUnmount(): void {
@@ -159,7 +146,6 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             winWidth = screenWidth - realWidth + "px";
             sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
         }
-        console.log("rendered");
         return (
             <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
                 <ScreenWindowView
@@ -556,6 +542,8 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     renderMode: OV<RenderModeType> = mobx.observable.box("normal", { name: "renderMode" });
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "sw-shareCopied" });
 
+    theme: string;
+
     constructor(props: any) {
         super(props);
         this.setSize_debounced = debounce(1000, this.setSize.bind(this));
@@ -575,6 +563,19 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             this.height.set(height);
             screen.screenSizeCallback({ height: height, width: width });
         })();
+    }
+
+    componentDidUpdate(): void {
+        const { screen } = this.props;
+        const clientData = GlobalModel.clientData.get();
+        const { termtheme } = clientData?.feopts;
+        if (termtheme && this.windowViewRef.current) {
+            this.theme = termtheme[screen.screenId] ?? this.theme;
+            const reset = termtheme[screen.screenId] == null;
+            if (this.theme) {
+                GlobalModel.applyTermTheme(this.windowViewRef.current, this.theme, reset);
+            }
+        }
     }
 
     componentDidMount() {
