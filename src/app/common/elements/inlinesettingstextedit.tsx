@@ -78,11 +78,11 @@ class InlineSettingsTextEdit extends React.Component<
     registerKeybindings() {
         let keybindManager = GlobalModel.keybindManager;
         let domain = "inline-settings" + this.curId;
-        keybindManager.registerKeybinding("mainview", domain, "generic:confirm", (waveEvent) => {
+        keybindManager.registerKeybinding("control", domain, "generic:confirm", (waveEvent) => {
             this.confirmChange();
             return true;
         });
-        keybindManager.registerKeybinding("mainview", domain, "generic:cancel", (waveEvent) => {
+        keybindManager.registerKeybinding("control", domain, "generic:cancel", (waveEvent) => {
             this.cancelChange();
             return true;
         });
