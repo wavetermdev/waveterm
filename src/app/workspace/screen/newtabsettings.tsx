@@ -6,7 +6,7 @@ import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalCommandRunner, GlobalModel, Screen } from "@/models";
 import { Button, TextField, Dropdown } from "@/elements";
-import { getRemoteStr } from "@/common/prompt/prompt";
+import { getRemoteStr, getRemoteStrWithAlias } from "@/common/prompt/prompt";
 import * as util from "@/util/util";
 import { TabIcon } from "@/elements/tabicon";
 import { ReactComponent as EllipseIcon } from "@/assets/icons/ellipse.svg";
@@ -42,7 +42,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                 <div className="newtab-spacer" />
                 <div className="newtab-section conn-section">
                     <div className="unselectable">
-                        You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?
+                        You're connected to <b>[{getRemoteStrWithAlias(rptr)}]</b>. Do you want to change it?
                     </div>
                     <div>
                         <TabRemoteSelector screen={screen} errorMessage={this.errorMessage} />
@@ -159,22 +159,28 @@ class TabIconSelector extends React.Component<{ screen: Screen; errorMessage?: O
 
 @mobxReact.observer
 class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?: OV<string> }, {}> {
+    selectedRemoteCN: OV<string> = mobx.observable.box(null, { name: "TabRemoteSelector-selectedRemoteCN" });
+
     @boundMethod
     selectRemote(cname: string): void {
-        let prtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
+        mobx.action(() => {
+            this.selectedRemoteCN.set(cname);
+        })();
+        let prtn = GlobalCommandRunner.screenSetRemote(cname, true, true);
         util.commandRtnHandler(prtn, this.props.errorMessage);
+        prtn.then((crtn) => {
+            GlobalModel.inputModel.giveFocus();
+        });
     }
 
     @boundMethod
-    getOptions(): { label: string; value: string }[] {
+    getOptions(): DropdownItem[] {
         let remotes = GlobalModel.remotes;
-        return remotes
+        let options = remotes
             .filter((r) => !r.archived)
             .map((remote) => ({
                 ...remote,
-                label: !util.isBlank(remote.remotealias)
-                    ? `${remote.remotealias} - ${remote.remotecanonicalname}`
-                    : remote.remotecanonicalname,
+                label: getRemoteStrWithAlias(remote),
                 value: remote.remotecanonicalname,
             }))
             .sort((a, b) => {
@@ -185,11 +191,17 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
                 }
                 return a.remoteidx - b.remoteidx;
             });
+        return options;
     }
 
     render() {
         let { screen } = this.props;
-        let curRemote = GlobalModel.getRemote(screen.getCurRemoteInstance().remoteid);
+        let selectedRemote = this.selectedRemoteCN.get();
+        if (selectedRemote == null) {
+            let curRemote = GlobalModel.getRemote(screen.getCurRemoteInstance().remoteid);
+            selectedRemote = curRemote.remotecanonicalname;
+        }
+        let curRemote = GlobalModel.getRemoteByName(selectedRemote);
         return (
             <Dropdown
                 className="conn-dropdown"

@@ -26,6 +26,20 @@ function makeFullRemoteRef(ownerName: string, remoteRef: string, name: string): 
     return ownerName + ":" + remoteRef + ":" + name;
 }
 
+function getRemoteStrWithAlias(rptr: RemotePtrType): string {
+    if (rptr == null || isBlank(rptr.remoteid)) {
+        return "(null)";
+    }
+    let remote = GlobalModel.getRemote(rptr.remoteid);
+    if (remote == null) {
+        return "(invalid)";
+    }
+    if (!isBlank(remote.remotealias)) {
+        return `${remote.remotealias} (${remote.remotecanonicalname})`;
+    }
+    return `${remote.remotecanonicalname}`;
+}
+
 function getRemoteStr(rptr: RemotePtrType): string {
     if (rptr == null || isBlank(rptr.remoteid)) {
         return "(invalid remote)";
@@ -144,4 +158,4 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
     }
 }
 
-export { Prompt, getRemoteStr };
+export { Prompt, getRemoteStr, getRemoteStrWithAlias };
