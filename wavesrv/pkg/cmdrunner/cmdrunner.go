@@ -35,8 +35,10 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/bookmarks"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/comp"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/history"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
@@ -47,6 +49,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"golang.org/x/mod/semver"
 )
 
@@ -473,7 +476,7 @@ func doHistoryExpansion(ctx context.Context, ids resolvedIds, hnum int) (string,
 	foundHistoryNum := hnum
 	if hnum == -1 {
 		var err error
-		foundHistoryNum, err = sstore.GetLastHistoryLineNum(ctx, ids.ScreenId)
+		foundHistoryNum, err = history.GetLastHistoryLineNum(ctx, ids.ScreenId)
 		if err != nil {
 			return "", fmt.Errorf("cannot expand history, error finding last history item: %v", err)
 		}
@@ -481,7 +484,7 @@ func doHistoryExpansion(ctx context.Context, ids resolvedIds, hnum int) (string,
 			return "", fmt.Errorf("cannot expand history, no last history item")
 		}
 	}
-	hitem, err := sstore.GetHistoryItemByLineNum(ctx, ids.ScreenId, foundHistoryNum)
+	hitem, err := history.GetHistoryItemByLineNum(ctx, ids.ScreenId, foundHistoryNum)
 	if err != nil {
 		return "", fmt.Errorf("cannot get history item '%d': %v", foundHistoryNum, err)
 	}
@@ -666,7 +669,7 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 	if err != nil {
 		return err
 	}
-	hitem := &sstore.HistoryItemType{
+	hitem := &history.HistoryItemType{
 		HistoryId: scbase.GenWaveUUID(),
 		Ts:        time.Now().UnixMilli(),
 		UserId:    DefaultUserId,
@@ -690,7 +693,7 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 	if !isMetaCmd && historyContext.RemotePtr != nil {
 		hitem.Remote = *historyContext.RemotePtr
 	}
-	err = sstore.InsertHistoryItem(ctx, hitem)
+	err = history.InsertHistoryItem(ctx, hitem)
 	if err != nil {
 		return err
 	}
@@ -706,7 +709,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	}
 	evalDepth := getEvalDepth(ctx)
 	if pk.Interactive && evalDepth == 0 {
-		sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{NumCommands: 1}, "numcommands")
+		telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{NumCommands: 1}, "numcommands")
 	}
 	if evalDepth > MaxEvalDepth {
 		return nil, fmt.Errorf("alias/history expansion max-depth exceeded")
@@ -3352,8 +3355,8 @@ func validateRemoteColor(color string, typeStr string) error {
 }
 
 func SessionOpenSharedCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
-	activity := sstore.ActivityUpdate{ClickShared: 1}
-	sstore.UpdateActivityWrap(ctx, activity, "click-shared")
+	activity := telemetry.ActivityUpdate{ClickShared: 1}
+	telemetry.UpdateActivityWrap(ctx, activity, "click-shared")
 	return nil, fmt.Errorf("shared sessions are not available in this version of prompt (stay tuned)")
 }
 
@@ -3615,11 +3618,11 @@ func MainViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	update := scbus.MakeUpdatePacket()
 	mainViewArg := pk.Args[0]
 	if mainViewArg == sstore.MainViewSession {
-		update.AddUpdate(&sstore.MainViewUpdate{MainView: sstore.MainViewSession})
+		update.AddUpdate(&MainViewUpdate{MainView: sstore.MainViewSession})
 	} else if mainViewArg == sstore.MainViewConnections {
-		update.AddUpdate(&sstore.MainViewUpdate{MainView: sstore.MainViewConnections})
+		update.AddUpdate(&MainViewUpdate{MainView: sstore.MainViewConnections})
 	} else if mainViewArg == sstore.MainViewSettings {
-		update.AddUpdate(&sstore.MainViewUpdate{MainView: sstore.MainViewSettings})
+		update.AddUpdate(&MainViewUpdate{MainView: sstore.MainViewSettings})
 	} else if mainViewArg == sstore.MainViewHistory {
 		return nil, fmt.Errorf("use /history instead")
 	} else if mainViewArg == sstore.MainViewBookmarks {
@@ -3825,7 +3828,7 @@ func HistoryPurgeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		}
 		historyIds = append(historyIds, historyArg)
 	}
-	err := sstore.PurgeHistoryByIds(ctx, historyIds)
+	err := history.PurgeHistoryByIds(ctx, historyIds)
 	if err != nil {
 		return nil, fmt.Errorf("/history:purge error purging items: %v", err)
 	}
@@ -3837,7 +3840,7 @@ const HistoryViewPageSize = 50
 var cmdFilterLs = regexp.MustCompile(`^ls(\s|$)`)
 var cmdFilterCd = regexp.MustCompile(`^cd(\s|$)`)
 
-func historyCmdFilter(hitem *sstore.HistoryItemType) bool {
+func historyCmdFilter(hitem *history.HistoryItemType) bool {
 	cmdStr := hitem.CmdStr
 	if cmdStr == "" || strings.Index(cmdStr, ";") != -1 || strings.Index(cmdStr, "\n") != -1 {
 		return true
@@ -3864,7 +3867,7 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, err
 	}
-	opts := sstore.HistoryQueryOpts{MaxItems: HistoryViewPageSize, Offset: offset, RawOffset: rawOffset}
+	opts := history.HistoryQueryOpts{MaxItems: HistoryViewPageSize, Offset: offset, RawOffset: rawOffset}
 	if pk.Kwargs["text"] != "" {
 		opts.SearchText = pk.Kwargs["text"]
 	}
@@ -3903,25 +3906,25 @@ func HistoryViewAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, fmt.Errorf("invalid meta arg (must be boolean): %v", err)
 	}
-	hresult, err := sstore.GetHistoryItems(ctx, opts)
+	hresult, err := history.GetHistoryItems(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	hvdata := &sstore.HistoryViewData{
+	hvdata := &history.HistoryViewData{
 		Items:         hresult.Items,
 		Offset:        hresult.Offset,
 		RawOffset:     hresult.RawOffset,
 		NextRawOffset: hresult.NextRawOffset,
 		HasMore:       hresult.HasMore,
 	}
-	lines, cmds, err := sstore.GetLineCmdsFromHistoryItems(ctx, hvdata.Items)
+	lines, cmds, err := history.GetLineCmdsFromHistoryItems(ctx, hvdata.Items)
 	if err != nil {
 		return nil, err
 	}
 	hvdata.Lines = lines
 	hvdata.Cmds = cmds
 	update := scbus.MakeUpdatePacket()
-	update.AddUpdate(&sstore.MainViewUpdate{MainView: sstore.MainViewHistory, HistoryView: hvdata})
+	update.AddUpdate(&MainViewUpdate{MainView: sstore.MainViewHistory, HistoryView: hvdata})
 	return update, nil
 }
 
@@ -3957,17 +3960,17 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	} else if htype == HistoryTypeSession {
 		hScreenId = ""
 	}
-	hopts := sstore.HistoryQueryOpts{MaxItems: maxItems, SessionId: hSessionId, ScreenId: hScreenId}
-	hresult, err := sstore.GetHistoryItems(ctx, hopts)
+	hopts := history.HistoryQueryOpts{MaxItems: maxItems, SessionId: hSessionId, ScreenId: hScreenId}
+	hresult, err := history.GetHistoryItems(ctx, hopts)
 	if err != nil {
 		return nil, err
 	}
 	show := !resolveBool(pk.Kwargs["noshow"], false)
 	if show {
-		sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{HistoryView: 1}, "history")
+		telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{HistoryView: 1}, "history")
 	}
 	update := scbus.MakeUpdatePacket()
-	update.AddUpdate(sstore.HistoryInfoType{
+	update.AddUpdate(history.HistoryInfoType{
 		HistoryType: htype,
 		SessionId:   ids.SessionId,
 		ScreenId:    ids.ScreenId,
@@ -4310,16 +4313,16 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if len(pk.Args) > 0 {
 		tagName = pk.Args[0]
 	}
-	bms, err := sstore.GetBookmarks(ctx, tagName)
+	bms, err := bookmarks.GetBookmarks(ctx, tagName)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
 	}
-	sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{BookmarksView: 1}, "bookmarks")
+	telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{BookmarksView: 1}, "bookmarks")
 	update := scbus.MakeUpdatePacket()
 
-	update.AddUpdate(&sstore.MainViewUpdate{
+	update.AddUpdate(&MainViewUpdate{
 		MainView:      sstore.MainViewBookmarks,
-		BookmarksView: &sstore.BookmarksUpdate{Bookmarks: bms},
+		BookmarksView: &bookmarks.BookmarksUpdate{Bookmarks: bms},
 	})
 	return update, nil
 }
@@ -4329,7 +4332,7 @@ func BookmarkSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		return nil, fmt.Errorf("/bookmark:set requires one argument (bookmark id)")
 	}
 	bookmarkArg := pk.Args[0]
-	bookmarkId, err := sstore.GetBookmarkIdByArg(ctx, bookmarkArg)
+	bookmarkId, err := bookmarks.GetBookmarkIdByArg(ctx, bookmarkArg)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to resolve bookmark: %v", err)
 	}
@@ -4338,25 +4341,25 @@ func BookmarkSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	}
 	editMap := make(map[string]interface{})
 	if descStr, found := pk.Kwargs["desc"]; found {
-		editMap[sstore.BookmarkField_Desc] = descStr
+		editMap[bookmarks.BookmarkField_Desc] = descStr
 	}
 	if cmdStr, found := pk.Kwargs["cmdstr"]; found {
-		editMap[sstore.BookmarkField_CmdStr] = cmdStr
+		editMap[bookmarks.BookmarkField_CmdStr] = cmdStr
 	}
 	if len(editMap) == 0 {
 		return nil, fmt.Errorf("no fields set, can set %s", formatStrs([]string{"desc", "cmdstr"}, "or", false))
 	}
-	err = sstore.EditBookmark(ctx, bookmarkId, editMap)
+	err = bookmarks.EditBookmark(ctx, bookmarkId, editMap)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to edit bookmark: %v", err)
 	}
-	bm, err := sstore.GetBookmarkById(ctx, bookmarkId, "")
+	bm, err := bookmarks.GetBookmarkById(ctx, bookmarkId, "")
 	if err != nil {
 		return nil, fmt.Errorf("error retrieving edited bookmark: %v", err)
 	}
-	bms := []*sstore.BookmarkType{bm}
+	bms := []*bookmarks.BookmarkType{bm}
 	update := scbus.MakeUpdatePacket()
-	sstore.AddBookmarksUpdate(update, bms, nil)
+	bookmarks.AddBookmarksUpdate(update, bms, nil)
 	update.AddUpdate(sstore.InfoMsgUpdate("bookmark edited"))
 	return update, nil
 }
@@ -4366,20 +4369,20 @@ func BookmarkDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 		return nil, fmt.Errorf("/bookmark:delete requires one argument (bookmark id)")
 	}
 	bookmarkArg := pk.Args[0]
-	bookmarkId, err := sstore.GetBookmarkIdByArg(ctx, bookmarkArg)
+	bookmarkId, err := bookmarks.GetBookmarkIdByArg(ctx, bookmarkArg)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to resolve bookmark: %v", err)
 	}
 	if bookmarkId == "" {
 		return nil, fmt.Errorf("bookmark not found")
 	}
-	err = sstore.DeleteBookmark(ctx, bookmarkId)
+	err = bookmarks.DeleteBookmark(ctx, bookmarkId)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting bookmark: %v", err)
 	}
 	update := scbus.MakeUpdatePacket()
-	bms := []*sstore.BookmarkType{{BookmarkId: bookmarkId, Remove: true}}
-	sstore.AddBookmarksUpdate(update, bms, nil)
+	bms := []*bookmarks.BookmarkType{{BookmarkId: bookmarkId, Remove: true}}
+	bookmarks.AddBookmarksUpdate(update, bms, nil)
 	update.AddUpdate(sstore.InfoMsgUpdate("bookmark deleted"))
 	return update, nil
 }
@@ -4407,7 +4410,7 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if cmdObj == nil {
 		return nil, fmt.Errorf("cannot bookmark non-cmd line")
 	}
-	existingBmIds, err := sstore.GetBookmarkIdsByCmdStr(ctx, cmdObj.CmdStr)
+	existingBmIds, err := bookmarks.GetBookmarkIdsByCmdStr(ctx, cmdObj.CmdStr)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to retrieve current boookmarks: %v", err)
 	}
@@ -4415,7 +4418,7 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if len(existingBmIds) > 0 {
 		newBmId = existingBmIds[0]
 	} else {
-		newBm := &sstore.BookmarkType{
+		newBm := &bookmarks.BookmarkType{
 			BookmarkId:  uuid.New().String(),
 			CreatedTs:   time.Now().UnixMilli(),
 			CmdStr:      cmdObj.CmdStr,
@@ -4423,17 +4426,17 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 			Tags:        nil,
 			Description: "",
 		}
-		err = sstore.InsertBookmark(ctx, newBm)
+		err = bookmarks.InsertBookmark(ctx, newBm)
 		if err != nil {
 			return nil, fmt.Errorf("cannot insert bookmark: %v", err)
 		}
 		newBmId = newBm.BookmarkId
 	}
-	bms, err := sstore.GetBookmarks(ctx, "")
+	bms, err := bookmarks.GetBookmarks(ctx, "")
 	update := scbus.MakeUpdatePacket()
-	update.AddUpdate(&sstore.MainViewUpdate{
+	update.AddUpdate(&MainViewUpdate{
 		MainView:      sstore.MainViewBookmarks,
-		BookmarksView: &sstore.BookmarksUpdate{Bookmarks: bms, SelectedBookmark: newBmId},
+		BookmarksView: &bookmarks.BookmarksUpdate{Bookmarks: bms, SelectedBookmark: newBmId},
 	})
 	return update, nil
 }
