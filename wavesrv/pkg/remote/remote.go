@@ -19,7 +19,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -172,14 +171,12 @@ type CommandInputSink interface {
 }
 
 type RunCmdType struct {
-	CK         base.CommandKey
-	SessionId  string
-	ScreenId   string
-	RemotePtr  sstore.RemotePtrType
-	RunPacket  *packet.RunPacketType
-	Ephemeral  bool
-	EphCancled atomic.Bool // only for Ephemeral commands, if true, then the command result should be discarded
-	EphWriter  *io.WriteCloser
+	CK            base.CommandKey
+	SessionId     string
+	ScreenId      string
+	RemotePtr     sstore.RemotePtrType
+	RunPacket     *packet.RunPacketType
+	EphemeralOpts *packet.EphemeralRunOpts
 }
 
 type ReinitCommandSink struct {
@@ -1928,8 +1925,8 @@ type RunCommandOpts struct {
 	NoCreateCmdPtyFile bool
 
 	// this command will not go into the DB, and will not have a ptyout file created
-	// forces special packet handling (sets RunCommandType.Ephemeral)
-	Ephemeral bool
+	// forces special packet handling (sets RunCommandType.EphemeralOpts)
+	EphemeralOpts *packet.EphemeralRunOpts
 }
 
 // returns (CmdType, allow-updates-callback, err)
@@ -1966,7 +1963,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		}
 		ok, existingRct := msh.testAndSetPendingStateCmd(screenId, remotePtr, newPSC)
 		if !ok {
-			if existingRct.Ephemeral {
+			if existingRct.EphemeralOpts != nil {
 				// if the existing command is ephemeral, we cancel it and continue
 				existingRct.EphCancled.Store(true)
 			} else {
@@ -2287,7 +2284,7 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 	}
 	// this will remove from RunningCmds and from PendingStateCmds
 	defer msh.RemoveRunningCmd(donePk.CK)
-	if rct.Ephemeral && rct.EphCancled.Load() {
+	if rct.EphemeralOpts != nil && rct.EphCancled.Load() {
 		// do nothing when an ephemeral command is canceled
 		return
 	}
