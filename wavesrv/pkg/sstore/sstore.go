@@ -1380,21 +1380,6 @@ func EnsureLocalRemote(ctx context.Context) error {
 	return nil
 }
 
-func EnsureOneSession(ctx context.Context) error {
-	numSessions, err := GetSessionCount(ctx)
-	if err != nil {
-		return err
-	}
-	if numSessions > 0 {
-		return nil
-	}
-	_, err = InsertSessionWithName(ctx, DefaultSessionName, true)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func createClientData(tx *TxWrap) error {
 	curve := elliptic.P384()
 	pkey, err := ecdsa.GenerateKey(curve, rand.Reader)

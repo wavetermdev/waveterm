@@ -188,6 +188,7 @@ func init() {
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
 	registerCmdFn("session:openshared", SessionOpenSharedCommand)
+	registerCmdFn("session:ensureone", SessionEnsureOneCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:archive", ScreenArchiveCommand)
@@ -852,19 +853,27 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if sco.RtnScreenId == nil {
 		return nil, fmt.Errorf("error creating tab, no tab id returned")
 	}
-	crPk := scpacket.MakeFeCommandPacket()
-	crPk.MetaCmd = "cr"
-	crPk.Args = []string{"local"}
-	crPk.RawStr = "/cr local"
 	uiContextCopy := *pk.UIContext
-	crPk.UIContext = &uiContextCopy
-	crPk.UIContext.ScreenId = *sco.RtnScreenId
+	uiContextCopy.ScreenId = *sco.RtnScreenId
+	crUpdate, err := doNewTabConnectLocal(ctx, *sco.RtnScreenId, &uiContextCopy)
+	if err != nil {
+		return nil, err
+	}
+	update.Merge(crUpdate)
+	return update, nil
+}
+
+func doNewTabConnectLocal(ctx context.Context, screenId string, uiContext *scpacket.UIContextType) (scbus.UpdatePacket, error) {
+	crPk := scpacket.MakeFeCommandPacket()
+	crPk.MetaCmd = "connect"
+	crPk.Args = []string{"local"}
+	crPk.RawStr = "/connect local"
+	crPk.UIContext = uiContext
 	crUpdate, err := CrCommand(ctx, crPk)
 	if err != nil {
 		return nil, fmt.Errorf("error creating tab, cannot connect to remote: %w", err)
 	}
-	update.Merge(crUpdate)
-	return update, nil
+	return crUpdate, nil
 }
 
 func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
@@ -3018,20 +3027,27 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Upd
 }
 
 func makeDynCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, termOpts sstore.TermOpts) (*sstore.CmdType, error) {
+	var rptr scpacket.RemotePtrType
+	if ids.Remote != nil {
+		rptr = ids.Remote.RemotePtr
+	} else {
+		local := remote.GetLocalRemote()
+		rptr = scpacket.RemotePtrType{RemoteId: local.RemoteId}
+	}
 	cmd := &sstore.CmdType{
 		ScreenId:  ids.ScreenId,
 		LineId:    scbase.GenWaveUUID(),
 		CmdStr:    cmdStr,
 		RawCmdStr: cmdStr,
-		Remote:    ids.Remote.RemotePtr,
+		Remote:    rptr,
 		TermOpts:  termOpts,
 		Status:    sstore.CmdStatusRunning,
 		RunOut:    nil,
 	}
-	if ids.Remote.StatePtr != nil {
+	if ids.Remote != nil && ids.Remote.StatePtr != nil {
 		cmd.StatePtr = *ids.Remote.StatePtr
 	}
-	if ids.Remote.FeState != nil {
+	if ids.Remote != nil && ids.Remote.FeState != nil {
 		cmd.FeState = ids.Remote.FeState
 	}
 	err := sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.LineId, cmd.TermOpts.MaxPtySize)
@@ -3421,11 +3437,30 @@ func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 			return nil, err
 		}
 	}
-	update, err := sstore.InsertSessionWithName(ctx, newName, activate)
+	update, newSessionId, newScreenId, err := sstore.InsertSessionWithName(ctx, newName, activate)
 	if err != nil {
 		return nil, err
 	}
+	uiContextCopy := *pk.UIContext
+	uiContextCopy.SessionId = newSessionId
+	uiContextCopy.ScreenId = newScreenId
+	crUpdate, err := doNewTabConnectLocal(ctx, newScreenId, &uiContextCopy)
+	if err != nil {
+		return nil, err
+	}
+	update.Merge(crUpdate)
 	return update, nil
+}
+
+func SessionEnsureOneCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	numSessions, err := sstore.GetSessionCount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get number of sessions: %v", err)
+	}
+	if numSessions > 0 {
+		return nil, nil
+	}
+	return SessionOpenCommand(ctx, pk)
 }
 
 func makeExternLink(urlStr string) string {

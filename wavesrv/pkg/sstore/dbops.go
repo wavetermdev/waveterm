@@ -562,8 +562,9 @@ func GetSessionByName(ctx context.Context, name string) (*SessionType, error) {
 	return session, nil
 }
 
+// returns (update, newSessionId, newScreenId, error)
 // if sessionName == "", it will be generated
-func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*scbus.ModelUpdatePacketType, error) {
+func InsertSessionWithName(ctx context.Context, sessionName string, activate bool) (*scbus.ModelUpdatePacketType, string, string, error) {
 	var newScreen *ScreenType
 	newSessionId := scbase.GenWaveUUID()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
@@ -589,11 +590,11 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 		return nil
 	})
 	if txErr != nil {
-		return nil, txErr
+		return nil, "", "", txErr
 	}
 	session, err := GetSessionById(ctx, newSessionId)
 	if err != nil {
-		return nil, err
+		return nil, "", "", err
 	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*session)
@@ -601,7 +602,7 @@ func InsertSessionWithName(ctx context.Context, sessionName string, activate boo
 	if activate {
 		update.AddUpdate(ActiveSessionIdUpdate(newSessionId))
 	}
-	return update, nil
+	return update, newSessionId, newScreen.ScreenId, nil
 }
 
 func SetActiveSessionId(ctx context.Context, sessionId string) error {
@@ -1222,11 +1223,11 @@ func DeleteScreen(ctx context.Context, screenId string, sessionDel bool, update 
 			if sessionId == "" {
 				return fmt.Errorf("cannot delete screen (no sessionid)")
 			}
-			query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT archived`
-			numScreens := tx.GetInt(query, sessionId)
-			if numScreens <= 1 {
-				return fmt.Errorf("cannot delete the last screen in a session")
-			}
+			// query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT archived`
+			// numScreens := tx.GetInt(query, sessionId)
+			// if numScreens <= 1 {
+			// 	return fmt.Errorf("cannot delete the last screen in a session")
+			// }
 			isActive = tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
 			if isActive {
 				screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`, sessionId)
