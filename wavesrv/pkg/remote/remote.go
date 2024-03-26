@@ -1723,7 +1723,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.WriteToPtyBuffer("*disconnected exitcode=%d\n", exitCode)
 	}()
 	go msh.ProcessPackets()
-	msh.initActiveShells()
+	// msh.initActiveShells()
 	go msh.NotifyRemoteUpdate()
 }
 

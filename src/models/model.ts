@@ -105,6 +105,9 @@ class Model {
     devicePixelRatio: OV<number> = mobx.observable.box(window.devicePixelRatio, {
         name: "devicePixelRatio",
     });
+    tabSettingsOpen: OV<boolean> = mobx.observable.box(false, {
+        name: "tabSettingsOpen",
+    });
     remotesModel: RemotesModel;
     lineHeightEnv: LineHeightEnv;
 

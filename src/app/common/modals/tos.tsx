@@ -20,6 +20,7 @@ class TosModal extends React.Component<{}, {}> {
     acceptTos(): void {
         GlobalCommandRunner.clientAcceptTos();
         GlobalModel.modalsModel.popModal();
+        GlobalCommandRunner.ensureWorkspace();
     }
 
     @boundMethod
