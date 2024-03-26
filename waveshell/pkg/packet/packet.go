@@ -809,22 +809,30 @@ type RunDataType struct {
 	Data    []byte `json:"-"`
 }
 
+// Options specific to ephemeral commands (commands that are not saved to the history)
+type EphemeralRunOpts struct {
+	OverrideCwd     string         `json:"overridecwd,omitempty"` // A directory to use as the current working directory. Defaults to the last set shell state.
+	TimeoutMs       int64          `json:"timeoutms"`             // The maximum time to wait for the command to complete. If the command does not complete within this time, it is killed.
+	ExpectsResponse bool           `json:"expectsresponse"`       // If set, the command is expected to return a response. If this is false, ResposeWriter is not set.
+	ResponseWriter  io.WriteCloser `json:"-"`                     // A writer to receive the command's output. If not set, the command's output is discarded. (set by remote.go)
+}
+
 type RunPacketType struct {
-	Type          string          `json:"type"`
-	ReqId         string          `json:"reqid"`
-	CK            base.CommandKey `json:"ck"`
-	ShellType     string          `json:"shelltype"` // new in v0.6.0 (either "bash" or "zsh") (set by remote.go)
-	Command       string          `json:"command"`
-	State         *ShellState     `json:"state,omitempty"`
-	StateDiff     *ShellStateDiff `json:"statediff,omitempty"`
-	StateComplete bool            `json:"statecomplete,omitempty"` // set to true if state is complete (the default env should not be set)
-	UsePty        bool            `json:"usepty,omitempty"`
-	TermOpts      *TermOpts       `json:"termopts,omitempty"`
-	Fds           []RemoteFd      `json:"fds,omitempty"`
-	RunData       []RunDataType   `json:"rundata,omitempty"`
-	Detached      bool            `json:"detached,omitempty"`
-	ReturnState   bool            `json:"returnstate,omitempty"`
-	OverrideCwd   string          `json:"overridecwd,omitempty"`
+	Type          string            `json:"type"`
+	ReqId         string            `json:"reqid"`
+	CK            base.CommandKey   `json:"ck"`
+	ShellType     string            `json:"shelltype"` // new in v0.6.0 (either "bash" or "zsh") (set by remote.go)
+	Command       string            `json:"command"`
+	State         *ShellState       `json:"state,omitempty"`
+	StateDiff     *ShellStateDiff   `json:"statediff,omitempty"`
+	StateComplete bool              `json:"statecomplete,omitempty"` // set to true if state is complete (the default env should not be set)
+	UsePty        bool              `json:"usepty,omitempty"`
+	TermOpts      *TermOpts         `json:"termopts,omitempty"`
+	Fds           []RemoteFd        `json:"fds,omitempty"`
+	RunData       []RunDataType     `json:"rundata,omitempty"`
+	Detached      bool              `json:"detached,omitempty"`
+	ReturnState   bool              `json:"returnstate,omitempty"`
+	EphemeralOpts *EphemeralRunOpts `json:"ephemeralopts,omitempty"` // options specific to ephemeral commands
 }
 
 func (*RunPacketType) GetType() string {

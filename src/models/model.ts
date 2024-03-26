@@ -1283,8 +1283,7 @@ class Model {
         args: string[],
         kwargs: Record<string, string>,
         interactive: boolean,
-        ephemeral: boolean = false,
-        overrideCwd?: string
+        ephemeralopts?: EphemeralCmdOptsType
     ): Promise<CommandRtnType> {
         const pk: FeCmdPacketType = {
             type: "fecmd",
@@ -1294,11 +1293,8 @@ class Model {
             kwargs: { ...kwargs },
             uicontext: this.getUIContext(),
             interactive: interactive,
-            ephemeral: ephemeral,
+            ephemeralopts: ephemeralopts,
         };
-        if (overrideCwd != null) {
-            pk.overridecwd = overrideCwd;
-        }
         /** 
         console.log(
             "CMD"
@@ -1321,7 +1317,6 @@ class Model {
             kwargs: {},
             uicontext: this.getUIContext(),
             interactive: interactive,
-            ephemeral: false,
             rawstr: chatMsg,
         };
         pk.kwargs["nohist"] = "1";
@@ -1342,7 +1337,6 @@ class Model {
             kwargs: {},
             uicontext: this.getUIContext(),
             interactive: interactive,
-            ephemeral: false,
             rawstr: cmdStr,
         };
         if (!addToHistory && pk.kwargs) {

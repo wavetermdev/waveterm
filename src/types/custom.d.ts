@@ -1,3 +1,5 @@
+import { override } from "mobx";
+
 declare module "*.svg" {
     import * as React from "react";
     export const ReactComponent: React.FunctionComponent<React.SVGProps<SVGSVGElement> & { title?: string }>;
@@ -185,6 +187,12 @@ declare global {
         build: string;
     };
 
+    type EphemeralCmdOptsType = {
+        overridecwd?: string;
+        timeoutms?: number;
+        expectsresponse: boolean;
+    };
+
     type FeCmdPacketType = {
         type: string;
         metacmd: string;
@@ -194,8 +202,7 @@ declare global {
         rawstr?: string;
         uicontext: UIContextType;
         interactive: boolean;
-        ephemeral: boolean;
-        overridecwd?: string;
+        ephemeralopts?: EphemeralCmdOptsType;
     };
 
     type FeInputPacketType = {
