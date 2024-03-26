@@ -1002,6 +1002,7 @@ class Model {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+                this.closeTabSettings();
                 setTimeout(() => {
                     GlobalCommandRunner.syncShellState();
                 }, 100);
