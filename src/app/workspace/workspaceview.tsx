@@ -87,7 +87,7 @@ class TabSettingsPulldownKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
         let keybindManager = GlobalModel.keybindManager;
         keybindManager.registerKeybinding("pane", "tabsettings", "generic:cancel", (waveEvent) => {
-            GlobalModel.tabSettingsOpen.set(false);
+            GlobalModel.closeTabSettings();
             return true;
         });
     }

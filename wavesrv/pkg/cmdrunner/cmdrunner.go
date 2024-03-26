@@ -368,7 +368,11 @@ func resolveCommaSepListToMap(arg string) map[string]bool {
 
 func resolveShellType(shellArg string, defaultShell string) (string, error) {
 	if shellArg == "" {
-		shellArg = defaultShell
+		if defaultShell == "" {
+			shellArg = packet.ShellType_bash
+		} else {
+			shellArg = defaultShell
+		}
 	}
 	if shellArg != packet.ShellType_bash && shellArg != packet.ShellType_zsh {
 		return "", fmt.Errorf("invalid shell type %q", shellArg)

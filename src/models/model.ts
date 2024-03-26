@@ -251,6 +251,14 @@ class Model {
         return (window as any).GlobalModel;
     }
 
+    closeTabSettings() {
+        if (this.tabSettingsOpen.get()) {
+            mobx.action(() => {
+                this.tabSettingsOpen.set(false);
+            })();
+        }
+    }
+
     toggleDevUI(): void {
         document.body.classList.toggle("is-dev");
     }
