@@ -12,6 +12,7 @@ declare global {
     type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error";
     type LineContainerStrs = "main" | "sidebar" | "history";
     type AppUpdateStatusType = "unavailable" | "ready";
+    type NativeThemeSource = "system" | "light" | "dark";
 
     type OV<V> = mobx.IObservableValue<V>;
     type OArr<V> = mobx.IObservableArray<V>;
@@ -563,7 +564,7 @@ declare global {
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
-        theme: string;
+        theme: NativeThemeSource;
     };
 
     type ConfirmFlagsType = {
@@ -898,6 +899,9 @@ declare global {
         getAuthKey: () => string;
         getWaveSrvStatus: () => boolean;
         getInitialTermFontFamily: () => string;
+        getShouldUseDarkColors: () => boolean;
+        getNativeThemeSource: () => NativeThemeSource;
+        setNativeThemeSource: (source: NativeThemeSource) => void;
         restartWaveSrv: () => boolean;
         reloadWindow: () => void;
         openExternalLink: (url: string) => void;

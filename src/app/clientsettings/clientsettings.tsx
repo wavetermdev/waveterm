@@ -64,11 +64,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
-    handleChangeTheme(theme: string): void {
-        if (GlobalModel.getTheme() == theme) {
+    handleChangeThemeSource(themeSource: NativeThemeSource): void {
+        if (GlobalModel.getThemeSource() == themeSource) {
             return;
         }
-        const prtn = GlobalCommandRunner.setTheme(theme, false);
+        const prtn = GlobalCommandRunner.setTheme(themeSource, false);
+        getApi().setNativeThemeSource(themeSource);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -111,7 +112,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         return availableFontFamilies;
     }
 
-    getThemes(): DropdownItem[] {
+    getThemeSources(): DropdownItem[] {
         const themes: DropdownItem[] = [];
         themes.push({ label: "Dark", value: "dark" });
         themes.push({ label: "Light", value: "light" });
@@ -191,7 +192,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         );
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
-        const curTheme = GlobalModel.getTheme();
+        const curTheme = GlobalModel.getThemeSource();
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
@@ -226,9 +227,9 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         <div className="settings-input">
                             <Dropdown
                                 className="theme-dropdown"
-                                options={this.getThemes()}
+                                options={this.getThemeSources()}
                                 defaultValue={curTheme}
-                                onChange={this.handleChangeTheme}
+                                onChange={this.handleChangeThemeSource}
                             />
                         </div>
                     </div>
