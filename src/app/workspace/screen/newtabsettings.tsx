@@ -48,7 +48,7 @@ class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
                         <TabRemoteSelector screen={screen} errorMessage={this.errorMessage} />
                     </div>
                     <div className="text-caption cr-help-text">
-                        To change connection from the command line use `cr [alias|user@host]`
+                        To change connection from the command line use `/connect [alias|user@host]`
                     </div>
                 </div>
                 <div className="newtab-spacer" />

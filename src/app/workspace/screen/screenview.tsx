@@ -35,9 +35,16 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     sidebarShowing: OV<boolean> = mobx.observable.box(false, { name: "screenview-sidebarShowing" });
     sidebarShowingTimeoutId: any = null;
 
-    constructor(props: any) {
+    constructor(props: { session: Session; screen: Screen }) {
         super(props);
         this.handleResize_debounced = debounce(100, this.handleResize.bind(this));
+        let screen = this.props.screen;
+        let hasSidebar = false;
+        if (screen != null) {
+            let viewOpts = screen.viewOpts.get();
+            hasSidebar = viewOpts?.sidebar?.open;
+        }
+        this.sidebarShowing = mobx.observable.box(hasSidebar, { name: "screenview-sidebarShowing" });
     }
 
     componentDidMount(): void {
@@ -48,15 +55,13 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             this.rszObs.observe(elem);
             this.handleResize();
         }
-        let viewOpts = screen.viewOpts.get();
-        let hasSidebar = viewOpts?.sidebar?.open;
-        if (hasSidebar) {
-            mobx.action(() => this.sidebarShowing.set(true))();
-        }
     }
 
     componentDidUpdate(): void {
         let { screen } = this.props;
+        if (screen == null) {
+            return;
+        }
         let viewOpts = screen.viewOpts.get();
         let hasSidebar = viewOpts?.sidebar?.open;
         if (hasSidebar && !this.sidebarShowing.get()) {
@@ -91,18 +96,61 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         })();
     }
 
+    @boundMethod
+    createWorkspace() {
+        GlobalCommandRunner.createNewSession();
+    }
+
+    @boundMethod
+    createTab() {
+        GlobalCommandRunner.createNewScreen();
+    }
+
     render() {
         let { session, screen } = this.props;
-        if (screen == null) {
-            return (
-                <div className="screen-view" ref={this.screenViewRef}>
-                    (no screen found)
-                </div>
-            );
-        }
         let screenWidth = this.width.get();
         if (screenWidth == null) {
             return <div className="screen-view" ref={this.screenViewRef}></div>;
+        }
+        if (session == null) {
+            let sessionCount = GlobalModel.sessionList.length;
+            return (
+                <div className="screen-view" ref={this.screenViewRef}>
+                    <div className="window-view" style={{ width: "100%" }}>
+                        <div key="lines" className="lines"></div>
+                        <div key="window-empty" className={cn("window-empty")}>
+                            <div className="flex-centered-column">
+                                <code className="text-standard">[no workspace]</code>
+                                <If condition={sessionCount == 0}>
+                                    <Button onClick={this.createWorkspace} style={{ marginTop: 10 }}>
+                                        Create New Workspace
+                                    </Button>
+                                </If>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        if (screen == null) {
+            let screens = GlobalModel.getSessionScreens(session.sessionId);
+            return (
+                <div className="screen-view" ref={this.screenViewRef}>
+                    <div className="window-view" style={{ width: "100%" }}>
+                        <div key="lines" className="lines"></div>
+                        <div key="window-empty" className={cn("window-empty")}>
+                            <div className="flex-centered-column">
+                                <code className="text-standard">[no active tab]</code>
+                                <If condition={screens.length == 0}>
+                                    <Button onClick={this.createTab} style={{ marginTop: 10 }}>
+                                        Create New Tab
+                                    </Button>
+                                </If>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
         }
         let fontSize = GlobalModel.getTermFontSize();
         let dprStr = sprintf("%0.3f", GlobalModel.devicePixelRatio.get());
