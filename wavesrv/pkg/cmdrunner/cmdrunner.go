@@ -47,6 +47,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"golang.org/x/mod/semver"
 )
 
@@ -706,7 +707,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	}
 	evalDepth := getEvalDepth(ctx)
 	if pk.Interactive && evalDepth == 0 {
-		sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{NumCommands: 1}, "numcommands")
+		telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{NumCommands: 1}, "numcommands")
 	}
 	if evalDepth > MaxEvalDepth {
 		return nil, fmt.Errorf("alias/history expansion max-depth exceeded")
@@ -3352,8 +3353,8 @@ func validateRemoteColor(color string, typeStr string) error {
 }
 
 func SessionOpenSharedCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
-	activity := sstore.ActivityUpdate{ClickShared: 1}
-	sstore.UpdateActivityWrap(ctx, activity, "click-shared")
+	activity := telemetry.ActivityUpdate{ClickShared: 1}
+	telemetry.UpdateActivityWrap(ctx, activity, "click-shared")
 	return nil, fmt.Errorf("shared sessions are not available in this version of prompt (stay tuned)")
 }
 
@@ -3964,7 +3965,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	}
 	show := !resolveBool(pk.Kwargs["noshow"], false)
 	if show {
-		sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{HistoryView: 1}, "history")
+		telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{HistoryView: 1}, "history")
 	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.HistoryInfoType{
@@ -4314,7 +4315,7 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
 	}
-	sstore.UpdateActivityWrap(ctx, sstore.ActivityUpdate{BookmarksView: 1}, "bookmarks")
+	telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{BookmarksView: 1}, "bookmarks")
 	update := scbus.MakeUpdatePacket()
 
 	update.AddUpdate(&sstore.MainViewUpdate{

@@ -110,6 +110,7 @@ const (
 	SSHConfigSrcTypeImport = "sshconfig-import"
 )
 
+// TODO: move to webshare package once sstore code is more modular
 const (
 	ShareModeLocal = "local"
 	ShareModeWeb   = "web"
@@ -153,8 +154,6 @@ const (
 	UpdateType_CmdRtnState        = "cmd:rtnstate"
 	UpdateType_PtyPos             = "pty:pos"
 )
-
-const MaxTzNameLen = 50
 
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
@@ -231,56 +230,6 @@ type ClientWinSizeType struct {
 	Top        int  `json:"top"`
 	Left       int  `json:"left"`
 	FullScreen bool `json:"fullscreen,omitempty"`
-}
-
-type ActivityUpdate struct {
-	FgMinutes        int
-	ActiveMinutes    int
-	OpenMinutes      int
-	NumCommands      int
-	ClickShared      int
-	HistoryView      int
-	BookmarksView    int
-	NumConns         int
-	WebShareLimit    int
-	ReinitBashErrors int
-	ReinitZshErrors  int
-	BuildTime        string
-}
-
-type ActivityType struct {
-	Day           string        `json:"day"`
-	Uploaded      bool          `json:"-"`
-	TData         TelemetryData `json:"tdata"`
-	TzName        string        `json:"tzname"`
-	TzOffset      int           `json:"tzoffset"`
-	ClientVersion string        `json:"clientversion"`
-	ClientArch    string        `json:"clientarch"`
-	BuildTime     string        `json:"buildtime"`
-	DefaultShell  string        `json:"defaultshell"`
-	OSRelease     string        `json:"osrelease"`
-}
-
-type TelemetryData struct {
-	NumCommands      int `json:"numcommands"`
-	ActiveMinutes    int `json:"activeminutes"`
-	FgMinutes        int `json:"fgminutes"`
-	OpenMinutes      int `json:"openminutes"`
-	ClickShared      int `json:"clickshared,omitempty"`
-	HistoryView      int `json:"historyview,omitempty"`
-	BookmarksView    int `json:"bookmarksview,omitempty"`
-	NumConns         int `json:"numconns"`
-	WebShareLimit    int `json:"websharelimit,omitempty"`
-	ReinitBashErrors int `json:"reinitbasherrors,omitempty"`
-	ReinitZshErrors  int `json:"reinitzsherrors,omitempty"`
-}
-
-func (tdata TelemetryData) Value() (driver.Value, error) {
-	return quickValueJson(tdata)
-}
-
-func (tdata *TelemetryData) Scan(val interface{}) error {
-	return quickScanJson(tdata, val)
 }
 
 type SidebarValueType struct {
@@ -848,78 +797,6 @@ type OpenAIResponse struct {
 	Created int64              `json:"created"`
 	Usage   *OpenAIUsage       `json:"usage,omitempty"`
 	Choices []OpenAIChoiceType `json:"choices,omitempty"`
-}
-
-type PlaybookType struct {
-	PlaybookId   string   `json:"playbookid"`
-	PlaybookName string   `json:"playbookname"`
-	Description  string   `json:"description"`
-	EntryIds     []string `json:"entryids"`
-
-	// this is not persisted to DB, just for transport to FE
-	Entries []*PlaybookEntry `json:"entries"`
-}
-
-func (p *PlaybookType) ToMap() map[string]interface{} {
-	rtn := make(map[string]interface{})
-	rtn["playbookid"] = p.PlaybookId
-	rtn["playbookname"] = p.PlaybookName
-	rtn["description"] = p.Description
-	rtn["entryids"] = quickJsonArr(p.EntryIds)
-	return rtn
-}
-
-func (p *PlaybookType) FromMap(m map[string]interface{}) bool {
-	quickSetStr(&p.PlaybookId, m, "playbookid")
-	quickSetStr(&p.PlaybookName, m, "playbookname")
-	quickSetStr(&p.Description, m, "description")
-	quickSetJsonArr(&p.Entries, m, "entries")
-	return true
-}
-
-// reorders p.Entries to match p.EntryIds
-func (p *PlaybookType) OrderEntries() {
-	if len(p.Entries) == 0 {
-		return
-	}
-	m := make(map[string]*PlaybookEntry)
-	for _, entry := range p.Entries {
-		m[entry.EntryId] = entry
-	}
-	newList := make([]*PlaybookEntry, 0, len(p.EntryIds))
-	for _, entryId := range p.EntryIds {
-		entry := m[entryId]
-		if entry != nil {
-			newList = append(newList, entry)
-		}
-	}
-	p.Entries = newList
-}
-
-// removes from p.EntryIds (not from p.Entries)
-func (p *PlaybookType) RemoveEntry(entryIdToRemove string) {
-	if len(p.EntryIds) == 0 {
-		return
-	}
-	newList := make([]string, 0, len(p.EntryIds)-1)
-	for _, entryId := range p.EntryIds {
-		if entryId == entryIdToRemove {
-			continue
-		}
-		newList = append(newList, entryId)
-	}
-	p.EntryIds = newList
-}
-
-type PlaybookEntry struct {
-	PlaybookId  string `json:"playbookid"`
-	EntryId     string `json:"entryid"`
-	Alias       string `json:"alias"`
-	CmdStr      string `json:"cmdstr"`
-	UpdatedTs   int64  `json:"updatedts"`
-	CreatedTs   int64  `json:"createdts"`
-	Description string `json:"description"`
-	Remove      bool   `json:"remove,omitempty"`
 }
 
 type BookmarkType struct {

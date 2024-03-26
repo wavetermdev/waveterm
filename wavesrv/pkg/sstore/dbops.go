@@ -2273,92 +2273,6 @@ func GetRIsForScreen(ctx context.Context, sessionId string, screenId string) ([]
 	return rtn, nil
 }
 
-func GetCurDayStr() string {
-	now := time.Now()
-	dayStr := now.Format("2006-01-02")
-	return dayStr
-}
-
-// Wraps UpdateCurrentActivity, but ignores errors
-func UpdateActivityWrap(ctx context.Context, update ActivityUpdate, debugStr string) {
-	err := UpdateCurrentActivity(ctx, update)
-	if err != nil {
-		// ignore error, just log, since this is not critical
-		log.Printf("error updating current activity (%s): %v\n", debugStr, err)
-	}
-}
-
-func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
-	now := time.Now()
-	dayStr := GetCurDayStr()
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		var tdata TelemetryData
-		query := `SELECT tdata FROM activity WHERE day = ?`
-		found := tx.Get(&tdata, query, dayStr)
-		if !found {
-			query = `INSERT INTO activity (day, uploaded, tdata, tzname, tzoffset, clientversion, clientarch, buildtime, osrelease)
-                                   VALUES (?,   0,        ?,     ?,      ?,        ?,             ?         , ?        , ?)`
-			tzName, tzOffset := now.Zone()
-			if len(tzName) > MaxTzNameLen {
-				tzName = tzName[0:MaxTzNameLen]
-			}
-			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.WaveVersion, scbase.ClientArch(), scbase.BuildTime, scbase.UnameKernelRelease())
-		}
-		tdata.NumCommands += update.NumCommands
-		tdata.FgMinutes += update.FgMinutes
-		tdata.ActiveMinutes += update.ActiveMinutes
-		tdata.OpenMinutes += update.OpenMinutes
-		tdata.ClickShared += update.ClickShared
-		tdata.HistoryView += update.HistoryView
-		tdata.BookmarksView += update.BookmarksView
-		tdata.ReinitBashErrors += update.ReinitBashErrors
-		tdata.ReinitZshErrors += update.ReinitZshErrors
-		if update.NumConns > 0 {
-			tdata.NumConns = update.NumConns
-		}
-		query = `UPDATE activity
-                 SET tdata = ?,
-                     clientversion = ?,
-                     buildtime = ?
-                 WHERE day = ?`
-		tx.Exec(query, tdata, scbase.WaveVersion, scbase.BuildTime, dayStr)
-		return nil
-	})
-	if txErr != nil {
-		return txErr
-	}
-	return nil
-}
-
-func GetNonUploadedActivity(ctx context.Context) ([]*ActivityType, error) {
-	var rtn []*ActivityType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM activity WHERE uploaded = 0 ORDER BY day DESC LIMIT 30`
-		tx.Select(&rtn, query)
-		return nil
-	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return rtn, nil
-}
-
-// note, will not mark the current day as uploaded
-func MarkActivityAsUploaded(ctx context.Context, activityArr []*ActivityType) error {
-	dayStr := GetCurDayStr()
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE activity SET uploaded = 1 WHERE day = ?`
-		for _, activity := range activityArr {
-			if activity.Day == dayStr {
-				continue
-			}
-			tx.Exec(query, activity.Day)
-		}
-		return nil
-	})
-	return txErr
-}
-
 func foundInStrArr(strs []string, s string) bool {
 	for _, sval := range strs {
 		if s == sval {
@@ -2579,83 +2493,6 @@ func DeleteBookmark(ctx context.Context, bookmarkId string) error {
 	return txErr
 }
 
-func CreatePlaybook(ctx context.Context, name string) (*PlaybookType, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*PlaybookType, error) {
-		query := `SELECT playbookid FROM playbook WHERE name = ?`
-		if tx.Exists(query, name) {
-			return nil, fmt.Errorf("playbook %q already exists", name)
-		}
-		rtn := &PlaybookType{}
-		rtn.PlaybookId = uuid.New().String()
-		rtn.PlaybookName = name
-		query = `INSERT INTO playbook ( playbookid, playbookname, description, entryids)
-                               VALUES (:playbookid,:playbookname,:description,:entryids)`
-		tx.Exec(query, rtn.ToMap())
-		return rtn, nil
-	})
-}
-
-func selectPlaybook(tx *TxWrap, playbookId string) *PlaybookType {
-	query := `SELECT * FROM playbook where playbookid = ?`
-	playbook := dbutil.GetMapGen[*PlaybookType](tx, query, playbookId)
-	return playbook
-}
-
-func AddPlaybookEntry(ctx context.Context, entry *PlaybookEntry) error {
-	if entry.EntryId == "" {
-		return fmt.Errorf("invalid entryid")
-	}
-	return WithTx(ctx, func(tx *TxWrap) error {
-		playbook := selectPlaybook(tx, entry.PlaybookId)
-		if playbook == nil {
-			return fmt.Errorf("cannot add entry, playbook does not exist")
-		}
-		query := `SELECT entryid FROM playbook_entry WHERE entryid = ?`
-		if tx.Exists(query, entry.EntryId) {
-			return fmt.Errorf("cannot add entry, entryid already exists")
-		}
-		query = `INSERT INTO playbook_entry ( entryid, playbookid, description, alias, cmdstr, createdts, updatedts)
-                                     VALUES (:entryid,:playbookid,:description,:alias,:cmdstr,:createdts,:updatedts)`
-		tx.Exec(query, entry)
-		playbook.EntryIds = append(playbook.EntryIds, entry.EntryId)
-		query = `UPDATE playbook SET entryids = ? WHERE playbookid = ?`
-		tx.Exec(query, quickJsonArr(playbook.EntryIds), entry.PlaybookId)
-		return nil
-	})
-}
-
-func RemovePlaybookEntry(ctx context.Context, playbookId string, entryId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		playbook := selectPlaybook(tx, playbookId)
-		if playbook == nil {
-			return fmt.Errorf("cannot remove playbook entry, playbook does not exist")
-		}
-		query := `SELECT entryid FROM playbook_entry WHERE entryid = ?`
-		if !tx.Exists(query, entryId) {
-			return fmt.Errorf("cannot remove playbook entry, entry does not exist")
-		}
-		query = `DELETE FROM playbook_entry WHERE entryid = ?`
-		tx.Exec(query, entryId)
-		playbook.RemoveEntry(entryId)
-		query = `UPDATE playbook SET entryids = ? WHERE playbookid = ?`
-		tx.Exec(query, quickJsonArr(playbook.EntryIds), playbookId)
-		return nil
-	})
-}
-
-func GetPlaybookById(ctx context.Context, playbookId string) (*PlaybookType, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*PlaybookType, error) {
-		rtn := selectPlaybook(tx, playbookId)
-		if rtn == nil {
-			return nil, nil
-		}
-		query := `SELECT * FROM playbook_entry WHERE playbookid = ?`
-		tx.Select(&rtn.Entries, query, playbookId)
-		rtn.OrderEntries()
-		return rtn, nil
-	})
-}
-
 func getLineIdsFromHistoryItems(historyItems []*HistoryItemType) []string {
 	var rtn []string
 	for _, hitem := range historyItems {
@@ -2704,37 +2541,38 @@ func CountScreenLines(ctx context.Context, screenId string) (int, error) {
 	})
 }
 
-func CanScreenWebShare(ctx context.Context, screen *ScreenType) error {
-	if screen == nil {
-		return fmt.Errorf("cannot share screen, not found")
-	}
-	if screen.ShareMode == ShareModeWeb {
-		return fmt.Errorf("screen is already shared to web")
-	}
-	if screen.ShareMode != ShareModeLocal {
-		return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", screen.ShareMode)
-	}
-	if screen.Archived {
-		return fmt.Errorf("screen cannot be shared, must un-archive before sharing")
-	}
-	webShareCount, err := CountScreenWebShares(ctx)
-	if err != nil {
-		return fmt.Errorf("screen cannot be share: error getting webshare count: %v", err)
-	}
-	if webShareCount >= MaxWebShareScreenCount {
-		go UpdateCurrentActivity(context.Background(), ActivityUpdate{WebShareLimit: 1})
-		return fmt.Errorf("screen cannot be shared, limited to a maximum of %d shared screen(s)", MaxWebShareScreenCount)
-	}
-	lineCount, err := CountScreenLines(ctx, screen.ScreenId)
-	if err != nil {
-		return fmt.Errorf("screen cannot be share: error getting screen line count: %v", err)
-	}
-	if lineCount > MaxWebShareLineCount {
-		go UpdateCurrentActivity(context.Background(), ActivityUpdate{WebShareLimit: 1})
-		return fmt.Errorf("screen cannot be shared, limited to a maximum of %d lines", MaxWebShareLineCount)
-	}
-	return nil
-}
+// Below is currently not used and is causing circular dependency due to moving telemetry code to a new package. It will likely be rewritten whenever we add back webshare and should be moved to a different package then.
+// func CanScreenWebShare(ctx context.Context, screen *ScreenType) error {
+// 	if screen == nil {
+// 		return fmt.Errorf("cannot share screen, not found")
+// 	}
+// 	if screen.ShareMode == ShareModeWeb {
+// 		return fmt.Errorf("screen is already shared to web")
+// 	}
+// 	if screen.ShareMode != ShareModeLocal {
+// 		return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", screen.ShareMode)
+// 	}
+// 	if screen.Archived {
+// 		return fmt.Errorf("screen cannot be shared, must un-archive before sharing")
+// 	}
+// 	webShareCount, err := CountScreenWebShares(ctx)
+// 	if err != nil {
+// 		return fmt.Errorf("screen cannot be share: error getting webshare count: %v", err)
+// 	}
+// 	if webShareCount >= MaxWebShareScreenCount {
+// 		go UpdateCurrentActivity(context.Background(), ActivityUpdate{WebShareLimit: 1})
+// 		return fmt.Errorf("screen cannot be shared, limited to a maximum of %d shared screen(s)", MaxWebShareScreenCount)
+// 	}
+// 	lineCount, err := CountScreenLines(ctx, screen.ScreenId)
+// 	if err != nil {
+// 		return fmt.Errorf("screen cannot be share: error getting screen line count: %v", err)
+// 	}
+// 	if lineCount > MaxWebShareLineCount {
+// 		go UpdateCurrentActivity(context.Background(), ActivityUpdate{WebShareLimit: 1})
+// 		return fmt.Errorf("screen cannot be shared, limited to a maximum of %d lines", MaxWebShareLineCount)
+// 	}
+// 	return nil
+// }
 
 func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenWebShareOpts) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
