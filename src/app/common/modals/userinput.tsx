@@ -1,9 +1,7 @@
 import * as React from "react";
-import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
 import { Choose, When, If } from "tsx-control-statements/components";
 import { Modal, PasswordField, TextField, Markdown, Checkbox } from "@/elements";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, KeybindManager } from "@/util/keyutil";
 
 import "./userinput.less";
 

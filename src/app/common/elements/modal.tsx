@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
+import * as mobx from "mobx";
 import { If } from "tsx-control-statements/components";
 import ReactDOM from "react-dom";
 import { Button } from "./button";
@@ -33,10 +34,9 @@ interface ModalFooterProps {
     cancelLabel?: string;
     okLabel?: string;
     keybindings?: boolean;
-    focusVal?: boolean;
 }
 
-class ModalKeybindings extends React.Component<{ onOk; onCancel; focusVal }, {}> {
+class ModalKeybindings extends React.Component<{ onOk; onCancel }, {}> {
     curId: string;
 
     @boundMethod
@@ -46,17 +46,13 @@ class ModalKeybindings extends React.Component<{ onOk; onCancel; focusVal }, {}>
         let keybindManager = GlobalModel.keybindManager;
         if (this.props.onOk) {
             keybindManager.registerKeybinding("modal", domain, "generic:confirm", (waveEvent) => {
-                if (this.props.focusVal || this.props.focusVal == undefined || this.props.focusVal == null) {
-                    this.props.onOk();
-                }
+                this.props.onOk();
                 return true;
             });
         }
         if (this.props.onCancel) {
             keybindManager.registerKeybinding("modal", domain, "generic:cancel", (waveEvent) => {
-                if (this.props.focusVal || this.props.focusVal == undefined || this.props.focusVal == null) {
-                    this.props.onCancel();
-                }
+                this.props.onCancel();
                 return true;
             });
         }
@@ -78,11 +74,10 @@ const ModalFooter: React.FC<ModalFooterProps> = ({
     cancelLabel = "Cancel",
     okLabel = "Ok",
     keybindings = true,
-    focusVal = true,
 }) => (
     <div className="wave-modal-footer">
         <If condition={keybindings}>
-            <ModalKeybindings onOk={onOk} onCancel={onCancel} focusVal={focusVal}></ModalKeybindings>
+            <ModalKeybindings onOk={onOk} onCancel={onCancel}></ModalKeybindings>
         </If>
         {onCancel && (
             <Button className="secondary" onClick={onCancel}>
