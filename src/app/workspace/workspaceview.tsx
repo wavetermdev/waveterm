@@ -83,6 +83,25 @@ class SessionKeybindings extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
+class TabSettingsPulldownKeybindings extends React.Component<{}, {}> {
+    componentDidMount() {
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("pane", "tabsettings", "generic:cancel", (waveEvent) => {
+            GlobalModel.tabSettingsOpen.set(false);
+            return true;
+        });
+    }
+
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("tabsettings");
+    }
+
+    render() {
+        return null;
+    }
+}
+
+@mobxReact.observer
 class TabSettings extends React.Component<{ screen: Screen }, {}> {
     errorMessage: OV<string> = mobx.observable.box(null, { name: "TabSettings-errorMessage" });
 
@@ -162,6 +181,9 @@ class WorkspaceView extends React.Component<{}, {}> {
                             <i className="fa-solid fa-sharp fa-xmark-large" />
                         </div>
                         <TabSettings key={activeScreen.screenId} screen={activeScreen} />
+                        <If condition={showTabSettings}>
+                            <TabSettingsPulldownKeybindings />
+                        </If>
                     </div>
                 </If>
                 <ErrorBoundary key="eb">
