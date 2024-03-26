@@ -347,52 +347,6 @@ type SessionStatsType struct {
 	DiskStats          SessionDiskSizeType `json:"diskstats"`
 }
 
-func (h *HistoryItemType) ToMap() map[string]interface{} {
-	rtn := make(map[string]interface{})
-	rtn["historyid"] = h.HistoryId
-	rtn["ts"] = h.Ts
-	rtn["userid"] = h.UserId
-	rtn["sessionid"] = h.SessionId
-	rtn["screenid"] = h.ScreenId
-	rtn["lineid"] = h.LineId
-	rtn["linenum"] = h.LineNum
-	rtn["haderror"] = h.HadError
-	rtn["cmdstr"] = h.CmdStr
-	rtn["remoteownerid"] = h.Remote.OwnerId
-	rtn["remoteid"] = h.Remote.RemoteId
-	rtn["remotename"] = h.Remote.Name
-	rtn["ismetacmd"] = h.IsMetaCmd
-	rtn["exitcode"] = h.ExitCode
-	rtn["durationms"] = h.DurationMs
-	rtn["festate"] = quickJson(h.FeState)
-	rtn["tags"] = quickJson(h.Tags)
-	rtn["status"] = h.Status
-	return rtn
-}
-
-func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
-	quickSetStr(&h.HistoryId, m, "historyid")
-	quickSetInt64(&h.Ts, m, "ts")
-	quickSetStr(&h.UserId, m, "userid")
-	quickSetStr(&h.SessionId, m, "sessionid")
-	quickSetStr(&h.ScreenId, m, "screenid")
-	quickSetStr(&h.LineId, m, "lineid")
-	quickSetBool(&h.HadError, m, "haderror")
-	quickSetStr(&h.CmdStr, m, "cmdstr")
-	quickSetStr(&h.Remote.OwnerId, m, "remoteownerid")
-	quickSetStr(&h.Remote.RemoteId, m, "remoteid")
-	quickSetStr(&h.Remote.Name, m, "remotename")
-	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
-	quickSetStr(&h.HistoryNum, m, "historynum")
-	quickSetInt64(&h.LineNum, m, "linenum")
-	dbutil.QuickSetNullableInt64(&h.ExitCode, m, "exitcode")
-	dbutil.QuickSetNullableInt64(&h.DurationMs, m, "durationms")
-	quickSetJson(&h.FeState, m, "festate")
-	quickSetJson(&h.Tags, m, "tags")
-	quickSetStr(&h.Status, m, "status")
-	return true
-}
-
 type ScreenOptsType struct {
 	TabColor string `json:"tabcolor,omitempty"`
 	TabIcon  string `json:"tabicon,omitempty"`
@@ -566,55 +520,6 @@ func (l LayoutType) Value() (driver.Value, error) {
 type ScreenAnchorType struct {
 	AnchorLine   int `json:"anchorline,omitempty"`
 	AnchorOffset int `json:"anchoroffset,omitempty"`
-}
-
-type HistoryItemType struct {
-	HistoryId  string          `json:"historyid"`
-	Ts         int64           `json:"ts"`
-	UserId     string          `json:"userid"`
-	SessionId  string          `json:"sessionid"`
-	ScreenId   string          `json:"screenid"`
-	LineId     string          `json:"lineid"`
-	HadError   bool            `json:"haderror"`
-	CmdStr     string          `json:"cmdstr"`
-	Remote     RemotePtrType   `json:"remote"`
-	IsMetaCmd  bool            `json:"ismetacmd"`
-	ExitCode   *int64          `json:"exitcode,omitempty"`
-	DurationMs *int64          `json:"durationms,omitempty"`
-	FeState    FeStateType     `json:"festate,omitempty"`
-	Tags       map[string]bool `json:"tags,omitempty"`
-	LineNum    int64           `json:"linenum" dbmap:"-"`
-	Status     string          `json:"status"`
-
-	// only for updates
-	Remove bool `json:"remove" dbmap:"-"`
-
-	// transient (string because of different history orderings)
-	HistoryNum string `json:"historynum" dbmap:"-"`
-}
-
-type HistoryQueryOpts struct {
-	Offset     int
-	MaxItems   int
-	FromTs     int64
-	SearchText string
-	SessionId  string
-	RemoteId   string
-	ScreenId   string
-	NoMeta     bool
-	RawOffset  int
-	FilterFn   func(*HistoryItemType) bool
-}
-
-type HistoryQueryResult struct {
-	MaxItems      int
-	Items         []*HistoryItemType
-	Offset        int // the offset shown to user
-	RawOffset     int // internal offset
-	HasMore       bool
-	NextRawOffset int // internal offset used by pager for next query
-
-	prevItems int // holds number of items skipped by RawOffset
 }
 
 type TermOpts struct {
@@ -797,42 +702,6 @@ type OpenAIResponse struct {
 	Created int64              `json:"created"`
 	Usage   *OpenAIUsage       `json:"usage,omitempty"`
 	Choices []OpenAIChoiceType `json:"choices,omitempty"`
-}
-
-type BookmarkType struct {
-	BookmarkId  string   `json:"bookmarkid"`
-	CreatedTs   int64    `json:"createdts"`
-	CmdStr      string   `json:"cmdstr"`
-	Alias       string   `json:"alias,omitempty"`
-	Tags        []string `json:"tags"`
-	Description string   `json:"description"`
-	OrderIdx    int64    `json:"orderidx"`
-	Remove      bool     `json:"remove,omitempty"`
-}
-
-func (bm *BookmarkType) GetSimpleKey() string {
-	return bm.BookmarkId
-}
-
-func (bm *BookmarkType) ToMap() map[string]interface{} {
-	rtn := make(map[string]interface{})
-	rtn["bookmarkid"] = bm.BookmarkId
-	rtn["createdts"] = bm.CreatedTs
-	rtn["cmdstr"] = bm.CmdStr
-	rtn["alias"] = bm.Alias
-	rtn["description"] = bm.Description
-	rtn["tags"] = quickJsonArr(bm.Tags)
-	return rtn
-}
-
-func (bm *BookmarkType) FromMap(m map[string]interface{}) bool {
-	quickSetStr(&bm.BookmarkId, m, "bookmarkid")
-	quickSetInt64(&bm.CreatedTs, m, "createdts")
-	quickSetStr(&bm.Alias, m, "alias")
-	quickSetStr(&bm.CmdStr, m, "cmdstr")
-	quickSetStr(&bm.Description, m, "description")
-	quickSetJsonArr(&bm.Tags, m, "tags")
-	return true
 }
 
 type ResolveItem struct {
