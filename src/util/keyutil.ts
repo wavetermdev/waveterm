@@ -26,9 +26,12 @@ const KeyTypeCode = "code";
 type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
 type KeybindConfigArray = Array<KeybindConfig>;
 type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string };
+type KeyPressLog = { event: WaveKeyboardEvent; timestamp: number };
 
 const Callback = "callback";
 const Command = "command";
+
+const ChordTimeout = 2000; // in ms
 
 type Keybind = {
     domain: string;
@@ -47,12 +50,14 @@ class KeybindManager {
     keyDescriptionsMap: Map<string, KeybindConfig>;
     userKeybindings: KeybindConfigArray;
     userKeybindingError: OV<string>;
+    pastKeyPresses: Array<KeyPressLog>;
     globalModel: any;
 
     constructor(GlobalModel: any) {
         this.levelMap = new Map();
         this.domainCallbacks = new Map();
         this.levelArray = KeybindLevels;
+        this.pastKeyPresses = [];
         for (let index = 0; index < this.levelArray.length; index++) {
             let curLevel = this.levelArray[index];
             this.levelMap.set(curLevel, new Array<Keybind>());
@@ -142,11 +147,16 @@ class KeybindManager {
         });
     }
 
-    processLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {
+    processLevel(
+        nativeEvent: any,
+        event: WaveKeyboardEvent,
+        keybindsArray: Array<Keybind>,
+        timestamp: number
+    ): boolean {
         // iterate through keybinds in backwards order
         for (let index = keybindsArray.length - 1; index >= 0; index--) {
             let curKeybind = keybindsArray[index];
-            if (this.checkKeyPressed(event, curKeybind.keybinding)) {
+            if (this.checkKeyPressed(event, curKeybind.keybinding, timestamp)) {
                 let shouldReturn = false;
                 let shouldRunCommand = true;
                 if (curKeybind.callback != null) {
@@ -174,16 +184,23 @@ class KeybindManager {
     }
 
     processKeyEvent(nativeEvent: any, event: WaveKeyboardEvent): boolean {
+        let curTimeStamp = Date.now();
+        let rval = this.processKeyEvent_internal(nativeEvent, event, curTimeStamp);
+        this.pastKeyPresses.push({ event: event, timestamp: curTimeStamp });
+        return rval;
+    }
+
+    processKeyEvent_internal(nativeEvent: any, event: WaveKeyboardEvent, timestamp: number): boolean {
         let modalLevel = this.levelMap.get("modal");
         if (modalLevel.length != 0) {
             // console.log("processing modal");
             // special case when modal keybindings are present
-            let shouldReturn = this.processLevel(nativeEvent, event, modalLevel);
+            let shouldReturn = this.processLevel(nativeEvent, event, modalLevel, timestamp);
             if (shouldReturn) {
                 return true;
             }
             let systemLevel = this.levelMap.get("system");
-            return this.processLevel(nativeEvent, event, systemLevel);
+            return this.processLevel(nativeEvent, event, systemLevel, timestamp);
         }
         for (let index = this.levelArray.length - 1; index >= 0; index--) {
             let curLevel = this.levelArray[index];
@@ -194,7 +211,7 @@ class KeybindManager {
                 console.error("error processing key event: couldn't find level: ", curLevel);
                 continue;
             }
-            let shouldReturn = this.processLevel(nativeEvent, event, curKeybindsArray);
+            let shouldReturn = this.processLevel(nativeEvent, event, curKeybindsArray, timestamp);
             if (shouldReturn) {
                 return true;
             }
@@ -310,7 +327,7 @@ class KeybindManager {
         this.initKeyDescriptionsMap();
     }
 
-    checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
+    checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string, timestamp: number = 0): boolean {
         if (keyDescription == "any") {
             return true;
         }
@@ -320,7 +337,7 @@ class KeybindManager {
         let keyPressArray = this.keyDescriptionsMap.get(keyDescription).keys;
         for (let index = 0; index < keyPressArray.length; index++) {
             let curKeyPress = keyPressArray[index];
-            let pressed = checkKeyPressed(event, curKeyPress);
+            let pressed = checkKeyPressed(event, curKeyPress, this.pastKeyPresses, timestamp);
             if (pressed) {
                 return true;
             }
@@ -349,6 +366,11 @@ function setKeyUtilPlatform(platform: string) {
 
 function keybindingIsEqual(bind1: string, bind2: string) {
     return bind1 == bind2;
+}
+
+function getAllKeysDescriptionsFromChord(keyDescription: string): Array<string> {
+    let keys = keyDescription.replace(/[()]/g, "").split("+");
+    return keys;
 }
 
 function parseKeyDescription(keyDescription: string): KeyPressDecl {
@@ -405,7 +427,37 @@ function notMod(keyPressMod, eventMod) {
     return (keyPressMod && !eventMod) || (eventMod && !keyPressMod);
 }
 
-function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
+function checkKeyPressed(
+    event: WaveKeyboardEvent,
+    keyDescription: string,
+    chords: Array<KeyPressLog> = [],
+    timestamp: number = 0
+): boolean {
+    let keysInChord = getAllKeysDescriptionsFromChord(keyDescription);
+    let curPastPressPosition = -1;
+    for (let index = keysInChord.length - 1; index >= 0; index--) {
+        let curKey = keysInChord[index];
+        let curEvent = event;
+        if (curPastPressPosition >= 0) {
+            let curPastPressIndex = chords.length - 1 - curPastPressPosition;
+            if (curPastPressIndex >= 0) {
+                let curChord = chords[curPastPressIndex];
+                if (timestamp - curChord.timestamp > ChordTimeout) {
+                    chords.splice(curPastPressIndex);
+                    return false;
+                }
+                curEvent = curChord.event;
+            }
+        }
+        if (!checkSingleKeyPressed(curEvent, curKey)) {
+            return false;
+        }
+        curPastPressPosition++;
+    }
+    return true;
+}
+
+function checkSingleKeyPressed(event: WaveKeyboardEvent, keyDescription: string): boolean {
     let keyPress = parseKeyDescription(keyDescription);
     if (notMod(keyPress.mods.Option, event.option)) {
         return false;
@@ -419,12 +471,6 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): bool
     if (notMod(keyPress.mods.Ctrl, event.control)) {
         return false;
     }
-    if (notMod(keyPress.mods.Alt, event.alt)) {
-        return false;
-    }
-    if (notMod(keyPress.mods.Meta, event.meta)) {
-        return false;
-    }
     let eventKey = "";
     let descKey = keyPress.key;
     if (keyPress.keyType == KeyTypeCode) {
@@ -432,7 +478,7 @@ function checkKeyPressed(event: WaveKeyboardEvent, keyDescription: string): bool
     }
     if (keyPress.keyType == KeyTypeKey) {
         eventKey = event.key;
-        if (eventKey.length == 1 && /[A-Z]/.test(eventKey.charAt(0))) {
+        if (eventKey.length == 1 && /[A-Za-z]/.test(eventKey.charAt(0))) {
             // key is upper case A-Z, this means shift is applied, we want to allow
             // "Shift:e" as well as "Shift:E" or "E"
             eventKey = eventKey.toLocaleLowerCase();
