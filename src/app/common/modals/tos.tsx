@@ -40,7 +40,6 @@ class TosModal extends React.Component<{}, {}> {
                     <div className="wave-modal-body-inner">
                         <header className="tos-header unselectable">
                             <div className="modal-title">Welcome to Wave Terminal!</div>
-                            <div className="modal-subtitle">Lets set everything for you</div>
                         </header>
                         <div className="content tos-content unselectable">
                             <div className="item">
@@ -48,7 +47,7 @@ class TosModal extends React.Component<{}, {}> {
                                 <div className="item-inner">
                                     <div className="item-title">Telemetry</div>
                                     <div className="item-text">
-                                        We only collect minimal <i>anonymous</i>
+                                        We collect minimal anonymous
                                         <a
                                             target="_blank"
                                             href={util.makeExternLink("https://docs.waveterm.dev/reference/telemetry")}
