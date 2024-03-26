@@ -1208,7 +1208,6 @@ class Model {
             this.updateTermFontSizeVars();
         }
         if (themeUpdated) {
-            // loadTheme(newTheme);
             getApi().setNativeThemeSource(newTheme);
             this.bumpRenderVersion();
         }
