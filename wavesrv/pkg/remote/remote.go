@@ -457,6 +457,26 @@ func ResolveRemoteRef(remoteRef string) *RemoteRuntimeState {
 	return nil
 }
 
+func SendSignalToCmd(ctx context.Context, cmd *sstore.CmdType, sig string) error {
+	msh := GetRemoteById(cmd.Remote.RemoteId)
+	if msh == nil {
+		return fmt.Errorf("no connection found")
+	}
+	if !msh.IsConnected() {
+		return fmt.Errorf("not connected")
+	}
+	cmdCk := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	if !msh.IsCmdRunning(cmdCk) {
+		// this could also return nil (depends on use case)
+		// settled on coded error so we can check for this error
+		return base.CodedErrorf(packet.EC_CmdNotRunning, "cmd not running")
+	}
+	sigPk := packet.MakeSpecialInputPacket()
+	sigPk.CK = cmdCk
+	sigPk.SigName = sig
+	return msh.ServerProc.Input.SendPacket(sigPk)
+}
+
 func unquoteDQBashString(str string) (string, bool) {
 	if len(str) < 2 {
 		return str, false

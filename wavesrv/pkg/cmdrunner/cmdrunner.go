@@ -832,6 +832,14 @@ func ScreenDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if screenId == "" {
 		return nil, fmt.Errorf("/screen:delete no active screen or screen arg passed")
 	}
+	runningCmds, err := sstore.GetRunningScreenCmds(ctx, screenId)
+	if err != nil {
+		return nil, fmt.Errorf("/screen:delete cannot get running cmds: %v", err)
+	}
+	for _, runningCmd := range runningCmds {
+		// send SIGHUP to all running commands in this screen
+		remote.SendSignalToCmd(ctx, runningCmd, "SIGHUP")
+	}
 	update, err := sstore.DeleteScreen(ctx, screenId, false, nil)
 	if err != nil {
 		return nil, err
