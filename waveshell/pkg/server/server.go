@@ -30,6 +30,7 @@ const MaxFileDataPacketSize = 16 * 1024
 const WriteFileContextTimeout = 30 * time.Second
 const cleanLoopTime = 5 * time.Second
 const MaxWriteFileContextData = 100
+const InboundRpcErrorTimeoutTime = 30 * time.Second
 
 type shellStateMapKey struct {
 	ShellType string
@@ -52,8 +53,89 @@ type MServer struct {
 	StateMap            *ShellStateMap
 	WriteErrorCh        chan bool // closed if there is a I/O write error
 	WriteErrorChOnce    *sync.Once
-	WriteFileContextMap map[string]*WriteFileContext
 	Done                bool
+	InboundRpcHandlers  map[string]RpcHandler
+	InboundRpcErrorSent map[string]time.Time // limits the amount of error messages sent back to the client
+}
+
+var _ RpcHandler = (*WriteFileContext)(nil)
+
+type RpcHandler interface {
+	GetTimeoutTime() time.Time
+	DispatchPacket(reqId string, pk packet.RpcFollowUpPacketType)
+	UnRegisterCallback()
+}
+
+func (m *MServer) registerRpcHandler(reqId string, handler RpcHandler) error {
+	if handler == nil {
+		return errors.New("handler is nil")
+	}
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	if m.InboundRpcHandlers[reqId] != nil {
+		return errors.New("handler already registered")
+	}
+	delete(m.InboundRpcErrorSent, reqId)
+	m.InboundRpcHandlers[reqId] = handler
+	return nil
+}
+
+func (m *MServer) unregisterRpcHandler(reqId string) {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	handler := m.InboundRpcHandlers[reqId]
+	delete(m.InboundRpcHandlers, reqId)
+	if handler != nil {
+		handler.UnRegisterCallback()
+	}
+}
+
+// limits the number of error responses that can be sent
+func (m *MServer) sendInboundRpcError(reqId string, err error) {
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	if _, ok := m.InboundRpcErrorSent[reqId]; ok {
+		return
+	}
+	m.InboundRpcErrorSent[reqId] = time.Now().Add(InboundRpcErrorTimeoutTime)
+	m.Sender.SendErrorResponse(reqId, err)
+}
+
+// returns true if dispatched to a waiting RPC handler
+func (m *MServer) dispatchRpcFollowUp(pk packet.RpcFollowUpPacketType) bool {
+	if pk == nil {
+		return true
+	}
+	reqId := pk.GetAssociatedReqId()
+	m.Lock.Lock()
+	defer m.Lock.Unlock()
+	if rh := m.InboundRpcHandlers[reqId]; rh != nil {
+		rh.DispatchPacket(reqId, pk)
+		return true
+	}
+	return false
+}
+
+func (m *MServer) cleanRpcHandlers() {
+	var staleHandlers []RpcHandler
+	now := time.Now()
+	m.Lock.Lock()
+	for reqId, rh := range m.InboundRpcHandlers {
+		if now.After(rh.GetTimeoutTime()) {
+			staleHandlers = append(staleHandlers, rh)
+			delete(m.InboundRpcHandlers, reqId)
+		}
+	}
+	for reqId, timeoutTime := range m.InboundRpcErrorSent {
+		if now.After(timeoutTime) {
+			delete(m.InboundRpcErrorSent, reqId)
+		}
+	}
+	m.Lock.Unlock()
+	// we do this outside of m.Lock just in case there is some lock contention (UnRegisterCallback might be slow)
+	for _, rh := range staleHandlers {
+		rh.UnRegisterCallback()
+	}
 }
 
 type WriteFileContext struct {
@@ -78,25 +160,13 @@ func (m *MServer) checkDone() bool {
 	return m.Done
 }
 
-func (m *MServer) getWriteFileContext(reqId string) *WriteFileContext {
-	m.Lock.Lock()
-	defer m.Lock.Unlock()
-	wfc := m.WriteFileContextMap[reqId]
-	if wfc == nil {
-		wfc = &WriteFileContext{
-			CVar:       sync.NewCond(&sync.Mutex{}),
-			LastActive: time.Now(),
-		}
-		m.WriteFileContextMap[reqId] = wfc
-	}
-	return wfc
+func (wfc *WriteFileContext) GetTimeoutTime() time.Time {
+	return wfc.LastActive.Add(WriteFileContextTimeout)
 }
 
-func (m *MServer) addFileDataPacket(pk *packet.FileDataPacketType) {
-	m.Lock.Lock()
-	wfc := m.WriteFileContextMap[pk.RespId]
-	m.Lock.Unlock()
-	if wfc == nil {
+func (wfc *WriteFileContext) DispatchPacket(reqId string, pkArg packet.RpcFollowUpPacketType) {
+	dataPk, ok := pkArg.(*packet.FileDataPacketType)
+	if !ok {
 		return
 	}
 	wfc.CVar.L.Lock()
@@ -111,34 +181,16 @@ func (m *MServer) addFileDataPacket(pk *packet.FileDataPacketType) {
 		return
 	}
 	wfc.LastActive = time.Now()
-	wfc.Data = append(wfc.Data, pk)
+	wfc.Data = append(wfc.Data, dataPk)
 	wfc.CVar.Signal()
 }
 
-func (wfc *WriteFileContext) setDone() {
+func (wfc *WriteFileContext) UnRegisterCallback() {
 	wfc.CVar.L.Lock()
 	defer wfc.CVar.L.Unlock()
 	wfc.Done = true
 	wfc.Data = nil
 	wfc.CVar.Broadcast()
-}
-
-func (m *MServer) cleanWriteFileContexts() {
-	now := time.Now()
-	var staleWfcs []*WriteFileContext
-	m.Lock.Lock()
-	for reqId, wfc := range m.WriteFileContextMap {
-		if now.Sub(wfc.LastActive) > WriteFileContextTimeout {
-			staleWfcs = append(staleWfcs, wfc)
-			delete(m.WriteFileContextMap, reqId)
-		}
-	}
-	m.Lock.Unlock()
-
-	// we do this outside of m.Lock just in case there is some lock contention (end of WriteFile could theoretically be slow)
-	for _, wfc := range staleWfcs {
-		wfc.setDone()
-	}
 }
 
 func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
@@ -155,7 +207,6 @@ func (m *MServer) ProcessCommandPacket(pk packet.CommandPacketType) {
 		return
 	}
 	cproc.Input.SendPacket(pk)
-	return
 }
 
 func runSingleCompGen(cwd string, compType string, prefix string) ([]string, bool, error) {
@@ -226,7 +277,6 @@ func (m *MServer) runMixedCompGen(compPk *packet.CompGenPacketType) {
 	}
 	sort.Strings(comps) // resort
 	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": comps, "hasmore": (hasMoreFiles || hasMoreDirs)})
-	return
 }
 
 func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
@@ -244,13 +294,48 @@ func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
 		appendSlashes(comps)
 	}
 	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": comps, "hasmore": hasMore})
-	return
+}
+
+type ReinitRpcHandler struct {
+	ReqId       string
+	TimeoutTime time.Time
+	StdinDataCh chan []byte
+}
+
+func (rh *ReinitRpcHandler) GetTimeoutTime() time.Time {
+	return rh.TimeoutTime
+}
+
+func (rh *ReinitRpcHandler) DispatchPacket(reqId string, pkArg packet.RpcFollowUpPacketType) {
+	rpcInput, ok := pkArg.(*packet.RpcInputPacketType)
+	if !ok {
+		wlog.Logf("reinit rpc handler: invalid packet type: %T", pkArg)
+		return
+	}
+	// nonblocking send
+	select {
+	case rh.StdinDataCh <- rpcInput.Data:
+	default:
+		wlog.Logf("reinit rpc handler: stdin data channel full, dropping data")
+	}
+}
+
+func (rh *ReinitRpcHandler) UnRegisterCallback() {
+	close(rh.StdinDataCh)
 }
 
 func (m *MServer) reinit(reqId string, shellType string) {
-	ssPk, err := shexec.MakeShellStatePacket(shellType)
+	stdinDataCh := make(chan []byte, 10)
+	rh := &ReinitRpcHandler{
+		ReqId:       reqId,
+		TimeoutTime: time.Now().Add(30 * time.Second),
+		StdinDataCh: stdinDataCh,
+	}
+	m.registerRpcHandler(reqId, rh)
+	defer m.unregisterRpcHandler(reqId)
+	ssPk, err := m.MakeShellStatePacket(reqId, shellType, stdinDataCh)
 	if err != nil {
-		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error creating init packet: %w", err))
+		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error initializing shell: %w", err))
 		return
 	}
 	err = m.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
@@ -260,6 +345,32 @@ func (m *MServer) reinit(reqId string, shellType string) {
 	}
 	ssPk.RespId = reqId
 	m.Sender.SendPacket(ssPk)
+}
+
+func (m *MServer) MakeShellStatePacket(reqId string, shellType string, stdinDataCh chan []byte) (*packet.ShellStatePacketType, error) {
+	sapi, err := shellapi.MakeShellApi(shellType)
+	if err != nil {
+		return nil, err
+	}
+	rtnCh := make(chan shellapi.ShellStateOutput, 1)
+	go sapi.GetShellState(rtnCh, stdinDataCh)
+	for ssOutput := range rtnCh {
+		if ssOutput.Error != "" {
+			return nil, errors.New(ssOutput.Error)
+		}
+		if ssOutput.ShellState != nil {
+			rtn := packet.MakeShellStatePacket()
+			rtn.State = ssOutput.ShellState
+			rtn.Stats = ssOutput.Stats
+			return rtn, nil
+		}
+		if ssOutput.Output != nil {
+			dataPk := packet.MakeFileDataPacket(reqId)
+			dataPk.Data = ssOutput.Output
+			m.Sender.SendPacket(dataPk)
+		}
+	}
+	return nil, nil
 }
 
 func makeTemp(path string, mode fs.FileMode) (*os.File, error) {
@@ -332,7 +443,7 @@ func copyFile(dstName string, srcName string) error {
 }
 
 func (m *MServer) writeFile(pk *packet.WriteFilePacketType, wfc *WriteFileContext) {
-	defer wfc.setDone()
+	defer m.unregisterRpcHandler(pk.ReqId)
 	if pk.Path == "" {
 		resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
 		resp.Error = "invalid write-file request, no path specified"
@@ -453,7 +564,6 @@ func (m *MServer) returnStreamFileNewFileResponse(pk *packet.StreamFilePacketTyp
 		Perm:     int(dirInfo.Mode().Perm()),
 		NotFound: true,
 	}
-	return
 }
 
 func (m *MServer) streamFile(pk *packet.StreamFilePacketType) {
@@ -583,12 +693,19 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 		return
 	}
 	if writePk, ok := pk.(*packet.WriteFilePacketType); ok {
-		wfc := m.getWriteFileContext(writePk.ReqId)
+		wfc := &WriteFileContext{
+			CVar:       sync.NewCond(&sync.Mutex{}),
+			LastActive: time.Now(),
+		}
+		err := m.registerRpcHandler(writePk.ReqId, wfc)
+		if err != nil {
+			m.Sender.SendErrorResponse(reqId, fmt.Errorf("error registering write-file handler: %w", err))
+			return
+		}
 		go m.writeFile(writePk, wfc)
 		return
 	}
 	m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid rpc type '%s'", pk.GetType()))
-	return
 }
 
 func (m *MServer) clientPacketCallback(shellType string, pk packet.PacketType) {
@@ -701,7 +818,7 @@ func (server *MServer) runReadLoop() {
 	builder := packet.MakeRunPacketBuilder()
 	for pk := range server.MainInput.MainCh {
 		if server.Debug {
-			fmt.Printf("PK> %s\n", packet.AsString(pk))
+			wlog.Logf("runReadLoop got packet %s\n", packet.AsString(pk))
 		}
 		ok, runPacket := builder.ProcessPacket(pk)
 		if ok {
@@ -711,16 +828,19 @@ func (server *MServer) runReadLoop() {
 			}
 			continue
 		}
-		if cmdPk, ok := pk.(packet.CommandPacketType); ok {
+		if cmdPk, ok := pk.(packet.CommandPacketType); ok && cmdPk.GetCK() != "" {
 			server.ProcessCommandPacket(cmdPk)
 			continue
 		}
-		if rpcPk, ok := pk.(packet.RpcPacketType); ok {
+		if rpcPk, ok := pk.(packet.RpcPacketType); ok && rpcPk.GetReqId() != "" {
 			server.ProcessRpcPacket(rpcPk)
 			continue
 		}
-		if fileDataPk, ok := pk.(*packet.FileDataPacketType); ok {
-			server.addFileDataPacket(fileDataPk)
+		if rpcFollowUp, ok := pk.(packet.RpcFollowUpPacketType); ok && rpcFollowUp.GetAssociatedReqId() != "" {
+			ok := server.dispatchRpcFollowUp(rpcFollowUp)
+			if !ok {
+				server.sendInboundRpcError(rpcFollowUp.GetAssociatedReqId(), fmt.Errorf("no handler for rpc follow-up packet"))
+			}
 			continue
 		}
 		server.Sender.SendMessageFmt("invalid packet '%s' sent to mshell server", packet.AsString(pk))
@@ -740,7 +860,8 @@ func RunServer() (int, error) {
 		Debug:               debug,
 		WriteErrorCh:        make(chan bool),
 		WriteErrorChOnce:    &sync.Once{},
-		WriteFileContextMap: make(map[string]*WriteFileContext),
+		InboundRpcHandlers:  make(map[string]RpcHandler),
+		InboundRpcErrorSent: make(map[string]time.Time),
 	}
 	if debug {
 		packet.GlobalDebug = true
@@ -755,7 +876,7 @@ func RunServer() (int, error) {
 				return
 			}
 			time.Sleep(cleanLoopTime)
-			server.cleanWriteFileContexts()
+			server.cleanRpcHandlers()
 		}
 	}()
 	var err error

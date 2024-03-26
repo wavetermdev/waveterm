@@ -373,7 +373,12 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
-    setClientOpenAISettings(opts: { model?: string; apitoken?: string; maxtokens?: string }): Promise<CommandRtnType> {
+    setClientOpenAISettings(opts: {
+        model?: string;
+        apitoken?: string;
+        maxtokens?: string;
+        baseurl?: string;
+    }): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
         };
@@ -385,6 +390,9 @@ class CommandRunner {
         }
         if (opts.maxtokens != null) {
             kwargs["openaimaxtokens"] = opts.maxtokens;
+        }
+        if (opts.baseurl != null) {
+            kwargs["openaibaseurl"] = opts.baseurl;
         }
         return GlobalModel.submitCommand("client", "set", null, kwargs, false);
     }

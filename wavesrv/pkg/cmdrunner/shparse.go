@@ -214,6 +214,8 @@ var literalRtnStateCommands = []string{
 	"enable",
 	"disable",
 	"function",
+	"zmodload",
+	"module",
 }
 
 func getCallExprLitArg(callExpr *syntax.CallExpr, argNum int) string {

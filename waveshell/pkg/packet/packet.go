@@ -11,9 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"log"
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
@@ -58,8 +61,10 @@ const (
 	WriteFileReadyPacketStr = "writefileready" // rpc-response
 	WriteFileDonePacketStr  = "writefiledone"  // rpc-response
 	FileDataPacketStr       = "filedata"
+	FileStatPacketStr       = "filestat"
 	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
 	ShellStatePacketStr     = "shellstate"
+	RpcInputPacketStr       = "rpcinput" // rpc-followup
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
@@ -112,6 +117,8 @@ func init() {
 	TypeStrToFactory[WriteFileDonePacketStr] = reflect.TypeOf(WriteFileDonePacketType{})
 	TypeStrToFactory[LogPacketStr] = reflect.TypeOf(LogPacketType{})
 	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
+	TypeStrToFactory[FileStatPacketStr] = reflect.TypeOf(FileStatPacketType{})
+	TypeStrToFactory[RpcInputPacketStr] = reflect.TypeOf(RpcInputPacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -129,6 +136,9 @@ func init() {
 	var _ RpcResponsePacketType = (*WriteFileReadyPacketType)(nil)
 	var _ RpcResponsePacketType = (*WriteFileDonePacketType)(nil)
 	var _ RpcResponsePacketType = (*ShellStatePacketType)(nil)
+
+	var _ RpcFollowUpPacketType = (*FileDataPacketType)(nil)
+	var _ RpcFollowUpPacketType = (*RpcInputPacketType)(nil)
 
 	var _ CommandPacketType = (*DataPacketType)(nil)
 	var _ CommandPacketType = (*DataAckPacketType)(nil)
@@ -162,6 +172,26 @@ func MakePingPacket() *PingPacketType {
 	return &PingPacketType{Type: PingPacketStr}
 }
 
+type RpcInputPacketType struct {
+	Type  string `json:"type"`
+	ReqId string `json:"reqid"`
+	Data  []byte `json:"data"`
+}
+
+func (*RpcInputPacketType) GetType() string {
+	return RpcInputPacketStr
+}
+
+func (p *RpcInputPacketType) GetAssociatedReqId() string {
+	return p.ReqId
+}
+
+func MakeRpcInputPacket(reqId string) *RpcInputPacketType {
+	return &RpcInputPacketType{Type: RpcInputPacketStr, ReqId: reqId}
+}
+
+// these packets can travel either direction
+// so it is both a RpcResponsePacketType and an RpcFollowUpPacketType
 type FileDataPacketType struct {
 	Type   string `json:"type"`
 	RespId string `json:"respid"`
@@ -179,6 +209,10 @@ func MakeFileDataPacket(reqId string) *FileDataPacketType {
 		Type:   FileDataPacketStr,
 		RespId: reqId,
 	}
+}
+
+func (p *FileDataPacketType) GetAssociatedReqId() string {
+	return p.RespId
 }
 
 func (p *FileDataPacketType) GetResponseId() string {
@@ -379,6 +413,51 @@ func MakeReInitPacket() *ReInitPacketType {
 	return &ReInitPacketType{Type: ReInitPacketStr}
 }
 
+type FileStatPacketType struct {
+	Type    string    `json:"type"`
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	ModTs   time.Time `json:"modts"`
+	IsDir   bool      `json:"isdir"`
+	Perm    int       `json:"perm"`
+	ModeStr string    `json:"modestr"`
+	Error   string    `json:"error"`
+	Done    bool      `json:"done"`
+	RespId  string    `json:"respid"`
+	Path    string    `json:"path"`
+}
+
+func (*FileStatPacketType) GetType() string {
+	return FileStatPacketStr
+}
+
+func (p *FileStatPacketType) GetResponseDone() bool {
+	return p.Done
+}
+
+func (p *FileStatPacketType) GetResponseId() string {
+	return p.RespId
+}
+
+func MakeFileStatPacketType() *FileStatPacketType {
+	return &FileStatPacketType{Type: FileStatPacketStr}
+}
+
+func MakeFileStatPacketFromFileInfo(finfo fs.FileInfo, err string, done bool) *FileStatPacketType {
+	resp := MakeFileStatPacketType()
+	resp.Error = err
+	resp.Done = done
+
+	resp.IsDir = finfo.IsDir()
+	resp.Name = finfo.Name()
+
+	resp.Size = finfo.Size()
+	resp.ModTs = finfo.ModTime()
+	resp.Perm = int(finfo.Mode().Perm())
+	resp.ModeStr = finfo.Mode().String()
+	return resp
+}
+
 type StreamFilePacketType struct {
 	Type      string  `json:"type"`
 	ReqId     string  `json:"reqid"`
@@ -549,11 +628,12 @@ func MakeLogPacket(entry wlog.LogEntry) *LogPacketType {
 }
 
 type ShellStatePacketType struct {
-	Type      string      `json:"type"`
-	ShellType string      `json:"shelltype"`
-	RespId    string      `json:"respid,omitempty"`
-	State     *ShellState `json:"state"`
-	Error     string      `json:"error,omitempty"`
+	Type      string           `json:"type"`
+	ShellType string           `json:"shelltype"`
+	RespId    string           `json:"respid,omitempty"`
+	State     *ShellState      `json:"state"`
+	Stats     *ShellStateStats `json:"stats"`
+	Error     string           `json:"error,omitempty"`
 }
 
 func (*ShellStatePacketType) GetType() string {
@@ -926,6 +1006,12 @@ type CommandPacketType interface {
 	GetCK() base.CommandKey
 }
 
+// RpcPackets initiate an Rpc.  these can be part of the data passed back and forth
+type RpcFollowUpPacketType interface {
+	GetType() string
+	GetAssociatedReqId() string
+}
+
 type ModelUpdatePacketType struct {
 	Type    string `json:"type"`
 	Updates []any  `json:"updates"`
@@ -1128,6 +1214,14 @@ func (sender *PacketSender) SendPacketCtx(ctx context.Context, pk PacketType) er
 }
 
 func (sender *PacketSender) SendPacket(pk PacketType) error {
+	if pk == nil {
+		log.Printf("tried to send nil packet\n")
+		return fmt.Errorf("tried to send nil packet")
+	}
+	if pk.GetType() == "" {
+		log.Printf("tried to send invalid packet: %T\n", pk)
+		return fmt.Errorf("tried to send packet without a type: %T", pk)
+	}
 	err := sender.checkStatus()
 	if err != nil {
 		return err

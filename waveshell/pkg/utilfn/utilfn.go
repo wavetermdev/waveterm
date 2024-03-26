@@ -7,9 +7,12 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
+	mathrand "math/rand"
 	"regexp"
 	"sort"
 	"strings"
@@ -400,7 +403,7 @@ func DecodeStringArray(barr []byte) ([]string, error) {
 	return rtn, nil
 }
 
-func EncodedStringArrayHasFirstKey(encoded []byte, firstKey string) bool {
+func EncodedStringArrayHasFirstVal(encoded []byte, firstKey string) bool {
 	firstKeyBytes := NullEncodeStr(firstKey)
 	if !bytes.HasPrefix(encoded, firstKeyBytes) {
 		return false
@@ -409,6 +412,18 @@ func EncodedStringArrayHasFirstKey(encoded []byte, firstKey string) bool {
 		return true
 	}
 	return false
+}
+
+// on encoding error returns ""
+// this is used to perform logic on first value without decoding the entire array
+func EncodedStringArrayGetFirstVal(encoded []byte) string {
+	sepIdx := bytes.IndexByte(encoded, nullEncodeSepByte)
+	if sepIdx == -1 {
+		str, _ := NullDecodeStr(encoded)
+		return str
+	}
+	str, _ := NullDecodeStr(encoded[0:sepIdx])
+	return str
 }
 
 // encodes a string, removing null/zero bytes (and separators '|')
@@ -519,4 +534,80 @@ func CombineStrArrays(sarr1 []string, sarr2 []string) []string {
 		rtn = append(rtn, s)
 	}
 	return rtn
+}
+
+func QuickJson(v interface{}) string {
+	barr, _ := json.Marshal(v)
+	return string(barr)
+}
+
+func QuickParseJson[T any](s string) T {
+	var v T
+	_ = json.Unmarshal([]byte(s), &v)
+	return v
+}
+
+func StrArrayToMap(sarr []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, s := range sarr {
+		m[s] = true
+	}
+	return m
+}
+
+func AppendNonZeroRandomBytes(b []byte, randLen int) []byte {
+	if randLen <= 0 {
+		return b
+	}
+	numAdded := 0
+	for numAdded < randLen {
+		rn := mathrand.Intn(256)
+		if rn > 0 && rn < 256 { // exclude 0, also helps to suppress security warning to have a guard here
+			b = append(b, byte(rn))
+			numAdded++
+		}
+	}
+	return b
+}
+
+// returns (isEOF, error)
+func CopyWithEndBytes(outputBuf *bytes.Buffer, reader io.Reader, endBytes []byte) (bool, error) {
+	buf := make([]byte, 4096)
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			outputBuf.Write(buf[:n])
+			obytes := outputBuf.Bytes()
+			if bytes.HasSuffix(obytes, endBytes) {
+				outputBuf.Truncate(len(obytes) - len(endBytes))
+				return (err == io.EOF), nil
+			}
+		}
+		if err == io.EOF {
+			return true, nil
+		}
+		if err != nil {
+			return false, err
+		}
+	}
+}
+
+// does *not* close outputCh on EOF or error
+func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
+	buf := make([]byte, 4096)
+	for {
+		n, err := reader.Read(buf)
+		if n > 0 {
+			// copy so client can use []byte without it being overwritten
+			bufCopy := make([]byte, n)
+			copy(bufCopy, buf[:n])
+			outputCh <- bufCopy
+		}
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+	}
 }

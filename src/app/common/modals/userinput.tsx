@@ -2,7 +2,6 @@ import * as React from "react";
 import { GlobalModel } from "@/models";
 import { Choose, When, If } from "tsx-control-statements/components";
 import { Modal, PasswordField, TextField, Markdown, Checkbox } from "@/elements";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 import "./userinput.less";
 
@@ -44,19 +43,6 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
         [userInputRequest]
     );
 
-    function handleTextKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Enter")) {
-            e.preventDefault();
-            e.stopPropagation();
-            handleSendText();
-        } else if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            e.stopPropagation();
-            handleSendCancel();
-        }
-    }
-
     React.useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
         if (countdown == 0) {
@@ -89,7 +75,6 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                                 value={responseText}
                                 maxLength={400}
                                 autoFocus={true}
-                                onKeyDown={(e) => handleTextKeyDown(e)}
                             />
                         </If>
                         <If condition={!userInputRequest.publictext}>
@@ -98,7 +83,6 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                                 value={responseText}
                                 maxLength={400}
                                 autoFocus={true}
-                                onKeyDown={(e) => handleTextKeyDown(e)}
                             />
                         </If>
                     </If>

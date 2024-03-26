@@ -14,6 +14,7 @@ import * as textmeasure from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
 
 import "./viewremoteconndetail.less";
+import { ModalKeybindings } from "../elements/modal";
 
 @mobxReact.observer
 class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
@@ -192,7 +193,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
             </Button>
         );
         let archiveButton = (
-            <Button className="secondary" onClick={() => this.clickArchive()}>
+            <Button className="secondary danger" onClick={() => this.clickArchive()}>
                 Delete
             </Button>
         );
@@ -207,7 +208,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         }
         if (remote.sshconfigsrc == "sshconfig-import") {
             archiveButton = (
-                <Button className="secondary" onClick={() => this.clickArchive()}>
+                <Button className="secondary danger" onClick={() => this.clickArchive()}>
                     Delete
                     <Tooltip
                         message={
@@ -382,6 +383,20 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                     </div>
                 </div>
                 <div className="wave-modal-footer">
+                    <ModalKeybindings
+                        onOk={() => {
+                            if (selectedRemoteStatus == "connecting") {
+                                return;
+                            }
+                            this.handleClose();
+                        }}
+                        onCancel={() => {
+                            if (selectedRemoteStatus == "connecting") {
+                                return;
+                            }
+                            this.handleClose();
+                        }}
+                    ></ModalKeybindings>
                     <Button
                         className="secondary"
                         disabled={selectedRemoteStatus == "connecting"}

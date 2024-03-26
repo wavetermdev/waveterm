@@ -45,6 +45,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scws"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
 
@@ -211,7 +212,7 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
 		return
 	}
-	activity := sstore.ActivityUpdate{}
+	activity := telemetry.ActivityUpdate{}
 	if activeState.Fg {
 		activity.FgMinutes = 1
 	}
@@ -222,7 +223,7 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 		activity.OpenMinutes = 1
 	}
 	activity.NumConns = remote.NumRemotes()
-	err = sstore.UpdateCurrentActivity(r.Context(), activity)
+	err = telemetry.UpdateCurrentActivity(r.Context(), activity)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))
 		return
@@ -677,6 +678,40 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 	WriteJsonSuccess(w, update)
 }
 
+func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		configPath := r.URL.Path
+		configAbsPath, err := filepath.Abs(configPath)
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("error getting absolute path: %v", err)))
+			return
+		}
+		configBaseDir := path.Join(scbase.GetWaveHomeDir(), "config")
+		configFullPath := path.Join(scbase.GetWaveHomeDir(), configAbsPath)
+		if !strings.HasPrefix(configFullPath, configBaseDir) {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("error: path is not in config folder")))
+			return
+		}
+		fstat, err := os.Stat(configFullPath)
+		if errors.Is(err, fs.ErrNotExist) {
+			w.WriteHeader(404)
+			w.Write([]byte(fmt.Sprintf("file not found: %v", configAbsPath)))
+			return
+		} else if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte(fmt.Sprintf("file stat err: %v", err)))
+			return
+		}
+		if fstat.IsDir() {
+			AuthKeyMiddleWare(dirHandler).ServeHTTP(w, r)
+		} else {
+			AuthKeyMiddleWare(fileHandler).ServeHTTP(w, r)
+		}
+	})
+}
+
 func AuthKeyMiddleWare(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reqAuthKey := r.Header.Get("X-AuthKey")
@@ -857,6 +892,39 @@ func doShutdown(reason string) {
 	})
 }
 
+func configDirHandler(w http.ResponseWriter, r *http.Request) {
+	log.Printf("running?")
+	configPath := r.URL.Path
+	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
+	dirFile, err := os.Open(configFullPath)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error opening specified dir: %v", err)))
+		return
+	}
+	entries, err := dirFile.Readdir(0)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("error getting files: %v", err)))
+		return
+	}
+	var files []*packet.FileStatPacketType
+	for index := 0; index < len(entries); index++ {
+		curEntry := entries[index]
+		curFile := packet.MakeFileStatPacketFromFileInfo(curEntry, "", false)
+		files = append(files, curFile)
+	}
+	dirListJson, err := json.Marshal(files)
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte(fmt.Sprintf("json err: %v", err)))
+		return
+	}
+	w.WriteHeader(200)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(dirListJson)
+}
+
 func main() {
 	scbase.BuildTime = BuildTime
 	scbase.WaveVersion = WaveVersion
@@ -931,7 +999,7 @@ func main() {
 	}
 
 	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
-	sstore.UpdateActivityWrap(context.Background(), sstore.ActivityUpdate{NumConns: remote.NumRemotes()}, "numconns") // set at least one record into activity
+	telemetry.UpdateActivityWrap(context.Background(), telemetry.ActivityUpdate{NumConns: remote.NumRemotes()}, "numconns") // set at least one record into activity
 	installSignalHandlers()
 	go telemetryLoop()
 	go stdinReadWatch()
@@ -953,7 +1021,9 @@ func main() {
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
 	configPath := path.Join(scbase.GetWaveHomeDir(), "config") + "/"
 	log.Printf("[wave] config path: %q\n", configPath)
-	gr.PathPrefix("/config/").Handler(AuthKeyMiddleWare(http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))))
+	isFileHandler := http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))
+	isDirHandler := http.HandlerFunc(configDirHandler)
+	gr.PathPrefix("/config/").Handler(CheckIsDir(isDirHandler, isFileHandler))
 
 	serverAddr := MainServerAddr
 	if scbase.IsDevMode() {

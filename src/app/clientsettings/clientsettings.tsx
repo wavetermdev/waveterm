@@ -5,6 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
+import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
@@ -12,6 +13,25 @@ import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
 import { MainView } from "../common/elements/mainview";
+
+class ClientSettingsKeybindings extends React.Component<{}, {}> {
+    componentDidMount() {
+        let clientSettingsViewModel = GlobalModel.clientSettingsViewModel;
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("mainview", "clientsettings", "generic:cancel", (waveEvent) => {
+            clientSettingsViewModel.closeView();
+            return true;
+        });
+    }
+
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("clientsettings");
+    }
+
+    render() {
+        return null;
+    }
+}
 
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -118,6 +138,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
+    inlineUpdateOpenAIBaseURL(newBaseURL: string): void {
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ baseurl: newBaseURL });
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     setErrorMessage(msg: string): void {
         mobx.action(() => {
             this.errorMessage.set(msg);
@@ -169,6 +195,9 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
+                <If condition={!isHidden}>
+                    <ClientSettingsKeybindings></ClientSettingsKeybindings>
+                </If>
                 <div className="content">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>
@@ -233,7 +262,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">OpenAI Token</div>
+                        <div className="settings-label">AI Token</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
                                 placeholder=""
@@ -246,7 +275,20 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">OpenAI Model</div>
+                        <div className="settings-label">AI Base URL</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={isBlank(openAIOpts.baseurl) ? "openai default" : openAIOpts.baseurl}
+                                value={openAIOpts.baseurl ?? ""}
+                                onChange={this.inlineUpdateOpenAIBaseURL}
+                                maxLength={10}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">AI Model</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
                                 placeholder="gpt-3.5-turbo"
@@ -259,7 +301,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">OpenAI MaxTokens</div>
+                        <div className="settings-label">AI MaxTokens</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
                                 placeholder=""
