@@ -17,6 +17,60 @@ import "./terminal.less";
 
 dayjs.extend(localizedFormat);
 
+class TerminalKeybindings extends React.Component<{ termWrap: any; lineid: string }, {}> {
+    componentDidMount(): void {
+        this.registerKeybindings();
+    }
+
+    registerKeybindings() {
+        let keybindManager = GlobalModel.keybindManager;
+        let domain = "line-" + this.props.lineid;
+        let termWrap = this.props.termWrap;
+        keybindManager.registerKeybinding("plugin", domain, "terminal:copy", (waveEvent) => {
+            let termWrap = this.props.termWrap;
+            let sel = termWrap.terminal.getSelection();
+            navigator.clipboard.writeText(sel);
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "terminal:paste", (waveEvent) => {
+            let p = navigator.clipboard.readText();
+            p.then((text) => {
+                termWrap.dataHandler?.(text, termWrap);
+            });
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "generic:selectAbove", (waveEvent) => {
+            termWrap.terminal.scrollLines(-1);
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "generic:selectBelow", (waveEvent) => {
+            termWrap.terminal.scrollLines(1);
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "generic:selectPageAbove", (waveEvent) => {
+            termWrap.terminal.scrollLines(-10);
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "generic:selectPageBelow", (waveEvent) => {
+            termWrap.terminal.scrollLines(10);
+            return true;
+        });
+    }
+
+    unregisterKeybindings() {
+        let domain = "line-" + this.props.lineid;
+        GlobalModel.keybindManager.unregisterDomain(domain);
+    }
+
+    componentWillUnmount(): void {
+        this.unregisterKeybindings();
+    }
+
+    render(): React.ReactNode {
+        return null;
+    }
+}
+
 @mobxReact.observer
 class TerminalRenderer extends React.Component<
     {
@@ -153,6 +207,8 @@ class TerminalRenderer extends React.Component<
             termHeight = 0;
         }
         let termLoaded = this.termLoaded.get();
+        let lineid = line.lineid;
+        let termWrap = screen.getTermWrap(lineid);
         return (
             <div
                 ref={this.elemRef}
@@ -168,6 +224,9 @@ class TerminalRenderer extends React.Component<
             >
                 <If condition={!isFocused}>
                     <div key="term-block" className="term-block" onClick={this.clickTermBlock}></div>
+                </If>
+                <If condition={isFocused}>
+                    <TerminalKeybindings termWrap={termWrap} lineid={lineid}></TerminalKeybindings>
                 </If>
                 <div
                     key="term-connectelem"

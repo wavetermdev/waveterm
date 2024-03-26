@@ -148,7 +148,7 @@ class TermWrap {
         });
         this.terminal.open(elem);
         if (opts.keyHandler != null) {
-            this.terminal.onKey((e) => opts.keyHandler(e, this));
+            //this.terminal.onKey((e) => opts.keyHandler(e, this));
         }
         if (opts.dataHandler != null) {
             this.dataHandler = opts.dataHandler;

@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
@@ -24,9 +23,6 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
-
-const HistoryCols = "h.historyid, h.ts, h.userid, h.sessionid, h.screenid, h.lineid, h.haderror, h.cmdstr, h.remoteownerid, h.remoteid, h.remotename, h.ismetacmd, h.linenum, h.exitcode, h.durationms, h.festate, h.tags, h.status"
-const DefaultMaxHistoryItems = 1000
 
 var updateWriterCVar = sync.NewCond(&sync.Mutex{})
 var WebScreenPtyPosLock = &sync.Mutex{}
@@ -232,178 +228,6 @@ func UpdateRemoteStateVars(ctx context.Context, remoteId string, stateVars map[s
 		query := `UPDATE remote SET statevars = ? WHERE remoteid = ?`
 		tx.Exec(query, quickJson(stateVars), remoteId)
 		return nil
-	})
-}
-
-func InsertHistoryItem(ctx context.Context, hitem *HistoryItemType) error {
-	if hitem == nil {
-		return fmt.Errorf("cannot insert nil history item")
-	}
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `INSERT INTO history 
-                  ( historyid, ts, userid, sessionid, screenid, lineid, haderror, cmdstr, remoteownerid, remoteid, remotename, ismetacmd, linenum, exitcode, durationms, festate, tags, status) VALUES
-                  (:historyid,:ts,:userid,:sessionid,:screenid,:lineid,:haderror,:cmdstr,:remoteownerid,:remoteid,:remotename,:ismetacmd,:linenum,:exitcode,:durationms,:festate,:tags,:status)`
-		tx.NamedExec(query, hitem.ToMap())
-		return nil
-	})
-	return txErr
-}
-
-const HistoryQueryChunkSize = 1000
-
-func _getNextHistoryItem(items []*HistoryItemType, index int, filterFn func(*HistoryItemType) bool) (*HistoryItemType, int) {
-	for ; index < len(items); index++ {
-		item := items[index]
-		if filterFn(item) {
-			return item, index
-		}
-	}
-	return nil, index
-}
-
-// returns true if done, false if we still need to process more items
-func (result *HistoryQueryResult) processItem(item *HistoryItemType, rawOffset int) bool {
-	if result.prevItems < result.Offset {
-		result.prevItems++
-		return false
-	}
-	if len(result.Items) == result.MaxItems {
-		result.HasMore = true
-		result.NextRawOffset = rawOffset
-		return true
-	}
-	if len(result.Items) == 0 {
-		result.RawOffset = rawOffset
-	}
-	result.Items = append(result.Items, item)
-	return false
-}
-
-func runHistoryQueryWithFilter(tx *TxWrap, opts HistoryQueryOpts) (*HistoryQueryResult, error) {
-	if opts.MaxItems == 0 {
-		return nil, fmt.Errorf("invalid query, maxitems is 0")
-	}
-	rtn := &HistoryQueryResult{Offset: opts.Offset, MaxItems: opts.MaxItems}
-	var rawOffset int
-	if opts.RawOffset >= opts.Offset {
-		rtn.prevItems = opts.Offset
-		rawOffset = opts.RawOffset
-	} else {
-		rawOffset = 0
-	}
-	for {
-		resultItems, err := runHistoryQuery(tx, opts, rawOffset, HistoryQueryChunkSize)
-		if err != nil {
-			return nil, err
-		}
-		isDone := false
-		for resultIdx := 0; resultIdx < len(resultItems); resultIdx++ {
-			if opts.FilterFn != nil && !opts.FilterFn(resultItems[resultIdx]) {
-				continue
-			}
-			isDone = rtn.processItem(resultItems[resultIdx], rawOffset+resultIdx)
-			if isDone {
-				break
-			}
-		}
-		if isDone {
-			break
-		}
-		if len(resultItems) < HistoryQueryChunkSize {
-			break
-		}
-		rawOffset += HistoryQueryChunkSize
-	}
-	return rtn, nil
-}
-
-func runHistoryQuery(tx *TxWrap, opts HistoryQueryOpts, realOffset int, itemLimit int) ([]*HistoryItemType, error) {
-	// check sessionid/screenid format because we are directly inserting them into the SQL
-	if opts.SessionId != "" {
-		_, err := uuid.Parse(opts.SessionId)
-		if err != nil {
-			return nil, fmt.Errorf("malformed sessionid")
-		}
-	}
-	if opts.ScreenId != "" {
-		_, err := uuid.Parse(opts.ScreenId)
-		if err != nil {
-			return nil, fmt.Errorf("malformed screenid")
-		}
-	}
-	if opts.RemoteId != "" {
-		_, err := uuid.Parse(opts.RemoteId)
-		if err != nil {
-			return nil, fmt.Errorf("malformed remoteid")
-		}
-	}
-	whereClause := "WHERE 1"
-	var queryArgs []interface{}
-	hNumStr := ""
-	if opts.SessionId != "" && opts.ScreenId != "" {
-		whereClause += fmt.Sprintf(" AND h.sessionid = '%s' AND h.screenid = '%s'", opts.SessionId, opts.ScreenId)
-		hNumStr = ""
-	} else if opts.SessionId != "" {
-		whereClause += fmt.Sprintf(" AND h.sessionid = '%s'", opts.SessionId)
-		hNumStr = "s"
-	} else {
-		hNumStr = "g"
-	}
-	if opts.SearchText != "" {
-		whereClause += " AND h.cmdstr LIKE ? ESCAPE '\\'"
-		likeArg := opts.SearchText
-		likeArg = strings.ReplaceAll(likeArg, "%", "\\%")
-		likeArg = strings.ReplaceAll(likeArg, "_", "\\_")
-		queryArgs = append(queryArgs, "%"+likeArg+"%")
-	}
-	if opts.FromTs > 0 {
-		whereClause += fmt.Sprintf(" AND h.ts <= %d", opts.FromTs)
-	}
-	if opts.RemoteId != "" {
-		whereClause += fmt.Sprintf(" AND h.remoteid = '%s'", opts.RemoteId)
-	}
-	if opts.NoMeta {
-		whereClause += " AND NOT h.ismetacmd"
-	}
-	query := fmt.Sprintf("SELECT %s, ('%s' || CAST((row_number() OVER win) as text)) historynum FROM history h %s WINDOW win AS (ORDER BY h.ts, h.historyid) ORDER BY h.ts DESC, h.historyid DESC LIMIT %d OFFSET %d", HistoryCols, hNumStr, whereClause, itemLimit, realOffset)
-	marr := tx.SelectMaps(query, queryArgs...)
-	rtn := make([]*HistoryItemType, len(marr))
-	for idx, m := range marr {
-		hitem := dbutil.FromMap[*HistoryItemType](m)
-		rtn[idx] = hitem
-	}
-	return rtn, nil
-}
-
-func GetHistoryItems(ctx context.Context, opts HistoryQueryOpts) (*HistoryQueryResult, error) {
-	var rtn *HistoryQueryResult
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		var err error
-		rtn, err = runHistoryQueryWithFilter(tx, opts)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return rtn, nil
-}
-
-func GetHistoryItemByLineNum(ctx context.Context, screenId string, lineNum int) (*HistoryItemType, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*HistoryItemType, error) {
-		query := `SELECT * FROM history WHERE screenid = ? AND linenum = ?`
-		hitem := dbutil.GetMapGen[*HistoryItemType](tx, query, screenId, lineNum)
-		return hitem, nil
-	})
-}
-
-func GetLastHistoryLineNum(ctx context.Context, screenId string) (int, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (int, error) {
-		query := `SELECT COALESCE(max(linenum), 0) FROM history WHERE screenid = ?`
-		maxLineNum := tx.GetInt(query, screenId)
-		return maxLineNum, nil
 	})
 }
 
@@ -2276,92 +2100,6 @@ func GetRIsForScreen(ctx context.Context, sessionId string, screenId string) ([]
 	return rtn, nil
 }
 
-func GetCurDayStr() string {
-	now := time.Now()
-	dayStr := now.Format("2006-01-02")
-	return dayStr
-}
-
-// Wraps UpdateCurrentActivity, but ignores errors
-func UpdateActivityWrap(ctx context.Context, update ActivityUpdate, debugStr string) {
-	err := UpdateCurrentActivity(ctx, update)
-	if err != nil {
-		// ignore error, just log, since this is not critical
-		log.Printf("error updating current activity (%s): %v\n", debugStr, err)
-	}
-}
-
-func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
-	now := time.Now()
-	dayStr := GetCurDayStr()
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		var tdata TelemetryData
-		query := `SELECT tdata FROM activity WHERE day = ?`
-		found := tx.Get(&tdata, query, dayStr)
-		if !found {
-			query = `INSERT INTO activity (day, uploaded, tdata, tzname, tzoffset, clientversion, clientarch, buildtime, osrelease)
-                                   VALUES (?,   0,        ?,     ?,      ?,        ?,             ?         , ?        , ?)`
-			tzName, tzOffset := now.Zone()
-			if len(tzName) > MaxTzNameLen {
-				tzName = tzName[0:MaxTzNameLen]
-			}
-			tx.Exec(query, dayStr, tdata, tzName, tzOffset, scbase.WaveVersion, scbase.ClientArch(), scbase.BuildTime, scbase.UnameKernelRelease())
-		}
-		tdata.NumCommands += update.NumCommands
-		tdata.FgMinutes += update.FgMinutes
-		tdata.ActiveMinutes += update.ActiveMinutes
-		tdata.OpenMinutes += update.OpenMinutes
-		tdata.ClickShared += update.ClickShared
-		tdata.HistoryView += update.HistoryView
-		tdata.BookmarksView += update.BookmarksView
-		tdata.ReinitBashErrors += update.ReinitBashErrors
-		tdata.ReinitZshErrors += update.ReinitZshErrors
-		if update.NumConns > 0 {
-			tdata.NumConns = update.NumConns
-		}
-		query = `UPDATE activity
-                 SET tdata = ?,
-                     clientversion = ?,
-                     buildtime = ?
-                 WHERE day = ?`
-		tx.Exec(query, tdata, scbase.WaveVersion, scbase.BuildTime, dayStr)
-		return nil
-	})
-	if txErr != nil {
-		return txErr
-	}
-	return nil
-}
-
-func GetNonUploadedActivity(ctx context.Context) ([]*ActivityType, error) {
-	var rtn []*ActivityType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM activity WHERE uploaded = 0 ORDER BY day DESC LIMIT 30`
-		tx.Select(&rtn, query)
-		return nil
-	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return rtn, nil
-}
-
-// note, will not mark the current day as uploaded
-func MarkActivityAsUploaded(ctx context.Context, activityArr []*ActivityType) error {
-	dayStr := GetCurDayStr()
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `UPDATE activity SET uploaded = 1 WHERE day = ?`
-		for _, activity := range activityArr {
-			if activity.Day == dayStr {
-				continue
-			}
-			tx.Exec(query, activity.Day)
-		}
-		return nil
-	})
-	return txErr
-}
-
 func foundInStrArr(strs []string, s string) bool {
 	for _, sval := range strs {
 		if s == sval {
@@ -2426,271 +2164,6 @@ func GetDBVersion(ctx context.Context) (int, error) {
 	return version, txErr
 }
 
-type bookmarkOrderType struct {
-	BookmarkId string
-	OrderIdx   int64
-}
-
-func GetBookmarks(ctx context.Context, tag string) ([]*BookmarkType, error) {
-	var bms []*BookmarkType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		var query string
-		if tag == "" {
-			query = `SELECT * FROM bookmark`
-			bms = dbutil.SelectMapsGen[*BookmarkType](tx, query)
-		} else {
-			query = `SELECT * FROM bookmark WHERE EXISTS (SELECT 1 FROM json_each(tags) WHERE value = ?)`
-			bms = dbutil.SelectMapsGen[*BookmarkType](tx, query, tag)
-		}
-		bmMap := dbutil.MakeGenMap(bms)
-		var orders []bookmarkOrderType
-		query = `SELECT bookmarkid, orderidx FROM bookmark_order WHERE tag = ?`
-		tx.Select(&orders, query, tag)
-		for _, bmOrder := range orders {
-			bm := bmMap[bmOrder.BookmarkId]
-			if bm != nil {
-				bm.OrderIdx = bmOrder.OrderIdx
-			}
-		}
-		return nil
-	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return bms, nil
-}
-
-func GetBookmarkById(ctx context.Context, bookmarkId string, tag string) (*BookmarkType, error) {
-	var rtn *BookmarkType
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT * FROM bookmark WHERE bookmarkid = ?`
-		rtn = dbutil.GetMapGen[*BookmarkType](tx, query, bookmarkId)
-		if rtn == nil {
-			return nil
-		}
-		query = `SELECT orderidx FROM bookmark_order WHERE bookmarkid = ? AND tag = ?`
-		orderIdx := tx.GetInt(query, bookmarkId, tag)
-		rtn.OrderIdx = int64(orderIdx)
-		return nil
-	})
-	if txErr != nil {
-		return nil, txErr
-	}
-	return rtn, nil
-}
-
-func GetBookmarkIdByArg(ctx context.Context, bookmarkArg string) (string, error) {
-	var rtnId string
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		if len(bookmarkArg) == 8 {
-			query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid LIKE (? || '%')`
-			rtnId = tx.GetString(query, bookmarkArg)
-			return nil
-		}
-		query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid = ?`
-		rtnId = tx.GetString(query, bookmarkArg)
-		return nil
-	})
-	if txErr != nil {
-		return "", txErr
-	}
-	return rtnId, nil
-}
-
-func GetBookmarkIdsByCmdStr(ctx context.Context, cmdStr string) ([]string, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) ([]string, error) {
-		query := `SELECT bookmarkid FROM bookmark WHERE cmdstr = ?`
-		bmIds := tx.SelectStrings(query, cmdStr)
-		return bmIds, nil
-	})
-}
-
-// ignores OrderIdx field
-func InsertBookmark(ctx context.Context, bm *BookmarkType) error {
-	if bm == nil || bm.BookmarkId == "" {
-		return fmt.Errorf("invalid empty bookmark id")
-	}
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid = ?`
-		if tx.Exists(query, bm.BookmarkId) {
-			return fmt.Errorf("bookmarkid already exists")
-		}
-		query = `INSERT INTO bookmark ( bookmarkid, createdts, cmdstr, alias, tags, description)
-                               VALUES (:bookmarkid,:createdts,:cmdstr,:alias,:tags,:description)`
-		tx.NamedExec(query, bm.ToMap())
-		for _, tag := range append(bm.Tags, "") {
-			query = `SELECT COALESCE(max(orderidx), 0) FROM bookmark_order WHERE tag = ?`
-			maxOrder := tx.GetInt(query, tag)
-			query = `INSERT INTO bookmark_order (tag, bookmarkid, orderidx) VALUES (?, ?, ?)`
-			tx.Exec(query, tag, bm.BookmarkId, maxOrder+1)
-		}
-		return nil
-	})
-	return txErr
-}
-
-const (
-	BookmarkField_Desc   = "desc"
-	BookmarkField_CmdStr = "cmdstr"
-)
-
-func EditBookmark(ctx context.Context, bookmarkId string, editMap map[string]interface{}) error {
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid = ?`
-		if !tx.Exists(query, bookmarkId) {
-			return fmt.Errorf("bookmark not found")
-		}
-		if desc, found := editMap[BookmarkField_Desc]; found {
-			query = `UPDATE bookmark SET description = ? WHERE bookmarkid = ?`
-			tx.Exec(query, desc, bookmarkId)
-		}
-		if cmdStr, found := editMap[BookmarkField_CmdStr]; found {
-			query = `UPDATE bookmark SET cmdstr = ? WHERE bookmarkid = ?`
-			tx.Exec(query, cmdStr, bookmarkId)
-		}
-		return nil
-	})
-	return txErr
-}
-
-func fixupBookmarkOrder(tx *TxWrap) {
-	query := `
-WITH new_order AS (
-  SELECT tag, bookmarkid, row_number() OVER (PARTITION BY tag ORDER BY orderidx) AS newidx FROM bookmark_order
-)
-UPDATE bookmark_order
-SET orderidx = new_order.newidx
-FROM new_order
-WHERE bookmark_order.tag = new_order.tag AND bookmark_order.bookmarkid = new_order.bookmarkid
-`
-	tx.Exec(query)
-}
-
-func DeleteBookmark(ctx context.Context, bookmarkId string) error {
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `SELECT bookmarkid FROM bookmark WHERE bookmarkid = ?`
-		if !tx.Exists(query, bookmarkId) {
-			return fmt.Errorf("bookmark not found")
-		}
-		query = `DELETE FROM bookmark WHERE bookmarkid = ?`
-		tx.Exec(query, bookmarkId)
-		query = `DELETE FROM bookmark_order WHERE bookmarkid = ?`
-		tx.Exec(query, bookmarkId)
-		fixupBookmarkOrder(tx)
-		return nil
-	})
-	return txErr
-}
-
-func CreatePlaybook(ctx context.Context, name string) (*PlaybookType, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*PlaybookType, error) {
-		query := `SELECT playbookid FROM playbook WHERE name = ?`
-		if tx.Exists(query, name) {
-			return nil, fmt.Errorf("playbook %q already exists", name)
-		}
-		rtn := &PlaybookType{}
-		rtn.PlaybookId = uuid.New().String()
-		rtn.PlaybookName = name
-		query = `INSERT INTO playbook ( playbookid, playbookname, description, entryids)
-                               VALUES (:playbookid,:playbookname,:description,:entryids)`
-		tx.Exec(query, rtn.ToMap())
-		return rtn, nil
-	})
-}
-
-func selectPlaybook(tx *TxWrap, playbookId string) *PlaybookType {
-	query := `SELECT * FROM playbook where playbookid = ?`
-	playbook := dbutil.GetMapGen[*PlaybookType](tx, query, playbookId)
-	return playbook
-}
-
-func AddPlaybookEntry(ctx context.Context, entry *PlaybookEntry) error {
-	if entry.EntryId == "" {
-		return fmt.Errorf("invalid entryid")
-	}
-	return WithTx(ctx, func(tx *TxWrap) error {
-		playbook := selectPlaybook(tx, entry.PlaybookId)
-		if playbook == nil {
-			return fmt.Errorf("cannot add entry, playbook does not exist")
-		}
-		query := `SELECT entryid FROM playbook_entry WHERE entryid = ?`
-		if tx.Exists(query, entry.EntryId) {
-			return fmt.Errorf("cannot add entry, entryid already exists")
-		}
-		query = `INSERT INTO playbook_entry ( entryid, playbookid, description, alias, cmdstr, createdts, updatedts)
-                                     VALUES (:entryid,:playbookid,:description,:alias,:cmdstr,:createdts,:updatedts)`
-		tx.Exec(query, entry)
-		playbook.EntryIds = append(playbook.EntryIds, entry.EntryId)
-		query = `UPDATE playbook SET entryids = ? WHERE playbookid = ?`
-		tx.Exec(query, quickJsonArr(playbook.EntryIds), entry.PlaybookId)
-		return nil
-	})
-}
-
-func RemovePlaybookEntry(ctx context.Context, playbookId string, entryId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		playbook := selectPlaybook(tx, playbookId)
-		if playbook == nil {
-			return fmt.Errorf("cannot remove playbook entry, playbook does not exist")
-		}
-		query := `SELECT entryid FROM playbook_entry WHERE entryid = ?`
-		if !tx.Exists(query, entryId) {
-			return fmt.Errorf("cannot remove playbook entry, entry does not exist")
-		}
-		query = `DELETE FROM playbook_entry WHERE entryid = ?`
-		tx.Exec(query, entryId)
-		playbook.RemoveEntry(entryId)
-		query = `UPDATE playbook SET entryids = ? WHERE playbookid = ?`
-		tx.Exec(query, quickJsonArr(playbook.EntryIds), playbookId)
-		return nil
-	})
-}
-
-func GetPlaybookById(ctx context.Context, playbookId string) (*PlaybookType, error) {
-	return WithTxRtn(ctx, func(tx *TxWrap) (*PlaybookType, error) {
-		rtn := selectPlaybook(tx, playbookId)
-		if rtn == nil {
-			return nil, nil
-		}
-		query := `SELECT * FROM playbook_entry WHERE playbookid = ?`
-		tx.Select(&rtn.Entries, query, playbookId)
-		rtn.OrderEntries()
-		return rtn, nil
-	})
-}
-
-func getLineIdsFromHistoryItems(historyItems []*HistoryItemType) []string {
-	var rtn []string
-	for _, hitem := range historyItems {
-		if hitem.LineId != "" {
-			rtn = append(rtn, hitem.LineId)
-		}
-	}
-	return rtn
-}
-
-func GetLineCmdsFromHistoryItems(ctx context.Context, historyItems []*HistoryItemType) ([]*LineType, []*CmdType, error) {
-	if len(historyItems) == 0 {
-		return nil, nil, nil
-	}
-	return WithTxRtn3(ctx, func(tx *TxWrap) ([]*LineType, []*CmdType, error) {
-		lineIdsJsonArr := quickJsonArr(getLineIdsFromHistoryItems(historyItems))
-		query := `SELECT * FROM line WHERE lineid IN (SELECT value FROM json_each(?))`
-		lineArr := dbutil.SelectMappable[*LineType](tx, query, lineIdsJsonArr)
-		query = `SELECT * FROM cmd WHERE lineid IN (SELECT value FROM json_each(?))`
-		cmdArr := dbutil.SelectMapsGen[*CmdType](tx, query, lineIdsJsonArr)
-		return lineArr, cmdArr, nil
-	})
-}
-
-func PurgeHistoryByIds(ctx context.Context, historyIds []string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		query := `DELETE FROM history WHERE historyid IN (SELECT value FROM json_each(?))`
-		tx.Exec(query, quickJsonArr(historyIds))
-		return nil
-	})
-}
-
 func CountScreenWebShares(ctx context.Context) (int, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (int, error) {
 		query := `SELECT count(*) FROM screen WHERE sharemode = ?`
@@ -2707,37 +2180,38 @@ func CountScreenLines(ctx context.Context, screenId string) (int, error) {
 	})
 }
 
-func CanScreenWebShare(ctx context.Context, screen *ScreenType) error {
-	if screen == nil {
-		return fmt.Errorf("cannot share screen, not found")
-	}
-	if screen.ShareMode == ShareModeWeb {
-		return fmt.Errorf("screen is already shared to web")
-	}
-	if screen.ShareMode != ShareModeLocal {
-		return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", screen.ShareMode)
-	}
-	if screen.Archived {
-		return fmt.Errorf("screen cannot be shared, must un-archive before sharing")
-	}
-	webShareCount, err := CountScreenWebShares(ctx)
-	if err != nil {
-		return fmt.Errorf("screen cannot be share: error getting webshare count: %v", err)
-	}
-	if webShareCount >= MaxWebShareScreenCount {
-		go UpdateCurrentActivity(context.Background(), ActivityUpdate{WebShareLimit: 1})
-		return fmt.Errorf("screen cannot be shared, limited to a maximum of %d shared screen(s)", MaxWebShareScreenCount)
-	}
-	lineCount, err := CountScreenLines(ctx, screen.ScreenId)
-	if err != nil {
-		return fmt.Errorf("screen cannot be share: error getting screen line count: %v", err)
-	}
-	if lineCount > MaxWebShareLineCount {
-		go UpdateCurrentActivity(context.Background(), ActivityUpdate{WebShareLimit: 1})
-		return fmt.Errorf("screen cannot be shared, limited to a maximum of %d lines", MaxWebShareLineCount)
-	}
-	return nil
-}
+// Below is currently not used and is causing circular dependency due to moving telemetry code to a new package. It will likely be rewritten whenever we add back webshare and should be moved to a different package then.
+// func CanScreenWebShare(ctx context.Context, screen *ScreenType) error {
+// 	if screen == nil {
+// 		return fmt.Errorf("cannot share screen, not found")
+// 	}
+// 	if screen.ShareMode == ShareModeWeb {
+// 		return fmt.Errorf("screen is already shared to web")
+// 	}
+// 	if screen.ShareMode != ShareModeLocal {
+// 		return fmt.Errorf("screen cannot be shared, invalid current share mode %q (must be local)", screen.ShareMode)
+// 	}
+// 	if screen.Archived {
+// 		return fmt.Errorf("screen cannot be shared, must un-archive before sharing")
+// 	}
+// 	webShareCount, err := CountScreenWebShares(ctx)
+// 	if err != nil {
+// 		return fmt.Errorf("screen cannot be share: error getting webshare count: %v", err)
+// 	}
+// 	if webShareCount >= MaxWebShareScreenCount {
+// 		go UpdateCurrentActivity(context.Background(), ActivityUpdate{WebShareLimit: 1})
+// 		return fmt.Errorf("screen cannot be shared, limited to a maximum of %d shared screen(s)", MaxWebShareScreenCount)
+// 	}
+// 	lineCount, err := CountScreenLines(ctx, screen.ScreenId)
+// 	if err != nil {
+// 		return fmt.Errorf("screen cannot be share: error getting screen line count: %v", err)
+// 	}
+// 	if lineCount > MaxWebShareLineCount {
+// 		go UpdateCurrentActivity(context.Background(), ActivityUpdate{WebShareLimit: 1})
+// 		return fmt.Errorf("screen cannot be shared, limited to a maximum of %d lines", MaxWebShareLineCount)
+// 	}
+// 	return nil
+// }
 
 func ScreenWebShareStart(ctx context.Context, screenId string, shareOpts ScreenWebShareOpts) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
