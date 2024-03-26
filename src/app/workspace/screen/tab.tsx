@@ -53,9 +53,10 @@ class ScreenTab extends React.Component<
         e.preventDefault();
         e.stopPropagation();
         mobx.action(() => {
-            GlobalModel.screenSettingsModal.set({ sessionId: screen.sessionId, screenId: screen.screenId });
+            GlobalModel.tabSettingsOpen.set(!GlobalModel.tabSettingsOpen.get());
+            // GlobalModel.screenSettingsModal.set({ sessionId: screen.sessionId, screenId: screen.screenId });
         })();
-        GlobalModel.modalsModel.pushModal(constants.SCREEN_SETTINGS);
+        // GlobalModel.modalsModel.pushModal(constants.SCREEN_SETTINGS);
     }
 
     render() {

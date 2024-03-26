@@ -121,19 +121,16 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
 
 @mobxReact.observer
 class WorkspaceView extends React.Component<{}, {}> {
-    showTabSettings: OV<boolean> = mobx.observable.box(true, { name: "WorkspaceView-showTabSettings" });
-
     @boundMethod
     toggleTabSettings() {
-        let newVal = !this.showTabSettings.get();
         mobx.action(() => {
-            this.showTabSettings.set(newVal);
+            GlobalModel.tabSettingsOpen.set(!GlobalModel.tabSettingsOpen.get());
         })();
     }
 
     render() {
-        let model = GlobalModel;
-        let session = model.getActiveSession();
+        const model = GlobalModel;
+        const session = model.getActiveSession();
         let activeScreen: Screen = null;
         let sessionId: string = "none";
         if (session != null) {
@@ -144,9 +141,9 @@ class WorkspaceView extends React.Component<{}, {}> {
         if (cmdInputHeight == 0) {
             cmdInputHeight = textmeasure.baseCmdInputHeight(GlobalModel.lineHeightEnv); // this is the base size of cmdInput (measured using devtools)
         }
-        let isHidden = GlobalModel.activeMainView.get() != "session";
-        let mainSidebarModel = GlobalModel.mainSidebarModel;
-        // let showTabSettings = this.showTabSettings.get();
+        const isHidden = GlobalModel.activeMainView.get() != "session";
+        const mainSidebarModel = GlobalModel.mainSidebarModel;
+        const showTabSettings = GlobalModel.tabSettingsOpen.get();
         return (
             <div
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
@@ -159,14 +156,14 @@ class WorkspaceView extends React.Component<{}, {}> {
                     <SessionKeybindings key="keybindings"></SessionKeybindings>
                 </If>
                 <ScreenTabs key={"tabs-" + sessionId} session={session} />
-                {/*
-                <div className={cn("tab-settings-pulldown", { closed: !showTabSettings })}>
-                    <div className="close-icon" onClick={this.toggleTabSettings}>
-                        <i className="fa-solid fa-sharp fa-xmark-large" />
+                <If condition={activeScreen != null}>
+                    <div key="pulldown" className={cn("tab-settings-pulldown", { closed: !showTabSettings })}>
+                        <div className="close-icon" onClick={this.toggleTabSettings}>
+                            <i className="fa-solid fa-sharp fa-xmark-large" />
+                        </div>
+                        <TabSettings key={activeScreen.screenId} screen={activeScreen} />
                     </div>
-                    <TabSettings screen={activeScreen} />
-                </div>
-                */}
+                </If>
                 <ErrorBoundary key="eb">
                     <ScreenView key={"screenview-" + sessionId} session={session} screen={activeScreen} />
                     <div className="cmdinput-height-placeholder" style={{ height: cmdInputHeight }}></div>
