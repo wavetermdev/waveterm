@@ -17,6 +17,7 @@ import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "@/common/prompt/prompt";
 import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
+import * as util from "@/util/util";
 
 import "./cmdinput.less";
 
@@ -105,6 +106,24 @@ class CmdInput extends React.Component<{}, {}> {
     @boundMethod
     clickResetState(): void {
         GlobalCommandRunner.resetShellState();
+    }
+
+    getRemoteDisplayName(rptr: RemotePtrType): string {
+        if (rptr == null) {
+            return "(unknown)";
+        }
+        const remote = GlobalModel.getRemote(rptr.remoteid);
+        if (remote == null) {
+            return "(invalid)";
+        }
+        let remoteNamePart = "";
+        if (!util.isBlank(rptr.name)) {
+            remoteNamePart = "#" + rptr.name;
+        }
+        if (remote.remotealias) {
+            return remote.remotealias + remoteNamePart;
+        }
+        return remote.remotecanonicalname + remoteNamePart;
     }
 
     render() {
