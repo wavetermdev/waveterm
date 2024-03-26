@@ -39,6 +39,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 
 	"golang.org/x/crypto/ssh"
@@ -1420,8 +1421,8 @@ func getStateVarsFromInitPk(initPk *packet.InitPacketType) map[string]string {
 	return rtn
 }
 
-func makeReinitErrorUpdate(shellType string) sstore.ActivityUpdate {
-	rtn := sstore.ActivityUpdate{}
+func makeReinitErrorUpdate(shellType string) telemetry.ActivityUpdate {
+	rtn := telemetry.ActivityUpdate{}
 	if shellType == packet.ShellType_bash {
 		rtn.ReinitBashErrors = 1
 	} else if shellType == packet.ShellType_zsh {
@@ -1442,7 +1443,7 @@ func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType
 	}
 	defer func() {
 		if rtnErr != nil {
-			sstore.UpdateActivityWrap(ctx, makeReinitErrorUpdate(shellType), "reiniterror")
+			telemetry.UpdateActivityWrap(ctx, makeReinitErrorUpdate(shellType), "reiniterror")
 		}
 	}()
 	startTs := time.Now()

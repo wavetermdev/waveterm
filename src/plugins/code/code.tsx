@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
+import * as mobx from "mobx";
 import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import cn from "classnames";
@@ -10,7 +11,12 @@ import { Markdown } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import Split from "react-split-it";
 import loader from "@monaco-editor/loader";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import {
+    checkKeyPressed,
+    adaptFromReactOrNativeKeyEvent,
+    KeybindManager,
+    adaptFromElectronKeyEvent,
+} from "@/util/keyutil";
 import { Button, Dropdown } from "@/elements";
 
 import "./code.less";
@@ -45,6 +51,18 @@ function renderCmdText(text: string): any {
 
 // there is a global monaco variable (TODO get the correct TS type)
 declare var monaco: any;
+
+class CodeKeybindings extends React.Component<{ codeObject: SourceCodeRenderer }, {}> {
+    componentDidMount(): void {
+        this.props.codeObject.registerKeybindings();
+    }
+    componentWillUnmount(): void {
+        this.props.codeObject.unregisterKeybindings();
+    }
+    render() {
+        return null;
+    }
+}
 
 class SourceCodeRenderer extends React.Component<
     {
@@ -131,6 +149,10 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
+    componentWillUnmount() {
+        this.unregisterKeybindings();
+    }
+
     componentDidUpdate(prevProps: any): void {
         if (!prevProps.shouldFocus && this.props.shouldFocus) {
             if (this.monacoEditor) {
@@ -174,6 +196,30 @@ class SourceCodeRenderer extends React.Component<
         }
     };
 
+    registerKeybindings() {
+        const { lineId } = this.props.context;
+        let domain = "code-" + lineId;
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("plugin", domain, "codeedit:save", (waveEvent) => {
+            this.doSave();
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "codeedit:close", (waveEvent) => {
+            this.doClose();
+            return true;
+        });
+        keybindManager.registerKeybinding("plugin", domain, "codeedit:togglePreview", (waveEvent) => {
+            this.togglePreview();
+            return true;
+        });
+    }
+
+    unregisterKeybindings() {
+        const { lineId } = this.props.context;
+        let domain = "code-" + lineId;
+        GlobalModel.keybindManager.unregisterDomain(domain);
+    }
+
     handleEditorDidMount = (editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) => {
         this.monacoEditor = editor;
         this.setInitialLanguage(editor);
@@ -184,20 +230,15 @@ class SourceCodeRenderer extends React.Component<
         }, 2000);
         editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             let waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
-            if (checkKeyPressed(waveEvent, "Cmd:s") && this.state.isSave) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.doSave();
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:d")) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.doClose();
-            }
-            if (checkKeyPressed(waveEvent, "Cmd:p")) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.togglePreview();
+            console.log("keydown?", waveEvent);
+            if (
+                GlobalModel.keybindManager.checkKeysPressed(waveEvent, [
+                    "codeedit:save",
+                    "codeedit:close",
+                    "codeedit:togglePreview",
+                ])
+            ) {
+                GlobalModel.keybindManager.processKeyEvent(e.browserEvent, waveEvent);
             }
         });
         editor.onDidScrollChange((e) => {
@@ -503,8 +544,20 @@ class SourceCodeRenderer extends React.Component<
                 </div>
             );
         }
+        let { lineNum } = this.props.context;
+        let screen = GlobalModel.getActiveScreen();
+        let lineIsSelected = mobx.computed(
+            () => screen.getSelectedLine() == lineNum && screen.getFocusType() == "cmd",
+            {
+                name: "code-lineisselected",
+            }
+        );
+        console.log("lineis selected:", lineIsSelected.get());
         return (
             <div className="code-renderer">
+                <If condition={lineIsSelected.get()}>
+                    <CodeKeybindings codeObject={this}></CodeKeybindings>
+                </If>
                 <Split sizes={[editorFraction, 1 - editorFraction]} onSetSizes={this.setSizes}>
                     {this.getCodeEditor()}
                     {isPreviewerAvailable && showPreview && this.getPreviewer()}
