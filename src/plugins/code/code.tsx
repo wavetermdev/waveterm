@@ -419,7 +419,7 @@ class SourceCodeRenderer extends React.Component<
     }
 
     getCodeEditor = () => {
-        const theme = `wave-theme-${GlobalModel.getThemeSource()}`;
+        const theme = `wave-theme-${GlobalModel.isThemeDark() ? "dark" : "light"}`;
         return (
             <div className="editor-wrap" style={{ maxHeight: this.state.editorHeight }}>
                 {this.state.showReadonly && <div className="readonly">{"read-only"}</div>}
