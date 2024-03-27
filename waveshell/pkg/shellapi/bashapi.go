@@ -80,8 +80,8 @@ func (b bashShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty
 	return MakeBashShExecCommand(cmdStr, rcFileName, usePty)
 }
 
-func (b bashShellApi) GetShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte) {
-	GetBashShellState(outCh, stdinDataCh)
+func (b bashShellApi) GetShellState(ctx context.Context, outCh chan ShellStateOutput, stdinDataCh chan []byte) {
+	GetBashShellState(ctx, outCh, stdinDataCh)
 }
 
 func (b bashShellApi) GetBaseShellOpts() string {
@@ -146,7 +146,7 @@ printf "[%ENDBYTES%]";
 }
 
 func execGetLocalBashShellVersion() string {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
+	ctx, cancelFn := context.WithTimeout(context.Background(), GetVersionTimeout)
 	defer cancelFn()
 	ecmd := exec.CommandContext(ctx, "bash", "-c", BashShellVersionCmdStr)
 	out, err := ecmd.Output()
@@ -169,9 +169,7 @@ func GetLocalBashMajorVersion() string {
 	return localBashMajorVersion
 }
 
-func GetBashShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
-	defer cancelFn()
+func GetBashShellState(ctx context.Context, outCh chan ShellStateOutput, stdinDataCh chan []byte) {
 	defer close(outCh)
 	stateCmd, endBytes := GetBashShellStateCmd(StateOutputFdNum)
 	cmdStr := BaseBashOpts + "; " + stateCmd

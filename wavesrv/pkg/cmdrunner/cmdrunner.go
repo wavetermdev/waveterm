@@ -30,7 +30,6 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -3825,7 +3824,7 @@ type connectOptsType struct {
 
 // this does the asynchroneous part of the connection reset
 func doAsyncResetCommand(msh *remote.MShellProc, opts connectOptsType, cmd *sstore.CmdType) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), shellapi.ReInitTimeout)
+	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	startTime := time.Now()
 	var outputPos int64

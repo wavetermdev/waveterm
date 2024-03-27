@@ -353,7 +353,9 @@ func (m *MServer) MakeShellStatePacket(reqId string, shellType string, stdinData
 		return nil, err
 	}
 	rtnCh := make(chan shellapi.ShellStateOutput, 1)
-	go sapi.GetShellState(rtnCh, stdinDataCh)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	go sapi.GetShellState(ctx, rtnCh, stdinDataCh)
 	for ssOutput := range rtnCh {
 		if ssOutput.Error != "" {
 			return nil, errors.New(ssOutput.Error)

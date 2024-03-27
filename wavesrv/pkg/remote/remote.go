@@ -1762,7 +1762,7 @@ func (msh *MShellProc) initActiveShells() {
 		wg.Add(1)
 		go func(shellType string) {
 			defer wg.Done()
-			reinitCtx, cancelFn := context.WithTimeout(context.Background(), shellapi.ReInitTimeout)
+			reinitCtx, cancelFn := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancelFn()
 			_, err = msh.ReInit(reinitCtx, base.CommandKey(""), shellType, nil, false)
 			if err != nil {
