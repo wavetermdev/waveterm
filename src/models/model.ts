@@ -822,6 +822,12 @@ class Model {
         }
     }
 
+    markScreensAsNotNew(): void {
+        for (const screen of this.screenMap.values()) {
+            screen.isNew = false;
+        }
+    }
+
     updateSessions(sessions: SessionDataType[]): void {
         genMergeData(
             this.sessionList,
@@ -875,6 +881,7 @@ class Model {
                     if (update.connect.screens != null) {
                         this.screenMap.clear();
                         this.updateScreens(update.connect.screens);
+                        this.markScreensAsNotNew();
                     }
                     if (update.connect.sessions != null) {
                         this.sessionList.clear();
@@ -1009,9 +1016,12 @@ class Model {
                 this.deactivateScreenLines();
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
                 this.closeTabSettings();
-                setTimeout(() => {
-                    GlobalCommandRunner.syncShellState();
-                }, 100);
+                const activeScreen = this.getActiveScreen();
+                if (activeScreen != null && activeScreen.getCurRemoteInstance() != null) {
+                    setTimeout(() => {
+                        GlobalCommandRunner.syncShellState();
+                    }, 100);
+                }
             }
         } else {
             console.warn("unknown update", genUpdate);

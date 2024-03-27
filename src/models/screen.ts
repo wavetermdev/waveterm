@@ -44,6 +44,7 @@ class Screen {
     filterRunning: OV<boolean>;
     statusIndicator: OV<appconst.StatusIndicatorLevel>;
     numRunningCmds: OV<number>;
+    isNew: boolean; // used for showing screen settings on initial screen creation
 
     constructor(sdata: ScreenDataType, globalModel: Model) {
         this.globalModel = globalModel;
@@ -91,6 +92,7 @@ class Screen {
         this.numRunningCmds = mobx.observable.box(0, {
             name: "screen-num-running-cmds",
         });
+        this.isNew = true;
     }
 
     dispose() {}

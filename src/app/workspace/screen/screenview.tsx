@@ -417,6 +417,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     }
 
     componentDidMount() {
+        const { screen } = this.props;
         let wvElem = this.windowViewRef.current;
         if (wvElem != null) {
             let width = wvElem.offsetWidth;
@@ -424,6 +425,12 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             this.setSize(width, height);
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(wvElem);
+        }
+        if (screen.isNew) {
+            screen.isNew = false;
+            mobx.action(() => {
+                GlobalModel.tabSettingsOpen.set(true);
+            })();
         }
     }
 
