@@ -962,6 +962,8 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (update.sessiontombstone != null || update.screentombstone != null) {
+                    // nothing (ignore)
                 } else {
                     // interactive-only updates follow below
                     // we check interactive *inside* of the conditions because of isDev console.log message

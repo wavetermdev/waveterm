@@ -365,6 +365,8 @@ declare global {
         screenstatusindicator?: ScreenStatusIndicatorUpdateType;
         screennumrunningcommands?: ScreenNumRunningCommandsUpdateType;
         userinputrequest?: UserInputRequest;
+        screentombstone?: any;
+        sessiontombstone?: any;
     };
 
     type HistoryViewDataType = {
