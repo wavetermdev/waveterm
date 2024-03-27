@@ -107,15 +107,17 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                 this.model.setRecentConnAdded(true);
                 this.model.closeModal();
 
-                let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
-                crRtn.then((crcrtn) => {
-                    if (crcrtn.success) {
-                        return;
-                    }
-                    mobx.action(() => {
-                        this.errorStr.set(crcrtn.error);
-                    })();
-                });
+                if (GlobalModel.activeMainView.get() == "session") {
+                    let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, true);
+                    crRtn.then((crcrtn) => {
+                        if (crcrtn.success) {
+                            return;
+                        }
+                        mobx.action(() => {
+                            this.errorStr.set(crcrtn.error);
+                        })();
+                    });
+                }
                 return;
             }
             mobx.action(() => {

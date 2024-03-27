@@ -112,7 +112,6 @@ declare global {
         errorstr: string;
         installstatus: string;
         installerrorstr: string;
-        defaultfestate: Record<string, string>;
         connectmode: string;
         autoinstall: boolean;
         remoteidx: number;
@@ -126,6 +125,7 @@ declare global {
         waitingforpassword: boolean;
         remoteopts?: RemoteOptsType;
         local: boolean;
+        issudo: boolean;
         remove?: boolean;
         shellpref: string;
         defaultshelltype: string;
@@ -366,6 +366,8 @@ declare global {
         screenstatusindicator?: ScreenStatusIndicatorUpdateType;
         screennumrunningcommands?: ScreenNumRunningCommandsUpdateType;
         userinputrequest?: UserInputRequest;
+        screentombstone?: any;
+        sessiontombstone?: any;
     };
 
     type HistoryViewDataType = {

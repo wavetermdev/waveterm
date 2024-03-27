@@ -104,6 +104,9 @@ class Model {
     devicePixelRatio: OV<number> = mobx.observable.box(window.devicePixelRatio, {
         name: "devicePixelRatio",
     });
+    tabSettingsOpen: OV<boolean> = mobx.observable.box(false, {
+        name: "tabSettingsOpen",
+    });
     remotesModel: RemotesModel;
     lineHeightEnv: LineHeightEnv;
 
@@ -249,6 +252,14 @@ class Model {
             (window as any).GlobalModel = new Model();
         }
         return (window as any).GlobalModel;
+    }
+
+    closeTabSettings() {
+        if (this.tabSettingsOpen.get()) {
+            mobx.action(() => {
+                this.tabSettingsOpen.set(false);
+            })();
+        }
     }
 
     toggleDevUI(): void {
@@ -519,7 +530,7 @@ class Model {
             return;
         }
         const rtnp = this.showAlert({
-            message: "Are you sure you want to delete this screen?",
+            message: "Are you sure you want to delete this tab?",
             confirm: true,
         });
         rtnp.then((result) => {
@@ -586,7 +597,7 @@ class Model {
 
     getLocalRemote(): RemoteType {
         for (const remote of this.remotes) {
-            if (remote.local) {
+            if (remote.local && !remote.issudo) {
                 return remote;
             }
         }
@@ -811,6 +822,12 @@ class Model {
         }
     }
 
+    markScreensAsNotNew(): void {
+        for (const screen of this.screenMap.values()) {
+            screen.isNew = false;
+        }
+    }
+
     updateSessions(sessions: SessionDataType[]): void {
         genMergeData(
             this.sessionList,
@@ -864,6 +881,7 @@ class Model {
                     if (update.connect.screens != null) {
                         this.screenMap.clear();
                         this.updateScreens(update.connect.screens);
+                        this.markScreensAsNotNew();
                     }
                     if (update.connect.sessions != null) {
                         this.sessionList.clear();
@@ -955,6 +973,8 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (update.sessiontombstone != null || update.screentombstone != null) {
+                    // nothing (ignore)
                 } else {
                     // interactive-only updates follow below
                     // we check interactive *inside* of the conditions because of isDev console.log message
@@ -995,9 +1015,13 @@ class Model {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
-                setTimeout(() => {
-                    GlobalCommandRunner.syncShellState();
-                }, 100);
+                this.closeTabSettings();
+                const activeScreen = this.getActiveScreen();
+                if (activeScreen != null && activeScreen.getCurRemoteInstance() != null) {
+                    setTimeout(() => {
+                        GlobalCommandRunner.syncShellState();
+                    }, 100);
+                }
             }
         } else {
             console.warn("unknown update", genUpdate);

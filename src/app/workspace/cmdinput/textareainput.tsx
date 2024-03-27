@@ -131,6 +131,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:confirm", (waveEvent) => {
+            GlobalModel.closeTabSettings();
             if (GlobalModel.inputModel.isEmpty()) {
                 let activeWindow = GlobalModel.getScreenLinesForActiveScreen();
                 let activeScreen = GlobalModel.getActiveScreen();
@@ -144,6 +145,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:cancel", (waveEvent) => {
+            GlobalModel.closeTabSettings();
             inputModel.toggleInfoMsg();
             if (inputModel.inputMode.get() != null) {
                 inputModel.resetInputMode();
@@ -613,6 +615,15 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             let ri = screen.getCurRemoteInstance();
             if (ri != null && ri.shelltype != null) {
                 shellType = ri.shelltype;
+            }
+            if (shellType == "") {
+                let rptr = screen.curRemote.get();
+                if (rptr != null) {
+                    let remote = GlobalModel.getRemote(rptr.remoteid);
+                    if (remote != null) {
+                        shellType = remote.defaultshelltype;
+                    }
+                }
             }
         }
         let isMainInputFocused = this.mainInputFocused.get();

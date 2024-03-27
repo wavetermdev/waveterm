@@ -246,9 +246,7 @@ func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty 
 	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 }
 
-func (z zshShellApi) GetShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
-	defer cancelFn()
+func (z zshShellApi) GetShellState(ctx context.Context, outCh chan ShellStateOutput, stdinDataCh chan []byte) {
 	defer close(outCh)
 	stateCmd, endBytes := GetZshShellStateCmd(StateOutputFdNum)
 	cmdStr := BaseZshOpts + "; " + stateCmd
@@ -547,7 +545,7 @@ zshexit () {
 }
 
 func execGetLocalZshShellVersion() string {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
+	ctx, cancelFn := context.WithTimeout(context.Background(), GetVersionTimeout)
 	defer cancelFn()
 	ecmd := exec.CommandContext(ctx, "zsh", "-c", ZshShellVersionCmdStr)
 	out, err := ecmd.Output()

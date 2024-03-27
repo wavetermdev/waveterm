@@ -94,6 +94,10 @@ class CommandRunner {
         return GlobalModel.submitCommand("line", "set", [lineArg], kwargs, false);
     }
 
+    ensureWorkspace() {
+        GlobalModel.submitCommand("session", "ensureone", null, { nohist: "1" }, true);
+    }
+
     createNewSession() {
         GlobalModel.submitCommand("session", "open", null, { nohist: "1" }, false);
     }

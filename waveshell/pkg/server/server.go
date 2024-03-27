@@ -353,7 +353,9 @@ func (m *MServer) MakeShellStatePacket(reqId string, shellType string, stdinData
 		return nil, err
 	}
 	rtnCh := make(chan shellapi.ShellStateOutput, 1)
-	go sapi.GetShellState(rtnCh, stdinDataCh)
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	go sapi.GetShellState(ctx, rtnCh, stdinDataCh)
 	for ssOutput := range rtnCh {
 		if ssOutput.Error != "" {
 			return nil, errors.New(ssOutput.Error)
@@ -746,11 +748,6 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require shell type"))
 		return
 	}
-	_, curInitState := m.StateMap.GetCurrentState(runPacket.ShellType)
-	if curInitState == nil {
-		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("shell type %q is not initialized", runPacket.ShellType))
-		return
-	}
 	if runPacket.State == nil {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require state"))
 		return
@@ -758,10 +755,6 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	_, _, err := packet.ParseShellStateVersion(runPacket.State.Version)
 	if err != nil {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("invalid shellstate version: %w", err))
-		return
-	}
-	if !packet.StateVersionsCompatible(runPacket.State.Version, curInitState.Version) {
-		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("shellstate version %q is not compatible with current shell version %q", runPacket.State.Version, curInitState.Version))
 		return
 	}
 	ecmd, err := shexec.MakeMShellSingleCmd()
