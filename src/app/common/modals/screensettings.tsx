@@ -205,7 +205,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />
                 </div>
-                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} keybindings={true} />
             </Modal>
         );
     }

@@ -17,7 +17,7 @@ interface ModalHeaderProps {
     title: string;
 }
 
-const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, keybindings = true, title }) => (
+const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, keybindings, title }) => (
     <div className="wave-modal-header">
         <If condition={keybindings && onClose}>
             <ModalKeybindings onCancel={onClose}></ModalKeybindings>
@@ -80,7 +80,7 @@ const ModalFooter: React.FC<ModalFooterProps> = ({
     onOk,
     cancelLabel = "Cancel",
     okLabel = "Ok",
-    keybindings = true,
+    keybindings,
 }) => (
     <div className="wave-modal-footer">
         <If condition={keybindings}>
