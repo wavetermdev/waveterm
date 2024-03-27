@@ -117,6 +117,9 @@ class Model {
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
     rightSidebarModel: RightSidebarModel;
+    isDarkTheme: OV<boolean> = mobx.observable.box(getApi().getShouldUseDarkColors(), {
+        name: "isDarkTheme",
+    });
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -180,6 +183,7 @@ class Model {
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
         getApi().onAppUpdateStatus(this.onAppUpdateStatus.bind(this));
+        getApi().onNativeThemeUpdated(this.onNativeThemeUpdated.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
@@ -392,8 +396,15 @@ class Model {
         return getApi().getNativeThemeSource();
     }
 
-    isThemeDark(): boolean {
-        return getApi().getShouldUseDarkColors();
+    onNativeThemeUpdated(): void {
+        console.log("native theme updated");
+        const isDark = getApi().getShouldUseDarkColors();
+        if (isDark != this.isDarkTheme.get()) {
+            mobx.action(() => {
+                this.isDarkTheme.set(isDark);
+                this.bumpRenderVersion();
+            })();
+        }
     }
 
     getTermFontSize(): number {

@@ -8,7 +8,7 @@ import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalCommandRunner, GlobalModel } from "@/models";
+import { GlobalModel } from "@/models";
 import { isBlank } from "@/util/util";
 import { WorkspaceView } from "./workspace/workspaceview";
 import { PluginsView } from "./pluginsview/pluginsview";
@@ -123,7 +123,7 @@ class App extends React.Component<{}, {}> {
         const mainSidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
         const rightSidebarCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
         const activeMainView = GlobalModel.activeMainView.get();
-        const lightDarkClass = GlobalModel.isThemeDark() ? "is-dark" : "is-light";
+        const lightDarkClass = GlobalModel.isDarkTheme.get() ? "is-dark" : "is-light";
         return (
             <div
                 key={"version-" + renderVersion}

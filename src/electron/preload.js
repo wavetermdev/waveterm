@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld("api", {
     getShouldUseDarkColors: () => ipcRenderer.sendSync("get-shouldusedarkcolors"),
     getNativeThemeSource: () => ipcRenderer.sendSync("get-nativethemesource"),
     setNativeThemeSource: (source) => ipcRenderer.send("set-nativethemesource", source),
+    onNativeThemeUpdated: (callback) => ipcRenderer.on("nativetheme-updated", callback),
     restartWaveSrv: () => ipcRenderer.sendSync("restart-server"),
     reloadWindow: () => ipcRenderer.sendSync("reload-window"),
     reregisterGlobalShortcut: (shortcut) => ipcRenderer.sendSync("reregister-global-shortcut", shortcut),

@@ -552,6 +552,12 @@ electron.ipcMain.on("set-nativethemesource", (event, themeSource: "system" | "li
     event.returnValue = true;
 });
 
+electron.nativeTheme.on("updated", () => {
+    if (MainWindow != null) {
+        MainWindow.webContents.send("nativetheme-updated");
+    }
+});
+
 function readLastLinesOfFile(filePath: string, lineCount: number) {
     return new Promise((resolve, reject) => {
         child_process.exec(`tail -n ${lineCount} "${filePath}"`, (err, stdout, stderr) => {

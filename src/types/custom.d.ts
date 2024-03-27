@@ -902,6 +902,7 @@ declare global {
         getShouldUseDarkColors: () => boolean;
         getNativeThemeSource: () => NativeThemeSource;
         setNativeThemeSource: (source: NativeThemeSource) => void;
+        onNativeThemeUpdated: (callback: () => void) => void;
         restartWaveSrv: () => boolean;
         reloadWindow: () => void;
         openExternalLink: (url: string) => void;
