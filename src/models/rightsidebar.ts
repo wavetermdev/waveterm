@@ -70,6 +70,10 @@ class RightSidebarModel implements SidebarModel {
     }
 
     getCollapsed(): boolean {
+        // disable right sidebar in production
+        if (!this.globalModel.isDev) {
+            return true;
+        }
         const clientData = this.globalModel.clientData.get();
         const collapsed = clientData?.clientopts?.rightsidebar?.collapsed;
         if (this.isDragging.get()) {
