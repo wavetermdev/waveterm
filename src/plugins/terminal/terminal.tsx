@@ -23,17 +23,17 @@ class TerminalKeybindings extends React.Component<{ termWrap: any; lineid: strin
     }
 
     registerKeybindings() {
-        let keybindManager = GlobalModel.keybindManager;
-        let domain = "line-" + this.props.lineid;
-        let termWrap = this.props.termWrap;
+        const keybindManager = GlobalModel.keybindManager;
+        const domain = "line-" + this.props.lineid;
+        const termWrap = this.props.termWrap;
         keybindManager.registerKeybinding("plugin", domain, "terminal:copy", (waveEvent) => {
-            let termWrap = this.props.termWrap;
-            let sel = termWrap.terminal.getSelection();
+            const termWrap = this.props.termWrap;
+            const sel = termWrap.terminal.getSelection();
             navigator.clipboard.writeText(sel);
             return true;
         });
         keybindManager.registerKeybinding("plugin", domain, "terminal:paste", (waveEvent) => {
-            let p = navigator.clipboard.readText();
+            const p = navigator.clipboard.readText();
             p.then((text) => {
                 termWrap.dataHandler?.(text, termWrap);
             });
@@ -105,7 +105,7 @@ class TerminalRenderer extends React.Component<
     }
 
     getSnapshotBeforeUpdate(prevProps, prevState): { height: number } {
-        let elem = this.elemRef.current;
+        const elem = this.elemRef.current;
         if (elem == null) {
             return { height: 0 };
         }
@@ -116,9 +116,8 @@ class TerminalRenderer extends React.Component<
         if (this.props.onHeightChange == null) {
             return;
         }
-        let { line } = this.props;
         let curHeight = 0;
-        let elem = this.elemRef.current;
+        const elem = this.elemRef.current;
         if (elem != null) {
             curHeight = elem.offsetHeight;
         }
@@ -133,12 +132,12 @@ class TerminalRenderer extends React.Component<
     }
 
     checkLoad(): void {
-        let { line, staticRender, visible, collapsed } = this.props;
+        let { staticRender, visible, collapsed } = this.props;
         if (staticRender) {
             return;
         }
-        let vis = visible && visible.get() && !collapsed;
-        let curVis = this.termLoaded.get();
+        const vis = visible?.get() && !collapsed;
+        const curVis = this.termLoaded.get();
         if (vis && !curVis) {
             this.loadTerminal();
         } else if (!vis && curVis) {
@@ -147,13 +146,12 @@ class TerminalRenderer extends React.Component<
     }
 
     loadTerminal(): void {
-        let { screen, line } = this.props;
-        let model = GlobalModel;
-        let cmd = screen.getCmd(line);
+        const { screen, line } = this.props;
+        const cmd = screen.getCmd(line);
         if (cmd == null) {
             return;
         }
-        let termElem = this.termRef.current;
+        const termElem = this.termRef.current;
         if (termElem == null) {
             console.log("cannot load terminal, no term elem found", line);
             return;
@@ -163,11 +161,11 @@ class TerminalRenderer extends React.Component<
     }
 
     unloadTerminal(unmount: boolean): void {
-        let { screen, line } = this.props;
+        const { screen, line } = this.props;
         screen.unloadRenderer(line.lineid);
         if (!unmount) {
             mobx.action(() => this.termLoaded.set(false))();
-            let termElem = this.termRef.current;
+            const termElem = this.termRef.current;
             if (termElem != null) {
                 termElem.replaceChildren();
             }
@@ -176,22 +174,21 @@ class TerminalRenderer extends React.Component<
 
     @boundMethod
     clickTermBlock(e: any) {
-        let { screen, line } = this.props;
-        let model = GlobalModel;
-        let termWrap = screen.getTermWrap(line.lineid);
+        const { screen, line } = this.props;
+        const termWrap = screen.getTermWrap(line.lineid);
         if (termWrap != null) {
             termWrap.giveFocus();
         }
     }
 
     render() {
-        let { screen, line, width, staticRender, visible, collapsed } = this.props;
-        let isPhysicalFocused = mobx
+        const { screen, line, width, collapsed } = this.props;
+        const isPhysicalFocused = mobx
             .computed(() => screen.getIsFocused(line.linenum), {
                 name: "computed-getIsFocused",
             })
             .get();
-        let isFocused = mobx
+        const isFocused = mobx
             .computed(
                 () => {
                     let screenFocusType = screen.getFocusType();
@@ -200,15 +197,15 @@ class TerminalRenderer extends React.Component<
                 { name: "computed-isFocused" }
             )
             .get();
-        let cmd = screen.getCmd(line); // will not be null
-        let usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
+        const cmd = screen.getCmd(line); // will not be null
+        const usedRows = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         let termHeight = termHeightFromRows(usedRows, GlobalModel.getTermFontSize(), cmd.getTermMaxRows());
         if (usedRows === 0) {
             termHeight = 0;
         }
-        let termLoaded = this.termLoaded.get();
-        let lineid = line.lineid;
-        let termWrap = screen.getTermWrap(lineid);
+        const termLoaded = this.termLoaded.get();
+        const lineid = line.lineid;
+        const termWrap = screen.getTermWrap(lineid);
         return (
             <div
                 ref={this.elemRef}

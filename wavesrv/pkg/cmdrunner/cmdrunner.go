@@ -104,7 +104,7 @@ var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cy
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 var ConfirmFlags = []string{"hideshellprompt"}
 var SidebarNames = []string{"main"}
-var ThemeNames = []string{"light", "dark"}
+var ThemeSources = []string{"light", "dark", "system"}
 
 var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal", "chat"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
@@ -5649,20 +5649,20 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		}
 		varsUpdated = append(varsUpdated, "termfontfamily")
 	}
-	if themeStr, found := pk.Kwargs["theme"]; found {
-		newTheme := themeStr
+	if themeSourceStr, found := pk.Kwargs["theme"]; found {
+		newThemeSource := themeSourceStr
 		found := false
-		for _, theme := range ThemeNames {
-			if newTheme == theme {
+		for _, theme := range ThemeSources {
+			if newThemeSource == theme {
 				found = true
 				break
 			}
 		}
 		if !found {
-			return nil, fmt.Errorf("invalid theme name")
+			return nil, fmt.Errorf("invalid theme source")
 		}
 		feOpts := clientData.FeOpts
-		feOpts.Theme = newTheme
+		feOpts.Theme = newThemeSource
 		err = sstore.UpdateClientFeOpts(ctx, feOpts)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client feopts: %v", err)
