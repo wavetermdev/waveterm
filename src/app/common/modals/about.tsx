@@ -10,10 +10,10 @@ import { Modal, LinkButton } from "@/elements";
 import * as util from "@/util/util";
 import * as appconst from "@/app/appconst";
 import cn from "classnames";
+import { If } from "tsx-control-statements/components";
 
 import logo from "@/assets/waveterm-logo-with-bg.svg";
 import "./about.less";
-import { If } from "tsx-control-statements/components";
 
 @mobxReact.observer
 class AboutModal extends React.Component<{}, {}> {
