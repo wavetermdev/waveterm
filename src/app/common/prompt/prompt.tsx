@@ -83,17 +83,16 @@ function getCwdStr(remote: RemoteType, state: Record<string, string>): string {
 }
 
 @mobxReact.observer
-class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<string, string>; color: boolean }, {}> {
-    render() {
+class Prompt extends React.Component<
+    { rptr: RemotePtrType; festate: Record<string, string>; color: boolean; shellInitMsg?: string },
+    {}
+> {
+    getRemoteElem() {
         const rptr = this.props.rptr;
-        if (rptr == null || isBlank(rptr.remoteid)) {
-            return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>;
-        }
-        const remote = GlobalModel.getRemote(this.props.rptr.remoteid);
         const remoteStr = getRemoteStr(rptr);
-        const festate = this.props.festate ?? {};
-        const cwd = getCwdStr(remote, festate);
+        let remoteTitle: string = null;
         let isRoot = false;
+        let remote = this.getRemote();
         if (remote?.remotevars) {
             if (remote.remotevars["sudo"] || remote.remotevars["bestuser"] == "root") {
                 isRoot = true;
@@ -103,11 +102,9 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
         if (remote?.remoteopts?.color) {
             remoteColorClass = "color-" + remote.remoteopts.color;
         }
-        let remoteTitle: string = null;
         if (remote?.remotecanonicalname) {
             remoteTitle = "connected to " + remote.remotecanonicalname;
         }
-        const cwdElem = <span className="term-prompt-cwd">{cwd}</span>;
         let remoteElem = null;
         if (remoteStr != "local") {
             remoteElem = (
@@ -116,6 +113,36 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
                 </span>
             );
         }
+        return { remoteElem, isRoot };
+    }
+
+    getRemote(): RemoteType {
+        const remote = GlobalModel.getRemote(this.props.rptr.remoteid);
+        return remote;
+    }
+
+    render() {
+        const rptr = this.props.rptr;
+        if (rptr == null || isBlank(rptr.remoteid)) {
+            return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>;
+        }
+        let { remoteElem, isRoot } = this.getRemoteElem();
+        let termClassNames = cn(
+            "term-prompt",
+            { "term-prompt-color": this.props.color },
+            { "term-prompt-isroot": isRoot }
+        );
+        if (this.props.shellInitMsg != null) {
+            return (
+                <span className={termClassNames}>
+                    {remoteElem} <span className="term-prompt-shellmsg">{this.props.shellInitMsg}</span>
+                </span>
+            );
+        }
+        const festate = this.props.festate ?? {};
+        const remote = this.getRemote();
+        const cwd = getCwdStr(remote, festate);
+        const cwdElem = <span className="term-prompt-cwd">{cwd}</span>;
         let branchElem = null;
         let pythonElem = null;
         let condaElem = null;
@@ -145,13 +172,7 @@ class Prompt extends React.Component<{ rptr: RemotePtrType; festate: Record<stri
             );
         }
         return (
-            <span
-                className={cn(
-                    "term-prompt",
-                    { "term-prompt-color": this.props.color },
-                    { "term-prompt-isroot": isRoot }
-                )}
-            >
+            <span className={termClassNames}>
                 {remoteElem} {cwdElem} {branchElem} {condaElem} {pythonElem}
             </span>
         );

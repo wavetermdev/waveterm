@@ -142,6 +142,9 @@ class CmdInput extends React.Component<{}, {}> {
             remote = GlobalModel.getRemote(ri.remoteid);
             feState = ri.festate;
         }
+        if (remote == null && rptr != null) {
+            remote = GlobalModel.getRemote(rptr.remoteid);
+        }
         feState = feState || {};
         const infoShow = inputModel.infoShow.get();
         const historyShow = !infoShow && inputModel.historyShow.get();
@@ -154,6 +157,18 @@ class CmdInput extends React.Component<{}, {}> {
         let numRunningLines = 0;
         if (win != null) {
             numRunningLines = mobx.computed(() => win.getRunningCmdLines().length).get();
+        }
+        let shellInitMsg: string = null;
+        if (ri == null) {
+            let shellStr = "shell";
+            if (!util.isBlank(remote?.defaultshelltype)) {
+                shellStr = remote.defaultshelltype;
+            }
+            if (numRunningLines > 0) {
+                shellInitMsg = `Initializing ${shellStr}...`;
+            } else {
+                shellInitMsg = `no shell state`;
+            }
         }
         return (
             <div
@@ -232,7 +247,7 @@ class CmdInput extends React.Component<{}, {}> {
                     <div key="prompt" className="cmd-input-context">
                         <div className="has-text-white">
                             <span ref={this.promptRef}>
-                                <Prompt rptr={rptr} festate={feState} color={true} />
+                                <Prompt rptr={rptr} festate={feState} color={true} shellInitMsg={shellInitMsg} />
                             </span>
                         </div>
                     </div>

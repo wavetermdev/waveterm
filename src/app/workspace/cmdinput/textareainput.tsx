@@ -616,6 +616,15 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             if (ri != null && ri.shelltype != null) {
                 shellType = ri.shelltype;
             }
+            if (shellType == "") {
+                let rptr = screen.curRemote.get();
+                if (rptr != null) {
+                    let remote = GlobalModel.getRemote(rptr.remoteid);
+                    if (remote != null) {
+                        shellType = remote.defaultshelltype;
+                    }
+                }
+            }
         }
         let isMainInputFocused = this.mainInputFocused.get();
         let isHistoryFocused = this.historyFocused.get();
