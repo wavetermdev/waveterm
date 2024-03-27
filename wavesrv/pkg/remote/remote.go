@@ -2107,7 +2107,7 @@ func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error 
 	msh.Lock.Unlock()
 	if sink == nil {
 		// no sink and no running command
-		return fmt.Errorf("cannot send input, cmd is not running")
+		return fmt.Errorf("cannot send input, cmd is not running (%s)", inputPk.CK)
 	}
 	return sink.HandleInput(inputPk)
 }
