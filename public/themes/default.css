@@ -186,4 +186,11 @@
     --datepicker-header-fade-color: rgba(255, 255, 255, 0.4);
     --datepicker-year-header-bg-color: rgba(255, 255, 255, 0.2); /* Light grey background */
     --datepicker-year-header-border-color: rgba(241, 246, 243, 0.15); /* Light grey border */
+
+    /* OverlayScrollbars styling */
+    .os-scrollbar {
+        --os-handle-bg: var(--scrollbar-thumb-color);
+        --os-handle-bg-hover: var(--scrollbar-thumb-hover-color);
+        --os-handle-bg-active: var(--scrollbar-thumb-hover-color);
+    }
 }
