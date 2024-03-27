@@ -66,8 +66,10 @@
         overflow-y: auto;
         .item {
             &.active {
-                background-color: var(--sidebar-highlight-color);
                 font-weight: var(--sidebar-highlight-font-weight);
+            }
+            &.highlight {
+                background-color: var(--sidebar-highlight-color);
             }
             .index {
                 font-size: 10px;
