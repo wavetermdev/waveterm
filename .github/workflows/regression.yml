@@ -24,3 +24,12 @@ jobs:
             3. type 'ls' into the input
             4. press return
             5. validate Wave shows the result of 'ls'
+      - uses: peter-evans/create-or-update-comment@v2
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ## TestDriver Summary
+            ${{ steps.testdriver.outputs.summary }}
+          reactions: |
+            +1
+            -1
