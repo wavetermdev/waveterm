@@ -408,7 +408,6 @@ class Model {
     }
 
     onNativeThemeUpdated(): void {
-        console.log("native theme updated");
         const isDark = getApi().getShouldUseDarkColors();
         if (isDark != this.isDarkTheme.get()) {
             mobx.action(() => {
