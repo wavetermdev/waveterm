@@ -36,9 +36,13 @@ type TermWrapOpts = {
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
 };
 
-function getThemeFromCSSVars(): ITheme {
-    let theme: ITheme = {};
-    let rootStyle = getComputedStyle(document.documentElement);
+function getThemeFromCSSVars(themeSrcEl: HTMLElement): ITheme {
+    const theme: ITheme = {};
+    // let el = document.querySelector('.session-view[data-sessionid="b684ec3f-5639-48a7-a120-3c38844a4f6a"]');
+    // console.log("el==========================", el);
+
+    const tse = themeSrcEl ?? document.documentElement;
+    let rootStyle = getComputedStyle(tse);
     theme.foreground = rootStyle.getPropertyValue("--term-foreground");
     theme.background = rootStyle.getPropertyValue("--term-background");
     theme.black = rootStyle.getPropertyValue("--term-black");
@@ -61,6 +65,7 @@ function getThemeFromCSSVars(): ITheme {
     theme.selectionInactiveBackground = rootStyle.getPropertyValue("--term-selection-background");
     theme.cursor = rootStyle.getPropertyValue("--term-selection-background");
     theme.cursorAccent = rootStyle.getPropertyValue("--term-cursor-accent");
+    console.log("theme", theme);
     return theme;
 }
 
@@ -114,7 +119,9 @@ class TermWrap {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
-        let theme = getThemeFromCSSVars();
+        console.log("termThemeSrcEl", GlobalModel.termThemeSrcEl.get());
+        const themeSrcEl = GlobalModel.termThemeSrcEl.get();
+        let theme = getThemeFromCSSVars(themeSrcEl);
         this.terminal = new Terminal({
             rows: this.termSize.rows,
             cols: this.termSize.cols,

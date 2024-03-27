@@ -1,4 +1,4 @@
-function loadTheme(theme: string) {
+function loadTheme(theme) {
     const linkTag: any = document.getElementById("theme-stylesheet");
     if (theme === "dark") {
         linkTag.href = "public/themes/default.css";

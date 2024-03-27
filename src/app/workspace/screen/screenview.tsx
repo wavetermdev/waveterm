@@ -543,6 +543,11 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
 
     theme: string;
 
+    state = {
+        termThemeSrcEl: GlobalModel.termThemeSrcEl.get(),
+    };
+    disposer: any;
+
     constructor(props: any) {
         super(props);
         this.setSize_debounced = debounce(1000, this.setSize.bind(this));
@@ -565,18 +570,19 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     }
 
     componentDidUpdate(): void {
-        const { screen } = this.props;
-        const clientData = GlobalModel.clientData.get();
-        const { termtheme } = clientData?.feopts;
-        if (termtheme && this.windowViewRef.current && this.theme != termtheme[screen.screenId]) {
-            const newTermTheme = termtheme[screen.screenId];
-            this.theme = newTermTheme ?? this.theme;
-            const reset = newTermTheme == null;
-            GlobalModel.applyTermTheme(this.windowViewRef.current, this.theme, reset);
-            if (reset) {
-                this.theme = null;
-            }
-        }
+        // const { screen } = this.props;
+        // const clientData = GlobalModel.clientData.get();
+        // const { termtheme } = clientData?.feopts;
+        // if (termtheme && this.windowViewRef.current && this.theme != termtheme[screen.screenId]) {
+        //     const newTermTheme = termtheme[screen.screenId];
+        //     this.theme = newTermTheme ?? this.theme;
+        //     const reset = newTermTheme == null;
+        //     GlobalModel.applyTermTheme(this.windowViewRef.current, this.theme, reset);
+        //     if (reset) {
+        //         this.theme = null;
+        //     }
+        // }
+        // GlobalModel.bumpRenderVersion();
     }
 
     componentDidMount() {
@@ -588,6 +594,13 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(wvElem);
         }
+
+        this.disposer = mobx.reaction(
+            () => GlobalModel.termThemeSrcEl.get(),
+            (termThemeSrcEl) => {
+                this.setState({ termThemeSrcEl });
+            }
+        );
     }
 
     componentWillUnmount() {
@@ -673,7 +686,15 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         let { screen } = this.props;
         let { line, ...restProps } = lineProps;
         let realLine: LineType = line as LineType;
-        return <Line key={realLine.lineid} screen={screen} line={realLine} {...restProps} />;
+        return (
+            <Line
+                key={realLine.lineid}
+                screen={screen}
+                line={realLine}
+                termThemeSrcEl={this.state.termThemeSrcEl}
+                {...restProps}
+            />
+        );
     }
 
     determineVisibleLines(win: ScreenLines): LineType[] {
@@ -711,8 +732,19 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         let isActive = screen.isActive();
         let lines = this.determineVisibleLines(win);
         let renderMode = this.renderMode.get();
+        const renderVersion = GlobalModel.renderVersion.get();
+        const termRenderVersion = GlobalModel.termRenderVersion.get();
+
+        // console.log("re-rendered", this.state.termThemeSrcEl);
+
         return (
-            <div className="window-view" ref={this.windowViewRef} style={{ width: this.props.width }}>
+            <div
+                className="window-view"
+                ref={this.windowViewRef}
+                style={{ width: this.props.width }}
+                data-screenid={screen.screenId}
+                data-hastheme={this.theme != null}
+            >
                 <If condition={lines.length == 0}>
                     <If condition={screen.nextLineNum.get() == 1}>
                         <NewTabSettings screen={screen} />
@@ -732,6 +764,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                 </If>
                 <If condition={lines.length > 0}>
                     <LinesView
+                        key={`${screen.screenId}-${termRenderVersion}`}
                         screen={screen}
                         width={this.width.get()}
                         lines={lines}

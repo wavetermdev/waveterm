@@ -128,9 +128,15 @@ class Model {
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
+    termRenderVersion: OV<number> = mobx.observable.box(0, {
+        name: "termRenderVersion",
+    });
     termThemes: OMap<string, string> = mobx.observable.array([], {
         name: "terminalThemes",
         deep: false,
+    });
+    termThemeSrcEl: OV<HTMLElement> = mobx.observable.box(null, {
+        name: "termThemeSrcEl",
     });
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
@@ -436,9 +442,10 @@ class Model {
         return theme;
     }
 
-    getTermTheme(): { [k: string]: string } {
+    getTermTheme(): TermThemeType {
         let cdata = this.clientData.get();
         if (cdata?.feopts?.termtheme) {
+            console.log("cdata.feopts.termtheme", cdata.feopts.termtheme);
             return cdata.feopts.termtheme;
         }
         return {};
@@ -1248,7 +1255,7 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getTheme();
-        const oldTermTheme = this.getTermTheme();
+        const oldTermTheme = clientData?.feopts?.termtheme;
 
         mobx.action(() => {
             this.clientData.set(clientData);
@@ -1272,12 +1279,36 @@ class Model {
         }
 
         const newTermTheme = clientData?.feopts?.termtheme;
-        if ((Object.keys(newTermTheme).length > 0, oldTermTheme)) {
+        // console.log("newTermTheme", newTermTheme);
+        // console.log("oldTermTheme", oldTermTheme);
+        if (newTermTheme && (Object.keys(newTermTheme).length > 0, oldTermTheme)) {
             const termTheme = newTermTheme["global"] ?? oldTermTheme["global"];
-            const reset = newTermTheme["global"] == null;
-            if (termTheme) {
-                this.applyTermTheme(document.documentElement, termTheme, reset);
-            }
+            // if (termTheme) {
+            // this.applyTermTheme(document.documentElement, termTheme, reset);
+            Object.keys(newTermTheme).forEach((key) => {
+                if (key == "global") {
+                    // const reset = newTermTheme["global"] == null;
+                    this.applyTermTheme(document.documentElement, newTermTheme["global"], false);
+                }
+                // const sessionEl = document.querySelector(`.session-view`) as HTMLElement;
+                const sessionEl = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
+                // console.log(`.session-view[data-sessionid="${key}"]`);
+                // console.log("sessionEl", sessionEl);
+                if (sessionEl) {
+                    // const reset = newTermTheme["key"] == null;
+                    mobx.action(() => {
+                        this.termRenderVersion.set(this.termRenderVersion.get() + 1);
+                    })();
+                    console.log("newTermTheme[key]==================", newTermTheme[key]);
+                    this.applyTermTheme(sessionEl, newTermTheme[key], false);
+                    mobx.action(() => {
+                        this.termThemeSrcEl.set(sessionEl);
+                    })();
+                }
+            });
+            // this.bumpRenderVersion();
+            //
+            // }
         }
     }
 
