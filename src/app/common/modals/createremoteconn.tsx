@@ -363,7 +363,12 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
                 </div>
-                <Modal.Footer onCancel={this.model.closeModal} onOk={this.handleSubmitRemote} okLabel="Connect" />
+                <Modal.Footer
+                    onCancel={this.model.closeModal}
+                    onOk={this.handleSubmitRemote}
+                    okLabel="Connect"
+                    keybindings={true}
+                />
             </Modal>
         );
     }

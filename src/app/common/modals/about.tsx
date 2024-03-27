@@ -61,7 +61,7 @@ class AboutModal extends React.Component<{}, {}> {
         const currentDate = new Date();
         return (
             <Modal className="about-modal">
-                <Modal.Header onClose={this.closeModal} title="About" />
+                <Modal.Header onClose={this.closeModal} title="About" keybindings={true} />
                 <div className="wave-modal-body">
                     <div className="about-section">
                         <div className="logo-wrapper">
