@@ -90,7 +90,6 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         const newDate = dayjs(date);
         setSelDate(newDate); // Update selDate with the new dayjs object
         onSelectDate && onSelectDate(date); // Call parent's onSelectDate
-        setIsOpen(false); // Close the picker
     };
 
     const changeMonth = (delta: number) => {
@@ -183,9 +182,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         }
 
         // Next month's filler days
+        let overFlowIndex = 1;
         while (days.length < 42) {
-            const fillerDayCount = days.length - daysInPreviousMonth - endDay.date();
-            const dayDate = endDay.add(fillerDayCount + 1, "day");
+            const dayDate = endDay.add(overFlowIndex++, "day");
             days.push(
                 <div
                     key={`next-month-day-${dayDate.format("YYYY-MM-DD")}`}
