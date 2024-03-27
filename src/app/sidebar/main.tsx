@@ -8,7 +8,6 @@ import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
 import { If } from "tsx-control-statements/components";
-import { compareLoose } from "semver";
 
 import { ReactComponent as AppsIcon } from "@/assets/icons/apps.svg";
 import { ReactComponent as WorkspacesIcon } from "@/assets/icons/workspaces.svg";
@@ -23,6 +22,9 @@ import * as appconst from "@/app/appconst";
 
 import "./main.less";
 import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "@/common/icons/icons";
+
+import "overlayscrollbars/overlayscrollbars.css";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 dayjs.extend(localizedFormat);
 
@@ -59,7 +61,6 @@ class HotKeyIcon extends React.Component<{ hotkey: string }> {
 
 interface MainSideBarProps {
     parentRef: React.RefObject<HTMLElement>;
-    clientData: ClientDataType;
 }
 
 @mobxReact.observer
@@ -291,15 +292,18 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                     </CenteredIcon>,
                                 ]}
                             />
-                            <div
-                                className="middle scrollbar-hide-until-hover"
+                            <OverlayScrollbarsComponent
+                                element="div"
+                                className="middle"
                                 id="sidebar-middle"
                                 style={{
                                     maxHeight: `calc(100vh - ${this.middleHeightSubtractor.get()}px)`,
                                 }}
+                                options={{ scrollbars: { autoHide: "leave" } }}
                             >
                                 {this.getSessions()}
-                            </div>
+                            </OverlayScrollbarsComponent>
+
                             <div className="bottom" id="sidebar-bottom">
                                 {this.getUpdateAppBanner()}
                                 <If condition={GlobalModel.isDev}>

@@ -112,7 +112,7 @@
     --hotkey-text-color: var(--app-text-secondary-color);
 
     /* sidebar colors */
-    --sidebar-highlight-color: rgba(241, 246, 243, 0.08);
+    --sidebar-highlight-color: var(--app-accent-bg-color);
     --sidebar-font-size: 15px;
     --sidebar-line-height: 1.5;
     --sidebar-font-weight: normal;
