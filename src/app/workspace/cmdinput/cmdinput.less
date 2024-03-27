@@ -24,6 +24,25 @@
         height: 31px;
     }
 
+    .cmdinput-conn {
+        position: absolute;
+        top: 0;
+        left: 0;
+        border-radius: 0 0 4px 0;
+        background-color: rgba(88, 193, 66, 0.3);
+        padding: 2px 10px 4px 10px;
+        font-size: calc(var(--termfontsize));
+        cursor: pointer;
+
+        i {
+            margin-left: 5px;
+        }
+
+        &:hover {
+            background-color: rgba(88, 193, 66, 0.5);
+        }
+    }
+
     .cmdinput-actions {
         position: absolute;
         border-radius: 4px;
@@ -138,8 +157,10 @@
         color: var(--app-warning-color);
         align-items: center;
 
-        .wave-button {
+        .wave-button,
+        .button {
             margin-left: 10px;
+            padding: 4px 10px;
         }
     }
 
@@ -170,6 +191,7 @@
         font-family: var(--termfontfamily);
         font-size: var(--termfontsize);
         line-height: var(--termlineheight);
+        margin-left: 2px;
     }
 
     .cmd-input-filter {

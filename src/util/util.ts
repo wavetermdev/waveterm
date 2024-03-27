@@ -365,9 +365,11 @@ function commandRtnHandler(prtn: Promise<CommandRtnType>, errorMessage: OV<strin
             }
             return;
         }
-        mobx.action(() => {
-            errorMessage.set(crtn.error);
-        })();
+        if (errorMessage != null) {
+            mobx.action(() => {
+                errorMessage.set(crtn.error);
+            })();
+        }
     });
 }
 

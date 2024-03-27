@@ -1,0 +1,3 @@
+@import url("./default.css") screen;
+
+@import url("./light.css") screen and (prefers-color-scheme: light);

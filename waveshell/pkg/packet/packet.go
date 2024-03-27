@@ -76,7 +76,8 @@ const (
 )
 
 const (
-	EC_InvalidCwd = "ERRCWD"
+	EC_InvalidCwd    = "ERRCWD"
+	EC_CmdNotRunning = "CMDNOTRUNNING"
 )
 
 const PacketSenderQueueSize = 20

@@ -5,6 +5,7 @@ package scbus
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
@@ -94,6 +95,16 @@ func (upk *ModelUpdatePacketType) Clean() {
 // Add a collection of model updates to the update
 func (upk *ModelUpdatePacketType) AddUpdate(items ...ModelUpdateItem) {
 	*(upk.Data) = append(*(upk.Data), items...)
+}
+
+// adds the items from p2 to the update (p2 must be ModelUpdatePacketType)
+func (upk *ModelUpdatePacketType) Merge(p2Arg UpdatePacket) error {
+	p2, ok := p2Arg.(*ModelUpdatePacketType)
+	if !ok {
+		return fmt.Errorf("cannot merge ModelUpdatePacketType with %T", p2Arg)
+	}
+	*(upk.Data) = append(*(upk.Data), *(p2.Data)...)
+	return nil
 }
 
 // Create a new model update packet

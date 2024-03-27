@@ -375,6 +375,7 @@ type ScreenCreateOpts struct {
 	CopyRemote   bool
 	CopyCwd      bool
 	CopyEnv      bool
+	RtnScreenId  *string
 }
 
 func (sco ScreenCreateOpts) HasCopy() bool {
@@ -760,7 +761,6 @@ type RemoteRuntimeState struct {
 	RemoteAlias         string            `json:"remotealias,omitempty"`
 	RemoteCanonicalName string            `json:"remotecanonicalname"`
 	RemoteVars          map[string]string `json:"remotevars"`
-	DefaultFeState      map[string]string `json:"defaultfestate"`
 	Status              string            `json:"status"`
 	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
 	CountdownActive     bool              `json:"countdownactive"`
@@ -779,9 +779,9 @@ type RemoteRuntimeState struct {
 	MShellVersion       string            `json:"mshellversion"`
 	WaitingForPassword  bool              `json:"waitingforpassword,omitempty"`
 	Local               bool              `json:"local,omitempty"`
+	IsSudo              bool              `json:"issudo,omitempty"`
 	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
 	CanComplete         bool              `json:"cancomplete,omitempty"`
-	ActiveShells        []string          `json:"activeshells,omitempty"`
 	ShellPref           string            `json:"shellpref,omitempty"`
 	DefaultShellType    string            `json:"defaultshelltype,omitempty"`
 }
@@ -1124,21 +1124,6 @@ func EnsureLocalRemote(ctx context.Context) error {
 		return err
 	}
 	log.Printf("[db] added sudo remote '%s', id=%s\n", sudoRemote.RemoteCanonicalName, sudoRemote.RemoteId)
-	return nil
-}
-
-func EnsureOneSession(ctx context.Context) error {
-	numSessions, err := GetSessionCount(ctx)
-	if err != nil {
-		return err
-	}
-	if numSessions > 0 {
-		return nil
-	}
-	_, err = InsertSessionWithName(ctx, DefaultSessionName, true)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

@@ -978,11 +978,6 @@ func main() {
 		log.Printf("[error] ensuring local remote: %v\n", err)
 		return
 	}
-	err = sstore.EnsureOneSession(context.Background())
-	if err != nil {
-		log.Printf("[error] ensuring default session: %v\n", err)
-		return
-	}
 	err = remote.LoadRemotes(context.Background())
 	if err != nil {
 		log.Printf("[error] loading remotes: %v\n", err)
