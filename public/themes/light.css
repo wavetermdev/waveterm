@@ -24,11 +24,6 @@
     --tab-white: rgb(0, 0, 0, 0.6);
     --tab-mint: rgb(70, 235, 156);
 
-    /* button colors */
-    --button-text-color: rgb(50, 50, 50); /* Dark gray for light theme */
-    --button-primary-color: #fefefe;
-    --button-secondary-bg-color: rgba(200, 200, 200, 0.3); /* Semi-transparent light gray */
-
     /* table colors */
     --table-thead-border-top-color: rgba(0, 0, 0, 0.2);
     --table-thead-border-bottom-color: rgba(0, 0, 0, 0.3);
@@ -42,7 +37,7 @@
     --form-element-border-color: rgba(0, 0, 0, 0.3);
     --form-element-bg-color: var(--app-bg-color);
     --form-element-text-color: var(--app-text-color);
-    --form-element-primary-text-color: var(--button-primary-color);
+    --form-element-primary-text-color: var(--app-bg-color);
     --form-element-label-color: rgba(0, 0, 0, 0.6);
     --form-element-secondary-color: rgba(0, 0, 0, 0.09);
     --form-element-icon-color: rgb(0, 0, 0, 0.6);
