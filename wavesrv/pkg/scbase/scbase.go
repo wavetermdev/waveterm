@@ -236,12 +236,12 @@ func GetScreensDir() string {
 
 func EnsureConfigDir() (string, error) {
 	scHome := GetWaveHomeDir()
-	configDir := path.Join(scHome, "/config/")
+	configDir := path.Join(scHome, "config")
 	err := ensureDir(configDir)
 	if err != nil {
 		return "", err
 	}
-	keybindingsFile := path.Join(configDir, "/keybindings.json")
+	keybindingsFile := path.Join(configDir, "keybindings.json")
 	keybindingsFileObj, err := ensureFile(keybindingsFile)
 	if err != nil {
 		return "", err
