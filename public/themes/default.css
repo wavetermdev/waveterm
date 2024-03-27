@@ -67,6 +67,7 @@
     --scrollbar-background-color: var(--app-bg-color);
     --scrollbar-thumb-color: rgba(255, 255, 255, 0.3);
     --scrollbar-thumb-hover-color: rgba(255, 255, 255, 0.5);
+    --scrollbar-thumb-active-color: rgba(255, 255, 255, 0.6);
 
     /* code color */
     --pre-bg-color: rgb(0, 0, 0);
@@ -191,6 +192,6 @@
     .os-scrollbar {
         --os-handle-bg: var(--scrollbar-thumb-color);
         --os-handle-bg-hover: var(--scrollbar-thumb-hover-color);
-        --os-handle-bg-active: var(--scrollbar-thumb-hover-color);
+        --os-handle-bg-active: var(--scrollbar-thumb-active-color);
     }
 }
