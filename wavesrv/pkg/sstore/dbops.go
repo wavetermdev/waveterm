@@ -1047,11 +1047,6 @@ func DeleteScreen(ctx context.Context, screenId string, sessionDel bool, update 
 			if sessionId == "" {
 				return fmt.Errorf("cannot delete screen (no sessionid)")
 			}
-			// query = `SELECT count(*) FROM screen WHERE sessionid = ? AND NOT archived`
-			// numScreens := tx.GetInt(query, sessionId)
-			// if numScreens <= 1 {
-			// 	return fmt.Errorf("cannot delete the last screen in a session")
-			// }
 			isActive = tx.Exists(`SELECT sessionid FROM session WHERE sessionid = ? AND activescreenid = ?`, sessionId, screenId)
 			if isActive {
 				screenIds := tx.SelectStrings(`SELECT screenid FROM screen WHERE sessionid = ? AND NOT archived ORDER BY screenidx`, sessionId)
