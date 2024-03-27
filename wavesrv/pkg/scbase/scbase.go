@@ -234,6 +234,46 @@ func GetScreensDir() string {
 	return sdir
 }
 
+func EnsureConfigDir() (string, error) {
+	scHome := GetWaveHomeDir()
+	configDir := path.Join(scHome, "/config/")
+	err := ensureDir(configDir)
+	if err != nil {
+		return "", err
+	}
+	keybindingsFile := path.Join(configDir, "/keybindings.json")
+	keybindingsFileObj, err := ensureFile(keybindingsFile)
+	if err != nil {
+		return "", err
+	}
+	if keybindingsFileObj != nil {
+		keybindingsFileObj.WriteString("[]\n")
+		keybindingsFileObj.Close()
+	}
+	return configDir, nil
+}
+
+func ensureFile(fileName string) (*os.File, error) {
+	info, err := os.Stat(fileName)
+	var myFile *os.File
+	if errors.Is(err, fs.ErrNotExist) {
+		myFile, err = os.Create(fileName)
+		if err != nil {
+			return nil, err
+		}
+		log.Printf("[wave] created file %q\n", fileName)
+		info, err = myFile.Stat()
+	}
+	if err != nil {
+		return myFile, err
+	}
+	if info.IsDir() {
+		return myFile, fmt.Errorf("'%s' must be a file", fileName)
+	}
+	return myFile, nil
+
+}
+
 func ensureDir(dirName string) error {
 	info, err := os.Stat(dirName)
 	if errors.Is(err, fs.ErrNotExist) {

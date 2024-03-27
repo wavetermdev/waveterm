@@ -962,6 +962,11 @@ func main() {
 		log.Printf("[error] %v\n", err)
 		return
 	}
+	_, err = scbase.EnsureConfigDir()
+	if err != nil {
+		log.Printf("[error] ensuring config directory: %v\n", err)
+		return
+	}
 	err = sstore.TryMigrateUp()
 	if err != nil {
 		log.Printf("[error] migrate up: %v\n", err)
