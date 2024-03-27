@@ -125,6 +125,7 @@ declare global {
         waitingforpassword: boolean;
         remoteopts?: RemoteOptsType;
         local: boolean;
+        issudo: boolean;
         remove?: boolean;
         shellpref: string;
         defaultshelltype: string;

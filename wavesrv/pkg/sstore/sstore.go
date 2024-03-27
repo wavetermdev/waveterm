@@ -779,6 +779,7 @@ type RemoteRuntimeState struct {
 	MShellVersion       string            `json:"mshellversion"`
 	WaitingForPassword  bool              `json:"waitingforpassword,omitempty"`
 	Local               bool              `json:"local,omitempty"`
+	IsSudo              bool              `json:"issudo,omitempty"`
 	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
 	CanComplete         bool              `json:"cancomplete,omitempty"`
 	ShellPref           string            `json:"shellpref,omitempty"`

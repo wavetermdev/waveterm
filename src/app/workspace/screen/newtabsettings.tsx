@@ -175,8 +175,8 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
 
     @boundMethod
     getOptions(): DropdownItem[] {
-        let remotes = GlobalModel.remotes;
-        let options = remotes
+        const remotes = GlobalModel.remotes;
+        const options = remotes
             .filter((r) => !r.archived)
             .map((remote) => ({
                 ...remote,
@@ -195,11 +195,17 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
     }
 
     render() {
-        let { screen } = this.props;
+        const { screen } = this.props;
         let selectedRemote = this.selectedRemoteCN.get();
         if (selectedRemote == null) {
-            let curRemote = GlobalModel.getRemote(screen.getCurRemoteInstance().remoteid);
-            selectedRemote = curRemote.remotecanonicalname;
+            const curRI = screen.getCurRemoteInstance();
+            if (curRI != null) {
+                const curRemote = GlobalModel.getRemote(curRI.remoteid);
+                selectedRemote = curRemote.remotecanonicalname;
+            } else {
+                const localRemote = GlobalModel.getLocalRemote();
+                selectedRemote = localRemote.remotecanonicalname;
+            }
         }
         let curRemote = GlobalModel.getRemoteByName(selectedRemote);
         return (

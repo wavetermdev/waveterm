@@ -576,6 +576,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		InstallStatus:       msh.InstallStatus,
 		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,
 		Local:               msh.Remote.Local,
+		IsSudo:              msh.Remote.IsSudo(),
 		NoInitPk:            msh.ErrNoInitPk,
 		AuthType:            sstore.RemoteAuthTypeNone,
 		ShellPref:           msh.Remote.ShellPref,

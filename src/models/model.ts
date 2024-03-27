@@ -597,7 +597,7 @@ class Model {
 
     getLocalRemote(): RemoteType {
         for (const remote of this.remotes) {
-            if (remote.local) {
+            if (remote.local && !remote.issudo) {
                 return remote;
             }
         }
