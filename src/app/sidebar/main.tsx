@@ -334,12 +334,22 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                     frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
                                     contents="Documentation"
                                     onClick={() => openLink("https://docs.waveterm.dev")}
+                                    endIcons={[
+                                        <CenteredIcon key="offsite" className="link-offsite hoverEffect">
+                                            <i className="fa-sharp fa-solid fa-arrow-up-right-from-square"></i>
+                                        </CenteredIcon>,
+                                    ]}
                                 />
                                 <SideBarItem
                                     key="discord"
                                     frontIcon={<i className="fa-brands fa-discord icon" />}
                                     contents="Discord"
                                     onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
+                                    endIcons={[
+                                        <CenteredIcon key="offsite" className="link-offsite hoverEffect">
+                                            <i className="fa-sharp fa-solid fa-arrow-up-right-from-square"></i>
+                                        </CenteredIcon>,
+                                    ]}
                                 />
                             </div>
                         </div>
