@@ -36,6 +36,8 @@
         "monaco-editor": "^0.44.0",
         "mustache": "^4.2.0",
         "node-fetch": "^3.2.10",
+        "overlayscrollbars": "^2.6.1",
+        "overlayscrollbars-react": "^0.5.5",
         "papaparse": "^5.4.1",
         "react": "^18.1.0",
         "react-dom": "^18.1.0",

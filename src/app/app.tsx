@@ -101,7 +101,7 @@ class App extends React.Component<{}, {}> {
             return (
                 <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                     <div ref={this.mainContentRef} className="main-content">
-                        <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
+                        <MainSideBar parentRef={this.mainContentRef} />
                         <div className="session-view" />
                     </div>
                     <If condition={dcWait}>
@@ -151,7 +151,7 @@ class App extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div ref={this.mainContentRef} className="main-content">
-                    <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
+                    <MainSideBar parentRef={this.mainContentRef} />
                     <ErrorBoundary>
                         <PluginsView />
                         <WorkspaceView />
@@ -160,7 +160,7 @@ class App extends React.Component<{}, {}> {
                         <ConnectionsView model={remotesModel} />
                         <ClientSettingsView model={remotesModel} />
                     </ErrorBoundary>
-                    <RightSideBar parentRef={this.mainContentRef} clientData={clientData} />
+                    <RightSideBar parentRef={this.mainContentRef} />
                 </div>
                 <ModalsProvider />
             </div>

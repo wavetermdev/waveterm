@@ -61,6 +61,7 @@
     --scrollbar-background-color: var(--app-bg-color);
     --scrollbar-thumb-color: rgba(0, 0, 0, 0.2);
     --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.4);
+    --scrollbar-thumb-active-color: rgba(0, 0, 0, 0.5);
 
     /* line color */
     --line-actions-bg-color: rgba(0, 0, 0, 0.1);

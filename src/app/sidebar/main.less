@@ -60,15 +60,15 @@
         margin-bottom: -4px;
     }
 
+    .top {
+        padding-right: 6px;
+    }
+
     .middle {
         padding: 4px 6px 8px 6px;
         border-bottom: 1px solid var(--app-border-color);
         overflow-y: auto;
         .item {
-            &.active {
-                background-color: var(--sidebar-highlight-color);
-                font-weight: var(--sidebar-highlight-font-weight);
-            }
             .index {
                 font-size: 10px;
             }
@@ -87,6 +87,7 @@
         left: 0;
         width: 100%;
         padding-top: 0.8rem;
+        padding-right: 6px;
     }
 
     .item {
@@ -94,9 +95,6 @@
         margin-left: 6px;
         border-radius: 4px;
         opacity: 1;
-        width: inherit;
-        max-width: inherit;
-        min-width: inherit;
         display: flex;
         flex-direction: row;
         align-items: center;
@@ -109,6 +107,13 @@
         .end-icons {
             height: 20px;
             line-height: normal;
+        }
+
+        &.active {
+            font-weight: var(--sidebar-highlight-font-weight);
+        }
+        &.highlight {
+            background-color: var(--sidebar-highlight-color);
         }
 
         .item-contents {
