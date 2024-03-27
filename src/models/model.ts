@@ -13,12 +13,11 @@ import {
     isModKeyPress,
     isBlank,
 } from "@/util/util";
-import { loadTheme } from "@/util/themeutil";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import * as appconst from "@/app/appconst";
 import { remotePtrToString, cmdPacketString } from "@/util/modelutil";
-import { KeybindManager, checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
+import { KeybindManager, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -118,6 +117,9 @@ class Model {
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
     rightSidebarModel: RightSidebarModel;
+    isDarkTheme: OV<boolean> = mobx.observable.box(getApi().getShouldUseDarkColors(), {
+        name: "isDarkTheme",
+    });
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -181,6 +183,7 @@ class Model {
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
         getApi().onAppUpdateStatus(this.onAppUpdateStatus.bind(this));
+        getApi().onNativeThemeUpdated(this.onNativeThemeUpdated.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
@@ -389,18 +392,19 @@ class Model {
         return ff;
     }
 
-    getTheme(): string {
-        let cdata = this.clientData.get();
-        let theme = cdata?.feopts?.theme;
-        if (theme == null) {
-            theme = appconst.DefaultTheme;
-        }
-        return theme;
+    getThemeSource(): NativeThemeSource {
+        return getApi().getNativeThemeSource();
     }
 
-    isThemeDark(): boolean {
-        let cdata = this.clientData.get();
-        return cdata?.feopts?.theme != "light";
+    onNativeThemeUpdated(): void {
+        console.log("native theme updated");
+        const isDark = getApi().getShouldUseDarkColors();
+        if (isDark != this.isDarkTheme.get()) {
+            mobx.action(() => {
+                this.isDarkTheme.set(isDark);
+                this.bumpRenderVersion();
+            })();
+        }
     }
 
     getTermFontSize(): number {
@@ -1197,7 +1201,7 @@ class Model {
         if (newTheme == null) {
             newTheme = appconst.DefaultTheme;
         }
-        const themeUpdated = newTheme != this.getTheme();
+        const themeUpdated = newTheme != this.getThemeSource();
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1215,7 +1219,7 @@ class Model {
             this.updateTermFontSizeVars();
         }
         if (themeUpdated) {
-            loadTheme(newTheme);
+            getApi().setNativeThemeSource(newTheme);
             this.bumpRenderVersion();
         }
     }
