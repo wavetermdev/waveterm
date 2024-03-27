@@ -234,9 +234,8 @@ func init() {
 	registerCmdFn("line:minimize", LineMinimizeCommand)
 
 	registerCmdFn("client", ClientCommand)
-	registerCmdFn("client:info", ClientInfoCommand)
+	registerCmdFn("client:show", ClientShowCommand)
 	registerCmdFn("client:set", ClientSetCommand)
-	registerCmdFn("client:get", ClientGetCommand)
 	registerCmdFn("client:notifyupdatewriter", ClientNotifyUpdateWriterCommand)
 	registerCmdFn("client:accepttos", ClientAcceptTosCommand)
 	registerCmdFn("client:setconfirmflag", ClientConfirmFlagCommand)
@@ -5653,31 +5652,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	return update, nil
 }
 
-func ClientGetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
-	clientData, err := sstore.EnsureClientData(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
-	}
-	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "termfontsize", clientData.FeOpts.TermFontSize))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termfontfamily", clientData.FeOpts.TermFontFamily))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termfontfamily", clientData.FeOpts.Theme))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaiapitoken", clientData.OpenAIOpts.APIToken))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaimodel", clientData.OpenAIOpts.Model))
-	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxtokens", clientData.OpenAIOpts.MaxTokens))
-	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxchoices", clientData.OpenAIOpts.MaxChoices))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaibaseurl", clientData.OpenAIOpts.BaseURL))
-	update := scbus.MakeUpdatePacket()
-	update.AddUpdate(sstore.InfoMsgType{
-		InfoTitle: fmt.Sprintf("client settings"),
-		InfoLines: splitLinesForInfo(buf.String()),
-	})
-
-	return update, nil
-
-}
-
-func ClientInfoCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
@@ -5699,6 +5674,14 @@ func ClientInfoCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))
 	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.UnameKernelRelease()))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "termfontsize", clientData.FeOpts.TermFontSize))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termfontfamily", clientData.FeOpts.TermFontFamily))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termfontfamily", clientData.FeOpts.Theme))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaiapitoken", clientData.OpenAIOpts.APIToken))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaimodel", clientData.OpenAIOpts.Model))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxtokens", clientData.OpenAIOpts.MaxTokens))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxchoices", clientData.OpenAIOpts.MaxChoices))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaibaseurl", clientData.OpenAIOpts.BaseURL))
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("client info"),
