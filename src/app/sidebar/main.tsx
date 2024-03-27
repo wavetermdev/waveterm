@@ -242,6 +242,10 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
+        let mainView = GlobalModel.activeMainView.get();
+        const historyActive = mainView == "history";
+        const connectionsActive = mainView == "connections";
+        const settingsActive = mainView == "clientsettings";
         return (
             <ResizableSidebar
                 model={GlobalModel.mainSidebarModel}
@@ -265,6 +269,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="history"
                                     frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
+                                    className={cn({ active: historyActive, highlight: historyActive })}
                                     contents="History"
                                     endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
                                     onClick={this.handleHistoryClick}
@@ -273,6 +278,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="connections"
                                     frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
+                                    className={cn({ active: connectionsActive, highlight: connectionsActive })}
                                     contents="Connections"
                                     onClick={this.handleConnectionsClick}
                                 />
@@ -319,6 +325,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="settings"
                                     frontIcon={<SettingsIcon className="icon" />}
+                                    className={cn({ active: settingsActive, highlight: settingsActive })}
                                     contents="Settings"
                                     onClick={this.handleSettingsClick}
                                 />
