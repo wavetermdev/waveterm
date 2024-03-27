@@ -281,7 +281,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 text={isBlank(openAIOpts.baseurl) ? "openai default" : openAIOpts.baseurl}
                                 value={openAIOpts.baseurl ?? ""}
                                 onChange={this.inlineUpdateOpenAIBaseURL}
-                                maxLength={10}
+                                maxLength={50}
                                 showIcon={true}
                             />
                         </div>
