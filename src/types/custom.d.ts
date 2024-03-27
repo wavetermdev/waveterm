@@ -111,7 +111,6 @@ declare global {
         errorstr: string;
         installstatus: string;
         installerrorstr: string;
-        defaultfestate: Record<string, string>;
         connectmode: string;
         autoinstall: boolean;
         remoteidx: number;
