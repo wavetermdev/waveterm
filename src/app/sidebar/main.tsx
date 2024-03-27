@@ -201,7 +201,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             return (
                 <SideBarItem
                     key={session.sessionId}
-                    className={cn({ active: isActive, highlight: showHighlight })}
+                    className={cn({ bold: isActive, highlight: showHighlight })}
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
                     endIcons={[
@@ -269,7 +269,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="history"
                                     frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
-                                    className={cn({ active: historyActive, highlight: historyActive })}
+                                    className={cn({ highlight: historyActive })}
                                     contents="History"
                                     endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
                                     onClick={this.handleHistoryClick}
@@ -278,7 +278,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="connections"
                                     frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
-                                    className={cn({ active: connectionsActive, highlight: connectionsActive })}
+                                    className={cn({ highlight: connectionsActive })}
                                     contents="Connections"
                                     onClick={this.handleConnectionsClick}
                                 />
@@ -313,7 +313,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
 
                             <div className="bottom" id="sidebar-bottom">
                                 {this.getUpdateAppBanner()}
-                                <If condition={GlobalModel.isDev}>
+                                {/* <If condition={GlobalModel.isDev}>
                                     <SideBarItem
                                         key="apps"
                                         frontIcon={<AppsIcon className="icon" />}
@@ -321,11 +321,11 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                         onClick={this.handlePluginsClick}
                                         endIcons={[<HotKeyIcon key="hotkey" hotkey="A" />]}
                                     />
-                                </If>
+                                </If> */}
                                 <SideBarItem
                                     key="settings"
                                     frontIcon={<SettingsIcon className="icon" />}
-                                    className={cn({ active: settingsActive, highlight: settingsActive })}
+                                    className={cn({ highlight: settingsActive })}
                                     contents="Settings"
                                     onClick={this.handleSettingsClick}
                                 />
