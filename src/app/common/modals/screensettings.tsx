@@ -158,11 +158,6 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (screen == null) {
             return null;
         }
-        let color: string = null;
-        let icon: string = null;
-        let index: number = 0;
-        const curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
-
         return (
             <Modal className="screen-settings-modal">
                 <Modal.Header onClose={this.closeModal} title={`Tab Settings (${screen.name.get()})`} />
