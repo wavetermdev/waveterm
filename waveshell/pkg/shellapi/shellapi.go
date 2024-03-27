@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
@@ -278,12 +277,11 @@ func parseExtVarOutput(pvarBytes []byte, promptOutput string, zmodsOutput string
 		if pvarFields[0] == "" {
 			continue
 		}
-		if pvarFields[1] == "" {
-			continue
-		}
+		name := pvarFields[0]
+		val := pvarFields[1]
 		decl := &DeclareDeclType{IsExtVar: true}
-		decl.Name = "PROMPTVAR_" + pvarFields[0]
-		decl.Value = shellescape.Quote(pvarFields[1])
+		decl.Name = "PROMPTVAR_" + name
+		decl.Value = val
 		declMap[decl.Name] = decl
 	}
 	if promptOutput != "" {
