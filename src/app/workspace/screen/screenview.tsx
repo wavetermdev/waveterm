@@ -743,7 +743,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                 ref={this.windowViewRef}
                 style={{ width: this.props.width }}
                 data-screenid={screen.screenId}
-                data-hastheme={this.theme != null}
+                // key={`${screen.screenId}-${termRenderVersion}`}
             >
                 <If condition={lines.length == 0}>
                     <If condition={screen.nextLineNum.get() == 1}>
@@ -764,7 +764,6 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                 </If>
                 <If condition={lines.length > 0}>
                     <LinesView
-                        key={`${screen.screenId}-${termRenderVersion}`}
                         screen={screen}
                         width={this.width.get()}
                         lines={lines}

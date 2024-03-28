@@ -251,9 +251,18 @@ class Model {
                     if (reset) {
                         this.resetStyleVar(element, `--term-${key}`);
                     } else {
+                        this.resetStyleVar(element, `--term-${key}`);
                         this.setStyleVar(element, `--term-${key}`, themeVars[key]);
                     }
                 });
+            })
+            .then(() => {
+                mobx.action(() => {
+                    // setTimeout(() => {
+                    this.termThemeSrcEl.set(element);
+                    this.termRenderVersion.set(this.termRenderVersion.get() + 1);
+                    // }, 100);
+                })();
             })
             .catch((error) => {
                 console.error("error applying theme:", error);
@@ -1279,36 +1288,41 @@ class Model {
         }
 
         const newTermTheme = clientData?.feopts?.termtheme;
-        // console.log("newTermTheme", newTermTheme);
-        // console.log("oldTermTheme", oldTermTheme);
         if (newTermTheme && (Object.keys(newTermTheme).length > 0, oldTermTheme)) {
-            const termTheme = newTermTheme["global"] ?? oldTermTheme["global"];
-            // if (termTheme) {
-            // this.applyTermTheme(document.documentElement, termTheme, reset);
-            Object.keys(newTermTheme).forEach((key) => {
-                if (key == "global") {
-                    // const reset = newTermTheme["global"] == null;
-                    this.applyTermTheme(document.documentElement, newTermTheme["global"], false);
+            let elementToApplyTheme = null;
+            let themeKey = null;
+
+            for (const key of Object.keys(newTermTheme)) {
+                // Query for screen level if the key is not 'global'
+                if (key !== "global") {
+                    const screenEl = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
+                    if (screenEl) {
+                        elementToApplyTheme = screenEl;
+                        themeKey = key;
+                        break;
+                    }
                 }
-                // const sessionEl = document.querySelector(`.session-view`) as HTMLElement;
-                const sessionEl = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
-                // console.log(`.session-view[data-sessionid="${key}"]`);
-                // console.log("sessionEl", sessionEl);
-                if (sessionEl) {
-                    // const reset = newTermTheme["key"] == null;
-                    mobx.action(() => {
-                        this.termRenderVersion.set(this.termRenderVersion.get() + 1);
-                    })();
-                    console.log("newTermTheme[key]==================", newTermTheme[key]);
-                    this.applyTermTheme(sessionEl, newTermTheme[key], false);
-                    mobx.action(() => {
-                        this.termThemeSrcEl.set(sessionEl);
-                    })();
+                // If screen level element is not found, query for session level
+                if (!elementToApplyTheme) {
+                    const sessionEl = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
+                    if (sessionEl) {
+                        elementToApplyTheme = sessionEl;
+                        themeKey = key;
+                        break;
+                    }
                 }
-            });
-            // this.bumpRenderVersion();
-            //
-            // }
+                // If neither screen nor session level element is found, use global
+                if (!elementToApplyTheme && key === "global") {
+                    elementToApplyTheme = document.documentElement;
+                    themeKey = key;
+                }
+            }
+            // Apply theme to the found element
+            if (elementToApplyTheme) {
+                const theme = newTermTheme[themeKey];
+                console.log(`Applying theme to element: ${elementToApplyTheme.className}`);
+                this.applyTermTheme(elementToApplyTheme, theme, false);
+            }
         }
     }
 

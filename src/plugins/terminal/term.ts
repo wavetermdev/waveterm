@@ -65,7 +65,7 @@ function getThemeFromCSSVars(themeSrcEl: HTMLElement): ITheme {
     theme.selectionInactiveBackground = rootStyle.getPropertyValue("--term-selection-background");
     theme.cursor = rootStyle.getPropertyValue("--term-selection-background");
     theme.cursorAccent = rootStyle.getPropertyValue("--term-cursor-accent");
-    console.log("theme", theme);
+    // console.log("theme", theme);
     return theme;
 }
 
@@ -119,7 +119,7 @@ class TermWrap {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
-        console.log("termThemeSrcEl", GlobalModel.termThemeSrcEl.get());
+        // console.log("termThemeSrcEl", GlobalModel.termThemeSrcEl.get());
         const themeSrcEl = GlobalModel.termThemeSrcEl.get();
         let theme = getThemeFromCSSVars(themeSrcEl);
         this.terminal = new Terminal({

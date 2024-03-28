@@ -119,6 +119,7 @@ class WorkspaceView extends React.Component<{}, {}> {
         }
         const isHidden = GlobalModel.activeMainView.get() != "session";
         const mainSidebarModel = GlobalModel.mainSidebarModel;
+        const termRenderVersion = GlobalModel.termRenderVersion.get();
 
         return (
             <div
@@ -134,7 +135,11 @@ class WorkspaceView extends React.Component<{}, {}> {
                 </If>
                 <ScreenTabs key={"tabs-" + session.sessionId} session={session} />
                 <ErrorBoundary>
-                    <ScreenView key={`screenview-${session.sessionId}`} session={session} screen={activeScreen} />
+                    <ScreenView
+                        key={`screenview-${session.sessionId}-${termRenderVersion}`}
+                        session={session}
+                        screen={activeScreen}
+                    />
                     <div className="cmdinput-height-placeholder" style={{ height: cmdInputHeight }}></div>
                     <CmdInput key={"cmdinput-" + session.sessionId} />
                 </ErrorBoundary>

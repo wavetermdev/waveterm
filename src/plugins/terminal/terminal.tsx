@@ -95,6 +95,8 @@ class TerminalRenderer extends React.Component<{
     }
 
     componentDidMount() {
+        // console.log("blown away terminal ??????????????????");
+
         this.componentDidUpdate(null, null, null);
     }
 
@@ -217,6 +219,8 @@ class TerminalRenderer extends React.Component<{
         // termWrap.terminal.theme = getThemeFromCSSVars(GlobalModel.termThemeTargetElem.get());
 
         // console.log("terminal+++++++++++", this.props.termThemeSrcEl);
+
+        // console.log("re-rendered terminal renderer>>>>>>>>>>>>>>>>>>>", lineid);
 
         return (
             <div
