@@ -41,9 +41,11 @@ function scrollDiv(div: any, amt: number) {
 
 class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
     componentDidMount(): void {
+        if (GlobalModel.activeMainView != "session") {
+            return;
+        }
         let inputModel = GlobalModel.inputModel;
         let keybindManager = GlobalModel.keybindManager;
-
         keybindManager.registerKeybinding("pane", "history", "generic:cancel", (waveEvent) => {
             inputModel.resetHistory();
             return true;
@@ -103,6 +105,9 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
     lastTab: boolean;
 
     componentDidMount() {
+        if (GlobalModel.activeMainView != "session") {
+            return;
+        }
         let inputObject = this.props.inputObject;
         this.lastTab = false;
         let keybindManager = GlobalModel.keybindManager;
@@ -131,6 +136,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:confirm", (waveEvent) => {
+            GlobalModel.closeTabSettings();
             if (GlobalModel.inputModel.isEmpty()) {
                 let activeWindow = GlobalModel.getScreenLinesForActiveScreen();
                 let activeScreen = GlobalModel.getActiveScreen();
@@ -144,6 +150,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:cancel", (waveEvent) => {
+            GlobalModel.closeTabSettings();
             inputModel.toggleInfoMsg();
             if (inputModel.inputMode.get() != null) {
                 inputModel.resetInputMode();
@@ -206,6 +213,12 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:expandTextInput", (waveEvent) => {
             inputObject.modEnter();
             return true;
+        });
+        keybindManager.registerDomainCallback("cmdinput", (waveEvent) => {
+            if (!keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
+                this.lastTab = false;
+            }
+            return false;
         });
     }
 
@@ -613,6 +626,15 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             let ri = screen.getCurRemoteInstance();
             if (ri != null && ri.shelltype != null) {
                 shellType = ri.shelltype;
+            }
+            if (shellType == "") {
+                let rptr = screen.curRemote.get();
+                if (rptr != null) {
+                    let remote = GlobalModel.getRemote(rptr.remoteid);
+                    if (remote != null) {
+                        shellType = remote.defaultshelltype;
+                    }
+                }
             }
         }
         let isMainInputFocused = this.mainInputFocused.get();

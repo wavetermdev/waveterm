@@ -161,46 +161,15 @@
 }
 
 .newtab-container {
-    margin: 16px;
+    margin: 8px 16px 0 16px;
 
     .newtab-section {
         display: flex;
-        padding: 16px;
+        padding: 10px 16px;
         flex-direction: column;
         align-items: flex-start;
         gap: 8px;
         align-self: stretch;
-
-        .conn-dropdown {
-            width: 412px;
-
-            .lefticon {
-                position: absolute;
-                top: 50%;
-                left: 16px;
-                transform: translateY(-50%);
-
-                .globe-icon {
-                    width: 16px;
-                    height: 16px;
-                    flex-shrink: 0;
-                    fill: var(--app-text-secondary-color);
-                }
-
-                .status-icon {
-                    position: absolute;
-                    left: 7px;
-                    top: 8px;
-                    circle {
-                        stroke: var(--app-bg-color);
-                    }
-                }
-            }
-
-            .wave-dropdown-display {
-                bottom: 7px;
-            }
-        }
 
         &.conn-section {
             gap: 8px;

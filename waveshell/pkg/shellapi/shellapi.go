@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
@@ -28,8 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
-const GetStateTimeout = 10 * time.Second
-const ReInitTimeout = GetStateTimeout + 2*time.Second
+const GetVersionTimeout = 5 * time.Second
 const GetGitBranchCmdStr = `printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`
 const GetK8sContextCmdStr = `printf "K8SCONTEXT %s\x00" "$(kubectl config current-context 2>/dev/null)"`
 const GetK8sNamespaceCmdStr = `printf "K8SNAMESPACE %s\x00" "$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)"`
@@ -73,7 +71,7 @@ type ShellApi interface {
 	GetRemoteShellPath() string
 	MakeRunCommand(cmdStr string, opts RunCommandOpts) string
 	MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd
-	GetShellState(outCh chan ShellStateOutput, stdinDataCh chan []byte)
+	GetShellState(ctx context.Context, outCh chan ShellStateOutput, stdinDataCh chan []byte)
 	GetBaseShellOpts() string
 	ParseShellStateOutput(output []byte) (*packet.ShellState, *packet.ShellStateStats, error)
 	MakeRcFileStr(pk *packet.RunPacketType) string
@@ -279,12 +277,11 @@ func parseExtVarOutput(pvarBytes []byte, promptOutput string, zmodsOutput string
 		if pvarFields[0] == "" {
 			continue
 		}
-		if pvarFields[1] == "" {
-			continue
-		}
+		name := pvarFields[0]
+		val := pvarFields[1]
 		decl := &DeclareDeclType{IsExtVar: true}
-		decl.Name = "PROMPTVAR_" + pvarFields[0]
-		decl.Value = shellescape.Quote(pvarFields[1])
+		decl.Name = "PROMPTVAR_" + name
+		decl.Value = val
 		declMap[decl.Name] = decl
 	}
 	if promptOutput != "" {

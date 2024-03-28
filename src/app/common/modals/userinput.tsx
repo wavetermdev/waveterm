@@ -2,7 +2,6 @@ import * as React from "react";
 import { GlobalModel } from "@/models";
 import { Choose, When, If } from "tsx-control-statements/components";
 import { Modal, PasswordField, TextField, Markdown, Checkbox } from "@/elements";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, KeybindManager } from "@/util/keyutil";
 
 import "./userinput.less";
 
@@ -44,22 +43,6 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
         [userInputRequest]
     );
 
-    function handleTextFocus() {
-        let keybindManager = GlobalModel.keybindManager;
-        keybindManager.registerKeybinding("modal", "userinput", "generic:confirm", (waveEvent) => {
-            handleSendText();
-            return true;
-        });
-        keybindManager.registerKeybinding("modal", "userinput", "generic:cancel", (waveEvent) => {
-            handleSendCancel();
-            return true;
-        });
-    }
-
-    function handleTextBlur() {
-        GlobalModel.keybindManager.unregisterDomain("userinput");
-    }
-
     React.useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
         if (countdown == 0) {
@@ -92,8 +75,6 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                                 value={responseText}
                                 maxLength={400}
                                 autoFocus={true}
-                                onFocus={() => handleTextFocus()}
-                                onBlur={() => handleTextBlur()}
                             />
                         </If>
                         <If condition={!userInputRequest.publictext}>
@@ -102,8 +83,6 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                                 value={responseText}
                                 maxLength={400}
                                 autoFocus={true}
-                                onFocus={() => handleTextFocus()}
-                                onBlur={() => handleTextBlur()}
                             />
                         </If>
                     </If>
@@ -118,7 +97,12 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
             </div>
             <Choose>
                 <When condition={userInputRequest.responsetype == "text"}>
-                    <Modal.Footer onCancel={handleSendCancel} onOk={handleSendText} okLabel="Continue" />
+                    <Modal.Footer
+                        onCancel={handleSendCancel}
+                        onOk={handleSendText}
+                        okLabel="Continue"
+                        keybindings={true}
+                    />
                 </When>
                 <When condition={userInputRequest.responsetype == "confirm"}>
                     <Modal.Footer
@@ -126,6 +110,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                         onOk={() => handleSendConfirm(true)}
                         okLabel="Yes"
                         cancelLabel="No"
+                        keybindings={true}
                     />
                 </When>
             </Choose>

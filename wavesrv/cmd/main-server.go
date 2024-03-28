@@ -962,6 +962,11 @@ func main() {
 		log.Printf("[error] %v\n", err)
 		return
 	}
+	_, err = scbase.EnsureConfigDir()
+	if err != nil {
+		log.Printf("[error] ensuring config directory: %v\n", err)
+		return
+	}
 	err = sstore.TryMigrateUp()
 	if err != nil {
 		log.Printf("[error] migrate up: %v\n", err)
@@ -976,11 +981,6 @@ func main() {
 	err = sstore.EnsureLocalRemote(context.Background())
 	if err != nil {
 		log.Printf("[error] ensuring local remote: %v\n", err)
-		return
-	}
-	err = sstore.EnsureOneSession(context.Background())
-	if err != nil {
-		log.Printf("[error] ensuring default session: %v\n", err)
 		return
 	}
 	err = remote.LoadRemotes(context.Background())

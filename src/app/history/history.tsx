@@ -8,7 +8,7 @@ import { If, For } from "tsx-control-statements/components";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Cmd } from "@/models";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -486,10 +486,10 @@ class HistoryView extends React.Component<{}, {}> {
                             options={this.getRemoteItems(rnames, remoteIds)}
                             onChange={this.clickLimitRemote}
                         />
-                        <div className="fromts">
+                        {/* <div className="fromts">
                             <div className="fromts-text">From:&nbsp;</div>
                             <DatePicker selectedDate={new Date()} onSelectDate={this.handleFromTsChange} />
-                        </div>
+                        </div> */}
                         <div
                             className="filter-cmds search-checkbox hoverEffect"
                             title="Filter common commands like 'ls' and 'cd' from the results"

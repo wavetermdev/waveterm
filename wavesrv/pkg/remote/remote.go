@@ -212,38 +212,6 @@ func (msh *MShellProc) GetStatus() string {
 	return msh.Status
 }
 
-func (msh *MShellProc) GetDefaultState(shellType string) *packet.ShellState {
-	_, state := msh.StateMap.GetCurrentState(shellType)
-	return state
-}
-
-func (msh *MShellProc) EnsureShellType(ctx context.Context, shellType string) error {
-	if msh.StateMap.HasShell(shellType) {
-		return nil
-	}
-	// try to reinit the shell
-	_, err := msh.ReInit(ctx, base.CommandKey(""), shellType, nil, false)
-	if err != nil {
-		return fmt.Errorf("error trying to initialize shell %q: %v", shellType, err)
-	}
-	return nil
-}
-
-func (msh *MShellProc) GetDefaultStatePtr(shellType string) *sstore.ShellStatePtr {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	hash, _ := msh.StateMap.GetCurrentState(shellType)
-	if hash == "" {
-		return nil
-	}
-	return &sstore.ShellStatePtr{BaseHash: hash}
-}
-
-func (msh *MShellProc) GetDefaultFeState(shellType string) map[string]string {
-	state := msh.GetDefaultState(shellType)
-	return sstore.FeStateFromShellState(state)
-}
-
 func (msh *MShellProc) GetRemoteId() string {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
@@ -487,6 +455,26 @@ func ResolveRemoteRef(remoteRef string) *RemoteRuntimeState {
 	return nil
 }
 
+func SendSignalToCmd(ctx context.Context, cmd *sstore.CmdType, sig string) error {
+	msh := GetRemoteById(cmd.Remote.RemoteId)
+	if msh == nil {
+		return fmt.Errorf("no connection found")
+	}
+	if !msh.IsConnected() {
+		return fmt.Errorf("not connected")
+	}
+	cmdCk := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	if !msh.IsCmdRunning(cmdCk) {
+		// this could also return nil (depends on use case)
+		// settled on coded error so we can check for this error
+		return base.CodedErrorf(packet.EC_CmdNotRunning, "cmd not running")
+	}
+	sigPk := packet.MakeSpecialInputPacket()
+	sigPk.CK = cmdCk
+	sigPk.SigName = sig
+	return msh.ServerProc.Input.SendPacket(sigPk)
+}
+
 func unquoteDQBashString(str string) (string, bool) {
 	if len(str) < 2 {
 		return str, false
@@ -586,6 +574,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		InstallStatus:       msh.InstallStatus,
 		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,
 		Local:               msh.Remote.Local,
+		IsSudo:              msh.Remote.IsSudo(),
 		NoInitPk:            msh.ErrNoInitPk,
 		AuthType:            sstore.RemoteAuthTypeNone,
 		ShellPref:           msh.Remote.ShellPref,
@@ -659,11 +648,6 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["besthost"] = vars["remotehost"]
 		vars["bestshorthost"] = vars["remoteshorthost"]
 	}
-	_, curState := msh.StateMap.GetCurrentState(shellPref)
-	if curState != nil {
-		state.DefaultFeState = sstore.FeStateFromShellState(curState)
-		vars["cwd"] = curState.Cwd
-	}
 	if msh.Remote.Local && msh.Remote.IsSudo() {
 		vars["bestuser"] = "sudo"
 	} else if msh.Remote.IsSudo() {
@@ -685,7 +669,6 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		varsCopy[key] = value
 	}
 	state.RemoteVars = varsCopy
-	state.ActiveShells = msh.StateMap.GetShells()
 	return state
 }
 
@@ -930,9 +913,9 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 			realStr = realStr + "\r\n"
 		}
 		if strings.HasPrefix(realStr, "*") {
-			realStr = "\033[0m\033[31mprompt>\033[0m " + realStr[1:]
+			realStr = "\033[0m\033[31mwave>\033[0m " + realStr[1:]
 		} else {
-			realStr = "\033[0m\033[32mprompt>\033[0m " + realStr
+			realStr = "\033[0m\033[32mwave>\033[0m " + realStr
 		}
 		barr := msh.PtyBuffer.Bytes()
 		if len(barr) > 0 && barr[len(barr)-1] != '\n' {
@@ -1507,18 +1490,18 @@ func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType
 }
 
 func makeShellInitOutputMsg(verbose bool, state *packet.ShellState, stats *packet.ShellStateStats, dur time.Duration, ptyMsg bool) string {
+	waveStr := fmt.Sprintf("%swave>%s", utilfn.AnsiGreenColor(), utilfn.AnsiResetColor())
 	if !verbose || ptyMsg {
 		if ptyMsg {
 			return fmt.Sprintf("initialized state shell:%s statehash:%s %dms\n", state.GetShellType(), state.GetHashVal(false), dur.Milliseconds())
 		} else {
-			return fmt.Sprintf("initialized connection state (shell:%s)\r\n", state.GetShellType())
+			return fmt.Sprintf("%s initialized connection state (shell:%s)\r\n", waveStr, state.GetShellType())
 		}
 	}
 	var buf bytes.Buffer
-	buf.WriteString("-----\r\n")
-	buf.WriteString(fmt.Sprintf("initialized connection shell:%s statehash:%s %dms\r\n", state.GetShellType(), state.GetHashVal(false), dur.Milliseconds()))
+	buf.WriteString(fmt.Sprintf("%s initialized connection shell:%s statehash:%s %dms\r\n", waveStr, state.GetShellType(), state.GetHashVal(false), dur.Milliseconds()))
 	if stats != nil {
-		buf.WriteString(fmt.Sprintf("  outsize:%s size:%s env:%d, vars:%d, aliases:%d, funcs:%d\r\n", scbase.NumFormatDec(stats.OutputSize), scbase.NumFormatDec(stats.StateSize), stats.EnvCount, stats.VarCount, stats.AliasCount, stats.FuncCount))
+		buf.WriteString(fmt.Sprintf("%s   outsize:%s size:%s env:%d, vars:%d, aliases:%d, funcs:%d\r\n", waveStr, scbase.NumFormatDec(stats.OutputSize), scbase.NumFormatDec(stats.StateSize), stats.EnvCount, stats.VarCount, stats.AliasCount, stats.FuncCount))
 	}
 	return buf.String()
 }
@@ -1748,6 +1731,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.ServerProc = cproc
 		msh.Status = StatusConnected
 	})
+	msh.WriteToPtyBuffer("connected to %s\n", remoteCopy.RemoteCanonicalName)
 	go func() {
 		exitErr := cproc.Cmd.Wait()
 		exitCode := shexec.GetExitCode(exitErr)
@@ -1760,7 +1744,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.WriteToPtyBuffer("*disconnected exitcode=%d\n", exitCode)
 	}()
 	go msh.ProcessPackets()
-	msh.initActiveShells()
+	// msh.initActiveShells()
 	go msh.NotifyRemoteUpdate()
 }
 
@@ -1778,7 +1762,7 @@ func (msh *MShellProc) initActiveShells() {
 		wg.Add(1)
 		go func(shellType string) {
 			defer wg.Done()
-			reinitCtx, cancelFn := context.WithTimeout(context.Background(), shellapi.ReInitTimeout)
+			reinitCtx, cancelFn := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancelFn()
 			_, err = msh.ReInit(reinitCtx, base.CommandKey(""), shellType, nil, false)
 			if err != nil {
@@ -1892,25 +1876,6 @@ func (msh *MShellProc) removePendingStateCmd(screenId string, rptr sstore.Remote
 	}
 }
 
-func ResolveCurrentScreenStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr sstore.RemotePtrType) (*sstore.ShellStatePtr, error) {
-	statePtr, err := sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get current connection stateptr: %w", err)
-	}
-	if statePtr == nil {
-		msh := GetRemoteById(remotePtr.RemoteId)
-		err := msh.EnsureShellType(ctx, msh.GetShellPref()) // make sure shellType is initialized
-		if err != nil {
-			return nil, err
-		}
-		statePtr = msh.GetDefaultStatePtr(msh.GetShellPref())
-		if statePtr == nil {
-			return nil, fmt.Errorf("no valid default connection stateptr")
-		}
-	}
-	return statePtr, nil
-}
-
 type RunCommandOpts struct {
 	SessionId string
 	ScreenId  string
@@ -1988,9 +1953,12 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		statePtr = rcOpts.StatePtr
 	} else {
 		var err error
-		statePtr, err = ResolveCurrentScreenStatePtr(ctx, sessionId, screenId, remotePtr)
+		statePtr, err = sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot run command: %w", err)
+		}
+		if statePtr == nil {
+			return nil, nil, fmt.Errorf("cannot run command: no valid shell state found")
 		}
 	}
 	currentState, err := sstore.GetFullState(ctx, *statePtr)
@@ -2000,10 +1968,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	runPacket.State = addScVarsToState(currentState)
 	runPacket.StateComplete = true
 	runPacket.ShellType = currentState.GetShellType()
-	err = msh.EnsureShellType(ctx, runPacket.ShellType) // make sure shellType is initialized
-	if err != nil {
-		return nil, nil, err
-	}
 
 	// start cmdwait.  must be started before sending the run packet
 	// this ensures that we don't process output, or cmddone packets until we set up the line, cmd, and ptyout file
@@ -2142,7 +2106,7 @@ func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error 
 	msh.Lock.Unlock()
 	if sink == nil {
 		// no sink and no running command
-		return fmt.Errorf("cannot send input, cmd is not running")
+		return fmt.Errorf("cannot send input, cmd is not running (%s)", inputPk.CK)
 	}
 	return sink.HandleInput(inputPk)
 }
@@ -2459,7 +2423,7 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		msh.WriteToPtyBuffer("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPk.Data)
 		return
 	}
-	msh.WriteToPtyBuffer("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
+	msh.WriteToPtyBuffer("*[remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
 }
 
 func (msh *MShellProc) ProcessPackets() {

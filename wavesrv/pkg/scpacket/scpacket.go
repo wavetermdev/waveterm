@@ -107,6 +107,9 @@ func (pk *FeCommandPacketType) GetRawStr() string {
 	}
 	var args []string
 	for k, v := range pk.Kwargs {
+		if k == "nohist" {
+			continue
+		}
 		argStr := fmt.Sprintf("%s=%s", shellescape.Quote(k), shellescape.Quote(v))
 		args = append(args, argStr)
 	}
