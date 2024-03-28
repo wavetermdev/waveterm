@@ -20,6 +20,7 @@ class TosModal extends React.Component<{}, {}> {
     acceptTos(): void {
         GlobalCommandRunner.clientAcceptTos();
         GlobalModel.modalsModel.popModal();
+        GlobalCommandRunner.ensureWorkspace();
     }
 
     @boundMethod
@@ -40,32 +41,28 @@ class TosModal extends React.Component<{}, {}> {
                     <div className="wave-modal-body-inner">
                         <header className="tos-header unselectable">
                             <div className="modal-title">Welcome to Wave Terminal!</div>
-                            <div className="modal-subtitle">Lets set everything for you</div>
                         </header>
                         <div className="content tos-content unselectable">
                             <div className="item">
-                                <img src={shield} alt="Privacy" />
+                                <a
+                                    target="_blank"
+                                    href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                                    rel={"noopener"}
+                                >
+                                    <img src={github} alt="Github" />
+                                </a>
                                 <div className="item-inner">
-                                    <div className="item-title">Telemetry</div>
+                                    <div className="item-title">Support us on GitHub</div>
                                     <div className="item-text">
-                                        We only collect minimal <i>anonymous</i>
+                                        We're <i>open source</i> and committed to providing a free terminal for
+                                        individual users. Please show your support us by giving us a star on{" "}
                                         <a
                                             target="_blank"
-                                            href={util.makeExternLink("https://docs.waveterm.dev/reference/telemetry")}
+                                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
                                             rel={"noopener"}
                                         >
-                                            &nbsp;telemetry data&nbsp;
+                                            Github&nbsp;(wavetermdev/waveterm)
                                         </a>
-                                        to help us understand how many people are using Wave.
-                                    </div>
-                                    <div className="item-field" style={{ marginTop: 2 }}>
-                                        <Toggle
-                                            checked={!cdata.clientopts.notelemetry}
-                                            onChange={this.handleChangeTelemetry}
-                                        />
-                                        <div className="item-label">
-                                            Telemetry {cdata.clientopts.notelemetry ? "Disabled" : "Enabled"}
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -94,25 +91,28 @@ class TosModal extends React.Component<{}, {}> {
                                 </div>
                             </div>
                             <div className="item">
-                                <a
-                                    target="_blank"
-                                    href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
-                                    rel={"noopener"}
-                                >
-                                    <img src={github} alt="Github" />
-                                </a>
+                                <img src={shield} alt="Privacy" />
                                 <div className="item-inner">
-                                    <div className="item-title">Support us on GitHub</div>
+                                    <div className="item-title">Telemetry</div>
                                     <div className="item-text">
-                                        We're <i>open source</i> and committed to providing a free terminal for
-                                        individual users. Please show your support us by giving us a star on{" "}
+                                        We collect minimal anonymous
                                         <a
                                             target="_blank"
-                                            href={util.makeExternLink("https://github.com/wavetermdev/waveterm")}
+                                            href={util.makeExternLink("https://docs.waveterm.dev/reference/telemetry")}
                                             rel={"noopener"}
                                         >
-                                            Github&nbsp;(wavetermdev/waveterm)
+                                            &nbsp;telemetry data&nbsp;
                                         </a>
+                                        to help us understand how people are using Wave.
+                                    </div>
+                                    <div className="item-field" style={{ marginTop: 2 }}>
+                                        <Toggle
+                                            checked={!cdata.clientopts.notelemetry}
+                                            onChange={this.handleChangeTelemetry}
+                                        />
+                                        <div className="item-label">
+                                            Telemetry {cdata.clientopts.notelemetry ? "Disabled" : "Enabled"}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -123,7 +123,7 @@ class TosModal extends React.Component<{}, {}> {
                                 <a href="https://www.waveterm.dev/tos">Terms of Service</a>
                             </div>
                             <div className="button-wrapper">
-                                <Button onClick={this.acceptTos}>Continue</Button>
+                                <Button onClick={this.acceptTos}>Get Started</Button>
                             </div>
                         </footer>
                     </div>

@@ -30,7 +30,6 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
@@ -96,6 +95,7 @@ const (
 	KwArgTemplate = "template"
 	KwArgLang     = "lang"
 	KwArgMinimap  = "minimap"
+	KwArgNoHist   = "nohist"
 )
 
 var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
@@ -104,7 +104,7 @@ var RemoteColorNames = []string{"red", "green", "yellow", "blue", "magenta", "cy
 var RemoteSetArgs = []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}
 var ConfirmFlags = []string{"hideshellprompt"}
 var SidebarNames = []string{"main"}
-var ThemeNames = []string{"light", "dark"}
+var ThemeSources = []string{"light", "dark", "system"}
 
 var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", "signal", "chat"}
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
@@ -190,6 +190,7 @@ func init() {
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
 	registerCmdFn("session:openshared", SessionOpenSharedCommand)
+	registerCmdFn("session:ensureone", SessionEnsureOneCommand)
 
 	registerCmdFn("screen", ScreenCommand)
 	registerCmdFn("screen:archive", ScreenArchiveCommand)
@@ -362,6 +363,20 @@ func resolveCommaSepListToMap(arg string) map[string]bool {
 		rtn[field] = true
 	}
 	return rtn
+}
+
+func resolveShellType(shellArg string, defaultShell string) (string, error) {
+	if shellArg == "" {
+		if defaultShell == "" {
+			shellArg = packet.ShellType_bash
+		} else {
+			shellArg = defaultShell
+		}
+	}
+	if shellArg != packet.ShellType_bash && shellArg != packet.ShellType_zsh {
+		return "", fmt.Errorf("invalid shell type %q", shellArg)
+	}
+	return shellArg, nil
 }
 
 func resolveBool(arg string, def bool) bool {
@@ -723,7 +738,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	} else {
 		return nil, fmt.Errorf("error in Eval Meta Command: %w", rtnErr)
 	}
-	if !resolveBool(pk.Kwargs["nohist"], false) {
+	if !resolveBool(pk.Kwargs[KwArgNoHist], false) {
 		// TODO should this be "pk" or "newPk" (2nd arg)
 		err := addToHistory(ctx, pk, historyContext, (newPk.MetaCmd != "run"), (rtnErr != nil))
 		if err != nil {
@@ -816,6 +831,14 @@ func ScreenDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	if screenId == "" {
 		return nil, fmt.Errorf("/screen:delete no active screen or screen arg passed")
 	}
+	runningCmds, err := sstore.GetRunningScreenCmds(ctx, screenId)
+	if err != nil {
+		return nil, fmt.Errorf("/screen:delete cannot get running cmds: %v", err)
+	}
+	for _, runningCmd := range runningCmds {
+		// send SIGHUP to all running commands in this screen
+		remote.SendSignalToCmd(ctx, runningCmd, "SIGHUP")
+	}
 	update, err := sstore.DeleteScreen(ctx, screenId, false, nil)
 	if err != nil {
 		return nil, err
@@ -826,7 +849,7 @@ func ScreenDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
 	if err != nil {
-		return nil, fmt.Errorf("/screen:open cannot open screen: %w", err)
+		return nil, err
 	}
 	activate := resolveBool(pk.Kwargs["activate"], true)
 	newName := pk.Kwargs["name"]
@@ -836,11 +859,35 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 			return nil, err
 		}
 	}
-	update, err := sstore.InsertScreen(ctx, ids.SessionId, newName, sstore.ScreenCreateOpts{}, activate)
+	sco := sstore.ScreenCreateOpts{RtnScreenId: new(string)}
+	update, err := sstore.InsertScreen(ctx, ids.SessionId, newName, sco, activate)
 	if err != nil {
 		return nil, err
 	}
+	if sco.RtnScreenId == nil {
+		return nil, fmt.Errorf("error creating tab, no tab id returned")
+	}
+	uiContextCopy := *pk.UIContext
+	uiContextCopy.ScreenId = *sco.RtnScreenId
+	crUpdate, err := doNewTabConnectLocal(ctx, *sco.RtnScreenId, &uiContextCopy)
+	if err != nil {
+		return nil, err
+	}
+	update.Merge(crUpdate)
 	return update, nil
+}
+
+func doNewTabConnectLocal(ctx context.Context, screenId string, uiContext *scpacket.UIContextType) (scbus.UpdatePacket, error) {
+	crPk := scpacket.MakeFeCommandPacket()
+	crPk.MetaCmd = "connect"
+	crPk.Args = []string{"local"}
+	crPk.RawStr = "/connect local"
+	crPk.UIContext = uiContext
+	crUpdate, err := CrCommand(ctx, crPk)
+	if err != nil {
+		return nil, fmt.Errorf("error creating tab, cannot connect to remote: %w", err)
+	}
+	return crUpdate, nil
 }
 
 func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
@@ -1666,7 +1713,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 		return nil, fmt.Errorf("cannot make termopts: %w", err)
 	}
 	pkTermOpts := convertTermOpts(termOpts)
-	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), *pkTermOpts)
+	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), *pkTermOpts, nil)
 	writeStringToPty(ctx, cmd, outputStr, &outputPos)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -2462,10 +2509,16 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 	if err != nil {
 		return nil, fmt.Errorf("cannot get remote instances: %w", err)
 	}
-	rmap := remote.GetRemoteMap()
+	if len(riArr) == 0 {
+		update := scbus.MakeUpdatePacket()
+		update.AddUpdate(sstore.InfoMsgType{
+			InfoMsg: "this tab has no shell states",
+		})
+		return update, nil
+	}
 	for _, ri := range riArr {
 		rptr := sstore.RemotePtrType{RemoteId: ri.RemoteId, Name: ri.Name}
-		msh := rmap[ri.RemoteId]
+		msh := remote.GetRemoteById(ri.RemoteId)
 		if msh == nil {
 			continue
 		}
@@ -2477,28 +2530,9 @@ func crShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType, ids re
 		}
 		buf.WriteString(fmt.Sprintf("%-30s %-50s\n", displayName, cwdStr))
 	}
-	riBaseMap := make(map[string]bool)
-	for _, ri := range riArr {
-		if ri.Name == "" {
-			riBaseMap[ri.RemoteId] = true
-		}
-	}
-	for remoteId, msh := range rmap {
-		if riBaseMap[remoteId] {
-			continue
-		}
-		feState := msh.GetDefaultFeState(msh.GetShellPref())
-		if feState == nil {
-			continue
-		}
-		cwdStr := "-"
-		if feState["cwd"] != "" {
-			cwdStr = feState["cwd"]
-		}
-		buf.WriteString(fmt.Sprintf("%-30s %-50s (default)\n", msh.GetDisplayName(), cwdStr))
-	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
+		InfoTitle: "shell states for tab",
 		InfoLines: splitLinesForInfo(buf.String()),
 	})
 	return update, nil
@@ -2854,7 +2888,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		return nil, fmt.Errorf("openai error, invalid 'pterm' value %q: %v", ptermVal, err)
 	}
 	termOpts := convertTermOpts(pkTermOpts)
-	cmd, err := makeDynCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), *termOpts)
+	cmd, err := makeDynCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), *termOpts, nil)
 	if err != nil {
 		return nil, fmt.Errorf("openai error, cannot make dyn cmd")
 	}
@@ -2936,50 +2970,104 @@ func CrCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Upd
 	if rstate.Archived {
 		return nil, fmt.Errorf("/%s error: remote %q cannot switch to archived remote", GetCmdStr(pk), newRemote)
 	}
+	newMsh := remote.GetRemoteById(rptr.RemoteId)
+	if newMsh == nil {
+		return nil, fmt.Errorf("/%s error: remote %q not found (msh)", GetCmdStr(pk), newRemote)
+	}
+	if !newMsh.IsConnected() {
+		err := newMsh.TryAutoConnect()
+		if err != nil {
+			return nil, fmt.Errorf("%q is disconnected, auto-connect failed: %w", rstate.GetBaseDisplayName(), err)
+		}
+		if !newMsh.IsConnected() {
+			if newMsh.GetRemoteCopy().ConnectMode == sstore.ConnectModeManual {
+				return nil, fmt.Errorf("%q is disconnected (must manually connect)", rstate.GetBaseDisplayName())
+			}
+			return nil, fmt.Errorf("%q is disconnected", rstate.GetBaseDisplayName())
+		}
+	}
 	err = sstore.UpdateCurRemote(ctx, ids.ScreenId, *rptr)
 	if err != nil {
 		return nil, fmt.Errorf("/%s error: cannot update curremote: %w", GetCmdStr(pk), err)
 	}
-	noHist := resolveBool(pk.Kwargs["nohist"], false)
-	if noHist {
-		screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
+	ri, err := sstore.GetRemoteStatePtr(ctx, ids.SessionId, ids.ScreenId, *rptr)
+	if err != nil {
+		return nil, fmt.Errorf("/%s error looking up connection state: %w", GetCmdStr(pk), err)
+	}
+	if ri == nil {
+		// ok, if ri is nil we need to do a reinit
+		verbose := resolveBool(pk.Kwargs["verbose"], false)
+		shellType, err := resolveShellType(pk.Kwargs["shell"], rstate.DefaultShellType)
 		if err != nil {
-			return nil, fmt.Errorf("/%s error: cannot resolve screen for update: %w", GetCmdStr(pk), err)
+			return nil, err
 		}
-		update := scbus.MakeUpdatePacket()
-		update.AddUpdate(*screen, sstore.InteractiveUpdate(pk.Interactive))
+		termOpts, err := GetUITermOpts(pk.UIContext.WinSize, DefaultPTERM)
+		if err != nil {
+			return nil, fmt.Errorf("cannot make termopts: %w", err)
+		}
+		pkTermOpts := convertTermOpts(termOpts)
+		cmd, err := makeDynCmd(ctx, "connect", ids, pk.GetRawStr(), *pkTermOpts, &makeDynCmdOpts{OverrideRPtr: rptr})
+		if err != nil {
+			return nil, err
+		}
+		update, err := addLineForCmd(ctx, "connect", true, ids, cmd, "", nil)
+		if err != nil {
+			return nil, err
+		}
+		opts := connectOptsType{
+			Verbose:   verbose,
+			ShellType: shellType,
+			SessionId: ids.SessionId,
+			ScreenId:  ids.ScreenId,
+			RPtr:      *rptr,
+		}
+		go doAsyncResetCommand(newMsh, opts, cmd)
+		return update, nil
+	} else {
+		outputStr := fmt.Sprintf("reconnected to %s", GetFullRemoteDisplayName(rptr, rstate))
+		cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
+		if err != nil {
+			// TODO tricky error since the command was a success, but we can't show the output
+			return nil, err
+		}
+		update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "", nil)
+		if err != nil {
+			// TODO tricky error since the command was a success, but we can't show the output
+			return nil, err
+		}
+		update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 		return update, nil
 	}
-	outputStr := fmt.Sprintf("connected to %s", GetFullRemoteDisplayName(rptr, rstate))
-	cmd, err := makeStaticCmd(ctx, GetCmdStr(pk), ids, pk.GetRawStr(), []byte(outputStr))
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "", nil)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
-	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
-	return update, nil
 }
 
-func makeDynCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, termOpts sstore.TermOpts) (*sstore.CmdType, error) {
+type makeDynCmdOpts struct {
+	OverrideRPtr *sstore.RemotePtrType
+}
+
+func makeDynCmd(ctx context.Context, metaCmd string, ids resolvedIds, cmdStr string, termOpts sstore.TermOpts, opts *makeDynCmdOpts) (*sstore.CmdType, error) {
+	var rptr scpacket.RemotePtrType
+	if opts != nil && opts.OverrideRPtr != nil {
+		rptr = *opts.OverrideRPtr
+	} else if ids.Remote != nil {
+		rptr = ids.Remote.RemotePtr
+	} else {
+		local := remote.GetLocalRemote()
+		rptr = scpacket.RemotePtrType{RemoteId: local.RemoteId}
+	}
 	cmd := &sstore.CmdType{
 		ScreenId:  ids.ScreenId,
 		LineId:    scbase.GenWaveUUID(),
 		CmdStr:    cmdStr,
 		RawCmdStr: cmdStr,
-		Remote:    ids.Remote.RemotePtr,
+		Remote:    rptr,
 		TermOpts:  termOpts,
 		Status:    sstore.CmdStatusRunning,
 		RunOut:    nil,
 	}
-	if ids.Remote.StatePtr != nil {
+	if ids.Remote != nil && ids.Remote.StatePtr != nil {
 		cmd.StatePtr = *ids.Remote.StatePtr
 	}
-	if ids.Remote.FeState != nil {
+	if ids.Remote != nil && ids.Remote.FeState != nil {
 		cmd.FeState = ids.Remote.FeState
 	}
 	err := sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.LineId, cmd.TermOpts.MaxPtySize)
@@ -3369,11 +3457,30 @@ func SessionOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 			return nil, err
 		}
 	}
-	update, err := sstore.InsertSessionWithName(ctx, newName, activate)
+	update, newSessionId, newScreenId, err := sstore.InsertSessionWithName(ctx, newName, activate)
 	if err != nil {
 		return nil, err
 	}
+	uiContextCopy := *pk.UIContext
+	uiContextCopy.SessionId = newSessionId
+	uiContextCopy.ScreenId = newScreenId
+	crUpdate, err := doNewTabConnectLocal(ctx, newScreenId, &uiContextCopy)
+	if err != nil {
+		return nil, err
+	}
+	update.Merge(crUpdate)
 	return update, nil
+}
+
+func SessionEnsureOneCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	numSessions, err := sstore.GetSessionCount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get number of sessions: %v", err)
+	}
+	if numSessions > 0 {
+		return nil, nil
+	}
+	return SessionOpenCommand(ctx, pk)
 }
 
 func makeExternLink(urlStr string) string {
@@ -3471,7 +3578,7 @@ func ScreenShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if screen == nil {
 		return nil, fmt.Errorf("screen not found")
 	}
-	statePtr, err := remote.ResolveCurrentScreenStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr)
+	statePtr, err := sstore.GetRemoteStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr)
 	if err != nil {
 		return nil, fmt.Errorf("cannot resolve current screen stateptr: %v", err)
 	}
@@ -3483,8 +3590,10 @@ func ScreenShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "tabicon", screen.ScreenOpts.TabIcon))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "selectedline", screen.SelectedLine))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "curremote", GetFullRemoteDisplayName(&screen.CurRemote, &ids.Remote.RState)))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "stateptr-base", statePtr.BaseHash))
-	buf.WriteString(fmt.Sprintf("  %-15s %v\n", "stateptr-diff", statePtr.DiffHashArr))
+	if statePtr != nil {
+		buf.WriteString(fmt.Sprintf("  %-15s %s\n", "stateptr-base", statePtr.BaseHash))
+		buf.WriteString(fmt.Sprintf("  %-15s %v\n", "stateptr-diff", statePtr.DiffHashArr))
+	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: "screen info",
@@ -3682,21 +3791,17 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if !ids.Remote.MShell.IsConnected() {
 		return nil, fmt.Errorf("cannot reinit, remote is not connected")
 	}
-	shellType := ids.Remote.ShellType
-	if pk.Kwargs["shell"] != "" {
-		shellArg := pk.Kwargs["shell"]
-		if shellArg != packet.ShellType_bash && shellArg != packet.ShellType_zsh {
-			return nil, fmt.Errorf("/reset invalid shell type %q", shellArg)
-		}
-		shellType = shellArg
-	}
 	verbose := resolveBool(pk.Kwargs["verbose"], false)
+	shellType, err := resolveShellType(pk.Kwargs["shell"], ids.Remote.ShellType)
+	if err != nil {
+		return nil, err
+	}
 	termOpts, err := GetUITermOpts(pk.UIContext.WinSize, DefaultPTERM)
 	if err != nil {
 		return nil, fmt.Errorf("cannot make termopts: %w", err)
 	}
 	pkTermOpts := convertTermOpts(termOpts)
-	cmd, err := makeDynCmd(ctx, "reset", ids, pk.GetRawStr(), *pkTermOpts)
+	cmd, err := makeDynCmd(ctx, "reset", ids, pk.GetRawStr(), *pkTermOpts, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -3704,12 +3809,28 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	go doResetCommand(ids, shellType, cmd, verbose)
+	opts := connectOptsType{
+		Verbose:   verbose,
+		ShellType: shellType,
+		SessionId: ids.SessionId,
+		ScreenId:  ids.ScreenId,
+		RPtr:      ids.Remote.RemotePtr,
+	}
+	go doAsyncResetCommand(ids.Remote.MShell, opts, cmd)
 	return update, nil
 }
 
-func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verbose bool) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), shellapi.ReInitTimeout)
+type connectOptsType struct {
+	ShellType string // shell type to connect with
+	Verbose   bool   // extra output (show state changes, sizes, etc.)
+	SessionId string
+	ScreenId  string
+	RPtr      sstore.RemotePtrType
+}
+
+// this does the asynchroneous part of the connection reset
+func doAsyncResetCommand(msh *remote.MShellProc, opts connectOptsType, cmd *sstore.CmdType) {
+	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	startTime := time.Now()
 	var outputPos int64
@@ -3725,28 +3846,30 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verb
 	dataFn := func(data []byte) {
 		writeStringToPty(ctx, cmd, string(data), &outputPos)
 	}
-	origStatePtr := ids.Remote.MShell.GetDefaultStatePtr(shellType)
-	ssPk, err := ids.Remote.MShell.ReInit(ctx, base.MakeCommandKey(cmd.ScreenId, cmd.LineId), shellType, dataFn, verbose)
+	origStatePtr, _ := sstore.GetRemoteStatePtr(ctx, opts.SessionId, opts.ScreenId, opts.RPtr)
+	ssPk, err := msh.ReInit(ctx, base.MakeCommandKey(cmd.ScreenId, cmd.LineId), opts.ShellType, dataFn, opts.Verbose)
 	if err != nil {
 		rtnErr = err
 		return
 	}
 	if ssPk == nil || ssPk.State == nil {
-		rtnErr = fmt.Errorf("invalid initpk received from remote (no remote state)")
+		rtnErr = fmt.Errorf("no state received from connection (nil)")
 		return
 	}
 	feState := sstore.FeStateFromShellState(ssPk.State)
-	remoteInst, err := sstore.UpdateRemoteState(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr, feState, ssPk.State, nil)
+	remoteInst, err := sstore.UpdateRemoteState(ctx, opts.SessionId, opts.ScreenId, opts.RPtr, feState, ssPk.State, nil)
 	if err != nil {
 		rtnErr = err
 		return
 	}
-	newStatePtr := ids.Remote.MShell.GetDefaultStatePtr(shellType)
-	if verbose && origStatePtr != nil && newStatePtr != nil {
+	newStatePtr := sstore.ShellStatePtr{
+		BaseHash: ssPk.State.GetHashVal(false),
+	}
+	if opts.Verbose && origStatePtr != nil {
 		statePtrDiff := fmt.Sprintf("oldstate: %v, newstate: %v\r\n", origStatePtr.BaseHash, newStatePtr.BaseHash)
 		writeStringToPty(ctx, cmd, statePtrDiff, &outputPos)
 		origFullState, _ := sstore.GetFullState(ctx, *origStatePtr)
-		newFullState, _ := sstore.GetFullState(ctx, *newStatePtr)
+		newFullState, _ := sstore.GetFullState(ctx, newStatePtr)
 		if origFullState != nil && newFullState != nil {
 			var diffBuf bytes.Buffer
 			rtnstate.DisplayStateUpdateDiff(&diffBuf, *origFullState, *newFullState)
@@ -3756,7 +3879,7 @@ func doResetCommand(ids resolvedIds, shellType string, cmd *sstore.CmdType, verb
 		}
 	}
 	update := scbus.MakeUpdatePacket()
-	update.AddUpdate(sstore.MakeSessionUpdateForRemote(ids.SessionId, remoteInst))
+	update.AddUpdate(sstore.MakeSessionUpdateForRemote(opts.SessionId, remoteInst))
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
@@ -3765,9 +3888,12 @@ func ResetCwdCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	if err != nil {
 		return nil, err
 	}
-	statePtr, err := remote.ResolveCurrentScreenStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr)
+	statePtr, err := sstore.GetRemoteStatePtr(ctx, ids.SessionId, ids.ScreenId, ids.Remote.RemotePtr)
 	if err != nil {
 		return nil, err
+	}
+	if statePtr == nil {
+		return nil, fmt.Errorf("no shell state found, cannot reset cwd (run /reset)")
 	}
 	stateDiff, err := sstore.GetCurStateDiffFromPtr(ctx, statePtr)
 	if err != nil {
@@ -5529,20 +5655,20 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		}
 		varsUpdated = append(varsUpdated, "termfontfamily")
 	}
-	if themeStr, found := pk.Kwargs["theme"]; found {
-		newTheme := themeStr
+	if themeSourceStr, found := pk.Kwargs["theme"]; found {
+		newThemeSource := themeSourceStr
 		found := false
-		for _, theme := range ThemeNames {
-			if newTheme == theme {
+		for _, theme := range ThemeSources {
+			if newThemeSource == theme {
 				found = true
 				break
 			}
 		}
 		if !found {
-			return nil, fmt.Errorf("invalid theme name")
+			return nil, fmt.Errorf("invalid theme source")
 		}
 		feOpts := clientData.FeOpts
-		feOpts.Theme = newTheme
+		feOpts.Theme = newThemeSource
 		err = sstore.UpdateClientFeOpts(ctx, feOpts)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client feopts: %v", err)
@@ -5674,6 +5800,14 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "client-version", clientVersion))
 	buf.WriteString(fmt.Sprintf("  %-15s %s %s\n", "server-version", scbase.WaveVersion, scbase.BuildTime))
 	buf.WriteString(fmt.Sprintf("  %-15s %s (%s)\n", "arch", scbase.ClientArch(), scbase.UnameKernelRelease()))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "termfontsize", clientData.FeOpts.TermFontSize))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termfontfamily", clientData.FeOpts.TermFontFamily))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termfontfamily", clientData.FeOpts.Theme))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaiapitoken", clientData.OpenAIOpts.APIToken))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaimodel", clientData.OpenAIOpts.Model))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxtokens", clientData.OpenAIOpts.MaxTokens))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxchoices", clientData.OpenAIOpts.MaxChoices))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaibaseurl", clientData.OpenAIOpts.BaseURL))
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("client info"),

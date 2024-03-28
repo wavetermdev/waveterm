@@ -16,7 +16,6 @@ dayjs.extend(localizedFormat);
 
 interface RightSideBarProps {
     parentRef: React.RefObject<HTMLElement>;
-    clientData: ClientDataType;
 }
 
 @mobxReact.observer

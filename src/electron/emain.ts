@@ -539,6 +539,25 @@ electron.ipcMain.on("get-last-logs", (event, numberOfLines) => {
     });
 });
 
+electron.ipcMain.on("get-shouldusedarkcolors", (event) => {
+    event.returnValue = electron.nativeTheme.shouldUseDarkColors;
+});
+
+electron.ipcMain.on("get-nativethemesource", (event) => {
+    event.returnValue = electron.nativeTheme.themeSource;
+});
+
+electron.ipcMain.on("set-nativethemesource", (event, themeSource: "system" | "light" | "dark") => {
+    electron.nativeTheme.themeSource = themeSource;
+    event.returnValue = true;
+});
+
+electron.nativeTheme.on("updated", () => {
+    if (MainWindow != null) {
+        MainWindow.webContents.send("nativetheme-updated");
+    }
+});
+
 function readLastLinesOfFile(filePath: string, lineCount: number) {
     return new Promise((resolve, reject) => {
         child_process.exec(`tail -n ${lineCount} "${filePath}"`, (err, stdout, stderr) => {

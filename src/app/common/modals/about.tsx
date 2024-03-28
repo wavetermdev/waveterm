@@ -5,10 +5,12 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { GlobalModel } from "@/models";
+import { GlobalModel, getApi } from "@/models";
 import { Modal, LinkButton } from "@/elements";
 import * as util from "@/util/util";
 import * as appconst from "@/app/appconst";
+import cn from "classnames";
+import { If } from "tsx-control-statements/components";
 
 import logo from "@/assets/waveterm-logo-with-bg.svg";
 import "./about.less";
@@ -23,53 +25,34 @@ class AboutModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    isUpToDate(): boolean {
-        return true;
-    }
-
-    @boundMethod
     updateApp(): void {
-        // GlobalCommandRunner.updateApp();
+        getApi().installAppUpdate();
     }
 
     @boundMethod
-    getStatus(isUpToDate: boolean): JSX.Element {
-        // TODO no up-to-date status reporting
-        return (
-            <div className="status updated">
-                <div className="text-selectable">
-                    Client Version {appconst.VERSION} ({appconst.BUILD})
-                </div>
-            </div>
-        );
+    getClientVersion(): JSX.Element {
+        const clientData: ClientDataType = GlobalModel.clientData.get();
+        const showUpdateStatus = clientData.clientopts.noreleasecheck !== true;
+        const isUpToDate = !showUpdateStatus || GlobalModel.appUpdateStatus.get() !== "ready";
 
-        if (isUpToDate) {
-            return (
-                <div className="status updated">
-                    <div>
-                        <i className="fa-sharp fa-solid fa-circle-check" />
-                        <span>Up to Date</span>
-                    </div>
-                    <div className="selectable">
-                        Client Version {appconst.VERSION} ({appconst.BUILD})
-                    </div>
-                </div>
-            );
-        }
         return (
-            <div className="status outdated">
-                <div>
-                    <i className="fa-sharp fa-solid fa-triangle-exclamation" />
-                    <span>Outdated Version</span>
-                </div>
+            <div className={cn("status", { outdated: !isUpToDate })}>
+                <If condition={!isUpToDate}>
+                    <div>
+                        <i className="fa-sharp fa-solid fa-triangle-exclamation" />
+                        <span>Outdated Version</span>
+                    </div>
+                </If>
                 <div className="selectable">
                     Client Version {appconst.VERSION} ({appconst.BUILD})
                 </div>
-                <div>
-                    <button onClick={this.updateApp} className="button color-green text-secondary">
-                        Update
-                    </button>
-                </div>
+                <If condition={!isUpToDate}>
+                    <div>
+                        <button onClick={this.updateApp} className="button color-green text-secondary">
+                            Restart to Update
+                        </button>
+                    </div>
+                </If>
             </div>
         );
     }
@@ -78,7 +61,7 @@ class AboutModal extends React.Component<{}, {}> {
         const currentDate = new Date();
         return (
             <Modal className="about-modal">
-                <Modal.Header onClose={this.closeModal} title="About" />
+                <Modal.Header onClose={this.closeModal} title="About" keybindings={true} />
                 <div className="wave-modal-body">
                     <div className="about-section">
                         <div className="logo-wrapper">
@@ -93,7 +76,7 @@ class AboutModal extends React.Component<{}, {}> {
                             </div>
                         </div>
                     </div>
-                    <div className="about-section text-standard">{this.getStatus(this.isUpToDate())}</div>
+                    <div className="about-section text-standard">{this.getClientVersion()}</div>
                     <div className="about-section">
                         <LinkButton
                             className="secondary solid"

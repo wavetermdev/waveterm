@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, createRef } from "react";
 import * as mobx from "mobx";
 import ReactDOM from "react-dom";
 import dayjs from "dayjs";
-import cs from "classnames";
+import cn from "classnames";
 import { Button } from "@/elements";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel } from "@/models";
@@ -39,8 +39,8 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         MM: selDate.format("MM"),
         DD: selDate.format("DD"),
     });
-    let curUuid = uuidv4();
-    let keybindsRegistered = mobx.observable.box(false, {
+    const curUuid = uuidv4();
+    const keybindsRegistered = mobx.observable.box(false, {
         name: "datepicker-keybinds-registered",
     });
 
@@ -90,7 +90,6 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         const newDate = dayjs(date);
         setSelDate(newDate); // Update selDate with the new dayjs object
         onSelectDate && onSelectDate(date); // Call parent's onSelectDate
-        setIsOpen(false); // Close the picker
     };
 
     const changeMonth = (delta: number) => {
@@ -103,7 +102,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         return (
             <div className="day-picker-header">
                 <div
-                    className={cs({ fade: showYearAccordion })}
+                    className={cn({ fade: showYearAccordion })}
                     onClick={() => {
                         if (!showYearAccordion) {
                             setExpandedYear(selDate.year()); // Set expandedYear when opening accordion
@@ -112,7 +111,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
                     }}
                 >
                     {selDate.format("MMMM YYYY")}
-                    <span className={cs("dropdown-arrow", { fade: showYearAccordion })}></span>
+                    <span className={cn("dropdown-arrow", { fade: showYearAccordion })}></span>
                 </div>
                 <If condition={!showYearAccordion}>
                     <div className="arrows">
@@ -183,9 +182,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         }
 
         // Next month's filler days
+        let overFlowIndex = 1;
         while (days.length < 42) {
-            const fillerDayCount = days.length - daysInPreviousMonth - endDay.date();
-            const dayDate = endDay.add(fillerDayCount + 1, "day");
+            const dayDate = endDay.add(overFlowIndex++, "day");
             days.push(
                 <div
                     key={`next-month-day-${dayDate.format("YYYY-MM-DD")}`}
@@ -251,14 +250,14 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
                             </div>
                             <If condition={expandedYear === year}>
                                 <div
-                                    className={cs("month-container", {
+                                    className={cn("month-container", {
                                         expanded: expandedYear === year,
                                     })}
                                 >
                                     {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
                                         <div
                                             key={month}
-                                            className={cs("month", {
+                                            className={cn("month", {
                                                 selected: year === currentYear && month === selDate.month() + 1,
                                             })}
                                             onClick={() => handleMonthYearSelect(month, year)}
@@ -301,7 +300,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
           )
         : null;
 
-    const handleDatePartChange = (part, value) => {
+    const handleDatePartChange = (part: string, value: string) => {
         const newDateParts = { ...dateParts, [part]: value };
         setDateParts(newDateParts);
 
@@ -312,7 +311,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         }
     };
 
-    const handleArrowNavigation = (key, currentPart) => {
+    const handleArrowNavigation = (key: string, currentPart: string) => {
         const currentIndex = formatParts.indexOf(currentPart);
         let targetInput;
 
@@ -327,9 +326,9 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         }
     };
 
-    const handleKeyDown = (event, currentPart) => {};
+    const handleKeyDown = (event, currentPart: string) => {};
 
-    const handleFocus = (event, part) => {
+    const handleFocus = (event, part: string) => {
         event.target.select();
         registerKeybindings(event, part);
     };
@@ -341,74 +340,69 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         mobx.action(() => {
             keybindsRegistered.set(true);
         })();
-        let keybindManager = GlobalModel.keybindManager;
-        let domain = "datepicker-" + curUuid + "-" + part;
-        keybindManager.registerKeybinding("control", domain, "generic:selectLeft", (waveEvent) => {
+        const keybindManager = GlobalModel.keybindManager;
+        const domain = "datepicker-" + curUuid + "-" + part;
+        keybindManager.registerKeybinding("control", domain, "generic:selectLeft", (_) => {
             handleArrowNavigation("ArrowLeft", part);
             return true;
         });
-        keybindManager.registerKeybinding("control", domain, "generic:selectRight", (waveEvent) => {
+        keybindManager.registerKeybinding("control", domain, "generic:selectRight", (_) => {
             handleArrowNavigation("ArrowRight", part);
             return true;
         });
-        keybindManager.registerKeybinding("control", domain, "generic:space", (waveEvent) => {
+        keybindManager.registerKeybinding("control", domain, "generic:space", (_) => {
             toggleModal();
             return true;
         });
-        keybindManager.registerKeybinding("control", domain, "generic:confirm", (waveEvent) => {
+        keybindManager.registerKeybinding("control", domain, "generic:confirm", (_) => {
             toggleModal();
             return true;
         });
-        keybindManager.registerKeybinding("control", domain, "generic:cancel", (waveEvent) => {
+        keybindManager.registerKeybinding("control", domain, "generic:cancel", (_) => {
             closeModal();
             return true;
         });
-        keybindManager.registerKeybinding("control", domain, "generic:tab", (waveEvent) => {
+        keybindManager.registerKeybinding("control", domain, "generic:tab", (_) => {
             handleArrowNavigation("ArrowRight", part);
             return true;
         });
         for (let numpadKey = 0; numpadKey <= 9; numpadKey++) {
-            keybindManager.registerKeybinding(
-                "control",
-                domain,
-                "generic:numpad-" + numpadKey.toString(),
-                (waveEvent) => {
-                    let currentPart = part;
-                    const maxLength = currentPart === "YYYY" ? 4 : 2;
-                    const newValue = event.target.value.length < maxLength ? event.target.value + numpadKey : numpadKey;
-                    let selectionTimeoutId = null;
-                    handleDatePartChange(currentPart, newValue);
+            keybindManager.registerKeybinding("control", domain, "generic:numpad-" + numpadKey.toString(), (_) => {
+                const currentPart = part;
+                const maxLength = currentPart === "YYYY" ? 4 : 2;
+                const newValue = event.target.value.length < maxLength ? event.target.value + numpadKey : numpadKey;
+                let selectionTimeoutId = null;
+                handleDatePartChange(currentPart, newValue);
 
-                    // Clear any existing timeout
-                    if (selectionTimeoutId !== null) {
-                        clearTimeout(selectionTimeoutId);
-                    }
-
-                    // Re-focus and select the input after state update
-                    selectionTimeoutId = setTimeout(() => {
-                        event.target.focus();
-                        event.target.select();
-                    }, 0);
-                    return true;
+                // Clear any existing timeout
+                if (selectionTimeoutId !== null) {
+                    clearTimeout(selectionTimeoutId);
                 }
-            );
+
+                // Re-focus and select the input after state update
+                selectionTimeoutId = setTimeout(() => {
+                    event.target.focus();
+                    event.target.select();
+                }, 0);
+                return true;
+            });
         }
     };
 
-    const handleBlur = (event, part) => {
+    const handleBlur = (event, part: string) => {
         unregisterKeybindings(part);
     };
 
-    const unregisterKeybindings = (part) => {
+    const unregisterKeybindings = (part: string) => {
         mobx.action(() => {
             keybindsRegistered.set(false);
         })();
-        let domain = "datepicker-" + curUuid + "-" + part;
+        const domain = "datepicker-" + curUuid + "-" + part;
         GlobalModel.keybindManager.unregisterDomain(domain);
     };
 
     // Prevent use from selecting text in the input
-    const handleMouseDown = (event, part) => {
+    const handleMouseDown = (event, part: string) => {
         event.preventDefault();
 
         handleFocus(event, part);

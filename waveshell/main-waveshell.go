@@ -17,6 +17,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
+// this is set from build/linker flags
 var BuildTime = "0"
 
 func readFullRunPacket(packetParser *packet.PacketParser) (*packet.RunPacketType, error) {

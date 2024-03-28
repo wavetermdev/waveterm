@@ -22,6 +22,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: var(--form-element-bg-color);
 
     input {
         outline: none !important;
@@ -29,6 +30,7 @@
         height: 100%;
         padding: 0 !important;
         cursor: default !important;
+        background-color: inherit !important;
     }
 
     .fa-calendar {
@@ -99,6 +101,7 @@
             background-color: var(--datepicker-cell-hover-bg-color);
         }
         &.selected {
+            color: var(--form-element-primary-text-color);
             background-color: var(--form-element-primary-color);
             font-weight: bold;
         }
@@ -157,6 +160,7 @@
         }
 
         &.selected {
+            color: var(--form-element-primary-text-color);
             background-color: var(--form-element-primary-color);
         }
     }

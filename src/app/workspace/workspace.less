@@ -23,4 +23,34 @@
         width: 100%;
         color: var(--app-text-secondary-color);
     }
+
+    .tab-settings-pulldown {
+        position: absolute;
+        top: var(--screentabs-height);
+        width: 100%;
+        height: 330px;
+        transition: height 0.2s ease-in-out;
+        overflow: hidden;
+        z-index: 11;
+        border-bottom: 3px solid var(--app-border-color);
+        background-color: var(--app-panel-bg-color);
+        border-radius: 0 0 5px 5px;
+
+        &.closed {
+            height: 0;
+            border-bottom: none;
+        }
+
+        .close-icon {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            &:hover {
+                background-color: var(--app-selected-mask-color);
+            }
+        }
+    }
 }
