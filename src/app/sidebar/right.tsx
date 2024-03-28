@@ -29,12 +29,19 @@ class KeybindDevPane extends React.Component<{}, {}> {
         let levelIdx: number = 0;
         let domainIdx: number = 0;
         return (
-            <For index="levelIdx" each="keybindLevel" of={curActiveKeybinds}>
-                <h1 key={"level-" + curVersion + levelIdx}>Level: {keybindLevel.name}</h1>
-                <For index="domainIdx" each="domain" of={keybindLevel.domains}>
-                    <h4 key={"domain-" + curVersion + domainIdx}>&emsp;&emsp;{domain}</h4>
+            <div className="keybind-debug-pane">
+                <div className="keybind-pane-title">Keybind Manager</div>
+                <For index="levelIdx" each="keybindLevel" of={curActiveKeybinds}>
+                    <div className="keybind-level" key={"level-" + curVersion + levelIdx}>
+                        {keybindLevel.name}
+                    </div>
+                    <For index="domainIdx" each="domain" of={keybindLevel.domains}>
+                        <div className="keybind-domain" key={"domain-" + curVersion + domainIdx}>
+                            {domain}
+                        </div>
+                    </For>
                 </For>
-            </For>
+            </div>
         );
     }
 }
