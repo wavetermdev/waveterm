@@ -11,7 +11,7 @@ import { If } from "tsx-control-statements/components";
 import { GlobalModel } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
-import { ScreenTabs } from "./screen/tabs";
+import { ScreenTabs } from "./screen/tabs2";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as textmeasure from "@/util/textmeasure";
 import "./workspace.less";

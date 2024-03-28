@@ -21,7 +21,7 @@ import * as textmeasure from "@/util/textmeasure";
 import { NewTabSettings } from "./newtabsettings";
 
 import "./screenview.less";
-import "./tabs.less";
+// import "./tabs.less";
 import { MagicLayout } from "../../magiclayout";
 
 dayjs.extend(localizedFormat);
