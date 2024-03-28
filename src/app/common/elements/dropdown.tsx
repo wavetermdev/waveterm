@@ -53,7 +53,6 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         };
         this.wrapperRef = React.createRef();
         this.menuRef = React.createRef();
-        this.curUuid == uuidv4();
     }
 
     componentDidMount() {
@@ -100,6 +99,9 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
 
     @boundMethod
     handleClick() {
+        if (!this.state.isOpen || !this.state.isTouched) {
+            this.registerKeybindings();
+        }
         this.toggleDropdown();
     }
 
@@ -109,8 +111,13 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         this.registerKeybindings();
     }
 
+    @boundMethod
     registerKeybindings() {
         let keybindManager = GlobalModel.keybindManager;
+        if (this.curUuid == null || this.curUuid == undefined) {
+            console.log("uuid is undefined");
+            this.curUuid == uuidv4();
+        }
         let domain = "dropdown-" + this.curUuid;
         keybindManager.registerKeybinding("control", domain, "generic:confirm", (waveEvent) => {
             this.handleConfirm();
@@ -122,6 +129,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         });
         keybindManager.registerKeybinding("control", domain, "generic:cancel", (waveEvent) => {
             this.setState({ isOpen: false });
+            this.unregisterKeybindings();
             return true;
         });
         keybindManager.registerKeybinding("control", domain, "generic:selectAbove", (waveEvent) => {
@@ -169,6 +177,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         this.unregisterKeybindings();
     }
 
+    @boundMethod
     unregisterKeybindings() {
         let domain = "dropdown-" + this.curUuid;
         GlobalModel.keybindManager.unregisterDomain(domain);
@@ -189,6 +198,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         }
         onChange(value);
         this.setState({ isOpen: false, isTouched: true });
+        this.unregisterKeybindings();
     }
 
     @boundMethod
