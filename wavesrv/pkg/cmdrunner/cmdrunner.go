@@ -2785,7 +2785,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 	}()
 	var ch chan *packet.OpenAIPacketType
 	var err error
-	if opts.APIToken == "" {
+	if opts.APIToken == "" && opts.BaseURL == "" {
 		var conn *websocket.Conn
 		ch, conn, err = openai.RunCloudCompletionStream(ctx, clientId, opts, prompt)
 		if conn != nil {
