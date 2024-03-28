@@ -2235,6 +2235,8 @@ func (msh *MShellProc) resolveFinalState(ctx context.Context, origState *packet.
 		}
 		stateDiff := stripScVarsFromStateDiff(donePk.FinalStateDiff)
 		if origStatePtr == donePk.FinalStateBasePtr {
+			// this is the normal case.  the stateptr from the run-packet should match the baseptr from the done-packet
+			// this is also the most efficient, because we don't need to fetch the original state
 			sapi, err := shellapi.MakeShellApi(origState.GetShellType())
 			if err != nil {
 				return nil, fmt.Errorf("cannot make shellapi from initial state: %w", err)
@@ -2245,6 +2247,8 @@ func (msh *MShellProc) resolveFinalState(ctx context.Context, origState *packet.
 			}
 			return fullState, nil
 		}
+		// this is strange (why is backend returning non-original stateptr?)
+		// but here, we fetch the stateptr, and then apply the diff against that
 		realOrigState, err := sstore.GetFullState(ctx, *donePk.FinalStateBasePtr)
 		if err != nil {
 			return nil, fmt.Errorf("cannot get original state for diff: %w", err)
@@ -2268,7 +2272,12 @@ func (msh *MShellProc) resolveFinalState(ctx context.Context, origState *packet.
 // after this limit we'll switch to persisting the full state
 const NewStateDiffSizeThreshold = 30 * 1024
 
-// this function will compute either a state diff
+// will update the remote instance with the final state
+// this is complicated because we want to be as efficient as possible.
+// so we pull the current remote-instance state (just the baseptr).  then we compute the diff.
+// then we check the size of the diff, and only persist the diff it is under some size threshold
+// also we check to see if the diff succeeds (it can fail if the shell or version changed).
+// in those cases we also update the RI with the full state
 func (msh *MShellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdType, newState *packet.ShellState) (*sstore.RemoteInstance, error) {
 	curRIState, err := sstore.GetRemoteStatePtr(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr)
 	if err != nil {
@@ -2279,7 +2288,7 @@ func (msh *MShellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdTy
 		// no current state, so just persist the full state
 		return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, newState, nil)
 	}
-	// pull the base (not the diff) state from the RI
+	// pull the base (not the diff) state from the RI (right now we don't want to make multi-level diffs)
 	riBaseState, err := sstore.GetStateBase(ctx, curRIState.BaseHash)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to get statebase: %w", err)
@@ -2321,12 +2330,12 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 		// only update DB for non-ephemeral commands
 		err := sstore.UpdateCmdDoneInfo(ctx, update, donePk.CK, donePk, sstore.CmdStatusDone)
 		if err != nil {
-			msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
+			log.Printf("error updating cmddone info (in handleCmdDonePacket): %v\n", err)
 			return
 		}
 		screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, donePk.CK.GetGroupId(), donePk.CK.GetCmdId())
 		if err != nil {
-			msh.WriteToPtyBuffer("*error trying to update screen focus type: %v\n", err)
+			log.Printf("error trying to update screen focus type (in handleCmdDonePacket): %v\n", err)
 			// fall-through (nothing to do)
 		}
 		if screen != nil {
