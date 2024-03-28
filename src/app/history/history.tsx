@@ -486,10 +486,10 @@ class HistoryView extends React.Component<{}, {}> {
                             options={this.getRemoteItems(rnames, remoteIds)}
                             onChange={this.clickLimitRemote}
                         />
-                        <div className="fromts">
+                        {/* <div className="fromts">
                             <div className="fromts-text">From:&nbsp;</div>
                             <DatePicker selectedDate={new Date()} onSelectDate={this.handleFromTsChange} />
-                        </div>
+                        </div> */}
                         <div
                             className="filter-cmds search-checkbox hoverEffect"
                             title="Filter common commands like 'ls' and 'cd' from the results"
