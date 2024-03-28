@@ -1885,7 +1885,7 @@ type RunCommandOpts struct {
 	// optional, if not provided shellstate will look up state from remote instance
 	// ReturnState cannot be used with StatePtr
 	// this will also cause this command to bypass the pending state cmd logic
-	StatePtr *sstore.ShellStatePtr
+	StatePtr *packet.ShellStatePtr
 
 	// set to true to skip creating the pty file (for restarted commands)
 	NoCreateCmdPtyFile bool
@@ -1949,7 +1949,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	}
 
 	// get current remote-instance state
-	var statePtr *sstore.ShellStatePtr
+	var statePtr *packet.ShellStatePtr
 	if rcOpts.StatePtr != nil {
 		statePtr = rcOpts.StatePtr
 	} else {
@@ -2217,11 +2217,11 @@ func (msh *MShellProc) notifyHangups_nolock() {
 
 // either fullstate or statediff will be set (not both) <- this is so the result is compatible with the sstore.UpdateRemoteState function
 // note that this function *does* touch the DB, if FinalStateDiff is set, will ensure that StateBase is written to DB
-func (msh *MShellProc) makeStatePtrFromFinalState(ctx context.Context, donePk *packet.CmdDonePacketType) (*sstore.ShellStatePtr, map[string]string, *packet.ShellState, *packet.ShellStateDiff, error) {
+func (msh *MShellProc) makeStatePtrFromFinalState(ctx context.Context, donePk *packet.CmdDonePacketType) (*packet.ShellStatePtr, map[string]string, *packet.ShellState, *packet.ShellStateDiff, error) {
 	if donePk.FinalState != nil {
 		finalState := stripScVarsFromState(donePk.FinalState)
 		feState := sstore.FeStateFromShellState(finalState)
-		statePtr := &sstore.ShellStatePtr{BaseHash: finalState.GetHashVal(false)}
+		statePtr := &packet.ShellStatePtr{BaseHash: finalState.GetHashVal(false)}
 		return statePtr, feState, finalState, nil, nil
 	}
 	if donePk.FinalStateDiff != nil {
@@ -2236,7 +2236,7 @@ func (msh *MShellProc) makeStatePtrFromFinalState(ctx context.Context, donePk *p
 		}
 		diffHashArr := append(([]string)(nil), donePk.FinalStateDiff.DiffHashArr...)
 		diffHashArr = append(diffHashArr, donePk.FinalStateDiff.GetHashVal(false))
-		statePtr := &sstore.ShellStatePtr{BaseHash: donePk.FinalStateDiff.BaseHash, DiffHashArr: diffHashArr}
+		statePtr := &packet.ShellStatePtr{BaseHash: donePk.FinalStateDiff.BaseHash, DiffHashArr: diffHashArr}
 		return statePtr, feState, nil, stateDiff, nil
 	}
 	return nil, nil, nil, nil, nil
@@ -2604,7 +2604,7 @@ func (msh *MShellProc) getFullState(shellType string, stateDiff *packet.ShellSta
 		}
 		return newState, nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
+		fullState, err := sstore.GetFullState(context.Background(), packet.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}
@@ -2631,7 +2631,7 @@ func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map
 		}
 		return sstore.FeStateFromShellState(newState), nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
+		fullState, err := sstore.GetFullState(context.Background(), packet.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}

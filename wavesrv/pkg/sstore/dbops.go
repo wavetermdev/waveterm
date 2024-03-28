@@ -793,7 +793,7 @@ func UpdateCmdDoneInfo(ctx context.Context, update *scbus.ModelUpdatePacketType,
 	return nil
 }
 
-func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr ShellStatePtr) error {
+func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr packet.ShellStatePtr) error {
 	if ck.IsEmpty() {
 		return fmt.Errorf("cannot update cmdrtnstate, empty ck")
 	}
@@ -1098,7 +1098,7 @@ func DeleteScreen(ctx context.Context, screenId string, sessionDel bool, update 
 	return update, nil
 }
 
-func GetRemoteState(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*packet.ShellState, *ShellStatePtr, error) {
+func GetRemoteState(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*packet.ShellState, *packet.ShellStatePtr, error) {
 	ssptr, err := GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
 	if err != nil {
 		return nil, nil, err
@@ -1113,8 +1113,8 @@ func GetRemoteState(ctx context.Context, sessionId string, screenId string, remo
 	return state, ssptr, err
 }
 
-func GetRemoteStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*ShellStatePtr, error) {
-	var ssptr *ShellStatePtr
+func GetRemoteStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*packet.ShellStatePtr, error) {
+	var ssptr *packet.ShellStatePtr
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		ri, err := GetRemoteInstance(tx.Context(), sessionId, screenId, remotePtr)
 		if err != nil {
@@ -1123,7 +1123,7 @@ func GetRemoteStatePtr(ctx context.Context, sessionId string, screenId string, r
 		if ri == nil {
 			return nil
 		}
-		ssptr = &ShellStatePtr{ri.StateBaseHash, ri.StateDiffHashArr}
+		ssptr = &packet.ShellStatePtr{ri.StateBaseHash, ri.StateDiffHashArr}
 		return nil
 	})
 	if txErr != nil {
@@ -1836,7 +1836,7 @@ func GetStateBaseVersion(ctx context.Context, baseHash string) (string, error) {
 	})
 }
 
-func GetCurStateDiffFromPtr(ctx context.Context, ssPtr *ShellStatePtr) (*packet.ShellStateDiff, error) {
+func GetCurStateDiffFromPtr(ctx context.Context, ssPtr *packet.ShellStatePtr) (*packet.ShellStateDiff, error) {
 	if ssPtr == nil {
 		return nil, fmt.Errorf("cannot resolve state, empty stateptr")
 	}
@@ -1894,7 +1894,7 @@ func GetStateDiff(ctx context.Context, diffHash string) (*packet.ShellStateDiff,
 }
 
 // returns error when not found
-func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState, error) {
+func GetFullState(ctx context.Context, ssPtr packet.ShellStatePtr) (*packet.ShellState, error) {
 	var state *packet.ShellState
 	if ssPtr.BaseHash == "" {
 		return nil, fmt.Errorf("invalid empty basehash")

@@ -3862,7 +3862,7 @@ func doAsyncResetCommand(msh *remote.MShellProc, opts connectOptsType, cmd *ssto
 		rtnErr = err
 		return
 	}
-	newStatePtr := sstore.ShellStatePtr{
+	newStatePtr := packet.ShellStatePtr{
 		BaseHash: ssPk.State.GetHashVal(false),
 	}
 	if opts.Verbose && origStatePtr != nil {

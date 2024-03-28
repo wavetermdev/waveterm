@@ -40,6 +40,18 @@ type ShellState struct {
 	HashVal   string `json:"-"`
 }
 
+type ShellStatePtr struct {
+	BaseHash    string   `json:"basehash"`
+	DiffHashArr []string `json:"diffhasharr,omitempty"`
+}
+
+func (ssptr *ShellStatePtr) IsEmpty() bool {
+	if ssptr == nil || ssptr.BaseHash == "" {
+		return true
+	}
+	return false
+}
+
 func (state ShellState) ApproximateSize() int64 {
 	return int64(len(state.Version) + len(state.Cwd) + len(state.ShellVars) + len(state.Aliases) + len(state.Funcs) + len(state.Error))
 }
