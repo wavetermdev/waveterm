@@ -277,6 +277,49 @@ class KeybindManager {
         return false;
     }
 
+    processModalLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {
+        let curModalDomain: string = "";
+        // iterate through keybinds in backwards order
+        let domainCallbacksToRun: Map<string, KeybindCallback> = new Map();
+        for (let index = keybindsArray.length - 1; index >= 0; index--) {
+            let curKeybind = keybindsArray[index];
+            if (curModalDomain == "") {
+                curModalDomain = curKeybind.domain;
+            }
+            if (curKeybind.domain != curModalDomain) {
+                continue;
+            }
+            if (this.domainCallbacks.has(curKeybind.domain)) {
+                let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
+                if (curDomainCallback != null) {
+                    domainCallbacksToRun.set(curKeybind.domain, curDomainCallback);
+                }
+            }
+            if (this.checkKeyPressed(event, curKeybind.keybinding)) {
+                if (DumpLogs) {
+                    console.log("keybind found", curKeybind);
+                }
+                let shouldReturn = false;
+                let shouldRunCommand = true;
+                if (curKeybind.callback != null) {
+                    shouldReturn = curKeybind.callback(event);
+                    shouldRunCommand = false;
+                }
+                if (shouldRunCommand) {
+                    shouldReturn = this.runSlashCommand(curKeybind);
+                }
+                if (shouldReturn) {
+                    nativeEvent.preventDefault();
+                    nativeEvent.stopPropagation();
+                    this.runDomainCallbacks(event, domainCallbacksToRun);
+                    return true;
+                }
+            }
+        }
+        this.runDomainCallbacks(event, domainCallbacksToRun);
+        return false;
+    }
+
     processKeyEvent(nativeEvent: any, event: WaveKeyboardEvent): boolean {
         let modalLevel = this.levelMap.get("modal");
         if (modalLevel.length != 0) {
@@ -287,7 +330,7 @@ class KeybindManager {
             if (shouldReturn) {
                 return true;
             }
-            shouldReturn = this.processLevel(nativeEvent, event, modalLevel);
+            shouldReturn = this.processModalLevel(nativeEvent, event, modalLevel);
             if (shouldReturn) {
                 return true;
             }

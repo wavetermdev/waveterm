@@ -54,33 +54,34 @@ class SessionKeybindings extends React.Component<{}, {}> {
             GlobalModel.onBracketCmd(1);
             return true;
         });
-        keybindManager.registerKeybinding("pane", "session", "app:selectLineAbove", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "screen", "app:selectLineAbove", (waveEvent) => {
             GlobalModel.onMetaArrowUp();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "session", "app:selectLineBelow", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "screen", "app:selectLineBelow", (waveEvent) => {
             GlobalModel.onMetaArrowDown();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "session", "app:restartCommand", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "screen", "app:restartCommand", (waveEvent) => {
             GlobalModel.onRestartCommand();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "session", "app:restartLastCommand", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "screen", "app:restartLastCommand", (waveEvent) => {
             GlobalModel.onRestartLastCommand();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "session", "app:focusSelectedLine", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "screen", "app:focusSelectedLine", (waveEvent) => {
             GlobalModel.onFocusSelectedLine();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "session", "app:deleteActiveLine", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "screen", "app:deleteActiveLine", (waveEvent) => {
             return GlobalModel.handleDeleteActiveLine();
         });
     }
 
     componentWillUnmount() {
         GlobalModel.keybindManager.unregisterDomain("session");
+        GlobalModel.keybindManager.unregisterDomain("screen");
     }
 
     render() {
@@ -201,7 +202,7 @@ class WorkspaceView extends React.Component<{}, {}> {
         }
         const isHidden = GlobalModel.activeMainView.get() != "session";
         const mainSidebarModel = GlobalModel.mainSidebarModel;
-        const showTabSettings = GlobalModel.tabSettingsOpen.get();
+        const showTabSettings = GlobalModel.tabSettingsOpen.get() && !isHidden;
         return (
             <div
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
