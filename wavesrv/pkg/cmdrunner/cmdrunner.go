@@ -2683,7 +2683,7 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 	}()
 	var ch chan *packet.OpenAIPacketType
 	var err error
-	if opts.APIToken == "" {
+	if opts.BaseURL == "" && opts.APIToken == "" {
 		var conn *websocket.Conn
 		ch, conn, err = openai.RunCloudCompletionStream(ctx, clientId, opts, prompt)
 		if conn != nil {
