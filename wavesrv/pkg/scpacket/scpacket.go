@@ -35,10 +35,10 @@ func (rptr *RemotePtrType) GetDisplayName(baseDisplayName string) string {
 		return name
 	}
 	if rptr.Name != "" {
-		name = name + ":" + rptr.Name
+		name = name + "#" + rptr.Name
 	}
 	if rptr.OwnerId != "" {
-		name = "@" + rptr.OwnerId + ":" + name
+		name = "@" + rptr.OwnerId + "#" + name
 	}
 	return name
 }
