@@ -53,6 +53,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         };
         this.wrapperRef = React.createRef();
         this.menuRef = React.createRef();
+        this.curUuid = uuidv4();
     }
 
     componentDidMount() {
@@ -114,9 +115,6 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     @boundMethod
     registerKeybindings() {
         let keybindManager = GlobalModel.keybindManager;
-        if (this.curUuid == null || this.curUuid == undefined) {
-            this.curUuid = uuidv4();
-        }
         let domain = "dropdown-" + this.curUuid;
         keybindManager.registerKeybinding("control", domain, "generic:confirm", (waveEvent) => {
             this.handleConfirm();
