@@ -743,13 +743,14 @@ func MakeCmdFinalPacket(ck base.CommandKey) *CmdFinalPacketType {
 }
 
 type CmdDonePacketType struct {
-	Type           string          `json:"type"`
-	Ts             int64           `json:"ts"`
-	CK             base.CommandKey `json:"ck"`
-	ExitCode       int             `json:"exitcode"`
-	DurationMs     int64           `json:"durationms"`
-	FinalState     *ShellState     `json:"finalstate,omitempty"`
-	FinalStateDiff *ShellStateDiff `json:"finalstatediff,omitempty"`
+	Type              string          `json:"type"`
+	Ts                int64           `json:"ts"`
+	CK                base.CommandKey `json:"ck"`
+	ExitCode          int             `json:"exitcode"`
+	DurationMs        int64           `json:"durationms"`
+	FinalState        *ShellState     `json:"finalstate,omitempty"`
+	FinalStateDiff    *ShellStateDiff `json:"finalstatediff,omitempty"`
+	FinalStateBasePtr *ShellStatePtr  `json:"finalstatebaseptr,omitempty"`
 }
 
 func (*CmdDonePacketType) GetType() string {
@@ -814,10 +815,10 @@ type RunPacketType struct {
 	Type          string          `json:"type"`
 	ReqId         string          `json:"reqid"`
 	CK            base.CommandKey `json:"ck"`
-	ShellType     string          `json:"shelltype"` // new in v0.6.0 (either "bash" or "zsh") (set by remote.go)
+	ShellType     string          `json:"shelltype"` // added in Wave v0.6.0 (either "bash" or "zsh") (set by remote.go)
 	Command       string          `json:"command"`
 	State         *ShellState     `json:"state,omitempty"`
-	StateDiff     *ShellStateDiff `json:"statediff,omitempty"`
+	StatePtr      *ShellStatePtr  `json:"stateptr,omitempty"`      // added in Wave v0.7.2
 	StateComplete bool            `json:"statecomplete,omitempty"` // set to true if state is complete (the default env should not be set)
 	UsePty        bool            `json:"usepty,omitempty"`
 	TermOpts      *TermOpts       `json:"termopts,omitempty"`

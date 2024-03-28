@@ -63,6 +63,9 @@ type ShellStateOutput struct {
 	Error      string
 }
 
+// some timing info
+// MakeShellStateDiff takes ~1ms to run (even on a large diff)
+
 type ShellApi interface {
 	GetShellType() string
 	MakeExitTrap(fdNum int) (string, []byte)

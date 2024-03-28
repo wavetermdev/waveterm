@@ -50,7 +50,6 @@ type MServer struct {
 	Sender              *packet.PacketSender
 	ClientMap           map[base.CommandKey]*shexec.ClientProc
 	Debug               bool
-	StateMap            *ShellStateMap
 	WriteErrorCh        chan bool // closed if there is a I/O write error
 	WriteErrorChOnce    *sync.Once
 	Done                bool
@@ -336,11 +335,6 @@ func (m *MServer) reinit(reqId string, shellType string) {
 	ssPk, err := m.MakeShellStatePacket(reqId, shellType, stdinDataCh)
 	if err != nil {
 		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error initializing shell: %w", err))
-		return
-	}
-	err = m.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
-	if err != nil {
-		m.Sender.SendErrorResponse(reqId, fmt.Errorf("error setting current state: %w", err))
 		return
 	}
 	ssPk.RespId = reqId
@@ -710,7 +704,7 @@ func (m *MServer) ProcessRpcPacket(pk packet.RpcPacketType) {
 	m.Sender.SendErrorResponse(reqId, fmt.Errorf("invalid rpc type '%s'", pk.GetType()))
 }
 
-func (m *MServer) clientPacketCallback(shellType string, pk packet.PacketType) {
+func (m *MServer) clientPacketCallback(shellType string, pk packet.PacketType, runPk *packet.RunPacketType) {
 	if pk.GetType() != packet.CmdDonePacketStr {
 		return
 	}
@@ -718,25 +712,22 @@ func (m *MServer) clientPacketCallback(shellType string, pk packet.PacketType) {
 	if donePk.FinalState == nil {
 		return
 	}
-	stateHash, curState := m.StateMap.GetCurrentState(shellType)
-	if curState == nil {
+	initialState := runPk.State
+	if initialState == nil {
 		return
 	}
-	sapi, err := shellapi.MakeShellApi(curState.GetShellType())
+	initialStateHash := initialState.GetHashVal(false)
+	sapi, err := shellapi.MakeShellApi(initialState.GetShellType())
 	if err != nil {
 		return
 	}
-	diff, err := sapi.MakeShellStateDiff(curState, stateHash, donePk.FinalState)
+	diff, err := sapi.MakeShellStateDiff(initialState, initialStateHash, donePk.FinalState)
 	if err != nil {
 		return
 	}
 	donePk.FinalState = nil
 	donePk.FinalStateDiff = diff
-}
-
-func (m *MServer) isShellInitialized(shellType string) bool {
-	_, curState := m.StateMap.GetCurrentState(shellType)
-	return curState != nil
+	donePk.FinalStateBasePtr = runPk.StatePtr
 }
 
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
@@ -786,7 +777,7 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 		}()
 		shexec.SendRunPacketAndRunData(context.Background(), cproc.Input, runPacket)
 		cproc.ProxySingleOutput(runPacket.CK, m.Sender, func(pk packet.PacketType) {
-			m.clientPacketCallback(runPacket.ShellType, pk)
+			m.clientPacketCallback(runPacket.ShellType, pk, runPacket)
 		})
 	}()
 }
@@ -849,7 +840,6 @@ func RunServer() (int, error) {
 	server := &MServer{
 		Lock:                &sync.Mutex{},
 		ClientMap:           make(map[base.CommandKey]*shexec.ClientProc),
-		StateMap:            MakeShellStateMap(),
 		Debug:               debug,
 		WriteErrorCh:        make(chan bool),
 		WriteErrorChOnce:    &sync.Once{},

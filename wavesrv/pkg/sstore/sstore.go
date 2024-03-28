@@ -538,18 +538,6 @@ func (opts TermOpts) Value() (driver.Value, error) {
 	return quickValueJson(opts)
 }
 
-type ShellStatePtr struct {
-	BaseHash    string
-	DiffHashArr []string
-}
-
-func (ssptr *ShellStatePtr) IsEmpty() bool {
-	if ssptr == nil || ssptr.BaseHash == "" {
-		return true
-	}
-	return false
-}
-
 type RemoteInstance struct {
 	RIId             string            `json:"riid"`
 	Name             string            `json:"name"`
@@ -864,27 +852,27 @@ func (r *RemoteType) GetName() string {
 }
 
 type CmdType struct {
-	ScreenId     string              `json:"screenid"`
-	LineId       string              `json:"lineid"`
-	Remote       RemotePtrType       `json:"remote"`
-	CmdStr       string              `json:"cmdstr"`
-	RawCmdStr    string              `json:"rawcmdstr"`
-	FeState      map[string]string   `json:"festate"`
-	StatePtr     ShellStatePtr       `json:"state"`
-	TermOpts     TermOpts            `json:"termopts"`
-	OrigTermOpts TermOpts            `json:"origtermopts"`
-	Status       string              `json:"status"`
-	CmdPid       int                 `json:"cmdpid"`
-	RemotePid    int                 `json:"remotepid"`
-	RestartTs    int64               `json:"restartts,omitempty"`
-	DoneTs       int64               `json:"donets"`
-	ExitCode     int                 `json:"exitcode"`
-	DurationMs   int                 `json:"durationms"`
-	RunOut       []packet.PacketType `json:"runout,omitempty"`
-	RtnState     bool                `json:"rtnstate,omitempty"`
-	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
-	Remove       bool                `json:"remove,omitempty"`    // not persisted to DB
-	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
+	ScreenId     string               `json:"screenid"`
+	LineId       string               `json:"lineid"`
+	Remote       RemotePtrType        `json:"remote"`
+	CmdStr       string               `json:"cmdstr"`
+	RawCmdStr    string               `json:"rawcmdstr"`
+	FeState      map[string]string    `json:"festate"`
+	StatePtr     packet.ShellStatePtr `json:"state"`
+	TermOpts     TermOpts             `json:"termopts"`
+	OrigTermOpts TermOpts             `json:"origtermopts"`
+	Status       string               `json:"status"`
+	CmdPid       int                  `json:"cmdpid"`
+	RemotePid    int                  `json:"remotepid"`
+	RestartTs    int64                `json:"restartts,omitempty"`
+	DoneTs       int64                `json:"donets"`
+	ExitCode     int                  `json:"exitcode"`
+	DurationMs   int                  `json:"durationms"`
+	RunOut       []packet.PacketType  `json:"runout,omitempty"`
+	RtnState     bool                 `json:"rtnstate,omitempty"`
+	RtnStatePtr  packet.ShellStatePtr `json:"rtnstateptr,omitempty"`
+	Remove       bool                 `json:"remove,omitempty"`    // not persisted to DB
+	Restarted    bool                 `json:"restarted,omitempty"` // not persisted to DB
 }
 
 func (CmdType) GetType() string {
