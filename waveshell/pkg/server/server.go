@@ -727,6 +727,7 @@ func (m *MServer) clientPacketCallback(shellType string, pk packet.PacketType, r
 	}
 	donePk.FinalState = nil
 	donePk.FinalStateDiff = diff
+	donePk.FinalStateBasePtr = runPk.StatePtr
 }
 
 func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
