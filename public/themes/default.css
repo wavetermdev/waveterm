@@ -87,7 +87,7 @@
     --form-element-border-color: rgba(241, 246, 243, 0.15);
     --form-element-bg-color: var(--app-bg-color);
     --form-element-text-color: var(--app-text-primary-color);
-    --form-element-primary-text-color: var(--form-element-text-color);
+    --form-element-primary-text-color: var(--app-text-primary-color);
     --form-element-label-color: var(--app-text-secondary-color);
     --form-element-primary-color: var(--app-accent-color);
     --form-element-secondary-color: rgba(255, 255, 255, 0.2);

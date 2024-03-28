@@ -8,7 +8,7 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel } from "@/models";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
@@ -17,10 +17,16 @@ import * as textmeasure from "@/util/textmeasure";
 import "./workspace.less";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
+import { Button } from "@/elements";
 import { getRemoteStr, getRemoteStrWithAlias } from "@/common/prompt/prompt";
 import { TabColorSelector, TabIconSelector, TabNameTextField, TabRemoteSelector } from "./screen/newtabsettings";
+import * as util from "@/util/util";
 
 dayjs.extend(localizedFormat);
+
+const ScreenDeleteMessage = `
+Are you sure you want to delete this tab?
+`.trim();
 
 class SessionKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
@@ -105,6 +111,29 @@ class TabSettingsPulldownKeybindings extends React.Component<{}, {}> {
 class TabSettings extends React.Component<{ screen: Screen }, {}> {
     errorMessage: OV<string> = mobx.observable.box(null, { name: "TabSettings-errorMessage" });
 
+    @boundMethod
+    handleDeleteScreen(): void {
+        const { screen } = this.props;
+        if (screen == null) {
+            return;
+        }
+        if (screen.getScreenLines().lines.length == 0) {
+            GlobalCommandRunner.screenDelete(screen.screenId, false);
+            GlobalModel.modalsModel.popModal();
+            return;
+        }
+        let message = ScreenDeleteMessage;
+        let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
+        alertRtn.then((result) => {
+            if (!result) {
+                return;
+            }
+            let prtn = GlobalCommandRunner.screenDelete(screen.screenId, false);
+            util.commandRtnHandler(prtn, this.errorMessage);
+            GlobalModel.modalsModel.popModal();
+        });
+    }
+
     render() {
         let { screen } = this.props;
         let rptr = screen.curRemote.get();
@@ -132,6 +161,16 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
                 <div className="newtab-spacer" />
                 <div className="newtab-section">
                     <TabColorSelector screen={screen} errorMessage={this.errorMessage} />
+                </div>
+                <div className="newtab-spacer" />
+                <div className="newtab-section">
+                    <Button
+                        onClick={this.handleDeleteScreen}
+                        style={{ paddingTop: 4, paddingBottom: 4 }}
+                        className="primary greyoutlined greytext hover-danger"
+                    >
+                        Delete Tab
+                    </Button>
                 </div>
             </div>
         );
