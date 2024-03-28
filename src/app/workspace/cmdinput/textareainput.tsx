@@ -41,9 +41,11 @@ function scrollDiv(div: any, amt: number) {
 
 class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
     componentDidMount(): void {
+        if (GlobalModel.activeMainView != "session") {
+            return;
+        }
         let inputModel = GlobalModel.inputModel;
         let keybindManager = GlobalModel.keybindManager;
-
         keybindManager.registerKeybinding("pane", "history", "generic:cancel", (waveEvent) => {
             inputModel.resetHistory();
             return true;
@@ -103,6 +105,9 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
     lastTab: boolean;
 
     componentDidMount() {
+        if (GlobalModel.activeMainView != "session") {
+            return;
+        }
         let inputObject = this.props.inputObject;
         this.lastTab = false;
         let keybindManager = GlobalModel.keybindManager;
@@ -208,6 +213,12 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:expandTextInput", (waveEvent) => {
             inputObject.modEnter();
             return true;
+        });
+        keybindManager.registerDomainCallback("cmdinput", (waveEvent) => {
+            if (!keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
+                this.lastTab = false;
+            }
+            return false;
         });
     }
 

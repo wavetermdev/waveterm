@@ -29,7 +29,7 @@ type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string
 
 const Callback = "callback";
 const Command = "command";
-const DumpLogs = false;
+const DumpLogs = true;
 
 type Keybind = {
     domain: string;
@@ -232,10 +232,26 @@ class KeybindManager {
         });
     }
 
+    runDomainCallbacks(event: WaveKeyboardEvent, curDomainCallbacks: Map<string, KeybindCallback>) {
+        for (let key of curDomainCallbacks.keys()) {
+            let callback = curDomainCallbacks.get(key);
+            if (callback != null) {
+                callback(event);
+            }
+        }
+    }
+
     processLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {
         // iterate through keybinds in backwards order
+        let domainCallbacksToRun: Map<string, KeybindCallback> = new Map();
         for (let index = keybindsArray.length - 1; index >= 0; index--) {
             let curKeybind = keybindsArray[index];
+            if (this.domainCallbacks.has(curKeybind.domain)) {
+                let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
+                if (curDomainCallback != null) {
+                    domainCallbacksToRun.set(curKeybind.domain, curDomainCallback);
+                }
+            }
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
                 if (DumpLogs) {
                     console.log("keybind found", curKeybind);
@@ -246,23 +262,18 @@ class KeybindManager {
                     shouldReturn = curKeybind.callback(event);
                     shouldRunCommand = false;
                 }
-                if (!shouldReturn && this.domainCallbacks.has(curKeybind.domain)) {
-                    shouldRunCommand = false;
-                    let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
-                    if (curDomainCallback != null) {
-                        shouldReturn = curDomainCallback(event);
-                    }
-                }
                 if (shouldRunCommand) {
                     shouldReturn = this.runSlashCommand(curKeybind);
                 }
                 if (shouldReturn) {
                     nativeEvent.preventDefault();
                     nativeEvent.stopPropagation();
+                    this.runDomainCallbacks(event, domainCallbacksToRun);
                     return true;
                 }
             }
         }
+        this.runDomainCallbacks(event, domainCallbacksToRun);
         return false;
     }
 
@@ -502,7 +513,7 @@ class KeybindManager {
         return foundKeybind;
     }
 
-    getKeyPressEventForDomain(domain: string, callback: KeybindCallback) {
+    registerDomainCallback(domain: string, callback: KeybindCallback) {
         if (callback == null) {
             console.log("domain callback can't be null");
         }
