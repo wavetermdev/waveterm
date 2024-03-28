@@ -312,7 +312,6 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
     };
 
     const handleArrowNavigation = (key: string, currentPart: string) => {
-        console.log("Arrow key pressed: ", key);
         const currentIndex = formatParts.indexOf(currentPart);
         let targetInput;
 
