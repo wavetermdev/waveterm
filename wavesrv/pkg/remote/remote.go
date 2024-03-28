@@ -1733,6 +1733,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.ServerProc = cproc
 		msh.Status = StatusConnected
 	})
+	msh.WriteToPtyBuffer("connected to %s\n", remoteCopy.RemoteCanonicalName)
 	go func() {
 		exitErr := cproc.Cmd.Wait()
 		exitCode := shexec.GetExitCode(exitErr)

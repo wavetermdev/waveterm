@@ -390,7 +390,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 	// incorrectly. if a problem file is found, it is removed from our list
 	// and we try again
 	var basicCallback ssh.HostKeyCallback
-	for len(knownHostsFiles) > 0 {
+	for basicCallback == nil && len(knownHostsFiles) > 0 {
 		var err error
 		basicCallback, err = knownhosts.New(knownHostsFiles...)
 		if serr, ok := err.(*os.PathError); ok {
@@ -410,10 +410,6 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 			// TODO handle obscure problems if possible
 			return nil, fmt.Errorf("known_hosts formatting error: %+v", err)
 		}
-	}
-
-	if basicCallback == nil {
-		basicCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error { return &knownhosts.KeyError{} }
 	}
 
 	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
