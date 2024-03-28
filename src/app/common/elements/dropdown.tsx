@@ -115,8 +115,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     registerKeybindings() {
         let keybindManager = GlobalModel.keybindManager;
         if (this.curUuid == null || this.curUuid == undefined) {
-            console.log("uuid is undefined");
-            this.curUuid == uuidv4();
+            this.curUuid = uuidv4();
         }
         let domain = "dropdown-" + this.curUuid;
         keybindManager.registerKeybinding("control", domain, "generic:confirm", (waveEvent) => {
@@ -173,6 +172,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         }
     }
 
+    @boundMethod
     handleBlur() {
         this.unregisterKeybindings();
     }
