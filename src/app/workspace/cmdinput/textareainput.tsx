@@ -11,7 +11,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, WaveKeyboardEvent } from "@/util/keyutil";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -215,9 +215,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerDomainCallback("cmdinput", (waveEvent) => {
-            if (!keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
-                this.lastTab = false;
-            }
+            inputObject.handleCmdInputAnyKey(waveEvent);
             return false;
         });
     }
@@ -416,6 +414,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
         GlobalModel.inputModel.setCurLine(currentRef.value);
+    }
+
+    handleCmdInputAnyKey(waveEvent: WaveKeyboardEvent) {
+        if (!GlobalModel.keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
+            this.lastTab = false;
+        }
+        this.lastHistoryUpDown = false;
     }
 
     @mobx.action
