@@ -5851,15 +5851,13 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	}
 	if webglStr, found := pk.Kwargs["webgl"]; found {
 		webglVal := resolveBool(webglStr, false)
-		if webglVal {
-			varsUpdated = append(varsUpdated, "webgl")
-		}
 		clientOpts := clientData.ClientOpts
 		clientOpts.WebGL = webglVal
 		err = sstore.SetClientOpts(ctx, clientOpts)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client webgl: %v", err)
 		}
+		varsUpdated = append(varsUpdated, "webgl")
 	}
 	if len(varsUpdated) == 0 {
 		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize", "termfontfamily", "openaiapitoken", "openaimodel", "openaibaseurl", "openaimaxtokens", "openaimaxchoices", "webgl"}, "or", false))
