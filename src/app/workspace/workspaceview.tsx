@@ -202,7 +202,7 @@ class WorkspaceView extends React.Component<{}, {}> {
         }
         const isHidden = GlobalModel.activeMainView.get() != "session";
         const mainSidebarModel = GlobalModel.mainSidebarModel;
-        const showTabSettings = GlobalModel.tabSettingsOpen.get() && !isHidden;
+        const showTabSettings = GlobalModel.tabSettingsOpen.get();
         return (
             <div
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
@@ -221,7 +221,7 @@ class WorkspaceView extends React.Component<{}, {}> {
                             <i className="fa-solid fa-sharp fa-xmark-large" />
                         </div>
                         <TabSettings key={activeScreen.screenId} screen={activeScreen} />
-                        <If condition={showTabSettings}>
+                        <If condition={showTabSettings && !isHidden}>
                             <TabSettingsPulldownKeybindings />
                         </If>
                     </div>
