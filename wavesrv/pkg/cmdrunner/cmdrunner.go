@@ -291,6 +291,8 @@ func init() {
 	registerCmdFn("mediaview", MediaViewCommand)
 
 	registerCmdFn("csvview", CSVViewCommand)
+
+	registerCmdFn("_debug:ri", DebugRemoteInstanceCommand)
 }
 
 func getValidCommands() []string {
@@ -3780,6 +3782,91 @@ func SessionCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 		log.Printf("error resetting status indicator after session command: %v\n", err)
 	}
 
+	return update, nil
+}
+
+type statePtrInfoType struct {
+	IsDiff    bool
+	BaseHash  string
+	DiffHash  string
+	StateSize int
+}
+
+func getStatePtrInfo(ctx context.Context, statePtr *packet.ShellStatePtr) (statePtrInfoType, error) {
+	rtn := statePtrInfoType{}
+	if statePtr == nil {
+		return rtn, fmt.Errorf("stateptr is nil")
+	}
+	if len(statePtr.DiffHashArr) > 1 {
+		return rtn, fmt.Errorf("stateptr has more than 1 diffhash")
+	}
+	if len(statePtr.DiffHashArr) == 1 {
+		rtn.IsDiff = true
+		rtn.BaseHash = statePtr.BaseHash
+		rtn.DiffHash = statePtr.DiffHashArr[0]
+		stateDiff, err := sstore.GetStateDiff(ctx, rtn.DiffHash)
+		if err != nil {
+			return rtn, fmt.Errorf("cannot get state diff: %w", err)
+		}
+		_, encodedDiff := stateDiff.EncodeAndHash()
+		rtn.StateSize = len(encodedDiff)
+	} else {
+		rtn.BaseHash = statePtr.BaseHash
+		state, err := sstore.GetStateBase(ctx, rtn.BaseHash)
+		if err != nil {
+			return rtn, fmt.Errorf("cannot get state base: %w", err)
+		}
+		_, encodedState := state.EncodeAndHash()
+		rtn.StateSize = len(encodedState)
+	}
+	return rtn, nil
+}
+
+func DebugRemoteInstanceCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
+	if err != nil {
+		return nil, err
+	}
+	slines, err := sstore.GetScreenLinesById(ctx, ids.ScreenId)
+	if err != nil {
+		return nil, err
+	}
+	lines := slines.Lines
+	if len(lines) > 100 {
+		lines = lines[:100]
+	}
+	cmdMap := make(map[string]*sstore.CmdType)
+	for _, cmd := range slines.Cmds {
+		cmdMap[cmd.LineId] = cmd
+	}
+	cmds := make([]*sstore.CmdType, 0, len(lines))
+	for _, line := range lines {
+		cmds = append(cmds, cmdMap[line.LineId])
+	}
+	var outputLines []string
+	for idx, cmd := range cmds {
+		if cmd == nil || cmd.RtnStatePtr.IsEmpty() {
+			continue
+		}
+		line := lines[idx]
+		info, err := getStatePtrInfo(ctx, &cmd.RtnStatePtr)
+		if err != nil {
+			outputLines = append(outputLines, fmt.Sprintf("line %5d | err %v", line.LineNum, err))
+			continue
+		}
+		outputStr := ""
+		if info.IsDiff {
+			outputStr = fmt.Sprintf("line %5d | diff %8s-%8s | size %8d", line.LineNum, info.BaseHash[0:8], info.DiffHash[0:8], info.StateSize)
+		} else {
+			outputStr = fmt.Sprintf("line %5d | base %8s %8s | size %8d", line.LineNum, info.BaseHash[0:8], "", info.StateSize)
+		}
+		outputLines = append(outputLines, outputStr)
+	}
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.InfoMsgType{
+		InfoTitle: "remote instance",
+		InfoLines: outputLines,
+	})
 	return update, nil
 }
 
