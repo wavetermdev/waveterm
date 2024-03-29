@@ -1292,6 +1292,67 @@ class Model {
         metaSubCmd: string,
         args: string[],
         kwargs: Record<string, string>,
+        interactive: boolean
+    ): Promise<CommandRtnType> {
+        const pk: FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: metaCmd,
+            metasubcmd: metaSubCmd,
+            args: args,
+            kwargs: { ...kwargs },
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            ephemeralopts: null,
+        };
+        /** 
+        console.log(
+            "CMD"
+            pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
+            pk.args,
+            pk.kwargs,
+            pk.interactive
+        );
+		 */
+        return this.submitCommandPacket(pk, interactive);
+    }
+
+    submitEphemeralCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
+        if (this.debugCmds > 0) {
+            console.log("[cmd]", cmdPacketString(cmdPk));
+            if (this.debugCmds > 1) {
+                console.trace();
+            }
+        }
+        // adding cmdStr for debugging only (easily filter run-command calls in the network tab of debugger)
+        const cmdStr = cmdPk.metacmd + (cmdPk.metasubcmd ? ":" + cmdPk.metasubcmd : "");
+        const url = new URL(this.getBaseHostPort() + "/api/run-ephemeral-command?cmd=" + cmdStr);
+        const fetchHeaders = this.getFetchHeaders();
+        const prtn = fetch(url, {
+            method: "post",
+            body: JSON.stringify(cmdPk),
+            headers: fetchHeaders,
+        })
+            .then((resp) => handleJsonFetchResponse(url, resp))
+            .then((data) => {
+                console.log("ephemeral command response", data);
+                return { success: true };
+            })
+            .catch((err) => {
+                this.errorHandler("calling run-command", err, interactive);
+                let errMessage = "error running command";
+                if (err != null && !isBlank(err.message)) {
+                    errMessage = err.message;
+                }
+                return { success: false, error: errMessage };
+            });
+        return prtn;
+    }
+
+    submitEphemeralCommand(
+        metaCmd: string,
+        metaSubCmd: string,
+        args: string[],
+        kwargs: Record<string, string>,
         interactive: boolean,
         ephemeralopts?: EphemeralCmdOptsType
     ): Promise<CommandRtnType> {
@@ -1314,7 +1375,7 @@ class Model {
             pk.interactive
         );
 		 */
-        return this.submitCommandPacket(pk, interactive);
+        return this.submitEphemeralCommandPacket(pk, interactive);
     }
 
     submitChatInfoCommand(chatMsg: string, curLineStr: string, clear: boolean): Promise<CommandRtnType> {

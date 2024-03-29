@@ -18,7 +18,7 @@ import "./workspace.less";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
 import { Button } from "@/elements";
-import { getRemoteStr, getRemoteStrWithAlias } from "@/common/prompt/prompt";
+import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
 import { TabColorSelector, TabIconSelector, TabNameTextField, TabRemoteSelector } from "./screen/newtabsettings";
 import * as util from "@/util/util";
 

@@ -1930,7 +1930,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		if !ok {
 			if existingRct.EphemeralOpts != nil {
 				// if the existing command is ephemeral, we cancel it and continue
-				existingRct.EphCancled.Store(true)
+				existingRct.EphemeralOpts.Canceled.Store(true)
 			} else {
 				line, _, err := sstore.GetLineCmdByLineId(ctx, screenId, existingRct.CK.GetCmdId())
 				return nil, nil, makePSCLineError(existingRct.CK, line, err)
@@ -2025,7 +2025,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		RunOut:     nil,
 		RtnState:   runPacket.ReturnState,
 	}
-	if !rcOpts.NoCreateCmdPtyFile && !rcOpts.Ephemeral {
+	if !rcOpts.NoCreateCmdPtyFile && rcOpts.EphemeralOpts == nil {
 		err = sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.LineId, cmd.TermOpts.MaxPtySize)
 		if err != nil {
 			// TODO the cmd is running, so this is a tricky error to handle
@@ -2033,12 +2033,12 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		}
 	}
 	msh.AddRunningCmd(&RunCmdType{
-		CK:        runPacket.CK,
-		SessionId: sessionId,
-		ScreenId:  screenId,
-		RemotePtr: remotePtr,
-		RunPacket: runPacket,
-		Ephemeral: rcOpts.Ephemeral,
+		CK:            runPacket.CK,
+		SessionId:     sessionId,
+		ScreenId:      screenId,
+		RemotePtr:     remotePtr,
+		RunPacket:     runPacket,
+		EphemeralOpts: rcOpts.EphemeralOpts,
 	})
 
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
@@ -2248,14 +2248,14 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 	}
 	// this will remove from RunningCmds and from PendingStateCmds
 	defer msh.RemoveRunningCmd(donePk.CK)
-	if rct.EphemeralOpts != nil && rct.EphCancled.Load() {
+	if rct.EphemeralOpts != nil && rct.EphemeralOpts.Canceled.Load() {
 		// do nothing when an ephemeral command is canceled
 		return
 	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	update := scbus.MakeUpdatePacket()
-	if !rct.Ephemeral {
+	if rct.EphemeralOpts == nil {
 		// only update DB for non-ephemeral commands
 		err := sstore.UpdateCmdDoneInfo(ctx, update, donePk.CK, donePk, sstore.CmdStatusDone)
 		if err != nil {
@@ -2286,7 +2286,7 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 			update.AddUpdate(sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
 		}
 		// ephemeral commands *do not* update cmd state (there is no command)
-		if statePtr != nil && !rct.Ephemeral {
+		if statePtr != nil && rct.EphemeralOpts == nil {
 			err = sstore.UpdateCmdRtnState(ctx, donePk.CK, *statePtr)
 			if err != nil {
 				msh.WriteToPtyBuffer("*error trying to update cmd rtnstate: %v\n", err)
@@ -2303,8 +2303,11 @@ func (msh *MShellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.Cmd
 		return
 	}
 	defer msh.RemoveRunningCmd(finalPk.CK)
-	if rct.Ephemeral {
+	if rct.EphemeralOpts != nil {
 		// just remove the running command, but there is no DB state to update in this case
+		if rct.EphemeralOpts.ResponseWriter != nil {
+			rct.EphemeralOpts.ResponseWriter.Close()
+		}
 		return
 	}
 	rtnCmd, err := sstore.GetCmdByScreenId(context.Background(), finalPk.CK.GetGroupId(), finalPk.CK.GetCmdId())
@@ -2355,9 +2358,16 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 		msh.ServerProc.Input.SendPacket(ack)
 		return
 	}
-	if rct.Ephemeral {
+	if rct.EphemeralOpts != nil {
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)
 		msh.ServerProc.Input.SendPacket(ack)
+		// Write to the response writer if it's set
+		if len(realData) > 0 && rct.EphemeralOpts.ResponseWriter != nil {
+			_, err := rct.EphemeralOpts.ResponseWriter.Write(realData)
+			if err != nil {
+				log.Printf("*error writing to ephemeral response writer: %v\n", err)
+			}
+		}
 		return
 	}
 	var ack *packet.DataAckPacketType

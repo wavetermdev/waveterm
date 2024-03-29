@@ -16,6 +16,7 @@ import (
 	"os"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
@@ -818,6 +819,7 @@ type EphemeralRunOpts struct {
 	TimeoutMs       int64          `json:"timeoutms"`             // The maximum time to wait for the command to complete. If the command does not complete within this time, it is killed.
 	ExpectsResponse bool           `json:"expectsresponse"`       // If set, the command is expected to return a response. If this is false, ResposeWriter is not set.
 	ResponseWriter  io.WriteCloser `json:"-"`                     // A writer to receive the command's output. If not set, the command's output is discarded. (set by remote.go)
+	Canceled        atomic.Bool    `json:"canceled,omitempty"`    // If set, the command was canceled before it completed.
 }
 
 type RunPacketType struct {
