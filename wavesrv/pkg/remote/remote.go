@@ -2304,8 +2304,10 @@ func (msh *MShellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.Cmd
 	}
 	defer msh.RemoveRunningCmd(finalPk.CK)
 	if rct.EphemeralOpts != nil {
+		log.Printf("finalpk %s (ephemeral): %s\n", finalPk.CK, finalPk.Error)
 		// just remove the running command, but there is no DB state to update in this case
 		if rct.EphemeralOpts.ResponseWriter != nil {
+			log.Printf("closing ephemeral response writer\n")
 			rct.EphemeralOpts.ResponseWriter.Close()
 		}
 		return
@@ -2359,14 +2361,17 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 		return
 	}
 	if rct.EphemeralOpts != nil {
+		log.Printf("ephemeral data packet %s\n", dataPk.CK)
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)
 		msh.ServerProc.Input.SendPacket(ack)
 		// Write to the response writer if it's set
 		if len(realData) > 0 && rct.EphemeralOpts.ResponseWriter != nil {
+			log.Printf("writing to ephemeral response writer\n")
 			_, err := rct.EphemeralOpts.ResponseWriter.Write(realData)
 			if err != nil {
 				log.Printf("*error writing to ephemeral response writer: %v\n", err)
 			}
+			log.Printf("wrote to ephemeral response writer\n")
 		}
 		return
 	}

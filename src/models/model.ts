@@ -1332,9 +1332,8 @@ class Model {
             body: JSON.stringify(cmdPk),
             headers: fetchHeaders,
         })
-            .then((resp) => handleJsonFetchResponse(url, resp))
-            .then((data) => {
-                console.log("ephemeral command response", data);
+            .then(async (resp) => {
+                console.log("ephemeral command response", await resp.text());
                 return { success: true };
             })
             .catch((err) => {
@@ -1366,15 +1365,14 @@ class Model {
             interactive: interactive,
             ephemeralopts: ephemeralopts,
         };
-        /** 
         console.log(
-            "CMD"
+            "CMD",
             pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
             pk.args,
             pk.kwargs,
-            pk.interactive
+            pk.interactive,
+            pk.ephemeralopts
         );
-		 */
         return this.submitEphemeralCommandPacket(pk, interactive);
     }
 

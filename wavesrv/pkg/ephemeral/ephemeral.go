@@ -7,6 +7,7 @@ package ephemeral
 import (
 	"bytes"
 	"io"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -38,6 +39,7 @@ func NewEphemeralWriteCloser(w io.Writer) *EphemeralWriteCloser {
 
 // Write to the writer. If the writer is not ready, the data will be written to the buffer. If the writer is ready, the data will be written directly to the underlying writer.
 func (ewc *EphemeralWriteCloser) Write(p []byte) (n int, err error) {
+	log.Printf("Writing %d bytes to EphemeralWriteCloser", len(p))
 	if ewc.closed.Load() {
 		return 0, io.ErrClosedPipe
 	}
@@ -55,6 +57,7 @@ func (ewc *EphemeralWriteCloser) Write(p []byte) (n int, err error) {
 
 // Mark the writer as ready to be written to. Any buffered data will be written to the underlying writer before subsequent writes.
 func (ewc *EphemeralWriteCloser) Ready() {
+	log.Println("Marking EphemeralWriteCloser as ready")
 	defer ewc.writeLock.Unlock()
 	ewc.writeLock.Lock()
 	ewc.ready = true
@@ -65,6 +68,7 @@ func (ewc *EphemeralWriteCloser) Ready() {
 
 // Close the writer. This will mark the writer as closed and unblock any goroutines waiting for the writer to be closed.
 func (ewc *EphemeralWriteCloser) Close() error {
+	log.Println("Closing EphemeralWriteCloser")
 	ewc.closed.Store(true)
 	ewc.closeWait.Done()
 	return nil

@@ -687,7 +687,7 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		if r == nil {
 			return
 		}
-		log.Printf("[error] in run-command: %v\n", r)
+		log.Printf("[error] in run-ephemeral-command: %v\n", r)
 		debug.PrintStack()
 		WriteJsonError(w, fmt.Errorf(ErrorPanic, r))
 	}()
@@ -699,18 +699,22 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
 		return
 	}
+	log.Printf("Running ephemeral command: %v\n", commandPk)
 
 	if commandPk.EphemeralOpts == nil {
+		log.Printf("EphemeralOpts is nil, creating new EphemeralOpts\n")
 		commandPk.EphemeralOpts = &packet.EphemeralRunOpts{}
 	}
 
 	if commandPk.EphemeralOpts.TimeoutMs == 0 {
+		log.Printf("EphemeralOpts.TimeoutMs is 0, setting to default\n")
 		commandPk.EphemeralOpts.TimeoutMs = packet.DefaultEphemeralTimeoutMs
 	}
 
 	var ewc *ephemeral.EphemeralWriteCloser
 
 	if commandPk.EphemeralOpts.ExpectsResponse {
+		log.Printf("EphemeralOpts.ExpectsResponse is true, creating new EphemeralWriteCloser\n")
 		// create a new io.WriteCloser that will close the writer when the response is done
 		ewc = ephemeral.NewEphemeralWriteCloser(w)
 		commandPk.EphemeralOpts.ResponseWriter = ewc
@@ -718,25 +722,29 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 
 	update, err := cmdrunner.HandleCommand(r.Context(), &commandPk)
 	if err != nil {
+		log.Printf("Error occurred while running ephemeral command: %v\n", err)
 		if commandPk.EphemeralOpts.ResponseWriter != nil {
 			commandPk.EphemeralOpts.ResponseWriter.Close()
 		}
 		WriteJsonError(w, err)
 		return
 	}
-
+	log.Printf("Ephemeral command completed successfully\n")
 	// No error occurred, so we can write the response to the client
 	w.Header().Set(ContentTypeHeaderKey, ContentTypeText)
 	w.WriteHeader(200)
 	ewc.Ready()
+	log.Printf("Ephemeral writer ready\n")
 
 	// With ephemeral commands, we can't send the update back directly, so we need to send it through the update bus
 	if update != nil {
+		log.Printf("Sending update to main update bus\n")
 		update.Clean()
 		scbus.MainUpdateBus.DoUpdate(update)
 	}
 
 	if commandPk.EphemeralOpts.ExpectsResponse {
+		log.Printf("Waiting for ephemeral command to be closed\n")
 		// Wait for the writer to be closed
 		if ewc.WaitWithTimeout(time.Duration(commandPk.EphemeralOpts.TimeoutMs) * time.Millisecond) {
 			log.Printf("Ephemeral command timed out")

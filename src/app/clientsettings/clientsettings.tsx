@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown, Button } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 
@@ -178,6 +178,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         GlobalModel.clientSettingsViewModel.closeView();
     }
 
+    @boundMethod
+    handleSubmitEphemeral(): void {
+        GlobalModel.submitEphemeralCommand("eval", null, ["ls"], null, false, {
+            expectsresponse: true,
+        });
+    }
+
     render() {
         const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
@@ -193,10 +200,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getThemeSource();
-
-        GlobalModel.submitEphemeralCommand("eval", null, ["ls"], null, false, {
-            expectsresponse: true,
-        });
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
@@ -327,6 +330,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 defaultValue={this.getCurrentShortcut()}
                                 onChange={this.handleChangeShortcut}
                             />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Submit Ephemeral Command</div>
+                        <div className="settings-input">
+                            <Button onClick={this.handleSubmitEphemeral}>Submit</Button>
                         </div>
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />
