@@ -128,8 +128,8 @@ class Model {
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
-    termRenderVersion: OV<number> = mobx.observable.box(0, {
-        name: "termRenderVersion",
+    appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
+        name: "appUpdateStatus",
     });
     termThemes: OMap<string, string> = mobx.observable.array([], {
         name: "terminalThemes",
@@ -138,8 +138,8 @@ class Model {
     termThemeSrcEl: OV<HTMLElement> = mobx.observable.box(null, {
         name: "termThemeSrcEl",
     });
-    appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
-        name: "appUpdateStatus",
+    termRenderVersion: OV<number> = mobx.observable.box(0, {
+        name: "termRenderVersion",
     });
     termThemeCache: Record<string, string> = {};
     currTheme: string;
@@ -263,7 +263,7 @@ class Model {
             .then(() => {
                 mobx.action(() => {
                     this.termThemeSrcEl.set(element);
-                    this.termRenderVersion.set(this.termRenderVersion.get() + 1);
+                    this.bumpTermRenderVersion();
                 })();
             })
             .catch((error) => {
@@ -310,6 +310,12 @@ class Model {
     bumpRenderVersion() {
         mobx.action(() => {
             this.renderVersion.set(this.renderVersion.get() + 1);
+        })();
+    }
+
+    bumpTermRenderVersion() {
+        mobx.action(() => {
+            this.termRenderVersion.set(this.termRenderVersion.get() + 1);
         })();
     }
 
@@ -456,7 +462,6 @@ class Model {
     getTermTheme(): TermThemeType {
         let cdata = this.clientData.get();
         if (cdata?.feopts?.termtheme) {
-            console.log("cdata.feopts.termtheme", cdata.feopts.termtheme);
             return cdata.feopts.termtheme;
         }
         return {};
@@ -1007,7 +1012,6 @@ class Model {
                         this.bookmarksModel.mergeBookmarks(update.bookmarks.bookmarks);
                     }
                 } else if (update.clientdata != null) {
-                    console.log("updating clientdata", update.clientdata);
                     this.setClientData(update.clientdata);
                 } else if (update.cmdline != null) {
                     this.inputModel.updateCmdLine(update.cmdline);
@@ -1290,61 +1294,39 @@ class Model {
         }
 
         const newTermTheme = clientData?.feopts?.termtheme;
-
-        let mergedTheme: TermThemeType = {};
-        if (this.termThemeCache) {
-            mergedTheme = { ...mergedTheme, ...this.termThemeCache };
-        }
-        if (newTermTheme) {
-            mergedTheme = { ...mergedTheme, ...newTermTheme };
-        }
+        const mergedTheme: TermThemeType = {
+            ...this.termThemeCache,
+            ...newTermTheme,
+        };
         if (Object.keys(mergedTheme).length > 0) {
             let elementToApplyTheme = null;
             let themeKey = null;
-
             for (const key of Object.keys(mergedTheme)) {
-                // Query for screen level if the key is not 'global'
                 if (key !== "global") {
-                    const screenEl = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
-                    if (screenEl) {
-                        elementToApplyTheme = screenEl;
-                        themeKey = key;
-                        break;
-                    }
+                    elementToApplyTheme = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
                 }
-                // If screen level element is not found, query for session level
                 if (!elementToApplyTheme) {
-                    const sessionEl = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
-                    if (sessionEl) {
-                        elementToApplyTheme = sessionEl;
-                        themeKey = key;
-                        break;
-                    }
+                    elementToApplyTheme = document.querySelector(
+                        `.session-view[data-sessionid="${key}"]`
+                    ) as HTMLElement;
                 }
-                // If neither screen nor session level element is found, use global
                 if (!elementToApplyTheme && key === "global") {
                     elementToApplyTheme = document.documentElement;
+                }
+                if (elementToApplyTheme) {
                     themeKey = key;
+                    break;
                 }
             }
-            // Apply theme to the found element
-            if (elementToApplyTheme) {
+            if (elementToApplyTheme && themeKey) {
                 const theme = mergedTheme[themeKey];
                 const reset = newTermTheme[themeKey] == null;
-                console.log("reset", reset);
-
-                console.log("this.currTheme", this.currTheme, theme);
-                if (this.currTheme !== theme) {
-                    this.applyTermTheme(elementToApplyTheme, theme, reset);
-                    this.termThemeCache = mergedTheme;
-                } else if (reset) {
+                if (this.currTheme !== theme || reset) {
                     this.applyTermTheme(elementToApplyTheme, theme, reset);
                     this.termThemeCache = mergedTheme;
                 }
             }
         }
-
-        console.log("got here =====");
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {

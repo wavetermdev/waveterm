@@ -100,21 +100,8 @@ class WorkspaceView extends React.Component<{}, {}> {
         );
     }
 
-    // componentDidUpdate(): void {
-    //     const session = GlobalModel.getActiveSession();
-    //     if (session != null) {
-    //         const sessionId = session.sessionId;
-    //         const currTheme = GlobalModel.getTermTheme()[sessionId];
-    //         if (currTheme == this.theme) {
-    //             return;
-    //         }
-    //         GlobalCommandRunner.setSessionTermTheme(sessionId, currTheme, false);
-    //     }
-    // }
-
     render() {
         const session = GlobalModel.getActiveSession();
-
         if (session == null) {
             return (
                 <div className="session-view">
@@ -124,8 +111,6 @@ class WorkspaceView extends React.Component<{}, {}> {
                 </div>
             );
         }
-        console.log("GlobalModel.getTermTheme()[this.sessionId];", GlobalModel.getTermTheme()[session.sessionId]);
-
         const activeScreen = session.getActiveScreen();
         let cmdInputHeight = GlobalModel.inputModel.cmdInputHeight.get();
         if (cmdInputHeight == 0) {
@@ -134,7 +119,6 @@ class WorkspaceView extends React.Component<{}, {}> {
         const isHidden = GlobalModel.activeMainView.get() != "session";
         const mainSidebarModel = GlobalModel.mainSidebarModel;
         const termRenderVersion = GlobalModel.termRenderVersion.get();
-        // console.log("termRenderVersion>>>>>>>>>>>", termRenderVersion);
 
         return (
             <div
