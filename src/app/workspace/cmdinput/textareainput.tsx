@@ -420,7 +420,16 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         if (!GlobalModel.keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
             this.lastTab = false;
         }
-        this.lastHistoryUpDown = false;
+        if (
+            !GlobalModel.keybindManager.checkKeysPressed(waveEvent, [
+                "generic:selectAbove",
+                "generic:selectBelow",
+                "generic:selectPageAbove",
+                "generic:selectPageBelow",
+            ])
+        ) {
+            this.lastHistoryUpDown = false;
+        }
     }
 
     @mobx.action
