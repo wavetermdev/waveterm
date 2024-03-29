@@ -138,10 +138,11 @@ class Model {
     termThemeSrcEl: OV<HTMLElement> = mobx.observable.box(null, {
         name: "termThemeSrcEl",
     });
-    termThemeCache: Record<string, string> = {};
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
+    termThemeCache: Record<string, string> = {};
+    currTheme: string;
 
     private constructor() {
         this.clientId = getApi().getId();
@@ -250,8 +251,10 @@ class Model {
             .then((themeVars) => {
                 Object.keys(themeVars).forEach((key) => {
                     if (reset) {
+                        this.currTheme = null;
                         this.resetStyleVar(element, `--term-${key}`);
                     } else {
+                        this.currTheme = themeFileName;
                         this.resetStyleVar(element, `--term-${key}`);
                         this.setStyleVar(element, `--term-${key}`, themeVars[key]);
                     }
@@ -1328,8 +1331,16 @@ class Model {
             if (elementToApplyTheme) {
                 const theme = mergedTheme[themeKey];
                 const reset = newTermTheme[themeKey] == null;
-                this.applyTermTheme(elementToApplyTheme, theme, reset);
-                this.termThemeCache = mergedTheme;
+                console.log("reset", reset);
+
+                console.log("this.currTheme", this.currTheme, theme);
+                if (this.currTheme !== theme) {
+                    this.applyTermTheme(elementToApplyTheme, theme, reset);
+                    this.termThemeCache = mergedTheme;
+                } else if (reset) {
+                    this.applyTermTheme(elementToApplyTheme, theme, reset);
+                    this.termThemeCache = mergedTheme;
+                }
             }
         }
 

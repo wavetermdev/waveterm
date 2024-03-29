@@ -134,6 +134,7 @@ class WorkspaceView extends React.Component<{}, {}> {
         const isHidden = GlobalModel.activeMainView.get() != "session";
         const mainSidebarModel = GlobalModel.mainSidebarModel;
         const termRenderVersion = GlobalModel.termRenderVersion.get();
+        // console.log("termRenderVersion>>>>>>>>>>>", termRenderVersion);
 
         return (
             <div
