@@ -119,7 +119,6 @@ class TermWrap {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
-        // console.log("termThemeSrcEl", GlobalModel.termThemeSrcEl.get());
         const themeSrcEl = GlobalModel.termThemeSrcEl.get();
         let theme = getThemeFromCSSVars(themeSrcEl);
         this.terminal = new Terminal({

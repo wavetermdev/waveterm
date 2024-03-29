@@ -303,7 +303,7 @@ type FeOptsType struct {
 	TermFontSize   int               `json:"termfontsize,omitempty"`
 	TermFontFamily string            `json:"termfontfamily,omitempty"`
 	Theme          string            `json:"theme,omitempty"`
-	TermTheme      map[string]string `json:"termtheme,omitempty"`
+	TermTheme      map[string]string `json:"termtheme"`
 }
 
 type ReleaseInfoType struct {

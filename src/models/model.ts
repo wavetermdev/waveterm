@@ -138,6 +138,7 @@ class Model {
     termThemeSrcEl: OV<HTMLElement> = mobx.observable.box(null, {
         name: "termThemeSrcEl",
     });
+    termThemeCache: Record<string, string> = {};
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
@@ -1005,6 +1006,7 @@ class Model {
                         this.bookmarksModel.mergeBookmarks(update.bookmarks.bookmarks);
                     }
                 } else if (update.clientdata != null) {
+                    console.log("updating clientdata", update.clientdata);
                     this.setClientData(update.clientdata);
                 } else if (update.cmdline != null) {
                     this.inputModel.updateCmdLine(update.cmdline);
@@ -1264,7 +1266,6 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getTheme();
-        const oldTermTheme = clientData?.feopts?.termtheme;
 
         mobx.action(() => {
             this.clientData.set(clientData);
@@ -1288,11 +1289,19 @@ class Model {
         }
 
         const newTermTheme = clientData?.feopts?.termtheme;
-        if (newTermTheme && (Object.keys(newTermTheme).length > 0, oldTermTheme)) {
+
+        let mergedTheme: TermThemeType = {};
+        if (this.termThemeCache) {
+            mergedTheme = { ...mergedTheme, ...this.termThemeCache };
+        }
+        if (newTermTheme) {
+            mergedTheme = { ...mergedTheme, ...newTermTheme };
+        }
+        if (Object.keys(mergedTheme).length > 0) {
             let elementToApplyTheme = null;
             let themeKey = null;
 
-            for (const key of Object.keys(newTermTheme)) {
+            for (const key of Object.keys(mergedTheme)) {
                 // Query for screen level if the key is not 'global'
                 if (key !== "global") {
                     const screenEl = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
@@ -1319,9 +1328,10 @@ class Model {
             }
             // Apply theme to the found element
             if (elementToApplyTheme) {
-                const theme = newTermTheme[themeKey];
-                console.log(`Applying theme to element: ${elementToApplyTheme.className}`);
-                this.applyTermTheme(elementToApplyTheme, theme, false);
+                const theme = mergedTheme[themeKey];
+                const reset = newTermTheme[themeKey] == null;
+                this.applyTermTheme(elementToApplyTheme, theme, reset);
+                this.termThemeCache = mergedTheme;
             }
         }
     }
