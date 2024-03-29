@@ -50,6 +50,7 @@ class KeybindManager {
     userKeybindingError: OV<string>;
     globalModel: any;
     activeKeybindsVersion: OV<number>;
+    lastKeyData: { domain: string; keyPress: string };
 
     constructor(GlobalModel: any) {
         this.levelMap = new Map();
@@ -67,6 +68,7 @@ class KeybindManager {
         });
         this.globalModel = GlobalModel;
         this.initKeyDescriptionsMap();
+        this.lastKeyData = { domain: "none", keyPress: "none" };
     }
 
     initKeyDescriptionsMap() {
@@ -127,8 +129,7 @@ class KeybindManager {
         this.keyDescriptionsMap = newKeyDescriptions;
     }
 
-    prettyPrintKeybind(keyDescription: string): string {
-        let keyPress = parseKeyDescription(keyDescription);
+    prettyPrintKeyPress(keyPress: KeyPressDecl): string {
         let returnString = "";
         if (keyPress.mods.Cmd) {
             returnString += "⌘";
@@ -150,6 +151,11 @@ class KeybindManager {
         }
         returnString += keyPress.key;
         return returnString;
+    }
+
+    prettyPrintKeybind(keyDescription: string): string {
+        let keyPress = parseKeyDescription(keyDescription);
+        return this.prettyPrintKeyPress(keyPress);
     }
 
     getUIDescription(keyDescription: string, prettyPrint: boolean = true): KeybindConfig {
@@ -268,11 +274,23 @@ class KeybindManager {
                 if (shouldReturn) {
                     nativeEvent.preventDefault();
                     nativeEvent.stopPropagation();
+                    this.lastKeyData.domain = curKeybind.domain;
+                    this.lastKeyData.keyPress = this.prettyPrintKeyPress(
+                        getKeyPressDeclFromKeyboardEvent(event, KeyTypeKey)
+                    );
+                    mobx.action(() => {
+                        this.activeKeybindsVersion.set(this.activeKeybindsVersion.get() + 1);
+                    })();
                     this.runDomainCallbacks(event, domainCallbacksToRun);
                     return true;
                 }
             }
         }
+        this.lastKeyData.domain = "none";
+        this.lastKeyData.keyPress = "none";
+        mobx.action(() => {
+            this.activeKeybindsVersion.set(this.activeKeybindsVersion.get() + 1);
+        })();
         this.runDomainCallbacks(event, domainCallbacksToRun);
         return false;
     }
@@ -373,7 +391,7 @@ class KeybindManager {
     }
 
     getActiveKeybindsVersion() {
-        return this.activeKeybindsVersion.get();
+        return this.activeKeybindsVersion;
     }
 
     checkKeyInKeybinding(key: string, keyDescription: string) {
@@ -439,6 +457,10 @@ class KeybindManager {
             }
         }
         return toReturn;
+    }
+
+    getLastKeyData() {
+        return this.lastKeyData;
     }
 
     getActiveKeybindings(): Array<{ name: string; domains: Array<string> }> {
@@ -640,6 +662,25 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
                 }
             }
         }
+    }
+    return rtn;
+}
+
+function getKeyPressDeclFromKeyboardEvent(waveEvent: WaveKeyboardEvent, keyType: string): KeyPressDecl {
+    let rtn = { key: "", mods: {} } as KeyPressDecl;
+    rtn.mods.Cmd = waveEvent.cmd;
+    rtn.mods.Ctrl = waveEvent.control;
+    rtn.mods.Shift = waveEvent.shift;
+    rtn.mods.Option = waveEvent.option;
+    rtn.mods.Alt = waveEvent.alt && !waveEvent.option;
+    rtn.mods.Meta = waveEvent.meta && !waveEvent.cmd;
+    if (keyType == KeyTypeKey) {
+        rtn.key = waveEvent.code;
+        rtn.keyType = KeyTypeKey;
+    }
+    if (keyType == KeyTypeCode) {
+        rtn.key = waveEvent.code;
+        rtn.keyType = KeyTypeCode;
     }
     return rtn;
 }
