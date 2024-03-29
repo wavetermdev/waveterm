@@ -25,9 +25,10 @@ class KeybindDevPane extends React.Component<{}, {}> {
             GlobalModel.keybindManager.getActiveKeybindings();
         let keybindLevel: { name: string; domains: Array<string> } = null;
         let domain: string = null;
-        let curVersion = GlobalModel.keybindManager.getActiveKeybindsVersion();
+        let curVersion = GlobalModel.keybindManager.getActiveKeybindsVersion().get();
         let levelIdx: number = 0;
         let domainIdx: number = 0;
+        let lastKeyData = GlobalModel.keybindManager.getLastKeyData();
         return (
             <div className="keybind-debug-pane">
                 <div className="keybind-pane-title">Keybind Manager</div>
@@ -41,6 +42,12 @@ class KeybindDevPane extends React.Component<{}, {}> {
                         </div>
                     </For>
                 </For>
+                <br />
+                <br />
+                <div>
+                    <h1>Last KeyPress Domain: {lastKeyData.domain}</h1>
+                    <h1>Last KeyPress key: {lastKeyData.keyPress}</h1>
+                </div>
             </div>
         );
     }

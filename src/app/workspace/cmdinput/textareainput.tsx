@@ -200,13 +200,13 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectAbove", (waveEvent) => {
             this.curPress = "historyupdown";
-            inputObject.arrowUpPressed();
-            return true;
+            let rtn = inputObject.arrowUpPressed();
+            return rtn;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectBelow", (waveEvent) => {
             this.curPress = "historyupdown";
-            inputObject.arrowDownPressed();
-            return true;
+            let rtn = inputObject.arrowDownPressed();
+            return rtn;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageAbove", (waveEvent) => {
             this.curPress = "historyupdown";
@@ -223,7 +223,6 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerDomainCallback("cmdinput", (waveEvent) => {
-            console.log("curPress:", this.curPress);
             if (this.curPress != "tab") {
                 this.lastTab = false;
             }
