@@ -68,6 +68,8 @@ const (
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
+
+	DefaultEphemeralTimeoutMs = 5000
 )
 
 const (

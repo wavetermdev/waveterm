@@ -534,10 +534,10 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	runPacket.Command = ":"
 	runPacket.ReturnState = true
 	rcOpts := remote.RunCommandOpts{
-		SessionId: ids.SessionId,
-		ScreenId:  ids.ScreenId,
-		RemotePtr: ids.Remote.RemotePtr,
-		Ephemeral: true,
+		SessionId:     ids.SessionId,
+		ScreenId:      ids.ScreenId,
+		RemotePtr:     ids.Remote.RemotePtr,
+		EphemeralOpts: &packet.EphemeralRunOpts{TimeoutMs: packet.DefaultEphemeralTimeoutMs},
 	}
 	_, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
 	if callback != nil {

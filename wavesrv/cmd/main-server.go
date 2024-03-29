@@ -36,12 +36,14 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scws"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
@@ -98,6 +100,7 @@ const (
 	CacheControlHeaderNoCache = "no-cache"
 	ContentTypeHeaderKey      = "Content-Type"
 	ContentTypeJson           = "application/json"
+	ContentTypeText           = "text/plain"
 )
 
 func setWSState(state *scws.WSState) {
@@ -664,7 +667,7 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 	var commandPk scpacket.FeCommandPacketType
 	err := decoder.Decode(&commandPk)
 	if err != nil {
-		WriteJsonError(w, fmt.Errorf("error decoding json: %w", err))
+		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
 		return
 	}
 	update, err := cmdrunner.HandleCommand(r.Context(), &commandPk)
@@ -676,6 +679,71 @@ func HandleRunCommand(w http.ResponseWriter, r *http.Request) {
 		update.Clean()
 	}
 	WriteJsonSuccess(w, update)
+}
+
+func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		log.Printf("[error] in run-command: %v\n", r)
+		debug.PrintStack()
+		WriteJsonError(w, fmt.Errorf(ErrorPanic, r))
+	}()
+	w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
+	decoder := json.NewDecoder(r.Body)
+	var commandPk scpacket.FeCommandPacketType
+	err := decoder.Decode(&commandPk)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
+		return
+	}
+
+	if commandPk.EphemeralOpts == nil {
+		commandPk.EphemeralOpts = &packet.EphemeralRunOpts{}
+	}
+
+	if commandPk.EphemeralOpts.TimeoutMs == 0 {
+		commandPk.EphemeralOpts.TimeoutMs = packet.DefaultEphemeralTimeoutMs
+	}
+
+	var ewc *ephemeral.EphemeralWriteCloser
+
+	if commandPk.EphemeralOpts.ExpectsResponse {
+		// create a new io.WriteCloser that will close the writer when the response is done
+		ewc = ephemeral.NewEphemeralWriteCloser(w)
+		commandPk.EphemeralOpts.ResponseWriter = ewc
+	}
+
+	update, err := cmdrunner.HandleCommand(r.Context(), &commandPk)
+	if err != nil {
+		if commandPk.EphemeralOpts.ResponseWriter != nil {
+			commandPk.EphemeralOpts.ResponseWriter.Close()
+		}
+		WriteJsonError(w, err)
+		return
+	}
+
+	// No error occurred, so we can write the response to the client
+	w.Header().Set(ContentTypeHeaderKey, ContentTypeText)
+	w.WriteHeader(200)
+	ewc.Ready()
+
+	// With ephemeral commands, we can't send the update back directly, so we need to send it through the update bus
+	if update != nil {
+		update.Clean()
+		scbus.MainUpdateBus.DoUpdate(update)
+	}
+
+	if commandPk.EphemeralOpts.ExpectsResponse {
+		// Wait for the writer to be closed
+		if ewc.WaitWithTimeout(time.Duration(commandPk.EphemeralOpts.TimeoutMs) * time.Millisecond) {
+			log.Printf("Ephemeral command timed out")
+		} else {
+			log.Printf("Ephemeral command completed")
+		}
+	}
 }
 
 func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
@@ -1014,6 +1082,7 @@ func main() {
 	gr.HandleFunc("/api/rtnstate", AuthKeyWrap(HandleRtnState))
 	gr.HandleFunc("/api/get-screen-lines", AuthKeyWrap(HandleGetScreenLines))
 	gr.HandleFunc("/api/run-command", AuthKeyWrap(HandleRunCommand)).Methods("POST")
+	gr.HandleFunc("/api/run-ephemeral-command", AuthKeyWrap(HandleRunEphemeralCommand)).Methods("POST")
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
