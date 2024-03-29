@@ -244,17 +244,17 @@ class Model {
             });
     }
 
-    applyTermTheme(element: HTMLElement, themeFileName: string, reset?: boolean) {
+    updateTermTheme(element: HTMLElement, themeFileName: string, termThemeSrcEl: HTMLElement, reset: boolean) {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
         fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
             .then((resp) => resp.json())
             .then((themeVars) => {
                 Object.keys(themeVars).forEach((key) => {
                     if (reset) {
-                        this.currTheme = null;
+                        // this.currTheme = null;
                         this.resetStyleVar(element, `--term-${key}`);
                     } else {
-                        this.currTheme = themeFileName;
+                        // this.currTheme = themeFileName;
                         this.resetStyleVar(element, `--term-${key}`);
                         this.setStyleVar(element, `--term-${key}`, themeVars[key]);
                     }
@@ -262,7 +262,7 @@ class Model {
             })
             .then(() => {
                 mobx.action(() => {
-                    this.termThemeSrcEl.set(element);
+                    this.termThemeSrcEl.set(termThemeSrcEl);
                     this.bumpTermRenderVersion();
                 })();
             })
@@ -1294,39 +1294,113 @@ class Model {
         }
 
         const newTermTheme = clientData?.feopts?.termtheme;
-        const mergedTheme: TermThemeType = {
-            ...this.termThemeCache,
-            ...newTermTheme,
-        };
-        if (Object.keys(mergedTheme).length > 0) {
-            let elementToApplyTheme = null;
-            let themeKey = null;
-            for (const key of Object.keys(mergedTheme)) {
-                if (key !== "global") {
-                    elementToApplyTheme = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
-                }
-                if (!elementToApplyTheme) {
-                    elementToApplyTheme = document.querySelector(
-                        `.session-view[data-sessionid="${key}"]`
-                    ) as HTMLElement;
-                }
-                if (!elementToApplyTheme && key === "global") {
-                    elementToApplyTheme = document.documentElement;
-                }
-                if (elementToApplyTheme) {
-                    themeKey = key;
-                    break;
+        if (newTermTheme) {
+            const removedTermTheme = this.getRemovedTermTheme(newTermTheme, this.termThemeCache);
+            const addedOrUpdatedTermTheme = this.getAddedOrUpdatedTermTheme(newTermTheme, this.termThemeCache);
+            if (removedTermTheme) {
+                const { key, el } = removedTermTheme;
+                const themeName = this.termThemeCache[key];
+                const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
+                console.log("removedTermTheme+++++++++", el, themeName, termThemeSrcEl);
+                this.updateTermTheme(el, themeName, termThemeSrcEl, true);
+            } else if (addedOrUpdatedTermTheme) {
+                const { key, el } = addedOrUpdatedTermTheme;
+                const themeName = newTermTheme[key];
+                const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
+                console.log("addedOrUpdatedTermTheme+++++++++", el, themeName, termThemeSrcEl, newTermTheme);
+                this.updateTermTheme(el, themeName, termThemeSrcEl, false);
+            } else {
+                for (const key in newTermTheme) {
+                    let el = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
+                    if (!el) {
+                        el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
+                    }
+                    const themeName = newTermTheme[key];
+                    console.log("addedOrUpdatedTermTheme+++++++++", el, themeName, el, newTermTheme);
+                    this.updateTermTheme(el, themeName, el, false);
                 }
             }
-            if (elementToApplyTheme && themeKey) {
-                const theme = mergedTheme[themeKey];
-                const reset = newTermTheme[themeKey] == null;
-                if (this.currTheme !== theme || reset) {
-                    this.applyTermTheme(elementToApplyTheme, theme, reset);
-                    this.termThemeCache = mergedTheme;
+            this.termThemeCache = newTermTheme;
+        }
+
+        // const mergedTheme: TermThemeType = {
+        //     ...this.termThemeCache,
+        //     ...newTermTheme,
+        // };
+        // console.log("newTermTheme", newTermTheme);
+        // if (Object.keys(newTermTheme).length > 0) {
+        //     let elementToApplyTheme = null;
+        //     let themeKey = null;
+        //     for (const key of Object.keys(newTermTheme)) {
+        //         if (key !== "global") {
+        //             console.log("here 1");
+        //             elementToApplyTheme = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
+        //         }
+        //         if (!elementToApplyTheme) {
+        //             console.log("here 2");
+        //             elementToApplyTheme = document.querySelector(
+        //                 `.session-view[data-sessionid="${key}"]`
+        //             ) as HTMLElement;
+        //         }
+        //         if (!elementToApplyTheme && key === "global") {
+        //             console.log("here 3");
+        //             elementToApplyTheme = document.documentElement;
+        //         }
+        //         if (elementToApplyTheme) {
+        //             themeKey = key;
+        //             break;
+        //         }
+        //     }
+        //     console.log("elementToApplyTheme", elementToApplyTheme, themeKey);
+        //     if (elementToApplyTheme && themeKey) {
+        //         const theme = newTermTheme[themeKey] ?? this.termThemeCache[themeKey];
+        //         console.log("theme", theme, this.currTheme, themeKey);
+        //         const reset = newTermTheme[themeKey] == null;
+        //         if (this.currTheme !== theme || reset) {
+        //             this.applyTermTheme(elementToApplyTheme, theme, reset);
+        //             this.termThemeCache = newTermTheme;
+        //         }
+        //     }
+        // }
+    }
+
+    getRemovedTermTheme(newTermTheme, termThemeCache) {
+        for (const key in termThemeCache) {
+            if (!(key in newTermTheme)) {
+                let el = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
+                if (!el) {
+                    el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
                 }
+                return { key: key, el: el, changeType: "removed" };
             }
         }
+        return null;
+    }
+
+    getAddedOrUpdatedTermTheme(newTermTheme, termThemeCache) {
+        for (const key in newTermTheme) {
+            if (!termThemeCache[key] || termThemeCache[key] !== newTermTheme[key]) {
+                let el = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
+                if (!el) {
+                    el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
+                }
+                return { key: key, el: el };
+            }
+        }
+        return null;
+    }
+
+    getTermThemeSrcEl(newTermTheme) {
+        for (const key in newTermTheme) {
+            let el = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
+            if (!el) {
+                el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
+            }
+            if (el) {
+                return el;
+            }
+        }
+        return document.documentElement;
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
