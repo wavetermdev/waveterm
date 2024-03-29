@@ -259,10 +259,8 @@ class Model {
             })
             .then(() => {
                 mobx.action(() => {
-                    // setTimeout(() => {
                     this.termThemeSrcEl.set(element);
                     this.termRenderVersion.set(this.termRenderVersion.get() + 1);
-                    // }, 100);
                 })();
             })
             .catch((error) => {
@@ -1334,6 +1332,8 @@ class Model {
                 this.termThemeCache = mergedTheme;
             }
         }
+
+        console.log("got here =====");
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {

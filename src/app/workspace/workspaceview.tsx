@@ -8,7 +8,7 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel } from "@/models";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
@@ -82,27 +82,39 @@ class SessionKeybindings extends React.Component<{}, {}> {
 class WorkspaceView extends React.Component<{}, {}> {
     sessionRef = React.createRef<HTMLDivElement>();
     theme: string;
+    themeReactionDisposer: mobx.IReactionDisposer;
 
-    componentDidUpdate(): void {
-        const session = GlobalModel.getActiveSession();
-        const clientData = GlobalModel.clientData.get();
-        const { termtheme } = clientData?.feopts;
-        // if (termtheme && this.sessionRef.current && this.theme != termtheme[session.sessionId]) {
-        //     const newTermTheme = termtheme[session.sessionId];
-        //     this.theme = newTermTheme ?? this.theme;
-        //     const reset = newTermTheme == null;
-        //     // GlobalModel.bumpRenderVersion();
-
-        //     GlobalModel.applyTermTheme(this.sessionRef.current, this.theme, reset);
-        //     GlobalModel.termThemeSrcEl.set(this.sessionRef.current);
-        //     if (reset) {
-        //         this.theme = null;
-        //     }
-        // }
+    componentDidMount() {
+        this.themeReactionDisposer = mobx.reaction(
+            () => {
+                const session = GlobalModel.getActiveSession();
+                return session ? GlobalModel.getTermTheme()[session.sessionId] : null;
+            },
+            (currTheme) => {
+                const session = GlobalModel.getActiveSession();
+                if (session && currTheme !== this.theme) {
+                    GlobalCommandRunner.setSessionTermTheme(session.sessionId, currTheme, false);
+                    this.theme = currTheme;
+                }
+            }
+        );
     }
+
+    // componentDidUpdate(): void {
+    //     const session = GlobalModel.getActiveSession();
+    //     if (session != null) {
+    //         const sessionId = session.sessionId;
+    //         const currTheme = GlobalModel.getTermTheme()[sessionId];
+    //         if (currTheme == this.theme) {
+    //             return;
+    //         }
+    //         GlobalCommandRunner.setSessionTermTheme(sessionId, currTheme, false);
+    //     }
+    // }
 
     render() {
         const session = GlobalModel.getActiveSession();
+
         if (session == null) {
             return (
                 <div className="session-view">
@@ -112,6 +124,8 @@ class WorkspaceView extends React.Component<{}, {}> {
                 </div>
             );
         }
+        console.log("GlobalModel.getTermTheme()[this.sessionId];", GlobalModel.getTermTheme()[session.sessionId]);
+
         const activeScreen = session.getActiveScreen();
         let cmdInputHeight = GlobalModel.inputModel.cmdInputHeight.get();
         if (cmdInputHeight == 0) {
