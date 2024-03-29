@@ -246,6 +246,7 @@ type ClientOptsType struct {
 	RightSidebar          *SidebarValueType `json:"rightsidebar,omitempty"`
 	GlobalShortcut        string            `json:"globalshortcut,omitempty"`
 	GlobalShortcutEnabled bool              `json:"globalshortcutenabled,omitempty"`
+	WebGL                 bool              `json:"webgl,omitempty"`
 }
 
 type FeOptsType struct {

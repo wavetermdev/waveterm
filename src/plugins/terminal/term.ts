@@ -11,6 +11,7 @@ import { boundMethod } from "autobind-decorator";
 import { windowWidthToCols, windowHeightToRows } from "@/util/textmeasure";
 import { boundInt } from "@/util/util";
 import { GlobalModel } from "@/models";
+import { WebglAddon } from "@xterm/addon-webgl";
 
 type DataUpdate = {
     data: Uint8Array;
@@ -19,6 +20,20 @@ type DataUpdate = {
 
 const MinTermCols = 10;
 const MaxTermCols = 1024;
+
+// detect webgl support
+function detectWebGLSupport(): boolean {
+    try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("webgl");
+        return !!ctx;
+    } catch (e) {
+        return false;
+    }
+}
+
+const WebGLSupported = detectWebGLSupport();
+let loggedWebGL = false;
 
 type TermWrapOpts = {
     termContext: TermContextUnion;
@@ -142,6 +157,17 @@ class TermWrap {
                 }
             })
         );
+        if (WebGLSupported && GlobalModel.clientData.get().clientopts?.webgl) {
+            const webglAddon = new WebglAddon();
+            webglAddon.onContextLoss(() => {
+                webglAddon.dispose();
+            });
+            this.terminal.loadAddon(webglAddon);
+            if (!loggedWebGL) {
+                console.log("loaded webgl!");
+                loggedWebGL = true;
+            }
+        }
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
             return state;
