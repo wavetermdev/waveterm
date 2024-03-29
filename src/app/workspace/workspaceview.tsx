@@ -87,11 +87,10 @@ class WorkspaceView extends React.Component<{}, {}> {
     componentDidMount() {
         this.themeReactionDisposer = mobx.reaction(
             () => {
-                const session = GlobalModel.getActiveSession();
-                return session ? GlobalModel.getTermTheme()[session.sessionId] : null;
+                return GlobalModel.getActiveSession();
             },
-            (currTheme) => {
-                const session = GlobalModel.getActiveSession();
+            (session) => {
+                const currTheme = session ? GlobalModel.getTermTheme()[session.sessionId] : null;
                 if (session && currTheme !== this.theme) {
                     GlobalCommandRunner.setSessionTermTheme(session.sessionId, currTheme, false);
                     this.theme = currTheme;

@@ -541,6 +541,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     renderMode: OV<RenderModeType> = mobx.observable.box("normal", { name: "renderMode" });
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "sw-shareCopied" });
 
+    themeReactionDisposer: mobx.IReactionDisposer;
     theme: string;
 
     state = {
@@ -569,21 +570,21 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         })();
     }
 
-    componentDidUpdate(): void {
-        // const { screen } = this.props;
-        // const clientData = GlobalModel.clientData.get();
-        // const { termtheme } = clientData?.feopts;
-        // if (termtheme && this.windowViewRef.current && this.theme != termtheme[screen.screenId]) {
-        //     const newTermTheme = termtheme[screen.screenId];
-        //     this.theme = newTermTheme ?? this.theme;
-        //     const reset = newTermTheme == null;
-        //     GlobalModel.applyTermTheme(this.windowViewRef.current, this.theme, reset);
-        //     if (reset) {
-        //         this.theme = null;
-        //     }
-        // }
-        // GlobalModel.bumpRenderVersion();
-    }
+    // componentDidUpdate(): void {
+    // const { screen } = this.props;
+    // const clientData = GlobalModel.clientData.get();
+    // const { termtheme } = clientData?.feopts;
+    // if (termtheme && this.windowViewRef.current && this.theme != termtheme[screen.screenId]) {
+    //     const newTermTheme = termtheme[screen.screenId];
+    //     this.theme = newTermTheme ?? this.theme;
+    //     const reset = newTermTheme == null;
+    //     GlobalModel.applyTermTheme(this.windowViewRef.current, this.theme, reset);
+    //     if (reset) {
+    //         this.theme = null;
+    //     }
+    // }
+    // GlobalModel.bumpRenderVersion();
+    // }
 
     componentDidMount() {
         let wvElem = this.windowViewRef.current;
@@ -595,10 +596,16 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             this.rszObs.observe(wvElem);
         }
 
-        this.disposer = mobx.reaction(
-            () => GlobalModel.termThemeSrcEl.get(),
-            (termThemeSrcEl) => {
-                this.setState({ termThemeSrcEl });
+        this.themeReactionDisposer = mobx.reaction(
+            () => {
+                return GlobalModel.getActiveScreen();
+            },
+            (screen) => {
+                const currTheme = screen ? GlobalModel.getTermTheme()[screen.sessionId] : null;
+                if (screen && currTheme !== this.theme) {
+                    GlobalCommandRunner.setSessionTermTheme(screen.sessionId, currTheme, false);
+                    this.theme = currTheme;
+                }
             }
         );
     }

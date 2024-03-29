@@ -82,7 +82,6 @@ class TerminalRenderer extends React.Component<{
     visible: OV<boolean>;
     onHeightChange: () => void;
     collapsed: boolean;
-    termThemeSrcEl: HTMLElement;
 }> {
     termLoaded: mobx.IObservableValue<boolean> = mobx.observable.box(false, {
         name: "linecmd-term-loaded",

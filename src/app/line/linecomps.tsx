@@ -450,7 +450,6 @@ class LineCmd extends React.Component<
         overrideCollapsed: OV<boolean>;
         noSelect?: boolean;
         showHints?: boolean;
-        termThemeSrcEl: HTMLElement;
     },
     {}
 > {
@@ -766,7 +765,6 @@ class LineCmd extends React.Component<
                                 visible={visible}
                                 onHeightChange={this.handleHeightChange}
                                 collapsed={false}
-                                termThemeSrcEl={this.props.termThemeSrcEl}
                             />
                         </If>
                         <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
@@ -819,7 +817,6 @@ class Line extends React.Component<
         renderMode: RenderModeType;
         noSelect?: boolean;
         topBorder: boolean;
-        termThemeSrcEl: HTMLElement;
     },
     {}
 > {

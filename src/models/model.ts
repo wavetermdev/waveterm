@@ -142,7 +142,6 @@ class Model {
         name: "termRenderVersion",
     });
     termThemeCache: Record<string, string> = {};
-    currTheme: string;
 
     private constructor() {
         this.clientId = getApi().getId();
@@ -244,16 +243,24 @@ class Model {
             });
     }
 
-    updateTermTheme(element: HTMLElement, themeFileName: string, termThemeSrcEl: HTMLElement, reset: boolean) {
+    updateTermTheme(
+        element: HTMLElement,
+        themeFileName: string,
+        termThemeSrcEl: HTMLElement,
+        appReload: boolean,
+        reset: boolean
+    ) {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
         fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
             .then((resp) => resp.json())
             .then((themeVars) => {
                 Object.keys(themeVars).forEach((key) => {
                     if (reset) {
+                        // console.log("1111111111");
                         // this.currTheme = null;
                         this.resetStyleVar(element, `--term-${key}`);
                     } else {
+                        // console.log("2222222222", element);
                         // this.currTheme = themeFileName;
                         this.resetStyleVar(element, `--term-${key}`);
                         this.setStyleVar(element, `--term-${key}`, themeVars[key]);
@@ -262,8 +269,13 @@ class Model {
             })
             .then(() => {
                 mobx.action(() => {
+                    // console.log("termThemeSrcEl", termThemeSrcEl);
                     this.termThemeSrcEl.set(termThemeSrcEl);
-                    this.bumpTermRenderVersion();
+                    if (appReload) {
+                        this.bumpRenderVersion();
+                    } else {
+                        this.bumpTermRenderVersion();
+                    }
                 })();
             })
             .catch((error) => {
@@ -1301,19 +1313,25 @@ class Model {
                 const { key, el } = removedTermTheme;
                 const themeName = this.termThemeCache[key];
                 const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
-                console.log("removedTermTheme+++++++++", el, themeName, termThemeSrcEl);
-                this.updateTermTheme(el, themeName, termThemeSrcEl, true);
+                const fullReload = key == "global";
+                // console.log("removedTermTheme+++++++++", el, themeName, termThemeSrcEl);
+
+                this.updateTermTheme(el, themeName, termThemeSrcEl, fullReload, true);
             } else if (addedOrUpdatedTermTheme) {
                 const { key, el } = addedOrUpdatedTermTheme;
                 const themeName = newTermTheme[key];
                 const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
-                console.log("addedOrUpdatedTermTheme+++++++++", el, themeName, termThemeSrcEl, newTermTheme);
-                this.updateTermTheme(el, themeName, termThemeSrcEl, false);
+                const fullReload = key == "global";
+                // console.log("addedOrUpdatedTermTheme**********", el, themeName, termThemeSrcEl, newTermTheme);
+
+                if (this.termThemeCache[key] != themeName) {
+                    this.updateTermTheme(el, themeName, termThemeSrcEl, fullReload, false);
+                }
             } else if (!removedTermTheme && !addedOrUpdatedTermTheme) {
                 let el: HTMLElement;
                 let themKey: string;
                 for (const key in newTermTheme) {
-                    el = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
+                    el = document.querySelector(`.window-view[data-screenid="${key}"]`) as HTMLElement;
                     if (!el) {
                         el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
                     }
@@ -1326,8 +1344,11 @@ class Model {
                     }
                 }
                 const themeName = newTermTheme[themKey];
-                console.log("no theme changes+++++++++", el, themeName, el, newTermTheme);
-                this.updateTermTheme(el, themeName, el, false);
+                const fullReload = themKey == "global";
+                // console.log("no theme changes>>>>>>>>>>>", el, themeName, el, newTermTheme);
+                // if (this.termThemeCache[themKey] != themeName) {
+                this.updateTermTheme(el, themeName, el, fullReload, false);
+                // }
             }
             this.termThemeCache = newTermTheme;
         }
@@ -1336,7 +1357,7 @@ class Model {
     getRemovedTermTheme(newTermTheme, termThemeCache) {
         for (const key in termThemeCache) {
             if (!(key in newTermTheme)) {
-                let el = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
+                let el = document.querySelector(`.window-view[data-screenid="${key}"]`) as HTMLElement;
                 if (!el) {
                     el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
                 }
@@ -1352,7 +1373,7 @@ class Model {
     getAddedOrUpdatedTermTheme(newTermTheme, termThemeCache) {
         for (const key in newTermTheme) {
             if (!termThemeCache[key] || termThemeCache[key] !== newTermTheme[key]) {
-                let el = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
+                let el = document.querySelector(`.window-view[data-screenid="${key}"]`) as HTMLElement;
                 if (!el) {
                     el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
                 }
