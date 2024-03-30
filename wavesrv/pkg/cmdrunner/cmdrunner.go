@@ -34,6 +34,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/bookmarks"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/comp"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
@@ -589,6 +590,8 @@ func getLangArg(pk *scpacket.FeCommandPacketType) (string, error) {
 }
 
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	wlog.Logf("start of cmdrunner.RunCommand\n")
+	defer wlog.Logf("end of cmdrunner.RunCommand\n")
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
 		return nil, fmt.Errorf("/run error: %w", err)
@@ -647,6 +650,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	if err != nil {
 		return nil, err
 	}
+	wlog.Logf("after remote.RunCommand and callback\n")
 	cmd.RawCmdStr = pk.GetRawStr()
 	lineState := make(map[string]any)
 	if templateArg != "" {
@@ -718,6 +722,8 @@ func addToHistory(ctx context.Context, pk *scpacket.FeCommandPacketType, history
 }
 
 func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	wlog.Logf("start evalcommand")
+	defer wlog.Logf("end evalcommand")
 	if len(pk.Args) == 0 {
 		return nil, fmt.Errorf("usage: /eval [command], no command passed to eval")
 	}
@@ -1231,12 +1237,13 @@ func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime tim
 		exitCode = 1
 	}
 	ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-	donePk := packet.MakeCmdDonePacket(ck)
-	donePk.Ts = time.Now().UnixMilli()
-	donePk.ExitCode = exitCode
-	donePk.DurationMs = duration.Milliseconds()
+	doneInfo := sstore.CmdDoneDataValues{
+		Ts:         time.Now().UnixMilli(),
+		ExitCode:   exitCode,
+		DurationMs: duration.Milliseconds(),
+	}
 	update := scbus.MakeUpdatePacket()
-	err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
+	err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, doneInfo, cmdStatus)
 	if err != nil {
 		// nothing to do
 		log.Printf("error updating cmddoneinfo: %v\n", err)
@@ -2612,12 +2619,13 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 			exitCode = 1
 		}
 		ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-		donePk := packet.MakeCmdDonePacket(ck)
-		donePk.Ts = time.Now().UnixMilli()
-		donePk.ExitCode = exitCode
-		donePk.DurationMs = duration.Milliseconds()
+		doneInfo := sstore.CmdDoneDataValues{
+			Ts:         time.Now().UnixMilli(),
+			ExitCode:   exitCode,
+			DurationMs: duration.Milliseconds(),
+		}
 		update := scbus.MakeUpdatePacket()
-		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
+		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, doneInfo, cmdStatus)
 		if err != nil {
 			// nothing to do
 			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
@@ -2772,12 +2780,13 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 			exitCode = 1
 		}
 		ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-		donePk := packet.MakeCmdDonePacket(ck)
-		donePk.Ts = time.Now().UnixMilli()
-		donePk.ExitCode = exitCode
-		donePk.DurationMs = duration.Milliseconds()
+		doneInfo := sstore.CmdDoneDataValues{
+			Ts:         time.Now().UnixMilli(),
+			ExitCode:   exitCode,
+			DurationMs: duration.Milliseconds(),
+		}
 		update := scbus.MakeUpdatePacket()
-		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
+		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, doneInfo, cmdStatus)
 		if err != nil {
 			// nothing to do
 			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)

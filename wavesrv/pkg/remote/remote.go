@@ -35,6 +35,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
@@ -1900,6 +1901,8 @@ type RunCommandOpts struct {
 // we must persist the CmdType to the DB before calling the callback to allow updates
 // otherwise an early CmdDone packet might not get processed (since cmd will not exist in DB)
 func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.RunPacketType) (rtnCmd *sstore.CmdType, rtnCallback func(), rtnErr error) {
+	wlog.Logf("start remote.RunCommand\n")
+	defer wlog.Logf("end remote.RunCommand\n")
 	sessionId, screenId, remotePtr := rcOpts.SessionId, rcOpts.ScreenId, rcOpts.RemotePtr
 	if remotePtr.OwnerId != "" {
 		return nil, nil, fmt.Errorf("cannot run command against another user's remote '%s'", remotePtr.MakeFullRemoteRef())
@@ -1986,30 +1989,34 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 			removeCmdWait(runPacket.CK)
 		}
 	}()
-
+	rct := &RunCmdType{
+		CK:        runPacket.CK,
+		SessionId: sessionId,
+		ScreenId:  screenId,
+		RemotePtr: remotePtr,
+		RunPacket: runPacket,
+		Ephemeral: rcOpts.Ephemeral,
+	}
 	// RegisterRpc + WaitForResponse is used to get any waveshell side errors
 	// waveshell will either return an error (in a ResponsePacketType) or a CmdStartPacketType
+	wlog.Logf("send run packet\n")
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
-	err = shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
-	if err != nil {
-		return nil, nil, fmt.Errorf("sending run packet to remote: %w", err)
-	}
-	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
-	if rtnPk == nil {
-		return nil, nil, ctx.Err()
-	}
-	startPk, ok := rtnPk.(*packet.CmdStartPacketType)
-	if !ok {
-		respPk, ok := rtnPk.(*packet.ResponsePacketType)
-		if !ok {
-			return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
-		}
-		if respPk.Error != "" {
-			return nil, nil, respPk.Err()
-		}
-		return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
-	}
-
+	go func() {
+		startPk, err := msh.sendRunPacketAndReturnResponse(runPacket)
+		runCmdUpdateFn(runPacket.CK, func() {
+			if err != nil {
+				// the cmd failed (never started)
+				msh.handleCmdStartError(rct, err)
+				return
+			}
+			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFn()
+			err = sstore.UpdateCmdStartInfo(ctx, runPacket.CK, startPk.Pid, startPk.MShellPid)
+			if err != nil {
+				log.Printf("error updating cmd start info (in remote.RunCommand): %v\n", err)
+			}
+		})
+	}()
 	// command is now successfully runnning
 	status := sstore.CmdStatusRunning
 	if runPacket.Detached {
@@ -2025,8 +2032,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		StatePtr:   *statePtr,
 		TermOpts:   makeTermOpts(runPacket),
 		Status:     status,
-		CmdPid:     startPk.Pid,
-		RemotePid:  startPk.MShellPid,
 		ExitCode:   0,
 		DurationMs: 0,
 		RunOut:     nil,
@@ -2039,16 +2044,38 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 			return nil, nil, fmt.Errorf("cannot create local ptyout file for running command: %v", err)
 		}
 	}
-	msh.AddRunningCmd(&RunCmdType{
-		CK:        runPacket.CK,
-		SessionId: sessionId,
-		ScreenId:  screenId,
-		RemotePtr: remotePtr,
-		RunPacket: runPacket,
-		Ephemeral: rcOpts.Ephemeral,
-	})
+	msh.AddRunningCmd(rct)
 
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
+}
+
+// no context because it is called as a goroutine
+func (msh *MShellProc) sendRunPacketAndReturnResponse(runPacket *packet.RunPacketType) (*packet.CmdStartPacketType, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	err := shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
+	if err != nil {
+		return nil, fmt.Errorf("sending run packet to remote: %w", err)
+	}
+	wlog.Logf("before waitforresponse\n")
+	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
+	wlog.Logf("after waitforresponse\n")
+	if rtnPk == nil {
+		return nil, ctx.Err()
+	}
+	startPk, ok := rtnPk.(*packet.CmdStartPacketType)
+	if !ok {
+		respPk, ok := rtnPk.(*packet.ResponsePacketType)
+		if !ok {
+			return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
+		}
+		if respPk.Error != "" {
+			return nil, respPk.Err()
+		}
+		return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
+	}
+	wlog.Logf("after send packet\n")
+	return startPk, nil
 }
 
 // helper func to construct the proper error given what information we have
@@ -2312,6 +2339,34 @@ func (msh *MShellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdTy
 	return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, nil, newStateDiff)
 }
 
+func (msh *MShellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
+	if rct == nil {
+		log.Printf("handleCmdStartError, no rct\n")
+		return
+	}
+	defer msh.RemoveRunningCmd(rct.CK)
+	if rct.Ephemeral {
+		// nothing to do for ephemeral commands besides remove the running command
+		return
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	update := scbus.MakeUpdatePacket()
+	errOutputStr := fmt.Sprintf("%serror: %v%s\n", utilfn.AnsiRedColor(), startErr, utilfn.AnsiResetColor())
+	msh.writeToCmdPtyOut(ctx, rct.ScreenId, rct.CK.GetCmdId(), []byte(errOutputStr))
+	doneInfo := sstore.CmdDoneDataValues{
+		Ts:         time.Now().UnixMilli(),
+		ExitCode:   1,
+		DurationMs: 0,
+	}
+	err := sstore.UpdateCmdDoneInfo(ctx, update, rct.CK, doneInfo, sstore.CmdStatusError)
+	if err != nil {
+		log.Printf("error updating cmddone info (in handleCmdStartError): %v\n", err)
+		return
+	}
+	scbus.MainUpdateBus.DoUpdate(update)
+}
+
 func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDonePacketType) {
 	if rct == nil {
 		log.Printf("cmddone packet received, but no running command found for it %q\n", donePk.CK)
@@ -2328,7 +2383,12 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 	update := scbus.MakeUpdatePacket()
 	if !rct.Ephemeral {
 		// only update DB for non-ephemeral commands
-		err := sstore.UpdateCmdDoneInfo(ctx, update, donePk.CK, donePk, sstore.CmdStatusDone)
+		cmdDoneInfo := sstore.CmdDoneDataValues{
+			Ts:         donePk.Ts,
+			ExitCode:   donePk.ExitCode,
+			DurationMs: donePk.DurationMs,
+		}
+		err := sstore.UpdateCmdDoneInfo(ctx, update, donePk.CK, cmdDoneInfo, sstore.CmdStatusDone)
 		if err != nil {
 			log.Printf("error updating cmddone info (in handleCmdDonePacket): %v\n", err)
 			return
@@ -2416,6 +2476,19 @@ func (msh *MShellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.Cmd
 
 func (msh *MShellProc) ResetDataPos(ck base.CommandKey) {
 	msh.DataPosMap.Delete(ck)
+}
+
+func (msh *MShellProc) writeToCmdPtyOut(ctx context.Context, screenId string, lineId string, data []byte) error {
+	dataPos := msh.DataPosMap.Get(base.MakeCommandKey(screenId, lineId))
+	update, err := sstore.AppendToCmdPtyBlob(ctx, screenId, lineId, data, dataPos)
+	if err != nil {
+		return err
+	}
+	utilfn.IncSyncMap(msh.DataPosMap, base.MakeCommandKey(screenId, lineId), int64(len(data)))
+	if update != nil {
+		scbus.MainUpdateBus.DoScreenUpdate(screenId, update)
+	}
+	return nil
 }
 
 func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) {

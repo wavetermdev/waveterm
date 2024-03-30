@@ -932,6 +932,8 @@ func main() {
 	wlog.GlobalSubsystem = base.ProcessType_WaveSrv
 	wlog.LogConsumer = wlog.LogWithLogger
 
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	if len(os.Args) >= 2 && os.Args[1] == "--test" {
 		log.Printf("running test fn\n")
 		err := test()

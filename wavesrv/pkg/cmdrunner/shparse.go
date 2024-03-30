@@ -12,6 +12,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
@@ -355,6 +356,7 @@ func unescapeBackSlashes(s string) string {
 }
 
 func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) (*scpacket.FeCommandPacketType, error) {
+	wlog.Logf("start eval\n")
 	if len(origPk.Args) == 0 {
 		return nil, fmt.Errorf("empty command (no fields)")
 	}
