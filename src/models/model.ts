@@ -142,6 +142,7 @@ class Model {
         name: "termRenderVersion",
     });
     termThemeCache: Record<string, string> = {};
+    termThemeSet: boolean;
 
     private constructor() {
         this.clientId = getApi().getId();
@@ -271,6 +272,7 @@ class Model {
                 mobx.action(() => {
                     // console.log("termThemeSrcEl", termThemeSrcEl);
                     this.termThemeSrcEl.set(termThemeSrcEl);
+                    this.termThemeSet = false;
                     if (appReload) {
                         this.bumpRenderVersion();
                     } else {
@@ -1314,7 +1316,7 @@ class Model {
                 const themeName = this.termThemeCache[key];
                 const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
                 const fullReload = key == "global";
-                // console.log("removedTermTheme+++++++++", el, themeName, termThemeSrcEl);
+                console.log("removedTermTheme+++++++++", el, themeName, termThemeSrcEl);
 
                 this.updateTermTheme(el, themeName, termThemeSrcEl, fullReload, true);
             } else if (addedOrUpdatedTermTheme) {
@@ -1322,12 +1324,13 @@ class Model {
                 const themeName = newTermTheme[key];
                 const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
                 const fullReload = key == "global";
-                // console.log("addedOrUpdatedTermTheme**********", el, themeName, termThemeSrcEl, newTermTheme);
 
                 if (this.termThemeCache[key] != themeName) {
+                    console.log("addedOrUpdatedTermTheme**********", el, themeName, termThemeSrcEl, newTermTheme);
+
                     this.updateTermTheme(el, themeName, termThemeSrcEl, fullReload, false);
                 }
-            } else if (!removedTermTheme && !addedOrUpdatedTermTheme) {
+            } else if (!removedTermTheme && !addedOrUpdatedTermTheme && !this.termThemeSet) {
                 let el: HTMLElement;
                 let themKey: string;
                 for (const key in newTermTheme) {
@@ -1345,10 +1348,10 @@ class Model {
                 }
                 const themeName = newTermTheme[themKey];
                 const fullReload = themKey == "global";
-                // console.log("no theme changes>>>>>>>>>>>", el, themeName, el, newTermTheme);
-                // if (this.termThemeCache[themKey] != themeName) {
+                this.termThemeSet = true;
+                console.log("no theme changes>>>>>>>>>>>", el, themeName, el, newTermTheme);
+
                 this.updateTermTheme(el, themeName, el, fullReload, false);
-                // }
             }
             this.termThemeCache = newTermTheme;
         }

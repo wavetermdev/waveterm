@@ -85,18 +85,26 @@ class WorkspaceView extends React.Component<{}, {}> {
     themeReactionDisposer: mobx.IReactionDisposer;
 
     componentDidMount() {
-        this.themeReactionDisposer = mobx.reaction(
-            () => {
-                return GlobalModel.getActiveSession();
-            },
-            (session) => {
-                const currTheme = session ? GlobalModel.getTermTheme()[session.sessionId] : null;
-                if (session && currTheme !== this.theme) {
-                    GlobalCommandRunner.setSessionTermTheme(session.sessionId, currTheme, false);
-                    this.theme = currTheme;
-                }
-            }
-        );
+        // this.themeReactionDisposer = mobx.reaction(
+        //     () => {
+        //         return GlobalModel.getActiveSession();
+        //     },
+        //     (session) => {
+        //         const currTheme = session ? GlobalModel.getTermTheme()[session.sessionId] : null;
+        //         if (session && currTheme !== this.theme) {
+        //             console.log("currTheme", currTheme, this.theme);
+        //             // GlobalModel.updateTermTheme(
+        //             //     this.sessionRef.current,
+        //             //     currTheme,
+        //             //     this.sessionRef.current,
+        //             //     false,
+        //             //     false
+        //             // );
+        //             // GlobalCommandRunner.setSessionTermTheme(session.sessionId, currTheme, false);
+        //             this.theme = currTheme;
+        //         }
+        //     }
+        // );
     }
 
     render() {
