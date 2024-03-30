@@ -382,6 +382,7 @@ class CommandRunner {
     }
 
     setSessionTermTheme(sessionId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        console.log("setSessionTermTheme-------");
         let kwargs = {
             nohist: "1",
             id: sessionId,

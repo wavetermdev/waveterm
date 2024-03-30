@@ -596,18 +596,18 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             this.rszObs.observe(wvElem);
         }
 
-        this.themeReactionDisposer = mobx.reaction(
-            () => {
-                return GlobalModel.getActiveScreen();
-            },
-            (screen) => {
-                const currTheme = screen ? GlobalModel.getTermTheme()[screen.sessionId] : null;
-                if (screen && currTheme !== this.theme) {
-                    GlobalCommandRunner.setSessionTermTheme(screen.sessionId, currTheme, false);
-                    this.theme = currTheme;
-                }
-            }
-        );
+        // this.themeReactionDisposer = mobx.reaction(
+        //     () => {
+        //         return GlobalModel.getActiveScreen();
+        //     },
+        //     (screen) => {
+        //         const currTheme = screen ? GlobalModel.getTermTheme()[screen.sessionId] : null;
+        //         if (screen && currTheme !== this.theme) {
+        //             GlobalCommandRunner.setSessionTermTheme(screen.sessionId, currTheme, false);
+        //             this.theme = currTheme;
+        //         }
+        //     }
+        // );
     }
 
     componentWillUnmount() {

@@ -1306,7 +1306,7 @@ class Model {
             loadTheme(newTheme);
             this.bumpRenderVersion();
         }
-
+        console.log("here-----");
         const newTermTheme = clientData?.feopts?.termtheme;
         if (newTermTheme) {
             const removedTermTheme = this.getRemovedTermTheme(newTermTheme, this.termThemeCache);
