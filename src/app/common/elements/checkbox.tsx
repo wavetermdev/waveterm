@@ -7,7 +7,7 @@ import cn from "classnames";
 
 import "./checkbox.less";
 
-class Checkbox extends React.Component<
+class Checkbox extends React.PureComponent<
     {
         checked?: boolean;
         defaultChecked?: boolean;

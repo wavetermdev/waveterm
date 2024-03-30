@@ -5,7 +5,7 @@ import * as React from "react";
 import { isBlank } from "@/util/util";
 import cn from "classnames";
 
-class TabIcon extends React.Component<{ icon: string; color: string }> {
+class TabIcon extends React.PureComponent<{ icon: string; color: string }> {
     render() {
         let { icon, color } = this.props;
         let iconClass = "";

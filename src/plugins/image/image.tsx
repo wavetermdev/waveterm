@@ -3,12 +3,12 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 
 import "./image.less";
 
 @mobxReact.observer
-class SimpleImageRenderer extends React.Component<
+class SimpleImageRenderer extends React.PureComponent<
     { data: ExtBlob; context: RendererContext; opts: RendererOpts; savedHeight: number },
     {}
 > {

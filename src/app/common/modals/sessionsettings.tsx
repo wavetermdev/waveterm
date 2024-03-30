@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
@@ -17,7 +17,7 @@ Are you sure you want to delete this workspace?
 `.trim();
 
 @mobxReact.observer
-class SessionSettingsModal extends React.Component<{}, {}> {
+class SessionSettingsModal extends React.PureComponent<{}, {}> {
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
     session: Session;
     sessionId: string;

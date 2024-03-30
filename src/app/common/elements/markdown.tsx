@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
@@ -28,7 +28,10 @@ function CodeRenderer(props: any): any {
 }
 
 @mobxReact.observer
-class CodeBlockMarkdown extends React.Component<{ children: React.ReactNode; codeSelectSelectedIndex?: number }, {}> {
+class CodeBlockMarkdown extends React.PureComponent<
+    { children: React.ReactNode; codeSelectSelectedIndex?: number },
+    {}
+> {
     blockIndex: number;
     blockRef: React.RefObject<HTMLPreElement>;
 
@@ -58,7 +61,7 @@ class CodeBlockMarkdown extends React.Component<{ children: React.ReactNode; cod
 }
 
 @mobxReact.observer
-class Markdown extends React.Component<
+class Markdown extends React.PureComponent<
     { text: string; style?: any; extraClassName?: string; codeSelect?: boolean },
     {}
 > {

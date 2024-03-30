@@ -47,7 +47,7 @@ function renderCmdText(text: string): any {
 // there is a global monaco variable (TODO get the correct TS type)
 declare var monaco: any;
 
-class CodeKeybindings extends React.Component<{ codeObject: SourceCodeRenderer }, {}> {
+class CodeKeybindings extends React.PureComponent<{ codeObject: SourceCodeRenderer }, {}> {
     componentDidMount(): void {
         this.props.codeObject.registerKeybindings();
     }
@@ -59,7 +59,7 @@ class CodeKeybindings extends React.Component<{ codeObject: SourceCodeRenderer }
     }
 }
 
-class SourceCodeRenderer extends React.Component<
+class SourceCodeRenderer extends React.PureComponent<
     {
         data: ExtBlob;
         cmdstr: string;

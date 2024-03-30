@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel } from "@/models";
@@ -14,7 +14,7 @@ import { ReactComponent as XmarkIcon } from "@/assets/icons/line/xmark.svg";
 import "./pluginsview.less";
 
 @mobxReact.observer
-class PluginsView extends React.Component<{}, {}> {
+class PluginsView extends React.PureComponent<{}, {}> {
     @boundMethod
     closeView(): void {
         GlobalModel.pluginsModel.closeView();

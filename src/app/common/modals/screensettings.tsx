@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { For } from "tsx-control-statements/components";
@@ -37,7 +37,7 @@ Are you sure you want to stop web-sharing this tab?
 `.trim();
 
 @mobxReact.observer
-class ScreenSettingsModal extends React.Component<{}, {}> {
+class ScreenSettingsModal extends React.PureComponent<{}, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
     screen: Screen;

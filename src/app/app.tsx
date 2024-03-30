@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
@@ -28,7 +28,7 @@ import "./app.less";
 dayjs.extend(localizedFormat);
 
 @mobxReact.observer
-class App extends React.Component<{}, {}> {
+class App extends React.PureComponent<{}, {}> {
     dcWait: OV<boolean> = mobx.observable.box(false, { name: "dcWait" });
     mainContentRef: React.RefObject<HTMLDivElement> = React.createRef();
 

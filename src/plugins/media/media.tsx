@@ -3,14 +3,14 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as util from "@/util/util";
 import { GlobalModel } from "@/models";
 
 import "./media.less";
 
 @mobxReact.observer
-class SimpleMediaRenderer extends React.Component<
+class SimpleMediaRenderer extends React.PureComponent<
     { data: ExtBlob; context: RendererContext; opts: RendererOpts; savedHeight: number; lineState: LineStateType },
     {}
 > {

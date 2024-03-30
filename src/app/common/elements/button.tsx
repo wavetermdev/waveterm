@@ -16,7 +16,7 @@ interface ButtonProps {
     termInline?: boolean;
 }
 
-class Button extends React.Component<ButtonProps> {
+class Button extends React.PureComponent<ButtonProps> {
     static defaultProps = {
         style: {},
         className: "primary",

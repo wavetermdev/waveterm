@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
@@ -24,7 +24,7 @@ import "./cmdinput.less";
 dayjs.extend(localizedFormat);
 
 @mobxReact.observer
-class CmdInput extends React.Component<{}, {}> {
+class CmdInput extends React.PureComponent<{}, {}> {
     cmdInputRef: React.RefObject<any> = React.createRef();
     promptRef: React.RefObject<any> = React.createRef();
 

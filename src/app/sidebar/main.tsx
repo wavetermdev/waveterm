@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
@@ -28,7 +28,7 @@ import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 dayjs.extend(localizedFormat);
 
-class SideBarItem extends React.Component<{
+class SideBarItem extends React.PureComponent<{
     frontIcon: React.ReactNode;
     contents: React.ReactNode | string;
     endIcons?: React.ReactNode[];
@@ -49,7 +49,7 @@ class SideBarItem extends React.Component<{
     }
 }
 
-class HotKeyIcon extends React.Component<{ hotkey: string }> {
+class HotKeyIcon extends React.PureComponent<{ hotkey: string }> {
     render() {
         return (
             <CenteredIcon className="hotkey">
@@ -64,7 +64,7 @@ interface MainSideBarProps {
 }
 
 @mobxReact.observer
-class MainSideBar extends React.Component<MainSideBarProps, {}> {
+class MainSideBar extends React.PureComponent<MainSideBarProps, {}> {
     middleHeightSubtractor = mobx.observable.box(404);
 
     handleSessionClick(sessionId: string) {

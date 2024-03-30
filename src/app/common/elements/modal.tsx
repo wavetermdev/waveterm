@@ -39,7 +39,7 @@ interface ModalFooterProps {
     keybindings?: boolean;
 }
 
-class ModalKeybindings extends React.Component<{ onOk?: () => void; onCancel?: () => void }, {}> {
+class ModalKeybindings extends React.PureComponent<{ onOk?: () => void; onCancel?: () => void }, {}> {
     curId: string;
 
     @boundMethod
@@ -105,7 +105,7 @@ interface ModalProps {
     onClickBackdrop?: () => void;
 }
 
-class Modal extends React.Component<ModalProps> {
+class Modal extends React.PureComponent<ModalProps> {
     static Header = ModalHeader;
     static Footer = ModalFooter;
 

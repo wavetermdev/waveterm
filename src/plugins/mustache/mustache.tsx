@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import { boundMethod } from "autobind-decorator";
 import { isBlank } from "@/util/util";
 import mustache from "mustache";
@@ -13,7 +13,7 @@ import { GlobalModel } from "@/models";
 import "./mustache.less";
 
 @mobxReact.observer
-class SimpleMustacheRenderer extends React.Component<
+class SimpleMustacheRenderer extends React.PureComponent<
     {
         data: ExtBlob;
         context: RendererContext;

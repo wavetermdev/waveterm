@@ -11,7 +11,7 @@ interface LinkButtonProps extends ButtonProps {
     target?: string;
 }
 
-class LinkButton extends React.Component<LinkButtonProps> {
+class LinkButton extends React.PureComponent<LinkButtonProps> {
     render() {
         const { leftIcon, rightIcon, children, className, ...rest } = this.props;
 

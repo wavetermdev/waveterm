@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import { debounce } from "throttle-debounce";
 
 @mobxReact.observer
-class IncrementalRenderer extends React.Component<
+class IncrementalRenderer extends React.PureComponent<
     {
         rendererContainer: RendererContainerType;
         lineId: string;

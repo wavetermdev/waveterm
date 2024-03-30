@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 
 @mobxReact.observer
-class SettingsError extends React.Component<{ errorMessage: OV<string> }, {}> {
+class SettingsError extends React.PureComponent<{ errorMessage: OV<string> }, {}> {
     @boundMethod
     dismissError(): void {
         mobx.action(() => {

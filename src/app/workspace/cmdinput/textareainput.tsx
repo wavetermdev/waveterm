@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import * as util from "@/util/util";
 import { If } from "tsx-control-statements/components";
@@ -39,7 +39,7 @@ function scrollDiv(div: any, amt: number) {
     div.scrollTo({ top: newScrollTop, behavior: "smooth" });
 }
 
-class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
+class HistoryKeybindings extends React.PureComponent<{ inputObject: TextAreaInput }, {}> {
     componentDidMount(): void {
         if (GlobalModel.activeMainView != "session") {
             return;
@@ -101,7 +101,7 @@ class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput },
     }
 }
 
-class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
+class CmdInputKeybindings extends React.PureComponent<{ inputObject: TextAreaInput }, {}> {
     lastTab: boolean;
     curPress: string;
 
@@ -244,7 +244,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
 }
 
 @mobxReact.observer
-class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: () => void }, {}> {
+class TextAreaInput extends React.PureComponent<{ screen: Screen; onHeightChange: () => void }, {}> {
     lastTab: boolean = false;
     lastHistoryUpDown: boolean = false;
     lastTabCurLine: OV<string> = mobx.observable.box(null);

@@ -11,7 +11,7 @@ import { ReactComponent as CopyIcon } from "@/assets/icons/history/copy.svg";
 
 import "./cmdstrcode.less";
 
-class CmdStrCode extends React.Component<
+class CmdStrCode extends React.PureComponent<
     {
         cmdstr: string;
         onUse: () => void;

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import { Toggle, Modal, Button } from "@/elements";
@@ -15,7 +15,7 @@ import github from "@/assets/icons/github.svg";
 import "./tos.less";
 
 @mobxReact.observer
-class TosModal extends React.Component<{}, {}> {
+class TosModal extends React.PureComponent<{}, {}> {
     @boundMethod
     acceptTos(): void {
         GlobalCommandRunner.clientAcceptTos();

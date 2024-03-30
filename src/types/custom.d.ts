@@ -504,7 +504,7 @@ declare global {
         vendor?: string;
         summary?: string;
         title?: string;
-        iconComp?: React.Component<{}, {}>;
+        iconComp?: React.PureComponent<{}, {}>;
     };
 
     type RendererModelContainerApi = {

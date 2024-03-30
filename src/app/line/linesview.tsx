@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
@@ -33,7 +33,7 @@ type ScreenInterface = {
 type LineCompFactory = (props: LineFactoryProps) => JSX.Element;
 
 @mobxReact.observer
-class LinesView extends React.Component<
+class LinesView extends React.PureComponent<
     {
         screen: ScreenInterface;
         width: number;

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
@@ -22,7 +22,7 @@ type BookmarkProps = {
     bookmark: BookmarkType;
 };
 
-class BookmarkKeybindings extends React.Component<{}, {}> {
+class BookmarkKeybindings extends React.PureComponent<{}, {}> {
     @boundMethod
     componentDidMount(): void {
         let keybindManager = GlobalModel.keybindManager;
@@ -76,7 +76,7 @@ class BookmarkKeybindings extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class Bookmark extends React.Component<BookmarkProps, {}> {
+class Bookmark extends React.PureComponent<BookmarkProps, {}> {
     @boundMethod
     handleDeleteClick(): void {
         let { bookmark } = this.props;
@@ -232,7 +232,7 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
 }
 
 @mobxReact.observer
-class BookmarksView extends React.Component<{}, {}> {
+class BookmarksView extends React.PureComponent<{}, {}> {
     @boundMethod
     handleClose() {
         GlobalModel.bookmarksModel.closeView();

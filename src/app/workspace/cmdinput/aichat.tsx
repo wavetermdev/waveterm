@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
 import { isBlank } from "@/util/util";
@@ -12,7 +12,7 @@ import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
-class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
+class AIChatKeybindings extends React.PureComponent<{ AIChatObject: AIChat }, {}> {
     componentDidMount(): void {
         let AIChatObject = this.props.AIChatObject;
         let keybindManager = GlobalModel.keybindManager;
@@ -52,7 +52,7 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
 }
 
 @mobxReact.observer
-class AIChat extends React.Component<{}, {}> {
+class AIChat extends React.PureComponent<{}, {}> {
     chatListKeyCount: number = 0;
     textAreaNumLines: mobx.IObservableValue<number> = mobx.observable.box(1, { name: "textAreaNumLines" });
     chatWindowScrollRef: React.RefObject<HTMLDivElement>;

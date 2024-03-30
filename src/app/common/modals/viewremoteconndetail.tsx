@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
@@ -17,7 +17,7 @@ import "./viewremoteconndetail.less";
 import { ModalKeybindings } from "../elements/modal";
 
 @mobxReact.observer
-class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
+class ViewRemoteConnDetailModal extends React.PureComponent<{}, {}> {
     termRef: React.RefObject<any> = React.createRef();
     model: RemotesModel;
 

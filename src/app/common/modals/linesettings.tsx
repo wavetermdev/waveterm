@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
@@ -13,7 +13,7 @@ import { commandRtnHandler } from "@/util/util";
 import "./linesettings.less";
 
 @mobxReact.observer
-class LineSettingsModal extends React.Component<{}, {}> {
+class LineSettingsModal extends React.PureComponent<{}, {}> {
     rendererDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "lineSettings-rendererDropdownActive" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
     linenum: number;

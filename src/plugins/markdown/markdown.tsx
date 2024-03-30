@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import { sprintf } from "sprintf-js";
 import { Markdown } from "@/elements";
 
@@ -13,7 +13,7 @@ const MaxMarkdownSize = 200000;
 const DefaultMaxMarkdownWidth = 1000;
 
 @mobxReact.observer
-class SimpleMarkdownRenderer extends React.Component<
+class SimpleMarkdownRenderer extends React.PureComponent<
     {
         data: ExtBlob;
         context: RendererContext;

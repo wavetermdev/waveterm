@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
@@ -28,7 +28,7 @@ function truncateWithTDots(str: string, maxLen: number): string {
 }
 
 @mobxReact.observer
-class HItem extends React.Component<
+class HItem extends React.PureComponent<
     {
         hitem: HistoryItem;
         isSelected: boolean;
@@ -147,7 +147,7 @@ class HItem extends React.Component<
 }
 
 @mobxReact.observer
-class HistoryInfo extends React.Component<{}, {}> {
+class HistoryInfo extends React.PureComponent<{}, {}> {
     lastClickHNum: string = null;
     lastClickTs: number = 0;
     containingText: mobx.IObservableValue<string> = mobx.observable.box("");

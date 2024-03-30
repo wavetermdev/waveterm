@@ -37,7 +37,7 @@ interface TextFieldState {
     hasContent: boolean;
 }
 
-class TextField extends React.Component<TextFieldProps, TextFieldState> {
+class TextField extends React.PureComponent<TextFieldProps, TextFieldState> {
     inputRef: React.RefObject<HTMLInputElement>;
     state: TextFieldState;
 

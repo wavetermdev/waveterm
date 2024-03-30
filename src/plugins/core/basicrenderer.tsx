@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { debounce } from "throttle-debounce";
 import * as util from "@/util/util";
@@ -158,7 +158,7 @@ class SimpleBlobRendererModel {
 }
 
 @mobxReact.observer
-class SimpleBlobRenderer extends React.Component<
+class SimpleBlobRenderer extends React.PureComponent<
     {
         rendererContainer: RendererContainerType;
         lineId: string;

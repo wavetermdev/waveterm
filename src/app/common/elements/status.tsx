@@ -11,7 +11,7 @@ interface StatusProps {
     text: string;
 }
 
-class Status extends React.Component<StatusProps> {
+class Status extends React.PureComponent<StatusProps> {
     @boundMethod
     renderDot() {
         const { status } = this.props;

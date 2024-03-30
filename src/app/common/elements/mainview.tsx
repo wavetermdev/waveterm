@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import cn from "classnames";
 import { GlobalModel } from "@/models";
 
 import "./mainview.less";
 
 @mobxReact.observer
-class MainView extends React.Component<{
+class MainView extends React.PureComponent<{
     title: string;
     onClose: () => void;
     children: React.ReactNode;

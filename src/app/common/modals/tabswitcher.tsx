@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
@@ -50,7 +50,7 @@ const additionalOptions = [
 }));
 
 @mobxReact.observer
-class TabSwitcherModal extends React.Component<{}, {}> {
+class TabSwitcherModal extends React.PureComponent<{}, {}> {
     screens: Map<string, OV<string>>[];
     sessions: Map<string, OV<string>>[];
     options: SwitcherDataType[] = [];

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
@@ -15,7 +15,7 @@ import "./editremoteconn.less";
 const PasswordUnchangedSentinel = "--unchanged--";
 
 @mobxReact.observer
-class EditRemoteConnModal extends React.Component<{}, {}> {
+class EditRemoteConnModal extends React.PureComponent<{}, {}> {
     tempAlias: OV<string>;
     tempKeyFile: OV<string>;
     tempPassword: OV<string>;

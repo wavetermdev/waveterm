@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
@@ -14,7 +14,7 @@ import * as appconst from "@/app/appconst";
 import "./clientsettings.less";
 import { MainView } from "../common/elements/mainview";
 
-class ClientSettingsKeybindings extends React.Component<{}, {}> {
+class ClientSettingsKeybindings extends React.PureComponent<{}, {}> {
     componentDidMount() {
         let clientSettingsViewModel = GlobalModel.clientSettingsViewModel;
         let keybindManager = GlobalModel.keybindManager;
@@ -34,7 +34,7 @@ class ClientSettingsKeybindings extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
+class ClientSettingsView extends React.PureComponent<{ model: RemotesModel }, { hoveredItemId: string }> {
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ClientSettings-errorMessage" });
 
     @boundMethod

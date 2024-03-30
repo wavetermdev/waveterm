@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import ReactDOM from "react-dom";
@@ -21,7 +21,7 @@ interface TooltipState {
 }
 
 @mobxReact.observer
-class Tooltip extends React.Component<TooltipProps, TooltipState> {
+class Tooltip extends React.PureComponent<TooltipProps, TooltipState> {
     iconRef: React.RefObject<HTMLDivElement>;
 
     constructor(props: TooltipProps) {

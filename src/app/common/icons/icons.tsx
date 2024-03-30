@@ -3,7 +3,7 @@ import cn from "classnames";
 import { ReactComponent as SpinnerIndicator } from "@/assets/icons/spinner-indicator.svg";
 import { boundMethod } from "autobind-decorator";
 import * as mobx from "mobx";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as appconst from "@/app/appconst";
 
 import { ReactComponent as RotateIconSvg } from "@/assets/icons/line/rotate.svg";
@@ -15,7 +15,7 @@ interface PositionalIconProps {
     divRef?: React.RefObject<HTMLDivElement>;
 }
 
-export class FrontIcon extends React.Component<PositionalIconProps> {
+export class FrontIcon extends React.PureComponent<PositionalIconProps> {
     render() {
         return (
             <div
@@ -29,7 +29,7 @@ export class FrontIcon extends React.Component<PositionalIconProps> {
     }
 }
 
-export class CenteredIcon extends React.Component<PositionalIconProps> {
+export class CenteredIcon extends React.PureComponent<PositionalIconProps> {
     render() {
         return (
             <div
@@ -47,7 +47,7 @@ interface ActionsIconProps {
     onClick: React.MouseEventHandler<HTMLDivElement>;
 }
 
-export class ActionsIcon extends React.Component<ActionsIconProps> {
+export class ActionsIcon extends React.PureComponent<ActionsIconProps> {
     render() {
         return (
             <CenteredIcon className="actions" onClick={this.props.onClick}>
@@ -57,7 +57,7 @@ export class ActionsIcon extends React.Component<ActionsIconProps> {
     }
 }
 
-class SyncSpin extends React.Component<{
+class SyncSpin extends React.PureComponent<{
     classRef?: React.RefObject<HTMLDivElement>;
     children?: React.ReactNode;
     shouldSync?: boolean;
@@ -143,7 +143,7 @@ interface StatusIndicatorProps {
  * This component is used to show the status of a command. It will show a spinner around the status indicator if there are running commands. It will also delay showing the spinner for a short time to prevent flickering.
  */
 @mobxReact.observer
-export class StatusIndicator extends React.Component<StatusIndicatorProps> {
+export class StatusIndicator extends React.PureComponent<StatusIndicatorProps> {
     iconRef: React.RefObject<HTMLDivElement> = React.createRef();
     spinnerVisible: mobx.IObservableValue<boolean> = mobx.observable.box(false);
     timeout: NodeJS.Timeout;
@@ -223,7 +223,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
     }
 }
 
-export class RotateIcon extends React.Component<{
+export class RotateIcon extends React.PureComponent<{
     className?: string;
     onClick?: React.MouseEventHandler<HTMLDivElement>;
 }> {

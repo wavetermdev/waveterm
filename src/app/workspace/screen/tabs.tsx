@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
@@ -16,7 +16,7 @@ import { ScreenTab } from "./tab";
 import "./tabs.less";
 
 @mobxReact.observer
-class ScreenTabs extends React.Component<
+class ScreenTabs extends React.PureComponent<
     { session: Session },
     { showingScreens: Screen[]; scrollIntoViewTimeout: number }
 > {

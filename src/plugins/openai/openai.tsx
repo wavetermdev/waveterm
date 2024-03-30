@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
 import { PacketDataBuffer } from "../core/ptydata";
@@ -158,7 +158,7 @@ class OpenAIRendererModel {
 }
 
 @mobxReact.observer
-class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
+class OpenAIRenderer extends React.PureComponent<{ model: OpenAIRendererModel }> {
     renderPrompt(cmd: WebCmd) {
         let cmdStr = cmd.cmdstr.trim();
         if (cmdStr.startsWith("/openai")) {

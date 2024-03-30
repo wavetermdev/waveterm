@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
@@ -14,7 +14,7 @@ import * as util from "@/util/util";
 import "./connections.less";
 import { MainView } from "../common/elements/mainview";
 
-class ConnectionsKeybindings extends React.Component<{}, {}> {
+class ConnectionsKeybindings extends React.PureComponent<{}, {}> {
     componentDidMount() {
         let connectionViewModel = GlobalModel.connectionViewModel;
         let keybindManager = GlobalModel.keybindManager;
@@ -34,7 +34,7 @@ class ConnectionsKeybindings extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
+class ConnectionsView extends React.PureComponent<{ model: RemotesModel }, { hoveredItemId: string }> {
     tableRef: React.RefObject<any> = React.createRef();
     tableWidth: OV<number> = mobx.observable.box(0, { name: "tableWidth" });
     tableRszObs: ResizeObserver = null;

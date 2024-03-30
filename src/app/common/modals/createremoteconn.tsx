@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
@@ -13,7 +13,7 @@ import * as util from "@/util/util";
 import "./createremoteconn.less";
 
 @mobxReact.observer
-class CreateRemoteConnModal extends React.Component<{}, {}> {
+class CreateRemoteConnModal extends React.PureComponent<{}, {}> {
     tempAlias: OV<string>;
     tempHostName: OV<string>;
     tempPort: OV<string>;

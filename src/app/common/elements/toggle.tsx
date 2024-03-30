@@ -6,7 +6,7 @@ import { boundMethod } from "autobind-decorator";
 
 import "./toggle.less";
 
-class Toggle extends React.Component<{ checked: boolean; onChange: (value: boolean) => void }, {}> {
+class Toggle extends React.PureComponent<{ checked: boolean; onChange: (value: boolean) => void }, {}> {
     @boundMethod
     handleChange(e: any): void {
         let { onChange } = this.props;

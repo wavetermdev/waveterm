@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import cn from "classnames";
 
 import "./inputdecoration.less";
@@ -13,7 +13,7 @@ interface InputDecorationProps {
 }
 
 @mobxReact.observer
-class InputDecoration extends React.Component<InputDecorationProps, {}> {
+class InputDecoration extends React.PureComponent<InputDecorationProps, {}> {
     render() {
         const { children, position = "end" } = this.props;
         return (

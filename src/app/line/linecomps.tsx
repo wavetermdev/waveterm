@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
@@ -76,7 +76,7 @@ function getIsHidePrompt(line: LineType): boolean {
 }
 
 @mobxReact.observer
-class LineActions extends React.Component<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
+class LineActions extends React.PureComponent<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
     @boundMethod
     clickStar() {
         const { line } = this.props;
@@ -226,7 +226,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
 }
 
 @mobxReact.observer
-class LineHeader extends React.Component<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
+class LineHeader extends React.PureComponent<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
     renderCmdText(cmd: Cmd): any {
         if (cmd == null) {
             return (
@@ -299,7 +299,7 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
 }
 
 @mobxReact.observer
-class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRightClick?: (e: any) => void }, {}> {
+class SmallLineAvatar extends React.PureComponent<{ line: LineType; cmd: Cmd; onRightClick?: (e: any) => void }, {}> {
     render() {
         const { line, cmd } = this.props;
         const lineNumStr = (line.linenumtemp ? "~" : "#") + String(line.linenum);
@@ -344,7 +344,7 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
 }
 
 @mobxReact.observer
-class RtnState extends React.Component<{ cmd: Cmd; line: LineType }> {
+class RtnState extends React.PureComponent<{ cmd: Cmd; line: LineType }> {
     rtnStateDiff: mobx.IObservableValue<string> = mobx.observable.box(null, {
         name: "linecmd-rtn-state-diff",
     });
@@ -438,7 +438,7 @@ class RtnState extends React.Component<{ cmd: Cmd; line: LineType }> {
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<
+class LineCmd extends React.PureComponent<
     {
         screen: LineContainerType;
         line: LineType;
@@ -805,7 +805,7 @@ class LineCmd extends React.Component<
 }
 
 @mobxReact.observer
-class Line extends React.Component<
+class Line extends React.PureComponent<
     {
         screen: LineContainerType;
         line: LineType;
@@ -836,7 +836,7 @@ class Line extends React.Component<
 }
 
 @mobxReact.observer
-class LineText extends React.Component<
+class LineText extends React.PureComponent<
     {
         screen: LineContainerType;
         line: LineType;

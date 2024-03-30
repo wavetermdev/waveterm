@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
@@ -17,7 +17,7 @@ import "./terminal.less";
 
 dayjs.extend(localizedFormat);
 
-class TerminalKeybindings extends React.Component<{ termWrap: any; lineid: string }, {}> {
+class TerminalKeybindings extends React.PureComponent<{ termWrap: any; lineid: string }, {}> {
     componentDidMount(): void {
         this.registerKeybindings();
     }
@@ -72,7 +72,7 @@ class TerminalKeybindings extends React.Component<{ termWrap: any; lineid: strin
 }
 
 @mobxReact.observer
-class TerminalRenderer extends React.Component<
+class TerminalRenderer extends React.PureComponent<
     {
         screen: LineContainerType;
         line: LineType;

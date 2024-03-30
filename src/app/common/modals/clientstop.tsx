@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel } from "@/models";
@@ -11,7 +11,7 @@ import { Modal, Button } from "@/elements";
 import "./clientstop.less";
 
 @mobxReact.observer
-class ClientStopModal extends React.Component<{}, {}> {
+class ClientStopModal extends React.PureComponent<{}, {}> {
     @boundMethod
     refreshClient() {
         GlobalModel.refreshClient();

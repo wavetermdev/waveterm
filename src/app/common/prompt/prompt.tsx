@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
@@ -83,7 +83,7 @@ function getCwdStr(remote: RemoteType, state: Record<string, string>): string {
 }
 
 @mobxReact.observer
-class Prompt extends React.Component<
+class Prompt extends React.PureComponent<
     { rptr: RemotePtrType; festate: Record<string, string>; color: boolean; shellInitMsg?: string },
     {}
 > {

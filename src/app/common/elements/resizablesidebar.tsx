@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
@@ -22,7 +22,7 @@ interface ResizableSidebarProps {
 }
 
 @mobxReact.observer
-class ResizableSidebar extends React.Component<ResizableSidebarProps> {
+class ResizableSidebar extends React.PureComponent<ResizableSidebarProps> {
     resizeStartWidth: number = 0;
     startX: number = 0;
     prevDelta: number = 0;

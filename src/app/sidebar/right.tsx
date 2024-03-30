@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-react";
+import * as mobxReact from "mobx-preact";
 import dayjs from "dayjs";
 import { If, For } from "tsx-control-statements/components";
 
@@ -19,7 +19,7 @@ interface RightSideBarProps {
 }
 
 @mobxReact.observer
-class KeybindDevPane extends React.Component<{}, {}> {
+class KeybindDevPane extends React.PureComponent<{}, {}> {
     render() {
         let curActiveKeybinds: Array<{ name: string; domains: Array<string> }> =
             GlobalModel.keybindManager.getActiveKeybindings();
@@ -54,7 +54,7 @@ class KeybindDevPane extends React.Component<{}, {}> {
 }
 
 @mobxReact.observer
-class RightSideBar extends React.Component<RightSideBarProps, {}> {
+class RightSideBar extends React.PureComponent<RightSideBarProps, {}> {
     render() {
         return (
             <ResizableSidebar
