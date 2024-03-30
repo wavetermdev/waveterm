@@ -544,10 +544,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     themeReactionDisposer: mobx.IReactionDisposer;
     theme: string;
 
-    state = {
-        termThemeSrcEl: GlobalModel.termThemeSrcEl.get(),
-    };
-    disposer: any;
+    // disposer: any;
 
     constructor(props: any) {
         super(props);
@@ -693,15 +690,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         let { screen } = this.props;
         let { line, ...restProps } = lineProps;
         let realLine: LineType = line as LineType;
-        return (
-            <Line
-                key={realLine.lineid}
-                screen={screen}
-                line={realLine}
-                termThemeSrcEl={this.state.termThemeSrcEl}
-                {...restProps}
-            />
-        );
+        return <Line key={realLine.lineid} screen={screen} line={realLine} {...restProps} />;
     }
 
     determineVisibleLines(win: ScreenLines): LineType[] {

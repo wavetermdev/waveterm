@@ -492,7 +492,7 @@ class LinesView extends React.Component<
                 topBorder: topBorder,
                 renderMode: renderMode,
             };
-            let lineElem = this.props.lineFactory(lineProps, GlobalModel.termThemeSrcEl);
+            let lineElem = this.props.lineFactory(lineProps);
             // let lineElem = <Line key={line.lineid} line={line} screen={screen} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
             lineElements.push(lineElem);
         }

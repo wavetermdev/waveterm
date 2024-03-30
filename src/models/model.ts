@@ -141,8 +141,7 @@ class Model {
     termRenderVersion: OV<number> = mobx.observable.box(0, {
         name: "termRenderVersion",
     });
-    termThemeCache: Record<string, string> = {};
-    termThemeSet: boolean;
+    currGlobalTermTheme: string;
 
     private constructor() {
         this.clientId = getApi().getId();
@@ -257,12 +256,8 @@ class Model {
             .then((themeVars) => {
                 Object.keys(themeVars).forEach((key) => {
                     if (reset) {
-                        // console.log("1111111111");
-                        // this.currTheme = null;
                         this.resetStyleVar(element, `--term-${key}`);
                     } else {
-                        // console.log("2222222222", element);
-                        // this.currTheme = themeFileName;
                         this.resetStyleVar(element, `--term-${key}`);
                         this.setStyleVar(element, `--term-${key}`, themeVars[key]);
                     }
@@ -270,9 +265,7 @@ class Model {
             })
             .then(() => {
                 mobx.action(() => {
-                    // console.log("termThemeSrcEl", termThemeSrcEl);
                     this.termThemeSrcEl.set(termThemeSrcEl);
-                    this.termThemeSet = false;
                     if (appReload) {
                         this.bumpRenderVersion();
                     } else {
@@ -1306,99 +1299,17 @@ class Model {
             loadTheme(newTheme);
             this.bumpRenderVersion();
         }
-        console.log("here-----");
+        // Only for global terminal theme. For session and screen terminal theme,
+        // they are handled in worksacpeview and screenview respectively
         const newTermTheme = clientData?.feopts?.termtheme;
-        if (newTermTheme) {
-            const removedTermTheme = this.getRemovedTermTheme(newTermTheme, this.termThemeCache);
-            const addedOrUpdatedTermTheme = this.getAddedOrUpdatedTermTheme(newTermTheme, this.termThemeCache);
-            if (removedTermTheme) {
-                const { key, el } = removedTermTheme;
-                const themeName = this.termThemeCache[key];
-                const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
-                const fullReload = key == "global";
-                console.log("removedTermTheme+++++++++", el, themeName, termThemeSrcEl);
-
-                this.updateTermTheme(el, themeName, termThemeSrcEl, fullReload, true);
-            } else if (addedOrUpdatedTermTheme) {
-                const { key, el } = addedOrUpdatedTermTheme;
-                const themeName = newTermTheme[key];
-                const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
-                const fullReload = key == "global";
-
-                if (this.termThemeCache[key] != themeName) {
-                    console.log(
-                        "addedOrUpdatedTermTheme**********",
-                        addedOrUpdatedTermTheme,
-                        el,
-                        themeName,
-                        termThemeSrcEl,
-                        newTermTheme
-                    );
-                    this.updateTermTheme(el, themeName, termThemeSrcEl, fullReload, false);
-                }
-            } else if (!removedTermTheme && !addedOrUpdatedTermTheme && !this.termThemeSet) {
-                let el: HTMLElement;
-                let themKey: string;
-                for (const key in newTermTheme) {
-                    el = document.querySelector(`.window-view[data-screenid="${key}"]`) as HTMLElement;
-                    if (!el) {
-                        el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
-                    }
-                    if (!el && key === "global") {
-                        el = document.documentElement;
-                    }
-                    if (el) {
-                        themKey = key;
-                        break;
-                    }
-                }
-                const themeName = newTermTheme[themKey];
-                const fullReload = themKey == "global";
-                this.termThemeSet = true;
-                console.log("no theme changes>>>>>>>>>>>", el, themeName, el, themKey, newTermTheme);
-
-                // Add check because sometimes the element is not available yet
-                if (el) {
-                    this.updateTermTheme(el, themeName, el, fullReload, false);
-                }
-            }
-            this.termThemeCache = newTermTheme;
+        if (newTermTheme && this.activeMainView.get() == "clientsettings") {
+            const el = document.documentElement;
+            const globaltt = newTermTheme["global"] ?? null;
+            const reset = globaltt == null;
+            const fglobaltt = globaltt ?? this.currGlobalTermTheme;
+            this.updateTermTheme(el, fglobaltt, el, true, reset);
+            this.currGlobalTermTheme = globaltt;
         }
-    }
-
-    getRemovedTermTheme(newTermTheme, termThemeCache) {
-        for (const key in termThemeCache) {
-            if (!(key in newTermTheme)) {
-                let el = document.querySelector(`.window-view[data-screenid="${key}"]`) as HTMLElement;
-                if (!el) {
-                    el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
-                }
-                if (!el && key === "global") {
-                    el = document.documentElement;
-                }
-                return { key: key, el: el, changeType: "removed" };
-            }
-        }
-        return null;
-    }
-
-    getAddedOrUpdatedTermTheme(newTermTheme, termThemeCache) {
-        console.log("newTermTheme", newTermTheme);
-        for (const key in newTermTheme) {
-            if (!termThemeCache[key] || termThemeCache[key] !== newTermTheme[key]) {
-                let el = document.querySelector(`.window-view[data-screenid="${key}"]`) as HTMLElement;
-                if (!el) {
-                    el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
-                }
-                if (!el && key === "global") {
-                    el = document.documentElement;
-                }
-                if (el) {
-                    return { key: key, el: el };
-                }
-            }
-        }
-        return null;
     }
 
     getTermThemeSrcEl(newTermTheme) {

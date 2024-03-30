@@ -85,36 +85,29 @@ class WorkspaceView extends React.Component<{}, {}> {
     themeReactionDisposer: mobx.IReactionDisposer;
 
     componentDidUpdate() {
+        // We have to put this here because this.sessionRef.current is sometimes not mounted yet in componentDidMount
         this.themeReactionDisposer = mobx.reaction(
             () => {
-                // // TODO: Sometimes this doesn't trigger a reaction
-                // return GlobalModel.getActiveSession();
                 return { termTheme: GlobalModel.getTermTheme(), session: GlobalModel.getActiveSession() };
             },
             ({ termTheme, session }) => {
                 const currTheme = session ? termTheme[session.sessionId] : null;
-                if (session && currTheme !== this.theme) {
-                    // console.log("currTheme", currTheme, this.theme);
-                    if (currTheme) {
-                        console.log("1", currTheme, this.sessionRef.current);
-                        GlobalModel.updateTermTheme(
-                            this.sessionRef.current,
-                            currTheme,
-                            this.sessionRef.current,
-                            false,
-                            false
-                        );
-                        // GlobalCommandRunner.setSessionTermTheme(session.sessionId, currTheme, false);
-                        this.theme = currTheme;
-                    } else {
-                        console.log("2", currTheme);
-                        GlobalModel.termThemeSrcEl.set(document.documentElement);
-                        GlobalModel.bumpTermRenderVersion();
-                        this.theme = currTheme;
-                    }
+                if (session && currTheme !== this.theme && this.sessionRef.current) {
+                    const reset = currTheme == null;
+                    const theme = currTheme ?? this.theme;
+                    const themeSrcEl = reset ? document.documentElement : this.sessionRef.current;
+                    const appReload = themeSrcEl == document.documentElement;
+                    GlobalModel.updateTermTheme(this.sessionRef.current, theme, themeSrcEl, appReload, reset);
+                    this.theme = currTheme;
                 }
             }
         );
+    }
+
+    componentWillUnmount() {
+        if (this.themeReactionDisposer) {
+            this.themeReactionDisposer();
+        }
     }
 
     render() {
