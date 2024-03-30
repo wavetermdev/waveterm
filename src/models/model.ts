@@ -1326,8 +1326,14 @@ class Model {
                 const fullReload = key == "global";
 
                 if (this.termThemeCache[key] != themeName) {
-                    console.log("addedOrUpdatedTermTheme**********", el, themeName, termThemeSrcEl, newTermTheme);
-
+                    console.log(
+                        "addedOrUpdatedTermTheme**********",
+                        addedOrUpdatedTermTheme,
+                        el,
+                        themeName,
+                        termThemeSrcEl,
+                        newTermTheme
+                    );
                     this.updateTermTheme(el, themeName, termThemeSrcEl, fullReload, false);
                 }
             } else if (!removedTermTheme && !addedOrUpdatedTermTheme && !this.termThemeSet) {
@@ -1349,9 +1355,12 @@ class Model {
                 const themeName = newTermTheme[themKey];
                 const fullReload = themKey == "global";
                 this.termThemeSet = true;
-                console.log("no theme changes>>>>>>>>>>>", el, themeName, el, newTermTheme);
+                console.log("no theme changes>>>>>>>>>>>", el, themeName, el, themKey, newTermTheme);
 
-                this.updateTermTheme(el, themeName, el, fullReload, false);
+                // Add check because sometimes the element is not available yet
+                if (el) {
+                    this.updateTermTheme(el, themeName, el, fullReload, false);
+                }
             }
             this.termThemeCache = newTermTheme;
         }
@@ -1374,6 +1383,7 @@ class Model {
     }
 
     getAddedOrUpdatedTermTheme(newTermTheme, termThemeCache) {
+        console.log("newTermTheme", newTermTheme);
         for (const key in newTermTheme) {
             if (!termThemeCache[key] || termThemeCache[key] !== newTermTheme[key]) {
                 let el = document.querySelector(`.window-view[data-screenid="${key}"]`) as HTMLElement;
@@ -1383,7 +1393,9 @@ class Model {
                 if (!el && key === "global") {
                     el = document.documentElement;
                 }
-                return { key: key, el: el };
+                if (el) {
+                    return { key: key, el: el };
+                }
             }
         }
         return null;

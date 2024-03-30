@@ -84,16 +84,19 @@ class WorkspaceView extends React.Component<{}, {}> {
     theme: string;
     themeReactionDisposer: mobx.IReactionDisposer;
 
-    componentDidMount() {
+    componentDidUpdate() {
         this.themeReactionDisposer = mobx.reaction(
             () => {
-                return GlobalModel.getActiveSession();
+                // // TODO: Sometimes this doesn't trigger a reaction
+                // return GlobalModel.getActiveSession();
+                return { termTheme: GlobalModel.getTermTheme(), session: GlobalModel.getActiveSession() };
             },
-            (session) => {
-                const currTheme = session ? GlobalModel.getTermTheme()[session.sessionId] : null;
+            ({ termTheme, session }) => {
+                const currTheme = session ? termTheme[session.sessionId] : null;
                 if (session && currTheme !== this.theme) {
-                    console.log("currTheme", currTheme, this.theme);
+                    // console.log("currTheme", currTheme, this.theme);
                     if (currTheme) {
+                        console.log("1", currTheme, this.sessionRef.current);
                         GlobalModel.updateTermTheme(
                             this.sessionRef.current,
                             currTheme,
@@ -102,6 +105,11 @@ class WorkspaceView extends React.Component<{}, {}> {
                             false
                         );
                         // GlobalCommandRunner.setSessionTermTheme(session.sessionId, currTheme, false);
+                        this.theme = currTheme;
+                    } else {
+                        console.log("2", currTheme);
+                        GlobalModel.termThemeSrcEl.set(document.documentElement);
+                        GlobalModel.bumpTermRenderVersion();
                         this.theme = currTheme;
                     }
                 }
