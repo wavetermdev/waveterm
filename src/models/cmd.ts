@@ -25,7 +25,7 @@ class Cmd {
 
     setCmd(cmd: CmdDataType) {
         mobx.action(() => {
-            let origData = this.data.get();
+            const origData = this.data.get();
             this.data.set(cmd);
             if (origData != null && cmd != null && origData.status != cmd.status) {
                 this.model.cmdStatusUpdate(this.screenId, this.lineId, origData.status, cmd.status);
@@ -42,8 +42,8 @@ class Cmd {
     }
 
     getAsWebCmd(lineid: string): WebCmd {
-        let cmd = this.data.get();
-        let remote = this.model.getRemote(this.remote.remoteid);
+        const cmd = this.data.get();
+        const remote = this.model.getRemote(this.remote.remoteid);
         let webRemote: WebRemote = null;
         if (remote != null) {
             webRemote = {
@@ -55,7 +55,7 @@ class Cmd {
                 isroot: !!remote.remotevars["isroot"],
             };
         }
-        let webCmd: WebCmd = {
+        const webCmd: WebCmd = {
             screenid: cmd.screenid,
             lineid: lineid,
             remote: webRemote,
@@ -93,7 +93,7 @@ class Cmd {
     }
 
     getTermMaxRows(): number {
-        let termOpts = this.getTermOpts();
+        const termOpts = this.getTermOpts();
         return termOpts?.rows;
     }
 
@@ -106,7 +106,7 @@ class Cmd {
     }
 
     isRunning(): boolean {
-        let data = this.data.get();
+        const data = this.data.get();
         return cmdStatusIsRunning(data.status);
     }
 
@@ -115,7 +115,7 @@ class Cmd {
             return;
         }
         for (let pos = 0; pos < data.length; pos += InputChunkSize) {
-            let dataChunk = data.slice(pos, pos + InputChunkSize);
+            const dataChunk = data.slice(pos, pos + InputChunkSize);
             this.handleInputChunk(dataChunk);
         }
     }
@@ -125,13 +125,13 @@ class Cmd {
             return;
         }
         for (let pos = 0; pos < data.length; pos += InputChunkSize) {
-            let dataChunk = data.slice(pos, pos + InputChunkSize);
+            const dataChunk = data.slice(pos, pos + InputChunkSize);
             this.handleInputChunk(dataChunk);
         }
     }
 
     handleInputChunk(data: string): void {
-        let inputPacket: FeInputPacketType = {
+        const inputPacket: FeInputPacketType = {
             type: "feinput",
             ck: this.screenId + "/" + this.lineId,
             remote: this.remote,
