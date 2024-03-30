@@ -37,18 +37,17 @@ class ScreenView extends React.PureComponent<{ session: Session; screen: Screen 
     constructor(props: { session: Session; screen: Screen }) {
         super(props);
         this.handleResize_debounced = debounce(100, this.handleResize.bind(this));
-        let screen = this.props.screen;
+        const screen = this.props.screen;
         let hasSidebar = false;
         if (screen != null) {
-            let viewOpts = screen.viewOpts.get();
+            const viewOpts = screen.viewOpts.get();
             hasSidebar = viewOpts?.sidebar?.open;
         }
         this.sidebarShowing = mobx.observable.box(hasSidebar, { name: "screenview-sidebarShowing" });
     }
 
     componentDidMount(): void {
-        let { screen } = this.props;
-        let elem = this.screenViewRef.current;
+        const elem = this.screenViewRef.current;
         if (elem != null) {
             this.rszObs = new ResizeObserver(this.handleResize_debounced);
             this.rszObs.observe(elem);
@@ -57,12 +56,12 @@ class ScreenView extends React.PureComponent<{ session: Session; screen: Screen 
     }
 
     componentDidUpdate(): void {
-        let { screen } = this.props;
+        const { screen } = this.props;
         if (screen == null) {
             return;
         }
-        let viewOpts = screen.viewOpts.get();
-        let hasSidebar = viewOpts?.sidebar?.open;
+        const viewOpts = screen.viewOpts.get();
+        const hasSidebar = viewOpts?.sidebar?.open;
         if (hasSidebar && !this.sidebarShowing.get()) {
             this.sidebarShowingTimeoutId = setTimeout(() => {
                 mobx.action(() => {
@@ -86,7 +85,7 @@ class ScreenView extends React.PureComponent<{ session: Session; screen: Screen 
     }
 
     handleResize() {
-        let elem = this.screenViewRef.current;
+        const elem = this.screenViewRef.current;
         if (elem == null) {
             return;
         }
@@ -106,13 +105,13 @@ class ScreenView extends React.PureComponent<{ session: Session; screen: Screen 
     }
 
     render() {
-        let { session, screen } = this.props;
-        let screenWidth = this.width.get();
+        const { session, screen } = this.props;
+        const screenWidth = this.width.get();
         if (screenWidth == null) {
             return <div className="screen-view" ref={this.screenViewRef}></div>;
         }
         if (session == null) {
-            let sessionCount = GlobalModel.sessionList.length;
+            const sessionCount = GlobalModel.sessionList.length;
             return (
                 <div className="screen-view" ref={this.screenViewRef}>
                     <div className="window-view" style={{ width: "100%" }}>
@@ -132,7 +131,7 @@ class ScreenView extends React.PureComponent<{ session: Session; screen: Screen 
             );
         }
         if (screen == null) {
-            let screens = GlobalModel.getSessionScreens(session.sessionId);
+            const screens = GlobalModel.getSessionScreens(session.sessionId);
             return (
                 <div className="screen-view" ref={this.screenViewRef}>
                     <div className="window-view" style={{ width: "100%" }}>
@@ -151,10 +150,10 @@ class ScreenView extends React.PureComponent<{ session: Session; screen: Screen 
                 </div>
             );
         }
-        let fontSize = GlobalModel.getTermFontSize();
-        let dprStr = sprintf("%0.3f", GlobalModel.devicePixelRatio.get());
-        let viewOpts = screen.viewOpts.get();
-        let hasSidebar = viewOpts?.sidebar?.open;
+        const fontSize = GlobalModel.getTermFontSize();
+        const dprStr = sprintf("%0.3f", GlobalModel.devicePixelRatio.get());
+        const viewOpts = screen.viewOpts.get();
+        const hasSidebar = viewOpts?.sidebar?.open;
         let winWidth = "100%";
         let sidebarWidth = "0px";
         if (hasSidebar) {
@@ -167,7 +166,6 @@ class ScreenView extends React.PureComponent<{ session: Session; screen: Screen 
                 if (targetPercent > 100) {
                     targetPercent = 100;
                 }
-                let targetMul = targetPercent / 100;
                 realWidth = Math.floor((screenWidth * targetPercent) / 100);
                 realWidth = util.boundInt(
                     realWidth,
@@ -176,7 +174,7 @@ class ScreenView extends React.PureComponent<{ session: Session; screen: Screen 
                 );
             } else {
                 // screen is at least 400px wide
-                let targetWidthNum = parseInt(targetWidth);
+                const targetWidthNum = parseInt(targetWidth);
                 realWidth = util.boundInt(
                     targetWidthNum,
                     MagicLayout.ScreenSidebarMinWidth,
@@ -381,9 +379,16 @@ class ScreenSidebar extends React.PureComponent<{ screen: Screen; width: string 
     }
 }
 
+interface ScreenWindowViewProps {
+    session: Session;
+    screen: Screen;
+    width: string;
+}
+
 // screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.PureComponent<{ session: Session; screen: Screen; width: string }, {}> {
+class ScreenWindowView extends React.PureComponent<ScreenWindowViewProps, {}> {
+    @mobx.observable props_: ScreenWindowViewProps;
     rszObs: ResizeObserver;
     windowViewRef: React.RefObject<any>;
 
@@ -398,10 +403,11 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
         super(props);
         this.setSize_debounced = debounce(1000, this.setSize.bind(this));
         this.windowViewRef = React.createRef();
+        this.props_ = props;
     }
 
     setSize(width: number, height: number): void {
-        let { screen } = this.props;
+        const { screen } = this.props_;
         if (screen == null) {
             return;
         }
@@ -416,8 +422,8 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
     }
 
     componentDidMount() {
-        const { screen } = this.props;
-        let wvElem = this.windowViewRef.current;
+        const { screen } = this.props_;
+        const wvElem = this.windowViewRef.current;
         if (wvElem != null) {
             let width = wvElem.offsetWidth;
             let height = wvElem.offsetHeight;
@@ -439,20 +445,28 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
         }
     }
 
+    componentDidUpdate(
+        previousProps: Readonly<ScreenWindowViewProps>,
+        previousState: Readonly<{}>,
+        snapshot: any
+    ): void {
+        this.props_ = this.props;
+    }
+
     handleResize(entries: any) {
         if (entries.length == 0) {
             return;
         }
-        let entry = entries[0];
-        let width = entry.target.offsetWidth;
-        let height = entry.target.offsetHeight;
+        const entry = entries[0];
+        const width = entry.target.offsetWidth;
+        const height = entry.target.offsetHeight;
         mobx.action(() => {
             this.setSize_debounced(width, height);
         })();
     }
 
     getScreenLines(): ScreenLines {
-        let { screen } = this.props;
+        const { screen } = this.props;
         let win = GlobalModel.getScreenLinesById(screen.screenId);
         if (win == null) {
             win = GlobalModel.loadScreenLines(screen.screenId);
@@ -462,21 +476,16 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
 
     @boundMethod
     toggleRenderMode() {
-        let renderMode = this.renderMode.get();
+        const renderMode = this.renderMode.get();
         mobx.action(() => {
             this.renderMode.set(renderMode == "normal" ? "collapsed" : "normal");
         })();
     }
 
     renderError(message: string, fade: boolean) {
-        let { screen } = this.props;
+        const { screen, width } = this.props_;
         return (
-            <div
-                className="window-view"
-                ref={this.windowViewRef}
-                data-screenid={screen.screenId}
-                style={{ width: this.props.width }}
-            >
+            <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId} style={{ width }}>
                 <div key="lines" className="lines"></div>
                 <div key="window-empty" className={cn("window-empty", { "should-fade": fade })}>
                     <div className="text-standard">{message}</div>
@@ -487,8 +496,8 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
 
     @boundMethod
     copyShareLink(): void {
-        let { screen } = this.props;
-        let shareLink = screen.getWebShareUrl();
+        const { screen } = this.props_;
+        const shareLink = screen.getWebShareUrl();
         if (shareLink == null) {
             return;
         }
@@ -505,7 +514,7 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
 
     @boundMethod
     openScreenSettings(): void {
-        let { screen } = this.props;
+        const { screen } = this.props_;
         mobx.action(() => {
             GlobalModel.screenSettingsModal.set({ sessionId: screen.sessionId, screenId: screen.screenId });
         })();
@@ -513,14 +522,14 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
 
     @boundMethod
     buildLineComponent(lineProps: LineFactoryProps): React.JSX.Element {
-        let { screen } = this.props;
-        let { line, ...restProps } = lineProps;
-        let realLine: LineType = line as LineType;
+        const { screen } = this.props_;
+        const { line, ...restProps } = lineProps;
+        const realLine: LineType = line as LineType;
         return <Line key={realLine.lineid} screen={screen} line={realLine} {...restProps} />;
     }
 
     determineVisibleLines(win: ScreenLines): LineType[] {
-        let { screen } = this.props;
+        const { screen } = this.props_;
         if (screen.filterRunning.get()) {
             return win.getRunningCmdLines();
         }
@@ -529,16 +538,16 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
 
     @boundMethod
     disableFilter() {
-        let { screen } = this.props;
+        const { screen } = this.props_;
         mobx.action(() => {
             screen.filterRunning.set(false);
         })();
     }
 
     render() {
-        let { session, screen } = this.props;
-        let win = this.getScreenLines();
-        if (win == null || !win.loaded.get()) {
+        const { session, screen, width } = this.props_;
+        const win = this.getScreenLines();
+        if (!win.loaded.get()) {
             return this.renderError("...", true);
         }
         if (win.loadError.get() != null) {
@@ -547,15 +556,14 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
         if (this.width.get() == 0) {
             return this.renderError("", false);
         }
-        let cdata = GlobalModel.clientData.get();
+        const cdata = GlobalModel.clientData.get();
         if (cdata == null) {
             return this.renderError("loading client data", true);
         }
-        let isActive = screen.isActive();
-        let lines = this.determineVisibleLines(win);
-        let renderMode = this.renderMode.get();
+        const lines = this.determineVisibleLines(win);
+        const renderMode = this.renderMode.get();
         return (
-            <div className="window-view" ref={this.windowViewRef} style={{ width: this.props.width }}>
+            <div className="window-view" ref={this.windowViewRef} style={{ width }}>
                 <If condition={lines.length == 0}>
                     <If condition={screen.nextLineNum.get() != 1}>
                         <div className="window-empty" ref={this.windowViewRef} data-screenid={screen.screenId}>

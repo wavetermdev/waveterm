@@ -36,7 +36,6 @@ interface DropdownState {
     isTouched: boolean;
 }
 
-@mobxReact.observer
 class Dropdown extends React.PureComponent<DropdownProps, DropdownState> {
     wrapperRef: React.RefObject<HTMLDivElement>;
     menuRef: React.RefObject<HTMLDivElement>;

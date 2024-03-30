@@ -19,6 +19,7 @@ class ScreenTabs extends React.PureComponent<
     { session: Session },
     { showingScreens: Screen[]; scrollIntoViewTimeout: number }
 > {
+    @mobx.observable session: Session;
     tabsRef: React.RefObject<any> = React.createRef();
     lastActiveScreenId: string = null;
     dragEndTimeout = null;
@@ -32,6 +33,7 @@ class ScreenTabs extends React.PureComponent<
             showingScreens: [],
             scrollIntoViewTimeout: 0,
         };
+        this.session = props.session;
     }
 
     componentDidMount(): void {
@@ -71,7 +73,7 @@ class ScreenTabs extends React.PureComponent<
 
     componentDidUpdate(): void {
         // Scroll the active screen into view
-        let activeScreenId = this.getActiveScreenId();
+        const activeScreenId = this.getActiveScreenId();
         if (activeScreenId !== this.lastActiveScreenId) {
             if (this.scrollIntoViewTimeoutId) {
                 clearTimeout(this.scrollIntoViewTimeoutId);
@@ -81,7 +83,7 @@ class ScreenTabs extends React.PureComponent<
                 if (!this.tabsRef.current) {
                     return;
                 }
-                let tabElem = this.tabsRef.current.querySelector(
+                const tabElem = this.tabsRef.current.querySelector(
                     sprintf('.screen-tab[data-screenid="%s"]', activeScreenId)
                 );
                 if (!tabElem) {
@@ -90,13 +92,15 @@ class ScreenTabs extends React.PureComponent<
                 tabElem.scrollIntoView();
             }, this.state.scrollIntoViewTimeout);
         }
+
+        // Update with current session
+        this.session = this.props.session;
     }
 
     @boundMethod
     getActiveScreenId(): string {
-        let { session } = this.props;
-        if (session) {
-            return session.activeScreenId.get();
+        if (this.session) {
+            return this.session.activeScreenId.get();
         }
         return null;
     }
@@ -104,13 +108,13 @@ class ScreenTabs extends React.PureComponent<
     @mobx.computed
     @boundMethod
     getScreens(): Screen[] {
-        let activeScreenId = this.getActiveScreenId();
+        const activeScreenId = this.getActiveScreenId();
         if (!activeScreenId) {
             return [];
         }
 
-        let screens = GlobalModel.getSessionScreens(this.props.session.sessionId);
-        let showingScreens = [];
+        const screens = GlobalModel.getSessionScreens(this.session.sessionId);
+        const showingScreens = [];
 
         for (const screen of screens) {
             if (!screen.archived.get() || activeScreenId === screen.screenId) {
@@ -130,14 +134,13 @@ class ScreenTabs extends React.PureComponent<
 
     @boundMethod
     handleSwitchScreen(screenId: string) {
-        let { session } = this.props;
-        if (session == null) {
+        if (this.session == null) {
             return;
         }
-        if (session.activeScreenId.get() == screenId) {
+        if (this.session.activeScreenId.get() == screenId) {
             return;
         }
-        let screen = session.getScreenById(screenId);
+        const screen = this.session.getScreenById(screenId);
         if (screen == null) {
             return;
         }
@@ -155,7 +158,7 @@ class ScreenTabs extends React.PureComponent<
         }
 
         // Check if any of the last 5 deltaY values are greater than a threshold
-        let isMouseWheel = this.deltaYHistory.some((deltaY) => deltaY > 0);
+        const isMouseWheel = this.deltaYHistory.some((deltaY) => deltaY > 0);
 
         if (isMouseWheel) {
             // It's likely a mouse wheel event, so handle it for horizontal scrolling
@@ -168,14 +171,13 @@ class ScreenTabs extends React.PureComponent<
     }
 
     render() {
-        let { showingScreens } = this.state;
-        let { session } = this.props;
-        if (session == null) {
+        const { showingScreens } = this.state;
+        if (this.session == null) {
             return null;
         }
         let screen: Screen | null = null;
         let index = 0;
-        let activeScreenId = this.getActiveScreenId();
+        const activeScreenId = this.getActiveScreenId();
         return (
             <div className="screen-tabs-container">
                 {/* Inner container ensures that hovering over the scrollbar doesn't trigger the hover effect on the tabs. This prevents weird flickering of the icons when the mouse is moved over the scrollbar. */}
