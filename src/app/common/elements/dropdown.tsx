@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
@@ -182,10 +182,10 @@ class Dropdown extends React.PureComponent<DropdownProps, DropdownState> {
     }
 
     @boundMethod
-    handleKeyDown(event: React.KeyboardEvent) {}
+    handleKeyDown(event: React.TargetedEvent) {}
 
     @boundMethod
-    handleSelect(value: string, event?: React.MouseEvent | React.KeyboardEvent) {
+    handleSelect(value: string, event?: React.TargetedEvent) {
         const { onChange } = this.props;
         if (event) {
             event.stopPropagation(); // This stops the event from bubbling up to the wrapper

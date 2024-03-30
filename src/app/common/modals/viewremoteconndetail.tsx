@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
@@ -413,7 +413,7 @@ class ViewRemoteConnDetailModal extends React.PureComponent<{}, {}> {
     }
 }
 
-function getImportTooltip(remote: RemoteType): React.ReactElement<any, any> {
+function getImportTooltip(remote: RemoteType): React.ReactElement<any> {
     if (remote.sshconfigsrc == "sshconfig-import") {
         return (
             <Tooltip

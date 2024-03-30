@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { For, If } from "tsx-control-statements/components";
-import cn from "classnames";
+import { For } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, Session, Screen } from "@/models";
 import { ReactComponent as AddIcon } from "@/assets/icons/add.svg";
 import { Reorder } from "framer-motion";
@@ -184,26 +183,27 @@ class ScreenTabs extends React.PureComponent<
                     key="container-inner"
                     className="screen-tabs-container-inner no-highlight-scrollbar scrollbar-hide-until-hover"
                 >
-                    <Reorder.Group
-                        className="screen-tabs"
-                        ref={this.tabsRef}
-                        as="ul"
-                        axis="x"
-                        onReorder={(tabs: Screen[]) => {
-                            this.setState({ showingScreens: tabs });
-                        }}
-                        values={showingScreens}
-                    >
-                        <For each="screen" index="index" of={showingScreens}>
-                            <ScreenTab
-                                key={screen.screenId}
-                                screen={screen}
-                                activeScreenId={activeScreenId}
-                                index={index}
-                                onSwitchScreen={this.handleSwitchScreen}
-                            />
-                        </For>
-                    </Reorder.Group>
+                    <div className="screen-tabs">
+                        <Reorder.Group
+                            ref={this.tabsRef}
+                            as="ul"
+                            axis="x"
+                            onReorder={(tabs: Screen[]) => {
+                                this.setState({ showingScreens: tabs });
+                            }}
+                            values={showingScreens}
+                        >
+                            <For each="screen" index="index" of={showingScreens}>
+                                <ScreenTab
+                                    key={screen.screenId}
+                                    screen={screen}
+                                    activeScreenId={activeScreenId}
+                                    index={index}
+                                    onSwitchScreen={this.handleSwitchScreen}
+                                />
+                            </For>
+                        </Reorder.Group>
+                    </div>
                 </div>
                 <div key="new-screen" className="new-screen" onClick={this.handleNewScreen}>
                     <AddIcon className="icon hoverEffect" />

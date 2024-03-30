@@ -2,21 +2,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import { GlobalModel } from "@/models";
 import { TosModal } from "./tos";
 
 @mobxReact.observer
 class ModalsProvider extends React.PureComponent {
     render() {
-        let store = GlobalModel.modalsModel.store.slice();
+        const store = GlobalModel.modalsModel.store.slice();
         if (GlobalModel.needsTos()) {
             return <TosModal />;
         }
-        let rtn: JSX.Element[] = [];
-        for (let i = 0; i < store.length; i++) {
-            let entry = store[i];
-            let Comp = entry.component;
+        const rtn: React.JSX.Element[] = [];
+        for (const entry of store) {
+            const Comp = entry.component;
             rtn.push(<Comp key={entry.uniqueKey} {...entry.props} />);
         }
         return <>{rtn}</>;

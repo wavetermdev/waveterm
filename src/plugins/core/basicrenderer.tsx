@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { debounce } from "throttle-debounce";
 import * as util from "@/util/util";

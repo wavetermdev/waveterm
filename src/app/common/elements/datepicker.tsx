@@ -457,7 +457,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
                                 ref={inputRef}
                                 type="text"
                                 value={dateParts[part]}
-                                onChange={(e) => handleDatePartChange(part, e.target.value)}
+                                onChange={(e) => handleDatePartChange(part, (e.target as HTMLInputElement).value)}
                                 onKeyDown={(e) => handleKeyDown(e, part)}
                                 onMouseDown={(e) => handleMouseDown(e, part)}
                                 onFocus={(e) => handleFocus(e, part)}

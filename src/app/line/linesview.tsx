@@ -2,11 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -30,7 +29,7 @@ type ScreenInterface = {
 
 // <Line key={line.lineid} line={line} screen={screen} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
 
-type LineCompFactory = (props: LineFactoryProps) => JSX.Element;
+type LineCompFactory = (props: LineFactoryProps) => React.JSX.Element;
 
 @mobxReact.observer
 class LinesView extends React.PureComponent<

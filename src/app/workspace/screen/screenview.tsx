@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { If, For } from "tsx-control-statements/components";
+import { If } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
@@ -18,7 +18,6 @@ import { LinesView } from "@/app/line/linesview";
 import * as util from "@/util/util";
 import * as appconst from "@/app/appconst";
 import * as textmeasure from "@/util/textmeasure";
-import { NewTabSettings } from "./newtabsettings";
 
 import "./screenview.less";
 import "./tabs.less";
@@ -513,7 +512,7 @@ class ScreenWindowView extends React.PureComponent<{ session: Session; screen: S
     }
 
     @boundMethod
-    buildLineComponent(lineProps: LineFactoryProps): JSX.Element {
+    buildLineComponent(lineProps: LineFactoryProps): React.JSX.Element {
         let { screen } = this.props;
         let { line, ...restProps } = lineProps;
         let realLine: LineType = line as LineType;

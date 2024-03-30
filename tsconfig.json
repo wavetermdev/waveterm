@@ -3,7 +3,8 @@
     "compilerOptions": {
         "target": "es5",
         "module": "commonjs",
-        "jsx": "preserve",
+        "jsx": "react-jsx",
+        "jsxImportSource": "preact",    
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
@@ -13,7 +14,7 @@
         "isolatedModules": true,
         "experimentalDecorators": true,
         "downlevelIteration": true,
-        "baseUrl": "./", 
+        "baseUrl": "./",
         "paths": {
             "@/app/*": ["src/app/*"], // Points to the src folder
             "@/util/*": ["src/util/*"], // Points to the src folder
@@ -26,6 +27,8 @@
             "@/modals/*": ["src/app/common/modals/*"], // For everything else inside models
             "@/assets/*": ["src/app/assets/*"], // For everything else inside models
             "@/plugins/*": ["src/plugins/*"], // For everything else inside models
+            "react": ["./node_modules/preact/compat/"],
+            "react-dom": ["./node_modules/preact/compat/"]
         }
     }
 }

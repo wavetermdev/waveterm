@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import { sprintf } from "sprintf-js";
 import { Markdown } from "@/elements";
 

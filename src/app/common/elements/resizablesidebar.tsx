@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
@@ -30,7 +30,7 @@ class ResizableSidebar extends React.PureComponent<ResizableSidebarProps> {
     disposeReaction: any;
 
     @boundMethod
-    startResizing(event: React.MouseEvent<HTMLDivElement>) {
+    startResizing(event: React.JSX.TargetedMouseEvent<HTMLDivElement>) {
         event.preventDefault();
 
         const { parentRef, position, model } = this.props;
@@ -150,7 +150,7 @@ class ResizableSidebar extends React.PureComponent<ResizableSidebarProps> {
                         [this.props.position === "left" ? "right" : "left"]: 0,
                     }}
                     onMouseDown={this.startResizing}
-                    onDoubleClick={this.toggleCollapsed}
+                    onDblClick={this.toggleCollapsed}
                 ></div>
             </div>
         );

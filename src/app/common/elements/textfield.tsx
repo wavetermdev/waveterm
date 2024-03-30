@@ -17,7 +17,7 @@ interface TextFieldProps {
     value?: string;
     className?: string;
     onChange?: (value: string) => void;
-    onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+    onKeyDown?: (event: React.JSX.TargetedKeyboardEvent<HTMLInputElement>) => void;
     onFocus?: () => void;
     onBlur?: () => void;
     placeholder?: string;
@@ -109,7 +109,7 @@ class TextField extends React.PureComponent<TextFieldProps, TextFieldState> {
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
         const { required, onChange } = this.props;
-        const inputValue = e.target.value;
+        const inputValue = (e.target as HTMLInputElement).value;
 
         // Check if value is empty and the field is required
         if (required && !inputValue) {

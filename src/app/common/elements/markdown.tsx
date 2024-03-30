@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
@@ -42,9 +42,9 @@ class CodeBlockMarkdown extends React.PureComponent<
     }
 
     render() {
-        let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
+        let clickHandler: (e: React.JSX.TargetedMouseEvent<HTMLElement>, blockIndex: number) => void;
         let inputModel = GlobalModel.inputModel;
-        clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
+        clickHandler = (e: React.JSX.TargetedMouseEvent<HTMLElement>, blockIndex: number) => {
             inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
         };
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
@@ -69,7 +69,7 @@ class Markdown extends React.PureComponent<
         if (codeSelect) {
             return <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex}>{props.children}</CodeBlockMarkdown>;
         } else {
-            const clickHandler = (e: React.MouseEvent<HTMLElement>) => {
+            const clickHandler = (e: React.JSX.TargetedMouseEvent<HTMLElement>) => {
                 let blockText = (e.target as HTMLElement).innerText;
                 if (blockText) {
                     blockText = blockText.replace(/\n$/, ""); // remove trailing newline

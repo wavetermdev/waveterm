@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
@@ -76,7 +76,7 @@ class ConnectionsView extends React.PureComponent<{ model: RemotesModel }, { hov
     }
 
     @boundMethod
-    getImportSymbol(item: RemoteType): React.ReactElement<any, any> {
+    getImportSymbol(item: RemoteType): React.ReactElement<any> {
         const { sshconfigsrc } = item;
         if (sshconfigsrc == "sshconfig-import") {
             return <i title="Connection Imported from SSH Config" className="fa-sharp fa-solid fa-file-import" />;
@@ -153,7 +153,6 @@ class ConnectionsView extends React.PureComponent<{ model: RemotesModel }, { hov
                     className="connections-table"
                     cellSpacing="0"
                     cellPadding="0"
-                    border={0}
                     ref={this.tableRef}
                     onMouseLeave={this.handleTableHoverLeave}
                 >

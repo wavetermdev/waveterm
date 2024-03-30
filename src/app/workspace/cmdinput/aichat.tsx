@@ -2,15 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
-import { isBlank } from "@/util/util";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 class AIChatKeybindings extends React.PureComponent<{ AIChatObject: AIChat }, {}> {
     componentDidMount(): void {

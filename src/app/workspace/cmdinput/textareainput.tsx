@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import * as util from "@/util/util";
 import { If } from "tsx-control-statements/components";
@@ -11,7 +11,6 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, WaveKeyboardEvent } from "@/util/keyutil";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -670,7 +669,7 @@ class TextAreaInput extends React.PureComponent<{ screen: Screen; onHeightChange
                 <textarea
                     key="main"
                     ref={this.mainInputRef}
-                    spellCheck="false"
+                    spellCheck={false}
                     autoComplete="off"
                     autoCorrect="off"
                     id="main-cmd-input"
@@ -686,7 +685,7 @@ class TextAreaInput extends React.PureComponent<{ screen: Screen; onHeightChange
                 <input
                     key="history"
                     ref={this.historyInputRef}
-                    spellCheck="false"
+                    spellCheck={false}
                     autoComplete="off"
                     autoCorrect="off"
                     className="history-input"

@@ -2,14 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
-import { If } from "tsx-control-statements/components";
 
-import { ReactComponent as AppsIcon } from "@/assets/icons/apps.svg";
 import { ReactComponent as WorkspacesIcon } from "@/assets/icons/workspaces.svg";
 import { ReactComponent as SettingsIcon } from "@/assets/icons/settings.svg";
 import { ReactComponent as WaveLogo } from "@/assets/waveterm-logo.svg";
@@ -33,7 +31,7 @@ class SideBarItem extends React.PureComponent<{
     contents: React.ReactNode | string;
     endIcons?: React.ReactNode[];
     className?: string;
-    onClick?: React.MouseEventHandler<HTMLDivElement>;
+    onClick?: React.JSX.MouseEventHandler<HTMLDivElement>;
 }> {
     render() {
         return (

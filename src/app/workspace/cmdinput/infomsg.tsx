@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
@@ -40,19 +40,17 @@ class InfoMsg extends React.PureComponent<{}, {}> {
     }
 
     render() {
-        let model = GlobalModel;
-        let inputModel = model.inputModel;
-        let infoMsg = inputModel.infoMsg.get();
-        let infoShow = inputModel.infoShow.get();
+        const model = GlobalModel;
+        const inputModel = model.inputModel;
+        const infoMsg = inputModel.infoMsg.get();
+        const infoShow = inputModel.infoShow.get();
         let line: string = null;
         let istr: string = null;
         let idx: number = 0;
         let titleStr = null;
-        let remoteEditKey = "inforemoteedit";
         if (infoMsg != null) {
             titleStr = infoMsg.infotitle;
         }
-        let activeScreen = model.getActiveScreen();
         if (!infoShow) {
             return null;
         }

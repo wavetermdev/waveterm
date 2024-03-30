@@ -2,13 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { ActionsIcon, StatusIndicator, CenteredIcon } from "@/common/icons/icons";
-import * as constants from "@/app/appconst";
 import { Reorder } from "framer-motion";
 import { MagicLayout } from "@/app/magiclayout";
 import { TabIcon } from "@/elements/tabicon";

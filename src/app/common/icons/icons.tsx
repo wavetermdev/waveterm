@@ -3,7 +3,7 @@ import cn from "classnames";
 import { ReactComponent as SpinnerIndicator } from "@/assets/icons/spinner-indicator.svg";
 import { boundMethod } from "autobind-decorator";
 import * as mobx from "mobx";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as appconst from "@/app/appconst";
 
 import { ReactComponent as RotateIconSvg } from "@/assets/icons/line/rotate.svg";
@@ -11,7 +11,7 @@ import { ReactComponent as RotateIconSvg } from "@/assets/icons/line/rotate.svg"
 interface PositionalIconProps {
     children?: React.ReactNode;
     className?: string;
-    onClick?: React.MouseEventHandler<HTMLDivElement>;
+    onClick?: React.JSX.MouseEventHandler<HTMLDivElement>;
     divRef?: React.RefObject<HTMLDivElement>;
 }
 
@@ -44,7 +44,7 @@ export class CenteredIcon extends React.PureComponent<PositionalIconProps> {
 }
 
 interface ActionsIconProps {
-    onClick: React.MouseEventHandler<HTMLDivElement>;
+    onClick: React.JSX.MouseEventHandler<HTMLDivElement>;
 }
 
 export class ActionsIcon extends React.PureComponent<ActionsIconProps> {
@@ -225,7 +225,7 @@ export class StatusIndicator extends React.PureComponent<StatusIndicatorProps> {
 
 export class RotateIcon extends React.PureComponent<{
     className?: string;
-    onClick?: React.MouseEventHandler<HTMLDivElement>;
+    onClick?: React.JSX.MouseEventHandler<HTMLDivElement>;
 }> {
     iconRef: React.RefObject<HTMLDivElement> = React.createRef();
     render() {

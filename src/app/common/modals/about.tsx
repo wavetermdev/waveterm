@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, getApi } from "@/models";
@@ -30,7 +30,7 @@ class AboutModal extends React.PureComponent<{}, {}> {
     }
 
     @boundMethod
-    getClientVersion(): JSX.Element {
+    getClientVersion(): React.JSX.Element {
         const clientData: ClientDataType = GlobalModel.clientData.get();
         const showUpdateStatus = clientData.clientopts.noreleasecheck !== true;
         const isUpToDate = !showUpdateStatus || GlobalModel.appUpdateStatus.get() !== "ready";

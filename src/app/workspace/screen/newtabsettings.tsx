@@ -1,16 +1,14 @@
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If, For } from "tsx-control-statements/components";
+import { For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalCommandRunner, GlobalModel, Screen } from "@/models";
-import { Button, TextField, Dropdown } from "@/elements";
-import { getRemoteStr, getRemoteStrWithAlias } from "@/common/prompt/prompt";
+import { TextField, Dropdown } from "@/elements";
+import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
 import * as util from "@/util/util";
 import { TabIcon } from "@/elements/tabicon";
-import { ReactComponent as EllipseIcon } from "@/assets/icons/ellipse.svg";
-import { ReactComponent as Check12Icon } from "@/assets/icons/check12.svg";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
@@ -98,10 +96,6 @@ class TabColorSelector extends React.PureComponent<{ screen: Screen; errorMessag
 
     render() {
         let { screen } = this.props;
-        let curColor = screen.getTabColor();
-        if (util.isBlank(curColor) || curColor == "default") {
-            curColor = "green";
-        }
         let color: string | null = null;
         return (
             <div className="tab-colors">
@@ -134,10 +128,6 @@ class TabIconSelector extends React.PureComponent<{ screen: Screen; errorMessage
 
     render() {
         let { screen } = this.props;
-        let curIcon = screen.getTabIcon();
-        if (util.isBlank(curIcon) || curIcon == "default") {
-            curIcon = "square";
-        }
         let icon: string | null = null;
         let curColor = screen.getTabColor();
         return (

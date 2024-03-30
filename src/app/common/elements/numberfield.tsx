@@ -10,7 +10,7 @@ class NumberField extends TextField {
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
         const { required, onChange } = this.props;
-        const inputValue = e.target.value;
+        const inputValue = (e.target as HTMLInputElement).value;
 
         // Allow only numeric input
         if (inputValue === "" || /^\d*$/.test(inputValue)) {

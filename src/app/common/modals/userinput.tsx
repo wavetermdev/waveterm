@@ -5,7 +5,7 @@ import { Modal, PasswordField, TextField, Markdown, Checkbox } from "@/elements"
 
 import "./userinput.less";
 
-export const UserInputModal = (userInputRequest: UserInputRequest) => {
+export const UserInputModal: React.FunctionComponent<UserInputRequest> = (userInputRequest: UserInputRequest) => {
     const [responseText, setResponseText] = React.useState("");
     const [countdown, setCountdown] = React.useState(Math.floor(userInputRequest.timeoutms / 1000));
     const checkboxStatus = React.useRef(false);

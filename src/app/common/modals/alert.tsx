@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { Markdown, Modal, Button, Checkbox } from "@/elements";

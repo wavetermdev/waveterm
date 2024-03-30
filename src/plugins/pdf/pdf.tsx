@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobx from "mobx";
-import * as mobxReact from "mobx-preact";
+import * as mobxReact from "mobx-react";
 
 import "./pdf.less";
 
