@@ -105,12 +105,9 @@ class WorkspaceView extends React.Component<{}, {}> {
                 const currTheme = session ? termTheme[session.sessionId] : null;
                 console.log(currTheme, this.theme, this.sessionRef.current, termTheme);
                 if (session && currTheme !== this.theme && this.sessionRef.current) {
-                    console.log("Updating term theme", currTheme);
                     const reset = currTheme == null;
                     const theme = currTheme ?? this.theme;
                     const themeSrcEl = reset ? document.documentElement : this.sessionRef.current;
-                    console.log("Updating term theme", currTheme, themeSrcEl);
-
                     const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, reset);
                     rtn.then(() => {
                         GlobalModel.termThemeSrcEl.set(themeSrcEl);

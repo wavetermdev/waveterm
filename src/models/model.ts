@@ -1295,7 +1295,6 @@ class Model {
             const globaltt = newTermTheme["global"] ?? null;
             const reset = globaltt == null;
             const fglobaltt = globaltt ?? this.currGlobalTermTheme;
-            console.log("appReload", appReload);
             const rtn = this.updateTermTheme(el, fglobaltt, reset);
             rtn.then(() => {
                 if (appReload && ttUpdated) {
@@ -1304,23 +1303,6 @@ class Model {
             });
             this.currGlobalTermTheme = globaltt;
         }
-    }
-
-    globalTermThemeUpdated(newTermTheme, oldTermTheme) {
-        const key = "global";
-
-        // Check if the "global" key was removed
-        if (key in oldTermTheme && !(key in newTermTheme)) {
-            return true;
-        }
-
-        // Check if the "global" key was added or updated
-        if (key in newTermTheme && (!oldTermTheme[key] || oldTermTheme[key] !== newTermTheme[key])) {
-            return true;
-        }
-
-        // No change detected for the "global" key
-        return false;
     }
 
     termThemeUpdated(newTermTheme, oldTermTheme) {
