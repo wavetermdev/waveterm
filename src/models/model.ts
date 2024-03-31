@@ -243,15 +243,9 @@ class Model {
             });
     }
 
-    updateTermTheme(
-        element: HTMLElement,
-        themeFileName: string,
-        termThemeSrcEl: HTMLElement,
-        appReload: boolean,
-        reset: boolean
-    ) {
+    updateTermTheme(element: HTMLElement, themeFileName: string, appReload: boolean, reset: boolean) {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
-        fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+        return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
             .then((resp) => resp.json())
             .then((themeVars) => {
                 Object.keys(themeVars).forEach((key) => {
@@ -265,7 +259,7 @@ class Model {
             })
             .then(() => {
                 mobx.action(() => {
-                    this.termThemeSrcEl.set(termThemeSrcEl);
+                    // this.termThemeSrcEl.set(termThemeSrcEl);
                     if (appReload) {
                         this.bumpRenderVersion();
                     } else {
@@ -469,7 +463,7 @@ class Model {
     getTermTheme(): TermThemeType {
         let cdata = this.clientData.get();
         if (cdata?.feopts?.termtheme) {
-            return cdata.feopts.termtheme;
+            return mobx.toJS(cdata.feopts.termtheme);
         }
         return {};
     }
@@ -1278,6 +1272,9 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getTheme();
+        const oldTermTheme = this.getTermTheme();
+        const newTermTheme = clientData?.feopts?.termtheme;
+        const ttUpdated = this.nonGlobalTermThemeUpdated(newTermTheme, oldTermTheme);
 
         mobx.action(() => {
             this.clientData.set(clientData);
@@ -1299,17 +1296,71 @@ class Model {
             loadTheme(newTheme);
             this.bumpRenderVersion();
         }
+
+        const test = this.nonGlobalTermThemeUpdated(newTermTheme, oldTermTheme);
+        console.log("test=================", test, Object.keys(newTermTheme).length, Object.keys(oldTermTheme).length);
+
         // Only for global terminal theme. For session and screen terminal theme,
         // they are handled in worksacpeview and screenview respectively
-        const newTermTheme = clientData?.feopts?.termtheme;
-        if (newTermTheme && this.activeMainView.get() == "clientsettings") {
+        // TODO:
+        //  1. newTermTheme should be the only condition below
+        //  2. termThemeSrcEl should be set separately below
+        //  3. Remove setting of termThemeSrcEl in updateTermTheme
+        //  4. Create function the deterines the termThemeSrcEl
+        if (newTermTheme) {
             const el = document.documentElement;
+            const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
+            const appReload = el == termThemeSrcEl;
             const globaltt = newTermTheme["global"] ?? null;
             const reset = globaltt == null;
             const fglobaltt = globaltt ?? this.currGlobalTermTheme;
-            this.updateTermTheme(el, fglobaltt, el, true, reset);
+            this.updateTermTheme(el, fglobaltt, appReload, reset);
+            // rtn.then(() => {
+            //     if (globaltt != null) {
+            //         const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
+            //         console.log("termThemeSrcEl============", termThemeSrcEl);
+            //         this.termThemeSrcEl.set(termThemeSrcEl);
+            //     }
+            // });
             this.currGlobalTermTheme = globaltt;
         }
+    }
+
+    globalTermThemeUpdated(newTermTheme, oldTermTheme) {
+        const key = "global";
+
+        // Check if the "global" key was removed
+        if (key in oldTermTheme && !(key in newTermTheme)) {
+            return true;
+        }
+
+        // Check if the "global" key was added or updated
+        if (key in newTermTheme && (!oldTermTheme[key] || oldTermTheme[key] !== newTermTheme[key])) {
+            return true;
+        }
+
+        // No change detected for the "global" key
+        return false;
+    }
+
+    nonGlobalTermThemeUpdated(newTermTheme, oldTermTheme) {
+        for (const key in oldTermTheme) {
+            if (key == "global") {
+                continue;
+            }
+            if (!(key in newTermTheme)) {
+                return true;
+            }
+        }
+        for (const key in newTermTheme) {
+            if (key == "global") {
+                continue;
+            }
+            if (!oldTermTheme[key] || oldTermTheme[key] !== newTermTheme[key]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     getTermThemeSrcEl(newTermTheme) {

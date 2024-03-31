@@ -84,25 +84,65 @@ class WorkspaceView extends React.Component<{}, {}> {
     theme: string;
     themeReactionDisposer: mobx.IReactionDisposer;
 
+    componentDidMount() {
+        this.setupThemeReaction();
+    }
+
     componentDidUpdate() {
-        // We have to put this here because this.sessionRef.current is sometimes not mounted yet in componentDidMount
+        this.setupThemeReaction();
+    }
+
+    setupThemeReaction() {
+        if (this.themeReactionDisposer) {
+            this.themeReactionDisposer();
+        }
+
         this.themeReactionDisposer = mobx.reaction(
             () => {
                 return { termTheme: GlobalModel.getTermTheme(), session: GlobalModel.getActiveSession() };
             },
             ({ termTheme, session }) => {
                 const currTheme = session ? termTheme[session.sessionId] : null;
+                console.log(currTheme, this.theme, this.sessionRef.current, termTheme);
                 if (session && currTheme !== this.theme && this.sessionRef.current) {
+                    console.log("Updating term theme", currTheme);
                     const reset = currTheme == null;
                     const theme = currTheme ?? this.theme;
                     const themeSrcEl = reset ? document.documentElement : this.sessionRef.current;
+                    console.log("Updating term theme", currTheme, themeSrcEl);
+
                     const appReload = themeSrcEl == document.documentElement;
-                    GlobalModel.updateTermTheme(this.sessionRef.current, theme, themeSrcEl, appReload, reset);
+                    const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, appReload, reset);
+                    rtn.then(() => {
+                        GlobalModel.termThemeSrcEl.set(themeSrcEl);
+                    });
                     this.theme = currTheme;
                 }
             }
         );
     }
+
+    // componentDidUpdate() {
+    //     // We have to put this here because this.sessionRef.current is sometimes not mounted yet in componentDidMount
+    //     this.themeReactionDisposer = mobx.reaction(
+    //         () => {
+    //             return { termTheme: GlobalModel.getTermTheme(), session: GlobalModel.getActiveSession() };
+    //         },
+    //         ({ termTheme, session }) => {
+    //             const currTheme = session ? termTheme[session.sessionId] : null;
+    //             console.log(currTheme, this.theme, this.sessionRef.current, termTheme);
+    //             if (session && currTheme !== this.theme && this.sessionRef.current) {
+    //                 console.log("Updating term theme", currTheme);
+    //                 const reset = currTheme == null;
+    //                 const theme = currTheme ?? this.theme;
+    //                 const themeSrcEl = reset ? document.documentElement : this.sessionRef.current;
+    //                 const appReload = themeSrcEl == document.documentElement;
+    //                 GlobalModel.updateTermTheme(this.sessionRef.current, theme, themeSrcEl, appReload, reset);
+    //                 this.theme = currTheme;
+    //             }
+    //         }
+    //     );
+    // }
 
     componentWillUnmount() {
         if (this.themeReactionDisposer) {

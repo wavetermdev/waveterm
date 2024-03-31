@@ -7,10 +7,10 @@ function loadTheme(theme) {
     }
 }
 
-function getTermThemes(termThemes: string[]): DropdownItem[] {
+function getTermThemes(termThemes: string[], noneLabel = "Inherit"): DropdownItem[] {
     const tt: DropdownItem[] = [];
     tt.push({
-        label: "None",
+        label: noneLabel,
         value: null,
     });
     for (const themeName of termThemes) {
