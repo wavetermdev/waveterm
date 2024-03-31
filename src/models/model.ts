@@ -245,31 +245,33 @@ class Model {
 
     updateTermTheme(element: HTMLElement, themeFileName: string, appReload: boolean, reset: boolean) {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
-        return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
-            .then((resp) => resp.json())
-            .then((themeVars) => {
-                Object.keys(themeVars).forEach((key) => {
-                    if (reset) {
-                        this.resetStyleVar(element, `--term-${key}`);
-                    } else {
-                        this.resetStyleVar(element, `--term-${key}`);
-                        this.setStyleVar(element, `--term-${key}`, themeVars[key]);
-                    }
-                });
-            })
-            .then(() => {
-                mobx.action(() => {
-                    // this.termThemeSrcEl.set(termThemeSrcEl);
-                    if (appReload) {
-                        this.bumpRenderVersion();
-                    } else {
-                        this.bumpTermRenderVersion();
-                    }
-                })();
-            })
-            .catch((error) => {
-                console.error("error applying theme:", error);
-            });
+        return (
+            fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+                .then((resp) => resp.json())
+                .then((themeVars) => {
+                    Object.keys(themeVars).forEach((key) => {
+                        if (reset) {
+                            this.resetStyleVar(element, `--term-${key}`);
+                        } else {
+                            this.resetStyleVar(element, `--term-${key}`);
+                            this.setStyleVar(element, `--term-${key}`, themeVars[key]);
+                        }
+                    });
+                })
+                // .then(() => {
+                //     mobx.action(() => {
+                //         // this.termThemeSrcEl.set(termThemeSrcEl);
+                //         if (appReload) {
+                //             this.bumpRenderVersion();
+                //         } else {
+                //             this.bumpTermRenderVersion();
+                //         }
+                //     })();
+                // })
+                .catch((error) => {
+                    console.error("error applying theme:", error);
+                })
+        );
     }
 
     initSystemKeybindings() {
@@ -1314,14 +1316,13 @@ class Model {
             const globaltt = newTermTheme["global"] ?? null;
             const reset = globaltt == null;
             const fglobaltt = globaltt ?? this.currGlobalTermTheme;
-            this.updateTermTheme(el, fglobaltt, appReload, reset);
-            // rtn.then(() => {
-            //     if (globaltt != null) {
-            //         const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
-            //         console.log("termThemeSrcEl============", termThemeSrcEl);
-            //         this.termThemeSrcEl.set(termThemeSrcEl);
-            //     }
-            // });
+            console.log("appReload", appReload);
+            const rtn = this.updateTermTheme(el, fglobaltt, appReload, reset);
+            rtn.then(() => {
+                if (el == termThemeSrcEl) {
+                    this.bumpRenderVersion();
+                }
+            });
             this.currGlobalTermTheme = globaltt;
         }
     }

@@ -115,6 +115,8 @@ class WorkspaceView extends React.Component<{}, {}> {
                     const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, appReload, reset);
                     rtn.then(() => {
                         GlobalModel.termThemeSrcEl.set(themeSrcEl);
+                    }).then(() => {
+                        GlobalModel.bumpTermRenderVersion();
                     });
                     this.theme = currTheme;
                 }
