@@ -103,7 +103,6 @@ class WorkspaceView extends React.Component<{}, {}> {
             },
             ({ termTheme, session }) => {
                 const currTheme = session ? termTheme[session.sessionId] : null;
-                console.log(currTheme, this.theme, this.sessionRef.current, termTheme);
                 if (session && currTheme !== this.theme && this.sessionRef.current) {
                     const reset = currTheme == null;
                     const theme = currTheme ?? this.theme;
