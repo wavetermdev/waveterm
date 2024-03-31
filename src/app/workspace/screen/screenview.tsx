@@ -40,13 +40,14 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     sidebarShowing: OV<boolean> = mobx.observable.box(false, { name: "screenview-sidebarShowing" });
     sidebarShowingTimeoutId: any = null;
     theme: string;
+    themeReactionDisposer: mobx.IReactionDisposer;
 
     constructor(props: any) {
         super(props);
         this.handleResize_debounced = debounce(100, this.handleResize.bind(this));
     }
 
-    componentDidMount(): void {
+    componentDidMount() {
         let { screen } = this.props;
         let elem = this.screenViewRef.current;
         if (elem != null) {
@@ -59,9 +60,11 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         if (hasSidebar) {
             mobx.action(() => this.sidebarShowing.set(true))();
         }
+
+        this.setupThemeReaction();
     }
 
-    componentDidUpdate(): void {
+    componentDidUpdate() {
         let { screen } = this.props;
         let viewOpts = screen.viewOpts.get();
         let hasSidebar = viewOpts?.sidebar?.open;
@@ -79,13 +82,93 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             }
             mobx.action(() => this.sidebarShowing.set(false))();
         }
+
+        this.setupThemeReaction();
     }
 
-    componentWillUnmount(): void {
+    setupThemeReaction() {
+        if (this.themeReactionDisposer) {
+            this.themeReactionDisposer();
+        }
+
+        this.themeReactionDisposer = mobx.reaction(
+            () => {
+                return {
+                    termTheme: GlobalModel.getTermTheme(),
+                    screen: this.props.screen,
+                    session: GlobalModel.getActiveSession(),
+                };
+            },
+            ({ termTheme, screen, session }) => {
+                const currTheme = screen ? termTheme[screen.screenId] : null;
+                if (screen && currTheme !== this.theme && this.screenViewRef.current) {
+                    const reset = currTheme == null;
+                    const theme = currTheme ?? this.theme;
+                    const sessionEl = document.querySelector(
+                        `.session-view[data-sessionid="${session.sessionId}"]`
+                    ) as HTMLElement;
+                    const themeSrcEl = reset ? sessionEl : this.screenViewRef.current;
+                    const rtn = GlobalModel.updateTermTheme(this.screenViewRef.current, theme, reset);
+                    rtn.then(() => {
+                        GlobalModel.termThemeSrcEl.set(themeSrcEl);
+                    }).then(() => {
+                        GlobalModel.bumpTermRenderVersion();
+                    });
+                    this.theme = currTheme;
+                }
+            }
+        );
+    }
+
+    componentWillUnmount() {
         if (this.rszObs != null) {
             this.rszObs.disconnect();
         }
+        if (this.themeReactionDisposer) {
+            this.themeReactionDisposer();
+        }
     }
+
+    // componentDidMount(): void {
+    //     let { screen } = this.props;
+    //     let elem = this.screenViewRef.current;
+    //     if (elem != null) {
+    //         this.rszObs = new ResizeObserver(this.handleResize_debounced);
+    //         this.rszObs.observe(elem);
+    //         this.handleResize();
+    //     }
+    //     let viewOpts = screen.viewOpts.get();
+    //     let hasSidebar = viewOpts?.sidebar?.open;
+    //     if (hasSidebar) {
+    //         mobx.action(() => this.sidebarShowing.set(true))();
+    //     }
+    // }
+
+    // componentDidUpdate(): void {
+    //     let { screen } = this.props;
+    //     let viewOpts = screen.viewOpts.get();
+    //     let hasSidebar = viewOpts?.sidebar?.open;
+    //     if (hasSidebar && !this.sidebarShowing.get()) {
+    //         this.sidebarShowingTimeoutId = setTimeout(() => {
+    //             mobx.action(() => {
+    //                 this.sidebarShowingTimeoutId = null;
+    //                 this.sidebarShowing.set(true);
+    //             })();
+    //         }, 500);
+    //     } else if (!hasSidebar) {
+    //         if (this.sidebarShowingTimeoutId != null) {
+    //             clearTimeout(this.sidebarShowingTimeoutId);
+    //             this.sidebarShowingTimeoutId = null;
+    //         }
+    //         mobx.action(() => this.sidebarShowing.set(false))();
+    //     }
+    // }
+
+    // componentWillUnmount(): void {
+    //     if (this.rszObs != null) {
+    //         this.rszObs.disconnect();
+    //     }
+    // }
 
     handleResize() {
         let elem = this.screenViewRef.current;

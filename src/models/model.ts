@@ -258,7 +258,7 @@ class Model {
                 });
             })
             .catch((error) => {
-                console.error("error applying theme:", error);
+                console.error(`error applying theme: ${themeFileName}`, error);
             });
     }
 
@@ -1292,16 +1292,17 @@ class Model {
             const el = document.documentElement;
             const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
             const appReload = el == termThemeSrcEl;
-            const globaltt = newTermTheme["global"] ?? null;
-            const reset = globaltt == null;
-            const fglobaltt = globaltt ?? this.currGlobalTermTheme;
-            const rtn = this.updateTermTheme(el, fglobaltt, reset);
-            rtn.then(() => {
-                if (appReload && ttUpdated) {
-                    this.bumpRenderVersion();
-                }
-            });
-            this.currGlobalTermTheme = globaltt;
+            const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
+            const reset = newTermTheme["global"] == null;
+            if (globaltt) {
+                const rtn = this.updateTermTheme(el, globaltt, reset);
+                rtn.then(() => {
+                    if (appReload && ttUpdated) {
+                        this.bumpRenderVersion();
+                    }
+                });
+                this.currGlobalTermTheme = globaltt;
+            }
         }
     }
 
@@ -1320,7 +1321,6 @@ class Model {
     }
 
     getTermThemeSrcEl(newTermTheme) {
-        console.log(this.activeMainView.get(), "this.activeMainView.get()");
         for (const key in newTermTheme) {
             let el = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
             if (!el) {
