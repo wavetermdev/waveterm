@@ -111,8 +111,7 @@ class WorkspaceView extends React.Component<{}, {}> {
                     const themeSrcEl = reset ? document.documentElement : this.sessionRef.current;
                     console.log("Updating term theme", currTheme, themeSrcEl);
 
-                    const appReload = themeSrcEl == document.documentElement;
-                    const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, appReload, reset);
+                    const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, reset);
                     rtn.then(() => {
                         GlobalModel.termThemeSrcEl.set(themeSrcEl);
                     }).then(() => {
@@ -123,28 +122,6 @@ class WorkspaceView extends React.Component<{}, {}> {
             }
         );
     }
-
-    // componentDidUpdate() {
-    //     // We have to put this here because this.sessionRef.current is sometimes not mounted yet in componentDidMount
-    //     this.themeReactionDisposer = mobx.reaction(
-    //         () => {
-    //             return { termTheme: GlobalModel.getTermTheme(), session: GlobalModel.getActiveSession() };
-    //         },
-    //         ({ termTheme, session }) => {
-    //             const currTheme = session ? termTheme[session.sessionId] : null;
-    //             console.log(currTheme, this.theme, this.sessionRef.current, termTheme);
-    //             if (session && currTheme !== this.theme && this.sessionRef.current) {
-    //                 console.log("Updating term theme", currTheme);
-    //                 const reset = currTheme == null;
-    //                 const theme = currTheme ?? this.theme;
-    //                 const themeSrcEl = reset ? document.documentElement : this.sessionRef.current;
-    //                 const appReload = themeSrcEl == document.documentElement;
-    //                 GlobalModel.updateTermTheme(this.sessionRef.current, theme, themeSrcEl, appReload, reset);
-    //                 this.theme = currTheme;
-    //             }
-    //         }
-    //     );
-    // }
 
     componentWillUnmount() {
         if (this.themeReactionDisposer) {

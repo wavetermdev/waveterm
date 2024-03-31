@@ -243,35 +243,23 @@ class Model {
             });
     }
 
-    updateTermTheme(element: HTMLElement, themeFileName: string, appReload: boolean, reset: boolean) {
+    updateTermTheme(element: HTMLElement, themeFileName: string, reset: boolean) {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
-        return (
-            fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
-                .then((resp) => resp.json())
-                .then((themeVars) => {
-                    Object.keys(themeVars).forEach((key) => {
-                        if (reset) {
-                            this.resetStyleVar(element, `--term-${key}`);
-                        } else {
-                            this.resetStyleVar(element, `--term-${key}`);
-                            this.setStyleVar(element, `--term-${key}`, themeVars[key]);
-                        }
-                    });
-                })
-                // .then(() => {
-                //     mobx.action(() => {
-                //         // this.termThemeSrcEl.set(termThemeSrcEl);
-                //         if (appReload) {
-                //             this.bumpRenderVersion();
-                //         } else {
-                //             this.bumpTermRenderVersion();
-                //         }
-                //     })();
-                // })
-                .catch((error) => {
-                    console.error("error applying theme:", error);
-                })
-        );
+        return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => resp.json())
+            .then((themeVars) => {
+                Object.keys(themeVars).forEach((key) => {
+                    if (reset) {
+                        this.resetStyleVar(element, `--term-${key}`);
+                    } else {
+                        this.resetStyleVar(element, `--term-${key}`);
+                        this.setStyleVar(element, `--term-${key}`, themeVars[key]);
+                    }
+                });
+            })
+            .catch((error) => {
+                console.error("error applying theme:", error);
+            });
     }
 
     initSystemKeybindings() {
@@ -1276,7 +1264,7 @@ class Model {
         const themeUpdated = newTheme != this.getTheme();
         const oldTermTheme = this.getTermTheme();
         const newTermTheme = clientData?.feopts?.termtheme;
-        const ttUpdated = this.nonGlobalTermThemeUpdated(newTermTheme, oldTermTheme);
+        const ttUpdated = this.termThemeUpdated(newTermTheme, oldTermTheme);
 
         mobx.action(() => {
             this.clientData.set(clientData);
@@ -1298,17 +1286,8 @@ class Model {
             loadTheme(newTheme);
             this.bumpRenderVersion();
         }
-
-        const test = this.nonGlobalTermThemeUpdated(newTermTheme, oldTermTheme);
-        console.log("test=================", test, Object.keys(newTermTheme).length, Object.keys(oldTermTheme).length);
-
         // Only for global terminal theme. For session and screen terminal theme,
         // they are handled in worksacpeview and screenview respectively
-        // TODO:
-        //  1. newTermTheme should be the only condition below
-        //  2. termThemeSrcEl should be set separately below
-        //  3. Remove setting of termThemeSrcEl in updateTermTheme
-        //  4. Create function the deterines the termThemeSrcEl
         if (newTermTheme) {
             const el = document.documentElement;
             const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
@@ -1317,9 +1296,9 @@ class Model {
             const reset = globaltt == null;
             const fglobaltt = globaltt ?? this.currGlobalTermTheme;
             console.log("appReload", appReload);
-            const rtn = this.updateTermTheme(el, fglobaltt, appReload, reset);
+            const rtn = this.updateTermTheme(el, fglobaltt, reset);
             rtn.then(() => {
-                if (el == termThemeSrcEl) {
+                if (appReload && ttUpdated) {
                     this.bumpRenderVersion();
                 }
             });
@@ -1344,19 +1323,13 @@ class Model {
         return false;
     }
 
-    nonGlobalTermThemeUpdated(newTermTheme, oldTermTheme) {
+    termThemeUpdated(newTermTheme, oldTermTheme) {
         for (const key in oldTermTheme) {
-            if (key == "global") {
-                continue;
-            }
             if (!(key in newTermTheme)) {
                 return true;
             }
         }
         for (const key in newTermTheme) {
-            if (key == "global") {
-                continue;
-            }
             if (!oldTermTheme[key] || oldTermTheme[key] !== newTermTheme[key]) {
                 return true;
             }
