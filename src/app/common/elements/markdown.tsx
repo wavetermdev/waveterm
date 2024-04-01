@@ -39,18 +39,9 @@ class CodeBlockMarkdown extends React.Component<{ children: React.ReactNode; cod
     }
 
     render() {
-        let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
-        let inputModel = GlobalModel.inputModel;
-        clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
-            inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
-        };
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (
-            <pre
-                ref={this.blockRef}
-                className={cn({ selected: selected })}
-                onClick={(event) => clickHandler(event, this.blockIndex)}
-            >
+            <pre ref={this.blockRef} className={cn({ selected: selected })}>
                 {this.props.children}
             </pre>
         );
