@@ -254,6 +254,7 @@ class AIChat extends React.Component<{}, {}> {
             .computed(() => {
                 return (
                     this.isFocused.get() ||
+                    GlobalModel.inputModel.hasFocus() ||
                     (GlobalModel.getActiveScreen().getFocusType() == "input" &&
                         GlobalModel.activeMainView.get() == "session")
                 );
