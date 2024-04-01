@@ -250,11 +250,18 @@ class AIChat extends React.Component<{}, {}> {
         const textAreaPadding = 2 * 0.5 * termFontSize;
         let textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines + textAreaPadding;
         let textAreaInnerHeight = this.textAreaNumLines.get() * textAreaLineHeight + textAreaPadding;
-        let isFocused = this.isFocused.get();
-
+        let renderKeybindings = mobx
+            .computed(() => {
+                return (
+                    this.isFocused.get() ||
+                    (GlobalModel.getActiveScreen().getFocusType() == "input" &&
+                        GlobalModel.activeMainView.get() == "session")
+                );
+            })
+            .get();
         return (
             <div className="cmd-aichat">
-                <If condition={isFocused}>
+                <If condition={renderKeybindings}>
                     <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
                 </If>
                 <div className="cmdinput-titlebar">

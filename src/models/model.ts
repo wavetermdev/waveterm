@@ -755,7 +755,6 @@ class Model {
     }
 
     onMetaArrowDown(): void {
-        console.log("meta arrow down?");
         GlobalCommandRunner.screenSelectLine("+1");
     }
 
@@ -768,7 +767,6 @@ class Model {
     }
 
     onSwitchSessionCmd(digit: number) {
-        console.log("switching to ", digit);
         GlobalCommandRunner.switchSession(String(digit));
     }
 

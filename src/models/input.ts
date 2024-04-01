@@ -32,6 +32,7 @@ class InputModel {
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
+    codeSelectUuid: string;
 
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat",
@@ -80,6 +81,7 @@ class InputModel {
             this.codeSelectSelectedIndex.set(-1);
             this.codeSelectBlockRefArray = [];
         })();
+        this.codeSelectUuid = "";
     }
 
     setInputMode(inputMode: null | "comment" | "global"): void {
@@ -522,6 +524,7 @@ class InputModel {
     }
 
     setAIChatFocus() {
+        console.log("setting ai chat focus");
         if (this.aiChatTextAreaRef?.current != null) {
             this.aiChatTextAreaRef.current.focus();
         }
@@ -540,8 +543,12 @@ class InputModel {
         }
     }
 
-    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>): number {
+    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>, uuid: string): number {
         let rtn = -1;
+        if (uuid != this.codeSelectUuid) {
+            this.codeSelectUuid = uuid;
+            this.codeSelectBlockRefArray = [];
+        }
         rtn = this.codeSelectBlockRefArray.length;
         this.codeSelectBlockRefArray.push(blockRef);
         return rtn;
