@@ -32,7 +32,7 @@ import { RotateIcon } from "../common/icons/icons";
 const DebugHeightProblems = false;
 const MinLine = 0;
 const MaxLine = 1000;
-let heightLog = {};
+const heightLog = {};
 (window as any).heightLog = heightLog;
 (window as any).findHeightProblems = function () {
     for (const linenum in heightLog) {
