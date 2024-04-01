@@ -97,6 +97,9 @@ class WorkspaceView extends React.Component<{}, {}> {
             this.themeReactionDisposer();
         }
 
+        // This handles session and screen-level terminal theming.
+        // Ideally, screen-level theming should be handled in the inner-level component, but
+        // the frequent mounting and unmounting of the screen view make it really difficult to work.
         this.themeReactionDisposer = mobx.reaction(
             () => {
                 return {

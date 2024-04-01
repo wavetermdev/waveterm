@@ -1287,7 +1287,7 @@ class Model {
             this.bumpRenderVersion();
         }
         // Only for global terminal theme. For session and screen terminal theme,
-        // they are handled in worksacpeview and screenview respectively
+        // they are handled in workspace view.
         if (newTermTheme) {
             const el = document.documentElement;
             const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
