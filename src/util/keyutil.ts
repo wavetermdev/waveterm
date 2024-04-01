@@ -383,7 +383,6 @@ class KeybindManager {
         for (let index = 0; index < keybindsArray.length; index++) {
             let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
-                console.log("keybinding is equal: ", curKeybind.keybinding, keybinding, curKeybind.domain, domain);
                 return true;
             }
         }
