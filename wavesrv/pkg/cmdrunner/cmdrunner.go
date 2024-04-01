@@ -336,6 +336,12 @@ func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		}
 		return nil, fmt.Errorf("invalid command '/%s', no handler", cmdName)
 	}
+	if pk.EphemeralOpts != nil {
+		log.Printf("[HandleCommand] ephemeral opts in %v command: %v\n", metaCmd, pk.EphemeralOpts)
+		if metaCmd == "run" {
+			log.Printf("[HandleCommand] ephemeral run command args: %v\n", pk.Args)
+		}
+	}
 	return entry.Fn(ctx, pk)
 }
 
@@ -618,6 +624,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 		newPk.RawStr = pk.RawStr
 		newPk.UIContext = pk.UIContext
 		newPk.Interactive = pk.Interactive
+		newPk.EphemeralOpts = pk.EphemeralOpts
 		evalDepth := getEvalDepth(ctx)
 		ctxWithDepth := context.WithValue(ctx, depthContextKey, evalDepth+1)
 		return EvalCommand(ctxWithDepth, newPk)
@@ -628,6 +635,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenWaveUUID())
 	runPacket.UsePty = true
+	runPacket.EphemeralOpts = pk.EphemeralOpts
 	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
@@ -735,6 +743,10 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	ctxWithHistory := context.WithValue(ctx, historyContextKey, &historyContext)
 	var update scbus.UpdatePacket
 	newPk, rtnErr := EvalMetaCommand(ctxWithHistory, pk)
+
+	if newPk.EphemeralOpts != nil {
+		log.Printf("ephemeral opts in eval command: %v\n", newPk.EphemeralOpts)
+	}
 	if rtnErr == nil {
 		update, rtnErr = HandleCommand(ctxWithHistory, newPk)
 	} else {
@@ -750,7 +762,8 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	}
 	var hasModelUpdate bool
 	var modelUpdate *scbus.ModelUpdatePacketType
-	if update == nil {
+	if update == nil && newPk.EphemeralOpts == nil {
+		// We don't want to serve an update if we are processing an ephemeral command
 		hasModelUpdate = true
 		modelUpdate = scbus.MakeUpdatePacket()
 		update = modelUpdate

@@ -373,6 +373,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 	rtnPk.UIContext = origPk.UIContext
 	rtnPk.RawStr = origPk.RawStr
 	rtnPk.Interactive = origPk.Interactive
+	rtnPk.EphemeralOpts = origPk.EphemeralOpts
 	for key, val := range origPk.Kwargs {
 		rtnPk.Kwargs[key] = val
 	}

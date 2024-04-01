@@ -729,7 +729,7 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, err)
 		return
 	}
-	log.Printf("Ephemeral command completed successfully\n")
+	log.Printf("Ephemeral command handled successfully\n")
 	// No error occurred, so we can write the response to the client
 	w.Header().Set(ContentTypeHeaderKey, ContentTypeText)
 	w.WriteHeader(200)
