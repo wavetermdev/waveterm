@@ -55,8 +55,6 @@ class TerminalKeybindings extends React.Component<{ termWrap: any; lineid: strin
             termWrap.terminal.scrollLines(10);
             return true;
         });
-
-        // termWrap.terminal.theme = getThemeFromCSSVars(document.querySelector("window-view"));
     }
 
     unregisterKeybindings() {
@@ -94,8 +92,6 @@ class TerminalRenderer extends React.Component<{
     }
 
     componentDidMount() {
-        // console.log("blown away terminal ??????????????????");
-
         this.componentDidUpdate(null, null, null);
     }
 
@@ -114,9 +110,6 @@ class TerminalRenderer extends React.Component<{
     }
 
     componentDidUpdate(prevProps, prevState, snapshot: { height: number }): void {
-        // const themeTargetElem = GlobalModel.termThemeTargetElem.get();
-        // const x = getThemeFromCSSVars(GlobalModel.termThemeTargetElem.get());
-        // console.log("themeTargetElem++++++++", themeTargetElem, x);
         if (this.props.onHeightChange == null) {
             return;
         }
@@ -133,7 +126,6 @@ class TerminalRenderer extends React.Component<{
             this.props.onHeightChange();
             // console.log("term-render height change: ", line.linenum, snapshot.height, "=>", curHeight);
         }
-        // console.log("got here++++++++++++++++++++++");
         this.checkLoad();
     }
 
@@ -214,14 +206,6 @@ class TerminalRenderer extends React.Component<{
         let termLoaded = this.termLoaded.get();
         let lineid = line.lineid;
         let termWrap = screen.getTermWrap(lineid);
-        // console.log("++++++++++++++++++", termWrap);
-        // termWrap.terminal.theme = getThemeFromCSSVars(GlobalModel.termThemeTargetElem.get());
-
-        // console.log("terminal+++++++++++", this.props.termThemeSrcEl);
-
-        // console.log("re-rendered terminal renderer>>>>>>>>>>>>>>>>>>>", lineid);
-
-        console.log("terminal rerendered");
         return (
             <div
                 ref={this.elemRef}

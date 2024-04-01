@@ -38,9 +38,6 @@ type TermWrapOpts = {
 
 function getThemeFromCSSVars(themeSrcEl: HTMLElement): ITheme {
     const theme: ITheme = {};
-    // let el = document.querySelector('.session-view[data-sessionid="b684ec3f-5639-48a7-a120-3c38844a4f6a"]');
-    // console.log("el==========================", el);
-
     const tse = themeSrcEl ?? document.documentElement;
     let rootStyle = getComputedStyle(tse);
     theme.foreground = rootStyle.getPropertyValue("--term-foreground");
@@ -65,7 +62,6 @@ function getThemeFromCSSVars(themeSrcEl: HTMLElement): ITheme {
     theme.selectionInactiveBackground = rootStyle.getPropertyValue("--term-selection-background");
     theme.cursor = rootStyle.getPropertyValue("--term-selection-background");
     theme.cursorAccent = rootStyle.getPropertyValue("--term-cursor-accent");
-    // console.log("theme", theme);
     return theme;
 }
 
