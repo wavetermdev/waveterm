@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import { debounce } from "throttle-debounce";
 
 @mobxReact.observer
-class IncrementalRenderer extends React.PureComponent<
+class IncrementalRenderer extends React.Component<
     {
         rendererContainer: RendererContainerType;
         lineId: string;

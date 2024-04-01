@@ -26,7 +26,7 @@ import { MagicLayout } from "../../magiclayout";
 dayjs.extend(localizedFormat);
 
 @mobxReact.observer
-class ScreenView extends React.PureComponent<{ session: Session; screen: Screen }, {}> {
+class ScreenView extends React.Component<{ session: Session; screen: Screen }, {}> {
     rszObs: ResizeObserver;
     screenViewRef: React.RefObject<any> = React.createRef();
     width: OV<number> = mobx.observable.box(null, { name: "screenview-width" });
@@ -209,7 +209,7 @@ type SidebarLineContainerPropsType = {
 // note a new SidebarLineContainer will be made for every lineId (so lineId prop should never change)
 // implemented using a 'key' in parent
 @mobxReact.observer
-class SidebarLineContainer extends React.PureComponent<SidebarLineContainerPropsType, {}> {
+class SidebarLineContainer extends React.Component<SidebarLineContainerPropsType, {}> {
     container: ForwardLineContainer;
     overrideCollapsed: OV<boolean> = mobx.observable.box(false, { name: "overrideCollapsed" });
     visible: OV<boolean> = mobx.observable.box(true, { name: "visible" });
@@ -266,7 +266,7 @@ class SidebarLineContainer extends React.PureComponent<SidebarLineContainerProps
 }
 
 @mobxReact.observer
-class ScreenSidebar extends React.PureComponent<{ screen: Screen; width: string }, {}> {
+class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {}> {
     rszObs: ResizeObserver;
     sidebarSize: OV<WindowSize> = mobx.observable.box({ height: 0, width: 0 }, { name: "sidebarSize" });
     sidebarRef: React.RefObject<any> = React.createRef();
@@ -387,7 +387,7 @@ interface ScreenWindowViewProps {
 
 // screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.PureComponent<ScreenWindowViewProps, {}> {
+class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
     @mobx.observable props_: ScreenWindowViewProps;
     rszObs: ResizeObserver;
     windowViewRef: React.RefObject<any>;
