@@ -1290,16 +1290,13 @@ class Model {
         // they are handled in workspace view.
         if (newTermTheme) {
             const el = document.documentElement;
-            const termThemeSrcEl = this.getTermThemeSrcEl(newTermTheme);
-            const appReload = el == termThemeSrcEl;
             const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
             const reset = newTermTheme["global"] == null;
-            if (globaltt && termThemeSrcEl == document.documentElement) {
-                console.log("here>>>>>>>>>>>>>>>>>>>>>>>>", termThemeSrcEl, document.documentElement, newTermTheme);
+            if (globaltt) {
                 const rtn = this.updateTermTheme(el, globaltt, reset);
                 rtn.then(() => {
-                    if (appReload && ttUpdated) {
-                        this.bumpRenderVersion();
+                    if (ttUpdated) {
+                        this.bumpTermRenderVersion();
                     }
                 });
                 this.currGlobalTermTheme = globaltt;
@@ -1319,23 +1316,6 @@ class Model {
             }
         }
         return false;
-    }
-
-    getTermThemeSrcEl(newTermTheme) {
-        let lastNonNullEl = null;
-        for (const key in newTermTheme) {
-            let currentEl = document.querySelector(`.screen-tab[data-screenid="${key}"]`) as HTMLElement;
-            if (!currentEl) {
-                currentEl = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
-            }
-            if (currentEl) {
-                lastNonNullEl = currentEl;
-            }
-        }
-        if (lastNonNullEl) {
-            return lastNonNullEl;
-        }
-        return document.documentElement;
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
