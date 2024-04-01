@@ -32,11 +32,8 @@ class InputModel {
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
-<<<<<<< Updated upstream
     codeSelectUuid: string;
-=======
     inputPopUpType: OV<string> = mobx.observable.box("none");
->>>>>>> Stashed changes
 
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat",
