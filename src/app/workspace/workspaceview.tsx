@@ -99,21 +99,34 @@ class WorkspaceView extends React.Component<{}, {}> {
 
         this.themeReactionDisposer = mobx.reaction(
             () => {
-                return { termTheme: GlobalModel.getTermTheme(), session: GlobalModel.getActiveSession() };
+                return {
+                    termTheme: GlobalModel.getTermTheme(),
+                    session: GlobalModel.getActiveSession(),
+                    screen: GlobalModel.getActiveScreen(),
+                };
             },
-            ({ termTheme, session }) => {
-                const currTheme = session ? termTheme[session.sessionId] : null;
+            ({ termTheme, session, screen }) => {
+                let currTheme = termTheme[session.sessionId];
+                if (termTheme[screen.screenId]) {
+                    currTheme = termTheme[screen.screenId];
+                }
+                console.log("currTheme+++++++++++++++++", currTheme);
                 if (session && currTheme !== this.theme && this.sessionRef.current) {
                     const reset = currTheme == null;
                     const theme = currTheme ?? this.theme;
                     const themeSrcEl = reset ? document.documentElement : this.sessionRef.current;
+                    console.log("themeSrcEl", themeSrcEl);
+                    // const themeSrcEl = GlobalModel.getTermThemeSrcEl(termTheme);
+                    console.log("session", session);
                     const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, reset);
+                    // if (themeSrcEl == this.sessionRef.current) {
                     rtn.then(() => {
                         GlobalModel.termThemeSrcEl.set(themeSrcEl);
                     }).then(() => {
                         GlobalModel.bumpTermRenderVersion();
                     });
                     this.theme = currTheme;
+                    // }
                 }
             }
         );
@@ -144,6 +157,8 @@ class WorkspaceView extends React.Component<{}, {}> {
         const isHidden = GlobalModel.activeMainView.get() != "session";
         const mainSidebarModel = GlobalModel.mainSidebarModel;
         const termRenderVersion = GlobalModel.termRenderVersion.get();
+        const screen = GlobalModel.getActiveScreen();
+        console.log("screen=======", screen.screenId);
 
         return (
             <div

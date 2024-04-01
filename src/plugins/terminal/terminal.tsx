@@ -221,6 +221,7 @@ class TerminalRenderer extends React.Component<{
 
         // console.log("re-rendered terminal renderer>>>>>>>>>>>>>>>>>>>", lineid);
 
+        console.log("terminal rerendered");
         return (
             <div
                 ref={this.elemRef}

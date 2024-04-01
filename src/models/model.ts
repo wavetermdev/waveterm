@@ -1294,7 +1294,8 @@ class Model {
             const appReload = el == termThemeSrcEl;
             const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
             const reset = newTermTheme["global"] == null;
-            if (globaltt) {
+            if (globaltt && termThemeSrcEl == document.documentElement) {
+                console.log("here>>>>>>>>>>>>>>>>>>>>>>>>", termThemeSrcEl, document.documentElement, newTermTheme);
                 const rtn = this.updateTermTheme(el, globaltt, reset);
                 rtn.then(() => {
                     if (appReload && ttUpdated) {
@@ -1321,14 +1322,18 @@ class Model {
     }
 
     getTermThemeSrcEl(newTermTheme) {
+        let lastNonNullEl = null;
         for (const key in newTermTheme) {
-            let el = document.querySelector(`.screen-view[data-screenid="${key}"]`) as HTMLElement;
-            if (!el) {
-                el = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
+            let currentEl = document.querySelector(`.screen-tab[data-screenid="${key}"]`) as HTMLElement;
+            if (!currentEl) {
+                currentEl = document.querySelector(`.session-view[data-sessionid="${key}"]`) as HTMLElement;
             }
-            if (el) {
-                return el;
+            if (currentEl) {
+                lastNonNullEl = currentEl;
             }
+        }
+        if (lastNonNullEl) {
+            return lastNonNullEl;
         }
         return document.documentElement;
     }

@@ -21,10 +21,62 @@ class ScreenTab extends React.Component<
     tabRef = React.createRef<HTMLUListElement>();
     dragEndTimeout = null;
     scrollIntoViewTimeout = null;
+    theme: string;
+    themeReactionDisposer: mobx.IReactionDisposer;
+
+    componentDidMount() {
+        // this.setupThemeReaction();
+    }
+
+    componentDidUpdate() {
+        // this.setupThemeReaction();
+    }
+
+    setupThemeReaction() {
+        if (this.themeReactionDisposer) {
+            this.themeReactionDisposer();
+        }
+
+        this.themeReactionDisposer = mobx.reaction(
+            () => {
+                return {
+                    termTheme: GlobalModel.getTermTheme(),
+                    screen: this.props.screen,
+                    session: GlobalModel.getActiveSession(),
+                };
+            },
+            ({ termTheme, screen, session }) => {
+                const currTheme = screen ? termTheme[screen.screenId] : null;
+                if (screen && currTheme !== this.theme && this.tabRef.current) {
+                    console.log("screen", screen, this.tabRef.current, currTheme, this.theme);
+
+                    const reset = currTheme == null;
+                    const theme = currTheme ?? this.theme;
+                    const sessionEl = document.querySelector(
+                        `.session-view[data-sessionid="${session.sessionId}"]`
+                    ) as HTMLElement;
+                    // const themeSrcEl = reset ? sessionEl : this.tabRef.current;
+                    const themeSrcEl = GlobalModel.getTermThemeSrcEl(termTheme);
+                    const rtn = GlobalModel.updateTermTheme(this.tabRef.current, theme, reset);
+                    // if (themeSrcEl == this.tabRef.current) {
+                    rtn.then(() => {
+                        GlobalModel.termThemeSrcEl.set(themeSrcEl);
+                    }).then(() => {
+                        // GlobalModel.bumpTermRenderVersion();
+                    });
+                    this.theme = currTheme;
+                    // }
+                }
+            }
+        );
+    }
 
     componentWillUnmount() {
         if (this.scrollIntoViewTimeout) {
             clearTimeout(this.dragEndTimeout);
+        }
+        if (this.themeReactionDisposer) {
+            this.themeReactionDisposer();
         }
     }
 

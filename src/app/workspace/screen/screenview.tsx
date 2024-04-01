@@ -61,7 +61,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             mobx.action(() => this.sidebarShowing.set(true))();
         }
 
-        this.setupThemeReaction();
+        // this.setupThemeReaction();
     }
 
     componentDidUpdate() {
@@ -83,7 +83,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             mobx.action(() => this.sidebarShowing.set(false))();
         }
 
-        this.setupThemeReaction();
+        // this.setupThemeReaction();
     }
 
     setupThemeReaction() {
