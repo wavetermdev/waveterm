@@ -11,7 +11,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, WaveKeyboardEvent } from "@/util/keyutil";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -103,6 +103,7 @@ class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput },
 
 class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
     lastTab: boolean;
+    curPress: string;
 
     componentDidMount() {
         if (GlobalModel.activeMainView != "session") {
@@ -115,6 +116,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:autocomplete", (waveEvent) => {
             let lastTab = this.lastTab;
             this.lastTab = true;
+            this.curPress = "tab";
             let curLine = inputModel.getCurLine();
             if (lastTab) {
                 GlobalModel.submitCommand(
@@ -183,10 +185,12 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:previousHistoryItem", (waveEvent) => {
+            this.curPress = "historyupdown";
             inputObject.controlP();
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:nextHistoryItem", (waveEvent) => {
+            this.curPress = "historyupdown";
             inputObject.controlN();
             return true;
         });
@@ -195,18 +199,22 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectAbove", (waveEvent) => {
-            inputObject.arrowUpPressed();
-            return true;
+            this.curPress = "historyupdown";
+            let rtn = inputObject.arrowUpPressed();
+            return rtn;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectBelow", (waveEvent) => {
-            inputObject.arrowDownPressed();
-            return true;
+            this.curPress = "historyupdown";
+            let rtn = inputObject.arrowDownPressed();
+            return rtn;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageAbove", (waveEvent) => {
+            this.curPress = "historyupdown";
             inputObject.scrollPage(true);
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageBelow", (waveEvent) => {
+            this.curPress = "historyupdown";
             inputObject.scrollPage(false);
             return true;
         });
@@ -215,9 +223,13 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerDomainCallback("cmdinput", (waveEvent) => {
-            if (!keybindManager.checkKeyPressed(waveEvent, "cmdinput:autocomplete")) {
+            if (this.curPress != "tab") {
                 this.lastTab = false;
             }
+            if (this.curPress != "historyupdown") {
+                inputObject.lastHistoryUpDown = false;
+            }
+            this.curPress = "";
             return false;
         });
     }

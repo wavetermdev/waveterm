@@ -597,6 +597,7 @@ declare global {
         };
         globalshortcut: string;
         globalshortcutenabled: boolean;
+        webgl: boolean;
     };
 
     type ReleaseInfoType = {

@@ -246,6 +246,7 @@ type ClientOptsType struct {
 	RightSidebar          *SidebarValueType `json:"rightsidebar,omitempty"`
 	GlobalShortcut        string            `json:"globalshortcut,omitempty"`
 	GlobalShortcutEnabled bool              `json:"globalshortcutenabled,omitempty"`
+	WebGL                 bool              `json:"webgl,omitempty"`
 }
 
 type FeOptsType struct {
@@ -536,18 +537,6 @@ func (opts *TermOpts) Scan(val interface{}) error {
 
 func (opts TermOpts) Value() (driver.Value, error) {
 	return quickValueJson(opts)
-}
-
-type ShellStatePtr struct {
-	BaseHash    string
-	DiffHashArr []string
-}
-
-func (ssptr *ShellStatePtr) IsEmpty() bool {
-	if ssptr == nil || ssptr.BaseHash == "" {
-		return true
-	}
-	return false
 }
 
 type RemoteInstance struct {
@@ -863,6 +852,7 @@ func (r *RemoteType) GetName() string {
 	return r.RemoteCanonicalName
 }
 
+>>>>>>> main
 func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["remoteid"] = r.RemoteId
