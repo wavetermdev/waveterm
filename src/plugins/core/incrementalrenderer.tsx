@@ -40,7 +40,7 @@ class IncrementalRenderer extends React.PureComponent<
             this.props.onHeightChange();
         }
         if (this.wrapperDivRef.current != null) {
-            let height = this.wrapperDivRef.current.offsetHeight;
+            const height = this.wrapperDivRef.current.offsetHeight;
             this.updateHeight_debounced(height);
         }
     }
