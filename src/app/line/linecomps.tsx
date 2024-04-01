@@ -8,7 +8,7 @@ import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { If } from "tsx-control-statements/components";
+import { Choose, If, Otherwise, When } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, Cmd } from "@/models";
 import { termHeightFromRows } from "@/util/textmeasure";
 import cn from "classnames";
@@ -76,7 +76,7 @@ function getIsHidePrompt(line: LineType): boolean {
 }
 
 @mobxReact.observer
-class LineActions extends React.Component<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
+class LineActions extends React.PureComponent<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
     @boundMethod
     clickStar() {
         const { line } = this.props;
@@ -226,7 +226,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
 }
 
 @mobxReact.observer
-class LineHeader extends React.Component<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
+class LineHeader extends React.PureComponent<{ screen: LineContainerType; line: LineType; cmd: Cmd }, {}> {
     renderCmdText(cmd: Cmd): any {
         if (cmd == null) {
             return (
@@ -299,7 +299,7 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
 }
 
 @mobxReact.observer
-class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRightClick?: (e: any) => void }, {}> {
+class SmallLineAvatar extends React.PureComponent<{ line: LineType; cmd: Cmd; onRightClick?: (e: any) => void }, {}> {
     render() {
         const { line, cmd } = this.props;
         const lineNumStr = (line.linenumtemp ? "~" : "#") + String(line.linenum);
@@ -344,7 +344,7 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
 }
 
 @mobxReact.observer
-class RtnState extends React.Component<{ cmd: Cmd; line: LineType }> {
+class RtnState extends React.PureComponent<{ cmd: Cmd; line: LineType }> {
     rtnStateDiff: mobx.IObservableValue<string> = mobx.observable.box(null, {
         name: "linecmd-rtn-state-diff",
     });
@@ -438,7 +438,7 @@ class RtnState extends React.Component<{ cmd: Cmd; line: LineType }> {
 }
 
 @mobxReact.observer
-class LineCmd extends React.Component<
+class LineCmd extends React.PureComponent<
     {
         screen: LineContainerType;
         line: LineType;
@@ -488,7 +488,7 @@ class LineCmd extends React.Component<
         if (elem != null) {
             curHeight = elem.offsetHeight;
         }
-        let linenum = line.linenum;
+        const linenum = line.linenum;
         if (DebugHeightProblems && linenum >= MinLine && linenum <= MaxLine) {
             heightLog[linenum] = heightLog[linenum] || {};
             heightLog[linenum].heightArr = heightLog[linenum].heightArr || [];
@@ -685,7 +685,7 @@ class LineCmd extends React.Component<
         const isFocused = mobx
             .computed(
                 () => {
-                    let screenFocusType = screen.getFocusType();
+                    const screenFocusType = screen.getFocusType();
                     return isPhysicalFocused && screenFocusType == "cmd";
                 },
                 { name: "computed-isFocused" }
@@ -694,7 +694,7 @@ class LineCmd extends React.Component<
         const shouldCmdFocus = mobx
             .computed(
                 () => {
-                    let screenFocusType = screen.getFocusType();
+                    const screenFocusType = screen.getFocusType();
                     return isSelected && screenFocusType == "cmd";
                 },
                 { name: "computed-shouldCmdFocus" }
@@ -725,16 +725,9 @@ class LineCmd extends React.Component<
             rendererPlugin = PluginModel.getRendererPluginByName(line.renderer);
         }
         const rendererType = lineutil.getRendererType(line);
-        const hidePrompt = rendererPlugin?.hidePrompt;
         const termFontSize = GlobalModel.getTermFontSize();
         const containerType = screen.getContainerType();
         const isMinimized = line.linestate["wave:min"] && containerType == appconst.LineContainer_Main;
-        const lhv: LineChromeHeightVars = {
-            numCmdLines: lineutil.countCmdLines(cmd.getCmdStr()),
-            zeroHeight: isMinimized,
-            hasLine2: !hidePrompt,
-        };
-        const chromeHeight = textmeasure.calcLineChromeHeight(GlobalModel.lineHeightEnv, lhv);
         return (
             <div
                 className={mainDivCn}
@@ -749,55 +742,64 @@ class LineCmd extends React.Component<
                 </If>
                 <LineActions screen={screen} line={line} cmd={cmd} />
                 <LineHeader screen={screen} line={line} cmd={cmd} />
-                <If condition={!isMinimized && isInSidebar}>
-                    <div className="sidebar-message" style={{ fontSize: termFontSize }}>
-                        &nbsp;&nbsp;showing in sidebar =&gt;
-                    </div>
-                </If>
-                <If condition={!isMinimized && !isInSidebar}>
-                    <ErrorBoundary plugin={rendererPlugin?.name} lineContext={lineutil.getRendererContext(line)}>
-                        <If condition={rendererPlugin == null && !isNoneRenderer}>
-                            <TerminalRenderer
-                                screen={screen}
-                                line={line}
-                                width={width}
-                                staticRender={staticRender}
-                                visible={visible}
-                                onHeightChange={this.handleHeightChange}
-                                collapsed={false}
-                            />
-                        </If>
-                        <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
-                            <SimpleBlobRenderer
-                                rendererContainer={screen}
-                                lineId={line.lineid}
-                                plugin={rendererPlugin}
-                                onHeightChange={this.handleHeightChange}
-                                initParams={this.makeRendererModelInitializeParams()}
-                                scrollToBringIntoViewport={this.scrollToBringIntoViewport}
-                                isSelected={isSelected}
-                                shouldFocus={shouldCmdFocus}
-                            />
-                        </If>
-                        <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
-                            <IncrementalRenderer
-                                rendererContainer={screen}
-                                lineId={line.lineid}
-                                plugin={rendererPlugin}
-                                onHeightChange={this.handleHeightChange}
-                                initParams={this.makeRendererModelInitializeParams()}
-                                isSelected={isSelected}
-                            />
-                        </If>
-                    </ErrorBoundary>
-                    <If condition={isRtnState}>
-                        <RtnState cmd={cmd} line={line} />
-                    </If>
-                    <If condition={isSelected && !isFocused && rendererType == "terminal"}>
-                        <div className="cmd-hints">
-                            <div className="hint-item color-nohover-white">focus line ({renderCmdText("L")})</div>
-                        </div>
-                    </If>
+                <If condition={!isMinimized}>
+                    <Choose>
+                        <When condition={isInSidebar}>
+                            <div className="sidebar-message" style={{ fontSize: termFontSize }}>
+                                &nbsp;&nbsp;showing in sidebar =&gt;
+                            </div>
+                        </When>
+                        <Otherwise>
+                            <ErrorBoundary
+                                plugin={rendererPlugin?.name}
+                                lineContext={lineutil.getRendererContext(line)}
+                            >
+                                <If condition={rendererPlugin == null && !isNoneRenderer}>
+                                    <TerminalRenderer
+                                        screen={screen}
+                                        line={line}
+                                        width={width}
+                                        staticRender={staticRender}
+                                        visible={visible}
+                                        onHeightChange={this.handleHeightChange}
+                                        collapsed={false}
+                                    />
+                                </If>
+                                <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
+                                    <SimpleBlobRenderer
+                                        rendererContainer={screen}
+                                        lineId={line.lineid}
+                                        plugin={rendererPlugin}
+                                        onHeightChange={this.handleHeightChange}
+                                        initParams={this.makeRendererModelInitializeParams()}
+                                        scrollToBringIntoViewport={this.scrollToBringIntoViewport}
+                                        isSelected={isSelected}
+                                        shouldFocus={shouldCmdFocus}
+                                    />
+                                </If>
+                                <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
+                                    <IncrementalRenderer
+                                        rendererContainer={screen}
+                                        lineId={line.lineid}
+                                        plugin={rendererPlugin}
+                                        onHeightChange={this.handleHeightChange}
+                                        initParams={this.makeRendererModelInitializeParams()}
+                                        isSelected={isSelected}
+                                    />
+                                </If>
+                            </ErrorBoundary>
+                            <If condition={isRtnState}>
+                                <RtnState cmd={cmd} line={line} />
+                            </If>
+                            <If condition={isSelected && !isFocused && rendererType == "terminal"}>
+                                <div className="cmd-hints">
+                                    <div className="hint-item color-nohover-white">
+                                        focus line ({renderCmdText("L")})
+                                    </div>
+                                </div>
+                            </If>
+                        </Otherwise>
+                    </Choose>
                 </If>
             </div>
         );
@@ -805,7 +807,7 @@ class LineCmd extends React.Component<
 }
 
 @mobxReact.observer
-class Line extends React.Component<
+class Line extends React.PureComponent<
     {
         screen: LineContainerType;
         line: LineType;
@@ -836,7 +838,7 @@ class Line extends React.Component<
 }
 
 @mobxReact.observer
-class LineText extends React.Component<
+class LineText extends React.PureComponent<
     {
         screen: LineContainerType;
         line: LineType;
@@ -875,11 +877,6 @@ class LineText extends React.Component<
         const isSelected = mobx
             .computed(() => screen.getSelectedLine() == line.linenum, {
                 name: "computed-isSelected",
-            })
-            .get();
-        const isFocused = mobx
-            .computed(() => screen.getFocusType() == "cmd", {
-                name: "computed-isFocused",
             })
             .get();
         const mainClass = cn("line", "line-text", "focus-parent", { selected: isSelected });
