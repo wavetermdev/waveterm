@@ -35,6 +35,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/server"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/bufferedpipe"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
@@ -712,15 +713,15 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// These need to be defined here so we can use the methods of the EphemeralWriteCloser that are not part of io.WriteCloser
-	var stdoutWriter, stderrWriter *ephemeral.EphemeralWriteCloser
+	var stdoutPipe, stderrPipe *bufferedpipe.BufferedPipe
 
 	if commandPk.EphemeralOpts.ExpectsResponse {
 		log.Printf("EphemeralOpts.ExpectsResponse is true, creating new EphemeralWriteCloser\n")
-		// create a new io.WriteCloser that will close the writer when the response is done
-		stdoutWriter = ephemeral.NewEphemeralWriteCloser(nil)
-		commandPk.EphemeralOpts.StdoutWriter = stdoutWriter
-		stderrWriter = ephemeral.NewEphemeralWriteCloser(nil)
-		commandPk.EphemeralOpts.StderrWriter = stderrWriter
+		// Create new buffered pipes for stdout and stderr
+		stdoutPipe = bufferedpipe.NewBufferedPipe(ephemeral.DefaultEphemeralTimeoutDuration)
+		commandPk.EphemeralOpts.StdoutWriter = stdoutPipe
+		stderrPipe = bufferedpipe.NewBufferedPipe(ephemeral.DefaultEphemeralTimeoutDuration)
+		commandPk.EphemeralOpts.StderrWriter = stderrPipe
 	}
 
 	update, err := cmdrunner.HandleCommand(r.Context(), &commandPk)
@@ -728,8 +729,8 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error occurred while running ephemeral command: %v\n", err)
 		if commandPk.EphemeralOpts.ExpectsResponse {
 			log.Printf("Closing ephemeral writers\n")
-			stdoutWriter.Close()
-			stderrWriter.Close()
+			stdoutPipe.Close()
+			stderrPipe.Close()
 		}
 		WriteJsonError(w, err)
 		return
@@ -741,14 +742,14 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	// No error occurred, so we can write the response to the client
 	if commandPk.EphemeralOpts.ExpectsResponse {
 		// If the client expects a response, we need to send the urls of the stdout and stderr outputs
-		stdoutUrl, err := stdoutWriter.GetOutputUrl()
+		stdoutUrl, err := stdoutPipe.GetOutputUrl()
 		if err != nil {
 			log.Printf("Error occurred while getting stdout url: %v\n", err)
 			WriteJsonError(w, err)
 			return
 		}
 		resp.StdoutUrl = stdoutUrl
-		stderrUrl, err := stderrWriter.GetOutputUrl()
+		stderrUrl, err := stderrPipe.GetOutputUrl()
 		if err != nil {
 			log.Printf("Error occurred while getting stderr url: %v\n", err)
 			WriteJsonError(w, err)
@@ -1104,7 +1105,7 @@ func main() {
 	gr.HandleFunc("/api/get-screen-lines", AuthKeyWrap(HandleGetScreenLines))
 	gr.HandleFunc("/api/run-command", AuthKeyWrap(HandleRunCommand)).Methods("POST")
 	gr.HandleFunc("/api/run-ephemeral-command", AuthKeyWrap(HandleRunEphemeralCommand)).Methods("POST")
-	gr.HandleFunc(ephemeral.EphemeralOutputBaseUrl, AuthKeyWrapAllowHmac(ephemeral.HandleGetEphemeralOutput))
+	gr.HandleFunc(bufferedpipe.BufferedPipeGetterUrl, AuthKeyWrapAllowHmac(bufferedpipe.HandleGetBufferedPipeOutput))
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
