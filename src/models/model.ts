@@ -36,6 +36,7 @@ import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
 import * as util from "@/util/util";
+import { url } from "node:inspector";
 
 type SWLinePtr = {
     line: LineType;
@@ -1316,7 +1317,37 @@ class Model {
         return this.submitCommandPacket(pk, interactive);
     }
 
-    submitEphemeralCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
+    getSingleEphemeralCommandOutput(url: URL): Promise<string> {
+        return fetch(url, { method: "get", headers: this.getFetchHeaders() })
+            .then((resp) => resp.text())
+            .catch((err) => {
+                this.errorHandler("getting ephemeral command output", err, true);
+                return "";
+            });
+    }
+
+    async getEphemeralCommandOutput(
+        ephemeralCommandResponse: EphemeralCommandResponsePacketType
+    ): Promise<EphemeralCommandOutputType> {
+        let stdout = "";
+        let stderr = "";
+        if (ephemeralCommandResponse.stdouturl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stdouturl);
+            console.log("stdouturl", url);
+            stdout = await this.getSingleEphemeralCommandOutput(url);
+        }
+        if (ephemeralCommandResponse.stderrurl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stderrurl);
+            console.log("stderrurl", url);
+            stderr = await this.getSingleEphemeralCommandOutput(url);
+        }
+        return { stdout: stdout, stderr: stderr };
+    }
+
+    submitEphemeralCommandPacket(
+        cmdPk: FeCmdPacketType,
+        interactive: boolean
+    ): Promise<EphemeralCommandResponsePacketType> {
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
@@ -1333,16 +1364,17 @@ class Model {
             headers: fetchHeaders,
         })
             .then(async (resp) => {
-                console.log("ephemeral command response", await resp.text());
-                return { success: true };
+                const data = await handleJsonFetchResponse(url, resp);
+                if (data.success) {
+                    return data.data as EphemeralCommandResponsePacketType;
+                } else {
+                    console.log("error running ephemeral command", data);
+                    return {};
+                }
             })
             .catch((err) => {
-                this.errorHandler("calling run-command", err, interactive);
-                let errMessage = "error running command";
-                if (err != null && !isBlank(err.message)) {
-                    errMessage = err.message;
-                }
-                return { success: false, error: errMessage };
+                this.errorHandler("calling run-ephemeral-command", err, interactive);
+                return {};
             });
         return prtn;
     }
@@ -1354,7 +1386,7 @@ class Model {
         kwargs: Record<string, string>,
         interactive: boolean,
         ephemeralopts?: EphemeralCmdOptsType
-    ): Promise<CommandRtnType> {
+    ): Promise<EphemeralCommandResponsePacketType> {
         const pk: FeCmdPacketType = {
             type: "fecmd",
             metacmd: metaCmd,

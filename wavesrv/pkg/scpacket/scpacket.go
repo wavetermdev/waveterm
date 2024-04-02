@@ -18,7 +18,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 )
 
-var RemoteNameRe = regexp.MustCompile("^\\*?[a-zA-Z0-9_-]+$")
+var RemoteNameRe = regexp.MustCompile(`^\*?[a-zA-Z0-9_-]+$`)
 
 type RemotePtrType struct {
 	OwnerId  string `json:"ownerid"`
@@ -85,6 +85,7 @@ const WatchScreenPacketStr = "watchscreen"
 const FeInputPacketStr = "feinput"
 const RemoteInputPacketStr = "remoteinput"
 const CmdInputTextPacketStr = "cmdinputtext"
+const EphemeralCommandResponsePacketStr = "ephemeralcommandresponse"
 
 type FeCommandPacketType struct {
 	Type          string                      `json:"type"`
@@ -122,6 +123,19 @@ func (pk *FeCommandPacketType) GetRawStr() string {
 	}
 	return cmd + " " + strings.Join(args, " ")
 }
+
+type EphemeralCommandResponsePacketType struct {
+	Type      string `json:"type"`
+	StdoutUrl string `json:"stdouturl"`
+	StderrUrl string `json:"stderrurl"`
+	Error     string `json:"error,omitempty"`
+}
+
+func (*EphemeralCommandResponsePacketType) GetType() string {
+	return EphemeralCommandResponsePacketStr
+}
+
+var _ PacketType = &EphemeralCommandResponsePacketType{}
 
 type UIContextType struct {
 	SessionId string          `json:"sessionid"`

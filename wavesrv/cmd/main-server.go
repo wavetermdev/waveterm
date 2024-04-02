@@ -258,30 +258,30 @@ func HandleRtnState(w http.ResponseWriter, r *http.Request) {
 		}
 		log.Printf("[error] in handlertnstate: %v\n", r)
 		debug.PrintStack()
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf(ErrorPanic, r)))
 	}()
 	qvals := r.URL.Query()
 	screenId := qvals.Get("screenid")
 	lineId := qvals.Get("lineid")
 	if screenId == "" || lineId == "" {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("must specify screenid and lineid"))
 		return
 	}
 	if _, err := uuid.Parse(screenId); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf(ErrorInvalidScreenId, err)))
 		return
 	}
 	if _, err := uuid.Parse(lineId); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf(ErrorInvalidLineId, err)))
 		return
 	}
 	data, err := rtnstate.GetRtnStateDiff(r.Context(), screenId, lineId)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("cannot get rtnstate diff: %v", err)))
 		return
 	}
@@ -293,18 +293,18 @@ func HandleRemotePty(w http.ResponseWriter, r *http.Request) {
 	qvals := r.URL.Query()
 	remoteId := qvals.Get("remoteid")
 	if remoteId == "" {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("must specify remoteid"))
 		return
 	}
 	if _, err := uuid.Parse(remoteId); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("invalid remoteid: %v", err)))
 		return
 	}
 	realOffset, data, err := remote.ReadRemotePty(r.Context(), remoteId)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("error reading ptyout file: %v", err)))
 		return
 	}
@@ -318,17 +318,17 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 	screenId := qvals.Get("screenid")
 	lineId := qvals.Get("lineid")
 	if screenId == "" || lineId == "" {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("must specify screenid and lineid"))
 		return
 	}
 	if _, err := uuid.Parse(screenId); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf(ErrorInvalidScreenId, err)))
 		return
 	}
 	if _, err := uuid.Parse(lineId); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf(ErrorInvalidLineId, err)))
 		return
 	}
@@ -338,7 +338,7 @@ func HandleGetPtyOut(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(html.EscapeString(fmt.Sprintf("error reading ptyout file: %v", err))))
 		return
 	}
@@ -513,49 +513,49 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 		contentType = "application/octet-stream"
 	}
 	if screenId == "" || lineId == "" {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("must specify sessionid, screenid, and lineid"))
 		return
 	}
 	if path == "" {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("must specify path"))
 		return
 	}
 	if _, err := uuid.Parse(screenId); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf(ErrorInvalidScreenId, err)))
 		return
 	}
 	if _, err := uuid.Parse(lineId); err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf(ErrorInvalidLineId, err)))
 		return
 	}
 	if !ContentTypeHeaderValidRe.MatchString(contentType) {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("invalid mimetype specified"))
 		return
 	}
 	_, cmd, err := sstore.GetLineCmdByLineId(r.Context(), screenId, lineId)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("invalid lineid: %v", err)))
 		return
 	}
 	if cmd == nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("invalid line, no cmd"))
 		return
 	}
 	if cmd.Remote.RemoteId == "" {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("invalid line, no remote"))
 		return
 	}
 	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
 	if msh == nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("invalid line, cannot resolve remote"))
 		return
 	}
@@ -575,25 +575,25 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	iter, err := msh.StreamFile(r.Context(), streamPk)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("error trying to stream file: %v", err)))
 		return
 	}
 	defer iter.Close()
 	respIf, err := iter.Next(r.Context())
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("error getting streamfile response: %v", err)))
 		return
 	}
 	resp, ok := respIf.(*packet.StreamFileResponseType)
 	if !ok {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("bad response packet type: %T", respIf)))
 		return
 	}
 	if resp.Error != "" {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("error response: %s", resp.Error)))
 		return
 	}
@@ -625,7 +625,7 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 
 func WriteJsonError(w http.ResponseWriter, errVal error) {
 	w.Header().Set(ContentTypeHeaderKey, ContentTypeJson)
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	errMap := make(map[string]interface{})
 	errMap["error"] = errVal.Error()
 	errorCode := base.GetErrorCode(errVal)
@@ -648,7 +648,7 @@ func WriteJsonSuccess(w http.ResponseWriter, data interface{}) {
 		WriteJsonError(w, err)
 		return
 	}
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	w.Write(barr)
 }
 
@@ -711,49 +711,59 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		commandPk.EphemeralOpts.TimeoutMs = ephemeral.DefaultEphemeralTimeoutMs
 	}
 
-	// This needs to be defined here so we can use the methods of the EphemeralWriteCloser that are not part of io.WriteCloser
-	var ewc *ephemeral.EphemeralWriteCloser
+	// These need to be defined here so we can use the methods of the EphemeralWriteCloser that are not part of io.WriteCloser
+	var stdoutWriter, stderrWriter *ephemeral.EphemeralWriteCloser
 
 	if commandPk.EphemeralOpts.ExpectsResponse {
 		log.Printf("EphemeralOpts.ExpectsResponse is true, creating new EphemeralWriteCloser\n")
 		// create a new io.WriteCloser that will close the writer when the response is done
-		ewc = ephemeral.NewEphemeralWriteCloser(w)
-		commandPk.EphemeralOpts.ResponseWriter = ewc
+		stdoutWriter = ephemeral.NewEphemeralWriteCloser(nil)
+		commandPk.EphemeralOpts.StdoutWriter = stdoutWriter
+		stderrWriter = ephemeral.NewEphemeralWriteCloser(nil)
+		commandPk.EphemeralOpts.StderrWriter = stderrWriter
 	}
 
 	update, err := cmdrunner.HandleCommand(r.Context(), &commandPk)
 	if err != nil {
 		log.Printf("Error occurred while running ephemeral command: %v\n", err)
-		if ewc != nil {
-			ewc.Close()
+		if commandPk.EphemeralOpts.ExpectsResponse {
+			log.Printf("Closing ephemeral writers\n")
+			stdoutWriter.Close()
+			stderrWriter.Close()
 		}
 		WriteJsonError(w, err)
 		return
 	}
 	log.Printf("Ephemeral command handled successfully\n")
+
+	resp := scpacket.EphemeralCommandResponsePacketType{}
+
 	// No error occurred, so we can write the response to the client
-	w.Header().Set(ContentTypeHeaderKey, ContentTypeText)
-	w.WriteHeader(200)
-	if ewc != nil {
-		ewc.Ready()
-		log.Printf("Ephemeral writer ready\n")
+	if commandPk.EphemeralOpts.ExpectsResponse {
+		// If the client expects a response, we need to send the urls of the stdout and stderr outputs
+		stdoutUrl, err := stdoutWriter.GetOutputUrl()
+		if err != nil {
+			log.Printf("Error occurred while getting stdout url: %v\n", err)
+			WriteJsonError(w, err)
+			return
+		}
+		resp.StdoutUrl = stdoutUrl
+		stderrUrl, err := stderrWriter.GetOutputUrl()
+		if err != nil {
+			log.Printf("Error occurred while getting stderr url: %v\n", err)
+			WriteJsonError(w, err)
+			return
+		}
+		resp.StderrUrl = stderrUrl
 	}
+
+	WriteJsonSuccess(w, resp)
 
 	// With ephemeral commands, we can't send the update back directly, so we need to send it through the update bus
 	if update != nil {
 		log.Printf("Sending update to main update bus\n")
 		update.Clean()
 		scbus.MainUpdateBus.DoUpdate(update)
-	}
-
-	if ewc != nil {
-		log.Printf("Waiting for ephemeral command to be closed\n")
-		// Wait for the writer to be closed
-		if ewc.WaitWithTimeout(time.Duration(commandPk.EphemeralOpts.TimeoutMs) * time.Millisecond) {
-			log.Printf("Ephemeral command timed out")
-		} else {
-			log.Printf("Ephemeral command completed")
-		}
 	}
 }
 
@@ -762,24 +772,24 @@ func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler 
 		configPath := r.URL.Path
 		configAbsPath, err := filepath.Abs(configPath)
 		if err != nil {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("error getting absolute path: %v", err)))
 			return
 		}
 		configBaseDir := path.Join(scbase.GetWaveHomeDir(), "config")
 		configFullPath := path.Join(scbase.GetWaveHomeDir(), configAbsPath)
 		if !strings.HasPrefix(configFullPath, configBaseDir) {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("error: path is not in config folder")))
 			return
 		}
 		fstat, err := os.Stat(configFullPath)
 		if errors.Is(err, fs.ErrNotExist) {
-			w.WriteHeader(404)
+			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte(fmt.Sprintf("file not found: %v", configAbsPath)))
 			return
 		} else if err != nil {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(fmt.Sprintf("file stat err: %v", err)))
 			return
 		}
@@ -796,12 +806,12 @@ func AuthKeyMiddleWare(next http.Handler) http.Handler {
 		reqAuthKey := r.Header.Get("X-AuthKey")
 		w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 		if reqAuthKey == "" {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("no x-authkey header"))
 			return
 		}
 		if reqAuthKey != scbase.WaveAuthKey {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
 		}
@@ -816,19 +826,19 @@ func AuthKeyWrapAllowHmac(fn WebFnType) WebFnType {
 			// try hmac
 			qvals := r.URL.Query()
 			if !qvals.Has("hmac") {
-				w.WriteHeader(500)
+				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte("no x-authkey header"))
 				return
 			}
 			hmacOk, err := promptenc.ValidateUrlHmac([]byte(scbase.WaveAuthKey), r.URL.Path, qvals)
 			if err != nil || !hmacOk {
-				w.WriteHeader(500)
+				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(fmt.Sprintf("error validating hmac")))
 				return
 			}
 			// fallthrough (hmac is valid)
 		} else if reqAuthKey != scbase.WaveAuthKey {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
 		}
@@ -842,12 +852,12 @@ func AuthKeyWrap(fn WebFnType) WebFnType {
 	return func(w http.ResponseWriter, r *http.Request) {
 		reqAuthKey := r.Header.Get("X-AuthKey")
 		if reqAuthKey == "" {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("no x-authkey header"))
 			return
 		}
 		if reqAuthKey != scbase.WaveAuthKey {
-			w.WriteHeader(500)
+			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("x-authkey header is invalid"))
 			return
 		}
@@ -977,13 +987,13 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
 	dirFile, err := os.Open(configFullPath)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("error opening specified dir: %v", err)))
 		return
 	}
 	entries, err := dirFile.Readdir(0)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("error getting files: %v", err)))
 		return
 	}
@@ -995,11 +1005,11 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	dirListJson, err := json.Marshal(files)
 	if err != nil {
-		w.WriteHeader(500)
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("json err: %v", err)))
 		return
 	}
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(dirListJson)
 }
@@ -1094,6 +1104,7 @@ func main() {
 	gr.HandleFunc("/api/get-screen-lines", AuthKeyWrap(HandleGetScreenLines))
 	gr.HandleFunc("/api/run-command", AuthKeyWrap(HandleRunCommand)).Methods("POST")
 	gr.HandleFunc("/api/run-ephemeral-command", AuthKeyWrap(HandleRunEphemeralCommand)).Methods("POST")
+	gr.HandleFunc(ephemeral.EphemeralOutputBaseUrl, AuthKeyWrapAllowHmac(ephemeral.HandleGetEphemeralOutput))
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))

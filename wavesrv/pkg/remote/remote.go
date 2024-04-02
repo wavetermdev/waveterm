@@ -2365,9 +2365,10 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 	}
 
 	// Close the ephemeral response writer if it exists
-	if rct.EphemeralOpts != nil && rct.EphemeralOpts.ResponseWriter != nil {
-		log.Printf("closing ephemeral response writer\n")
-		defer rct.EphemeralOpts.ResponseWriter.Close()
+	if rct.EphemeralOpts != nil && rct.EphemeralOpts.ExpectsResponse {
+		log.Printf("closing ephemeral response writers\n")
+		defer rct.EphemeralOpts.StdoutWriter.Close()
+		defer rct.EphemeralOpts.StderrWriter.Close()
 	}
 
 	// ephemeral commands *do* update the remote state
@@ -2443,7 +2444,7 @@ func (msh *MShellProc) ResetDataPos(ck base.CommandKey) {
 }
 
 func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) {
-	log.Printf("handling data packet %s\n", dataPk.CK)
+	log.Printf("handling data packet ck: %s, fd: %v\n", dataPk.CK, dataPk.FdNum)
 	if rct == nil {
 		log.Printf("error handling data packet: no running cmd found %s\n", dataPk.CK)
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, fmt.Errorf("no running cmd found"))
@@ -2459,10 +2460,22 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 	}
 	if rct.EphemeralOpts != nil {
 		// Write to the response writer if it's set
-		if len(realData) > 0 && rct.EphemeralOpts.ResponseWriter != nil {
-			_, err := rct.EphemeralOpts.ResponseWriter.Write(realData)
-			if err != nil {
-				log.Printf("*error writing to ephemeral response writer: %v\n", err)
+		if len(realData) > 0 && rct.EphemeralOpts.ExpectsResponse {
+			switch dataPk.FdNum {
+			case 1:
+				_, err := rct.EphemeralOpts.StdoutWriter.Write(realData)
+				log.Printf("ephemeral stdout write %d bytes\n", len(realData))
+				if err != nil {
+					log.Printf("*error writing to ephemeral stdout writer: %v\n", err)
+				}
+			case 2:
+				_, err := rct.EphemeralOpts.StderrWriter.Write(realData)
+				log.Printf("ephemeral stderr write %d bytes\n", len(realData))
+				if err != nil {
+					log.Printf("*error writing to ephemeral stderr writer: %v\n", err)
+				}
+			default:
+				log.Printf("error handling data packet: invalid fdnum %d\n", dataPk.FdNum)
 			}
 		}
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)

@@ -797,6 +797,16 @@ declare global {
         error?: string;
     };
 
+    type EphemeralCommandOutputType = {
+        stdout: string;
+        stderr: string;
+    };
+
+    type EphemeralCommandResponsePacketType = {
+        stdouturl?: string;
+        stderrurl?: string;
+    };
+
     type LineHeightChangeCallbackType = (lineNum: number, newHeight: number, oldHeight: number) => void;
 
     type OpenAIPacketType = {
