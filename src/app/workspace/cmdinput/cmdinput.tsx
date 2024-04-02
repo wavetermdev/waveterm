@@ -17,6 +17,7 @@ import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "@/common/prompt/prompt";
 import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
+import * as util from "@/util/util";
 
 import "./cmdinput.less";
 
@@ -107,6 +108,24 @@ class CmdInput extends React.Component<{}, {}> {
         GlobalCommandRunner.resetShellState();
     }
 
+    getRemoteDisplayName(rptr: RemotePtrType): string {
+        if (rptr == null) {
+            return "(unknown)";
+        }
+        const remote = GlobalModel.getRemote(rptr.remoteid);
+        if (remote == null) {
+            return "(invalid)";
+        }
+        let remoteNamePart = "";
+        if (!util.isBlank(rptr.name)) {
+            remoteNamePart = "#" + rptr.name;
+        }
+        if (remote.remotealias) {
+            return remote.remotealias + remoteNamePart;
+        }
+        return remote.remotecanonicalname + remoteNamePart;
+    }
+
     render() {
         const model = GlobalModel;
         const inputModel = model.inputModel;
@@ -123,6 +142,9 @@ class CmdInput extends React.Component<{}, {}> {
             remote = GlobalModel.getRemote(ri.remoteid);
             feState = ri.festate;
         }
+        if (remote == null && rptr != null) {
+            remote = GlobalModel.getRemote(rptr.remoteid);
+        }
         feState = feState || {};
         const infoShow = inputModel.infoShow.get();
         const historyShow = !infoShow && inputModel.historyShow.get();
@@ -135,6 +157,19 @@ class CmdInput extends React.Component<{}, {}> {
         let numRunningLines = 0;
         if (win != null) {
             numRunningLines = mobx.computed(() => win.getRunningCmdLines().length).get();
+        }
+        let shellInitMsg: string = null;
+        let hidePrompt = false;
+        if (ri == null) {
+            let shellStr = "shell";
+            if (!util.isBlank(remote?.defaultshelltype)) {
+                shellStr = remote.defaultshelltype;
+            }
+            if (numRunningLines > 0) {
+                shellInitMsg = `initializing ${shellStr}...`;
+            } else {
+                hidePrompt = true;
+            }
         }
         return (
             <div
@@ -189,34 +224,44 @@ class CmdInput extends React.Component<{}, {}> {
                         &nbsp;is {remote.status}
                         <If condition={remote.status != "connecting"}>
                             <Button
-                                className="secondary small connect"
+                                className="primary outlined"
                                 onClick={() => this.clickConnectRemote(remote.remoteid)}
                             >
-                                connect now
+                                Connect Now
                             </Button>
                         </If>
                     </div>
                 </If>
                 <If condition={feState["invalidshellstate"]}>
                     <div className="remote-status-warning">
-                        WARNING:&nbsp; The shell state for this tab is invalid (
+                        The shell state for this tab is invalid (
                         <a target="_blank" href="https://docs.waveterm.dev/reference/faq">
                             see FAQ
                         </a>
                         ). Must reset to continue.
-                        <div className="button is-wave-green is-outlined is-small" onClick={this.clickResetState}>
-                            reset shell state
-                        </div>
+                        <Button className="primary outlined" onClick={this.clickResetState}>
+                            Reset Now
+                        </Button>
+                    </div>
+                </If>
+                <If condition={ri == null && numRunningLines == 0}>
+                    <div className="remote-status-warning">
+                        Shell is not initialized, must reset to continue.
+                        <Button className="primary outlined" onClick={this.clickResetState}>
+                            Reset Now
+                        </Button>
                     </div>
                 </If>
                 <div key="base-cmdinput" className="base-cmdinput">
-                    <div key="prompt" className="cmd-input-context">
-                        <div className="has-text-white">
-                            <span ref={this.promptRef}>
-                                <Prompt rptr={rptr} festate={feState} color={true} />
-                            </span>
+                    <If condition={!hidePrompt}>
+                        <div key="prompt" className="cmd-input-context">
+                            <div className="has-text-white">
+                                <span ref={this.promptRef}>
+                                    <Prompt rptr={rptr} festate={feState} color={true} shellInitMsg={shellInitMsg} />
+                                </span>
+                            </div>
                         </div>
-                    </div>
+                    </If>
                     <div
                         key="input"
                         className={cn(

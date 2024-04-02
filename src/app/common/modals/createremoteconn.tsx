@@ -107,15 +107,17 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                 this.model.setRecentConnAdded(true);
                 this.model.closeModal();
 
-                let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
-                crRtn.then((crcrtn) => {
-                    if (crcrtn.success) {
-                        return;
-                    }
-                    mobx.action(() => {
-                        this.errorStr.set(crcrtn.error);
-                    })();
-                });
+                if (GlobalModel.activeMainView.get() == "session") {
+                    let crRtn = GlobalCommandRunner.screenSetRemote(cname, true, true);
+                    crRtn.then((crcrtn) => {
+                        if (crcrtn.success) {
+                            return;
+                        }
+                        mobx.action(() => {
+                            this.errorStr.set(crcrtn.error);
+                        })();
+                    });
+                }
                 return;
             }
             mobx.action(() => {
@@ -361,7 +363,12 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.getErrorStr()}</div>
                     </If>
                 </div>
-                <Modal.Footer onCancel={this.model.closeModal} onOk={this.handleSubmitRemote} okLabel="Connect" />
+                <Modal.Footer
+                    onCancel={this.model.closeModal}
+                    onOk={this.handleSubmitRemote}
+                    okLabel="Connect"
+                    keybindings={true}
+                />
             </Modal>
         );
     }

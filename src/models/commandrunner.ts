@@ -94,6 +94,10 @@ class CommandRunner {
         return GlobalModel.submitCommand("line", "set", [lineArg], kwargs, false);
     }
 
+    ensureWorkspace() {
+        GlobalModel.submitCommand("session", "ensureone", null, { nohist: "1" }, true);
+    }
+
     createNewSession() {
         GlobalModel.submitCommand("session", "open", null, { nohist: "1" }, false);
     }
@@ -365,7 +369,7 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
-    setTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+    setTheme(theme: NativeThemeSource, interactive: boolean): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
             theme: theme,

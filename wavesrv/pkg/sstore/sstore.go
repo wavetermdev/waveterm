@@ -110,6 +110,7 @@ const (
 	SSHConfigSrcTypeImport = "sshconfig-import"
 )
 
+// TODO: move to webshare package once sstore code is more modular
 const (
 	ShareModeLocal = "local"
 	ShareModeWeb   = "web"
@@ -153,8 +154,6 @@ const (
 	UpdateType_CmdRtnState        = "cmd:rtnstate"
 	UpdateType_PtyPos             = "pty:pos"
 )
-
-const MaxTzNameLen = 50
 
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
@@ -233,56 +232,6 @@ type ClientWinSizeType struct {
 	FullScreen bool `json:"fullscreen,omitempty"`
 }
 
-type ActivityUpdate struct {
-	FgMinutes        int
-	ActiveMinutes    int
-	OpenMinutes      int
-	NumCommands      int
-	ClickShared      int
-	HistoryView      int
-	BookmarksView    int
-	NumConns         int
-	WebShareLimit    int
-	ReinitBashErrors int
-	ReinitZshErrors  int
-	BuildTime        string
-}
-
-type ActivityType struct {
-	Day           string        `json:"day"`
-	Uploaded      bool          `json:"-"`
-	TData         TelemetryData `json:"tdata"`
-	TzName        string        `json:"tzname"`
-	TzOffset      int           `json:"tzoffset"`
-	ClientVersion string        `json:"clientversion"`
-	ClientArch    string        `json:"clientarch"`
-	BuildTime     string        `json:"buildtime"`
-	DefaultShell  string        `json:"defaultshell"`
-	OSRelease     string        `json:"osrelease"`
-}
-
-type TelemetryData struct {
-	NumCommands      int `json:"numcommands"`
-	ActiveMinutes    int `json:"activeminutes"`
-	FgMinutes        int `json:"fgminutes"`
-	OpenMinutes      int `json:"openminutes"`
-	ClickShared      int `json:"clickshared,omitempty"`
-	HistoryView      int `json:"historyview,omitempty"`
-	BookmarksView    int `json:"bookmarksview,omitempty"`
-	NumConns         int `json:"numconns"`
-	WebShareLimit    int `json:"websharelimit,omitempty"`
-	ReinitBashErrors int `json:"reinitbasherrors,omitempty"`
-	ReinitZshErrors  int `json:"reinitzsherrors,omitempty"`
-}
-
-func (tdata TelemetryData) Value() (driver.Value, error) {
-	return quickValueJson(tdata)
-}
-
-func (tdata *TelemetryData) Scan(val interface{}) error {
-	return quickScanJson(tdata, val)
-}
-
 type SidebarValueType struct {
 	Collapsed bool `json:"collapsed"`
 	Width     int  `json:"width"`
@@ -297,6 +246,7 @@ type ClientOptsType struct {
 	RightSidebar          *SidebarValueType `json:"rightsidebar,omitempty"`
 	GlobalShortcut        string            `json:"globalshortcut,omitempty"`
 	GlobalShortcutEnabled bool              `json:"globalshortcutenabled,omitempty"`
+	WebGL                 bool              `json:"webgl,omitempty"`
 }
 
 type FeOptsType struct {
@@ -399,52 +349,6 @@ type SessionStatsType struct {
 	DiskStats          SessionDiskSizeType `json:"diskstats"`
 }
 
-func (h *HistoryItemType) ToMap() map[string]interface{} {
-	rtn := make(map[string]interface{})
-	rtn["historyid"] = h.HistoryId
-	rtn["ts"] = h.Ts
-	rtn["userid"] = h.UserId
-	rtn["sessionid"] = h.SessionId
-	rtn["screenid"] = h.ScreenId
-	rtn["lineid"] = h.LineId
-	rtn["linenum"] = h.LineNum
-	rtn["haderror"] = h.HadError
-	rtn["cmdstr"] = h.CmdStr
-	rtn["remoteownerid"] = h.Remote.OwnerId
-	rtn["remoteid"] = h.Remote.RemoteId
-	rtn["remotename"] = h.Remote.Name
-	rtn["ismetacmd"] = h.IsMetaCmd
-	rtn["exitcode"] = h.ExitCode
-	rtn["durationms"] = h.DurationMs
-	rtn["festate"] = quickJson(h.FeState)
-	rtn["tags"] = quickJson(h.Tags)
-	rtn["status"] = h.Status
-	return rtn
-}
-
-func (h *HistoryItemType) FromMap(m map[string]interface{}) bool {
-	quickSetStr(&h.HistoryId, m, "historyid")
-	quickSetInt64(&h.Ts, m, "ts")
-	quickSetStr(&h.UserId, m, "userid")
-	quickSetStr(&h.SessionId, m, "sessionid")
-	quickSetStr(&h.ScreenId, m, "screenid")
-	quickSetStr(&h.LineId, m, "lineid")
-	quickSetBool(&h.HadError, m, "haderror")
-	quickSetStr(&h.CmdStr, m, "cmdstr")
-	quickSetStr(&h.Remote.OwnerId, m, "remoteownerid")
-	quickSetStr(&h.Remote.RemoteId, m, "remoteid")
-	quickSetStr(&h.Remote.Name, m, "remotename")
-	quickSetBool(&h.IsMetaCmd, m, "ismetacmd")
-	quickSetStr(&h.HistoryNum, m, "historynum")
-	quickSetInt64(&h.LineNum, m, "linenum")
-	dbutil.QuickSetNullableInt64(&h.ExitCode, m, "exitcode")
-	dbutil.QuickSetNullableInt64(&h.DurationMs, m, "durationms")
-	quickSetJson(&h.FeState, m, "festate")
-	quickSetJson(&h.Tags, m, "tags")
-	quickSetStr(&h.Status, m, "status")
-	return true
-}
-
 type ScreenOptsType struct {
 	TabColor string `json:"tabcolor,omitempty"`
 	TabIcon  string `json:"tabicon,omitempty"`
@@ -473,6 +377,7 @@ type ScreenCreateOpts struct {
 	CopyRemote   bool
 	CopyCwd      bool
 	CopyEnv      bool
+	RtnScreenId  *string
 }
 
 func (sco ScreenCreateOpts) HasCopy() bool {
@@ -620,55 +525,6 @@ type ScreenAnchorType struct {
 	AnchorOffset int `json:"anchoroffset,omitempty"`
 }
 
-type HistoryItemType struct {
-	HistoryId  string          `json:"historyid"`
-	Ts         int64           `json:"ts"`
-	UserId     string          `json:"userid"`
-	SessionId  string          `json:"sessionid"`
-	ScreenId   string          `json:"screenid"`
-	LineId     string          `json:"lineid"`
-	HadError   bool            `json:"haderror"`
-	CmdStr     string          `json:"cmdstr"`
-	Remote     RemotePtrType   `json:"remote"`
-	IsMetaCmd  bool            `json:"ismetacmd"`
-	ExitCode   *int64          `json:"exitcode,omitempty"`
-	DurationMs *int64          `json:"durationms,omitempty"`
-	FeState    FeStateType     `json:"festate,omitempty"`
-	Tags       map[string]bool `json:"tags,omitempty"`
-	LineNum    int64           `json:"linenum" dbmap:"-"`
-	Status     string          `json:"status"`
-
-	// only for updates
-	Remove bool `json:"remove" dbmap:"-"`
-
-	// transient (string because of different history orderings)
-	HistoryNum string `json:"historynum" dbmap:"-"`
-}
-
-type HistoryQueryOpts struct {
-	Offset     int
-	MaxItems   int
-	FromTs     int64
-	SearchText string
-	SessionId  string
-	RemoteId   string
-	ScreenId   string
-	NoMeta     bool
-	RawOffset  int
-	FilterFn   func(*HistoryItemType) bool
-}
-
-type HistoryQueryResult struct {
-	MaxItems      int
-	Items         []*HistoryItemType
-	Offset        int // the offset shown to user
-	RawOffset     int // internal offset
-	HasMore       bool
-	NextRawOffset int // internal offset used by pager for next query
-
-	prevItems int // holds number of items skipped by RawOffset
-}
-
 type TermOpts struct {
 	Rows       int64 `json:"rows"`
 	Cols       int64 `json:"cols"`
@@ -682,18 +538,6 @@ func (opts *TermOpts) Scan(val interface{}) error {
 
 func (opts TermOpts) Value() (driver.Value, error) {
 	return quickValueJson(opts)
-}
-
-type ShellStatePtr struct {
-	BaseHash    string
-	DiffHashArr []string
-}
-
-func (ssptr *ShellStatePtr) IsEmpty() bool {
-	if ssptr == nil || ssptr.BaseHash == "" {
-		return true
-	}
-	return false
 }
 
 type RemoteInstance struct {
@@ -851,114 +695,6 @@ type OpenAIResponse struct {
 	Choices []OpenAIChoiceType `json:"choices,omitempty"`
 }
 
-type PlaybookType struct {
-	PlaybookId   string   `json:"playbookid"`
-	PlaybookName string   `json:"playbookname"`
-	Description  string   `json:"description"`
-	EntryIds     []string `json:"entryids"`
-
-	// this is not persisted to DB, just for transport to FE
-	Entries []*PlaybookEntry `json:"entries"`
-}
-
-func (p *PlaybookType) ToMap() map[string]interface{} {
-	rtn := make(map[string]interface{})
-	rtn["playbookid"] = p.PlaybookId
-	rtn["playbookname"] = p.PlaybookName
-	rtn["description"] = p.Description
-	rtn["entryids"] = quickJsonArr(p.EntryIds)
-	return rtn
-}
-
-func (p *PlaybookType) FromMap(m map[string]interface{}) bool {
-	quickSetStr(&p.PlaybookId, m, "playbookid")
-	quickSetStr(&p.PlaybookName, m, "playbookname")
-	quickSetStr(&p.Description, m, "description")
-	quickSetJsonArr(&p.Entries, m, "entries")
-	return true
-}
-
-// reorders p.Entries to match p.EntryIds
-func (p *PlaybookType) OrderEntries() {
-	if len(p.Entries) == 0 {
-		return
-	}
-	m := make(map[string]*PlaybookEntry)
-	for _, entry := range p.Entries {
-		m[entry.EntryId] = entry
-	}
-	newList := make([]*PlaybookEntry, 0, len(p.EntryIds))
-	for _, entryId := range p.EntryIds {
-		entry := m[entryId]
-		if entry != nil {
-			newList = append(newList, entry)
-		}
-	}
-	p.Entries = newList
-}
-
-// removes from p.EntryIds (not from p.Entries)
-func (p *PlaybookType) RemoveEntry(entryIdToRemove string) {
-	if len(p.EntryIds) == 0 {
-		return
-	}
-	newList := make([]string, 0, len(p.EntryIds)-1)
-	for _, entryId := range p.EntryIds {
-		if entryId == entryIdToRemove {
-			continue
-		}
-		newList = append(newList, entryId)
-	}
-	p.EntryIds = newList
-}
-
-type PlaybookEntry struct {
-	PlaybookId  string `json:"playbookid"`
-	EntryId     string `json:"entryid"`
-	Alias       string `json:"alias"`
-	CmdStr      string `json:"cmdstr"`
-	UpdatedTs   int64  `json:"updatedts"`
-	CreatedTs   int64  `json:"createdts"`
-	Description string `json:"description"`
-	Remove      bool   `json:"remove,omitempty"`
-}
-
-type BookmarkType struct {
-	BookmarkId  string   `json:"bookmarkid"`
-	CreatedTs   int64    `json:"createdts"`
-	CmdStr      string   `json:"cmdstr"`
-	Alias       string   `json:"alias,omitempty"`
-	Tags        []string `json:"tags"`
-	Description string   `json:"description"`
-	OrderIdx    int64    `json:"orderidx"`
-	Remove      bool     `json:"remove,omitempty"`
-}
-
-func (bm *BookmarkType) GetSimpleKey() string {
-	return bm.BookmarkId
-}
-
-func (bm *BookmarkType) ToMap() map[string]interface{} {
-	rtn := make(map[string]interface{})
-	rtn["bookmarkid"] = bm.BookmarkId
-	rtn["createdts"] = bm.CreatedTs
-	rtn["cmdstr"] = bm.CmdStr
-	rtn["alias"] = bm.Alias
-	rtn["description"] = bm.Description
-	rtn["tags"] = quickJsonArr(bm.Tags)
-	return rtn
-}
-
-func (bm *BookmarkType) FromMap(m map[string]interface{}) bool {
-	quickSetStr(&bm.BookmarkId, m, "bookmarkid")
-	quickSetInt64(&bm.CreatedTs, m, "createdts")
-	quickSetStr(&bm.Alias, m, "alias")
-	quickSetStr(&bm.CmdStr, m, "cmdstr")
-	quickSetStr(&bm.Description, m, "description")
-	quickSetJsonArr(&bm.Tags, m, "tags")
-	return true
-}
-
 type ResolveItem struct {
 	Name   string
 	Num    int
@@ -1015,7 +751,6 @@ type RemoteRuntimeState struct {
 	RemoteAlias         string            `json:"remotealias,omitempty"`
 	RemoteCanonicalName string            `json:"remotecanonicalname"`
 	RemoteVars          map[string]string `json:"remotevars"`
-	DefaultFeState      map[string]string `json:"defaultfestate"`
 	Status              string            `json:"status"`
 	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
 	CountdownActive     bool              `json:"countdownactive"`
@@ -1034,9 +769,9 @@ type RemoteRuntimeState struct {
 	MShellVersion       string            `json:"mshellversion"`
 	WaitingForPassword  bool              `json:"waitingforpassword,omitempty"`
 	Local               bool              `json:"local,omitempty"`
+	IsSudo              bool              `json:"issudo,omitempty"`
 	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
 	CanComplete         bool              `json:"cancomplete,omitempty"`
-	ActiveShells        []string          `json:"activeshells,omitempty"`
 	ShellPref           string            `json:"shellpref,omitempty"`
 	DefaultShellType    string            `json:"defaultshelltype,omitempty"`
 }
@@ -1119,27 +854,27 @@ func (r *RemoteType) GetName() string {
 }
 
 type CmdType struct {
-	ScreenId     string              `json:"screenid"`
-	LineId       string              `json:"lineid"`
-	Remote       RemotePtrType       `json:"remote"`
-	CmdStr       string              `json:"cmdstr"`
-	RawCmdStr    string              `json:"rawcmdstr"`
-	FeState      map[string]string   `json:"festate"`
-	StatePtr     ShellStatePtr       `json:"state"`
-	TermOpts     TermOpts            `json:"termopts"`
-	OrigTermOpts TermOpts            `json:"origtermopts"`
-	Status       string              `json:"status"`
-	CmdPid       int                 `json:"cmdpid"`
-	RemotePid    int                 `json:"remotepid"`
-	RestartTs    int64               `json:"restartts,omitempty"`
-	DoneTs       int64               `json:"donets"`
-	ExitCode     int                 `json:"exitcode"`
-	DurationMs   int                 `json:"durationms"`
-	RunOut       []packet.PacketType `json:"runout,omitempty"`
-	RtnState     bool                `json:"rtnstate,omitempty"`
-	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
-	Remove       bool                `json:"remove,omitempty"`    // not persisted to DB
-	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
+	ScreenId     string               `json:"screenid"`
+	LineId       string               `json:"lineid"`
+	Remote       RemotePtrType        `json:"remote"`
+	CmdStr       string               `json:"cmdstr"`
+	RawCmdStr    string               `json:"rawcmdstr"`
+	FeState      map[string]string    `json:"festate"`
+	StatePtr     packet.ShellStatePtr `json:"state"`
+	TermOpts     TermOpts             `json:"termopts"`
+	OrigTermOpts TermOpts             `json:"origtermopts"`
+	Status       string               `json:"status"`
+	CmdPid       int                  `json:"cmdpid"`
+	RemotePid    int                  `json:"remotepid"`
+	RestartTs    int64                `json:"restartts,omitempty"`
+	DoneTs       int64                `json:"donets"`
+	ExitCode     int                  `json:"exitcode"`
+	DurationMs   int                  `json:"durationms"`
+	RunOut       []packet.PacketType  `json:"runout,omitempty"`
+	RtnState     bool                 `json:"rtnstate,omitempty"`
+	RtnStatePtr  packet.ShellStatePtr `json:"rtnstateptr,omitempty"`
+	Remove       bool                 `json:"remove,omitempty"`    // not persisted to DB
+	Restarted    bool                 `json:"restarted,omitempty"` // not persisted to DB
 }
 
 func (CmdType) GetType() string {
@@ -1379,21 +1114,6 @@ func EnsureLocalRemote(ctx context.Context) error {
 		return err
 	}
 	log.Printf("[db] added sudo remote '%s', id=%s\n", sudoRemote.RemoteCanonicalName, sudoRemote.RemoteId)
-	return nil
-}
-
-func EnsureOneSession(ctx context.Context) error {
-	numSessions, err := GetSessionCount(ctx)
-	if err != nil {
-		return err
-	}
-	if numSessions > 0 {
-		return nil
-	}
-	_, err = InsertSessionWithName(ctx, DefaultSessionName, true)
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

@@ -11,7 +11,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, WaveKeyboardEvent } from "@/util/keyutil";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -41,9 +41,11 @@ function scrollDiv(div: any, amt: number) {
 
 class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
     componentDidMount(): void {
+        if (GlobalModel.activeMainView != "session") {
+            return;
+        }
         let inputModel = GlobalModel.inputModel;
         let keybindManager = GlobalModel.keybindManager;
-
         keybindManager.registerKeybinding("pane", "history", "generic:cancel", (waveEvent) => {
             inputModel.resetHistory();
             return true;
@@ -101,8 +103,12 @@ class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput },
 
 class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
     lastTab: boolean;
+    curPress: string;
 
     componentDidMount() {
+        if (GlobalModel.activeMainView != "session") {
+            return;
+        }
         let inputObject = this.props.inputObject;
         this.lastTab = false;
         let keybindManager = GlobalModel.keybindManager;
@@ -110,6 +116,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:autocomplete", (waveEvent) => {
             let lastTab = this.lastTab;
             this.lastTab = true;
+            this.curPress = "tab";
             let curLine = inputModel.getCurLine();
             if (lastTab) {
                 GlobalModel.submitCommand(
@@ -131,6 +138,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:confirm", (waveEvent) => {
+            GlobalModel.closeTabSettings();
             if (GlobalModel.inputModel.isEmpty()) {
                 let activeWindow = GlobalModel.getScreenLinesForActiveScreen();
                 let activeScreen = GlobalModel.getActiveScreen();
@@ -144,6 +152,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:cancel", (waveEvent) => {
+            GlobalModel.closeTabSettings();
             inputModel.toggleInfoMsg();
             if (inputModel.inputMode.get() != null) {
                 inputModel.resetInputMode();
@@ -176,10 +185,12 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:previousHistoryItem", (waveEvent) => {
+            this.curPress = "historyupdown";
             inputObject.controlP();
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:nextHistoryItem", (waveEvent) => {
+            this.curPress = "historyupdown";
             inputObject.controlN();
             return true;
         });
@@ -188,24 +199,38 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectAbove", (waveEvent) => {
-            inputObject.arrowUpPressed();
-            return true;
+            this.curPress = "historyupdown";
+            let rtn = inputObject.arrowUpPressed();
+            return rtn;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectBelow", (waveEvent) => {
-            inputObject.arrowDownPressed();
-            return true;
+            this.curPress = "historyupdown";
+            let rtn = inputObject.arrowDownPressed();
+            return rtn;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageAbove", (waveEvent) => {
+            this.curPress = "historyupdown";
             inputObject.scrollPage(true);
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageBelow", (waveEvent) => {
+            this.curPress = "historyupdown";
             inputObject.scrollPage(false);
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:expandTextInput", (waveEvent) => {
             inputObject.modEnter();
             return true;
+        });
+        keybindManager.registerDomainCallback("cmdinput", (waveEvent) => {
+            if (this.curPress != "tab") {
+                this.lastTab = false;
+            }
+            if (this.curPress != "historyupdown") {
+                inputObject.lastHistoryUpDown = false;
+            }
+            this.curPress = "";
+            return false;
         });
     }
 
@@ -613,6 +638,15 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             let ri = screen.getCurRemoteInstance();
             if (ri != null && ri.shelltype != null) {
                 shellType = ri.shelltype;
+            }
+            if (shellType == "") {
+                let rptr = screen.curRemote.get();
+                if (rptr != null) {
+                    let remote = GlobalModel.getRemote(rptr.remoteid);
+                    if (remote != null) {
+                        shellType = remote.defaultshelltype;
+                    }
+                }
             }
         }
         let isMainInputFocused = this.mainInputFocused.get();

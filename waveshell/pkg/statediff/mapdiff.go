@@ -29,7 +29,7 @@ func (diff *MapDiffType) Clear() {
 }
 
 func (diff MapDiffType) Dump() {
-	fmt.Printf("VAR-DIFF\n")
+	fmt.Printf("VAR-DIFF +%d -%d\n", len(diff.ToAdd), len(diff.ToRemove))
 	for name, val := range diff.ToAdd {
 		fmt.Printf("  add[%s] %s\n", name, val)
 	}
@@ -111,6 +111,9 @@ func (diff MapDiffType) Encode() []byte {
 
 func (diff *MapDiffType) Decode(diffBytes []byte) error {
 	diff.Clear()
+	if len(diffBytes) == 0 {
+		return nil
+	}
 	r := bytes.NewBuffer(diffBytes)
 	version, err := binpack.UnpackUInt(r)
 	if err != nil {

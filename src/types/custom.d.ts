@@ -12,6 +12,7 @@ declare global {
     type RemoteStatusTypeStrs = "connected" | "connecting" | "disconnected" | "error";
     type LineContainerStrs = "main" | "sidebar" | "history";
     type AppUpdateStatusType = "unavailable" | "ready";
+    type NativeThemeSource = "system" | "light" | "dark";
 
     type OV<V> = mobx.IObservableValue<V>;
     type OArr<V> = mobx.IObservableArray<V>;
@@ -111,7 +112,6 @@ declare global {
         errorstr: string;
         installstatus: string;
         installerrorstr: string;
-        defaultfestate: Record<string, string>;
         connectmode: string;
         autoinstall: boolean;
         remoteidx: number;
@@ -125,6 +125,7 @@ declare global {
         waitingforpassword: boolean;
         remoteopts?: RemoteOptsType;
         local: boolean;
+        issudo: boolean;
         remove?: boolean;
         shellpref: string;
         defaultshelltype: string;
@@ -365,6 +366,8 @@ declare global {
         screenstatusindicator?: ScreenStatusIndicatorUpdateType;
         screennumrunningcommands?: ScreenNumRunningCommandsUpdateType;
         userinputrequest?: UserInputRequest;
+        screentombstone?: any;
+        sessiontombstone?: any;
     };
 
     type HistoryViewDataType = {
@@ -569,6 +572,7 @@ declare global {
         termfontfamily: string;
         theme: string;
         termtheme: TermThemeType;
+        theme: NativeThemeSource;
     };
 
     type ConfirmFlagsType = {
@@ -590,6 +594,7 @@ declare global {
         };
         globalshortcut: string;
         globalshortcutenabled: boolean;
+        webgl: boolean;
     };
 
     type ReleaseInfoType = {
@@ -903,6 +908,10 @@ declare global {
         getAuthKey: () => string;
         getWaveSrvStatus: () => boolean;
         getInitialTermFontFamily: () => string;
+        getShouldUseDarkColors: () => boolean;
+        getNativeThemeSource: () => NativeThemeSource;
+        setNativeThemeSource: (source: NativeThemeSource) => void;
+        onNativeThemeUpdated: (callback: () => void) => void;
         restartWaveSrv: () => boolean;
         reloadWindow: () => void;
         openExternalLink: (url: string) => void;

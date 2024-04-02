@@ -383,7 +383,12 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.remoteEdit?.errorstr}</div>
                     </If>
                 </div>
-                <Modal.Footer onOk={this.submitRemote} onCancel={this.model.closeModal} okLabel="Save" />
+                <Modal.Footer
+                    onOk={this.submitRemote}
+                    onCancel={this.model.closeModal}
+                    okLabel="Save"
+                    keybindings={true}
+                />
             </Modal>
         );
     }

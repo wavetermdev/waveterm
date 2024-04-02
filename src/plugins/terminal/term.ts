@@ -4,13 +4,14 @@
 import * as mobx from "mobx";
 import { Terminal } from "xterm";
 import type { ITheme } from "xterm";
-//TODO: replace with `@xterm/addon-web-links` when it's available as stable
-import { WebLinksAddon } from "xterm-addon-web-links";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { windowWidthToCols, windowHeightToRows } from "@/util/textmeasure";
 import { boundInt } from "@/util/util";
 import { GlobalModel } from "@/models";
+import { WebglAddon } from "xterm-addon-webgl";
+import { WebLinksAddon } from "xterm-addon-web-links";
+import { SerializeAddon } from "xterm-addon-serialize";
 
 type DataUpdate = {
     data: Uint8Array;
@@ -19,6 +20,20 @@ type DataUpdate = {
 
 const MinTermCols = 10;
 const MaxTermCols = 1024;
+
+// detect webgl support
+function detectWebGLSupport(): boolean {
+    try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("webgl");
+        return !!ctx;
+    } catch (e) {
+        return false;
+    }
+}
+
+const WebGLSupported = detectWebGLSupport();
+let loggedWebGL = false;
 
 type TermWrapOpts = {
     termContext: TermContextUnion;
@@ -88,6 +103,7 @@ class TermWrap {
     ptyDataSource: (termContext: TermContextUnion) => Promise<PtyDataType>;
     initializing: boolean;
     dataHandler?: (data: string, termWrap: TermWrap) => void;
+    serializeAddon: SerializeAddon;
 
     constructor(elem: Element, opts: TermWrapOpts) {
         opts = opts ?? ({} as any);
@@ -144,6 +160,19 @@ class TermWrap {
                 }
             })
         );
+        if (WebGLSupported && GlobalModel.clientData.get().clientopts?.webgl) {
+            const webglAddon = new WebglAddon();
+            webglAddon.onContextLoss(() => {
+                webglAddon.dispose();
+            });
+            this.terminal.loadAddon(webglAddon);
+            if (!loggedWebGL) {
+                console.log("loaded webgl!");
+                loggedWebGL = true;
+            }
+        }
+        this.serializeAddon = new SerializeAddon();
+        this.terminal.loadAddon(this.serializeAddon);
         this.terminal._core._inputHandler._parser.setErrorHandler((state) => {
             this.numParseErrors++;
             return state;

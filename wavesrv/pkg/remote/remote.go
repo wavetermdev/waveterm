@@ -39,6 +39,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 
 	"golang.org/x/crypto/ssh"
@@ -211,38 +212,6 @@ func (msh *MShellProc) GetStatus() string {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	return msh.Status
-}
-
-func (msh *MShellProc) GetDefaultState(shellType string) *packet.ShellState {
-	_, state := msh.StateMap.GetCurrentState(shellType)
-	return state
-}
-
-func (msh *MShellProc) EnsureShellType(ctx context.Context, shellType string) error {
-	if msh.StateMap.HasShell(shellType) {
-		return nil
-	}
-	// try to reinit the shell
-	_, err := msh.ReInit(ctx, base.CommandKey(""), shellType, nil, false)
-	if err != nil {
-		return fmt.Errorf("error trying to initialize shell %q: %v", shellType, err)
-	}
-	return nil
-}
-
-func (msh *MShellProc) GetDefaultStatePtr(shellType string) *sstore.ShellStatePtr {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	hash, _ := msh.StateMap.GetCurrentState(shellType)
-	if hash == "" {
-		return nil
-	}
-	return &sstore.ShellStatePtr{BaseHash: hash}
-}
-
-func (msh *MShellProc) GetDefaultFeState(shellType string) map[string]string {
-	state := msh.GetDefaultState(shellType)
-	return sstore.FeStateFromShellState(state)
 }
 
 func (msh *MShellProc) GetRemoteId() string {
@@ -488,6 +457,26 @@ func ResolveRemoteRef(remoteRef string) *RemoteRuntimeState {
 	return nil
 }
 
+func SendSignalToCmd(ctx context.Context, cmd *sstore.CmdType, sig string) error {
+	msh := GetRemoteById(cmd.Remote.RemoteId)
+	if msh == nil {
+		return fmt.Errorf("no connection found")
+	}
+	if !msh.IsConnected() {
+		return fmt.Errorf("not connected")
+	}
+	cmdCk := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
+	if !msh.IsCmdRunning(cmdCk) {
+		// this could also return nil (depends on use case)
+		// settled on coded error so we can check for this error
+		return base.CodedErrorf(packet.EC_CmdNotRunning, "cmd not running")
+	}
+	sigPk := packet.MakeSpecialInputPacket()
+	sigPk.CK = cmdCk
+	sigPk.SigName = sig
+	return msh.ServerProc.Input.SendPacket(sigPk)
+}
+
 func unquoteDQBashString(str string) (string, bool) {
 	if len(str) < 2 {
 		return str, false
@@ -587,6 +576,7 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		InstallStatus:       msh.InstallStatus,
 		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,
 		Local:               msh.Remote.Local,
+		IsSudo:              msh.Remote.IsSudo(),
 		NoInitPk:            msh.ErrNoInitPk,
 		AuthType:            sstore.RemoteAuthTypeNone,
 		ShellPref:           msh.Remote.ShellPref,
@@ -660,11 +650,6 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["besthost"] = vars["remotehost"]
 		vars["bestshorthost"] = vars["remoteshorthost"]
 	}
-	_, curState := msh.StateMap.GetCurrentState(shellPref)
-	if curState != nil {
-		state.DefaultFeState = sstore.FeStateFromShellState(curState)
-		vars["cwd"] = curState.Cwd
-	}
 	if msh.Remote.Local && msh.Remote.IsSudo() {
 		vars["bestuser"] = "sudo"
 	} else if msh.Remote.IsSudo() {
@@ -686,7 +671,6 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		varsCopy[key] = value
 	}
 	state.RemoteVars = varsCopy
-	state.ActiveShells = msh.StateMap.GetShells()
 	return state
 }
 
@@ -931,9 +915,9 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 			realStr = realStr + "\r\n"
 		}
 		if strings.HasPrefix(realStr, "*") {
-			realStr = "\033[0m\033[31mprompt>\033[0m " + realStr[1:]
+			realStr = "\033[0m\033[31mwave>\033[0m " + realStr[1:]
 		} else {
-			realStr = "\033[0m\033[32mprompt>\033[0m " + realStr
+			realStr = "\033[0m\033[32mwave>\033[0m " + realStr
 		}
 		barr := msh.PtyBuffer.Bytes()
 		if len(barr) > 0 && barr[len(barr)-1] != '\n' {
@@ -1419,8 +1403,8 @@ func getStateVarsFromInitPk(initPk *packet.InitPacketType) map[string]string {
 	return rtn
 }
 
-func makeReinitErrorUpdate(shellType string) sstore.ActivityUpdate {
-	rtn := sstore.ActivityUpdate{}
+func makeReinitErrorUpdate(shellType string) telemetry.ActivityUpdate {
+	rtn := telemetry.ActivityUpdate{}
 	if shellType == packet.ShellType_bash {
 		rtn.ReinitBashErrors = 1
 	} else if shellType == packet.ShellType_zsh {
@@ -1441,7 +1425,7 @@ func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType
 	}
 	defer func() {
 		if rtnErr != nil {
-			sstore.UpdateActivityWrap(ctx, makeReinitErrorUpdate(shellType), "reiniterror")
+			telemetry.UpdateActivityWrap(ctx, makeReinitErrorUpdate(shellType), "reiniterror")
 		}
 	}()
 	startTs := time.Now()
@@ -1508,18 +1492,18 @@ func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType
 }
 
 func makeShellInitOutputMsg(verbose bool, state *packet.ShellState, stats *packet.ShellStateStats, dur time.Duration, ptyMsg bool) string {
+	waveStr := fmt.Sprintf("%swave>%s", utilfn.AnsiGreenColor(), utilfn.AnsiResetColor())
 	if !verbose || ptyMsg {
 		if ptyMsg {
 			return fmt.Sprintf("initialized state shell:%s statehash:%s %dms\n", state.GetShellType(), state.GetHashVal(false), dur.Milliseconds())
 		} else {
-			return fmt.Sprintf("initialized connection state (shell:%s)\r\n", state.GetShellType())
+			return fmt.Sprintf("%s initialized connection state (shell:%s)\r\n", waveStr, state.GetShellType())
 		}
 	}
 	var buf bytes.Buffer
-	buf.WriteString("-----\r\n")
-	buf.WriteString(fmt.Sprintf("initialized connection shell:%s statehash:%s %dms\r\n", state.GetShellType(), state.GetHashVal(false), dur.Milliseconds()))
+	buf.WriteString(fmt.Sprintf("%s initialized connection shell:%s statehash:%s %dms\r\n", waveStr, state.GetShellType(), state.GetHashVal(false), dur.Milliseconds()))
 	if stats != nil {
-		buf.WriteString(fmt.Sprintf("  outsize:%s size:%s env:%d, vars:%d, aliases:%d, funcs:%d\r\n", scbase.NumFormatDec(stats.OutputSize), scbase.NumFormatDec(stats.StateSize), stats.EnvCount, stats.VarCount, stats.AliasCount, stats.FuncCount))
+		buf.WriteString(fmt.Sprintf("%s   outsize:%s size:%s env:%d, vars:%d, aliases:%d, funcs:%d\r\n", waveStr, scbase.NumFormatDec(stats.OutputSize), scbase.NumFormatDec(stats.StateSize), stats.EnvCount, stats.VarCount, stats.AliasCount, stats.FuncCount))
 	}
 	return buf.String()
 }
@@ -1749,6 +1733,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.ServerProc = cproc
 		msh.Status = StatusConnected
 	})
+	msh.WriteToPtyBuffer("connected to %s\n", remoteCopy.RemoteCanonicalName)
 	go func() {
 		exitErr := cproc.Cmd.Wait()
 		exitCode := shexec.GetExitCode(exitErr)
@@ -1761,7 +1746,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 		msh.WriteToPtyBuffer("*disconnected exitcode=%d\n", exitCode)
 	}()
 	go msh.ProcessPackets()
-	msh.initActiveShells()
+	// msh.initActiveShells()
 	go msh.NotifyRemoteUpdate()
 }
 
@@ -1779,7 +1764,7 @@ func (msh *MShellProc) initActiveShells() {
 		wg.Add(1)
 		go func(shellType string) {
 			defer wg.Done()
-			reinitCtx, cancelFn := context.WithTimeout(context.Background(), shellapi.ReInitTimeout)
+			reinitCtx, cancelFn := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancelFn()
 			_, err = msh.ReInit(reinitCtx, base.CommandKey(""), shellType, nil, false)
 			if err != nil {
@@ -1893,25 +1878,6 @@ func (msh *MShellProc) removePendingStateCmd(screenId string, rptr sstore.Remote
 	}
 }
 
-func ResolveCurrentScreenStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr sstore.RemotePtrType) (*sstore.ShellStatePtr, error) {
-	statePtr, err := sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
-	if err != nil {
-		return nil, fmt.Errorf("cannot get current connection stateptr: %w", err)
-	}
-	if statePtr == nil {
-		msh := GetRemoteById(remotePtr.RemoteId)
-		err := msh.EnsureShellType(ctx, msh.GetShellPref()) // make sure shellType is initialized
-		if err != nil {
-			return nil, err
-		}
-		statePtr = msh.GetDefaultStatePtr(msh.GetShellPref())
-		if statePtr == nil {
-			return nil, fmt.Errorf("no valid default connection stateptr")
-		}
-	}
-	return statePtr, nil
-}
-
 type RunCommandOpts struct {
 	SessionId string
 	ScreenId  string
@@ -1920,7 +1886,7 @@ type RunCommandOpts struct {
 	// optional, if not provided shellstate will look up state from remote instance
 	// ReturnState cannot be used with StatePtr
 	// this will also cause this command to bypass the pending state cmd logic
-	StatePtr *sstore.ShellStatePtr
+	StatePtr *packet.ShellStatePtr
 
 	// set to true to skip creating the pty file (for restarted commands)
 	NoCreateCmdPtyFile bool
@@ -1954,6 +1920,9 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	if rcOpts.StatePtr != nil && runPacket.ReturnState {
 		return nil, nil, fmt.Errorf("RunCommand: cannot use ReturnState with StatePtr")
 	}
+	if runPacket.StatePtr != nil {
+		return nil, nil, fmt.Errorf("runPacket.StatePtr should not be set, it is set in RunCommand")
+	}
 
 	// pending state command logic
 	// if we are currently running a command that can change the state, we need to wait for it to finish
@@ -1984,16 +1953,21 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	}
 
 	// get current remote-instance state
-	var statePtr *sstore.ShellStatePtr
+	var statePtr *packet.ShellStatePtr
 	if rcOpts.StatePtr != nil {
 		statePtr = rcOpts.StatePtr
 	} else {
 		var err error
-		statePtr, err = ResolveCurrentScreenStatePtr(ctx, sessionId, screenId, remotePtr)
+		statePtr, err = sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot run command: %w", err)
 		}
+		if statePtr == nil {
+			return nil, nil, fmt.Errorf("cannot run command: no valid shell state found")
+		}
 	}
+	// statePtr will not be nil
+	runPacket.StatePtr = statePtr
 	currentState, err := sstore.GetFullState(ctx, *statePtr)
 	if err != nil || currentState == nil {
 		return nil, nil, fmt.Errorf("cannot load current remote state: %w", err)
@@ -2001,10 +1975,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	runPacket.State = addScVarsToState(currentState)
 	runPacket.StateComplete = true
 	runPacket.ShellType = currentState.GetShellType()
-	err = msh.EnsureShellType(ctx, runPacket.ShellType) // make sure shellType is initialized
-	if err != nil {
-		return nil, nil, err
-	}
 
 	// start cmdwait.  must be started before sending the run packet
 	// this ensures that we don't process output, or cmddone packets until we set up the line, cmd, and ptyout file
@@ -2143,7 +2113,7 @@ func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error 
 	msh.Lock.Unlock()
 	if sink == nil {
 		// no sink and no running command
-		return fmt.Errorf("cannot send input, cmd is not running")
+		return fmt.Errorf("cannot send input, cmd is not running (%s)", inputPk.CK)
 	}
 	return sink.HandleInput(inputPk)
 }
@@ -2251,31 +2221,95 @@ func (msh *MShellProc) notifyHangups_nolock() {
 	msh.PendingStateCmds = make(map[pendingStateKey]base.CommandKey)
 }
 
-// either fullstate or statediff will be set (not both) <- this is so the result is compatible with the sstore.UpdateRemoteState function
-// note that this function *does* touch the DB, if FinalStateDiff is set, will ensure that StateBase is written to DB
-func (msh *MShellProc) makeStatePtrFromFinalState(ctx context.Context, donePk *packet.CmdDonePacketType) (*sstore.ShellStatePtr, map[string]string, *packet.ShellState, *packet.ShellStateDiff, error) {
+func (msh *MShellProc) resolveFinalState(ctx context.Context, origState *packet.ShellState, origStatePtr *packet.ShellStatePtr, donePk *packet.CmdDonePacketType) (*packet.ShellState, error) {
 	if donePk.FinalState != nil {
+		if origStatePtr == nil {
+			return nil, fmt.Errorf("command must have a stateptr to resolve final state")
+		}
 		finalState := stripScVarsFromState(donePk.FinalState)
-		feState := sstore.FeStateFromShellState(finalState)
-		statePtr := &sstore.ShellStatePtr{BaseHash: finalState.GetHashVal(false)}
-		return statePtr, feState, finalState, nil, nil
+		return finalState, nil
 	}
 	if donePk.FinalStateDiff != nil {
+		if donePk.FinalStateBasePtr == nil {
+			return nil, fmt.Errorf("invalid rtnstate, has diff but no baseptr")
+		}
 		stateDiff := stripScVarsFromStateDiff(donePk.FinalStateDiff)
-		feState, err := msh.getFeStateFromDiff(stateDiff)
+		if origStatePtr == donePk.FinalStateBasePtr {
+			// this is the normal case.  the stateptr from the run-packet should match the baseptr from the done-packet
+			// this is also the most efficient, because we don't need to fetch the original state
+			sapi, err := shellapi.MakeShellApi(origState.GetShellType())
+			if err != nil {
+				return nil, fmt.Errorf("cannot make shellapi from initial state: %w", err)
+			}
+			fullState, err := sapi.ApplyShellStateDiff(origState, stateDiff)
+			if err != nil {
+				return nil, fmt.Errorf("cannot apply shell state diff: %w", err)
+			}
+			return fullState, nil
+		}
+		// this is strange (why is backend returning non-original stateptr?)
+		// but here, we fetch the stateptr, and then apply the diff against that
+		realOrigState, err := sstore.GetFullState(ctx, *donePk.FinalStateBasePtr)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, fmt.Errorf("cannot get original state for diff: %w", err)
 		}
-		fullState := msh.StateMap.GetStateByHash(stateDiff.GetShellType(), stateDiff.BaseHash)
-		if fullState != nil {
-			sstore.StoreStateBase(ctx, fullState)
+		if realOrigState == nil {
+			return nil, fmt.Errorf("cannot get original state for diff: not found")
 		}
-		diffHashArr := append(([]string)(nil), donePk.FinalStateDiff.DiffHashArr...)
-		diffHashArr = append(diffHashArr, donePk.FinalStateDiff.GetHashVal(false))
-		statePtr := &sstore.ShellStatePtr{BaseHash: donePk.FinalStateDiff.BaseHash, DiffHashArr: diffHashArr}
-		return statePtr, feState, nil, stateDiff, nil
+		sapi, err := shellapi.MakeShellApi(realOrigState.GetShellType())
+		if err != nil {
+			return nil, fmt.Errorf("cannot make shellapi from original state: %w", err)
+		}
+		fullState, err := sapi.ApplyShellStateDiff(realOrigState, stateDiff)
+		if err != nil {
+			return nil, fmt.Errorf("cannot apply shell state diff: %w", err)
+		}
+		return fullState, nil
 	}
-	return nil, nil, nil, nil, nil
+	return nil, nil
+}
+
+// after this limit we'll switch to persisting the full state
+const NewStateDiffSizeThreshold = 30 * 1024
+
+// will update the remote instance with the final state
+// this is complicated because we want to be as efficient as possible.
+// so we pull the current remote-instance state (just the baseptr).  then we compute the diff.
+// then we check the size of the diff, and only persist the diff it is under some size threshold
+// also we check to see if the diff succeeds (it can fail if the shell or version changed).
+// in those cases we also update the RI with the full state
+func (msh *MShellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdType, newState *packet.ShellState) (*sstore.RemoteInstance, error) {
+	curRIState, err := sstore.GetRemoteStatePtr(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr)
+	if err != nil {
+		return nil, fmt.Errorf("error trying to get current screen stateptr: %w", err)
+	}
+	feState := sstore.FeStateFromShellState(newState)
+	if curRIState == nil {
+		// no current state, so just persist the full state
+		return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, newState, nil)
+	}
+	// pull the base (not the diff) state from the RI (right now we don't want to make multi-level diffs)
+	riBaseState, err := sstore.GetStateBase(ctx, curRIState.BaseHash)
+	if err != nil {
+		return nil, fmt.Errorf("error trying to get statebase: %w", err)
+	}
+	sapi, err := shellapi.MakeShellApi(riBaseState.GetShellType())
+	if err != nil {
+		return nil, fmt.Errorf("error trying to make shellapi: %w", err)
+	}
+	newStateDiff, err := sapi.MakeShellStateDiff(riBaseState, curRIState.BaseHash, newState)
+	if err != nil {
+		// if we can't make a diff, just persist the full state (this could happen if the shell type changes)
+		return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, newState, nil)
+	}
+	// we have a diff, let's check the diff size first
+	_, encodedDiff := newStateDiff.EncodeAndHash()
+	if len(encodedDiff) > NewStateDiffSizeThreshold {
+		// diff is too large, persist the full state
+		return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, newState, nil)
+	}
+	// diff is small enough, persist the diff
+	return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, nil, newStateDiff)
 }
 
 func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDonePacketType) {
@@ -2296,12 +2330,12 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 		// only update DB for non-ephemeral commands
 		err := sstore.UpdateCmdDoneInfo(ctx, update, donePk.CK, donePk, sstore.CmdStatusDone)
 		if err != nil {
-			msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
+			log.Printf("error updating cmddone info (in handleCmdDonePacket): %v\n", err)
 			return
 		}
 		screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, donePk.CK.GetGroupId(), donePk.CK.GetCmdId())
 		if err != nil {
-			msh.WriteToPtyBuffer("*error trying to update screen focus type: %v\n", err)
+			log.Printf("error trying to update screen focus type (in handleCmdDonePacket): %v\n", err)
 			// fall-through (nothing to do)
 		}
 		if screen != nil {
@@ -2309,24 +2343,28 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 		}
 	}
 	// ephemeral commands *do* update the remote state
-	if donePk.FinalState != nil || donePk.FinalStateDiff != nil {
-		statePtr, feState, finalState, finalStateDiff, err := msh.makeStatePtrFromFinalState(ctx, donePk)
+	// not all commands get a final state (only RtnState commands have this returned)
+	// so in those cases finalState will be nil
+	finalState, err := msh.resolveFinalState(ctx, rct.RunPacket.State, rct.RunPacket.StatePtr, donePk)
+	if err != nil {
+		log.Printf("error resolving final state for cmd: %v\n", err)
+		// fallthrough
+	}
+	if finalState != nil {
+		newRI, err := msh.updateRIWithFinalState(ctx, rct, finalState)
 		if err != nil {
-			msh.WriteToPtyBuffer("*error trying to read final command state: %v\n", err)
+			log.Printf("error updating RI with final state (in handleCmdDonePacket): %v\n", err)
+			// fallthrough
 		}
-		remoteInst, err := sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, finalState, finalStateDiff)
-		if err != nil {
-			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
-			// fall-through (nothing to do)
-		}
-		if remoteInst != nil {
-			update.AddUpdate(sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
+		if newRI != nil {
+			update.AddUpdate(sstore.MakeSessionUpdateForRemote(rct.SessionId, newRI))
 		}
 		// ephemeral commands *do not* update cmd state (there is no command)
-		if statePtr != nil && !rct.Ephemeral {
-			err = sstore.UpdateCmdRtnState(ctx, donePk.CK, *statePtr)
+		if newRI != nil && !rct.Ephemeral {
+			newRIStatePtr := packet.ShellStatePtr{BaseHash: newRI.StateBaseHash, DiffHashArr: newRI.StateDiffHashArr}
+			err = sstore.UpdateCmdRtnState(ctx, donePk.CK, newRIStatePtr)
 			if err != nil {
-				msh.WriteToPtyBuffer("*error trying to update cmd rtnstate: %v\n", err)
+				log.Printf("error trying to update cmd rtnstate: %v\n", err)
 				// fall-through (nothing to do)
 			}
 		}
@@ -2460,7 +2498,7 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		msh.WriteToPtyBuffer("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPk.Data)
 		return
 	}
-	msh.WriteToPtyBuffer("MSH> [remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
+	msh.WriteToPtyBuffer("*[remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
 }
 
 func (msh *MShellProc) ProcessPackets() {
@@ -2640,7 +2678,7 @@ func (msh *MShellProc) getFullState(shellType string, stateDiff *packet.ShellSta
 		}
 		return newState, nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
+		fullState, err := sstore.GetFullState(context.Background(), packet.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}
@@ -2667,7 +2705,7 @@ func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map
 		}
 		return sstore.FeStateFromShellState(newState), nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
+		fullState, err := sstore.GetFullState(context.Background(), packet.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}

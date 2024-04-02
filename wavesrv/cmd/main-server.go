@@ -45,6 +45,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scws"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
 
@@ -211,7 +212,7 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
 		return
 	}
-	activity := sstore.ActivityUpdate{}
+	activity := telemetry.ActivityUpdate{}
 	if activeState.Fg {
 		activity.FgMinutes = 1
 	}
@@ -222,7 +223,7 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 		activity.OpenMinutes = 1
 	}
 	activity.NumConns = remote.NumRemotes()
-	err = sstore.UpdateCurrentActivity(r.Context(), activity)
+	err = telemetry.UpdateCurrentActivity(r.Context(), activity)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))
 		return
@@ -961,6 +962,11 @@ func main() {
 		log.Printf("[error] %v\n", err)
 		return
 	}
+	_, err = scbase.EnsureConfigDir()
+	if err != nil {
+		log.Printf("[error] ensuring config directory: %v\n", err)
+		return
+	}
 	err = sstore.TryMigrateUp()
 	if err != nil {
 		log.Printf("[error] migrate up: %v\n", err)
@@ -975,11 +981,6 @@ func main() {
 	err = sstore.EnsureLocalRemote(context.Background())
 	if err != nil {
 		log.Printf("[error] ensuring local remote: %v\n", err)
-		return
-	}
-	err = sstore.EnsureOneSession(context.Background())
-	if err != nil {
-		log.Printf("[error] ensuring default session: %v\n", err)
 		return
 	}
 	err = remote.LoadRemotes(context.Background())
@@ -998,7 +999,7 @@ func main() {
 	}
 
 	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
-	sstore.UpdateActivityWrap(context.Background(), sstore.ActivityUpdate{NumConns: remote.NumRemotes()}, "numconns") // set at least one record into activity
+	telemetry.UpdateActivityWrap(context.Background(), telemetry.ActivityUpdate{NumConns: remote.NumRemotes()}, "numconns") // set at least one record into activity
 	installSignalHandlers()
 	go telemetryLoop()
 	go stdinReadWatch()

@@ -159,7 +159,9 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         </label>
                     </If>
                     <input
-                        className={cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration })}
+                        className={cn("wave-textfield-inner-input", "wave-input", {
+                            "offset-left": decoration?.startDecoration,
+                        })}
                         ref={this.inputRef}
                         id={label}
                         value={inputValue}

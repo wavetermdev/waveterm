@@ -10,7 +10,6 @@
     border-radius: 6px;
     height: auto;
     line-height: 1.5;
-    display: block;
     white-space: nowrap;
     user-select: none;
 
@@ -21,11 +20,15 @@
     }
 
     &.primary {
-        color: var(--form-element-text-color);
+        color: var(--form-element-primary-text-color);
         background: var(--form-element-primary-color);
         i {
             fill: var(--form-element-text-color);
         }
+    }
+
+    &.primary.danger {
+        background: var(--app-error-color);
     }
 
     &.primary.outlined {
@@ -37,10 +40,48 @@
         }
     }
 
+    &.primary.greyoutlined {
+        background: none;
+        border: 1px solid var(--app-text-secondary-color);
+
+        i {
+            fill: var(--app-text-secondary-color);
+        }
+    }
+
+    &.primary.outlined,
+    &.primary.greyoutlined {
+        &.hover-danger:hover {
+            color: var(--form-element-primary-text-color);
+            border: 1px solid var(--app-error-color);
+            background: var(--app-error-color);
+        }
+    }
+
+    &.primary.outlined.danger {
+        background: none;
+        border: 1px solid var(--app-error-color);
+
+        i {
+            fill: var(--app-error-color);
+        }
+    }
+
+    &.greytext {
+        color: var(--app-text-secondary-color);
+    }
+
     &.primary.ghost {
         background: none;
         i {
             fill: var(--form-element-primary-color);
+        }
+    }
+
+    &.primary.ghost.danger {
+        background: none;
+        i {
+            fill: var(--app-error-color);
         }
     }
 
@@ -55,6 +96,11 @@
     &.secondary.outlined {
         background: none;
         border: 1px solid var(--form-element-text-color);
+    }
+
+    &.secondary.outlined.danger {
+        background: none;
+        border: 1px solid var(--app-error-color);
     }
 
     &.secondary.ghost {

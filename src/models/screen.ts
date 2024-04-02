@@ -44,6 +44,7 @@ class Screen {
     filterRunning: OV<boolean>;
     statusIndicator: OV<appconst.StatusIndicatorLevel>;
     numRunningCmds: OV<number>;
+    isNew: boolean; // used for showing screen settings on initial screen creation
 
     constructor(sdata: ScreenDataType, globalModel: Model) {
         this.globalModel = globalModel;
@@ -91,6 +92,7 @@ class Screen {
         this.numRunningCmds = mobx.observable.box(0, {
             name: "screen-num-running-cmds",
         });
+        this.isNew = true;
     }
 
     dispose() {}
@@ -469,7 +471,7 @@ class Screen {
         this.renderers[lineId] = renderer;
     }
 
-    setLineFocus(lineNum: number, lineid: string, focus: boolean): void {
+    setLineFocus(lineNum: number, focus: boolean): void {
         mobx.action(() => this.termLineNumFocus.set(focus ? lineNum : 0))();
         if (focus && this.selectedLine.get() != lineNum) {
             GlobalCommandRunner.screenSelectLine(String(lineNum), "cmd");
@@ -526,7 +528,7 @@ class Screen {
             termOpts: cmd.getTermOpts(),
             winSize: { height: 0, width: width },
             dataHandler: cmd.handleData.bind(cmd),
-            focusHandler: (focus: boolean) => this.setLineFocus(line.linenum, line.lineid, focus),
+            focusHandler: (focus: boolean) => this.setLineFocus(line.linenum, focus),
             isRunning: cmd.isRunning(),
             customKeyHandler: this.termCustomKeyHandler.bind(this),
             fontSize: this.globalModel.getTermFontSize(),

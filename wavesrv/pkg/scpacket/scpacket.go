@@ -35,10 +35,10 @@ func (rptr *RemotePtrType) GetDisplayName(baseDisplayName string) string {
 		return name
 	}
 	if rptr.Name != "" {
-		name = name + ":" + rptr.Name
+		name = name + "#" + rptr.Name
 	}
 	if rptr.OwnerId != "" {
-		name = "@" + rptr.OwnerId + ":" + name
+		name = "@" + rptr.OwnerId + "#" + name
 	}
 	return name
 }
@@ -106,6 +106,9 @@ func (pk *FeCommandPacketType) GetRawStr() string {
 	}
 	var args []string
 	for k, v := range pk.Kwargs {
+		if k == "nohist" {
+			continue
+		}
 		argStr := fmt.Sprintf("%s=%s", shellescape.Quote(k), shellescape.Quote(v))
 		args = append(args, argStr)
 	}

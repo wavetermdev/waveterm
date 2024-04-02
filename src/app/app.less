@@ -251,6 +251,13 @@ input[type="checkbox"] {
     justify-content: center;
 }
 
+.flex-centered-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
 a.a-block {
     display: block;
 }
@@ -786,6 +793,75 @@ a.a-block {
     margin-top: 6px;
 }
 
+.conn-dropdown {
+    width: 412px;
+
+    .lefticon {
+        position: absolute;
+        top: 50%;
+        left: 16px;
+        transform: translateY(-50%);
+
+        .globe-icon {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            fill: var(--app-text-secondary-color);
+        }
+
+        .status-icon {
+            position: absolute;
+            left: 7px;
+            top: 8px;
+            circle {
+                stroke: var(--app-bg-color);
+            }
+        }
+    }
+
+    .wave-dropdown-display {
+        bottom: 7px;
+    }
+}
+
+.tab-colors,
+.tab-icons {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+
+    .tab-color-sep,
+    .tab-icon-sep {
+        padding-left: 10px;
+        padding-right: 10px;
+        font-weight: bold;
+        user-select: none;
+    }
+
+    .tab-color-icon,
+    .tab-icon-icon {
+        width: 1.1em;
+        vertical-align: middle;
+    }
+
+    .tab-color-name,
+    .tab-icon-name {
+        display: inline-block;
+        margin-left: 1em;
+        min-width: 70px;
+        user-select: none;
+    }
+
+    .tab-color-select,
+    .tab-icon-select {
+        cursor: pointer;
+        margin: 3px;
+        &:hover {
+            outline: 2px solid white;
+        }
+    }
+}
+
 .settings-field {
     display: flex;
     flex-direction: row;
@@ -847,7 +923,7 @@ a.a-block {
             }
         }
 
-        input {
+        input:not(.wave-input) {
             padding: 4px;
             border-radius: 3px;
         }
@@ -855,44 +931,6 @@ a.a-block {
         .control {
             .icon {
                 margin: 0;
-            }
-        }
-
-        .tab-colors,
-        .tab-icons {
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-
-            .tab-color-sep,
-            .tab-icon-sep {
-                padding-left: 10px;
-                padding-right: 10px;
-                font-weight: bold;
-                user-select: none;
-            }
-
-            .tab-color-icon,
-            .tab-icon-icon {
-                width: 1.1em;
-                vertical-align: middle;
-            }
-
-            .tab-color-name,
-            .tab-icon-name {
-                display: inline-block;
-                margin-left: 1em;
-                min-width: 70px;
-                user-select: none;
-            }
-
-            .tab-color-select,
-            .tab-icon-select {
-                cursor: pointer;
-                margin: 3px;
-                &:hover {
-                    outline: 2px solid white;
-                }
             }
         }
 

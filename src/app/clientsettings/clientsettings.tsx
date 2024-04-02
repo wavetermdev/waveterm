@@ -65,11 +65,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
-    handleChangeTheme(theme: string): void {
-        if (GlobalModel.getTheme() == theme) {
+    handleChangeThemeSource(themeSource: NativeThemeSource): void {
+        if (GlobalModel.getThemeSource() == themeSource) {
             return;
         }
-        const prtn = GlobalCommandRunner.setTheme(theme, false);
+        const prtn = GlobalCommandRunner.setTheme(themeSource, false);
+        getApi().setNativeThemeSource(themeSource);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -81,6 +82,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         if (currTheme == theme) {
             return;
         }
+
         const prtn = GlobalCommandRunner.setGlobalTermTheme(theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
@@ -124,11 +126,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         return availableFontFamilies;
     }
 
-    getThemes(): DropdownItem[] {
-        const themes: DropdownItem[] = [];
-        themes.push({ label: "Dark", value: "dark" });
-        themes.push({ label: "Light", value: "light" });
-        return themes;
+    getThemeSources(): DropdownItem[] {
+        const themeSources: DropdownItem[] = [];
+        themeSources.push({ label: "Dark", value: "dark" });
+        themeSources.push({ label: "Light", value: "light" });
+        themeSources.push({ label: "System", value: "system" });
+        return themeSources;
     }
 
     @boundMethod
@@ -205,6 +208,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getTheme();
         const termThemes = getTermThemes(GlobalModel.termThemes, "Wave Default");
+
         const currTermTheme = GlobalModel.getTermTheme()["global"] ?? termThemes[0].label;
 
         return (
@@ -240,9 +244,9 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         <div className="settings-input">
                             <Dropdown
                                 className="theme-dropdown"
-                                options={this.getThemes()}
+                                options={this.getThemeSources()}
                                 defaultValue={curTheme}
-                                onChange={this.handleChangeTheme}
+                                onChange={this.handleChangeThemeSource}
                             />
                         </div>
                     </div>
@@ -309,7 +313,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 text={isBlank(openAIOpts.baseurl) ? "openai default" : openAIOpts.baseurl}
                                 value={openAIOpts.baseurl ?? ""}
                                 onChange={this.inlineUpdateOpenAIBaseURL}
-                                maxLength={10}
+                                maxLength={200}
                                 showIcon={true}
                             />
                         </div>

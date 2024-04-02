@@ -13,12 +13,11 @@ import {
     isModKeyPress,
     isBlank,
 } from "@/util/util";
-import { loadTheme } from "@/util/themeutil";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import * as appconst from "@/app/appconst";
 import { remotePtrToString, cmdPacketString } from "@/util/modelutil";
-import { KeybindManager, checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
+import { KeybindManager, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -105,6 +104,9 @@ class Model {
     devicePixelRatio: OV<number> = mobx.observable.box(window.devicePixelRatio, {
         name: "devicePixelRatio",
     });
+    tabSettingsOpen: OV<boolean> = mobx.observable.box(false, {
+        name: "tabSettingsOpen",
+    });
     remotesModel: RemotesModel;
     lineHeightEnv: LineHeightEnv;
 
@@ -118,6 +120,9 @@ class Model {
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
     rightSidebarModel: RightSidebarModel;
+    isDarkTheme: OV<boolean> = mobx.observable.box(getApi().getShouldUseDarkColors(), {
+        name: "isDarkTheme",
+    });
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -191,6 +196,7 @@ class Model {
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
         getApi().onAppUpdateStatus(this.onAppUpdateStatus.bind(this));
+        getApi().onNativeThemeUpdated(this.onNativeThemeUpdated.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
@@ -292,6 +298,21 @@ class Model {
         });
         this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", null);
         this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", null);
+    }
+
+    static getInstance(): Model {
+        if (!(window as any).GlobalModel) {
+            (window as any).GlobalModel = new Model();
+        }
+        return (window as any).GlobalModel;
+    }
+
+    closeTabSettings() {
+        if (this.tabSettingsOpen.get()) {
+            mobx.action(() => {
+                this.tabSettingsOpen.set(false);
+            })();
+        }
     }
 
     toggleDevUI(): void {
@@ -450,14 +471,6 @@ class Model {
         return theme;
     }
 
-    getTermTheme(): TermThemeType {
-        let cdata = this.clientData.get();
-        if (cdata?.feopts?.termtheme) {
-            return mobx.toJS(cdata.feopts.termtheme);
-        }
-        return {};
-    }
-
     isThemeDark(): boolean {
         let cdata = this.clientData.get();
         return cdata?.feopts?.theme != "light";
@@ -579,7 +592,7 @@ class Model {
             return;
         }
         const rtnp = this.showAlert({
-            message: "Are you sure you want to delete this screen?",
+            message: "Are you sure you want to delete this tab?",
             confirm: true,
         });
         rtnp.then((result) => {
@@ -646,7 +659,7 @@ class Model {
 
     getLocalRemote(): RemoteType {
         for (const remote of this.remotes) {
-            if (remote.local) {
+            if (remote.local && !remote.issudo) {
                 return remote;
             }
         }
@@ -871,6 +884,12 @@ class Model {
         }
     }
 
+    markScreensAsNotNew(): void {
+        for (const screen of this.screenMap.values()) {
+            screen.isNew = false;
+        }
+    }
+
     updateSessions(sessions: SessionDataType[]): void {
         genMergeData(
             this.sessionList,
@@ -924,6 +943,7 @@ class Model {
                     if (update.connect.screens != null) {
                         this.screenMap.clear();
                         this.updateScreens(update.connect.screens);
+                        this.markScreensAsNotNew();
                     }
                     if (update.connect.sessions != null) {
                         this.sessionList.clear();
@@ -1015,6 +1035,8 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (update.sessiontombstone != null || update.screentombstone != null) {
+                    // nothing (ignore)
                 } else {
                     // interactive-only updates follow below
                     // we check interactive *inside* of the conditions because of isDev console.log message
@@ -1055,9 +1077,13 @@ class Model {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
-                setTimeout(() => {
-                    GlobalCommandRunner.syncShellState();
-                }, 100);
+                this.closeTabSettings();
+                const activeScreen = this.getActiveScreen();
+                if (activeScreen != null && activeScreen.getCurRemoteInstance() != null) {
+                    setTimeout(() => {
+                        GlobalCommandRunner.syncShellState();
+                    }, 100);
+                }
             }
         } else {
             console.warn("unknown update", genUpdate);
@@ -1262,10 +1288,6 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getTheme();
-        const oldTermTheme = this.getTermTheme();
-        const newTermTheme = clientData?.feopts?.termtheme;
-        const ttUpdated = this.termThemeUpdated(newTermTheme, oldTermTheme);
-
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1283,7 +1305,7 @@ class Model {
             this.updateTermFontSizeVars();
         }
         if (themeUpdated) {
-            loadTheme(newTheme);
+            getApi().setNativeThemeSource(newTheme);
             this.bumpRenderVersion();
         }
         // Only for global terminal theme. For session and screen terminal theme,
