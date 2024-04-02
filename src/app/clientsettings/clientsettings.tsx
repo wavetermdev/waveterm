@@ -182,6 +182,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     handleSubmitEphemeral(): void {
         GlobalModel.submitEphemeralCommand("eval", null, ["ls"], null, false, {
             expectsresponse: true,
+            overridecwd: "/",
         });
     }
 

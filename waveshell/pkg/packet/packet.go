@@ -827,7 +827,6 @@ type RunPacketType struct {
 	RunData       []RunDataType   `json:"rundata,omitempty"`
 	Detached      bool            `json:"detached,omitempty"`
 	ReturnState   bool            `json:"returnstate,omitempty"`
-	OverrideCwd   string          `json:"overridecwd,omitempty"`
 }
 
 func (*RunPacketType) GetType() string {

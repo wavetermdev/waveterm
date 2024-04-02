@@ -660,15 +660,19 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	if langArg != "" {
 		lineState[sstore.LineState_Lang] = langArg
 	}
-	update, err := addLineForCmd(ctx, "/run", true, ids, cmd, renderer, lineState)
-	if err != nil {
-		return nil, err
+
+	// If we are running an ephemeral command, we don't want to add the line to the screen
+	if pk.EphemeralOpts == nil {
+		update, err := addLineForCmd(ctx, "/run", true, ids, cmd, renderer, lineState)
+		if err != nil {
+			return nil, err
+		}
+		update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
+		// this update is sent asynchronously for timing issues.  the cmd update comes async as well
+		// so if we return this directly it sometimes gets evaluated first.  by pushing it on the MainBus
+		// it ensures it happens after the command creation event.
+		scbus.MainUpdateBus.DoScreenUpdate(ids.ScreenId, update)
 	}
-	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
-	// this update is sent asynchronously for timing issues.  the cmd update comes async as well
-	// so if we return this directly it sometimes gets evaluated first.  by pushing it on the MainBus
-	// it ensures it happens after the command creation event.
-	scbus.MainUpdateBus.DoScreenUpdate(ids.ScreenId, update)
 	return nil, nil
 }
 

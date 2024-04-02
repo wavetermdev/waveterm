@@ -1975,6 +1975,14 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	// statePtr will not be nil
 	runPacket.StatePtr = statePtr
 	currentState, err := sstore.GetFullState(ctx, *statePtr)
+
+	// Ephemeral commands can override the cwd without persisting it to the DB
+	if rcOpts.EphemeralOpts != nil && rcOpts.EphemeralOpts.OverrideCwd != "" {
+		newState := *currentState
+		newState.Cwd = rcOpts.EphemeralOpts.OverrideCwd
+		currentState = &newState
+	}
+
 	if err != nil || currentState == nil {
 		return nil, nil, fmt.Errorf("cannot load current remote state: %w", err)
 	}
