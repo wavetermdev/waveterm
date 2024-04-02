@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 )
 
 var RemoteNameRe = regexp.MustCompile("^\\*?[a-zA-Z0-9_-]+$")
@@ -86,15 +87,15 @@ const RemoteInputPacketStr = "remoteinput"
 const CmdInputTextPacketStr = "cmdinputtext"
 
 type FeCommandPacketType struct {
-	Type          string                   `json:"type"`
-	MetaCmd       string                   `json:"metacmd"`
-	MetaSubCmd    string                   `json:"metasubcmd,omitempty"`
-	Args          []string                 `json:"args,omitempty"`
-	Kwargs        map[string]string        `json:"kwargs,omitempty"`
-	RawStr        string                   `json:"rawstr,omitempty"`
-	UIContext     *UIContextType           `json:"uicontext,omitempty"`
-	Interactive   bool                     `json:"interactive"`
-	EphemeralOpts *packet.EphemeralRunOpts `json:"ephemeralopts,omitempty"`
+	Type          string                      `json:"type"`
+	MetaCmd       string                      `json:"metacmd"`
+	MetaSubCmd    string                      `json:"metasubcmd,omitempty"`
+	Args          []string                    `json:"args,omitempty"`
+	Kwargs        map[string]string           `json:"kwargs,omitempty"`
+	RawStr        string                      `json:"rawstr,omitempty"`
+	UIContext     *UIContextType              `json:"uicontext,omitempty"`
+	Interactive   bool                        `json:"interactive"`
+	EphemeralOpts *ephemeral.EphemeralRunOpts `json:"ephemeralopts,omitempty"`
 }
 
 func (pk *FeCommandPacketType) GetRawStr() string {

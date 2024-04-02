@@ -703,12 +703,12 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 
 	if commandPk.EphemeralOpts == nil {
 		log.Printf("EphemeralOpts is nil, creating new EphemeralOpts\n")
-		commandPk.EphemeralOpts = &packet.EphemeralRunOpts{}
+		commandPk.EphemeralOpts = &ephemeral.EphemeralRunOpts{}
 	}
 
 	if commandPk.EphemeralOpts.TimeoutMs == 0 {
 		log.Printf("EphemeralOpts.TimeoutMs is 0, setting to default\n")
-		commandPk.EphemeralOpts.TimeoutMs = packet.DefaultEphemeralTimeoutMs
+		commandPk.EphemeralOpts.TimeoutMs = ephemeral.DefaultEphemeralTimeoutMs
 	}
 
 	var ewc *ephemeral.EphemeralWriteCloser

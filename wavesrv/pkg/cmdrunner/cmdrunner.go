@@ -37,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/bookmarks"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/comp"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/history"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
@@ -545,7 +546,7 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 		SessionId:     ids.SessionId,
 		ScreenId:      ids.ScreenId,
 		RemotePtr:     ids.Remote.RemotePtr,
-		EphemeralOpts: &packet.EphemeralRunOpts{TimeoutMs: packet.DefaultEphemeralTimeoutMs},
+		EphemeralOpts: &ephemeral.EphemeralRunOpts{TimeoutMs: ephemeral.DefaultEphemeralTimeoutMs},
 	}
 	_, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
 	if callback != nil {
@@ -627,6 +628,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 		newPk.EphemeralOpts = pk.EphemeralOpts
 		evalDepth := getEvalDepth(ctx)
 		ctxWithDepth := context.WithValue(ctx, depthContextKey, evalDepth+1)
+		log.Printf("[info] expanded command: %s\n", expandedCmdStr)
 		return EvalCommand(ctxWithDepth, newPk)
 	}
 	isRtnStateCmd := IsReturnStateCommand(cmdStr)
@@ -635,7 +637,6 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	runPacket.ReqId = uuid.New().String()
 	runPacket.CK = base.MakeCommandKey(ids.ScreenId, scbase.GenWaveUUID())
 	runPacket.UsePty = true
-	runPacket.EphemeralOpts = pk.EphemeralOpts
 	ptermVal := defaultStr(pk.Kwargs["wterm"], DefaultPTERM)
 	runPacket.TermOpts, err = GetUITermOpts(pk.UIContext.WinSize, ptermVal)
 	if err != nil {
@@ -644,10 +645,12 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
 	rcOpts := remote.RunCommandOpts{
-		SessionId: ids.SessionId,
-		ScreenId:  ids.ScreenId,
-		RemotePtr: ids.Remote.RemotePtr,
+		SessionId:     ids.SessionId,
+		ScreenId:      ids.ScreenId,
+		RemotePtr:     ids.Remote.RemotePtr,
+		EphemeralOpts: pk.EphemeralOpts,
 	}
+	log.Printf("[info] run command: %s\n", runPacket.Command)
 	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
 	if callback != nil {
 		defer callback()
