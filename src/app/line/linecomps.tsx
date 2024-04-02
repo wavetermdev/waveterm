@@ -8,7 +8,7 @@ import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { If } from "tsx-control-statements/components";
+import { Choose, If, Otherwise, When } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, Cmd } from "@/models";
 import { termHeightFromRows } from "@/util/textmeasure";
 import cn from "classnames";
@@ -25,23 +25,22 @@ import * as lineutil from "./lineutil";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as appconst from "@/app/appconst";
 import * as util from "@/util/util";
-import * as textmeasure from "@/util/textmeasure";
 
 import "./line.less";
-import { CenteredIcon, RotateIcon } from "../common/icons/icons";
+import { RotateIcon } from "../common/icons/icons";
 
 const DebugHeightProblems = false;
 const MinLine = 0;
 const MaxLine = 1000;
-let heightLog = {};
+const heightLog = {};
 (window as any).heightLog = heightLog;
 (window as any).findHeightProblems = function () {
-    for (let linenum in heightLog) {
-        let lh = heightLog[linenum];
+    for (const linenum in heightLog) {
+        const lh = heightLog[linenum];
         if (lh.heightArr == null || lh.heightArr.length < 2) {
             continue;
         }
-        let firstHeight = lh.heightArr[0];
+        const firstHeight = lh.heightArr[0];
         for (let i = 1; i < lh.heightArr.length; i++) {
             if (lh.heightArr[i] != firstHeight) {
                 console.log("line", linenum, "heights", lh.heightArr);
@@ -57,7 +56,7 @@ function cmdShouldMarkError(cmd: Cmd): boolean {
     if (cmd.getStatus() == "error") {
         return true;
     }
-    let exitCode = cmd.getExitCode();
+    const exitCode = cmd.getExitCode();
     // 0, SIGINT, or SIGPIPE
     if (exitCode == 0 || exitCode == 130 || exitCode == 141) {
         return false;
@@ -142,7 +141,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
     handleLineSettings(e: any): void {
         e.preventDefault();
         e.stopPropagation();
-        let { line } = this.props;
+        const { line } = this.props;
         if (line != null) {
             mobx.action(() => {
                 GlobalModel.lineSettingsModal.set(line.linenum);
@@ -152,74 +151,89 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
     }
 
     render() {
-        let { line, screen } = this.props;
+        const { line, screen } = this.props;
         const isMinimized = line.linestate["wave:min"];
         const containerType = screen.getContainerType();
         return (
             <div className="line-actions">
-                <If condition={containerType == appconst.LineContainer_Main}>
-                    <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
-                        <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
-                    </div>
-                    <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
-                        <i className="fa-sharp fa-regular fa-trash fa-fw" />
-                    </div>
-                    <div
-                        key="bookmark"
-                        title="Bookmark"
-                        className={cn("line-icon", "line-bookmark")}
-                        onClick={this.clickBookmark}
-                    >
-                        <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
-                    </div>
-                    <div
-                        key="minimize"
-                        title={`${isMinimized ? "Show Output" : "Hide Output"}`}
-                        className={cn("line-icon", isMinimized ? "active" : "")}
-                        onClick={this.clickMinimize}
-                    >
-                        <If condition={isMinimized}>
-                            <i className="fa-sharp fa-regular fa-circle-plus fa-fw" />
-                        </If>
-                        <If condition={!isMinimized}>
-                            <i className="fa-sharp fa-regular fa-circle-minus fa-fw" />
-                        </If>
-                    </div>
-                    <div className="line-icon line-sidebar" onClick={this.clickMoveToSidebar} title="Move to Sidebar">
-                        <i className="fa-sharp fa-solid fa-right-to-line fa-fw" />
-                    </div>
-                    <div
-                        key="settings"
-                        title="Line Settings"
-                        className="line-icon line-icon-shrink-left"
-                        onClick={this.handleLineSettings}
-                    >
-                        <i className="fa-sharp fa-regular fa-ellipsis-vertical fa-fw" />
-                    </div>
-                </If>
-                <If condition={containerType == appconst.LineContainer_Sidebar}>
-                    <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
-                        <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
-                    </div>
-                    <div key="delete" title="Delete Line (&#x2318;D)" className="line-icon" onClick={this.clickDelete}>
-                        <i className="fa-sharp fa-regular fa-trash fa-fw" />
-                    </div>
-                    <div
-                        key="bookmark"
-                        title="Bookmark"
-                        className={cn("line-icon", "line-bookmark")}
-                        onClick={this.clickBookmark}
-                    >
-                        <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
-                    </div>
-                    <div
-                        className="line-icon line-sidebar"
-                        onClick={this.clickRemoveFromSidebar}
-                        title="Move to Sidebar"
-                    >
-                        <i className="fa-sharp fa-solid fa-left-to-line fa-fw" />
-                    </div>
-                </If>
+                <Choose>
+                    <When condition={containerType == appconst.LineContainer_Main}>
+                        <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
+                            <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
+                        </div>
+                        <div
+                            key="delete"
+                            title="Delete Line (&#x2318;D)"
+                            className="line-icon"
+                            onClick={this.clickDelete}
+                        >
+                            <i className="fa-sharp fa-regular fa-trash fa-fw" />
+                        </div>
+                        <div
+                            key="bookmark"
+                            title="Bookmark"
+                            className={cn("line-icon", "line-bookmark")}
+                            onClick={this.clickBookmark}
+                        >
+                            <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
+                        </div>
+                        <div
+                            key="minimize"
+                            title={`${isMinimized ? "Show Output" : "Hide Output"}`}
+                            className={cn("line-icon", isMinimized ? "active" : "")}
+                            onClick={this.clickMinimize}
+                        >
+                            <Choose>
+                                <When condition={isMinimized}>
+                                    <i className="fa-sharp fa-regular fa-circle-plus fa-fw" />
+                                </When>
+                                <Otherwise>
+                                    <i className="fa-sharp fa-regular fa-circle-minus fa-fw" />
+                                </Otherwise>
+                            </Choose>
+                        </div>
+                        <div
+                            className="line-icon line-sidebar"
+                            onClick={this.clickMoveToSidebar}
+                            title="Move to Sidebar"
+                        >
+                            <i className="fa-sharp fa-solid fa-right-to-line fa-fw" />
+                        </div>
+                        <div
+                            key="settings"
+                            title="Line Settings"
+                            className="line-icon line-icon-shrink-left"
+                            onClick={this.handleLineSettings}
+                        >
+                            <i className="fa-sharp fa-regular fa-ellipsis-vertical fa-fw" />
+                        </div>
+                    </When>
+                    <When condition={containerType == appconst.LineContainer_Sidebar}>
+                        <div
+                            key="delete"
+                            title="Delete Line (&#x2318;D)"
+                            className="line-icon"
+                            onClick={this.clickDelete}
+                        >
+                            <i className="fa-sharp fa-regular fa-trash fa-fw" />
+                        </div>
+                        <div
+                            key="bookmark"
+                            title="Bookmark"
+                            className={cn("line-icon", "line-bookmark")}
+                            onClick={this.clickBookmark}
+                        >
+                            <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
+                        </div>
+                        <div
+                            className="line-icon line-sidebar"
+                            onClick={this.clickRemoveFromSidebar}
+                            title="Move to Sidebar"
+                        >
+                            <i className="fa-sharp fa-solid fa-left-to-line fa-fw" />
+                        </div>
+                    </When>
+                </Choose>
             </div>
         );
     }
@@ -254,9 +268,9 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
     }
 
     renderMeta1(cmd: Cmd) {
-        let { line } = this.props;
+        const { line } = this.props;
         let formattedTime: string = "";
-        let restartTs = cmd.getRestartTs();
+        const restartTs = cmd.getRestartTs();
         let timeTitle: string = null;
         if (restartTs != null && restartTs > 0) {
             formattedTime = "restarted @ " + lineutil.getLineDateTimeStr(restartTs);
@@ -264,8 +278,8 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
         } else {
             formattedTime = lineutil.getLineDateTimeStr(line.ts);
         }
-        let renderer = line.renderer;
-        let durationMs = cmd.getDurationMs();
+        const renderer = line.renderer;
+        const durationMs = cmd.getDurationMs();
         return (
             <div key="meta1" className="meta meta-line1">
                 <SmallLineAvatar line={line} cmd={cmd} />
@@ -287,7 +301,7 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
     }
 
     render() {
-        let { line, cmd } = this.props;
+        const { line, cmd } = this.props;
         const hidePrompt = getIsHidePrompt(line);
         return (
             <div key="header" className={cn("line-header", { "hide-prompt": hidePrompt })}>
@@ -303,7 +317,7 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
     render() {
         const { line, cmd } = this.props;
         const lineNumStr = (line.linenumtemp ? "~" : "#") + String(line.linenum);
-        let status = cmd != null ? cmd.getStatus() : "done";
+        const status = cmd != null ? cmd.getStatus() : "done";
         const exitcode = cmd != null ? cmd.getExitCode() : 0;
         const isComment = line.linetype == "text";
         let icon = null;
@@ -359,7 +373,7 @@ class RtnState extends React.Component<{ cmd: Cmd; line: LineType }> {
     }
 
     checkStateDiffLoad(): void {
-        let cmd = this.props.cmd;
+        const cmd = this.props.cmd;
         if (cmd == null || !cmd.getRtnState() || this.rtnStateDiffFetched) {
             return;
         }
@@ -406,7 +420,7 @@ class RtnState extends React.Component<{ cmd: Cmd; line: LineType }> {
     }
 
     render() {
-        let { cmd } = this.props;
+        const { cmd } = this.props;
         const rsdiff = this.rtnStateDiff.get();
         const termFontSize = GlobalModel.getTermFontSize();
         let rtnStateDiffSize = termFontSize - 2;
@@ -488,7 +502,7 @@ class LineCmd extends React.Component<
         if (elem != null) {
             curHeight = elem.offsetHeight;
         }
-        let linenum = line.linenum;
+        const linenum = line.linenum;
         if (DebugHeightProblems && linenum >= MinLine && linenum <= MaxLine) {
             heightLog[linenum] = heightLog[linenum] || {};
             heightLog[linenum].heightArr = heightLog[linenum].heightArr || [];
@@ -685,7 +699,7 @@ class LineCmd extends React.Component<
         const isFocused = mobx
             .computed(
                 () => {
-                    let screenFocusType = screen.getFocusType();
+                    const screenFocusType = screen.getFocusType();
                     return isPhysicalFocused && screenFocusType == "cmd";
                 },
                 { name: "computed-isFocused" }
@@ -694,7 +708,7 @@ class LineCmd extends React.Component<
         const shouldCmdFocus = mobx
             .computed(
                 () => {
-                    let screenFocusType = screen.getFocusType();
+                    const screenFocusType = screen.getFocusType();
                     return isSelected && screenFocusType == "cmd";
                 },
                 { name: "computed-shouldCmdFocus" }
@@ -725,16 +739,9 @@ class LineCmd extends React.Component<
             rendererPlugin = PluginModel.getRendererPluginByName(line.renderer);
         }
         const rendererType = lineutil.getRendererType(line);
-        const hidePrompt = rendererPlugin?.hidePrompt;
         const termFontSize = GlobalModel.getTermFontSize();
         const containerType = screen.getContainerType();
         const isMinimized = line.linestate["wave:min"] && containerType == appconst.LineContainer_Main;
-        const lhv: LineChromeHeightVars = {
-            numCmdLines: lineutil.countCmdLines(cmd.getCmdStr()),
-            zeroHeight: isMinimized,
-            hasLine2: !hidePrompt,
-        };
-        const chromeHeight = textmeasure.calcLineChromeHeight(GlobalModel.lineHeightEnv, lhv);
         return (
             <div
                 className={mainDivCn}
@@ -749,55 +756,64 @@ class LineCmd extends React.Component<
                 </If>
                 <LineActions screen={screen} line={line} cmd={cmd} />
                 <LineHeader screen={screen} line={line} cmd={cmd} />
-                <If condition={!isMinimized && isInSidebar}>
-                    <div className="sidebar-message" style={{ fontSize: termFontSize }}>
-                        &nbsp;&nbsp;showing in sidebar =&gt;
-                    </div>
-                </If>
-                <If condition={!isMinimized && !isInSidebar}>
-                    <ErrorBoundary plugin={rendererPlugin?.name} lineContext={lineutil.getRendererContext(line)}>
-                        <If condition={rendererPlugin == null && !isNoneRenderer}>
-                            <TerminalRenderer
-                                screen={screen}
-                                line={line}
-                                width={width}
-                                staticRender={staticRender}
-                                visible={visible}
-                                onHeightChange={this.handleHeightChange}
-                                collapsed={false}
-                            />
-                        </If>
-                        <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
-                            <SimpleBlobRenderer
-                                rendererContainer={screen}
-                                lineId={line.lineid}
-                                plugin={rendererPlugin}
-                                onHeightChange={this.handleHeightChange}
-                                initParams={this.makeRendererModelInitializeParams()}
-                                scrollToBringIntoViewport={this.scrollToBringIntoViewport}
-                                isSelected={isSelected}
-                                shouldFocus={shouldCmdFocus}
-                            />
-                        </If>
-                        <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
-                            <IncrementalRenderer
-                                rendererContainer={screen}
-                                lineId={line.lineid}
-                                plugin={rendererPlugin}
-                                onHeightChange={this.handleHeightChange}
-                                initParams={this.makeRendererModelInitializeParams()}
-                                isSelected={isSelected}
-                            />
-                        </If>
-                    </ErrorBoundary>
-                    <If condition={isRtnState}>
-                        <RtnState cmd={cmd} line={line} />
-                    </If>
-                    <If condition={isSelected && !isFocused && rendererType == "terminal"}>
-                        <div className="cmd-hints">
-                            <div className="hint-item color-nohover-white">focus line ({renderCmdText("L")})</div>
-                        </div>
-                    </If>
+                <If condition={!isMinimized}>
+                    <Choose>
+                        <When condition={isInSidebar}>
+                            <div className="sidebar-message" style={{ fontSize: termFontSize }}>
+                                &nbsp;&nbsp;showing in sidebar =&gt;
+                            </div>
+                        </When>
+                        <Otherwise>
+                            <ErrorBoundary
+                                plugin={rendererPlugin?.name}
+                                lineContext={lineutil.getRendererContext(line)}
+                            >
+                                <If condition={rendererPlugin == null && !isNoneRenderer}>
+                                    <TerminalRenderer
+                                        screen={screen}
+                                        line={line}
+                                        width={width}
+                                        staticRender={staticRender}
+                                        visible={visible}
+                                        onHeightChange={this.handleHeightChange}
+                                        collapsed={false}
+                                    />
+                                </If>
+                                <If condition={rendererPlugin != null && rendererPlugin.rendererType == "simple"}>
+                                    <SimpleBlobRenderer
+                                        rendererContainer={screen}
+                                        lineId={line.lineid}
+                                        plugin={rendererPlugin}
+                                        onHeightChange={this.handleHeightChange}
+                                        initParams={this.makeRendererModelInitializeParams()}
+                                        scrollToBringIntoViewport={this.scrollToBringIntoViewport}
+                                        isSelected={isSelected}
+                                        shouldFocus={shouldCmdFocus}
+                                    />
+                                </If>
+                                <If condition={rendererPlugin != null && rendererPlugin.rendererType == "full"}>
+                                    <IncrementalRenderer
+                                        rendererContainer={screen}
+                                        lineId={line.lineid}
+                                        plugin={rendererPlugin}
+                                        onHeightChange={this.handleHeightChange}
+                                        initParams={this.makeRendererModelInitializeParams()}
+                                        isSelected={isSelected}
+                                    />
+                                </If>
+                            </ErrorBoundary>
+                            <If condition={isRtnState}>
+                                <RtnState cmd={cmd} line={line} />
+                            </If>
+                            <If condition={isSelected && !isFocused && rendererType == "terminal"}>
+                                <div className="cmd-hints">
+                                    <div className="hint-item color-nohover-white">
+                                        focus line ({renderCmdText("L")})
+                                    </div>
+                                </div>
+                            </If>
+                        </Otherwise>
+                    </Choose>
                 </If>
             </div>
         );
@@ -875,11 +891,6 @@ class LineText extends React.Component<
         const isSelected = mobx
             .computed(() => screen.getSelectedLine() == line.linenum, {
                 name: "computed-isSelected",
-            })
-            .get();
-        const isFocused = mobx
-            .computed(() => screen.getFocusType() == "cmd", {
-                name: "computed-isFocused",
             })
             .get();
         const mainClass = cn("line", "line-text", "focus-parent", { selected: isSelected });
