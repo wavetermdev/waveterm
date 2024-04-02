@@ -1925,8 +1925,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 
 	if rcOpts.EphemeralOpts != nil {
 		log.Printf("[info] running ephemeral command: %s\n", runPacket.Command)
-		// Setting UsePty to false will ensure that the outputs get written to the correct file descriptors to extract stdout and stderr
-		runPacket.UsePty = false
 	}
 
 	// pending state command logic
@@ -1978,11 +1976,24 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	runPacket.StatePtr = statePtr
 	currentState, err := sstore.GetFullState(ctx, *statePtr)
 
-	// Ephemeral commands can override the cwd without persisting it to the DB
-	if rcOpts.EphemeralOpts != nil && rcOpts.EphemeralOpts.OverrideCwd != "" {
-		newState := *currentState
-		newState.Cwd = rcOpts.EphemeralOpts.OverrideCwd
-		currentState = &newState
+	if rcOpts.EphemeralOpts != nil {
+		// Setting UsePty to false will ensure that the outputs get written to the correct file descriptors to extract stdout and stderr
+		runPacket.UsePty = false
+
+		// Ephemeral commands can override the cwd without persisting it to the DB
+		if rcOpts.EphemeralOpts.OverrideCwd != "" {
+			currentState.Cwd = rcOpts.EphemeralOpts.OverrideCwd
+		}
+
+		// Ephemeral commands can override the env without persisting it to the DB
+		if len(rcOpts.EphemeralOpts.Env) > 0 {
+			log.Printf("[info] overriding env vars for ephemeral command: %s\n", runPacket.Command)
+			curEnvs := shellenv.DeclMapFromState(currentState)
+			for key, val := range rcOpts.EphemeralOpts.Env {
+				curEnvs[key] = &shellenv.DeclareDeclType{Name: key, Value: val, Args: "x"}
+			}
+			currentState.ShellVars = shellenv.SerializeDeclMap(curEnvs)
+		}
 	}
 
 	if err != nil || currentState == nil {
@@ -2519,33 +2530,23 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		return
 	}
 	if dataPk, ok := pk.(*packet.DataPacketType); ok {
-		log.Printf("data packet %v\n", dataPk.CK)
 		runCmdUpdateFn(dataPk.CK, func() {
 			rct := msh.GetRunningCmd(dataPk.CK)
 			log.Printf("data packet for %v\n", rct)
-			if rct != nil && rct.EphemeralOpts != nil {
-				log.Printf("ephemeral data packet update %v\n", rct.EphemeralOpts)
-			}
 			msh.handleDataPacket(rct, dataPk, msh.DataPosMap)
 		})
 		go pushStatusIndicatorUpdate(&dataPk.CK, sstore.StatusIndicatorLevel_Output)
 		return
 	}
 	if donePk, ok := pk.(*packet.CmdDonePacketType); ok {
-		log.Printf("done packet %v\n", donePk.CK)
 		runCmdUpdateFn(donePk.CK, func() {
 			rct := msh.GetRunningCmd(donePk.CK)
 			log.Printf("done packet for %v\n", rct)
-
-			if rct != nil && rct.EphemeralOpts != nil {
-				log.Printf("ephemeral data packet done %v\n", rct.EphemeralOpts)
-			}
 			msh.handleCmdDonePacket(rct, donePk)
 		})
 		return
 	}
 	if finalPk, ok := pk.(*packet.CmdFinalPacketType); ok {
-		log.Printf("final packet %v\n", finalPk.CK)
 		runCmdUpdateFn(finalPk.CK, func() {
 			rct := msh.GetRunningCmd(finalPk.CK)
 			msh.handleCmdFinalPacket(rct, finalPk)

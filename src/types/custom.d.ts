@@ -192,6 +192,7 @@ declare global {
         overridecwd?: string;
         timeoutms?: number;
         expectsresponse: boolean;
+        env: { [k: string]: string };
     };
 
     type FeCmdPacketType = {

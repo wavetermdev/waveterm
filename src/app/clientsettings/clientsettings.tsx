@@ -180,10 +180,18 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     async handleSubmitEphemeral() {
-        const resp = await GlobalModel.submitEphemeralCommand("eval", null, [">&2 echo 'error'"], null, false, {
-            expectsresponse: true,
-            overridecwd: "/",
-        });
+        const resp = await GlobalModel.submitEphemeralCommand(
+            "eval",
+            null,
+            [">&2 ls && echo 'hello' + $HELLOWORLD"],
+            null,
+            false,
+            {
+                expectsresponse: true,
+                overridecwd: "/",
+                env: { HELLOWORLD: "Hello World" },
+            }
+        );
         console.log("resp", resp);
         const { stdout, stderr } = await GlobalModel.getEphemeralCommandOutput(resp);
         console.log("stdout", stdout);
