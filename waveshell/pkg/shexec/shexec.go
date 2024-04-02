@@ -887,12 +887,11 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		rcFileName = fmt.Sprintf("/dev/fd/%d", rcFileFdNum)
 	}
 	if cmd.TmpRcFileName != "" {
-		go func() {
+		time.AfterFunc(2*time.Second, func() {
 			// cmd.Close() will also remove rcFileName
 			// adding this to also try to proactively clean up after 2-seconds.
-			time.Sleep(2 * time.Second)
 			os.Remove(cmd.TmpRcFileName)
-		}()
+		})
 	}
 	cmd.Cmd = sapi.MakeShExecCommand(pk.Command, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
@@ -995,6 +994,14 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	err = cmd.Cmd.Start()
 	if err != nil {
 		return nil, err
+	}
+
+	if pk.Timeout > 0 {
+		// Cancel the command if it takes too long
+		time.AfterFunc(pk.Timeout, func() {
+			cmd.Cmd.Cancel()
+			cmd.Close()
+		})
 	}
 	return cmd, nil
 }

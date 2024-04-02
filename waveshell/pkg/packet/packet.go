@@ -826,6 +826,7 @@ type RunPacketType struct {
 	RunData       []RunDataType   `json:"rundata,omitempty"`
 	Detached      bool            `json:"detached,omitempty"`
 	ReturnState   bool            `json:"returnstate,omitempty"`
+	Timeout       time.Duration   `json:"timeout"` // TODO: added vnext. This is the timeout for the command to run.  If the command does not complete in this time, it will be killed. The default zero value will not impose a timeout.
 }
 
 func (*RunPacketType) GetType() string {
