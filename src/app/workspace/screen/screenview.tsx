@@ -388,7 +388,6 @@ interface ScreenWindowViewProps {
 // screen is not null
 @mobxReact.observer
 class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
-    @mobx.observable props_: ScreenWindowViewProps;
     rszObs: ResizeObserver;
     windowViewRef: React.RefObject<any>;
 
@@ -403,11 +402,10 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
         super(props);
         this.setSize_debounced = debounce(1000, this.setSize.bind(this));
         this.windowViewRef = React.createRef();
-        this.props_ = props;
     }
 
     setSize(width: number, height: number): void {
-        const { screen } = this.props_;
+        const { screen } = this.props;
         if (screen == null) {
             return;
         }
@@ -422,7 +420,7 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
     }
 
     componentDidMount() {
-        const { screen } = this.props_;
+        const { screen } = this.props;
         const wvElem = this.windowViewRef.current;
         if (wvElem != null) {
             const width = wvElem.offsetWidth;
@@ -443,14 +441,6 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
         if (this.rszObs) {
             this.rszObs.disconnect();
         }
-    }
-
-    componentDidUpdate(
-        previousProps: Readonly<ScreenWindowViewProps>,
-        previousState: Readonly<{}>,
-        snapshot: any
-    ): void {
-        this.props_ = this.props;
     }
 
     handleResize(entries: any) {
@@ -483,7 +473,7 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
     }
 
     renderError(message: string, fade: boolean) {
-        const { screen, width } = this.props_;
+        const { screen, width } = this.props;
         return (
             <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId} style={{ width }}>
                 <div key="lines" className="lines"></div>
@@ -496,7 +486,7 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
 
     @boundMethod
     copyShareLink(): void {
-        const { screen } = this.props_;
+        const { screen } = this.props;
         const shareLink = screen.getWebShareUrl();
         if (shareLink == null) {
             return;
@@ -514,7 +504,7 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
 
     @boundMethod
     openScreenSettings(): void {
-        const { screen } = this.props_;
+        const { screen } = this.props;
         mobx.action(() => {
             GlobalModel.screenSettingsModal.set({ sessionId: screen.sessionId, screenId: screen.screenId });
         })();
@@ -522,14 +512,14 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
 
     @boundMethod
     buildLineComponent(lineProps: LineFactoryProps): React.JSX.Element {
-        const { screen } = this.props_;
+        const { screen } = this.props;
         const { line, ...restProps } = lineProps;
         const realLine: LineType = line as LineType;
         return <Line key={realLine.lineid} screen={screen} line={realLine} {...restProps} />;
     }
 
     determineVisibleLines(win: ScreenLines): LineType[] {
-        const { screen } = this.props_;
+        const { screen } = this.props;
         if (screen.filterRunning.get()) {
             return win.getRunningCmdLines();
         }
@@ -538,14 +528,14 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
 
     @boundMethod
     disableFilter() {
-        const { screen } = this.props_;
+        const { screen } = this.props;
         mobx.action(() => {
             screen.filterRunning.set(false);
         })();
     }
 
     render() {
-        const { session, screen, width } = this.props_;
+        const { session, screen, width } = this.props;
         const win = this.getScreenLines();
         if (!win.loaded.get()) {
             return this.renderError("...", true);
