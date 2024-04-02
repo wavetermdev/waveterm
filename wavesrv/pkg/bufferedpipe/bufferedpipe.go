@@ -29,8 +29,8 @@ type BufferedPipe struct {
 	Key            string       // a unique key for the pipe
 	buffer         bytes.Buffer // buffer of data to be written to the downstream writer once it is ready
 	closed         atomic.Bool  // whether the pipe has been closed
-	bufferDataCond sync.Cond    // Condition variable to signal waiting writers that there is either data to write or the pipe has been closed
-	downstreamLock sync.Mutex   // Lock to ensure that only one goroutine can read from the buffer at a time
+	bufferDataCond *sync.Cond   // Condition variable to signal waiting writers that there is either data to write or the pipe has been closed
+	downstreamLock *sync.Mutex  // Lock to ensure that only one goroutine can read from the buffer at a time
 }
 
 // Create a new BufferedPipe with a timeout. The writer will be closed after the timeout
@@ -39,8 +39,8 @@ func NewBufferedPipe(timeout time.Duration) *BufferedPipe {
 		Key:            uuid.New().String(),
 		buffer:         bytes.Buffer{},
 		closed:         atomic.Bool{},
-		bufferDataCond: sync.Cond{L: &sync.Mutex{}},
-		downstreamLock: sync.Mutex{},
+		bufferDataCond: &sync.Cond{L: &sync.Mutex{}},
+		downstreamLock: &sync.Mutex{},
 	}
 	SetBufferedPipe(newPipe)
 	time.AfterFunc(timeout, func() {
