@@ -19,10 +19,8 @@ import (
 )
 
 const (
-	// The time-to-live for a buffered pipe in the map of buffered pipes.
-	BufferedPipeMapTTL = 30 * time.Second
-	// The URL for getting the output of a buffered pipe.
-	BufferedPipeGetterUrl = "/api/buffered-pipe"
+	BufferedPipeMapTTL    = 30 * time.Second     // The time-to-live for a buffered pipe in the map of buffered pipes.
+	BufferedPipeGetterUrl = "/api/buffered-pipe" // The URL for getting the output of a buffered pipe.
 )
 
 // A pipe that allows for lazy writing to a downstream writer. Data written to the pipe is buffered until WriteTo is called.
