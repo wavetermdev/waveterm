@@ -1978,7 +1978,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 
 	if rcOpts.EphemeralOpts != nil {
 		// Setting UsePty to false will ensure that the outputs get written to the correct file descriptors to extract stdout and stderr
-		runPacket.UsePty = false
+		runPacket.UsePty = rcOpts.EphemeralOpts.UsePty
 
 		// Ephemeral commands can override the cwd without persisting it to the DB
 		if rcOpts.EphemeralOpts.OverrideCwd != "" {

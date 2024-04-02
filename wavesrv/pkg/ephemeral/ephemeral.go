@@ -19,6 +19,7 @@ const (
 type EphemeralRunOpts struct {
 	Env             map[string]string `json:"env,omitempty"`         // Environment variables to set for the command.
 	OverrideCwd     string            `json:"overridecwd,omitempty"` // A directory to use as the current working directory. Defaults to the last set shell state.
+	UsePty          bool              `json:"usepty"`                // If set, the command is run in a pseudo-terminal and all output will be written to the StdoutWriter. If not set, the command is run in a normal shell and the output is written to the StdoutWriter and StderrWriter.
 	TimeoutMs       int64             `json:"timeoutms"`             // The maximum time to wait for the command to complete. If the command does not complete within this time, it is killed.
 	ExpectsResponse bool              `json:"expectsresponse"`       // If set, the command is expected to return a response. If this is false, ResposeWriter is not set.
 	StdoutWriter    io.WriteCloser    `json:"-"`                     // A writer to receive the command's stdout. If not set, the command's output is discarded. (set by remote.go)
