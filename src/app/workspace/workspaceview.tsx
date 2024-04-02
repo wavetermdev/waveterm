@@ -14,13 +14,17 @@ import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as textmeasure from "@/util/textmeasure";
-import "./workspace.less";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
 import { Button } from "@/elements";
-import { getRemoteStr, getRemoteStrWithAlias } from "@/common/prompt/prompt";
+import { commandRtnHandler } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
+import { Dropdown } from "@/elements/dropdown";
+import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
 import { TabColorSelector, TabIconSelector, TabNameTextField, TabRemoteSelector } from "./screen/newtabsettings";
 import * as util from "@/util/util";
+
+import "./workspace.less";
 
 dayjs.extend(localizedFormat);
 
@@ -135,9 +139,22 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
         });
     }
 
+    @boundMethod
+    handleChangeTermTheme(theme: string): void {
+        const { screenId } = this.props.screen;
+        const currTheme = GlobalModel.getTermTheme()[screenId];
+        if (currTheme == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setScreenTermTheme(screenId, theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
     render() {
         let { screen } = this.props;
         let rptr = screen.curRemote.get();
+        const termThemes = getTermThemes(GlobalModel.termThemes);
+        const currTermTheme = GlobalModel.getTermTheme()[screen.screenId] ?? termThemes[0].label;
         return (
             <div className="newtab-container">
                 <div className="newtab-section name-section">
@@ -155,6 +172,17 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
                         To change connection from the command line use `cr [alias|user@host]`
                     </div>
                 </div>
+                <div className="newtab-spacer" />
+                <If condition={termThemes.length > 0}>
+                    <div className="newtab-section">
+                        <Dropdown
+                            className="terminal-theme-dropdown"
+                            options={termThemes}
+                            defaultValue={currTermTheme}
+                            onChange={this.handleChangeTermTheme}
+                        />
+                    </div>
+                </If>
                 <div className="newtab-spacer" />
                 <div className="newtab-section">
                     <TabIconSelector screen={screen} errorMessage={this.errorMessage} />
@@ -286,7 +314,7 @@ class WorkspaceView extends React.Component<{}, {}> {
                 </If>
                 <ErrorBoundary key="eb">
                     <ScreenView
-                        key={`screenview-${session.sessionId}-${termRenderVersion}`}
+                        key={`screenview-${sessionId}-${termRenderVersion}`}
                         session={session}
                         screen={activeScreen}
                     />

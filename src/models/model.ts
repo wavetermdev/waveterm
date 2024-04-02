@@ -130,12 +130,15 @@ class Model {
         name: "model-showLinks",
     });
     packetSeqNum: number = 0;
+
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
+
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
+
     termThemes: OMap<string, string> = mobx.observable.array([], {
         name: "terminalThemes",
         deep: false,
@@ -210,13 +213,6 @@ class Model {
         };
     }
 
-    static getInstance(): Model {
-        if (!(window as any).GlobalModel) {
-            (window as any).GlobalModel = new Model();
-        }
-        return (window as any).GlobalModel;
-    }
-
     readConfigKeybindings() {
         const url = new URL(this.getBaseHostPort() + "/config/keybindings.json");
         let prtn = fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() });
@@ -253,7 +249,7 @@ class Model {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
         return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
             .then((resp) => resp.json())
-            .then((themeVars) => {
+            .then((themeVars: TermThemeType) => {
                 Object.keys(themeVars).forEach((key) => {
                     if (reset) {
                         this.resetStyleVar(element, `--term-${key}`);
@@ -266,6 +262,12 @@ class Model {
             .catch((error) => {
                 console.error(`error applying theme: ${themeFileName}`, error);
             });
+    }
+
+    bumpTermRenderVersion() {
+        mobx.action(() => {
+            this.termRenderVersion.set(this.termRenderVersion.get() + 1);
+        })();
     }
 
     initSystemKeybindings() {
@@ -322,12 +324,6 @@ class Model {
     bumpRenderVersion() {
         mobx.action(() => {
             this.renderVersion.set(this.renderVersion.get() + 1);
-        })();
-    }
-
-    bumpTermRenderVersion() {
-        mobx.action(() => {
-            this.termRenderVersion.set(this.termRenderVersion.get() + 1);
         })();
     }
 
@@ -462,18 +458,26 @@ class Model {
         return ff;
     }
 
-    getTheme(): string {
-        let cdata = this.clientData.get();
-        let theme = cdata?.feopts?.theme;
-        if (theme == null) {
-            theme = appconst.DefaultTheme;
-        }
-        return theme;
+    getThemeSource(): NativeThemeSource {
+        return getApi().getNativeThemeSource();
     }
 
-    isThemeDark(): boolean {
+    onNativeThemeUpdated(): void {
+        const isDark = getApi().getShouldUseDarkColors();
+        if (isDark != this.isDarkTheme.get()) {
+            mobx.action(() => {
+                this.isDarkTheme.set(isDark);
+                this.bumpRenderVersion();
+            })();
+        }
+    }
+
+    getTermTheme(): TermThemeType {
         let cdata = this.clientData.get();
-        return cdata?.feopts?.theme != "light";
+        if (cdata?.feopts?.termtheme) {
+            return mobx.toJS(cdata.feopts.termtheme);
+        }
+        return {};
     }
 
     getTermFontSize(): number {
@@ -1287,7 +1291,10 @@ class Model {
         if (newTheme == null) {
             newTheme = appconst.DefaultTheme;
         }
-        const themeUpdated = newTheme != this.getTheme();
+        const themeUpdated = newTheme != this.getThemeSource();
+        const oldTermTheme = this.getTermTheme();
+        const newTermTheme = clientData?.feopts?.termtheme;
+        const ttUpdated = this.termThemeUpdated(newTermTheme, oldTermTheme);
         mobx.action(() => {
             this.clientData.set(clientData);
         })();

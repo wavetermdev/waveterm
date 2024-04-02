@@ -297,7 +297,7 @@ declare global {
 
     type DropdownItem = {
         label: string;
-        value: string | null;
+        value: string;
     };
 
     /**
@@ -570,9 +570,8 @@ declare global {
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
-        theme: string;
-        termtheme: TermThemeType;
         theme: NativeThemeSource;
+        termtheme: TermThemeType;
     };
 
     type ConfirmFlagsType = {

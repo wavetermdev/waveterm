@@ -206,9 +206,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         );
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
-        const curTheme = GlobalModel.getTheme();
+        const curTheme = GlobalModel.getThemeSource();
         const termThemes = getTermThemes(GlobalModel.termThemes, "Wave Default");
-
         const currTermTheme = GlobalModel.getTermTheme()["global"] ?? termThemes[0].label;
 
         return (

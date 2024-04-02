@@ -34,8 +34,6 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     handleResize_debounced: () => void;
     sidebarShowing: OV<boolean> = mobx.observable.box(false, { name: "screenview-sidebarShowing" });
     sidebarShowingTimeoutId: any = null;
-    theme: string;
-    themeReactionDisposer: mobx.IReactionDisposer;
 
     constructor(props: { session: Session; screen: Screen }) {
         super(props);
@@ -49,7 +47,8 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         this.sidebarShowing = mobx.observable.box(hasSidebar, { name: "screenview-sidebarShowing" });
     }
 
-    componentDidMount() {
+    componentDidMount(): void {
+        let { screen } = this.props;
         let elem = this.screenViewRef.current;
         if (elem != null) {
             this.rszObs = new ResizeObserver(this.handleResize_debounced);
@@ -58,7 +57,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         }
     }
 
-    componentDidUpdate() {
+    componentDidUpdate(): void {
         let { screen } = this.props;
         if (screen == null) {
             return;
@@ -79,93 +78,13 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             }
             mobx.action(() => this.sidebarShowing.set(false))();
         }
-
-        // this.setupThemeReaction();
     }
 
-    setupThemeReaction() {
-        if (this.themeReactionDisposer) {
-            this.themeReactionDisposer();
-        }
-
-        this.themeReactionDisposer = mobx.reaction(
-            () => {
-                return {
-                    termTheme: GlobalModel.getTermTheme(),
-                    screen: this.props.screen,
-                    session: GlobalModel.getActiveSession(),
-                };
-            },
-            ({ termTheme, screen, session }) => {
-                const currTheme = screen ? termTheme[screen.screenId] : null;
-                if (screen && currTheme !== this.theme && this.screenViewRef.current) {
-                    const reset = currTheme == null;
-                    const theme = currTheme ?? this.theme;
-                    const sessionEl = document.querySelector(
-                        `.session-view[data-sessionid="${session.sessionId}"]`
-                    ) as HTMLElement;
-                    const themeSrcEl = reset ? sessionEl : this.screenViewRef.current;
-                    const rtn = GlobalModel.updateTermTheme(this.screenViewRef.current, theme, reset);
-                    rtn.then(() => {
-                        GlobalModel.termThemeSrcEl.set(themeSrcEl);
-                    }).then(() => {
-                        GlobalModel.bumpTermRenderVersion();
-                    });
-                    this.theme = currTheme;
-                }
-            }
-        );
-    }
-
-    componentWillUnmount() {
+    componentWillUnmount(): void {
         if (this.rszObs != null) {
             this.rszObs.disconnect();
         }
-        if (this.themeReactionDisposer) {
-            this.themeReactionDisposer();
-        }
     }
-
-    // componentDidMount(): void {
-    //     let { screen } = this.props;
-    //     let elem = this.screenViewRef.current;
-    //     if (elem != null) {
-    //         this.rszObs = new ResizeObserver(this.handleResize_debounced);
-    //         this.rszObs.observe(elem);
-    //         this.handleResize();
-    //     }
-    //     let viewOpts = screen.viewOpts.get();
-    //     let hasSidebar = viewOpts?.sidebar?.open;
-    //     if (hasSidebar) {
-    //         mobx.action(() => this.sidebarShowing.set(true))();
-    //     }
-    // }
-
-    // componentDidUpdate(): void {
-    //     let { screen } = this.props;
-    //     let viewOpts = screen.viewOpts.get();
-    //     let hasSidebar = viewOpts?.sidebar?.open;
-    //     if (hasSidebar && !this.sidebarShowing.get()) {
-    //         this.sidebarShowingTimeoutId = setTimeout(() => {
-    //             mobx.action(() => {
-    //                 this.sidebarShowingTimeoutId = null;
-    //                 this.sidebarShowing.set(true);
-    //             })();
-    //         }, 500);
-    //     } else if (!hasSidebar) {
-    //         if (this.sidebarShowingTimeoutId != null) {
-    //             clearTimeout(this.sidebarShowingTimeoutId);
-    //             this.sidebarShowingTimeoutId = null;
-    //         }
-    //         mobx.action(() => this.sidebarShowing.set(false))();
-    //     }
-    // }
-
-    // componentWillUnmount(): void {
-    //     if (this.rszObs != null) {
-    //         this.rszObs.disconnect();
-    //     }
-    // }
 
     handleResize() {
         let elem = this.screenViewRef.current;
@@ -468,7 +387,6 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
 class ScreenWindowView extends React.Component<{ session: Session; screen: Screen; width: string }, {}> {
     rszObs: ResizeObserver;
     windowViewRef: React.RefObject<any>;
-    linesRef = React.createRef<HTMLDivElement>();
 
     width: mobx.IObservableValue<number> = mobx.observable.box(0, { name: "sw-view-width" });
     height: mobx.IObservableValue<number> = mobx.observable.box(0, { name: "sw-view-height" });
@@ -476,11 +394,6 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
 
     renderMode: OV<RenderModeType> = mobx.observable.box("normal", { name: "renderMode" });
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "sw-shareCopied" });
-
-    themeReactionDisposer: mobx.IReactionDisposer;
-    theme: string;
-
-    // disposer: any;
 
     constructor(props: any) {
         super(props);
@@ -502,6 +415,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
             screen.screenSizeCallback({ height: height, width: width });
         })();
     }
+
     componentDidMount() {
         const { screen } = this.props;
         let wvElem = this.windowViewRef.current;
@@ -638,15 +552,11 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         if (cdata == null) {
             return this.renderError("loading client data", true);
         }
+        let isActive = screen.isActive();
         let lines = this.determineVisibleLines(win);
         let renderMode = this.renderMode.get();
         return (
-            <div
-                className="window-view"
-                ref={this.windowViewRef}
-                style={{ width: this.props.width }}
-                data-screenid={screen.screenId}
-            >
+            <div className="window-view" ref={this.windowViewRef} style={{ width: this.props.width }}>
                 <If condition={lines.length == 0}>
                     <If condition={screen.nextLineNum.get() != 1}>
                         <div className="window-empty" ref={this.windowViewRef} data-screenid={screen.screenId}>

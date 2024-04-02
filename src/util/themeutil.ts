@@ -13,4 +13,4 @@ function getTermThemes(termThemes: string[], noneLabel = "Inherit"): DropdownIte
     return tt;
 }
 
-export { loadTheme, getTermThemes };
+export { getTermThemes };
