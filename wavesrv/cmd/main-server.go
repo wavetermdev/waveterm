@@ -712,11 +712,11 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		commandPk.EphemeralOpts.TimeoutMs = ephemeral.DefaultEphemeralTimeoutMs
 	}
 
-	// These need to be defined here so we can use the methods of the EphemeralWriteCloser that are not part of io.WriteCloser
+	// These need to be defined here so we can use the methods of the BufferedPipe that are not part of io.WriteCloser
 	var stdoutPipe, stderrPipe *bufferedpipe.BufferedPipe
 
 	if commandPk.EphemeralOpts.ExpectsResponse {
-		log.Printf("EphemeralOpts.ExpectsResponse is true, creating new EphemeralWriteCloser\n")
+		log.Printf("EphemeralOpts.ExpectsResponse is true, creating new BufferedPipes\n")
 		// Create new buffered pipes for stdout and stderr
 		stdoutPipe = bufferedpipe.NewBufferedPipe(ephemeral.DefaultEphemeralTimeoutDuration)
 		commandPk.EphemeralOpts.StdoutWriter = stdoutPipe
@@ -728,7 +728,7 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("Error occurred while running ephemeral command: %v\n", err)
 		if commandPk.EphemeralOpts.ExpectsResponse {
-			log.Printf("Closing ephemeral writers\n")
+			log.Printf("Closing buffered pipes\n")
 			stdoutPipe.Close()
 			stderrPipe.Close()
 		}
