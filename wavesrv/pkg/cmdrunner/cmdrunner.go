@@ -624,7 +624,6 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 		newPk.EphemeralOpts = pk.EphemeralOpts
 		evalDepth := getEvalDepth(ctx)
 		ctxWithDepth := context.WithValue(ctx, depthContextKey, evalDepth+1)
-		log.Printf("[info] expanded command: %s\n", expandedCmdStr)
 		return EvalCommand(ctxWithDepth, newPk)
 	}
 	isRtnStateCmd := IsReturnStateCommand(cmdStr)
@@ -646,7 +645,6 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 		RemotePtr:     ids.Remote.RemotePtr,
 		EphemeralOpts: pk.EphemeralOpts,
 	}
-	log.Printf("[info] run command: %s\n", runPacket.Command)
 	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
 	if callback != nil {
 		defer callback()
