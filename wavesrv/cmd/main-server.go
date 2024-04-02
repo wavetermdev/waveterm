@@ -703,12 +703,10 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Running ephemeral command: %v\n", commandPk)
 
 	if commandPk.EphemeralOpts == nil {
-		log.Printf("EphemeralOpts is nil, creating new EphemeralOpts\n")
 		commandPk.EphemeralOpts = &ephemeral.EphemeralRunOpts{}
 	}
 
 	if commandPk.EphemeralOpts.TimeoutMs == 0 {
-		log.Printf("EphemeralOpts.TimeoutMs is 0, setting to default\n")
 		commandPk.EphemeralOpts.TimeoutMs = ephemeral.DefaultEphemeralTimeoutMs
 	}
 
@@ -716,7 +714,6 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	var stdoutPipe, stderrPipe *bufferedpipe.BufferedPipe
 
 	if commandPk.EphemeralOpts.ExpectsResponse {
-		log.Printf("EphemeralOpts.ExpectsResponse is true, creating new BufferedPipes\n")
 		// Create new buffered pipes for stdout and stderr
 		stdoutPipe = bufferedpipe.NewBufferedPipe(ephemeral.DefaultEphemeralTimeoutDuration)
 		commandPk.EphemeralOpts.StdoutWriter = stdoutPipe
@@ -735,7 +732,6 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, err)
 		return
 	}
-	log.Printf("Ephemeral command handled successfully\n")
 
 	resp := scpacket.EphemeralCommandResponsePacketType{}
 

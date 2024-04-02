@@ -1924,7 +1924,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	}
 
 	if rcOpts.EphemeralOpts != nil {
-		log.Printf("[info] running ephemeral command: %s\n", runPacket.Command)
+		log.Printf("[info] running ephemeral command ck: %s\n", runPacket.CK)
 	}
 
 	// pending state command logic
@@ -1987,7 +1987,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 
 		// Ephemeral commands can override the env without persisting it to the DB
 		if len(rcOpts.EphemeralOpts.Env) > 0 {
-			log.Printf("[info] overriding env vars for ephemeral command: %s\n", runPacket.Command)
 			curEnvs := shellenv.DeclMapFromState(currentState)
 			for key, val := range rcOpts.EphemeralOpts.Env {
 				curEnvs[key] = &shellenv.DeclareDeclType{Name: key, Value: val, Args: "x"}
@@ -2477,13 +2476,11 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 			switch dataPk.FdNum {
 			case 1:
 				_, err := rct.EphemeralOpts.StdoutWriter.Write(realData)
-				log.Printf("ephemeral stdout write %d bytes\n", len(realData))
 				if err != nil {
 					log.Printf("*error writing to ephemeral stdout writer: %v\n", err)
 				}
 			case 2:
 				_, err := rct.EphemeralOpts.StderrWriter.Write(realData)
-				log.Printf("ephemeral stderr write %d bytes\n", len(realData))
 				if err != nil {
 					log.Printf("*error writing to ephemeral stderr writer: %v\n", err)
 				}

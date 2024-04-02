@@ -521,6 +521,7 @@ class Screen {
             lineId: line.lineid,
             lineNum: line.linenum,
         };
+        // console.log("globalmodel)))))))))))))", this.globalModel.termThemeSrcEl.get());
         termWrap = new TermWrap(elem, {
             termContext: termContext,
             usedRows: usedRows,

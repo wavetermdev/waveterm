@@ -140,6 +140,18 @@ class Model {
         name: "appUpdateStatus",
     });
 
+    termThemes: OMap<string, string> = mobx.observable.array([], {
+        name: "terminalThemes",
+        deep: false,
+    });
+    termThemeSrcEl: OV<HTMLElement> = mobx.observable.box(null, {
+        name: "termThemeSrcEl",
+    });
+    termRenderVersion: OV<number> = mobx.observable.box(0, {
+        name: "termRenderVersion",
+    });
+    currGlobalTermTheme: string;
+
     private constructor() {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
@@ -152,6 +164,7 @@ class Model {
         this.ws.reconnect();
         this.keybindManager = new KeybindManager(this);
         this.readConfigKeybindings();
+        this.fetchTerminalThemes();
         this.initSystemKeybindings();
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
@@ -214,6 +227,48 @@ class Model {
         }).then((userKeybindings) => {
             this.keybindManager.setUserKeybindings(userKeybindings);
         });
+    }
+
+    fetchTerminalThemes() {
+        const url = new URL(this.getBaseHostPort() + "/config/terminal-themes");
+        fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => {
+                if (resp.status == 404) {
+                    return [];
+                } else if (!resp.ok) {
+                    util.handleNotOkResp(resp, url);
+                }
+                return resp.json();
+            })
+            .then((themes) => {
+                const tt = themes.map((theme) => theme.name.split(".")[0]);
+                this.termThemes.replace(tt);
+            });
+    }
+
+    updateTermTheme(element: HTMLElement, themeFileName: string, reset: boolean) {
+        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
+        return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => resp.json())
+            .then((themeVars: TermThemeType) => {
+                Object.keys(themeVars).forEach((key) => {
+                    if (reset) {
+                        this.resetStyleVar(element, `--term-${key}`);
+                    } else {
+                        this.resetStyleVar(element, `--term-${key}`);
+                        this.setStyleVar(element, `--term-${key}`, themeVars[key]);
+                    }
+                });
+            })
+            .catch((error) => {
+                console.error(`error applying theme: ${themeFileName}`, error);
+            });
+    }
+
+    bumpTermRenderVersion() {
+        mobx.action(() => {
+            this.termRenderVersion.set(this.termRenderVersion.get() + 1);
+        })();
     }
 
     initSystemKeybindings() {
@@ -418,6 +473,14 @@ class Model {
         }
     }
 
+    getTermTheme(): TermThemeType {
+        let cdata = this.clientData.get();
+        if (cdata?.feopts?.termtheme) {
+            return mobx.toJS(cdata.feopts.termtheme);
+        }
+        return {};
+    }
+
     getTermFontSize(): number {
         return this.termFontSize.get();
     }
@@ -426,11 +489,11 @@ class Model {
         let lhe = this.recomputeLineHeightEnv();
         mobx.action(() => {
             this.bumpRenderVersion();
-            this.setStyleVar("--termfontsize", lhe.fontSize + "px");
-            this.setStyleVar("--termlineheight", lhe.lineHeight + "px");
-            this.setStyleVar("--termpad", lhe.pad + "px");
-            this.setStyleVar("--termfontsize-sm", lhe.fontSizeSm + "px");
-            this.setStyleVar("--termlineheight-sm", lhe.lineHeightSm + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize", lhe.fontSize + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight", lhe.lineHeight + "px");
+            this.setStyleVar(document.documentElement, "--termpad", lhe.pad + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize-sm", lhe.fontSizeSm + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight-sm", lhe.lineHeightSm + "px");
         })();
     }
 
@@ -449,8 +512,12 @@ class Model {
         return this.lineHeightEnv;
     }
 
-    setStyleVar(name: string, value: string) {
-        document.documentElement.style.setProperty(name, value);
+    setStyleVar(element: HTMLElement, name: string, value: string): void {
+        element.style.setProperty(name, value);
+    }
+
+    resetStyleVar(element: HTMLElement, name: string): void {
+        element.style.removeProperty(name);
     }
 
     getBaseWsHostPort(): string {
@@ -1226,6 +1293,9 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getThemeSource();
+        const oldTermTheme = this.getTermTheme();
+        const newTermTheme = clientData?.feopts?.termtheme;
+        const ttUpdated = this.termThemeUpdated(newTermTheme, oldTermTheme);
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1246,6 +1316,36 @@ class Model {
             getApi().setNativeThemeSource(newTheme);
             this.bumpRenderVersion();
         }
+        // Only for global terminal theme. For session and screen terminal theme,
+        // they are handled in workspace view.
+        if (newTermTheme) {
+            const el = document.documentElement;
+            const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
+            const reset = newTermTheme["global"] == null;
+            if (globaltt) {
+                const rtn = this.updateTermTheme(el, globaltt, reset);
+                rtn.then(() => {
+                    if (ttUpdated) {
+                        this.bumpTermRenderVersion();
+                    }
+                });
+                this.currGlobalTermTheme = globaltt;
+            }
+        }
+    }
+
+    termThemeUpdated(newTermTheme, oldTermTheme) {
+        for (const key in oldTermTheme) {
+            if (!(key in newTermTheme)) {
+                return true;
+            }
+        }
+        for (const key in newTermTheme) {
+            if (!oldTermTheme[key] || oldTermTheme[key] !== newTermTheme[key]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {

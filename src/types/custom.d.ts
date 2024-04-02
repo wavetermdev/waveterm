@@ -573,10 +573,15 @@ declare global {
         data: Uint8Array;
     };
 
+    type TermThemeType = {
+        [k: string]: string | null;
+    };
+
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
         theme: NativeThemeSource;
+        termtheme: TermThemeType;
     };
 
     type ConfirmFlagsType = {
