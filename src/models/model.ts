@@ -36,6 +36,7 @@ import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
 import * as util from "@/util/util";
+import { url } from "node:inspector";
 
 type SWLinePtr = {
     line: LineType;
@@ -1402,6 +1403,7 @@ class Model {
             kwargs: { ...kwargs },
             uicontext: this.getUIContext(),
             interactive: interactive,
+            ephemeralopts: null,
         };
         /** 
         console.log(
@@ -1413,6 +1415,97 @@ class Model {
         );
 		 */
         return this.submitCommandPacket(pk, interactive);
+    }
+
+    getSingleEphemeralCommandOutput(url: URL): Promise<string> {
+        return fetch(url, { method: "get", headers: this.getFetchHeaders() })
+            .then((resp) => resp.text())
+            .catch((err) => {
+                this.errorHandler("getting ephemeral command output", err, true);
+                return "";
+            });
+    }
+
+    async getEphemeralCommandOutput(
+        ephemeralCommandResponse: EphemeralCommandResponsePacketType
+    ): Promise<EphemeralCommandOutputType> {
+        let stdout = "";
+        let stderr = "";
+        if (ephemeralCommandResponse.stdouturl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stdouturl);
+            console.log("stdouturl", url);
+            stdout = await this.getSingleEphemeralCommandOutput(url);
+        }
+        if (ephemeralCommandResponse.stderrurl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stderrurl);
+            console.log("stderrurl", url);
+            stderr = await this.getSingleEphemeralCommandOutput(url);
+        }
+        return { stdout: stdout, stderr: stderr };
+    }
+
+    submitEphemeralCommandPacket(
+        cmdPk: FeCmdPacketType,
+        interactive: boolean
+    ): Promise<EphemeralCommandResponsePacketType> {
+        if (this.debugCmds > 0) {
+            console.log("[cmd]", cmdPacketString(cmdPk));
+            if (this.debugCmds > 1) {
+                console.trace();
+            }
+        }
+        // adding cmdStr for debugging only (easily filter run-command calls in the network tab of debugger)
+        const cmdStr = cmdPk.metacmd + (cmdPk.metasubcmd ? ":" + cmdPk.metasubcmd : "");
+        const url = new URL(this.getBaseHostPort() + "/api/run-ephemeral-command?cmd=" + cmdStr);
+        const fetchHeaders = this.getFetchHeaders();
+        const prtn = fetch(url, {
+            method: "post",
+            body: JSON.stringify(cmdPk),
+            headers: fetchHeaders,
+        })
+            .then(async (resp) => {
+                const data = await handleJsonFetchResponse(url, resp);
+                if (data.success) {
+                    return data.data as EphemeralCommandResponsePacketType;
+                } else {
+                    console.log("error running ephemeral command", data);
+                    return {};
+                }
+            })
+            .catch((err) => {
+                this.errorHandler("calling run-ephemeral-command", err, interactive);
+                return {};
+            });
+        return prtn;
+    }
+
+    submitEphemeralCommand(
+        metaCmd: string,
+        metaSubCmd: string,
+        args: string[],
+        kwargs: Record<string, string>,
+        interactive: boolean,
+        ephemeralopts?: EphemeralCmdOptsType
+    ): Promise<EphemeralCommandResponsePacketType> {
+        const pk: FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: metaCmd,
+            metasubcmd: metaSubCmd,
+            args: args,
+            kwargs: { ...kwargs },
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            ephemeralopts: ephemeralopts,
+        };
+        console.log(
+            "CMD",
+            pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
+            pk.args,
+            pk.kwargs,
+            pk.interactive,
+            pk.ephemeralopts
+        );
+        return this.submitEphemeralCommandPacket(pk, interactive);
     }
 
     submitChatInfoCommand(chatMsg: string, curLineStr: string, clear: boolean): Promise<CommandRtnType> {
