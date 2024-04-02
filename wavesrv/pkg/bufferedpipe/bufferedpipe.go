@@ -26,10 +26,11 @@ const (
 
 // A pipe that allows for lazy writing to a downstream writer. Data written to the pipe is buffered until WriteTo is called.
 type BufferedPipe struct {
-	Key            string       // a unique key for the writer
+	Key            string       // a unique key for the pipe
 	buffer         bytes.Buffer // buffer of data to be written to the downstream writer once it is ready
-	closed         atomic.Bool  // whether the writer has been closed
-	bufferDataCond sync.Cond    // Condition variable to signal that the buffer has data
+	closed         atomic.Bool  // whether the pipe has been closed
+	bufferDataCond sync.Cond    // Condition variable to signal waiting writers that there is either data to write or the pipe has been closed
+	downstreamLock sync.Mutex   // Lock to ensure that only one goroutine can read from the buffer at a time
 }
 
 // Create a new BufferedPipe with a timeout. The writer will be closed after the timeout
@@ -39,6 +40,7 @@ func NewBufferedPipe(timeout time.Duration) *BufferedPipe {
 		buffer:         bytes.Buffer{},
 		closed:         atomic.Bool{},
 		bufferDataCond: sync.Cond{L: &sync.Mutex{}},
+		downstreamLock: sync.Mutex{},
 	}
 	SetBufferedPipe(newPipe)
 	time.AfterFunc(timeout, func() {
@@ -78,7 +80,15 @@ func (pipe *BufferedPipe) Write(p []byte) (n int, err error) {
 
 // Write all buffered data to a waiting writer and block, sending all subsequent data until the pipe is closed. Only one goroutine should call this method.
 func (pipe *BufferedPipe) WriteTo(w io.Writer) (n int64, err error) {
-	defer pipe.bufferDataCond.L.Unlock()
+	// Lock the buffer to ensure that only one downstream writer can read from it at a time.
+	if !pipe.downstreamLock.TryLock() {
+		return 0, io.ErrClosedPipe
+	}
+
+	defer func() {
+		pipe.bufferDataCond.L.Unlock()
+		pipe.downstreamLock.Unlock()
+	}()
 	pipe.bufferDataCond.L.Lock()
 	for {
 		n1, err := pipe.buffer.WriteTo(w)
@@ -87,9 +97,12 @@ func (pipe *BufferedPipe) WriteTo(w io.Writer) (n int64, err error) {
 		}
 		n += n1
 
+		// Check if the pipe has been closed. If it has, we don't need to wait for more data.
 		if pipe.closed.Load() {
 			break
 		}
+
+		// Wait for more data to be written to the buffer or for the pipe to be closed.
 		pipe.bufferDataCond.Wait()
 	}
 	return n, nil
