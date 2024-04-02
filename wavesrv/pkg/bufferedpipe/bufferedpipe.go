@@ -139,7 +139,7 @@ func SetBufferedPipe(pipe *BufferedPipe) {
 	})
 }
 
-// Handle a request to get the output of a buffered pipe, given a key.
+// Handle a HTTP GET request to get the output of a buffered pipe, given a key.
 func HandleGetBufferedPipeOutput(w http.ResponseWriter, r *http.Request) {
 	log.Printf("GET %s", r.URL.Path)
 	qvals := r.URL.Query()
