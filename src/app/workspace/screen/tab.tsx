@@ -21,10 +21,15 @@ class ScreenTab extends React.Component<
     tabRef = React.createRef<HTMLUListElement>();
     dragEndTimeout = null;
     scrollIntoViewTimeout = null;
+    theme: string;
+    themeReactionDisposer: mobx.IReactionDisposer;
 
     componentWillUnmount() {
         if (this.scrollIntoViewTimeout) {
             clearTimeout(this.dragEndTimeout);
+        }
+        if (this.themeReactionDisposer) {
+            this.themeReactionDisposer();
         }
     }
 

@@ -124,8 +124,8 @@ var SetVarNameMap map[string]string = map[string]string{
 var SetVarScopes = []SetVarScope{
 	{ScopeName: "global", VarNames: []string{}},
 	{ScopeName: "client", VarNames: []string{"telemetry"}},
-	{ScopeName: "session", VarNames: []string{"name", "pos"}},
-	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line", "index"}},
+	{ScopeName: "session", VarNames: []string{"name", "pos", "theme"}},
+	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line", "index", "theme"}},
 	{ScopeName: "line", VarNames: []string{}},
 	// connection = remote, remote = remoteinstance
 	{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
@@ -191,6 +191,7 @@ func init() {
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
 	registerCmdFn("session:openshared", SessionOpenSharedCommand)
+	registerCmdFn("session:termtheme", TermSetThemeCommand)
 	registerCmdFn("session:ensureone", SessionEnsureOneCommand)
 
 	registerCmdFn("screen", ScreenCommand)
@@ -204,6 +205,7 @@ func init() {
 	registerCmdFn("screen:webshare", ScreenWebShareCommand)
 	registerCmdFn("screen:reorder", ScreenReorderCommand)
 	registerCmdFn("screen:show", ScreenShowCommand)
+	registerCmdFn("screen:termtheme", TermSetThemeCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -3613,6 +3615,38 @@ func ScreenShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	return update, nil
 }
 
+func TermSetThemeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	id, ok := pk.Kwargs["id"]
+	if !ok {
+		return nil, fmt.Errorf("id key not provided")
+	}
+	themeName, themeNameOk := pk.Kwargs["name"]
+	feOpts := clientData.FeOpts
+	if feOpts.TermTheme == nil {
+		feOpts.TermTheme = make(map[string]string)
+	}
+	if themeNameOk && themeName != "" {
+		feOpts.TermTheme[id] = themeName
+	} else {
+		delete(feOpts.TermTheme, id)
+	}
+	err = sstore.UpdateClientFeOpts(ctx, feOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client feopts: %v", err)
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(*clientData)
+	return update, nil
+}
+
 func SessionShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
 	if err != nil {
@@ -5770,6 +5804,22 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("error updating client feopts: %v", err)
 		}
 		varsUpdated = append(varsUpdated, "theme")
+	}
+	if termthemeStr, found := pk.Kwargs["termtheme"]; found {
+		feOpts := clientData.FeOpts
+		if feOpts.TermTheme == nil {
+			feOpts.TermTheme = make(map[string]string)
+		}
+		if termthemeStr == "" {
+			delete(feOpts.TermTheme, "global")
+		} else {
+			feOpts.TermTheme["global"] = termthemeStr
+		}
+		err = sstore.UpdateClientFeOpts(ctx, feOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client feopts: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "termtheme")
 	}
 	if apiToken, found := pk.Kwargs["openaiapitoken"]; found {
 		err = validateOpenAIAPIToken(apiToken)

@@ -51,9 +51,10 @@ type TermWrapOpts = {
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
 };
 
-function getThemeFromCSSVars(): ITheme {
-    let theme: ITheme = {};
-    let rootStyle = getComputedStyle(document.documentElement);
+function getThemeFromCSSVars(themeSrcEl: HTMLElement): ITheme {
+    const theme: ITheme = {};
+    const tse = themeSrcEl ?? document.documentElement;
+    let rootStyle = getComputedStyle(tse);
     theme.foreground = rootStyle.getPropertyValue("--term-foreground");
     theme.background = rootStyle.getPropertyValue("--term-background");
     theme.black = rootStyle.getPropertyValue("--term-black");
@@ -130,7 +131,8 @@ class TermWrap {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
-        let theme = getThemeFromCSSVars();
+        const themeSrcEl = GlobalModel.termThemeSrcEl.get();
+        let theme = getThemeFromCSSVars(themeSrcEl);
         this.terminal = new Terminal({
             rows: this.termSize.rows,
             cols: this.termSize.cols,

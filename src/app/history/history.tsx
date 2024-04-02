@@ -308,7 +308,6 @@ class HistoryView extends React.Component<{}, {}> {
             hvm.setFromDate(null);
             return;
         }
-        console.log;
         hvm.setFromDate(newDate);
     }
 
@@ -670,6 +669,11 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
         this.line = hvm.getLineById(this.historyItem.lineid);
     }
 
+    componentDidMount(): void {
+        GlobalModel.bumpTermRenderVersion();
+        GlobalModel.termThemeSrcEl.set(null);
+    }
+
     @boundMethod
     handleHeightChange(lineNum: number, newHeight: number, oldHeight: number): void {
         return;
@@ -710,8 +714,9 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
             ssStr = sprintf("#%s[%s]", session.name.get(), screen.name.get());
             canViewInContext = true;
         }
+        const termRenderVersion = GlobalModel.termRenderVersion.get();
         return (
-            <div className="line-container">
+            <div className="line-container" key={termRenderVersion}>
                 <If condition={canViewInContext}>
                     <div className="line-context">
                         <div title="View in Context" className="vic-btn" onClick={this.viewInContext}>
