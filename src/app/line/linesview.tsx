@@ -15,6 +15,7 @@ import * as util from "@/util/util";
 import * as lineutil from "./lineutil";
 
 import "./lines.less";
+import { GlobalModel } from "@/models";
 
 dayjs.extend(localizedFormat);
 
