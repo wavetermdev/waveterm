@@ -1925,6 +1925,8 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 
 	if rcOpts.EphemeralOpts != nil {
 		log.Printf("[info] running ephemeral command: %s\n", runPacket.Command)
+		// Setting UsePty to false will ensure that the outputs get written to the correct file descriptors to extract stdout and stderr
+		runPacket.UsePty = false
 	}
 
 	// pending state command logic
