@@ -155,10 +155,8 @@ func SetBufferedPipe(pipe *BufferedPipe) {
 
 // Handle a HTTP GET request to get the output of a buffered pipe, given a key.
 func HandleGetBufferedPipeOutput(w http.ResponseWriter, r *http.Request) {
-	log.Printf("GET %s", r.URL.Path)
 	qvals := r.URL.Query()
 	key := qvals.Get("key")
-	log.Printf("key: %s", key)
 	pipe, ok := GetBufferedPipe(key)
 	if !ok {
 		http.Error(w, "buffered pipe not found", http.StatusNotFound)
