@@ -820,7 +820,7 @@ type RunPacketType struct {
 	State         *ShellState     `json:"state,omitempty"`
 	StatePtr      *ShellStatePtr  `json:"stateptr,omitempty"`      // added in Wave v0.7.2
 	StateComplete bool            `json:"statecomplete,omitempty"` // set to true if state is complete (the default env should not be set)
-	UsePty        bool            `json:"usepty,omitempty"`
+	UsePty        bool            `json:"usepty,omitempty"`        // Set to true if the command should be run in a pty. This will write all output to the stdout file descriptor with PTY formatting.
 	TermOpts      *TermOpts       `json:"termopts,omitempty"`
 	Fds           []RemoteFd      `json:"fds,omitempty"`
 	RunData       []RunDataType   `json:"rundata,omitempty"`
