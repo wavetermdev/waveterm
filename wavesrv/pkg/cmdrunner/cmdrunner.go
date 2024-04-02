@@ -337,12 +337,6 @@ func HandleCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		}
 		return nil, fmt.Errorf("invalid command '/%s', no handler", cmdName)
 	}
-	if pk.EphemeralOpts != nil {
-		log.Printf("[HandleCommand] ephemeral opts in %v command: %v\n", metaCmd, pk.EphemeralOpts)
-		if metaCmd == "run" {
-			log.Printf("[HandleCommand] ephemeral run command args: %v\n", pk.Args)
-		}
-	}
 	return entry.Fn(ctx, pk)
 }
 

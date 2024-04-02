@@ -2007,10 +2007,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	}
 	startPk, ok := rtnPk.(*packet.CmdStartPacketType)
 	log.Printf("received start packet: %s\n", packet.AsString(rtnPk))
-	if rcOpts.EphemeralOpts != nil && rcOpts.EphemeralOpts.ResponseWriter != nil {
-		log.Printf("writing pid=%d to ephemeral response writer\n", startPk.Pid)
-		rcOpts.EphemeralOpts.ResponseWriter.Write([]byte(fmt.Sprintf("pid=%d\n", startPk.Pid)))
-	}
 	if !ok {
 		respPk, ok := rtnPk.(*packet.ResponsePacketType)
 		if !ok {
@@ -2143,13 +2139,6 @@ func (msh *MShellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
 	rtn := msh.RunningCmds[ck]
-	if rtn != nil && rtn.EphemeralOpts != nil {
-		log.Printf("[info] getting ephemeral running command: %s\n", ck)
-		if rtn.EphemeralOpts.ResponseWriter != nil {
-			log.Printf("[info] ephemeral command has response writer\n")
-			rtn.EphemeralOpts.ResponseWriter.Write([]byte("command is running\n"))
-		}
-	}
 	return rtn
 }
 
@@ -2366,6 +2355,13 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 			update.AddUpdate(*screen)
 		}
 	}
+
+	// Close the ephemeral response writer if it exists
+	if rct.EphemeralOpts != nil && rct.EphemeralOpts.ResponseWriter != nil {
+		log.Printf("closing ephemeral response writer\n")
+		defer rct.EphemeralOpts.ResponseWriter.Close()
+	}
+
 	// ephemeral commands *do* update the remote state
 	// not all commands get a final state (only RtnState commands have this returned)
 	// so in those cases finalState will be nil
@@ -2402,15 +2398,6 @@ func (msh *MShellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.Cmd
 		return
 	}
 	defer msh.RemoveRunningCmd(finalPk.CK)
-	if rct.EphemeralOpts != nil {
-		log.Printf("finalpk %s (ephemeral): %s\n", finalPk.CK, finalPk.Error)
-		// just remove the running command, but there is no DB state to update in this case
-		if rct.EphemeralOpts.ResponseWriter != nil {
-			log.Printf("closing ephemeral response writer\n")
-			rct.EphemeralOpts.ResponseWriter.Close()
-		}
-		return
-	}
 	rtnCmd, err := sstore.GetCmdByScreenId(context.Background(), finalPk.CK.GetGroupId(), finalPk.CK.GetCmdId())
 	if err != nil {
 		log.Printf("error calling GetCmdById in handleCmdFinalPacket: %v\n", err)
@@ -2463,22 +2450,18 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 		return
 	}
 	if rct.EphemeralOpts != nil {
-		log.Printf("ephemeral data packet %s, realdata len: %v, has responseWriter: %v\n", dataPk.CK, len(realData), rct.EphemeralOpts.ResponseWriter != nil)
 		// Write to the response writer if it's set
 		if len(realData) > 0 && rct.EphemeralOpts.ResponseWriter != nil {
-			log.Printf("writing to ephemeral response writer\n")
 			_, err := rct.EphemeralOpts.ResponseWriter.Write(realData)
 			if err != nil {
 				log.Printf("*error writing to ephemeral response writer: %v\n", err)
 			}
-			log.Printf("wrote to ephemeral response writer\n")
 		}
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)
 		msh.ServerProc.Input.SendPacket(ack)
 		return
-	} else {
-		log.Printf("data packet %s is not ephemeral cmd\n", dataPk.CK)
 	}
+
 	var ack *packet.DataAckPacketType
 	if len(realData) > 0 {
 		dataPos := dataPosMap.Get(dataPk.CK)
@@ -2542,10 +2525,6 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		log.Printf("final packet %v\n", finalPk.CK)
 		runCmdUpdateFn(finalPk.CK, func() {
 			rct := msh.GetRunningCmd(finalPk.CK)
-			log.Printf("final packet for %v\n", rct)
-			if rct != nil && rct.EphemeralOpts != nil {
-				log.Printf("ephemeral data packet final %v\n", rct.EphemeralOpts)
-			}
 			msh.handleCmdFinalPacket(rct, finalPk)
 		})
 		return

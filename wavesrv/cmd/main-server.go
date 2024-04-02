@@ -711,6 +711,7 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		commandPk.EphemeralOpts.TimeoutMs = ephemeral.DefaultEphemeralTimeoutMs
 	}
 
+	// This needs to be defined here so we can use the methods of the EphemeralWriteCloser that are not part of io.WriteCloser
 	var ewc *ephemeral.EphemeralWriteCloser
 
 	if commandPk.EphemeralOpts.ExpectsResponse {
@@ -723,8 +724,8 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	update, err := cmdrunner.HandleCommand(r.Context(), &commandPk)
 	if err != nil {
 		log.Printf("Error occurred while running ephemeral command: %v\n", err)
-		if commandPk.EphemeralOpts.ResponseWriter != nil {
-			commandPk.EphemeralOpts.ResponseWriter.Close()
+		if ewc != nil {
+			ewc.Close()
 		}
 		WriteJsonError(w, err)
 		return
@@ -733,8 +734,10 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	// No error occurred, so we can write the response to the client
 	w.Header().Set(ContentTypeHeaderKey, ContentTypeText)
 	w.WriteHeader(200)
-	ewc.Ready()
-	log.Printf("Ephemeral writer ready\n")
+	if ewc != nil {
+		ewc.Ready()
+		log.Printf("Ephemeral writer ready\n")
+	}
 
 	// With ephemeral commands, we can't send the update back directly, so we need to send it through the update bus
 	if update != nil {
@@ -743,7 +746,7 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		scbus.MainUpdateBus.DoUpdate(update)
 	}
 
-	if commandPk.EphemeralOpts.ExpectsResponse {
+	if ewc != nil {
 		log.Printf("Waiting for ephemeral command to be closed\n")
 		// Wait for the writer to be closed
 		if ewc.WaitWithTimeout(time.Duration(commandPk.EphemeralOpts.TimeoutMs) * time.Millisecond) {
