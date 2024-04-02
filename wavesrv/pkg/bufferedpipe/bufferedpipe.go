@@ -1,6 +1,7 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+// Provides a mechanism for writing data to a buffer and reading it later. The buffer is stored in a map of buffered pipes, which are removed after a certain amount of time. The output of a buffered pipe can be read by sending a GET request to a specific URL.
 package bufferedpipe
 
 import (
