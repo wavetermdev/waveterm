@@ -1924,7 +1924,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	}
 
 	if rcOpts.EphemeralOpts != nil {
-		log.Printf("[info] running ephemeral command: %s\n", runPacket.Command)
+		log.Printf("[info] running ephemeral command ck: %s\n", runPacket.CK)
 	}
 
 	// pending state command logic
@@ -1987,7 +1987,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 
 		// Ephemeral commands can override the env without persisting it to the DB
 		if len(rcOpts.EphemeralOpts.Env) > 0 {
-			log.Printf("[info] overriding env vars for ephemeral command: %s\n", runPacket.Command)
 			curEnvs := shellenv.DeclMapFromState(currentState)
 			for key, val := range rcOpts.EphemeralOpts.Env {
 				curEnvs[key] = &shellenv.DeclareDeclType{Name: key, Value: val, Args: "x"}
@@ -2018,7 +2017,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	// waveshell will either return an error (in a ResponsePacketType) or a CmdStartPacketType
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	err = shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
-	log.Printf("sent run packet: %s\n", packet.AsString(runPacket))
 	if err != nil {
 		return nil, nil, fmt.Errorf("sending run packet to remote: %w", err)
 	}
@@ -2027,7 +2025,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		return nil, nil, ctx.Err()
 	}
 	startPk, ok := rtnPk.(*packet.CmdStartPacketType)
-	log.Printf("received start packet: %s\n", packet.AsString(rtnPk))
 	if !ok {
 		respPk, ok := rtnPk.(*packet.ResponsePacketType)
 		if !ok {
@@ -2457,7 +2454,6 @@ func (msh *MShellProc) ResetDataPos(ck base.CommandKey) {
 }
 
 func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) {
-	log.Printf("handling data packet ck: %s, fd: %v\n", dataPk.CK, dataPk.FdNum)
 	if rct == nil {
 		log.Printf("error handling data packet: no running cmd found %s\n", dataPk.CK)
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, fmt.Errorf("no running cmd found"))
@@ -2477,13 +2473,11 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 			switch dataPk.FdNum {
 			case 1:
 				_, err := rct.EphemeralOpts.StdoutWriter.Write(realData)
-				log.Printf("ephemeral stdout write %d bytes\n", len(realData))
 				if err != nil {
 					log.Printf("*error writing to ephemeral stdout writer: %v\n", err)
 				}
 			case 2:
 				_, err := rct.EphemeralOpts.StderrWriter.Write(realData)
-				log.Printf("ephemeral stderr write %d bytes\n", len(realData))
 				if err != nil {
 					log.Printf("*error writing to ephemeral stderr writer: %v\n", err)
 				}
@@ -2532,7 +2526,6 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 	if dataPk, ok := pk.(*packet.DataPacketType); ok {
 		runCmdUpdateFn(dataPk.CK, func() {
 			rct := msh.GetRunningCmd(dataPk.CK)
-			log.Printf("data packet for %v\n", rct)
 			msh.handleDataPacket(rct, dataPk, msh.DataPosMap)
 		})
 		go pushStatusIndicatorUpdate(&dataPk.CK, sstore.StatusIndicatorLevel_Output)
@@ -2541,7 +2534,6 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 	if donePk, ok := pk.(*packet.CmdDonePacketType); ok {
 		runCmdUpdateFn(donePk.CK, func() {
 			rct := msh.GetRunningCmd(donePk.CK)
-			log.Printf("done packet for %v\n", rct)
 			msh.handleCmdDonePacket(rct, donePk)
 		})
 		return
