@@ -775,7 +775,6 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 			m.Lock.Unlock()
 			cproc.Close()
 		}()
-
 		shexec.SendRunPacketAndRunData(context.Background(), cproc.Input, runPacket)
 		cproc.ProxySingleOutput(runPacket.CK, m.Sender, func(pk packet.PacketType) {
 			m.clientPacketCallback(runPacket.ShellType, pk, runPacket)

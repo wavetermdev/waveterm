@@ -723,7 +723,7 @@ func MakeDonePacket() *DonePacketType {
 	return &DonePacketType{Type: DonePacketStr}
 }
 
-type CmdFinalPacketType struct { // new in v0.6.0 (either "bash" or "zsh") (set by remote.go)
+type CmdFinalPacketType struct {
 	Type  string          `json:"type"`
 	Ts    int64           `json:"ts"`
 	CK    base.CommandKey `json:"ck"`
@@ -818,8 +818,7 @@ type RunPacketType struct {
 	ShellType     string          `json:"shelltype"` // added in Wave v0.6.0 (either "bash" or "zsh") (set by remote.go)
 	Command       string          `json:"command"`
 	State         *ShellState     `json:"state,omitempty"`
-	StatePtr      *ShellStatePtr  `json:"stateptr,omitempty"` // added in Wave v0.7.2
-	StateDiff     *ShellStateDiff `json:"statediff,omitempty"`
+	StatePtr      *ShellStatePtr  `json:"stateptr,omitempty"`      // added in Wave v0.7.2
 	StateComplete bool            `json:"statecomplete,omitempty"` // set to true if state is complete (the default env should not be set)
 	UsePty        bool            `json:"usepty,omitempty"`
 	TermOpts      *TermOpts       `json:"termopts,omitempty"`

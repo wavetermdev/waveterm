@@ -12,7 +12,6 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
 )
@@ -271,7 +270,6 @@ func (cproc *ClientProc) ProxySingleOutput(ck base.CommandKey, sender *packet.Pa
 	}
 	exitErr := cproc.Cmd.Wait()
 	if !sentDonePk {
-		wlog.Logf("cmd done packet not sent for %v: %v", ck, exitErr)
 		endTs := time.Now()
 		cmdDuration := endTs.Sub(cproc.StartTs)
 		donePacket := packet.MakeCmdDonePacket(ck)
@@ -279,7 +277,5 @@ func (cproc *ClientProc) ProxySingleOutput(ck base.CommandKey, sender *packet.Pa
 		donePacket.ExitCode = GetExitCode(exitErr)
 		donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 		sender.SendPacket(donePacket)
-	} else {
-		wlog.Logf("cmd done packet sent for %v: %v", ck, exitErr)
 	}
 }
