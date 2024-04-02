@@ -667,7 +667,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 <textarea
                     key="main"
                     ref={this.mainInputRef}
-                    spellCheck={false}
+                    spellCheck="false"
                     autoComplete="off"
                     autoCorrect="off"
                     id="main-cmd-input"
@@ -683,7 +683,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 <input
                     key="history"
                     ref={this.historyInputRef}
-                    spellCheck={false}
+                    spellCheck="false"
                     autoComplete="off"
                     autoCorrect="off"
                     className="history-input"
