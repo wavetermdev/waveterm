@@ -90,7 +90,6 @@ var webCommon = {
             "@/plugins": path.resolve(__dirname, "../src/plugins/"),
             "@/autocomplete": path.resolve(__dirname, "../src/autocomplete/"),
         },
-        modules: [path.resolve(__dirname, "../node_modules")],
     },
 };
 

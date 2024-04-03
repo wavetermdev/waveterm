@@ -11,7 +11,6 @@ import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown, Button } from 
 import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
-import { getSuggestions, Shell } from "@/autocomplete";
 
 import "./clientsettings.less";
 import { MainView } from "@/common/elements/mainview";
@@ -193,12 +192,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         GlobalModel.clientSettingsViewModel.closeView();
     }
 
-    @boundMethod
-    async handleSubmitEphemeral() {
-        const resp = await getSuggestions("ls -", "~", Shell.Zsh);
-        console.log("resp", resp);
-    }
-
     render() {
         const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
@@ -359,12 +352,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 defaultValue={this.getCurrentShortcut()}
                                 onChange={this.handleChangeShortcut}
                             />
-                        </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label">Submit Ephemeral Command</div>
-                        <div className="settings-input">
-                            <Button onClick={this.handleSubmitEphemeral}>Submit</Button>
                         </div>
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />

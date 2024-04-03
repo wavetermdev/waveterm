@@ -11,6 +11,7 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
+import { Shell, getSuggestions } from "@/autocomplete";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -117,23 +118,19 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             this.lastTab = true;
             this.curPress = "tab";
             const curLine = inputModel.getCurLine();
-            if (lastTab) {
-                GlobalModel.submitCommand(
-                    "_compgen",
-                    null,
-                    [curLine],
-                    { comppos: String(curLine.length), compshow: "1", nohist: "1" },
-                    true
-                );
-            } else {
-                GlobalModel.submitCommand(
-                    "_compgen",
-                    null,
-                    [curLine],
-                    { comppos: String(curLine.length), nohist: "1" },
-                    true
-                );
-            }
+            // if (lastTab) {
+            getSuggestions(curLine, "~", Shell.Zsh).then((resp) => {
+                console.log("resp", resp);
+            });
+            // } else {
+            //     GlobalModel.submitCommand(
+            //         "_compgen",
+            //         null,
+            //         [curLine],
+            //         { comppos: String(curLine.length), nohist: "1" },
+            //         true
+            //     );
+            // }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:confirm", (waveEvent) => {
