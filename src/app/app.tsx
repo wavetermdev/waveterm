@@ -20,7 +20,7 @@ import { MainSideBar } from "./sidebar/main";
 import { RightSideBar } from "./sidebar/right";
 import { DisconnectedModal, ClientStopModal } from "@/modals";
 import { ModalsProvider } from "@/modals/provider";
-import { Button } from "@/elements";
+import { Button, StyleBlock } from "@/elements";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import cn from "classnames";
 import "./app.less";
@@ -124,9 +124,10 @@ class App extends React.Component<{}, {}> {
         const rightSidebarCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
         const activeMainView = GlobalModel.activeMainView.get();
         const lightDarkClass = GlobalModel.isDarkTheme.get() ? "is-dark" : "is-light";
+        const termTheme = GlobalModel.getTermTheme();
         return (
             <div
-                key={"version-" + renderVersion}
+                key={`version- + ${renderVersion}`}
                 id="main"
                 className={cn(
                     "platform-" + platform,
@@ -135,6 +136,12 @@ class App extends React.Component<{}, {}> {
                 )}
                 onContextMenu={this.handleContextMenu}
             >
+                <StyleBlock
+                    termTheme={termTheme}
+                    themeSrcEl={document.documentElement}
+                    themeKey="global"
+                    className=":root"
+                />
                 <If condition={mainSidebarCollapsed}>
                     <div key="logo-button" className="logo-button-container">
                         <div className="logo-button-spacer" />

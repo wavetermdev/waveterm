@@ -16,8 +16,8 @@ import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as textmeasure from "@/util/textmeasure";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
-import { Button } from "@/elements";
-import { commandRtnHandler, isBlank } from "@/util/util";
+import { Button, StyleBlock } from "@/elements";
+import { commandRtnHandler } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import { Dropdown } from "@/elements/dropdown";
 import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
@@ -207,62 +207,6 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
 }
 
 @mobxReact.observer
-class StyleBlock extends React.Component<
-    { themeSrcEl: HTMLElement; themeKey: string; className: string; termTheme: TermThemeType },
-    { styleRules: string }
-> {
-    styleRules: OV<string> = mobx.observable.box("", { name: "StyleBlock-styleRules" });
-    theme: string;
-
-    componentDidMount(): void {
-        GlobalModel.termThemeSrcEl.set(this.props.themeSrcEl);
-        this.loadThemeStyles();
-    }
-
-    componentDidUpdate(prevProps): void {
-        const { themeKey, termTheme } = this.props;
-        const currTheme = termTheme[themeKey];
-        if (themeKey !== prevProps.themeKey || currTheme !== this.theme) {
-            this.loadThemeStyles();
-        }
-        if (this.props.themeSrcEl !== prevProps.themeSrcEl) {
-            GlobalModel.termThemeSrcEl.set(this.props.themeSrcEl);
-        }
-    }
-
-    async loadThemeStyles() {
-        const { themeKey, className, termTheme } = this.props;
-        const currTheme = termTheme[themeKey];
-
-        if (currTheme !== this.theme && currTheme) {
-            const rtn = GlobalModel.getTermThemeJson(currTheme);
-            rtn.then((termThemeJson) => {
-                if (termThemeJson && typeof termThemeJson === "object") {
-                    const styleProperties = Object.entries(termThemeJson)
-                        .map(([key, value]) => `--term-${key}: ${value};`)
-                        .join(" ");
-
-                    this.styleRules.set(`.${className} { ${styleProperties} }`);
-                    GlobalModel.bumpTermRenderVersion();
-                    this.theme = currTheme;
-                } else {
-                    console.error("termThemeJson is not an object:", termThemeJson);
-                }
-            }).catch((error) => {
-                console.error("error loading theme styles:", error);
-            });
-        }
-    }
-
-    render() {
-        if (isBlank(this.styleRules.get())) {
-            return null;
-        }
-        return <style>{this.styleRules.get()}</style>;
-    }
-}
-
-@mobxReact.observer
 class WorkspaceView extends React.Component<{}, {}> {
     sessionRef = React.createRef<HTMLDivElement>();
     theme: string;
@@ -359,7 +303,7 @@ class WorkspaceView extends React.Component<{}, {}> {
                         themeSrcEl={this.sessionRef.current}
                         themeKey={session.sessionId}
                         termTheme={termTheme}
-                        className="session-view"
+                        className=".session-view"
                     />
                 </If>
                 <If condition={!isHidden}>

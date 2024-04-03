@@ -43,7 +43,7 @@ class StyleBlock extends React.Component<
                         .map(([key, value]) => `--term-${key}: ${value};`)
                         .join(" ");
 
-                    this.styleRules.set(`.${className} { ${styleProperties} }`);
+                    this.styleRules.set(`${className} { ${styleProperties} }`);
                     GlobalModel.bumpTermRenderVersion();
                     this.theme = currTheme;
                 } else {
@@ -56,6 +56,8 @@ class StyleBlock extends React.Component<
     }
 
     render() {
+        console.log("this.styleRules", this.styleRules.get());
+
         if (isBlank(this.styleRules.get())) {
             return null;
         }
