@@ -558,6 +558,14 @@ electron.nativeTheme.on("updated", () => {
     }
 });
 
+electron.ipcMain.on("path-basename", (event, p) => {
+    event.returnValue = path.basename(p);
+});
+
+electron.ipcMain.on("path-sep", (event) => {
+    event.returnValue = path.sep;
+});
+
 function readLastLinesOfFile(filePath: string, lineCount: number) {
     return new Promise((resolve, reject) => {
         child_process.exec(`tail -n ${lineCount} "${filePath}"`, (err, stdout, stderr) => {

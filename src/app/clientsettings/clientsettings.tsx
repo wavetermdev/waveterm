@@ -11,9 +11,10 @@ import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown, Button } from 
 import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
+import { getSuggestions, Shell } from "@/autocomplete";
 
 import "./clientsettings.less";
-import { MainView } from "../common/elements/mainview";
+import { MainView } from "@/common/elements/mainview";
 
 class ClientSettingsKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
@@ -194,22 +195,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     async handleSubmitEphemeral() {
-        const resp = await GlobalModel.submitEphemeralCommand(
-            "eval",
-            null,
-            [">&2 ls && echo 'hello' + $HELLOWORLD"],
-            null,
-            false,
-            {
-                expectsresponse: true,
-                overridecwd: "/",
-                env: { HELLOWORLD: "Hello World" },
-            }
-        );
+        const resp = await getSuggestions("ls -", "~", Shell.Zsh);
         console.log("resp", resp);
-        const { stdout, stderr } = await GlobalModel.getEphemeralCommandOutput(resp);
-        console.log("stdout", stdout);
-        console.log("stderr", stderr);
     }
 
     render() {

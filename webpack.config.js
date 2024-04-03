@@ -1,5 +1,5 @@
-const {webDev, webProd} = require("./webpack/webpack.web.js");
-const {electronDev, electronProd} = require("./webpack/webpack.electron.js");
+const { webDev, webProd } = require("./webpack/webpack.web.js");
+const { electronDev, electronProd } = require("./webpack/webpack.electron.js");
 
 module.exports = (env) => {
     if (env.prod) {

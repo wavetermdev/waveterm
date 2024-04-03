@@ -67,7 +67,9 @@ var electronCommon = {
             "@/modals": path.resolve(__dirname, "../src/app/common/modals/"),
             "@/assets": path.resolve(__dirname, "../src/app/assets/"),
             "@/plugins": path.resolve(__dirname, "../src/plugins/"),
+            "@/autocomplete": path.resolve(__dirname, "../src/autocomplete/"),
         },
+        modules: [path.resolve(__dirname, "../node_modules")],
     },
 };
 

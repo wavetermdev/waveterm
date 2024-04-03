@@ -946,6 +946,8 @@ declare global {
         onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
         getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
         onToggleDevUI: (callback: () => void) => void;
+        pathBaseName: (path: string) => string;
+        pathSep: () => string;
     };
 }
 

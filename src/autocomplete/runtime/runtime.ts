@@ -5,13 +5,13 @@ import speclist, {
     diffVersionedCompletions as versionedSpeclist,
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
-} from "@withfig/autocomplete/build/index.js";
-import path from "node:path";
-import { parseCommand, CommandToken } from "./parser.js";
-import { getArgDrivenRecommendation, getSubcommandDrivenRecommendation } from "./suggestion.js";
-import { SuggestionBlob } from "./model.js";
-import { buildExecuteShellCommand, resolveCwd } from "./utils.js";
-import { Shell } from "../utils/shell.js";
+} from "@withfig/autocomplete/build/index";
+import { parseCommand, CommandToken } from "./parser";
+import { getArgDrivenRecommendation, getSubcommandDrivenRecommendation } from "./suggestion";
+import { SuggestionBlob } from "./model";
+import { buildExecuteShellCommand, resolveCwd } from "./utils";
+import { Shell } from "../utils/shell";
+import { getApi } from "@/models";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive type, setting as any
 const specSet: any = {};
@@ -24,7 +24,7 @@ const specSet: any = {};
         }
         if (idx === specRoutes.length - 1) {
             const prefix = versionedSpeclist.includes(s) ? "/index.js" : `.js`;
-            activeSet[route] = `@withfig/autocomplete/build/${s}${prefix}`;
+            activeSet[route] = `${s}${prefix}`;
         } else {
             activeSet[route] = activeSet[route] || {};
             activeSet = activeSet[route];
@@ -44,7 +44,7 @@ const loadSpec = async (cmd: CommandToken[]): Promise<Fig.Spec | undefined> => {
         return loadedSpecs[rootToken.token];
     }
     if (specSet[rootToken.token]) {
-        const spec = (await import(specSet[rootToken.token])).default;
+        const spec = (await import(`@withfig/autocomplete/build/${specSet[rootToken.token]}`)).default;
         loadedSpecs[rootToken.token] = spec;
         return spec;
     }
@@ -83,7 +83,7 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
 
     let charactersToDrop = lastCommand?.complete ? 0 : lastCommand?.token.length ?? 0;
     if (pathy) {
-        charactersToDrop = pathyComplete ? 0 : path.basename(lastCommand?.token ?? "").length;
+        charactersToDrop = pathyComplete ? 0 : getApi().pathBaseName(lastCommand?.token ?? "").length;
     }
     return { ...result, charactersToDrop };
 };

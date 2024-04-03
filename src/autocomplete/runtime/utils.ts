@@ -1,14 +1,15 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
 
-import path from "node:path";
-import { CommandToken } from "./parser.js";
-import { Shell } from "../utils/shell.js";
-import { GlobalModel } from "@/models";
+import { CommandToken } from "./parser";
+import { Shell } from "../utils/shell";
+import { GlobalModel, getApi } from "@/models";
 
 export type ExecuteShellCommandTTYResult = {
     code: number | null;
 };
+
+const pathSep = getApi().pathSep();
 
 export const buildExecuteShellCommand =
     (timeout: number): Fig.ExecuteCommandFunction =>
@@ -34,6 +35,6 @@ export const resolveCwd = async (
 ): Promise<{ cwd: string; pathy: boolean; complete: boolean }> => {
     if (cmdToken == null) return { cwd, pathy: false, complete: false };
     const { token } = cmdToken;
-    const sep = shell == Shell.Bash ? "/" : path.sep;
+    const sep = shell == Shell.Bash ? "/" : pathSep;
     return { cwd: cwd, pathy: true, complete: token.endsWith(sep) };
 };
