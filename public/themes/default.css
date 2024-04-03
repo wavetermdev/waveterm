@@ -46,12 +46,14 @@
     --app-text-primary-color: rgb(255, 255, 255);
     --app-text-secondary-color: rgb(195, 200, 194);
     --app-text-disabled-color: rgb(173, 173, 173);
+    --app-text-bg-color: rgb(23, 23, 23);
+    --app-text-bg-disabled-color: rgb(51, 51, 51);
     --app-border-color: rgb(51, 51, 51);
-    --app-maincontent-bg-color: #333;
+    --app-maincontent-bg-color: rgb(51, 51, 51);
     --app-panel-bg-color: rgba(21, 23, 21, 1);
     --app-panel-bg-color-dev: rgb(21, 23, 48);
     --app-icon-color: rgb(139, 145, 138);
-    --app-icon-hover-color: #fff;
+    --app-icon-hover-color: rgb(255, 255, 255);
     --app-selected-mask-color: rgba(255, 255, 255, 0.06);
 
     /* global status colors */
@@ -122,18 +124,18 @@
 
     /* line colors */
     --line-sidebar-message-color: rgb(196, 160, 0);
-    --line-background: rgba(21, 23, 21, 1);
-    --line-avatar-color: #eceeec;
+    --line-background: var(--app-panel-bg-color);
+    --line-avatar-color: rgb(236, 238, 236);
     --line-text-color: rgb(211, 215, 207);
     --line-svg-fill-color: rgb(150, 152, 150);
-    --line-svg-hover-fill-color: #eceeec;
+    --line-svg-hover-fill-color: rgb(236, 238, 236);
     --line-separator-color: rgb(126, 126, 126);
     --line-error-color: var(--app-error-color);
     --line-warning-color: var(--app-warning-color);
-    --line-base-soft-blue-color: #729fcf;
+    --line-base-soft-blue-color: rgb(114, 159, 207);
     --line-active-border-color: var(--app-accent-color);
     --line-selected-bg-color: rgba(255, 255, 255, 0.05);
-    --line-selected-border-left-color: #777777;
+    --line-selected-border-left-color: rgb(119, 119, 119);
     --line-selected-error-border-color: rgba(204, 0, 0, 0.8);
     --line-selected-error-bg-color: rgb(19, 4, 3);
     --line-error-bg-color: rgba(200, 0, 0, 0.1);
@@ -152,22 +154,21 @@
     /* table colors */
     --table-border-color: rgba(241, 246, 243, 0.15);
     --table-thead-border-top-color: rgba(250, 250, 250, 0.1);
-    --table-thead-bright-border-color: #ccc;
+    --table-thead-bright-border-color: rgb(204, 204, 204);
     --table-thead-bg-color: rgba(250, 250, 250, 0.02);
     --table-tr-border-bottom-color: rgba(241, 246, 243, 0.15);
     --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
-    --table-tr-selected-bg-color: #222;
-    --table-tr-selected-hover-bg-color: #333;
+    --table-tr-selected-bg-color: rgb(34, 34, 34);
+    --table-tr-selected-hover-bg-color: var(--app-maincontent-bg-color);
 
     /* cmdinput colors */
-    --cmdinput-textarea-bg-color: #171717;
+    --cmdinput-bg-color: var(--app-text-bg-color);
     --cmdinput-text-error-color: var(--term-red);
     --cmdinput-history-item-error-color: var(--term-bright-red);
     --cmdinput-history-item-selected-error-color: var(--term-bright-red);
-    --cmdinput-button-bg-color: rgb(88, 193, 66);
-    --cmdinput-comment-button-bg-color: rgb(57, 113, 255);
-    --cmdinput-disabled-icon-color: rgb(76, 81, 75, 1);
-    --cmdinput-history-bg-color: rgb(21, 23, 21, 1);
+    --cmdinput-button-bg-color: var(--tab-green);
+    --cmdinput-disabled-bg-color: var(--app-text-bg-disabled-color);
+    --cmdinput-history-bg-color: var(--app-bg-color);
 
     /* screen view color */
     --screen-view-text-caption-color: rgb(139, 145, 138);

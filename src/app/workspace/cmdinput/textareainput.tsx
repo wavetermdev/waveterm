@@ -678,6 +678,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onKeyDown={this.onKeyDown}
                     onChange={this.onChange}
                     onSelect={this.onSelect}
+                    placeholder="Type here..."
                     className={cn("textarea", { "display-disabled": disabled })}
                 ></textarea>
                 <input

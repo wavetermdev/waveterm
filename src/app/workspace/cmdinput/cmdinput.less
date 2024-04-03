@@ -267,7 +267,7 @@
             border-radius: 4px 4px 0 4px; // 0 is for shelltag
 
             &.display-disabled {
-                background-color: #444;
+                background-color: var(--cmdinput-disabled-bg-color);
             }
 
             &:focus {
@@ -282,7 +282,7 @@
         }
 
         .cmd-quick-context .button {
-            background-color: #000 !important;
+            background-color: var(--app-bg-color) !important;
             color: var(--app-text-color);
         }
 
@@ -292,7 +292,7 @@
         }
 
         &.inputmode-comment .cmd-quick-context .button {
-            color: var(--app-bg-color);
+            color: var(--cmdinput-textarea-bg-color);
             background-color: var(--cmdinput-comment-button-bg-color) !important;
         }
 
@@ -310,7 +310,7 @@
                 padding: 0.25em;
             }
             .icon.disabled {
-                fill: var(--cmdinput-disabled-icon-color);
+                fill: var(--cmdinput-disabled-bg-color);
                 cursor: default;
             }
             .cmd-btn {
@@ -462,7 +462,7 @@
                 cursor: pointer;
 
                 &:hover {
-                    background-color: #222;
+                    background-color: var();
                 }
             }
 

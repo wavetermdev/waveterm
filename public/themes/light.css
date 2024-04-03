@@ -50,8 +50,6 @@
     --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
 
     /* cmd input */
-    --cmdinput-textarea-bg-color: rgba(0, 0, 0, 0.1);
-    --cmdinput-textarea-border-color: var(--form-element-border-color);
 
     /* scroll colors */
     --scrollbar-background-color: var(--app-bg-color);
