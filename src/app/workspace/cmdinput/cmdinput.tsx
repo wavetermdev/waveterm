@@ -181,6 +181,7 @@ class CmdInput extends React.Component<{}, {}> {
                     { "has-history": historyShow },
                     { active: focusVal }
                 )}
+                onClick={this.cmdInputClick}
             >
                 <div className="cmdinput-actions">
                     <If condition={numRunningLines > 0}>

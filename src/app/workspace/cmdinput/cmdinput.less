@@ -24,28 +24,8 @@
         height: 31px;
     }
 
-    .cmdinput-conn {
-        position: absolute;
-        top: 0;
-        left: 0;
-        border-radius: 0 0 4px 0;
-        background-color: rgba(88, 193, 66, 0.3);
-        padding: 2px 10px 4px 10px;
-        font-size: calc(var(--termfontsize));
-        cursor: pointer;
-
-        i {
-            margin-left: 5px;
-        }
-
-        &:hover {
-            background-color: rgba(88, 193, 66, 0.5);
-        }
-    }
-
     .cmdinput-actions {
         position: absolute;
-        border-radius: 4px;
         padding-left: 4px;
         padding-right: 4px;
         font-size: calc(var(--termfontsize) + 2px);
@@ -135,20 +115,10 @@
         padding-top: var(--termpad);
     }
 
-    .focus-indicator {
-        height: 90%;
-        top: 5%;
-        left: 4px;
-    }
-
     &.has-history,
     &.has-aichat {
         padding-top: var(--termpad);
         height: max(300px, 70%);
-    }
-
-    &.has-remote {
-        max-height: max(300px, 70%);
     }
 
     .remote-status-warning {
@@ -162,16 +132,6 @@
             margin-left: 10px;
             padding: 4px 10px;
         }
-    }
-
-    .input-minmax-control {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        color: var(--term-foreground);
-
-        padding: 5px;
-        cursor: pointer;
     }
 
     .cmd-input-grow-spacer {
@@ -194,26 +154,6 @@
         margin-left: 2px;
     }
 
-    .cmd-input-filter {
-        opacity: 0.5;
-        &:hover {
-            opacity: 1;
-        }
-
-        .avatar {
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            margin: 0 0.5em;
-            vertical-align: text-top;
-            fill: var(--term-foreground);
-        }
-
-        .warning {
-            fill: var(--term-yellow);
-        }
-    }
-
     .cmd-input-field {
         position: relative;
         padding-right: var(--termpad);
@@ -221,6 +161,7 @@
         font-weight: normal;
         line-height: var(--termlineheight);
         font-size: var(--termfontsize);
+        border: none;
 
         .cmd-hints {
             position: absolute;
@@ -247,32 +188,22 @@
                 color: var(--app-text-secondary-color);
                 line-height: 1;
                 padding: 1px 8px 3px 8px;
-                background-color: var(--cmdinput-textarea-bg-color);
-                border-radius: 0 0 5px 5px;
+                user-select: none;
             }
         }
 
         textarea {
             color: var(--app-text-primary-color);
-            background-color: var(--cmdinput-textarea-bg-color);
+            background-color: var(--app-bg-color);
             padding: var(--termpad);
             resize: none;
             overflow: auto;
             overflow-wrap: anywhere;
-            border-color: transparent;
-            border: none;
             font-family: var(--termfontfamily);
             line-height: var(--termlineheight);
             font-size: var(--termfontsize);
-            border-radius: 4px 4px 0 4px; // 0 is for shelltag
-
-            &.display-disabled {
-                background-color: var(--cmdinput-disabled-bg-color);
-            }
-
-            &:focus {
-                border: none;
-            }
+            border: none;
+            box-shadow: none;
         }
 
         input.history-input {
@@ -292,43 +223,8 @@
         }
 
         &.inputmode-comment .cmd-quick-context .button {
-            color: var(--cmdinput-textarea-bg-color);
+            color: var(--app-bg-color);
             background-color: var(--cmdinput-comment-button-bg-color) !important;
-        }
-
-        .cmd-exec {
-            position: absolute;
-            right: 0;
-            .icon {
-                vertical-align: bottom;
-                margin-right: 1em;
-                width: 2.5em;
-                height: 2.5em;
-                cursor: pointer;
-                border-radius: 50%;
-                fill: var(--app-accent-color);
-                padding: 0.25em;
-            }
-            .icon.disabled {
-                fill: var(--cmdinput-disabled-bg-color);
-                cursor: default;
-            }
-            .cmd-btn {
-                display: inline-block;
-                margin-right: 0;
-                padding: 0.2em 0.7rem;
-                border-radius: 4px;
-                vertical-align: super;
-
-                .hint-elem {
-                    cursor: pointer;
-                    opacity: 0.5;
-
-                    &:hover {
-                        opacity: 1;
-                    }
-                }
-            }
         }
     }
 
@@ -354,18 +250,12 @@
             resize: none;
             overflow: auto;
             overflow-wrap: anywhere;
-            border-color: transparent;
-            border: none;
+            outline: none;
             font-family: var(--termfontfamily);
             font-weight: normal;
             flex-shrink: 0;
             flex-grow: 1;
             border-radius: 4px;
-
-            &:focus {
-                border: none;
-                outline: none;
-            }
         }
 
         .chat-msg {
@@ -428,15 +318,12 @@
 
             .history-clickable-opt {
                 cursor: pointer;
+                white-space: nowrap;
+                cursor: pointer;
 
                 &:hover {
                     color: var(--app-text-primary-color);
                 }
-            }
-
-            .history-clickable-opt {
-                white-space: nowrap;
-                cursor: pointer;
             }
         }
 
@@ -445,35 +332,38 @@
 
             padding-bottom: 6px;
 
-            .history-line {
-                white-space: pre;
-            }
-
-            .history-item.history-haderror {
-                color: var(--cmdinput-history-item-error-color);
-            }
-
-            .history-line:first-child {
-                margin-left: 0 !important;
-            }
-
             .history-item {
                 padding-left: 5px;
                 cursor: pointer;
 
-                &:hover {
-                    background-color: var();
+                .history-line {
+                    white-space: pre;
+
+                    &:first-child {
+                        margin-left: 0 !important;
+                    }
                 }
-            }
 
-            .history-item.is-selected {
-                font-weight: bold;
-                color: var(--app-text-primary-color);
-                background-color: #444;
-            }
+                &:hover {
+                    background-color: var(--table-tr-hover-bg-color);
+                }
 
-            .history-item.is-selected.history-haderror {
-                color: var(--cmdinput-history-item-selected-error-color);
+                &.history-haderror {
+                    color: var(--cmdinput-history-item-error-color);
+                }
+
+                &.is-selected {
+                    font-weight: bold;
+                    color: var(--app-text-primary-color);
+                    background-color: var(--table-tr-selected-bg-color);
+                    &:hover {
+                        background-color: var(--table-tr-selected-hover-bg-color);
+                    }
+                }
+
+                &.is-selected.history-haderror {
+                    color: var(--cmdinput-history-item-selected-error-color);
+                }
             }
         }
     }

@@ -42,6 +42,7 @@
     --app-bg-color: black;
     --app-accent-color: rgb(88, 193, 66);
     --app-accent-bg-color: rgba(88, 193, 66, 0.25);
+    --app-accent-bg-darker-color: rgba(88, 193, 66, 0.5);
     --app-text-color: rgb(211, 215, 207);
     --app-text-primary-color: rgb(255, 255, 255);
     --app-text-secondary-color: rgb(195, 200, 194);

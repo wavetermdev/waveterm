@@ -43,7 +43,7 @@ class HItem extends React.Component<
         if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
             return sprintf("%-15s ", "");
         }
-        let r = GlobalModel.getRemote(hitem.remote.remoteid);
+        const r = GlobalModel.getRemote(hitem.remote.remoteid);
         if (r == null) {
             return sprintf("%-15s ", "???");
         }
@@ -71,15 +71,15 @@ class HItem extends React.Component<
         if (!opts.limitRemote) {
             remoteStr = this.renderRemote(hitem);
         }
-        let selectedStr = isSelected ? "*" : " ";
-        let lineNumStr = hitem.linenum > 0 ? "(" + hitem.linenum + ")" : "";
+        const selectedStr = isSelected ? "*" : " ";
+        const lineNumStr = hitem.linenum > 0 ? "(" + hitem.linenum + ")" : "";
         if (isBlank(opts.queryType) || opts.queryType == "screen") {
             return selectedStr + sprintf("%7s", lineNumStr) + " " + remoteStr;
         }
         if (opts.queryType == "session") {
             let screenStr = "";
             if (!isBlank(hitem.screenid)) {
-                let scrName = scrNames[hitem.screenid];
+                const scrName = scrNames[hitem.screenid];
                 if (scrName != null) {
                     screenStr = "[" + truncateWithTDots(scrName, 15) + "]";
                 }
@@ -89,19 +89,18 @@ class HItem extends React.Component<
         if (opts.queryType == "global") {
             let sessionStr = "";
             if (!isBlank(hitem.sessionid)) {
-                let sessionName = snames[hitem.sessionid];
+                const sessionName = snames[hitem.sessionid];
                 if (sessionName != null) {
                     sessionStr = "#" + truncateWithTDots(sessionName, 15);
                 }
             }
             let screenStr = "";
             if (!isBlank(hitem.screenid)) {
-                let scrName = scrNames[hitem.screenid];
+                const scrName = scrNames[hitem.screenid];
                 if (scrName != null) {
                     screenStr = "[" + truncateWithTDots(scrName, 13) + "]";
                 }
             }
-            let ssStr = sessionStr + screenStr;
             return (
                 selectedStr +
                 sprintf("%15s ", sessionStr) +
@@ -116,12 +115,12 @@ class HItem extends React.Component<
     }
 
     render() {
-        let { hitem, isSelected, opts, snames, scrNames } = this.props;
-        let lines = hitem.cmdstr.split("\n");
+        const { hitem, isSelected, opts, snames, scrNames } = this.props;
+        const lines = hitem.cmdstr.split("\n");
         let line: string = "";
         let idx = 0;
-        let infoText = this.renderHInfoText(hitem, opts, isSelected, snames, scrNames);
-        let infoTextSpacer = sprintf("%" + infoText.length + "s", "");
+        const infoText = this.renderHInfoText(hitem, opts, isSelected, snames, scrNames);
+        const infoTextSpacer = sprintf("%" + infoText.length + "s", "");
         return (
             <div
                 key={hitem.historynum}
@@ -153,7 +152,7 @@ class HistoryInfo extends React.Component<{}, {}> {
     containingText: mobx.IObservableValue<string> = mobx.observable.box("");
 
     componentDidMount() {
-        let inputModel = GlobalModel.inputModel;
+        const inputModel = GlobalModel.inputModel;
         let hitem = inputModel.getHistorySelectedItem();
         if (hitem == null) {
             hitem = inputModel.getFirstHistoryItem();
@@ -170,15 +169,16 @@ class HistoryInfo extends React.Component<{}, {}> {
 
     @boundMethod
     handleItemClick(hitem: HistoryItem) {
-        let inputModel = GlobalModel.inputModel;
-        let selItem = inputModel.getHistorySelectedItem();
+        const inputModel = GlobalModel.inputModel;
+        const selItem = inputModel.getHistorySelectedItem();
+        inputModel.setHistoryFocus(true);
         if (this.lastClickHNum == hitem.historynum && selItem != null && selItem.historynum == hitem.historynum) {
             inputModel.grabSelectedHistoryItem();
             return;
         }
         inputModel.giveFocus();
         inputModel.setHistorySelectionNum(hitem.historynum);
-        let now = Date.now();
+        const now = Date.now();
         this.lastClickHNum = hitem.historynum;
         this.lastClickTs = now;
         setTimeout(() => {
@@ -191,24 +191,24 @@ class HistoryInfo extends React.Component<{}, {}> {
 
     @boundMethod
     handleClickType() {
-        let inputModel = GlobalModel.inputModel;
+        const inputModel = GlobalModel.inputModel;
+        inputModel.setHistoryFocus(true);
         inputModel.toggleHistoryType();
     }
 
     @boundMethod
     handleClickRemote() {
-        let inputModel = GlobalModel.inputModel;
+        const inputModel = GlobalModel.inputModel;
+        inputModel.setHistoryFocus(true);
         inputModel.toggleRemoteType();
     }
 
     render() {
-        let inputModel = GlobalModel.inputModel;
-        let idx: number = 0;
-        let selItem = inputModel.getHistorySelectedItem();
-        let hitems = inputModel.getFilteredHistoryItems();
-        hitems = hitems.slice().reverse();
+        const inputModel = GlobalModel.inputModel;
+        const selItem = inputModel.getHistorySelectedItem();
+        const hitems = inputModel.getFilteredHistoryItems().slice().reverse();
         let hitem: HistoryItem = null;
-        let opts = inputModel.historyQueryOpts.get();
+        const opts = inputModel.historyQueryOpts.get();
         let snames: Record<string, string> = {};
         let scrNames: Record<string, string> = {};
         if (opts.queryType == "global") {

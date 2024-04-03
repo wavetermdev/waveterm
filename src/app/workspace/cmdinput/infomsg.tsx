@@ -40,19 +40,16 @@ class InfoMsg extends React.Component<{}, {}> {
     }
 
     render() {
-        let model = GlobalModel;
-        let inputModel = model.inputModel;
-        let infoMsg = inputModel.infoMsg.get();
-        let infoShow = inputModel.infoShow.get();
+        const inputModel = GlobalModel.inputModel;
+        const infoMsg: InfoType = inputModel.infoMsg.get();
+        const infoShow: boolean = inputModel.infoShow.get();
         let line: string = null;
         let istr: string = null;
         let idx: number = 0;
         let titleStr = null;
-        let remoteEditKey = "inforemoteedit";
         if (infoMsg != null) {
             titleStr = infoMsg.infotitle;
         }
-        let activeScreen = model.getActiveScreen();
         if (!infoShow) {
             return null;
         }

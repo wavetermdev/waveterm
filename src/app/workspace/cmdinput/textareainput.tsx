@@ -287,7 +287,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
 
     setFocus(): void {
         const inputModel = GlobalModel.inputModel;
-        if (inputModel.historyShow.get()) {
+        if (inputModel.historyFocus.get()) {
             this.historyInputRef.current.focus();
         } else {
             this.mainInputRef.current.focus();
@@ -549,9 +549,21 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     @boundMethod
+    onMainClick(e: any) {
+        GlobalModel.inputModel.setPhysicalInputFocused(true);
+        GlobalModel.inputModel.setHistoryFocus(false);
+        mobx.action(() => {
+            this.mainInputFocused.set(true);
+            this.historyFocused.set(false);
+
+            this.mainInputRef.current.focus();
+        })();
+    }
+
+    @boundMethod
     handleMainFocus(e: any) {
         const inputModel = GlobalModel.inputModel;
-        if (inputModel.historyShow.get()) {
+        if (inputModel.historyFocus.get()) {
             e.preventDefault();
             if (this.historyInputRef.current != null) {
                 this.historyInputRef.current.focus();
@@ -578,7 +590,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     @boundMethod
     handleHistoryFocus(e: any) {
         const inputModel = GlobalModel.inputModel;
-        if (!inputModel.historyShow.get()) {
+        if (!inputModel.historyFocus.get()) {
             e.preventDefault();
             if (this.mainInputRef.current != null) {
                 this.mainInputRef.current.focus();
@@ -616,7 +628,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         if (numLines > 1 || longLine || inputModel.inputExpanded.get()) {
             displayLines = 5;
         }
-        const disabled = inputModel.historyShow.get();
+        const disabled = inputModel.historyFocus.get();
         if (disabled) {
             displayLines = 1;
         }
@@ -661,7 +673,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     <HistoryKeybindings inputObject={this}></HistoryKeybindings>
                 </If>
 
-                <If condition={!disabled && !util.isBlank(shellType)}>
+                <If condition={!util.isBlank(shellType)}>
                     <div className="shelltag">{shellType}</div>
                 </If>
                 <textarea
@@ -678,6 +690,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onKeyDown={this.onKeyDown}
                     onChange={this.onChange}
                     onSelect={this.onSelect}
+                    onClick={this.onMainClick}
                     placeholder="Type here..."
                     className={cn("textarea", { "display-disabled": disabled })}
                 ></textarea>
