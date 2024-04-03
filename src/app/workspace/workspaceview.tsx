@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { If, For } from "tsx-control-statements/components";
+import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
@@ -15,9 +15,9 @@ import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as textmeasure from "@/util/textmeasure";
 import { boundMethod } from "autobind-decorator";
-import type { Screen, Session } from "@/models";
+import type { Screen } from "@/models";
 import { Button } from "@/elements";
-import { commandRtnHandler } from "@/util/util";
+import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import { Dropdown } from "@/elements/dropdown";
 import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
@@ -208,62 +208,57 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
 
 @mobxReact.observer
 class StyleBlock extends React.Component<
-    { themeSrcEl: HTMLElement; themeKey: string; className: string },
+    { themeSrcEl: HTMLElement; themeKey: string; className: string; termTheme: TermThemeType },
     { styleRules: string }
 > {
+    styleRules: OV<string> = mobx.observable.box("", { name: "StyleBlock-styleRules" });
     theme: string;
-
-    constructor(props) {
-        super(props);
-        this.state = { styleRules: "" }; // Initialize state
-    }
 
     componentDidMount(): void {
         GlobalModel.termThemeSrcEl.set(this.props.themeSrcEl);
         this.loadThemeStyles();
     }
 
-    componentDidUpdate(): void {
-        // if (prevProps.themeKey !== this.props.themeKey) {
-        this.loadThemeStyles();
-        // }
+    componentDidUpdate(prevProps): void {
+        const { themeKey, termTheme } = this.props;
+        const currTheme = termTheme[themeKey];
+        if (themeKey !== prevProps.themeKey || currTheme !== this.theme) {
+            this.loadThemeStyles();
+        }
+        if (this.props.themeSrcEl !== prevProps.themeSrcEl) {
+            GlobalModel.termThemeSrcEl.set(this.props.themeSrcEl);
+        }
     }
 
     async loadThemeStyles() {
-        const { themeKey } = this.props;
-        const termTheme = GlobalModel.getTermTheme();
+        const { themeKey, className, termTheme } = this.props;
         const currTheme = termTheme[themeKey];
-        if (currTheme !== this.theme && currTheme) {
-            console.log("currTheme", currTheme);
-            try {
-                const termThemeJson = await GlobalModel.getTermThemeJson(currTheme);
 
-                // Check if termThemeJson is an object
+        if (currTheme !== this.theme && currTheme) {
+            const rtn = GlobalModel.getTermThemeJson(currTheme);
+            rtn.then((termThemeJson) => {
                 if (termThemeJson && typeof termThemeJson === "object") {
                     const styleProperties = Object.entries(termThemeJson)
                         .map(([key, value]) => `--term-${key}: ${value};`)
                         .join(" ");
 
-                    const styleRules = `.temp { ${styleProperties} }`;
-                    this.setState({ styleRules });
+                    this.styleRules.set(`.${className} { ${styleProperties} }`);
+                    GlobalModel.bumpTermRenderVersion();
+                    this.theme = currTheme;
                 } else {
-                    console.error("TermThemeJson is not an object:", termThemeJson);
+                    console.error("termThemeJson is not an object:", termThemeJson);
                 }
-            } catch (error) {
-                console.error("Error loading theme styles:", error);
-            }
+            }).catch((error) => {
+                console.error("error loading theme styles:", error);
+            });
         }
     }
 
     render() {
-        const { className } = this.props;
-        const { styleRules } = this.state;
-
-        if (!styleRules) {
+        if (isBlank(this.styleRules.get())) {
             return null;
         }
-
-        return <style>{styleRules.replace(/\.temp/g, `.${className}`)}</style>;
+        return <style>{this.styleRules.get()}</style>;
     }
 }
 
@@ -281,42 +276,42 @@ class WorkspaceView extends React.Component<{}, {}> {
         // this.setupThemeReaction();
     }
 
-    setupThemeReaction() {
-        if (this.themeReactionDisposer) {
-            this.themeReactionDisposer();
-        }
+    // setupThemeReaction() {
+    //     if (this.themeReactionDisposer) {
+    //         this.themeReactionDisposer();
+    //     }
 
-        // This handles session and screen-level terminal theming.
-        // Ideally, screen-level theming should be handled in the inner-level component, but
-        // the frequent mounting and unmounting of the screen view make it really difficult to work.
-        this.themeReactionDisposer = mobx.reaction(
-            () => {
-                return {
-                    termTheme: GlobalModel.getTermTheme(),
-                    session: GlobalModel.getActiveSession(),
-                    screen: GlobalModel.getActiveScreen(),
-                };
-            },
-            ({ termTheme, session, screen }) => {
-                let currTheme = termTheme[session.sessionId];
-                if (termTheme[screen.screenId]) {
-                    currTheme = termTheme[screen.screenId];
-                }
-                if (session && currTheme !== this.theme && this.sessionRef.current) {
-                    const reset = currTheme == null;
-                    const theme = currTheme ?? this.theme;
-                    const themeSrcEl = reset ? null : this.sessionRef.current;
-                    const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, reset);
-                    rtn.then(() => {
-                        GlobalModel.termThemeSrcEl.set(themeSrcEl);
-                    }).then(() => {
-                        GlobalModel.bumpTermRenderVersion();
-                    });
-                    this.theme = currTheme;
-                }
-            }
-        );
-    }
+    //     // This handles session and screen-level terminal theming.
+    //     // Ideally, screen-level theming should be handled in the inner-level component, but
+    //     // the frequent mounting and unmounting of the screen view make it really difficult to work.
+    //     this.themeReactionDisposer = mobx.reaction(
+    //         () => {
+    //             return {
+    //                 termTheme: GlobalModel.getTermTheme(),
+    //                 session: GlobalModel.getActiveSession(),
+    //                 screen: GlobalModel.getActiveScreen(),
+    //             };
+    //         },
+    //         ({ termTheme, session, screen }) => {
+    //             let currTheme = termTheme[session.sessionId];
+    //             if (termTheme[screen.screenId]) {
+    //                 currTheme = termTheme[screen.screenId];
+    //             }
+    //             if (session && currTheme !== this.theme && this.sessionRef.current) {
+    //                 const reset = currTheme == null;
+    //                 const theme = currTheme ?? this.theme;
+    //                 const themeSrcEl = reset ? null : this.sessionRef.current;
+    //                 const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, reset);
+    //                 rtn.then(() => {
+    //                     GlobalModel.termThemeSrcEl.set(themeSrcEl);
+    //                 }).then(() => {
+    //                     GlobalModel.bumpTermRenderVersion();
+    //                 });
+    //                 this.theme = currTheme;
+    //             }
+    //         }
+    //     );
+    // }
 
     componentWillUnmount() {
         if (this.themeReactionDisposer) {
@@ -344,11 +339,12 @@ class WorkspaceView extends React.Component<{}, {}> {
         if (cmdInputHeight == 0) {
             cmdInputHeight = textmeasure.baseCmdInputHeight(GlobalModel.lineHeightEnv); // this is the base size of cmdInput (measured using devtools)
         }
-
         const isHidden = GlobalModel.activeMainView.get() != "session";
         const mainSidebarModel = GlobalModel.mainSidebarModel;
-        const termRenderVersion = GlobalModel.termRenderVersion.get();
         const showTabSettings = GlobalModel.tabSettingsOpen.get();
+        const termTheme = GlobalModel.getTermTheme();
+        const termRenderVersion = GlobalModel.termRenderVersion.get();
+
         return (
             <div
                 ref={this.sessionRef}
@@ -362,6 +358,7 @@ class WorkspaceView extends React.Component<{}, {}> {
                     <StyleBlock
                         themeSrcEl={this.sessionRef.current}
                         themeKey={session.sessionId}
+                        termTheme={termTheme}
                         className="session-view"
                     />
                 </If>
