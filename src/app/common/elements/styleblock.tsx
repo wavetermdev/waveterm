@@ -35,7 +35,7 @@ class StyleBlock extends React.Component<
         const { themeKey, className, termTheme } = this.props;
         const currTheme = termTheme[themeKey];
 
-        if (currTheme !== this.theme && currTheme) {
+        if (currTheme && currTheme !== this.theme && currTheme) {
             const rtn = GlobalModel.getTermThemeJson(currTheme);
             rtn.then((termThemeJson) => {
                 if (termThemeJson && typeof termThemeJson === "object") {
@@ -52,12 +52,12 @@ class StyleBlock extends React.Component<
             }).catch((error) => {
                 console.error("error loading theme styles:", error);
             });
+        } else {
+            this.styleRules.set("");
         }
     }
 
     render() {
-        console.log("this.styleRules", this.styleRules.get());
-
         if (isBlank(this.styleRules.get())) {
             return null;
         }
