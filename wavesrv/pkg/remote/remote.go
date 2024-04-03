@@ -1980,9 +1980,22 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		// Setting UsePty to false will ensure that the outputs get written to the correct file descriptors to extract stdout and stderr
 		runPacket.UsePty = rcOpts.EphemeralOpts.UsePty
 
-		// Ephemeral commands can override the cwd without persisting it to the DB
+		// Ephemeral commands can override the current working directory. We need to expand the home dir if it's relative.
 		if rcOpts.EphemeralOpts.OverrideCwd != "" {
-			currentState.Cwd = rcOpts.EphemeralOpts.OverrideCwd
+			overrideCwd := rcOpts.EphemeralOpts.OverrideCwd
+			if !strings.HasPrefix(overrideCwd, "/") {
+				expandedCwd, err := msh.GetRemoteRuntimeState().ExpandHomeDir(overrideCwd)
+				if err != nil {
+					return nil, nil, fmt.Errorf("cannot expand home dir for cwd: %w", err)
+				}
+				overrideCwd = expandedCwd
+			}
+			currentState.Cwd = overrideCwd
+		}
+
+		// Ephemeral commands can override the timeout
+		if rcOpts.EphemeralOpts.TimeoutMs > 0 {
+			runPacket.Timeout = time.Duration(rcOpts.EphemeralOpts.TimeoutMs) * time.Millisecond
 		}
 
 		// Ephemeral commands can override the env without persisting it to the DB
