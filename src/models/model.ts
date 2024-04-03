@@ -265,6 +265,18 @@ class Model {
             });
     }
 
+    getTermThemeJson(themeFileName: string) {
+        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
+        return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => resp.json())
+            .then((themeVars: TermThemeType) => {
+                return themeVars;
+            })
+            .catch((error) => {
+                console.error(`error applying theme: ${themeFileName}`, error);
+            });
+    }
+
     bumpTermRenderVersion() {
         mobx.action(() => {
             this.termRenderVersion.set(this.termRenderVersion.get() + 1);
@@ -1318,19 +1330,20 @@ class Model {
         }
         // Only for global terminal theme. For session and screen terminal theme,
         // they are handled in workspace view.
-        if (newTermTheme) {
-            const el = document.documentElement;
-            const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
-            const reset = newTermTheme["global"] == null;
-            if (globaltt) {
-                const rtn = this.updateTermTheme(el, globaltt, reset);
-                rtn.then(() => {
-                    if (ttUpdated) {
-                        this.bumpTermRenderVersion();
-                    }
-                });
-                this.currGlobalTermTheme = globaltt;
-            }
+        if (ttUpdated) {
+            this.bumpTermRenderVersion();
+            // const el = document.documentElement;
+            // const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
+            // const reset = newTermTheme["global"] == null;
+            // if (globaltt) {
+            //     const rtn = this.updateTermTheme(el, globaltt, reset);
+            //     rtn.then(() => {
+            //         if (ttUpdated) {
+            //             this.bumpTermRenderVersion();
+            //         }
+            //     });
+            //     this.currGlobalTermTheme = globaltt;
+            // }
         }
     }
 

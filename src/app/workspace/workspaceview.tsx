@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { If } from "tsx-control-statements/components";
+import { If, For } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
@@ -15,7 +15,7 @@ import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import * as textmeasure from "@/util/textmeasure";
 import { boundMethod } from "autobind-decorator";
-import type { Screen } from "@/models";
+import type { Screen, Session } from "@/models";
 import { Button } from "@/elements";
 import { commandRtnHandler } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
@@ -207,17 +207,78 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
 }
 
 @mobxReact.observer
+class StyleBlock extends React.Component<
+    { themeSrcEl: HTMLElement; themeKey: string; className: string },
+    { styleRules: string }
+> {
+    theme: string;
+
+    constructor(props) {
+        super(props);
+        this.state = { styleRules: "" }; // Initialize state
+    }
+
+    componentDidMount(): void {
+        GlobalModel.termThemeSrcEl.set(this.props.themeSrcEl);
+        this.loadThemeStyles();
+    }
+
+    componentDidUpdate(): void {
+        // if (prevProps.themeKey !== this.props.themeKey) {
+        this.loadThemeStyles();
+        // }
+    }
+
+    async loadThemeStyles() {
+        const { themeKey } = this.props;
+        const termTheme = GlobalModel.getTermTheme();
+        const currTheme = termTheme[themeKey];
+        if (currTheme !== this.theme && currTheme) {
+            console.log("currTheme", currTheme);
+            try {
+                const termThemeJson = await GlobalModel.getTermThemeJson(currTheme);
+
+                // Check if termThemeJson is an object
+                if (termThemeJson && typeof termThemeJson === "object") {
+                    const styleProperties = Object.entries(termThemeJson)
+                        .map(([key, value]) => `--term-${key}: ${value};`)
+                        .join(" ");
+
+                    const styleRules = `.temp { ${styleProperties} }`;
+                    this.setState({ styleRules });
+                } else {
+                    console.error("TermThemeJson is not an object:", termThemeJson);
+                }
+            } catch (error) {
+                console.error("Error loading theme styles:", error);
+            }
+        }
+    }
+
+    render() {
+        const { className } = this.props;
+        const { styleRules } = this.state;
+
+        if (!styleRules) {
+            return null;
+        }
+
+        return <style>{styleRules.replace(/\.temp/g, `.${className}`)}</style>;
+    }
+}
+
+@mobxReact.observer
 class WorkspaceView extends React.Component<{}, {}> {
     sessionRef = React.createRef<HTMLDivElement>();
     theme: string;
     themeReactionDisposer: mobx.IReactionDisposer;
 
     componentDidMount() {
-        this.setupThemeReaction();
+        // this.setupThemeReaction();
     }
 
     componentDidUpdate() {
-        this.setupThemeReaction();
+        // this.setupThemeReaction();
     }
 
     setupThemeReaction() {
@@ -297,6 +358,13 @@ class WorkspaceView extends React.Component<{}, {}> {
                     width: `${window.innerWidth - mainSidebarModel.getWidth()}px`,
                 }}
             >
+                <If condition={session != null}>
+                    <StyleBlock
+                        themeSrcEl={this.sessionRef.current}
+                        themeKey={session.sessionId}
+                        className="session-view"
+                    />
+                </If>
                 <If condition={!isHidden}>
                     <SessionKeybindings key="keybindings"></SessionKeybindings>
                 </If>
