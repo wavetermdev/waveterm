@@ -140,7 +140,7 @@ class App extends React.Component<{}, {}> {
                     termTheme={termTheme}
                     themeSrcEl={document.documentElement}
                     themeKey="global"
-                    className=":root"
+                    selector=":root"
                 />
                 <If condition={mainSidebarCollapsed}>
                     <div key="logo-button" className="logo-button-container">

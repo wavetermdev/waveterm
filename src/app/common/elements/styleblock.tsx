@@ -9,7 +9,7 @@ import { isBlank } from "@/util/util";
 
 @mobxReact.observer
 class StyleBlock extends React.Component<
-    { themeSrcEl: HTMLElement; themeKey: string; className: string; termTheme: TermThemeType },
+    { themeSrcEl: HTMLElement; themeKey: string; selector: string; termTheme: TermThemeType },
     { styleRules: string }
 > {
     styleRules: OV<string> = mobx.observable.box("", { name: "StyleBlock-styleRules" });
@@ -32,7 +32,7 @@ class StyleBlock extends React.Component<
     }
 
     async loadThemeStyles() {
-        const { themeKey, className, termTheme } = this.props;
+        const { themeKey, selector, termTheme } = this.props;
         const currTheme = termTheme[themeKey];
 
         if (currTheme && currTheme !== this.theme && currTheme) {
@@ -43,7 +43,7 @@ class StyleBlock extends React.Component<
                         .map(([key, value]) => `--term-${key}: ${value};`)
                         .join(" ");
 
-                    this.styleRules.set(`${className} { ${styleProperties} }`);
+                    this.styleRules.set(`${selector} { ${styleProperties} }`);
                     GlobalModel.bumpTermRenderVersion();
                     this.theme = currTheme;
                 } else {
