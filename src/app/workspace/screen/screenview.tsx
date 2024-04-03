@@ -12,7 +12,7 @@ import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import { GlobalCommandRunner, ForwardLineContainer, GlobalModel, ScreenLines, Screen, Session } from "@/models";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { Button } from "@/elements";
+import { Button, StyleBlock } from "@/elements";
 import { Line } from "@/app/line/linecomps";
 import { LinesView } from "@/app/line/linesview";
 import * as util from "@/util/util";
@@ -184,8 +184,10 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             winWidth = screenWidth - realWidth + "px";
             sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
         }
+        const termTheme = GlobalModel.getTermTheme();
         return (
             <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
+                {/* <StyleBlock termTheme={termTheme} themeSrcEl={} /> */}
                 <ScreenWindowView
                     key={screen.screenId + ":" + fontSize + ":" + dprStr}
                     session={session}

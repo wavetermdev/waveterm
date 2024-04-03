@@ -136,12 +136,6 @@ class App extends React.Component<{}, {}> {
                 )}
                 onContextMenu={this.handleContextMenu}
             >
-                <StyleBlock
-                    termTheme={termTheme}
-                    themeSrcEl={document.documentElement}
-                    themeKey="global"
-                    selector=":root"
-                />
                 <If condition={mainSidebarCollapsed}>
                     <div key="logo-button" className="logo-button-container">
                         <div className="logo-button-spacer" />
@@ -158,6 +152,12 @@ class App extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div ref={this.mainContentRef} className="main-content">
+                    <StyleBlock
+                        termTheme={termTheme}
+                        themeSrcEl={this.mainContentRef.current}
+                        themeKey="global"
+                        selector=":root"
+                    />
                     <MainSideBar parentRef={this.mainContentRef} />
                     <ErrorBoundary>
                         <PluginsView />

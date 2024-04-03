@@ -303,7 +303,8 @@ class WorkspaceView extends React.Component<{}, {}> {
                         themeSrcEl={this.sessionRef.current}
                         themeKey={session.sessionId}
                         termTheme={termTheme}
-                        selector={`.session-view[data-sessionid="${sessionId}"]`}
+                        // selector={`.session-view[data-sessionid="${sessionId}"]`}
+                        selector=":root"
                     />
                 </If>
                 <If condition={!isHidden}>
