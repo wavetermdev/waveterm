@@ -9,13 +9,19 @@
     width: 100%;
 
     // This lets borders for any immediate children of cmd-input to extend the full width or height of the outer container
-    > div:not(.cmdinput-actions) {
+    > div {
         padding: calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 2)
             calc(var(--termpad) * 3 - 1px);
     }
     z-index: 100;
     border-top: 2px solid var(--app-border-color);
     background-color: var(--app-bg-color);
+
+    &[class^="has-"] {
+        .base-cmdinput {
+            border-top: 1px solid var(--app-border-color);
+        }
+    }
 
     .titlebar-spacer {
         height: 31px;
@@ -135,8 +141,11 @@
         flex-grow: 1;
     }
 
-    .base-cmdinput:not(:first-child) {
-        margin-top: var(--termpad);
+    .base-cmdinput {
+        position: relative;
+        &:not(:first-child) {
+            margin-top: var(--termpad);
+        }
     }
 
     .cmd-input-context {
@@ -231,7 +240,6 @@
         flex-flow: column nowrap;
         flex-shrink: 1;
         overflow-y: auto;
-        border-bottom: 1px solid var(--app-border-color);
 
         .chat-window {
             overflow-y: auto;
@@ -304,7 +312,6 @@
         font-size: var(--termfontsize);
         overflow: auto;
         flex-shrink: 1;
-        border-bottom: 1px solid var(--app-border-color);
 
         // Override so that the history items don't appear so far from the top and bottom of the container
         padding-top: var(--termpad) !important;

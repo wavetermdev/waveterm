@@ -75,7 +75,7 @@ class CmdInput extends React.Component<{}, {}> {
     clickAIAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
-        let inputModel = GlobalModel.inputModel;
+        const inputModel = GlobalModel.inputModel;
         inputModel.openAIAssistantChat();
     }
 
@@ -177,32 +177,6 @@ class CmdInput extends React.Component<{}, {}> {
         }
         return (
             <div ref={this.cmdInputRef} className={cn("cmd-input", hasOpenView, { active: focusVal })}>
-                <div className="cmdinput-actions">
-                    <If condition={numRunningLines > 0}>
-                        <div
-                            key="running"
-                            className={cn("cmdinput-icon", "running-cmds", { active: filterRunning })}
-                            title="Filter for Running Commands"
-                            onClick={() => this.toggleFilter(screen)}
-                        >
-                            <CenteredIcon>{numRunningLines}</CenteredIcon>{" "}
-                            <CenteredIcon>
-                                <RotateIcon className="rotate warning spin" />
-                            </CenteredIcon>
-                        </div>
-                    </If>
-                    <div key="ai" title="Wave AI (Ctrl-Space)" className="cmdinput-icon" onClick={this.clickAIAction}>
-                        <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
-                    </div>
-                    <div
-                        key="history"
-                        title="Tab History (Ctrl-R)"
-                        className="cmdinput-icon"
-                        onClick={this.clickHistoryAction}
-                    >
-                        <i className="fa-sharp fa-regular fa-clock-rotate-left fa-fw" />
-                    </div>
-                </div>
                 <If condition={historyShow}>
                     <div className="cmd-input-grow-spacer"></div>
                     <HistoryInfo />
@@ -248,6 +222,37 @@ class CmdInput extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div key="base-cmdinput" className="base-cmdinput" onClick={this.baseCmdInputClick}>
+                    <div className="cmdinput-actions">
+                        <If condition={numRunningLines > 0}>
+                            <div
+                                key="running"
+                                className={cn("cmdinput-icon", "running-cmds", { active: filterRunning })}
+                                title="Filter for Running Commands"
+                                onClick={() => this.toggleFilter(screen)}
+                            >
+                                <CenteredIcon>{numRunningLines}</CenteredIcon>{" "}
+                                <CenteredIcon>
+                                    <RotateIcon className="rotate warning spin" />
+                                </CenteredIcon>
+                            </div>
+                        </If>
+                        <div
+                            key="ai"
+                            title="Wave AI (Ctrl-Space)"
+                            className="cmdinput-icon"
+                            onClick={this.clickAIAction}
+                        >
+                            <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
+                        </div>
+                        <div
+                            key="history"
+                            title="Tab History (Ctrl-R)"
+                            className="cmdinput-icon"
+                            onClick={this.clickHistoryAction}
+                        >
+                            <i className="fa-sharp fa-regular fa-clock-rotate-left fa-fw" />
+                        </div>
+                    </div>
                     <If condition={!hidePrompt}>
                         <div key="prompt" className="cmd-input-context">
                             <div className="has-text-white">

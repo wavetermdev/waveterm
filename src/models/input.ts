@@ -300,6 +300,7 @@ class InputModel {
         if (!this.historyShow.get()) {
             mobx.action(() => {
                 this.setHistoryShow(true);
+                this.aIChatShow.set(false);
                 this.infoShow.set(false);
                 this.dropModHistory(true);
                 this.giveFocus();
@@ -661,6 +662,8 @@ class InputModel {
     openAIAssistantChat(): void {
         mobx.action(() => {
             this.aIChatShow.set(true);
+            this.historyShow.set(false);
+            this.infoShow.set(false);
             this.setAIChatFocus();
         })();
     }
