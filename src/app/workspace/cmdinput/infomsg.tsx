@@ -10,6 +10,8 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import * as appconst from "@/app/appconst";
 
+import "./infomsg.less";
+
 dayjs.extend(localizedFormat);
 
 @mobxReact.observer

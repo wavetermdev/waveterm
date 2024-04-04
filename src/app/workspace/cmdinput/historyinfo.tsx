@@ -13,6 +13,9 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import { isBlank } from "@/util/util";
 
+import "./historyinfo.less";
+import { AuxiliaryCmdView } from "./auxview";
+
 dayjs.extend(localizedFormat);
 
 const TDots = "⋮";
@@ -203,12 +206,29 @@ class HistoryInfo extends React.Component<{}, {}> {
         inputModel.toggleRemoteType();
     }
 
+    @boundMethod
+    getTitleBarContents(): React.ReactElement[] {
+        const opts = GlobalModel.inputModel.historyQueryOpts.get();
+
+        return [
+            <div className="history-opt history-clickable-opt" onClick={this.handleClickType}>
+                [for {opts.queryType} &#x2318;S]
+            </div>,
+            <div className="history-opt" title="type to search">
+                [containing '{opts.queryStr}']
+            </div>,
+            <div className="history-opt history-clickable-opt" onClick={this.handleClickRemote}>
+                [{opts.limitRemote ? "this" : "any"} remote &#x2318;R]
+            </div>,
+        ];
+    }
+
     render() {
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
         const hitems = inputModel.getFilteredHistoryItems().slice().reverse();
-        let hitem: HistoryItem = null;
         const opts = inputModel.historyQueryOpts.get();
+        let hitem: HistoryItem = null;
         let snames: Record<string, string> = {};
         let scrNames: Record<string, string> = {};
         if (opts.queryType == "global") {
@@ -218,29 +238,13 @@ class HistoryInfo extends React.Component<{}, {}> {
             scrNames = GlobalModel.getScreenNames();
         }
         return (
-            <div className="cmd-history hide-scrollbar">
-                <div className="cmdinput-titlebar history-title">
-                    <div className="title-icon">
-                        <i className="fa-sharp fa-solid fa-clock-rotate-left" />
-                    </div>
-                    <div className="title-string">History</div>
-                    <div className="spacer"></div>
-                    <div className="history-opt history-clickable-opt" onClick={this.handleClickType}>
-                        [for {opts.queryType} &#x2318;S]
-                    </div>
-                    <div className="spacer"></div>
-                    <div className="history-opt" title="type to search">
-                        [containing '{opts.queryStr}']
-                    </div>
-                    <div className="spacer"></div>
-                    <div className="history-opt history-clickable-opt" onClick={this.handleClickRemote}>
-                        [{opts.limitRemote ? "this" : "any"} remote &#x2318;R]
-                    </div>
-                    <div className="flex-spacer"></div>
-                    <div className="close-button" title="Close (ESC)">
-                        <i className="fa-sharp fa-solid fa-xmark-large" onClick={this.handleClose}></i>
-                    </div>
-                </div>
+            <AuxiliaryCmdView
+                title="History"
+                className="cmd-history hide-scrollbar"
+                onClose={this.handleClose}
+                titleBarContents={this.getTitleBarContents()}
+                iconClass="fa-sharp fa-solid fa-clock-rotate-left"
+            >
                 <div
                     className={cn(
                         "history-items",
@@ -263,7 +267,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                         </For>
                     </If>
                 </div>
-            </div>
+            </AuxiliaryCmdView>
         );
     }
 }

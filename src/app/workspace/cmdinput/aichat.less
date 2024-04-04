@@ -1,0 +1,70 @@
+.cmd-aichat {
+    display: flex;
+    justify-content: flex-end;
+    flex-flow: column nowrap;
+
+    .chat-window {
+        overflow-y: auto;
+        margin-bottom: 5px;
+        flex-shrink: 1;
+        flex-direction: column-reverse;
+    }
+
+    .chat-textarea {
+        color: var(--app-text-primary-color);
+        background-color: var(--cmdinput-textarea-bg);
+        padding: 0.5em;
+        resize: none;
+        overflow: auto;
+        overflow-wrap: anywhere;
+        border: transparent;
+        outline: none;
+        font-family: var(--termfontfamily);
+        font-weight: normal;
+        flex-shrink: 0;
+        flex-grow: 1;
+        border-radius: 4px;
+        line-height: var(--termlineheight);
+    }
+
+    .chat-msg {
+        margin-top: calc(var(--termpad) * 2);
+        margin-bottom: calc(var(--termpad) * 2);
+
+        .chat-msg-header {
+            display: flex;
+            margin-bottom: 2px;
+
+            i {
+                margin-right: 0.5em;
+            }
+
+            .chat-username {
+                font-weight: bold;
+                margin-right: 5px;
+            }
+        }
+    }
+
+    .chat-msg-assistant {
+        color: var(--app-text-color);
+    }
+
+    .chat-msg-user {
+        .msg-text {
+            font-family: var(--markdown-font);
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+    }
+
+    .chat-msg-error {
+        color: var(--cmdinput-text-error);
+        font-family: var(--markdown-font);
+        font-size: 14px;
+    }
+
+    .grow-spacer {
+        flex: 1 0 10px;
+    }
+}

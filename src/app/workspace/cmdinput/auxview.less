@@ -1,0 +1,50 @@
+// For the additonal views, we want less padding on the top and bottom than we want for the base-cmdinput div
+.auxview {
+    padding: var(--termpad) calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 3 - 1px);
+    overflow: auto;
+    flex-shrink: 1;
+
+    --auxview-titlebar-height: 18px;
+
+    .auxview-titlebar {
+        position: absolute;
+        z-index: 22;
+        top: 0;
+        left: 0;
+        background-color: var(--app-panel-bg-color);
+        color: var(--term-blue);
+        padding: 6px 10px 6px 10px;
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--app-border-color);
+        font: var(--base-font);
+        user-select: none;
+        cursor: default;
+        line-height: var(--auxview-titlebar-height);
+
+        .title-string {
+            font-weight: bold;
+        }
+
+        .close-button {
+            cursor: pointer;
+            i {
+                color: var(--app-icon-color);
+
+                &:hover {
+                    color: var(--app-icon-hover-color);
+                }
+            }
+        }
+
+        div:not(.close-button, .flex-spacer) {
+            margin-right: 10px;
+        }
+    }
+
+    .auxview-content {
+        padding-top: calc(var(--auxview-titlebar-height) + 6px);
+    }
+}
