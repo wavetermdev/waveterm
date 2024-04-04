@@ -8,10 +8,9 @@
     bottom: 0;
     width: 100%;
 
-    // This lets borders for any immediate children of cmd-input to extend the full width or height of the outer container
-    > div {
-        padding: calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 2)
-            calc(var(--termpad) * 3 - 1px);
+    // For the additonal views, we want less padding on the top and bottom than we want for the base-cmdinput div
+    > :not(.base-cmdinput) {
+        padding: var(--termpad) calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 3 - 1px);
     }
     z-index: 100;
     border-top: 2px solid var(--app-border-color);
@@ -147,6 +146,8 @@
 
     .base-cmdinput {
         position: relative;
+        padding: calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 2)
+            calc(var(--termpad) * 3 - 1px);
         &:not(:first-child) {
             margin-top: var(--termpad);
         }
@@ -259,6 +260,7 @@
             resize: none;
             overflow: auto;
             overflow-wrap: anywhere;
+            border: transparent;
             outline: none;
             font-family: var(--termfontfamily);
             font-weight: normal;
@@ -316,10 +318,6 @@
         font-size: var(--termfontsize);
         overflow: auto;
         flex-shrink: 1;
-
-        // Override so that the history items don't appear so far from the top and bottom of the container
-        padding-top: var(--termpad) !important;
-        padding-bottom: var(--termpad) !important;
 
         .history-title {
             div:first-child {

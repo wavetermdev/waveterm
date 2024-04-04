@@ -271,7 +271,6 @@ class AIChat extends React.Component<{}, {}> {
                         <i className="fa-sharp fa-solid fa-xmark-large" />
                     </div>
                 </div>
-                <div className="titlebar-spacer" />
                 {this.renderChatWindow()}
                 <textarea
                     key="main"
