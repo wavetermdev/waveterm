@@ -179,7 +179,6 @@ class HistoryInfo extends React.Component<{}, {}> {
             inputModel.grabSelectedHistoryItem();
             return;
         }
-        inputModel.giveFocus();
         inputModel.setHistorySelectionNum(hitem.historynum);
         const now = Date.now();
         this.lastClickHNum = hitem.historynum;
@@ -211,13 +210,13 @@ class HistoryInfo extends React.Component<{}, {}> {
         const opts = GlobalModel.inputModel.historyQueryOpts.get();
 
         return [
-            <div className="history-opt history-clickable-opt" onClick={this.handleClickType}>
+            <div className="history-opt history-clickable-opt" key="screen" onClick={this.handleClickType}>
                 [for {opts.queryType} &#x2318;S]
             </div>,
-            <div className="history-opt" title="type to search">
+            <div className="history-opt" key="query-str" title="type to search">
                 [containing '{opts.queryStr}']
             </div>,
-            <div className="history-opt history-clickable-opt" onClick={this.handleClickRemote}>
+            <div className="history-opt history-clickable-opt" key="remote" onClick={this.handleClickRemote}>
                 [{opts.limitRemote ? "this" : "any"} remote &#x2318;R]
             </div>,
         ];
