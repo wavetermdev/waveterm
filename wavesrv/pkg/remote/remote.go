@@ -2024,7 +2024,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		EphemeralOpts: rcOpts.EphemeralOpts}
 	// RegisterRpc + WaitForResponse is used to get any waveshell side errors
 	// waveshell will either return an error (in a ResponsePacketType) or a CmdStartPacketType
-	wlog.Logf("send run packet\n")
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	go func() {
 		startPk, err := msh.sendRunPacketAndReturnResponse(runPacket)

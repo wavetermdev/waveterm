@@ -748,7 +748,7 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("invalid shellstate version: %w", err))
 		return
 	}
-	if runPacket.Command == "testerror" {
+	if runPacket.Command == "wave:testerror" {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("test error"))
 		return
 	}
