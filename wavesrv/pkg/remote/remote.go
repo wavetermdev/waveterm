@@ -2386,6 +2386,14 @@ func (msh *MShellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
 		log.Printf("error updating cmddone info (in handleCmdStartError): %v\n", err)
 		return
 	}
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, rct.CK.GetGroupId(), rct.CK.GetCmdId())
+	if err != nil {
+		log.Printf("error trying to update screen focus type (in handleCmdDonePacket): %v\n", err)
+		// fall-through (nothing to do)
+	}
+	if screen != nil {
+		update.AddUpdate(*screen)
+	}
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
