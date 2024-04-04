@@ -34,7 +34,6 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
-	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
@@ -1900,8 +1899,6 @@ type RunCommandOpts struct {
 // we must persist the CmdType to the DB before calling the callback to allow updates
 // otherwise an early CmdDone packet might not get processed (since cmd will not exist in DB)
 func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.RunPacketType) (rtnCmd *sstore.CmdType, rtnCallback func(), rtnErr error) {
-	wlog.Logf("start remote.RunCommand\n")
-	defer wlog.Logf("end remote.RunCommand\n")
 	sessionId, screenId, remotePtr := rcOpts.SessionId, rcOpts.ScreenId, rcOpts.RemotePtr
 	if remotePtr.OwnerId != "" {
 		return nil, nil, fmt.Errorf("cannot run command against another user's remote '%s'", remotePtr.MakeFullRemoteRef())
@@ -2021,7 +2018,8 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		ScreenId:      screenId,
 		RemotePtr:     remotePtr,
 		RunPacket:     runPacket,
-		EphemeralOpts: rcOpts.EphemeralOpts}
+		EphemeralOpts: rcOpts.EphemeralOpts,
+	}
 	// RegisterRpc + WaitForResponse is used to get any waveshell side errors
 	// waveshell will either return an error (in a ResponsePacketType) or a CmdStartPacketType
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
@@ -2080,9 +2078,7 @@ func (msh *MShellProc) sendRunPacketAndReturnResponse(runPacket *packet.RunPacke
 	if err != nil {
 		return nil, fmt.Errorf("sending run packet to remote: %w", err)
 	}
-	wlog.Logf("before waitforresponse\n")
 	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
-	wlog.Logf("after waitforresponse\n")
 	if rtnPk == nil {
 		return nil, ctx.Err()
 	}
@@ -2097,7 +2093,6 @@ func (msh *MShellProc) sendRunPacketAndReturnResponse(runPacket *packet.RunPacke
 		}
 		return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
 	}
-	wlog.Logf("after send packet\n")
 	return startPk, nil
 }
 
