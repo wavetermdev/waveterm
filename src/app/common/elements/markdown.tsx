@@ -7,8 +7,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import cn from "classnames";
 import { GlobalModel } from "@/models";
+import { v4 as uuidv4 } from "uuid";
 
 import "./markdown.less";
+import { boundMethod } from "autobind-decorator";
 
 function LinkRenderer(props: any): any {
     let newUrl = "https://extern?" + encodeURIComponent(props.href);
@@ -28,14 +30,17 @@ function CodeRenderer(props: any): any {
 }
 
 @mobxReact.observer
-class CodeBlockMarkdown extends React.Component<{ children: React.ReactNode; codeSelectSelectedIndex?: number }, {}> {
+class CodeBlockMarkdown extends React.Component<
+    { children: React.ReactNode; codeSelectSelectedIndex?: number; uuid: string },
+    {}
+> {
     blockIndex: number;
     blockRef: React.RefObject<HTMLPreElement>;
 
     constructor(props) {
         super(props);
         this.blockRef = React.createRef();
-        this.blockIndex = GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef);
+        this.blockIndex = GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef, this.props.uuid);
     }
 
     render() {
@@ -62,9 +67,21 @@ class Markdown extends React.Component<
     { text: string; style?: any; extraClassName?: string; codeSelect?: boolean },
     {}
 > {
-    CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number): any {
+    curUuid: string;
+
+    constructor(props) {
+        super(props);
+        this.curUuid = uuidv4();
+    }
+
+    @boundMethod
+    CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number, curUuid: string): any {
         if (codeSelect) {
-            return <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex}>{props.children}</CodeBlockMarkdown>;
+            return (
+                <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex} uuid={curUuid}>
+                    {props.children}
+                </CodeBlockMarkdown>
+            );
         } else {
             const clickHandler = (e: React.MouseEvent<HTMLElement>) => {
                 let blockText = (e.target as HTMLElement).innerText;
@@ -90,7 +107,7 @@ class Markdown extends React.Component<
             h5: (props) => HeaderRenderer(props, 5),
             h6: (props) => HeaderRenderer(props, 6),
             code: (props) => CodeRenderer(props),
-            pre: (props) => this.CodeBlockRenderer(props, codeSelect, curCodeSelectIndex),
+            pre: (props) => this.CodeBlockRenderer(props, codeSelect, curCodeSelectIndex, this.curUuid),
         };
         return (
             <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>

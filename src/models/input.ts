@@ -32,6 +32,8 @@ class InputModel {
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
+    codeSelectUuid: string;
+    inputPopUpType: OV<string> = mobx.observable.box("none");
 
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat",
@@ -80,6 +82,7 @@ class InputModel {
             this.codeSelectSelectedIndex.set(-1);
             this.codeSelectBlockRefArray = [];
         })();
+        this.codeSelectUuid = "";
     }
 
     setInputMode(inputMode: null | "comment" | "global"): void {
@@ -180,6 +183,10 @@ class InputModel {
         if (document.activeElement == historyInputElem) {
             return true;
         }
+        let aiChatInputElem = document.querySelector(".cmd-input chat-cmd-input");
+        if (document.activeElement == aiChatInputElem) {
+            return true;
+        }
         return false;
     }
 
@@ -224,6 +231,12 @@ class InputModel {
         })();
     }
 
+    setInputPopUpType(type: string) {
+        this.inputPopUpType = type;
+        this.aIChatShow.set(type == "aichat");
+        this.historyShow.set(type == "history");
+    }
+
     setOpenAICmdInfoChat(chat: OpenAICmdInfoChatMessageType[]): void {
         this.AICmdInfoChatItems.replace(chat);
         this.codeSelectBlockRefArray = [];
@@ -234,6 +247,11 @@ class InputModel {
             return;
         }
         mobx.action(() => {
+            if (show) {
+                this.setInputPopUpType("history");
+            } else {
+                this.setInputPopUpType("none");
+            }
             this.historyShow.set(show);
             if (this.hasFocus()) {
                 this.giveFocus();
@@ -522,6 +540,7 @@ class InputModel {
     }
 
     setAIChatFocus() {
+        console.log("setting ai chat focus");
         if (this.aiChatTextAreaRef?.current != null) {
             this.aiChatTextAreaRef.current.focus();
         }
@@ -540,8 +559,12 @@ class InputModel {
         }
     }
 
-    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>): number {
+    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>, uuid: string): number {
         let rtn = -1;
+        if (uuid != this.codeSelectUuid) {
+            this.codeSelectUuid = uuid;
+            this.codeSelectBlockRefArray = [];
+        }
         rtn = this.codeSelectBlockRefArray.length;
         this.codeSelectBlockRefArray.push(blockRef);
         return rtn;
@@ -641,6 +664,7 @@ class InputModel {
 
     openAIAssistantChat(): void {
         mobx.action(() => {
+            this.setInputPopUpType("aichat");
             this.aIChatShow.set(true);
             this.setAIChatFocus();
         })();
@@ -653,6 +677,7 @@ class InputModel {
             return;
         }
         mobx.action(() => {
+            this.setInputPopUpType("none");
             this.aIChatShow.set(false);
             if (giveFocus) {
                 this.giveFocus();
