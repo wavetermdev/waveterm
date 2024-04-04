@@ -549,18 +549,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     @boundMethod
-    onMainClick(e: any) {
-        GlobalModel.inputModel.setPhysicalInputFocused(true);
-        GlobalModel.inputModel.setHistoryFocus(false);
-        mobx.action(() => {
-            this.mainInputFocused.set(true);
-            this.historyFocused.set(false);
-
-            this.mainInputRef.current.focus();
-        })();
-    }
-
-    @boundMethod
     handleMainFocus(e: any) {
         const inputModel = GlobalModel.inputModel;
         if (inputModel.historyFocus.get()) {
@@ -690,7 +678,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onKeyDown={this.onKeyDown}
                     onChange={this.onChange}
                     onSelect={this.onSelect}
-                    onClick={this.onMainClick}
                     placeholder="Type here..."
                     className={cn("textarea", { "display-disabled": disabled })}
                 ></textarea>

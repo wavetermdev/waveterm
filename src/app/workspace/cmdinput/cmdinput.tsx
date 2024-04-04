@@ -61,12 +61,13 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    cmdInputClick(e: any): void {
+    baseCmdInputClick(e: any): void {
         if (this.promptRef.current != null) {
             if (this.promptRef.current.contains(e.target)) {
                 return;
             }
         }
+        GlobalModel.inputModel.setHistoryFocus(false);
         GlobalModel.inputModel.giveFocus();
     }
 
@@ -160,6 +161,9 @@ class CmdInput extends React.Component<{}, {}> {
         }
         let shellInitMsg: string = null;
         let hidePrompt = false;
+
+        const openView = inputModel.getOpenView();
+        const hasOpenView = openView ? `has-${openView}` : null;
         if (ri == null) {
             let shellStr = "shell";
             if (!util.isBlank(remote?.defaultshelltype)) {
@@ -172,17 +176,7 @@ class CmdInput extends React.Component<{}, {}> {
             }
         }
         return (
-            <div
-                ref={this.cmdInputRef}
-                className={cn(
-                    "cmd-input",
-                    { "has-info": infoShow },
-                    { "has-aichat": aiChatShow },
-                    { "has-history": historyShow },
-                    { active: focusVal }
-                )}
-                onClick={this.cmdInputClick}
-            >
+            <div ref={this.cmdInputRef} className={cn("cmd-input", hasOpenView, { active: focusVal })}>
                 <div className="cmdinput-actions">
                     <If condition={numRunningLines > 0}>
                         <div
@@ -253,7 +247,7 @@ class CmdInput extends React.Component<{}, {}> {
                         </Button>
                     </div>
                 </If>
-                <div key="base-cmdinput" className="base-cmdinput">
+                <div key="base-cmdinput" className="base-cmdinput" onClick={this.baseCmdInputClick}>
                     <If condition={!hidePrompt}>
                         <div key="prompt" className="cmd-input-context">
                             <div className="has-text-white">

@@ -184,6 +184,19 @@ class InputModel {
         return false;
     }
 
+    getOpenView(): string {
+        if (this.historyShow.get()) {
+            return "history";
+        }
+        if (this.aIChatShow.get()) {
+            return "aichat";
+        }
+        if (this.infoShow.get()) {
+            return "info";
+        }
+        return null;
+    }
+
     setHistoryType(htype: HistoryTypeStrs): void {
         if (this.historyQueryOpts.get().queryType == htype) {
             return;
@@ -248,11 +261,7 @@ class InputModel {
         }
         mobx.action(() => {
             this.historyFocus.set(focus);
-            if (focus) {
-                this._focusHistoryInput();
-            } else {
-                this._focusCmdInput();
-            }
+            this.giveFocus();
         })();
     }
 

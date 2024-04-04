@@ -248,7 +248,6 @@ class HistoryInfo extends React.Component<{}, {}> {
                         { "show-sessions": opts.queryType == "global" }
                     )}
                 >
-                    <div className="titlebar-spacer" />
                     <If condition={hitems.length == 0}>[no history]</If>
                     <If condition={hitems.length > 0}>
                         <For each="hitem" index="idx" of={hitems}>
