@@ -1,32 +1,33 @@
 .cmd-aichat {
     padding-bottom: 0 !important;
     .auxview-content {
-        position: relative;
-        justify-content: flex-end;
         flex-flow: column nowrap;
         height: 100%;
 
-        --textarea-height: 100px;
         .chat-window {
             overflow-y: auto;
             margin-bottom: 5px;
-            flex-shrink: 1;
+            flex: 1 1 auto;
             flex-direction: column-reverse;
         }
 
-        .chat-textarea {
-            color: var(--app-text-primary-color);
-            background-color: var(--cmdinput-textarea-bg);
-            padding: 0.5em 0.5em 0 0.5em;
-            resize: none;
-            overflow: auto;
-            overflow-wrap: anywhere;
-            border: transparent;
-            outline: none;
-            font-family: var(--termfontfamily);
-            font-weight: normal;
-            flex-grow: 1;
-            line-height: var(--termlineheight);
+        .chat-input {
+            padding: 0.5em 0.5em 0.5em 0.5em;
+            flex: 1 0 auto;
+
+            .chat-textarea {
+                color: var(--app-text-primary-color);
+                background-color: var(--cmdinput-textarea-bg);
+                resize: none;
+                width: 100%;
+                border: transparent;
+                outline: none;
+                overflow: auto;
+                overflow-wrap: anywhere;
+                font-family: var(--termfontfamily);
+                font-weight: normal;
+                line-height: var(--termlineheight);
+            }
         }
 
         .chat-msg {
@@ -64,10 +65,6 @@
             color: var(--cmdinput-text-error);
             font-family: var(--markdown-font);
             font-size: 14px;
-        }
-
-        .grow-spacer {
-            flex: 1 0 10px;
         }
     }
 }

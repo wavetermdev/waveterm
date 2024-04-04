@@ -6,7 +6,6 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
 import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
 import { AuxiliaryCmdView } from "./auxview";
@@ -55,10 +54,10 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
 @mobxReact.observer
 class AIChat extends React.Component<{}, {}> {
     chatListKeyCount: number = 0;
-    textAreaNumLines: mobx.IObservableValue<number> = mobx.observable.box(1, { name: "textAreaNumLines" });
     chatWindowScrollRef: React.RefObject<HTMLDivElement>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
     isFocused: OV<boolean>;
+    termFontSize: number = 14;
 
     constructor(props: any) {
         super(props);
@@ -79,6 +78,7 @@ class AIChat extends React.Component<{}, {}> {
             inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowScrollRef);
         }
         this.requestChatUpdate();
+        this.onTextAreaChange(null);
     }
 
     componentDidUpdate() {
@@ -121,10 +121,17 @@ class AIChat extends React.Component<{}, {}> {
 
     onTextAreaChange(e: any) {
         // set height of textarea based on number of newlines
-        mobx.action(() => {
-            this.textAreaNumLines.set(e.target.value.split(/\n/).length);
-            GlobalModel.inputModel.codeSelectDeselectAll();
-        })();
+
+        const textAreaMaxLines = 4;
+        const textAreaLineHeight = this.termFontSize * 1.5;
+        const textAreaMinHeight = textAreaLineHeight;
+        const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
+        this.textAreaRef.current.style.height = "1px";
+        const scrollHeight: number = this.textAreaRef.current.scrollHeight;
+        const newLineHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
+
+        this.textAreaRef.current.style.height = newLineHeight + "px";
+        GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
     onEnterKeyPressed() {
@@ -225,14 +232,6 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     render() {
-        const termFontSize = 14;
-        const textAreaMaxLines = 4;
-        const textAreaLineHeight = termFontSize * 1.5;
-        const textAreaPadding = 2 * 0.5 * termFontSize;
-        const textAreaMinHeight = textAreaLineHeight + textAreaPadding;
-        const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines + textAreaPadding;
-        const textAreaInnerHeight = this.textAreaNumLines.get() * textAreaLineHeight + textAreaPadding;
-        const textAreaOuterHeight = Math.min(textAreaInnerHeight, textAreaMaxHeight);
         const isFocused = this.isFocused.get();
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
@@ -247,29 +246,27 @@ class AIChat extends React.Component<{}, {}> {
                 <If condition={isFocused}>
                     <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
                 </If>
-                <div
-                    className="chat-window"
-                    ref={this.chatWindowScrollRef}
-                    style={{ height: `calc(100% - ${textAreaOuterHeight}px)` }}
-                >
+                <div className="chat-window" ref={this.chatWindowScrollRef}>
                     <For each="chitem" index="idx" of={chatMessageItems}>
                         {this.renderChatMessage(chitem)}
                     </For>
                 </div>
-                <textarea
-                    key="main"
-                    ref={this.textAreaRef}
-                    autoComplete="off"
-                    autoCorrect="off"
-                    id="chat-cmd-input"
-                    onFocus={this.onTextAreaFocused.bind(this)}
-                    onBlur={this.onTextAreaBlur.bind(this)}
-                    onChange={this.onTextAreaChange.bind(this)}
-                    onKeyDown={this.onKeyDown}
-                    style={{ minHeight: textAreaMinHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
-                    className="chat-textarea"
-                    placeholder="Send a Message..."
-                ></textarea>
+                <div className="chat-input">
+                    <textarea
+                        key="main"
+                        ref={this.textAreaRef}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        id="chat-cmd-input"
+                        onFocus={this.onTextAreaFocused.bind(this)}
+                        onBlur={this.onTextAreaBlur.bind(this)}
+                        onChange={this.onTextAreaChange.bind(this)}
+                        onKeyDown={this.onKeyDown}
+                        style={{ fontSize: this.termFontSize }}
+                        className="chat-textarea"
+                        placeholder="Send a Message..."
+                    ></textarea>
+                </div>
             </AuxiliaryCmdView>
         );
     }
