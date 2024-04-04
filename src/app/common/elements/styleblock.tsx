@@ -27,7 +27,7 @@ class StyleBlock extends React.Component<
         }
     }
 
-    async loadThemeStyles() {
+    loadThemeStyles() {
         const { themeKey, termTheme, scope } = this.props;
         const currTheme = termTheme[themeKey];
 
