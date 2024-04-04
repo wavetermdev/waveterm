@@ -34,4 +34,3 @@ jobs:
           reactions: |
             +1
             -1
-          token: ${{ secrets.GITHUB_TOKEN }}
