@@ -258,25 +258,6 @@ class Model {
             });
     }
 
-    updateTermTheme(element: HTMLElement, themeFileName: string, reset: boolean) {
-        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
-        return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
-            .then((resp) => resp.json())
-            .then((themeVars: TermThemeType) => {
-                Object.keys(themeVars).forEach((key) => {
-                    if (reset) {
-                        this.resetStyleVar(element, `--term-${key}`);
-                    } else {
-                        this.resetStyleVar(element, `--term-${key}`);
-                        this.setStyleVar(element, `--term-${key}`, themeVars[key]);
-                    }
-                });
-            })
-            .catch((error) => {
-                console.error(`error applying theme: ${themeFileName}`, error);
-            });
-    }
-
     getTermThemeJson(themeFileName: string) {
         const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
         return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
