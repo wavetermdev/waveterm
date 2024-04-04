@@ -748,6 +748,10 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("invalid shellstate version: %w", err))
 		return
 	}
+	if runPacket.Command == "wave:testerror" {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("test error"))
+		return
+	}
 	ecmd, err := shexec.MakeMShellSingleCmd()
 	if err != nil {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("server run packets require valid ck: %s", err))
