@@ -119,18 +119,21 @@ class AIChat extends React.Component<{}, {}> {
         })();
     }
 
+    // Adjust the height of the textarea to fit the text
     onTextAreaChange(e: any) {
-        // set height of textarea based on number of newlines
-
+        // Calculate the bounding height of the text area
         const textAreaMaxLines = 4;
         const textAreaLineHeight = this.termFontSize * 1.5;
         const textAreaMinHeight = textAreaLineHeight;
         const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
+
+        // Get the height of the wrapped text area content. Courtesy of https://stackoverflow.com/questions/995168/textarea-to-resize-based-on-content-length
         this.textAreaRef.current.style.height = "1px";
         const scrollHeight: number = this.textAreaRef.current.scrollHeight;
-        const newLineHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
 
-        this.textAreaRef.current.style.height = newLineHeight + "px";
+        // Set the new height of the text area, bounded by the min and max height.
+        const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
+        this.textAreaRef.current.style.height = newHeight + "px";
         GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
