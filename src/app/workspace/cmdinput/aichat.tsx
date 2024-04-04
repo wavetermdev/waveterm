@@ -224,26 +224,18 @@ class AIChat extends React.Component<{}, {}> {
         );
     }
 
-    renderChatWindow(): any {
-        const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        const chitem: OpenAICmdInfoChatMessageType = null;
-        return (
-            <div className="chat-window" ref={this.chatWindowScrollRef}>
-                <For each="chitem" index="idx" of={chatMessageItems}>
-                    {this.renderChatMessage(chitem)}
-                </For>
-            </div>
-        );
-    }
-
     render() {
         const termFontSize = 14;
         const textAreaMaxLines = 4;
         const textAreaLineHeight = termFontSize * 1.5;
         const textAreaPadding = 2 * 0.5 * termFontSize;
+        const textAreaMinHeight = textAreaLineHeight + textAreaPadding;
         const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines + textAreaPadding;
         const textAreaInnerHeight = this.textAreaNumLines.get() * textAreaLineHeight + textAreaPadding;
+        const textAreaOuterHeight = Math.min(textAreaInnerHeight, textAreaMaxHeight);
         const isFocused = this.isFocused.get();
+        const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
+        const chitem: OpenAICmdInfoChatMessageType = null;
 
         return (
             <AuxiliaryCmdView
@@ -255,7 +247,15 @@ class AIChat extends React.Component<{}, {}> {
                 <If condition={isFocused}>
                     <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
                 </If>
-                {this.renderChatWindow()}
+                <div
+                    className="chat-window"
+                    ref={this.chatWindowScrollRef}
+                    style={{ height: `calc(100% - ${textAreaOuterHeight}px)` }}
+                >
+                    <For each="chitem" index="idx" of={chatMessageItems}>
+                        {this.renderChatMessage(chitem)}
+                    </For>
+                </div>
                 <textarea
                     key="main"
                     ref={this.textAreaRef}
@@ -266,8 +266,8 @@ class AIChat extends React.Component<{}, {}> {
                     onBlur={this.onTextAreaBlur.bind(this)}
                     onChange={this.onTextAreaChange.bind(this)}
                     onKeyDown={this.onKeyDown}
-                    style={{ height: textAreaInnerHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
-                    className={cn("chat-textarea")}
+                    style={{ minHeight: textAreaMinHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
+                    className="chat-textarea"
                     placeholder="Send a Message..."
                 ></textarea>
             </AuxiliaryCmdView>

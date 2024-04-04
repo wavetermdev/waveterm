@@ -1,8 +1,10 @@
-.cmd-aichat {
-    display: flex;
+.cmd-aichat .auxview-content {
+    position: relative;
     justify-content: flex-end;
     flex-flow: column nowrap;
+    height: 100%;
 
+    --textarea-height: 100px;
     .chat-window {
         overflow-y: auto;
         margin-bottom: 5px;
@@ -13,7 +15,7 @@
     .chat-textarea {
         color: var(--app-text-primary-color);
         background-color: var(--cmdinput-textarea-bg);
-        padding: 0.5em;
+        padding: 0.5em 0.5em 0 0.5em;
         resize: none;
         overflow: auto;
         overflow-wrap: anywhere;
@@ -21,9 +23,7 @@
         outline: none;
         font-family: var(--termfontfamily);
         font-weight: normal;
-        flex-shrink: 0;
         flex-grow: 1;
-        border-radius: 4px;
         line-height: var(--termlineheight);
     }
 
