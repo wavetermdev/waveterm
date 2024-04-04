@@ -209,59 +209,6 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
 @mobxReact.observer
 class WorkspaceView extends React.Component<{}, {}> {
     sessionRef = React.createRef<HTMLDivElement>();
-    theme: string;
-    themeReactionDisposer: mobx.IReactionDisposer;
-
-    componentDidMount() {
-        // this.setupThemeReaction();
-    }
-
-    componentDidUpdate() {
-        // this.setupThemeReaction();
-    }
-
-    // setupThemeReaction() {
-    //     if (this.themeReactionDisposer) {
-    //         this.themeReactionDisposer();
-    //     }
-
-    //     // This handles session and screen-level terminal theming.
-    //     // Ideally, screen-level theming should be handled in the inner-level component, but
-    //     // the frequent mounting and unmounting of the screen view make it really difficult to work.
-    //     this.themeReactionDisposer = mobx.reaction(
-    //         () => {
-    //             return {
-    //                 termTheme: GlobalModel.getTermTheme(),
-    //                 session: GlobalModel.getActiveSession(),
-    //                 screen: GlobalModel.getActiveScreen(),
-    //             };
-    //         },
-    //         ({ termTheme, session, screen }) => {
-    //             let currTheme = termTheme[session.sessionId];
-    //             if (termTheme[screen.screenId]) {
-    //                 currTheme = termTheme[screen.screenId];
-    //             }
-    //             if (session && currTheme !== this.theme && this.sessionRef.current) {
-    //                 const reset = currTheme == null;
-    //                 const theme = currTheme ?? this.theme;
-    //                 const themeSrcEl = reset ? null : this.sessionRef.current;
-    //                 const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, reset);
-    //                 rtn.then(() => {
-    //                     GlobalModel.termThemeSrcEl.set(themeSrcEl);
-    //                 }).then(() => {
-    //                     GlobalModel.bumpTermRenderVersion();
-    //                 });
-    //                 this.theme = currTheme;
-    //             }
-    //         }
-    //     );
-    // }
-
-    componentWillUnmount() {
-        if (this.themeReactionDisposer) {
-            this.themeReactionDisposer();
-        }
-    }
 
     @boundMethod
     toggleTabSettings() {
