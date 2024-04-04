@@ -72,18 +72,15 @@ class TerminalKeybindings extends React.Component<{ termWrap: any; lineid: strin
 }
 
 @mobxReact.observer
-class TerminalRenderer extends React.Component<
-    {
-        screen: LineContainerType;
-        line: LineType;
-        width: number;
-        staticRender: boolean;
-        visible: OV<boolean>;
-        onHeightChange: () => void;
-        collapsed: boolean;
-    },
-    {}
-> {
+class TerminalRenderer extends React.Component<{
+    screen: LineContainerType;
+    line: LineType;
+    width: number;
+    staticRender: boolean;
+    visible: OV<boolean>;
+    onHeightChange: () => void;
+    collapsed: boolean;
+}> {
     termLoaded: mobx.IObservableValue<boolean> = mobx.observable.box(false, {
         name: "linecmd-term-loaded",
     });

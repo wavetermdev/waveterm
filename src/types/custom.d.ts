@@ -1,3 +1,5 @@
+import { override } from "mobx";
+
 declare module "*.svg" {
     import * as React from "react";
     export const ReactComponent: React.FunctionComponent<React.SVGProps<SVGSVGElement> & { title?: string }>;
@@ -186,6 +188,13 @@ declare global {
         build: string;
     };
 
+    type EphemeralCmdOptsType = {
+        overridecwd?: string;
+        timeoutms?: number;
+        expectsresponse: boolean;
+        env: { [k: string]: string };
+    };
+
     type FeCmdPacketType = {
         type: string;
         metacmd: string;
@@ -195,6 +204,7 @@ declare global {
         rawstr?: string;
         uicontext: UIContextType;
         interactive: boolean;
+        ephemeralopts?: EphemeralCmdOptsType;
     };
 
     type FeInputPacketType = {
@@ -563,10 +573,15 @@ declare global {
         data: Uint8Array;
     };
 
+    type TermThemeType = {
+        [k: string]: string | null;
+    };
+
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
         theme: NativeThemeSource;
+        termtheme: TermThemeType;
     };
 
     type ConfirmFlagsType = {
@@ -786,6 +801,16 @@ declare global {
     type CommandRtnType = {
         success: boolean;
         error?: string;
+    };
+
+    type EphemeralCommandOutputType = {
+        stdout: string;
+        stderr: string;
+    };
+
+    type EphemeralCommandResponsePacketType = {
+        stdouturl?: string;
+        stderrurl?: string;
     };
 
     type LineHeightChangeCallbackType = (lineNum: number, newHeight: number, oldHeight: number) => void;

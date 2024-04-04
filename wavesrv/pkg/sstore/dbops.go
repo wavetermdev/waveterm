@@ -800,7 +800,7 @@ func UpdateCmdDoneInfo(ctx context.Context, update *scbus.ModelUpdatePacketType,
 		// This is not a fatal error, so just log it
 		log.Printf("error setting status indicator level after done packet: %v\n", err)
 	}
-	IncrementNumRunningCmds_Update(update, screenId, -1)
+	go IncrementNumRunningCmds(screenId, -1)
 	return nil
 }
 
