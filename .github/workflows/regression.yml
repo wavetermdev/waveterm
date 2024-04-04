@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: 0 21 * * *
   workflow_dispatch: null
+  
+permissions:
+  contents: read  # To allow the action to read repository contents
+  pull-requests: write  # To allow the action to create/update pull request comments
+
 jobs:
   test:
     name: TestDriver
