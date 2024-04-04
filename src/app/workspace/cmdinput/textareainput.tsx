@@ -616,6 +616,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         if (numLines > 1 || longLine || inputModel.inputExpanded.get()) {
             displayLines = 5;
         }
+
+        // TODO: invert logic here. We should track focus on the main textarea and assume aux view is focused if not.
         const disabled = inputModel.historyFocus.get();
         if (disabled) {
             displayLines = 1;
