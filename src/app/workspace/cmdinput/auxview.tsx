@@ -14,7 +14,7 @@ export class AuxiliaryCmdView extends React.Component<
         iconClass?: string;
         titleBarContents?: React.ReactElement[];
         children?: React.ReactNode;
-        onClose: React.MouseEventHandler<HTMLDivElement>;
+        onClose?: React.MouseEventHandler<HTMLDivElement>;
     },
     {}
 > {
@@ -34,9 +34,12 @@ export class AuxiliaryCmdView extends React.Component<
                     <If condition={titleBarContents != null}>{titleBarContents}</If>
 
                     <div className="flex-spacer"></div>
-                    <div className="close-button" title="Close (ESC)" onClick={onClose}>
-                        <i className="fa-sharp fa-solid fa-xmark-large" />
-                    </div>
+
+                    <If condition={onClose != null}>
+                        <div className="close-button" title="Close (ESC)" onClick={onClose}>
+                            <i className="fa-sharp fa-solid fa-xmark-large" />
+                        </div>
+                    </If>
                 </div>
                 <If condition={children != null}>
                     <div className="auxview-content">{children}</div>

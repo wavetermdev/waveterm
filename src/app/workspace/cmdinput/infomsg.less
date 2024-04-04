@@ -1,35 +1,7 @@
 .cmd-input-info {
-    flex-shrink: 1;
-    overflow-y: auto;
-    margin-bottom: var(--termpad);
     font-family: var(--termfontfamily);
     font-size: var(--termfontsize);
     line-height: var(--termlineheight);
-    border-bottom: 1px solid var(--app-border-color);
-
-    .info-title {
-        position: absolute;
-        z-index: 102;
-        top: 5px;
-        left: 0;
-        font-size: calc(var(--termfontsize) + 2px);
-        background-color: var(--app-bg-color);
-        color: var(--term-blue);
-        padding-bottom: 4px;
-        padding-left: calc(var(--termpad) * 2);
-        display: flex;
-        flex-direction: row;
-        width: 100%;
-        overflow-x: auto;
-        border-bottom: 1px solid var(--app-border-color);
-    }
-
-    .info-title + .info-msg,
-    .info-title + .info-lines,
-    .info-title + .info-comps,
-    .info-title + .info-error {
-        margin-top: 26px;
-    }
 
     .info-msg {
         color: var(--term-blue);

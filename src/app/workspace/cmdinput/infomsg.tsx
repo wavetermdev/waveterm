@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import * as appconst from "@/app/appconst";
+import { AuxiliaryCmdView } from "./auxview";
 
 import "./infomsg.less";
 
@@ -55,13 +56,9 @@ class InfoMsg extends React.Component<{}, {}> {
         if (!infoShow) {
             return null;
         }
+
         return (
-            <div className="cmd-input-info" style={{ display: infoShow ? "block" : "none" }}>
-                <If condition={infoMsg?.infotitle}>
-                    <div key="infotitle" className="info-title">
-                        {titleStr}
-                    </div>
-                </If>
+            <AuxiliaryCmdView title={titleStr} className="cmd-input-info">
                 <If condition={infoMsg?.infomsg}>
                     <div key="infomsg" className="info-msg">
                         <If condition={infoMsg.infomsghtml}>
@@ -107,7 +104,7 @@ class InfoMsg extends React.Component<{}, {}> {
                         <div className="info-error">to reset, run: /reset:cwd</div>
                     </If>
                 </If>
-            </div>
+            </AuxiliaryCmdView>
         );
     }
 }
