@@ -76,7 +76,11 @@ class CmdInput extends React.Component<{}, {}> {
         e.preventDefault();
         e.stopPropagation();
         const inputModel = GlobalModel.inputModel;
-        inputModel.openAIAssistantChat();
+        if (inputModel.aIChatShow.get()) {
+            inputModel.closeAIAssistantChat(true);
+        } else {
+            inputModel.openAIAssistantChat();
+        }
     }
 
     @boundMethod

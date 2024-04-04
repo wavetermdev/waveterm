@@ -17,7 +17,11 @@
     border-top: 2px solid var(--app-border-color);
     background-color: var(--app-bg-color);
 
-    &[class^="has-"] {
+    // Apply a border between the base cmdinput and any views shown above it
+    // TODO: use a generic selector for this
+    &.has-aichat,
+    &.has-history,
+    &.has-info {
         .base-cmdinput {
             border-top: 1px solid var(--app-border-color);
         }
