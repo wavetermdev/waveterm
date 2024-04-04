@@ -185,11 +185,18 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
         }
         const termTheme = GlobalModel.getTermTheme();
+        const termRenderVersion = GlobalModel.termRenderVersion.get();
+
         return (
             <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
-                {/* <StyleBlock termTheme={termTheme} themeSrcEl={} /> */}
+                <StyleBlock
+                    scope="screen"
+                    termTheme={termTheme}
+                    themeSrcEl={this.screenViewRef.current}
+                    themeKey={screen.screenId}
+                />
                 <ScreenWindowView
-                    key={screen.screenId + ":" + fontSize + ":" + dprStr}
+                    key={screen.screenId + ":" + fontSize + ":" + dprStr + ":" + termRenderVersion}
                     session={session}
                     screen={screen}
                     width={winWidth}

@@ -169,6 +169,7 @@ class RemotesModel {
     }
 
     createTermWrap(elem: HTMLElement): void {
+        console.log("createTermWrap", elem);
         this.disposeTerm();
         let remoteId = this.selectedRemoteId.get();
         if (remoteId == null) {

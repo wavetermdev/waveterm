@@ -144,13 +144,15 @@ class Model {
         name: "terminalThemes",
         deep: false,
     });
-    termThemeSrcEl: OV<HTMLElement> = mobx.observable.box(null, {
-        name: "termThemeSrcEl",
-    });
+    termThemeSrcEls: OMap<string, HTMLElement> = mobx.observable.map(
+        {},
+        {
+            name: "termThemeSrcEls",
+        }
+    );
     termRenderVersion: OV<number> = mobx.observable.box(0, {
         name: "termRenderVersion",
     });
-    currGlobalTermTheme: string;
 
     private constructor() {
         this.clientId = getApi().getId();
@@ -212,6 +214,16 @@ class Model {
             lineHeightSm: 13,
             pad: 7,
         };
+    }
+
+    getThemeSrcElForScope() {
+        const scopes = ["screen", "session", "main"];
+        for (let scope of scopes) {
+            if (this.termThemeSrcEls.get(scope)) {
+                return this.termThemeSrcEls.get(scope);
+            }
+        }
+        return document.documentElement;
     }
 
     readConfigKeybindings() {
@@ -1331,7 +1343,7 @@ class Model {
         // Only for global terminal theme. For session and screen terminal theme,
         // they are handled in workspace view.
         if (ttUpdated) {
-            this.bumpTermRenderVersion();
+            // this.bumpTermRenderVersion();
             // const el = document.documentElement;
             // const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
             // const reset = newTermTheme["global"] == null;

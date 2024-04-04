@@ -9,14 +9,13 @@ import { isBlank } from "@/util/util";
 
 @mobxReact.observer
 class StyleBlock extends React.Component<
-    { themeSrcEl: HTMLElement; themeKey: string; termTheme: TermThemeType },
+    { scope: "main" | "session" | "screen"; themeSrcEl: HTMLElement; themeKey: string; termTheme: TermThemeType },
     { styleRules: string }
 > {
     styleRules: OV<string> = mobx.observable.box("", { name: "StyleBlock-styleRules" });
     theme: string;
 
     componentDidMount(): void {
-        GlobalModel.termThemeSrcEl.set(this.props.themeSrcEl);
         this.loadThemeStyles();
     }
 
@@ -26,13 +25,10 @@ class StyleBlock extends React.Component<
         if (themeKey !== prevProps.themeKey || currTheme !== this.theme) {
             this.loadThemeStyles();
         }
-        if (this.props.themeSrcEl !== prevProps.themeSrcEl) {
-            GlobalModel.termThemeSrcEl.set(this.props.themeSrcEl);
-        }
     }
 
     async loadThemeStyles() {
-        const { themeKey, termTheme } = this.props;
+        const { themeKey, termTheme, scope } = this.props;
         const currTheme = termTheme[themeKey];
 
         if (currTheme && currTheme !== this.theme && currTheme) {
@@ -43,7 +39,10 @@ class StyleBlock extends React.Component<
                         .map(([key, value]) => `--term-${key}: ${value};`)
                         .join(" ");
 
-                    this.styleRules.set(`:root { ${styleProperties} }`);
+                    mobx.action(() => {
+                        this.styleRules.set(`:root { ${styleProperties} }`);
+                        GlobalModel.termThemeSrcEls.set(scope, this.props.themeSrcEl);
+                    })();
                     GlobalModel.bumpTermRenderVersion();
                     this.theme = currTheme;
                 } else {
@@ -53,7 +52,12 @@ class StyleBlock extends React.Component<
                 console.error("error loading theme styles:", error);
             });
         } else {
-            this.styleRules.set("");
+            mobx.action(() => {
+                this.styleRules.set("");
+                GlobalModel.termThemeSrcEls.set(scope, null);
+            })();
+            this.theme = currTheme;
+            GlobalModel.bumpTermRenderVersion();
         }
     }
 

@@ -125,6 +125,7 @@ class App extends React.Component<{}, {}> {
         const activeMainView = GlobalModel.activeMainView.get();
         const lightDarkClass = GlobalModel.isDarkTheme.get() ? "is-dark" : "is-light";
         const termTheme = GlobalModel.getTermTheme();
+
         return (
             <div
                 key={`version- + ${renderVersion}`}
@@ -152,7 +153,12 @@ class App extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div ref={this.mainContentRef} className="main-content">
-                    <StyleBlock termTheme={termTheme} themeSrcEl={this.mainContentRef.current} themeKey="global" />
+                    <StyleBlock
+                        scope="main"
+                        termTheme={termTheme}
+                        themeSrcEl={this.mainContentRef.current}
+                        themeKey="main"
+                    />
                     <MainSideBar parentRef={this.mainContentRef} />
                     <ErrorBoundary>
                         <PluginsView />

@@ -287,7 +287,6 @@ class WorkspaceView extends React.Component<{}, {}> {
         const mainSidebarModel = GlobalModel.mainSidebarModel;
         const showTabSettings = GlobalModel.tabSettingsOpen.get();
         const termTheme = GlobalModel.getTermTheme();
-        const termRenderVersion = GlobalModel.termRenderVersion.get();
 
         return (
             <div
@@ -300,6 +299,7 @@ class WorkspaceView extends React.Component<{}, {}> {
             >
                 <If condition={session != null}>
                     <StyleBlock
+                        scope="session"
                         themeSrcEl={this.sessionRef.current}
                         themeKey={session.sessionId}
                         termTheme={termTheme}
@@ -321,11 +321,7 @@ class WorkspaceView extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <ErrorBoundary key="eb">
-                    <ScreenView
-                        key={`screenview-${sessionId}-${termRenderVersion}`}
-                        session={session}
-                        screen={activeScreen}
-                    />
+                    <ScreenView key={`screenview-${sessionId}`} session={session} screen={activeScreen} />
                     <div className="cmdinput-height-placeholder" style={{ height: cmdInputHeight }}></div>
                     <If condition={activeScreen != null}>
                         <CmdInput key={"cmdinput-" + sessionId} />
