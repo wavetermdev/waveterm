@@ -63,7 +63,6 @@ class CmdInput extends React.Component<{}, {}> {
 
     @boundMethod
     baseCmdInputClick(e: React.MouseEvent): void {
-        console.log("baseCmdInputClick");
         if (this.promptRef.current != null) {
             if (this.promptRef.current.contains(e.target)) {
                 return;
@@ -182,7 +181,6 @@ class CmdInput extends React.Component<{}, {}> {
                 hidePrompt = true;
             }
         }
-        console.log(openView);
         return (
             <div ref={this.cmdInputRef} className={cn("cmd-input", hasOpenView, { active: focusVal })}>
                 <Choose>

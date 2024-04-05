@@ -539,6 +539,7 @@ declare global {
         initialize: (params: RendererModelInitializeParams) => void;
         dispose: () => void;
         reload: (delayMs: number) => void;
+
         giveFocus: () => void;
         updateOpts: (opts: RendererOptsUpdate) => void;
         setIsDone: () => void;

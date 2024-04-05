@@ -575,9 +575,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
 
         const auxViewFocused = inputModel.getAuxViewFocus();
-        console.log("auxViewFocused", auxViewFocused);
         if (auxViewFocused) {
-            console.log("aux view focused");
             displayLines = 1;
         }
         const activeScreen = GlobalModel.getActiveScreen();
