@@ -235,9 +235,18 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     render() {
-        const isFocused = this.isFocused.get();
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
+        const renderKeybindings = mobx
+            .computed(() => {
+                return (
+                    this.isFocused.get() ||
+                    GlobalModel.inputModel.hasFocus() ||
+                    (GlobalModel.getActiveScreen().getFocusType() == "input" &&
+                        GlobalModel.activeMainView.get() == "session")
+                );
+            })
+            .get();
 
         return (
             <AuxiliaryCmdView
@@ -246,7 +255,7 @@ class AIChat extends React.Component<{}, {}> {
                 onClose={() => GlobalModel.inputModel.closeAIAssistantChat(true)}
                 iconClass="fa-sharp fa-solid fa-sparkles"
             >
-                <If condition={isFocused}>
+                <If condition={renderKeybindings}>
                     <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
                 </If>
                 <div className="chat-window" ref={this.chatWindowScrollRef}>
