@@ -152,7 +152,6 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:cancel", (waveEvent) => {
             GlobalModel.closeTabSettings();
-            inputModel.toggleInfoMsg();
             if (inputModel.inputMode.get() != null) {
                 inputModel.resetInputMode();
             }
@@ -525,7 +524,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             if (selStart > value.length || selEnd > value.length) {
                 return;
             }
-            const newValue = value.substr(0, selStart) + clipText + value.substr(selEnd);
+            const newValue = value.substring(0, selStart) + clipText + value.substring(selEnd);
             const cmdLineUpdate = { str: newValue, pos: selStart + clipText.length };
             GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
         });
@@ -598,7 +597,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             displayLines = 5;
         }
 
-        // TODO: invert logic here. We should track focus on the main textarea and assume aux view is focused if not.
         const disabled = inputModel.auxViewFocus.get();
         if (disabled) {
             displayLines = 1;

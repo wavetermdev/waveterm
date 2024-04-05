@@ -1082,7 +1082,7 @@ class Model {
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
                 this.closeTabSettings();
                 const activeScreen = this.getActiveScreen();
-                if (activeScreen != null && activeScreen.getCurRemoteInstance() != null) {
+                if (activeScreen?.getCurRemoteInstance() != null) {
                     setTimeout(() => {
                         GlobalCommandRunner.syncShellState();
                     }, 100);

@@ -43,6 +43,7 @@ class InfoMsg extends React.Component<{}, {}> {
     }
 
     render() {
+        console.log("rendering InfoMsg");
         const inputModel = GlobalModel.inputModel;
         const infoMsg: InfoType = inputModel.infoMsg.get();
         const infoShow: boolean = inputModel.getActiveAuxView() == appconst.AuxView_Info;

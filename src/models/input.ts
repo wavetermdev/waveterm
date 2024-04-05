@@ -517,10 +517,12 @@ class InputModel {
                 this.activeAuxView.set(null);
             } else {
                 this.activeAuxView.set("info");
+                this.giveFocus();
             }
         })();
         if (info != null && timeoutMs) {
             this.infoTimeoutId = setTimeout(() => {
+                console.log("clearing info msg");
                 if (this.activeAuxView.get() != "info") {
                     return;
                 }
@@ -709,10 +711,12 @@ class InputModel {
     }
 
     clearInfoMsg(setNull: boolean): void {
+        console.log("clearInfoMsg");
         this._clearInfoTimeout();
         mobx.action(() => {
             if (this.getActiveAuxView() == "info") {
                 this.activeAuxView.set(null);
+                this.giveFocus();
             }
             if (setNull) {
                 this.infoMsg.set(null);
@@ -725,8 +729,10 @@ class InputModel {
         mobx.action(() => {
             if (this.activeAuxView.get() == "info") {
                 this.activeAuxView.set(null);
+                this.giveFocus();
             } else if (this.infoMsg.get() != null) {
                 this.activeAuxView.set("info");
+                this.giveFocus();
             }
         })();
     }
