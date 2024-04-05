@@ -455,16 +455,30 @@ class InputModel {
         })();
     }
 
+    // Gets the active auxiliary view, or null if none
     getActiveAuxView(): InputAuxViewType {
         return this.activeAuxView.get();
     }
 
+    // Closes the auxiliary view if it is open, focuses the main input
+    closeAuxView(): void {
+        if (this.activeAuxView.get() == null) {
+            return;
+        }
+        mobx.action(() => {
+            this.activeAuxView.set(null);
+            this.giveFocus();
+        })();
+    }
+
+    // Sets the active auxiliary view
     setActiveAuxView(view: InputAuxViewType): void {
         mobx.action(() => {
             this.activeAuxView.set(view);
         })();
     }
 
+    // Sets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
     setAuxViewFocus(focus: boolean): void {
         mobx.action(() => {
             this.auxViewFocus.set(focus);
@@ -662,18 +676,6 @@ class InputModel {
     openAIAssistantChat(): void {
         mobx.action(() => {
             this.activeAuxView.set("aichat");
-            this.giveFocus();
-        })();
-    }
-
-    // pass true to give focus to the input (e.g. if this is an 'active' close of the chat)
-    // when resetting the input (when switching screens, don't give focus)
-    closeAuxView(): void {
-        if (this.activeAuxView.get() == null) {
-            return;
-        }
-        mobx.action(() => {
-            this.activeAuxView.set(null);
             this.giveFocus();
         })();
     }
