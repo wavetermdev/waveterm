@@ -14,7 +14,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "@/app/line/linecomps";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
-import { TextField, Dropdown, Button, DatePicker } from "@/elements";
+import { TextField, Dropdown, Button, CopyButton } from "@/elements";
 
 import { ReactComponent as ChevronLeftIcon } from "@/assets/icons/history/chevron-left.svg";
 import { ReactComponent as ChevronRightIcon } from "@/assets/icons/history/chevron-right.svg";
@@ -22,8 +22,6 @@ import { ReactComponent as RightIcon } from "@/assets/icons/history/right.svg";
 import { ReactComponent as SearchIcon } from "@/assets/icons/history/search.svg";
 import { ReactComponent as TrashIcon } from "@/assets/icons/trash.svg";
 import { ReactComponent as CheckedCheckbox } from "@/assets/icons/checked-checkbox.svg";
-import { ReactComponent as CheckIcon } from "@/assets/icons/line/check.svg";
-import { ReactComponent as CopyIcon } from "@/assets/icons/history/copy.svg";
 
 import "./history.less";
 import { MainView } from "../common/elements/mainview";
@@ -115,7 +113,6 @@ class HistoryCmdStr extends React.Component<
         cmdstr: string;
         onUse: () => void;
         onCopy: () => void;
-        isCopied: boolean;
         fontSize: "normal" | "large";
         limitHeight: boolean;
     },
@@ -138,24 +135,17 @@ class HistoryCmdStr extends React.Component<
     }
 
     render() {
-        const { isCopied, cmdstr, fontSize, limitHeight } = this.props;
+        const { cmdstr, fontSize, limitHeight } = this.props;
         return (
             <div className={cn("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
-                <If condition={isCopied}>
-                    <div key="copied" className="copied-indicator">
-                        <div>copied</div>
-                    </div>
-                </If>
                 <div key="code" className="code-div">
                     <code>{cmdstr}</code>
                 </div>
                 <div key="copy" className="actions-block">
-                    <div className="action-item" onClick={this.handleCopy} title="copy">
-                        <CopyIcon className="icon" />
-                    </div>
-                    <div key="use" className="action-item" title="Use Command" onClick={this.handleUse}>
-                        <CheckIcon className="icon" />
-                    </div>
+                    <CopyButton onClick={this.handleCopy} title="Copy" />
+                    <Button className="secondary ghost" title="Use Command" onClick={this.handleUse}>
+                        <i className="fa-sharp fa-solid fa-play"></i>
+                    </Button>
                 </div>
             </div>
         );
@@ -190,7 +180,6 @@ class HistoryView extends React.Component<{}, {}> {
     tableRszObs: ResizeObserver;
     sessionDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "sessionDropdownActive" });
     remoteDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "remoteDropdownActive" });
-    copiedItemId: OV<string> = mobx.observable.box(null, { name: "copiedItemId" });
 
     @boundMethod
     handleNext() {
@@ -377,14 +366,6 @@ class HistoryView extends React.Component<{}, {}> {
             return;
         }
         navigator.clipboard.writeText(item.cmdstr);
-        mobx.action(() => {
-            this.copiedItemId.set(item.historyid);
-        })();
-        setTimeout(() => {
-            mobx.action(() => {
-                this.copiedItemId.set(null);
-            })();
-        }, 600);
     }
 
     @boundMethod
@@ -394,7 +375,7 @@ class HistoryView extends React.Component<{}, {}> {
         }
         mobx.action(() => {
             GlobalModel.showSessionView();
-            GlobalModel.inputModel.setCurLine(item.cmdstr);
+            GlobalModel.inputModel.updateCmdLine({ str: item.cmdstr, pos: item.cmdstr.length });
             setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
         })();
     }
@@ -569,7 +550,6 @@ class HistoryView extends React.Component<{}, {}> {
                                         cmdstr={item.cmdstr}
                                         onUse={() => this.handleUse(item)}
                                         onCopy={() => this.handleCopy(item)}
-                                        isCopied={this.copiedItemId.get() == item.historyid}
                                         fontSize="normal"
                                         limitHeight={true}
                                     />

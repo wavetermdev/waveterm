@@ -575,12 +575,14 @@ func (m *MServer) streamFile(pk *packet.StreamFilePacketType) {
 		m.Sender.SendPacket(resp)
 		return
 	}
+	mimeType := utilfn.DetectMimeType(pk.Path)
 	resp.Info = &packet.FileInfo{
-		Name:  pk.Path,
-		Size:  finfo.Size(),
-		ModTs: finfo.ModTime().UnixMilli(),
-		IsDir: finfo.IsDir(),
-		Perm:  int(finfo.Mode().Perm()),
+		Name:     pk.Path,
+		Size:     finfo.Size(),
+		ModTs:    finfo.ModTime().UnixMilli(),
+		IsDir:    finfo.IsDir(),
+		MimeType: mimeType,
+		Perm:     int(finfo.Mode().Perm()),
 	}
 	if pk.StatOnly {
 		resp.Done = true
