@@ -22,8 +22,6 @@ import { ReactComponent as RightIcon } from "@/assets/icons/history/right.svg";
 import { ReactComponent as SearchIcon } from "@/assets/icons/history/search.svg";
 import { ReactComponent as TrashIcon } from "@/assets/icons/trash.svg";
 import { ReactComponent as CheckedCheckbox } from "@/assets/icons/checked-checkbox.svg";
-import { ReactComponent as CheckIcon } from "@/assets/icons/line/check.svg";
-import { ReactComponent as CopyIcon } from "@/assets/icons/history/copy.svg";
 
 import "./history.less";
 import { MainView } from "../common/elements/mainview";
