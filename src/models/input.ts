@@ -712,7 +712,6 @@ class InputModel {
     }
 
     clearInfoMsg(setNull: boolean): void {
-        console.log("clearInfoMsg");
         this._clearInfoTimeout();
         mobx.action(() => {
             if (this.getActiveAuxView() == "info") {
