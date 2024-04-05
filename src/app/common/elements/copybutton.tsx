@@ -1,4 +1,4 @@
-import React from "react";
+import * as React from "react";
 import { Button } from "./button";
 
 import "./copybutton.less";
@@ -6,7 +6,7 @@ import "./copybutton.less";
 type CopyButtonProps = {
     isCopied: boolean;
     title: string;
-    onClick: (e: any) => void;
+    onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
 const CopyButton: React.FC<CopyButtonProps> = ({ isCopied, title, onClick }) => {

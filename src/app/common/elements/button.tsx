@@ -6,7 +6,7 @@ import "./button.less";
 
 interface ButtonProps {
     children: React.ReactNode;
-    onClick?: (e) => void;
+    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
     disabled?: boolean;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
