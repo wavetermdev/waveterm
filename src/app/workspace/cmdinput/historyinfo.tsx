@@ -167,7 +167,7 @@ class HistoryInfo extends React.Component<{}, {}> {
 
     @boundMethod
     handleClose() {
-        GlobalModel.inputModel.setActiveAuxView(null);
+        GlobalModel.inputModel.closeAuxView();
     }
 
     @boundMethod

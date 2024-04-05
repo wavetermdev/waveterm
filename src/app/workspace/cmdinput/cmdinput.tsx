@@ -63,6 +63,7 @@ class CmdInput extends React.Component<{}, {}> {
 
     @boundMethod
     baseCmdInputClick(e: React.MouseEvent): void {
+        console.log("baseCmdInputClick");
         if (this.promptRef.current != null) {
             if (this.promptRef.current.contains(e.target)) {
                 return;
@@ -82,7 +83,7 @@ class CmdInput extends React.Component<{}, {}> {
         e.stopPropagation();
         const inputModel = GlobalModel.inputModel;
         if (inputModel.getActiveAuxView() === appconst.InputAuxView_AIChat) {
-            inputModel.setActiveAuxView(null);
+            inputModel.closeAuxView();
         } else {
             inputModel.openAIAssistantChat();
         }

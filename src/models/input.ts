@@ -8,6 +8,7 @@ import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
+import { app } from "electron";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
     return {
@@ -137,34 +138,37 @@ class InputModel {
         })();
     }
 
+    // Focuses the main input or the auxiliary view, depending on the active auxiliary view
     giveFocus(): void {
-        const activeView: InputAuxViewType = this.auxViewFocus.get() ? this.activeAuxView.get() : null;
+        // Override active view to the main input if aux view does not have focus
+        const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
+        console.log("giveFocus", activeAuxView);
         mobx.action(() => {
-            switch (activeView) {
-                case "history": {
+            switch (activeAuxView) {
+                case appconst.InputAuxView_History: {
                     const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
                     if (elem != null) {
                         elem.focus();
                     }
-                    return;
+                    break;
                 }
                 case "aichat":
                     this.setAIChatFocus();
-                    return;
+                    break;
                 case null: {
                     const elem = document.getElementById("main-cmd-input");
                     if (elem != null) {
                         elem.focus();
                     }
                     this.setPhysicalInputFocused(true);
-                    return;
+                    break;
                 }
                 default: {
                     const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
                     if (elem != null) {
                         elem.focus();
                     }
-                    return;
+                    break;
                 }
             }
         })();
@@ -277,12 +281,9 @@ class InputModel {
             this.loadHistory(true, 0, "screen");
             return;
         }
-        if (this.getActiveAuxView() != "history") {
-            mobx.action(() => {
-                this.activeAuxView.set("history");
-                this.dropModHistory(true);
-                this.giveFocus();
-            })();
+        if (this.getActiveAuxView() != appconst.InputAuxView_History) {
+            this.dropModHistory(true);
+            this.setActiveAuxView(appconst.InputAuxView_History);
         }
     }
 
@@ -455,27 +456,37 @@ class InputModel {
         })();
     }
 
-    // Gets the active auxiliary view, or null if none
-    getActiveAuxView(): InputAuxViewType {
-        return this.activeAuxView.get();
-    }
-
     // Closes the auxiliary view if it is open, focuses the main input
     closeAuxView(): void {
         if (this.activeAuxView.get() == null) {
             return;
         }
-        mobx.action(() => {
-            this.activeAuxView.set(null);
-            this.giveFocus();
-        })();
+        this.setActiveAuxView(null);
+    }
+
+    // Gets the active auxiliary view, or null if none
+    getActiveAuxView(): InputAuxViewType {
+        return this.activeAuxView.get();
     }
 
     // Sets the active auxiliary view
     setActiveAuxView(view: InputAuxViewType): void {
         mobx.action(() => {
+            if (view != this.activeAuxView.get()) {
+                this.auxViewFocus.set(view != null);
+            }
             this.activeAuxView.set(view);
         })();
+        this.giveFocus();
+    }
+
+    // Gets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
+    // If the auxiliary view is not open, this will return false.
+    getAuxViewFocus(): boolean {
+        if (this.getActiveAuxView() == null) {
+            return false;
+        }
+        return this.auxViewFocus.get();
     }
 
     // Sets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
@@ -494,7 +505,7 @@ class InputModel {
         }
         mobx.action(() => {
             this.historyIndex.set(hidx);
-            if (this.getActiveAuxView() == "history") {
+            if (this.getActiveAuxView() == appconst.InputAuxView_History) {
                 let hitem = this.getHistorySelectedItem();
                 if (hitem == null) {
                     hitem = this.getFirstHistoryItem();
@@ -528,17 +539,18 @@ class InputModel {
         this._clearInfoTimeout();
         mobx.action(() => {
             this.infoMsg.set(info);
-            if (info == null && this.getActiveAuxView() == "info") {
-                this.activeAuxView.set(null);
-            } else {
-                this.activeAuxView.set("info");
-                this.giveFocus();
-            }
         })();
+
+        if (info == null && this.getActiveAuxView() == appconst.InputAuxView_Info) {
+            this.setActiveAuxView(null);
+        } else {
+            this.setActiveAuxView(appconst.InputAuxView_Info);
+        }
+
         if (info != null && timeoutMs) {
             this.infoTimeoutId = setTimeout(() => {
                 console.log("clearing info msg");
-                if (this.activeAuxView.get() != "info") {
+                if (this.activeAuxView.get() != appconst.InputAuxView_Info) {
                     return;
                 }
                 this.clearInfoMsg(false);
@@ -674,10 +686,7 @@ class InputModel {
     }
 
     openAIAssistantChat(): void {
-        mobx.action(() => {
-            this.activeAuxView.set("aichat");
-            this.giveFocus();
-        })();
+        this.setActiveAuxView(appconst.InputAuxView_AIChat);
     }
 
     clearAIAssistantChat(): void {
@@ -692,7 +701,7 @@ class InputModel {
     }
 
     hasScrollingInfoMsg(): boolean {
-        if (this.activeAuxView.get() !== "info") {
+        if (this.activeAuxView.get() !== appconst.InputAuxView_Info) {
             return false;
         }
         const info = this.infoMsg.get();
@@ -715,11 +724,11 @@ class InputModel {
 
     clearInfoMsg(setNull: boolean): void {
         this._clearInfoTimeout();
+
+        if (this.getActiveAuxView() == appconst.InputAuxView_Info) {
+            this.setActiveAuxView(null);
+        }
         mobx.action(() => {
-            if (this.getActiveAuxView() == "info") {
-                this.activeAuxView.set(null);
-                this.giveFocus();
-            }
             if (setNull) {
                 this.infoMsg.set(null);
             }
@@ -728,15 +737,11 @@ class InputModel {
 
     toggleInfoMsg(): void {
         this._clearInfoTimeout();
-        mobx.action(() => {
-            if (this.activeAuxView.get() == "info") {
-                this.activeAuxView.set(null);
-                this.giveFocus();
-            } else if (this.infoMsg.get() != null) {
-                this.activeAuxView.set("info");
-                this.giveFocus();
-            }
-        })();
+        if (this.activeAuxView.get() == appconst.InputAuxView_Info) {
+            this.setActiveAuxView(null);
+        } else if (this.infoMsg.get() != null) {
+            this.setActiveAuxView(appconst.InputAuxView_Info);
+        }
     }
 
     @boundMethod
@@ -774,7 +779,7 @@ class InputModel {
 
     resetInput(): void {
         mobx.action(() => {
-            this.activeAuxView.set(null);
+            this.setActiveAuxView(null);
             this.inputMode.set(null);
             this.resetHistory();
             this.dropModHistory(false);
@@ -822,8 +827,8 @@ class InputModel {
 
     resetHistory(): void {
         mobx.action(() => {
-            if (this.getActiveAuxView() == "history") {
-                this.activeAuxView.set(null);
+            if (this.getActiveAuxView() == appconst.InputAuxView_History) {
+                this.setActiveAuxView(null);
             }
             this.historyLoading.set(false);
             this.historyType.set("screen");

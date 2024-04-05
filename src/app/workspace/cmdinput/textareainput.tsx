@@ -152,10 +152,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:cancel", (waveEvent) => {
             GlobalModel.closeTabSettings();
-            if (inputModel.inputMode.get() != null) {
-                inputModel.resetInputMode();
-            }
-            inputModel.setActiveAuxView(null);
+            inputModel.closeAuxView();
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:expandInput", (waveEvent) => {
@@ -577,8 +574,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             displayLines = 5;
         }
 
-        const disabled = inputModel.auxViewFocus.get();
-        if (disabled) {
+        const auxViewFocused = inputModel.getAuxViewFocus();
+        console.log("auxViewFocused", auxViewFocused);
+        if (auxViewFocused) {
+            console.log("aux view focused");
             displayLines = 1;
         }
         const activeScreen = GlobalModel.getActiveScreen();
@@ -607,15 +606,14 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-        const isMainInputFocused = !inputModel.auxViewFocus.get();
-        const isHistoryFocused = !isMainInputFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
+        const isHistoryFocused = auxViewFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
         return (
             <div
                 className="textareainput-div control is-expanded"
                 ref={this.controlRef}
                 style={{ height: computedOuterHeight }}
             >
-                <If condition={isMainInputFocused}>
+                <If condition={!auxViewFocused}>
                     <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
                 </If>
                 <If condition={isHistoryFocused}>
@@ -640,7 +638,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onChange={this.onChange}
                     onSelect={this.onSelect}
                     placeholder="Type here..."
-                    className={cn("textarea", { "display-disabled": disabled })}
+                    className={cn("textarea", { "display-disabled": auxViewFocused })}
                 ></textarea>
                 <input
                     key="history"
