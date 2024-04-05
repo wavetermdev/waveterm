@@ -81,7 +81,7 @@ class CmdInput extends React.Component<{}, {}> {
         e.preventDefault();
         e.stopPropagation();
         const inputModel = GlobalModel.inputModel;
-        if (inputModel.getActiveAuxView() === appconst.AuxView_AIChat) {
+        if (inputModel.getActiveAuxView() === appconst.InputAuxView_AIChat) {
             inputModel.setActiveAuxView(null);
         } else {
             inputModel.openAIAssistantChat();
@@ -94,7 +94,7 @@ class CmdInput extends React.Component<{}, {}> {
         e.stopPropagation();
 
         const inputModel = GlobalModel.inputModel;
-        if (inputModel.getActiveAuxView() === appconst.AuxView_History) {
+        if (inputModel.getActiveAuxView() === appconst.InputAuxView_History) {
             inputModel.resetHistory();
         } else {
             inputModel.openHistory();
@@ -185,15 +185,15 @@ class CmdInput extends React.Component<{}, {}> {
         return (
             <div ref={this.cmdInputRef} className={cn("cmd-input", hasOpenView, { active: focusVal })}>
                 <Choose>
-                    <When condition={openView === appconst.AuxView_History}>
+                    <When condition={openView === appconst.InputAuxView_History}>
                         <div className="cmd-input-grow-spacer"></div>
                         <HistoryInfo />
                     </When>
-                    <When condition={openView === appconst.AuxView_AIChat}>
+                    <When condition={openView === appconst.InputAuxView_AIChat}>
                         <div className="cmd-input-grow-spacer"></div>
                         <AIChat />
                     </When>
-                    <When condition={openView === appconst.AuxView_Info}>
+                    <When condition={openView === appconst.InputAuxView_Info}>
                         <InfoMsg key="infomsg" />
                     </When>
                 </Choose>

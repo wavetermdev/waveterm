@@ -628,7 +628,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             }
         }
         const isMainInputFocused = inputModel.auxViewFocus.get();
-        const isHistoryFocused = !isMainInputFocused && inputModel.getActiveAuxView() == appconst.AuxView_History;
+        const isHistoryFocused = !isMainInputFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
         return (
             <div
                 className="textareainput-div control is-expanded"
