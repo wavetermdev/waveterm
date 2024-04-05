@@ -252,7 +252,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     controlRef: React.RefObject<HTMLDivElement> = React.createRef();
     lastHeight: number = 0;
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
-    version: OV<number> = mobx.observable.box(0); // forces render updates
+    version: OV<number> = mobx.observable.box(0, { name: "textAreaInput-version" }); // forces render updates
 
     incVersion(): void {
         const v = this.version.get();
@@ -541,16 +541,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     @boundMethod
-    handleMainFocus(e: any) {
-        const inputModel = GlobalModel.inputModel;
-        if (inputModel.auxViewFocus.get()) {
-            e.preventDefault();
-            if (this.historyInputRef.current != null) {
-                this.historyInputRef.current.focus();
-            }
-            return;
-        }
-        inputModel.setPhysicalInputFocused(true);
+    handleFocus(e: any) {
+        e.preventDefault();
+        GlobalModel.inputModel.giveFocus();
     }
 
     @boundMethod
@@ -559,19 +552,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         GlobalModel.inputModel.setPhysicalInputFocused(false);
-    }
-
-    @boundMethod
-    handleHistoryFocus(e: any) {
-        const inputModel = GlobalModel.inputModel;
-        if (!inputModel.auxViewFocus.get()) {
-            e.preventDefault();
-            if (this.mainInputRef.current != null) {
-                this.mainInputRef.current.focus();
-            }
-            return;
-        }
-        inputModel.setPhysicalInputFocused(true);
     }
 
     @boundMethod
@@ -627,7 +607,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-        const isMainInputFocused = inputModel.auxViewFocus.get();
+        const isMainInputFocused = !inputModel.auxViewFocus.get();
         const isHistoryFocused = !isMainInputFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
         return (
             <div
@@ -652,7 +632,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     autoComplete="off"
                     autoCorrect="off"
                     id="main-cmd-input"
-                    onFocus={this.handleMainFocus}
+                    onFocus={this.handleFocus}
                     onBlur={this.handleMainBlur}
                     style={{ height: computedInnerHeight, minHeight: computedInnerHeight, fontSize: termFontSize }}
                     value={curLine}
@@ -670,7 +650,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     autoCorrect="off"
                     className="history-input"
                     type="text"
-                    onFocus={this.handleHistoryFocus}
+                    onFocus={this.handleFocus}
                     onBlur={this.handleHistoryBlur}
                     onKeyDown={this.onHistoryKeyDown}
                     onChange={this.handleHistoryInput}

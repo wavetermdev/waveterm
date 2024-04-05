@@ -156,6 +156,7 @@ class InputModel {
                     if (elem != null) {
                         elem.focus();
                     }
+                    this.setPhysicalInputFocused(true);
                     return;
                 }
                 default: {
