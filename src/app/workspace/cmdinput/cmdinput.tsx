@@ -61,11 +61,15 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    baseCmdInputClick(e: any): void {
+    baseCmdInputClick(e: React.MouseEvent): void {
         if (this.promptRef.current != null) {
             if (this.promptRef.current.contains(e.target)) {
                 return;
             }
+        }
+        if ((e.target as HTMLDivElement).classList.contains("cmd-input-context")) {
+            e.stopPropagation();
+            return;
         }
         GlobalModel.inputModel.setHistoryFocus(false);
         GlobalModel.inputModel.giveFocus();

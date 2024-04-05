@@ -49,19 +49,38 @@
     }
 
     .base-cmdinput {
+        position: relative;
+        // Rather than apply the padding to the whole container, we will apply it to the inner contents directly.
+        // This is more fragile, but allows us to capture a larger target area for the individual components.
         --padding-top: var(--termpad);
         --padding-sides: calc(var(--termpad) * 2);
-        position: relative;
-        padding: var(--padding-top) var(--padding-sides);
+
+        .cmd-input-context {
+            color: var(--term-bright-white);
+            white-space: nowrap;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--termfontfamily);
+            font-size: var(--termfontsize);
+            line-height: var(--termlineheight);
+
+            // We don't want to pad the bottom or it will push the input field down.
+            padding: var(--padding-top) var(--padding-sides) 0 var(--padding-sides);
+            margin-left: 2px;
+        }
 
         .cmd-input-field {
             position: relative;
-            padding-right: var(--termpad);
             font-family: var(--termfontfamily);
             font-weight: normal;
             line-height: var(--termlineheight);
             font-size: var(--termfontsize);
             border: none;
+            cursor: text;
+
+            // We don't want to pad the top or it will push the input field down.
+            padding: 0 var(--padding-sides) var(--padding-top) var(--padding-sides);
 
             .cmd-hints {
                 position: absolute;
@@ -83,11 +102,10 @@
                     position: absolute;
                     // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding (2px not sure?)
                     bottom: calc(-13px + var(--termpad));
-                    right: 0px;
+                    right: 0;
                     font-size: 10px;
                     color: var(--app-text-secondary-color);
                     line-height: 1;
-                    padding: 1px 8px 3px 8px;
                     user-select: none;
                 }
             }
@@ -174,17 +192,5 @@
                 margin-left: 3px;
             }
         }
-    }
-
-    .cmd-input-context {
-        color: var(--term-bright-white);
-        white-space: nowrap;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-family: var(--termfontfamily);
-        font-size: var(--termfontsize);
-        line-height: var(--termlineheight);
-        margin-left: 2px;
     }
 }
