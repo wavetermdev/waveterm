@@ -471,10 +471,11 @@ class InputModel {
 
     // Sets the active auxiliary view
     setActiveAuxView(view: InputAuxViewType): void {
+        if (view == this.activeAuxView.get()) {
+            return;
+        }
         mobx.action(() => {
-            if (view != this.activeAuxView.get()) {
-                this.auxViewFocus.set(view != null);
-            }
+            this.auxViewFocus.set(view != null);
             this.activeAuxView.set(view);
         })();
         this.giveFocus();
@@ -491,9 +492,13 @@ class InputModel {
 
     // Sets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
     setAuxViewFocus(focus: boolean): void {
+        if (this.getAuxViewFocus() == focus) {
+            return;
+        }
         mobx.action(() => {
             this.auxViewFocus.set(focus);
         })();
+        this.giveFocus();
     }
 
     setHistoryIndex(hidx: number, force?: boolean): void {
