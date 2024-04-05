@@ -14,7 +14,7 @@ CREATE TABLE block_file (
 
 CREATE TABLE block_data (
     blockid varchar(36) NOT NULL,
-    name varchar(36) NOT NULL,
+    name varchar(200) NOT NULL,
     partidx int NOT NULL,
     data blob NOT NULL,
     PRIMARY KEY(blockid, name, partidx)

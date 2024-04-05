@@ -2,6 +2,7 @@ package blockstore
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"testing"
 	"time"
@@ -26,6 +27,33 @@ func (b *TestBlockType) FromMap(m map[string]interface{}) bool {
 	dbutil.QuickSetStr(&b.Name, m, "name")
 	dbutil.QuickSetInt(&b.Partidx, m, "partidx")
 	dbutil.QuickSetBytes(&b.Data, m, "data")
+	return true
+}
+
+func (f *FileInfo) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	return rtn
+}
+
+func (fInfo *FileInfo) FromMap(m map[string]interface{}) bool {
+	fileOpts := FileOptsType{}
+	dbutil.QuickSetBool(&fileOpts.Circular, m, "circular")
+	dbutil.QuickSetInt64(&fileOpts.MaxSize, m, "maxsize")
+
+	var metaJson []byte
+	dbutil.QuickSetBytes(&metaJson, m, "meta")
+	var fileMeta FileMeta
+	err := json.Unmarshal(metaJson, &fileMeta)
+	if err != nil {
+		return false
+	}
+	dbutil.QuickSetStr(&fInfo.BlockId, m, "blockid")
+	dbutil.QuickSetStr(&fInfo.Name, m, "name")
+	dbutil.QuickSetInt64(&fInfo.Size, m, "size")
+	dbutil.QuickSetInt64(&fInfo.CreatedTs, m, "createdts")
+	dbutil.QuickSetInt64(&fInfo.ModTs, m, "modts")
+	fInfo.Opts = fileOpts
+	fInfo.Meta = fileMeta
 	return true
 }
 
@@ -155,6 +183,48 @@ func TestMultipleChunks(t *testing.T) {
 	SimpleAssert(t, len(data) == 4, "file-2 num parts == 4")
 	txErr = WithTx(ctx, func(tx *TxWrap) error {
 		query := `DELETE from block_data where blockid = 'test-block-id'`
+		tx.Exec(query)
+		return nil
+	})
+	if txErr != nil {
+		t.Errorf("TestTx error deleting test entries: %v", txErr)
+	}
+}
+
+func TestMakeFile(t *testing.T) {
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: 0, Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	data, txErr := WithTxRtn(ctx, func(tx *TxWrap) ([]*FileInfo, error) {
+		var rtn []*FileInfo
+		query := `SELECT * FROM block_file WHERE name = 'file-1'`
+		marr := tx.SelectMaps(query)
+		for _, m := range marr {
+			rtn = append(rtn, dbutil.FromMap[*FileInfo](m))
+		}
+		return rtn, nil
+	})
+	if txErr != nil {
+		t.Errorf("TestMakeFile err getting file-1 info %v", txErr)
+	}
+	log.Printf("data: %v", data)
+	SimpleAssert(t, len(data) == 1, "no duplicate files")
+	curFileInfo := data[0]
+	log.Printf("cur file info: %v", curFileInfo)
+	SimpleAssert(t, curFileInfo.Name == "file-1", "correct file name")
+	SimpleAssert(t, curFileInfo.Meta["test-descriptor"] == true, "meta correct")
+	curCacheEntry := cache["file-1"]
+	curFileInfo = &curCacheEntry.Info
+	log.Printf("cache entry: %v", curCacheEntry)
+	SimpleAssert(t, curFileInfo.Name == "file-1", "cache correct file name")
+	SimpleAssert(t, curFileInfo.Meta["test-descriptor"] == true, "cache meta correct")
+	txErr = WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_file where blockid = 'test-block-id'`
 		tx.Exec(query)
 		return nil
 	})
