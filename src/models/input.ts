@@ -564,7 +564,6 @@ class InputModel {
     }
 
     setAIChatFocus() {
-        console.log("setting ai chat focus");
         if (this.aiChatTextAreaRef?.current != null) {
             this.aiChatTextAreaRef.current.focus();
         }

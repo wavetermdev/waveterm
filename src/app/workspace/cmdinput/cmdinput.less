@@ -21,54 +21,6 @@
         }
     }
 
-    .cmdinput-actions {
-        position: absolute;
-        padding-left: 4px;
-        padding-right: 4px;
-        font-size: calc(var(--termfontsize) + 2px);
-        line-height: 1.2;
-
-        // we want to align to 2nd line of meta.  that's 2xPad + 1xLineHightSm
-        // height of actions is 1xLineHeight + 8px (2x2px padding on icons)
-        top: calc(var(--termpad));
-        right: calc(var(--termpad) * 2);
-
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-
-        .cmdinput-icon {
-            display: inline-flex;
-            color: var(--app-icon-hover-color);
-            opacity: 0.5;
-
-            .centered-icon {
-                .positional-icon-visible;
-            }
-
-            &.running-cmds {
-                .rotate {
-                    fill: var(--app-warning-color);
-                }
-            }
-
-            &.active {
-                opacity: 1;
-            }
-
-            &:hover {
-                opacity: 1;
-            }
-
-            padding: 4px 6px;
-            cursor: pointer;
-        }
-
-        .line-icon + .line-icon:not(.line-icon-shrink-left) {
-            margin-left: 3px;
-        }
-    }
-
     &.has-info {
         padding-top: var(--termpad);
     }
@@ -97,9 +49,131 @@
     }
 
     .base-cmdinput {
+        --padding-top: var(--termpad);
+        --padding-sides: calc(var(--termpad) * 2);
         position: relative;
-        padding: calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 2)
-            calc(var(--termpad) * 3 - 1px);
+        padding: var(--padding-top) var(--padding-sides);
+
+        .cmd-input-field {
+            position: relative;
+            padding-right: var(--termpad);
+            font-family: var(--termfontfamily);
+            font-weight: normal;
+            line-height: var(--termlineheight);
+            font-size: var(--termfontsize);
+            border: none;
+
+            .cmd-hints {
+                position: absolute;
+                bottom: -14px;
+                right: 0px;
+            }
+            .control {
+                padding: 1em 2px;
+            }
+
+            .textareainput-div {
+                position: relative;
+
+                &.control {
+                    padding: var(--termpad) 0;
+                }
+
+                .shelltag {
+                    position: absolute;
+                    // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding (2px not sure?)
+                    bottom: calc(-13px + var(--termpad));
+                    right: 0px;
+                    font-size: 10px;
+                    color: var(--app-text-secondary-color);
+                    line-height: 1;
+                    padding: 1px 8px 3px 8px;
+                    user-select: none;
+                }
+            }
+
+            textarea {
+                color: var(--app-text-primary-color);
+                background-color: var(--app-bg-color);
+                padding: var(--termpad) 0;
+                resize: none;
+                overflow: auto;
+                overflow-wrap: anywhere;
+                font-family: var(--termfontfamily);
+                line-height: var(--termlineheight);
+                font-size: var(--termfontsize);
+                border: none;
+                box-shadow: none;
+            }
+
+            input.history-input {
+                border: 0;
+                padding: 0;
+                height: 0;
+            }
+
+            .cmd-quick-context .button {
+                background-color: var(--app-bg-color) !important;
+                color: var(--app-text-color);
+            }
+
+            &.inputmode-global .cmd-quick-context .button {
+                color: var(--app-bg-color);
+                background-color: var(--cmdinput-button-bg-color) !important;
+            }
+
+            &.inputmode-comment .cmd-quick-context .button {
+                color: var(--app-bg-color);
+                background-color: var(--cmdinput-comment-button-bg-color) !important;
+            }
+        }
+
+        .cmdinput-actions {
+            position: absolute;
+            font-size: calc(var(--termfontsize) + 2px);
+            line-height: 1.2;
+
+            // Align to the same bounds as the input field
+            top: var(--padding-top);
+            right: var(--padding-sides);
+
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            .cmdinput-icon {
+                display: inline-flex;
+                color: var(--app-icon-hover-color);
+                opacity: 0.5;
+
+                .centered-icon {
+                    .positional-icon-visible;
+                }
+
+                &.running-cmds {
+                    .rotate {
+                        fill: var(--app-warning-color);
+                    }
+                }
+
+                &.active {
+                    opacity: 1;
+                }
+
+                &:hover {
+                    opacity: 1;
+                }
+
+                // This aligns the icons with the prompt field.
+                // We don't need right padding because the whole input field is already padded.
+                padding: 2px 0 0 12px;
+                cursor: pointer;
+            }
+
+            .line-icon + .line-icon:not(.line-icon-shrink-left) {
+                margin-left: 3px;
+            }
+        }
     }
 
     .cmd-input-context {
@@ -112,79 +186,5 @@
         font-size: var(--termfontsize);
         line-height: var(--termlineheight);
         margin-left: 2px;
-    }
-
-    .cmd-input-field {
-        position: relative;
-        padding-right: var(--termpad);
-        font-family: var(--termfontfamily);
-        font-weight: normal;
-        line-height: var(--termlineheight);
-        font-size: var(--termfontsize);
-        border: none;
-
-        .cmd-hints {
-            position: absolute;
-            bottom: -14px;
-            right: 0px;
-        }
-        .control {
-            padding: 1em 2px;
-        }
-
-        .textareainput-div {
-            position: relative;
-
-            &.control {
-                padding: var(--termpad) 0;
-            }
-
-            .shelltag {
-                position: absolute;
-                // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding (2px not sure?)
-                bottom: calc(-13px + var(--termpad));
-                right: 0px;
-                font-size: 10px;
-                color: var(--app-text-secondary-color);
-                line-height: 1;
-                padding: 1px 8px 3px 8px;
-                user-select: none;
-            }
-        }
-
-        textarea {
-            color: var(--app-text-primary-color);
-            background-color: var(--app-bg-color);
-            padding: var(--termpad) 0;
-            resize: none;
-            overflow: auto;
-            overflow-wrap: anywhere;
-            font-family: var(--termfontfamily);
-            line-height: var(--termlineheight);
-            font-size: var(--termfontsize);
-            border: none;
-            box-shadow: none;
-        }
-
-        input.history-input {
-            border: 0;
-            padding: 0;
-            height: 0;
-        }
-
-        .cmd-quick-context .button {
-            background-color: var(--app-bg-color) !important;
-            color: var(--app-text-color);
-        }
-
-        &.inputmode-global .cmd-quick-context .button {
-            color: var(--app-bg-color);
-            background-color: var(--cmdinput-button-bg-color) !important;
-        }
-
-        &.inputmode-comment .cmd-quick-context .button {
-            color: var(--app-bg-color);
-            background-color: var(--cmdinput-comment-button-bg-color) !important;
-        }
     }
 }
