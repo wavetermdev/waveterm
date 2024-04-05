@@ -10,3 +10,7 @@ func AnsiResetColor() string {
 func AnsiGreenColor() string {
 	return "\033[32m"
 }
+
+func AnsiRedColor() string {
+	return "\033[31m"
+}

@@ -5,20 +5,20 @@
 @import url("./term-light.css");
 
 :root {
-    --app-bg-color: #fefefe;
+    --app-bg-color: rgb(254, 254, 254);
     --app-accent-color: rgb(75, 166, 57);
     --app-accent-bg-color: rgba(75, 166, 57, 0.2);
-    --app-text-color: #000;
+    --app-text-color: rgb(0, 0, 0);
     --app-text-primary-color: rgb(0, 0, 0, 0.9);
     --app-text-secondary-color: rgb(0, 0, 0, 0.7);
     --app-border-color: rgb(139 145 138);
-    --app-panel-bg-color: #e0e0e0;
-    --app-panel-bg-color-dev: #e0e0e0;
-    --app-icon-color: rgb(80, 80, 80);
-    --app-icon-hover-color: rgb(100, 100, 100);
+    --app-panel-bg-color: rgb(224, 224, 224);
+    --app-panel-bg-color-dev: rgb(224, 224, 224);
+    --app-icon-color: rgb(110, 110, 110);
+    --app-icon-hover-color: rgb(80, 80, 80);
     --app-selected-mask-color: rgba(0, 0, 0, 0.06);
 
-    --input-bg-color: #eeeeee;
+    --input-bg-color: rgb(238, 238, 238);
 
     /* tab color */
     --tab-white: rgb(0, 0, 0, 0.6);
@@ -30,8 +30,8 @@
     --table-thead-bg-color: rgba(250, 250, 250, 0.15);
     --table-tr-border-bottom-color: rgba(0, 0, 0, 0.15);
     --table-tr-hover-bg-color: rgba(0, 0, 0, 0.15);
-    --table-tr-selected-bg-color: #dddddd;
-    --table-tr-selected-hover-bg-color: #cccccc;
+    --table-tr-selected-bg-color: rgb(221, 221, 221);
+    --table-tr-selected-hover-bg-color: rgb(204, 204, 204);
 
     /* form colors */
     --form-element-border-color: rgba(0, 0, 0, 0.3);
@@ -41,8 +41,8 @@
     --form-element-label-color: rgba(0, 0, 0, 0.6);
     --form-element-secondary-color: rgba(0, 0, 0, 0.09);
     --form-element-icon-color: rgb(0, 0, 0, 0.6);
-    --form-element-disabled-text-color: #b7b7b7;
-    --form-element-placeholder-color: #b7b7b7;
+    --form-element-disabled-text-color: rgb(183, 183, 183);
+    --form-element-placeholder-color: rgb(183, 183, 183);
 
     --markdown-bg-color: rgb(0, 0, 0, 0.1);
 
@@ -50,8 +50,6 @@
     --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
 
     /* cmd input */
-    --cmdinput-textarea-bg-color: rgba(0, 0, 0, 0.1);
-    --cmdinput-textarea-border-color: var(--form-element-border-color);
 
     /* scroll colors */
     --scrollbar-background-color: var(--app-bg-color);
@@ -64,15 +62,15 @@
     --line-actions-inactive-color: rgba(0, 0, 0, 0.3);
     --line-actions-active-color: rgba(0, 0, 0, 1);
 
-    --logo-button-hover-bg-color: #f0f0f0;
+    --logo-button-hover-bg-color: rgb(240, 240, 240);
 
     --xterm-viewport-border-color: rgba(0, 0, 0, 0.3);
 
-    --datepicker-cell-hover-bg-color: #f0f0f0;
+    --datepicker-cell-hover-bg-color: rgb(240, 240, 240);
     --datepicker-cell-other-text-color: rgba(0, 0, 0, 0.3);
     --datepicker-header-fade-color: rgba(0, 0, 0, 0.4);
-    --datepicker-year-header-bg-color: #f5f5f5;
-    --datepicker-year-header-border-color: #dcdcdc;
+    --datepicker-year-header-bg-color: rgb(245, 245, 245);
+    --datepicker-year-header-border-color: rgb(220, 220, 220);
 
     /* toggle colors */
     --toggle-thumb-color: var(--app-bg-color);

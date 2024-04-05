@@ -25,6 +25,7 @@ function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
 class InputModel {
     globalModel: Model;
     historyShow: OV<boolean> = mobx.observable.box(false);
+    historyFocus: OV<boolean> = mobx.observable.box(false);
     infoShow: OV<boolean> = mobx.observable.box(false);
     aIChatShow: OV<boolean> = mobx.observable.box(false);
     cmdInputHeight: OV<number> = mobx.observable.box(0);
@@ -32,6 +33,8 @@ class InputModel {
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
+    codeSelectUuid: string;
+    inputPopUpType: OV<string> = mobx.observable.box("none");
 
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat",
@@ -80,6 +83,7 @@ class InputModel {
             this.codeSelectSelectedIndex.set(-1);
             this.codeSelectBlockRefArray = [];
         })();
+        this.codeSelectUuid = "";
     }
 
     setInputMode(inputMode: null | "comment" | "global"): void {
@@ -89,7 +93,7 @@ class InputModel {
     }
 
     toggleHistoryType(): void {
-        let opts = mobx.toJS(this.historyQueryOpts.get());
+        const opts = mobx.toJS(this.historyQueryOpts.get());
         let htype = opts.queryType;
         if (htype == "screen") {
             htype = "session";
@@ -102,7 +106,7 @@ class InputModel {
     }
 
     toggleRemoteType(): void {
-        let opts = mobx.toJS(this.historyQueryOpts.get());
+        const opts = mobx.toJS(this.historyQueryOpts.get());
         if (opts.limitRemote) {
             opts.limitRemote = false;
             opts.limitRemoteInstance = false;
@@ -136,21 +140,21 @@ class InputModel {
     }
 
     _focusCmdInput(): void {
-        let elem = document.getElementById("main-cmd-input");
+        const elem = document.getElementById("main-cmd-input");
         if (elem != null) {
             elem.focus();
         }
     }
 
     _focusHistoryInput(): void {
-        let elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
+        const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
         if (elem != null) {
             elem.focus();
         }
     }
 
     giveFocus(): void {
-        if (this.historyShow.get()) {
+        if (this.historyFocus.get()) {
             this._focusHistoryInput();
         } else {
             this._focusCmdInput();
@@ -162,7 +166,7 @@ class InputModel {
             this.physicalInputFocused.set(isFocused);
         })();
         if (isFocused) {
-            let screen = this.globalModel.getActiveScreen();
+            const screen = this.globalModel.getActiveScreen();
             if (screen != null) {
                 if (screen.focusType.get() != "input") {
                     GlobalCommandRunner.screenSetFocus("input");
@@ -172,15 +176,32 @@ class InputModel {
     }
 
     hasFocus(): boolean {
-        let mainInputElem = document.getElementById("main-cmd-input");
+        const mainInputElem = document.getElementById("main-cmd-input");
         if (document.activeElement == mainInputElem) {
             return true;
         }
-        let historyInputElem = document.querySelector(".cmd-input input.history-input");
+        const historyInputElem = document.querySelector(".cmd-input input.history-input");
         if (document.activeElement == historyInputElem) {
             return true;
         }
+        let aiChatInputElem = document.querySelector(".cmd-input chat-cmd-input");
+        if (document.activeElement == aiChatInputElem) {
+            return true;
+        }
         return false;
+    }
+
+    getOpenView(): string {
+        if (this.historyShow.get()) {
+            return "history";
+        }
+        if (this.aIChatShow.get()) {
+            return "aichat";
+        }
+        if (this.infoShow.get()) {
+            return "info";
+        }
+        return null;
     }
 
     setHistoryType(htype: HistoryTypeStrs): void {
@@ -194,20 +215,19 @@ class InputModel {
         if (oldItem == null) {
             return 0;
         }
-        let newItems = this.getFilteredHistoryItems();
+        const newItems = this.getFilteredHistoryItems();
         if (newItems.length == 0) {
             return 0;
         }
         let bestIdx = 0;
-        for (let i = 0; i < newItems.length; i++) {
+        for (const [i, item] of newItems.entries()) {
             // still start at i=0 to catch the historynum equality case
-            let item = newItems[i];
             if (item.historynum == oldItem.historynum) {
                 bestIdx = i;
                 break;
             }
-            let bestTsDiff = Math.abs(item.ts - newItems[bestIdx].ts);
-            let curTsDiff = Math.abs(item.ts - oldItem.ts);
+            const bestTsDiff = Math.abs(item.ts - newItems[bestIdx].ts);
+            const curTsDiff = Math.abs(item.ts - oldItem.ts);
             if (curTsDiff < bestTsDiff) {
                 bestIdx = i;
             }
@@ -217,11 +237,17 @@ class InputModel {
 
     setHistoryQueryOpts(opts: HistoryQueryOpts): void {
         mobx.action(() => {
-            let oldItem = this.getHistorySelectedItem();
+            const oldItem = this.getHistorySelectedItem();
             this.historyQueryOpts.set(opts);
-            let bestIndex = this.findBestNewIndex(oldItem);
+            const bestIndex = this.findBestNewIndex(oldItem);
             setTimeout(() => this.setHistoryIndex(bestIndex, true), 10);
         })();
+    }
+
+    setInputPopUpType(type: string) {
+        this.inputPopUpType = type;
+        this.aIChatShow.set(type == "aichat");
+        this.historyShow.set(type == "history");
     }
 
     setOpenAICmdInfoChat(chat: OpenAICmdInfoChatMessageType[]): void {
@@ -234,10 +260,26 @@ class InputModel {
             return;
         }
         mobx.action(() => {
+            if (show) {
+                this.setInputPopUpType("history");
+            } else {
+                this.setInputPopUpType("none");
+            }
             this.historyShow.set(show);
+            this.historyFocus.set(show);
             if (this.hasFocus()) {
                 this.giveFocus();
             }
+        })();
+    }
+
+    setHistoryFocus(focus: boolean): void {
+        if (this.historyFocus.get() == focus) {
+            return;
+        }
+        mobx.action(() => {
+            this.historyFocus.set(focus);
+            this.giveFocus();
         })();
     }
 
@@ -245,7 +287,7 @@ class InputModel {
         if (this.historyLoading.get()) {
             return false;
         }
-        let hitems = this.historyItems.get();
+        const hitems = this.historyItems.get();
         return hitems != null;
     }
 
@@ -276,6 +318,7 @@ class InputModel {
         if (!this.historyShow.get()) {
             mobx.action(() => {
                 this.setHistoryShow(true);
+                this.aIChatShow.set(false);
                 this.infoShow.set(false);
                 this.dropModHistory(true);
                 this.giveFocus();
@@ -293,11 +336,11 @@ class InputModel {
     }
 
     getHistorySelectedItem(): HistoryItem {
-        let hidx = this.historyIndex.get();
+        const hidx = this.historyIndex.get();
         if (hidx == 0) {
             return null;
         }
-        let hitems = this.getFilteredHistoryItems();
+        const hitems = this.getFilteredHistoryItems();
         if (hidx > hitems.length) {
             return null;
         }
@@ -305,7 +348,7 @@ class InputModel {
     }
 
     getFirstHistoryItem(): HistoryItem {
-        let hitems = this.getFilteredHistoryItems();
+        const hitems = this.getFilteredHistoryItems();
         if (hitems.length == 0) {
             return null;
         }
@@ -313,9 +356,9 @@ class InputModel {
     }
 
     setHistorySelectionNum(hnum: string): void {
-        let hitems = this.getFilteredHistoryItems();
-        for (let i = 0; i < hitems.length; i++) {
-            if (hitems[i].historynum == hnum) {
+        const hitems = this.getFilteredHistoryItems();
+        for (const [i, hitem] of hitems.entries()) {
+            if (hitem.historynum == hnum) {
                 this.setHistoryIndex(i + 1);
                 return;
             }
@@ -324,8 +367,8 @@ class InputModel {
 
     setHistoryInfo(hinfo: HistoryInfoType): void {
         mobx.action(() => {
-            let oldItem = this.getHistorySelectedItem();
-            let hitems: HistoryItem[] = hinfo.items ?? [];
+            const oldItem = this.getHistorySelectedItem();
+            const hitems: HistoryItem[] = hinfo.items ?? [];
             this.historyItems.set(hitems);
             this.historyLoading.set(false);
             this.historyQueryOpts.get().queryType = hinfo.historytype;
@@ -334,7 +377,7 @@ class InputModel {
                 this.historyQueryOpts.get().limitRemoteInstance = false;
             }
             if (this.historyAfterLoadIndex == -1) {
-                let bestIndex = this.findBestNewIndex(oldItem);
+                const bestIndex = this.findBestNewIndex(oldItem);
                 setTimeout(() => this.setHistoryIndex(bestIndex, true), 100);
             } else if (this.historyAfterLoadIndex) {
                 if (hitems.length >= this.historyAfterLoadIndex) {
@@ -353,10 +396,10 @@ class InputModel {
     }
 
     _getFilteredHistoryItems(): HistoryItem[] {
-        let hitems: HistoryItem[] = this.historyItems.get() ?? [];
-        let rtn: HistoryItem[] = [];
-        let opts = mobx.toJS(this.historyQueryOpts.get());
-        let ctx = this.globalModel.getUIContext();
+        const hitems: HistoryItem[] = this.historyItems.get() ?? [];
+        const rtn: HistoryItem[] = [];
+        const opts: HistoryQueryOpts = mobx.toJS(this.historyQueryOpts.get());
+        const ctx = this.globalModel.getUIContext();
         let curRemote: RemotePtrType = ctx.remote;
         if (curRemote == null) {
             curRemote = { ownerid: "", name: "", remoteid: "" };
@@ -393,7 +436,7 @@ class InputModel {
                 if (isBlank(hitem.cmdstr)) {
                     continue;
                 }
-                let idx = hitem.cmdstr.indexOf(opts.queryStr);
+                const idx = hitem.cmdstr.indexOf(opts.queryStr);
                 if (idx == -1) {
                     continue;
                 }
@@ -405,24 +448,24 @@ class InputModel {
     }
 
     scrollHistoryItemIntoView(hnum: string): void {
-        let elem: HTMLElement = document.querySelector(".cmd-history .hnum-" + hnum);
+        const elem: HTMLElement = document.querySelector(".cmd-history .hnum-" + hnum);
         if (elem == null) {
             return;
         }
-        let historyDiv = elem.closest(".cmd-history");
+        const historyDiv = elem.closest(".cmd-history");
         if (historyDiv == null) {
             return;
         }
-        let buffer = 15;
+        const buffer = 15;
         let titleHeight = 24;
-        let titleDiv: HTMLElement = document.querySelector(".cmd-history .history-title");
+        const titleDiv: HTMLElement = document.querySelector(".cmd-history .history-title");
         if (titleDiv != null) {
             titleHeight = titleDiv.offsetHeight + 2;
         }
-        let elemOffset = elem.offsetTop;
-        let elemHeight = elem.clientHeight;
-        let topPos = historyDiv.scrollTop;
-        let endPos = topPos + historyDiv.clientHeight;
+        const elemOffset = elem.offsetTop;
+        const elemHeight = elem.clientHeight;
+        const topPos = historyDiv.scrollTop;
+        const endPos = topPos + historyDiv.clientHeight;
         if (elemOffset + elemHeight + buffer > endPos) {
             if (elemHeight + buffer > historyDiv.clientHeight - titleHeight) {
                 historyDiv.scrollTop = elemOffset - titleHeight;
@@ -441,7 +484,7 @@ class InputModel {
     }
 
     grabSelectedHistoryItem(): void {
-        let hitem = this.getHistorySelectedItem();
+        const hitem = this.getHistorySelectedItem();
         if (hitem == null) {
             this.resetHistory();
             return;
@@ -480,9 +523,8 @@ class InputModel {
         if (!this.isHistoryLoaded()) {
             return;
         }
-        let hitems = this.getFilteredHistoryItems();
-        let idx = this.historyIndex.get();
-        idx += amt;
+        const hitems = this.getFilteredHistoryItems();
+        let idx = this.historyIndex.get() + amt;
         if (idx < 0) {
             idx = 0;
         }
@@ -532,16 +574,19 @@ class InputModel {
             this.codeSelectSelectedIndex.get() >= 0 &&
             this.codeSelectSelectedIndex.get() < this.codeSelectBlockRefArray.length
         ) {
-            let curBlockRef = this.codeSelectBlockRefArray[this.codeSelectSelectedIndex.get()];
-            let codeText = curBlockRef.current.innerText;
-            codeText = codeText.replace(/\n$/, ""); // remove trailing newline
+            const curBlockRef = this.codeSelectBlockRefArray[this.codeSelectSelectedIndex.get()];
+            const codeText = curBlockRef.current.innerText.replace(/\n$/, ""); // remove trailing newline
             this.setCurLine(codeText);
             this.giveFocus();
         }
     }
 
-    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>): number {
+    addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>, uuid: string): number {
         let rtn = -1;
+        if (uuid != this.codeSelectUuid) {
+            this.codeSelectUuid = uuid;
+            this.codeSelectBlockRefArray = [];
+        }
         rtn = this.codeSelectBlockRefArray.length;
         this.codeSelectBlockRefArray.push(blockRef);
         return rtn;
@@ -551,23 +596,21 @@ class InputModel {
         mobx.action(() => {
             if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
                 this.codeSelectSelectedIndex.set(blockIndex);
-                let currentRef = this.codeSelectBlockRefArray[blockIndex].current;
-                if (currentRef != null) {
-                    if (this.aiChatWindowRef?.current != null) {
-                        let chatWindowTop = this.aiChatWindowRef.current.scrollTop;
-                        let chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
-                        let elemTop = currentRef.offsetTop;
-                        let elemBottom = elemTop - currentRef.offsetHeight;
-                        let elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
-                        if (!elementIsInView) {
-                            this.aiChatWindowRef.current.scrollTop =
-                                elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
-                        }
+                const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
+                if (currentRef != null && this.aiChatWindowRef?.current != null) {
+                    const chatWindowTop = this.aiChatWindowRef.current.scrollTop;
+                    const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
+                    const elemTop = currentRef.offsetTop;
+                    let elemBottom = elemTop - currentRef.offsetHeight;
+                    const elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
+                    if (!elementIsInView) {
+                        this.aiChatWindowRef.current.scrollTop =
+                            elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
                     }
                 }
-                this.codeSelectBlockRefArray = [];
-                this.setAIChatFocus();
             }
+            this.codeSelectBlockRefArray = [];
+            this.setAIChatFocus();
         })();
     }
 
@@ -580,7 +623,7 @@ class InputModel {
             } else if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
                 return;
             }
-            let incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
+            const incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
             if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
                 this.codeSelectDeselectAll();
                 if (this.aiChatWindowRef?.current != null) {
@@ -604,7 +647,7 @@ class InputModel {
             } else if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
                 return;
             }
-            let decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
+            const decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
             if (decBlockIndex < 0) {
                 this.codeSelectDeselectAll(this.codeSelectTop);
                 if (this.aiChatWindowRef?.current != null) {
@@ -641,7 +684,10 @@ class InputModel {
 
     openAIAssistantChat(): void {
         mobx.action(() => {
+            this.setInputPopUpType("aichat");
             this.aIChatShow.set(true);
+            this.historyShow.set(false);
+            this.infoShow.set(false);
             this.setAIChatFocus();
         })();
     }
@@ -653,6 +699,7 @@ class InputModel {
             return;
         }
         mobx.action(() => {
+            this.setInputPopUpType("none");
             this.aIChatShow.set(false);
             if (giveFocus) {
                 this.giveFocus();
@@ -661,7 +708,7 @@ class InputModel {
     }
 
     clearAIAssistantChat(): void {
-        let prtn = this.globalModel.submitChatInfoCommand("", "", true);
+        const prtn = this.globalModel.submitChatInfoCommand("", "", true);
         prtn.then((rtn) => {
             if (!rtn.success) {
                 console.log("submit chat command error: " + rtn.error);
@@ -675,11 +722,11 @@ class InputModel {
         if (!this.infoShow.get()) {
             return false;
         }
-        let info = this.infoMsg.get();
+        const info = this.infoMsg.get();
         if (info == null) {
             return false;
         }
-        let div = document.querySelector(".cmd-input-info");
+        const div = document.querySelector(".cmd-input-info");
         if (div == null) {
             return false;
         }
@@ -711,7 +758,7 @@ class InputModel {
                 this.setHistoryShow(false);
                 return;
             }
-            let isShowing = this.infoShow.get();
+            const isShowing = this.infoShow.get();
             if (isShowing) {
                 this.infoShow.set(false);
             } else {
@@ -725,7 +772,7 @@ class InputModel {
     @boundMethod
     uiSubmitCommand(): void {
         mobx.action(() => {
-            let commandStr = this.getCurLine();
+            const commandStr = this.getCurLine();
             if (commandStr.trim() == "") {
                 return;
             }
@@ -746,7 +793,7 @@ class InputModel {
     }
 
     setCurLine(val: string): void {
-        let hidx = this.historyIndex.get();
+        const hidx = this.historyIndex.get();
         mobx.action(() => {
             if (this.modHistory.length <= hidx) {
                 this.modHistory.length = hidx + 1;
@@ -778,15 +825,15 @@ class InputModel {
     }
 
     getCurLine(): string {
-        let hidx = this.historyIndex.get();
+        const hidx = this.historyIndex.get();
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
             return this.modHistory[hidx];
         }
-        let hitems = this.getFilteredHistoryItems();
+        const hitems = this.getFilteredHistoryItems();
         if (hidx == 0 || hitems == null || hidx > hitems.length) {
             return "";
         }
-        let hitem = hitems[hidx - 1];
+        const hitem = hitems[hidx - 1];
         if (hitem == null) {
             return "";
         }
