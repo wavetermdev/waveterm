@@ -652,7 +652,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-        const isMainInputFocused = this.mainInputFocused.get();
+        const isMainInputFocused = inputModel.hasFocus() && this.mainInputFocused.get();
         const isHistoryFocused = this.historyFocused.get();
         return (
             <div
