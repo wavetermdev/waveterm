@@ -23,7 +23,7 @@ function getMonoFontSize(fontSize: number): MonoFontSize {
     if (MonoFontSizes[fontSize] != null) {
         return MonoFontSizes[fontSize];
     }
-    let size = measureText("W", { pre: true, mono: true, fontSize: fontSize });
+    const size = measureText("W", { pre: true, mono: true, fontSize: fontSize });
     if (size.height != 0 && size.width != 0) {
         MonoFontSizes[fontSize] = size;
     }
@@ -38,7 +38,7 @@ function measureText(text: string, textOpts: { pre?: boolean; mono?: boolean; fo
     if (textOpts == null) {
         throw new Error("invalid textOpts passed to measureText (null)");
     }
-    let textElem = document.createElement("span");
+    const textElem = document.createElement("span");
     if (textOpts.pre) {
         textElem.classList.add("pre");
     }
@@ -53,19 +53,19 @@ function measureText(text: string, textOpts: { pre?: boolean; mono?: boolean; fo
         }
     }
     textElem.innerText = text;
-    let measureDiv = document.getElementById("measure");
+    const measureDiv = document.getElementById("measure");
     if (measureDiv == null) {
         throw new Error("cannot measure text, no #measure div");
     }
     measureDiv.replaceChildren(textElem);
-    let height = Math.ceil(textElem.offsetHeight);
-    let width = textElem.offsetWidth;
-    let pad = Math.floor(height / 2);
+    const height = Math.ceil(textElem.offsetHeight);
+    const width = textElem.offsetWidth;
+    const pad = Math.floor(height / 2);
     return { width, height, pad, fontSize: textOpts.fontSize };
 }
 
 function windowWidthToCols(width: number, fontSize: number): number {
-    let dr = getMonoFontSize(fontSize);
+    const dr = getMonoFontSize(fontSize);
     let cols = Math.trunc((width - MagicLayout.ScreenMaxContentWidthBuffer) / dr.width) - 1;
     cols = boundInt(cols, MinTermCols, MaxTermCols);
     return cols;
@@ -80,7 +80,7 @@ function windowHeightToRows(lhe: LineHeightEnv, height: number): number {
 }
 
 function termWidthFromCols(cols: number, fontSize: number): number {
-    let dr = getMonoFontSize(fontSize);
+    const dr = getMonoFontSize(fontSize);
     return Math.ceil(dr.width * cols) + MagicLayout.TermWidthBuffer;
 }
 
@@ -89,12 +89,12 @@ function termWidthFromCols(cols: number, fontSize: number): number {
 // works out to `realHeight = round(ceil(height * dpr) * rows / dpr) / rows`
 // their calculation is based off the "totalRows" (so that argument has been added)
 function termHeightFromRows(rows: number, fontSize: number, totalRows: number): number {
-    let dr = getMonoFontSize(fontSize);
+    const dr = getMonoFontSize(fontSize);
     const dpr = window.devicePixelRatio;
     if (totalRows == null || totalRows == 0) {
         totalRows = rows > 25 ? rows : 25;
     }
-    let realHeight = Math.round((Math.ceil(dr.height * dpr) * totalRows) / dpr) / totalRows;
+    const realHeight = Math.round((Math.ceil(dr.height * dpr) * totalRows) / dpr) / totalRows;
     return Math.ceil(realHeight * rows);
 }
 

@@ -743,10 +743,21 @@ func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdP
 	})
 }
 
-func UpdateCmdDoneInfo(ctx context.Context, update *scbus.ModelUpdatePacketType, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) error {
-	if donePk == nil {
-		return fmt.Errorf("invalid cmddone packet")
-	}
+func UpdateCmdStartInfo(ctx context.Context, ck base.CommandKey, cmdPid int, mshellPid int) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE cmd SET cmdpid = ?, remotepid = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, cmdPid, mshellPid, ck.GetGroupId(), lineIdFromCK(ck))
+		return nil
+	})
+}
+
+type CmdDoneDataValues struct {
+	Ts         int64
+	ExitCode   int
+	DurationMs int64
+}
+
+func UpdateCmdDoneInfo(ctx context.Context, update *scbus.ModelUpdatePacketType, ck base.CommandKey, donePk CmdDoneDataValues, status string) error {
 	if ck.IsEmpty() {
 		return fmt.Errorf("cannot update cmddoneinfo, empty ck")
 	}
@@ -789,7 +800,7 @@ func UpdateCmdDoneInfo(ctx context.Context, update *scbus.ModelUpdatePacketType,
 		// This is not a fatal error, so just log it
 		log.Printf("error setting status indicator level after done packet: %v\n", err)
 	}
-	IncrementNumRunningCmds_Update(update, screenId, -1)
+	go IncrementNumRunningCmds(screenId, -1)
 	return nil
 }
 

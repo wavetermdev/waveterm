@@ -575,12 +575,14 @@ func (m *MServer) streamFile(pk *packet.StreamFilePacketType) {
 		m.Sender.SendPacket(resp)
 		return
 	}
+	mimeType := utilfn.DetectMimeType(pk.Path)
 	resp.Info = &packet.FileInfo{
-		Name:  pk.Path,
-		Size:  finfo.Size(),
-		ModTs: finfo.ModTime().UnixMilli(),
-		IsDir: finfo.IsDir(),
-		Perm:  int(finfo.Mode().Perm()),
+		Name:     pk.Path,
+		Size:     finfo.Size(),
+		ModTs:    finfo.ModTime().UnixMilli(),
+		IsDir:    finfo.IsDir(),
+		MimeType: mimeType,
+		Perm:     int(finfo.Mode().Perm()),
 	}
 	if pk.StatOnly {
 		resp.Done = true
@@ -746,6 +748,10 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	_, _, err := packet.ParseShellStateVersion(runPacket.State.Version)
 	if err != nil {
 		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("invalid shellstate version: %w", err))
+		return
+	}
+	if runPacket.Command == "wave:testerror" {
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("test error"))
 		return
 	}
 	ecmd, err := shexec.MakeMShellSingleCmd()

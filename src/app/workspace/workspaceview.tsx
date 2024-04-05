@@ -162,13 +162,13 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
                 </div>
                 <div className="newtab-spacer" />
                 <div className="newtab-section conn-section">
-                    <div className="unselectable">
+                    <div className="unselectable truncate">
                         You're connected to "{getRemoteStrWithAlias(rptr)}". Do you want to change it?
                     </div>
                     <div>
                         <TabRemoteSelector screen={screen} errorMessage={this.errorMessage} />
                     </div>
-                    <div className="text-caption cr-help-text">
+                    <div className="text-caption cr-help-text truncate">
                         To change connection from the command line use `cr [alias|user@host]`
                     </div>
                 </div>
