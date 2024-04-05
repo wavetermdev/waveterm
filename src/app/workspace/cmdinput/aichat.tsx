@@ -27,7 +27,7 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:cancel", (waveEvent) => {
-            inputModel.closeAIAssistantChat(true);
+            inputModel.closeAuxView();
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "aichat:clearHistory", (waveEvent) => {
@@ -70,7 +70,7 @@ class AIChat extends React.Component<{}, {}> {
 
     componentDidMount() {
         const inputModel = GlobalModel.inputModel;
-        if (this.chatWindowScrollRef != null && this.chatWindowScrollRef.current != null) {
+        if (this.chatWindowScrollRef?.current != null) {
             this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
         }
         if (this.textAreaRef.current != null) {
@@ -82,7 +82,7 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        if (this.chatWindowScrollRef != null && this.chatWindowScrollRef.current != null) {
+        if (this.chatWindowScrollRef?.current != null) {
             this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
         }
     }
@@ -252,7 +252,7 @@ class AIChat extends React.Component<{}, {}> {
             <AuxiliaryCmdView
                 title="Wave AI"
                 className="cmd-aichat"
-                onClose={() => GlobalModel.inputModel.closeAIAssistantChat(true)}
+                onClose={() => GlobalModel.inputModel.closeAuxView()}
                 iconClass="fa-sharp fa-solid fa-sparkles"
             >
                 <If condition={renderKeybindings}>

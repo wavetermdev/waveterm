@@ -64,3 +64,7 @@ export enum StatusIndicatorLevel {
 
 // matches packet.go
 export const ErrorCode_InvalidCwd = "ERRCWD";
+
+export const AuxView_History = "history";
+export const AuxView_Info = "info";
+export const AuxView_AIChat = "aichat";

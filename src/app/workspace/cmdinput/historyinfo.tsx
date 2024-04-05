@@ -174,7 +174,7 @@ class HistoryInfo extends React.Component<{}, {}> {
     handleItemClick(hitem: HistoryItem) {
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
-        inputModel.setHistoryFocus(true);
+        inputModel.setAuxViewFocus(false);
         if (this.lastClickHNum == hitem.historynum && selItem != null && selItem.historynum == hitem.historynum) {
             inputModel.grabSelectedHistoryItem();
             return;
@@ -194,14 +194,14 @@ class HistoryInfo extends React.Component<{}, {}> {
     @boundMethod
     handleClickType() {
         const inputModel = GlobalModel.inputModel;
-        inputModel.setHistoryFocus(true);
+        inputModel.setAuxViewFocus(true);
         inputModel.toggleHistoryType();
     }
 
     @boundMethod
     handleClickRemote() {
         const inputModel = GlobalModel.inputModel;
-        inputModel.setHistoryFocus(true);
+        inputModel.setAuxViewFocus(true);
         inputModel.toggleRemoteType();
     }
 

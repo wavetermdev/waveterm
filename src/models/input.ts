@@ -24,10 +24,8 @@ function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
 
 class InputModel {
     globalModel: Model;
-    historyShow: OV<boolean> = mobx.observable.box(false);
-    historyFocus: OV<boolean> = mobx.observable.box(false);
-    infoShow: OV<boolean> = mobx.observable.box(false);
-    aIChatShow: OV<boolean> = mobx.observable.box(false);
+    activeAuxView: OV<InputAuxViewType> = mobx.observable.box(null);
+    auxViewFocus: OV<boolean> = mobx.observable.box(false);
     cmdInputHeight: OV<number> = mobx.observable.box(0);
     aiChatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
@@ -139,26 +137,36 @@ class InputModel {
         })();
     }
 
-    _focusCmdInput(): void {
-        const elem = document.getElementById("main-cmd-input");
-        if (elem != null) {
-            elem.focus();
-        }
-    }
-
-    _focusHistoryInput(): void {
-        const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
-        if (elem != null) {
-            elem.focus();
-        }
-    }
-
     giveFocus(): void {
-        if (this.historyFocus.get()) {
-            this._focusHistoryInput();
-        } else {
-            this._focusCmdInput();
-        }
+        const activeView: InputAuxViewType = this.auxViewFocus.get() ? this.activeAuxView.get() : null;
+        mobx.action(() => {
+            switch (activeView) {
+                case "history": {
+                    const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
+                    if (elem != null) {
+                        elem.focus();
+                    }
+                    return;
+                }
+                case "aichat":
+                    this.setAIChatFocus();
+                    return;
+                case null: {
+                    const elem = document.getElementById("main-cmd-input");
+                    if (elem != null) {
+                        elem.focus();
+                    }
+                    return;
+                }
+                default: {
+                    const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
+                    if (elem != null) {
+                        elem.focus();
+                    }
+                    return;
+                }
+            }
+        })();
     }
 
     setPhysicalInputFocused(isFocused: boolean): void {
@@ -189,19 +197,6 @@ class InputModel {
             return true;
         }
         return false;
-    }
-
-    getOpenView(): string {
-        if (this.historyShow.get()) {
-            return "history";
-        }
-        if (this.aIChatShow.get()) {
-            return "aichat";
-        }
-        if (this.infoShow.get()) {
-            return "info";
-        }
-        return null;
     }
 
     setHistoryType(htype: HistoryTypeStrs): void {
@@ -244,43 +239,9 @@ class InputModel {
         })();
     }
 
-    setInputPopUpType(type: string) {
-        this.inputPopUpType = type;
-        this.aIChatShow.set(type == "aichat");
-        this.historyShow.set(type == "history");
-    }
-
     setOpenAICmdInfoChat(chat: OpenAICmdInfoChatMessageType[]): void {
         this.AICmdInfoChatItems.replace(chat);
         this.codeSelectBlockRefArray = [];
-    }
-
-    setHistoryShow(show: boolean): void {
-        if (this.historyShow.get() == show) {
-            return;
-        }
-        mobx.action(() => {
-            if (show) {
-                this.setInputPopUpType("history");
-            } else {
-                this.setInputPopUpType("none");
-            }
-            this.historyShow.set(show);
-            this.historyFocus.set(show);
-            if (this.hasFocus()) {
-                this.giveFocus();
-            }
-        })();
-    }
-
-    setHistoryFocus(focus: boolean): void {
-        if (this.historyFocus.get() == focus) {
-            return;
-        }
-        mobx.action(() => {
-            this.historyFocus.set(focus);
-            this.giveFocus();
-        })();
     }
 
     isHistoryLoaded(): boolean {
@@ -315,11 +276,9 @@ class InputModel {
             this.loadHistory(true, 0, "screen");
             return;
         }
-        if (!this.historyShow.get()) {
+        if (this.getActiveAuxView() != "history") {
             mobx.action(() => {
-                this.setHistoryShow(true);
-                this.aIChatShow.set(false);
-                this.infoShow.set(false);
+                this.activeAuxView.set("history");
                 this.dropModHistory(true);
                 this.giveFocus();
             })();
@@ -495,6 +454,22 @@ class InputModel {
         })();
     }
 
+    getActiveAuxView(): InputAuxViewType {
+        return this.activeAuxView.get();
+    }
+
+    setActiveAuxView(view: InputAuxViewType): void {
+        mobx.action(() => {
+            this.activeAuxView.set(view);
+        })();
+    }
+
+    setAuxViewFocus(focus: boolean): void {
+        mobx.action(() => {
+            this.auxViewFocus.set(focus);
+        })();
+    }
+
     setHistoryIndex(hidx: number, force?: boolean): void {
         if (hidx < 0) {
             return;
@@ -504,7 +479,7 @@ class InputModel {
         }
         mobx.action(() => {
             this.historyIndex.set(hidx);
-            if (this.historyShow.get()) {
+            if (this.getActiveAuxView() == "history") {
                 let hitem = this.getHistorySelectedItem();
                 if (hitem == null) {
                     hitem = this.getFirstHistoryItem();
@@ -538,16 +513,15 @@ class InputModel {
         this._clearInfoTimeout();
         mobx.action(() => {
             this.infoMsg.set(info);
-            if (info == null) {
-                this.infoShow.set(false);
+            if (info == null && this.getActiveAuxView() == "info") {
+                this.activeAuxView.set(null);
             } else {
-                this.infoShow.set(true);
-                this.setHistoryShow(false);
+                this.activeAuxView.set("info");
             }
         })();
         if (info != null && timeoutMs) {
             this.infoTimeoutId = setTimeout(() => {
-                if (this.historyShow.get()) {
+                if (this.activeAuxView.get() != "info") {
                     return;
                 }
                 this.clearInfoMsg(false);
@@ -684,26 +658,20 @@ class InputModel {
 
     openAIAssistantChat(): void {
         mobx.action(() => {
-            this.setInputPopUpType("aichat");
-            this.aIChatShow.set(true);
-            this.historyShow.set(false);
-            this.infoShow.set(false);
-            this.setAIChatFocus();
+            this.activeAuxView.set("aichat");
+            this.giveFocus();
         })();
     }
 
     // pass true to give focus to the input (e.g. if this is an 'active' close of the chat)
     // when resetting the input (when switching screens, don't give focus)
-    closeAIAssistantChat(giveFocus: boolean): void {
-        if (!this.aIChatShow.get()) {
+    closeAuxView(): void {
+        if (this.activeAuxView.get() == null) {
             return;
         }
         mobx.action(() => {
-            this.setInputPopUpType("none");
-            this.aIChatShow.set(false);
-            if (giveFocus) {
-                this.giveFocus();
-            }
+            this.activeAuxView.set(null);
+            this.giveFocus();
         })();
     }
 
@@ -719,7 +687,7 @@ class InputModel {
     }
 
     hasScrollingInfoMsg(): boolean {
-        if (!this.infoShow.get()) {
+        if (this.activeAuxView.get() !== "info") {
             return false;
         }
         const info = this.infoMsg.get();
@@ -743,8 +711,9 @@ class InputModel {
     clearInfoMsg(setNull: boolean): void {
         this._clearInfoTimeout();
         mobx.action(() => {
-            this.setHistoryShow(false);
-            this.infoShow.set(false);
+            if (this.getActiveAuxView() == "info") {
+                this.activeAuxView.set(null);
+            }
             if (setNull) {
                 this.infoMsg.set(null);
             }
@@ -754,17 +723,10 @@ class InputModel {
     toggleInfoMsg(): void {
         this._clearInfoTimeout();
         mobx.action(() => {
-            if (this.historyShow.get()) {
-                this.setHistoryShow(false);
-                return;
-            }
-            const isShowing = this.infoShow.get();
-            if (isShowing) {
-                this.infoShow.set(false);
-            } else {
-                if (this.infoMsg.get() != null) {
-                    this.infoShow.set(true);
-                }
+            if (this.activeAuxView.get() == "info") {
+                this.activeAuxView.set(null);
+            } else if (this.infoMsg.get() != null) {
+                this.activeAuxView.set("info");
             }
         })();
     }
@@ -804,9 +766,7 @@ class InputModel {
 
     resetInput(): void {
         mobx.action(() => {
-            this.setHistoryShow(false);
-            this.closeAIAssistantChat(false);
-            this.infoShow.set(false);
+            this.activeAuxView.set(null);
             this.inputMode.set(null);
             this.resetHistory();
             this.dropModHistory(false);
@@ -854,7 +814,9 @@ class InputModel {
 
     resetHistory(): void {
         mobx.action(() => {
-            this.setHistoryShow(false);
+            if (this.getActiveAuxView() == "history") {
+                this.activeAuxView.set(null);
+            }
             this.historyLoading.set(false);
             this.historyType.set("screen");
             this.historyItems.set(null);

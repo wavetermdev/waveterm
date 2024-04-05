@@ -156,7 +156,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             if (inputModel.inputMode.get() != null) {
                 inputModel.resetInputMode();
             }
-            inputModel.closeAIAssistantChat(true);
+            inputModel.setActiveAuxView(null);
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:expandInput", (waveEvent) => {
@@ -255,7 +255,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0); // forces render updates
     mainInputFocused: OV<boolean> = mobx.observable.box(true);
-    historyFocused: OV<boolean> = mobx.observable.box(false);
 
     incVersion(): void {
         const v = this.version.get();
@@ -286,12 +285,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     setFocus(): void {
-        const inputModel = GlobalModel.inputModel;
-        if (inputModel.historyFocus.get()) {
-            this.historyInputRef.current.focus();
-        } else {
-            this.mainInputRef.current.focus();
-        }
+        GlobalModel.inputModel.giveFocus();
     }
 
     getTextAreaMaxCols(): number {
@@ -551,7 +545,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     @boundMethod
     handleMainFocus(e: any) {
         const inputModel = GlobalModel.inputModel;
-        if (inputModel.historyFocus.get()) {
+        if (inputModel.auxViewFocus.get()) {
             e.preventDefault();
             if (this.historyInputRef.current != null) {
                 this.historyInputRef.current.focus();
@@ -578,7 +572,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     @boundMethod
     handleHistoryFocus(e: any) {
         const inputModel = GlobalModel.inputModel;
-        if (!inputModel.historyFocus.get()) {
+        if (!inputModel.auxViewFocus.get()) {
             e.preventDefault();
             if (this.mainInputRef.current != null) {
                 this.mainInputRef.current.focus();
@@ -586,9 +580,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         inputModel.setPhysicalInputFocused(true);
-        mobx.action(() => {
-            this.historyFocused.set(true);
-        })();
     }
 
     @boundMethod
@@ -597,9 +588,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         GlobalModel.inputModel.setPhysicalInputFocused(false);
-        mobx.action(() => {
-            this.historyFocused.set(false);
-        })();
     }
 
     render() {
@@ -618,7 +606,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
 
         // TODO: invert logic here. We should track focus on the main textarea and assume aux view is focused if not.
-        const disabled = inputModel.historyFocus.get();
+        const disabled = inputModel.auxViewFocus.get();
         if (disabled) {
             displayLines = 1;
         }
@@ -635,7 +623,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         const screen = GlobalModel.getActiveScreen();
         if (screen != null) {
             const ri = screen.getCurRemoteInstance();
-            if (ri != null && ri.shelltype != null) {
+            if (ri?.shelltype != null) {
                 shellType = ri.shelltype;
             }
             if (shellType == "") {
@@ -648,8 +636,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-        const isMainInputFocused = this.mainInputFocused.get();
-        const isHistoryFocused = this.historyFocused.get();
+        const isMainInputFocused = inputModel.auxViewFocus.get();
+        const isHistoryFocused = !isMainInputFocused && inputModel.getActiveAuxView() == appconst.AuxView_History;
         return (
             <div
                 className="textareainput-div control is-expanded"
