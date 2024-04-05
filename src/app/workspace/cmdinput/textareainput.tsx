@@ -253,9 +253,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     controlRef: React.RefObject<HTMLDivElement> = React.createRef();
     lastHeight: number = 0;
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
-    version: OV<number> = mobx.observable.box(0); // forces render updates
-    mainInputFocused: OV<boolean> = mobx.observable.box(true);
-    historyFocused: OV<boolean> = mobx.observable.box(false);
+    version: OV<number> = mobx.observable.box(0, { name: "textAreaInput-version" }); // forces render updates
+    mainInputFocused: OV<boolean> = mobx.observable.box(true, { name: "textAreaInput-mainInputFocused" });
+    historyFocused: OV<boolean> = mobx.observable.box(false, { name: "textAreaInput-historyFocused" });
 
     incVersion(): void {
         const v = this.version.get();
@@ -288,9 +288,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     setFocus(): void {
         const inputModel = GlobalModel.inputModel;
         if (inputModel.historyFocus.get()) {
-            this.historyInputRef.current.focus();
+            if (this.historyInputRef.current != null && document.activeElement != this.historyInputRef.current) {
+                this.historyInputRef.current.focus();
+            }
         } else {
-            this.mainInputRef.current.focus();
+            if (this.mainInputRef.current != null && document.activeElement != this.mainInputRef.current) {
+                this.mainInputRef.current.focus();
+            }
         }
     }
 
