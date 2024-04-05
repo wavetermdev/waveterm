@@ -6,7 +6,7 @@ import "./button.less";
 
 interface ButtonProps {
     children: React.ReactNode;
-    onClick?: () => void;
+    onClick?: (e) => void;
     disabled?: boolean;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
@@ -14,6 +14,7 @@ interface ButtonProps {
     autoFocus?: boolean;
     className?: string;
     termInline?: boolean;
+    title?: string;
 }
 
 class Button extends React.Component<ButtonProps> {
@@ -23,14 +24,14 @@ class Button extends React.Component<ButtonProps> {
     };
 
     @boundMethod
-    handleClick() {
+    handleClick(e) {
         if (this.props.onClick && !this.props.disabled) {
-            this.props.onClick();
+            this.props.onClick(e);
         }
     }
 
     render() {
-        const { leftIcon, rightIcon, children, disabled, style, autoFocus, termInline, className } = this.props;
+        const { leftIcon, rightIcon, children, disabled, style, autoFocus, termInline, className, title } = this.props;
 
         return (
             <button
@@ -39,6 +40,7 @@ class Button extends React.Component<ButtonProps> {
                 disabled={disabled}
                 style={style}
                 autoFocus={autoFocus}
+                title={title}
             >
                 {leftIcon && <span className="icon-left">{leftIcon}</span>}
                 {children}

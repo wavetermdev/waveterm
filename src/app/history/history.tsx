@@ -14,7 +14,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "@/app/line/linecomps";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
-import { TextField, Dropdown, Button, DatePicker } from "@/elements";
+import { TextField, Dropdown, Button, CopyButton } from "@/elements";
 
 import { ReactComponent as ChevronLeftIcon } from "@/assets/icons/history/chevron-left.svg";
 import { ReactComponent as ChevronRightIcon } from "@/assets/icons/history/chevron-right.svg";
@@ -141,21 +141,14 @@ class HistoryCmdStr extends React.Component<
         const { isCopied, cmdstr, fontSize, limitHeight } = this.props;
         return (
             <div className={cn("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
-                <If condition={isCopied}>
-                    <div key="copied" className="copied-indicator">
-                        <div>copied</div>
-                    </div>
-                </If>
                 <div key="code" className="code-div">
                     <code>{cmdstr}</code>
                 </div>
                 <div key="copy" className="actions-block">
-                    <div className="action-item" onClick={this.handleCopy} title="copy">
-                        <CopyIcon className="icon" />
-                    </div>
-                    <div key="use" className="action-item" title="Use Command" onClick={this.handleUse}>
-                        <CheckIcon className="icon" />
-                    </div>
+                    <CopyButton isCopied={isCopied} onClick={this.handleCopy} title="copy" />
+                    <Button className="secondary ghost" title="Use Command" onClick={this.handleUse}>
+                        <i className="fa-sharp fa-solid fa-play"></i>
+                    </Button>
                 </div>
             </div>
         );
