@@ -412,6 +412,12 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 		}
 	}
 
+	if basicCallback == nil {
+		basicCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			return &knownhosts.KeyError{}
+		}
+	}
+
 	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 		err := basicCallback(hostname, remote, key)
 		if err == nil {
