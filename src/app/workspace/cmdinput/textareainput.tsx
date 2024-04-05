@@ -254,7 +254,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     lastHeight: number = 0;
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0); // forces render updates
-    mainInputFocused: OV<boolean> = mobx.observable.box(true);
 
     incVersion(): void {
         const v = this.version.get();
@@ -553,9 +552,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         inputModel.setPhysicalInputFocused(true);
-        mobx.action(() => {
-            this.mainInputFocused.set(true);
-        })();
     }
 
     @boundMethod
@@ -564,9 +560,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         GlobalModel.inputModel.setPhysicalInputFocused(false);
-        mobx.action(() => {
-            this.mainInputFocused.set(false);
-        })();
     }
 
     @boundMethod
