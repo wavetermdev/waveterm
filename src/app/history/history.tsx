@@ -113,7 +113,6 @@ class HistoryCmdStr extends React.Component<
         cmdstr: string;
         onUse: () => void;
         onCopy: () => void;
-        isCopied: boolean;
         fontSize: "normal" | "large";
         limitHeight: boolean;
     },
@@ -136,14 +135,14 @@ class HistoryCmdStr extends React.Component<
     }
 
     render() {
-        const { isCopied, cmdstr, fontSize, limitHeight } = this.props;
+        const { cmdstr, fontSize, limitHeight } = this.props;
         return (
             <div className={cn("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
                 <div key="code" className="code-div">
                     <code>{cmdstr}</code>
                 </div>
                 <div key="copy" className="actions-block">
-                    <CopyButton isCopied={isCopied} onClick={this.handleCopy} title="copy" />
+                    <CopyButton onClick={this.handleCopy} title="Copy" />
                     <Button className="secondary ghost" title="Use Command" onClick={this.handleUse}>
                         <i className="fa-sharp fa-solid fa-play"></i>
                     </Button>
@@ -181,7 +180,6 @@ class HistoryView extends React.Component<{}, {}> {
     tableRszObs: ResizeObserver;
     sessionDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "sessionDropdownActive" });
     remoteDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "remoteDropdownActive" });
-    copiedItemId: OV<string> = mobx.observable.box(null, { name: "copiedItemId" });
 
     @boundMethod
     handleNext() {
@@ -368,14 +366,6 @@ class HistoryView extends React.Component<{}, {}> {
             return;
         }
         navigator.clipboard.writeText(item.cmdstr);
-        mobx.action(() => {
-            this.copiedItemId.set(item.historyid);
-        })();
-        setTimeout(() => {
-            mobx.action(() => {
-                this.copiedItemId.set(null);
-            })();
-        }, 600);
     }
 
     @boundMethod
@@ -385,7 +375,7 @@ class HistoryView extends React.Component<{}, {}> {
         }
         mobx.action(() => {
             GlobalModel.showSessionView();
-            GlobalModel.inputModel.setCurLine(item.cmdstr);
+            GlobalModel.inputModel.updateCmdLine({ str: item.cmdstr, pos: item.cmdstr.length });
             setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
         })();
     }
@@ -560,7 +550,6 @@ class HistoryView extends React.Component<{}, {}> {
                                         cmdstr={item.cmdstr}
                                         onUse={() => this.handleUse(item)}
                                         onCopy={() => this.handleCopy(item)}
-                                        isCopied={this.copiedItemId.get() == item.historyid}
                                         fontSize="normal"
                                         limitHeight={true}
                                     />
