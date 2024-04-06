@@ -152,11 +152,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:cancel", (waveEvent) => {
             GlobalModel.closeTabSettings();
-            inputModel.toggleInfoMsg();
-            if (inputModel.inputMode.get() != null) {
-                inputModel.resetInputMode();
-            }
-            inputModel.closeAIAssistantChat(true);
+            inputModel.closeAuxView();
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:expandInput", (waveEvent) => {
@@ -254,8 +250,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     lastHeight: number = 0;
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0, { name: "textAreaInput-version" }); // forces render updates
-    mainInputFocused: OV<boolean> = mobx.observable.box(true, { name: "textAreaInput-mainInputFocused" });
-    historyFocused: OV<boolean> = mobx.observable.box(false, { name: "textAreaInput-historyFocused" });
 
     incVersion(): void {
         const v = this.version.get();
@@ -286,16 +280,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     setFocus(): void {
-        const inputModel = GlobalModel.inputModel;
-        if (inputModel.historyFocus.get()) {
-            if (this.historyInputRef.current != null && document.activeElement != this.historyInputRef.current) {
-                this.historyInputRef.current.focus();
-            }
-        } else {
-            if (this.mainInputRef.current != null && document.activeElement != this.mainInputRef.current) {
-                this.mainInputRef.current.focus();
-            }
-        }
+        GlobalModel.inputModel.giveFocus();
     }
 
     getTextAreaMaxCols(): number {
@@ -536,7 +521,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             if (selStart > value.length || selEnd > value.length) {
                 return;
             }
-            const newValue = value.substr(0, selStart) + clipText + value.substr(selEnd);
+            const newValue = value.substring(0, selStart) + clipText + value.substring(selEnd);
             const cmdLineUpdate = { str: newValue, pos: selStart + clipText.length };
             GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
         });
@@ -553,19 +538,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     @boundMethod
-    handleMainFocus(e: any) {
-        const inputModel = GlobalModel.inputModel;
-        if (inputModel.historyFocus.get()) {
-            e.preventDefault();
-            if (this.historyInputRef.current != null) {
-                this.historyInputRef.current.focus();
-            }
-            return;
-        }
-        inputModel.setPhysicalInputFocused(true);
-        mobx.action(() => {
-            this.mainInputFocused.set(true);
-        })();
+    handleFocus(e: any) {
+        e.preventDefault();
+        GlobalModel.inputModel.giveFocus();
     }
 
     @boundMethod
@@ -574,25 +549,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         GlobalModel.inputModel.setPhysicalInputFocused(false);
-        mobx.action(() => {
-            this.mainInputFocused.set(false);
-        })();
-    }
-
-    @boundMethod
-    handleHistoryFocus(e: any) {
-        const inputModel = GlobalModel.inputModel;
-        if (!inputModel.historyFocus.get()) {
-            e.preventDefault();
-            if (this.mainInputRef.current != null) {
-                this.mainInputRef.current.focus();
-            }
-            return;
-        }
-        inputModel.setPhysicalInputFocused(true);
-        mobx.action(() => {
-            this.historyFocused.set(true);
-        })();
     }
 
     @boundMethod
@@ -601,9 +557,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         GlobalModel.inputModel.setPhysicalInputFocused(false);
-        mobx.action(() => {
-            this.historyFocused.set(false);
-        })();
     }
 
     render() {
@@ -621,9 +574,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             displayLines = 5;
         }
 
-        // TODO: invert logic here. We should track focus on the main textarea and assume aux view is focused if not.
-        const disabled = inputModel.historyFocus.get();
-        if (disabled) {
+        const auxViewFocused = inputModel.getAuxViewFocus();
+        if (auxViewFocused) {
             displayLines = 1;
         }
         const activeScreen = GlobalModel.getActiveScreen();
@@ -639,7 +591,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         const screen = GlobalModel.getActiveScreen();
         if (screen != null) {
             const ri = screen.getCurRemoteInstance();
-            if (ri != null && ri.shelltype != null) {
+            if (ri?.shelltype != null) {
                 shellType = ri.shelltype;
             }
             if (shellType == "") {
@@ -652,15 +604,14 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-        const isMainInputFocused = inputModel.hasFocus() && this.mainInputFocused.get();
-        const isHistoryFocused = this.historyFocused.get();
+        const isHistoryFocused = auxViewFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
         return (
             <div
                 className="textareainput-div control is-expanded"
                 ref={this.controlRef}
                 style={{ height: computedOuterHeight }}
             >
-                <If condition={isMainInputFocused}>
+                <If condition={!auxViewFocused}>
                     <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
                 </If>
                 <If condition={isHistoryFocused}>
@@ -677,7 +628,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     autoComplete="off"
                     autoCorrect="off"
                     id="main-cmd-input"
-                    onFocus={this.handleMainFocus}
+                    onFocus={this.handleFocus}
                     onBlur={this.handleMainBlur}
                     style={{ height: computedInnerHeight, minHeight: computedInnerHeight, fontSize: termFontSize }}
                     value={curLine}
@@ -685,7 +636,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onChange={this.onChange}
                     onSelect={this.onSelect}
                     placeholder="Type here..."
-                    className={cn("textarea", { "display-disabled": disabled })}
+                    className={cn("textarea", { "display-disabled": auxViewFocused })}
                 ></textarea>
                 <input
                     key="history"
@@ -695,7 +646,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     autoCorrect="off"
                     className="history-input"
                     type="text"
-                    onFocus={this.handleHistoryFocus}
+                    onFocus={this.handleFocus}
                     onBlur={this.handleHistoryBlur}
                     onKeyDown={this.onHistoryKeyDown}
                     onChange={this.handleHistoryInput}

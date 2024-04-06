@@ -318,7 +318,6 @@ class WorkspaceView extends React.Component<{}, {}> {
                         session={session}
                         screen={activeScreen}
                     />
-                    <div className="cmdinput-height-placeholder" style={{ height: cmdInputHeight }}></div>
                     <If condition={activeScreen != null}>
                         <CmdInput key={"cmdinput-" + sessionId} />
                     </If>
