@@ -266,6 +266,10 @@ func (bashShellApi) MakeShellStateDiff(oldState *packet.ShellState, oldStateHash
 	return rtn, nil
 }
 
+func (bashShellApi) ValidateCommandSyntax(cmdStr string) error {
+	return nil
+}
+
 func (bashShellApi) ApplyShellStateDiff(oldState *packet.ShellState, diff *packet.ShellStateDiff) (*packet.ShellState, error) {
 	if oldState == nil {
 		return nil, fmt.Errorf("cannot apply diff, oldState is nil")

@@ -69,6 +69,7 @@ type ShellStateOutput struct {
 type ShellApi interface {
 	GetShellType() string
 	MakeExitTrap(fdNum int) (string, []byte)
+	ValidateCommandSyntax(cmdStr string) error
 	GetLocalMajorVersion() string
 	GetLocalShellPath() string
 	GetRemoteShellPath() string
