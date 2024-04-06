@@ -81,6 +81,35 @@ func GetCurDayStr() string {
 	return dayStr
 }
 
+func GetRelDayStr(relDays int) string {
+	now := time.Now()
+	dayStr := now.AddDate(0, 0, relDays).Format("2006-01-02")
+	return dayStr
+}
+
+// accepts a custom format string to return a daystr
+// can be either a prefix, a delta, or a prefix w/ a delta
+// if no prefix is given, "today" is assumed
+// examples: today-2d, bow, bom+1m-1d (that's end of the month), 2024-04-01+1w
+//
+// prefixes:
+//
+//	yyyy-mm-dd
+//	today
+//	yesterday
+//	bom (beginning of month)
+//	bow (beginning of week -- sunday)
+//
+// deltas:
+//
+//	+[n]d, -[n]d (e.g. +1d, -5d)
+//	+[n]w, -[n]w (e.g. +2w)
+//	+[n]m, -[n]m (e.g. -1m)
+//	deltas can be combined e.g. +1w-2d
+func GetCustomDayStr(format string) (string, error) {
+	return "", nil
+}
+
 func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 	now := time.Now()
 	dayStr := GetCurDayStr()
