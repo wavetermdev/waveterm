@@ -77,4 +77,5 @@ func TestValidate(t *testing.T) {
 	testValidate(t, "zsh", "x; echo \"hello", true)
 	testValidate(t, "bash", "echo foo", false)
 	testValidate(t, "bash", "foo >& &", true)
+	testValidate(t, "bash", "cd .; echo \"", true)
 }

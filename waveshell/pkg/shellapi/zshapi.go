@@ -357,6 +357,9 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		if strings.HasPrefix(varDecl.Name, "ZFTP_") {
 			continue
 		}
+		if strings.HasPrefix(varDecl.Name, "_wavetemp_") {
+			continue
+		}
 		if varDecl.IsExtVar {
 			continue
 		}

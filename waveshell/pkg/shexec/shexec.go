@@ -827,6 +827,10 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	var rtnStateWriter *os.File
 	rcFileStr := sapi.MakeRcFileStr(pk)
 	if pk.ReturnState {
+		err := sapi.ValidateCommandSyntax(pk.Command)
+		if err != nil {
+			return nil, err
+		}
 		pr, pw, err := os.Pipe()
 		if err != nil {
 			return nil, fmt.Errorf("cannot create returnstate pipe: %v", err)
@@ -895,7 +899,12 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			os.Remove(cmd.TmpRcFileName)
 		}()
 	}
-	cmd.Cmd = sapi.MakeShExecCommand(pk.Command, rcFileName, pk.UsePty)
+	fullCmdStr := pk.Command
+	if pk.ReturnState {
+		// this ensures that the last command is a shell buitin so we always get our exit trap to run
+		fullCmdStr = fullCmdStr + "\n_wavetemp_ec=$?; wait; exit $_wavetemp_ec 2> /dev/null"
+	}
+	cmd.Cmd = sapi.MakeShExecCommand(fullCmdStr, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
