@@ -2,7 +2,9 @@ package shellapi
 
 import (
 	"fmt"
+	"log"
 	"testing"
+	"time"
 )
 
 func testSingleDecl(declStr string) {
@@ -44,4 +46,35 @@ func TestZshSafeDeclName(t *testing.T) {
 	if isZshSafeNameStr("hello\x01z") {
 		t.Errorf("should not be safe")
 	}
+}
+
+func testValidate(t *testing.T, shell string, cmd string, expectErr bool) {
+	var sapi ShellApi
+	if shell == "bash" {
+		sapi = bashShellApi{}
+	} else if shell == "zsh" {
+		sapi = zshShellApi{}
+	} else {
+		t.Errorf("unknown shell %q", shell)
+		return
+	}
+	tstart := time.Now()
+	err := sapi.ValidateCommandSyntax(cmd)
+	log.Printf("shell:%s dur:%v err: %v\n", shell, time.Since(tstart), err)
+	if expectErr && err == nil {
+		t.Errorf("cmd %q, expected error", cmd)
+	}
+	if !expectErr && err != nil {
+		t.Errorf("cmd %q, unexpected error: %v", cmd, err)
+	}
+}
+
+func TestValidate(t *testing.T) {
+	testValidate(t, "zsh", "echo foo", false)
+	testValidate(t, "zsh", "foo >& &", true)
+	testValidate(t, "zsh", "cd .", false)
+	testValidate(t, "zsh", "echo foo | grep foo", false)
+	testValidate(t, "zsh", "x; echo \"hello", true)
+	testValidate(t, "bash", "echo foo", false)
+	testValidate(t, "bash", "foo >& &", true)
 }

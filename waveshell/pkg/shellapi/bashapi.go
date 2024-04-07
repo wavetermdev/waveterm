@@ -275,10 +275,12 @@ func (bashShellApi) ValidateCommandSyntax(cmdStr string) error {
 	if err == nil {
 		return nil
 	}
-	if len(output) == 0 {
+	errStr := utilfn.GetFirstLine(string(output))
+	errStr = strings.TrimPrefix(errStr, "bash: -c: ")
+	if len(errStr) == 0 {
 		return errors.New("bash syntax error")
 	}
-	return errors.New(utilfn.GetFirstLine(string(output)))
+	return errors.New(errStr)
 }
 
 func (bashShellApi) ApplyShellStateDiff(oldState *packet.ShellState, diff *packet.ShellStateDiff) (*packet.ShellState, error) {
