@@ -232,7 +232,17 @@ func (zshShellApi) GetRemoteShellPath() string {
 }
 
 func (zshShellApi) ValidateCommandSyntax(cmdStr string) error {
-	return nil
+	ctx, cancelFn := context.WithTimeout(context.Background(), ValidateTimeout)
+	defer cancelFn()
+	cmd := exec.CommandContext(ctx, GetLocalZshPath(), "-n", "-c", cmdStr)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	if len(output) == 0 {
+		return errors.New("zsh syntax error")
+	}
+	return errors.New(utilfn.GetFirstLine(string(output)))
 }
 
 func (zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {

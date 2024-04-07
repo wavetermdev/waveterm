@@ -31,6 +31,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
@@ -1075,34 +1076,6 @@ func copyToCirFile(dest *cirfile.File, src io.Reader) error {
 	}
 }
 
-func GetCmdExitCode(cmd *exec.Cmd, err error) int {
-	if cmd == nil || cmd.ProcessState == nil {
-		return GetExitCode(err)
-	}
-	status, ok := cmd.ProcessState.Sys().(syscall.WaitStatus)
-	if !ok {
-		return cmd.ProcessState.ExitCode()
-	}
-	signaled := status.Signaled()
-	if signaled {
-		signal := status.Signal()
-		return 128 + int(signal)
-	}
-	exitStatus := status.ExitStatus()
-	return exitStatus
-}
-
-func GetExitCode(err error) int {
-	if err == nil {
-		return 0
-	}
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		return exitErr.ExitCode()
-	} else {
-		return -1
-	}
-}
-
 func (c *ShExecType) ProcWait() error {
 	exitErr := c.Cmd.Wait()
 	c.Lock.Lock()
@@ -1139,7 +1112,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	endTs := time.Now()
 	cmdDuration := endTs.Sub(c.StartTs)
 	donePacket.Ts = endTs.UnixMilli()
-	donePacket.ExitCode = GetCmdExitCode(c.Cmd, exitErr)
+	donePacket.ExitCode = utilfn.GetCmdExitCode(c.Cmd, exitErr)
 	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 	if c.FileNames != nil {
 		os.Remove(c.FileNames.StdinFifo) // best effort (no need to check error)

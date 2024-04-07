@@ -6,6 +6,7 @@ package shellapi
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"runtime"
@@ -267,7 +268,17 @@ func (bashShellApi) MakeShellStateDiff(oldState *packet.ShellState, oldStateHash
 }
 
 func (bashShellApi) ValidateCommandSyntax(cmdStr string) error {
-	return nil
+	ctx, cancelFn := context.WithTimeout(context.Background(), ValidateTimeout)
+	defer cancelFn()
+	cmd := exec.CommandContext(ctx, GetLocalBashPath(), "-n", "-c", cmdStr)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	if len(output) == 0 {
+		return errors.New("bash syntax error")
+	}
+	return errors.New(utilfn.GetFirstLine(string(output)))
 }
 
 func (bashShellApi) ApplyShellStateDiff(oldState *packet.ShellState, diff *packet.ShellStateDiff) (*packet.ShellState, error) {

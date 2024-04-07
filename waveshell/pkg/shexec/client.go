@@ -12,6 +12,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
 )
@@ -274,7 +275,7 @@ func (cproc *ClientProc) ProxySingleOutput(ck base.CommandKey, sender *packet.Pa
 		cmdDuration := endTs.Sub(cproc.StartTs)
 		donePacket := packet.MakeCmdDonePacket(ck)
 		donePacket.Ts = endTs.UnixMilli()
-		donePacket.ExitCode = GetExitCode(exitErr)
+		donePacket.ExitCode = utilfn.GetExitCode(exitErr)
 		donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 		sender.SendPacket(donePacket)
 	}
