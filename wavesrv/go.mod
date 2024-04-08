@@ -5,6 +5,7 @@ go 1.22
 toolchain go1.22.0
 
 require (
+	github.com/alecthomas/units v0.0.0-20231202071711-9a357b53e9c9
 	github.com/alessio/shellescape v1.4.1
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/creack/pty v1.1.18

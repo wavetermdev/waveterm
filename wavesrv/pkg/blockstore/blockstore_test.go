@@ -2,10 +2,11 @@ package blockstore
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"testing"
 	"time"
+
+	units "github.com/alecthomas/units"
 
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
@@ -30,31 +31,24 @@ func (b *TestBlockType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
-func (f *FileInfo) ToMap() map[string]interface{} {
-	rtn := make(map[string]interface{})
-	return rtn
-}
-
-func (fInfo *FileInfo) FromMap(m map[string]interface{}) bool {
-	fileOpts := FileOptsType{}
-	dbutil.QuickSetBool(&fileOpts.Circular, m, "circular")
-	dbutil.QuickSetInt64(&fileOpts.MaxSize, m, "maxsize")
-
-	var metaJson []byte
-	dbutil.QuickSetBytes(&metaJson, m, "meta")
-	var fileMeta FileMeta
-	err := json.Unmarshal(metaJson, &fileMeta)
-	if err != nil {
-		return false
+func Cleanup(t *testing.T, ctx context.Context) {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_file where blockid = 'test-block-id'`
+		tx.Exec(query)
+		return nil
+	})
+	if txErr != nil {
+		t.Errorf("TestTx error deleting test entries: %v", txErr)
 	}
-	dbutil.QuickSetStr(&fInfo.BlockId, m, "blockid")
-	dbutil.QuickSetStr(&fInfo.Name, m, "name")
-	dbutil.QuickSetInt64(&fInfo.Size, m, "size")
-	dbutil.QuickSetInt64(&fInfo.CreatedTs, m, "createdts")
-	dbutil.QuickSetInt64(&fInfo.ModTs, m, "modts")
-	fInfo.Opts = fileOpts
-	fInfo.Meta = fileMeta
-	return true
+	txErr = WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_data where blockid = 'test-block-id'`
+		tx.Exec(query)
+		return nil
+	})
+	if txErr != nil {
+		t.Errorf("TestTx error deleting test entries: %v", txErr)
+	}
+
 }
 
 func TestGetDB(t *testing.T) {
@@ -218,7 +212,7 @@ func TestMakeFile(t *testing.T) {
 	log.Printf("cur file info: %v", curFileInfo)
 	SimpleAssert(t, curFileInfo.Name == "file-1", "correct file name")
 	SimpleAssert(t, curFileInfo.Meta["test-descriptor"] == true, "meta correct")
-	curCacheEntry := cache["file-1"]
+	curCacheEntry := cache[GetCacheId("test-block-id", "file-1")]
 	curFileInfo = &curCacheEntry.Info
 	log.Printf("cache entry: %v", curCacheEntry)
 	SimpleAssert(t, curFileInfo.Name == "file-1", "cache correct file name")
@@ -232,3 +226,147 @@ func TestMakeFile(t *testing.T) {
 		t.Errorf("TestTx error deleting test entries: %v", txErr)
 	}
 }
+
+func TestWriteAt(t *testing.T) {
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	log.Printf("Max Block Size: %v", MaxBlockSize)
+	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, 0)
+	if err != nil {
+		t.Errorf("Write At error: %v", err)
+	} else {
+		log.Printf("Write at no errors: %v", bytesWritten)
+	}
+	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
+	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	if err != nil {
+		t.Errorf("Error getting cache: %v", err)
+	}
+	log.Printf("Cache data received: %v str: %s", cacheData, string(cacheData.data))
+	SimpleAssert(t, len(cacheData.data) == len(testBytesToWrite), "Correct num bytes received")
+	SimpleAssert(t, len(cacheData.data) == cacheData.size, "Correct cache size")
+	fInfo, err := Stat(ctx, "test-block-id", "file-1")
+	if err != nil {
+		t.Errorf("Stat Error: %v", err)
+	}
+	log.Printf("Got stat: %v", fInfo)
+	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
+	bytesWritten, err = WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, int64(bytesWritten))
+	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
+	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	if err != nil {
+		t.Errorf("Error getting cache: %v", err)
+	}
+	log.Printf("Cache data received: %v str: %s", cacheData, string(cacheData.data))
+	SimpleAssert(t, len(cacheData.data) == (2*len(testBytesToWrite)), "Correct num bytes received")
+	SimpleAssert(t, len(cacheData.data) == cacheData.size, "Correct cache size")
+	fInfo, err = Stat(ctx, "test-block-id", "file-1")
+	if err != nil {
+		t.Errorf("Stat Error: %v", err)
+	}
+	log.Printf("Got stat: %v", fInfo)
+	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
+	testBytesToWrite = []byte{'B', 'E', 'S', 'T'}
+	bytesWritten, err = WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, 0)
+	if err != nil {
+		t.Errorf("Write At error: %v", err)
+	} else {
+		log.Printf("Write at no errors: %v", bytesWritten)
+	}
+	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
+	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	if err != nil {
+		t.Errorf("Error getting cache: %v", err)
+	}
+	log.Printf("Cache data received: %v str: %s", cacheData, string(cacheData.data))
+	SimpleAssert(t, len(cacheData.data) == 22, "Correct num bytes received")
+	SimpleAssert(t, len(cacheData.data) == cacheData.size, "Correct cache size")
+	fInfo, err = Stat(ctx, "test-block-id", "file-1")
+	if err != nil {
+		t.Errorf("Stat Error: %v", err)
+	}
+	log.Printf("Got stat: %v", fInfo)
+	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
+	bytesWritten, err = WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, 11)
+	if err != nil {
+		t.Errorf("Write At error: %v", err)
+	} else {
+		log.Printf("Write at no errors: %v", bytesWritten)
+	}
+	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
+	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	if err != nil {
+		t.Errorf("Error getting cache: %v", err)
+	}
+	log.Printf("Cache data received: %v str: %s", cacheData, string(cacheData.data))
+	SimpleAssert(t, len(cacheData.data) == 22, "Correct num bytes received")
+	SimpleAssert(t, len(cacheData.data) == cacheData.size, "Correct cache size")
+	fInfo, err = Stat(ctx, "test-block-id", "file-1")
+	if err != nil {
+		t.Errorf("Stat Error: %v", err)
+	}
+	log.Printf("Got stat: %v", fInfo)
+	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_file where blockid = 'test-block-id'`
+		tx.Exec(query)
+		return nil
+	})
+	if txErr != nil {
+		t.Errorf("TestTx error deleting test entries: %v", txErr)
+	}
+}
+
+func TestWriteAtLeftPad(t *testing.T) {
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	log.Printf("Max Block Size: %v", MaxBlockSize)
+	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, 11)
+	if err != nil {
+		t.Errorf("Write At error: %v", err)
+	} else {
+		log.Printf("Write at no errors: %v", bytesWritten)
+	}
+	SimpleAssert(t, bytesWritten == 22, "Correct num bytes written")
+	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	if err != nil {
+		t.Errorf("Error getting cache: %v", err)
+	}
+	log.Printf("Cache data received: %v str: %s", cacheData, string(cacheData.data))
+	SimpleAssert(t, len(cacheData.data) == 22, "Correct num bytes received")
+	SimpleAssert(t, len(cacheData.data) == cacheData.size, "Correct cache size")
+	fInfo, err := Stat(ctx, "test-block-id", "file-1")
+	if err != nil {
+		t.Errorf("Stat Error: %v", err)
+	}
+	log.Printf("Got stat: %v", fInfo)
+	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
+	Cleanup(t, ctx)
+}
+
+// saving this code for later
+/*
+
+	cacheData, txErr := WithTxRtn(ctx, func(tx *TxWrap) ([]byte, error) {
+		var cacheData *[]byte
+		query := `SELECT data from block_data where blockid = 'test-block-id' and name = 'file-1'`
+		log.Printf("mk2")
+		tx.Get(&cacheData, query)
+		log.Printf("mk3: %v", cacheData)
+		return *cacheData, nil
+	})
+*/

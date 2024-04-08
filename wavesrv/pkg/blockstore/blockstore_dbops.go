@@ -2,6 +2,7 @@ package blockstore
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"path"
@@ -10,6 +11,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sawka/txwrap"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
@@ -96,4 +98,67 @@ func CloseDB() {
 		log.Printf("[db] error closing database: %v\n", err)
 	}
 	globalDB = nil
+}
+
+func (f *FileInfo) ToMap() map[string]interface{} {
+	rtn := make(map[string]interface{})
+	log.Printf("fileInfo ToMap is unimplemented!")
+	return rtn
+}
+
+func (fInfo *FileInfo) FromMap(m map[string]interface{}) bool {
+	fileOpts := FileOptsType{}
+	dbutil.QuickSetBool(&fileOpts.Circular, m, "circular")
+	dbutil.QuickSetInt64(&fileOpts.MaxSize, m, "maxsize")
+
+	var metaJson []byte
+	dbutil.QuickSetBytes(&metaJson, m, "meta")
+	var fileMeta FileMeta
+	err := json.Unmarshal(metaJson, &fileMeta)
+	if err != nil {
+		return false
+	}
+	dbutil.QuickSetStr(&fInfo.BlockId, m, "blockid")
+	dbutil.QuickSetStr(&fInfo.Name, m, "name")
+	dbutil.QuickSetInt64(&fInfo.Size, m, "size")
+	dbutil.QuickSetInt64(&fInfo.CreatedTs, m, "createdts")
+	dbutil.QuickSetInt64(&fInfo.ModTs, m, "modts")
+	fInfo.Opts = fileOpts
+	fInfo.Meta = fileMeta
+	return true
+}
+
+func GetFileInfo(ctx context.Context, blockId string, name string) (*FileInfo, error) {
+	fInfoArr, txErr := WithTxRtn(ctx, func(tx *TxWrap) ([]*FileInfo, error) {
+		var rtn []*FileInfo
+		query := `SELECT * FROM block_file WHERE name = 'file-1'`
+		marr := tx.SelectMaps(query)
+		for _, m := range marr {
+			rtn = append(rtn, dbutil.FromMap[*FileInfo](m))
+		}
+		return rtn, nil
+	})
+	if txErr != nil {
+		return nil, fmt.Errorf("GetFileInfo database error: %v", txErr)
+	}
+	if len(fInfoArr) > 1 {
+		return nil, fmt.Errorf("GetFileInfo duplicate files in database")
+	}
+	if len(fInfoArr) == 0 {
+		return nil, fmt.Errorf("GetFileInfo: File not found")
+	}
+	fInfo := fInfoArr[0]
+	return fInfo, nil
+}
+
+func GetCacheFromDB(ctx context.Context, blockId string, name string, off int64, length int64) (*[]byte, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*[]byte, error) {
+		var cacheData *[]byte
+		query := `SELECT substr(data,?,?) FROM block_data WHERE blockid = ? AND name = ?`
+		tx.Get(&cacheData, query, off, length, blockId, name)
+		if cacheData == nil {
+			cacheData = &[]byte{}
+		}
+		return cacheData, nil
+	})
 }
