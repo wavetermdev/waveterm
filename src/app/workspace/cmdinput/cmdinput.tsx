@@ -62,7 +62,7 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    baseCmdInputClick(e: React.MouseEvent): void {
+    baseCmdInputClick(e: React.SyntheticEvent): void {
         if (this.promptRef.current != null) {
             if (this.promptRef.current.contains(e.target)) {
                 return;
@@ -231,7 +231,12 @@ class CmdInput extends React.Component<{}, {}> {
                         </Button>
                     </div>
                 </If>
-                <div key="base-cmdinput" className="base-cmdinput" onClick={this.baseCmdInputClick}>
+                <div
+                    key="base-cmdinput"
+                    className="base-cmdinput"
+                    onClick={this.baseCmdInputClick}
+                    onSelect={this.baseCmdInputClick}
+                >
                     <div className="cmdinput-actions">
                         <If condition={numRunningLines > 0}>
                             <div
