@@ -13,6 +13,8 @@ import (
 	"io"
 	"math"
 	mathrand "math/rand"
+	"net/http"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -610,4 +612,26 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 			return err
 		}
 	}
+}
+
+// on error just returns ""
+// does not return "application/octet-stream" as this is considered a detection failure
+func DetectMimeType(path string) string {
+	fd, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer fd.Close()
+	buf := make([]byte, 512)
+	// ignore the error (EOF / UnexpectedEOF is fine, just process how much we got back)
+	n, _ := io.ReadAtLeast(fd, buf, 512)
+	if n == 0 {
+		return ""
+	}
+	buf = buf[:n]
+	rtn := http.DetectContentType(buf)
+	if rtn == "application/octet-stream" {
+		return ""
+	}
+	return rtn
 }

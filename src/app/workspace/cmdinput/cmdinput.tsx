@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If } from "tsx-control-statements/components";
+import { Choose, If, When } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -18,6 +18,7 @@ import { Prompt } from "@/common/prompt/prompt";
 import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
 import * as util from "@/util/util";
+import * as appconst from "@/app/appconst";
 
 import "./cmdinput.less";
 
@@ -71,7 +72,7 @@ class CmdInput extends React.Component<{}, {}> {
             e.stopPropagation();
             return;
         }
-        GlobalModel.inputModel.setHistoryFocus(false);
+        GlobalModel.inputModel.setAuxViewFocus(false);
         GlobalModel.inputModel.giveFocus();
     }
 
@@ -80,8 +81,8 @@ class CmdInput extends React.Component<{}, {}> {
         e.preventDefault();
         e.stopPropagation();
         const inputModel = GlobalModel.inputModel;
-        if (inputModel.aIChatShow.get()) {
-            inputModel.closeAIAssistantChat(true);
+        if (inputModel.getActiveAuxView() === appconst.InputAuxView_AIChat) {
+            inputModel.closeAuxView();
         } else {
             inputModel.openAIAssistantChat();
         }
@@ -93,7 +94,7 @@ class CmdInput extends React.Component<{}, {}> {
         e.stopPropagation();
 
         const inputModel = GlobalModel.inputModel;
-        if (inputModel.historyShow.get()) {
+        if (inputModel.getActiveAuxView() === appconst.InputAuxView_History) {
             inputModel.resetHistory();
         } else {
             inputModel.openHistory();
@@ -155,9 +156,6 @@ class CmdInput extends React.Component<{}, {}> {
             remote = GlobalModel.getRemote(rptr.remoteid);
         }
         feState = feState || {};
-        const infoShow = inputModel.infoShow.get();
-        const historyShow = !infoShow && inputModel.historyShow.get();
-        const aiChatShow = inputModel.aIChatShow.get();
         const focusVal = inputModel.physicalInputFocused.get();
         const inputMode: string = inputModel.inputMode.get();
         const textAreaInputKey = screen == null ? "null" : screen.screenId;
@@ -170,7 +168,7 @@ class CmdInput extends React.Component<{}, {}> {
         let shellInitMsg: string = null;
         let hidePrompt = false;
 
-        const openView = inputModel.getOpenView();
+        const openView = inputModel.getActiveAuxView();
         const hasOpenView = openView ? `has-${openView}` : null;
         if (ri == null) {
             let shellStr = "shell";
@@ -185,15 +183,19 @@ class CmdInput extends React.Component<{}, {}> {
         }
         return (
             <div ref={this.cmdInputRef} className={cn("cmd-input", hasOpenView, { active: focusVal })}>
-                <If condition={historyShow}>
-                    <div className="cmd-input-grow-spacer"></div>
-                    <HistoryInfo />
-                </If>
-                <If condition={aiChatShow}>
-                    <div className="cmd-input-grow-spacer"></div>
-                    <AIChat />
-                </If>
-                <InfoMsg key="infomsg" />
+                <Choose>
+                    <When condition={openView === appconst.InputAuxView_History}>
+                        <div className="cmd-input-grow-spacer"></div>
+                        <HistoryInfo />
+                    </When>
+                    <When condition={openView === appconst.InputAuxView_AIChat}>
+                        <div className="cmd-input-grow-spacer"></div>
+                        <AIChat />
+                    </When>
+                    <When condition={openView === appconst.InputAuxView_Info}>
+                        <InfoMsg key="infomsg" />
+                    </When>
+                </Choose>
                 <If condition={remote && remote.status != "connected"}>
                     <div className="remote-status-warning">
                         WARNING:&nbsp;

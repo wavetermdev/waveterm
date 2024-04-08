@@ -338,7 +338,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                             endDecoration: (
                                 <InputDecoration>
                                     <Tooltip
-                                        message={`(Required) The path to your ssh key file.`}
+                                        message={`(Required) The path to your ssh private key file.`}
                                         icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                     >
                                         <i className="fa-sharp fa-regular fa-circle-question" />
