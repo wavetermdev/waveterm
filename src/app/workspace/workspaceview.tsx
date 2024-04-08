@@ -13,7 +13,6 @@ import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
-import * as textmeasure from "@/util/textmeasure";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
 import { Button } from "@/elements";
@@ -34,7 +33,7 @@ Are you sure you want to delete this tab?
 
 class SessionKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
-        let keybindManager = GlobalModel.keybindManager;
+        const keybindManager = GlobalModel.keybindManager;
         keybindManager.registerKeybinding("mainview", "session", "app:toggleSidebar", (waveEvent) => {
             GlobalModel.handleToggleSidebar();
             return true;
@@ -96,7 +95,7 @@ class SessionKeybindings extends React.Component<{}, {}> {
 @mobxReact.observer
 class TabSettingsPulldownKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
-        let keybindManager = GlobalModel.keybindManager;
+        const keybindManager = GlobalModel.keybindManager;
         keybindManager.registerKeybinding("pane", "tabsettings", "generic:cancel", (waveEvent) => {
             GlobalModel.closeTabSettings();
             return true;
@@ -127,13 +126,13 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
             GlobalModel.modalsModel.popModal();
             return;
         }
-        let message = ScreenDeleteMessage;
-        let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
+        const message = ScreenDeleteMessage;
+        const alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
         alertRtn.then((result) => {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenDelete(screen.screenId, false);
+            const prtn = GlobalCommandRunner.screenDelete(screen.screenId, false);
             util.commandRtnHandler(prtn, this.errorMessage);
             GlobalModel.modalsModel.popModal();
         });
@@ -151,8 +150,8 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
     }
 
     render() {
-        let { screen } = this.props;
-        let rptr = screen.curRemote.get();
+        const { screen } = this.props;
+        const rptr = screen.curRemote.get();
         const termThemes = getTermThemes(GlobalModel.termThemes);
         const currTermTheme = GlobalModel.getTermTheme()[screen.screenId] ?? termThemes[0].label;
         return (
@@ -271,17 +270,12 @@ class WorkspaceView extends React.Component<{}, {}> {
     }
 
     render() {
-        const model = GlobalModel;
-        const session = model.getActiveSession();
+        const session = GlobalModel.getActiveSession();
         let activeScreen: Screen = null;
         let sessionId: string = "none";
         if (session != null) {
             sessionId = session.sessionId;
             activeScreen = session.getActiveScreen();
-        }
-        let cmdInputHeight = model.inputModel.cmdInputHeight.get();
-        if (cmdInputHeight == 0) {
-            cmdInputHeight = textmeasure.baseCmdInputHeight(GlobalModel.lineHeightEnv); // this is the base size of cmdInput (measured using devtools)
         }
 
         const isHidden = GlobalModel.activeMainView.get() != "session";
@@ -303,9 +297,9 @@ class WorkspaceView extends React.Component<{}, {}> {
                 <ScreenTabs key={"tabs-" + sessionId} session={session} />
                 <If condition={activeScreen != null}>
                     <div key="pulldown" className={cn("tab-settings-pulldown", { closed: !showTabSettings })}>
-                        <div className="close-icon" onClick={this.toggleTabSettings}>
+                        <button className="close-icon" onClick={this.toggleTabSettings}>
                             <i className="fa-solid fa-sharp fa-xmark-large" />
-                        </div>
+                        </button>
                         <TabSettings key={activeScreen.screenId} screen={activeScreen} />
                         <If condition={showTabSettings && !isHidden}>
                             <TabSettingsPulldownKeybindings />
