@@ -92,7 +92,7 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     submitChatMessage(messageStr: string) {
-        const curLine = GlobalModel.inputModel.getCurLine();
+        const curLine = GlobalModel.inputModel.curLine;
         const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
             if (!rtn.success) {

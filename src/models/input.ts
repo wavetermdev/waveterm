@@ -8,7 +8,8 @@ import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
-import { app } from "electron";
+import { SuggestionBlob } from "@/autocomplete/runtime/model";
+import { Shell, getSuggestions } from "@/autocomplete";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
     return {
@@ -73,7 +74,10 @@ class InputModel {
     physicalInputFocused: OV<boolean> = mobx.observable.box(false);
     forceInputFocus: boolean = false;
 
+    suggestions: OV<SuggestionBlob> = mobx.observable.box(null);
+
     constructor(globalModel: Model) {
+        mobx.makeAutoObservable(this);
         this.globalModel = globalModel;
         this.filteredHistoryItems = mobx.computed(() => {
             return this._getFilteredHistoryItems();
@@ -751,7 +755,7 @@ class InputModel {
     @boundMethod
     uiSubmitCommand(): void {
         mobx.action(() => {
-            const commandStr = this.getCurLine();
+            const commandStr = this.curLine;
             if (commandStr.trim() == "") {
                 return;
             }
@@ -761,23 +765,13 @@ class InputModel {
     }
 
     isEmpty(): boolean {
-        return this.getCurLine().trim() == "";
+        return this.curLine.trim() == "";
     }
 
     resetInputMode(): void {
         mobx.action(() => {
             this.setInputMode(null);
             this.setCurLine("");
-        })();
-    }
-
-    setCurLine(val: string): void {
-        const hidx = this.historyIndex.get();
-        mobx.action(() => {
-            if (this.modHistory.length <= hidx) {
-                this.modHistory.length = hidx + 1;
-            }
-            this.modHistory[hidx] = val;
         })();
     }
 
@@ -801,7 +795,20 @@ class InputModel {
         })();
     }
 
-    getCurLine(): string {
+    getSuggestions = mobx.flow(function* (this: InputModel) {
+        console.log("get suggestions");
+        try {
+            const festate = this.globalModel.getCurRemoteInstance().festate;
+            const suggestions: SuggestionBlob = yield getSuggestions(this.curLine, festate.cwd, festate.shell as Shell);
+            this.suggestions.set(suggestions);
+        } catch (error) {
+            console.error("error getting suggestions: ", error);
+        }
+    });
+
+    @mobx.computed
+    get curLine(): string {
+        console.log("get curLine");
         const hidx = this.historyIndex.get();
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
             return this.modHistory[hidx];
@@ -815,6 +822,19 @@ class InputModel {
             return "";
         }
         return hitem.cmdstr;
+    }
+
+    setCurLine(val: string): void {
+        const hidx = this.historyIndex.get();
+        mobx.action(() => {
+            if (this.modHistory.length <= hidx) {
+                this.modHistory.length = hidx + 1;
+            }
+            this.modHistory[hidx] = val;
+
+            // Whenever curLine changes, we should fetch the suggestions
+            this.getSuggestions();
+        })();
     }
 
     dropModHistory(keepLine0: boolean): void {

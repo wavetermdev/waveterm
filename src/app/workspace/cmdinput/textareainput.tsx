@@ -12,6 +12,7 @@ import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
 import { Shell, getSuggestions } from "@/autocomplete";
+import { SuggestionBlob } from "@/autocomplete/runtime/model";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -39,7 +40,7 @@ function scrollDiv(div: any, amt: number) {
     div.scrollTo({ top: newScrollTop, behavior: "smooth" });
 }
 
-class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
+class HistoryKeybindings extends React.Component<{}, {}> {
     componentDidMount(): void {
         if (GlobalModel.activeMainView != "session") {
             return;
@@ -117,7 +118,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             const lastTab = this.lastTab;
             this.lastTab = true;
             this.curPress = "tab";
-            const curLine = inputModel.getCurLine();
+            const curLine = inputModel.curLine;
             // if (lastTab) {
             getSuggestions(curLine, "~", Shell.Zsh).then(
                 mobx.action((resp) => {
@@ -562,7 +563,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     render() {
         const model = GlobalModel;
         const inputModel = model.inputModel;
-        const curLine = inputModel.getCurLine();
+        console.log("render");
+        const curLine = inputModel.curLine;
         let displayLines = 1;
         const numLines = curLine.split("\n").length;
         const maxCols = this.getTextAreaMaxCols();
@@ -605,6 +607,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             }
         }
         const isHistoryFocused = auxViewFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
+
+        const suggestions: SuggestionBlob = inputModel.suggestions.get();
+
         return (
             <div
                 className="textareainput-div control is-expanded"
@@ -612,10 +617,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 style={{ height: computedOuterHeight }}
             >
                 <If condition={!auxViewFocused}>
-                    <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
+                    <CmdInputKeybindings inputObject={this} />
                 </If>
                 <If condition={isHistoryFocused}>
-                    <HistoryKeybindings inputObject={this}></HistoryKeybindings>
+                    <HistoryKeybindings />
                 </If>
 
                 <If condition={!util.isBlank(shellType)}>
@@ -638,6 +643,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     placeholder="Type here..."
                     className={cn("textarea", { "display-disabled": auxViewFocused })}
                 ></textarea>
+                <If condition={suggestions != null && suggestions.suggestions.length > 0}>
+                    <div className="suggestions">{suggestions.suggestions[0].name}</div>
+                </If>
                 <input
                     key="history"
                     ref={this.historyInputRef}

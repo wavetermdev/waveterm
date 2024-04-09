@@ -9,8 +9,6 @@ export type ExecuteShellCommandTTYResult = {
     code: number | null;
 };
 
-const pathSep = getApi().pathSep();
-
 export const buildExecuteShellCommand =
     (timeout: number): Fig.ExecuteCommandFunction =>
     async ({ command, env, args, cwd }: Fig.ExecuteCommandInput): Promise<Fig.ExecuteCommandOutput> => {
@@ -35,6 +33,6 @@ export const resolveCwd = async (
 ): Promise<{ cwd: string; pathy: boolean; complete: boolean }> => {
     if (cmdToken == null) return { cwd, pathy: false, complete: false };
     const { token } = cmdToken;
-    const sep = shell == Shell.Bash ? "/" : pathSep;
+    const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
     return { cwd: cwd, pathy: true, complete: token.endsWith(sep) };
 };
