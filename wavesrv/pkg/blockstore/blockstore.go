@@ -68,7 +68,7 @@ type BlockStore interface {
 
 var cache map[string]*CacheEntry = make(map[string]*CacheEntry)
 
-func WriteFileToDB(ctx context.Context, fileInfo FileInfo) error {
+func InsertFileIntoDB(ctx context.Context, fileInfo FileInfo) error {
 	metaJson, err := json.Marshal(fileInfo.Meta)
 	if err != nil {
 		return fmt.Errorf("Error writing file %s to db: %v", fileInfo.Name, err)
@@ -84,10 +84,38 @@ func WriteFileToDB(ctx context.Context, fileInfo FileInfo) error {
 	return nil
 }
 
+func WriteFileToDB(ctx context.Context, fileInfo FileInfo) error {
+	metaJson, err := json.Marshal(fileInfo.Meta)
+	if err != nil {
+		return fmt.Errorf("Error writing file %s to db: %v", fileInfo.Name, err)
+	}
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE block_file SET blockid = ?, name = ?, maxsize = ?, circular = ?, size = ?, createdts = ?, modts = ?, meta = ? where blockid = ? and name = ?`
+		tx.Exec(query, fileInfo.BlockId, fileInfo.Name, fileInfo.Opts.MaxSize, fileInfo.Opts.Circular, fileInfo.Size, fileInfo.CreatedTs, fileInfo.ModTs, metaJson, fileInfo.BlockId, fileInfo.Name)
+		return nil
+	})
+	if txErr != nil {
+		return fmt.Errorf("Error writing file %s to db: %v", fileInfo.Name, txErr)
+	}
+	return nil
+
+}
+
+func WriteDataBlockToDB(ctx context.Context, blockId string, name string, index int, data []byte) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `INSERT INTO block_data values (?, ?, ?, ?) ON CONFLICT (blockid, name) DO UPDATE SET blockid = ?, name = ?, partidx = ?, data = ?`
+		tx.Exec(query, blockId, name, index, data, blockId, name, index, data)
+		return nil
+	})
+	if txErr != nil {
+		return fmt.Errorf("Error writing data block to db: %v", txErr)
+	}
+}
+
 func MakeFile(ctx context.Context, blockId string, name string, meta FileMeta, opts FileOptsType) error {
 	curTs := time.Now().UnixMilli()
 	fileInfo := FileInfo{BlockId: blockId, Name: name, Size: 0, CreatedTs: curTs, ModTs: curTs, Opts: opts, Meta: meta}
-	err := WriteFileToDB(ctx, fileInfo)
+	err := InsertFileIntoDB(ctx, fileInfo)
 	if err != nil {
 		return err
 	}
@@ -109,6 +137,21 @@ func WriteToCacheBlock(ctx context.Context, blockId string, name string, block *
 	block.size += blockLenDiff
 	cacheEntry.Info.Size += int64(blockLenDiff)
 	return bytesWritten, writeErr
+}
+
+func ReadFromCacheBlock(ctx context.Context, blockId string, name string, block *CacheBlock, p *[]byte, pos int, length int) (int, error) {
+	if pos > len(block.data) {
+		return 0, fmt.Errorf("Reading past end of cache block, should never happen")
+	}
+	bytesWritten := 0
+	for index := pos; index < length+pos; index++ {
+		if index >= len(block.data) {
+			return bytesWritten, nil
+		}
+		*p = append(*p, block.data[index])
+		bytesWritten++
+	}
+	return bytesWritten, nil
 }
 
 func WriteToCacheBuf(buf *[]byte, p []byte, pos int, length int) (int, error) {
@@ -215,7 +258,7 @@ func WriteAt(ctx context.Context, blockId string, name string, p []byte, off int
 		bytesWritten += b
 	}
 	log.Printf("writeat mk1: %v %v", numCaches, curCacheNum)
-	for index := 0; index < numCaches; index++ {
+	for index := curCacheNum; index < curCacheNum+numCaches; index++ {
 		cacheOffset := off - (int64(curCacheNum) * MaxBlockSize)
 		bytesToWriteToCurCache := int(math.Min(float64(bytesToWrite), float64(MaxBlockSize-off)))
 		curCacheBlock, err := GetCacheBlock(ctx, blockId, name, index)
@@ -234,4 +277,51 @@ func WriteAt(ctx context.Context, blockId string, name string, p []byte, off int
 		p = p[bytesToWriteToCurCache+1:]
 	}
 	return bytesWritten, nil
+}
+
+func FlushCache(ctx context.Context) error {
+	for _, cacheEntry := range cache {
+		err := WriteFileToDB(ctx, cacheEntry.Info)
+		if err != nil {
+			return err
+		}
+		for index, block := range cacheEntry.DataBlocks {
+			if block == nil || block.size == 0 {
+				continue
+			}
+			err := WriteDataBlockToDB(ctx, cacheEntry.Info.BlockId, cacheEntry.Info.Name, index, block.data)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int64) (int, error) {
+	bytesRead := 0
+	fInfo, err := Stat(ctx, blockId, name)
+	if err != nil {
+		return 0, fmt.Errorf("Read At err: %v", err)
+	}
+	if off > fInfo.Size {
+		return 0, fmt.Errorf("Read At error: tried to read past the end of the file")
+	}
+	bytesToRead := fInfo.Size - off
+	curCacheNum := int(math.Floor(float64(off) / float64(MaxBlockSize)))
+	numCaches := int(math.Ceil(float64(bytesToRead) / float64(MaxBlockSize)))
+	for index := curCacheNum; index < curCacheNum+numCaches; index++ {
+		curCacheBlock, err := GetCacheBlock(ctx, blockId, name, index)
+		if err != nil {
+			return bytesRead, fmt.Errorf("Error getting cache block: %v", err)
+		}
+		cacheOffset := off - (int64(curCacheNum) * MaxBlockSize)
+		bytesToReadFromCurCache := int(math.Min(float64(bytesToRead), float64(MaxBlockSize-off)))
+		b, err := ReadFromCacheBlock(ctx, blockId, name, curCacheBlock, p, int(cacheOffset), bytesToReadFromCurCache)
+		bytesRead += b
+		if err != nil {
+			return bytesRead, fmt.Errorf("Read from cache error: %v", err)
+		}
+	}
+	return bytesRead, nil
 }

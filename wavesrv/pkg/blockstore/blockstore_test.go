@@ -358,6 +358,60 @@ func TestWriteAtLeftPad(t *testing.T) {
 	Cleanup(t, ctx)
 }
 
+func TestReadAt(t *testing.T) {
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	log.Printf("Max Block Size: %v", MaxBlockSize)
+	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, 0)
+	if err != nil {
+		t.Errorf("Write At error: %v", err)
+	} else {
+		log.Printf("Write at no errors: %v", bytesWritten)
+	}
+	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
+	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	if err != nil {
+		t.Errorf("Error getting cache: %v", err)
+	}
+	log.Printf("Cache data received: %v str: %s", cacheData, string(cacheData.data))
+	SimpleAssert(t, len(cacheData.data) == len(testBytesToWrite), "Correct num bytes received")
+	SimpleAssert(t, len(cacheData.data) == cacheData.size, "Correct cache size")
+	fInfo, err := Stat(ctx, "test-block-id", "file-1")
+	if err != nil {
+		t.Errorf("Stat Error: %v", err)
+	}
+	log.Printf("Got stat: %v", fInfo)
+	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
+
+	var read []byte
+	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &read, 0)
+	if err != nil {
+		t.Errorf("Read error: %v", err)
+	}
+	SimpleAssert(t, bytesRead == bytesWritten, "Correct num bytes read")
+	log.Printf("bytes read: %v string: %s", read, string(read))
+
+	read = []byte{}
+	bytesRead, err = ReadAt(ctx, "test-block-id", "file-1", &read, 4)
+	if err != nil {
+		t.Errorf("Read error: %v", err)
+	}
+	SimpleAssert(t, bytesRead == (11-4), "Correct num bytes read")
+	log.Printf("bytes read: %v string: %s", read, string(read))
+	Cleanup(t, ctx)
+}
+
+func TestFlushCache(t *testing.T) {
+	log.Printf("TODO")
+}
+
 // saving this code for later
 /*
 
