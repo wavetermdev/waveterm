@@ -610,6 +610,23 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
 
         const suggestions: SuggestionBlob = inputModel.suggestions.get();
 
+        // Build the ghost prompt with the primary suggestion if available
+        let primarySuggestion = "";
+        if (suggestions != null && suggestions.suggestions.length > 0) {
+            primarySuggestion = suggestions.suggestions[0].name;
+
+            // The following is a workaround for slow responses from underlying commands. It assumes that the primary suggestion will be a continuation of the current token.
+            // The runtime will provide a number of chars to drop, but it will return after the render has already completed, meaning we will end up with a flicker. This is a workaround to prevent the flicker.
+            // As we add more characters to the current token, we assume we need to drop the same number of characters from the primary suggestion, even if the runtime has not yet provided the updated characters to drop.
+            const lastSpaceIndex = curLine.lastIndexOf(" ");
+            const curTokenLen = curLine ? curLine.substring(lastSpaceIndex + 1).length : 0;
+            const charactersToDrop = Math.max(curTokenLen, suggestions?.charactersToDrop ?? 0);
+            if (charactersToDrop > 0) {
+                primarySuggestion = primarySuggestion.substring(charactersToDrop);
+            }
+        }
+        console.log("ghost prompt", curLine + primarySuggestion);
+
         return (
             <div
                 className="textareainput-div control is-expanded"
@@ -626,6 +643,12 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 <If condition={!util.isBlank(shellType)}>
                     <div className="shelltag">{shellType}</div>
                 </If>
+                <div
+                    className="textarea-ghost"
+                    style={{ height: computedInnerHeight, minHeight: computedInnerHeight, fontSize: termFontSize }}
+                >
+                    {`${curLine}${primarySuggestion}`}
+                </div>
                 <textarea
                     key="main"
                     ref={this.mainInputRef}
@@ -643,9 +666,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     placeholder="Type here..."
                     className={cn("textarea", { "display-disabled": auxViewFocused })}
                 ></textarea>
-                <If condition={suggestions != null && suggestions.suggestions.length > 0}>
-                    <div className="suggestions">{suggestions.suggestions[0].name}</div>
-                </If>
                 <input
                     key="history"
                     ref={this.historyInputRef}

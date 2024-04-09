@@ -82,8 +82,11 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
     if (result == null) return;
 
     let charactersToDrop = lastCommand?.complete ? 0 : lastCommand?.token.length ?? 0;
+    console.log("charactersToDrop", charactersToDrop);
     if (pathy) {
+        console.log("pathy", pathy);
         charactersToDrop = pathyComplete ? 0 : getApi().pathBaseName(lastCommand?.token ?? "").length;
+        console.log("new charactersToDrop", charactersToDrop);
     }
     return { ...result, charactersToDrop };
 };

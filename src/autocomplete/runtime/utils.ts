@@ -18,11 +18,11 @@ export const buildExecuteShellCommand =
             env: env,
             timeoutms: timeout,
         });
-        console.log("resp", resp);
+        // console.log("resp", resp);
 
         const { stdout, stderr } = await GlobalModel.getEphemeralCommandOutput(resp);
-        console.log("stdout", stdout);
-        console.log("stderr", stderr);
+        // console.log("stdout", stdout);
+        // console.log("stderr", stderr);
         return { stdout, stderr, status: stderr ? 1 : 0 };
     };
 
@@ -34,5 +34,7 @@ export const resolveCwd = async (
     if (cmdToken == null) return { cwd, pathy: false, complete: false };
     const { token } = cmdToken;
     const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
+    if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
+    // console.log("token", token, "sep", sep, "cwd", cwd);
     return { cwd: cwd, pathy: true, complete: token.endsWith(sep) };
 };

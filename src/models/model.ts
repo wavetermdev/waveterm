@@ -1431,12 +1431,10 @@ class Model {
         let stderr = "";
         if (ephemeralCommandResponse.stdouturl) {
             const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stdouturl);
-            console.log("stdouturl", url);
             stdout = await this.getSingleEphemeralCommandOutput(url);
         }
         if (ephemeralCommandResponse.stderrurl) {
             const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stderrurl);
-            console.log("stderrurl", url);
             stderr = await this.getSingleEphemeralCommandOutput(url);
         }
         return { stdout: stdout, stderr: stderr };
