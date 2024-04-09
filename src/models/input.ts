@@ -7,7 +7,7 @@ import { boundMethod } from "autobind-decorator";
 import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import { Model } from "./model";
-import { GlobalCommandRunner } from "./global";
+import { GlobalCommandRunner, GlobalModel } from "./global";
 import { SuggestionBlob } from "@/autocomplete/runtime/model";
 import { Shell, getSuggestions } from "@/autocomplete";
 
@@ -74,7 +74,7 @@ class InputModel {
     physicalInputFocused: OV<boolean> = mobx.observable.box(false);
     forceInputFocus: boolean = false;
 
-    suggestions: OV<SuggestionBlob> = mobx.observable.box(null);
+    autocompleteSuggestions: OV<SuggestionBlob> = mobx.observable.box(null);
 
     constructor(globalModel: Model) {
         mobx.makeAutoObservable(this);
@@ -795,16 +795,41 @@ class InputModel {
         })();
     }
 
-    getSuggestions = mobx.flow(function* (this: InputModel) {
+    isAutocompleteEnabled(): boolean {
+        const clientData: ClientDataType = this.globalModel.clientData.get();
+        return clientData?.clientopts.autocompleteenabled;
+    }
+
+    loadAutocompleteSuggestions = mobx.flow(function* (this: InputModel) {
         console.log("get suggestions");
+        if (!this.isAutocompleteEnabled()) {
+            this.autocompleteSuggestions.set(null);
+            return;
+        }
         try {
             const festate = this.globalModel.getCurRemoteInstance().festate;
             const suggestions: SuggestionBlob = yield getSuggestions(this.curLine, festate.cwd, festate.shell as Shell);
-            this.suggestions.set(suggestions);
+            this.autocompleteSuggestions.set(suggestions);
         } catch (error) {
             console.error("error getting suggestions: ", error);
         }
     });
+
+    getAutocompleteSuggestions(): SuggestionBlob {
+        if (!this.isAutocompleteEnabled()) {
+            return null;
+        }
+        return this.autocompleteSuggestions.get();
+    }
+
+    setAutocompleteSuggestions(suggestions: SuggestionBlob): void {
+        if (!this.isAutocompleteEnabled()) {
+            return;
+        }
+        mobx.action(() => {
+            this.autocompleteSuggestions.set(suggestions);
+        })();
+    }
 
     @mobx.computed
     get curLine(): string {
@@ -836,11 +861,11 @@ class InputModel {
 
             // Whenever curLine changes, we should fetch the suggestions
             if (val.trim() == "") {
-                this.suggestions.set(null);
+                this.setAutocompleteSuggestions(null);
                 return;
             }
             if (runGetSuggestions) {
-                this.getSuggestions();
+                this.loadAutocompleteSuggestions();
             }
         })();
     }
@@ -869,7 +894,7 @@ class InputModel {
             this.historyQueryOpts.set(getDefaultHistoryQueryOpts());
             this.historyAfterLoadIndex = 0;
             this.dropModHistory(true);
-            this.suggestions.set(null);
+            this.setAutocompleteSuggestions(null);
         })();
     }
 }

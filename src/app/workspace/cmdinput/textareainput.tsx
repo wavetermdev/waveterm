@@ -613,12 +613,13 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
         const isHistoryFocused = auxViewFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
 
-        const suggestions: SuggestionBlob = inputModel.suggestions.get();
+        // Will be null if the feature is disabled
+        const autocompleteSuggestions: SuggestionBlob = inputModel.getAutocompleteSuggestions();
 
         // Build the ghost prompt with the primary suggestion if available
-        let primarySuggestion = "";
-        if (suggestions != null && suggestions.suggestions.length > 0) {
-            primarySuggestion = suggestions.suggestions[0].name;
+        let primaryAutocompleteSuggestion = "";
+        if (autocompleteSuggestions != null && autocompleteSuggestions.suggestions.length > 0) {
+            primaryAutocompleteSuggestion = autocompleteSuggestions.suggestions[0].name;
 
             // The following is a workaround for slow responses from underlying commands. It assumes that the primary suggestion will be a continuation of the current token.
             // The runtime will provide a number of chars to drop, but it will return after the render has already completed, meaning we will end up with a flicker. This is a workaround to prevent the flicker.
@@ -627,16 +628,16 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             const lastEndTokenLen = this.getEndTokenLength(this.lastCurLine.get());
             let charactersToDrop = 0;
             if (curEndTokenLen > lastEndTokenLen) {
-                charactersToDrop = Math.max(curEndTokenLen, suggestions?.charactersToDrop ?? 0);
+                charactersToDrop = Math.max(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
             } else {
-                charactersToDrop = Math.min(curEndTokenLen, suggestions?.charactersToDrop ?? 0);
+                charactersToDrop = Math.min(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
             }
 
             if (charactersToDrop > 0) {
-                primarySuggestion = primarySuggestion.substring(charactersToDrop);
+                primaryAutocompleteSuggestion = primaryAutocompleteSuggestion.substring(charactersToDrop);
             }
+            console.log("ghost prompt", curLine + primaryAutocompleteSuggestion);
         }
-        console.log("ghost prompt", curLine + primarySuggestion);
 
         return (
             <div
@@ -654,12 +655,14 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 <If condition={!util.isBlank(shellType)}>
                     <div className="shelltag">{shellType}</div>
                 </If>
-                <div
-                    className="textarea-ghost"
-                    style={{ height: computedInnerHeight, minHeight: computedInnerHeight, fontSize: termFontSize }}
-                >
-                    {`${curLine}${primarySuggestion}`}
-                </div>
+                <If condition={primaryAutocompleteSuggestion != ""}>
+                    <div
+                        className="textarea-ghost"
+                        style={{ height: computedInnerHeight, minHeight: computedInnerHeight, fontSize: termFontSize }}
+                    >
+                        {`${curLine}${primaryAutocompleteSuggestion}`}
+                    </div>
+                </If>
                 <textarea
                     key="main"
                     ref={this.mainInputRef}
