@@ -825,15 +825,23 @@ class InputModel {
     }
 
     setCurLine(val: string): void {
+        console.log("set curLine, val:", val);
         const hidx = this.historyIndex.get();
         mobx.action(() => {
+            const runGetSuggestions = this.curLine != val;
             if (this.modHistory.length <= hidx) {
                 this.modHistory.length = hidx + 1;
             }
             this.modHistory[hidx] = val;
 
             // Whenever curLine changes, we should fetch the suggestions
-            this.getSuggestions();
+            if (val.trim() == "") {
+                this.suggestions.set(null);
+                return;
+            }
+            if (runGetSuggestions) {
+                this.getSuggestions();
+            }
         })();
     }
 
@@ -861,6 +869,7 @@ class InputModel {
             this.historyQueryOpts.set(getDefaultHistoryQueryOpts());
             this.historyAfterLoadIndex = 0;
             this.dropModHistory(true);
+            this.suggestions.set(null);
         })();
     }
 }
