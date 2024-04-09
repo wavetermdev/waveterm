@@ -24,6 +24,10 @@ class ModalsModel {
         })();
         callback && callback();
     }
+
+    hasOpenModals(): boolean {
+        return this.store.length > 0;
+    }
 }
 
 export { ModalsModel };
