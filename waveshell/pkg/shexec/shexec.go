@@ -902,7 +902,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	fullCmdStr := pk.Command
 	if pk.ReturnState {
 		// this ensures that the last command is a shell buitin so we always get our exit trap to run
-		fullCmdStr = fullCmdStr + "\n_wavetemp_ec=$?; wait; exit $_wavetemp_ec 2> /dev/null"
+		fullCmdStr = fullCmdStr + "\nexit $? 2> /dev/null"
 	}
 	cmd.Cmd = sapi.MakeShExecCommand(fullCmdStr, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
