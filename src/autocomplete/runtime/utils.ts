@@ -9,21 +9,33 @@ export type ExecuteShellCommandTTYResult = {
     code: number | null;
 };
 
+let lastCommandResult: { input: Fig.ExecuteCommandInput; output: Fig.ExecuteCommandOutput } = null;
+
+const checkLastCommandResult = (input: Fig.ExecuteCommandInput): boolean => {
+    if (lastCommandResult == null) return false;
+    const { command, args, cwd, env } = input;
+    const { command: lastCommand, args: lastArgs, cwd: lastCwd, env: lastEnv } = lastCommandResult.input;
+    return command == lastCommand && args.join(" ") == lastArgs.join(" ") && cwd == lastCwd && env == lastEnv;
+};
+
 export const buildExecuteShellCommand =
     (timeout: number): Fig.ExecuteCommandFunction =>
-    async ({ command, env, args, cwd }: Fig.ExecuteCommandInput): Promise<Fig.ExecuteCommandOutput> => {
+    async (input: Fig.ExecuteCommandInput): Promise<Fig.ExecuteCommandOutput> => {
+        if (checkLastCommandResult(input)) {
+            return lastCommandResult.output;
+        }
+        const { command, args, cwd, env } = input;
         const resp = await GlobalModel.submitEphemeralCommand("eval", null, [command, ...args], null, false, {
             expectsresponse: true,
             overridecwd: cwd,
             env: env,
             timeoutms: timeout,
         });
-        // console.log("resp", resp);
 
         const { stdout, stderr } = await GlobalModel.getEphemeralCommandOutput(resp);
-        // console.log("stdout", stdout);
-        // console.log("stderr", stderr);
-        return { stdout, stderr, status: stderr ? 1 : 0 };
+        const output: Fig.ExecuteCommandOutput = { stdout, stderr, status: stderr ? 1 : 0 };
+        lastCommandResult = { input, output };
+        return output;
     };
 
 export const resolveCwd = async (
@@ -35,6 +47,5 @@ export const resolveCwd = async (
     const { token } = cmdToken;
     const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
     if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
-    // console.log("token", token, "sep", sep, "cwd", cwd);
     return { cwd: cwd, pathy: true, complete: token.endsWith(sep) };
 };
