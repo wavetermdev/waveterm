@@ -214,9 +214,16 @@ func bashParseDeclareOutput(state *packet.ShellState, declareBytes []byte, pvarB
 				firstParseErr = err
 			}
 		}
-		if decl != nil && !BashNoStoreVarNames[decl.Name] {
-			declMap[decl.Name] = decl
+		if decl == nil {
+			continue
 		}
+		if BashNoStoreVarNames[decl.Name] {
+			continue
+		}
+		if strings.HasPrefix(decl.Name, "_wavetemp_") {
+			continue
+		}
+		declMap[decl.Name] = decl
 	}
 	pvarMap := parseExtVarOutput(pvarBytes, "", "")
 	utilfn.CombineMaps(declMap, pvarMap)
