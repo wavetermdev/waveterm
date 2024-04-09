@@ -241,9 +241,8 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
 
 @mobxReact.observer
 class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: () => void }, {}> {
-    lastTab: boolean = false;
     lastHistoryUpDown: boolean = false;
-    lastTabCurLine: OV<string> = mobx.observable.box(null);
+    lastCurLine: OV<string> = mobx.observable.box(null);
     lastFocusType: string = null;
     mainInputRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
     historyInputRef: React.RefObject<HTMLInputElement> = React.createRef();
@@ -426,6 +425,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     @boundMethod
     onChange(e: any) {
         mobx.action(() => {
+            this.lastCurLine.set(GlobalModel.inputModel.curLine);
             GlobalModel.inputModel.setCurLine(e.target.value);
         })();
     }
@@ -560,6 +560,11 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         GlobalModel.inputModel.setPhysicalInputFocused(false);
     }
 
+    getEndTokenLength(line: string): number {
+        const lastSpaceIndex = line.lastIndexOf(" ");
+        return line ? line.length - lastSpaceIndex - 1 : 0;
+    }
+
     render() {
         const model = GlobalModel;
         const inputModel = model.inputModel;
@@ -618,9 +623,15 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             // The following is a workaround for slow responses from underlying commands. It assumes that the primary suggestion will be a continuation of the current token.
             // The runtime will provide a number of chars to drop, but it will return after the render has already completed, meaning we will end up with a flicker. This is a workaround to prevent the flicker.
             // As we add more characters to the current token, we assume we need to drop the same number of characters from the primary suggestion, even if the runtime has not yet provided the updated characters to drop.
-            const lastSpaceIndex = curLine.lastIndexOf(" ");
-            const curTokenLen = curLine ? curLine.substring(lastSpaceIndex + 1).length : 0;
-            const charactersToDrop = Math.max(curTokenLen, suggestions?.charactersToDrop ?? 0);
+            const curEndTokenLen = this.getEndTokenLength(curLine);
+            const lastEndTokenLen = this.getEndTokenLength(this.lastCurLine.get());
+            let charactersToDrop = 0;
+            if (curEndTokenLen > lastEndTokenLen) {
+                charactersToDrop = Math.max(curEndTokenLen, suggestions?.charactersToDrop ?? 0);
+            } else {
+                charactersToDrop = Math.min(curEndTokenLen, suggestions?.charactersToDrop ?? 0);
+            }
+
             if (charactersToDrop > 0) {
                 primarySuggestion = primarySuggestion.substring(charactersToDrop);
             }
