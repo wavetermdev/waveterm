@@ -504,6 +504,10 @@ class CommandRunner {
     setGlobalShortcut(shortcut: string): Promise<CommandRtnType> {
         return GlobalModel.submitCommand("client", "setglobalshortcut", [shortcut], { nohist: "1" }, false);
     }
+
+    setAutocompleteEnabled(enabled: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("autocomplete", enabled ? "on" : "off", null, { nohist: "1" }, false);
+    }
 }
 
 export { CommandRunner };

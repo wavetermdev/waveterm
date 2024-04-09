@@ -605,6 +605,7 @@ declare global {
         globalshortcut: string;
         globalshortcutenabled: boolean;
         webgl: boolean;
+        autocompleteenabled: boolean = true;
     };
 
     type ReleaseInfoType = {

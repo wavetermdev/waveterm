@@ -110,6 +110,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         getApi().changeAutoUpdate(val);
     }
 
+    @boundMethod
+    handleChangeAutocompleteEnabled(val: boolean): void {
+        const prtn: Promise<CommandRtnType> = GlobalCommandRunner.setAutocompleteEnabled(val);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
     getFontSizes(): DropdownItem[] {
         const availableFontSizes: DropdownItem[] = [];
         for (let s = appconst.MinFontSize; s <= appconst.MaxFontSize; s++) {
@@ -351,6 +357,15 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 options={this.getFKeys()}
                                 defaultValue={this.getCurrentShortcut()}
                                 onChange={this.handleChangeShortcut}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Command Autocomplete</div>
+                        <div className="settings-input">
+                            <Toggle
+                                checked={cdata.clientopts.autocompleteenabled}
+                                onChange={this.handleChangeAutocompleteEnabled}
                             />
                         </div>
                     </div>

@@ -296,6 +296,9 @@ func init() {
 	registerCmdFn("csvview", CSVViewCommand)
 
 	registerCmdFn("_debug:ri", DebugRemoteInstanceCommand)
+
+	registerCmdFn("autocomplete:on", AutocompleteOnCommand)
+	registerCmdFn("autocomplete:off", AutocompleteOffCommand)
 }
 
 func getValidCommands() []string {
@@ -6155,6 +6158,59 @@ func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 	update := sstore.InfoMsgUpdate("automatic release checking is now off")
+	update.AddUpdate(*clientData)
+	return update, nil
+}
+
+func setAutocompleteEnabled(ctx context.Context, clientData *sstore.ClientData, autocompleteEnabledValue bool) error {
+	clientOpts := clientData.ClientOpts
+	clientOpts.AutocompleteEnabled = autocompleteEnabledValue
+	err := sstore.SetClientOpts(ctx, clientOpts)
+	if err != nil {
+		return fmt.Errorf("error trying to update client autocomplete setting: %v", err)
+	}
+	log.Printf("client autocomplete setting updated to %v\n", autocompleteEnabledValue)
+	return nil
+}
+
+func AutocompleteOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if clientData.ClientOpts.AutocompleteEnabled {
+		return sstore.InfoMsgUpdate("autocomplete is already on"), nil
+	}
+	err = setAutocompleteEnabled(ctx, clientData, true)
+	if err != nil {
+		return nil, err
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("autocomplete is now on")
+	update.AddUpdate(*clientData)
+	return update, nil
+}
+
+func AutocompleteOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if !clientData.ClientOpts.AutocompleteEnabled {
+		return sstore.InfoMsgUpdate("autocomplete is already off"), nil
+	}
+	err = setAutocompleteEnabled(ctx, clientData, false)
+	if err != nil {
+		return nil, err
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("autocomplete is now off")
 	update.AddUpdate(*clientData)
 	return update, nil
 }
