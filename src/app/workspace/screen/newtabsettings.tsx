@@ -199,7 +199,7 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
             label: "New Connection",
             value: null,
             icon: <i className="fa-sharp fa-solid fa-plus"></i>,
-            noOp: true,
+            noop: true,
         });
 
         return options;
