@@ -28,6 +28,7 @@ import (
 )
 
 const GetVersionTimeout = 5 * time.Second
+const ValidateTimeout = 2 * time.Second
 const GetGitBranchCmdStr = `printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`
 const GetK8sContextCmdStr = `printf "K8SCONTEXT %s\x00" "$(kubectl config current-context 2>/dev/null)"`
 const GetK8sNamespaceCmdStr = `printf "K8SNAMESPACE %s\x00" "$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)"`
@@ -69,6 +70,7 @@ type ShellStateOutput struct {
 type ShellApi interface {
 	GetShellType() string
 	MakeExitTrap(fdNum int) (string, []byte)
+	ValidateCommandSyntax(cmdStr string) error
 	GetLocalMajorVersion() string
 	GetLocalShellPath() string
 	GetRemoteShellPath() string

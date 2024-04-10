@@ -205,6 +205,7 @@ class Model {
         getApi().onNativeThemeUpdated(this.onNativeThemeUpdated.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
+        window.addEventListener("focus", this.windowFocus.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
         this.lineHeightEnv = {
             // defaults
@@ -239,6 +240,12 @@ class Model {
         }).then((userKeybindings) => {
             this.keybindManager.setUserKeybindings(userKeybindings);
         });
+    }
+
+    windowFocus(): void {
+        if (this.activeMainView.get() == "session" && !this.modalsModel.hasOpenModals()) {
+            this.refocus();
+        }
     }
 
     fetchTerminalThemes() {
@@ -828,7 +835,6 @@ class Model {
     }
 
     onMetaArrowDown(): void {
-        console.log("meta arrow down?");
         GlobalCommandRunner.screenSelectLine("+1");
     }
 
@@ -841,7 +847,6 @@ class Model {
     }
 
     onSwitchSessionCmd(digit: number) {
-        console.log("switching to ", digit);
         GlobalCommandRunner.switchSession(String(digit));
     }
 
@@ -1089,7 +1094,7 @@ class Model {
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
                 this.closeTabSettings();
                 const activeScreen = this.getActiveScreen();
-                if (activeScreen != null && activeScreen.getCurRemoteInstance() != null) {
+                if (activeScreen?.getCurRemoteInstance() != null) {
                     setTimeout(() => {
                         GlobalCommandRunner.syncShellState();
                     }, 100);

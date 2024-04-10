@@ -508,11 +508,8 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 	qvals := r.URL.Query()
 	screenId := qvals.Get("screenid")
 	lineId := qvals.Get("lineid")
-	path := qvals.Get("path") // validate path?
-	contentType := qvals.Get("mimetype")
-	if contentType == "" {
-		contentType = "application/octet-stream"
-	}
+	path := qvals.Get("path")            // validate path?
+	contentType := qvals.Get("mimetype") // force a mimetype
 	if screenId == "" || lineId == "" {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("must specify sessionid, screenid, and lineid"))
@@ -533,7 +530,7 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf(ErrorInvalidLineId, err)))
 		return
 	}
-	if !ContentTypeHeaderValidRe.MatchString(contentType) {
+	if contentType != "" && !ContentTypeHeaderValidRe.MatchString(contentType) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("invalid mimetype specified"))
 		return
@@ -599,6 +596,12 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	infoJson, _ := json.Marshal(resp.Info)
+	if contentType == "" && resp.Info.MimeType != "" {
+		contentType = resp.Info.MimeType
+	}
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
 	w.Header().Set("X-FileInfo", base64.StdEncoding.EncodeToString(infoJson))
 	w.Header().Set(ContentTypeHeaderKey, contentType)
 	w.WriteHeader(http.StatusOK)
@@ -1017,6 +1020,8 @@ func main() {
 	base.ProcessType = base.ProcessType_WaveSrv
 	wlog.GlobalSubsystem = base.ProcessType_WaveSrv
 	wlog.LogConsumer = wlog.LogWithLogger
+
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	if len(os.Args) >= 2 && os.Args[1] == "--test" {
 		log.Printf("running test fn\n")

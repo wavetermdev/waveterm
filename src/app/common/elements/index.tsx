@@ -19,3 +19,4 @@ export { Tooltip } from "./tooltip";
 export { TabIcon } from "./tabicon";
 export { DatePicker } from "./datepicker";
 export { StyleBlock } from "./styleblock";
+export { CopyButton } from "./copybutton";
