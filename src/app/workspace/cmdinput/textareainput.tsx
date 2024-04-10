@@ -660,7 +660,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                         className="textarea-ghost"
                         style={{ height: computedInnerHeight, minHeight: computedInnerHeight, fontSize: termFontSize }}
                     >
-                        {`${curLine}${primaryAutocompleteSuggestion}`}
+                        {`${"\xa0".repeat(curLine.length)}${primaryAutocompleteSuggestion}`}
                     </div>
                 </If>
                 <textarea
