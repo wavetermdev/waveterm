@@ -192,16 +192,12 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         }
 
         onChange(value);
-
-        if (noop) {
-            return;
-        }
-
-        if (!("value" in this.props)) {
-            this.setState({ internalValue: value });
-        }
         this.setState({ isOpen: false, isTouched: true });
         this.unregisterKeybindings();
+
+        if (!("value" in this.props) && !noop) {
+            this.setState({ internalValue: value });
+        }
     }
 
     @boundMethod
