@@ -5,64 +5,16 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalCommandRunner, GlobalModel, Screen } from "@/models";
-import { Button, TextField, Dropdown } from "@/elements";
-import { getRemoteStr, getRemoteStrWithAlias } from "@/common/prompt/prompt";
+import { TextField, Dropdown } from "@/elements";
+import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
 import * as util from "@/util/util";
 import { TabIcon } from "@/elements/tabicon";
-import { ReactComponent as EllipseIcon } from "@/assets/icons/ellipse.svg";
-import { ReactComponent as Check12Icon } from "@/assets/icons/check12.svg";
 import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
 import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
 
 import "./screenview.less";
 import "./tabs.less";
-
-@mobxReact.observer
-class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
-    errorMessage: OV<string | null> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
-
-    constructor(props) {
-        super(props);
-    }
-
-    @boundMethod
-    clickNewConnection(): void {
-        GlobalModel.remotesModel.openAddModal({ remoteedit: true });
-    }
-
-    render() {
-        let { screen } = this.props;
-        let rptr = screen.curRemote.get();
-        return (
-            <div className="newtab-container">
-                <div className="newtab-section name-section">
-                    <TabNameTextField screen={screen} errorMessage={this.errorMessage} />
-                </div>
-                <div className="newtab-spacer" />
-                <div className="newtab-section conn-section">
-                    <div className="unselectable">
-                        You're connected to <b>[{getRemoteStrWithAlias(rptr)}]</b>. Do you want to change it?
-                    </div>
-                    <div>
-                        <TabRemoteSelector screen={screen} errorMessage={this.errorMessage} />
-                    </div>
-                    <div className="text-caption cr-help-text">
-                        To change connection from the command line use `/connect [alias|user@host]`
-                    </div>
-                </div>
-                <div className="newtab-spacer" />
-                <div className="newtab-section">
-                    <TabIconSelector screen={screen} errorMessage={this.errorMessage} />
-                </div>
-                <div className="newtab-spacer" />
-                <div className="newtab-section">
-                    <TabColorSelector screen={screen} errorMessage={this.errorMessage} />
-                </div>
-            </div>
-        );
-    }
-}
 
 @mobxReact.observer
 class TabNameTextField extends React.Component<{ screen: Screen; errorMessage?: OV<string> }, {}> {
@@ -240,4 +192,4 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
     }
 }
 
-export { NewTabSettings, TabColorSelector, TabIconSelector, TabNameTextField, TabRemoteSelector };
+export { TabColorSelector, TabIconSelector, TabNameTextField, TabRemoteSelector };

@@ -15,10 +15,9 @@ import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
-import { Button } from "@/elements";
+import { Button, Dropdown } from "@/elements";
 import { commandRtnHandler } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
-import { Dropdown } from "@/elements/dropdown";
 import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
 import { TabColorSelector, TabIconSelector, TabNameTextField, TabRemoteSelector } from "./screen/newtabsettings";
 import * as util from "@/util/util";
@@ -299,9 +298,9 @@ class WorkspaceView extends React.Component<{}, {}> {
                 <ScreenTabs key={"tabs-" + sessionId} session={session} />
                 <If condition={activeScreen != null}>
                     <div key="pulldown" className={cn("tab-settings-pulldown", { closed: !showTabSettings })}>
-                        <button className="close-icon" onClick={this.toggleTabSettings}>
+                        <Button className="close-button secondary ghost" onClick={this.toggleTabSettings}>
                             <i className="fa-solid fa-sharp fa-xmark-large" />
-                        </button>
+                        </Button>
                         <TabSettings key={activeScreen.screenId} screen={activeScreen} />
                         <If condition={showTabSettings && !isHidden}>
                             <TabSettingsPulldownKeybindings />
