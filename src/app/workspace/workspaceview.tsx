@@ -176,6 +176,7 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
                 <If condition={termThemes.length > 0}>
                     <div className="newtab-section">
                         <Dropdown
+                            label="Terminal Theme"
                             className="terminal-theme-dropdown"
                             options={termThemes}
                             defaultValue={currTermTheme}
