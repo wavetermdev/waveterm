@@ -163,6 +163,9 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
 
     @boundMethod
     selectRemote(cname: string): void {
+        if (cname == null) {
+            return;
+        }
         mobx.action(() => {
             this.selectedRemoteCN.set(cname);
         })();
@@ -191,6 +194,14 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
                 }
                 return a.remoteidx - b.remoteidx;
             });
+
+        options.push({
+            label: "New Connection",
+            value: null,
+            icon: <i className="fa-sharp fa-solid fa-plus"></i>,
+            noOp: true,
+        });
+
         return options;
     }
 
@@ -210,6 +221,7 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
         let curRemote = GlobalModel.getRemoteByName(selectedRemote);
         return (
             <Dropdown
+                label="Connection"
                 className="conn-dropdown"
                 options={this.getOptions()}
                 defaultValue={curRemote.remotecanonicalname}

@@ -163,7 +163,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         if (isOpen) {
             const option = options[highlightedIndex];
             if (option) {
-                this.handleSelect(option.value, undefined);
+                this.handleSelect(option, undefined);
             }
         } else {
             this.toggleDropdown();
@@ -185,16 +185,21 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     handleKeyDown(event: React.KeyboardEvent) {}
 
     @boundMethod
-    handleSelect(value: string, event?: React.MouseEvent | React.KeyboardEvent) {
+    handleSelect({ value, noop }: DropdownItem, event?: React.MouseEvent | React.KeyboardEvent) {
         const { onChange } = this.props;
         if (event) {
             event.stopPropagation(); // This stops the event from bubbling up to the wrapper
         }
 
+        onChange(value);
+
+        if (noop) {
+            return;
+        }
+
         if (!("value" in this.props)) {
             this.setState({ internalValue: value });
         }
-        onChange(value);
         this.setState({ isOpen: false, isTouched: true });
         this.unregisterKeybindings();
     }
@@ -245,10 +250,11 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                               className={cn("wave-dropdown-item unselectable", {
                                   "wave-dropdown-item-highlighted": index === highlightedIndex,
                               })}
-                              onClick={(e) => this.handleSelect(option.value, e)}
+                              onClick={(e) => this.handleSelect(option, e)}
                               onMouseEnter={() => this.setState({ highlightedIndex: index })}
                               onMouseLeave={() => this.setState({ highlightedIndex: -1 })}
                           >
+                              {option.icon && <span className="wave-dropdown-item-icon">{option.icon}</span>}
                               {option.label}
                           </div>
                       ))}
