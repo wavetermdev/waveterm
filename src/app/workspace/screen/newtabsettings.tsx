@@ -164,6 +164,7 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
     @boundMethod
     selectRemote(cname: string): void {
         if (cname == null) {
+            GlobalModel.remotesModel.openAddModal({ remoteedit: true });
             return;
         }
         mobx.action(() => {
