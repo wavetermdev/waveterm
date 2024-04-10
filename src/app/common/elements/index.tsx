@@ -18,5 +18,5 @@ export { Toggle } from "./toggle";
 export { Tooltip } from "./tooltip";
 export { TabIcon } from "./tabicon";
 export { DatePicker } from "./datepicker";
-export { StyleBlock } from "./styleblock";
+export { TermStyleBlock } from "./termstyleblock";
 export { CopyButton } from "./copybutton";

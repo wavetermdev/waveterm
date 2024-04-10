@@ -15,7 +15,7 @@ import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
-import { Button, StyleBlock } from "@/elements";
+import { Button, TermStyleBlock } from "@/elements";
 import { commandRtnHandler } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import { Dropdown } from "@/elements/dropdown";
@@ -239,7 +239,7 @@ class WorkspaceView extends React.Component<{}, {}> {
                 }}
             >
                 <If condition={session != null}>
-                    <StyleBlock
+                    <TermStyleBlock
                         scope="session"
                         themeSrcEl={this.sessionRef.current}
                         themeKey={session.sessionId}

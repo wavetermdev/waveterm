@@ -20,7 +20,7 @@ import { MainSideBar } from "./sidebar/main";
 import { RightSideBar } from "./sidebar/right";
 import { DisconnectedModal, ClientStopModal } from "@/modals";
 import { ModalsProvider } from "@/modals/provider";
-import { Button, StyleBlock } from "@/elements";
+import { Button, TermStyleBlock } from "@/elements";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import cn from "classnames";
 import "./app.less";
@@ -153,7 +153,7 @@ class App extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div ref={this.mainContentRef} className="main-content">
-                    <StyleBlock
+                    <TermStyleBlock
                         scope="main"
                         termTheme={termTheme}
                         themeSrcEl={this.mainContentRef.current}
