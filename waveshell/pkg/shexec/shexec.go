@@ -31,6 +31,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
@@ -826,6 +827,10 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	var rtnStateWriter *os.File
 	rcFileStr := sapi.MakeRcFileStr(pk)
 	if pk.ReturnState {
+		err := sapi.ValidateCommandSyntax(pk.Command)
+		if err != nil {
+			return nil, err
+		}
 		pr, pw, err := os.Pipe()
 		if err != nil {
 			return nil, fmt.Errorf("cannot create returnstate pipe: %v", err)
@@ -893,7 +898,12 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			os.Remove(cmd.TmpRcFileName)
 		})
 	}
-	cmd.Cmd = sapi.MakeShExecCommand(pk.Command, rcFileName, pk.UsePty)
+	fullCmdStr := pk.Command
+	if pk.ReturnState {
+		// this ensures that the last command is a shell buitin so we always get our exit trap to run
+		fullCmdStr = fullCmdStr + "\nexit $? 2> /dev/null"
+	}
+	cmd.Cmd = sapi.MakeShExecCommand(fullCmdStr, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
@@ -1082,34 +1092,6 @@ func copyToCirFile(dest *cirfile.File, src io.Reader) error {
 	}
 }
 
-func GetCmdExitCode(cmd *exec.Cmd, err error) int {
-	if cmd == nil || cmd.ProcessState == nil {
-		return GetExitCode(err)
-	}
-	status, ok := cmd.ProcessState.Sys().(syscall.WaitStatus)
-	if !ok {
-		return cmd.ProcessState.ExitCode()
-	}
-	signaled := status.Signaled()
-	if signaled {
-		signal := status.Signal()
-		return 128 + int(signal)
-	}
-	exitStatus := status.ExitStatus()
-	return exitStatus
-}
-
-func GetExitCode(err error) int {
-	if err == nil {
-		return 0
-	}
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		return exitErr.ExitCode()
-	} else {
-		return -1
-	}
-}
-
 func (c *ShExecType) ProcWait() error {
 	exitErr := c.Cmd.Wait()
 	c.Lock.Lock()
@@ -1146,7 +1128,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	endTs := time.Now()
 	cmdDuration := endTs.Sub(c.StartTs)
 	donePacket.Ts = endTs.UnixMilli()
-	donePacket.ExitCode = GetCmdExitCode(c.Cmd, exitErr)
+	donePacket.ExitCode = utilfn.GetCmdExitCode(c.Cmd, exitErr)
 	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 	if c.FileNames != nil {
 		os.Remove(c.FileNames.StdinFifo) // best effort (no need to check error)

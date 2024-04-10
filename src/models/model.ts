@@ -203,6 +203,7 @@ class Model {
         getApi().onNativeThemeUpdated(this.onNativeThemeUpdated.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
+        window.addEventListener("focus", this.windowFocus.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
         this.lineHeightEnv = {
             // defaults
@@ -227,6 +228,12 @@ class Model {
         }).then((userKeybindings) => {
             this.keybindManager.setUserKeybindings(userKeybindings);
         });
+    }
+
+    windowFocus(): void {
+        if (this.activeMainView.get() == "session" && !this.modalsModel.hasOpenModals()) {
+            this.refocus();
+        }
     }
 
     fetchTerminalThemes() {
