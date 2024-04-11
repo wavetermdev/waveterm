@@ -5,7 +5,6 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
-import { isBlank } from "@/util/util";
 
 const VALID_CSS_VARIABLES = [
     "--term-black",
@@ -41,7 +40,6 @@ class TermStyleBlock extends React.Component<{
 
     componentDidUpdate(): void {
         const { termTheme } = this.props;
-        console.log("termTheme", termTheme);
         for (const key of Object.keys(termTheme)) {
             const selector = this.getSelector(key);
             if (selector) {
@@ -62,7 +60,7 @@ class TermStyleBlock extends React.Component<{
             return `.main-content [data-screenid="${activeScreenId}"]`;
         } else if (themeKey == activeSessionId) {
             return `.main-content [data-sessionid="${activeSessionId}"]`;
-        } else if (activeSessionId != themeKey || activeScreenId != themeKey) {
+        } else if (themeKey == "main") {
             return ".main-content";
         }
         return null;
