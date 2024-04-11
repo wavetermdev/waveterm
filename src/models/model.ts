@@ -1353,7 +1353,21 @@ class Model {
         return false;
     }
 
-    submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
+    /**
+     * Submits a command packet to the server and processes the response.
+     * @param cmdPk The command packet to submit.
+     * @param interactive Whether the command is interactive.
+     * @param runUpdate Whether to run the update after the command is submitted. If true, the update will be processed and the frontend will be updated. If false, the update will be returned in the promise.
+     * @returns A promise that resolves to a CommandRtnType.
+     * @throws An error if the command fails.
+     * @see CommandRtnType
+     * @see FeCmdPacketType
+     **/
+    submitCommandPacket(
+        cmdPk: FeCmdPacketType,
+        interactive: boolean,
+        runUpdate: boolean = true
+    ): Promise<CommandRtnType> {
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
@@ -1371,16 +1385,22 @@ class Model {
         })
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
-                mobx.action(() => {
+                return mobx.action(() => {
                     const update = data.data;
                     if (update != null) {
-                        this.runUpdate(update, interactive);
+                        if (runUpdate) {
+                            console.log("running update", update);
+                            this.runUpdate(update, interactive);
+                        } else {
+                            console.log("returning update", update);
+                            return { success: true, update: update };
+                        }
                     }
                     if (interactive && !this.isInfoUpdate(update)) {
                         this.inputModel.clearInfoMsg(true);
                     }
+                    return { success: true };
                 })();
-                return { success: true };
             })
             .catch((err) => {
                 this.errorHandler("calling run-command", err, interactive);
@@ -1393,12 +1413,23 @@ class Model {
         return prtn;
     }
 
+    /**
+     * Submits a command to the server and processes the response.
+     * @param metaCmd The meta command to run.
+     * @param metaSubCmd The meta subcommand to run.
+     * @param args The arguments to pass to the command.
+     * @param kwargs The keyword arguments to pass to the command.
+     * @param interactive Whether the command is interactive.
+     * @param runUpdate Whether to run the update after the command is submitted. If true, the update will be processed and the frontend will be updated. If false, the update will be returned in the promise.
+     * @returns A promise that resolves to a CommandRtnType.
+     */
     submitCommand(
         metaCmd: string,
         metaSubCmd: string,
         args: string[],
         kwargs: Record<string, string>,
-        interactive: boolean
+        interactive: boolean,
+        runUpdate: boolean = true
     ): Promise<CommandRtnType> {
         const pk: FeCmdPacketType = {
             type: "fecmd",
@@ -1419,7 +1450,7 @@ class Model {
             pk.interactive
         );
 		 */
-        return this.submitCommandPacket(pk, interactive);
+        return this.submitCommandPacket(pk, interactive, runUpdate);
     }
 
     getSingleEphemeralCommandOutput(url: URL): Promise<string> {

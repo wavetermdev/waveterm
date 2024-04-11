@@ -88,7 +88,6 @@ const OpenAIPacketTimeout = 10 * time.Second
 const OpenAIStreamTimeout = 5 * time.Minute
 const OpenAICloudCompletionTelemetryOffErrorMsg = "To ensure responsible usage and prevent misuse, Wave AI requires telemetry to be enabled when using its free AI features.\n\nIf you prefer not to enable telemetry, you can still access Wave AI's features by providing your own OpenAI API key in the Settings menu. Please note that when using your personal API key, requests will be sent directly to the OpenAI API without being proxied through Wave's servers.\n\nIf you wish to continue using Wave AI's free features, you can easily enable telemetry by running the '/telemetry:on' command in the terminal. This will allow you to access the free AI features while helping to protect the platform from abuse."
 
-
 const (
 	KwArgRenderer = "renderer"
 	KwArgView     = "view"
@@ -173,6 +172,7 @@ func init() {
 	registerCmdFn("cr", CrCommand)
 	registerCmdFn("connect", CrCommand)
 	registerCmdFn("_compgen", CompGenCommand)
+	registerCmdFn("_compfiledir", CompFileDirCommand)
 	registerCmdFn("clear", ClearCommand)
 	registerCmdFn("reset", RemoteResetCommand)
 	registerCmdFn("reset:cwd", ResetCwdCommand)
@@ -3290,6 +3290,40 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	comps := utilfn.GetStrArr(resp.Data, "comps")
 	hasMore := utilfn.GetBool(resp.Data, "hasmore")
 	return comps, hasMore, nil
+}
+
+func CompFileDirCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, 0) // best-effort
+	if err != nil {
+		return nil, fmt.Errorf("/_compfiledir error: %w", err)
+	}
+
+	comptype := pk.Kwargs["comptype"]
+
+	if comptype != comp.CGTypeFile && comptype != comp.CGTypeDir {
+		return nil, fmt.Errorf("/_compfiledir invalid comptype '%s'", comptype)
+	}
+
+	compCtx := comp.CompContext{}
+	if ids.Remote != nil {
+		rptr := ids.Remote.RemotePtr
+		compCtx.RemotePtr = &rptr
+		if pk.Kwargs["cwd"] != "" {
+			compCtx.Cwd = pk.Kwargs["cwd"]
+		} else if ids.Remote.FeState != nil {
+			compCtx.Cwd = ids.Remote.FeState["cwd"]
+		}
+	}
+
+	crtn, err := comp.DoSimpleComp(ctx, comptype, "", compCtx, nil)
+	if err != nil {
+		return nil, err
+	}
+	if crtn == nil {
+		return nil, nil
+	}
+	compStrs := crtn.GetCompDisplayStrs()
+	return makeInfoFromComps(crtn.CompType, compStrs, crtn.HasMore), nil
 }
 
 func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {

@@ -17,6 +17,8 @@ const (
 	CompTypeVar         = "var"
 	CompTypeAssignment  = "assignment"
 	CompTypeBasic       = "basic"
+	CompTypeFile        = "file"
+	CompTypeDir         = "dir"
 )
 
 type CompletionPos struct {

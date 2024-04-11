@@ -1,6 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+// Modified from https://github.com/microsoft/inshellisense/blob/main/src/runtime/utils.ts
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { CommandToken } from "./parser";
 import { Shell } from "../utils/shell";
 import { GlobalModel, getApi } from "@/models";
@@ -46,4 +50,27 @@ export const resolveCwd = async (
     const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
     if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
     return { cwd: cwd, pathy: true, complete: token.endsWith(sep) };
+};
+
+export const getCompletionSuggestions = async (
+    cwd: string,
+    tempType: "filepaths" | "folders"
+): Promise<Fig.TemplateSuggestion[]> => {
+    const comptype = tempType === "filepaths" ? "file" : "directory";
+    if (comptype == null) return [];
+    const crtn = await GlobalModel.submitCommand("_compfiledir", null, [], { comptype, cwd }, false, false);
+    if (Array.isArray(crtn?.update?.data)) {
+        if (crtn.update.data.length === 0) return [];
+        const firstData = crtn.update.data[0];
+        if (firstData.info?.infocomps) {
+            return firstData.info.infocomps.map((comp: string) => ({
+                name: comp,
+                priority: 55,
+                context: { templateType: tempType },
+                type: comp.endsWith("/") ? "folder" : "file",
+            }));
+        } else {
+            return [];
+        }
+    }
 };

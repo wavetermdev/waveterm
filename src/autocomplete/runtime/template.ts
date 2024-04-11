@@ -1,24 +1,19 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// Modified from https://github.com/microsoft/inshellisense/blob/main/src/runtime/template.ts
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-// const fsAsync = window.require("fs/promises");
-import log from "../utils/log";
 
-// TODO: implement filepaths template
+import log from "../utils/log";
+import { getCompletionSuggestions } from "./utils";
+
 const filepathsTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> => {
-    // const files = await fsAsync.readdir(cwd, { withFileTypes: true });
-    // return files
-    //     .filter((f) => f.isFile() || f.isDirectory())
-    //     .map((f) => ({ name: f.name, priority: 55, context: { templateType: "filepaths" } }));
-    return [];
+    return await getCompletionSuggestions(cwd, "filepaths");
 };
 
-// TODO: implement folders template
 const foldersTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> => {
-    // const files = await fsAsync.readdir(cwd, { withFileTypes: true });
-    // return files
-    //     .filter((f) => f.isDirectory())
-    //     .map((f) => ({ name: f.name, priority: 55, context: { templateType: "folders" } }));
-    return [];
+    return await getCompletionSuggestions(cwd, "folders");
 };
 
 // TODO: implement history template

@@ -1,3 +1,7 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// Modified from https://github.com/microsoft/inshellisense/blob/main/src/runtime/suggestion.ts
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 

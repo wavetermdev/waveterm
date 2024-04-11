@@ -507,6 +507,12 @@ func getCompType(compPos shparse.CompletionPos) string {
 	case shparse.CompTypeArg, shparse.CompTypeBasic, shparse.CompTypeAssignment:
 		return CGTypeFile
 
+	case shparse.CompTypeDir:
+		return CGTypeDir
+
+	case shparse.CompTypeFile:
+		return CGTypeFile
+
 	default:
 		return CGTypeFile
 	}
@@ -515,11 +521,9 @@ func getCompType(compPos shparse.CompletionPos) string {
 func fixupVarPrefix(varPrefix string) string {
 	if strings.HasPrefix(varPrefix, "${") {
 		varPrefix = varPrefix[2:]
-		if strings.HasSuffix(varPrefix, "}") {
-			varPrefix = varPrefix[:len(varPrefix)-1]
-		}
-	} else if strings.HasPrefix(varPrefix, "$") {
-		varPrefix = varPrefix[1:]
+		varPrefix = strings.TrimSuffix(varPrefix, "}")
+	} else {
+		varPrefix = strings.TrimPrefix(varPrefix, "$")
 	}
 	return varPrefix
 }
