@@ -1800,6 +1800,10 @@ class Model {
             this.appUpdateStatus.set(status);
         })();
     }
+
+    getElectronApi(): ElectronApi {
+        return getApi();
+    }
 }
 
 export { Model, getApi };

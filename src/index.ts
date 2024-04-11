@@ -9,7 +9,6 @@ import { App } from "@/app/app";
 import * as DOMPurify from "dompurify";
 import { loadFonts } from "@/util/fontutil";
 import * as textmeasure from "@/util/textmeasure";
-import { getApi } from "@/models";
 
 // @ts-ignore
 let VERSION = __WAVETERM_VERSION__;

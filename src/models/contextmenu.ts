@@ -2,12 +2,40 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import type { Model } from "./model";
+import { v4 as uuidv4 } from "uuid";
 
 class ContextMenuModel {
     globalModel: Model;
+    handlers: Map<string, () => void> = new Map(); // id -> handler
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
+        this.globalModel.getElectronApi().onContextMenuClick(this.handleContextMenuClick.bind(this));
+    }
+
+    handleContextMenuClick(id: string): void {
+        let handler = this.handlers.get(id);
+        if (handler) {
+            handler();
+        }
+    }
+
+    showContextMenu(menu: ContextMenuItem[], position: { x: number; y: number }): void {
+        this.handlers.clear();
+        let electronMenuItems: ElectronContextMenuItem[] = [];
+        for (let item of menu) {
+            let electronItem: ElectronContextMenuItem = {
+                role: item.role,
+                type: item.type,
+                label: item.label,
+                id: uuidv4(),
+            };
+            if (item.click) {
+                this.handlers.set(electronItem.id, item.click);
+            }
+            electronMenuItems.push(electronItem);
+        }
+        this.globalModel.getElectronApi().showContextMenu(electronMenuItems, position);
     }
 }
 
