@@ -1097,7 +1097,7 @@ class Model {
                 const activeScreen = this.getActiveScreen();
                 if (activeScreen?.getCurRemoteInstance() != null) {
                     setTimeout(() => {
-                        GlobalCommandRunner.syncShellState();
+                        // GlobalCommandRunner.syncShellState();
                     }, 100);
                 }
             }

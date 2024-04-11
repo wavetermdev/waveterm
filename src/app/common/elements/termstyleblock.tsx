@@ -120,6 +120,9 @@ class TermStyleBlock extends React.Component<{
     }
 
     render() {
+        GlobalModel.getActiveSession();
+        GlobalModel.getActiveScreen();
+
         return null;
     }
 }
