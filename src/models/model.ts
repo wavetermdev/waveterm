@@ -210,24 +210,6 @@ class Model {
         };
     }
 
-    // getThemeSrcElForScope() {
-    //     const scopes = ["screen", "session", "main"];
-    //     for (let scope of scopes) {
-    //         if (this.termThemeSrcEls.get(scope)) {
-    //             return this.termThemeSrcEls.get(scope);
-    //         }
-    //     }
-    //     return document.documentElement;
-    // }
-
-    setTermThemeScope(screenId: string, selector: string, reset) {
-        mobx.action(() => {
-            this.termThemeScope.set("selector", selector);
-            this.termThemeScope.set("themeKey", screenId);
-            this.termThemeScope.set("reset", reset);
-        })();
-    }
-
     readConfigKeybindings() {
         const url = new URL(this.getBaseHostPort() + "/config/keybindings.json");
         let prtn = fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() });
@@ -1304,9 +1286,6 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getThemeSource();
-        const oldTermTheme = this.getTermTheme();
-        const newTermTheme = clientData?.feopts?.termtheme;
-        const ttUpdated = this.termThemeUpdated(newTermTheme, oldTermTheme);
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1327,37 +1306,6 @@ class Model {
             getApi().setNativeThemeSource(newTheme);
             this.bumpRenderVersion();
         }
-        // Only for global terminal theme. For session and screen terminal theme,
-        // they are handled in workspace view.
-        if (ttUpdated) {
-            // this.bumpTermRenderVersion();
-            // const el = document.documentElement;
-            // const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
-            // const reset = newTermTheme["global"] == null;
-            // if (globaltt) {
-            //     const rtn = this.updateTermTheme(el, globaltt, reset);
-            //     rtn.then(() => {
-            //         if (ttUpdated) {
-            //             this.bumpTermRenderVersion();
-            //         }
-            //     });
-            //     this.currGlobalTermTheme = globaltt;
-            // }
-        }
-    }
-
-    termThemeUpdated(newTermTheme, oldTermTheme) {
-        for (const key in oldTermTheme) {
-            if (!(key in newTermTheme)) {
-                return true;
-            }
-        }
-        for (const key in newTermTheme) {
-            if (!oldTermTheme[key] || oldTermTheme[key] !== newTermTheme[key]) {
-                return true;
-            }
-        }
-        return false;
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {

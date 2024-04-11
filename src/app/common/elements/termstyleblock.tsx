@@ -120,6 +120,7 @@ class TermStyleBlock extends React.Component<{
     }
 
     render() {
+        // To trigger componentDidUpdate when switching between sessions/screens
         GlobalModel.getActiveSession();
         GlobalModel.getActiveScreen();
 
