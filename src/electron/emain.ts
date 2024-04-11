@@ -488,6 +488,7 @@ electron.ipcMain.on("contextmenu-show", (event, menuDefArr, { x, y }) => {
         menu.append(menuItem);
     }
     menu.popup({ x, y });
+    event.returnValue = true;
 });
 
 electron.ipcMain.on("hide-window", (event) => {

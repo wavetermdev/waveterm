@@ -381,7 +381,7 @@ class Model {
     refocus() {
         // givefocus() give back focus to cmd or input
         const activeScreen = this.getActiveScreen();
-        if (screen == null) {
+        if (activeScreen == null) {
             return;
         }
         activeScreen.giveFocus();

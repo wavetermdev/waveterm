@@ -665,6 +665,45 @@ class LineCmd extends React.Component<
         };
     };
 
+    @boundMethod
+    handleContextMenu(e: React.MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+        let { line } = this.props;
+        let menu: ContextMenuItem[] = [
+            { role: "copy", label: "Copy", type: "normal" },
+            { role: "paste", label: "Paste", type: "normal" },
+            { type: "separator" },
+            { label: "Copy Command", click: () => this.copyCommandStr() },
+        ];
+        const isTerminal = isBlank(line.renderer) || line.renderer == "terminal";
+        if (isTerminal) {
+            menu.push({ label: "Copy Visible Output", click: () => this.copyOutput(false) });
+            menu.push({ label: "Copy Full Output", click: () => this.copyOutput(true) });
+        }
+        GlobalModel.contextMenuModel.showContextMenu(menu, { x: e.clientX, y: e.clientY });
+    }
+
+    copyCommandStr() {
+        const { line, screen } = this.props;
+        const cmd: Cmd = screen.getCmd(line);
+        if (cmd != null) {
+            navigator.clipboard.writeText(cmd.getCmdStr());
+        }
+    }
+
+    copyOutput(fullOutput: boolean) {
+        const { line, screen } = this.props;
+        let termWrap = screen.getTermWrap(line.lineid);
+        if (termWrap == null) {
+            return;
+        }
+        let outputStr = termWrap.getOutput(fullOutput);
+        if (fullOutput != null) {
+            navigator.clipboard.writeText(outputStr);
+        }
+    }
+
     render() {
         const { screen, line, width, staticRender, visible } = this.props;
         const isVisible = visible.get();
@@ -750,6 +789,7 @@ class LineCmd extends React.Component<
                 data-lineid={line.lineid}
                 data-linenum={line.linenum}
                 data-screenid={line.screenid}
+                onContextMenu={this.handleContextMenu}
             >
                 <If condition={isSelected || cmdError}>
                     <div key="mask" className={cn("line-mask", { "error-mask": cmdError })}></div>

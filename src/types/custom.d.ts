@@ -959,7 +959,7 @@ declare global {
 
     // possible to add support for submenus when needed
     type ContextMenuItem = {
-        label: string;
+        label?: string;
         type?: "separator" | "normal";
         role?: string; // electron role (optional)
         click?: () => void; // not required if role is set

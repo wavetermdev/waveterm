@@ -13,7 +13,7 @@ class ContextMenuModel {
         this.globalModel.getElectronApi().onContextMenuClick(this.handleContextMenuClick.bind(this));
     }
 
-    handleContextMenuClick(id: string): void {
+    handleContextMenuClick(e: any, id: string): void {
         let handler = this.handlers.get(id);
         if (handler) {
             handler();
