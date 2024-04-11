@@ -669,7 +669,9 @@ class LineCmd extends React.Component<
     handleContextMenu(e: React.MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
-        let { line } = this.props;
+        let { line, screen } = this.props;
+        const containerType = screen.getContainerType();
+        const isMainContainer = containerType == appconst.LineContainer_Main;
         let menu: ContextMenuItem[] = [
             { role: "copy", label: "Copy", type: "normal" },
             { role: "paste", label: "Paste", type: "normal" },
@@ -680,6 +682,25 @@ class LineCmd extends React.Component<
         if (isTerminal) {
             menu.push({ label: "Copy Visible Output", click: () => this.copyOutput(false) });
             menu.push({ label: "Copy Full Output", click: () => this.copyOutput(true) });
+        }
+        if (isMainContainer) {
+            menu.push({ type: "separator" });
+            const isMinimized = line.linestate["wave:min"];
+            if (isMinimized) {
+                menu.push({
+                    label: "Show Block Output",
+                    click: () => GlobalCommandRunner.lineMinimize(line.lineid, false, true),
+                });
+            } else {
+                menu.push({
+                    label: "Hide Block Output",
+                    click: () => GlobalCommandRunner.lineMinimize(line.lineid, true, true),
+                });
+            }
+            menu.push({ type: "separator" });
+            menu.push({ label: "Restart Line", click: () => GlobalCommandRunner.lineRestart(line.lineid, true) });
+            menu.push({ type: "separator" });
+            menu.push({ label: "Delete Block", click: () => GlobalCommandRunner.lineDelete(line.lineid, true) });
         }
         GlobalModel.contextMenuModel.showContextMenu(menu, { x: e.clientX, y: e.clientY });
     }
