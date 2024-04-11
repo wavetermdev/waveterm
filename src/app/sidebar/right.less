@@ -22,6 +22,23 @@
         border-bottom: 1px solid var(--app-border-color);
     }
 
+    .rsb-modes {
+        display: flex;
+        flex-direction: row;
+        padding: 5px 10px;
+        gap: 5px;
+        border-bottom: 1px solid var(--app-border-color);
+
+        .icon-container {
+            padding: 2px;
+            cursor: pointer;
+        }
+
+        .icon-container:hover {
+            background-color: var(--app-selected-mask-color);
+        }
+    }
+
     &.collapsed {
         display: none;
     }
