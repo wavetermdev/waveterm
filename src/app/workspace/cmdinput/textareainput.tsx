@@ -103,7 +103,6 @@ class HistoryKeybindings extends React.Component<{}, {}> {
 }
 
 class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
-    lastTab: boolean;
     curPress: string;
 
     componentDidMount() {
@@ -111,30 +110,20 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return;
         }
         const inputObject = this.props.inputObject;
-        this.lastTab = false;
         const keybindManager = GlobalModel.keybindManager;
         const inputModel = GlobalModel.inputModel;
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:autocomplete", (waveEvent) => {
-            const lastTab = this.lastTab;
-            this.lastTab = true;
             this.curPress = "tab";
             const curLine = inputModel.curLine;
-            // if (lastTab) {
-            getSuggestions(curLine, "~", Shell.Zsh).then(
-                mobx.action((resp) => {
-                    console.log("resp", resp);
-                    inputModel.flashInfoMsg({ infotitle: resp?.suggestions[0].name }, 10000);
-                })
-            );
-            // } else {
-            //     GlobalModel.submitCommand(
-            //         "_compgen",
-            //         null,
-            //         [curLine],
-            //         { comppos: String(curLine.length), nohist: "1" },
-            //         true
-            //     );
-            // }
+            if (curLine != "") {
+                const suggestions = inputModel.getAutocompleteSuggestions();
+                if (suggestions != null) {
+                    const infoMsg: InfoType = {
+                        infocomps: suggestions.suggestions.map((s) => `${s.icon} ${s.name}`),
+                    };
+                    inputModel.flashInfoMsg(infoMsg, null);
+                }
+            }
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:confirm", (waveEvent) => {
