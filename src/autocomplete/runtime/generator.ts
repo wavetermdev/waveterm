@@ -43,13 +43,12 @@ const getGeneratorContext = async (cwd: string): Promise<Fig.GeneratorContext> =
 let lastToken = "";
 let cachedSuggestions: Fig.Suggestion[] = [];
 
-// TODO: add support for caching, trigger, & getQueryTerm
+// TODO: add support getQueryTerm
 export const runGenerator = async (
     generator: Fig.Generator,
     tokens: string[],
     cwd: string
 ): Promise<Fig.Suggestion[]> => {
-    // TODO: support trigger
     const { script, postProcess, scriptTimeout, splitOn, custom, template, filterTemplateSuggestions, trigger } =
         generator;
 
