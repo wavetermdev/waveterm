@@ -139,17 +139,10 @@ class Model {
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
-
     termThemes: OMap<string, string> = mobx.observable.array([], {
         name: "terminalThemes",
         deep: false,
     });
-    termThemeScope: OMap<"selector" | "themeKey" | "reset", string> = mobx.observable.map(
-        {},
-        {
-            name: "termThemeSrcEls",
-        }
-    );
     termRenderVersion: OV<number> = mobx.observable.box(0, {
         name: "termRenderVersion",
     });

@@ -146,7 +146,6 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
         if (currTheme == theme) {
             return;
         }
-        GlobalModel.setTermThemeScope(screenId, `.main-content [data-screenid="${screenId}"]`, theme == null);
         const prtn = GlobalCommandRunner.setScreenTermTheme(screenId, theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }

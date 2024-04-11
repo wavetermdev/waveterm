@@ -37,30 +37,35 @@ class TermStyleBlock extends React.Component<{
     termTheme: TermThemeType;
 }> {
     styleRules: OV<string> = mobx.observable.box("", { name: "StyleBlock-styleRules" });
-    theme: string;
     injectedStyleElement: HTMLStyleElement | null = null;
-
-    componentDidMount(): void {
-        const { termTheme } = this.props;
-        Object.keys(termTheme).forEach((themeKey) => {
-            // this.loadThemeStyles();
-        });
-    }
 
     componentDidUpdate(): void {
         const { termTheme } = this.props;
-        const selector = GlobalModel.termThemeScope.get("selector");
-        const themeKey = GlobalModel.termThemeScope.get("themeKey");
-        const reset = GlobalModel.termThemeScope.get("reset");
-        const currTheme = termTheme[themeKey];
-
-        console.log("reset:=========", reset);
-
-        if (reset) {
-            this.removeInjectedStyle();
-        } else if (this.theme !== currTheme) {
-            this.loadThemeStyles(selector, themeKey);
+        console.log("termTheme", termTheme);
+        for (const key of Object.keys(termTheme)) {
+            const selector = this.getSelector(key);
+            if (selector) {
+                this.removeInjectedStyle();
+                this.loadThemeStyles(selector, termTheme[key]);
+                break;
+            }
         }
+    }
+
+    getSelector(themeKey: string) {
+        const session = GlobalModel.getActiveSession();
+        const activeSessionId = session.sessionId;
+        const screen = GlobalModel.getActiveScreen();
+        const activeScreenId = screen.screenId;
+
+        if (themeKey == activeScreenId) {
+            return `.main-content [data-screenid="${activeScreenId}"]`;
+        } else if (themeKey == activeSessionId) {
+            return `.main-content [data-sessionid="${activeSessionId}"]`;
+        } else if (activeSessionId != themeKey || activeScreenId != themeKey) {
+            return ".main-content";
+        }
+        return null;
     }
 
     isValidCSSColor(color) {
@@ -85,16 +90,9 @@ class TermStyleBlock extends React.Component<{
         }
     }
 
-    loadThemeStyles(selector: string, themeKey: string) {
-        const { termTheme } = this.props;
-
-        const currTheme = termTheme[themeKey];
-
-        console.log("selector:", selector);
-        console.log("themeKey:", themeKey);
-
+    loadThemeStyles(selector: string, theme: string) {
         // Inject new style element
-        GlobalModel.getTermThemeJson(currTheme)
+        GlobalModel.getTermThemeJson(theme)
             .then((termThemeJson) => {
                 if (termThemeJson && typeof termThemeJson === "object") {
                     const styleProperties = Object.entries(termThemeJson)
@@ -110,8 +108,6 @@ class TermStyleBlock extends React.Component<{
                     document.head.appendChild(style);
 
                     this.injectedStyleElement = style;
-                    this.theme = currTheme;
-
                     console.log("loaded theme styles:", this.styleRules.get());
                 } else {
                     console.error("termThemeJson is not an object:", termThemeJson);
