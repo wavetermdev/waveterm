@@ -1,5 +1,9 @@
-// Modified from https://github.com/sleeplessinc/cache/index.js
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+// Inspired by https://github.com/sleeplessinc/cache/index.js
 // Copyright 2017 Sleepless Software Inc. All rights reserved.
+// SPDX-License-Identifier: ISC
 
 import dayjs, { Dayjs } from "dayjs";
 import duration, { Duration } from "dayjs/plugin/duration";
