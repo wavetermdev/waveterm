@@ -672,6 +672,7 @@ class LineCmd extends React.Component<
         let { line, screen } = this.props;
         const containerType = screen.getContainerType();
         const isMainContainer = containerType == appconst.LineContainer_Main;
+        const cmd = screen.getCmd(line);
         let menu: ContextMenuItem[] = [
             { role: "copy", label: "Copy", type: "normal" },
             { role: "paste", label: "Paste", type: "normal" },
@@ -697,6 +698,22 @@ class LineCmd extends React.Component<
                     click: () => GlobalCommandRunner.lineMinimize(line.lineid, true, true),
                 });
             }
+            if (cmd?.isRunning()) {
+                menu.push({ type: "separator" });
+                menu.push({
+                    label: "Send Signal",
+                    type: "submenu",
+                    submenu: [
+                        { label: "SIGINT", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGINT", true) },
+                        { label: "SIGTERM", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGTERM", true) },
+                        { label: "SIGKILL", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGKILL", true) },
+                        { type: "separator" },
+                        { label: "SIGUSR1", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGUSR1", true) },
+                        { label: "SIGUSR2", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGUSR2", true) },
+                    ],
+                });
+            }
+
             menu.push({ type: "separator" });
             menu.push({ label: "Restart Line", click: () => GlobalCommandRunner.lineRestart(line.lineid, true) });
             menu.push({ type: "separator" });
