@@ -153,12 +153,7 @@ class App extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div ref={this.mainContentRef} className="main-content">
-                    <TermStyleBlock
-                        scope="main"
-                        termTheme={termTheme}
-                        themeSrcEl={this.mainContentRef.current}
-                        themeKey="main"
-                    />
+                    <TermStyleBlock termTheme={termTheme} />
                     <MainSideBar parentRef={this.mainContentRef} />
                     <ErrorBoundary>
                         <PluginsView />

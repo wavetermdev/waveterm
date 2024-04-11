@@ -188,13 +188,13 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         const termRenderVersion = GlobalModel.termRenderVersion.get();
 
         return (
-            <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
-                <TermStyleBlock
+            <div className="screen-view" id={screen.screenId} data-screenid={screen.screenId} ref={this.screenViewRef}>
+                {/* <TermStyleBlock
                     scope="screen"
                     termTheme={termTheme}
                     themeSrcEl={this.screenViewRef.current}
                     themeKey={screen.screenId}
-                />
+                /> */}
                 <ScreenWindowView
                     key={screen.screenId + ":" + fontSize + ":" + dprStr + ":" + termRenderVersion}
                     session={session}

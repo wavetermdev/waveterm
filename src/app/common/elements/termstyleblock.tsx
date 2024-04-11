@@ -33,10 +33,9 @@ const VALID_CSS_VARIABLES = [
 ];
 
 @mobxReact.observer
-class TermStyleBlock extends React.Component<
-    { scope: "main" | "session" | "screen"; themeSrcEl: HTMLElement; themeKey: string; termTheme: TermThemeType },
-    { styleRules: string }
-> {
+class TermStyleBlock extends React.Component<{
+    termTheme: TermThemeType;
+}> {
     styleRules: OV<string> = mobx.observable.box("", { name: "StyleBlock-styleRules" });
     theme: string;
 
@@ -45,9 +44,10 @@ class TermStyleBlock extends React.Component<
     }
 
     componentDidUpdate(prevProps): void {
-        const { themeKey, termTheme } = this.props;
+        const { termTheme } = this.props;
+        const themeKey = GlobalModel.termThemeScope.get("themeKey");
         const currTheme = termTheme[themeKey];
-        if (themeKey !== prevProps.themeKey || currTheme !== this.theme) {
+        if (themeKey !== prevProps.themeKey) {
             this.loadThemeStyles();
         }
     }
@@ -60,7 +60,6 @@ class TermStyleBlock extends React.Component<
 
     isValidTermCSSVariable(key, value) {
         const cssVarName = `--term-${key}`;
-        console.log("cssVarName", cssVarName, "value", value);
         return VALID_CSS_VARIABLES.includes(cssVarName);
     }
 
@@ -69,41 +68,52 @@ class TermStyleBlock extends React.Component<
     }
 
     loadThemeStyles() {
-        const { themeKey, termTheme, scope } = this.props;
+        const { termTheme } = this.props;
+        const selector = GlobalModel.termThemeScope.get("selector");
+        const themeKey = GlobalModel.termThemeScope.get("themeKey");
         const currTheme = termTheme[themeKey];
+        console.log("selector", selector);
+        console.log("themeKey", themeKey);
+        console.log("currTheme", currTheme);
+        console.log("this.theme", this.theme);
 
-        if (currTheme && currTheme !== this.theme && currTheme) {
-            const rtn = GlobalModel.getTermThemeJson(currTheme);
-            rtn.then((termThemeJson) => {
-                if (termThemeJson && typeof termThemeJson === "object") {
-                    const styleProperties = Object.entries(termThemeJson)
-                        .filter(([key, value]) => {
-                            const cssVarName = `--term-${this.camelCaseToKebabCase(key)}`;
-                            return VALID_CSS_VARIABLES.includes(cssVarName) && this.isValidCSSColor(value);
-                        })
-                        .map(([key, value]) => `--term-${key}: ${value};`)
-                        .join(" ");
+        // if (currTheme && currTheme !== this.theme && currTheme) {
+        const rtn = GlobalModel.getTermThemeJson(currTheme);
+        rtn.then((termThemeJson) => {
+            if (termThemeJson && typeof termThemeJson === "object") {
+                const styleProperties = Object.entries(termThemeJson)
+                    .filter(([key, value]) => {
+                        const cssVarName = `--term-${this.camelCaseToKebabCase(key)}`;
+                        return VALID_CSS_VARIABLES.includes(cssVarName) && this.isValidCSSColor(value);
+                    })
+                    .map(([key, value]) => `--term-${key}: ${value};`)
+                    .join(" ");
 
-                    mobx.action(() => {
-                        this.styleRules.set(`:root { ${styleProperties} }`);
-                        GlobalModel.termThemeSrcEls.set(scope, this.props.themeSrcEl);
-                    })();
-                    GlobalModel.bumpTermRenderVersion();
-                    this.theme = currTheme;
-                } else {
-                    console.error("termThemeJson is not an object:", termThemeJson);
-                }
-            }).catch((error) => {
+                mobx.action(() => {
+                    this.styleRules.set(`:root { ${styleProperties} }`);
+                    GlobalModel.termThemeScope.set(selector);
+                })();
+                console.log("loaded theme styles:", this.styleRules.get());
+            } else {
+                console.error("termThemeJson is not an object:", termThemeJson);
+            }
+        })
+            .then(() => {
+                GlobalModel.bumpTermRenderVersion();
+                this.theme = currTheme;
+            })
+            .catch((error) => {
                 console.error("error loading theme styles:", error);
             });
-        } else {
-            mobx.action(() => {
-                this.styleRules.set("");
-                GlobalModel.termThemeSrcEls.set(scope, null);
-            })();
-            this.theme = currTheme;
-            GlobalModel.bumpTermRenderVersion();
-        }
+        // }
+        // else {
+        //     mobx.action(() => {
+        //         this.styleRules.set("");
+        //         GlobalModel.termThemeScope.set(null);
+        //     })();
+        //     this.theme = currTheme;
+        //     GlobalModel.bumpTermRenderVersion();
+        // }
     }
 
     render() {

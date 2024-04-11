@@ -145,6 +145,7 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
         if (currTheme == theme) {
             return;
         }
+        GlobalModel.setTermThemeScope(screenId);
         const prtn = GlobalCommandRunner.setScreenTermTheme(screenId, theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
@@ -239,14 +240,14 @@ class WorkspaceView extends React.Component<{}, {}> {
                     width: `${window.innerWidth - mainSidebarModel.getWidth()}px`,
                 }}
             >
-                <If condition={session != null}>
+                {/* <If condition={session != null}>
                     <TermStyleBlock
                         scope="session"
                         themeSrcEl={this.sessionRef.current}
                         themeKey={session.sessionId}
                         termTheme={termTheme}
                     />
-                </If>
+                </If> */}
                 <If condition={!isHidden}>
                     <SessionKeybindings key="keybindings"></SessionKeybindings>
                 </If>
