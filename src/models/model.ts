@@ -32,6 +32,7 @@ import { MainSidebarModel } from "./mainsidebar";
 import { RightSidebarModel } from "./rightsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
+import { ContextMenuModel } from "./contextmenu";
 import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
@@ -121,6 +122,7 @@ class Model {
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
     rightSidebarModel: RightSidebarModel;
+    contextMenuModel: ContextMenuModel;
     isDarkTheme: OV<boolean> = mobx.observable.box(getApi().getShouldUseDarkColors(), {
         name: "isDarkTheme",
     });
@@ -177,6 +179,7 @@ class Model {
         this.modalsModel = new ModalsModel();
         this.mainSidebarModel = new MainSidebarModel(this);
         this.rightSidebarModel = new RightSidebarModel(this);
+        this.contextMenuModel = new ContextMenuModel(this);
         const isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -378,7 +381,7 @@ class Model {
     refocus() {
         // givefocus() give back focus to cmd or input
         const activeScreen = this.getActiveScreen();
-        if (screen == null) {
+        if (activeScreen == null) {
             return;
         }
         activeScreen.giveFocus();
@@ -705,10 +708,6 @@ class Model {
         const key = context.screenId + "/" + context.lineId;
         this.termUsedRowsCache[key] = height;
         GlobalCommandRunner.setTermUsedRows(context, height);
-    }
-
-    contextScreen(e: any, screenId: string) {
-        getApi().contextScreen({ screenId: screenId }, { x: e.x, y: e.y });
     }
 
     contextEditMenu(e: any, opts: ContextMenuOpts) {
@@ -1800,6 +1799,10 @@ class Model {
         mobx.action(() => {
             this.appUpdateStatus.set(status);
         })();
+    }
+
+    getElectronApi(): ElectronApi {
+        return getApi();
     }
 }
 

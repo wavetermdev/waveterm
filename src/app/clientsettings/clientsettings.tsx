@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
-import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
@@ -70,7 +70,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             return;
         }
         const prtn = GlobalCommandRunner.setTheme(themeSource, false);
-        getApi().setNativeThemeSource(themeSource);
+        GlobalModel.getElectronApi().setNativeThemeSource(themeSource);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -107,7 +107,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             prtn = GlobalCommandRunner.releaseCheckAutoOff(false);
         }
         commandRtnHandler(prtn, this.errorMessage);
-        getApi().changeAutoUpdate(val);
+        GlobalModel.getElectronApi().changeAutoUpdate(val);
     }
 
     getFontSizes(): DropdownItem[] {

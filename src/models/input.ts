@@ -6,7 +6,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
-import { Model } from "./model";
+import type { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
 import { app } from "electron";
 
