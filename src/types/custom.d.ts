@@ -942,12 +942,28 @@ declare global {
         onAppUpdateStatus: (callback: (status: AppUpdateStatusType) => void) => void;
         onZoomChanged: (callback: () => void) => void;
         onMenuItemAbout: (callback: () => void) => void;
-        contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;
         contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
         onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
         getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
         onToggleDevUI: (callback: () => void) => void;
+        showContextMenu: (menu: ElectronContextMenuItem[], position: { x: number; y: number }) => void;
+        onContextMenuClick: (callback: (id: string) => void) => void;
     };
 }
+
+type ElectronContextMenuItem = {
+    id: string; // unique id, used for communication
+    label: string;
+    role?: string; // electron role (optional)
+    type?: "separator" | "normal";
+};
+
+// possible to add support for submenus when needed
+type ContextMenuItem = {
+    label: string;
+    type?: "separator" | "normal";
+    role?: string; // electron role (optional)
+    click?: () => void; // not required if role is set
+};
 
 export {};

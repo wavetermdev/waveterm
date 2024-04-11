@@ -470,6 +470,26 @@ electron.ipcMain.on("toggle-developer-tools", (event) => {
     event.returnValue = true;
 });
 
+electron.ipcMain.on("contextmenu-show", (event, menuDefArr, { x, y }) => {
+    if (menuDefArr == null || menuDefArr.length == 0) {
+        return;
+    }
+    const menu = new electron.Menu();
+    for (const menuDef of menuDefArr) {
+        const menuItemTemplate = {
+            role: menuDef.role,
+            label: menuDef.label,
+            type: menuDef.type,
+            click: () => {
+                MainWindow?.webContents.send("contextmenu-click", menuDef.id);
+            },
+        };
+        const menuItem = new electron.MenuItem(menuItemTemplate);
+        menu.append(menuItem);
+    }
+    menu.popup({ x, y });
+});
+
 electron.ipcMain.on("hide-window", (event) => {
     if (MainWindow != null) {
         MainWindow.hide();
@@ -675,12 +695,6 @@ function runWaveSrv() {
     });
     return rtnPromise;
 }
-
-electron.ipcMain.on("context-screen", (_, { screenId }, { x, y }) => {
-    console.log("context-screen", screenId);
-    const menu = getContextMenu();
-    menu.popup({ x, y });
-});
 
 electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
     if (opts == null) {
