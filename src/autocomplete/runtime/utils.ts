@@ -16,9 +16,12 @@ export const buildExecuteShellCommand =
     (timeout: number): Fig.ExecuteCommandFunction =>
     async (input: Fig.ExecuteCommandInput): Promise<Fig.ExecuteCommandOutput> => {
         const cachedResult = commandResultCache.get(input);
+        console.log("cachedResult", cachedResult);
         if (cachedResult) {
+            console.log("Using cached result for", input);
             return cachedResult;
         }
+        console.log("Executing command", input);
         const { command, args, cwd, env } = input;
         const resp = await GlobalModel.submitEphemeralCommand("eval", null, [command, ...args], null, false, {
             expectsresponse: true,
