@@ -639,6 +639,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
+	runPacket.IsSudo = IsSudoCommand(cmdStr)
 	rcOpts := remote.RunCommandOpts{
 		SessionId:     ids.SessionId,
 		ScreenId:      ids.ScreenId,

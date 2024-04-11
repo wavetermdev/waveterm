@@ -4,8 +4,13 @@
 package shexec
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -32,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -119,6 +125,8 @@ type ShExecType struct {
 	Exited         bool   // locked via Lock
 	TmpRcFileName  string // file *or* directory holding temporary rc file(s)
 	SAPI           shellapi.ShellApi
+	ShellPrivKey   *ecdh.PrivateKey
+	SudoWriter     *os.File
 }
 
 type StdContext struct{}
@@ -199,6 +207,37 @@ func (s ShExecUPR) UnknownPacket(pk packet.PacketType) {
 			msg.CK = s.ShExec.CK
 			s.ShExec.MsgSender.SendPacket(msg)
 		}
+		return
+	}
+	if pk.GetType() == packet.SudoResponsePacketStr {
+		sudoPacket := pk.(*packet.SudoResponsePacketType)
+		srvPubKey, err := x509.ParsePKIXPublicKey(sudoPacket.SrvPubKey)
+		if err != nil {
+			wlog.Logf("ending err 1: %e\n", err)
+			return
+		}
+		ecdhSrvPubKey, err := srvPubKey.(*ecdsa.PublicKey).ECDH()
+		if err != nil {
+			wlog.Logf("ending err 2: %e\n", err)
+			return
+		}
+		sharedKey, err := s.ShExec.ShellPrivKey.ECDH(ecdhSrvPubKey)
+		if err != nil {
+			wlog.Logf("ending err 3: %e\n", err)
+			return
+		}
+		encryptor, err := promptenc.MakeEncryptor(sharedKey)
+		if err != nil {
+			wlog.Logf("ending err 4: %e\n", err)
+			return
+		}
+		decrypted, err := encryptor.DecryptData(sudoPacket.Secret, "sudopw")
+		if err != nil {
+			wlog.Logf("ending err 5: %e\n", err)
+			return
+		}
+		decrypted = append(decrypted, '\n')
+		s.ShExec.SudoWriter.Write(decrypted)
 		return
 	}
 	if s.UPR != nil {
@@ -894,6 +933,13 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			os.Remove(cmd.TmpRcFileName)
 		}()
 	}
+	var sudoKey uuid.UUID
+	var sudoErrKey uuid.UUID
+	if pk.IsSudo {
+		sudoKey = uuid.New()
+		sudoErrKey = uuid.New()
+		pk.Command = fmt.Sprintf("sudo -p \"%s\" -S true 2>&7 <&6; if [ $? != 0 ]; then echo %s >&7 && exit; fi; exec 6>&-; exec 7>&-; %s", sudoKey, sudoErrKey, pk.Command)
+	}
 	cmd.Cmd = sapi.MakeShExecCommand(pk.Command, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
@@ -963,6 +1009,67 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		if err != nil {
 			return nil, err
 		}
+	}
+	if pk.IsSudo {
+		readToSudo, writeToSudo, err := os.Pipe()
+		if err != nil {
+			return nil, err
+		}
+
+		readFromSudo, writeFromSudo, err := os.Pipe()
+		if err != nil {
+			return nil, err
+		}
+
+		go func() {
+			reader := bufio.NewReader(readFromSudo)
+			buffer := bytes.NewBuffer(make([]byte, 0))
+			chunk := make([]byte, 1024)
+			firstAttempt := true
+			for {
+				len, _ := reader.Read(chunk)
+				buffer.Write(chunk[:len])
+				if bytes.Contains(buffer.Bytes(), []byte(sudoKey.String())) {
+					wlog.Logf("buffer: %v\n", buffer.Bytes())
+					wlog.Logf("sudokey: %v\n", []byte(sudoKey.String()))
+					buffer.Reset()
+
+					// subsequent attempts get an extra \n
+					sudoStatus := "followup-attempt"
+					if firstAttempt {
+						sudoStatus = "first-attempt"
+					}
+					firstAttempt = false
+
+					shellPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
+					if err != nil {
+						// TODO
+						return
+					}
+					shellPubKey, err := x509.MarshalPKIXPublicKey(shellPrivKey.PublicKey())
+					if err != nil {
+						// TODO
+						return
+					}
+					rtnShExec.ShellPrivKey = shellPrivKey
+					rtnShExec.SudoWriter = writeToSudo
+					sudoRequest := packet.MakeSudoRequestPacket(cmd.CK, shellPubKey, sudoStatus)
+					rtnShExec.MsgSender.SendPacket(sudoRequest)
+				} else if bytes.Contains(buffer.Bytes(), []byte(sudoErrKey.String())) {
+					sudoRequest := packet.MakeSudoRequestPacket(cmd.CK, nil, "failure")
+					rtnShExec.MsgSender.SendPacket(sudoRequest)
+
+				} else if buffer.Len() > 0 {
+					wlog.Logf("unparsed line: %s", buffer)
+				}
+			}
+		}()
+
+		if 7 >= len(extraFiles) {
+			extraFiles = extraFiles[:7+1]
+		}
+		extraFiles[6] = readToSudo    //todo - make a constant for the 6
+		extraFiles[7] = writeFromSudo // todo - same
 	}
 	for _, rfd := range pk.Fds {
 		if rfd.FdNum >= len(extraFiles) {

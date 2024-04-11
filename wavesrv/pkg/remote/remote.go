@@ -6,6 +6,10 @@ package remote
 import (
 	"bytes"
 	"context"
+	"crypto/ecdh"
+	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -35,6 +39,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
@@ -164,7 +169,10 @@ type MShellProc struct {
 	RunningCmds      map[base.CommandKey]*RunCmdType
 	PendingStateCmds map[pendingStateKey]base.CommandKey // key=[remoteinstance name] (in progress commands that might update the state)
 
-	Client *ssh.Client
+	Client          *ssh.Client
+	sudoPw          *[]byte
+	sudoTimerCancel context.CancelFunc
+	sudoWg          *sync.WaitGroup
 }
 
 type CommandInputSink interface {
@@ -2616,6 +2624,121 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 			rct := msh.GetRunningCmd(finalPk.CK)
 			msh.handleCmdFinalPacket(rct, finalPk)
 		})
+		return
+	}
+	if sudoPk, ok := pk.(*packet.SudoRequestPacketType); ok {
+		// final failure case -- clear cache
+		if sudoPk.SudoStatus == "failure" {
+			msh.WithLock(func() {
+				if msh.sudoTimerCancel != nil {
+					msh.sudoTimerCancel()
+				}
+			})
+			// make sure previous goroutine is done
+			if msh.sudoWg != nil {
+				msh.sudoWg.Wait()
+			}
+			msh.sudoPw = nil
+			return
+		}
+
+		var storedPw *[]byte
+		var rawSecret []byte
+		msh.WithLock(func() {
+			storedPw = msh.sudoPw
+		})
+		if storedPw != nil && sudoPk.SudoStatus == "first-attempt" {
+			rawSecret = *storedPw
+		} else {
+			request := &userinput.UserInputRequestType{
+				QueryText:    "Please enter your password",
+				ResponseType: "text",
+				Title:        "Sudo Password",
+				Markdown:     false,
+			}
+			ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancelFn()
+			guiResponse, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+			if err != nil {
+				log.Printf("TODO: add error handle 1\n")
+				return
+			}
+			rawSecret = []byte(guiResponse.Text)
+
+		}
+		msh.WithLock(func() {
+			if msh.sudoTimerCancel != nil {
+				msh.sudoTimerCancel()
+			}
+		})
+		// make sure previous goroutine is done
+		if msh.sudoWg != nil {
+			msh.sudoWg.Wait()
+		}
+
+		// can't use a duration since that will stop ticking
+		// if the program is paused and/or computer is asleep
+		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Minute*5)
+		wg := new(sync.WaitGroup)
+		wg.Add(1)
+		// set timer to reset sudo
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					msh.WithLock(func() {
+						msh.sudoPw = nil
+					})
+					wg.Done()
+					return
+				default:
+				}
+				time.Sleep(time.Millisecond * 10)
+			}
+		}()
+		msh.WithLock(func() {
+			msh.sudoPw = &rawSecret
+			msh.sudoTimerCancel = cancelFunc
+			msh.sudoWg = wg
+		})
+
+		srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
+		if err != nil {
+			log.Printf("TODO: add error handle 2\n")
+			return
+		}
+		shellPubKey, err := x509.ParsePKIXPublicKey(sudoPk.ShellPubKey)
+		if err != nil {
+			log.Printf("TODO: add error handle 2.5: %e\n", err)
+			return
+		}
+		ecdhShellPubKey, err := shellPubKey.(*ecdsa.PublicKey).ECDH()
+		if err != nil {
+			log.Printf("TODO: add error handle 2.7: %e\n", err)
+			return
+		}
+		sharedKey, err := srvPrivKey.ECDH(ecdhShellPubKey)
+		if err != nil {
+			log.Printf("TODO: add error handle 3: %e\n", err)
+			return
+		}
+		encryptor, err := promptenc.MakeEncryptor(sharedKey)
+		if err != nil {
+			log.Printf("TODO: add error handle 4\n")
+			return
+		}
+		encryptedSecret, err := encryptor.EncryptData(rawSecret, "sudopw")
+		if err != nil {
+			log.Printf("TODO: add error handle 5\n")
+			return
+		}
+		srvPubKey, err := x509.MarshalPKIXPublicKey(srvPrivKey.PublicKey())
+		if err != nil {
+			log.Printf("TODO: add error handle 6\n")
+			return
+		}
+		sudoResponse := packet.MakeSudoResponsePacket(sudoPk.CK, encryptedSecret, srvPubKey)
+		msh.ServerProc.Input.SendCh <- sudoResponse
 		return
 	}
 	if msgPk, ok := pk.(*packet.MessagePacketType); ok {
