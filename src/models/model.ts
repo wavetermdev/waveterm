@@ -144,7 +144,7 @@ class Model {
         name: "terminalThemes",
         deep: false,
     });
-    termThemeScope: OMap<"selector" | "themeKey", string> = mobx.observable.map(
+    termThemeScope: OMap<"selector" | "themeKey" | "reset", string> = mobx.observable.map(
         {},
         {
             name: "termThemeSrcEls",
@@ -227,10 +227,11 @@ class Model {
     //     return document.documentElement;
     // }
 
-    setTermThemeScope(screenId: string) {
+    setTermThemeScope(screenId: string, selector: string, reset) {
         mobx.action(() => {
-            this.termThemeScope.set("selector", `#${screenId}`);
+            this.termThemeScope.set("selector", selector);
             this.termThemeScope.set("themeKey", screenId);
+            this.termThemeScope.set("reset", reset);
         })();
     }
 

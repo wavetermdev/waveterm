@@ -140,12 +140,13 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
 
     @boundMethod
     handleChangeTermTheme(theme: string): void {
+        console.log("theme", theme);
         const { screenId } = this.props.screen;
         const currTheme = GlobalModel.getTermTheme()[screenId];
         if (currTheme == theme) {
             return;
         }
-        GlobalModel.setTermThemeScope(screenId);
+        GlobalModel.setTermThemeScope(screenId, `.main-content [data-screenid="${screenId}"]`, theme == null);
         const prtn = GlobalCommandRunner.setScreenTermTheme(screenId, theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
@@ -229,25 +230,16 @@ class WorkspaceView extends React.Component<{}, {}> {
         const isHidden = GlobalModel.activeMainView.get() != "session";
         const mainSidebarModel = GlobalModel.mainSidebarModel;
         const showTabSettings = GlobalModel.tabSettingsOpen.get();
-        const termTheme = GlobalModel.getTermTheme();
-
         return (
             <div
                 ref={this.sessionRef}
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
+                id={sessionId}
                 data-sessionid={sessionId}
                 style={{
                     width: `${window.innerWidth - mainSidebarModel.getWidth()}px`,
                 }}
             >
-                {/* <If condition={session != null}>
-                    <TermStyleBlock
-                        scope="session"
-                        themeSrcEl={this.sessionRef.current}
-                        themeKey={session.sessionId}
-                        termTheme={termTheme}
-                    />
-                </If> */}
                 <If condition={!isHidden}>
                     <SessionKeybindings key="keybindings"></SessionKeybindings>
                 </If>

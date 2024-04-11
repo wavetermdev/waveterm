@@ -160,6 +160,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (currTheme == theme) {
             return;
         }
+        GlobalModel.setTermThemeScope(this.screenId, `.main-content [data-screenid="${this.screenId}"]`);
         const prtn = GlobalCommandRunner.setScreenTermTheme(this.screenId, theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
@@ -175,13 +176,8 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (screen == null) {
             return null;
         }
-        let color: string = null;
-        let icon: string = null;
-        let index: number = 0;
-        const curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
         const termThemes = getTermThemes(GlobalModel.termThemes);
         const currTermTheme = GlobalModel.getTermTheme()[this.screenId] ?? termThemes[0].label;
-
         return (
             <Modal className="screen-settings-modal">
                 <Modal.Header onClose={this.closeModal} title={`Tab Settings (${screen.name.get()})`} />

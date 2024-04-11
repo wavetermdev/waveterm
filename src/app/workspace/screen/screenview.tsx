@@ -184,7 +184,6 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             winWidth = screenWidth - realWidth + "px";
             sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
         }
-        const termTheme = GlobalModel.getTermTheme();
         const termRenderVersion = GlobalModel.termRenderVersion.get();
 
         return (

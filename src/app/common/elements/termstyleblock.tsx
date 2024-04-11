@@ -38,17 +38,28 @@ class TermStyleBlock extends React.Component<{
 }> {
     styleRules: OV<string> = mobx.observable.box("", { name: "StyleBlock-styleRules" });
     theme: string;
+    injectedStyleElement: HTMLStyleElement | null = null;
 
     componentDidMount(): void {
-        this.loadThemeStyles();
+        const { termTheme } = this.props;
+        Object.keys(termTheme).forEach((themeKey) => {
+            // this.loadThemeStyles();
+        });
     }
 
-    componentDidUpdate(prevProps): void {
+    componentDidUpdate(): void {
         const { termTheme } = this.props;
+        const selector = GlobalModel.termThemeScope.get("selector");
         const themeKey = GlobalModel.termThemeScope.get("themeKey");
+        const reset = GlobalModel.termThemeScope.get("reset");
         const currTheme = termTheme[themeKey];
-        if (themeKey !== prevProps.themeKey) {
-            this.loadThemeStyles();
+
+        console.log("reset:=========", reset);
+
+        if (reset) {
+            this.removeInjectedStyle();
+        } else if (this.theme !== currTheme) {
+            this.loadThemeStyles(selector, themeKey);
         }
     }
 
@@ -67,60 +78,55 @@ class TermStyleBlock extends React.Component<{
         return str.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
     }
 
-    loadThemeStyles() {
+    removeInjectedStyle() {
+        if (this.injectedStyleElement) {
+            document.head.removeChild(this.injectedStyleElement);
+            this.injectedStyleElement = null;
+        }
+    }
+
+    loadThemeStyles(selector: string, themeKey: string) {
         const { termTheme } = this.props;
-        const selector = GlobalModel.termThemeScope.get("selector");
-        const themeKey = GlobalModel.termThemeScope.get("themeKey");
+
         const currTheme = termTheme[themeKey];
-        console.log("selector", selector);
-        console.log("themeKey", themeKey);
-        console.log("currTheme", currTheme);
-        console.log("this.theme", this.theme);
 
-        // if (currTheme && currTheme !== this.theme && currTheme) {
-        const rtn = GlobalModel.getTermThemeJson(currTheme);
-        rtn.then((termThemeJson) => {
-            if (termThemeJson && typeof termThemeJson === "object") {
-                const styleProperties = Object.entries(termThemeJson)
-                    .filter(([key, value]) => {
-                        const cssVarName = `--term-${this.camelCaseToKebabCase(key)}`;
-                        return VALID_CSS_VARIABLES.includes(cssVarName) && this.isValidCSSColor(value);
-                    })
-                    .map(([key, value]) => `--term-${key}: ${value};`)
-                    .join(" ");
+        console.log("selector:", selector);
+        console.log("themeKey:", themeKey);
 
-                mobx.action(() => {
-                    this.styleRules.set(`:root { ${styleProperties} }`);
-                    GlobalModel.termThemeScope.set(selector);
-                })();
-                console.log("loaded theme styles:", this.styleRules.get());
-            } else {
-                console.error("termThemeJson is not an object:", termThemeJson);
-            }
-        })
+        // Inject new style element
+        GlobalModel.getTermThemeJson(currTheme)
+            .then((termThemeJson) => {
+                if (termThemeJson && typeof termThemeJson === "object") {
+                    const styleProperties = Object.entries(termThemeJson)
+                        .filter(([key, value]) => {
+                            const cssVarName = `--term-${this.camelCaseToKebabCase(key)}`;
+                            return VALID_CSS_VARIABLES.includes(cssVarName) && this.isValidCSSColor(value);
+                        })
+                        .map(([key, value]) => `--term-${key}: ${value};`)
+                        .join(" ");
+
+                    const style = document.createElement("style");
+                    style.innerHTML = `${selector} { ${styleProperties} }`;
+                    document.head.appendChild(style);
+
+                    this.injectedStyleElement = style;
+                    this.theme = currTheme;
+
+                    console.log("loaded theme styles:", this.styleRules.get());
+                } else {
+                    console.error("termThemeJson is not an object:", termThemeJson);
+                }
+            })
             .then(() => {
                 GlobalModel.bumpTermRenderVersion();
-                this.theme = currTheme;
             })
             .catch((error) => {
                 console.error("error loading theme styles:", error);
             });
-        // }
-        // else {
-        //     mobx.action(() => {
-        //         this.styleRules.set("");
-        //         GlobalModel.termThemeScope.set(null);
-        //     })();
-        //     this.theme = currTheme;
-        //     GlobalModel.bumpTermRenderVersion();
-        // }
     }
 
     render() {
-        if (isBlank(this.styleRules.get())) {
-            return null;
-        }
-        return <style>{this.styleRules.get()}</style>;
+        return null;
     }
 }
 
