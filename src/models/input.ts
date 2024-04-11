@@ -522,6 +522,7 @@ class InputModel {
                     this.scrollHistoryItemIntoView(hitem.historynum);
                 }
             }
+            this.setAutocompleteSuggestions(null);
         })();
     }
 

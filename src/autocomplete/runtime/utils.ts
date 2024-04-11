@@ -4,25 +4,20 @@
 import { CommandToken } from "./parser";
 import { Shell } from "../utils/shell";
 import { GlobalModel, getApi } from "@/models";
+import { MemCache } from "@/util/memcache";
 
 export type ExecuteShellCommandTTYResult = {
     code: number | null;
 };
 
-let lastCommandResult: { input: Fig.ExecuteCommandInput; output: Fig.ExecuteCommandOutput } = null;
-
-const checkLastCommandResult = (input: Fig.ExecuteCommandInput): boolean => {
-    if (lastCommandResult == null) return false;
-    const { command, args, cwd, env } = input;
-    const { command: lastCommand, args: lastArgs, cwd: lastCwd, env: lastEnv } = lastCommandResult.input;
-    return command == lastCommand && args.join(" ") == lastArgs.join(" ") && cwd == lastCwd && env == lastEnv;
-};
+const commandResultCache = new MemCache<Fig.ExecuteCommandInput, Fig.ExecuteCommandOutput>(1000 * 60 * 5);
 
 export const buildExecuteShellCommand =
     (timeout: number): Fig.ExecuteCommandFunction =>
     async (input: Fig.ExecuteCommandInput): Promise<Fig.ExecuteCommandOutput> => {
-        if (checkLastCommandResult(input)) {
-            return lastCommandResult.output;
+        const cachedResult = commandResultCache.get(input);
+        if (cachedResult) {
+            return cachedResult;
         }
         const { command, args, cwd, env } = input;
         const resp = await GlobalModel.submitEphemeralCommand("eval", null, [command, ...args], null, false, {
@@ -34,7 +29,7 @@ export const buildExecuteShellCommand =
 
         const { stdout, stderr } = await GlobalModel.getEphemeralCommandOutput(resp);
         const output: Fig.ExecuteCommandOutput = { stdout, stderr, status: stderr ? 1 : 0 };
-        lastCommandResult = { input, output };
+        commandResultCache.put(input, output);
         return output;
     };
 

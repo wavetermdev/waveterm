@@ -561,7 +561,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     getEndTokenLength(line: string): number {
-        const lastSpaceIndex = line.lastIndexOf(" ");
+        const lastSpaceIndex = line?.lastIndexOf(" ");
         return line ? line.length - lastSpaceIndex - 1 : 0;
     }
 
