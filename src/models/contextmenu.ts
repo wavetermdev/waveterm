@@ -20,8 +20,7 @@ class ContextMenuModel {
         }
     }
 
-    showContextMenu(menu: ContextMenuItem[], position: { x: number; y: number }): void {
-        this.handlers.clear();
+    _convertAndRegisterMenu(menu: ContextMenuItem[]): ElectronContextMenuItem[] {
         let electronMenuItems: ElectronContextMenuItem[] = [];
         for (let item of menu) {
             let electronItem: ElectronContextMenuItem = {
@@ -33,8 +32,17 @@ class ContextMenuModel {
             if (item.click) {
                 this.handlers.set(electronItem.id, item.click);
             }
+            if (item.submenu) {
+                electronItem.submenu = this._convertAndRegisterMenu(item.submenu);
+            }
             electronMenuItems.push(electronItem);
         }
+        return electronMenuItems;
+    }
+
+    showContextMenu(menu: ContextMenuItem[], position: { x: number; y: number }): void {
+        this.handlers.clear();
+        const electronMenuItems = this._convertAndRegisterMenu(menu);
         this.globalModel.getElectronApi().showContextMenu(electronMenuItems, position);
     }
 }

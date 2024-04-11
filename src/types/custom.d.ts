@@ -954,15 +954,16 @@ declare global {
         id: string; // unique id, used for communication
         label: string;
         role?: string; // electron role (optional)
-        type?: "separator" | "normal";
+        type?: "separator" | "normal" | "submenu";
+        submenu?: ElectronContextMenuItem[];
     };
 
-    // possible to add support for submenus when needed
     type ContextMenuItem = {
         label?: string;
-        type?: "separator" | "normal";
+        type?: "separator" | "normal" | "submenu";
         role?: string; // electron role (optional)
         click?: () => void; // not required if role is set
+        submenu?: ContextMenuItem[];
     };
 }
 
