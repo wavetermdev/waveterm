@@ -247,7 +247,6 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
 @mobxReact.observer
 class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: () => void }, {}> {
     lastHistoryUpDown: boolean = false;
-    lastCurLine: OV<string> = mobx.observable.box(null);
     lastFocusType: string = null;
     mainInputRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
     historyInputRef: React.RefObject<HTMLInputElement> = React.createRef();
@@ -435,7 +434,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     @boundMethod
     onChange(e: any) {
         mobx.action(() => {
-            this.lastCurLine.set(GlobalModel.inputModel.curLine);
             GlobalModel.inputModel.setCurLine(e.target.value);
         })();
     }
