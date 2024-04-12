@@ -31,7 +31,7 @@ export class AutocompleteModel {
      */
     isEnabled(): boolean {
         const clientData: ClientDataType = this.globalModel.clientData.get();
-        return clientData?.clientopts.autocompleteenabled;
+        return clientData?.clientopts.autocompleteenabled ?? false;
     }
 
     /**
