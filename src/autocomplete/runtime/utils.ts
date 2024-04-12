@@ -65,7 +65,7 @@ export const getCompletionSuggestions = async (
         if (firstData.info?.infocomps) {
             return firstData.info.infocomps.map((comp: string) => ({
                 name: comp,
-                priority: 55,
+                priority: comp.startsWith(".") ? 1 : 55,
                 context: { templateType: tempType },
                 type: comp.endsWith("/") ? "folder" : "file",
             }));
