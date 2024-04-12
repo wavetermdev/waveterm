@@ -2,7 +2,7 @@ import { SuggestionBlob } from "@/autocomplete/runtime/model";
 import { AuxiliaryCmdView } from "./auxview";
 import { GlobalModel } from "@/models";
 import cn from "classnames";
-import React from "react";
+import React, { useEffect } from "react";
 import { observer } from "mobx-react";
 
 import "./suggestionview.less";
@@ -17,11 +17,40 @@ export const SuggestionView: React.FC = observer(() => {
         return null;
     }
 
+    const closeView = () => {
+        inputModel.closeAuxView();
+    };
+
     const setSuggestion = (idx: number) => {
         inputModel.setCurLine(inputModel.curLine + autocompleteModel.getSuggestionCompletion(idx));
         autocompleteModel.loadAutocompleteSuggestions();
-        inputModel.setActiveAuxView(null);
+        closeView();
     };
+
+    useEffect(() => {
+        const keybindManager = GlobalModel.keybindManager;
+
+        keybindManager.registerKeybinding("pane", "aichat", "generic:confirm", (waveEvent) => {
+            setSuggestion(selectedSuggestion);
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "generic:cancel", (waveEvent) => {
+            closeView();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "generic:selectAbove", (waveEvent) => {
+            setSelectedSuggestion(Math.max(0, selectedSuggestion - 1));
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "generic:selectBelow", (waveEvent) => {
+            setSelectedSuggestion(Math.min(suggestions.suggestions.length - 1, selectedSuggestion + 1));
+            return true;
+        });
+
+        return () => {
+            GlobalModel.keybindManager.unregisterDomain("aichat");
+        };
+    });
 
     return (
         <AuxiliaryCmdView
