@@ -88,7 +88,6 @@ const OpenAIPacketTimeout = 10 * time.Second
 const OpenAIStreamTimeout = 5 * time.Minute
 const OpenAICloudCompletionTelemetryOffErrorMsg = "To ensure responsible usage and prevent misuse, Wave AI requires telemetry to be enabled when using its free AI features.\n\nIf you prefer not to enable telemetry, you can still access Wave AI's features by providing your own OpenAI API key in the Settings menu. Please note that when using your personal API key, requests will be sent directly to the OpenAI API without being proxied through Wave's servers.\n\nIf you wish to continue using Wave AI's free features, you can easily enable telemetry by running the '/telemetry:on' command in the terminal. This will allow you to access the free AI features while helping to protect the platform from abuse."
 
-
 const (
 	KwArgRenderer = "renderer"
 	KwArgView     = "view"
@@ -639,7 +638,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
-	runPacket.IsSudo = IsSudoCommand(cmdStr)
+	runPacket.IsSudo = IsSudoCommand(cmdStr) && scbase.IsDevMode() // only use sudo caching in dev mode (for now)
 	rcOpts := remote.RunCommandOpts{
 		SessionId:     ids.SessionId,
 		ScreenId:      ids.ScreenId,
