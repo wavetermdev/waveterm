@@ -19,9 +19,9 @@ import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
 import * as util from "@/util/util";
 import * as appconst from "@/app/appconst";
+import { SuggestionView } from "./suggestionview";
 
 import "./cmdinput.less";
-import { SuggestionView } from "./suggestionview";
 
 dayjs.extend(localizedFormat);
 
