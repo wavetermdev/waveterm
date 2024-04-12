@@ -110,6 +110,7 @@ func WriteDataBlockToDB(ctx context.Context, blockId string, name string, index 
 	if txErr != nil {
 		return fmt.Errorf("Error writing data block to db: %v", txErr)
 	}
+	return nil
 }
 
 func MakeFile(ctx context.Context, blockId string, name string, meta FileMeta, opts FileOptsType) error {
@@ -286,6 +287,7 @@ func FlushCache(ctx context.Context) error {
 			return err
 		}
 		for index, block := range cacheEntry.DataBlocks {
+			log.Printf("index: ", index)
 			if block == nil || block.size == 0 {
 				continue
 			}
@@ -295,8 +297,12 @@ func FlushCache(ctx context.Context) error {
 			}
 		}
 	}
+	cache = make(map[string]*CacheEntry)
 	return nil
 }
+
+// TODO, how does the cache handle race conditions with the read? If we are caching writes every second and the front end writes to the line, we would oveerrite it unless we read first
+// we would need a tcp like protocol if we need to do both reads and writes
 
 func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int64) (int, error) {
 	bytesRead := 0
