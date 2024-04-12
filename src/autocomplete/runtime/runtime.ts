@@ -17,6 +17,7 @@ import { buildExecuteShellCommand, resolveCwd } from "./utils";
 import { Shell } from "../utils/shell";
 import { getApi } from "@/models";
 import log from "../utils/log";
+import { run } from "node:test";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive type, setting as any
 const specSet: any = {};
@@ -31,6 +32,15 @@ const rootSpec: Fig.Spec = {
                 loadSpec: s,
             };
         }),
+};
+
+const filepathSpec: Fig.Spec = {
+    name: "filepaths",
+    args: {
+        name: "filepaths",
+        isVariadic: true,
+        template: "filepaths",
+    },
 };
 
 (speclist as string[]).forEach((s) => {
@@ -96,25 +106,24 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
     const lastCommand = activeCmd.at(-1);
     let charactersToDrop = lastCommand?.complete ? 0 : lastCommand?.token.length ?? 0;
     log.debug("charactersToDrop", charactersToDrop);
-    if (spec == null) {
+    if (spec == null && !cmd.endsWith(" ")) {
         // overrides behavior for root spec, we have way less work to do
+        log.debug("no spec found, returning root spec");
         result = await runSubcommand(activeCmd, rootSpec, cwd);
+    } else if (spec == null) {
+        // when in doubt, just return filepaths
+        log.debug("no spec found, returning filepaths");
+        result = await runSubcommand(activeCmd, filepathSpec, cwd);
     } else {
+        log.debug("spec found", spec);
         const subcommand = getSubcommand(spec);
         if (subcommand == null) return;
-        log.debug("subcommand", subcommand);
-
-        log.debug("lastCommand", lastCommand);
-        log.debug("activeCmd", activeCmd);
-        // const nextCommands = activeCmd?.length > 2 ? activeCmd.slice(1) : activeCmd;
-        const nextCommands = activeCmd.slice(1);
-        log.debug("nextCommands", nextCommands);
         const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwd(lastCommand, cwd, shell);
         if (pathy && lastCommand) {
             lastCommand.isPath = true;
             lastCommand.isPathComplete = pathyComplete;
         }
-        result = await runSubcommand(nextCommands, subcommand, resolvedCwd);
+        result = await runSubcommand(activeCmd.slice(1), subcommand, resolvedCwd);
 
         if (pathy) {
             log.debug("pathy", pathy);

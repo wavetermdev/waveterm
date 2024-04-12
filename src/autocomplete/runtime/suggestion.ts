@@ -277,6 +277,7 @@ export const getSubcommandDrivenRecommendation = async (
         );
         log.debug("suggestions", suggestions);
     }
+
     suggestions.push(...(await templateSuggestions("history", "prefix", null, cwd)));
     log.debug("suggestions return", suggestions);
 
