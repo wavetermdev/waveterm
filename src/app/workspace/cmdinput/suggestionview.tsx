@@ -41,7 +41,7 @@ export const SuggestionView: React.FC = observer(() => {
 
     const inputModel = GlobalModel.inputModel;
     const autocompleteModel = GlobalModel.autocompleteModel;
-    const suggestions: SuggestionBlob = autocompleteModel.getAutocompleteSuggestions();
+    const suggestions: SuggestionBlob = autocompleteModel.getSuggestions();
 
     const closeView = () => {
         inputModel.closeAuxView();
@@ -49,7 +49,7 @@ export const SuggestionView: React.FC = observer(() => {
 
     const setSuggestion = (idx: number) => {
         autocompleteModel.applySuggestion(idx);
-        autocompleteModel.loadAutocompleteSuggestions();
+        autocompleteModel.loadSuggestions();
         closeView();
     };
 

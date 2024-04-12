@@ -520,7 +520,7 @@ class InputModel {
                     this.scrollHistoryItemIntoView(hitem.historynum);
                 }
             }
-            this.globalModel.autocompleteModel.setAutocompleteSuggestions(null);
+            this.globalModel.autocompleteModel.clearSuggestions();
         })();
     }
 
@@ -825,11 +825,11 @@ class InputModel {
 
             // Whenever curLine changes, we should fetch the suggestions
             if (val.trim() == "") {
-                this.globalModel.autocompleteModel.setAutocompleteSuggestions(null);
+                this.globalModel.autocompleteModel.clearSuggestions();
                 return;
             }
             if (runGetSuggestions) {
-                this.globalModel.autocompleteModel.loadAutocompleteSuggestions();
+                this.globalModel.autocompleteModel.loadSuggestions();
             }
         })();
     }
@@ -858,7 +858,7 @@ class InputModel {
             this.historyQueryOpts.set(getDefaultHistoryQueryOpts());
             this.historyAfterLoadIndex = 0;
             this.dropModHistory(true);
-            this.globalModel.autocompleteModel.setAutocompleteSuggestions(null);
+            this.globalModel.autocompleteModel.clearSuggestions();
         })();
     }
 }

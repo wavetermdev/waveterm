@@ -3,29 +3,44 @@ import { Model } from "./model";
 import * as mobx from "mobx";
 import { Shell, getSuggestions } from "@/autocomplete";
 
+/**
+ * Gets the length of the token at the end of the line.
+ * @param line the line
+ * @returns the length of the token at the end of the line
+ */
 function getEndTokenLength(line: string): number {
     const lastSpaceIndex = line?.lastIndexOf(" ");
     return line ? line.length - lastSpaceIndex - 1 : 0;
 }
 
+/**
+ * The autocomplete model.
+ */
 export class AutocompleteModel {
     globalModel: Model;
-    autocompleteSuggestions: OV<SuggestionBlob> = mobx.observable.box(null);
+    suggestions: OV<SuggestionBlob> = mobx.observable.box(null);
     primarySuggestionIndex: OV<number> = mobx.observable.box(0);
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
     }
 
+    /**
+     * Returns whether the autocomplete feature is enabled.
+     * @returns whether the autocomplete feature is enabled
+     */
     isEnabled(): boolean {
         const clientData: ClientDataType = this.globalModel.clientData.get();
         return clientData?.clientopts.autocompleteenabled;
     }
 
-    loadAutocompleteSuggestions = mobx.flow(function* (this: AutocompleteModel) {
+    /**
+     * Lazily loads suggestions for the current input line.
+     */
+    loadSuggestions = mobx.flow(function* (this: AutocompleteModel) {
         console.log("get suggestions");
         if (!this.isEnabled()) {
-            this.autocompleteSuggestions.set(null);
+            this.suggestions.set(null);
             return;
         }
         try {
@@ -35,44 +50,48 @@ export class AutocompleteModel {
                 festate.cwd,
                 festate.shell as Shell
             );
-            this.autocompleteSuggestions.set(suggestions);
+            this.suggestions.set(suggestions);
         } catch (error) {
             console.error("error getting suggestions: ", error);
         }
     });
 
-    getAutocompleteSuggestions(): SuggestionBlob {
+    /**
+     * Returns the current suggestions.
+     * @returns the current suggestions
+     */
+    getSuggestions(): SuggestionBlob {
         if (!this.isEnabled()) {
             return null;
         }
-        return this.autocompleteSuggestions.get();
+        return this.suggestions.get();
     }
 
-    setAutocompleteSuggestions(suggestions: SuggestionBlob): void {
+    /**
+     * Clears the current suggestions.
+     */
+    clearSuggestions(): void {
         if (!this.isEnabled()) {
             return;
         }
         mobx.action(() => {
-            this.autocompleteSuggestions.set(suggestions);
+            this.suggestions.set(null);
             this.primarySuggestionIndex.set(0);
         })();
     }
 
-    getPrimarySuggestion(): string {
-        const suggestions = this.getAutocompleteSuggestions();
-        if (!suggestions) {
-            return null;
-        }
-        return suggestions.suggestions[this.getPrimarySuggestionIndex()].name;
-    }
-
+    /**
+     * Returns the index of the primary suggestion.
+     * @returns the index of the primary suggestion
+     */
     getPrimarySuggestionIndex(): number {
-        if (!this.isEnabled()) {
-            return null;
-        }
         return this.primarySuggestionIndex.get();
     }
 
+    /**
+     * Sets the index of the primary suggestion.
+     * @param index the index of the primary suggestion
+     */
     setPrimarySuggestionIndex(index: number): void {
         if (!this.isEnabled()) {
             return;
@@ -82,8 +101,13 @@ export class AutocompleteModel {
         })();
     }
 
+    /**
+     * Returns the additional text required to add to the current input line in order to apply the suggestion at the given index.
+     * @param index the index of the suggestion to apply
+     * @returns the additional text required to add to the current input line in order to apply the suggestion at the given index
+     */
     getSuggestionCompletion(index: number): string {
-        const autocompleteSuggestions: SuggestionBlob = this.getAutocompleteSuggestions();
+        const autocompleteSuggestions: SuggestionBlob = this.getSuggestions();
 
         // Build the ghost prompt with the primary suggestion if available
         let retVal = "";
@@ -111,6 +135,12 @@ export class AutocompleteModel {
         return retVal;
     }
 
+    /**
+     * Returns the additional text required to add to the current input line in order to apply the primary suggestion.
+     * @returns the additional text required to add to the current input line in order to apply the primary suggestion
+     * @see getSuggestionCompletion
+     * @see getPrimarySuggestionIndex
+     */
     getPrimarySuggestionCompletion(): string {
         if (!this.isEnabled()) {
             return null;
@@ -118,6 +148,10 @@ export class AutocompleteModel {
         return this.getSuggestionCompletion(this.getPrimarySuggestionIndex());
     }
 
+    /**
+     * Applies the suggestion at the given index to the current input line.
+     * @param index the index of the suggestion to apply
+     */
     applySuggestion(index: number): void {
         if (!this.isEnabled()) {
             return;
@@ -128,10 +162,12 @@ export class AutocompleteModel {
         }
     }
 
+    /**
+     * Applies the primary suggestion to the current input line.
+     * @see applySuggestion
+     * @see getPrimarySuggestionIndex
+     */
     applyPrimarySuggestion(): void {
-        if (!this.isEnabled()) {
-            return;
-        }
         this.applySuggestion(this.getPrimarySuggestionIndex());
     }
 }
