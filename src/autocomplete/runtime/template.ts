@@ -22,7 +22,6 @@ const historyTemplate = (): Fig.TemplateSuggestion[] => {
     const cmdLine = inputModel.curLine;
     inputModel.loadHistory(false, 0, "screen");
     const hitems = GlobalModel.inputModel.filteredHistoryItems;
-    log.debug("historyTemplate", hitems);
     if (hitems.length > 0) {
         const hmap: Map<string, Fig.TemplateSuggestion> = new Map();
         hitems.forEach((h) => {
@@ -70,7 +69,6 @@ export const runTemplates = async (
                         case "folders":
                             return await foldersTemplate(cwd);
                         case "history":
-                            log.debug("history template");
                             return historyTemplate();
                         case "help":
                             return helpTemplate();
