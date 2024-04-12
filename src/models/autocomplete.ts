@@ -2,6 +2,7 @@ import { SuggestionBlob } from "@/autocomplete/runtime/model";
 import { Model } from "./model";
 import * as mobx from "mobx";
 import { Shell, getSuggestions } from "@/autocomplete";
+import log from "@/autocomplete/utils/log";
 
 /**
  * Gets the length of the token at the end of the line.
@@ -38,7 +39,7 @@ export class AutocompleteModel {
      * Lazily loads suggestions for the current input line.
      */
     loadSuggestions = mobx.flow(function* (this: AutocompleteModel) {
-        console.log("get suggestions");
+        log.debug("get suggestions");
         if (!this.isEnabled()) {
             this.suggestions.set(null);
             return;
@@ -130,7 +131,7 @@ export class AutocompleteModel {
             if (charactersToDrop > 0) {
                 retVal = retVal.substring(charactersToDrop);
             }
-            console.log("ghost prompt", curLine + retVal);
+            log.debug("ghost prompt", curLine + retVal);
         }
         return retVal;
     }

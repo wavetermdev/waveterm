@@ -1391,10 +1391,8 @@ class Model {
                     const update = data.data;
                     if (update != null) {
                         if (runUpdate) {
-                            console.log("running update", update);
                             this.runUpdate(update, interactive);
                         } else {
-                            console.log("returning update", update);
                             return { success: true, update: update };
                         }
                     }

@@ -556,7 +556,6 @@ class InputModel {
 
         if (info != null && timeoutMs) {
             this.infoTimeoutId = setTimeout(() => {
-                console.log("clearing info msg");
                 if (this.activeAuxView.get() != appconst.InputAuxView_Info) {
                     return;
                 }
@@ -796,7 +795,6 @@ class InputModel {
 
     @mobx.computed
     get curLine(): string {
-        console.log("get curLine");
         const hidx = this.historyIndex.get();
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
             return this.modHistory[hidx];
@@ -813,7 +811,6 @@ class InputModel {
     }
 
     setCurLine(val: string): void {
-        console.log("set curLine, val:", val);
         this.lastCurLine = this.curLine;
         const hidx = this.historyIndex.get();
         mobx.action(() => {
