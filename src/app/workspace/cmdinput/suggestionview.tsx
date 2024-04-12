@@ -53,11 +53,7 @@ export const SuggestionView: React.FC = observer(() => {
     });
 
     return (
-        <AuxiliaryCmdView
-            title="Suggestions"
-            className="suggestions-view"
-            onClose={() => inputModel.setActiveAuxView(null)}
-        >
+        <AuxiliaryCmdView title="Suggestions" className="suggestions-view" onClose={closeView}>
             {suggestions.suggestions.map((suggestion, idx) => (
                 <div
                     key={suggestion.name}
