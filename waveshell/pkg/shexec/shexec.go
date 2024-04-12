@@ -957,7 +957,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	if pk.IsSudo {
 		sudoKey = uuid.New()
 		sudoErrKey = uuid.New()
-		pk.Command = fmt.Sprintf("sudo -p \"%s\" -S true 2>&7 <&6; if [ $? != 0 ]; then echo %s >&7 && exit; fi; exec 6>&-; exec 7>&-; %s", sudoKey, sudoErrKey, pk.Command)
+		fullCmdStr = fmt.Sprintf("sudo -p \"%s\" -S true 2>&7 <&6; if [ $? != 0 ]; then echo %s >&7 && exit; fi; exec 6>&-; exec 7>&-; %s", sudoKey, sudoErrKey, fullCmdStr)
 	}
 
 	cmd.Cmd = sapi.MakeShExecCommand(fullCmdStr, rcFileName, pk.UsePty)
