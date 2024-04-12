@@ -4,9 +4,9 @@ import { GlobalModel } from "@/models";
 import cn from "classnames";
 import React, { useEffect } from "react";
 import { observer } from "mobx-react";
+import { If } from "tsx-control-statements/components";
 
 import "./suggestionview.less";
-import { If } from "tsx-control-statements/components";
 
 export const SuggestionView: React.FC = observer(() => {
     const [selectedSuggestion, setSelectedSuggestion] = React.useState<number>(0);
