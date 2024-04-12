@@ -47,7 +47,6 @@ class InputModel {
         name: "history-items",
         deep: false,
     }); // sorted in reverse (most recent is index 0)
-    filteredHistoryItems: mobx.IComputedValue<HistoryItem[]> = null;
     historyIndex: mobx.IObservableValue<number> = mobx.observable.box(0, {
         name: "history-index",
     }); // 1-indexed (because 0 is current)
@@ -77,9 +76,6 @@ class InputModel {
     constructor(globalModel: Model) {
         mobx.makeAutoObservable(this);
         this.globalModel = globalModel;
-        this.filteredHistoryItems = mobx.computed(() => {
-            return this._getFilteredHistoryItems();
-        });
         mobx.action(() => {
             this.codeSelectSelectedIndex.set(-1);
             this.codeSelectBlockRefArray = [];
@@ -216,7 +212,7 @@ class InputModel {
         if (oldItem == null) {
             return 0;
         }
-        const newItems = this.getFilteredHistoryItems();
+        const newItems = this.filteredHistoryItems;
         if (newItems.length == 0) {
             return 0;
         }
@@ -302,7 +298,7 @@ class InputModel {
         if (hidx == 0) {
             return null;
         }
-        const hitems = this.getFilteredHistoryItems();
+        const hitems = this.filteredHistoryItems;
         if (hidx > hitems.length) {
             return null;
         }
@@ -310,7 +306,7 @@ class InputModel {
     }
 
     getFirstHistoryItem(): HistoryItem {
-        const hitems = this.getFilteredHistoryItems();
+        const hitems = this.filteredHistoryItems;
         if (hitems.length == 0) {
             return null;
         }
@@ -318,7 +314,7 @@ class InputModel {
     }
 
     setHistorySelectionNum(hnum: string): void {
-        const hitems = this.getFilteredHistoryItems();
+        const hitems = this.filteredHistoryItems;
         for (const [i, hitem] of hitems.entries()) {
             if (hitem.historynum == hnum) {
                 this.setHistoryIndex(i + 1);
@@ -353,11 +349,8 @@ class InputModel {
         })();
     }
 
-    getFilteredHistoryItems(): HistoryItem[] {
-        return this.filteredHistoryItems.get();
-    }
-
-    _getFilteredHistoryItems(): HistoryItem[] {
+    @mobx.computed
+    get filteredHistoryItems(): HistoryItem[] {
         const hitems: HistoryItem[] = this.historyItems.get() ?? [];
         const rtn: HistoryItem[] = [];
         const opts: HistoryQueryOpts = mobx.toJS(this.historyQueryOpts.get());
@@ -531,7 +524,7 @@ class InputModel {
         if (!this.isHistoryLoaded()) {
             return;
         }
-        const hitems = this.getFilteredHistoryItems();
+        const hitems = this.filteredHistoryItems;
         let idx = this.historyIndex.get() + amt;
         if (idx < 0) {
             idx = 0;
@@ -799,7 +792,7 @@ class InputModel {
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
             return this.modHistory[hidx];
         }
-        const hitems = this.getFilteredHistoryItems();
+        const hitems = this.filteredHistoryItems;
         if (hidx == 0 || hitems == null || hidx > hitems.length) {
             return "";
         }

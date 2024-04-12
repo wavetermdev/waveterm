@@ -182,6 +182,7 @@ class CmdInput extends React.Component<{}, {}> {
                 hidePrompt = true;
             }
         }
+
         return (
             <div ref={this.cmdInputRef} className={cn("cmd-input", hasOpenView, { active: focusVal })}>
                 <Choose>

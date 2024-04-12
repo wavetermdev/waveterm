@@ -10,6 +10,7 @@ import { runGenerator } from "./generator";
 import { runTemplates } from "./template";
 import { Suggestion, SuggestionBlob } from "./model";
 import { getApi } from "@/models";
+import log from "../utils/log";
 
 enum SuggestionIcons {
     File = "📄",
@@ -73,6 +74,7 @@ function filter<
     partialCmd: string | undefined,
     suggestionType: Fig.SuggestionType | undefined
 ): Suggestion[] {
+    log.debug("filter", suggestions, filterStrategy, partialCmd, suggestionType);
     if (!partialCmd)
         return suggestions
             .map((s) => toSuggestion(s, undefined, suggestionType))
@@ -80,6 +82,7 @@ function filter<
 
     switch (filterStrategy) {
         case "fuzzy":
+            log.debug("fuzzy");
             return suggestions
                 .map((s) => {
                     if (s.name == null) return;
@@ -167,6 +170,7 @@ const templateSuggestions = async (
     partialCmd: string | undefined,
     cwd: string
 ): Promise<Suggestion[]> => {
+    log.debug("templateSuggestions", templates, filterStrategy, partialCmd);
     return filter<Fig.Suggestion>(await runTemplates(templates ?? [], cwd), filterStrategy, partialCmd, undefined);
 };
 
@@ -193,6 +197,7 @@ const optionSuggestions = (
     filterStrategy: FilterStrategy | undefined,
     partialCmd: string | undefined
 ): Suggestion[] => {
+    log.debug("optionSuggestions", options, acceptedTokens, filterStrategy, partialCmd);
     const usedOptions = new Set(acceptedTokens.filter((t) => t.isOption).map((t) => t.token));
     const validOptions = options?.filter(
         (o) => o.exclusiveOn?.every((exclusiveOption) => !usedOptions.has(exclusiveOption)) ?? true
@@ -229,23 +234,31 @@ export const getSubcommandDrivenRecommendation = async (
     acceptedTokens: CommandToken[],
     cwd: string
 ): Promise<SuggestionBlob | undefined> => {
-    if (argsDepleted && argsFromSubcommand) {
-        return;
-    }
-    let partialCmd = partialToken?.token;
+    log.debug("getSubcommandDrivenRecommendation", subcommand, partialToken, argsDepleted, argsFromSubcommand);
+    // if (argsDepleted && argsFromSubcommand) {
+    //     log.debug("argsDepleted && argsFromSubcommand");
+    //     return;
+    // }
+    let partialCmd = partialToken?.token ?? "";
     if (partialToken?.isPath) {
+        log.debug("partialToken?.isPath");
         partialCmd = partialToken.isPathComplete ? "" : getApi().pathBaseName(partialCmd ?? "");
     }
 
     const suggestions: Suggestion[] = [];
     const argLength = subcommand.args instanceof Array ? subcommand.args.length : subcommand.args ? 1 : 0;
     const allOptions = persistentOptions.concat(subcommand.options ?? []);
+    log.debug("allOptions", allOptions, persistentOptions, subcommand.options, subcommand.args, argLength);
 
     if (!argsFromSubcommand) {
+        log.debug("!argsFromSubcommand");
         suggestions.push(...subcommandSuggestions(subcommand.subcommands, subcommand.filterStrategy, partialCmd));
+        log.debug("suggestions", suggestions);
         suggestions.push(...optionSuggestions(allOptions, acceptedTokens, subcommand.filterStrategy, partialCmd));
+        log.debug("suggestions", suggestions);
     }
     if (argLength != 0) {
+        log.debug("argLength != 0");
         const activeArg = subcommand.args instanceof Array ? subcommand.args[0] : subcommand.args;
         suggestions.push(
             ...(await generatorSuggestions(
@@ -256,11 +269,16 @@ export const getSubcommandDrivenRecommendation = async (
                 cwd
             ))
         );
+        log.debug("suggestions", suggestions);
         suggestions.push(...suggestionSuggestions(activeArg?.suggestions, activeArg?.filterStrategy, partialCmd));
+        log.debug("suggestions", suggestions);
         suggestions.push(
             ...(await templateSuggestions(activeArg?.template, activeArg?.filterStrategy, partialCmd, cwd))
         );
+        log.debug("suggestions", suggestions);
     }
+    suggestions.push(...(await templateSuggestions("history", "prefix", null, cwd)));
+    log.debug("suggestions return", suggestions);
 
     return {
         suggestions: removeDuplicateSuggestion(

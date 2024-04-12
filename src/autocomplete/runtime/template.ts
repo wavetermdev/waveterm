@@ -5,6 +5,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+import { GlobalModel } from "@/models";
 import log from "../utils/log";
 import { getCompletionSuggestions } from "./utils";
 
@@ -16,8 +17,35 @@ const foldersTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> =
     return await getCompletionSuggestions(cwd, "folders");
 };
 
-// TODO: implement history template
 const historyTemplate = (): Fig.TemplateSuggestion[] => {
+    const inputModel = GlobalModel.inputModel;
+    const cmdLine = inputModel.curLine;
+    inputModel.loadHistory(false, 0, "screen");
+    const hitems = GlobalModel.inputModel.filteredHistoryItems;
+    log.debug("historyTemplate", hitems);
+    if (hitems.length > 0) {
+        const hmap: Map<string, Fig.TemplateSuggestion> = new Map();
+        hitems.forEach((h) => {
+            const cmdstr = h.cmdstr.trim();
+            if (cmdstr.startsWith(cmdLine)) {
+                if (hmap.has(cmdstr)) {
+                    hmap.get(cmdstr).priority += 1;
+                } else {
+                    hmap.set(cmdstr, {
+                        name: cmdstr,
+                        priority: 60,
+                        context: {
+                            templateType: "history",
+                        },
+                        insertValue: cmdstr.replace(cmdLine, ""),
+                    });
+                }
+            }
+        });
+        const ret = Array.from(hmap.values());
+        log.debug("historyTemplate", ret);
+        return ret;
+    }
     return [];
 };
 
@@ -31,6 +59,7 @@ export const runTemplates = async (
     cwd: string
 ): Promise<Fig.TemplateSuggestion[]> => {
     const templates = template instanceof Array ? template : [template];
+    log.debug("runTemplates", templates, cwd);
     return (
         await Promise.all(
             templates.map(async (t) => {
@@ -41,6 +70,7 @@ export const runTemplates = async (
                         case "folders":
                             return await foldersTemplate(cwd);
                         case "history":
+                            log.debug("history template");
                             return historyTemplate();
                         case "help":
                             return helpTemplate();

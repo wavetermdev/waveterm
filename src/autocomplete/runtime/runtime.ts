@@ -20,6 +20,19 @@ import log from "../utils/log";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive type, setting as any
 const specSet: any = {};
+const rootSpec: Fig.Spec = {
+    name: "root",
+    filterStrategy: "prefix",
+    subcommands: (speclist as string[])
+        .filter((s) => !s.includes("/") && !s.includes("@")) // filter out versioned commands and subcommands in subdirectories
+        .map((s) => {
+            return {
+                name: s,
+                loadSpec: s,
+            };
+        }),
+};
+
 (speclist as string[]).forEach((s) => {
     let activeSet = specSet;
     const specRoutes = s.split("/");
@@ -42,16 +55,22 @@ const loadedSpecs: { [key: string]: Fig.Spec } = {};
 const loadSpec = async (cmd: CommandToken[]): Promise<Fig.Spec | undefined> => {
     const rootToken = cmd.at(0);
     if (!rootToken?.complete) {
+        log.debug("root token not complete");
         return;
     }
 
     if (loadedSpecs[rootToken.token]) {
+        log.debug("loaded spec found");
         return loadedSpecs[rootToken.token];
     }
     if (specSet[rootToken.token]) {
+        log.debug("loading spec");
         const spec = (await import(`@withfig/autocomplete/build/${specSet[rootToken.token]}`)).default;
         loadedSpecs[rootToken.token] = spec;
         return spec;
+    } else {
+        log.debug("no spec found");
+        return;
     }
 };
 
@@ -67,32 +86,44 @@ const lazyLoadSpecLocation = async (location: Fig.SpecLocation): Promise<Fig.Spe
 
 export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Promise<SuggestionBlob | undefined> => {
     const activeCmd = parseCommand(cmd);
-    const rootToken = activeCmd.at(0);
-    if (activeCmd.length === 0 || !rootToken?.complete) {
+    log.debug("activeCmd", activeCmd);
+    if (activeCmd.length === 0) {
         return;
     }
 
     const spec = await loadSpec(activeCmd);
-    if (spec == null) return;
-    const subcommand = getSubcommand(spec);
-    if (subcommand == null) return;
-
+    let result: SuggestionBlob | undefined = undefined;
     const lastCommand = activeCmd.at(-1);
-    const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwd(lastCommand, cwd, shell);
-    if (pathy && lastCommand) {
-        lastCommand.isPath = true;
-        lastCommand.isPathComplete = pathyComplete;
-    }
-    const result = await runSubcommand(activeCmd.slice(1), subcommand, resolvedCwd);
-    if (result == null) return;
-
     let charactersToDrop = lastCommand?.complete ? 0 : lastCommand?.token.length ?? 0;
     log.debug("charactersToDrop", charactersToDrop);
-    if (pathy) {
-        log.debug("pathy", pathy);
-        charactersToDrop = pathyComplete ? 0 : getApi().pathBaseName(lastCommand?.token ?? "").length;
-        log.debug("new charactersToDrop", charactersToDrop);
+    if (spec == null) {
+        // overrides behavior for root spec, we have way less work to do
+        result = await runSubcommand(activeCmd, rootSpec, cwd);
+    } else {
+        const subcommand = getSubcommand(spec);
+        if (subcommand == null) return;
+        log.debug("subcommand", subcommand);
+
+        log.debug("lastCommand", lastCommand);
+        log.debug("activeCmd", activeCmd);
+        // const nextCommands = activeCmd?.length > 2 ? activeCmd.slice(1) : activeCmd;
+        const nextCommands = activeCmd.slice(1);
+        log.debug("nextCommands", nextCommands);
+        const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwd(lastCommand, cwd, shell);
+        if (pathy && lastCommand) {
+            lastCommand.isPath = true;
+            lastCommand.isPathComplete = pathyComplete;
+        }
+        result = await runSubcommand(nextCommands, subcommand, resolvedCwd);
+
+        if (pathy) {
+            log.debug("pathy", pathy);
+            charactersToDrop = pathyComplete ? 0 : getApi().pathBaseName(lastCommand?.token ?? "").length;
+            log.debug("new charactersToDrop", charactersToDrop);
+        }
     }
+    if (result == null) return;
+    log.debug("result", result);
     return { ...result, charactersToDrop };
 };
 
@@ -343,7 +374,9 @@ const runSubcommand = async (
     argsDepleted = false,
     argsUsed = false
 ): Promise<SuggestionBlob | undefined> => {
+    log.debug("runSubcommand", tokens, subcommand, cwd, persistentOptions, acceptedTokens, argsDepleted, argsUsed);
     if (tokens.length === 0) {
+        log.debug("tokens length 0");
         return getSubcommandDrivenRecommendation(
             subcommand,
             persistentOptions,
@@ -354,6 +387,7 @@ const runSubcommand = async (
             cwd
         );
     } else if (!tokens.at(0)?.complete) {
+        log.debug("tokens not complete");
         return getSubcommandDrivenRecommendation(
             subcommand,
             persistentOptions,
@@ -377,8 +411,11 @@ const runSubcommand = async (
         return;
     }
 
+    log.debug("getting next subcommand", activeToken.token, subcommand);
     const nextSubcommand = await genSubcommand(activeToken.token, subcommand);
-    if (nextSubcommand != null) {
+    log.debug("nextSubcommand", nextSubcommand);
+    if (nextSubcommand) {
+        log.debug("has next subcommand");
         return runSubcommand(
             tokens.slice(1),
             nextSubcommand,
@@ -389,13 +426,16 @@ const runSubcommand = async (
     }
 
     if (activeArgsLength <= 0) {
+        log.debug("no args specified");
         return; // not subcommand or option & no args exist
     }
 
     const args = getArgs(subcommand.args);
     if (args.length != 0) {
+        log.debug("args specified");
         return runArg(tokens, args, subcommand, cwd, allOptions, acceptedTokens, false, false);
     }
+
     // if the subcommand has no args specified, fallback to the subcommand and ignore this item
     return runSubcommand(tokens.slice(1), subcommand, cwd, persistentOptions, acceptedTokens.concat(activeToken));
 };

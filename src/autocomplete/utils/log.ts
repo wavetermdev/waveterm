@@ -15,7 +15,7 @@ const debug = (...content) => {
     if (!GlobalModel.isDev) {
         return;
     }
-    console.log("[autocomplete]", content);
+    console.log("[autocomplete]", ...content);
 };
 
 export const enable = async () => {

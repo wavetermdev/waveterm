@@ -36,8 +36,12 @@ export const buildExecuteShellCommand =
         });
 
         const { stdout, stderr } = await GlobalModel.getEphemeralCommandOutput(resp);
-        const output: Fig.ExecuteCommandOutput = { stdout, stderr, status: stderr ? 1 : 0 };
-        commandResultCache.put(input, output);
+        const output: Fig.ExecuteCommandOutput = { stdout, stderr, status: stderr?.length > 1 ? 1 : 0 };
+        if (output.status !== 0) {
+            log.debug("Command failed, skipping caching", output);
+        } else {
+            commandResultCache.put(input, output);
+        }
         return output;
     };
 

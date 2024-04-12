@@ -21,9 +21,19 @@ export class AutocompleteModel {
     globalModel: Model;
     suggestions: OV<SuggestionBlob> = mobx.observable.box(null);
     primarySuggestionIndex: OV<number> = mobx.observable.box(0);
+    @mobx.observable historyLoaded: boolean = false;
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
+
+        // This is a hack to get the suggestions to update after the history is loaded the first time
+        mobx.reaction(
+            () => this.globalModel.inputModel.historyItems.get() != null,
+            () => {
+                log.debug("history loaded, reloading suggestions");
+                this.loadSuggestions();
+            }
+        );
     }
 
     /**
@@ -65,6 +75,7 @@ export class AutocompleteModel {
         if (!this.isEnabled()) {
             return null;
         }
+
         return this.suggestions.get();
     }
 
@@ -113,25 +124,31 @@ export class AutocompleteModel {
         // Build the ghost prompt with the primary suggestion if available
         let retVal = "";
         if (autocompleteSuggestions != null && autocompleteSuggestions.suggestions.length > index) {
-            retVal = autocompleteSuggestions.suggestions[index].name;
+            const suggestion = autocompleteSuggestions.suggestions[index];
+            retVal = suggestion.name;
 
-            // The following is a workaround for slow responses from underlying commands. It assumes that the primary suggestion will be a continuation of the current token.
-            // The runtime will provide a number of chars to drop, but it will return after the render has already completed, meaning we will end up with a flicker. This is a workaround to prevent the flicker.
-            // As we add more characters to the current token, we assume we need to drop the same number of characters from the primary suggestion, even if the runtime has not yet provided the updated characters to drop.
-            const curLine = this.globalModel.inputModel.curLine;
-            const curEndTokenLen = getEndTokenLength(curLine);
-            const lastEndTokenLen = getEndTokenLength(this.globalModel.inputModel.lastCurLine);
-            let charactersToDrop = 0;
-            if (curEndTokenLen > lastEndTokenLen) {
-                charactersToDrop = Math.max(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
+            if (suggestion.insertValue) {
+                retVal = suggestion.insertValue;
+                log.debug("ghost prompt insertValue", retVal);
             } else {
-                charactersToDrop = Math.min(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
-            }
+                // The following is a workaround for slow responses from underlying commands. It assumes that the primary suggestion will be a continuation of the current token.
+                // The runtime will provide a number of chars to drop, but it will return after the render has already completed, meaning we will end up with a flicker. This is a workaround to prevent the flicker.
+                // As we add more characters to the current token, we assume we need to drop the same number of characters from the primary suggestion, even if the runtime has not yet provided the updated characters to drop.
+                const curLine = this.globalModel.inputModel.curLine;
+                const curEndTokenLen = getEndTokenLength(curLine);
+                const lastEndTokenLen = getEndTokenLength(this.globalModel.inputModel.lastCurLine);
+                let charactersToDrop = 0;
+                if (curEndTokenLen > lastEndTokenLen) {
+                    charactersToDrop = Math.max(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
+                } else {
+                    charactersToDrop = Math.min(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
+                }
 
-            if (charactersToDrop > 0) {
-                retVal = retVal.substring(charactersToDrop);
+                if (charactersToDrop > 0) {
+                    retVal = retVal.substring(charactersToDrop);
+                }
+                log.debug("ghost prompt", curLine + retVal);
             }
-            log.debug("ghost prompt", curLine + retVal);
         }
         return retVal;
     }

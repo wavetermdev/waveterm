@@ -126,7 +126,10 @@ export const runGenerator = async (
                 : await executeShellCommand({ ...shellInput, cwd });
 
             const scriptStdout = scriptOutput.stdout.trim();
-            if (postProcess) {
+            const scriptStderr = scriptOutput.stderr.trim();
+            if (scriptStderr) {
+                log.debug("script error, skipping processing", scriptStderr);
+            } else if (postProcess) {
                 suggestions.push(...postProcess(scriptStdout, tokens));
             } else if (splitOn) {
                 suggestions.push(...scriptStdout.split(splitOn).map((s) => ({ name: s })));
