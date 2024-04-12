@@ -21,6 +21,7 @@ import * as util from "@/util/util";
 import * as appconst from "@/app/appconst";
 
 import "./cmdinput.less";
+import { SuggestionView } from "./suggestionview";
 
 dayjs.extend(localizedFormat);
 
@@ -194,6 +195,9 @@ class CmdInput extends React.Component<{}, {}> {
                     </When>
                     <When condition={openView === appconst.InputAuxView_Info}>
                         <InfoMsg key="infomsg" />
+                    </When>
+                    <When condition={openView === appconst.InputAuxView_Suggestions}>
+                        <SuggestionView />
                     </When>
                 </Choose>
                 <If condition={remote && remote.status != "connected"}>

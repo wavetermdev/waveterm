@@ -7,9 +7,8 @@ import { boundMethod } from "autobind-decorator";
 import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import { Model } from "./model";
-import { GlobalCommandRunner, GlobalModel } from "./global";
+import { GlobalCommandRunner } from "./global";
 import { SuggestionBlob } from "@/autocomplete/runtime/model";
-import { Shell, getSuggestions } from "@/autocomplete";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
     return {
@@ -73,8 +72,6 @@ class InputModel {
     lineFocused: OV<boolean> = mobx.observable.box(false);
     physicalInputFocused: OV<boolean> = mobx.observable.box(false);
     forceInputFocus: boolean = false;
-
-    autocompleteSuggestions: OV<SuggestionBlob> = mobx.observable.box(null);
 
     constructor(globalModel: Model) {
         mobx.makeAutoObservable(this);
@@ -522,7 +519,7 @@ class InputModel {
                     this.scrollHistoryItemIntoView(hitem.historynum);
                 }
             }
-            this.setAutocompleteSuggestions(null);
+            this.globalModel.autocompleteModel.setAutocompleteSuggestions(null);
         })();
     }
 
@@ -796,40 +793,22 @@ class InputModel {
         })();
     }
 
-    isAutocompleteEnabled(): boolean {
-        const clientData: ClientDataType = this.globalModel.clientData.get();
-        return clientData?.clientopts.autocompleteenabled;
-    }
-
-    loadAutocompleteSuggestions = mobx.flow(function* (this: InputModel) {
-        console.log("get suggestions");
-        if (!this.isAutocompleteEnabled()) {
-            this.autocompleteSuggestions.set(null);
-            return;
+    @mobx.computed
+    get lastCurLine(): string {
+        console.log("get curLine");
+        const hidx = this.historyIndex.get() - 1;
+        if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
+            return this.modHistory[hidx];
         }
-        try {
-            const festate = this.globalModel.getCurRemoteInstance().festate;
-            const suggestions: SuggestionBlob = yield getSuggestions(this.curLine, festate.cwd, festate.shell as Shell);
-            this.autocompleteSuggestions.set(suggestions);
-        } catch (error) {
-            console.error("error getting suggestions: ", error);
+        const hitems = this.getFilteredHistoryItems();
+        if (hidx == 0 || hitems == null || hidx > hitems.length) {
+            return "";
         }
-    });
-
-    getAutocompleteSuggestions(): SuggestionBlob {
-        if (!this.isAutocompleteEnabled()) {
-            return null;
+        const hitem = hitems[hidx - 1];
+        if (hitem == null) {
+            return "";
         }
-        return this.autocompleteSuggestions.get();
-    }
-
-    setAutocompleteSuggestions(suggestions: SuggestionBlob): void {
-        if (!this.isAutocompleteEnabled()) {
-            return;
-        }
-        mobx.action(() => {
-            this.autocompleteSuggestions.set(suggestions);
-        })();
+        return hitem.cmdstr;
     }
 
     @mobx.computed
@@ -862,11 +841,11 @@ class InputModel {
 
             // Whenever curLine changes, we should fetch the suggestions
             if (val.trim() == "") {
-                this.setAutocompleteSuggestions(null);
+                this.globalModel.autocompleteModel.setAutocompleteSuggestions(null);
                 return;
             }
             if (runGetSuggestions) {
-                this.loadAutocompleteSuggestions();
+                this.globalModel.autocompleteModel.loadAutocompleteSuggestions();
             }
         })();
     }
@@ -895,7 +874,7 @@ class InputModel {
             this.historyQueryOpts.set(getDefaultHistoryQueryOpts());
             this.historyAfterLoadIndex = 0;
             this.dropModHistory(true);
-            this.setAutocompleteSuggestions(null);
+            this.globalModel.autocompleteModel.setAutocompleteSuggestions(null);
         })();
     }
 }

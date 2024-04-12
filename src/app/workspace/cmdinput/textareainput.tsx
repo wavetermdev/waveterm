@@ -102,8 +102,22 @@ class HistoryKeybindings extends React.Component<{}, {}> {
     }
 }
 
+const SuggestionsInfoMsg = (props: { suggestions: SuggestionBlob }) => {
+    const suggestions = props.suggestions.suggestions;
+    return (
+        <div className="cmd-input-info">
+            {suggestions.map((s) => (
+                <div key={s.name} className="cmd-input-info-item">
+                    {s.icon} {s.name}
+                </div>
+            ))}
+        </div>
+    );
+};
+
 class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
     curPress: string;
+    lastTab: boolean;
 
     componentDidMount() {
         if (GlobalModel.activeMainView != "session") {
@@ -116,13 +130,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             this.curPress = "tab";
             const curLine = inputModel.curLine;
             if (curLine != "") {
-                const suggestions = inputModel.getAutocompleteSuggestions();
-                if (suggestions != null) {
-                    const infoMsg: InfoType = {
-                        infocomps: suggestions.suggestions.map((s) => `${s.icon} ${s.name}`),
-                    };
-                    inputModel.flashInfoMsg(infoMsg, null);
-                }
+                inputModel.setActiveAuxView(appconst.InputAuxView_Suggestions);
             }
             return true;
         });
@@ -549,11 +557,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         GlobalModel.inputModel.setPhysicalInputFocused(false);
     }
 
-    getEndTokenLength(line: string): number {
-        const lastSpaceIndex = line?.lastIndexOf(" ");
-        return line ? line.length - lastSpaceIndex - 1 : 0;
-    }
-
     render() {
         const model = GlobalModel;
         const inputModel = model.inputModel;
@@ -603,30 +606,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         const isHistoryFocused = auxViewFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
 
         // Will be null if the feature is disabled
-        const autocompleteSuggestions: SuggestionBlob = inputModel.getAutocompleteSuggestions();
-
-        // Build the ghost prompt with the primary suggestion if available
-        let primaryAutocompleteSuggestion = "";
-        if (autocompleteSuggestions != null && autocompleteSuggestions.suggestions.length > 0) {
-            primaryAutocompleteSuggestion = autocompleteSuggestions.suggestions[0].name;
-
-            // The following is a workaround for slow responses from underlying commands. It assumes that the primary suggestion will be a continuation of the current token.
-            // The runtime will provide a number of chars to drop, but it will return after the render has already completed, meaning we will end up with a flicker. This is a workaround to prevent the flicker.
-            // As we add more characters to the current token, we assume we need to drop the same number of characters from the primary suggestion, even if the runtime has not yet provided the updated characters to drop.
-            const curEndTokenLen = this.getEndTokenLength(curLine);
-            const lastEndTokenLen = this.getEndTokenLength(this.lastCurLine.get());
-            let charactersToDrop = 0;
-            if (curEndTokenLen > lastEndTokenLen) {
-                charactersToDrop = Math.max(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
-            } else {
-                charactersToDrop = Math.min(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
-            }
-
-            if (charactersToDrop > 0) {
-                primaryAutocompleteSuggestion = primaryAutocompleteSuggestion.substring(charactersToDrop);
-            }
-            console.log("ghost prompt", curLine + primaryAutocompleteSuggestion);
-        }
+        const primaryAutocompleteSuggestion = GlobalModel.autocompleteModel.getPrimarySuggestionCompletion();
 
         return (
             <div
