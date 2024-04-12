@@ -571,7 +571,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     render() {
         const model = GlobalModel;
         const inputModel = model.inputModel;
-        console.log("render");
         const curLine = inputModel.curLine;
         let displayLines = 1;
         const numLines = curLine.split("\n").length;

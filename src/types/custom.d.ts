@@ -951,6 +951,8 @@ declare global {
         onToggleDevUI: (callback: () => void) => void;
         showContextMenu: (menu: ElectronContextMenuItem[], position: { x: number; y: number }) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
+        pathBaseName: (path: string) => string;
+        pathSep: () => string;
     };
 
     type ElectronContextMenuItem = {
@@ -967,8 +969,6 @@ declare global {
         role?: string; // electron role (optional)
         click?: () => void; // not required if role is set
         submenu?: ContextMenuItem[];
-        pathBaseName: (path: string) => string;
-        pathSep: () => string;
     };
 }
 
