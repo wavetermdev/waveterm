@@ -989,6 +989,7 @@ type SudoRequestPacketType struct {
 	CK          base.CommandKey `json:"ck"`
 	ShellPubKey []byte          `json:"shellpubkey"`
 	SudoStatus  string          `json:"sudostatus"`
+	ErrStr      string          `json:"errstr"`
 }
 
 func (*SudoRequestPacketType) GetType() string {

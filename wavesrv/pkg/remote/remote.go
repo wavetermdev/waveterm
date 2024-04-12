@@ -2369,6 +2369,35 @@ func (msh *MShellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdTy
 	return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, nil, newStateDiff)
 }
 
+func (msh *MShellProc) handleSudoError(ck base.CommandKey, sudoErr error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	screenId, lineId := ck.Split()
+
+	update := scbus.MakeUpdatePacket()
+	errOutputStr := fmt.Sprintf("%serror: %v%s\n", utilfn.AnsiRedColor(), sudoErr, utilfn.AnsiResetColor())
+	msh.writeToCmdPtyOut(ctx, screenId, lineId, []byte(errOutputStr))
+	doneInfo := sstore.CmdDoneDataValues{
+		Ts:         time.Now().UnixMilli(),
+		ExitCode:   1,
+		DurationMs: 0,
+	}
+	err := sstore.UpdateCmdDoneInfo(ctx, update, ck, doneInfo, sstore.CmdStatusError)
+	if err != nil {
+		log.Printf("error updating cmddone info (in handleSudoError): %v\n", err)
+		return
+	}
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, screenId, lineId)
+	if err != nil {
+		log.Printf("error trying to update screen focus type (in handleSudoError): %v\n", err)
+		// fall-through (nothing to do)
+	}
+	if screen != nil {
+		update.AddUpdate(*screen)
+	}
+	scbus.MainUpdateBus.DoUpdate(update)
+}
+
 func (msh *MShellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
 	if rct == nil {
 		log.Printf("handleCmdStartError, no rct\n")
@@ -2598,6 +2627,102 @@ func sendScreenUpdates(screens []*sstore.ScreenType) {
 	}
 }
 
+func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) error {
+	var storedPw *[]byte
+	var rawSecret []byte
+	msh.WithLock(func() {
+		storedPw = msh.sudoPw
+	})
+	if storedPw != nil && sudoPk.SudoStatus == "first-attempt" {
+		rawSecret = *storedPw
+	} else {
+		request := &userinput.UserInputRequestType{
+			QueryText:    "Please enter your password",
+			ResponseType: "text",
+			Title:        "Sudo Password",
+			Markdown:     false,
+		}
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		guiResponse, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			return err
+		}
+		rawSecret = []byte(guiResponse.Text)
+	}
+	msh.WithLock(func() {
+		if msh.sudoTimerCancel != nil {
+			msh.sudoTimerCancel()
+		}
+	})
+	// make sure previous goroutine is done
+	if msh.sudoWg != nil {
+		msh.sudoWg.Wait()
+	}
+
+	// can't use a duration since that will stop ticking
+	// if the program is paused and/or computer is asleep
+	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Minute*5)
+	wg := new(sync.WaitGroup)
+	wg.Add(1)
+	// set timer to reset sudo
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				msh.WithLock(func() {
+					msh.sudoPw = nil
+				})
+				wg.Done()
+				return
+			default:
+			}
+			time.Sleep(time.Millisecond * 10)
+		}
+	}()
+	msh.WithLock(func() {
+		msh.sudoPw = &rawSecret
+		msh.sudoTimerCancel = cancelFunc
+		msh.sudoWg = wg
+	})
+
+	srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		return fmt.Errorf("generate ecdh: %e", err)
+	}
+	shellPubKey, err := x509.ParsePKIXPublicKey(sudoPk.ShellPubKey)
+	if err != nil {
+		return fmt.Errorf("parse shell pub key: %e", err)
+	}
+	ecdhShellPubKey, err := shellPubKey.(*ecdsa.PublicKey).ECDH()
+	if err != nil {
+		return fmt.Errorf("ecdsa to ecdh: %e", err)
+	}
+	sharedKey, err := srvPrivKey.ECDH(ecdhShellPubKey)
+	if err != nil {
+		return fmt.Errorf("compute shared key: %e", err)
+	}
+	encryptor, err := promptenc.MakeEncryptor(sharedKey)
+	if err != nil {
+		return fmt.Errorf("create encryptor: %e", err)
+	}
+	encryptedSecret, err := encryptor.EncryptData(rawSecret, "sudopw")
+	if err != nil {
+		return fmt.Errorf("encrypt secret: %e", err)
+	}
+	srvPubKey, err := x509.MarshalPKIXPublicKey(srvPrivKey.PublicKey())
+	if err != nil {
+		return fmt.Errorf("marshal pub key: %e", err)
+	}
+	sudoResponse := packet.MakeSudoResponsePacket(sudoPk.CK, encryptedSecret, srvPubKey)
+	select {
+	case msh.ServerProc.Input.SendCh <- sudoResponse:
+	default:
+	}
+	return nil
+
+}
+
 func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 	if _, ok := pk.(*packet.DataAckPacketType); ok {
 		// TODO process ack (need to keep track of buffer size for sending)
@@ -2639,107 +2764,20 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 				msh.sudoWg.Wait()
 			}
 			msh.sudoPw = nil
+			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: incorrect password entered"))
 			return
 		}
 
-		var storedPw *[]byte
-		var rawSecret []byte
-		msh.WithLock(func() {
-			storedPw = msh.sudoPw
-		})
-		if storedPw != nil && sudoPk.SudoStatus == "first-attempt" {
-			rawSecret = *storedPw
-		} else {
-			request := &userinput.UserInputRequestType{
-				QueryText:    "Please enter your password",
-				ResponseType: "text",
-				Title:        "Sudo Password",
-				Markdown:     false,
-			}
-			ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
-			defer cancelFn()
-			guiResponse, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
-			if err != nil {
-				log.Printf("TODO: add error handle 1\n")
-				return
-			}
-			rawSecret = []byte(guiResponse.Text)
-
-		}
-		msh.WithLock(func() {
-			if msh.sudoTimerCancel != nil {
-				msh.sudoTimerCancel()
-			}
-		})
-		// make sure previous goroutine is done
-		if msh.sudoWg != nil {
-			msh.sudoWg.Wait()
+		// handle waveshell errors here
+		if sudoPk.SudoStatus == "error" {
+			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: shell: %s", sudoPk.ErrStr))
+			return
 		}
 
-		// can't use a duration since that will stop ticking
-		// if the program is paused and/or computer is asleep
-		ctx, cancelFunc := context.WithTimeout(context.Background(), time.Minute*5)
-		wg := new(sync.WaitGroup)
-		wg.Add(1)
-		// set timer to reset sudo
-		go func() {
-			for {
-				select {
-				case <-ctx.Done():
-					msh.WithLock(func() {
-						msh.sudoPw = nil
-					})
-					wg.Done()
-					return
-				default:
-				}
-				time.Sleep(time.Millisecond * 10)
-			}
-		}()
-		msh.WithLock(func() {
-			msh.sudoPw = &rawSecret
-			msh.sudoTimerCancel = cancelFunc
-			msh.sudoWg = wg
-		})
-
-		srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
+		err := msh.sendSudoPassword(sudoPk)
 		if err != nil {
-			log.Printf("TODO: add error handle 2\n")
-			return
+			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: srv: %s", err))
 		}
-		shellPubKey, err := x509.ParsePKIXPublicKey(sudoPk.ShellPubKey)
-		if err != nil {
-			log.Printf("TODO: add error handle 2.5: %e\n", err)
-			return
-		}
-		ecdhShellPubKey, err := shellPubKey.(*ecdsa.PublicKey).ECDH()
-		if err != nil {
-			log.Printf("TODO: add error handle 2.7: %e\n", err)
-			return
-		}
-		sharedKey, err := srvPrivKey.ECDH(ecdhShellPubKey)
-		if err != nil {
-			log.Printf("TODO: add error handle 3: %e\n", err)
-			return
-		}
-		encryptor, err := promptenc.MakeEncryptor(sharedKey)
-		if err != nil {
-			log.Printf("TODO: add error handle 4\n")
-			return
-		}
-		encryptedSecret, err := encryptor.EncryptData(rawSecret, "sudopw")
-		if err != nil {
-			log.Printf("TODO: add error handle 5\n")
-			return
-		}
-		srvPubKey, err := x509.MarshalPKIXPublicKey(srvPrivKey.PublicKey())
-		if err != nil {
-			log.Printf("TODO: add error handle 6\n")
-			return
-		}
-		sudoResponse := packet.MakeSudoResponsePacket(sudoPk.CK, encryptedSecret, srvPubKey)
-		msh.ServerProc.Input.SendCh <- sudoResponse
-		return
 	}
 	if msgPk, ok := pk.(*packet.MessagePacketType); ok {
 		msh.WriteToPtyBuffer("msg> [remote %s] [%s] %s\n", msh.GetRemoteName(), msgPk.CK, msgPk.Message)

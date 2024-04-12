@@ -198,6 +198,35 @@ func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType
 	return nil
 }
 
+func (s ShExecUPR) processSudoResponsePacket(sudoPacket *packet.SudoResponsePacketType) error {
+	srvPubKey, err := x509.ParsePKIXPublicKey(sudoPacket.SrvPubKey)
+	if err != nil {
+		return fmt.Errorf("parse srv pub key: %e", err)
+	}
+	ecdhSrvPubKey, err := srvPubKey.(*ecdsa.PublicKey).ECDH()
+	if err != nil {
+		return fmt.Errorf("ecdsa to ecdh: %e", err)
+	}
+	sharedKey, err := s.ShExec.ShellPrivKey.ECDH(ecdhSrvPubKey)
+	if err != nil {
+		return fmt.Errorf("compute shared key: %e", err)
+	}
+	encryptor, err := promptenc.MakeEncryptor(sharedKey)
+	if err != nil {
+		return fmt.Errorf("create encryptor: %e", err)
+	}
+	decrypted, err := encryptor.DecryptData(sudoPacket.Secret, "sudopw")
+	if err != nil {
+		return fmt.Errorf("decrypt secret: %e", err)
+	}
+	decrypted = append(decrypted, '\n')
+	_, err = s.ShExec.SudoWriter.Write(decrypted)
+	if err != nil {
+		return fmt.Errorf("unable to write secret to stdin: %e", err)
+	}
+	return nil
+}
+
 func (s ShExecUPR) UnknownPacket(pk packet.PacketType) {
 	if pk.GetType() == packet.SpecialInputPacketStr {
 		inputPacket := pk.(*packet.SpecialInputPacketType)
@@ -211,33 +240,12 @@ func (s ShExecUPR) UnknownPacket(pk packet.PacketType) {
 	}
 	if pk.GetType() == packet.SudoResponsePacketStr {
 		sudoPacket := pk.(*packet.SudoResponsePacketType)
-		srvPubKey, err := x509.ParsePKIXPublicKey(sudoPacket.SrvPubKey)
+		err := s.processSudoResponsePacket(sudoPacket)
 		if err != nil {
-			wlog.Logf("ending err 1: %e\n", err)
-			return
+			sudoRequest := packet.MakeSudoRequestPacket(sudoPacket.CK, nil, "error")
+			sudoRequest.ErrStr = err.Error()
+			s.ShExec.MsgSender.SendPacket(sudoRequest)
 		}
-		ecdhSrvPubKey, err := srvPubKey.(*ecdsa.PublicKey).ECDH()
-		if err != nil {
-			wlog.Logf("ending err 2: %e\n", err)
-			return
-		}
-		sharedKey, err := s.ShExec.ShellPrivKey.ECDH(ecdhSrvPubKey)
-		if err != nil {
-			wlog.Logf("ending err 3: %e\n", err)
-			return
-		}
-		encryptor, err := promptenc.MakeEncryptor(sharedKey)
-		if err != nil {
-			wlog.Logf("ending err 4: %e\n", err)
-			return
-		}
-		decrypted, err := encryptor.DecryptData(sudoPacket.Secret, "sudopw")
-		if err != nil {
-			wlog.Logf("ending err 5: %e\n", err)
-			return
-		}
-		decrypted = append(decrypted, '\n')
-		s.ShExec.SudoWriter.Write(decrypted)
 		return
 	}
 	if s.UPR != nil {
@@ -1030,8 +1038,6 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 				len, _ := reader.Read(chunk)
 				buffer.Write(chunk[:len])
 				if bytes.Contains(buffer.Bytes(), []byte(sudoKey.String())) {
-					wlog.Logf("buffer: %v\n", buffer.Bytes())
-					wlog.Logf("sudokey: %v\n", []byte(sudoKey.String()))
 					buffer.Reset()
 
 					// subsequent attempts get an extra \n
@@ -1043,12 +1049,16 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 
 					shellPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
 					if err != nil {
-						// TODO
+						sudoRequest := packet.MakeSudoRequestPacket(cmd.CK, nil, "error")
+						sudoRequest.ErrStr = fmt.Sprintf("generate ecdh: %s", err.Error())
+						rtnShExec.MsgSender.SendPacket(sudoRequest)
 						return
 					}
 					shellPubKey, err := x509.MarshalPKIXPublicKey(shellPrivKey.PublicKey())
 					if err != nil {
-						// TODO
+						sudoRequest := packet.MakeSudoRequestPacket(cmd.CK, nil, "error")
+						sudoRequest.ErrStr = fmt.Sprintf("marshal pub key: %s", err.Error())
+						rtnShExec.MsgSender.SendPacket(sudoRequest)
 						return
 					}
 					rtnShExec.ShellPrivKey = shellPrivKey
@@ -1058,9 +1068,6 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 				} else if bytes.Contains(buffer.Bytes(), []byte(sudoErrKey.String())) {
 					sudoRequest := packet.MakeSudoRequestPacket(cmd.CK, nil, "failure")
 					rtnShExec.MsgSender.SendPacket(sudoRequest)
-
-				} else if buffer.Len() > 0 {
-					wlog.Logf("unparsed line: %s", buffer)
 				}
 			}
 		}()
