@@ -33,38 +33,11 @@ const VALID_CSS_VARIABLES = [
 
 @mobxReact.observer
 class TermStyleBlock extends React.Component<{
-    termTheme: TermThemeType;
+    themeName: string;
+    selector: string;
 }> {
     styleRules: OV<string> = mobx.observable.box("", { name: "StyleBlock-styleRules" });
     injectedStyleElement: HTMLStyleElement | null = null;
-
-    componentDidUpdate(): void {
-        const { termTheme } = this.props;
-        for (const key of Object.keys(termTheme)) {
-            const selector = this.getSelector(key);
-            if (selector) {
-                this.removeInjectedStyle();
-                this.loadThemeStyles(selector, termTheme[key]);
-                break;
-            }
-        }
-    }
-
-    getSelector(themeKey: string) {
-        const session = GlobalModel.getActiveSession();
-        const activeSessionId = session.sessionId;
-        const screen = GlobalModel.getActiveScreen();
-        const activeScreenId = screen.screenId;
-
-        if (themeKey == activeScreenId) {
-            return `.main-content [data-screenid="${activeScreenId}"]`;
-        } else if (themeKey == activeSessionId) {
-            return `.main-content [data-sessionid="${activeSessionId}"]`;
-        } else if (themeKey == "main") {
-            return ".main-content";
-        }
-        return null;
-    }
 
     isValidCSSColor(color) {
         const element = document.createElement("div");
@@ -101,11 +74,12 @@ class TermStyleBlock extends React.Component<{
                         .map(([key, value]) => `--term-${key}: ${value};`)
                         .join(" ");
 
-                    const style = document.createElement("style");
-                    style.innerHTML = `${selector} { ${styleProperties} }`;
-                    document.head.appendChild(style);
+                    const styleRules = `${selector} { ${styleProperties} }`;
 
-                    this.injectedStyleElement = style;
+                    mobx.action(() => {
+                        this.styleRules.set(styleRules);
+                    })();
+
                     console.log("loaded theme styles:", this.styleRules.get());
                 } else {
                     console.error("termThemeJson is not an object:", termThemeJson);
@@ -120,11 +94,10 @@ class TermStyleBlock extends React.Component<{
     }
 
     render() {
-        // To trigger componentDidUpdate when switching between sessions/screens
-        GlobalModel.getActiveSession();
-        GlobalModel.getActiveScreen();
+        const { themeName, selector } = this.props;
+        console.log("themeName:", themeName, "selector:", selector);
 
-        return null;
+        return this.styleRules.get() ? <style>{this.styleRules.get()}</style> : null;
     }
 }
 

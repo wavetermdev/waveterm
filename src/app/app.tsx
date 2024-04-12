@@ -22,6 +22,7 @@ import { DisconnectedModal, ClientStopModal } from "@/modals";
 import { ModalsProvider } from "@/modals/provider";
 import { Button, TermStyleBlock } from "@/elements";
 import { ErrorBoundary } from "@/common/error/errorboundary";
+import { For } from "tsx-control-statements/components";
 import cn from "classnames";
 import "./app.less";
 
@@ -80,6 +81,21 @@ class App extends React.Component<{}, {}> {
         rightSidebarModel.saveState(width, false);
     }
 
+    getSelector(themeKey: string) {
+        const sessions = GlobalModel.getSessionNames();
+        const screens = GlobalModel.getScreenNames();
+
+        if (themeKey === "main") {
+            return ":root";
+        } else if (themeKey in screens) {
+            return `.main-content [data-screenid="${themeKey}"]`;
+        } else if (themeKey in sessions) {
+            return `.main-content [data-sessionid="${themeKey}"]`;
+        }
+
+        return null;
+    }
+
     render() {
         const remotesModel = GlobalModel.remotesModel;
         const disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
@@ -125,6 +141,7 @@ class App extends React.Component<{}, {}> {
         const activeMainView = GlobalModel.activeMainView.get();
         const lightDarkClass = GlobalModel.isDarkTheme.get() ? "is-dark" : "is-light";
         const termTheme = GlobalModel.getTermTheme();
+        const themeKey = null;
 
         return (
             <div
@@ -153,7 +170,13 @@ class App extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div ref={this.mainContentRef} className="main-content">
-                    <TermStyleBlock termTheme={termTheme} />
+                    <For index="idx" each="themeKey" of={Object.keys(termTheme)}>
+                        <TermStyleBlock
+                            key={themeKey}
+                            themeName={termTheme[themeKey]}
+                            selector={this.getSelector(themeKey)}
+                        />
+                    </For>
                     <MainSideBar parentRef={this.mainContentRef} />
                     <ErrorBoundary>
                         <PluginsView />
