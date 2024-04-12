@@ -27,10 +27,11 @@ contextBridge.exposeInMainWorld("api", {
     onAppUpdateStatus: (callback) => ipcRenderer.on("app-update-status", (_, val) => callback(val)),
     onZoomChanged: (callback) => ipcRenderer.on("zoom-changed", callback),
     onMenuItemAbout: (callback) => ipcRenderer.on("menu-item-about", callback),
-    contextScreen: (screenOpts, position) => ipcRenderer.send("context-screen", screenOpts, position),
     contextEditMenu: (position, opts) => ipcRenderer.send("context-editmenu", position, opts),
     onWaveSrvStatusChange: (callback) => ipcRenderer.on("wavesrv-status-change", callback),
     onToggleDevUI: (callback) => ipcRenderer.on("toggle-devui", callback),
     pathBaseName: (path) => ipcRenderer.sendSync("path-basename", path),
     pathSep: () => ipcRenderer.sendSync("path-sep"),
+    showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
+    onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", callback),
 });

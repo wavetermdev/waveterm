@@ -86,6 +86,10 @@ class CommandRunner {
         return GlobalModel.submitCommand("line", "restart", [lineArg], { nohist: "1" }, interactive);
     }
 
+    lineSignal(lineArg: string, signal: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("signal", null, [lineArg, signal], { nohist: "1" }, interactive);
+    }
+
     lineSet(lineArg: string, opts: { renderer?: string }): Promise<CommandRtnType> {
         let kwargs = { nohist: "1" };
         if ("renderer" in opts) {

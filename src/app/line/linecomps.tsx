@@ -665,6 +665,83 @@ class LineCmd extends React.Component<
         };
     };
 
+    @boundMethod
+    handleContextMenu(e: React.MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+        let { line, screen } = this.props;
+        const containerType = screen.getContainerType();
+        const isMainContainer = containerType == appconst.LineContainer_Main;
+        const cmd = screen.getCmd(line);
+        let menu: ContextMenuItem[] = [
+            { role: "copy", label: "Copy", type: "normal" },
+            { role: "paste", label: "Paste", type: "normal" },
+            { type: "separator" },
+            { label: "Copy Command", click: () => this.copyCommandStr() },
+        ];
+        const isTerminal = isBlank(line.renderer) || line.renderer == "terminal";
+        if (isTerminal) {
+            menu.push({ label: "Copy Visible Output", click: () => this.copyOutput(false) });
+            menu.push({ label: "Copy Full Output", click: () => this.copyOutput(true) });
+        }
+        if (isMainContainer) {
+            menu.push({ type: "separator" });
+            const isMinimized = line.linestate["wave:min"];
+            if (isMinimized) {
+                menu.push({
+                    label: "Show Block Output",
+                    click: () => GlobalCommandRunner.lineMinimize(line.lineid, false, true),
+                });
+            } else {
+                menu.push({
+                    label: "Hide Block Output",
+                    click: () => GlobalCommandRunner.lineMinimize(line.lineid, true, true),
+                });
+            }
+            if (cmd?.isRunning()) {
+                menu.push({ type: "separator" });
+                menu.push({
+                    label: "Send Signal",
+                    type: "submenu",
+                    submenu: [
+                        { label: "SIGINT", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGINT", true) },
+                        { label: "SIGTERM", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGTERM", true) },
+                        { label: "SIGKILL", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGKILL", true) },
+                        { type: "separator" },
+                        { label: "SIGUSR1", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGUSR1", true) },
+                        { label: "SIGUSR2", click: () => GlobalCommandRunner.lineSignal(line.lineid, "SIGUSR2", true) },
+                    ],
+                });
+            }
+
+            menu.push({ type: "separator" });
+            menu.push({ label: "Restart Line", click: () => GlobalCommandRunner.lineRestart(line.lineid, true) });
+            menu.push({ type: "separator" });
+            menu.push({ label: "Delete Block", click: () => GlobalCommandRunner.lineDelete(line.lineid, true) });
+        }
+        GlobalModel.contextMenuModel.showContextMenu(menu, { x: e.clientX, y: e.clientY });
+    }
+
+    copyCommandStr() {
+        const { line, screen } = this.props;
+        const cmd: Cmd = screen.getCmd(line);
+        if (cmd != null) {
+            navigator.clipboard.writeText(cmd.getCmdStr());
+        }
+    }
+
+    copyOutput(fullOutput: boolean) {
+        const { line, screen } = this.props;
+        let termWrap = screen.getTermWrap(line.lineid);
+        if (termWrap == null) {
+            return;
+        }
+        let outputStr = termWrap.getOutput(fullOutput);
+        if (fullOutput != null) {
+            navigator.clipboard.writeText(outputStr);
+        }
+    }
+
     render() {
         const { screen, line, width, staticRender, visible } = this.props;
         const isVisible = visible.get();
@@ -750,6 +827,7 @@ class LineCmd extends React.Component<
                 data-lineid={line.lineid}
                 data-linenum={line.linenum}
                 data-screenid={line.screenid}
+                onContextMenu={this.handleContextMenu}
             >
                 <If condition={isSelected || cmdError}>
                     <div key="mask" className={cn("line-mask", { "error-mask": cmdError })}></div>
