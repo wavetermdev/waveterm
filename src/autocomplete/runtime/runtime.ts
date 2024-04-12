@@ -17,7 +17,6 @@ import { buildExecuteShellCommand, resolveCwd } from "./utils";
 import { Shell } from "../utils/shell";
 import { getApi } from "@/models";
 import log from "../utils/log";
-import { run } from "node:test";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive type, setting as any
 const specSet: any = {};
