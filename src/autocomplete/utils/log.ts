@@ -11,7 +11,7 @@ let logEnabled = false;
 
 const reset = async () => {};
 
-const debug = (content: object) => {
+const debug = (...content) => {
     if (!GlobalModel.isDev) {
         return;
     }

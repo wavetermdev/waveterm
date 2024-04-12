@@ -9,6 +9,7 @@ import { CommandToken } from "./parser";
 import { Shell } from "../utils/shell";
 import { GlobalModel, getApi } from "@/models";
 import { MemCache } from "@/util/memcache";
+import log from "../utils/log";
 
 export type ExecuteShellCommandTTYResult = {
     code: number | null;
@@ -20,12 +21,12 @@ export const buildExecuteShellCommand =
     (timeout: number): Fig.ExecuteCommandFunction =>
     async (input: Fig.ExecuteCommandInput): Promise<Fig.ExecuteCommandOutput> => {
         const cachedResult = commandResultCache.get(input);
-        console.log("cachedResult", cachedResult);
+        log.debug("cachedResult", cachedResult);
         if (cachedResult) {
-            console.log("Using cached result for", input);
+            log.debug("Using cached result for", input);
             return cachedResult;
         }
-        console.log("Executing command", input);
+        log.debug("Executing command", input);
         const { command, args, cwd, env } = input;
         const resp = await GlobalModel.submitEphemeralCommand("eval", null, [command, ...args], null, false, {
             expectsresponse: true,

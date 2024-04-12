@@ -16,6 +16,7 @@ import { SuggestionBlob } from "./model";
 import { buildExecuteShellCommand, resolveCwd } from "./utils";
 import { Shell } from "../utils/shell";
 import { getApi } from "@/models";
+import log from "../utils/log";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive type, setting as any
 const specSet: any = {};
@@ -86,11 +87,11 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
     if (result == null) return;
 
     let charactersToDrop = lastCommand?.complete ? 0 : lastCommand?.token.length ?? 0;
-    console.log("charactersToDrop", charactersToDrop);
+    log.debug("charactersToDrop", charactersToDrop);
     if (pathy) {
-        console.log("pathy", pathy);
+        log.debug("pathy", pathy);
         charactersToDrop = pathyComplete ? 0 : getApi().pathBaseName(lastCommand?.token ?? "").length;
-        console.log("new charactersToDrop", charactersToDrop);
+        log.debug("new charactersToDrop", charactersToDrop);
     }
     return { ...result, charactersToDrop };
 };

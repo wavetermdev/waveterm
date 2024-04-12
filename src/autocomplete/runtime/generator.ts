@@ -55,66 +55,66 @@ export const runGenerator = async (
     const newToken = tokens.at(-1);
 
     if (trigger) {
-        console.log("trigger", trigger);
+        log.debug("trigger", trigger);
         if (typeof trigger === "string") {
             if (!newToken?.includes(trigger)) {
-                console.log("trigger string", newToken, trigger);
+                log.debug("trigger string", newToken, trigger);
                 return cachedSuggestions;
             }
         } else if (typeof trigger === "function") {
-            console.log("trigger function", newToken, lastToken);
+            log.debug("trigger function", newToken, lastToken);
             if (!trigger(newToken, lastToken)) {
-                console.log("trigger function false");
+                log.debug("trigger function false");
                 return cachedSuggestions;
             } else {
-                console.log("trigger function true");
+                log.debug("trigger function true");
             }
         } else {
             switch (trigger.on) {
                 case "change": {
-                    console.log("trigger change", newToken, lastToken);
+                    log.debug("trigger change", newToken, lastToken);
                     if (lastToken && newToken && lastToken === newToken) {
-                        console.log("trigger change false");
+                        log.debug("trigger change false");
                         return cachedSuggestions;
                     } else {
-                        console.log("trigger change true");
+                        log.debug("trigger change true");
                     }
                     break;
                 }
                 case "match": {
                     if (Array.isArray(trigger.string)) {
-                        console.log("trigger match array", newToken, trigger.string);
+                        log.debug("trigger match array", newToken, trigger.string);
                         if (!trigger.string.some((t) => newToken === t)) {
-                            console.log("trigger match false");
+                            log.debug("trigger match false");
                             return cachedSuggestions;
                         } else {
-                            console.log("trigger match true");
+                            log.debug("trigger match true");
                         }
                     } else if (trigger.string !== newToken) {
-                        console.log("trigger match single true", newToken, trigger.string);
+                        log.debug("trigger match single true", newToken, trigger.string);
                         return cachedSuggestions;
                     } else {
-                        console.log("trigger match single false", newToken, trigger.string);
+                        log.debug("trigger match single false", newToken, trigger.string);
                     }
                     break;
                 }
                 case "threshold": {
-                    console.log("trigger threshold", newToken, lastToken, trigger.length);
+                    log.debug("trigger threshold", newToken, lastToken, trigger.length);
                     if (Math.abs(newToken.length - lastToken.length) < trigger.length) {
-                        console.log("trigger threshold false");
+                        log.debug("trigger threshold false");
                         return cachedSuggestions;
                     } else {
-                        console.log("trigger threshold true");
+                        log.debug("trigger threshold true");
                     }
                     break;
                 }
             }
         }
     } else if (lastToken && newToken && lastToken === newToken) {
-        console.log("lastToken === newToken", lastToken, newToken);
+        log.debug("lastToken === newToken", lastToken, newToken);
         return cachedSuggestions;
     }
-    console.log("lastToken !== newToken", lastToken, newToken);
+    log.debug("lastToken !== newToken", lastToken, newToken);
 
     const executeShellCommand = buildExecuteShellCommand(scriptTimeout ?? 5000);
     const suggestions = [];
@@ -134,7 +134,7 @@ export const runGenerator = async (
         }
 
         if (custom) {
-            console.log("custom", custom);
+            log.debug("custom", custom);
             suggestions.push(...(await custom(tokens, executeShellCommand, await getGeneratorContext(cwd))));
         }
 
