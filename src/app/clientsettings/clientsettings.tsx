@@ -11,9 +11,9 @@ import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/commo
 import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
+import { MainView } from "@/common/elements/mainview";
 
 import "./clientsettings.less";
-import { MainView } from "@/common/elements/mainview";
 
 class ClientSettingsKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
