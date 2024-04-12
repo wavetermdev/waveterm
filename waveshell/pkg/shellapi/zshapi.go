@@ -211,27 +211,41 @@ type ZshMap = map[ZshParamKey]string
 
 type zshShellApi struct{}
 
-func (z zshShellApi) GetShellType() string {
+func (zshShellApi) GetShellType() string {
 	return packet.ShellType_zsh
 }
 
-func (z zshShellApi) MakeExitTrap(fdNum int) (string, []byte) {
+func (zshShellApi) MakeExitTrap(fdNum int) (string, []byte) {
 	return MakeZshExitTrap(fdNum)
 }
 
-func (z zshShellApi) GetLocalMajorVersion() string {
+func (zshShellApi) GetLocalMajorVersion() string {
 	return GetLocalZshMajorVersion()
 }
 
-func (z zshShellApi) GetLocalShellPath() string {
+func (zshShellApi) GetLocalShellPath() string {
 	return "/bin/zsh"
 }
 
-func (z zshShellApi) GetRemoteShellPath() string {
+func (zshShellApi) GetRemoteShellPath() string {
 	return "zsh"
 }
 
-func (z zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
+func (zshShellApi) ValidateCommandSyntax(cmdStr string) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), ValidateTimeout)
+	defer cancelFn()
+	cmd := exec.CommandContext(ctx, GetLocalZshPath(), "-n", "-c", cmdStr)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	if len(output) == 0 {
+		return errors.New("zsh syntax error")
+	}
+	return errors.New(utilfn.GetFirstLine(string(output)))
+}
+
+func (zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
 	if !opts.Sudo {
 		return cmdStr
 	}
@@ -242,7 +256,7 @@ func (z zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
 	}
 }
 
-func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {
+func (zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {
 	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 }
 
@@ -274,7 +288,7 @@ func (z zshShellApi) GetShellState(ctx context.Context, outCh chan ShellStateOut
 	outCh <- ShellStateOutput{ShellState: rtn, Stats: stats}
 }
 
-func (z zshShellApi) GetBaseShellOpts() string {
+func (zshShellApi) GetBaseShellOpts() string {
 	return BaseZshOpts
 }
 
@@ -341,6 +355,9 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 			continue
 		}
 		if strings.HasPrefix(varDecl.Name, "ZFTP_") {
+			continue
+		}
+		if strings.HasPrefix(varDecl.Name, "_wavetemp_") {
 			continue
 		}
 		if varDecl.IsExtVar {
@@ -709,7 +726,7 @@ func makeZshFuncsStrForShellState(fnMap map[ZshParamKey]string) string {
 	return buf.String()
 }
 
-func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, *packet.ShellStateStats, error) {
+func (zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, *packet.ShellStateStats, error) {
 	if scbase.IsDevMode() && DebugState {
 		writeStateToFile(packet.ShellType_zsh, outputBytes)
 	}

@@ -490,6 +490,7 @@ type FileInfo struct {
 	ModTs    int64  `json:"modts"`
 	IsDir    bool   `json:"isdir,omitempty"`
 	Perm     int    `json:"perm"`
+	MimeType string `json:"mimetype,omitempty"`
 	NotFound bool   `json:"notfound,omitempty"` // when NotFound is set, Perm will be set to permission for directory
 }
 
