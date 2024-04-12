@@ -105,15 +105,8 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
     const lastCommand = activeCmd.at(-1);
     let charactersToDrop = lastCommand?.complete ? 0 : lastCommand?.token.length ?? 0;
     log.debug("charactersToDrop", charactersToDrop);
-    if (spec == null && !cmd.endsWith(" ")) {
-        // overrides behavior for root spec, we have way less work to do
-        log.debug("no spec found, returning root spec");
-        result = await runSubcommand(activeCmd, rootSpec, cwd);
-    } else if (spec == null) {
-        // when in doubt, just return filepaths
-        log.debug("no spec found, returning filepaths");
-        result = await runSubcommand(activeCmd, filepathSpec, cwd);
-    } else {
+
+    if (spec) {
         log.debug("spec found", spec);
         const subcommand = getSubcommand(spec);
         if (subcommand == null) return;
@@ -129,7 +122,16 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
             charactersToDrop = pathyComplete ? 0 : getApi().pathBaseName(lastCommand?.token ?? "").length;
             log.debug("new charactersToDrop", charactersToDrop);
         }
+    } else if (cmd.endsWith(" ")) {
+        // if the first token is complete and we don't have a spec, just return filepaths
+        log.debug("no spec found, returning filepaths");
+        result = await runSubcommand(activeCmd, filepathSpec, cwd);
+    } else {
+        // if the first token is not complete, return root spec
+        log.debug("no spec found, returning root spec");
+        result = await runSubcommand(activeCmd, rootSpec, cwd);
     }
+
     if (result == null) return;
     log.debug("result", result);
     return { ...result, charactersToDrop };
