@@ -8,7 +8,6 @@ import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
-import { SuggestionBlob } from "@/autocomplete/runtime/model";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
     return {
@@ -72,6 +71,8 @@ class InputModel {
     lineFocused: OV<boolean> = mobx.observable.box(false);
     physicalInputFocused: OV<boolean> = mobx.observable.box(false);
     forceInputFocus: boolean = false;
+
+    lastCurLine: string = "";
 
     constructor(globalModel: Model) {
         mobx.makeAutoObservable(this);
@@ -794,24 +795,6 @@ class InputModel {
     }
 
     @mobx.computed
-    get lastCurLine(): string {
-        console.log("get curLine");
-        const hidx = this.historyIndex.get() - 1;
-        if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
-            return this.modHistory[hidx];
-        }
-        const hitems = this.getFilteredHistoryItems();
-        if (hidx == 0 || hitems == null || hidx > hitems.length) {
-            return "";
-        }
-        const hitem = hitems[hidx - 1];
-        if (hitem == null) {
-            return "";
-        }
-        return hitem.cmdstr;
-    }
-
-    @mobx.computed
     get curLine(): string {
         console.log("get curLine");
         const hidx = this.historyIndex.get();
@@ -831,6 +814,7 @@ class InputModel {
 
     setCurLine(val: string): void {
         console.log("set curLine, val:", val);
+        this.lastCurLine = this.curLine;
         const hidx = this.historyIndex.get();
         mobx.action(() => {
             const runGetSuggestions = this.curLine != val;
