@@ -128,9 +128,13 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         const inputModel = GlobalModel.inputModel;
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:autocomplete", (waveEvent) => {
             this.curPress = "tab";
-            const curLine = inputModel.curLine;
-            if (curLine != "") {
-                inputModel.setActiveAuxView(appconst.InputAuxView_Suggestions);
+            if (this.lastTab) {
+                const curLine = inputModel.curLine;
+                if (curLine != "") {
+                    inputModel.setActiveAuxView(appconst.InputAuxView_Suggestions);
+                }
+            } else {
+                this.lastTab = true;
             }
             return true;
         });
@@ -209,6 +213,10 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageBelow", (waveEvent) => {
             this.curPress = "historyupdown";
             inputObject.scrollPage(false);
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectRight", (waveEvent) => {
+            inputObject.arrowRightPressed();
             return true;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:expandTextInput", (waveEvent) => {
@@ -394,6 +402,11 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         inputModel.moveHistorySelection(-1);
         this.lastHistoryUpDown = true;
         return true;
+    }
+
+    @boundMethod
+    arrowRightPressed() {
+        GlobalModel.autocompleteModel.applyPrimarySuggestion();
     }
 
     scrollPage(up: boolean) {

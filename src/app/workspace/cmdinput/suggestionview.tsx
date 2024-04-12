@@ -26,11 +26,11 @@ export const SuggestionView: React.FC = observer(() => {
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:selectBelow", (waveEvent) => {
-            setSelectedSuggestion(Math.min(suggestions.suggestions.length - 1, selectedSuggestion + 1));
+            setSelectedSuggestion(Math.min(suggestions?.suggestions.length - 1, selectedSuggestion + 1));
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:tab", (waveEvent) => {
-            setSelectedSuggestion(Math.min(suggestions.suggestions.length - 1, selectedSuggestion + 1));
+            setSelectedSuggestion(Math.min(suggestions?.suggestions.length - 1, selectedSuggestion + 1));
             return true;
         });
 
@@ -48,7 +48,7 @@ export const SuggestionView: React.FC = observer(() => {
     };
 
     const setSuggestion = (idx: number) => {
-        inputModel.setCurLine(inputModel.curLine + autocompleteModel.getSuggestionCompletion(idx));
+        autocompleteModel.applySuggestion(idx);
         autocompleteModel.loadAutocompleteSuggestions();
         closeView();
     };

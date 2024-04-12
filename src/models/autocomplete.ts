@@ -117,4 +117,21 @@ export class AutocompleteModel {
         }
         return this.getSuggestionCompletion(this.getPrimarySuggestionIndex());
     }
+
+    applySuggestion(index: number): void {
+        if (!this.isEnabled()) {
+            return;
+        }
+        const suggestionCompletion = this.getSuggestionCompletion(index);
+        if (suggestionCompletion) {
+            this.globalModel.inputModel.setCurLine(this.globalModel.inputModel.curLine + suggestionCompletion);
+        }
+    }
+
+    applyPrimarySuggestion(): void {
+        if (!this.isEnabled()) {
+            return;
+        }
+        this.applySuggestion(this.getPrimarySuggestionIndex());
+    }
 }
