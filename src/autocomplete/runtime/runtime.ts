@@ -124,11 +124,11 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
         }
     } else if (cmd.endsWith(" ")) {
         // if the first token is complete and we don't have a spec, just return filepaths
-        log.debug("no spec found, returning filepaths");
+        log.debug("no spec found, first token complete, returning filepaths");
         result = await runSubcommand(activeCmd, filepathSpec, cwd);
     } else {
         // if the first token is not complete, return root spec
-        log.debug("no spec found, returning root spec");
+        log.debug("no spec found, first token not complete, returning root spec");
         result = await runSubcommand(activeCmd, rootSpec, cwd);
     }
 
