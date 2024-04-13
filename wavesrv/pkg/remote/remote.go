@@ -2777,6 +2777,12 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 	msh.WriteToPtyBuffer("*[remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
 }
 
+func (msh *MShellProc) ClearCachedSudoPw() {
+	msh.WithLock(func() {
+		msh.sudoPw = nil
+	})
+}
+
 func (msh *MShellProc) ProcessPackets() {
 	defer msh.WithLock(func() {
 		if msh.Status == StatusConnected {

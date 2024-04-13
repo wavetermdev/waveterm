@@ -295,6 +295,8 @@ func init() {
 	registerCmdFn("csvview", CSVViewCommand)
 
 	registerCmdFn("_debug:ri", DebugRemoteInstanceCommand)
+
+	registerCmdFn("sudo:clear", ClearSudoCache)
 }
 
 func getValidCommands() []string {
@@ -3912,6 +3914,20 @@ func DebugRemoteInstanceCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: "remote instance",
 		InfoLines: outputLines,
+	})
+	return update, nil
+}
+
+func ClearSudoCache(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnUpdate scbus.UpdatePacket, rtnErr error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	ids.Remote.MShell.ClearCachedSudoPw()
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.InfoMsgType{
+		InfoMsg:   "sudo password cleared",
+		TimeoutMs: 2000,
 	})
 	return update, nil
 }
