@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdh"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
@@ -2690,21 +2689,9 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 	if err != nil {
 		return fmt.Errorf("generate ecdh: %e", err)
 	}
-	shellPubKey, err := x509.ParsePKIXPublicKey(sudoPk.ShellPubKey)
+	encryptor, err := promptenc.MakeEncryptorEcdh(srvPrivKey, sudoPk.ShellPubKey)
 	if err != nil {
-		return fmt.Errorf("parse shell pub key: %e", err)
-	}
-	ecdhShellPubKey, err := shellPubKey.(*ecdsa.PublicKey).ECDH()
-	if err != nil {
-		return fmt.Errorf("ecdsa to ecdh: %e", err)
-	}
-	sharedKey, err := srvPrivKey.ECDH(ecdhShellPubKey)
-	if err != nil {
-		return fmt.Errorf("compute shared key: %e", err)
-	}
-	encryptor, err := promptenc.MakeEncryptor(sharedKey)
-	if err != nil {
-		return fmt.Errorf("create encryptor: %e", err)
+		return err
 	}
 	encryptedSecret, err := encryptor.EncryptData(rawSecret, "sudopw")
 	if err != nil {

@@ -5,7 +5,10 @@ package promptenc
 
 import (
 	"crypto/cipher"
+	"crypto/ecdh"
+	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -200,4 +203,25 @@ func (enc *Encryptor) DecryptStructFields(v interface{}, odata string) error {
 		rv.FieldByIndex(field.Index).Set(reflect.ValueOf(val))
 	}
 	return nil
+}
+
+func MakeEncryptorEcdh(localPrivKey *ecdh.PrivateKey, remotePubKey []byte) (*Encryptor, error) {
+	shellPubKey, err := x509.ParsePKIXPublicKey(remotePubKey)
+	if err != nil {
+		return nil, fmt.Errorf("parse pub key: %e", err)
+	}
+	ecdhShellPubKey, err := shellPubKey.(*ecdsa.PublicKey).ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("convert pub key from ecdsa to ecdh: %e", err)
+	}
+	sharedKey, err := localPrivKey.ECDH(ecdhShellPubKey)
+	if err != nil {
+		return nil, fmt.Errorf("compute shared key: %e", err)
+	}
+	encryptor, err := MakeEncryptor(sharedKey)
+	if err != nil {
+		return nil, fmt.Errorf("create encryptor: %e", err)
+	}
+	return encryptor, nil
+
 }

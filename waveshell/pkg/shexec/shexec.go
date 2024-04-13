@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdh"
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/base64"
@@ -200,21 +199,9 @@ func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType
 }
 
 func (s ShExecUPR) processSudoResponsePacket(sudoPacket *packet.SudoResponsePacketType) error {
-	srvPubKey, err := x509.ParsePKIXPublicKey(sudoPacket.SrvPubKey)
+	encryptor, err := promptenc.MakeEncryptorEcdh(s.ShExec.ShellPrivKey, sudoPacket.SrvPubKey)
 	if err != nil {
-		return fmt.Errorf("parse srv pub key: %e", err)
-	}
-	ecdhSrvPubKey, err := srvPubKey.(*ecdsa.PublicKey).ECDH()
-	if err != nil {
-		return fmt.Errorf("ecdsa to ecdh: %e", err)
-	}
-	sharedKey, err := s.ShExec.ShellPrivKey.ECDH(ecdhSrvPubKey)
-	if err != nil {
-		return fmt.Errorf("compute shared key: %e", err)
-	}
-	encryptor, err := promptenc.MakeEncryptor(sharedKey)
-	if err != nil {
-		return fmt.Errorf("create encryptor: %e", err)
+		return err
 	}
 	decrypted, err := encryptor.DecryptData(sudoPacket.Secret, "sudopw")
 	if err != nil {
