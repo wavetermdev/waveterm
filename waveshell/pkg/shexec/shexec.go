@@ -37,7 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -199,7 +199,7 @@ func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType
 }
 
 func (s ShExecUPR) processSudoResponsePacket(sudoPacket *packet.SudoResponsePacketType) error {
-	encryptor, err := promptenc.MakeEncryptorEcdh(s.ShExec.ShellPrivKey, sudoPacket.SrvPubKey)
+	encryptor, err := waveenc.MakeEncryptorEcdh(s.ShExec.ShellPrivKey, sudoPacket.SrvPubKey)
 	if err != nil {
 		return err
 	}

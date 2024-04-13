@@ -38,13 +38,13 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
@@ -2689,7 +2689,7 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 	if err != nil {
 		return fmt.Errorf("generate ecdh: %e", err)
 	}
-	encryptor, err := promptenc.MakeEncryptorEcdh(srvPrivKey, sudoPk.ShellPubKey)
+	encryptor, err := waveenc.MakeEncryptorEcdh(srvPrivKey, sudoPk.ShellPubKey)
 	if err != nil {
 		return err
 	}
