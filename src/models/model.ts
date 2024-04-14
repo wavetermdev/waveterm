@@ -139,7 +139,7 @@ class Model {
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
-    termThemes: OMap<string, string> = mobx.observable.array([], {
+    termThemes: OMap<string, OMap<string, string>> = mobx.observable.array([], {
         name: "terminalThemes",
         deep: false,
     });
@@ -921,6 +921,7 @@ class Model {
     }
 
     runUpdate_internal(genUpdate: UpdatePacket, uiContext: UIContextType, interactive: boolean) {
+        console.log("got here", genUpdate);
         if (genUpdate.type == "pty") {
             const ptyMsg = genUpdate.data;
             if (isBlank(ptyMsg.remoteid)) {

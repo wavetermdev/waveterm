@@ -37,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/bufferedpipe"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
@@ -156,6 +157,9 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 		removeWSStateAfterTimeout(clientId, stateConnectTime, WSStateReconnectTime)
 	}()
 	log.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
+
+	tt := configstore.MakeTermThemes(state)
+	tt.LoadAndWatchThemes()
 	state.RunWSRead()
 }
 
