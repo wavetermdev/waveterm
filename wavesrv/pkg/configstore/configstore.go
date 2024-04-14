@@ -55,7 +55,6 @@ func (t *TermThemes) LoadAndWatchThemes() {
 
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(t.Themes)
-	// spew.Dump("initialData", t.Themes)
 
 	if err := t.State.WriteUpdate(update); err != nil {
 		log.Printf("error sending initial file data via WebSocket: %v", err)
@@ -141,5 +140,7 @@ func (t *TermThemes) handleFileChange(filePath string) error {
 	}
 
 	t.Themes[filepath.Base(filePath)] = content
-	return t.State.WriteUpdate(t.Themes)
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(t.Themes)
+	return t.State.WriteUpdate(update)
 }
