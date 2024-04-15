@@ -589,7 +589,7 @@ declare global {
         termfontsize: number;
         termfontfamily: string;
         theme: NativeThemeSource;
-        termthemeconfig: TermThemeType;
+        termtheme: TermThemeType;
     };
 
     type ConfirmFlagsType = {
