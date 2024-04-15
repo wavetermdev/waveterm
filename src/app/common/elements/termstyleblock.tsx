@@ -35,8 +35,18 @@ class TermStyleBlock extends React.Component<{
     themeName: string;
     selector: string;
 }> {
-    componentDidUpdate(): void {
+    componentDidMount() {
         GlobalModel.bumpTermRenderVersion();
+    }
+
+    componentWillUnmount() {
+        GlobalModel.bumpTermRenderVersion();
+    }
+
+    componentDidUpdate(prevProps) {
+        if (prevProps.themeName !== this.props.themeName || prevProps.selector !== this.props.selector) {
+            GlobalModel.bumpTermRenderVersion();
+        }
     }
 
     isValidCSSColor(color) {
