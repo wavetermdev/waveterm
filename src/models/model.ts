@@ -32,7 +32,7 @@ import { MainSidebarModel } from "./mainsidebar";
 import { RightSidebarModel } from "./rightsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
-import { GlobalCommandRunner } from "./global";
+import { GlobalCommandRunner, GlobalModel } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
 import * as util from "@/util/util";
@@ -887,6 +887,7 @@ class Model {
         mobx.action(() => {
             this.termThemeOptions.set(termThemeOptions);
         })();
+        GlobalModel.bumpTermRenderVersion();
     }
 
     getTermThemeOptions(): TermThemeOptionsType {
@@ -900,7 +901,6 @@ class Model {
     }
 
     runUpdate_internal(genUpdate: UpdatePacket, uiContext: UIContextType, interactive: boolean) {
-        console.log("got here", genUpdate);
         if (genUpdate.type == "pty") {
             const ptyMsg = genUpdate.data;
             if (isBlank(ptyMsg.remoteid)) {
@@ -1014,7 +1014,6 @@ class Model {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
                 } else if (update.termthemeoptions != null) {
-                    console.log("got termthemeoptions==============", update.termthemeoptions);
                     this.setTermThemeOptions(update.termthemeoptions);
                 } else if (update.sessiontombstone != null || update.screentombstone != null) {
                     // nothing (ignore)
