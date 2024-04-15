@@ -140,7 +140,6 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
 
     @boundMethod
     handleChangeTermTheme(theme: string): void {
-        console.log("theme", theme);
         const { screenId } = this.props.screen;
         const currTheme = GlobalModel.getTermTheme()[screenId];
         if (currTheme == theme) {
