@@ -470,6 +470,35 @@ electron.ipcMain.on("toggle-developer-tools", (event) => {
     event.returnValue = true;
 });
 
+function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electron.Menu {
+    const menuItems: electron.MenuItem[] = [];
+    for (const menuDef of menuDefArr) {
+        const menuItemTemplate: electron.MenuItemConstructorOptions = {
+            role: menuDef.role as any,
+            label: menuDef.label,
+            type: menuDef.type,
+            click: () => {
+                MainWindow?.webContents.send("contextmenu-click", menuDef.id);
+            },
+        };
+        if (menuDef.submenu != null) {
+            menuItemTemplate.submenu = convertMenuDefArrToMenu(menuDef.submenu);
+        }
+        const menuItem = new electron.MenuItem(menuItemTemplate);
+        menuItems.push(menuItem);
+    }
+    return electron.Menu.buildFromTemplate(menuItems);
+}
+
+electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuItem[], { x, y }) => {
+    if (menuDefArr == null || menuDefArr.length == 0) {
+        return;
+    }
+    const menu = convertMenuDefArrToMenu(menuDefArr);
+    menu.popup({ x, y });
+    event.returnValue = true;
+});
+
 electron.ipcMain.on("hide-window", (event) => {
     if (MainWindow != null) {
         MainWindow.hide();
@@ -675,12 +704,6 @@ function runWaveSrv() {
     });
     return rtnPromise;
 }
-
-electron.ipcMain.on("context-screen", (_, { screenId }, { x, y }) => {
-    console.log("context-screen", screenId);
-    const menu = getContextMenu();
-    menu.popup({ x, y });
-});
 
 electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
     if (opts == null) {

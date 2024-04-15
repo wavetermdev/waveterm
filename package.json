@@ -18,6 +18,7 @@
         "appId": "dev.commandline.waveterm"
     },
     "dependencies": {
+        "@lexical/react": "^0.14.3",
         "@monaco-editor/react": "^4.5.1",
         "@table-nav/core": "^0.0.7",
         "@table-nav/react": "^0.0.7",
@@ -31,6 +32,7 @@
         "electron-squirrel-startup": "^1.0.0",
         "electron-updater": "^6.1.8",
         "framer-motion": "^10.16.16",
+        "lexical": "^0.14.3",
         "mobx": "6.12",
         "mobx-react": "^7.5.0",
         "monaco-editor": "^0.44.0",
@@ -50,8 +52,8 @@
         "uuid": "^9.0.0",
         "winston": "^3.8.2",
         "xterm": "^5.3.0",
-        "xterm-addon-web-links": "^0.9.0",
         "xterm-addon-serialize": "^0.11.0",
+        "xterm-addon-web-links": "^0.9.0",
         "xterm-addon-webgl": "^0.16.0"
     },
     "devDependencies": {

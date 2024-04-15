@@ -86,8 +86,8 @@ const TsFormatStr = "2006-01-02 15:04:05"
 
 const OpenAIPacketTimeout = 10 * time.Second
 const OpenAIStreamTimeout = 5 * time.Minute
+const OpenAICloudCompletionTelemetryOffErrorMsg = "To ensure responsible usage and prevent misuse, Wave AI requires telemetry to be enabled when using its free AI features.\n\nIf you prefer not to enable telemetry, you can still access Wave AI's features by providing your own OpenAI API key in the Settings menu. Please note that when using your personal API key, requests will be sent directly to the OpenAI API without being proxied through Wave's servers.\n\nIf you wish to continue using Wave AI's free features, you can easily enable telemetry by running the '/telemetry:on' command in the terminal. This will allow you to access the free AI features while helping to protect the platform from abuse."
 
-const OpenAICloudCompletionTelemetryOffErrorMsg = "In order to protect against abuse, you must have telemetry turned on in order to use Wave's free AI features.  If you do not want to turn telemetry on, you can still use Wave's AI features by adding your own OpenAI key in Settings.  Note that when you use your own key, requests are not proxied through Wave's servers and will be sent directly to the OpenAI API."
 
 const (
 	KwArgRenderer = "renderer"

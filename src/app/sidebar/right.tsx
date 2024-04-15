@@ -1,14 +1,16 @@
-// Copyright 2023, Command Line Inc.
+// Copyright 2023-2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
+import * as mobx from "mobx";
 import dayjs from "dayjs";
 import { If, For } from "tsx-control-statements/components";
 
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import { ResizableSidebar, Button } from "@/elements";
+import { WaveBookDisplay } from "./wavebook";
 
 import "./right.less";
 
@@ -55,6 +57,14 @@ class KeybindDevPane extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class RightSideBar extends React.Component<RightSideBarProps, {}> {
+    mode: OV<string> = mobx.observable.box(null, { name: "RightSideBar-mode" });
+
+    setMode(mode: string) {
+        mobx.action(() => {
+            this.mode.set(mode);
+        })();
+    }
+
     render() {
         return (
             <ResizableSidebar
@@ -71,8 +81,30 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                                 <i className="fa-sharp fa-regular fa-xmark"></i>
                             </Button>
                         </div>
-                        <If condition={GlobalModel.isDev}>
+                        <div className="rsb-modes">
+                            <div className="flex-spacer" />
+                            <If condition={GlobalModel.isDev}>
+                                <div
+                                    className="icon-container"
+                                    title="Show Keybinding Debugger"
+                                    onClick={() => this.setMode("keybind")}
+                                >
+                                    <i className="fa-fw fa-sharp fa-keyboard fa-solid" />
+                                </div>
+                            </If>
+                            <div
+                                className="icon-container"
+                                title="Show Keybinding Debugger"
+                                onClick={() => this.setMode("wavebook")}
+                            >
+                                <i className="fa-sharp fa-solid fa-book-sparkles"></i>
+                            </div>
+                        </div>
+                        <If condition={this.mode.get() == "keybind"}>
                             <KeybindDevPane></KeybindDevPane>
+                        </If>
+                        <If condition={this.mode.get() == "wavebook"}>
+                            <WaveBookDisplay></WaveBookDisplay>
                         </If>
                     </React.Fragment>
                 )}
