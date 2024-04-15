@@ -379,6 +379,13 @@ declare global {
         userinputrequest?: UserInputRequest;
         screentombstone?: any;
         sessiontombstone?: any;
+        termthemeoptions?: TermThemeOptionsType;
+    };
+
+    type TermThemeOptionsType = {
+        [key: string]: {
+            [innerKey: string]: string;
+        };
     };
 
     type HistoryViewDataType = {
@@ -582,7 +589,7 @@ declare global {
         termfontsize: number;
         termfontfamily: string;
         theme: NativeThemeSource;
-        termtheme: TermThemeType;
+        termthemeconfig: TermThemeType;
     };
 
     type ConfirmFlagsType = {

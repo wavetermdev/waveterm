@@ -135,11 +135,10 @@ class Model {
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
-
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
-    termThemes: OMap<string, OMap<string, string>> = mobx.observable.array([], {
+    termThemeOptions: OV<TermThemeOptionsType> = mobx.observable.box(null, {
         name: "terminalThemes",
         deep: false,
     });
@@ -159,7 +158,6 @@ class Model {
         this.ws.reconnect();
         this.keybindManager = new KeybindManager(this);
         this.readConfigKeybindings();
-        this.fetchTerminalThemes();
         this.initSystemKeybindings();
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
@@ -229,35 +227,6 @@ class Model {
         if (this.activeMainView.get() == "session" && !this.modalsModel.hasOpenModals()) {
             this.refocus();
         }
-    }
-
-    fetchTerminalThemes() {
-        const url = new URL(this.getBaseHostPort() + "/config/terminal-themes");
-        fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
-            .then((resp) => {
-                if (resp.status == 404) {
-                    return [];
-                } else if (!resp.ok) {
-                    util.handleNotOkResp(resp, url);
-                }
-                return resp.json();
-            })
-            .then((themes) => {
-                const tt = themes.map((theme) => theme.name.split(".")[0]);
-                this.termThemes.replace(tt);
-            });
-    }
-
-    getTermThemeJson(themeFileName: string) {
-        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
-        return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
-            .then((resp) => resp.json())
-            .then((themeVars: TermThemeType) => {
-                return themeVars;
-            })
-            .catch((error) => {
-                console.error(`error applying theme: ${themeFileName}`, error);
-            });
     }
 
     bumpTermRenderVersion() {
@@ -914,6 +883,16 @@ class Model {
         }
     }
 
+    setTermThemeOptions(termThemeOptions: TermThemeOptionsType) {
+        mobx.action(() => {
+            this.termThemeOptions.set(termThemeOptions);
+        })();
+    }
+
+    getTermThemeOptions(): TermThemeOptionsType {
+        return this.termThemeOptions.get();
+    }
+
     updateScreenStatusIndicators(screenStatusIndicators: ScreenStatusIndicatorUpdateType[]) {
         for (const update of screenStatusIndicators) {
             this.getScreenById_single(update.screenid)?.setStatusIndicator(update.status);
@@ -1034,6 +1013,9 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (update.termthemeoptions != null) {
+                    console.log("got termthemeoptions==============", update.termthemeoptions);
+                    this.setTermThemeOptions(update.termthemeoptions);
                 } else if (update.sessiontombstone != null || update.screentombstone != null) {
                     // nothing (ignore)
                 } else {

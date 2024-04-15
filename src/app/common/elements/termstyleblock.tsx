@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
 
 const VALID_CSS_VARIABLES = [
@@ -36,8 +35,9 @@ class TermStyleBlock extends React.Component<{
     themeName: string;
     selector: string;
 }> {
-    styleRules: OV<string> = mobx.observable.box("", { name: "StyleBlock-styleRules" });
-    injectedStyleElement: HTMLStyleElement | null = null;
+    componentDidUpdate(): void {
+        GlobalModel.bumpTermRenderVersion();
+    }
 
     isValidCSSColor(color) {
         const element = document.createElement("div");
@@ -45,7 +45,7 @@ class TermStyleBlock extends React.Component<{
         return element.style.color !== "";
     }
 
-    isValidTermCSSVariable(key, value) {
+    isValidTermCSSVariable(key) {
         const cssVarName = `--term-${key}`;
         return VALID_CSS_VARIABLES.includes(cssVarName);
     }
@@ -54,50 +54,34 @@ class TermStyleBlock extends React.Component<{
         return str.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
     }
 
-    removeInjectedStyle() {
-        if (this.injectedStyleElement) {
-            document.head.removeChild(this.injectedStyleElement);
-            this.injectedStyleElement = null;
+    getStyleRules() {
+        const { selector, themeName } = this.props;
+        const termThemeOptions = GlobalModel.getTermThemeOptions();
+        if (!termThemeOptions) {
+            return null;
         }
-    }
+        const theme = termThemeOptions[themeName];
+        if (!theme) {
+            return null;
+        }
+        const styleProperties = Object.entries(theme)
+            // .filter(([key, value]) => {
+            //     const cssVarName = `--term-${this.camelCaseToKebabCase(key)}`;
+            //     return this.isValidTermCSSVariable(cssVarName) && this.isValidCSSColor(value);
+            // })
+            .map(([key, value]) => `--term-${key}: ${value};`)
+            .join(" ");
 
-    loadThemeStyles(selector: string, theme: string) {
-        // Inject new style element
-        GlobalModel.getTermThemeJson(theme)
-            .then((termThemeJson) => {
-                if (termThemeJson && typeof termThemeJson === "object") {
-                    const styleProperties = Object.entries(termThemeJson)
-                        .filter(([key, value]) => {
-                            const cssVarName = `--term-${this.camelCaseToKebabCase(key)}`;
-                            return VALID_CSS_VARIABLES.includes(cssVarName) && this.isValidCSSColor(value);
-                        })
-                        .map(([key, value]) => `--term-${key}: ${value};`)
-                        .join(" ");
-
-                    const styleRules = `${selector} { ${styleProperties} }`;
-
-                    mobx.action(() => {
-                        this.styleRules.set(styleRules);
-                    })();
-
-                    console.log("loaded theme styles:", this.styleRules.get());
-                } else {
-                    console.error("termThemeJson is not an object:", termThemeJson);
-                }
-            })
-            .then(() => {
-                GlobalModel.bumpTermRenderVersion();
-            })
-            .catch((error) => {
-                console.error("error loading theme styles:", error);
-            });
+        if (!styleProperties) {
+            return null;
+        }
+        return `${selector} { ${styleProperties} }`;
     }
 
     render() {
-        const { themeName, selector } = this.props;
-        console.log("themeName:", themeName, "selector:", selector);
+        const styleRules = this.getStyleRules();
 
-        return this.styleRules.get() ? <style>{this.styleRules.get()}</style> : null;
+        return styleRules ? <style>{styleRules}</style> : null;
     }
 }
 

@@ -99,7 +99,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
         if (this.session == null) {
             return null;
         }
-        const termThemes = getTermThemes(GlobalModel.termThemes);
+        const termThemes = getTermThemes(GlobalModel.termThemeOptions.get());
         const currTermTheme = GlobalModel.getTermTheme()[this.sessionId] ?? termThemes[0].label;
 
         return (

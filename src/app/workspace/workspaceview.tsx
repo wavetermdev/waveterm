@@ -153,7 +153,7 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
     render() {
         const { screen } = this.props;
         const rptr = screen.curRemote.get();
-        const termThemes = getTermThemes(GlobalModel.termThemes);
+        const termThemes = getTermThemes(GlobalModel.termThemeOptions.get());
         const currTermTheme = GlobalModel.getTermTheme()[screen.screenId] ?? termThemes[0].label;
         return (
             <div className="newtab-container">

@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	TermThemesTypeStr = "termthemes"
+	TermThemesTypeStr = "termthemeoptions"
 	TermThemeDir      = "config/terminal-themes/"
 )
 

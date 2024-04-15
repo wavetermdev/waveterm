@@ -82,7 +82,6 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         if (currTheme == theme) {
             return;
         }
-
         const prtn = GlobalCommandRunner.setMainTermTheme(theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
@@ -207,7 +206,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getThemeSource();
-        const termThemes = getTermThemes(GlobalModel.termThemes, "Wave Default");
+        const termThemes = getTermThemes(GlobalModel.termThemeOptions.get(), "Wave Default");
         const currTermTheme = GlobalModel.getTermTheme()["main"] ?? termThemes[0].label;
 
         return (
