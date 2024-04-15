@@ -593,17 +593,6 @@ func getLangArg(pk *scpacket.FeCommandPacketType) (string, error) {
 	return pk.Kwargs[KwArgLang], nil
 }
 
-func getSudoArg(pk *scpacket.FeCommandPacketType) (bool, error) {
-	// TODO better error checking
-	if len(pk.Kwargs[KwArgSudo]) > 50 {
-		return false, nil // TODO return error, don't fail silently
-	}
-	if pk.Kwargs[KwArgSudo] == "" {
-		return false, nil
-	}
-	return strconv.ParseBool(pk.Kwargs[KwArgSudo])
-}
-
 func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
 	if err != nil {
@@ -621,10 +610,8 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	if err != nil {
 		return nil, fmt.Errorf("/run error, invalid lang: %w", err)
 	}
-	sudoArg, err := getSudoArg(pk)
-	if err != nil {
-		return nil, fmt.Errorf("/run error, invalid sudo: %w", err)
-	}
+	sudoArg := resolveBool(pk.Kwargs[KwArgSudo], false)
+
 	cmdStr := firstArg(pk)
 	expandedCmdStr, err := doCmdHistoryExpansion(ctx, ids, cmdStr)
 	if err != nil {
