@@ -15,7 +15,7 @@ import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
-import { Button, TermStyleBlock } from "@/elements";
+import { Button } from "@/elements";
 import { commandRtnHandler } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import { Dropdown } from "@/elements/dropdown";

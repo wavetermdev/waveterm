@@ -12,7 +12,7 @@ import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import { GlobalCommandRunner, ForwardLineContainer, GlobalModel, ScreenLines, Screen, Session } from "@/models";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { Button, TermStyleBlock } from "@/elements";
+import { Button } from "@/elements";
 import { Line } from "@/app/line/linecomps";
 import { LinesView } from "@/app/line/linesview";
 import * as util from "@/util/util";
@@ -188,12 +188,6 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
 
         return (
             <div className="screen-view" id={screen.screenId} data-screenid={screen.screenId} ref={this.screenViewRef}>
-                {/* <TermStyleBlock
-                    scope="screen"
-                    termTheme={termTheme}
-                    themeSrcEl={this.screenViewRef.current}
-                    themeKey={screen.screenId}
-                /> */}
                 <ScreenWindowView
                     key={screen.screenId + ":" + fontSize + ":" + dprStr + ":" + termRenderVersion}
                     session={session}
