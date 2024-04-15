@@ -692,9 +692,7 @@ class InputModel {
 
     openAIAssistantChat(): void {
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
-        mobx.action(() => {
-            this.physicalInputFocused.set(false);
-        })();
+        this.setAuxViewFocus(true);
     }
 
     clearAIAssistantChat(): void {
