@@ -4,6 +4,7 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { GlobalModel } from "@/models";
+import ReactDOM from "react-dom";
 
 const VALID_CSS_VARIABLES = [
     "--term-black",
@@ -88,7 +89,7 @@ class TermStyleBlock extends React.Component<{
         if (!styleRules) {
             return null;
         }
-        return <style>{styleRules}</style>;
+        return ReactDOM.createPortal(<style>{styleRules}</style>, document.head);
     }
 }
 
