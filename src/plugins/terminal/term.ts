@@ -53,9 +53,7 @@ type TermWrapOpts = {
 
 function getThemeFromCSSVars(el: Element): ITheme {
     const theme: ITheme = {};
-    // console.log("el======", el);
     const rootStyle = getComputedStyle(el);
-    // console.log("rootStyle======", rootStyle.getPropertyValue("--term-foreground"));
     theme.foreground = rootStyle.getPropertyValue("--term-foreground");
     theme.background = rootStyle.getPropertyValue("--term-background");
     theme.black = rootStyle.getPropertyValue("--term-black");
