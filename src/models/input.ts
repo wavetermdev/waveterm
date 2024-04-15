@@ -491,7 +491,6 @@ class InputModel {
 
     // Sets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
     setAuxViewFocus(focus: boolean): void {
-        console.log("setting aux view focus", focus);
         if (this.getAuxViewFocus() == focus) {
             return;
         }
