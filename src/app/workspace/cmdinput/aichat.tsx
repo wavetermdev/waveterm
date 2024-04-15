@@ -9,6 +9,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
 import { AuxiliaryCmdView } from "./auxview";
+import * as appconst from "@/app/appconst";
 
 import "./aichat.less";
 
@@ -243,7 +244,8 @@ class AIChat extends React.Component<{}, {}> {
                     this.isFocused.get() ||
                     GlobalModel.inputModel.hasFocus() ||
                     (GlobalModel.getActiveScreen().getFocusType() == "input" &&
-                        GlobalModel.activeMainView.get() == "session")
+                        GlobalModel.activeMainView.get() == "session" &&
+                        GlobalModel.inputModel.getActiveAuxView() == appconst.InputAuxView_AIChat)
                 );
             })
             .get();

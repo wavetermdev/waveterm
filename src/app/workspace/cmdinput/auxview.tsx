@@ -4,6 +4,7 @@
 import * as React from "react";
 import cn from "classnames";
 import { If } from "tsx-control-statements/components";
+import { GlobalModel } from "@/models";
 
 import "./auxview.less";
 

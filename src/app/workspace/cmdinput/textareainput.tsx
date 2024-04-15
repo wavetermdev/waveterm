@@ -604,17 +604,53 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-        const isHistoryFocused = auxViewFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
+
+        const renderCmdInputKeybindings = mobx
+            .computed(() => {
+                const inputModel = GlobalModel.inputModel;
+                if (inputModel.hasFocus() && !GlobalModel.inputModel.getAuxViewFocus()) {
+                    return true;
+                }
+                if (
+                    GlobalModel.getActiveScreen().getFocusType() == "input" &&
+                    GlobalModel.activeMainView.get() == "session"
+                ) {
+                    return true;
+                }
+                return false;
+            })
+            .get();
+        const renderHistoryKeybindings = mobx
+            .computed(() => {
+                const inputModel = GlobalModel.inputModel;
+                if (inputModel.getActiveAuxView() != appconst.InputAuxView_History) {
+                    return false;
+                }
+                if (GlobalModel.inputModel.getAuxViewFocus()) {
+                    console.log("returning true");
+                    return true;
+                }
+                if (
+                    GlobalModel.getActiveScreen().getFocusType() == "input" &&
+                    GlobalModel.activeMainView.get() == "session"
+                ) {
+                    return true;
+                }
+                return false;
+            })
+            .get();
+        console.log("bools", renderCmdInputKeybindings, renderHistoryKeybindings);
+
         return (
             <div
                 className="textareainput-div control is-expanded"
                 ref={this.controlRef}
                 style={{ height: computedOuterHeight }}
             >
-                <If condition={!auxViewFocused}>
+                <If condition={renderCmdInputKeybindings}>
                     <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
                 </If>
-                <If condition={isHistoryFocused}>
+                <If condition={renderHistoryKeybindings}>
                     <HistoryKeybindings inputObject={this}></HistoryKeybindings>
                 </If>
 
