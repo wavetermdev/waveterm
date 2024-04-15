@@ -55,11 +55,6 @@ class TermStyleBlock extends React.Component<{
         return element.style.color !== "";
     }
 
-    isValidTermCSSVariable(key) {
-        const cssVarName = `--term-${key}`;
-        return VALID_CSS_VARIABLES.includes(cssVarName);
-    }
-
     camelCaseToKebabCase(str) {
         return str.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
     }
@@ -75,10 +70,10 @@ class TermStyleBlock extends React.Component<{
             return null;
         }
         const styleProperties = Object.entries(theme)
-            // .filter(([key, value]) => {
-            //     const cssVarName = `--term-${this.camelCaseToKebabCase(key)}`;
-            //     return this.isValidTermCSSVariable(cssVarName) && this.isValidCSSColor(value);
-            // })
+            .filter(([key, value]) => {
+                const cssVarName = `--term-${this.camelCaseToKebabCase(key)}`;
+                return VALID_CSS_VARIABLES.includes(cssVarName) && this.isValidCSSColor(value);
+            })
             .map(([key, value]) => `--term-${key}: ${value};`)
             .join(" ");
 
@@ -90,8 +85,10 @@ class TermStyleBlock extends React.Component<{
 
     render() {
         const styleRules = this.getStyleRules();
-
-        return styleRules ? <style>{styleRules}</style> : null;
+        if (!styleRules) {
+            return null;
+        }
+        return <style>{styleRules}</style>;
     }
 }
 
