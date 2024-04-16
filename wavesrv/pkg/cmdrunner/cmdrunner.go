@@ -3927,17 +3927,19 @@ func ClearSudoCache(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnU
 		return nil, err
 	}
 	ids.Remote.MShell.ClearCachedSudoPw()
+	pluralize := ""
 
 	clearAll := resolveBool(pk.Kwargs["all"], false)
 	if clearAll {
 		for _, proc := range remote.GlobalStore.Map {
 			proc.ClearCachedSudoPw()
 		}
+		pluralize = "s"
 	}
 
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
-		InfoMsg:   "sudo password cleared",
+		InfoMsg:   fmt.Sprintf("sudo password%s cleared", pluralize),
 		TimeoutMs: 2000,
 	})
 	return update, nil
