@@ -610,7 +610,6 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	if err != nil {
 		return nil, fmt.Errorf("/run error, invalid lang: %w", err)
 	}
-	sudoArg := resolveBool(pk.Kwargs[KwArgSudo], false)
 
 	cmdStr := firstArg(pk)
 	expandedCmdStr, err := doCmdHistoryExpansion(ctx, ids, cmdStr)
@@ -643,7 +642,11 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
-	runPacket.IsSudo = sudoArg || IsSudoCommand(cmdStr)
+	if sudoArg, ok := pk.Kwargs[KwArgSudo]; ok {
+		runPacket.IsSudo = resolveBool(sudoArg, false)
+	} else {
+		runPacket.IsSudo = IsSudoCommand(cmdStr)
+	}
 	rcOpts := remote.RunCommandOpts{
 		SessionId:     ids.SessionId,
 		ScreenId:      ids.ScreenId,
