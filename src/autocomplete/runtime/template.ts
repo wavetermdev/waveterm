@@ -20,6 +20,8 @@ const foldersTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> =
 const historyTemplate = (): Fig.TemplateSuggestion[] => {
     const inputModel = GlobalModel.inputModel;
     const cmdLine = inputModel.curLine;
+    const cmdLineMinusLastToken = cmdLine.substring(0, cmdLine.lastIndexOf(" "));
+    log.debug("historyTemplate", cmdLine);
     inputModel.loadHistory(false, 0, "screen");
     const hitems = GlobalModel.inputModel.filteredHistoryItems;
     if (hitems.length > 0) {
@@ -30,13 +32,15 @@ const historyTemplate = (): Fig.TemplateSuggestion[] => {
                 if (hmap.has(cmdstr)) {
                     hmap.get(cmdstr).priority += 1;
                 } else {
+                    const insertValue = cmdstr.replace(cmdLineMinusLastToken, "").trim();
+                    log.debug("historyTemplate insertValue", insertValue);
                     hmap.set(cmdstr, {
                         name: cmdstr,
                         priority: 60,
                         context: {
                             templateType: "history",
                         },
-                        insertValue: cmdstr.replace(cmdLine, ""),
+                        insertValue,
                     });
                 }
             }

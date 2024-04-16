@@ -364,7 +364,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         <div className="settings-label">Command Autocomplete</div>
                         <div className="settings-input">
                             <Toggle
-                                checked={cdata.clientopts.autocompleteenabled}
+                                checked={cdata.clientopts.autocompleteenabled ?? false}
                                 onChange={this.handleChangeAutocompleteEnabled}
                             />
                         </div>

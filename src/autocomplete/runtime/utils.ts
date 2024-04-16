@@ -28,12 +28,19 @@ export const buildExecuteShellCommand =
         }
         log.debug("Executing command", input);
         const { command, args, cwd, env } = input;
-        const resp = await GlobalModel.submitEphemeralCommand("eval", null, [command, ...args], null, false, {
-            expectsresponse: true,
-            overridecwd: cwd,
-            env: env,
-            timeoutms: timeout,
-        });
+        const resp = await GlobalModel.submitEphemeralCommand(
+            "eval",
+            null,
+            [[command, ...args].join(" ")],
+            null,
+            false,
+            {
+                expectsresponse: true,
+                overridecwd: cwd,
+                env: env,
+                timeoutms: timeout,
+            }
+        );
 
         const { stdout, stderr } = await GlobalModel.getEphemeralCommandOutput(resp);
         const output: Fig.ExecuteCommandOutput = { stdout, stderr, status: stderr?.length > 1 ? 1 : 0 };

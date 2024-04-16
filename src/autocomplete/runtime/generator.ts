@@ -40,7 +40,8 @@ const getGeneratorContext = async (cwd: string): Promise<Fig.GeneratorContext> =
     };
 };
 
-let lastToken = "";
+let lastFirstToken = "";
+let lastFinalToken = "";
 let cachedSuggestions: Fig.Suggestion[] = [];
 
 // TODO: add support getQueryTerm
@@ -52,9 +53,9 @@ export const runGenerator = async (
     const { script, postProcess, scriptTimeout, splitOn, custom, template, filterTemplateSuggestions, trigger } =
         generator;
 
-    const newToken = tokens.at(-1);
+    const newToken = tokens.at(-1) ?? "";
 
-    if (trigger) {
+    if (lastFirstToken == tokens.at(0) && trigger && cachedSuggestions.length > 0) {
         log.debug("trigger", trigger);
         if (typeof trigger === "string") {
             if (!newToken?.includes(trigger)) {
@@ -62,8 +63,8 @@ export const runGenerator = async (
                 return cachedSuggestions;
             }
         } else if (typeof trigger === "function") {
-            log.debug("trigger function", newToken, lastToken);
-            if (!trigger(newToken, lastToken)) {
+            log.debug("trigger function", "newToken:", newToken, "lastToken: ", lastFinalToken);
+            if (!trigger(newToken, lastFinalToken ?? "")) {
                 log.debug("trigger function false");
                 return cachedSuggestions;
             } else {
@@ -72,8 +73,8 @@ export const runGenerator = async (
         } else {
             switch (trigger.on) {
                 case "change": {
-                    log.debug("trigger change", newToken, lastToken);
-                    if (lastToken && newToken && lastToken === newToken) {
+                    log.debug("trigger change", newToken, lastFinalToken);
+                    if (lastFinalToken && newToken && lastFinalToken === newToken) {
                         log.debug("trigger change false");
                         return cachedSuggestions;
                     } else {
@@ -99,8 +100,8 @@ export const runGenerator = async (
                     break;
                 }
                 case "threshold": {
-                    log.debug("trigger threshold", newToken, lastToken, trigger.length);
-                    if (Math.abs(newToken.length - lastToken.length) < trigger.length) {
+                    log.debug("trigger threshold", newToken, lastFinalToken, trigger.length);
+                    if (Math.abs(newToken.length - lastFinalToken.length) < trigger.length) {
                         log.debug("trigger threshold false");
                         return cachedSuggestions;
                     } else {
@@ -110,14 +111,16 @@ export const runGenerator = async (
                 }
             }
         }
-    } else if (lastToken && newToken && lastToken === newToken) {
-        log.debug("lastToken === newToken", lastToken, newToken);
+    } else if (lastFirstToken === tokens.at(0) && newToken && lastFinalToken === newToken) {
+        log.debug("lastToken === newToken", lastFinalToken, newToken);
         return cachedSuggestions;
     }
-    log.debug("lastToken !== newToken", lastToken, newToken);
+    log.debug("lastToken !== newToken", lastFinalToken, newToken);
 
     const executeShellCommand = buildExecuteShellCommand(scriptTimeout ?? 5000);
     const suggestions = [];
+    lastFinalToken = tokens[-1];
+    lastFirstToken = tokens[0];
     try {
         if (script) {
             const shellInput = typeof script === "function" ? script(tokens) : script;
@@ -138,7 +141,9 @@ export const runGenerator = async (
 
         if (custom) {
             log.debug("custom", custom);
-            suggestions.push(...(await custom(tokens, executeShellCommand, await getGeneratorContext(cwd))));
+            const customSuggestions = await custom(tokens, executeShellCommand, await getGeneratorContext(cwd));
+            log.debug("customSuggestions", customSuggestions);
+            suggestions.push(...customSuggestions);
         }
 
         if (template != null) {
@@ -149,7 +154,6 @@ export const runGenerator = async (
                 suggestions.push(...templateSuggestions);
             }
         }
-        lastToken = tokens[-1];
         cachedSuggestions = suggestions;
         return suggestions;
     } catch (e) {

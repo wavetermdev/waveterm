@@ -634,7 +634,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 <If condition={!util.isBlank(shellType)}>
                     <div className="shelltag">{shellType}</div>
                 </If>
-                <If condition={primaryAutocompleteSuggestion != ""}>
+                <If condition={primaryAutocompleteSuggestion}>
                     <div
                         className="textarea-ghost"
                         style={{ height: computedInnerHeight, minHeight: computedInnerHeight, fontSize: termFontSize }}
