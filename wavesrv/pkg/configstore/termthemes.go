@@ -118,9 +118,7 @@ func SetupTermThemes(state *scws.WSState) {
 		tt.UpdateConnectTime()
 	}
 	stateConnectTime := tt.GetConnectTime()
-	defer func() {
-		removeTermThemesAfterTimeout(state.ClientId, stateConnectTime, TermThemesReconnectTime)
-	}()
+	defer removeTermThemesAfterTimeout(state.ClientId, stateConnectTime, TermThemesReconnectTime)
 
 	tt.LoadAndWatchThemes()
 }
