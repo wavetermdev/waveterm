@@ -8,6 +8,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
@@ -16,9 +18,13 @@ import (
 )
 
 const (
-	TermThemesTypeStr = "termthemeoptions"
-	TermThemeDir      = "config/terminal-themes/"
+	TermThemesTypeStr       = "termthemeoptions"
+	TermThemesDir           = "config/terminal-themes/"
+	TermThemesReconnectTime = 30 * time.Second
 )
+
+var TermThemesMap = make(map[string]*TermThemes)
+var GlobalLock = &sync.Mutex{}
 
 type TermThemesType map[string]map[string]string
 
@@ -27,21 +33,101 @@ func (tt TermThemesType) GetType() string {
 }
 
 type TermThemes struct {
-	Themes TermThemesType
-	State  *scws.WSState // Using WSState to manage WebSocket operations
+	Themes      TermThemesType
+	State       *scws.WSState // Using WSState to manage WebSocket operations
+	Watcher     *fsnotify.Watcher
+	Lock        *sync.Mutex
+	ConnectTime time.Time
 }
 
-// Factory function to create a new TermThemes instance with WSState.
+func setTermThemes(tt *TermThemes) {
+	GlobalLock.Lock()
+	defer GlobalLock.Unlock()
+	TermThemesMap[tt.State.ClientId] = tt
+}
+
+func getTermThemes(clientId string) *TermThemes {
+	GlobalLock.Lock()
+	defer GlobalLock.Unlock()
+	return TermThemesMap[clientId]
+}
+
+func removeTermThemesAfterTimeout(clientId string, connectTime time.Time, waitDuration time.Duration) {
+	go func() {
+		time.Sleep(waitDuration)
+		GlobalLock.Lock()
+		defer GlobalLock.Unlock()
+		tt := TermThemesMap[clientId]
+		if tt == nil || tt.ConnectTime != connectTime {
+			return
+		}
+		delete(TermThemesMap, clientId)
+		tt.Cleanup()
+	}()
+}
+
+// Factory method for TermThemes
 func MakeTermThemes(state *scws.WSState) *TermThemes {
 	return &TermThemes{
-		Themes: make(TermThemesType),
-		State:  state,
+		Themes:      make(map[string]map[string]string),
+		State:       state,
+		Lock:        &sync.Mutex{},
+		ConnectTime: time.Now(),
 	}
+}
+
+// Initialize sets up resources such as file watchers.
+func (t *TermThemes) Initialize() error {
+	var err error
+	t.Watcher, err = fsnotify.NewWatcher()
+	if err != nil {
+		return fmt.Errorf("failed to initialize file watcher: %w", err)
+	}
+	return nil
+}
+
+func (t *TermThemes) UpdateConnectTime() {
+	t.Lock.Lock()
+	defer t.Lock.Unlock()
+	t.ConnectTime = time.Now()
+}
+
+func (t *TermThemes) GetConnectTime() time.Time {
+	t.Lock.Lock()
+	defer t.Lock.Unlock()
+	return t.ConnectTime
+}
+
+func SetupTermThemes(state *scws.WSState) {
+	if state == nil {
+		log.Println("WSState is nil")
+		return
+	}
+	tt := getTermThemes(state.ClientId)
+	if tt == nil {
+		log.Println("creating new instance of TermThemes...")
+		tt = MakeTermThemes(state)
+		err := tt.Initialize()
+		if err != nil {
+			log.Printf("error initializing TermThemes: %v", err)
+			return
+		}
+		setTermThemes(tt)
+	} else {
+		log.Println("reusing existing instance of TermThemes...")
+		tt.UpdateConnectTime()
+	}
+	stateConnectTime := tt.GetConnectTime()
+	defer func() {
+		removeTermThemesAfterTimeout(state.ClientId, stateConnectTime, TermThemesReconnectTime)
+	}()
+
+	tt.LoadAndWatchThemes()
 }
 
 // LoadAndWatchThemes initializes file scanning and sets up file watching.
 func (t *TermThemes) LoadAndWatchThemes() {
-	dirPath := path.Join(scbase.GetWaveHomeDir(), TermThemeDir)
+	dirPath := path.Join(scbase.GetWaveHomeDir(), TermThemesDir)
 	if _, err := os.Stat(dirPath); errors.Is(err, os.ErrNotExist) {
 		log.Printf("directory does not exist: %s", dirPath)
 		return
@@ -91,27 +177,29 @@ func (t *TermThemes) scanDir(dirPath string) (TermThemesType, error) {
 	return newThemes, nil
 }
 
+func (t *TermThemes) Cleanup() {
+	t.Lock.Lock()
+	defer t.Lock.Unlock()
+	if t.Watcher != nil {
+		t.Watcher.Close()
+		t.Watcher = nil
+		log.Println("file watcher stopped and cleaned up.")
+	}
+}
+
 // setupFileWatcher sets up a file system watcher on the given directory.
 func (t *TermThemes) setupFileWatcher(dirPath string) {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Println("error creating file watcher:", err)
-		return
-	}
 	go func() {
-		defer func() {
-			watcher.Close()
-			log.Println("file watcher stopped.")
-		}()
+		// defer t.Cleanup()
 		for {
 			select {
-			case event, ok := <-watcher.Events:
+			case event, ok := <-t.Watcher.Events:
 				if !ok {
 					return
 				}
 				log.Printf("event: %s, Op: %v", event.Name, event.Op)
 				t.handleFileEvent(event)
-			case err, ok := <-watcher.Errors:
+			case err, ok := <-t.Watcher.Errors:
 				if !ok {
 					return
 				}
@@ -120,8 +208,9 @@ func (t *TermThemes) setupFileWatcher(dirPath string) {
 		}
 	}()
 
-	if err := watcher.Add(dirPath); err != nil {
+	if err := t.Watcher.Add(dirPath); err != nil {
 		log.Println("error adding directory to watcher:", err)
+		t.Cleanup()
 	}
 }
 
