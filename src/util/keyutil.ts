@@ -118,9 +118,7 @@ class KeybindManager {
                     }
                     newKeyDescriptions.set(curKeybind.command, curKeybind);
 
-                    console.log("cutKeybind: ", curKeybind);
                     if (this.isCustomCommand(curKeybind.command)) {
-                        console.log("isCustomCommand:", curKeybind);
                         this.registerKeybinding("app", "custom", curKeybind.command, null);
                     }
                 }
