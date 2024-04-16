@@ -117,6 +117,10 @@ class KeybindManager {
                         curKeybind.info = this.keyDescriptionsMap.get(curKeybind.command).info;
                     }
                     newKeyDescriptions.set(curKeybind.command, curKeybind);
+
+                    if (this.isCustomCommand(curKeybind.command)) {
+                        this.registerKeybinding("app", "custom", curKeybind.command, null);
+                    }
                 }
             } catch (e) {
                 let userError = `${curUserCommand} is invalid: error: ${e}`;
@@ -127,6 +131,14 @@ class KeybindManager {
             }
         }
         this.keyDescriptionsMap = newKeyDescriptions;
+    }
+
+    isCustomCommand(keyDescription: string): boolean {
+        let words = keyDescription.split(":");
+        if (words.length >= 2 && words[0] == "custom") {
+            return true;
+        }
+        return false;
     }
 
     prettyPrintKeyPress(keyPress: KeyPressDecl): string {

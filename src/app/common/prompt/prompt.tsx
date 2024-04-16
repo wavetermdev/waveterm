@@ -146,6 +146,7 @@ class Prompt extends React.Component<
         let branchElem = null;
         let pythonElem = null;
         let condaElem = null;
+        let k8sElem = null;
         if (!isBlank(festate["PROMPTVAR_GITBRANCH"])) {
             const branchName = festate["PROMPTVAR_GITBRANCH"];
             branchElem = (
@@ -171,9 +172,19 @@ class Prompt extends React.Component<
                 </span>
             );
         }
+        if (!isBlank(festate["K8SCONTEXT"])) {
+            const k8sContext = festate["K8SCONTEXT"];
+            const k8sNs = festate["K8SNAMESPACE"];
+            k8sElem = (
+                <span title="k8s context:namespace" className="term-prompt-k8s">
+                    k8s:({k8sContext}
+                    {isBlank(k8sNs) ? "" : ":" + k8sNs}){" "}
+                </span>
+            );
+        }
         return (
             <span className={termClassNames}>
-                {remoteElem} {cwdElem} {branchElem} {condaElem} {pythonElem}
+                {remoteElem} {cwdElem} {branchElem} {condaElem} {pythonElem} {k8sElem}
             </span>
         );
     }
