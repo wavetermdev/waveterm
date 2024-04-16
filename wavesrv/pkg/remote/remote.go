@@ -2661,11 +2661,12 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 
 	// can't use a duration since that will stop ticking
 	// if the program is paused and/or computer is asleep
-	ctx, cancelFunc := context.WithTimeout(context.Background(), time.Minute*5)
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	// set timer to reset sudo
 	go func() {
+		deadline := time.Now().Add(time.Minute * 5)
 		for {
 			select {
 			case <-ctx.Done():
@@ -2675,6 +2676,13 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 				wg.Done()
 				return
 			default:
+			}
+			if time.Now().Unix() > deadline.Unix() {
+				msh.WithLock(func() {
+					msh.sudoPw = nil
+				})
+				wg.Done()
+				return
 			}
 			time.Sleep(time.Millisecond * 10)
 		}
