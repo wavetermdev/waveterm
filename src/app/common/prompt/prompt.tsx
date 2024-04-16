@@ -176,8 +176,9 @@ class Prompt extends React.Component<
             const k8sContext = festate["K8SCONTEXT"];
             const k8sNs = festate["K8SNAMESPACE"];
             k8sElem = (
-                <span title="k8s context" className="term-prompt-python">
-                    k8s:({k8sContext}){isBlank(k8sNs) ? "" : ":" + k8sNs}{" "}
+                <span title="k8s context:namespace" className="term-prompt-k8s">
+                    k8s:({k8sContext}
+                    {isBlank(k8sNs) ? "" : ":" + k8sNs}){" "}
                 </span>
             );
         }
