@@ -11,6 +11,7 @@ import { runTemplates } from "./template";
 import { Suggestion, SuggestionBlob } from "./model";
 import { getApi } from "@/models";
 import log from "../utils/log";
+import { getAll, matchAny } from "./utils";
 
 enum SuggestionIcons {
     File = "📄",
@@ -73,7 +74,7 @@ function filter<
     filterStrategy: FilterStrategy | undefined,
     partialCmd: string | undefined,
     suggestionType: Fig.SuggestionType | undefined
-): Suggestion[] {
+): Fig.Suggestion[] {
     log.debug("filter", suggestions, filterStrategy, partialCmd, suggestionType);
     if (!partialCmd)
         return suggestions
@@ -145,13 +146,13 @@ function filter<
 
 type FilterStrategy = "fuzzy" | "prefix" | "default";
 
-const generatorSuggestions = async (
+export const generatorSuggestions = async (
     generator: Fig.SingleOrArray<Fig.Generator> | undefined,
     acceptedTokens: CommandToken[],
     filterStrategy: FilterStrategy | undefined,
     partialCmd: string | undefined,
     cwd: string
-): Promise<Suggestion[]> => {
+): Promise<Fig.Suggestion[]> => {
     const generators = generator instanceof Array ? generator : generator ? [generator] : [];
     const tokens = acceptedTokens.map((t) => t.token);
     if (partialCmd) tokens.push(partialCmd);
@@ -164,30 +165,30 @@ const generatorSuggestions = async (
     );
 };
 
-const templateSuggestions = async (
+export const templateSuggestions = async (
     templates: Fig.Template | undefined,
     filterStrategy: FilterStrategy | undefined,
     partialCmd: string | undefined,
     cwd: string
-): Promise<Suggestion[]> => {
+): Promise<Fig.Suggestion[]> => {
     log.debug("templateSuggestions", templates, filterStrategy, partialCmd);
     return filter<Fig.Suggestion>(await runTemplates(templates ?? [], cwd), filterStrategy, partialCmd, undefined);
 };
 
-const suggestionSuggestions = (
+export const suggestionSuggestions = (
     suggestions: (string | Fig.Suggestion)[] | undefined,
     filterStrategy: FilterStrategy | undefined,
     partialCmd: string | undefined
-): Suggestion[] => {
+): Fig.Suggestion[] => {
     const cleanedSuggestions = suggestions?.map((s) => (typeof s === "string" ? { name: s } : s)) ?? [];
     return filter<Fig.Suggestion>(cleanedSuggestions ?? [], filterStrategy, partialCmd, undefined);
 };
 
-const subcommandSuggestions = (
+export const subcommandSuggestions = (
     subcommands: Fig.Subcommand[] | undefined,
     filterStrategy: FilterStrategy | undefined,
     partialCmd: string | undefined
-): Suggestion[] => {
+): Fig.Suggestion[] => {
     return filter<Fig.Subcommand>(subcommands ?? [], filterStrategy, partialCmd, "subcommand");
 };
 
@@ -196,7 +197,7 @@ const optionSuggestions = (
     acceptedTokens: CommandToken[],
     filterStrategy: FilterStrategy | undefined,
     partialCmd: string | undefined
-): Suggestion[] => {
+): Fig.Suggestion[] => {
     log.debug("optionSuggestions", options, acceptedTokens, filterStrategy, partialCmd);
     const usedOptions = new Set(acceptedTokens.filter((t) => t.isOption).map((t) => t.token));
     const validOptions = options?.filter(
@@ -205,23 +206,23 @@ const optionSuggestions = (
     return filter<Fig.Option>(validOptions ?? [], filterStrategy, partialCmd, "option");
 };
 
-const removeAcceptedSuggestions = (suggestions: Suggestion[], acceptedTokens: CommandToken[]): Suggestion[] => {
+const removeAcceptedSuggestions = (suggestions: Fig.Suggestion[], acceptedTokens: CommandToken[]): Fig.Suggestion[] => {
     const seen = new Set<string>(acceptedTokens.map((t) => t.token));
-    return suggestions.filter((s) => s.allNames.every((n) => !seen.has(n)));
+    return suggestions.filter((s) => matchAny(s.name, (n) => !seen.has(n)));
 };
 
-const removeDuplicateSuggestion = (suggestions: Suggestion[]): Suggestion[] => {
+const removeDuplicateSuggestion = (suggestions: Fig.Suggestion[]): Fig.Suggestion[] => {
     const seen = new Set<string>();
     return suggestions
         .map((s) => {
-            if (seen.has(s.name)) return null;
-            seen.add(s.name);
+            if (matchAny(s.name, (n) => seen.has(n))) return null;
+            for (const name of s.name) seen.add(name);
             return s;
         })
-        .filter((s): s is Suggestion => s != null);
+        .filter((s): s is Fig.Suggestion => s != null);
 };
 
-const removeEmptySuggestion = (suggestions: Suggestion[]): Suggestion[] => {
+const removeEmptySuggestion = (suggestions: Fig.Suggestion[]): Fig.Suggestion[] => {
     return suggestions.filter((s) => s.name.length > 0);
 };
 
@@ -245,7 +246,7 @@ export const getSubcommandDrivenRecommendation = async (
         partialCmd = partialToken.isPathComplete ? "" : getApi().pathBaseName(partialCmd ?? "");
     }
 
-    const suggestions: Suggestion[] = [];
+    const suggestions: Fig.Suggestion[] = [];
     const argLength = subcommand.args instanceof Array ? subcommand.args.length : subcommand.args ? 1 : 0;
     const allOptions = persistentOptions.concat(subcommand.options ?? []);
     log.debug("allOptions", allOptions, persistentOptions, subcommand.options, subcommand.args, argLength);

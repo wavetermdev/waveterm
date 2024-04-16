@@ -125,7 +125,11 @@ export class AutocompleteModel {
         let retVal = "";
         if (autocompleteSuggestions != null && autocompleteSuggestions.suggestions.length > index) {
             const suggestion = autocompleteSuggestions.suggestions[index];
-            retVal = suggestion.name;
+            if (typeof suggestion.name === "string") {
+                retVal = suggestion.name;
+            } else if (suggestion.name.length > 0) {
+                retVal = suggestion.name[0];
+            }
             if (suggestion.insertValue) {
                 retVal = suggestion.insertValue;
             }

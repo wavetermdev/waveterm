@@ -10,7 +10,7 @@ import speclist, {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
 } from "@withfig/autocomplete/build/index";
-import { parseCommand, CommandToken } from "./parser";
+import { parseCommand, CommandToken, Parser } from "./parser";
 import { getArgDrivenRecommendation, getSubcommandDrivenRecommendation } from "./suggestion";
 import { SuggestionBlob } from "./model";
 import { buildExecuteShellCommand, resolveCwd } from "./utils";
@@ -95,6 +95,13 @@ const lazyLoadSpecLocation = async (location: Fig.SpecLocation): Promise<Fig.Spe
 
 export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Promise<SuggestionBlob | undefined> => {
     const activeCmd = parseCommand(cmd);
+    const parser = new Parser(
+        undefined,
+        activeCmd.map((c) => c.token),
+        cwd
+    );
+    const sugg = await parser.generateSuggestions();
+    log.debug("newton", sugg);
     log.debug("activeCmd", activeCmd);
     if (activeCmd.length === 0) {
         return;
@@ -156,7 +163,7 @@ const getSubcommand = (spec?: Fig.Spec): Fig.Subcommand | undefined => {
     if (spec == null) return;
     if (typeof spec === "function") {
         const potentialSubcommand = spec();
-        if (Object.prototype.hasOwnProperty.call(potentialSubcommand, "name")) {
+        if (Object.hasOwn(potentialSubcommand, "name")) {
             return potentialSubcommand as Fig.Subcommand;
         }
         return;

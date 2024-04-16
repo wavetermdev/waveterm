@@ -1,9 +1,10 @@
 {
     "include": ["src/**/*", "types/**/*"],
     "compilerOptions": {
-        "target": "es5",
+        "target": "es6",
         "module": "commonjs",
         "jsx": "preserve",
+        "lib": ["ES2022"],
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,

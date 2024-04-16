@@ -15,7 +15,7 @@ export type Suggestion = {
 };
 
 export type SuggestionBlob = {
-    suggestions: Suggestion[];
+    suggestions: Fig.Suggestion[];
     argumentDescription?: string;
     charactersToDrop?: number;
 };
