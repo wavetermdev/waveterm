@@ -60,6 +60,7 @@ const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
 const RpcIterChannelSize = 100
 const MaxInputDataSize = 1000
+const SudoTimeoutTime = 5 * time.Minute
 
 var envVarsToStrip map[string]bool = map[string]bool{
 	"PROMPT":               true,
@@ -168,10 +169,9 @@ type MShellProc struct {
 	RunningCmds      map[base.CommandKey]*RunCmdType
 	PendingStateCmds map[pendingStateKey]base.CommandKey // key=[remoteinstance name] (in progress commands that might update the state)
 
-	Client          *ssh.Client
-	sudoPw          *[]byte
-	sudoTimerCancel context.CancelFunc
-	sudoWg          *sync.WaitGroup
+	Client            *ssh.Client
+	sudoPw            []byte
+	sudoClearDeadline int64
 }
 
 type CommandInputSink interface {
@@ -2626,14 +2626,33 @@ func sendScreenUpdates(screens []*sstore.ScreenType) {
 	}
 }
 
+func (msh *MShellProc) startSudoPwClearChecker() {
+	for {
+		shouldExit := false
+		msh.WithLock(func() {
+			if msh.sudoClearDeadline > 0 && time.Now().Unix() > msh.sudoClearDeadline {
+				msh.sudoPw = nil
+				msh.sudoClearDeadline = 0
+			}
+			if msh.sudoClearDeadline == 0 {
+				shouldExit = true
+			}
+		})
+		if shouldExit {
+			return
+		}
+		time.Sleep(time.Second * 2)
+	}
+}
+
 func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) error {
-	var storedPw *[]byte
+	var storedPw []byte
 	var rawSecret []byte
 	msh.WithLock(func() {
 		storedPw = msh.sudoPw
 	})
 	if storedPw != nil && sudoPk.SudoStatus == "first-attempt" {
-		rawSecret = *storedPw
+		rawSecret = storedPw
 	} else {
 		request := &userinput.UserInputRequestType{
 			QueryText:    "Please enter your password",
@@ -2649,48 +2668,13 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 		}
 		rawSecret = []byte(guiResponse.Text)
 	}
+	//new
 	msh.WithLock(func() {
-		if msh.sudoTimerCancel != nil {
-			msh.sudoTimerCancel()
+		msh.sudoPw = rawSecret
+		if msh.sudoClearDeadline == 0 {
+			go msh.startSudoPwClearChecker()
 		}
-	})
-	// make sure previous goroutine is done
-	if msh.sudoWg != nil {
-		msh.sudoWg.Wait()
-	}
-
-	// can't use a duration since that will stop ticking
-	// if the program is paused and/or computer is asleep
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	wg := new(sync.WaitGroup)
-	wg.Add(1)
-	// set timer to reset sudo
-	go func() {
-		deadline := time.Now().Add(time.Minute * 5)
-		for {
-			select {
-			case <-ctx.Done():
-				msh.WithLock(func() {
-					msh.sudoPw = nil
-				})
-				wg.Done()
-				return
-			default:
-			}
-			if time.Now().Unix() > deadline.Unix() {
-				msh.WithLock(func() {
-					msh.sudoPw = nil
-				})
-				wg.Done()
-				return
-			}
-			time.Sleep(time.Millisecond * 10)
-		}
-	}()
-	msh.WithLock(func() {
-		msh.sudoPw = &rawSecret
-		msh.sudoTimerCancel = cancelFunc
-		msh.sudoWg = wg
+		msh.sudoClearDeadline = time.Now().Add(SudoTimeoutTime).Unix()
 	})
 
 	srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
@@ -2749,15 +2733,6 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 	if sudoPk, ok := pk.(*packet.SudoRequestPacketType); ok {
 		// final failure case -- clear cache
 		if sudoPk.SudoStatus == "failure" {
-			msh.WithLock(func() {
-				if msh.sudoTimerCancel != nil {
-					msh.sudoTimerCancel()
-				}
-			})
-			// make sure previous goroutine is done
-			if msh.sudoWg != nil {
-				msh.sudoWg.Wait()
-			}
 			msh.sudoPw = nil
 			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: incorrect password entered"))
 			return
