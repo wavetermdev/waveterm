@@ -930,12 +930,11 @@ func checkNewReleaseWrapper() {
 }
 
 func telemetryLoop() {
-	var lastSent time.Time
+	var nextSend int64
 	time.Sleep(InitialTelemetryWait)
 	for {
-		dur := time.Since(lastSent)
-		if lastSent.IsZero() || dur >= TelemetryInterval {
-			lastSent = time.Now()
+		if time.Now().Unix() > nextSend {
+			nextSend = time.Now().Add(TelemetryInterval).Unix()
 			sendTelemetryWrapper()
 			checkNewReleaseWrapper()
 		}
