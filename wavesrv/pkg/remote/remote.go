@@ -2763,6 +2763,7 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 func (msh *MShellProc) ClearCachedSudoPw() {
 	msh.WithLock(func() {
 		msh.sudoPw = nil
+		msh.sudoClearDeadline = 0
 	})
 }
 
