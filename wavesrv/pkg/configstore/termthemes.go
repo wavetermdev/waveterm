@@ -190,7 +190,6 @@ func (t *TermThemes) Cleanup() {
 // setupFileWatcher sets up a file system watcher on the given directory.
 func (t *TermThemes) setupFileWatcher(dirPath string) {
 	go func() {
-		// defer t.Cleanup()
 		for {
 			select {
 			case event, ok := <-t.Watcher.Events:
