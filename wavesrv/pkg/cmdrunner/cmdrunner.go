@@ -3931,7 +3931,7 @@ func ClearSudoCache(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnU
 
 	clearAll := resolveBool(pk.Kwargs["all"], false)
 	if clearAll {
-		for _, proc := range remote.GlobalStore.Map {
+		for _, proc := range remote.GetRemoteMap() {
 			proc.ClearCachedSudoPw()
 		}
 		pluralize = "s"
