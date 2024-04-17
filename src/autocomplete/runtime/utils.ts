@@ -52,6 +52,17 @@ export const buildExecuteShellCommand =
         return output;
     };
 
+export const resolveCwdToken = async (
+    token: string,
+    cwd: string,
+    shell: Shell
+): Promise<{ cwd: string; pathy: boolean; complete: boolean }> => {
+    if (token == null) return { cwd, pathy: false, complete: false };
+    const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
+    if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
+    return { cwd: cwd, pathy: true, complete: token.endsWith(sep) };
+};
+
 export const resolveCwd = async (
     cmdToken: CommandToken | undefined,
     cwd: string,
@@ -59,9 +70,7 @@ export const resolveCwd = async (
 ): Promise<{ cwd: string; pathy: boolean; complete: boolean }> => {
     if (cmdToken == null) return { cwd, pathy: false, complete: false };
     const { token } = cmdToken;
-    const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
-    if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
-    return { cwd: cwd, pathy: true, complete: token.endsWith(sep) };
+    return resolveCwdToken(token, cwd, shell);
 };
 
 export const getCompletionSuggestions = async (

@@ -144,7 +144,24 @@ function filter<
     }
 }
 
-type FilterStrategy = "fuzzy" | "prefix" | "default";
+export type FilterStrategy = "fuzzy" | "prefix" | "default";
+
+export const generatorSuggestionsTokens = async (
+    generator: Fig.SingleOrArray<Fig.Generator> | undefined,
+    tokens: string[],
+    filterStrategy: FilterStrategy | undefined,
+    partialCmd: string | undefined,
+    cwd: string
+) => {
+    const generators = generator instanceof Array ? generator : generator ? [generator] : [];
+    const suggestions = (await Promise.all(generators.map((gen) => runGenerator(gen, tokens, cwd)))).flat();
+    return filter<Fig.Suggestion>(
+        suggestions.map((suggestion) => ({ ...suggestion, priority: suggestion.priority ?? 60 })),
+        filterStrategy,
+        partialCmd,
+        undefined
+    );
+};
 
 export const generatorSuggestions = async (
     generator: Fig.SingleOrArray<Fig.Generator> | undefined,
@@ -156,13 +173,7 @@ export const generatorSuggestions = async (
     const generators = generator instanceof Array ? generator : generator ? [generator] : [];
     const tokens = acceptedTokens.map((t) => t.token);
     if (partialCmd) tokens.push(partialCmd);
-    const suggestions = (await Promise.all(generators.map((gen) => runGenerator(gen, tokens, cwd)))).flat();
-    return filter<Fig.Suggestion>(
-        suggestions.map((suggestion) => ({ ...suggestion, priority: suggestion.priority ?? 60 })),
-        filterStrategy,
-        partialCmd,
-        undefined
-    );
+    return generatorSuggestionsTokens(generators, tokens, filterStrategy, partialCmd, cwd);
 };
 
 export const templateSuggestions = async (

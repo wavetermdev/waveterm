@@ -1,9 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { get } from "node:http";
 import log from "../utils/log";
 import {
+    FilterStrategy,
     generatorSuggestions,
+    generatorSuggestionsTokens,
     getArgDrivenRecommendation,
     suggestionSuggestions,
     templateSuggestions,
@@ -18,9 +21,16 @@ import {
     isOption,
     matchAny,
     modifyPosixFlags,
+    resolveCwd,
+    resolveCwdToken,
     sortSuggestions,
     startsWithAny,
 } from "./utils";
+import { Shell } from "../utils/shell";
+import { complex } from "framer-motion";
+import { getApi } from "@/models";
+import { runGenerator } from "./generator";
+import { runTemplates } from "./template";
 
 // Modified from https://github.com/microsoft/inshellisense/blob/main/src/runtime/parser.ts
 // Copyright (c) Microsoft Corporation.
@@ -496,6 +506,100 @@ export class Parser {
         }
     }
 
+    filterSuggestions(
+        suggestions: Fig.Suggestion[],
+        filterStrategy: FilterStrategy,
+        partialCmd: string,
+        suggestionType: Fig.SuggestionType
+    ): Fig.Suggestion[] {
+        log.debug("filter", suggestions, filterStrategy, partialCmd, suggestionType);
+        if (!partialCmd) return suggestions;
+
+        switch (filterStrategy) {
+            case "fuzzy":
+                log.debug("fuzzy");
+                return suggestions
+                    .map((s) => {
+                        if (s.name == null) return;
+                        if (s.name instanceof Array) {
+                            const matchedName = s.name.find((n) => n.toLowerCase().includes(partialCmd.toLowerCase()));
+                            return matchedName != null ? s : undefined;
+                        }
+                        return s.name.toLowerCase().includes(partialCmd.toLowerCase()) ? s : undefined;
+                    })
+                    .filter((s) => s != null);
+            default:
+                return suggestions
+                    .map((s) => {
+                        if (s.name == null) return;
+                        if (s.name instanceof Array) {
+                            const matchedName = s.name.find((n) =>
+                                n.toLowerCase().startsWith(partialCmd.toLowerCase())
+                            );
+                            return matchedName != null ? s : undefined;
+                        }
+                        return s.name.toLowerCase().startsWith(partialCmd.toLowerCase()) ? s : undefined;
+                    })
+                    .filter((s) => s != null);
+        }
+    }
+
+    async getSuggestionsForArg(arg: Fig.Arg): Promise<Fig.Suggestion[]> {
+        let entry = this.entries.at(this.entryIndex);
+
+        const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwdToken(entry, this.cwd, Shell.Zsh);
+
+        if (pathy) {
+            entry = pathyComplete ? "" : getApi().pathBaseName(entry ?? "");
+        }
+
+        let suggestions: Fig.Suggestion[] = [];
+
+        if (arg?.generators) {
+            const generators = getAll(arg.generators);
+            suggestions.push(
+                ...(await Promise.all(generators.map((gen) => runGenerator(gen, this.entries, resolvedCwd)))).flat()
+            );
+        }
+
+        if (arg?.suggestions) {
+            suggestions.push(...suggestionSuggestions(arg.suggestions, arg?.filterStrategy, entry));
+        }
+
+        if (arg?.template) {
+            suggestions.push(...(await runTemplates(arg.template ?? [], resolvedCwd)));
+        }
+
+        if (arg?.filterStrategy) {
+            suggestions = this.filterSuggestions(
+                suggestions.map((suggestion) => ({ ...suggestion, priority: suggestion.priority ?? 60 })),
+                arg.filterStrategy,
+                entry,
+                undefined
+            );
+        }
+
+        return suggestions;
+    }
+
+    getSuggestionsForSubcommands() {
+        return this.filterSuggestions(
+            this.subcommands,
+            this.spec?.filterStrategy,
+            this.entries.at(this.entryIndex),
+            undefined
+        );
+    }
+
+    getSuggestionsForOptions() {
+        return this.filterSuggestions(
+            this.options,
+            this.spec?.filterStrategy,
+            this.entries.at(this.entryIndex),
+            undefined
+        );
+    }
+
     /**
      * Loads the spec for the current command. If the command defines a `loadSpec` function, that function is run and the result is set as the new spec. Otherwise, the spec is set to the command itself.
      * @returns The spec for the current command.
@@ -755,22 +859,15 @@ export class Parser {
                     // The parser never got to matching options or arguments, so suggest all available for the current spec.
                     if (lastEntry == " ") {
                         log.debug("lastEntry is space");
-                        this.subcommands?.forEach((subcommand) => suggestions.add(subcommand));
-                        this.spec.additionalSuggestions?.forEach((suggestion) => {
-                            switch (typeof suggestion) {
-                                case "string":
-                                    suggestions.add({ name: suggestion });
-                                    break;
-                                case "object":
-                                    suggestions.add(suggestion);
-                                    break;
-                            }
-                        });
-                        this.options.forEach((option) => suggestions.add(option));
-                        const arg1 = getFirst(this.spec?.args);
-                        if (arg1) {
-                            suggestions.add(arg1);
+                        const arg = getFirst(this.spec?.args);
+                        if (arg) {
+                            (await this.getSuggestionsForArg(arg)).forEach((s) => suggestions.add(s));
                         }
+                        this.spec?.additionalSuggestions?.forEach((s) =>
+                            suggestions.add(typeof s === "string" ? { name: s } : s)
+                        );
+                        this.getSuggestionsForSubcommands().forEach((s) => suggestions.add(s));
+                        this.getSuggestionsForOptions().forEach((s) => suggestions.add(s));
                     } else if (this.subcommands.length > 0) {
                         this.subcommands
                             ?.filter((subcommand) => matchAny(subcommand.name, (s) => s.startsWith(lastEntry)))
@@ -829,19 +926,9 @@ export class Parser {
                     // The parser is currently matching option arguments, so suggest all available arguments for the current option.
                     if (this.currentArgs && this.argIndex < this.currentArgs.length) {
                         const arg = this.currentArgs[this.argIndex];
-                        [
-                            ...(await generatorSuggestions(
-                                arg,
-                                this.entries.map((entry) => {
-                                    return { token: entry, complete: true, isOption: false };
-                                }),
-                                arg?.filterStrategy,
-                                lastEntry,
-                                this.cwd
-                            )),
-                            ...suggestionSuggestions(arg.suggestions, arg?.filterStrategy, lastEntry),
-                            ...(await templateSuggestions(arg.template, arg?.filterStrategy, lastEntry, this.cwd)),
-                        ].forEach((s) => suggestions.add(s));
+                        if (arg) {
+                            (await this.getSuggestionsForArg(arg)).forEach((s) => suggestions.add(s));
+                        }
                     }
                     break;
                 }
