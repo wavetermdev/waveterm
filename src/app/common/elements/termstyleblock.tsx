@@ -63,9 +63,6 @@ class TermStyleBlock extends React.Component<{
     getStyleRules() {
         const { selector, themeName } = this.props;
         const termThemeOptions = GlobalModel.getTermThemeOptions();
-        if (!termThemeOptions) {
-            return null;
-        }
         const theme = termThemeOptions[themeName];
         if (!theme) {
             return null;
