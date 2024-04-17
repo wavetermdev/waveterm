@@ -67,8 +67,8 @@ const WSStateReconnectTime = 30 * time.Second
 const WSStatePacketChSize = 20
 
 const InitialTelemetryWait = 30 * time.Second
-const TelemetryTick = 30 * time.Minute
-const TelemetryInterval = 8 * time.Hour
+const TelemetryTick = 10 * time.Minute
+const TelemetryInterval = 4 * time.Hour
 
 const MaxWriteFileMemSize = 20 * (1024 * 1024) // 20M
 
