@@ -151,11 +151,11 @@ func GetFileInfo(ctx context.Context, blockId string, name string) (*FileInfo, e
 	return fInfo, nil
 }
 
-func GetCacheFromDB(ctx context.Context, blockId string, name string, off int64, length int64) (*[]byte, error) {
+func GetCacheFromDB(ctx context.Context, blockId string, name string, off int64, length int64, cacheNum int64) (*[]byte, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*[]byte, error) {
 		var cacheData *[]byte
-		query := `SELECT substr(data,?,?) FROM block_data WHERE blockid = ? AND name = ?`
-		tx.Get(&cacheData, query, off, length, blockId, name)
+		query := `SELECT substr(data,?,?) FROM block_data WHERE blockid = ? AND name = ? and partidx = ?`
+		tx.Get(&cacheData, query, off, length+1, blockId, name, cacheNum)
 		if cacheData == nil {
 			cacheData = &[]byte{}
 		}

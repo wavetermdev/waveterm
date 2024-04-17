@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"math"
 	"sync"
 	"time"
 
-	units "github.com/alecthomas/units"
+	"github.com/alecthomas/units"
 )
 
 type FileOptsType struct {
@@ -103,8 +102,8 @@ func WriteFileToDB(ctx context.Context, fileInfo FileInfo) error {
 
 func WriteDataBlockToDB(ctx context.Context, blockId string, name string, index int, data []byte) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `INSERT INTO block_data values (?, ?, ?, ?) ON CONFLICT (blockid, name) DO UPDATE SET blockid = ?, name = ?, partidx = ?, data = ?`
-		tx.Exec(query, blockId, name, index, data, blockId, name, index, data)
+		query := `REPLACE INTO block_data values (?, ?, ?, ?) ` //ON CONFLICT (blockid, name) DO UPDATE SET blockid = ?, name = ?, partidx = ?, data = ?`
+		tx.Exec(query, blockId, name, index, data)
 		return nil
 	})
 	if txErr != nil {
@@ -125,7 +124,7 @@ func MakeFile(ctx context.Context, blockId string, name string, meta FileMeta, o
 	return nil
 }
 
-func WriteToCacheBlock(ctx context.Context, blockId string, name string, block *CacheBlock, p []byte, pos int, length int) (int, error) {
+func WriteToCacheBlock(ctx context.Context, blockId string, name string, block *CacheBlock, p []byte, pos int, length int, cacheNum int) (int, error) {
 	cacheEntry, getErr := GetCacheEntry(ctx, blockId, name)
 	if getErr != nil {
 		return 0, getErr
@@ -133,52 +132,65 @@ func WriteToCacheBlock(ctx context.Context, blockId string, name string, block *
 	cacheEntry.Lock.Lock()
 	defer cacheEntry.Lock.Unlock()
 	blockLen := len(block.data)
-	bytesWritten, writeErr := WriteToCacheBuf(&block.data, p, pos, length)
+	fileMaxSize := cacheEntry.Info.Opts.MaxSize
+	maxWriteSize := fileMaxSize - (int64(cacheNum) * MaxBlockSize)
+	bytesWritten, writeErr := WriteToCacheBuf(&block.data, p, pos, length, maxWriteSize)
 	blockLenDiff := len(block.data) - blockLen
 	block.size += blockLenDiff
 	cacheEntry.Info.Size += int64(blockLenDiff)
 	return bytesWritten, writeErr
 }
 
-func ReadFromCacheBlock(ctx context.Context, blockId string, name string, block *CacheBlock, p *[]byte, pos int, length int) (int, error) {
+func ReadFromCacheBlock(ctx context.Context, blockId string, name string, block *CacheBlock, p *[]byte, pos int, length int, destOffset int, maxRead int64) (int, error) {
 	if pos > len(block.data) {
 		return 0, fmt.Errorf("Reading past end of cache block, should never happen")
 	}
 	bytesWritten := 0
-	for index := pos; index < length+pos; index++ {
+	index := pos
+	for ; index < length+pos; index++ {
+		if int64(index) >= maxRead {
+			return index, fmt.Errorf(MaxSizeError)
+		}
 		if index >= len(block.data) {
 			return bytesWritten, nil
 		}
-		*p = append(*p, block.data[index])
+		destIndex := index - pos + destOffset
+		if destIndex >= len(*p) {
+			return bytesWritten, nil
+		}
+		(*p)[destIndex] = block.data[index]
 		bytesWritten++
+	}
+	if int64(index) >= maxRead {
+		return bytesWritten, fmt.Errorf(MaxSizeError)
 	}
 	return bytesWritten, nil
 }
 
-func WriteToCacheBuf(buf *[]byte, p []byte, pos int, length int) (int, error) {
-	log.Printf("write to cache buf: buf: %v, p: %v, pos: %v, int: %v", buf, p, pos, length)
+const MaxSizeError = "Hit Max Size"
+
+func WriteToCacheBuf(buf *[]byte, p []byte, pos int, length int, maxWrite int64) (int, error) {
 	bytesToWrite := length
 	if pos > len(*buf) {
-		return 0, fmt.Errorf("writing to a position in the cache that doesn't exist yet, something went wrong")
+		return 0, fmt.Errorf("writing to a position (%v) in the cache that doesn't exist yet, something went wrong", pos)
 	}
-	if int64(len(*buf)+bytesToWrite) > MaxBlockSize {
+	if int64(pos+bytesToWrite) > MaxBlockSize {
 		return 0, fmt.Errorf("writing more bytes than max block size, not allowed - length of bytes to write: %v, length of cache: %v", bytesToWrite, len(*buf))
 	}
 	for index := pos; index < bytesToWrite+pos; index++ {
-		log.Printf("writetocache mk1\n")
 		if index-pos >= len(p) {
 			return len(p), nil
 		}
+		if int64(index) >= maxWrite {
+			return index - pos, fmt.Errorf(MaxSizeError)
+		}
 		curByte := p[index-pos]
 		if len(*buf) == index {
-			log.Printf("writetocache mk2: %v %v %v %v\n", *buf, p, index, index-pos)
 			*buf = append(*buf, curByte)
 		} else {
-			log.Printf("writetocache mk3\n")
 			(*buf)[index] = curByte
 		}
 	}
-	log.Printf("writetocache mk4\n")
 	return bytesToWrite, nil
 }
 
@@ -204,8 +216,7 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 			}
 		}
 		if curCacheEntry.DataBlocks[cacheNum] == nil {
-			off := int64(cacheNum) * MaxBlockSize
-			cacheData, err := GetCacheFromDB(ctx, blockId, name, off, MaxBlockSize)
+			cacheData, err := GetCacheFromDB(ctx, blockId, name, 0, MaxBlockSize, int64(cacheNum))
 			if err != nil {
 				return nil, err
 			}
@@ -223,7 +234,6 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 func Stat(ctx context.Context, blockId string, name string) (*FileInfo, error) {
 	cacheEntry, err := GetCacheEntry(ctx, blockId, name)
 	if err == nil {
-		log.Printf("cacheEntry returning: %v", cacheEntry.Info)
 		return &cacheEntry.Info, nil
 	}
 	fInfo, err := GetFileInfo(ctx, blockId, name)
@@ -240,14 +250,22 @@ func WriteAt(ctx context.Context, blockId string, name string, p []byte, off int
 	bytesWritten := 0
 	curCacheNum := int(math.Floor(float64(off) / float64(MaxBlockSize)))
 	numCaches := int(math.Ceil(float64(bytesToWrite) / float64(MaxBlockSize)))
-	log.Printf("num caches: %v %v", bytesToWrite, math.Ceil(float64(int64(bytesToWrite)/MaxBlockSize)))
+	var numLeftPad int64 = 0
+	cacheOffset := off - (int64(curCacheNum) * MaxBlockSize)
+	if (cacheOffset + int64(bytesToWrite)) > MaxBlockSize {
+		numCaches += 1
+	}
 	fInfo, err := Stat(ctx, blockId, name)
 	if err != nil {
 		return 0, fmt.Errorf("Write At err: %v", err)
 	}
+	if off > fInfo.Opts.MaxSize && fInfo.Opts.Circular {
+		numOver := off / fInfo.Opts.MaxSize
+		off = off - (numOver * fInfo.Opts.MaxSize)
+	}
 	if off > fInfo.Size {
 		// left pad 0's
-		numLeftPad := off - fInfo.Size
+		numLeftPad = off - fInfo.Size
 		leftPadBytes := []byte{}
 		for index := 0; index < int(numLeftPad); index++ {
 			leftPadBytes = append(leftPadBytes, 0)
@@ -258,24 +276,36 @@ func WriteAt(ctx context.Context, blockId string, name string, p []byte, off int
 		}
 		bytesWritten += b
 	}
-	log.Printf("writeat mk1: %v %v", numCaches, curCacheNum)
 	for index := curCacheNum; index < curCacheNum+numCaches; index++ {
-		cacheOffset := off - (int64(curCacheNum) * MaxBlockSize)
-		bytesToWriteToCurCache := int(math.Min(float64(bytesToWrite), float64(MaxBlockSize-off)))
+		cacheOffset := off - (int64(index) * MaxBlockSize)
+		bytesToWriteToCurCache := int(math.Min(float64(bytesToWrite), float64(MaxBlockSize-cacheOffset)))
 		curCacheBlock, err := GetCacheBlock(ctx, blockId, name, index)
 		if err != nil {
 			return bytesWritten, fmt.Errorf("Error getting cache block: %v", err)
 		}
-		log.Printf("writeat mk2")
-		b, err := WriteToCacheBlock(ctx, blockId, name, curCacheBlock, p, int(cacheOffset), bytesToWriteToCurCache)
+		b, err := WriteToCacheBlock(ctx, blockId, name, curCacheBlock, p, int(cacheOffset), bytesToWriteToCurCache, index)
 		bytesWritten += b
+		bytesToWrite -= b
+		off += int64(b)
+		if err != nil && err.Error() == MaxSizeError {
+			if fInfo.Opts.Circular {
+				p = p[int64(b):]
+				b, err := WriteAt(ctx, blockId, name, p, 0)
+				bytesWritten += b
+				if err != nil {
+					return bytesWritten, fmt.Errorf("Write to cache error: %v", err)
+				}
+				break
+			}
+			err = nil
+		}
 		if err != nil {
 			return bytesWritten, fmt.Errorf("Write to cache error: %v", err)
 		}
 		if len(p) == b {
 			break
 		}
-		p = p[bytesToWriteToCurCache+1:]
+		p = p[b:]
 	}
 	return bytesWritten, nil
 }
@@ -287,7 +317,6 @@ func FlushCache(ctx context.Context) error {
 			return err
 		}
 		for index, block := range cacheEntry.DataBlocks {
-			log.Printf("index: ", index)
 			if block == nil || block.size == 0 {
 				continue
 			}
@@ -310,23 +339,50 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 	if err != nil {
 		return 0, fmt.Errorf("Read At err: %v", err)
 	}
+	if off > fInfo.Opts.MaxSize && fInfo.Opts.Circular {
+		numOver := off / fInfo.Opts.MaxSize
+		off = off - (numOver * fInfo.Opts.MaxSize)
+	}
 	if off > fInfo.Size {
 		return 0, fmt.Errorf("Read At error: tried to read past the end of the file")
 	}
-	bytesToRead := fInfo.Size - off
+	endReadPos := math.Min(float64(int64(len(*p))+off), float64(fInfo.Size))
+	bytesToRead := int64(endReadPos) - off
 	curCacheNum := int(math.Floor(float64(off) / float64(MaxBlockSize)))
 	numCaches := int(math.Ceil(float64(bytesToRead) / float64(MaxBlockSize)))
+	cacheOffset := off - (int64(curCacheNum) * MaxBlockSize)
+	if (cacheOffset + int64(bytesToRead)) > MaxBlockSize {
+		numCaches += 1
+	}
 	for index := curCacheNum; index < curCacheNum+numCaches; index++ {
 		curCacheBlock, err := GetCacheBlock(ctx, blockId, name, index)
 		if err != nil {
 			return bytesRead, fmt.Errorf("Error getting cache block: %v", err)
 		}
-		cacheOffset := off - (int64(curCacheNum) * MaxBlockSize)
-		bytesToReadFromCurCache := int(math.Min(float64(bytesToRead), float64(MaxBlockSize-off)))
-		b, err := ReadFromCacheBlock(ctx, blockId, name, curCacheBlock, p, int(cacheOffset), bytesToReadFromCurCache)
+		cacheOffset := off - (int64(index) * MaxBlockSize)
+		bytesToReadFromCurCache := int(math.Min(float64(bytesToRead), float64(MaxBlockSize-cacheOffset)))
+		fileMaxSize := fInfo.Opts.MaxSize
+		maxReadSize := fileMaxSize - (int64(index) * MaxBlockSize)
+		b, err := ReadFromCacheBlock(ctx, blockId, name, curCacheBlock, p, int(cacheOffset), bytesToReadFromCurCache, bytesRead, maxReadSize)
 		bytesRead += b
+		bytesToRead -= int64(b)
+		off += int64(b)
+
 		if err != nil {
-			return bytesRead, fmt.Errorf("Read from cache error: %v", err)
+			if err.Error() == MaxSizeError {
+				if fInfo.Opts.Circular {
+					off = 0
+					newP := (*p)[b:]
+					b, err := ReadAt(ctx, blockId, name, &newP, off)
+					bytesRead += b
+					if err != nil {
+						return bytesRead, err
+					}
+					break
+				}
+			} else {
+				return bytesRead, fmt.Errorf("Read from cache error: %v", err)
+			}
 		}
 	}
 	return bytesRead, nil

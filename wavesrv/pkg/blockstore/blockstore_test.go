@@ -1,12 +1,15 @@
 package blockstore
 
 import (
+	"bytes"
 	"context"
+	"crypto/md5"
+	"crypto/rand"
 	"log"
 	"testing"
 	"time"
 
-	units "github.com/alecthomas/units"
+	"github.com/alecthomas/units"
 
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
@@ -136,7 +139,6 @@ func TestTx(t *testing.T) {
 	}
 	CloseDB()
 }
-
 func TestMultipleChunks(t *testing.T) {
 	ctx := context.Background()
 	InitDBState()
@@ -371,7 +373,7 @@ func TestReadAt(t *testing.T) {
 	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
 	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, 0)
 	if err != nil {
-		t.Errorf("Write At error: %v", err)
+		t.Errorf("Write Aterror: %v", err)
 	} else {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
@@ -390,7 +392,7 @@ func TestReadAt(t *testing.T) {
 	log.Printf("Got stat: %v", fInfo)
 	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
 
-	var read []byte
+	var read []byte = make([]byte, 16)
 	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &read, 0)
 	if err != nil {
 		t.Errorf("Read error: %v", err)
@@ -398,7 +400,7 @@ func TestReadAt(t *testing.T) {
 	SimpleAssert(t, bytesRead == bytesWritten, "Correct num bytes read")
 	log.Printf("bytes read: %v string: %s", read, string(read))
 
-	read = []byte{}
+	read = make([]byte, 16)
 	bytesRead, err = ReadAt(ctx, "test-block-id", "file-1", &read, 4)
 	if err != nil {
 		t.Errorf("Read error: %v", err)
@@ -442,7 +444,7 @@ func TestFlushCache(t *testing.T) {
 
 	FlushCache(ctx)
 
-	var read []byte
+	var read []byte = make([]byte, 32)
 	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &read, 0)
 	if err != nil {
 		t.Errorf("Read error: %v", err)
@@ -450,7 +452,7 @@ func TestFlushCache(t *testing.T) {
 	SimpleAssert(t, bytesRead == bytesWritten, "Correct num bytes read")
 	log.Printf("bytes read: %v string: %s", read, string(read))
 
-	read = []byte{}
+	read = make([]byte, 32)
 	bytesRead, err = ReadAt(ctx, "test-block-id", "file-1", &read, 4)
 	if err != nil {
 		t.Errorf("Read error: %v", err)
@@ -467,6 +469,268 @@ func TestFlushCache(t *testing.T) {
 		t.Errorf("get data from db error: %v", txErr)
 	}
 	log.Printf("DB Data: %v", dbData)
+	Cleanup(t, ctx)
+}
+
+var largeDataFlushFullWriteSize int64 = int64(1024 * units.Megabyte)
+
+func WriteLargeDataFlush(t *testing.T, ctx context.Context) {
+	writeSize := int64(64 - 16)
+	fullWriteSize := largeDataFlushFullWriteSize
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	writeIndex := int64(0)
+	writeBuf := make([]byte, writeSize)
+	numWrites := fullWriteSize / writeSize
+	hashBuf := make([]byte, 16)
+	for i := 0; i < int(numWrites); i++ {
+		rand.Read(writeBuf)
+		hash := md5.New()
+		_, err := hash.Write(hashBuf)
+		if err != nil {
+			t.Errorf("hashing hashbuf error: %v", err)
+		}
+		_, err = hash.Write(writeBuf)
+		if err != nil {
+			t.Errorf("hashing writebuf error: %v", err)
+		}
+		copy(hashBuf, hash.Sum(nil))
+		bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", writeBuf, writeIndex)
+		if err != nil {
+			log.Printf("error: %v", err)
+			t.Errorf("Write At error: %v\n", err)
+		}
+		writeIndex += int64(bytesWritten)
+	}
+	log.Printf("final hash: %v writeBuf: %v bytesWritten: %v", hashBuf, writeBuf, writeIndex)
+
+	FlushCache(ctx)
+
+	readBuf := make([]byte, writeSize)
+	readHashBuf := make([]byte, 16)
+	readIndex := int64(0)
+	for i := 0; i < int(numWrites); i++ {
+		bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, readIndex)
+		readIndex += int64(bytesRead)
+		hash := md5.New()
+		_, err = hash.Write(readHashBuf)
+		if err != nil {
+			t.Errorf("hashing hashbuf error: %v", err)
+		}
+		_, err = hash.Write(readBuf)
+		if err != nil {
+			t.Errorf("hashing readbuf error: %v", err)
+		}
+		copy(readHashBuf, hash.Sum(nil))
+	}
+	log.Printf("final hash: %v readBuf: %v, bytesRead: %v", readHashBuf, readBuf, readIndex)
+	SimpleAssert(t, bytes.Equal(readHashBuf, hashBuf), "hashes are equal")
+}
+func TestWriteAtMaxSize(t *testing.T) {
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(4), Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, 0)
+	if err != nil {
+		t.Errorf("Write at error: %v", err)
+	}
+	SimpleAssert(t, bytesWritten == 4, "Correct num bytes written")
+	readTest := []byte{'T', 'E', 'S', 'T'}
+	readBuf := make([]byte, len(testBytesToWrite))
+	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, 0)
+	log.Printf("readbuf: %v\n", readBuf)
+	SimpleAssert(t, bytesRead == 4, "Correct num bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf[:4], readTest), "Correct bytes read")
+	Cleanup(t, ctx)
+}
+
+func TestWriteAtMaxSizeMultipleBlocks(t *testing.T) {
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(MaxBlockSize * 2), Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, (MaxBlockSize*2)-4)
+	if err != nil {
+		t.Errorf("Write at error: %v", err)
+	}
+	SimpleAssert(t, bytesWritten == int(MaxBlockSize*2), "Correct num bytes written")
+	readTest := []byte{'T', 'E', 'S', 'T'}
+	readBuf := make([]byte, len(testBytesToWrite))
+	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, (MaxBlockSize*2)-4)
+	log.Printf("readbuf multiple: %v %v %v\n", readBuf, bytesRead, bytesWritten)
+	SimpleAssert(t, bytesRead == 4, "Correct num bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf[:4], readTest), "Correct bytes read")
+	Cleanup(t, ctx)
+}
+
+func TestWriteAtCircular(t *testing.T) {
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(MaxBlockSize * 2), Circular: true, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, (MaxBlockSize*2)-4)
+	if err != nil {
+		t.Errorf("Write at error: %v", err)
+	}
+	SimpleAssert(t, bytesWritten == int((MaxBlockSize*2)+7), "Correct num bytes written")
+
+	readTest := []byte{'T', 'E', 'S', 'T'}
+	readBuf := make([]byte, len(testBytesToWrite))
+	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, (MaxBlockSize*2)-4)
+	SimpleAssert(t, bytesRead == 11, "Correct num bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf[:4], readTest), "Correct bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf, testBytesToWrite), "Correct bytes read")
+	log.Printf("readbuf circular %v %v", readBuf, string(readBuf))
+
+	readTest = []byte{'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	readBuf = make([]byte, len(testBytesToWrite))
+	bytesRead, err = ReadAt(ctx, "test-block-id", "file-1", &readBuf, 0)
+	SimpleAssert(t, bytesRead == 11, "Correct num bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf[:7], readTest), "Correct bytes read")
+	log.Printf("readbuf circular %v %v, %v", readBuf, string(readBuf), bytesRead)
+	Cleanup(t, ctx)
+}
+
+func TestWriteAtCircularWierdOffset(t *testing.T) {
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileSize := MaxBlockSize*2 - 500
+	fileOpts := FileOptsType{MaxSize: int64(fileSize), Circular: true, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	log.Printf("first mk")
+	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, (fileSize)-4)
+	log.Printf("end mk")
+	if err != nil {
+		t.Errorf("Write at error: %v", err)
+	}
+	SimpleAssert(t, bytesWritten == int(fileSize+7), "Correct num bytes written")
+
+	readTest := []byte{'T', 'E', 'S', 'T'}
+	readBuf := make([]byte, len(testBytesToWrite))
+	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, (fileSize)-4)
+	SimpleAssert(t, bytesRead == 11, "Correct num bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf[:4], readTest), "Correct bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf, testBytesToWrite), "Correct bytes read")
+	log.Printf("readbuf circular %v %v", readBuf, string(readBuf))
+
+	readTest = []byte{'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	readBuf = make([]byte, len(testBytesToWrite))
+	bytesRead, err = ReadAt(ctx, "test-block-id", "file-1", &readBuf, 0)
+	SimpleAssert(t, bytesRead == 11, "Correct num bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf[:7], readTest), "Correct bytes read")
+	log.Printf("readbuf circular %v %v, %v", readBuf, string(readBuf), bytesRead)
+	Cleanup(t, ctx)
+
+}
+
+// time consuming tests
+
+func TestWriteAtMiddle(t *testing.T) {
+	ctx := context.Background()
+	WriteLargeDataFlush(t, ctx)
+	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	writeOff := MaxBlockSize + 15
+	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, writeOff)
+	if err != nil {
+		t.Errorf("Write at error: %v", err)
+	}
+	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
+	FlushCache(ctx)
+	readBuf := make([]byte, len(testBytesToWrite))
+	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, writeOff)
+	log.Printf("readBuf: %v %v", readBuf, string(readBuf))
+	SimpleAssert(t, bytesRead == bytesWritten, "Correct num bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf, testBytesToWrite), "read correct bytes")
+	Cleanup(t, ctx)
+}
+
+func TestWriteLargeDataFlush(t *testing.T) {
+	ctx := context.Background()
+	WriteLargeDataFlush(t, ctx)
+	Cleanup(t, ctx)
+}
+
+func TestWriteLargeDataNoFlush(t *testing.T) {
+	writeSize := int64(64 - 16)
+	fullWriteSize := int64(1024 * units.Megabyte)
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	writeIndex := int64(0)
+	writeBuf := make([]byte, writeSize)
+	numWrites := fullWriteSize / writeSize
+	hashBuf := make([]byte, 16)
+	for i := 0; i < int(numWrites); i++ {
+		rand.Read(writeBuf)
+		hash := md5.New()
+		_, err := hash.Write(hashBuf)
+		if err != nil {
+			t.Errorf("hashing hashbuf error: %v", err)
+		}
+		_, err = hash.Write(writeBuf)
+		if err != nil {
+			t.Errorf("hashing writebuf error: %v", err)
+		}
+		copy(hashBuf, hash.Sum(nil))
+		bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", writeBuf, writeIndex)
+		if err != nil {
+			log.Printf("error: %v", err)
+			t.Errorf("Write At error: %v\n", err)
+		}
+		writeIndex += int64(bytesWritten)
+	}
+	log.Printf("final hash: %v writeBuf: %v bytesWritten: %v", hashBuf, writeBuf, writeIndex)
+
+	readBuf := make([]byte, writeSize)
+	readHashBuf := make([]byte, 16)
+	readIndex := int64(0)
+	for i := 0; i < int(numWrites); i++ {
+		bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, readIndex)
+		readIndex += int64(bytesRead)
+		hash := md5.New()
+		_, err = hash.Write(readHashBuf)
+		if err != nil {
+			t.Errorf("hashing hashbuf error: %v", err)
+		}
+		_, err = hash.Write(readBuf)
+		if err != nil {
+			t.Errorf("hashing readbuf error: %v", err)
+		}
+		copy(readHashBuf, hash.Sum(nil))
+	}
+	log.Printf("final hash: %v readBuf: %v, bytesRead: %v", readHashBuf, readBuf, readIndex)
+	SimpleAssert(t, bytes.Equal(readHashBuf, hashBuf), "hashes are equal")
 	Cleanup(t, ctx)
 }
 
