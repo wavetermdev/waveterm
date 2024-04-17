@@ -95,11 +95,11 @@ const lazyLoadSpecLocation = async (location: Fig.SpecLocation): Promise<Fig.Spe
 
 export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Promise<SuggestionBlob | undefined> => {
     const activeCmd = parseCommand(cmd);
-    const parser = new Parser(
-        undefined,
-        activeCmd.map((c) => c.token),
-        cwd
-    );
+    const parserCmd = activeCmd.map((c) => c.token);
+    if (cmd.endsWith(" ")) {
+        parserCmd.push(" ");
+    }
+    const parser = new Parser(undefined, parserCmd, cwd);
     const sugg = await parser.generateSuggestions();
     log.debug("newton", sugg);
     log.debug("activeCmd", activeCmd);

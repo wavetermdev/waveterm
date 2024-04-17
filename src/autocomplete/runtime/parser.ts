@@ -189,7 +189,11 @@ export class Parser {
     /**
      * The most-recently-matched argument. This is used to determine the final set of suggestions.
      */
-    public currentArg: Fig.Arg | undefined;
+    public currentArgs: Fig.Arg[] | undefined;
+
+    public argIndex: number = 0;
+
+    public suggestions: Fig.Suggestion[] = [];
 
     /**
      * The available options for the current command. This is a map of option names to options. This is used to keep track of which options have already been used.
@@ -263,8 +267,8 @@ export class Parser {
         this.flagsArePosixNoncompliant = flagsArePosixNoncompliant;
         this.optionsMustPrecedeArguments = optionsMustPrecedeArguments;
         this.optionArgSeparators = optionArgSeparators;
-        this.options = options;
         this.subcommands = subcommands;
+        this.options = options;
         this.cwd = cwd;
     }
 
@@ -281,8 +285,13 @@ export class Parser {
     public set spec(spec: Fig.Subcommand | undefined) {
         this._spec = spec;
         this.options = spec?.options ?? [];
+        this.currentOption = undefined;
+        this.currentArgs = [];
+        this.argIndex = 0;
+        this.suggestions = [];
         this.availableOptions = {};
         this.dependentOptions = {};
+        this.subcommands = spec?.subcommands ?? [];
         this.mutuallyExclusiveOptions = {};
         this.optionsMustPrecedeArguments =
             spec?.parserDirectives?.optionsMustPrecedeArguments ?? this.optionsMustPrecedeArguments;
@@ -448,6 +457,45 @@ export class Parser {
         }
     }
 
+    parseArgument(): ParserState {
+        const entry = this.entries.at(this.entryIndex);
+        if (!entry || this.currentArgs.length == 0) {
+            return ParserState.Option;
+        }
+
+        const currentArg = this.currentArgs[this.argIndex];
+
+        if (currentArg) {
+            if (currentArg.isCommand) {
+                // The next entry is a command, so we need to load the spec for that command and start from scratch
+                this.spec = undefined;
+                return ParserState.Subcommand;
+            }
+            if (isFlagOrOption(entry)) {
+                if (!currentArg.isOptional && !currentArg.isVariadic) {
+                    this.error = `The argument ${currentArg.name} is required and cannot be a flag or option.`;
+                } else if (currentArg.isVariadic && currentArg.optionsCanBreakVariadicArg) {
+                    if (currentArg.isVariadic) {
+                        if (this.entries.length > this.entryIndex + 1) {
+                            this.entryIndex++;
+                            this.parseOption();
+                            this.currentOption = undefined;
+                            return ParserState.SubcommandArgument;
+                        }
+                    }
+                }
+                return ParserState.Option;
+            } else if (currentArg.isVariadic) {
+                return this.curState;
+            } else {
+                this.argIndex++;
+                return this.curState;
+            }
+        } else {
+            return ParserState.Option;
+        }
+    }
+
     /**
      * Loads the spec for the current command. If the command defines a `loadSpec` function, that function is run and the result is set as the new spec. Otherwise, the spec is set to the command itself.
      * @returns The spec for the current command.
@@ -467,13 +515,28 @@ export class Parser {
             }
             if (typeof spec.default === "object") {
                 const command = spec.default as Fig.Subcommand;
-                console.log("Spec is valid Subcommand");
+                console.log("Spec is valid Subcommand", command);
                 if (command.generateSpec) {
                     console.log("has generateSpec function");
-                    return await command.generateSpec(
+                    const generatedSpec = await command.generateSpec(
                         this.entryIndex < this.entries.length - 1 ? this.entries.slice(this.entryIndex + 1) : [],
                         buildExecuteShellCommand(5000)
                     );
+                    console.log("generatedSpec: ", generatedSpec);
+                    const newCommand: Fig.Subcommand = { ...command };
+
+                    // Merge the generated spec with the existing spec
+                    for (const key in generatedSpec) {
+                        if (Array.isArray(generatedSpec[key])) {
+                            newCommand[key] = [...generatedSpec[key], ...(newCommand[key] ?? [])];
+                            continue;
+                        } else if (typeof generatedSpec[key] === "object") {
+                            newCommand[key] = { ...generatedSpec[key], ...(newCommand[key] ?? {}) };
+                        } else {
+                            newCommand[key] = generatedSpec[key];
+                        }
+                    }
+                    return newCommand;
                 } else {
                     console.log("no generateSpec function");
                     return command;
@@ -556,6 +619,7 @@ export class Parser {
                 return false;
             }
         } else {
+            console.log("no spec");
             this.spec = await this.loadSpec(curEntry);
         }
         return true;
@@ -578,11 +642,15 @@ export class Parser {
             this.prevState = this.curState;
             switch (this.curState) {
                 case ParserState.Subcommand: {
+                    console.log("subcommand");
                     if (!(await this.findSubcommand())) {
                         if (isFlagOrOption(this.entries.at(this.entryIndex) ?? "")) {
                             this.curState = ParserState.Option;
-                        } else {
+                        } else if (this.entryIndex < this.entries.length - 1) {
                             this.curState = ParserState.SubcommandArgument;
+                        } else {
+                            console.log("no subcommand found", this.subcommands);
+                            this.entryIndex++;
                         }
                         break;
                     }
@@ -591,6 +659,7 @@ export class Parser {
                     break;
                 }
                 case ParserState.Option: {
+                    console.log("option");
                     const curEntry = this.entries.at(this.entryIndex) ?? "";
                     const isEntryOption = isOption(curEntry);
                     const isEntryFlag = isFlag(curEntry);
@@ -609,6 +678,7 @@ export class Parser {
                     break;
                 }
                 case ParserState.PosixFlag: {
+                    console.log("posix flag");
                     this.parseFlag();
                     this.entryIndex++;
                     if (this.currentOption?.args) {
@@ -619,17 +689,19 @@ export class Parser {
                     break;
                 }
                 case ParserState.SubcommandArgument:
+                    console.log("subcommand argument");
                     if (isFlagOrOption(this.entries.at(this.entryIndex) ?? "") && !this.optionsMustPrecedeArguments) {
                         this.curState = ParserState.Option;
                         break;
-                    } else {
-                        // TODO: process argument
+                    } else if (this.parseArgument()) {
                         this.entryIndex++;
                     }
                     break;
                 case ParserState.OptionArgument:
-                    this.entryIndex += getAll(this.currentOption?.args).length ?? 0;
-                    this.curState = ParserState.Option;
+                    console.log("option argument");
+                    if (this.parseArgument()) {
+                        this.entryIndex++;
+                    }
                     break;
             }
 
@@ -645,37 +717,71 @@ export class Parser {
             }
         }
 
+        console.log(
+            "done with loop, error: ",
+            this.error,
+            "entryIndex: ",
+            this.entryIndex,
+            "entries: ",
+            this.entries,
+            "curState: ",
+            this.curState,
+            "curOption: ",
+            this.currentOption,
+            "currentArgs: ",
+            this.currentArgs,
+            "argIndex: ",
+            this.argIndex
+        );
+
         if (!this.error) {
             // We parsed the entire entry array without error, so we can return suggestions
             let suggestions = new Set<Fig.Suggestion>();
             const lastEntry = this.entries.at(this.entries.length - 1);
-            log.debug("lastEntry: ", lastEntry, "curState: ", this.curState);
+            log.debug(
+                "allEntries: ",
+                this.entries,
+                "lastEntry: ",
+                lastEntry,
+                "curState: ",
+                this.curState,
+                "lastEntryEndsWithSpace: ",
+                lastEntry.endsWith(" ")
+            );
 
             switch (this.curState) {
                 case ParserState.Subcommand: {
-                    log.debug("subcommands: ", this.subcommands, this.options);
+                    log.debug("subcommands: ", this.subcommands, this.options, lastEntry);
                     // The parser never got to matching options or arguments, so suggest all available for the current spec.
                     if (lastEntry == " ") {
                         log.debug("lastEntry is space");
-                        this.subcommands.forEach((subcommand) => suggestions.add(subcommand));
+                        this.subcommands?.forEach((subcommand) => suggestions.add(subcommand));
+                        this.spec.additionalSuggestions?.forEach((suggestion) => {
+                            switch (typeof suggestion) {
+                                case "string":
+                                    suggestions.add({ name: suggestion });
+                                    break;
+                                case "object":
+                                    suggestions.add(suggestion);
+                                    break;
+                            }
+                        });
                         this.options.forEach((option) => suggestions.add(option));
                         const arg1 = getFirst(this.spec?.args);
                         if (arg1) {
                             suggestions.add(arg1);
                         }
-                    } else if (this.spec) {
-                        suggestions.add({
-                            name: getFirst(this.spec.name),
-                            description: this.spec.description,
-                            icon: this.spec.icon,
-                            priority: 100,
-                        });
+                    } else if (this.subcommands.length > 0) {
+                        this.subcommands
+                            ?.filter((subcommand) => matchAny(subcommand.name, (s) => s.startsWith(lastEntry)))
+                            .forEach((subcommand) => {
+                                suggestions.add(subcommand);
+                            });
                     }
                     break;
                 }
                 case ParserState.Option:
-                case ParserState.SubcommandArgument: {
-                    log.debug("availableOptions: ", this.availableOptions);
+                case ParserState.PosixFlag: {
                     const availableOptions = Object.values(this.availableOptions);
                     if (lastEntry == " ") {
                         // The parser is currently matching options or subcommand arguments, so suggest all available options.
@@ -690,30 +796,9 @@ export class Parser {
                                 if (this.currentOption) {
                                     suggestions.add(this.currentOption);
                                 }
-
-                                for (const arg of getAll(this.currentOption?.args)) {
-                                    [
-                                        ...(await generatorSuggestions(
-                                            arg,
-                                            this.entries.map((entry) => {
-                                                return { token: entry, complete: true, isOption: false };
-                                            }),
-                                            arg?.filterStrategy,
-                                            lastEntry,
-                                            this.cwd
-                                        )),
-                                        ...suggestionSuggestions(arg.suggestions, arg?.filterStrategy, lastEntry),
-                                        ...(await templateSuggestions(
-                                            arg.template,
-                                            arg?.filterStrategy,
-                                            lastEntry,
-                                            this.cwd
-                                        )),
-                                        ...availableOptions.filter((option) =>
-                                            startsWithAny(option.name, lastEntry ?? "")
-                                        ),
-                                    ].forEach((s) => suggestions.add(s));
-                                }
+                                availableOptions
+                                    .filter((option) => startsWithAny(option.name, lastEntry ?? ""))
+                                    .forEach((option) => suggestions.add(option));
                                 break;
                             }
                             case ParserState.PosixFlag: {
@@ -738,10 +823,25 @@ export class Parser {
                     }
                     break;
                 }
+                case ParserState.SubcommandArgument:
                 case ParserState.OptionArgument: {
+                    console.log("currentArgs: ", this.currentArgs, "argIndex: ", this.argIndex);
                     // The parser is currently matching option arguments, so suggest all available arguments for the current option.
-                    if (this.currentOption?.args) {
-                        getAll(this.currentOption.args).forEach((arg) => suggestions.add(arg));
+                    if (this.currentArgs && this.argIndex < this.currentArgs.length) {
+                        const arg = this.currentArgs[this.argIndex];
+                        [
+                            ...(await generatorSuggestions(
+                                arg,
+                                this.entries.map((entry) => {
+                                    return { token: entry, complete: true, isOption: false };
+                                }),
+                                arg?.filterStrategy,
+                                lastEntry,
+                                this.cwd
+                            )),
+                            ...suggestionSuggestions(arg.suggestions, arg?.filterStrategy, lastEntry),
+                            ...(await templateSuggestions(arg.template, arg?.filterStrategy, lastEntry, this.cwd)),
+                        ].forEach((s) => suggestions.add(s));
                     }
                     break;
                 }

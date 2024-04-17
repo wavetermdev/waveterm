@@ -7,6 +7,7 @@ import { observer } from "mobx-react";
 import { If } from "tsx-control-statements/components";
 
 import "./suggestionview.less";
+import { getAll, getFirst } from "@/autocomplete/runtime/utils";
 
 export const SuggestionView: React.FC = observer(() => {
     const [selectedSuggestion, setSelectedSuggestion] = React.useState<number>(0);
@@ -60,14 +61,15 @@ export const SuggestionView: React.FC = observer(() => {
             </If>
             {suggestions?.suggestions.map((suggestion, idx) => (
                 <div
-                    key={suggestion.name}
+                    key={getFirst(suggestion.name)}
                     title={suggestion.description}
                     className={cn("suggestion-item", { "is-selected": selectedSuggestion === idx })}
                     onClick={() => {
                         setSuggestion(idx);
                     }}
                 >
-                    {suggestion.icon} {suggestion.name} {suggestion.description ? `- ${suggestion.description}` : ""}
+                    {suggestion.icon} {getAll(suggestion.name).join(",")}{" "}
+                    {suggestion.description ? `- ${suggestion.description}` : ""}
                 </div>
             ))}
         </AuxiliaryCmdView>

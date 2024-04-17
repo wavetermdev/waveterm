@@ -102,19 +102,6 @@ class HistoryKeybindings extends React.Component<{}, {}> {
     }
 }
 
-const SuggestionsInfoMsg = (props: { suggestions: SuggestionBlob }) => {
-    const suggestions = props.suggestions.suggestions;
-    return (
-        <div className="cmd-input-info">
-            {suggestions.map((s) => (
-                <div key={s.name} className="cmd-input-info-item">
-                    {s.icon} {s.name}
-                </div>
-            ))}
-        </div>
-    );
-};
-
 class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
     curPress: string;
     lastTab: boolean;
