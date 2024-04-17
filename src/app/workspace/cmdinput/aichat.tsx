@@ -57,18 +57,13 @@ class AIChat extends React.Component<{}, {}> {
     chatListKeyCount: number = 0;
     chatWindowScrollRef: React.RefObject<HTMLDivElement>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
-    isFocused: OV<boolean>;
     termFontSize: number = 14;
 
     constructor(props: any) {
         super(props);
         this.chatWindowScrollRef = React.createRef();
         this.textAreaRef = React.createRef();
-        this.isFocused = mobx.observable.box(false, {
-            name: "aichat-isfocused",
-        });
     }
-
     componentDidMount() {
         const inputModel = GlobalModel.inputModel;
         if (this.chatWindowScrollRef?.current != null) {
@@ -110,14 +105,12 @@ class AIChat extends React.Component<{}, {}> {
 
     onTextAreaFocused(e: any) {
         mobx.action(() => {
-            this.isFocused.set(true);
             GlobalModel.inputModel.setAuxViewFocus(true);
         })();
     }
 
     onTextAreaBlur(e: any) {
         mobx.action(() => {
-            this.isFocused.set(false);
             GlobalModel.inputModel.setAuxViewFocus(false);
         })();
     }
@@ -240,18 +233,7 @@ class AIChat extends React.Component<{}, {}> {
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
-        const renderKeybindings = mobx
-            .computed(() => {
-                return (
-                    this.isFocused.get() ||
-                    GlobalModel.inputModel.hasFocus() ||
-                    (GlobalModel.getActiveScreen().getFocusType() == "input" &&
-                        GlobalModel.activeMainView.get() == "session" &&
-                        GlobalModel.inputModel.getActiveAuxView() == appconst.InputAuxView_AIChat)
-                );
-            })
-            .get();
-
+        const renderKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_AIChat);
         return (
             <AuxiliaryCmdView
                 title="Wave AI"

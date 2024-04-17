@@ -7,7 +7,7 @@ import { boundMethod } from "autobind-decorator";
 import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import type { Model } from "./model";
-import { GlobalCommandRunner } from "./global";
+import { GlobalCommandRunner, GlobalModel } from "./global";
 import { app } from "electron";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
@@ -500,6 +500,29 @@ class InputModel {
         this.giveFocus();
     }
 
+    shouldRenderAuxViewKeybindings(view: InputAuxViewType): boolean {
+        return mobx
+            .computed(() => {
+                if (view != null && this.getActiveAuxView() != view) {
+                    return false;
+                }
+                if (view == null && this.hasFocus() && !this.getAuxViewFocus()) {
+                    return true;
+                }
+                if (view != null && this.getAuxViewFocus()) {
+                    return true;
+                }
+                if (
+                    GlobalModel.getActiveScreen().getFocusType() == "input" &&
+                    GlobalModel.activeMainView.get() == "session"
+                ) {
+                    return true;
+                }
+                return false;
+            })
+            .get();
+    }
+
     setHistoryIndex(hidx: number, force?: boolean): void {
         if (hidx < 0) {
             return;
@@ -691,7 +714,6 @@ class InputModel {
 
     openAIAssistantChat(): void {
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
-        this.setAuxViewFocus(true);
     }
 
     clearAIAssistantChat(): void {
