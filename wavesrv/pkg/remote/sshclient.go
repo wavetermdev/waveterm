@@ -292,7 +292,7 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 		return UserInputCancelError{Err: fmt.Errorf("canceled by the user")}
 	}
 
-	_, err = f.WriteString(newLine)
+	_, err = f.WriteString(newLine + "\n")
 	if err != nil {
 		f.Close()
 		return err
