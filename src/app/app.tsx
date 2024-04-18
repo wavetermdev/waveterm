@@ -6,15 +6,16 @@ import * as mobxReact from "mobx-react";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
-import { TermStyleBlock } from "@/elements";
-import { For } from "tsx-control-statements/components";
+import { TermStyleList } from "@/elements";
+import { If } from "tsx-control-statements/components";
 import { Main } from "./main";
+
 import "./app.less";
 
 dayjs.extend(localizedFormat);
 
 @mobxReact.observer
-class App extends React.Component<{ children: React.ReactNode }, {}> {
+class App extends React.Component<{}, {}> {
     getSelector(themeKey: string) {
         const sessions = GlobalModel.getSessionNames();
         const screens = GlobalModel.getScreenNames();
@@ -35,20 +36,16 @@ class App extends React.Component<{ children: React.ReactNode }, {}> {
         if (termThemeOptions == null) {
             return null;
         }
-        const termTheme = GlobalModel.getTermTheme();
-        const themeKey = null;
-
         return (
-            <>
-                <For index="idx" each="themeKey" of={Object.keys(termTheme)}>
-                    <TermStyleBlock
-                        key={themeKey}
-                        themeName={termTheme[themeKey]}
-                        selector={this.getSelector(themeKey)}
-                    />
-                </For>
-                <Main />
-            </>
+            <TermStyleList>
+                {(termStylesRendered) => {
+                    return (
+                        <If condition={termStylesRendered}>
+                            <Main />
+                        </If>
+                    );
+                }}
+            </TermStyleList>
         );
     }
 }

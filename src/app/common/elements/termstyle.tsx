@@ -5,6 +5,8 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { GlobalModel } from "@/models";
 import ReactDOM from "react-dom";
+import { For } from "tsx-control-statements/components";
+import * as mobx from "mobx";
 
 const VALID_CSS_VARIABLES = [
     "--term-black",
@@ -32,7 +34,7 @@ const VALID_CSS_VARIABLES = [
 ];
 
 @mobxReact.observer
-class TermStyleBlock extends React.Component<{
+class TermStyle extends React.Component<{
     themeName: string;
     selector: string;
 }> {
@@ -90,4 +92,44 @@ class TermStyleBlock extends React.Component<{
     }
 }
 
-export { TermStyleBlock };
+@mobxReact.observer
+class TermStyleList extends React.Component<{ children: (termStylesRendered: boolean) => React.ReactNode }, {}> {
+    termStylesRendered: OV<boolean> = mobx.observable.box(false, { name: "termStylesRendered" });
+
+    componentDidMount(): void {
+        mobx.action(() => {
+            this.termStylesRendered.set(true);
+        })();
+    }
+
+    getSelector(themeKey: string) {
+        const sessions = GlobalModel.getSessionNames();
+        const screens = GlobalModel.getScreenNames();
+
+        if (themeKey === "main") {
+            return ":root";
+        } else if (themeKey in screens) {
+            return `.main-content [data-screenid="${themeKey}"]`;
+        } else if (themeKey in sessions) {
+            return `.main-content [data-sessionid="${themeKey}"]`;
+        }
+
+        return null;
+    }
+
+    render() {
+        const termTheme = GlobalModel.getTermTheme();
+        const themeKey = null;
+
+        return (
+            <>
+                <For index="idx" each="themeKey" of={Object.keys(termTheme)}>
+                    <TermStyle key={themeKey} themeName={termTheme[themeKey]} selector={this.getSelector(themeKey)} />
+                </For>
+                {this.props.children(this.termStylesRendered.get())}
+            </>
+        );
+    }
+}
+
+export { TermStyleList };

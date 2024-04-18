@@ -18,9 +18,8 @@ import { MainSideBar } from "./sidebar/main";
 import { RightSideBar } from "./sidebar/right";
 import { DisconnectedModal, ClientStopModal } from "@/modals";
 import { ModalsProvider } from "@/modals/provider";
-import { Button, TermStyleBlock } from "@/elements";
+import { Button } from "@/elements";
 import { ErrorBoundary } from "@/common/error/errorboundary";
-import { For } from "tsx-control-statements/components";
 import cn from "classnames";
 
 @mobxReact.observer
