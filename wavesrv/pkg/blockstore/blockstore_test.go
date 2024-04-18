@@ -6,6 +6,7 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"log"
+	"sync"
 	"testing"
 	"time"
 
@@ -215,7 +216,7 @@ func TestMakeFile(t *testing.T) {
 	SimpleAssert(t, curFileInfo.Name == "file-1", "correct file name")
 	SimpleAssert(t, curFileInfo.Meta["test-descriptor"] == true, "meta correct")
 	curCacheEntry := cache[GetCacheId("test-block-id", "file-1")]
-	curFileInfo = &curCacheEntry.Info
+	curFileInfo = curCacheEntry.Info
 	log.Printf("cache entry: %v", curCacheEntry)
 	SimpleAssert(t, curFileInfo.Name == "file-1", "cache correct file name")
 	SimpleAssert(t, curFileInfo.Meta["test-descriptor"] == true, "cache meta correct")
@@ -247,7 +248,7 @@ func TestWriteAt(t *testing.T) {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
 	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
-	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
 	}
@@ -262,7 +263,6 @@ func TestWriteAt(t *testing.T) {
 	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
 	bytesWritten, err = WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, int64(bytesWritten))
 	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
-	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
 	}
@@ -283,7 +283,7 @@ func TestWriteAt(t *testing.T) {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
 	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
-	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
 	}
@@ -303,7 +303,7 @@ func TestWriteAt(t *testing.T) {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
 	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
-	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
 	}
@@ -344,7 +344,7 @@ func TestWriteAtLeftPad(t *testing.T) {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
 	SimpleAssert(t, bytesWritten == 22, "Correct num bytes written")
-	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
 	}
@@ -378,7 +378,7 @@ func TestReadAt(t *testing.T) {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
 	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
-	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
 	}
@@ -428,7 +428,7 @@ func TestFlushCache(t *testing.T) {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
 	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
-	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0)
+	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
 	}
@@ -647,6 +647,85 @@ func TestWriteAtCircularWierdOffset(t *testing.T) {
 	log.Printf("readbuf circular %v %v, %v", readBuf, string(readBuf), bytesRead)
 	Cleanup(t, ctx)
 
+}
+
+func TestAppend(t *testing.T) {
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileSize := MaxBlockSize*2 - 500
+	fileOpts := FileOptsType{MaxSize: int64(fileSize), Circular: true, IJson: false}
+	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	testAppendBytes1 := []byte{'T', 'E', 'S', 'T'}
+	bytesWritten, err := AppendData(ctx, "test-block-id", "file-1", testAppendBytes1)
+	if err != nil {
+		t.Errorf("Append Error: %v", err)
+	}
+	SimpleAssert(t, bytesWritten == len(testAppendBytes1), "Correct num bytes written")
+	readBuf := make([]byte, len(testAppendBytes1))
+	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, 0)
+	log.Printf("read buf : %v", string(readBuf))
+	if err != nil {
+		t.Errorf("Read Error: %v", err)
+	}
+	SimpleAssert(t, bytesRead == bytesWritten, "Correct num bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf, testAppendBytes1), "Correct bytes read")
+	testAppendBytes2 := []byte{'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	bytesWritten, err = AppendData(ctx, "test-block-id", "file-1", testAppendBytes2)
+	if err != nil {
+		t.Errorf("Append Error: %v", err)
+	}
+	SimpleAssert(t, bytesWritten == len(testAppendBytes2), "Correct num bytes written")
+	readTestBytes := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	readBuf = make([]byte, len(readTestBytes))
+	bytesRead, err = ReadAt(ctx, "test-block-id", "file-1", &readBuf, 0)
+	log.Printf("read buf : %v", string(readBuf))
+	if err != nil {
+		t.Errorf("Read Error: %v", err)
+	}
+	SimpleAssert(t, bytesRead == bytesWritten+4, "Correct num bytes read")
+	SimpleAssert(t, bytes.Equal(readBuf, readTestBytes), "Correct bytes read")
+	Cleanup(t, ctx)
+}
+
+func AppendSyncWorker(t *testing.T, ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+	writeBuf := make([]byte, 1)
+	rand.Read(writeBuf)
+	bytesWritten, err := AppendData(ctx, "test-block-id-sync", "file-1", writeBuf)
+	if err != nil {
+		t.Errorf("Worker append err: %v", err)
+	}
+	SimpleAssert(t, bytesWritten == 1, "Correct bytes written")
+}
+func TestAppendSync(t *testing.T) {
+	var wg sync.WaitGroup
+	numWorkers := 10
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id-sync", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	FlushCache(ctx)
+	for index := 0; index < numWorkers; index++ {
+		wg.Add(1)
+		go AppendSyncWorker(t, ctx, &wg)
+	}
+	wg.Wait()
+	readBuf := make([]byte, numWorkers)
+	bytesRead, err := ReadAt(ctx, "test-block-id-sync", "file-1", &readBuf, 0)
+	if err != nil {
+		t.Errorf("Read Error: %v", err)
+	}
+	log.Printf("read buf : %v", readBuf)
+	SimpleAssert(t, bytesRead == numWorkers, "Correct bytes read")
+	Cleanup(t, ctx)
 }
 
 // time consuming tests
