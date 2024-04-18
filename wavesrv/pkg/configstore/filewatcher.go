@@ -25,6 +25,7 @@ var (
 )
 
 // GetWatcher returns the singleton instance of the Watcher
+// Singleton for now per mike's suggestion
 func GetWatcher(handler EventHandler) (*Watcher, error) {
 	var err error
 	once.Do(func() {
