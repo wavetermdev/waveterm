@@ -1,11 +1,14 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package promptenc
+package waveenc
 
 import (
 	"crypto/cipher"
+	"crypto/ecdh"
+	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -82,23 +85,14 @@ func (enc *Encryptor) EncryptData(plainText []byte, odata string) ([]byte, error
 	return rtn, nil
 }
 
-func (enc *Encryptor) DecryptData(encData []byte, odata string) (map[string]interface{}, error) {
+func (enc *Encryptor) DecryptData(encData []byte, odata string) ([]byte, error) {
 	minLen := enc.AEAD.NonceSize() + enc.AEAD.Overhead()
 	if len(encData) < minLen {
 		return nil, fmt.Errorf("invalid encdata, len:%d is less than minimum len:%d", len(encData), minLen)
 	}
-	m := make(map[string]interface{})
 	nonce := encData[0:enc.AEAD.NonceSize()]
 	cipherText := encData[enc.AEAD.NonceSize():]
-	plainText, err := enc.AEAD.Open(nil, nonce, cipherText, []byte(odata))
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(plainText, &m)
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
+	return enc.AEAD.Open(nil, nonce, cipherText, []byte(odata))
 }
 
 type EncryptMeta struct {
@@ -195,7 +189,12 @@ func (enc *Encryptor) DecryptStructFields(v interface{}, odata string) error {
 	rvPtr := reflect.ValueOf(v)
 	rv := rvPtr.Elem()
 	cipherText := rv.FieldByIndex(encMeta.EncField.Index).Bytes()
-	m, err := enc.DecryptData(cipherText, odata)
+	decrypted, err := enc.DecryptData(cipherText, odata)
+	if err != nil {
+		return err
+	}
+	m := make(map[string]interface{})
+	err = json.Unmarshal(decrypted, &m)
 	if err != nil {
 		return err
 	}
@@ -204,4 +203,25 @@ func (enc *Encryptor) DecryptStructFields(v interface{}, odata string) error {
 		rv.FieldByIndex(field.Index).Set(reflect.ValueOf(val))
 	}
 	return nil
+}
+
+func MakeEncryptorEcdh(localPrivKey *ecdh.PrivateKey, remotePubKey []byte) (*Encryptor, error) {
+	shellPubKey, err := x509.ParsePKIXPublicKey(remotePubKey)
+	if err != nil {
+		return nil, fmt.Errorf("parse pub key: %e", err)
+	}
+	ecdhShellPubKey, err := shellPubKey.(*ecdsa.PublicKey).ECDH()
+	if err != nil {
+		return nil, fmt.Errorf("convert pub key from ecdsa to ecdh: %e", err)
+	}
+	sharedKey, err := localPrivKey.ECDH(ecdhShellPubKey)
+	if err != nil {
+		return nil, fmt.Errorf("compute shared key: %e", err)
+	}
+	encryptor, err := MakeEncryptor(sharedKey)
+	if err != nil {
+		return nil, fmt.Errorf("create encryptor: %e", err)
+	}
+	return encryptor, nil
+
 }

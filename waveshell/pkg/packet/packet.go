@@ -65,6 +65,8 @@ const (
 	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
 	ShellStatePacketStr     = "shellstate"
 	RpcInputPacketStr       = "rpcinput" // rpc-followup
+	SudoRequestPacketStr    = "sudorequest"
+	SudoResponsePacketStr   = "sudoresponse"
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
@@ -120,6 +122,8 @@ func init() {
 	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
 	TypeStrToFactory[FileStatPacketStr] = reflect.TypeOf(FileStatPacketType{})
 	TypeStrToFactory[RpcInputPacketStr] = reflect.TypeOf(RpcInputPacketType{})
+	TypeStrToFactory[SudoRequestPacketStr] = reflect.TypeOf(SudoRequestPacketType{})
+	TypeStrToFactory[SudoResponsePacketStr] = reflect.TypeOf(SudoResponsePacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -146,6 +150,7 @@ func init() {
 	var _ CommandPacketType = (*CmdDonePacketType)(nil)
 	var _ CommandPacketType = (*SpecialInputPacketType)(nil)
 	var _ CommandPacketType = (*CmdFinalPacketType)(nil)
+	var _ CommandPacketType = (*SudoResponsePacketType)(nil)
 }
 
 func RegisterPacketType(typeStr string, rtype reflect.Type) {
@@ -827,6 +832,7 @@ type RunPacketType struct {
 	RunData       []RunDataType   `json:"rundata,omitempty"`
 	Detached      bool            `json:"detached,omitempty"`
 	ReturnState   bool            `json:"returnstate,omitempty"`
+	IsSudo        bool            `json:"issudo,omitempty"`
 	Timeout       time.Duration   `json:"timeout"` // TODO: added vnext. This is the timeout for the command to run.  If the command does not complete in this time, it will be killed. The default zero value will not impose a timeout.
 }
 
@@ -977,6 +983,55 @@ func (*OpenAICloudReqPacketType) GetType() string {
 func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
 	return &OpenAICloudReqPacketType{
 		Type: OpenAICloudReqStr,
+	}
+}
+
+type SudoRequestPacketType struct {
+	Type        string          `json:"type"`
+	CK          base.CommandKey `json:"ck"`
+	ShellPubKey []byte          `json:"shellpubkey"`
+	SudoStatus  string          `json:"sudostatus"`
+	ErrStr      string          `json:"errstr"`
+}
+
+func (*SudoRequestPacketType) GetType() string {
+	return SudoRequestPacketStr
+}
+
+func (p *SudoRequestPacketType) GetCK() base.CommandKey {
+	return p.CK
+}
+
+func MakeSudoRequestPacket(ck base.CommandKey, pubKey []byte, sudoStatus string) *SudoRequestPacketType {
+	return &SudoRequestPacketType{
+		Type:        SudoRequestPacketStr,
+		CK:          ck,
+		ShellPubKey: pubKey,
+		SudoStatus:  sudoStatus,
+	}
+}
+
+type SudoResponsePacketType struct {
+	Type      string          `json:"type"`
+	CK        base.CommandKey `json:"ck"`
+	Secret    []byte          `json:"secret"`
+	SrvPubKey []byte          `json:"srvpubkey"`
+}
+
+func (*SudoResponsePacketType) GetType() string {
+	return SudoResponsePacketStr
+}
+
+func (p *SudoResponsePacketType) GetCK() base.CommandKey {
+	return p.CK
+}
+
+func MakeSudoResponsePacket(ck base.CommandKey, secret []byte, srvPubKey []byte) *SudoResponsePacketType {
+	return &SudoResponsePacketType{
+		Type:      SudoResponsePacketStr,
+		CK:        ck,
+		Secret:    secret,
+		SrvPubKey: srvPubKey,
 	}
 }
 

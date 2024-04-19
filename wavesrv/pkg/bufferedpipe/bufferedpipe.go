@@ -16,8 +16,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 )
 
 const (
@@ -55,7 +55,7 @@ func (pipe *BufferedPipe) GetOutputUrl() (string, error) {
 	qvals := make(url.Values)
 	qvals.Set("key", pipe.Key)
 	qvals.Set("nonce", uuid.New().String())
-	hmacStr, err := promptenc.ComputeUrlHmac([]byte(scbase.WaveAuthKey), BufferedPipeGetterUrl, qvals)
+	hmacStr, err := waveenc.ComputeUrlHmac([]byte(scbase.WaveAuthKey), BufferedPipeGetterUrl, qvals)
 	if err != nil {
 		return "", err
 	}
