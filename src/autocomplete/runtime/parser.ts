@@ -591,13 +591,12 @@ export class Parser {
         );
     }
 
-    getSuggestionsForOptions() {
-        return this.filterSuggestions(
-            this.options,
-            this.spec?.filterStrategy,
-            this.entries.at(this.entryIndex),
-            undefined
-        );
+    getSuggestionsForOptions(isFlag: boolean) {
+        const entry = this.entries.at(this.entryIndex);
+        const availableOptions = isFlag
+            ? this.getAvailablePosixFlags().map((option) => modifyPosixFlags(option, entry?.slice(1)))
+            : this.getAvailableNonPosixFlags();
+        return this.filterSuggestions(availableOptions, this.spec?.filterStrategy, entry, undefined);
     }
 
     /**
@@ -866,15 +865,9 @@ export class Parser {
                         this.spec?.additionalSuggestions?.forEach((s) =>
                             suggestions.add(typeof s === "string" ? { name: s } : s)
                         );
-                        this.getSuggestionsForSubcommands().forEach((s) => suggestions.add(s));
-                        this.getSuggestionsForOptions().forEach((s) => suggestions.add(s));
-                    } else if (this.subcommands.length > 0) {
-                        this.subcommands
-                            ?.filter((subcommand) => matchAny(subcommand.name, (s) => s.startsWith(lastEntry)))
-                            .forEach((subcommand) => {
-                                suggestions.add(subcommand);
-                            });
+                        this.getSuggestionsForOptions(false).forEach((s) => suggestions.add(s));
                     }
+                    this.getSuggestionsForSubcommands().forEach((s) => suggestions.add(s));
                     break;
                 }
                 case ParserState.Option:
@@ -906,10 +899,7 @@ export class Parser {
                                     suggestions.add(modifyPosixFlags(this.currentOption, existingFlags));
 
                                     // Suggest the other available flags as additional suggestions
-                                    availableOptions
-                                        .filter((value) => matchAny(value.name, isFlag))
-                                        .map((option) => modifyPosixFlags(option, existingFlags))
-                                        .forEach((s) => suggestions.add(s));
+                                    this.getSuggestionsForOptions(true).forEach((s) => suggestions.add(s));
                                 }
                                 break;
                             }
