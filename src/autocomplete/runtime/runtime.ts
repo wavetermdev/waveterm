@@ -10,7 +10,8 @@ import speclist, {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore
 } from "@withfig/autocomplete/build/index";
-import { parseCommand, CommandToken, Parser } from "./parser";
+import { parseCommand, CommandToken } from "./parser";
+import { Newton } from "./newton";
 import { getArgDrivenRecommendation, getSubcommandDrivenRecommendation } from "./suggestion";
 import { SuggestionBlob } from "./model";
 import { buildExecuteShellCommand, resolveCwd } from "./utils";
@@ -99,7 +100,7 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
     if (cmd.endsWith(" ")) {
         parserCmd.push(" ");
     }
-    const parser = new Parser(undefined, parserCmd, cwd);
+    const parser = new Newton(undefined, parserCmd, cwd);
     const sugg = await parser.generateSuggestions();
     log.debug("newton", sugg);
     log.debug("activeCmd", activeCmd);

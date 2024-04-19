@@ -86,7 +86,7 @@ export const getCompletionSuggestions = async (
         if (firstData.info?.infocomps) {
             return firstData.info.infocomps.map((comp: string) => ({
                 name: comp,
-                priority: comp.startsWith(".") ? 1 : 55,
+                priority: comp.startsWith(".") ? 1 : 45,
                 context: { templateType: tempType },
                 type: comp.endsWith("/") ? "folder" : "file",
             }));
@@ -265,4 +265,27 @@ export function sortSuggestions(suggestions: Fig.Suggestion[]) {
         }
         return (b.priority ?? 0) - (a.priority ?? 0);
     });
+}
+
+/**
+ * Merge two subcommand objects, with the second subcommand taking precedence in case of conflicts.
+ * @param subcommand1 The first subcommand.
+ * @param subcommand2 The second subcommand.
+ * @returns The merged subcommand.
+ */
+export function mergeSubcomands(subcommand1: Fig.Subcommand, subcommand2: Fig.Subcommand): Fig.Subcommand {
+    const newCommand: Fig.Subcommand = { ...subcommand1 };
+
+    // Merge the generated spec with the existing spec
+    for (const key in subcommand2) {
+        if (Array.isArray(subcommand2[key])) {
+            newCommand[key] = [...subcommand2[key], ...(newCommand[key] ?? [])];
+            continue;
+        } else if (typeof subcommand2[key] === "object") {
+            newCommand[key] = { ...subcommand2[key], ...(newCommand[key] ?? {}) };
+        } else {
+            newCommand[key] = subcommand2[key];
+        }
+    }
+    return newCommand;
 }
