@@ -6,6 +6,9 @@ package remote
 import (
 	"bytes"
 	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -41,6 +44,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
@@ -56,6 +60,7 @@ const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
 const RpcIterChannelSize = 100
 const MaxInputDataSize = 1000
+const SudoTimeoutTime = 5 * time.Minute
 
 var envVarsToStrip map[string]bool = map[string]bool{
 	"PROMPT":               true,
@@ -164,7 +169,9 @@ type MShellProc struct {
 	RunningCmds      map[base.CommandKey]*RunCmdType
 	PendingStateCmds map[pendingStateKey]base.CommandKey // key=[remoteinstance name] (in progress commands that might update the state)
 
-	Client *ssh.Client
+	Client            *ssh.Client
+	sudoPw            []byte
+	sudoClearDeadline int64
 }
 
 type CommandInputSink interface {
@@ -2374,6 +2381,35 @@ func (msh *MShellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdTy
 	return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, nil, newStateDiff)
 }
 
+func (msh *MShellProc) handleSudoError(ck base.CommandKey, sudoErr error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	screenId, lineId := ck.Split()
+
+	update := scbus.MakeUpdatePacket()
+	errOutputStr := fmt.Sprintf("%serror: %v%s\n", utilfn.AnsiRedColor(), sudoErr, utilfn.AnsiResetColor())
+	msh.writeToCmdPtyOut(ctx, screenId, lineId, []byte(errOutputStr))
+	doneInfo := sstore.CmdDoneDataValues{
+		Ts:         time.Now().UnixMilli(),
+		ExitCode:   1,
+		DurationMs: 0,
+	}
+	err := sstore.UpdateCmdDoneInfo(ctx, update, ck, doneInfo, sstore.CmdStatusError)
+	if err != nil {
+		log.Printf("error updating cmddone info (in handleSudoError): %v\n", err)
+		return
+	}
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, screenId, lineId)
+	if err != nil {
+		log.Printf("error trying to update screen focus type (in handleSudoError): %v\n", err)
+		// fall-through (nothing to do)
+	}
+	if screen != nil {
+		update.AddUpdate(*screen)
+	}
+	scbus.MainUpdateBus.DoUpdate(update)
+}
+
 func (msh *MShellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
 	if rct == nil {
 		log.Printf("handleCmdStartError, no rct\n")
@@ -2613,6 +2649,82 @@ func sendScreenUpdates(screens []*sstore.ScreenType) {
 	}
 }
 
+func (msh *MShellProc) startSudoPwClearChecker() {
+	for {
+		shouldExit := false
+		msh.WithLock(func() {
+			if msh.sudoClearDeadline > 0 && time.Now().Unix() > msh.sudoClearDeadline {
+				msh.sudoPw = nil
+				msh.sudoClearDeadline = 0
+			}
+			if msh.sudoClearDeadline == 0 {
+				shouldExit = true
+			}
+		})
+		if shouldExit {
+			return
+		}
+		time.Sleep(time.Second * 2)
+	}
+}
+
+func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) error {
+	var storedPw []byte
+	var rawSecret []byte
+	msh.WithLock(func() {
+		storedPw = msh.sudoPw
+	})
+	if storedPw != nil && sudoPk.SudoStatus == "first-attempt" {
+		rawSecret = storedPw
+	} else {
+		request := &userinput.UserInputRequestType{
+			QueryText:    "Please enter your password",
+			ResponseType: "text",
+			Title:        "Sudo Password",
+			Markdown:     false,
+		}
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		guiResponse, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			return err
+		}
+		rawSecret = []byte(guiResponse.Text)
+	}
+	//new
+	msh.WithLock(func() {
+		msh.sudoPw = rawSecret
+		if msh.sudoClearDeadline == 0 {
+			go msh.startSudoPwClearChecker()
+		}
+		msh.sudoClearDeadline = time.Now().Add(SudoTimeoutTime).Unix()
+	})
+
+	srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		return fmt.Errorf("generate ecdh: %e", err)
+	}
+	encryptor, err := waveenc.MakeEncryptorEcdh(srvPrivKey, sudoPk.ShellPubKey)
+	if err != nil {
+		return err
+	}
+	encryptedSecret, err := encryptor.EncryptData(rawSecret, "sudopw")
+	if err != nil {
+		return fmt.Errorf("encrypt secret: %e", err)
+	}
+	srvPubKey, err := x509.MarshalPKIXPublicKey(srvPrivKey.PublicKey())
+	if err != nil {
+		return fmt.Errorf("marshal pub key: %e", err)
+	}
+	sudoResponse := packet.MakeSudoResponsePacket(sudoPk.CK, encryptedSecret, srvPubKey)
+	select {
+	case msh.ServerProc.Input.SendCh <- sudoResponse:
+	default:
+	}
+	return nil
+
+}
+
 func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 	if _, ok := pk.(*packet.DataAckPacketType); ok {
 		// TODO process ack (need to keep track of buffer size for sending)
@@ -2641,6 +2753,25 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		})
 		return
 	}
+	if sudoPk, ok := pk.(*packet.SudoRequestPacketType); ok {
+		// final failure case -- clear cache
+		if sudoPk.SudoStatus == "failure" {
+			msh.sudoPw = nil
+			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: incorrect password entered"))
+			return
+		}
+
+		// handle waveshell errors here
+		if sudoPk.SudoStatus == "error" {
+			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: shell: %s", sudoPk.ErrStr))
+			return
+		}
+
+		err := msh.sendSudoPassword(sudoPk)
+		if err != nil {
+			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: srv: %s", err))
+		}
+	}
 	if msgPk, ok := pk.(*packet.MessagePacketType); ok {
 		msh.WriteToPtyBuffer("msg> [remote %s] [%s] %s\n", msh.GetRemoteName(), msgPk.CK, msgPk.Message)
 		return
@@ -2650,6 +2781,13 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		return
 	}
 	msh.WriteToPtyBuffer("*[remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
+}
+
+func (msh *MShellProc) ClearCachedSudoPw() {
+	msh.WithLock(func() {
+		msh.sudoPw = nil
+		msh.sudoClearDeadline = 0
+	})
 }
 
 func (msh *MShellProc) ProcessPackets() {

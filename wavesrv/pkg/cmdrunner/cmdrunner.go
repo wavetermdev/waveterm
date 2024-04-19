@@ -40,7 +40,6 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/history"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote/openai"
@@ -50,6 +49,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 	"golang.org/x/mod/semver"
 )
 
@@ -96,6 +96,7 @@ const (
 	KwArgLang     = "lang"
 	KwArgMinimap  = "minimap"
 	KwArgNoHist   = "nohist"
+	KwArgSudo     = "sudo"
 )
 
 var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
@@ -296,6 +297,8 @@ func init() {
 	registerCmdFn("csvview", CSVViewCommand)
 
 	registerCmdFn("_debug:ri", DebugRemoteInstanceCommand)
+
+	registerCmdFn("sudo:clear", ClearSudoCache)
 
 	registerCmdFn("autocomplete:on", AutocompleteOnCommand)
 	registerCmdFn("autocomplete:off", AutocompleteOffCommand)
@@ -611,6 +614,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	if err != nil {
 		return nil, fmt.Errorf("/run error, invalid lang: %w", err)
 	}
+
 	cmdStr := firstArg(pk)
 	expandedCmdStr, err := doCmdHistoryExpansion(ctx, ids, cmdStr)
 	if err != nil {
@@ -642,6 +646,11 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
+	if sudoArg, ok := pk.Kwargs[KwArgSudo]; ok {
+		runPacket.IsSudo = resolveBool(sudoArg, false)
+	} else {
+		runPacket.IsSudo = IsSudoCommand(cmdStr)
+	}
 	rcOpts := remote.RunCommandOpts{
 		SessionId:     ids.SessionId,
 		ScreenId:      ids.ScreenId,
@@ -3953,6 +3962,30 @@ func DebugRemoteInstanceCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 	return update, nil
 }
 
+func ClearSudoCache(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnUpdate scbus.UpdatePacket, rtnErr error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	ids.Remote.MShell.ClearCachedSudoPw()
+	pluralize := ""
+
+	clearAll := resolveBool(pk.Kwargs["all"], false)
+	if clearAll {
+		for _, proc := range remote.GetRemoteMap() {
+			proc.ClearCachedSudoPw()
+		}
+		pluralize = "s"
+	}
+
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("sudo password%s cleared", pluralize),
+		TimeoutMs: 2000,
+	})
+	return update, nil
+}
+
 func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnUpdate scbus.UpdatePacket, rtnErr error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
@@ -5292,7 +5325,7 @@ func MakeReadFileUrl(screenId string, lineId string, filePath string) (string, e
 	qvals.Set("lineid", lineId)
 	qvals.Set("path", filePath)
 	qvals.Set("nonce", uuid.New().String())
-	hmacStr, err := promptenc.ComputeUrlHmac([]byte(scbase.WaveAuthKey), "/api/read-file", qvals)
+	hmacStr, err := waveenc.ComputeUrlHmac([]byte(scbase.WaveAuthKey), "/api/read-file", qvals)
 	if err != nil {
 		return "", fmt.Errorf("error computing hmac-url: %v", err)
 	}
