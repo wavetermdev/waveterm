@@ -121,7 +121,8 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
         if (screen == null) {
             return;
         }
-        if (screen.getScreenLines().lines.length == 0) {
+        let numLines = screen.getScreenLines().lines.length;
+        if (numLines < 10) {
             GlobalCommandRunner.screenDelete(screen.screenId, false);
             GlobalModel.modalsModel.popModal();
             return;
