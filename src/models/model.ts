@@ -939,6 +939,9 @@ class Model {
                     if (update.connect.screenstatusindicators != null) {
                         this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
                     }
+                    if (update.connect.termthemeoptions != null) {
+                        this.setTermThemeOptions(update.connect.termthemeoptions);
+                    }
 
                     this.sessionListLoaded.set(true);
                     this.remotesLoaded.set(true);

@@ -8,6 +8,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
 
@@ -98,12 +99,13 @@ func (InteractiveUpdate) GetType() string {
 }
 
 type ConnectUpdate struct {
-	Sessions                 []*SessionType                  `json:"sessions,omitempty"`
-	Screens                  []*ScreenType                   `json:"screens,omitempty"`
-	Remotes                  []*RemoteRuntimeState           `json:"remotes,omitempty"`
-	ScreenStatusIndicators   []*ScreenStatusIndicatorType    `json:"screenstatusindicators,omitempty"`
-	ScreenNumRunningCommands []*ScreenNumRunningCommandsType `json:"screennumrunningcommands,omitempty"`
-	ActiveSessionId          string                          `json:"activesessionid,omitempty"`
+	Sessions                 []*SessionType                    `json:"sessions,omitempty"`
+	Screens                  []*ScreenType                     `json:"screens,omitempty"`
+	Remotes                  []*RemoteRuntimeState             `json:"remotes,omitempty"`
+	ScreenStatusIndicators   []*ScreenStatusIndicatorType      `json:"screenstatusindicators,omitempty"`
+	ScreenNumRunningCommands []*ScreenNumRunningCommandsType   `json:"screennumrunningcommands,omitempty"`
+	ActiveSessionId          string                            `json:"activesessionid,omitempty"`
+	TermThemeOptions         *configstore.TermThemeOptionsType `json:"termthemeoptions,omitempty"`
 }
 
 func (ConnectUpdate) GetType() string {

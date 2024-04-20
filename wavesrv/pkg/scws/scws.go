@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/mapqueue"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
@@ -164,6 +165,12 @@ func (ws *WSState) handleConnection() error {
 	connectUpdate.Remotes = remotes
 	// restore status indicators
 	connectUpdate.ScreenStatusIndicators, connectUpdate.ScreenNumRunningCommands = sstore.GetCurrentIndicatorState()
+	termthemes := configstore.GetTermThemesState(ws.ClientId)
+	tt, err := termthemes.ScanDir()
+	if err != nil {
+		return fmt.Errorf("getting termthemes: %w", err)
+	}
+	connectUpdate.TermThemeOptions = &tt
 	mu := scbus.MakeUpdatePacket()
 	mu.AddUpdate(*connectUpdate)
 	err = ws.Shell.WriteJson(mu)

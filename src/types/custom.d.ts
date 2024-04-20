@@ -338,6 +338,7 @@ declare global {
         screenstatusindicators: ScreenStatusIndicatorUpdateType[];
         screennumrunningcommands: ScreenNumRunningCommandsUpdateType[];
         activesessionid: string;
+        termthemeoptions: TermThemeOptionsType;
     };
 
     type BookmarksUpdateType = {
