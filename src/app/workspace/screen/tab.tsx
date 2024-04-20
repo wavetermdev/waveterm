@@ -12,6 +12,7 @@ import * as constants from "@/app/appconst";
 import { Reorder } from "framer-motion";
 import { MagicLayout } from "@/app/magiclayout";
 import { TabIcon } from "@/elements/tabicon";
+import * as appconst from "@/app/appconst";
 
 @mobxReact.observer
 class ScreenTab extends React.Component<
@@ -62,6 +63,69 @@ class ScreenTab extends React.Component<
         })();
     }
 
+    @boundMethod
+    onContextMenu(e: React.MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+        let { screen } = this.props;
+        let colorSubMenu: ContextMenuItem[] = [];
+        for (let color of appconst.TabColors) {
+            colorSubMenu.push({
+                label: color,
+                click: () => {
+                    GlobalCommandRunner.screenSetSettings(screen.screenId, { tabcolor: color }, false);
+                },
+            });
+        }
+        let menu: ContextMenuItem[] = [
+            {
+                label: "New Tab",
+                click: () => {
+                    GlobalCommandRunner.createNewScreen();
+                },
+            },
+            {
+                type: "separator",
+            },
+            {
+                label: "Open Settings",
+                click: () => {
+                    GlobalModel.tabSettingsOpen.set(true);
+                },
+            },
+            {
+                type: "separator",
+            },
+            {
+                label: "Set Color",
+                submenu: colorSubMenu,
+            },
+            {
+                type: "separator",
+            },
+            {
+                label: "Close Tab",
+                click: () => {
+                    let numLines = screen.getScreenLines().lines.length;
+                    if (numLines < 10) {
+                        GlobalCommandRunner.screenDelete(screen.screenId, false);
+                        return;
+                    }
+                    let message = "Are you sure you want to close this tab?";
+                    let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
+                    alertRtn.then((result) => {
+                        if (!result) {
+                            return;
+                        }
+                        GlobalCommandRunner.screenDelete(screen.screenId, false);
+                    });
+                },
+            },
+        ];
+        GlobalModel.contextMenuModel.showContextMenu(menu, { x: e.clientX, y: e.clientY });
+        return;
+    }
+
     render() {
         let { screen, activeScreenId, index, onSwitchScreen } = this.props;
         let archived = screen.archived.get() ? (
@@ -83,7 +147,7 @@ class ScreenTab extends React.Component<
                     "color-" + screen.getTabColor()
                 )}
                 onPointerDown={() => onSwitchScreen(screen.screenId)}
-                onContextMenu={(event) => this.openScreenSettings(event, screen)}
+                onContextMenu={this.onContextMenu}
                 onDragEnd={this.handleDragEnd}
             >
                 <div className="background"></div>
