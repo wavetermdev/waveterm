@@ -67,7 +67,12 @@ class ScreenTab extends React.Component<
     onContextMenu(e: React.MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
-        let { screen } = this.props;
+        let { screen, activeScreenId } = this.props;
+        if (activeScreenId != screen.screenId) {
+            // only show context menu for active tab
+            GlobalCommandRunner.switchScreen(screen.screenId);
+            return;
+        }
         let colorSubMenu: ContextMenuItem[] = [];
         for (let color of appconst.TabColors) {
             colorSubMenu.push({
@@ -88,7 +93,11 @@ class ScreenTab extends React.Component<
                 type: "separator",
             },
             {
-                label: "Open Settings",
+                label: "Set Tab Color",
+                submenu: colorSubMenu,
+            },
+            {
+                label: "All Tab Settings",
                 click: () => {
                     GlobalModel.tabSettingsOpen.set(true);
                 },
@@ -97,28 +106,9 @@ class ScreenTab extends React.Component<
                 type: "separator",
             },
             {
-                label: "Set Color",
-                submenu: colorSubMenu,
-            },
-            {
-                type: "separator",
-            },
-            {
                 label: "Close Tab",
                 click: () => {
-                    let numLines = screen.getScreenLines().lines.length;
-                    if (numLines < 10) {
-                        GlobalCommandRunner.screenDelete(screen.screenId, false);
-                        return;
-                    }
-                    let message = "Are you sure you want to close this tab?";
-                    let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
-                    alertRtn.then((result) => {
-                        if (!result) {
-                            return;
-                        }
-                        GlobalCommandRunner.screenDelete(screen.screenId, false);
-                    });
+                    GlobalModel.onCloseCurrentTab();
                 },
             },
         ];
