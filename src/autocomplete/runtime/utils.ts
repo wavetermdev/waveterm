@@ -73,6 +73,12 @@ export const resolveCwd = async (
     return resolveCwdToken(token, cwd, shell);
 };
 
+/**
+ * Retrieves the contents of the specified directory on the active remote machine.
+ * @param cwd The directory whose contents should be returned.
+ * @param tempType The template to use when returning the contents. If "folders" is passed, only the directories within the specified directory will be returned. Otherwise, all the contents will be returned.
+ * @returns The contents of the directory formatted to the specified template.
+ */
 export const getCompletionSuggestions = async (
     cwd: string,
     tempType: "filepaths" | "folders"
@@ -86,7 +92,7 @@ export const getCompletionSuggestions = async (
         if (firstData.info?.infocomps) {
             return firstData.info.infocomps.map((comp: string) => ({
                 name: comp,
-                priority: comp.startsWith(".") ? 1 : 45,
+                priority: comp.startsWith(".") ? 1 : 55,
                 context: { templateType: tempType },
                 type: comp.endsWith("/") ? "folder" : "file",
             }));
@@ -187,6 +193,11 @@ export function isFlag(value: string): boolean {
     return value.startsWith("-") && !isOption(value);
 }
 
+/**
+ * Checks if a string is either a flag or an option, i.e. starts with "-".
+ * @param value The string to check.
+ * @returns True if the string is a flag or an option.
+ */
 export function isFlagOrOption(value: string): boolean {
     return value.startsWith("-");
 }
@@ -255,7 +266,7 @@ export function sortSuggestions(suggestions: Fig.Suggestion[]) {
         if (a.priority == b.priority) {
             if (a.name) {
                 if (b.name) {
-                    return getFirst(a.name).localeCompare(getFirst(b.name));
+                    return getFirst(a.name).trim().localeCompare(getFirst(b.name));
                 } else {
                     return -1;
                 }
@@ -274,6 +285,7 @@ export function sortSuggestions(suggestions: Fig.Suggestion[]) {
  * @returns The merged subcommand.
  */
 export function mergeSubcomands(subcommand1: Fig.Subcommand, subcommand2: Fig.Subcommand): Fig.Subcommand {
+    log.debug("merging two subcommands", subcommand1, subcommand2);
     const newCommand: Fig.Subcommand = { ...subcommand1 };
 
     // Merge the generated spec with the existing spec
@@ -287,5 +299,6 @@ export function mergeSubcomands(subcommand1: Fig.Subcommand, subcommand2: Fig.Su
             newCommand[key] = subcommand2[key];
         }
     }
+    log.debug("merged subcommand:", newCommand);
     return newCommand;
 }

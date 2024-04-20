@@ -102,7 +102,7 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
     }
     const parser = new Newton(undefined, parserCmd, cwd);
     const sugg = await parser.generateSuggestions();
-    log.debug("newton", sugg);
+    log.debug("newton done");
     log.debug("activeCmd", activeCmd);
     if (activeCmd.length === 0) {
         return;
@@ -141,7 +141,8 @@ export const getSuggestions = async (cmd: string, cwd: string, shell: Shell): Pr
     }
 
     if (result == null) return;
-    log.debug("result", result);
+    log.debug("result og", result);
+    log.debug("result newton", sugg);
     return { ...result, charactersToDrop };
 };
 

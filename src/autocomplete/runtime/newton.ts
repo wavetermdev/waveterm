@@ -50,6 +50,17 @@ const lazyLoadSpec = async (key: string): Promise<Fig.Spec | undefined> => {
     return (await import(`@withfig/autocomplete/build/${key}.js`)).default;
 };
 
+function addSuggestionsToMap(sugggestionsMap: Map<string, Fig.Suggestion>, suggestions: (Fig.Suggestion | string)[]) {
+    console.log("addSuggestionsToMap", suggestions);
+    suggestions?.forEach((suggestion) => {
+        const isString = typeof suggestion === "string";
+        sugggestionsMap.set(
+            isString ? suggestion : getFirst(suggestion.name),
+            isString ? { name: suggestion, priority: 50 } : suggestion
+        );
+    });
+}
+
 /**
  * The parser state. This is used to determine what the parser is currently matching.
  */
@@ -279,6 +290,7 @@ export class Newton {
      * @see availableOptions
      */
     get availablePosixFlags(): Fig.Option[] {
+        console.log("availablePosixFlags", this.flagsArePosixNoncompliant, this.availableOptions);
         return this.flagsArePosixNoncompliant
             ? []
             : Object.values(this.availableOptions).filter((value) => matchAny(value.name, isFlag));
@@ -291,6 +303,7 @@ export class Newton {
      * @see availableOptions
      */
     get availableNonPosixFlags(): Fig.Option[] {
+        console.log("availableNonPosixFlags", this.flagsArePosixNoncompliant, this.availableOptions);
         const retVal = this.flagsArePosixNoncompliant
             ? Object.values(this.availableOptions)
             : Object.values(this.availableOptions).filter((value) => matchAny(value.name, isOption));
@@ -372,10 +385,13 @@ export class Newton {
     /**
      * Parses the flag in the current entry and modifies the available options set accordingly.
      */
-    parseFlag() {
+    parseFlag(): ParserState {
         const entry = this.currentEntry;
         const existingFlags = entry?.slice(1);
         const flagsArr = existingFlags?.split("") ?? [];
+        if (flagsArr.length == 0) {
+            return ParserState.Option;
+        }
         for (const index of flagsArr.keys()) {
             const flag = flagsArr[index];
             const option = this.getAvailableOption(`-${flag}`);
@@ -398,19 +414,33 @@ export class Newton {
             } else {
                 // If the option is not available, it has already been used or is not a valid option
                 this.error = `The option ${entry} is not valid.`;
-                break;
+                return ParserState.Subcommand;
             }
+        }
+        if (!this.currentOption) {
+            console.log("no current option");
+            return ParserState.Option;
+        } else if (this.currentOption.args !== undefined) {
+            console.log("current option has args");
+            return ParserState.OptionArgument;
+        } else if (!this.atLastEntry) {
+            // We are not done parsing the user entries so we should return to the subcommand state and then decide the next state.
+            console.log("current option does not have args, return to subcommand");
+            return ParserState.Subcommand;
+        } else {
+            // We are at the last entry so we can assume the user is not done writing the flag
+            return ParserState.PosixFlag;
         }
     }
 
     /**
      * Parses the option in the current entry and modifies the available options set accordingly.
      */
-    parseOption() {
+    parseOption(): ParserState {
         // This means we cannot use POSIX-style flags, so we have to check each option individually
         const entry = this.currentEntry;
         if (!entry) {
-            return;
+            return ParserState.Subcommand;
         }
 
         // If the arg is not the last entry, we can check if it is a valid option
@@ -423,6 +453,11 @@ export class Newton {
             this.findDependentAndExclusiveOptions(option);
 
             this.currentOption = option;
+            if (option.args !== undefined) {
+                return ParserState.OptionArgument;
+            } else {
+                return ParserState.Subcommand;
+            }
         } else if (this.atLastEntry) {
             // If the option is not available, it has already been used or is not a valid option
             this.error = `The option ${entry} is not valid.`;
@@ -430,9 +465,10 @@ export class Newton {
             // The entry is incomplete, but it's the last one so we can just suggest all that start with the entry.
             this.currentOption = undefined;
         }
+        return ParserState.Option;
     }
 
-    parseArgument(): ParserState {
+    async parseArgument(): Promise<ParserState> {
         const entry = this.currentEntry;
         if (!entry || this.args.length == 0) {
             console.log("returning early from parseArgument", this.prevState);
@@ -446,32 +482,53 @@ export class Newton {
                 // The next entry is a command, so we need to load the spec for that command and start from scratch
                 this.spec = undefined;
                 return ParserState.Subcommand;
-            }
-            if (isFlagOrOption(entry)) {
-                if (!currentArg.isOptional && !currentArg.isVariadic) {
+            } else if (isFlagOrOption(entry)) {
+                // We found an option or a flag, we will need to determine if this is allowed before continuing
+                if (!currentArg.isOptional || !currentArg.isVariadic) {
                     this.error = `The argument ${currentArg.name} is required and cannot be a flag or option.`;
-                } else if (currentArg.isVariadic && currentArg.optionsCanBreakVariadicArg) {
-                    if (currentArg.isVariadic) {
-                        if (this.atLastEntry) {
-                            this.entryIndex++;
-                            this.parseOption();
-                            this.currentOption = undefined;
-                            return ParserState.SubcommandArgument;
-                        }
-                    }
+                } else if (currentArg.isVariadic && currentArg.optionsCanBreakVariadicArg && !this.atLastEntry) {
+                    // If options can break the variadic argument, we should try parsing the option and then return to parsing the arguments.
+                    this.entryIndex++;
+                    this.parseOption();
+                    this.currentOption = undefined;
+                    return ParserState.SubcommandArgument;
                 }
                 return ParserState.Option;
+            } else if (currentArg.isOptional) {
+                // The argument is optional, we want to see if we have any matches before determining if we should move on.
+                const suggestions = await this.getSuggestionsForArg(currentArg);
+                if (!this.atLastEntry && suggestions.length > 0) {
+                    // We found a match and we are not at the end of the entry list, so let's keep matching arguments for the next entry
+                    console.log("has suggestion match for optional arg");
+                    this.argIndex++;
+                    return ParserState.SubcommandArgument;
+                } else {
+                    // We did not find a match, we should return to the previous state.
+                    console.log("no suggestion found for optional arg");
+                    return this.prevState;
+                }
             } else if (currentArg.isVariadic) {
+                // Assume that the next entry is going to be another argument of the same type
                 return this.curState;
             } else {
+                // Will try to match the next entry to the next argument in the list.
                 this.argIndex++;
                 return this.curState;
             }
         } else {
-            return ParserState.Option;
+            // We did not identify an argument to parse, return to the previous state
+            return this.prevState;
         }
     }
 
+    /**
+     * Filter the suggestions using the specified filtering strategy.
+     * @param suggestions The suggestions to filter
+     * @param filterStrategy The filtering strategy to use. Will default to "prefix".
+     * @param partialCmd The current entry to use when filtering out the suggestions.
+     * @param suggestionType The type of suggestion object to interpret (currently not used by Newton).
+     * @returns The filtered suggestions.
+     */
     filterSuggestions(
         suggestions: Fig.Suggestion[],
         filterStrategy: FilterStrategy,
@@ -531,7 +588,7 @@ export class Newton {
             console.log("pathy: ", pathy, "pathyComplete: ", pathyComplete, "entry: ", entry);
         }
 
-        let suggestions: Fig.Suggestion[] = [];
+        const suggestions: Fig.Suggestion[] = [];
 
         if (arg?.generators) {
             const generators = getAll(arg.generators);
@@ -548,25 +605,25 @@ export class Newton {
             suggestions.push(...(await runTemplates(arg.template ?? [], resolvedCwd)));
         }
 
-        suggestions = this.filterSuggestions(
+        return this.filterSuggestions(
             suggestions.map((suggestion) => ({ ...suggestion, priority: suggestion.priority ?? 60 })),
             arg.filterStrategy ?? this.spec.filterStrategy,
             entry,
             undefined
         );
-
-        return suggestions;
     }
 
-    getSuggestionsForSubcommands() {
+    getSuggestionsForSubcommands(): Fig.Suggestion[] {
         return this.filterSuggestions(this.subcommands, this.spec?.filterStrategy, this.lastEntry, undefined);
     }
 
-    getSuggestionsForOptions(isFlag: boolean) {
+    getSuggestionsForOptions(): Fig.Suggestion[] {
         const entry = this.lastEntry;
-        const availableOptions = isFlag
-            ? this.availablePosixFlags.map((option) => modifyPosixFlags(option, entry?.slice(1)))
-            : this.availableNonPosixFlags;
+        const availableOptions = [
+            ...this.availablePosixFlags.map((option) => modifyPosixFlags(option, entry?.slice(1))),
+            ...this.availableNonPosixFlags,
+        ];
+        console.log("availableOptions:", availableOptions);
         return this.filterSuggestions(availableOptions, this.spec?.filterStrategy, entry, undefined);
     }
 
@@ -711,33 +768,28 @@ export class Newton {
                     break;
                 }
                 case ParserState.Option: {
-                    console.log("option");
+                    console.log("option", this.currentEntry);
                     const curEntry = this.currentEntry;
                     const isEntryOption = isOption(curEntry);
                     const isEntryFlag = isFlag(curEntry);
                     if (isEntryOption || (isEntryFlag && this.flagsArePosixNoncompliant)) {
-                        this.parseOption();
+                        console.log("entry is option or non-posix flag");
+                        this.curState = this.parseOption();
                         this.entryIndex++;
-                        if (this.currentOption?.args) {
-                            this.curState = ParserState.OptionArgument;
-                        }
                     } else if (isEntryFlag) {
+                        console.log("entry is flag");
                         this.curState = ParserState.PosixFlag;
                         break;
                     } else {
+                        console.log("not option or flag");
                         this.curState = ParserState.SubcommandArgument;
                     }
                     break;
                 }
                 case ParserState.PosixFlag: {
                     console.log("posix flag");
-                    this.parseFlag();
+                    this.curState = this.parseFlag();
                     this.entryIndex++;
-                    if (this.currentOption?.args) {
-                        this.curState = ParserState.OptionArgument;
-                    } else {
-                        this.curState = ParserState.Option;
-                    }
                     break;
                 }
                 case ParserState.SubcommandArgument:
@@ -748,13 +800,13 @@ export class Newton {
                         break;
                     } else {
                         console.log("subcommand argument is argument");
-                        this.curState = this.parseArgument();
+                        this.curState = await this.parseArgument();
                         this.entryIndex++;
                     }
                     break;
                 case ParserState.OptionArgument:
                     console.log("option argument");
-                    this.curState = this.parseArgument();
+                    this.curState = await this.parseArgument();
                     this.entryIndex++;
                     break;
             }
@@ -792,7 +844,7 @@ export class Newton {
 
         if (!this.error) {
             // We parsed the entire entry array without error, so we can return suggestions
-            const suggestions = new Set<Fig.Suggestion>();
+            const suggestions = new Map<string, Fig.Suggestion>();
             const lastEntry = this.lastEntry;
             log.debug(
                 "allEntries: ",
@@ -813,46 +865,49 @@ export class Newton {
                         log.debug("lastEntry is space");
                         const arg = getFirst(this.spec?.args);
                         if (arg) {
-                            (await this.getSuggestionsForArg(arg)).forEach((s) => suggestions.add(s));
+                            addSuggestionsToMap(suggestions, await this.getSuggestionsForArg(arg));
                         }
-                        this.spec?.additionalSuggestions?.forEach((s) =>
-                            suggestions.add(typeof s === "string" ? { name: s } : s)
-                        );
-                        this.getSuggestionsForOptions(false).forEach((s) => suggestions.add(s));
+                        addSuggestionsToMap(suggestions, this.spec?.additionalSuggestions);
+                        addSuggestionsToMap(suggestions, this.getSuggestionsForOptions());
                     }
-                    this.getSuggestionsForSubcommands().forEach((s) => suggestions.add(s));
+                    addSuggestionsToMap(suggestions, this.getSuggestionsForSubcommands());
                     break;
                 }
                 case ParserState.Option:
                 case ParserState.PosixFlag: {
+                    console.log("option or posix flag");
                     const availableOptions = Object.values(this.availableOptions);
                     if (lastEntry == " ") {
                         // The parser is currently matching options or subcommand arguments, so suggest all available options.
                         // TODO: this feels messy, not sure if there's a better way to do this
                         if (this.curState == ParserState.Option || !this.optionsMustPrecedeArguments) {
-                            availableOptions.forEach((option) => suggestions.add(option));
+                            addSuggestionsToMap(suggestions, availableOptions);
                         }
                     } else {
                         switch (this.prevState) {
                             case ParserState.Option: {
                                 // The parser is currently matching options, so suggest all available options.
+                                const suggestionsToAdd = availableOptions.filter((option) =>
+                                    startsWithAny(option.name, lastEntry ?? "")
+                                );
                                 if (this.currentOption) {
-                                    suggestions.add(this.currentOption);
+                                    suggestionsToAdd.push(this.currentOption);
                                 }
-                                availableOptions
-                                    .filter((option) => startsWithAny(option.name, lastEntry ?? ""))
-                                    .forEach((option) => suggestions.add(option));
+                                addSuggestionsToMap(suggestions, suggestionsToAdd);
                                 break;
                             }
                             case ParserState.PosixFlag: {
                                 if (this.currentOption) {
                                     const existingFlags = lastEntry?.slice(1) ?? "";
 
-                                    // Push the last flag as a suggestion, in case that is as far as the user wants to go
-                                    suggestions.add(modifyPosixFlags(this.currentOption, existingFlags));
-
+                                    const newOption = modifyPosixFlags(this.currentOption, existingFlags);
                                     // Suggest the other available flags as additional suggestions
-                                    this.getSuggestionsForOptions(true).forEach((s) => suggestions.add(s));
+                                    const suggestionsToAdd = this.getSuggestionsForOptions();
+                                    // Push the last flag as a suggestion, in case that is as far as the user wants to go
+                                    suggestionsToAdd.push(newOption);
+                                    addSuggestionsToMap(suggestions, suggestionsToAdd);
+                                } else {
+                                    addSuggestionsToMap(suggestions, availableOptions);
                                 }
                                 break;
                             }
@@ -870,7 +925,7 @@ export class Newton {
                     if (this.args && this.argIndex < this.args.length) {
                         const arg = this.args[this.argIndex];
                         if (arg) {
-                            (await this.getSuggestionsForArg(arg)).forEach((s) => suggestions.add(s));
+                            addSuggestionsToMap(suggestions, await this.getSuggestionsForArg(arg));
                         }
                     }
                     break;
@@ -880,7 +935,7 @@ export class Newton {
                     break;
             }
 
-            const suggestionsArr = Array.from(suggestions);
+            const suggestionsArr = Array.from(suggestions.values());
             sortSuggestions(suggestionsArr);
             return suggestionsArr;
         }
