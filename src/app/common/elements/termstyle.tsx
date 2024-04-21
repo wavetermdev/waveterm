@@ -64,7 +64,7 @@ class TermStyle extends React.Component<{
 
     getStyleRules() {
         const { selector, themeName } = this.props;
-        const termThemeOptions = GlobalModel.getTermThemeOptions();
+        const termThemeOptions = GlobalModel.getTermThemes();
         const theme = termThemeOptions[themeName];
         if (!theme) {
             return null;
@@ -106,7 +106,7 @@ class TermStyleList extends React.Component<{ children: (termStylesRendered: boo
         const sessions = GlobalModel.getSessionNames();
         const screens = GlobalModel.getScreenNames();
 
-        if (themeKey === "main") {
+        if (themeKey === "root") {
             return ":root";
         } else if (themeKey in screens) {
             return `.main-content [data-screenid="${themeKey}"]`;
@@ -118,7 +118,7 @@ class TermStyleList extends React.Component<{ children: (termStylesRendered: boo
     }
 
     render() {
-        const termTheme = GlobalModel.getTermTheme();
+        const termTheme = GlobalModel.getTermThemeSettings();
         const themeKey = null;
 
         return (

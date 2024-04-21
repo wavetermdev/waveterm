@@ -158,7 +158,7 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	}()
 	log.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
 
-	configstore.SetupTermThemesState(clientId)
+	configstore.SetupTermThemes(clientId)
 	state.RunWSRead()
 }
 

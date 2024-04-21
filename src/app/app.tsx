@@ -32,7 +32,7 @@ class App extends React.Component<{}, {}> {
     }
 
     render() {
-        const termThemeOptions = GlobalModel.getTermThemeOptions();
+        const termThemeOptions = GlobalModel.getTermThemes();
         if (termThemeOptions == null) {
             return null;
         }

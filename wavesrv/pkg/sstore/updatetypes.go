@@ -99,13 +99,13 @@ func (InteractiveUpdate) GetType() string {
 }
 
 type ConnectUpdate struct {
-	Sessions                 []*SessionType                    `json:"sessions,omitempty"`
-	Screens                  []*ScreenType                     `json:"screens,omitempty"`
-	Remotes                  []*RemoteRuntimeState             `json:"remotes,omitempty"`
-	ScreenStatusIndicators   []*ScreenStatusIndicatorType      `json:"screenstatusindicators,omitempty"`
-	ScreenNumRunningCommands []*ScreenNumRunningCommandsType   `json:"screennumrunningcommands,omitempty"`
-	ActiveSessionId          string                            `json:"activesessionid,omitempty"`
-	TermThemeOptions         *configstore.TermThemeOptionsType `json:"termthemeoptions,omitempty"`
+	Sessions                 []*SessionType                  `json:"sessions,omitempty"`
+	Screens                  []*ScreenType                   `json:"screens,omitempty"`
+	Remotes                  []*RemoteRuntimeState           `json:"remotes,omitempty"`
+	ScreenStatusIndicators   []*ScreenStatusIndicatorType    `json:"screenstatusindicators,omitempty"`
+	ScreenNumRunningCommands []*ScreenNumRunningCommandsType `json:"screennumrunningcommands,omitempty"`
+	ActiveSessionId          string                          `json:"activesessionid,omitempty"`
+	TermThemes               *configstore.TermThemesType     `json:"termthemes,omitempty"`
 }
 
 func (ConnectUpdate) GetType() string {

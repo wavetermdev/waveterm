@@ -141,7 +141,7 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
     @boundMethod
     handleChangeTermTheme(theme: string): void {
         const { screenId } = this.props.screen;
-        const currTheme = GlobalModel.getTermTheme()[screenId];
+        const currTheme = GlobalModel.getTermThemeSettings()[screenId];
         if (currTheme == theme) {
             return;
         }
@@ -152,8 +152,8 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
     render() {
         const { screen } = this.props;
         const rptr = screen.curRemote.get();
-        const termThemes = getTermThemes(GlobalModel.termThemeOptions.get());
-        const currTermTheme = GlobalModel.getTermTheme()[screen.screenId] ?? termThemes[0].label;
+        const termThemes = getTermThemes(GlobalModel.termThemes.get());
+        const currTermTheme = GlobalModel.getTermThemeSettings()[screen.screenId] ?? termThemes[0].label;
         return (
             <div className="newtab-container">
                 <div className="newtab-section name-section">

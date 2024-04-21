@@ -88,7 +88,6 @@ const OpenAIPacketTimeout = 10 * time.Second
 const OpenAIStreamTimeout = 5 * time.Minute
 const OpenAICloudCompletionTelemetryOffErrorMsg = "To ensure responsible usage and prevent misuse, Wave AI requires telemetry to be enabled when using its free AI features.\n\nIf you prefer not to enable telemetry, you can still access Wave AI's features by providing your own OpenAI API key in the Settings menu. Please note that when using your personal API key, requests will be sent directly to the OpenAI API without being proxied through Wave's servers.\n\nIf you wish to continue using Wave AI's free features, you can easily enable telemetry by running the '/telemetry:on' command in the terminal. This will allow you to access the free AI features while helping to protect the platform from abuse."
 
-
 const (
 	KwArgRenderer = "renderer"
 	KwArgView     = "view"
@@ -3629,13 +3628,13 @@ func TermSetThemeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	}
 	themeName, themeNameOk := pk.Kwargs["name"]
 	feOpts := clientData.FeOpts
-	if feOpts.TermTheme == nil {
-		feOpts.TermTheme = make(map[string]string)
+	if feOpts.TermThemeSettings == nil {
+		feOpts.TermThemeSettings = make(map[string]string)
 	}
 	if themeNameOk && themeName != "" {
-		feOpts.TermTheme[id] = themeName
+		feOpts.TermThemeSettings[id] = themeName
 	} else {
-		delete(feOpts.TermTheme, id)
+		delete(feOpts.TermThemeSettings, id)
 	}
 	err = sstore.UpdateClientFeOpts(ctx, feOpts)
 	if err != nil {
@@ -5810,13 +5809,13 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	}
 	if termthemeStr, found := pk.Kwargs["termtheme"]; found {
 		feOpts := clientData.FeOpts
-		if feOpts.TermTheme == nil {
-			feOpts.TermTheme = make(map[string]string)
+		if feOpts.TermThemeSettings == nil {
+			feOpts.TermThemeSettings = make(map[string]string)
 		}
 		if termthemeStr == "" {
-			delete(feOpts.TermTheme, "main")
+			delete(feOpts.TermThemeSettings, "root")
 		} else {
-			feOpts.TermTheme["main"] = termthemeStr
+			feOpts.TermThemeSettings["root"] = termthemeStr
 		}
 		err = sstore.UpdateClientFeOpts(ctx, feOpts)
 		if err != nil {

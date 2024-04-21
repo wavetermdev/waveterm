@@ -140,7 +140,7 @@ class Model {
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
-    termThemeOptions: OV<TermThemeOptionsType> = mobx.observable.box(null, {
+    termThemes: OV<TermThemesType> = mobx.observable.box(null, {
         name: "terminalThemes",
         deep: false,
     });
@@ -440,10 +440,10 @@ class Model {
         }
     }
 
-    getTermTheme(): TermThemeType {
+    getTermThemeSettings(): TermThemeSettingsType {
         let cdata = this.clientData.get();
-        if (cdata?.feopts?.termtheme) {
-            return mobx.toJS(cdata.feopts.termtheme);
+        if (cdata?.feopts?.termthemesettings) {
+            return mobx.toJS(cdata.feopts.termthemesettings);
         }
         return {};
     }
@@ -882,15 +882,15 @@ class Model {
         }
     }
 
-    setTermThemeOptions(termThemeOptions: TermThemeOptionsType) {
+    setTermThemes(termThemes: TermThemesType) {
         mobx.action(() => {
-            this.termThemeOptions.set(termThemeOptions);
+            this.termThemes.set(termThemes);
         })();
         this.bumpTermRenderVersion();
     }
 
-    getTermThemeOptions(): TermThemeOptionsType {
-        return this.termThemeOptions.get();
+    getTermThemes(): TermThemesType {
+        return this.termThemes.get();
     }
 
     updateScreenStatusIndicators(screenStatusIndicators: ScreenStatusIndicatorUpdateType[]) {
@@ -939,8 +939,8 @@ class Model {
                     if (update.connect.screenstatusindicators != null) {
                         this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
                     }
-                    if (update.connect.termthemeoptions != null) {
-                        this.setTermThemeOptions(update.connect.termthemeoptions);
+                    if (update.connect.termthemes != null) {
+                        this.setTermThemes(update.connect.termthemes);
                     }
 
                     this.sessionListLoaded.set(true);
@@ -1015,8 +1015,8 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
-                } else if (update.termthemeoptions != null) {
-                    this.setTermThemeOptions(update.termthemeoptions);
+                } else if (update.termthemes != null) {
+                    this.setTermThemes(update.termthemes);
                 } else if (update.sessiontombstone != null || update.screentombstone != null) {
                     // nothing (ignore)
                 } else {

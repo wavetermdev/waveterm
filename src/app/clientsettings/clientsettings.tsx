@@ -76,13 +76,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeTermTheme(theme: string): void {
-        // For main terminal theme, the key is main, otherwise it's either
+        // For root terminal theme, the key is root, otherwise it's either
         // sessionId or screenId.
-        const currTheme = GlobalModel.getTermTheme()["main"];
+        const currTheme = GlobalModel.getTermThemeSettings()["root"];
         if (currTheme == theme) {
             return;
         }
-        const prtn = GlobalCommandRunner.setMainTermTheme(theme, false);
+        const prtn = GlobalCommandRunner.setRootTermTheme(theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -206,8 +206,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getThemeSource();
-        const termThemes = getTermThemes(GlobalModel.termThemeOptions.get(), "Wave Default");
-        const currTermTheme = GlobalModel.getTermTheme()["main"] ?? termThemes[0].label;
+        const termThemes = getTermThemes(GlobalModel.termThemes.get(), "Wave Default");
+        const currTermTheme = GlobalModel.getTermThemeSettings()["root"] ?? termThemes[0].label;
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>

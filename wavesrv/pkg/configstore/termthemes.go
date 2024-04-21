@@ -17,22 +17,22 @@ import (
 )
 
 const (
-	TermThemesStateTypeStr       = "termthemeoptions"
-	TermThemesStateDir           = "config/terminal-themes/"
-	TermThemesStateReconnectTime = 30 * time.Second
+	TermThemesTypeStr       = "termthemes"
+	TermThemesDir           = "config/terminal-themes/"
+	TermThemesReconnectTime = 30 * time.Second
 )
 
-var TermThemesStateMap = make(map[string]*TermThemesState)
-var TermThemesStateLock = &sync.Mutex{}
+var TermThemesMap = make(map[string]*TermThemes)
+var TermThemesLock = &sync.Mutex{}
 
-type TermThemeOptionsType map[string]map[string]string
+type TermThemesType map[string]map[string]string
 
-func (tt TermThemeOptionsType) GetType() string {
-	return TermThemesStateTypeStr
+func (tt TermThemesType) GetType() string {
+	return TermThemesTypeStr
 }
 
-type TermThemesState struct {
-	Themes      TermThemeOptionsType
+type TermThemes struct {
+	Themes      TermThemesType
 	ClientId    string
 	Watcher     *fsnotify.Watcher
 	Lock        *sync.Mutex
@@ -40,20 +40,20 @@ type TermThemesState struct {
 	DirPath     string
 }
 
-func setTermThemesState(tt *TermThemesState) {
-	TermThemesStateLock.Lock()
-	defer TermThemesStateLock.Unlock()
-	TermThemesStateMap[tt.ClientId] = tt
+func setTermThemes(tt *TermThemes) {
+	TermThemesLock.Lock()
+	defer TermThemesLock.Unlock()
+	TermThemesMap[tt.ClientId] = tt
 }
 
-func GetTermThemesState(clientId string) *TermThemesState {
-	TermThemesStateLock.Lock()
-	defer TermThemesStateLock.Unlock()
-	return TermThemesStateMap[clientId]
+func GetTermThemes(clientId string) *TermThemes {
+	TermThemesLock.Lock()
+	defer TermThemesLock.Unlock()
+	return TermThemesMap[clientId]
 }
 
 func isValidPath() bool {
-	dirPath := path.Join(scbase.GetWaveHomeDir(), TermThemesStateDir)
+	dirPath := path.Join(scbase.GetWaveHomeDir(), TermThemesDir)
 	if _, err := os.Stat(dirPath); errors.Is(err, os.ErrNotExist) {
 		log.Printf("directory does not exist: %s", dirPath)
 		return false
@@ -61,16 +61,16 @@ func isValidPath() bool {
 	return true
 }
 
-func removeTermThemesStateAfterTimeout(clientId string, connectTime time.Time, waitDuration time.Duration) {
+func removeTermThemesAfterTimeout(clientId string, connectTime time.Time, waitDuration time.Duration) {
 	go func() {
 		time.Sleep(waitDuration)
-		TermThemesStateLock.Lock()
-		defer TermThemesStateLock.Unlock()
-		tt := TermThemesStateMap[clientId]
+		TermThemesLock.Lock()
+		defer TermThemesLock.Unlock()
+		tt := TermThemesMap[clientId]
 		if tt == nil || tt.ConnectTime != connectTime {
 			return
 		}
-		delete(TermThemesStateMap, clientId)
+		delete(TermThemesMap, clientId)
 	}()
 }
 
@@ -83,7 +83,7 @@ func getNameAndPath(event fsnotify.Event) (string, string) {
 	return fileName, normalizedPath
 }
 
-func SetupTermThemesState(clientId string) {
+func SetupTermThemes(clientId string) {
 	if clientId == "" {
 		log.Println("clientId is empty")
 		return
@@ -92,37 +92,37 @@ func SetupTermThemesState(clientId string) {
 		log.Println("invalid dir path")
 		return
 	}
-	tt := GetTermThemesState(clientId)
+	tt := GetTermThemes(clientId)
 	if tt == nil {
-		log.Println("creating new instance of TermThemesState...")
-		tt = MakeTermThemesState(clientId)
+		log.Println("creating new instance of TermThemes...")
+		tt = MakeTermThemes(clientId)
 		if err := tt.SetupWatcher(); err != nil {
 			log.Printf("error setting up watcher: %v", err)
 			return
 		}
 		log.Println("watcher setup successful...")
-		setTermThemesState(tt)
+		setTermThemes(tt)
 	} else {
-		log.Println("reusing existing instance of TermThemesState...")
+		log.Println("reusing existing instance of TermThemes...")
 		tt.UpdateConnectTime()
 	}
 	stateConnectTime := tt.GetConnectTime()
-	defer removeTermThemesStateAfterTimeout(clientId, stateConnectTime, TermThemesStateReconnectTime)
+	defer removeTermThemesAfterTimeout(clientId, stateConnectTime, TermThemesReconnectTime)
 }
 
-// Factory method for TermThemesState
-func MakeTermThemesState(clientId string) *TermThemesState {
-	return &TermThemesState{
+// Factory method for TermThemes
+func MakeTermThemes(clientId string) *TermThemes {
+	return &TermThemes{
 		Themes:      make(map[string]map[string]string),
 		ClientId:    clientId,
 		Lock:        &sync.Mutex{},
 		ConnectTime: time.Now(),
-		DirPath:     path.Join(scbase.GetWaveHomeDir(), TermThemesStateDir),
+		DirPath:     path.Join(scbase.GetWaveHomeDir(), TermThemesDir),
 	}
 }
 
-func (t *TermThemesState) SetupWatcher() error {
-	dirPath := path.Join(scbase.GetWaveHomeDir(), TermThemesStateDir)
+func (t *TermThemes) SetupWatcher() error {
+	dirPath := path.Join(scbase.GetWaveHomeDir(), TermThemesDir)
 	watcher := GetWatcher()
 	if watcher == nil {
 		return fmt.Errorf("error getting watcher instance")
@@ -135,7 +135,7 @@ func (t *TermThemesState) SetupWatcher() error {
 	return nil
 }
 
-func (t *TermThemesState) HandleCreate(event fsnotify.Event) {
+func (t *TermThemes) HandleCreate(event fsnotify.Event) {
 	fileName, normalizedPath := getNameAndPath(event)
 
 	log.Println("performing write or create event...")
@@ -149,7 +149,7 @@ func (t *TermThemesState) HandleCreate(event fsnotify.Event) {
 	t.updateThemes()
 }
 
-func (t *TermThemesState) HandleRemove(event fsnotify.Event) {
+func (t *TermThemes) HandleRemove(event fsnotify.Event) {
 	fileName, _ := getNameAndPath(event)
 
 	log.Println("performing delete event...")
@@ -158,7 +158,7 @@ func (t *TermThemesState) HandleRemove(event fsnotify.Event) {
 	t.updateThemes() // Update themes after removing the file.
 }
 
-func (t *TermThemesState) HandleRename(event fsnotify.Event) {
+func (t *TermThemes) HandleRename(event fsnotify.Event) {
 	_, normalizedPath := getNameAndPath(event)
 
 	// Rename might affect file identity; rescan to ensure accuracy
@@ -168,20 +168,20 @@ func (t *TermThemesState) HandleRename(event fsnotify.Event) {
 	}
 }
 
-func (t *TermThemesState) UpdateConnectTime() {
+func (t *TermThemes) UpdateConnectTime() {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	t.ConnectTime = time.Now()
 }
 
-func (t *TermThemesState) GetConnectTime() time.Time {
+func (t *TermThemes) GetConnectTime() time.Time {
 	t.Lock.Lock()
 	defer t.Lock.Unlock()
 	return t.ConnectTime
 }
 
 // scanDirAndUpdate scans the directory and updates themes.
-func (t *TermThemesState) scanDirAndUpdate() error {
+func (t *TermThemes) scanDirAndUpdate() error {
 	newThemes, err := t.ScanDir()
 	if err != nil {
 		return err
@@ -193,8 +193,8 @@ func (t *TermThemesState) scanDirAndUpdate() error {
 }
 
 // scanDir reads all JSON files in the specified directory and its subdirectories.
-func (t *TermThemesState) ScanDir() (TermThemeOptionsType, error) {
-	newThemes := make(TermThemeOptionsType)
+func (t *TermThemes) ScanDir() (TermThemesType, error) {
+	newThemes := make(TermThemesType)
 
 	err := filepath.Walk(t.DirPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -225,7 +225,7 @@ func (t *TermThemesState) ScanDir() (TermThemeOptionsType, error) {
 }
 
 // readFileContents reads and unmarshals the JSON content from a file.
-func (t *TermThemesState) readFileContents(filePath string) (map[string]string, error) {
+func (t *TermThemes) readFileContents(filePath string) (map[string]string, error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
@@ -238,7 +238,7 @@ func (t *TermThemesState) readFileContents(filePath string) (map[string]string, 
 }
 
 // updateThemes sends an update of all themes via WebSocket.
-func (t *TermThemesState) updateThemes() {
+func (t *TermThemes) updateThemes() {
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(t.Themes)
 	scbus.MainUpdateBus.DoUpdate(update)

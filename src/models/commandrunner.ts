@@ -381,7 +381,7 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
-    setMainTermTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+    setRootTermTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
             termtheme: theme,

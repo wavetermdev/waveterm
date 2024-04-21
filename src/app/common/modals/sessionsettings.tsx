@@ -80,7 +80,7 @@ class SessionSettingsModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleChangeTermTheme(theme: string): void {
-        const currTheme = GlobalModel.getTermTheme()[this.sessionId];
+        const currTheme = GlobalModel.getTermThemeSettings()[this.sessionId];
         if (currTheme == theme) {
             return;
         }
@@ -99,8 +99,8 @@ class SessionSettingsModal extends React.Component<{}, {}> {
         if (this.session == null) {
             return null;
         }
-        const termThemes = getTermThemes(GlobalModel.termThemeOptions.get());
-        const currTermTheme = GlobalModel.getTermTheme()[this.sessionId] ?? termThemes[0].label;
+        const termThemes = getTermThemes(GlobalModel.termThemes.get());
+        const currTermTheme = GlobalModel.getTermThemeSettings()[this.sessionId] ?? termThemes[0].label;
 
         return (
             <Modal className="session-settings-modal">

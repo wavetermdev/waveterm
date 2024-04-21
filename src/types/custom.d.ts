@@ -338,7 +338,7 @@ declare global {
         screenstatusindicators: ScreenStatusIndicatorUpdateType[];
         screennumrunningcommands: ScreenNumRunningCommandsUpdateType[];
         activesessionid: string;
-        termthemeoptions: TermThemeOptionsType;
+        termthemes: TermThemesType;
     };
 
     type BookmarksUpdateType = {
@@ -380,10 +380,10 @@ declare global {
         userinputrequest?: UserInputRequest;
         screentombstone?: any;
         sessiontombstone?: any;
-        termthemeoptions?: TermThemeOptionsType;
+        termthemes?: TermThemesType;
     };
 
-    type TermThemeOptionsType = {
+    type TermThemesType = {
         [key: string]: {
             [innerKey: string]: string;
         };
@@ -582,7 +582,7 @@ declare global {
         data: Uint8Array;
     };
 
-    type TermThemeType = {
+    type TermThemeSettingsType = {
         [k: string]: string | null;
     };
 
@@ -590,7 +590,7 @@ declare global {
         termfontsize: number;
         termfontfamily: string;
         theme: NativeThemeSource;
-        termtheme: TermThemeType;
+        termthemesettings: TermThemeSettingsType;
     };
 
     type ConfirmFlagsType = {
