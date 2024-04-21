@@ -191,25 +191,33 @@ func (t *TermThemesState) scanDirAndUpdate() error {
 	return nil
 }
 
-// scanDir reads all JSON files in the specified directory.
+// scanDir reads all JSON files in the specified directory and its subdirectories.
 func (t *TermThemesState) ScanDir() (TermThemeOptionsType, error) {
 	newThemes := make(TermThemeOptionsType)
 
-	files, err := os.ReadDir(t.DirPath)
+	err := filepath.Walk(t.DirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && filepath.Ext(info.Name()) == ".json" {
+			content, err := t.readFileContents(path)
+			if err != nil {
+				log.Printf("error reading file %s: %v", path, err)
+				return nil // continue walking despite error in reading file
+			}
+			// Use the relative path from the directory as the key to store themes
+			relPath, err := filepath.Rel(t.DirPath, path)
+			if err != nil {
+				log.Printf("error getting relative file path %s: %v", path, err)
+				return nil // continue walking despite error in getting relative path
+			}
+			newThemes[relPath] = content
+		}
+		return nil
+	})
+
 	if err != nil {
 		return nil, err
-	}
-
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".json" {
-			filePath := filepath.Join(t.DirPath, file.Name())
-			content, err := t.readFileContents(filePath)
-			if err != nil {
-				log.Printf("error reading file %s: %v", filePath, err)
-				continue
-			}
-			newThemes[file.Name()] = content
-		}
 	}
 
 	return newThemes, nil
