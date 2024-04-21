@@ -123,14 +123,15 @@ func MakeTermThemesState(clientId string) *TermThemesState {
 
 func (t *TermThemesState) SetupWatcher() error {
 	dirPath := path.Join(scbase.GetWaveHomeDir(), TermThemesStateDir)
-	watcher, err := GetWatcher(t)
-	if err != nil {
-		return fmt.Errorf("error getting watcher: %v", err)
+	watcher := GetWatcher()
+	if watcher == nil {
+		return fmt.Errorf("error getting watcher instance")
 	}
-	err = watcher.AddPath(dirPath)
+	err := watcher.AddPath(dirPath)
 	if err != nil {
 		return fmt.Errorf("error adding path to watcher: %v", err)
 	}
+	watcher.SetEventHandler(t)
 	return nil
 }
 

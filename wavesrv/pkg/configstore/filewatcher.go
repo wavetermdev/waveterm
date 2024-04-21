@@ -27,26 +27,30 @@ var (
 )
 
 // GetWatcher returns the singleton instance of the Watcher
-func GetWatcher(handler EventHandler) (*Watcher, error) {
-	var err error
+func GetWatcher() *Watcher {
 	once.Do(func() {
-		instance, err = makeWatcher(handler)
-		if err == nil {
-			instance.Start()
-		}
+		instance = makeWatcher()
+		instance.Start()
 	})
-	return instance, err
+	return instance
 }
 
-func makeWatcher(handler EventHandler) (*Watcher, error) {
+func makeWatcher() *Watcher {
 	fsWatcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		return nil, err
+		log.Fatalf("failed to create file watcher: %v", err)
+		return nil
 	}
 	return &Watcher{
 		watcher: fsWatcher,
-		handler: handler,
-	}, nil
+	}
+}
+
+// SetEventHandler sets the event handler for the watcher
+func (w *Watcher) SetEventHandler(handler EventHandler) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+	w.handler = handler
 }
 
 // AddPath adds the specified path and all its subdirectories to the watcher
@@ -77,7 +81,11 @@ func (w *Watcher) Start() {
 				}
 				log.Printf("event: %s, Op: %v", event.Name, event.Op)
 				w.mutex.Lock()
-				w.handleEvent(event)
+				if w.handler != nil {
+					w.handleEvent(event)
+				} else {
+					log.Printf("event received but no handler is set")
+				}
 				w.mutex.Unlock()
 			case err, ok := <-w.watcher.Errors:
 				if !ok {

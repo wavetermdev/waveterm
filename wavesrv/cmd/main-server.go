@@ -977,6 +977,10 @@ func doShutdown(reason string) {
 		log.Printf("[wave] closing db connection\n")
 		sstore.CloseDB()
 		log.Printf("[wave] *** shutting down local server\n")
+		watcher := configstore.GetWatcher()
+		if watcher != nil {
+			watcher.Close()
+		}
 		time.Sleep(1 * time.Second)
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		time.Sleep(5 * time.Second)
