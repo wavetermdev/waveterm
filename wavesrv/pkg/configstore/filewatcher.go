@@ -2,6 +2,8 @@ package configstore
 
 import (
 	"log"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/fsnotify/fsnotify"
@@ -25,7 +27,6 @@ var (
 )
 
 // GetWatcher returns the singleton instance of the Watcher
-// Singleton for now per mike's suggestion
 func GetWatcher(handler EventHandler) (*Watcher, error) {
 	var err error
 	once.Do(func() {
@@ -48,8 +49,22 @@ func makeWatcher(handler EventHandler) (*Watcher, error) {
 	}, nil
 }
 
+// AddPath adds the specified path and all its subdirectories to the watcher
 func (w *Watcher) AddPath(path string) error {
-	return w.watcher.Add(path)
+	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			err = w.watcher.Add(path)
+			if err != nil {
+				return err
+			}
+			log.Printf("added to watcher: %s", path)
+		}
+		return nil
+	})
+	return err
 }
 
 func (w *Watcher) Start() {
