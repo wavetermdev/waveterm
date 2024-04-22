@@ -67,8 +67,8 @@ const WSStateReconnectTime = 30 * time.Second
 const WSStatePacketChSize = 20
 
 const InitialTelemetryWait = 30 * time.Second
-const TelemetryTick = 30 * time.Minute
-const TelemetryInterval = 8 * time.Hour
+const TelemetryTick = 10 * time.Minute
+const TelemetryInterval = 4 * time.Hour
 
 const MaxWriteFileMemSize = 20 * (1024 * 1024) // 20M
 
@@ -930,12 +930,11 @@ func checkNewReleaseWrapper() {
 }
 
 func telemetryLoop() {
-	var lastSent time.Time
+	var nextSend int64
 	time.Sleep(InitialTelemetryWait)
 	for {
-		dur := time.Since(lastSent)
-		if lastSent.IsZero() || dur >= TelemetryInterval {
-			lastSent = time.Now()
+		if time.Now().Unix() > nextSend {
+			nextSend = time.Now().Add(TelemetryInterval).Unix()
 			sendTelemetryWrapper()
 			checkNewReleaseWrapper()
 		}
