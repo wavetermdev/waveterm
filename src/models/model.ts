@@ -495,6 +495,21 @@ class Model {
         return this.termFontSize.get();
     }
 
+    getSudoPwStore(): string {
+        let cdata = this.clientData.get();
+        return cdata?.feopts?.sudopwstore ?? appconst.DefaultSudoPwStore;
+    }
+
+    getSudoPwTimeout(): number {
+        let cdata = this.clientData.get();
+        return cdata?.feopts?.sudopwtimeout ?? appconst.DefaultSudoPwTimeout;
+    }
+
+    getSudoPwClearOnSleep(): boolean {
+        let cdata = this.clientData.get();
+        return !cdata?.feopts?.nosudopwclearonsleep;
+    }
+
     updateTermFontSizeVars() {
         let lhe = this.recomputeLineHeightEnv();
         mobx.action(() => {

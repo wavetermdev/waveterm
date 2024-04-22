@@ -583,6 +583,9 @@ declare global {
         termfontfamily: string;
         theme: NativeThemeSource;
         termtheme: TermThemeType;
+        sudopwstore: "on" | "off" | "notimeout";
+        sudopwtimeout: number;
+        nosudopwclearonsleep: boolean;
     };
 
     type ConfirmFlagsType = {

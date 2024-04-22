@@ -250,10 +250,13 @@ type ClientOptsType struct {
 }
 
 type FeOptsType struct {
-	TermFontSize   int               `json:"termfontsize,omitempty"`
-	TermFontFamily string            `json:"termfontfamily,omitempty"`
-	Theme          string            `json:"theme,omitempty"`
-	TermTheme      map[string]string `json:"termtheme"`
+	TermFontSize         int               `json:"termfontsize,omitempty"`
+	TermFontFamily       string            `json:"termfontfamily,omitempty"`
+	Theme                string            `json:"theme,omitempty"`
+	TermTheme            map[string]string `json:"termtheme"`
+	SudoPwStore          string            `json:"sudopwstore,omitempty"`
+	SudoPwTimeout        int               `json:"sudotimeout,omitempty"`
+	NoSudoPwClearOnSleep bool              `json:"nosudopwclearonsleep,omitempty"`
 }
 
 type ReleaseInfoType struct {

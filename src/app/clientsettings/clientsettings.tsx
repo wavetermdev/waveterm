@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown, NumberField } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
@@ -192,6 +192,33 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         GlobalModel.clientSettingsViewModel.closeView();
     }
 
+    @boundMethod
+    getSudoPwStoreOptions(): DropdownItem[] {
+        const sudoCacheSources: DropdownItem[] = [];
+        sudoCacheSources.push({ label: "On", value: "on" });
+        sudoCacheSources.push({ label: "Off", value: "off" });
+        sudoCacheSources.push({ label: "On Without Timeout", value: "notimeout" });
+        return sudoCacheSources;
+    }
+
+    @boundMethod
+    handleChangeSudoPwStoreConfig(store: string) {
+        const prtn = GlobalCommandRunner.setSudoPwStore(store);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    handleChangeSudoPwTimeoutConfig(timeout: string) {
+        const prtn = GlobalCommandRunner.setSudoPwTimeout(timeout);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    handleChangeSudoPwClearOnSleepConfig(clearOnSleep: boolean) {
+        const prtn = GlobalCommandRunner.setSudoPwClearOnSleep(clearOnSleep);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
     render() {
         const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
@@ -209,6 +236,9 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curTheme = GlobalModel.getThemeSource();
         const termThemes = getTermThemes(GlobalModel.termThemes, "Wave Default");
         const currTermTheme = GlobalModel.getTermTheme()["global"] ?? termThemes[0].label;
+        const curSudoPwStore = GlobalModel.getSudoPwStore();
+        const curSudoPwTimeout = GlobalModel.getSudoPwTimeout();
+        const curSudoPwClearOnSleep = GlobalModel.getSudoPwClearOnSleep();
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
@@ -351,6 +381,36 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 options={this.getFKeys()}
                                 defaultValue={this.getCurrentShortcut()}
                                 onChange={this.handleChangeShortcut}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Remember Sudo Password</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="hotkey-dropdown"
+                                options={this.getSudoPwStoreOptions()}
+                                defaultValue={curSudoPwStore}
+                                onChange={this.handleChangeSudoPwStoreConfig}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Sudo Password Timeout</div>
+                        <div className="settings-input">
+                            <NumberField
+                                className="hotkey-dropdown"
+                                defaultValue={String(curSudoPwTimeout)}
+                                onChange={this.handleChangeSudoPwTimeoutConfig}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Clear Sudo Password on Sleep</div>
+                        <div className="settings-input">
+                            <Toggle
+                                checked={curSudoPwClearOnSleep}
+                                onChange={this.handleChangeSudoPwClearOnSleepConfig}
                             />
                         </div>
                     </div>
