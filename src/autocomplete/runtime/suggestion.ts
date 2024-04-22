@@ -25,7 +25,7 @@ enum SuggestionIcons {
     Default = "📀",
 }
 
-const getIcon = (icon: string | undefined, suggestionType: Fig.SuggestionType | undefined): string => {
+export const getIcon = (icon: string | undefined, suggestionType: Fig.SuggestionType | undefined): string => {
     // TODO: enable fig icons once spacing is better
     // if (icon && /[^\u0000-\u00ff]/.test(icon)) {
     //   return icon;

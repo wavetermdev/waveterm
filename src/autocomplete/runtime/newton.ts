@@ -10,7 +10,7 @@ import log from "../utils/log";
 import { Shell } from "../utils/shell";
 import { mergeSubcomands } from "./utils";
 import { runGenerator } from "./generator";
-import { FilterStrategy, suggestionSuggestions } from "./suggestion";
+import { FilterStrategy, getIcon, suggestionSuggestions } from "./suggestion";
 import { runTemplates } from "./template";
 import {
     buildExecuteShellCommand,
@@ -26,6 +26,8 @@ import {
     sortSuggestions,
     startsWithAny,
 } from "./utils";
+import { SuggestionBlob } from "./model";
+import { get } from "http";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- will be implemented in below TODO
 const lazyLoadSpecLocation = async (location: Fig.SpecLocation): Promise<Fig.Spec | undefined> => {
@@ -521,6 +523,25 @@ export class Newton {
         }
     }
 
+    prepareSuggestion(suggestion: Fig.Suggestion, partialCmd: string, defaultType: Fig.SuggestionType): Fig.Suggestion {
+        if (suggestion != undefined && (!suggestion.icon || !suggestion.type || !suggestion.insertValue)) {
+            const type = suggestion.type ?? defaultType;
+            const icon = getIcon(suggestion.icon, type);
+            let insertValue = suggestion.insertValue ?? "";
+            if (!insertValue) {
+                for (const name in getAll(suggestion.name)) {
+                    if (name.startsWith(partialCmd) && name.length > insertValue.length) {
+                        insertValue = name;
+                    }
+                }
+                insertValue = insertValue.substring(partialCmd.length);
+            }
+            return { ...suggestion, icon, type, insertValue };
+        } else {
+            return suggestion;
+        }
+    }
+
     /**
      * Filter the suggestions using the specified filtering strategy.
      * @param suggestions The suggestions to filter
@@ -558,7 +579,11 @@ export class Newton {
                             const matchedName = s.name.find((n) => n.toLowerCase().includes(partialCmd.toLowerCase()));
                             return matchedName != null ? s : undefined;
                         }
-                        return s.name.toLowerCase().includes(partialCmd.toLowerCase()) ? s : undefined;
+                        return this.prepareSuggestion(
+                            s.name.toLowerCase().includes(partialCmd.toLowerCase()) ? s : undefined,
+                            partialCmd,
+                            suggestionType
+                        );
                     })
                     .filter((s) => s != null);
             default:
@@ -571,7 +596,11 @@ export class Newton {
                             );
                             return matchedName != null ? s : undefined;
                         }
-                        return s.name.toLowerCase().startsWith(partialCmd.toLowerCase()) ? s : undefined;
+                        return this.prepareSuggestion(
+                            s.name.toLowerCase().includes(partialCmd.toLowerCase()) ? s : undefined,
+                            partialCmd,
+                            suggestionType
+                        );
                     })
                     .filter((s) => s != null);
         }
@@ -609,12 +638,12 @@ export class Newton {
             suggestions.map((suggestion) => ({ ...suggestion, priority: suggestion.priority ?? 60 })),
             arg.filterStrategy ?? this.spec.filterStrategy,
             entry,
-            undefined
+            "arg"
         );
     }
 
     getSuggestionsForSubcommands(): Fig.Suggestion[] {
-        return this.filterSuggestions(this.subcommands, this.spec?.filterStrategy, this.lastEntry, undefined);
+        return this.filterSuggestions(this.subcommands, this.spec?.filterStrategy, this.lastEntry, "subcommand");
     }
 
     getSuggestionsForOptions(): Fig.Suggestion[] {
@@ -624,7 +653,25 @@ export class Newton {
             ...this.availableNonPosixFlags,
         ];
         console.log("availableOptions:", availableOptions);
-        return this.filterSuggestions(availableOptions, this.spec?.filterStrategy, entry, undefined);
+        return this.filterSuggestions(availableOptions, this.spec?.filterStrategy, entry, "option");
+    }
+
+    async getSuggestionsForHistory(): Promise<Fig.Suggestion[]> {
+        return this.filterSuggestions(
+            await runTemplates("history", this.cwd),
+            this.spec?.filterStrategy,
+            undefined,
+            "special"
+        );
+    }
+
+    async getSuggestionsForFilepaths(): Promise<Fig.Suggestion[]> {
+        return this.filterSuggestions(
+            await runTemplates("filepaths", this.cwd),
+            this.spec?.filterStrategy,
+            undefined,
+            "file"
+        );
     }
 
     /**
@@ -934,6 +981,12 @@ export class Newton {
                     // This should never happen.
                     break;
             }
+
+            if (suggestions.entries.length == 0) {
+                addSuggestionsToMap(suggestions, await this.getSuggestionsForFilepaths());
+            }
+
+            addSuggestionsToMap(suggestions, await this.getSuggestionsForHistory());
 
             const suggestionsArr = Array.from(suggestions.values());
             sortSuggestions(suggestionsArr);

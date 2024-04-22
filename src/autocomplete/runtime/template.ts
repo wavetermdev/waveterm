@@ -41,6 +41,7 @@ const historyTemplate = (): Fig.TemplateSuggestion[] => {
                             templateType: "history",
                         },
                         insertValue,
+                        type: "special",
                     });
                 }
             }
