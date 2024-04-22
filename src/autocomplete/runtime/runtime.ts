@@ -37,6 +37,7 @@ export async function getSuggestions(curLine: string, cwd: string, shell: Shell)
     //     parser.cwd = cwd;
     //     parser.shell = shell;
     //     parser.entries = lastStmt;
+    //     parser.entryIndex = parser.entryIndex - 1;
     // } else {
     //     console.log("Creating new parser");
     //     parser = new Newton(undefined, lastStmt, cwd, shell);
