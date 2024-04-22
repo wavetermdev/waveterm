@@ -1,4 +1,3 @@
-import { SuggestionBlob } from "@/autocomplete/runtime/model";
 import { Model } from "./model";
 import * as mobx from "mobx";
 import { Shell, getSuggestions } from "@/autocomplete";
@@ -19,8 +18,9 @@ function getEndTokenLength(line: string): number {
  */
 export class AutocompleteModel {
     globalModel: Model;
-    suggestions: OV<SuggestionBlob> = mobx.observable.box(null);
+    suggestions: OV<Fig.Suggestion[]> = mobx.observable.box(null);
     primarySuggestionIndex: OV<number> = mobx.observable.box(0);
+    lastCharsToDrop: number = 0;
     @mobx.observable historyLoaded: boolean = false;
 
     constructor(globalModel: Model) {
@@ -56,7 +56,7 @@ export class AutocompleteModel {
         }
         try {
             const festate = this.globalModel.getCurRemoteInstance().festate;
-            const suggestions: SuggestionBlob = yield getSuggestions(
+            const suggestions: Fig.Suggestion[] = yield getSuggestions(
                 this.globalModel.inputModel.curLine,
                 festate.cwd,
                 festate.shell as Shell
@@ -71,7 +71,7 @@ export class AutocompleteModel {
      * Returns the current suggestions.
      * @returns the current suggestions
      */
-    getSuggestions(): SuggestionBlob {
+    getSuggestions(): Fig.Suggestion[] {
         if (!this.isEnabled()) {
             return null;
         }
@@ -119,12 +119,12 @@ export class AutocompleteModel {
      * @returns the additional text required to add to the current input line in order to apply the suggestion at the given index
      */
     getSuggestionCompletion(index: number): string {
-        const autocompleteSuggestions: SuggestionBlob = this.getSuggestions();
+        const autocompleteSuggestions: Fig.Suggestion[] = this.getSuggestions();
 
         // Build the ghost prompt with the primary suggestion if available
         let retVal = "";
-        if (autocompleteSuggestions != null && autocompleteSuggestions.suggestions.length > index) {
-            const suggestion = autocompleteSuggestions.suggestions[index];
+        if (autocompleteSuggestions != null && autocompleteSuggestions.length > index) {
+            const suggestion = autocompleteSuggestions[index];
             if (typeof suggestion.name === "string") {
                 retVal = suggestion.name;
             } else if (suggestion.name.length > 0) {
@@ -140,12 +140,13 @@ export class AutocompleteModel {
             const curLine = this.globalModel.inputModel.curLine;
             const curEndTokenLen = getEndTokenLength(curLine);
             const lastEndTokenLen = getEndTokenLength(this.globalModel.inputModel.lastCurLine);
-            let charactersToDrop = 0;
+            let charactersToDrop = retVal.length - curEndTokenLen;
             if (curEndTokenLen > lastEndTokenLen) {
-                charactersToDrop = Math.max(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
+                charactersToDrop = Math.max(curEndTokenLen, this.lastCharsToDrop ?? 0);
             } else {
-                charactersToDrop = Math.min(curEndTokenLen, autocompleteSuggestions?.charactersToDrop ?? 0);
+                charactersToDrop = Math.min(curEndTokenLen, this.lastCharsToDrop ?? 0);
             }
+            this.lastCharsToDrop = charactersToDrop;
 
             if (charactersToDrop > 0) {
                 retVal = retVal.substring(charactersToDrop);

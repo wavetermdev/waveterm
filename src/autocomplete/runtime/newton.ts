@@ -10,7 +10,7 @@ import log from "../utils/log";
 import { Shell } from "../utils/shell";
 import { mergeSubcomands } from "./utils";
 import { runGenerator } from "./generator";
-import { FilterStrategy, getIcon, suggestionSuggestions } from "./suggestion";
+import { FilterStrategy, getIcon } from "./suggestion";
 import { runTemplates } from "./template";
 import {
     buildExecuteShellCommand,
@@ -26,8 +26,6 @@ import {
     sortSuggestions,
     startsWithAny,
 } from "./utils";
-import { SuggestionBlob } from "./model";
-import { get } from "http";
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- will be implemented in below TODO
 const lazyLoadSpecLocation = async (location: Fig.SpecLocation): Promise<Fig.Spec | undefined> => {
@@ -100,7 +98,7 @@ export class Newton {
     /**
      * The error message, if any.
      */
-    public error: string | undefined;
+    private error: string | undefined;
 
     /**
      * The split segments of the current command.
@@ -115,57 +113,55 @@ export class Newton {
     /**
      * The options for the current command, as defined in the spec. A shorthand for `this.spec.options`.
      */
-    public options: Fig.Option[];
+    private options: Fig.Option[];
 
     /**
      * The subcommands for the current command, as defined in the spec. A shorthand for `this.spec.subcommands`.
      */
-    public subcommands: Fig.Subcommand[];
+    private subcommands: Fig.Subcommand[];
 
     /**
      * The most-recently-matched option. This is used to determine the final set of suggestions.
      */
-    public currentOption: Fig.Option | undefined;
+    private currentOption: Fig.Option | undefined;
 
     /**
      * The most-recently-matched argument. This is used to determine the final set of suggestions.
      */
-    public args: Fig.Arg[] | undefined;
+    private args: Fig.Arg[] | undefined;
 
-    public argIndex: number = 0;
-
-    public suggestions: Fig.Suggestion[] = [];
+    private argIndex: number = 0;
 
     /**
      * The available options for the current command. This is a map of option names to options. This is used to keep track of which options have already been used.
      */
-    public availableOptions: { [key: string]: Fig.Option } = {};
+    private availableOptions: { [key: string]: Fig.Option } = {};
 
     /**
      * A map of option names to their dependent options. This is defined in the spec as `dependsOn`. Any options present in this map will be suggested with the highest priority.
      */
-    public dependentOptions: { [key: string]: Fig.Option[] } = {};
+    private dependentOptions: { [key: string]: Fig.Option[] } = {};
 
     /**
      * A map of option names to their mutually exclusive options. This is defined in the spec as `exclusiveOn`. Any options present in this map will be removed from the available options set and flagged as invalid.
      */
-    public mutuallyExclusiveOptions: { [key: string]: Fig.Option[] } = {};
+    private mutuallyExclusiveOptions: { [key: string]: Fig.Option[] } = {};
 
     /**
      * Determines whether the parser should treat flags as POSIX-compliant. This is defined in the spec as `parserDirectives.flagsArePosixNoncompliant`.
      */
-    public flagsArePosixNoncompliant: boolean;
+    private flagsArePosixNoncompliant: boolean;
 
     /**
      * Determines whether options or flags can precede arguments. This is defined in the spec as `parserDirectives.optionsMustPrecedeArguments`.
      */
-    public optionsMustPrecedeArguments: boolean;
+    private optionsMustPrecedeArguments: boolean;
 
     /**
      * The option argument separators to use for the current command. This is defined in the spec as `parserDirectives.optionArgSeparators`.
      * Remark: This does not appear to be widely used and most specs define argument separators in the options themselves. As this is mostly redundant, we may remove this in the future.
      */
-    public optionArgSeparators: string[];
+    private optionArgSeparators: string[];
 
     /**
      * The spec for the current command.
@@ -180,19 +176,22 @@ export class Newton {
     /**
      * The current state of the parser.
      */
-    public curState: ParserState = ParserState.Subcommand;
+    private curState: ParserState = ParserState.Subcommand;
 
     /**
      * The previous state of the parser.
      */
-    public prevState: ParserState | undefined;
+    private prevState: ParserState | undefined;
 
     public cwd: string;
+
+    public shell: Shell;
 
     constructor(
         spec: Fig.Subcommand | undefined,
         entries: string[],
         cwd: string,
+        shell: Shell,
         entryIndex: number = 0,
         flagsArePosixNoncompliant: boolean = spec?.parserDirectives?.flagsArePosixNoncompliant ?? false,
         optionsMustPrecedeArguments: boolean = spec?.parserDirectives?.optionsMustPrecedeArguments ?? false,
@@ -203,33 +202,33 @@ export class Newton {
         subcommands: Fig.Subcommand[] = spec?.subcommands ?? []
     ) {
         this.spec = spec;
-        this.entries = entries ?? [];
+        this.entries = entries;
+        this.cwd = cwd;
+        this.shell = shell;
         this.entryIndex = entryIndex;
         this.flagsArePosixNoncompliant = flagsArePosixNoncompliant;
         this.optionsMustPrecedeArguments = optionsMustPrecedeArguments;
         this.optionArgSeparators = optionArgSeparators;
-        this.subcommands = subcommands;
         this.options = options;
-        this.cwd = cwd;
+        this.subcommands = subcommands;
     }
 
     /**
      * Get the spec for the current command.
      */
-    public get spec(): Fig.Subcommand | undefined {
+    private get spec(): Fig.Subcommand | undefined {
         return this._spec;
     }
 
     /**
      * Set the spec for the current command. This also sets the available options set and other parser directives, as defined in the spec.
      */
-    public set spec(spec: Fig.Subcommand | undefined) {
+    private set spec(spec: Fig.Subcommand | undefined) {
         this._spec = spec;
         this.options = spec?.options ?? [];
         this.currentOption = undefined;
         this.args = getAll(spec?.args);
         this.argIndex = 0;
-        this.suggestions = [];
         this.availableOptions = {};
         this.dependentOptions = {};
         this.subcommands = spec?.subcommands ?? [];
@@ -253,7 +252,7 @@ export class Newton {
      * @see entries
      * @see entryIndex
      */
-    get currentEntry(): string {
+    private get currentEntry(): string {
         return this.entries.at(this.entryIndex) ?? "";
     }
 
@@ -261,7 +260,7 @@ export class Newton {
      * Gets the last entry in the list of entries.
      * @see entries
      */
-    get lastEntry(): string {
+    private get lastEntry(): string {
         return this.entries.at(-1);
     }
 
@@ -271,7 +270,7 @@ export class Newton {
      * @see entries
      * @see entryIndex
      */
-    get atEndOfEntries(): boolean {
+    private get atEndOfEntries(): boolean {
         return this.entryIndex >= this.entries.length || this.currentEntry == " ";
     }
 
@@ -281,7 +280,7 @@ export class Newton {
      * @see entries
      * @see entryIndex
      */
-    get atLastEntry(): boolean {
+    private get atLastEntry(): boolean {
         return this.entryIndex == this.entries.length - 1;
     }
 
@@ -291,7 +290,7 @@ export class Newton {
      * @see flagsArePosixNoncompliant
      * @see availableOptions
      */
-    get availablePosixFlags(): Fig.Option[] {
+    private get availablePosixFlags(): Fig.Option[] {
         console.log("availablePosixFlags", this.flagsArePosixNoncompliant, this.availableOptions);
         return this.flagsArePosixNoncompliant
             ? []
@@ -304,7 +303,7 @@ export class Newton {
      * @see flagsArePosixNoncompliant
      * @see availableOptions
      */
-    get availableNonPosixFlags(): Fig.Option[] {
+    private get availableNonPosixFlags(): Fig.Option[] {
         console.log("availableNonPosixFlags", this.flagsArePosixNoncompliant, this.availableOptions);
         const retVal = this.flagsArePosixNoncompliant
             ? Object.values(this.availableOptions)
@@ -318,18 +317,8 @@ export class Newton {
      * @returns The option, or undefined if the option is not available.
      * @see availableOptions
      */
-    getAvailableOption(name: string): Fig.Option | undefined {
+    private getAvailableOption(name: string): Fig.Option | undefined {
         return this.availableOptions[name];
-    }
-
-    /**
-     * Checks if any of the given names have already been recorded as used.
-     * @param names The names to check.
-     * @returns True if any of the names have already been recorded as used.
-     * @see availableOptions
-     */
-    recordedAny(names: Fig.SingleOrArray<string>): boolean {
-        return !matchAny(names, (name) => this.availableOptions.hasOwnProperty(name));
     }
 
     /**
@@ -337,7 +326,7 @@ export class Newton {
      * @param option The option to record.
      * @see availableOptions
      */
-    recordOption(option: Fig.Option) {
+    private recordOption(option: Fig.Option) {
         for (const name of getAll(option.name)) {
             delete this.availableOptions[name];
         }
@@ -350,7 +339,7 @@ export class Newton {
      * @see dependentOptions
      * @see mutuallyExclusiveOptions
      */
-    findDependentAndExclusiveOptions(option: Fig.Option) {
+    private findDependentAndExclusiveOptions(option: Fig.Option) {
         if (option.dependsOn) {
             const dependentOptions: Fig.Option[] = [];
 
@@ -387,7 +376,7 @@ export class Newton {
     /**
      * Parses the flag in the current entry and modifies the available options set accordingly.
      */
-    parseFlag(): ParserState {
+    private parseFlag(): ParserState {
         const entry = this.currentEntry;
         const existingFlags = entry?.slice(1);
         const flagsArr = existingFlags?.split("") ?? [];
@@ -438,7 +427,7 @@ export class Newton {
     /**
      * Parses the option in the current entry and modifies the available options set accordingly.
      */
-    parseOption(): ParserState {
+    private parseOption(): ParserState {
         // This means we cannot use POSIX-style flags, so we have to check each option individually
         const entry = this.currentEntry;
         if (!entry) {
@@ -470,7 +459,7 @@ export class Newton {
         return ParserState.Option;
     }
 
-    async parseArgument(): Promise<ParserState> {
+    private async parseArgument(): Promise<ParserState> {
         const entry = this.currentEntry;
         if (!entry || this.args.length == 0) {
             console.log("returning early from parseArgument", this.prevState);
@@ -523,7 +512,11 @@ export class Newton {
         }
     }
 
-    prepareSuggestion(suggestion: Fig.Suggestion, partialCmd: string, defaultType: Fig.SuggestionType): Fig.Suggestion {
+    private prepareSuggestion(
+        suggestion: Fig.Suggestion,
+        partialCmd: string,
+        defaultType: Fig.SuggestionType
+    ): Fig.Suggestion {
         if (suggestion != undefined && (!suggestion.icon || !suggestion.type || !suggestion.insertValue)) {
             const type = suggestion.type ?? defaultType;
             const icon = getIcon(suggestion.icon, type);
@@ -550,7 +543,7 @@ export class Newton {
      * @param suggestionType The type of suggestion object to interpret (currently not used by Newton).
      * @returns The filtered suggestions.
      */
-    filterSuggestions(
+    private filterSuggestions(
         suggestions: Fig.Suggestion[],
         filterStrategy: FilterStrategy,
         partialCmd: string,
@@ -606,10 +599,10 @@ export class Newton {
         }
     }
 
-    async getSuggestionsForArg(arg: Fig.Arg): Promise<Fig.Suggestion[]> {
+    private async getSuggestionsForArg(arg: Fig.Arg): Promise<Fig.Suggestion[]> {
         let entry = this.lastEntry;
 
-        const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwdToken(entry, this.cwd, Shell.Zsh);
+        const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwdToken(entry, this.cwd, this.shell);
         console.log("filterStrategy", arg.filterStrategy, this.spec.filterStrategy);
 
         if (pathy) {
@@ -627,7 +620,7 @@ export class Newton {
         }
 
         if (arg?.suggestions) {
-            suggestions.push(...suggestionSuggestions(arg.suggestions, arg?.filterStrategy, entry));
+            suggestions.push(...(arg.suggestions.map((s) => (typeof s === "string" ? { name: s } : s)) ?? []));
         }
 
         if (arg?.template) {
@@ -642,11 +635,11 @@ export class Newton {
         );
     }
 
-    getSuggestionsForSubcommands(): Fig.Suggestion[] {
+    private getSuggestionsForSubcommands(): Fig.Suggestion[] {
         return this.filterSuggestions(this.subcommands, this.spec?.filterStrategy, this.lastEntry, "subcommand");
     }
 
-    getSuggestionsForOptions(): Fig.Suggestion[] {
+    private getSuggestionsForOptions(): Fig.Suggestion[] {
         const entry = this.lastEntry;
         const availableOptions = [
             ...this.availablePosixFlags.map((option) => modifyPosixFlags(option, entry?.slice(1))),
@@ -656,7 +649,7 @@ export class Newton {
         return this.filterSuggestions(availableOptions, this.spec?.filterStrategy, entry, "option");
     }
 
-    async getSuggestionsForHistory(): Promise<Fig.Suggestion[]> {
+    private async getSuggestionsForHistory(): Promise<Fig.Suggestion[]> {
         return this.filterSuggestions(
             await runTemplates("history", this.cwd),
             this.spec?.filterStrategy,
@@ -665,7 +658,7 @@ export class Newton {
         );
     }
 
-    async getSuggestionsForFilepaths(): Promise<Fig.Suggestion[]> {
+    private async getSuggestionsForFilepaths(): Promise<Fig.Suggestion[]> {
         return this.filterSuggestions(
             await runTemplates("filepaths", this.cwd),
             this.spec?.filterStrategy,
@@ -678,7 +671,7 @@ export class Newton {
      * Loads the spec for the current command. If the command defines a `loadSpec` function, that function is run and the result is set as the new spec. Otherwise, the spec is set to the command itself.
      * @returns The spec for the current command.
      */
-    async loadSpec(specName: string): Promise<Fig.Spec | undefined> {
+    private async loadSpec(specName: string): Promise<Fig.Spec | undefined> {
         try {
             log.debug("loading spec: ", specName);
             const spec = await import(`@withfig/autocomplete/build/${specName}.js`);
@@ -718,7 +711,7 @@ export class Newton {
      * Find a subcommand that matches the current entry and traverse it.
      * @returns True if a subcommand was found.
      */
-    async findSubcommand(): Promise<boolean> {
+    private async findSubcommand(): Promise<boolean> {
         const curEntry = this.currentEntry;
         if (!curEntry) {
             return false;
@@ -796,7 +789,7 @@ export class Newton {
      * Iterate through the shell entries and generate suggestions based on the matched `Fig.Spec`.
      * @returns The final list of suggestions
      */
-    async generateSuggestions(): Promise<Fig.Suggestion[]> {
+    public async generateSuggestions(): Promise<Fig.Suggestion[]> {
         while (!this.error && !this.atEndOfEntries) {
             const newPrevState = this.curState;
             switch (this.curState) {
@@ -891,7 +884,7 @@ export class Newton {
 
         if (!this.error) {
             // We parsed the entire entry array without error, so we can return suggestions
-            const suggestions = new Map<string, Fig.Suggestion>();
+            const suggestionsMap = new Map<string, Fig.Suggestion>();
             const lastEntry = this.lastEntry;
             log.debug(
                 "allEntries: ",
@@ -912,12 +905,12 @@ export class Newton {
                         log.debug("lastEntry is space");
                         const arg = getFirst(this.spec?.args);
                         if (arg) {
-                            addSuggestionsToMap(suggestions, await this.getSuggestionsForArg(arg));
+                            addSuggestionsToMap(suggestionsMap, await this.getSuggestionsForArg(arg));
                         }
-                        addSuggestionsToMap(suggestions, this.spec?.additionalSuggestions);
-                        addSuggestionsToMap(suggestions, this.getSuggestionsForOptions());
+                        addSuggestionsToMap(suggestionsMap, this.spec?.additionalSuggestions);
+                        addSuggestionsToMap(suggestionsMap, this.getSuggestionsForOptions());
                     }
-                    addSuggestionsToMap(suggestions, this.getSuggestionsForSubcommands());
+                    addSuggestionsToMap(suggestionsMap, this.getSuggestionsForSubcommands());
                     break;
                 }
                 case ParserState.Option:
@@ -928,7 +921,7 @@ export class Newton {
                         // The parser is currently matching options or subcommand arguments, so suggest all available options.
                         // TODO: this feels messy, not sure if there's a better way to do this
                         if (this.curState == ParserState.Option || !this.optionsMustPrecedeArguments) {
-                            addSuggestionsToMap(suggestions, availableOptions);
+                            addSuggestionsToMap(suggestionsMap, availableOptions);
                         }
                     } else {
                         switch (this.prevState) {
@@ -940,7 +933,7 @@ export class Newton {
                                 if (this.currentOption) {
                                     suggestionsToAdd.push(this.currentOption);
                                 }
-                                addSuggestionsToMap(suggestions, suggestionsToAdd);
+                                addSuggestionsToMap(suggestionsMap, suggestionsToAdd);
                                 break;
                             }
                             case ParserState.PosixFlag: {
@@ -952,9 +945,9 @@ export class Newton {
                                     const suggestionsToAdd = this.getSuggestionsForOptions();
                                     // Push the last flag as a suggestion, in case that is as far as the user wants to go
                                     suggestionsToAdd.push(newOption);
-                                    addSuggestionsToMap(suggestions, suggestionsToAdd);
+                                    addSuggestionsToMap(suggestionsMap, suggestionsToAdd);
                                 } else {
-                                    addSuggestionsToMap(suggestions, availableOptions);
+                                    addSuggestionsToMap(suggestionsMap, availableOptions);
                                 }
                                 break;
                             }
@@ -972,7 +965,7 @@ export class Newton {
                     if (this.args && this.argIndex < this.args.length) {
                         const arg = this.args[this.argIndex];
                         if (arg) {
-                            addSuggestionsToMap(suggestions, await this.getSuggestionsForArg(arg));
+                            addSuggestionsToMap(suggestionsMap, await this.getSuggestionsForArg(arg));
                         }
                     }
                     break;
@@ -982,13 +975,14 @@ export class Newton {
                     break;
             }
 
-            if (suggestions.entries.length == 0) {
-                addSuggestionsToMap(suggestions, await this.getSuggestionsForFilepaths());
+            if (suggestionsMap.size == 0) {
+                console.log("no suggestions found");
+                addSuggestionsToMap(suggestionsMap, await this.getSuggestionsForFilepaths());
             }
 
-            addSuggestionsToMap(suggestions, await this.getSuggestionsForHistory());
+            addSuggestionsToMap(suggestionsMap, await this.getSuggestionsForHistory());
 
-            const suggestionsArr = Array.from(suggestions.values());
+            const suggestionsArr = Array.from(suggestionsMap.values());
             sortSuggestions(suggestionsArr);
             return suggestionsArr;
         }

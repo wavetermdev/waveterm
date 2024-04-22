@@ -1,4 +1,3 @@
-import { SuggestionBlob } from "@/autocomplete/runtime/model";
 import { AuxiliaryCmdView } from "./auxview";
 import { GlobalModel } from "@/models";
 import cn from "classnames";
@@ -27,11 +26,11 @@ export const SuggestionView: React.FC = observer(() => {
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:selectBelow", (waveEvent) => {
-            setSelectedSuggestion(Math.min(suggestions?.suggestions.length - 1, selectedSuggestion + 1));
+            setSelectedSuggestion(Math.min(suggestions?.length - 1, selectedSuggestion + 1));
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:tab", (waveEvent) => {
-            setSelectedSuggestion(Math.min(suggestions?.suggestions.length - 1, selectedSuggestion + 1));
+            setSelectedSuggestion(Math.min(suggestions?.length - 1, selectedSuggestion + 1));
             return true;
         });
 
@@ -42,7 +41,7 @@ export const SuggestionView: React.FC = observer(() => {
 
     const inputModel = GlobalModel.inputModel;
     const autocompleteModel = GlobalModel.autocompleteModel;
-    const suggestions: SuggestionBlob = autocompleteModel.getSuggestions();
+    const suggestions: Fig.Suggestion[] = autocompleteModel.getSuggestions();
 
     const closeView = () => {
         inputModel.closeAuxView();
@@ -59,7 +58,7 @@ export const SuggestionView: React.FC = observer(() => {
             <If condition={!suggestions}>
                 <div className="no-suggestions">No suggestions</div>
             </If>
-            {suggestions?.suggestions.map((suggestion, idx) => (
+            {suggestions?.map((suggestion, idx) => (
                 <div
                     key={getFirst(suggestion.name)}
                     title={suggestion.description}

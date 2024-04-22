@@ -5,7 +5,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { CommandToken } from "./parser";
 import { Shell } from "../utils/shell";
 import { GlobalModel, getApi } from "@/models";
 import { MemCache } from "@/util/memcache";
@@ -61,16 +60,6 @@ export const resolveCwdToken = async (
     const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
     if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
     return { cwd: cwd, pathy: true, complete: token.endsWith(sep) };
-};
-
-export const resolveCwd = async (
-    cmdToken: CommandToken | undefined,
-    cwd: string,
-    shell: Shell
-): Promise<{ cwd: string; pathy: boolean; complete: boolean }> => {
-    if (cmdToken == null) return { cwd, pathy: false, complete: false };
-    const { token } = cmdToken;
-    return resolveCwdToken(token, cwd, shell);
 };
 
 /**
