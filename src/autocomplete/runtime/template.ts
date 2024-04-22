@@ -36,10 +36,11 @@ const historyTemplate = (): Fig.TemplateSuggestion[] => {
                     log.debug("historyTemplate insertValue", insertValue);
                     hmap.set(cmdstr, {
                         name: cmdstr,
-                        priority: 60,
+                        priority: 90,
                         context: {
                             templateType: "history",
                         },
+                        icon: "🕒",
                         insertValue,
                         type: "special",
                     });

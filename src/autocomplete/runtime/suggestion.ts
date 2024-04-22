@@ -40,7 +40,6 @@ export const getIcon = (icon: string | undefined, suggestionType: Fig.Suggestion
         case "special":
             return SuggestionIcons.Special;
     }
-    return SuggestionIcons.Default;
 };
 
 export type FilterStrategy = "fuzzy" | "prefix" | "default";

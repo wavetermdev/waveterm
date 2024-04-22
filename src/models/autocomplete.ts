@@ -49,11 +49,11 @@ export class AutocompleteModel {
      * Lazily loads suggestions for the current input line.
      */
     loadSuggestions = mobx.flow(function* (this: AutocompleteModel) {
-        log.debug("get suggestions");
         if (!this.isEnabled()) {
             this.suggestions.set(null);
             return;
         }
+        log.debug("get suggestions");
         try {
             const festate = this.globalModel.getCurRemoteInstance().festate;
             const suggestions: Fig.Suggestion[] = yield getSuggestions(

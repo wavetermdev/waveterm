@@ -8,7 +8,6 @@
 import { getApi } from "@/models";
 import log from "../utils/log";
 import { Shell } from "../utils/shell";
-import { mergeSubcomands } from "./utils";
 import { runGenerator } from "./generator";
 import { FilterStrategy, getIcon } from "./suggestion";
 import { runTemplates } from "./template";
@@ -21,6 +20,7 @@ import {
     isFlagOrOption,
     isOption,
     matchAny,
+    mergeSubcomands,
     modifyPosixFlags,
     resolveCwdToken,
     sortSuggestions,
@@ -49,17 +49,6 @@ const getSubcommand = (spec?: Fig.Spec): Fig.Subcommand | undefined => {
 const lazyLoadSpec = async (key: string): Promise<Fig.Spec | undefined> => {
     return (await import(`@withfig/autocomplete/build/${key}.js`)).default;
 };
-
-function addSuggestionsToMap(sugggestionsMap: Map<string, Fig.Suggestion>, suggestions: (Fig.Suggestion | string)[]) {
-    console.log("addSuggestionsToMap", suggestions);
-    suggestions?.forEach((suggestion) => {
-        const isString = typeof suggestion === "string";
-        sugggestionsMap.set(
-            isString ? suggestion : getFirst(suggestion.name),
-            isString ? { name: suggestion, priority: 50 } : suggestion
-        );
-    });
-}
 
 /**
  * The parser state. This is used to determine what the parser is currently matching.
@@ -183,6 +172,8 @@ export class Newton {
      */
     private prevState: ParserState | undefined;
 
+    private suggestions: Map<string, Fig.Suggestion> = new Map();
+
     public cwd: string;
 
     public shell: Shell;
@@ -231,6 +222,7 @@ export class Newton {
         this.argIndex = 0;
         this.availableOptions = {};
         this.dependentOptions = {};
+        this.suggestions = new Map();
         this.subcommands = spec?.subcommands ?? [];
         this.mutuallyExclusiveOptions = {};
         this.optionsMustPrecedeArguments =
@@ -291,7 +283,7 @@ export class Newton {
      * @see availableOptions
      */
     private get availablePosixFlags(): Fig.Option[] {
-        console.log("availablePosixFlags", this.flagsArePosixNoncompliant, this.availableOptions);
+        log.debug("availablePosixFlags", this.flagsArePosixNoncompliant, this.availableOptions);
         return this.flagsArePosixNoncompliant
             ? []
             : Object.values(this.availableOptions).filter((value) => matchAny(value.name, isFlag));
@@ -304,7 +296,7 @@ export class Newton {
      * @see availableOptions
      */
     private get availableNonPosixFlags(): Fig.Option[] {
-        console.log("availableNonPosixFlags", this.flagsArePosixNoncompliant, this.availableOptions);
+        log.debug("availableNonPosixFlags", this.flagsArePosixNoncompliant, this.availableOptions);
         const retVal = this.flagsArePosixNoncompliant
             ? Object.values(this.availableOptions)
             : Object.values(this.availableOptions).filter((value) => matchAny(value.name, isOption));
@@ -409,14 +401,14 @@ export class Newton {
             }
         }
         if (!this.currentOption) {
-            console.log("no current option");
+            log.debug("no current option");
             return ParserState.Option;
         } else if (this.currentOption.args !== undefined) {
-            console.log("current option has args");
+            log.debug("current option has args");
             return ParserState.OptionArgument;
         } else if (!this.atLastEntry) {
             // We are not done parsing the user entries so we should return to the subcommand state and then decide the next state.
-            console.log("current option does not have args, return to subcommand");
+            log.debug("current option does not have args, return to subcommand");
             return ParserState.Subcommand;
         } else {
             // We are at the last entry so we can assume the user is not done writing the flag
@@ -462,7 +454,7 @@ export class Newton {
     private async parseArgument(): Promise<ParserState> {
         const entry = this.currentEntry;
         if (!entry || this.args.length == 0) {
-            console.log("returning early from parseArgument", this.prevState);
+            log.debug("returning early from parseArgument", this.prevState);
             return this.prevState;
         }
 
@@ -487,15 +479,15 @@ export class Newton {
                 return ParserState.Option;
             } else if (currentArg.isOptional) {
                 // The argument is optional, we want to see if we have any matches before determining if we should move on.
-                const suggestions = await this.getSuggestionsForArg(currentArg);
-                if (!this.atLastEntry && suggestions.length > 0) {
+                const numAdded = await this.addSuggestionsForArg(currentArg);
+                if (!this.atLastEntry && numAdded > 0) {
                     // We found a match and we are not at the end of the entry list, so let's keep matching arguments for the next entry
-                    console.log("has suggestion match for optional arg");
+                    log.debug("has suggestion match for optional arg");
                     this.argIndex++;
                     return ParserState.SubcommandArgument;
                 } else {
                     // We did not find a match, we should return to the previous state.
-                    console.log("no suggestion found for optional arg");
+                    log.debug("no suggestion found for optional arg");
                     return this.prevState;
                 }
             } else if (currentArg.isVariadic) {
@@ -517,22 +509,55 @@ export class Newton {
         partialCmd: string,
         defaultType: Fig.SuggestionType
     ): Fig.Suggestion {
-        if (suggestion != undefined && (!suggestion.icon || !suggestion.type || !suggestion.insertValue)) {
-            const type = suggestion.type ?? defaultType;
-            const icon = getIcon(suggestion.icon, type);
-            let insertValue = suggestion.insertValue ?? "";
-            if (!insertValue) {
-                for (const name in getAll(suggestion.name)) {
-                    if (name.startsWith(partialCmd) && name.length > insertValue.length) {
-                        insertValue = name;
-                    }
-                }
-                insertValue = insertValue.substring(partialCmd.length);
-            }
-            return { ...suggestion, icon, type, insertValue };
-        } else {
-            return suggestion;
+        if (suggestion == undefined) {
+            return undefined;
         }
+        const suggestionMin: Fig.Suggestion = {
+            name: suggestion.name,
+            displayName: suggestion.displayName,
+            description: suggestion.description,
+            icon: suggestion.icon,
+            type: suggestion.type,
+            insertValue: suggestion.insertValue,
+            priority: suggestion.priority,
+        };
+        if (!suggestionMin.type) {
+            suggestionMin.type = defaultType;
+        }
+        if (!suggestionMin.icon) {
+            suggestionMin.icon = getIcon(suggestionMin.icon, suggestionMin.type);
+        } else if (suggestionMin.icon.startsWith("fig://")) {
+            // For now, let's assume that if an icon is being provided, it deserves the highest priority
+            suggestionMin.icon = getIcon(suggestionMin.icon, "special");
+            suggestionMin.priority = 100;
+        }
+        if (!suggestionMin.insertValue) {
+            for (const name in getAll(suggestionMin.name)) {
+                if (name.startsWith(partialCmd) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
+                    suggestionMin.insertValue = name;
+                }
+            }
+            suggestionMin.insertValue = suggestionMin.insertValue?.substring(partialCmd.length);
+        }
+        if (!suggestionMin.priority) {
+            switch (suggestionMin.type) {
+                case "option":
+                    suggestionMin.priority = 60;
+                    break;
+                case "subcommand":
+                    suggestionMin.priority = 70;
+                    break;
+                case "arg":
+                    suggestionMin.priority = 90;
+                    break;
+                case "file":
+                    suggestionMin.priority = 80;
+                    break;
+                default:
+                    suggestionMin.priority = 50;
+            }
+        }
+        return suggestionMin;
     }
 
     /**
@@ -543,12 +568,12 @@ export class Newton {
      * @param suggestionType The type of suggestion object to interpret (currently not used by Newton).
      * @returns The filtered suggestions.
      */
-    private filterSuggestions(
-        suggestions: Fig.Suggestion[],
+    private filterSuggestionsAndAddToMap(
+        suggestions: (Fig.Suggestion | string)[],
         filterStrategy: FilterStrategy,
         partialCmd: string,
         suggestionType: Fig.SuggestionType
-    ): Fig.Suggestion[] {
+    ) {
         log.debug(
             "filter",
             "suggestions",
@@ -560,54 +585,58 @@ export class Newton {
             "suggestionType",
             suggestionType
         );
-        if (!partialCmd || partialCmd === " ") return suggestions;
+        const suggestionsArr = suggestions.map((s) => (typeof s === "string" ? { name: s } : s));
+        if (!partialCmd || partialCmd === " ") {
+            this.addSuggestionsToMap(suggestionsArr, suggestionType);
+            return;
+        }
 
-        switch (filterStrategy) {
-            case "fuzzy":
-                log.debug("fuzzy");
-                return suggestions
-                    .map((s) => {
-                        if (s.name == null) return;
-                        if (s.name instanceof Array) {
-                            const matchedName = s.name.find((n) => n.toLowerCase().includes(partialCmd.toLowerCase()));
-                            return matchedName != null ? s : undefined;
-                        }
-                        return this.prepareSuggestion(
-                            s.name.toLowerCase().includes(partialCmd.toLowerCase()) ? s : undefined,
-                            partialCmd,
-                            suggestionType
-                        );
-                    })
-                    .filter((s) => s != null);
-            default:
-                return suggestions
-                    .map((s) => {
-                        if (s.name == null) return;
-                        if (s.name instanceof Array) {
-                            const matchedName = s.name.find((n) =>
-                                n.toLowerCase().startsWith(partialCmd.toLowerCase())
-                            );
-                            return matchedName != null ? s : undefined;
-                        }
-                        return this.prepareSuggestion(
-                            s.name.toLowerCase().includes(partialCmd.toLowerCase()) ? s : undefined,
-                            partialCmd,
-                            suggestionType
-                        );
-                    })
-                    .filter((s) => s != null);
+        if (filterStrategy === "fuzzy") {
+            log.debug("fuzzy");
+            suggestionsArr.forEach((s) => {
+                if (s.name == null) return;
+                if (s.name instanceof Array) {
+                    const matchedName = s.name.find((n) => n.toLowerCase().includes(partialCmd.toLowerCase()));
+                    return matchedName != null ? s : undefined;
+                }
+                if (s.name.toLowerCase().includes(partialCmd.toLowerCase())) {
+                    this.addSuggestionsToMap([s], suggestionType);
+                }
+            });
+        } else {
+            log.debug("prefix");
+            suggestionsArr.forEach((s) => {
+                if (s.name == null) return;
+                if (s.name instanceof Array) {
+                    const matchedName = s.name.find((n) => n.toLowerCase().startsWith(partialCmd.toLowerCase()));
+                    return matchedName != null ? s : undefined;
+                }
+                if (s.name.toLowerCase().startsWith(partialCmd.toLowerCase())) {
+                    this.addSuggestionsToMap([s], suggestionType);
+                }
+            });
         }
     }
 
-    private async getSuggestionsForArg(arg: Fig.Arg): Promise<Fig.Suggestion[]> {
+    private addSuggestionsToMap(suggestions: Fig.Suggestion[], suggestionType: Fig.SuggestionType) {
+        log.debug("addSuggestionsToMap", suggestions);
+        suggestions?.forEach((suggestion) => {
+            this.suggestions.set(
+                getFirst(suggestion.name),
+                this.prepareSuggestion(suggestion, this.currentEntry, suggestionType)
+            );
+        });
+    }
+
+    private async addSuggestionsForArg(arg: Fig.Arg): Promise<number> {
         let entry = this.lastEntry;
 
         const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwdToken(entry, this.cwd, this.shell);
-        console.log("filterStrategy", arg.filterStrategy, this.spec.filterStrategy);
+        log.debug("filterStrategy", arg.filterStrategy, this.spec.filterStrategy);
 
         if (pathy) {
             entry = pathyComplete ? "" : getApi().pathBaseName(entry ?? "");
-            console.log("pathy: ", pathy, "pathyComplete: ", pathyComplete, "entry: ", entry);
+            log.debug("pathy: ", pathy, "pathyComplete: ", pathyComplete, "entry: ", entry);
         }
 
         const suggestions: Fig.Suggestion[] = [];
@@ -620,6 +649,7 @@ export class Newton {
         }
 
         if (arg?.suggestions) {
+            log.debug("arg suggestions", arg.suggestions);
             suggestions.push(...(arg.suggestions.map((s) => (typeof s === "string" ? { name: s } : s)) ?? []));
         }
 
@@ -627,39 +657,35 @@ export class Newton {
             suggestions.push(...(await runTemplates(arg.template ?? [], resolvedCwd)));
         }
 
-        return this.filterSuggestions(
-            suggestions.map((suggestion) => ({ ...suggestion, priority: suggestion.priority ?? 60 })),
-            arg.filterStrategy ?? this.spec.filterStrategy,
-            entry,
-            "arg"
-        );
+        this.filterSuggestionsAndAddToMap(suggestions, arg.filterStrategy ?? this.spec.filterStrategy, entry, "arg");
+        return suggestions.length;
     }
 
-    private getSuggestionsForSubcommands(): Fig.Suggestion[] {
-        return this.filterSuggestions(this.subcommands, this.spec?.filterStrategy, this.lastEntry, "subcommand");
+    private addSuggestionsForSubcommands() {
+        this.filterSuggestionsAndAddToMap(this.subcommands, this.spec?.filterStrategy, this.lastEntry, "subcommand");
     }
 
-    private getSuggestionsForOptions(): Fig.Suggestion[] {
+    private addSuggestionsForOptions() {
         const entry = this.lastEntry;
         const availableOptions = [
             ...this.availablePosixFlags.map((option) => modifyPosixFlags(option, entry?.slice(1))),
             ...this.availableNonPosixFlags,
         ];
-        console.log("availableOptions:", availableOptions);
-        return this.filterSuggestions(availableOptions, this.spec?.filterStrategy, entry, "option");
+        log.debug("availableOptions:", availableOptions);
+        this.filterSuggestionsAndAddToMap(availableOptions, this.spec?.filterStrategy, entry, "option");
     }
 
-    private async getSuggestionsForHistory(): Promise<Fig.Suggestion[]> {
-        return this.filterSuggestions(
+    private async addSuggestionsForHistory(): Promise<void> {
+        this.filterSuggestionsAndAddToMap(
             await runTemplates("history", this.cwd),
             this.spec?.filterStrategy,
             undefined,
-            "special"
+            undefined
         );
     }
 
-    private async getSuggestionsForFilepaths(): Promise<Fig.Suggestion[]> {
-        return this.filterSuggestions(
+    private async addSuggestionsForFilepaths(): Promise<void> {
+        this.filterSuggestionsAndAddToMap(
             await runTemplates("filepaths", this.cwd),
             this.spec?.filterStrategy,
             undefined,
@@ -676,27 +702,27 @@ export class Newton {
             log.debug("loading spec: ", specName);
             const spec = await import(`@withfig/autocomplete/build/${specName}.js`);
             if (Object.hasOwn(spec, "getVersionCommand") && typeof spec.getVersionCommand === "function") {
-                console.log("has getVersionCommand fn");
+                log.debug("has getVersionCommand fn");
                 const commandVersion = await (spec.getVersionCommand as Fig.GetVersionCommand)(
                     buildExecuteShellCommand(5000)
                 );
-                console.log("commandVersion: " + commandVersion);
-                console.log("returning as version is not supported");
+                log.debug("commandVersion: " + commandVersion);
+                log.debug("returning as version is not supported");
                 return;
             }
             if (typeof spec.default === "object") {
                 const command = spec.default as Fig.Subcommand;
-                console.log("Spec is valid Subcommand", command);
+                log.debug("Spec is valid Subcommand", command);
                 if (command.generateSpec) {
-                    console.log("has generateSpec function");
+                    log.debug("has generateSpec function");
                     const generatedSpec = await command.generateSpec(
                         this.atLastEntry ? this.entries.slice(this.entryIndex + 1) : [],
                         buildExecuteShellCommand(5000)
                     );
-                    console.log("generatedSpec: ", generatedSpec);
+                    log.debug("generatedSpec: ", generatedSpec);
                     return mergeSubcomands(command, generatedSpec);
                 } else {
-                    console.log("no generateSpec function");
+                    log.debug("no generateSpec function");
                     return command;
                 }
             } else {
@@ -717,24 +743,24 @@ export class Newton {
             return false;
         }
 
-        console.log("curEntry: ", curEntry, "curSpec", this.spec);
+        log.debug("curEntry: ", curEntry, "curSpec", this.spec);
 
         if (this.spec) {
             // No need to run this if the user is typing an option
             // Determine if a subcommand matches the current entry, if so set it as our new spec
             const subcommand = this.spec.subcommands?.find((subcommand) => equalsAny(subcommand.name, curEntry));
             if (subcommand) {
-                console.log("subcommand exists", subcommand);
+                log.debug("subcommand exists", subcommand);
                 // Subcommand module found; traverse it.
                 switch (typeof subcommand.loadSpec) {
                     case "string": {
-                        console.log("loadSpec is string", subcommand.loadSpec);
+                        log.debug("loadSpec is string", subcommand.loadSpec);
                         // The subcommand defines a path to a new spec; load that spec and set it as our new spec
                         this.spec = await this.loadSpec(subcommand.loadSpec);
                         break;
                     }
                     case "object":
-                        console.log("loadSpec is object");
+                        log.debug("loadSpec is object");
                         // The subcommand defines a new spec inline; this is our new spec
                         this.spec = {
                             ...subcommand,
@@ -743,15 +769,13 @@ export class Newton {
                         };
                         break;
                     case "function": {
-                        console.log("loadSpec is function");
+                        log.debug("loadSpec is function");
                         const partSpec = await subcommand.loadSpec(curEntry, buildExecuteShellCommand(5000));
                         if (partSpec instanceof Array) {
                             const locationSpecs = (
                                 await Promise.all(partSpec.map((s) => lazyLoadSpecLocation(s)))
-                            ).filter((s) => s != null) as Fig.Spec[];
-                            const subcommands = locationSpecs
-                                .map((s) => getSubcommand(s))
-                                .filter((s) => s != null) as Fig.Subcommand[];
+                            ).filter((s) => s != null);
+                            const subcommands = locationSpecs.map((s) => getSubcommand(s)).filter((s) => s != null);
                             this.spec = {
                                 ...subcommand,
                                 ...(subcommands.find((s) => s?.name == curEntry) ?? []),
@@ -775,11 +799,11 @@ export class Newton {
                         break;
                 }
             } else {
-                console.log("subcommand not found");
+                log.debug("subcommand not found");
                 return false;
             }
         } else {
-            console.log("no spec");
+            log.debug("no spec");
             this.spec = await this.loadSpec(curEntry);
         }
         return true;
@@ -794,7 +818,7 @@ export class Newton {
             const newPrevState = this.curState;
             switch (this.curState) {
                 case ParserState.Subcommand: {
-                    console.log("subcommand");
+                    log.debug("subcommand");
                     if (!(await this.findSubcommand())) {
                         if (isFlagOrOption(this.currentEntry ?? "")) {
                             this.curState = ParserState.Option;
@@ -808,44 +832,44 @@ export class Newton {
                     break;
                 }
                 case ParserState.Option: {
-                    console.log("option", this.currentEntry);
+                    log.debug("option", this.currentEntry);
                     const curEntry = this.currentEntry;
                     const isEntryOption = isOption(curEntry);
                     const isEntryFlag = isFlag(curEntry);
                     if (isEntryOption || (isEntryFlag && this.flagsArePosixNoncompliant)) {
-                        console.log("entry is option or non-posix flag");
+                        log.debug("entry is option or non-posix flag");
                         this.curState = this.parseOption();
                         this.entryIndex++;
                     } else if (isEntryFlag) {
-                        console.log("entry is flag");
+                        log.debug("entry is flag");
                         this.curState = ParserState.PosixFlag;
                         break;
                     } else {
-                        console.log("not option or flag");
+                        log.debug("not option or flag");
                         this.curState = ParserState.SubcommandArgument;
                     }
                     break;
                 }
                 case ParserState.PosixFlag: {
-                    console.log("posix flag");
+                    log.debug("posix flag");
                     this.curState = this.parseFlag();
                     this.entryIndex++;
                     break;
                 }
                 case ParserState.SubcommandArgument:
-                    console.log("subcommand argument");
+                    log.debug("subcommand argument");
                     if (isFlagOrOption(this.currentEntry) && !this.optionsMustPrecedeArguments) {
-                        console.log("subcommand argument is flag or option");
+                        log.debug("subcommand argument is flag or option");
                         this.curState = ParserState.Option;
                         break;
                     } else {
-                        console.log("subcommand argument is argument");
+                        log.debug("subcommand argument is argument");
                         this.curState = await this.parseArgument();
                         this.entryIndex++;
                     }
                     break;
                 case ParserState.OptionArgument:
-                    console.log("option argument");
+                    log.debug("option argument");
                     this.curState = await this.parseArgument();
                     this.entryIndex++;
                     break;
@@ -865,7 +889,7 @@ export class Newton {
             }
         }
 
-        console.log(
+        log.debug(
             "done with loop, error: ",
             this.error,
             "entryIndex: ",
@@ -884,7 +908,6 @@ export class Newton {
 
         if (!this.error) {
             // We parsed the entire entry array without error, so we can return suggestions
-            const suggestionsMap = new Map<string, Fig.Suggestion>();
             const lastEntry = this.lastEntry;
             log.debug(
                 "allEntries: ",
@@ -905,35 +928,42 @@ export class Newton {
                         log.debug("lastEntry is space");
                         const arg = getFirst(this.spec?.args);
                         if (arg) {
-                            addSuggestionsToMap(suggestionsMap, await this.getSuggestionsForArg(arg));
+                            await this.addSuggestionsForArg(arg);
                         }
-                        addSuggestionsToMap(suggestionsMap, this.spec?.additionalSuggestions);
-                        addSuggestionsToMap(suggestionsMap, this.getSuggestionsForOptions());
+                        if (this.spec?.additionalSuggestions) {
+                            this.filterSuggestionsAndAddToMap(
+                                this.spec?.additionalSuggestions.map((s) => (typeof s === "string" ? { name: s } : s)),
+                                this.spec?.filterStrategy,
+                                lastEntry,
+                                "subcommand"
+                            );
+                        }
+                        this.addSuggestionsForOptions();
                     }
-                    addSuggestionsToMap(suggestionsMap, this.getSuggestionsForSubcommands());
+                    this.addSuggestionsForSubcommands();
                     break;
                 }
                 case ParserState.Option:
                 case ParserState.PosixFlag: {
-                    console.log("option or posix flag");
+                    log.debug("option or posix flag");
                     const availableOptions = Object.values(this.availableOptions);
                     if (lastEntry == " ") {
                         // The parser is currently matching options or subcommand arguments, so suggest all available options.
                         // TODO: this feels messy, not sure if there's a better way to do this
                         if (this.curState == ParserState.Option || !this.optionsMustPrecedeArguments) {
-                            addSuggestionsToMap(suggestionsMap, availableOptions);
+                            this.addSuggestionsToMap(availableOptions, "option");
                         }
                     } else {
                         switch (this.prevState) {
                             case ParserState.Option: {
                                 // The parser is currently matching options, so suggest all available options.
-                                const suggestionsToAdd = availableOptions.filter((option) =>
+                                const suggestionsToAdd: Fig.Suggestion[] = availableOptions.filter((option) =>
                                     startsWithAny(option.name, lastEntry ?? "")
                                 );
                                 if (this.currentOption) {
                                     suggestionsToAdd.push(this.currentOption);
                                 }
-                                addSuggestionsToMap(suggestionsMap, suggestionsToAdd);
+                                this.addSuggestionsToMap(suggestionsToAdd, "option");
                                 break;
                             }
                             case ParserState.PosixFlag: {
@@ -942,12 +972,11 @@ export class Newton {
 
                                     const newOption = modifyPosixFlags(this.currentOption, existingFlags);
                                     // Suggest the other available flags as additional suggestions
-                                    const suggestionsToAdd = this.getSuggestionsForOptions();
+                                    this.addSuggestionsForOptions();
                                     // Push the last flag as a suggestion, in case that is as far as the user wants to go
-                                    suggestionsToAdd.push(newOption);
-                                    addSuggestionsToMap(suggestionsMap, suggestionsToAdd);
+                                    this.addSuggestionsToMap([newOption], "option");
                                 } else {
-                                    addSuggestionsToMap(suggestionsMap, availableOptions);
+                                    this.addSuggestionsToMap(availableOptions, "option");
                                 }
                                 break;
                             }
@@ -960,12 +989,12 @@ export class Newton {
                 }
                 case ParserState.SubcommandArgument:
                 case ParserState.OptionArgument: {
-                    console.log("currentArgs: ", this.args, "argIndex: ", this.argIndex);
+                    log.debug("currentArgs: ", this.args, "argIndex: ", this.argIndex);
                     // The parser is currently matching option arguments, so suggest all available arguments for the current option.
                     if (this.args && this.argIndex < this.args.length) {
                         const arg = this.args[this.argIndex];
                         if (arg) {
-                            addSuggestionsToMap(suggestionsMap, await this.getSuggestionsForArg(arg));
+                            await this.addSuggestionsForArg(arg);
                         }
                     }
                     break;
@@ -975,14 +1004,14 @@ export class Newton {
                     break;
             }
 
-            if (suggestionsMap.size == 0) {
-                console.log("no suggestions found");
-                addSuggestionsToMap(suggestionsMap, await this.getSuggestionsForFilepaths());
+            if (this.suggestions.size == 0) {
+                log.debug("no suggestions found");
+                await this.addSuggestionsForFilepaths();
             }
 
-            addSuggestionsToMap(suggestionsMap, await this.getSuggestionsForHistory());
+            await this.addSuggestionsForHistory();
 
-            const suggestionsArr = Array.from(suggestionsMap.values());
+            const suggestionsArr = Array.from(this.suggestions.values());
             sortSuggestions(suggestionsArr);
             return suggestionsArr;
         }
