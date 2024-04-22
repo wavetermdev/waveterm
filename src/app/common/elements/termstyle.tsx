@@ -93,13 +93,11 @@ class TermStyle extends React.Component<{
 }
 
 @mobxReact.observer
-class TermStyleList extends React.Component<{ children: (termStylesRendered: boolean) => React.ReactNode }, {}> {
+class TermStyleList extends React.Component<{ onRendered: () => void }, {}> {
     termStylesRendered: OV<boolean> = mobx.observable.box(false, { name: "termStylesRendered" });
 
     componentDidMount(): void {
-        mobx.action(() => {
-            this.termStylesRendered.set(true);
-        })();
+        this.props.onRendered();
     }
 
     getSelector(themeKey: string) {
@@ -126,7 +124,6 @@ class TermStyleList extends React.Component<{ children: (termStylesRendered: boo
                 <For index="idx" each="themeKey" of={Object.keys(termTheme)}>
                     <TermStyle key={themeKey} themeName={termTheme[themeKey]} selector={this.getSelector(themeKey)} />
                 </For>
-                {this.props.children(this.termStylesRendered.get())}
             </>
         );
     }
