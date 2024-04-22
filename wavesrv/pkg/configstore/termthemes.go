@@ -113,7 +113,7 @@ func SetupTermThemes(clientId string) {
 // Factory method for TermThemes
 func MakeTermThemes(clientId string) *TermThemes {
 	return &TermThemes{
-		Themes:      make(map[string]map[string]string),
+		Themes:      make(TermThemesType),
 		ClientId:    clientId,
 		Lock:        &sync.Mutex{},
 		ConnectTime: time.Now(),
