@@ -55,6 +55,25 @@ func Cleanup(t *testing.T, ctx context.Context) {
 
 }
 
+func CleanupName(t *testing.T, ctx context.Context, blockId string) {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_file where blockid = ?`
+		tx.Exec(query, blockId)
+		return nil
+	})
+	if txErr != nil {
+		t.Errorf("TestTx error deleting test entries: %v", txErr)
+	}
+	txErr = WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_data where blockid = ?`
+		tx.Exec(query, blockId)
+		return nil
+	})
+	if txErr != nil {
+		t.Errorf("TestTx error deleting test entries: %v", txErr)
+	}
+}
+
 func TestGetDB(t *testing.T) {
 	GetDBTimeout := 10 * time.Second
 	ctx, _ := context.WithTimeout(context.Background(), GetDBTimeout)
@@ -231,6 +250,7 @@ func TestMakeFile(t *testing.T) {
 }
 
 func TestWriteAt(t *testing.T) {
+	InitDBState()
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -327,6 +347,7 @@ func TestWriteAt(t *testing.T) {
 }
 
 func TestWriteAtLeftPad(t *testing.T) {
+	InitDBState()
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -343,6 +364,7 @@ func TestWriteAtLeftPad(t *testing.T) {
 	} else {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
+	log.Printf("LEFT PAD bytes written: %v\n", bytesWritten)
 	SimpleAssert(t, bytesWritten == 22, "Correct num bytes written")
 	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
@@ -613,6 +635,7 @@ func TestWriteAtCircular(t *testing.T) {
 }
 
 func TestWriteAtCircularWierdOffset(t *testing.T) {
+	InitDBState()
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -629,19 +652,26 @@ func TestWriteAtCircularWierdOffset(t *testing.T) {
 	if err != nil {
 		t.Errorf("Write at error: %v", err)
 	}
+	log.Printf("bytes written: %v %v", bytesWritten, int(fileSize+7))
 	SimpleAssert(t, bytesWritten == int(fileSize+7), "Correct num bytes written")
 
 	readTest := []byte{'T', 'E', 'S', 'T'}
 	readBuf := make([]byte, len(testBytesToWrite))
 	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, (fileSize)-4)
+	if err != nil {
+		t.Errorf("Read at error: %v", err)
+	}
 	SimpleAssert(t, bytesRead == 11, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf[:4], readTest), "Correct bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf, testBytesToWrite), "Correct bytes read")
-	log.Printf("readbuf circular %v %v", readBuf, string(readBuf))
+	log.Printf("readbuf circular %v %v bytesRead: %v", readBuf, string(readBuf), bytesRead)
 
 	readTest = []byte{'M', 'E', 'S', 'S', 'A', 'G', 'E'}
 	readBuf = make([]byte, len(testBytesToWrite))
 	bytesRead, err = ReadAt(ctx, "test-block-id", "file-1", &readBuf, 0)
+	if err != nil {
+		t.Errorf("Read at error: %v", err)
+	}
 	SimpleAssert(t, bytesRead == 11, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf[:7], readTest), "Correct bytes read")
 	log.Printf("readbuf circular %v %v, %v", readBuf, string(readBuf), bytesRead)
@@ -702,6 +732,7 @@ func AppendSyncWorker(t *testing.T, ctx context.Context, wg *sync.WaitGroup) {
 	SimpleAssert(t, bytesWritten == 1, "Correct bytes written")
 }
 func TestAppendSync(t *testing.T) {
+	InitDBState()
 	var wg sync.WaitGroup
 	numWorkers := 10
 	ctx := context.Background()
@@ -725,7 +756,62 @@ func TestAppendSync(t *testing.T) {
 	}
 	log.Printf("read buf : %v", readBuf)
 	SimpleAssert(t, bytesRead == numWorkers, "Correct bytes read")
-	Cleanup(t, ctx)
+	CleanupName(t, ctx, "test-block-id-sync")
+}
+
+func TestAppendSyncMultiple(t *testing.T) {
+	numTests := 100
+	for index := 0; index < numTests; index++ {
+		TestAppendSync(t)
+		log.Printf("finished test: %v", index)
+	}
+}
+
+func WriteAtSyncWorker(t *testing.T, ctx context.Context, wg *sync.WaitGroup, index int64) {
+	defer wg.Done()
+	writeBuf := make([]byte, 1)
+	rand.Read(writeBuf)
+	bytesWritten, err := WriteAt(ctx, "test-block-id-sync", "file-1", writeBuf, index)
+	if err != nil {
+		t.Errorf("Worker append err: %v", err)
+	}
+	log.Printf("worker bytes written: %v %v", bytesWritten, index)
+	SimpleAssert(t, bytesWritten == 1 || bytesWritten == int(index+1), "Correct bytes written")
+}
+
+func TestWriteAtSync(t *testing.T) {
+	InitDBState()
+	var wg sync.WaitGroup
+	numWorkers := 10
+	ctx := context.Background()
+	fileMeta := make(FileMeta)
+	fileMeta["test-descriptor"] = true
+	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	err := MakeFile(ctx, "test-block-id-sync", "file-1", fileMeta, fileOpts)
+	if err != nil {
+		t.Fatalf("MakeFile error: %v", err)
+	}
+	FlushCache(ctx)
+	for index := 0; index < numWorkers; index++ {
+		wg.Add(1)
+		go WriteAtSyncWorker(t, ctx, &wg, int64(index))
+	}
+	wg.Wait()
+	readBuf := make([]byte, numWorkers)
+	bytesRead, err := ReadAt(ctx, "test-block-id-sync", "file-1", &readBuf, 0)
+	if err != nil {
+		t.Errorf("Read Error: %v", err)
+	}
+	log.Printf("read buf : %v", readBuf)
+	SimpleAssert(t, bytesRead == numWorkers, "Correct num bytes read")
+	CleanupName(t, ctx, "test-block-id-sync")
+}
+
+func TestWriteAtSyncMultiple(t *testing.T) {
+	numTests := 100
+	for index := 0; index < numTests; index++ {
+		TestWriteAtSync(t)
+	}
 }
 
 // time consuming tests
