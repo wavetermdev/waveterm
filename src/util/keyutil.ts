@@ -29,7 +29,7 @@ type KeybindConfig = { command: string; keys: Array<string>; commandStr?: Array<
 
 const Callback = "callback";
 const Command = "command";
-const DumpLogs = true;
+const DumpLogs = false;
 
 type Keybind = {
     domain: string;
@@ -224,7 +224,6 @@ class KeybindManager {
 
     runSlashCommand(curKeybind: Keybind): boolean {
         let curConfigKeybind = this.keyDescriptionsMap.get(curKeybind.keybinding);
-        console.log("cur config keybind: ", curConfigKeybind.commandStr);
         if (
             curConfigKeybind == null ||
             curConfigKeybind.commandStr == null ||
@@ -232,7 +231,6 @@ class KeybindManager {
         ) {
             return false;
         }
-        console.log("running command");
         let commandsList = [...curConfigKeybind.commandStr];
         this.runIndividualSlashCommand(commandsList);
         return true;
@@ -287,7 +285,6 @@ class KeybindManager {
                     shouldRunCommand = false;
                 }
                 if (shouldRunCommand) {
-                    console.log("run slash command");
                     shouldReturn = this.runSlashCommand(curKeybind);
                 }
                 if (shouldReturn) {

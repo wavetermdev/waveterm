@@ -47,7 +47,10 @@ class SessionKeybindings extends React.Component<{}, {}> {
             return true;
         });
         for (let index = 1; index <= 9; index++) {
-            keybindManager.registerKeybinding("mainview", "session", "app:selectTab-" + index, null);
+            keybindManager.registerKeybinding("mainview", "session", "app:selectTab-" + index, (waveEvent) => {
+                GlobalModel.onSwitchScreenCmd(index);
+                return true;
+            });
         }
         keybindManager.registerKeybinding("mainview", "session", "app:selectTabLeft", (waveEvent) => {
             GlobalModel.onBracketCmd(-1);
