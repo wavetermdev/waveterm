@@ -229,7 +229,7 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 	activity.NumConns = remote.NumRemotes()
 	activity.NumWorkspaces, _ = sstore.NumSessions(r.Context())
 	activity.NumTabs, _ = sstore.NumScreens(r.Context())
-	err = telemetry.UpdateCurrentActivity(r.Context(), activity)
+	err = telemetry.UpdateActivity(r.Context(), activity)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))
 		return
@@ -1025,7 +1025,7 @@ func startupActivityUpdate() {
 	defer cancelFn()
 	activity.NumWorkspaces, _ = sstore.NumSessions(ctx)
 	activity.NumTabs, _ = sstore.NumScreens(ctx)
-	err := telemetry.UpdateCurrentActivity(ctx, activity) // set at least one record into activity (don't use go routine wrap here)
+	err := telemetry.UpdateActivity(ctx, activity) // set at least one record into activity (don't use go routine wrap here)
 	if err != nil {
 		log.Printf("error updating startup activity: %v\n", err)
 	}
@@ -1035,7 +1035,7 @@ func shutdownActivityUpdate() {
 	activity := telemetry.ActivityUpdate{Shutdown: 1}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancelFn()
-	err := telemetry.UpdateCurrentActivity(ctx, activity) // do NOT use the go routine wrap here (this needs to be synchronous)
+	err := telemetry.UpdateActivity(ctx, activity) // do NOT use the go routine wrap here (this needs to be synchronous)
 	if err != nil {
 		log.Printf("error updating shutdown activity: %v\n", err)
 	}

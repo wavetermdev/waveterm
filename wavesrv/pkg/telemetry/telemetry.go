@@ -14,6 +14,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
@@ -35,6 +36,8 @@ type ActivityUpdate struct {
 	ReinitZshErrors  int
 	Startup          int
 	Shutdown         int
+	FeAIChatOpen     int
+	FeHistoryOpen    int
 	BuildTime        string
 }
 
@@ -65,6 +68,8 @@ type TelemetryData struct {
 	NewTab           int `json:"newtab"`
 	NumStartup       int `json:"numstartup,omitempty"`
 	NumShutdown      int `json:"numshutdown,omitempty"`
+	NumAIChatOpen    int `json:"numaichatopen,omitempty"`
+	NumHistoryOpen   int `json:"numhistoryopen,omitempty"`
 	ReinitBashErrors int `json:"reinitbasherrors,omitempty"`
 	ReinitZshErrors  int `json:"reinitzsherrors,omitempty"`
 }
@@ -82,7 +87,7 @@ func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
 	go func() {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelFn()
-		err := UpdateCurrentActivity(ctx, update)
+		err := UpdateActivity(ctx, update)
 		if err != nil {
 			// ignore error, just log, since this is not critical
 			log.Printf("error updating current activity (%s): %v\n", debugStr, err)
@@ -186,10 +191,24 @@ func atoiNoErr(str string) int {
 	return val
 }
 
+func UpdateFeActivityWrap(feActivity *scpacket.FeActivityPacketType) {
+	update := ActivityUpdate{}
+	for key, val := range feActivity.Activity {
+		if key == "aichat-open" {
+			update.FeAIChatOpen = val
+		} else if key == "history-open" {
+			update.FeHistoryOpen = val
+		} else {
+			log.Printf("unknown feactivity key: %s\n", key)
+		}
+	}
+	GoUpdateActivityWrap(update, "feactivity")
+}
+
 var customDayStrRe = regexp.MustCompile(`^((?:\d{4}-\d{2}-\d{2})|today|yesterday|bom|bow)?((?:[+-]\d+[dwm])*)$`)
 var daystrRe = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})$`)
 
-func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
+func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 	now := time.Now()
 	dayStr := GetCurDayStr()
 	txErr := sstore.WithTx(ctx, func(tx *sstore.TxWrap) error {
@@ -217,6 +236,8 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.NewTab += update.NewTab
 		tdata.NumStartup += update.Startup
 		tdata.NumShutdown += update.Shutdown
+		tdata.NumAIChatOpen += update.FeAIChatOpen
+		tdata.NumHistoryOpen += update.FeHistoryOpen
 		if update.NumConns > 0 {
 			tdata.NumConns = update.NumConns
 		}
