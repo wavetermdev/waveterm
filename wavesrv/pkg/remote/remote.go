@@ -2668,13 +2668,20 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 		}
 		rawSecret = []byte(guiResponse.Text)
 	}
-	//new
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	clientData, err := sstore.EnsureClientData(ctx)
+	pwTimeout := time.Duration(clientData.FeOpts.SudoPwTimeout) * time.Minute
+	if err != nil {
+		return fmt.Errorf("*error: cannot obtain client data: %v", err)
+	}
 	msh.WithLock(func() {
 		msh.sudoPw = rawSecret
 		if msh.sudoClearDeadline == 0 {
 			go msh.startSudoPwClearChecker()
 		}
-		msh.sudoClearDeadline = time.Now().Add(SudoTimeoutTime).Unix()
+		msh.sudoClearDeadline = time.Now().Add(pwTimeout).Unix()
 	})
 
 	srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
