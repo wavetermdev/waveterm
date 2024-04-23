@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as electron from "electron";
+import * as util from "@/util/util";
 import { parse } from "node:path";
 import { v4 as uuidv4 } from "uuid";
 import defaultKeybindingsFile from "../../assets/default-keybindings.json";
@@ -230,6 +231,7 @@ class KeybindManager {
         if (
             curConfigKeybind == null ||
             curConfigKeybind.commandStr == null ||
+            !util.isArray(curConfigKeybind.commandStr) ||
             curConfigKeybind.commandStr.length == 0
         ) {
             return false;
