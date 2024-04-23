@@ -621,6 +621,11 @@ class Model {
         if (activeScreen == null) {
             return;
         }
+        let numLines = activeScreen.getScreenLines().lines.length;
+        if (numLines < 10) {
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
+            return;
+        }
         const rtnp = this.showAlert({
             message: "Are you sure you want to delete this tab?",
             confirm: true,
@@ -629,7 +634,7 @@ class Model {
             if (!result) {
                 return;
             }
-            GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
         });
     }
 

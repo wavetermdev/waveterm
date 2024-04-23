@@ -14,19 +14,15 @@
     // TODO: use a generic selector for this
     &.has-aichat,
     &.has-history,
-    &.has-info {
+    &.has-info,
+    &.has-suggestions {
         .base-cmdinput {
             border-top: 1px solid var(--app-border-color);
         }
     }
 
-    &.has-info {
-        padding-top: var(--termpad);
-    }
-
     &.has-history,
     &.has-aichat {
-        padding-top: var(--termpad);
         height: max(300px, 70%);
     }
 
@@ -109,9 +105,11 @@
                 }
             }
 
-            textarea {
-                color: var(--app-text-primary-color);
-                background-color: var(--app-bg-color);
+            .textarea,
+            .textarea-ghost {
+                position: absolute;
+                top: 0;
+                left: 0;
                 padding: var(--termpad) 0;
                 resize: none;
                 overflow: auto;
@@ -119,8 +117,19 @@
                 font-family: var(--termfontfamily);
                 line-height: var(--termlineheight);
                 font-size: var(--termfontsize);
+                background-color: transparent;
                 border: none;
                 box-shadow: none;
+            }
+
+            .textarea {
+                color: var(--app-text-primary-color);
+                z-index: 2;
+            }
+
+            .textarea-ghost {
+                color: var(--app-text-secondary-color);
+                z-index: 1;
             }
 
             input.history-input {

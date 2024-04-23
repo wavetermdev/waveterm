@@ -38,7 +38,7 @@ function scrollDiv(div: any, amt: number) {
     div.scrollTo({ top: newScrollTop, behavior: "smooth" });
 }
 
-class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
+class HistoryKeybindings extends React.Component<{}, {}> {
     componentDidMount(): void {
         if (GlobalModel.activeMainView != "session") {
             return;
@@ -101,8 +101,8 @@ class HistoryKeybindings extends React.Component<{ inputObject: TextAreaInput },
 }
 
 class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }, {}> {
-    lastTab: boolean;
     curPress: string;
+    lastTab: boolean;
 
     componentDidMount() {
         if (GlobalModel.activeMainView != "session") {
@@ -240,9 +240,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
 
 @mobxReact.observer
 class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: () => void }, {}> {
-    lastTab: boolean = false;
     lastHistoryUpDown: boolean = false;
-    lastTabCurLine: OV<string> = mobx.observable.box(null);
     lastFocusType: string = null;
     mainInputRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
     historyInputRef: React.RefObject<HTMLInputElement> = React.createRef();
@@ -612,10 +610,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 style={{ height: computedOuterHeight }}
             >
                 <If condition={!auxViewFocused}>
-                    <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
+                    <CmdInputKeybindings inputObject={this} />
                 </If>
                 <If condition={isHistoryFocused}>
-                    <HistoryKeybindings inputObject={this}></HistoryKeybindings>
+                    <HistoryKeybindings />
                 </If>
 
                 <If condition={!util.isBlank(shellType)}>

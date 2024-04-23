@@ -3,26 +3,28 @@
 
 import * as React from "react";
 import cn from "classnames";
-import { If } from "tsx-control-statements/components";
+import { Choose, If, Otherwise, When } from "tsx-control-statements/components";
+import { observer } from "mobx-react";
 
 import "./auxview.less";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
-export class AuxiliaryCmdView extends React.Component<
-    {
-        title: string;
-        className?: string;
-        iconClass?: string;
-        titleBarContents?: React.ReactElement[];
-        children?: React.ReactNode;
-        onClose?: React.MouseEventHandler<HTMLDivElement>;
-    },
-    {}
-> {
-    render() {
-        const { title, className, iconClass, titleBarContents, children, onClose } = this.props;
+interface AuxiliaryCmdViewProps {
+    title: string;
+    className?: string;
+    iconClass?: string;
+    titleBarContents?: React.ReactElement[];
+    children?: React.ReactNode;
+    onClose?: React.MouseEventHandler<HTMLDivElement>;
+    scrollable?: boolean;
+}
 
-        return (
-            <div className={cn("auxview", className)}>
+export const AuxiliaryCmdView: React.FC<AuxiliaryCmdViewProps> = observer((props) => {
+    const { title, className, iconClass, titleBarContents, children, onClose } = props;
+
+    return (
+        <div className={cn("auxview", className)}>
+            <If condition={title || onClose || titleBarContents || iconClass}>
                 <div className="auxview-titlebar">
                     <If condition={iconClass != null}>
                         <div className="title-icon">
@@ -41,10 +43,22 @@ export class AuxiliaryCmdView extends React.Component<
                         </div>
                     </If>
                 </div>
-                <If condition={children != null}>
-                    <div className="auxview-content">{children}</div>
-                </If>
-            </div>
-        );
-    }
-}
+            </If>
+            <If condition={children != null}>
+                <Choose>
+                    <When condition={props.scrollable}>
+                        <OverlayScrollbarsComponent
+                            className="auxview-content"
+                            options={{ scrollbars: { autoHide: "leave" } }}
+                        >
+                            {children}
+                        </OverlayScrollbarsComponent>
+                    </When>
+                    <Otherwise>
+                        <div className="auxview-content">{children}</div>
+                    </Otherwise>
+                </Choose>
+            </If>
+        </div>
+    );
+});
