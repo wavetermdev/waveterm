@@ -20,7 +20,7 @@ export class AutocompleteModel {
     globalModel: Model;
     suggestions: OV<Fig.Suggestion[]> = mobx.observable.box(null);
     primarySuggestionIndex: OV<number> = mobx.observable.box(0);
-    lastCharsToDrop: number = 0;
+    charsToDrop: number = 0;
     @mobx.observable historyLoaded: boolean = false;
 
     constructor(globalModel: Model) {
@@ -140,16 +140,14 @@ export class AutocompleteModel {
             const curLine = this.globalModel.inputModel.curLine;
             const curEndTokenLen = getEndTokenLength(curLine);
             const lastEndTokenLen = getEndTokenLength(this.globalModel.inputModel.lastCurLine);
-            let charactersToDrop = retVal.length - curEndTokenLen;
             if (curEndTokenLen > lastEndTokenLen) {
-                charactersToDrop = Math.max(curEndTokenLen, this.lastCharsToDrop ?? 0);
+                this.charsToDrop = Math.max(curEndTokenLen, this.charsToDrop ?? 0);
             } else {
-                charactersToDrop = Math.min(curEndTokenLen, this.lastCharsToDrop ?? 0);
+                this.charsToDrop = Math.min(curEndTokenLen, this.charsToDrop ?? 0);
             }
-            this.lastCharsToDrop = charactersToDrop;
 
-            if (charactersToDrop > 0) {
-                retVal = retVal.substring(charactersToDrop);
+            if (this.charsToDrop > 0) {
+                retVal = retVal.substring(this.charsToDrop);
             }
             log.debug("ghost prompt", curLine + retVal);
         }

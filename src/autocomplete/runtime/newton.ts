@@ -515,14 +515,14 @@ export class Newton {
             args = getAll(this.currentOption.args);
         }
 
-        function incrementArgIndex() {
+        const incrementArgIndex = () => {
             argIndex++;
             if (this.curState == ParserState.OptionArgument) {
                 this.optionArgIndex++;
             } else {
                 this.argIndex++;
             }
-        }
+        };
 
         if (!entry || args.length == 0) {
             log.debug("returning early from parseArgument", this.prevState);
@@ -578,13 +578,14 @@ export class Newton {
     private prepareSuggestion(
         suggestion: Fig.Suggestion,
         partialCmd: string,
-        defaultType: Fig.SuggestionType
+        defaultType: Fig.SuggestionType,
+        prefixStr: string = ""
     ): Fig.Suggestion {
         if (suggestion == undefined) {
             return undefined;
         }
         const suggestionMin: Fig.Suggestion = {
-            name: suggestion.name,
+            name: prefixStr + suggestion.name,
             displayName: suggestion.displayName,
             description: suggestion.description,
             icon: suggestion.icon,
@@ -592,6 +593,8 @@ export class Newton {
             insertValue: suggestion.insertValue,
             priority: suggestion.priority,
         };
+        log.debug("name: ", suggestionMin.name, "partialCmd: ", partialCmd, "prefixStr: ", prefixStr);
+
         if (!suggestionMin.type) {
             suggestionMin.type = defaultType;
         }
@@ -604,9 +607,20 @@ export class Newton {
             for (const name in getAll(suggestionMin.name)) {
                 if (name.startsWith(partialCmd) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
                     suggestionMin.insertValue = name;
+                    log.debug("insertValue", suggestionMin.insertValue);
                 }
             }
+
             suggestionMin.insertValue = suggestionMin.insertValue?.substring(partialCmd.length);
+        } else {
+            // Handle situations where the maintainer of the spec includes the command in the insertValue, failing to account for the fact that the user may have already typed the command.
+            const startsWithPartialCmd = suggestionMin.insertValue.startsWith(partialCmd);
+            for (const name in getAll(suggestionMin.name)) {
+                if (suggestionMin.insertValue.startsWith(name) && !startsWithPartialCmd) {
+                    suggestionMin.insertValue = suggestionMin.insertValue.substring(name.length);
+                    break;
+                }
+            }
         }
         if (!suggestionMin.priority) {
             switch (suggestionMin.type) {
@@ -641,7 +655,8 @@ export class Newton {
         suggestions: (Fig.Suggestion | string)[],
         filterStrategy: FilterStrategy,
         partialCmd: string,
-        suggestionType: Fig.SuggestionType
+        suggestionType: Fig.SuggestionType,
+        prefixStr?: string
     ) {
         log.debug(
             "filter",
@@ -656,7 +671,7 @@ export class Newton {
         );
         const suggestionsArr = suggestions.map((s) => (typeof s === "string" ? { name: s } : s));
         if (!partialCmd || partialCmd === " ") {
-            this.addSuggestionsToMap(suggestionsArr, suggestionType);
+            this.addSuggestionsToMap(suggestionsArr, suggestionType, prefixStr);
             return;
         }
 
@@ -669,7 +684,7 @@ export class Newton {
                     return matchedName != null ? s : undefined;
                 }
                 if (s.name.toLowerCase().includes(partialCmd.toLowerCase())) {
-                    this.addSuggestionsToMap([s], suggestionType);
+                    this.addSuggestionsToMap([s], suggestionType, prefixStr);
                 }
             });
         } else {
@@ -681,23 +696,23 @@ export class Newton {
                     return matchedName != null ? s : undefined;
                 }
                 if (s.name.toLowerCase().startsWith(partialCmd.toLowerCase())) {
-                    this.addSuggestionsToMap([s], suggestionType);
+                    this.addSuggestionsToMap([s], suggestionType, prefixStr);
                 }
             });
         }
     }
 
-    private addSuggestionsToMap(suggestions: Fig.Suggestion[], suggestionType: Fig.SuggestionType) {
+    private addSuggestionsToMap(suggestions: Fig.Suggestion[], suggestionType: Fig.SuggestionType, prefixStr?: string) {
         log.debug("addSuggestionsToMap", suggestions);
         suggestions?.forEach((suggestion) => {
             this.suggestions.set(
                 getFirst(suggestion.name),
-                this.prepareSuggestion(suggestion, this.currentEntry, suggestionType)
+                this.prepareSuggestion(suggestion, this.currentEntry, suggestionType, prefixStr)
             );
         });
     }
 
-    private async addSuggestionsForArg(arg: Fig.Arg): Promise<number> {
+    private async addSuggestionsForArg(arg: Fig.Arg, prefixStr?: string): Promise<number> {
         let entry = this.lastEntry;
 
         const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwdToken(entry, this.cwd, this.shell);
@@ -726,7 +741,13 @@ export class Newton {
             suggestions.push(...(await runTemplates(arg.template ?? [], resolvedCwd)));
         }
 
-        this.filterSuggestionsAndAddToMap(suggestions, arg.filterStrategy ?? this.spec.filterStrategy, entry, "arg");
+        this.filterSuggestionsAndAddToMap(
+            suggestions,
+            arg.filterStrategy ?? this.spec.filterStrategy,
+            entry,
+            "arg",
+            prefixStr
+        );
         return suggestions.length;
     }
 
@@ -1067,14 +1088,29 @@ export class Newton {
                     }
                     break;
                 case ParserState.OptionArgument: {
-                    log.debug("OptionArgument", "currentArgs: ", this.currentOption.args, "argIndex: ", this.argIndex);
                     // The parser is currently matching option arguments, so suggest all available arguments for the current option.
-                    const args = getAll(this.currentOption.args);
+                    const option = this.currentOption;
+                    log.debug("OptionArgument", "currentArgs: ", option.args, "argIndex: ", this.argIndex);
+
+                    const args = getAll(option.args);
                     const argIndex = this.optionArgIndex;
                     if (args && argIndex < args.length) {
                         const arg = args[argIndex];
                         if (arg) {
-                            await this.addSuggestionsForArg(arg);
+                            if (option.requiresSeparator) {
+                                log.debug(
+                                    "requiresSeparator",
+                                    option.requiresSeparator,
+                                    this.entries[this.entryIndex - 1]
+                                );
+                                const prefixStr =
+                                    this.entries[this.entryIndex - 1] +
+                                    (option.requiresSeparator === true ? "=" : option.requiresSeparator);
+                                log.debug("prefixStr", prefixStr);
+                                await this.addSuggestionsForArg(arg, prefixStr);
+                            } else {
+                                await this.addSuggestionsForArg(arg);
+                            }
                         }
                     }
                     break;
