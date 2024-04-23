@@ -1,5 +1,7 @@
 // For the additonal views, we want less padding on the top and bottom than we want for the base-cmdinput div
 .auxview {
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
     height: 100%;
 
@@ -10,6 +12,7 @@
         color: var(--term-blue);
         padding: 6px 10px 6px 10px;
         display: flex;
+        flex: 0 0 auto;
         flex-direction: row;
         width: 100%;
         border-bottom: 1px solid var(--app-border-color);
@@ -41,8 +44,8 @@
 
     .auxview-content {
         display: flex;
-        height: calc(100% - var(--auxview-titlebar-height) - 13px);
         padding: var(--termpad) calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 3 - 1px);
+        flex: 1 1 auto;
         overflow-y: auto;
     }
 }
