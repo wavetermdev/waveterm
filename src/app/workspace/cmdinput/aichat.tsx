@@ -245,6 +245,7 @@ class AIChat extends React.Component<{}, {}> {
                     <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
                 </If>
                 <div className="chat-window" ref={this.chatWindowScrollRef}>
+                    <div className="filler"></div>
                     <For each="chitem" index="idx" of={chatMessageItems}>
                         {this.renderChatMessage(chitem)}
                     </For>
