@@ -5978,6 +5978,12 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		if err != nil {
 			return nil, fmt.Errorf("error updating client feopts: %v", err)
 		}
+		// clear all sudo pw if turning off
+		if feOpts.SudoPwStore == "off" {
+			for _, proc := range remote.GetRemoteMap() {
+				proc.ClearCachedSudoPw()
+			}
+		}
 		varsUpdated = append(varsUpdated, "sudopwstore")
 	}
 	if sudoPwTimeoutStr, found := pk.Kwargs["sudopwtimeout"]; found {
