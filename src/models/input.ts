@@ -155,7 +155,6 @@ class InputModel {
                     this.setAIChatFocus();
                     break;
                 case null: {
-                    console.log("focusing");
                     const elem = document.getElementById("main-cmd-input");
                     if (elem != null) {
                         elem.focus();
@@ -478,7 +477,6 @@ class InputModel {
             this.auxViewFocus.set(view != null);
             this.activeAuxView.set(view);
         })();
-        console.log("giving focus?");
         this.giveFocus();
     }
 
