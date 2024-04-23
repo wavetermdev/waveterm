@@ -351,7 +351,7 @@ class KeybindManager {
                 }
             }
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
-                if (this.globalModel.isDev) {
+                if (DumpLogs) {
                     console.log("keybind found", curKeybind);
                 }
                 let shouldReturn = false;
