@@ -29,7 +29,6 @@ type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string
 
 const Callback = "callback";
 const Command = "command";
-const DumpLogs = false;
 
 type Keybind = {
     domain: string;
@@ -259,7 +258,7 @@ class KeybindManager {
                 }
             }
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
-                if (DumpLogs) {
+                if (this.globalModel.isDev) {
                     console.log("keybind found", curKeybind);
                 }
                 let shouldReturn = false;
@@ -314,7 +313,7 @@ class KeybindManager {
                 }
             }
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
-                if (DumpLogs) {
+                if (this.globalModel.isDev) {
                     console.log("keybind found", curKeybind);
                 }
                 let shouldReturn = false;
@@ -355,7 +354,7 @@ class KeybindManager {
             let systemLevel = this.levelMap.get("system");
             return this.processLevel(nativeEvent, event, systemLevel);
         }
-        if (DumpLogs) {
+        if (this.globalModel.isDev) {
             console.log("levels:", this.levelMap, "event:", event);
         }
         for (let index = this.levelArray.length - 1; index >= 0; index--) {
@@ -383,6 +382,15 @@ class KeybindManager {
         for (let index = 0; index < keybindsArray.length; index++) {
             let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
+                if (this.globalModel.isDev) {
+                    console.log(
+                        "keybinding already added",
+                        curKeybind.keybinding,
+                        keybinding,
+                        curKeybind.domain,
+                        domain
+                    );
+                }
                 return true;
             }
         }
