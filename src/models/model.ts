@@ -294,7 +294,10 @@ class Model {
 
     initAppKeybindings() {
         for (let index = 1; index <= 9; index++) {
-            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, (waveEvent) => {
+                this.onSwitchSessionCmd(index);
+                return true;
+            });
         }
         this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
             this.onFocusCmdInputPressed();
@@ -843,6 +846,10 @@ class Model {
         } else if (relative == -1) {
             GlobalCommandRunner.switchScreen("-");
         }
+    }
+
+    onSwitchScreenCmd(digit: number) {
+        GlobalCommandRunner.switchScreen(String(digit));
     }
 
     onSwitchSessionCmd(digit: number) {

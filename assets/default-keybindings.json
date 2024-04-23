@@ -107,12 +107,12 @@
     {
       "command": "app:openConnectionsView", 
       "keys": [],
-      "commandStr": "/mainview connections"
+      "commandStr": ["/mainview connections"]
     },
     {
       "command": "app:openSettingsView", 
       "keys": [],
-      "commandStr": "/mainview clientsettings"
+      "commandStr": ["/mainview clientsettings"]
     },
     {
       "command": "app:newTab",
@@ -149,48 +149,39 @@
     },
     {
       "command": "app:selectTab-1",
-      "keys": ["Cmd:1"],
-      "commandStr":"/screen 1"
+      "keys": ["Cmd:1"]
     },
     {
       "command": "app:selectTab-2",
-      "keys": ["Cmd:2"],
-      "commandStr":"/screen 2"
+      "keys": ["Cmd:2"]
     },
     {
       "command": "app:selectTab-3",
-      "keys": ["Cmd:3"],
-      "commandStr":"/screen 3"
+      "keys": ["Cmd:3"]
     },
     {
       "command": "app:selectTab-4",
-      "keys": ["Cmd:4"],
-      "commandStr":"/screen 4"
+      "keys": ["Cmd:4"]
     },
     {
       "command": "app:selectTab-5",
-      "keys": ["Cmd:5"],
-      "commandStr":"/screen 5"
+      "keys": ["Cmd:5"]
     },
     {
       "command": "app:selectTab-6",
-      "keys": ["Cmd:6"],
-      "commandStr":"/screen 6"
+      "keys": ["Cmd:6"]
     },
     {
       "command": "app:selectTab-7",
-      "keys": ["Cmd:7"],
-      "commandStr":"/screen 7"
+      "keys": ["Cmd:7"]
     },
     {
       "command": "app:selectTab-8",
-      "keys": ["Cmd:8"],
-      "commandStr":"/screen 8"
+      "keys": ["Cmd:8"]
     },
     {
       "command": "app:selectTab-9",
-      "keys": ["Cmd:9"],
-      "commandStr":"/screen 9"
+      "keys": ["Cmd:9"]
     },
     {
       "command": "app:selectTabLeft",
@@ -202,48 +193,39 @@
     },
     {
       "command": "app:selectWorkspace-1",
-      "keys": ["Cmd:Ctrl:1"],
-      "commandStr": "/session 1"
+      "keys": ["Cmd:Ctrl:1"]
     },
     {
       "command": "app:selectWorkspace-2",
-      "keys": ["Cmd:Ctrl:2"],
-      "commandStr": "/session 2"
+      "keys": ["Cmd:Ctrl:2"]
     },
     {
       "command": "app:selectWorkspace-3",
-      "keys": ["Cmd:Ctrl:3"],
-      "commandStr": "/session 3"
+      "keys": ["Cmd:Ctrl:3"]
     },
     {
       "command": "app:selectWorkspace-4",
-      "keys": ["Cmd:Ctrl:4"],
-      "commandStr": "/session 4"
+      "keys": ["Cmd:Ctrl:4"]
     },
     {
       "command": "app:selectWorkspace-5",
-      "keys": ["Cmd:Ctrl:5"],
-      "commandStr": "/session 5"
+      "keys": ["Cmd:Ctrl:5"]
     },
     {
       "command": "app:selectWorkspace-6",
-      "keys": ["Cmd:Ctrl:6"],
-      "commandStr": "/session 6"
+      "keys": ["Cmd:Ctrl:6"]
     },
     {
       "command": "app:selectWorkspace-7",
-      "keys": ["Cmd:Ctrl:7"],
-      "commandStr": "/session 7"
+      "keys": ["Cmd:Ctrl:7"]
     },
     {
       "command": "app:selectWorkspace-8",
-      "keys": ["Cmd:Ctrl:8"],
-      "commandStr": "/session 8"
+      "keys": ["Cmd:Ctrl:8"]
     },
     {
       "command": "app:selectWorkspace-9",
-      "keys": ["Cmd:Ctrl:9"],
-      "commandStr": "/session 9"
+      "keys": ["Cmd:Ctrl:9"]
     },
     {
       "command": "app:toggleSidebar",
@@ -256,7 +238,7 @@
     {
       "command": "app:openBookmarksView",
       "keys": ["Cmd:b"],
-      "commandStr": "/bookmarks:show"
+      "commandStr": ["/bookmarks:show"]
     },
     {
       "command": "bookmarks:edit",
@@ -301,7 +283,7 @@
     {
       "command": "cmdinput:openHistory",
       "keys": ["Ctrl:r"],
-      "commandStr": "/history"
+      "commandStr": ["/history"]
     },
     {
       "command": "cmdinput:openAIChat",
