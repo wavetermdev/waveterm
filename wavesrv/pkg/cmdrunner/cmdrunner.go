@@ -2897,7 +2897,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		return nil, fmt.Errorf("error retrieving client open ai options")
 	}
 	opts := clientData.OpenAIOpts
-	if opts.APIToken == "" {
+	if opts.APIToken == "" && opts.BaseURL == "" {
 		if clientData.ClientOpts.NoTelemetry {
 			return nil, fmt.Errorf(OpenAICloudCompletionTelemetryOffErrorMsg)
 		}
