@@ -254,6 +254,16 @@ class KeybindManager {
                 setTimeout(() => {
                     return this.runIndividualSlashCommand(commandsList);
                 }, this.consoleCommandWait);
+            } else if (curCommand.includes("/sleep")) {
+                const sleepMsStr = curCommand.trim().replace("/sleep", "").trim();
+                const sleepMs = Number(sleepMsStr);
+                if (Number.isNaN(sleepMs)) {
+                    console.log("sleep error: couldn't parse arg");
+                    return false;
+                }
+                setTimeout(() => {
+                    return this.runIndividualSlashCommand(commandsList);
+                }, sleepMs);
             } else {
                 return this.runIndividualSlashCommand(commandsList);
             }
