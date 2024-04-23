@@ -90,6 +90,7 @@
         "electron": "^29.0.1",
         "electron-builder": "^24.13.3",
         "electron-builder-squirrel-windows": "^24.13.3",
+        "electron-rebuild":"3.2.9",
         "file-loader": "^6.2.0",
         "http-server": "^14.1.1",
         "less": "^4.1.2",
