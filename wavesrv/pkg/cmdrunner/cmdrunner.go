@@ -5787,12 +5787,11 @@ func validateFontFamily(fontFamily string) error {
 	return nil
 }
 
-func CheckOptionAlias(kwargs map[string]string, alias1 string, alias2 string) (string, bool) {
-	if val, found := kwargs[alias1]; found {
-		return val, found
-	}
-	if val, found := kwargs[alias2]; found {
-		return val, found
+func CheckOptionAlias(kwargs map[string]string, aliases ...string) (string, bool) {
+	for _, alias := range aliases {
+		if val, found := kwargs[alias]; found {
+			return val, found
+		}
 	}
 	return "", false
 }
@@ -5883,7 +5882,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		aiOpts.APIToken = apiToken
 		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
 		if err != nil {
-			return nil, fmt.Errorf("error updating client openai api token: %v", err)
+			return nil, fmt.Errorf("error updating client ai api token: %v", err)
 		}
 	}
 	if aiModel, found := CheckOptionAlias(pk.Kwargs, "openaimodel", "aimodel"); found {
@@ -5900,16 +5899,16 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		aiOpts.Model = aiModel
 		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
 		if err != nil {
-			return nil, fmt.Errorf("error updating client openai model: %v", err)
+			return nil, fmt.Errorf("error updating client ai model: %v", err)
 		}
 	}
 	if maxTokensStr, found := CheckOptionAlias(pk.Kwargs, "openaimaxtokens", "aimaxtokens"); found {
 		maxTokens, err := strconv.Atoi(maxTokensStr)
 		if err != nil {
-			return nil, fmt.Errorf("error updating client openai maxtokens, invalid number: %v", err)
+			return nil, fmt.Errorf("error updating client ai maxtokens, invalid number: %v", err)
 		}
 		if maxTokens < 0 || maxTokens > 1000000 {
-			return nil, fmt.Errorf("error updating client openai maxtokens, out of range: %d", maxTokens)
+			return nil, fmt.Errorf("error updating client ai maxtokens, out of range: %d", maxTokens)
 		}
 		varsUpdated = append(varsUpdated, "openaimaxtokens")
 		aiOpts := clientData.OpenAIOpts
@@ -5920,16 +5919,16 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		aiOpts.MaxTokens = maxTokens
 		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
 		if err != nil {
-			return nil, fmt.Errorf("error updating client openai maxtokens: %v", err)
+			return nil, fmt.Errorf("error updating client ai maxtokens: %v", err)
 		}
 	}
 	if maxChoicesStr, found := CheckOptionAlias(pk.Kwargs, "openaimaxchoices", "aimaxchoices"); found {
 		maxChoices, err := strconv.Atoi(maxChoicesStr)
 		if err != nil {
-			return nil, fmt.Errorf("error updating client openai maxchoices, invalid number: %v", err)
+			return nil, fmt.Errorf("error updating client ai maxchoices, invalid number: %v", err)
 		}
 		if maxChoices < 0 || maxChoices > 10 {
-			return nil, fmt.Errorf("error updating client openai maxchoices, out of range: %d", maxChoices)
+			return nil, fmt.Errorf("error updating client ai maxchoices, out of range: %d", maxChoices)
 		}
 		varsUpdated = append(varsUpdated, "openaimaxchoices")
 		aiOpts := clientData.OpenAIOpts
@@ -5940,7 +5939,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		aiOpts.MaxChoices = maxChoices
 		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
 		if err != nil {
-			return nil, fmt.Errorf("error updating client openai maxchoices: %v", err)
+			return nil, fmt.Errorf("error updating client ai maxchoices: %v", err)
 		}
 	}
 	if aiBaseURL, found := CheckOptionAlias(pk.Kwargs, "openaibaseurl", "aibaseurl"); found {
@@ -5953,13 +5952,13 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		varsUpdated = append(varsUpdated, "openaibaseurl")
 		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
 		if err != nil {
-			return nil, fmt.Errorf("error updating client openai base url: %v", err)
+			return nil, fmt.Errorf("error updating client ai base url: %v", err)
 		}
 	}
 	if aiTimeoutStr, found := CheckOptionAlias(pk.Kwargs, "openaitimeout", "aitimeout"); found {
 		aiTimeout, err := strconv.Atoi(aiTimeoutStr)
 		if err != nil {
-			return nil, fmt.Errorf("error updating client openai timeout, invalid number: %v", err)
+			return nil, fmt.Errorf("error updating client ai timeout, invalid number: %v", err)
 		}
 		aiOpts := clientData.OpenAIOpts
 		if aiOpts == nil {
@@ -5970,7 +5969,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		varsUpdated = append(varsUpdated, "openaitimeout")
 		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
 		if err != nil {
-			return nil, fmt.Errorf("error updating client openai timeout: %v", err)
+			return nil, fmt.Errorf("error updating client ai timeout: %v", err)
 		}
 	}
 	if webglStr, found := pk.Kwargs["webgl"]; found {
