@@ -243,6 +243,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                 onClose={this.handleClose}
                 titleBarContents={this.getTitleBarContents()}
                 iconClass="fa-sharp fa-solid fa-clock-rotate-left"
+                scrollable={true}
             >
                 <div
                     className={cn(

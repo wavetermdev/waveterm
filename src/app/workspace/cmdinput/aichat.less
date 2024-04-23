@@ -2,18 +2,19 @@
     padding-bottom: 0 !important;
     .auxview-content {
         flex-flow: column nowrap;
-        height: 100%;
 
         .chat-window {
+            display: flex;
             overflow-y: auto;
             margin-bottom: 5px;
             flex: 1 1 auto;
             flex-direction: column-reverse;
+            height: 100%;
         }
 
         .chat-input {
             padding: 0.5em 0.5em 0.5em 0.5em;
-            flex: 1 0 auto;
+            flex: 0 0 auto;
 
             .chat-textarea {
                 color: var(--app-text-primary-color);
