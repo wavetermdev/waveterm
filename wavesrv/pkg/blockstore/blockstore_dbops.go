@@ -162,3 +162,43 @@ func GetCacheFromDB(ctx context.Context, blockId string, name string, off int64,
 		return cacheData, nil
 	})
 }
+
+func DeleteFileFromDB(ctx context.Context, blockId string, name string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_file where blockid = ? AND name = ?`
+		tx.Exec(query, blockId, name)
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	txErr = WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_data where blockid = ? AND name = ?`
+		tx.Exec(query, blockId, name)
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}
+
+func DeleteBlockFromDB(ctx context.Context, blockId string) error {
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_file where blockid = ?`
+		tx.Exec(query, blockId)
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	txErr = WithTx(ctx, func(tx *TxWrap) error {
+		query := `DELETE from block_data where blockid = ?`
+		tx.Exec(query, blockId)
+		return nil
+	})
+	if txErr != nil {
+		return txErr
+	}
+	return nil
+}

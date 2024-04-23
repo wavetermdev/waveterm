@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -68,6 +69,7 @@ type BlockStore interface {
 
 var cache map[string]*CacheEntry = make(map[string]*CacheEntry)
 var globalLock *sync.Mutex = &sync.Mutex{}
+var appendLock *sync.Mutex = &sync.Mutex{}
 
 func InsertFileIntoDB(ctx context.Context, fileInfo FileInfo) error {
 	metaJson, err := json.Marshal(fileInfo.Meta)
@@ -145,25 +147,17 @@ func WriteToCacheBlock(ctx context.Context, blockId string, name string, block *
 			leftPadBytes = append(leftPadBytes, 0)
 		}
 		leftPadPos := int64(pos) - numLeftPad
-		log.Printf("Writing to cache block: %v %p", block, block)
 		b, err := WriteToCacheBuf(&block.data, leftPadBytes, int(leftPadPos), int(numLeftPad), maxWriteSize)
-		log.Printf("left pad: %v %v wrote %v bytes - %v", leftPadPos, numLeftPad, b, block.data[numLeftPad:])
 		if err != nil {
 			return int64(b), b, err
 		}
-		bytesWritten += b
 		numLeftPad = int64(b)
 		cacheEntry.Info.Size += (int64(cacheNum) * MaxBlockSize)
-		log.Printf("mk1 %v %v", bytesWritten, b)
 	}
 	b, writeErr := WriteToCacheBuf(&block.data, p, pos, length, maxWriteSize)
 	bytesWritten += b
-	log.Printf("mk2 %v %v %v", bytesWritten, b, string(block.data[numLeftPad:]))
 	blockLenDiff := len(block.data) - blockLen
 	block.size += blockLenDiff
-	if blockId == "test-block-id-sync" {
-		log.Printf("updateing size %v plus %v - data: %v", cacheEntry.Info.Size, blockLenDiff, block.data)
-	}
 	cacheEntry.Info.Size += int64(blockLenDiff)
 	return numLeftPad, bytesWritten, writeErr
 }
@@ -222,7 +216,17 @@ func WriteToCacheBuf(buf *[]byte, p []byte, pos int, length int, maxWrite int64)
 }
 
 func GetCacheId(blockId string, name string) string {
-	return blockId + "-" + name
+	return blockId + "~SEP~" + name
+}
+
+func GetValuesFromCacheId(cacheId string) (blockId string, name string) {
+	vals := strings.Split(cacheId, "~SEP~")
+	if len(vals) == 2 {
+		return vals[0], vals[1]
+	} else {
+		log.Println("Failure in GetValuesFromCacheId, this should never happen")
+		return "", ""
+	}
 }
 
 func GetCacheEntry(ctx context.Context, blockId string, name string) (*CacheEntry, bool) {
@@ -242,6 +246,12 @@ func SetCacheEntry(ctx context.Context, cacheId string, cacheEntry *CacheEntry) 
 		return
 	}
 	cache[cacheId] = cacheEntry
+}
+
+func DeleteCacheEntry(ctx context.Context, blockId string, name string) {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+	delete(cache, GetCacheId(blockId, name))
 }
 
 func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum int, pullFromDB bool) (*CacheBlock, error) {
@@ -320,15 +330,10 @@ func WriteAt(ctx context.Context, blockId string, name string, p []byte, off int
 		if err != nil {
 			return bytesWritten, fmt.Errorf("Error getting cache block: %v", err)
 		}
-		if blockId == "test-block-id-sync" {
-			log.Printf("getting cache block: %v %v %p", curCacheBlock, off, curCacheBlock)
-		}
-		numLeftPad, b, err := WriteToCacheBlock(ctx, blockId, name, curCacheBlock, p, int(cacheOffset), bytesToWriteToCurCache, index)
+		_, b, err := WriteToCacheBlock(ctx, blockId, name, curCacheBlock, p, int(cacheOffset), bytesToWriteToCurCache, index)
 		bytesWritten += b
-		b -= int(numLeftPad)
 		bytesToWrite -= b
 		off += int64(b)
-		log.Printf("mk3 %v %v %v %v", b, bytesWritten, bytesToWrite, off)
 		if err != nil {
 			if err.Error() == MaxSizeError {
 				if fInfo.Opts.Circular {
@@ -398,7 +403,6 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 	if (cacheOffset + int64(bytesToRead)) > MaxBlockSize {
 		numCaches += 1
 	}
-	log.Printf("mk1 %v %v", curCacheNum, numCaches)
 	for index := curCacheNum; index < curCacheNum+numCaches; index++ {
 		curCacheBlock, err := GetCacheBlock(ctx, blockId, name, index, true)
 		if err != nil {
@@ -409,7 +413,6 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 		fileMaxSize := fInfo.Opts.MaxSize
 		maxReadSize := fileMaxSize - (int64(index) * MaxBlockSize)
 		b, err := ReadFromCacheBlock(ctx, blockId, name, curCacheBlock, p, int(cacheOffset), bytesToReadFromCurCache, bytesRead, maxReadSize)
-		log.Printf("reading; %v %v %v %v", b, off, bytesToReadFromCurCache, err)
 		bytesRead += b
 		bytesToRead -= int64(b)
 		off += int64(b)
@@ -421,7 +424,6 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 					newP := (*p)[b:]
 					b, err := ReadAt(ctx, blockId, name, &newP, off)
 					bytesRead += b
-					log.Printf("mk max size read: %v %v %v", b, bytesRead, off)
 					if err != nil {
 						return bytesRead, err
 					}
@@ -436,14 +438,31 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 }
 
 func AppendData(ctx context.Context, blockId string, name string, p []byte) (int, error) {
-	globalLock.Lock()
-	defer globalLock.Unlock()
+	appendLock.Lock()
+	defer appendLock.Unlock()
 	fInfo, err := Stat(ctx, blockId, name)
-	if blockId == "test-block-id-sync" {
-		log.Printf("Append stat: %v", fInfo.Size)
-	}
 	if err != nil {
 		return 0, fmt.Errorf("Append stat error: %v", err)
 	}
 	return WriteAt(ctx, blockId, name, p, fInfo.Size)
+}
+
+func DeleteFile(ctx context.Context, blockId string, name string) error {
+	DeleteCacheEntry(ctx, blockId, name)
+	err := DeleteFileFromDB(ctx, blockId, name)
+	return err
+}
+
+func DeleteBlock(ctx context.Context, blockId string) error {
+	for cacheId, _ := range cache {
+		curBlockId, name := GetValuesFromCacheId(cacheId)
+		if curBlockId == blockId {
+			err := DeleteFile(ctx, blockId, name)
+			if err != nil {
+				return fmt.Errorf("Error deleting %v %v: %v", blockId, name, err)
+			}
+		}
+	}
+	err := DeleteBlockFromDB(ctx, blockId)
+	return err
 }

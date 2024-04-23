@@ -36,42 +36,11 @@ func (b *TestBlockType) FromMap(m map[string]interface{}) bool {
 }
 
 func Cleanup(t *testing.T, ctx context.Context) {
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `DELETE from block_file where blockid = 'test-block-id'`
-		tx.Exec(query)
-		return nil
-	})
-	if txErr != nil {
-		t.Errorf("TestTx error deleting test entries: %v", txErr)
-	}
-	txErr = WithTx(ctx, func(tx *TxWrap) error {
-		query := `DELETE from block_data where blockid = 'test-block-id'`
-		tx.Exec(query)
-		return nil
-	})
-	if txErr != nil {
-		t.Errorf("TestTx error deleting test entries: %v", txErr)
-	}
-
+	DeleteBlock(ctx, "test-block-id")
 }
 
 func CleanupName(t *testing.T, ctx context.Context, blockId string) {
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `DELETE from block_file where blockid = ?`
-		tx.Exec(query, blockId)
-		return nil
-	})
-	if txErr != nil {
-		t.Errorf("TestTx error deleting test entries: %v", txErr)
-	}
-	txErr = WithTx(ctx, func(tx *TxWrap) error {
-		query := `DELETE from block_data where blockid = ?`
-		tx.Exec(query, blockId)
-		return nil
-	})
-	if txErr != nil {
-		t.Errorf("TestTx error deleting test entries: %v", txErr)
-	}
+	DeleteBlock(ctx, blockId)
 }
 
 func TestGetDB(t *testing.T) {
@@ -208,6 +177,7 @@ func TestMultipleChunks(t *testing.T) {
 }
 
 func TestMakeFile(t *testing.T) {
+	InitDBState()
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -247,6 +217,7 @@ func TestMakeFile(t *testing.T) {
 	if txErr != nil {
 		t.Errorf("TestTx error deleting test entries: %v", txErr)
 	}
+	Cleanup(t, ctx)
 }
 
 func TestWriteAt(t *testing.T) {
@@ -261,6 +232,11 @@ func TestWriteAt(t *testing.T) {
 	}
 	log.Printf("Max Block Size: %v", MaxBlockSize)
 	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
+	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
+	if err != nil {
+		t.Errorf("Error getting cache: %v", err)
+	}
+	log.Printf("Cache data received: %v str: %s", cacheData, string(cacheData.data))
 	bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", testBytesToWrite, 0)
 	if err != nil {
 		t.Errorf("Write At error: %v", err)
@@ -268,7 +244,7 @@ func TestWriteAt(t *testing.T) {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
 	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
-	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
+	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
 	}
@@ -336,14 +312,7 @@ func TestWriteAt(t *testing.T) {
 	}
 	log.Printf("Got stat: %v", fInfo)
 	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `DELETE from block_file where blockid = 'test-block-id'`
-		tx.Exec(query)
-		return nil
-	})
-	if txErr != nil {
-		t.Errorf("TestTx error deleting test entries: %v", txErr)
-	}
+	Cleanup(t, ctx)
 }
 
 func TestWriteAtLeftPad(t *testing.T) {
@@ -365,7 +334,7 @@ func TestWriteAtLeftPad(t *testing.T) {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
 	log.Printf("LEFT PAD bytes written: %v\n", bytesWritten)
-	SimpleAssert(t, bytesWritten == 22, "Correct num bytes written")
+	SimpleAssert(t, bytesWritten == 11, "Correct num bytes written")
 	cacheData, err := GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
@@ -377,7 +346,7 @@ func TestWriteAtLeftPad(t *testing.T) {
 	if err != nil {
 		t.Errorf("Stat Error: %v", err)
 	}
-	log.Printf("Got stat: %v", fInfo)
+	log.Printf("Got stat: %v %v %v", fInfo, fInfo.Size, len(cacheData.data))
 	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
 	Cleanup(t, ctx)
 }
@@ -578,6 +547,7 @@ func TestWriteAtMaxSize(t *testing.T) {
 }
 
 func TestWriteAtMaxSizeMultipleBlocks(t *testing.T) {
+	InitDBState()
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -591,7 +561,7 @@ func TestWriteAtMaxSizeMultipleBlocks(t *testing.T) {
 	if err != nil {
 		t.Errorf("Write at error: %v", err)
 	}
-	SimpleAssert(t, bytesWritten == int(MaxBlockSize*2), "Correct num bytes written")
+	SimpleAssert(t, bytesWritten == 4, "Correct num bytes written")
 	readTest := []byte{'T', 'E', 'S', 'T'}
 	readBuf := make([]byte, len(testBytesToWrite))
 	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, (MaxBlockSize*2)-4)
@@ -602,6 +572,7 @@ func TestWriteAtMaxSizeMultipleBlocks(t *testing.T) {
 }
 
 func TestWriteAtCircular(t *testing.T) {
+	InitDBState()
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -615,7 +586,7 @@ func TestWriteAtCircular(t *testing.T) {
 	if err != nil {
 		t.Errorf("Write at error: %v", err)
 	}
-	SimpleAssert(t, bytesWritten == int((MaxBlockSize*2)+7), "Correct num bytes written")
+	SimpleAssert(t, bytesWritten == 11, "Correct num bytes written")
 
 	readTest := []byte{'T', 'E', 'S', 'T'}
 	readBuf := make([]byte, len(testBytesToWrite))
@@ -623,12 +594,12 @@ func TestWriteAtCircular(t *testing.T) {
 	SimpleAssert(t, bytesRead == 11, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf[:4], readTest), "Correct bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf, testBytesToWrite), "Correct bytes read")
-	log.Printf("readbuf circular %v %v", readBuf, string(readBuf))
+	log.Printf("readbuf circular %v %v %v", readBuf, string(readBuf), bytesRead)
 
 	readTest = []byte{'M', 'E', 'S', 'S', 'A', 'G', 'E'}
 	readBuf = make([]byte, len(testBytesToWrite))
 	bytesRead, err = ReadAt(ctx, "test-block-id", "file-1", &readBuf, 0)
-	SimpleAssert(t, bytesRead == 11, "Correct num bytes read")
+	SimpleAssert(t, bytesRead == 7, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf[:7], readTest), "Correct bytes read")
 	log.Printf("readbuf circular %v %v, %v", readBuf, string(readBuf), bytesRead)
 	Cleanup(t, ctx)
@@ -652,8 +623,7 @@ func TestWriteAtCircularWierdOffset(t *testing.T) {
 	if err != nil {
 		t.Errorf("Write at error: %v", err)
 	}
-	log.Printf("bytes written: %v %v", bytesWritten, int(fileSize+7))
-	SimpleAssert(t, bytesWritten == int(fileSize+7), "Correct num bytes written")
+	SimpleAssert(t, bytesWritten == 11, "Correct num bytes written")
 
 	readTest := []byte{'T', 'E', 'S', 'T'}
 	readBuf := make([]byte, len(testBytesToWrite))
@@ -672,14 +642,14 @@ func TestWriteAtCircularWierdOffset(t *testing.T) {
 	if err != nil {
 		t.Errorf("Read at error: %v", err)
 	}
-	SimpleAssert(t, bytesRead == 11, "Correct num bytes read")
+	SimpleAssert(t, bytesRead == 7, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf[:7], readTest), "Correct bytes read")
 	log.Printf("readbuf circular %v %v, %v", readBuf, string(readBuf), bytesRead)
 	Cleanup(t, ctx)
-
 }
 
 func TestAppend(t *testing.T) {
+	InitDBState()
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -690,10 +660,12 @@ func TestAppend(t *testing.T) {
 		t.Fatalf("MakeFile error: %v", err)
 	}
 	testAppendBytes1 := []byte{'T', 'E', 'S', 'T'}
+	log.Printf("append mk1\n")
 	bytesWritten, err := AppendData(ctx, "test-block-id", "file-1", testAppendBytes1)
 	if err != nil {
 		t.Errorf("Append Error: %v", err)
 	}
+	log.Printf("append mk2\n")
 	SimpleAssert(t, bytesWritten == len(testAppendBytes1), "Correct num bytes written")
 	readBuf := make([]byte, len(testAppendBytes1))
 	bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, 0)
