@@ -759,11 +759,11 @@ class Model {
                 this.activeMainView.set("session");
                 setTimeout(() => {
                     // allows for the session view to load
-                    this.inputModel.giveFocus();
+                    this.inputModel.setAuxViewFocus(false);
                 }, 100);
             })();
         } else {
-            this.inputModel.giveFocus();
+            this.inputModel.setAuxViewFocus(false);
         }
     }
 
