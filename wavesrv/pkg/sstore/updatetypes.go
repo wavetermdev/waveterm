@@ -105,7 +105,7 @@ type ConnectUpdate struct {
 	ScreenStatusIndicators   []*ScreenStatusIndicatorType    `json:"screenstatusindicators,omitempty"`
 	ScreenNumRunningCommands []*ScreenNumRunningCommandsType `json:"screennumrunningcommands,omitempty"`
 	ActiveSessionId          string                          `json:"activesessionid,omitempty"`
-	TermThemes               *configstore.TermThemesType     `json:"termthemes,omitempty"`
+	TermThemes               *configstore.ConfigReturn       `json:"termthemes,omitempty"`
 }
 
 func (ConnectUpdate) GetType() string {

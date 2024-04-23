@@ -165,12 +165,11 @@ func (ws *WSState) handleConnection() error {
 	connectUpdate.Remotes = remotes
 	// restore status indicators
 	connectUpdate.ScreenStatusIndicators, connectUpdate.ScreenNumRunningCommands = sstore.GetCurrentIndicatorState()
-	termthemes := configstore.GetTermThemes(ws.ClientId)
-	tt, err := termthemes.ScanDir()
+	configs, err := configstore.ScanConfigs()
 	if err != nil {
-		return fmt.Errorf("getting termthemes: %w", err)
+		return fmt.Errorf("getting configs: %w", err)
 	}
-	connectUpdate.TermThemes = &tt
+	connectUpdate.TermThemes = &configs
 	mu := scbus.MakeUpdatePacket()
 	mu.AddUpdate(*connectUpdate)
 	err = ws.Shell.WriteJson(mu)

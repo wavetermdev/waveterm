@@ -158,8 +158,12 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	}()
 	log.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
 
-	configstore.SetupTermThemes(clientId)
 	state.RunWSRead()
+	watcher := configstore.GetWatcher()
+	if watcher != nil {
+		watcher.Start()
+
+	}
 }
 
 // todo: sync multiple writes to the same fifoName into a single go-routine and do liveness checking on fifo
