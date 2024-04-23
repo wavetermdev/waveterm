@@ -2692,8 +2692,6 @@ func getCmdInfoEngineeredPrompt(userQuery string, curLineStr string, shellType s
 }
 
 func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstore.OpenAIOptsType, prompt []packet.OpenAIPromptMessageType, curLineStr string) {
-	var hadError bool
-	log.Println("had error: ", hadError)
 	ctx, cancelFn := context.WithTimeout(context.Background(), OpenAIStreamTimeout)
 	defer cancelFn()
 	defer func() {
@@ -2701,7 +2699,6 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 		if r != nil {
 			panicMsg := fmt.Sprintf("panic: %v", r)
 			log.Printf("panic in doOpenAICompletion: %s\n", panicMsg)
-			hadError = true
 		}
 	}()
 	var ch chan *packet.OpenAIPacketType
@@ -2729,12 +2726,15 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 		return
 	}
 	writePacketToUpdateBus(ctx, cmd, asstMessagePk)
+	packetTimeout := OpenAIPacketTimeout
+	if opts.Timeout >= 0 {
+		packetTimeout = time.Duration(opts.Timeout) * time.Second
+	}
 	doneWaitingForPackets := false
 	for !doneWaitingForPackets {
 		select {
-		case <-time.After(OpenAIPacketTimeout):
+		case <-time.After(packetTimeout):
 			// timeout reading from channel
-			hadError = true
 			doneWaitingForPackets = true
 			asstOutputPk.Error = "timeout waiting for server response"
 			updateAsstResponseAndWriteToUpdateBus(ctx, cmd, asstMessagePk, asstOutputMessageID)
@@ -2742,7 +2742,6 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 			if ok {
 				// got a packet
 				if pk.Error != "" {
-					hadError = true
 					asstOutputPk.Error = pk.Error
 				}
 				if pk.Model != "" && pk.Index == 0 {
@@ -2822,10 +2821,14 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 		writeErrorToPty(cmd, fmt.Sprintf("error calling OpenAI API: %v", err), outputPos)
 		return
 	}
+	packetTimeout := OpenAIPacketTimeout
+	if opts.Timeout >= 0 {
+		packetTimeout = time.Duration(opts.Timeout) * time.Second
+	}
 	doneWaitingForPackets := false
 	for !doneWaitingForPackets {
 		select {
-		case <-time.After(OpenAIPacketTimeout):
+		case <-time.After(packetTimeout):
 			// timeout reading from channel
 			hadError = true
 			pk := openai.CreateErrorPacket(fmt.Sprintf("timeout waiting for server response"))
@@ -5784,6 +5787,16 @@ func validateFontFamily(fontFamily string) error {
 	return nil
 }
 
+func CheckOptionAlias(kwargs map[string]string, alias1 string, alias2 string) (string, bool) {
+	if val, found := kwargs[alias1]; found {
+		return val, found
+	}
+	if val, found := kwargs[alias2]; found {
+		return val, found
+	}
+	return "", false
+}
+
 func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	clientData, err := sstore.EnsureClientData(ctx)
 	if err != nil {
@@ -5856,7 +5869,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		}
 		varsUpdated = append(varsUpdated, "termtheme")
 	}
-	if apiToken, found := pk.Kwargs["openaiapitoken"]; found {
+	if apiToken, found := CheckOptionAlias(pk.Kwargs, "openaiapitoken", "aiapitoken"); found {
 		err = validateOpenAIAPIToken(apiToken)
 		if err != nil {
 			return nil, err
@@ -5873,7 +5886,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("error updating client openai api token: %v", err)
 		}
 	}
-	if aiModel, found := pk.Kwargs["openaimodel"]; found {
+	if aiModel, found := CheckOptionAlias(pk.Kwargs, "openaimodel", "aimodel"); found {
 		err = validateOpenAIModel(aiModel)
 		if err != nil {
 			return nil, err
@@ -5890,7 +5903,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("error updating client openai model: %v", err)
 		}
 	}
-	if maxTokensStr, found := pk.Kwargs["openaimaxtokens"]; found {
+	if maxTokensStr, found := CheckOptionAlias(pk.Kwargs, "openaimaxtokens", "aimaxtokens"); found {
 		maxTokens, err := strconv.Atoi(maxTokensStr)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client openai maxtokens, invalid number: %v", err)
@@ -5910,7 +5923,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("error updating client openai maxtokens: %v", err)
 		}
 	}
-	if maxChoicesStr, found := pk.Kwargs["openaimaxchoices"]; found {
+	if maxChoicesStr, found := CheckOptionAlias(pk.Kwargs, "openaimaxchoices", "aimaxchoices"); found {
 		maxChoices, err := strconv.Atoi(maxChoicesStr)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client openai maxchoices, invalid number: %v", err)
@@ -5930,7 +5943,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("error updating client openai maxchoices: %v", err)
 		}
 	}
-	if aiBaseURL, found := pk.Kwargs["openaibaseurl"]; found {
+	if aiBaseURL, found := CheckOptionAlias(pk.Kwargs, "openaibaseurl", "aibaseurl"); found {
 		aiOpts := clientData.OpenAIOpts
 		if aiOpts == nil {
 			aiOpts = &sstore.OpenAIOptsType{}
@@ -5941,6 +5954,23 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client openai base url: %v", err)
+		}
+	}
+	if aiTimeoutStr, found := CheckOptionAlias(pk.Kwargs, "openaitimeout", "aitimeout"); found {
+		aiTimeout, err := strconv.Atoi(aiTimeoutStr)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai timeout, invalid number: %v", err)
+		}
+		aiOpts := clientData.OpenAIOpts
+		if aiOpts == nil {
+			aiOpts = &sstore.OpenAIOptsType{}
+			clientData.OpenAIOpts = aiOpts
+		}
+		aiOpts.Timeout = aiTimeout
+		varsUpdated = append(varsUpdated, "openaitimeout")
+		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client openai timeout: %v", err)
 		}
 	}
 	if webglStr, found := pk.Kwargs["webgl"]; found {
@@ -5954,7 +5984,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		varsUpdated = append(varsUpdated, "webgl")
 	}
 	if len(varsUpdated) == 0 {
-		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize", "termfontfamily", "openaiapitoken", "openaimodel", "openaibaseurl", "openaimaxtokens", "openaimaxchoices", "webgl"}, "or", false))
+		return nil, fmt.Errorf("/client:set requires a value to set: %s", formatStrs([]string{"termfontsize", "termfontfamily", "openaiapitoken", "openaimodel", "openaibaseurl", "openaimaxtokens", "openaimaxchoices", "openaitimeout", "webgl"}, "or", false))
 	}
 	clientData, err = sstore.EnsureClientData(ctx)
 	if err != nil {
@@ -5999,6 +6029,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxtokens", clientData.OpenAIOpts.MaxTokens))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxchoices", clientData.OpenAIOpts.MaxChoices))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaibaseurl", clientData.OpenAIOpts.BaseURL))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaitimeout", clientData.OpenAIOpts.Timeout))
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("client info"),

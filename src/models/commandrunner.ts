@@ -413,6 +413,7 @@ class CommandRunner {
         apitoken?: string;
         maxtokens?: string;
         baseurl?: string;
+        timeout?: string;
     }): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
@@ -428,6 +429,9 @@ class CommandRunner {
         }
         if (opts.baseurl != null) {
             kwargs["openaibaseurl"] = opts.baseurl;
+        }
+        if (opts.timeout != null) {
+            kwargs["openaitimeout"] = opts.timeout;
         }
         return GlobalModel.submitCommand("client", "set", null, kwargs, false);
     }
