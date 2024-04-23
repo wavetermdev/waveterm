@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown, NumberField } from "@/common/elements";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown, InlineSettingsNumberEdit } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
@@ -237,7 +237,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const termThemes = getTermThemes(GlobalModel.termThemes, "Wave Default");
         const currTermTheme = GlobalModel.getTermTheme()["global"] ?? termThemes[0].label;
         const curSudoPwStore = GlobalModel.getSudoPwStore();
-        const curSudoPwTimeout = GlobalModel.getSudoPwTimeout();
+        const curSudoPwTimeout = String(GlobalModel.getSudoPwTimeout());
         const curSudoPwClearOnSleep = GlobalModel.getSudoPwClearOnSleep();
 
         return (
@@ -398,10 +398,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                     <div className="settings-field">
                         <div className="settings-label">Sudo Password Timeout</div>
                         <div className="settings-input">
-                            <NumberField
-                                className="hotkey-dropdown"
-                                defaultValue={String(curSudoPwTimeout)}
+                            <InlineSettingsNumberEdit
+                                placeholder=""
+                                text={curSudoPwTimeout}
+                                value={curSudoPwTimeout}
                                 onChange={this.handleChangeSudoPwTimeoutConfig}
+                                maxLength={6}
+                                showIcon={true}
                             />
                         </div>
                     </div>
