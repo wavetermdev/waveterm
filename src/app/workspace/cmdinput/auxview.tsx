@@ -3,10 +3,11 @@
 
 import * as React from "react";
 import cn from "classnames";
-import { If } from "tsx-control-statements/components";
+import { Choose, If, Otherwise, When } from "tsx-control-statements/components";
 import { observer } from "mobx-react";
 
 import "./auxview.less";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 interface AuxiliaryCmdViewProps {
     title: string;
@@ -15,6 +16,7 @@ interface AuxiliaryCmdViewProps {
     titleBarContents?: React.ReactElement[];
     children?: React.ReactNode;
     onClose?: React.MouseEventHandler<HTMLDivElement>;
+    scrollable?: boolean;
 }
 
 export const AuxiliaryCmdView: React.FC<AuxiliaryCmdViewProps> = observer((props) => {
@@ -41,7 +43,19 @@ export const AuxiliaryCmdView: React.FC<AuxiliaryCmdViewProps> = observer((props
                 </If>
             </div>
             <If condition={children != null}>
-                <div className="auxview-content">{children}</div>
+                <Choose>
+                    <When condition={props.scrollable}>
+                        <OverlayScrollbarsComponent
+                            className="auxview-content"
+                            options={{ scrollbars: { autoHide: "leave" } }}
+                        >
+                            {children}
+                        </OverlayScrollbarsComponent>
+                    </When>
+                    <Otherwise>
+                        <div className="auxview-content">{children}</div>
+                    </Otherwise>
+                </Choose>
             </If>
         </div>
     );

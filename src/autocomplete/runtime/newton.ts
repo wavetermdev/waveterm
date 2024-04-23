@@ -593,7 +593,6 @@ export class Newton {
             insertValue: suggestion.insertValue,
             priority: suggestion.priority,
         };
-        log.debug("name: ", suggestionMin.name, "partialCmd: ", partialCmd, "prefixStr: ", prefixStr);
 
         if (!suggestionMin.type) {
             suggestionMin.type = defaultType;
@@ -607,7 +606,6 @@ export class Newton {
             for (const name in getAll(suggestionMin.name)) {
                 if (name.startsWith(partialCmd) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
                     suggestionMin.insertValue = name;
-                    log.debug("insertValue", suggestionMin.insertValue);
                 }
             }
 

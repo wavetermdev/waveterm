@@ -7,9 +7,17 @@ import { If } from "tsx-control-statements/components";
 
 import "./suggestionview.less";
 import { getAll, getFirst } from "@/autocomplete/runtime/utils";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 export const SuggestionView: React.FC = observer(() => {
     const [selectedSuggestion, setSelectedSuggestion] = React.useState<number>(0);
+    const updateScroll = (index: number) => {
+        setSelectedSuggestion(index);
+        const element = document.getElementsByClassName("suggestion-item")[index] as HTMLElement;
+        if (element) {
+            element.scrollIntoView({ block: "nearest" });
+        }
+    };
     useEffect(() => {
         const keybindManager = GlobalModel.keybindManager;
 
@@ -22,15 +30,15 @@ export const SuggestionView: React.FC = observer(() => {
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:selectAbove", (waveEvent) => {
-            setSelectedSuggestion(Math.max(0, selectedSuggestion - 1));
+            updateScroll(Math.max(0, selectedSuggestion - 1));
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:selectBelow", (waveEvent) => {
-            setSelectedSuggestion(Math.min(suggestions?.length - 1, selectedSuggestion + 1));
+            updateScroll(Math.min(suggestions?.length - 1, selectedSuggestion + 1));
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:tab", (waveEvent) => {
-            setSelectedSuggestion(Math.min(suggestions?.length - 1, selectedSuggestion + 1));
+            updateScroll(Math.min(suggestions?.length - 1, selectedSuggestion + 1));
             return true;
         });
 
@@ -54,12 +62,12 @@ export const SuggestionView: React.FC = observer(() => {
     };
 
     return (
-        <AuxiliaryCmdView title="Suggestions" className="suggestions-view" onClose={closeView}>
+        <AuxiliaryCmdView title="Suggestions" className="suggestions-view" onClose={closeView} scrollable={true}>
             <If condition={!suggestions}>
                 <div className="no-suggestions">No suggestions</div>
             </If>
             {suggestions?.map((suggestion, idx) => (
-                <div
+                <option
                     key={getFirst(suggestion.name)}
                     title={suggestion.description}
                     className={cn("suggestion-item", { "is-selected": selectedSuggestion === idx })}
@@ -69,7 +77,7 @@ export const SuggestionView: React.FC = observer(() => {
                 >
                     {suggestion.icon} {getAll(suggestion.name).join(",")}{" "}
                     {suggestion.description ? `- ${suggestion.description}` : ""}
-                </div>
+                </option>
             ))}
         </AuxiliaryCmdView>
     );
