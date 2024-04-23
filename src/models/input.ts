@@ -155,6 +155,7 @@ class InputModel {
                     this.setAIChatFocus();
                     break;
                 case null: {
+                    console.log("focusing");
                     const elem = document.getElementById("main-cmd-input");
                     if (elem != null) {
                         elem.focus();
@@ -477,6 +478,7 @@ class InputModel {
             this.auxViewFocus.set(view != null);
             this.activeAuxView.set(view);
         })();
+        console.log("giving focus?");
         this.giveFocus();
     }
 
@@ -491,9 +493,6 @@ class InputModel {
 
     // Sets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
     setAuxViewFocus(focus: boolean): void {
-        if (this.getAuxViewFocus() == focus) {
-            return;
-        }
         mobx.action(() => {
             this.auxViewFocus.set(focus);
         })();
@@ -691,6 +690,7 @@ class InputModel {
 
     openAIAssistantChat(): void {
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
+        this.setAuxViewFocus(true);
     }
 
     clearAIAssistantChat(): void {

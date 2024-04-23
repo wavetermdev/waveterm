@@ -763,7 +763,12 @@ class Model {
                 }, 100);
             })();
         } else {
+<<<<<<< Updated upstream
             this.inputModel.giveFocus();
+=======
+            console.log("focusing mk1");
+            this.inputModel.setAuxViewFocus(false);
+>>>>>>> Stashed changes
         }
     }
 
