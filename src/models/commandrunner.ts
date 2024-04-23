@@ -86,6 +86,10 @@ class CommandRunner {
         return GlobalModel.submitCommand("line", "restart", [lineArg], { nohist: "1" }, interactive);
     }
 
+    lineSignal(lineArg: string, signal: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("signal", null, [lineArg, signal], { nohist: "1" }, interactive);
+    }
+
     lineSet(lineArg: string, opts: { renderer?: string }): Promise<CommandRtnType> {
         let kwargs = { nohist: "1" };
         if ("renderer" in opts) {
@@ -375,6 +379,33 @@ class CommandRunner {
             theme: theme,
         };
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
+    }
+
+    setGlobalTermTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            termtheme: theme,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
+    }
+
+    setSessionTermTheme(sessionId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        console.log("setSessionTermTheme-------");
+        let kwargs = {
+            nohist: "1",
+            id: sessionId,
+            name: name,
+        };
+        return GlobalModel.submitCommand("session", "termtheme", null, kwargs, interactive);
+    }
+
+    setScreenTermTheme(screenId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            id: screenId,
+            name: name,
+        };
+        return GlobalModel.submitCommand("screen", "termtheme", null, kwargs, interactive);
     }
 
     setClientOpenAISettings(opts: {

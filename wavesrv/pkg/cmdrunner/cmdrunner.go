@@ -37,9 +37,9 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/bookmarks"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/comp"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/history"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote/openai"
@@ -49,6 +49,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 	"golang.org/x/mod/semver"
 )
 
@@ -85,8 +86,7 @@ const TsFormatStr = "2006-01-02 15:04:05"
 
 const OpenAIPacketTimeout = 10 * time.Second
 const OpenAIStreamTimeout = 5 * time.Minute
-
-const OpenAICloudCompletionTelemetryOffErrorMsg = "In order to protect against abuse, you must have telemetry turned on in order to use Wave's free AI features.  If you do not want to turn telemetry on, you can still use Wave's AI features by adding your own OpenAI key in Settings.  Note that when you use your own key, requests are not proxied through Wave's servers and will be sent directly to the OpenAI API."
+const OpenAICloudCompletionTelemetryOffErrorMsg = "To ensure responsible usage and prevent misuse, Wave AI requires telemetry to be enabled when using its free AI features.\n\nIf you prefer not to enable telemetry, you can still access Wave AI's features by providing your own OpenAI API key in the Settings menu. Please note that when using your personal API key, requests will be sent directly to the OpenAI API without being proxied through Wave's servers.\n\nIf you wish to continue using Wave AI's free features, you can easily enable telemetry by running the '/telemetry:on' command in the terminal. This will allow you to access the free AI features while helping to protect the platform from abuse."
 
 const (
 	KwArgRenderer = "renderer"
@@ -96,6 +96,7 @@ const (
 	KwArgLang     = "lang"
 	KwArgMinimap  = "minimap"
 	KwArgNoHist   = "nohist"
+	KwArgSudo     = "sudo"
 )
 
 var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
@@ -123,8 +124,8 @@ var SetVarNameMap map[string]string = map[string]string{
 var SetVarScopes = []SetVarScope{
 	{ScopeName: "global", VarNames: []string{}},
 	{ScopeName: "client", VarNames: []string{"telemetry"}},
-	{ScopeName: "session", VarNames: []string{"name", "pos"}},
-	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line", "index"}},
+	{ScopeName: "session", VarNames: []string{"name", "pos", "theme"}},
+	{ScopeName: "screen", VarNames: []string{"name", "tabcolor", "tabicon", "pos", "pterm", "anchor", "focus", "line", "index", "theme"}},
 	{ScopeName: "line", VarNames: []string{}},
 	// connection = remote, remote = remoteinstance
 	{ScopeName: "connection", VarNames: []string{"alias", "connectmode", "key", "password", "autoinstall", "color"}},
@@ -190,6 +191,7 @@ func init() {
 	registerCmdFn("session:showall", SessionShowAllCommand)
 	registerCmdFn("session:show", SessionShowCommand)
 	registerCmdFn("session:openshared", SessionOpenSharedCommand)
+	registerCmdFn("session:termtheme", TermSetThemeCommand)
 	registerCmdFn("session:ensureone", SessionEnsureOneCommand)
 
 	registerCmdFn("screen", ScreenCommand)
@@ -203,6 +205,7 @@ func init() {
 	registerCmdFn("screen:webshare", ScreenWebShareCommand)
 	registerCmdFn("screen:reorder", ScreenReorderCommand)
 	registerCmdFn("screen:show", ScreenShowCommand)
+	registerCmdFn("screen:termtheme", TermSetThemeCommand)
 
 	registerCmdAlias("remote", RemoteCommand)
 	registerCmdFn("remote:show", RemoteShowCommand)
@@ -293,6 +296,8 @@ func init() {
 	registerCmdFn("csvview", CSVViewCommand)
 
 	registerCmdFn("_debug:ri", DebugRemoteInstanceCommand)
+
+	registerCmdFn("sudo:clear", ClearSudoCache)
 }
 
 func getValidCommands() []string {
@@ -536,10 +541,10 @@ func SyncCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	runPacket.Command = ":"
 	runPacket.ReturnState = true
 	rcOpts := remote.RunCommandOpts{
-		SessionId: ids.SessionId,
-		ScreenId:  ids.ScreenId,
-		RemotePtr: ids.Remote.RemotePtr,
-		Ephemeral: true,
+		SessionId:     ids.SessionId,
+		ScreenId:      ids.ScreenId,
+		RemotePtr:     ids.Remote.RemotePtr,
+		EphemeralOpts: &ephemeral.EphemeralRunOpts{TimeoutMs: ephemeral.DefaultEphemeralTimeoutMs},
 	}
 	_, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
 	if callback != nil {
@@ -605,6 +610,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	if err != nil {
 		return nil, fmt.Errorf("/run error, invalid lang: %w", err)
 	}
+
 	cmdStr := firstArg(pk)
 	expandedCmdStr, err := doCmdHistoryExpansion(ctx, ids, cmdStr)
 	if err != nil {
@@ -618,6 +624,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 		newPk.RawStr = pk.RawStr
 		newPk.UIContext = pk.UIContext
 		newPk.Interactive = pk.Interactive
+		newPk.EphemeralOpts = pk.EphemeralOpts
 		evalDepth := getEvalDepth(ctx)
 		ctxWithDepth := context.WithValue(ctx, depthContextKey, evalDepth+1)
 		return EvalCommand(ctxWithDepth, newPk)
@@ -635,10 +642,16 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
+	if sudoArg, ok := pk.Kwargs[KwArgSudo]; ok {
+		runPacket.IsSudo = resolveBool(sudoArg, false)
+	} else {
+		runPacket.IsSudo = IsSudoCommand(cmdStr)
+	}
 	rcOpts := remote.RunCommandOpts{
-		SessionId: ids.SessionId,
-		ScreenId:  ids.ScreenId,
-		RemotePtr: ids.Remote.RemotePtr,
+		SessionId:     ids.SessionId,
+		ScreenId:      ids.ScreenId,
+		RemotePtr:     ids.Remote.RemotePtr,
+		EphemeralOpts: pk.EphemeralOpts,
 	}
 	cmd, callback, err := remote.RunCommand(ctx, rcOpts, runPacket)
 	if callback != nil {
@@ -655,15 +668,19 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	if langArg != "" {
 		lineState[sstore.LineState_Lang] = langArg
 	}
-	update, err := addLineForCmd(ctx, "/run", true, ids, cmd, renderer, lineState)
-	if err != nil {
-		return nil, err
+
+	// If we are running an ephemeral command, we don't want to add the line to the screen
+	if pk.EphemeralOpts == nil {
+		update, err := addLineForCmd(ctx, "/run", true, ids, cmd, renderer, lineState)
+		if err != nil {
+			return nil, err
+		}
+		update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
+		// this update is sent asynchronously for timing issues.  the cmd update comes async as well
+		// so if we return this directly it sometimes gets evaluated first.  by pushing it on the MainBus
+		// it ensures it happens after the command creation event.
+		scbus.MainUpdateBus.DoScreenUpdate(ids.ScreenId, update)
 	}
-	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
-	// this update is sent asynchronously for timing issues.  the cmd update comes async as well
-	// so if we return this directly it sometimes gets evaluated first.  by pushing it on the MainBus
-	// it ensures it happens after the command creation event.
-	scbus.MainUpdateBus.DoScreenUpdate(ids.ScreenId, update)
 	return nil, nil
 }
 
@@ -735,6 +752,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	ctxWithHistory := context.WithValue(ctx, historyContextKey, &historyContext)
 	var update scbus.UpdatePacket
 	newPk, rtnErr := EvalMetaCommand(ctxWithHistory, pk)
+
 	if rtnErr == nil {
 		update, rtnErr = HandleCommand(ctxWithHistory, newPk)
 	} else {
@@ -750,7 +768,8 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	}
 	var hasModelUpdate bool
 	var modelUpdate *scbus.ModelUpdatePacketType
-	if update == nil {
+	if update == nil && newPk.EphemeralOpts == nil {
+		// We don't want to serve an update if we are processing an ephemeral command
 		hasModelUpdate = true
 		modelUpdate = scbus.MakeUpdatePacket()
 		update = modelUpdate
@@ -1231,12 +1250,13 @@ func deferWriteCmdStatus(ctx context.Context, cmd *sstore.CmdType, startTime tim
 		exitCode = 1
 	}
 	ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-	donePk := packet.MakeCmdDonePacket(ck)
-	donePk.Ts = time.Now().UnixMilli()
-	donePk.ExitCode = exitCode
-	donePk.DurationMs = duration.Milliseconds()
+	doneInfo := sstore.CmdDoneDataValues{
+		Ts:         time.Now().UnixMilli(),
+		ExitCode:   exitCode,
+		DurationMs: duration.Milliseconds(),
+	}
 	update := scbus.MakeUpdatePacket()
-	err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
+	err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, doneInfo, cmdStatus)
 	if err != nil {
 		// nothing to do
 		log.Printf("error updating cmddoneinfo: %v\n", err)
@@ -2612,12 +2632,13 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 			exitCode = 1
 		}
 		ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-		donePk := packet.MakeCmdDonePacket(ck)
-		donePk.Ts = time.Now().UnixMilli()
-		donePk.ExitCode = exitCode
-		donePk.DurationMs = duration.Milliseconds()
+		doneInfo := sstore.CmdDoneDataValues{
+			Ts:         time.Now().UnixMilli(),
+			ExitCode:   exitCode,
+			DurationMs: duration.Milliseconds(),
+		}
 		update := scbus.MakeUpdatePacket()
-		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
+		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, doneInfo, cmdStatus)
 		if err != nil {
 			// nothing to do
 			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
@@ -2772,12 +2793,13 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 			exitCode = 1
 		}
 		ck := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-		donePk := packet.MakeCmdDonePacket(ck)
-		donePk.Ts = time.Now().UnixMilli()
-		donePk.ExitCode = exitCode
-		donePk.DurationMs = duration.Milliseconds()
+		doneInfo := sstore.CmdDoneDataValues{
+			Ts:         time.Now().UnixMilli(),
+			ExitCode:   exitCode,
+			DurationMs: duration.Milliseconds(),
+		}
 		update := scbus.MakeUpdatePacket()
-		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, donePk, cmdStatus)
+		err := sstore.UpdateCmdDoneInfo(context.Background(), update, ck, doneInfo, cmdStatus)
 		if err != nil {
 			// nothing to do
 			log.Printf("error updating cmddoneinfo (in openai): %v\n", err)
@@ -2928,7 +2950,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 		return nil, fmt.Errorf("openai error, prompt string is blank")
 	}
 	update := scbus.MakeUpdatePacket()
-	sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
+	go sstore.IncrementNumRunningCmds(cmd.ScreenId, 1)
 	line, err := sstore.AddOpenAILine(ctx, ids.ScreenId, DefaultUserId, cmd)
 	if err != nil {
 		return nil, fmt.Errorf("cannot add new line: %v", err)
@@ -3137,7 +3159,7 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 	sstore.AddLineUpdate(update, rtnLine, cmd)
 	update.AddUpdate(*screen)
 	if cmd.Status == sstore.CmdStatusRunning {
-		sstore.IncrementNumRunningCmds_Update(update, cmd.ScreenId, 1)
+		go sstore.IncrementNumRunningCmds(cmd.ScreenId, 1)
 	}
 	updateHistoryContext(ctx, rtnLine, cmd, cmd.FeState)
 	return update, nil
@@ -3604,6 +3626,38 @@ func ScreenShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	return update, nil
 }
 
+func TermSetThemeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	id, ok := pk.Kwargs["id"]
+	if !ok {
+		return nil, fmt.Errorf("id key not provided")
+	}
+	themeName, themeNameOk := pk.Kwargs["name"]
+	feOpts := clientData.FeOpts
+	if feOpts.TermTheme == nil {
+		feOpts.TermTheme = make(map[string]string)
+	}
+	if themeNameOk && themeName != "" {
+		feOpts.TermTheme[id] = themeName
+	} else {
+		delete(feOpts.TermTheme, id)
+	}
+	err = sstore.UpdateClientFeOpts(ctx, feOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client feopts: %v", err)
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(*clientData)
+	return update, nil
+}
+
 func SessionShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
 	if err != nil {
@@ -3866,6 +3920,30 @@ func DebugRemoteInstanceCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: "remote instance",
 		InfoLines: outputLines,
+	})
+	return update, nil
+}
+
+func ClearSudoCache(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnUpdate scbus.UpdatePacket, rtnErr error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	ids.Remote.MShell.ClearCachedSudoPw()
+	pluralize := ""
+
+	clearAll := resolveBool(pk.Kwargs["all"], false)
+	if clearAll {
+		for _, proc := range remote.GetRemoteMap() {
+			proc.ClearCachedSudoPw()
+		}
+		pluralize = "s"
+	}
+
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("sudo password%s cleared", pluralize),
+		TimeoutMs: 2000,
 	})
 	return update, nil
 }
@@ -5209,7 +5287,7 @@ func MakeReadFileUrl(screenId string, lineId string, filePath string) (string, e
 	qvals.Set("lineid", lineId)
 	qvals.Set("path", filePath)
 	qvals.Set("nonce", uuid.New().String())
-	hmacStr, err := promptenc.ComputeUrlHmac([]byte(scbase.WaveAuthKey), "/api/read-file", qvals)
+	hmacStr, err := waveenc.ComputeUrlHmac([]byte(scbase.WaveAuthKey), "/api/read-file", qvals)
 	if err != nil {
 		return "", fmt.Errorf("error computing hmac-url: %v", err)
 	}
@@ -5761,6 +5839,22 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("error updating client feopts: %v", err)
 		}
 		varsUpdated = append(varsUpdated, "theme")
+	}
+	if termthemeStr, found := pk.Kwargs["termtheme"]; found {
+		feOpts := clientData.FeOpts
+		if feOpts.TermTheme == nil {
+			feOpts.TermTheme = make(map[string]string)
+		}
+		if termthemeStr == "" {
+			delete(feOpts.TermTheme, "global")
+		} else {
+			feOpts.TermTheme["global"] = termthemeStr
+		}
+		err = sstore.UpdateClientFeOpts(ctx, feOpts)
+		if err != nil {
+			return nil, fmt.Errorf("error updating client feopts: %v", err)
+		}
+		varsUpdated = append(varsUpdated, "termtheme")
 	}
 	if apiToken, found := pk.Kwargs["openaiapitoken"]; found {
 		err = validateOpenAIAPIToken(apiToken)

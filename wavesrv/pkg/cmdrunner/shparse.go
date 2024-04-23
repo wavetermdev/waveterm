@@ -311,6 +311,55 @@ func IsReturnStateCommand(cmdStr string) bool {
 	return false
 }
 
+func checkSimpleSudoCmd(cmdStr string) bool {
+	cmdStr = strings.TrimSpace(cmdStr)
+	return strings.HasPrefix(cmdStr, "sudo ")
+}
+
+func isSudoCmd(cmd syntax.Command) bool {
+	if cmd == nil {
+		return false
+	}
+	if _, ok := cmd.(*syntax.FuncDecl); ok {
+		return false
+	}
+	if blockExpr, ok := cmd.(*syntax.Block); ok {
+		for _, stmt := range blockExpr.Stmts {
+			if isSudoCmd(stmt.Cmd) {
+				return true
+			}
+		}
+		return false
+	}
+	if binExpr, ok := cmd.(*syntax.BinaryCmd); ok {
+		if isSudoCmd(binExpr.X.Cmd) || isSudoCmd(binExpr.Y.Cmd) {
+			return true
+		}
+	} else if callExpr, ok := cmd.(*syntax.CallExpr); ok {
+		arg0 := getCallExprLitArg(callExpr, 0)
+		if arg0 != "" && utilfn.ContainsStr([]string{"sudo"}, arg0) {
+			return true
+		}
+	}
+	return false
+
+}
+
+func IsSudoCommand(cmdStr string) bool {
+	cmdReader := strings.NewReader(cmdStr)
+	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
+	file, err := parser.Parse(cmdReader, "sudo")
+	if err != nil {
+		return checkSimpleSudoCmd(cmdStr)
+	}
+	for _, stmt := range file.Stmts {
+		if isSudoCmd(stmt.Cmd) {
+			return true
+		}
+	}
+	return false
+}
+
 func EvalBracketArgs(origCmdStr string) (map[string]string, string, error) {
 	rtn := make(map[string]string)
 	if strings.HasPrefix(origCmdStr, " ") {
@@ -373,6 +422,7 @@ func EvalMetaCommand(ctx context.Context, origPk *scpacket.FeCommandPacketType) 
 	rtnPk.UIContext = origPk.UIContext
 	rtnPk.RawStr = origPk.RawStr
 	rtnPk.Interactive = origPk.Interactive
+	rtnPk.EphemeralOpts = origPk.EphemeralOpts
 	for key, val := range origPk.Kwargs {
 		rtnPk.Kwargs[key] = val
 	}

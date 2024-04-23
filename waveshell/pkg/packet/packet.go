@@ -65,6 +65,8 @@ const (
 	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
 	ShellStatePacketStr     = "shellstate"
 	RpcInputPacketStr       = "rpcinput" // rpc-followup
+	SudoRequestPacketStr    = "sudorequest"
+	SudoResponsePacketStr   = "sudoresponse"
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
@@ -120,6 +122,8 @@ func init() {
 	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
 	TypeStrToFactory[FileStatPacketStr] = reflect.TypeOf(FileStatPacketType{})
 	TypeStrToFactory[RpcInputPacketStr] = reflect.TypeOf(RpcInputPacketType{})
+	TypeStrToFactory[SudoRequestPacketStr] = reflect.TypeOf(SudoRequestPacketType{})
+	TypeStrToFactory[SudoResponsePacketStr] = reflect.TypeOf(SudoResponsePacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -146,6 +150,7 @@ func init() {
 	var _ CommandPacketType = (*CmdDonePacketType)(nil)
 	var _ CommandPacketType = (*SpecialInputPacketType)(nil)
 	var _ CommandPacketType = (*CmdFinalPacketType)(nil)
+	var _ CommandPacketType = (*SudoResponsePacketType)(nil)
 }
 
 func RegisterPacketType(typeStr string, rtype reflect.Type) {
@@ -485,6 +490,7 @@ type FileInfo struct {
 	ModTs    int64  `json:"modts"`
 	IsDir    bool   `json:"isdir,omitempty"`
 	Perm     int    `json:"perm"`
+	MimeType string `json:"mimetype,omitempty"`
 	NotFound bool   `json:"notfound,omitempty"` // when NotFound is set, Perm will be set to permission for directory
 }
 
@@ -820,12 +826,13 @@ type RunPacketType struct {
 	State         *ShellState     `json:"state,omitempty"`
 	StatePtr      *ShellStatePtr  `json:"stateptr,omitempty"`      // added in Wave v0.7.2
 	StateComplete bool            `json:"statecomplete,omitempty"` // set to true if state is complete (the default env should not be set)
-	UsePty        bool            `json:"usepty,omitempty"`
+	UsePty        bool            `json:"usepty,omitempty"`        // Set to true if the command should be run in a pty. This will write all output to the stdout file descriptor with PTY formatting.
 	TermOpts      *TermOpts       `json:"termopts,omitempty"`
 	Fds           []RemoteFd      `json:"fds,omitempty"`
 	RunData       []RunDataType   `json:"rundata,omitempty"`
 	Detached      bool            `json:"detached,omitempty"`
 	ReturnState   bool            `json:"returnstate,omitempty"`
+	IsSudo        bool            `json:"issudo,omitempty"`
 }
 
 func (*RunPacketType) GetType() string {
@@ -975,6 +982,55 @@ func (*OpenAICloudReqPacketType) GetType() string {
 func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
 	return &OpenAICloudReqPacketType{
 		Type: OpenAICloudReqStr,
+	}
+}
+
+type SudoRequestPacketType struct {
+	Type        string          `json:"type"`
+	CK          base.CommandKey `json:"ck"`
+	ShellPubKey []byte          `json:"shellpubkey"`
+	SudoStatus  string          `json:"sudostatus"`
+	ErrStr      string          `json:"errstr"`
+}
+
+func (*SudoRequestPacketType) GetType() string {
+	return SudoRequestPacketStr
+}
+
+func (p *SudoRequestPacketType) GetCK() base.CommandKey {
+	return p.CK
+}
+
+func MakeSudoRequestPacket(ck base.CommandKey, pubKey []byte, sudoStatus string) *SudoRequestPacketType {
+	return &SudoRequestPacketType{
+		Type:        SudoRequestPacketStr,
+		CK:          ck,
+		ShellPubKey: pubKey,
+		SudoStatus:  sudoStatus,
+	}
+}
+
+type SudoResponsePacketType struct {
+	Type      string          `json:"type"`
+	CK        base.CommandKey `json:"ck"`
+	Secret    []byte          `json:"secret"`
+	SrvPubKey []byte          `json:"srvpubkey"`
+}
+
+func (*SudoResponsePacketType) GetType() string {
+	return SudoResponsePacketStr
+}
+
+func (p *SudoResponsePacketType) GetCK() base.CommandKey {
+	return p.CK
+}
+
+func MakeSudoResponsePacket(ck base.CommandKey, secret []byte, srvPubKey []byte) *SudoResponsePacketType {
+	return &SudoResponsePacketType{
+		Type:      SudoResponsePacketStr,
+		CK:        ck,
+		Secret:    secret,
+		SrvPubKey: srvPubKey,
 	}
 }
 

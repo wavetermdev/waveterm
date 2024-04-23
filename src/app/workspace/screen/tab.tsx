@@ -12,6 +12,7 @@ import * as constants from "@/app/appconst";
 import { Reorder } from "framer-motion";
 import { MagicLayout } from "@/app/magiclayout";
 import { TabIcon } from "@/elements/tabicon";
+import * as appconst from "@/app/appconst";
 
 @mobxReact.observer
 class ScreenTab extends React.Component<
@@ -21,10 +22,15 @@ class ScreenTab extends React.Component<
     tabRef = React.createRef<HTMLUListElement>();
     dragEndTimeout = null;
     scrollIntoViewTimeout = null;
+    theme: string;
+    themeReactionDisposer: mobx.IReactionDisposer;
 
     componentWillUnmount() {
         if (this.scrollIntoViewTimeout) {
             clearTimeout(this.dragEndTimeout);
+        }
+        if (this.themeReactionDisposer) {
+            this.themeReactionDisposer();
         }
     }
 
@@ -57,6 +63,59 @@ class ScreenTab extends React.Component<
         })();
     }
 
+    @boundMethod
+    onContextMenu(e: React.MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
+        let { screen, activeScreenId } = this.props;
+        if (activeScreenId != screen.screenId) {
+            // only show context menu for active tab
+            GlobalCommandRunner.switchScreen(screen.screenId);
+            return;
+        }
+        let colorSubMenu: ContextMenuItem[] = [];
+        for (let color of appconst.TabColors) {
+            colorSubMenu.push({
+                label: color,
+                click: () => {
+                    GlobalCommandRunner.screenSetSettings(screen.screenId, { tabcolor: color }, false);
+                },
+            });
+        }
+        let menu: ContextMenuItem[] = [
+            {
+                label: "New Tab",
+                click: () => {
+                    GlobalCommandRunner.createNewScreen();
+                },
+            },
+            {
+                type: "separator",
+            },
+            {
+                label: "Set Tab Color",
+                submenu: colorSubMenu,
+            },
+            {
+                label: "All Tab Settings",
+                click: () => {
+                    GlobalModel.tabSettingsOpen.set(true);
+                },
+            },
+            {
+                type: "separator",
+            },
+            {
+                label: "Close Tab",
+                click: () => {
+                    GlobalModel.onCloseCurrentTab();
+                },
+            },
+        ];
+        GlobalModel.contextMenuModel.showContextMenu(menu, { x: e.clientX, y: e.clientY });
+        return;
+    }
+
     render() {
         let { screen, activeScreenId, index, onSwitchScreen } = this.props;
         let archived = screen.archived.get() ? (
@@ -78,7 +137,7 @@ class ScreenTab extends React.Component<
                     "color-" + screen.getTabColor()
                 )}
                 onPointerDown={() => onSwitchScreen(screen.screenId)}
-                onContextMenu={(event) => this.openScreenSettings(event, screen)}
+                onContextMenu={this.onContextMenu}
                 onDragEnd={this.handleDragEnd}
             >
                 <div className="background"></div>

@@ -53,3 +53,138 @@
         }
     }
 }
+
+.newtab-container {
+    margin: 8px 16px 0 16px;
+
+    .newtab-section {
+        display: flex;
+        padding: 10px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        align-self: stretch;
+
+        .truncate {
+            max-width: 100%;
+        }
+
+        &.conn-section {
+            gap: 8px;
+        }
+    }
+
+    .cr-help-text {
+        color: var(--screen-view-text-caption-color);
+        margin-left: 5px;
+    }
+
+    .newtab-spacer {
+        height: 1px;
+        background: var(--app-border-color);
+    }
+
+    .control-iconlist {
+        display: flex;
+        margin-left: -2px;
+        padding: 8px 0 8px 2px;
+        align-items: flex-start;
+        gap: 14px;
+
+        &.tabicon-list {
+            gap: 12px;
+        }
+
+        .icondiv {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            position: relative;
+            font-size: 14px;
+
+            &.tabicon {
+                display: flex;
+                align-items: center;
+                width: 22px;
+            }
+
+            .icon {
+                width: 20px;
+                height: 20px;
+            }
+
+            i {
+                padding-left: 3px;
+                padding-right: 3px;
+            }
+
+            .icon.square-icon {
+                position: relative;
+                top: 3px;
+                width: 16px;
+                height: 16px;
+            }
+
+            .check-icon {
+                width: 12px;
+                height: 12px;
+                position: absolute;
+                top: 4px;
+                left: 4px;
+
+                path {
+                    fill: black;
+                }
+            }
+
+            .status-div {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 16px;
+                height: 16px;
+                padding: 3px;
+
+                svg.status-icon {
+                    width: 10px;
+                    height: 10px;
+                }
+            }
+
+            .add-div {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 16px;
+                height: 16px;
+
+                svg.add-icon {
+                    width: 16px;
+                    height: 16px;
+
+                    path {
+                        fill: var(--app-text-primary-color);
+                    }
+                }
+            }
+
+            .text-standard {
+                color: var(--app-text-secondary-color);
+            }
+
+            .ellipsis {
+                text-overflow: ellipsis;
+            }
+
+            &:hover {
+                background-color: rgba(241, 246, 243, 0.08);
+            }
+
+            .icon.color-white + .check-icon {
+                path {
+                    fill: black;
+                }
+            }
+        }
+    }
+}

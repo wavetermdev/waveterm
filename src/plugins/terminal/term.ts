@@ -51,9 +51,10 @@ type TermWrapOpts = {
     onUpdateContentHeight: (termContext: RendererContext, height: number) => void;
 };
 
-function getThemeFromCSSVars(): ITheme {
-    let theme: ITheme = {};
-    let rootStyle = getComputedStyle(document.documentElement);
+function getThemeFromCSSVars(themeSrcEl: HTMLElement): ITheme {
+    const theme: ITheme = {};
+    const tse = themeSrcEl ?? document.documentElement;
+    let rootStyle = getComputedStyle(tse);
     theme.foreground = rootStyle.getPropertyValue("--term-foreground");
     theme.background = rootStyle.getPropertyValue("--term-background");
     theme.black = rootStyle.getPropertyValue("--term-black");
@@ -130,7 +131,8 @@ class TermWrap {
             let cols = windowWidthToCols(opts.winSize.width, opts.fontSize);
             this.termSize = { rows: opts.termOpts.rows, cols: cols };
         }
-        let theme = getThemeFromCSSVars();
+        const themeSrcEl = GlobalModel.termThemeSrcEl.get();
+        let theme = getThemeFromCSSVars(themeSrcEl);
         this.terminal = new Terminal({
             rows: this.termSize.rows,
             cols: this.termSize.cols,
@@ -283,6 +285,39 @@ class TermWrap {
             }
         }
         return usedRows;
+    }
+
+    // gets the text output of the terminal (respects line wrapping)
+    // if fullOutput is true, returns all output, otherwise only the visible output
+    getOutput(fullOutput: boolean): string {
+        let activeBuf = this.terminal?.buffer?.active;
+        if (activeBuf == null) {
+            return null;
+        }
+        const totalLines = activeBuf.length;
+        let output = [];
+        let emptyStart = -1;
+        let startLine = fullOutput ? 0 : activeBuf.viewportY;
+        for (let i = startLine; i < totalLines; i++) {
+            const line = activeBuf.getLine(i);
+            const lineStr = line?.translateToString(true) ?? "";
+            if (lineStr == "") {
+                if (emptyStart == -1) {
+                    emptyStart = output.length;
+                }
+            } else {
+                emptyStart = -1;
+            }
+            if (line?.isWrapped) {
+                output[output.length - 1] += lineStr;
+            } else {
+                output.push(lineStr);
+            }
+        }
+        if (emptyStart != -1) {
+            output = output.slice(0, emptyStart);
+        }
+        return output.join("\n");
     }
 
     updateUsedRows(forceFull: boolean, reason: string) {

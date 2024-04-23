@@ -292,7 +292,7 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 		return UserInputCancelError{Err: fmt.Errorf("canceled by the user")}
 	}
 
-	_, err = f.WriteString(newLine)
+	_, err = f.WriteString(newLine + "\n")
 	if err != nil {
 		f.Close()
 		return err
@@ -409,6 +409,12 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 		} else if err != nil {
 			// TODO handle obscure problems if possible
 			return nil, fmt.Errorf("known_hosts formatting error: %+v", err)
+		}
+	}
+
+	if basicCallback == nil {
+		basicCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			return &knownhosts.KeyError{}
 		}
 	}
 

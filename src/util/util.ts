@@ -13,6 +13,13 @@ function isBlank(s: string): boolean {
     return s == null || s == "";
 }
 
+function isArray(obj: any): boolean {
+    if (obj == null) {
+        return false;
+    }
+    return Array.isArray(obj) || mobx.isObservableArray(obj);
+}
+
 function handleNotOkResp(resp: any, url: URL): Promise<any> {
     const errMsg = sprintf(
         "Bad status code response from fetch '%s': code=%d %s",
@@ -412,6 +419,7 @@ export {
     isModKeyPress,
     incObs,
     isBlank,
+    isArray,
     getTodayStr,
     getYesterdayStr,
     getDateStr,

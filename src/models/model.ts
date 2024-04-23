@@ -32,10 +32,12 @@ import { MainSidebarModel } from "./mainsidebar";
 import { RightSidebarModel } from "./rightsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
+import { ContextMenuModel } from "./contextmenu";
 import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
 import * as util from "@/util/util";
+import { url } from "node:inspector";
 
 type SWLinePtr = {
     line: LineType;
@@ -120,6 +122,7 @@ class Model {
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
     rightSidebarModel: RightSidebarModel;
+    contextMenuModel: ContextMenuModel;
     isDarkTheme: OV<boolean> = mobx.observable.box(getApi().getShouldUseDarkColors(), {
         name: "isDarkTheme",
     });
@@ -139,6 +142,18 @@ class Model {
         name: "appUpdateStatus",
     });
 
+    termThemes: OMap<string, string> = mobx.observable.array([], {
+        name: "terminalThemes",
+        deep: false,
+    });
+    termThemeSrcEl: OV<HTMLElement> = mobx.observable.box(null, {
+        name: "termThemeSrcEl",
+    });
+    termRenderVersion: OV<number> = mobx.observable.box(0, {
+        name: "termRenderVersion",
+    });
+    currGlobalTermTheme: string;
+
     private constructor() {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
@@ -151,6 +166,7 @@ class Model {
         this.ws.reconnect();
         this.keybindManager = new KeybindManager(this);
         this.readConfigKeybindings();
+        this.fetchTerminalThemes();
         this.initSystemKeybindings();
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
@@ -163,6 +179,7 @@ class Model {
         this.modalsModel = new ModalsModel();
         this.mainSidebarModel = new MainSidebarModel(this);
         this.rightSidebarModel = new RightSidebarModel(this);
+        this.contextMenuModel = new ContextMenuModel(this);
         const isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -189,6 +206,7 @@ class Model {
         getApi().onNativeThemeUpdated(this.onNativeThemeUpdated.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
+        window.addEventListener("focus", this.windowFocus.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
         this.lineHeightEnv = {
             // defaults
@@ -215,6 +233,54 @@ class Model {
         });
     }
 
+    windowFocus(): void {
+        if (this.activeMainView.get() == "session" && !this.modalsModel.hasOpenModals()) {
+            this.refocus();
+        }
+    }
+
+    fetchTerminalThemes() {
+        const url = new URL(this.getBaseHostPort() + "/config/terminal-themes");
+        fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => {
+                if (resp.status == 404) {
+                    return [];
+                } else if (!resp.ok) {
+                    util.handleNotOkResp(resp, url);
+                }
+                return resp.json();
+            })
+            .then((themes) => {
+                const tt = themes.map((theme) => theme.name.split(".")[0]);
+                this.termThemes.replace(tt);
+            });
+    }
+
+    updateTermTheme(element: HTMLElement, themeFileName: string, reset: boolean) {
+        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
+        return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
+            .then((resp) => resp.json())
+            .then((themeVars: TermThemeType) => {
+                Object.keys(themeVars).forEach((key) => {
+                    if (reset) {
+                        this.resetStyleVar(element, `--term-${key}`);
+                    } else {
+                        this.resetStyleVar(element, `--term-${key}`);
+                        this.setStyleVar(element, `--term-${key}`, themeVars[key]);
+                    }
+                });
+            })
+            .catch((error) => {
+                console.error(`error applying theme: ${themeFileName}`, error);
+            });
+    }
+
+    bumpTermRenderVersion() {
+        mobx.action(() => {
+            this.termRenderVersion.set(this.termRenderVersion.get() + 1);
+        })();
+    }
+
     initSystemKeybindings() {
         this.keybindManager.registerKeybinding("system", "electron", "system:toggleDeveloperTools", (waveEvent) => {
             getApi().toggleDeveloperTools();
@@ -228,7 +294,10 @@ class Model {
 
     initAppKeybindings() {
         for (let index = 1; index <= 9; index++) {
-            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, (waveEvent) => {
+                this.onSwitchSessionCmd(index);
+                return true;
+            });
         }
         this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
             this.onFocusCmdInputPressed();
@@ -315,7 +384,7 @@ class Model {
     refocus() {
         // givefocus() give back focus to cmd or input
         const activeScreen = this.getActiveScreen();
-        if (screen == null) {
+        if (activeScreen == null) {
             return;
         }
         activeScreen.giveFocus();
@@ -417,6 +486,14 @@ class Model {
         }
     }
 
+    getTermTheme(): TermThemeType {
+        let cdata = this.clientData.get();
+        if (cdata?.feopts?.termtheme) {
+            return mobx.toJS(cdata.feopts.termtheme);
+        }
+        return {};
+    }
+
     getTermFontSize(): number {
         return this.termFontSize.get();
     }
@@ -425,11 +502,11 @@ class Model {
         let lhe = this.recomputeLineHeightEnv();
         mobx.action(() => {
             this.bumpRenderVersion();
-            this.setStyleVar("--termfontsize", lhe.fontSize + "px");
-            this.setStyleVar("--termlineheight", lhe.lineHeight + "px");
-            this.setStyleVar("--termpad", lhe.pad + "px");
-            this.setStyleVar("--termfontsize-sm", lhe.fontSizeSm + "px");
-            this.setStyleVar("--termlineheight-sm", lhe.lineHeightSm + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize", lhe.fontSize + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight", lhe.lineHeight + "px");
+            this.setStyleVar(document.documentElement, "--termpad", lhe.pad + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize-sm", lhe.fontSizeSm + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight-sm", lhe.lineHeightSm + "px");
         })();
     }
 
@@ -448,8 +525,12 @@ class Model {
         return this.lineHeightEnv;
     }
 
-    setStyleVar(name: string, value: string) {
-        document.documentElement.style.setProperty(name, value);
+    setStyleVar(element: HTMLElement, name: string, value: string): void {
+        element.style.setProperty(name, value);
+    }
+
+    resetStyleVar(element: HTMLElement, name: string): void {
+        element.style.removeProperty(name);
     }
 
     getBaseWsHostPort(): string {
@@ -528,6 +609,11 @@ class Model {
         if (activeScreen == null) {
             return;
         }
+        let numLines = activeScreen.getScreenLines().lines.length;
+        if (numLines < 10) {
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
+            return;
+        }
         const rtnp = this.showAlert({
             message: "Are you sure you want to delete this tab?",
             confirm: true,
@@ -536,7 +622,7 @@ class Model {
             if (!result) {
                 return;
             }
-            GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
         });
     }
 
@@ -632,10 +718,6 @@ class Model {
         GlobalCommandRunner.setTermUsedRows(context, height);
     }
 
-    contextScreen(e: any, screenId: string) {
-        getApi().contextScreen({ screenId: screenId }, { x: e.x, y: e.y });
-    }
-
     contextEditMenu(e: any, opts: ContextMenuOpts) {
         getApi().contextEditMenu({ x: e.x, y: e.y }, opts);
     }
@@ -677,11 +759,11 @@ class Model {
                 this.activeMainView.set("session");
                 setTimeout(() => {
                     // allows for the session view to load
-                    this.inputModel.giveFocus();
+                    this.inputModel.setAuxViewFocus(false);
                 }, 100);
             })();
         } else {
-            this.inputModel.giveFocus();
+            this.inputModel.setAuxViewFocus(false);
         }
     }
 
@@ -755,7 +837,6 @@ class Model {
     }
 
     onMetaArrowDown(): void {
-        console.log("meta arrow down?");
         GlobalCommandRunner.screenSelectLine("+1");
     }
 
@@ -767,8 +848,11 @@ class Model {
         }
     }
 
+    onSwitchScreenCmd(digit: number) {
+        GlobalCommandRunner.switchScreen(String(digit));
+    }
+
     onSwitchSessionCmd(digit: number) {
-        console.log("switching to ", digit);
         GlobalCommandRunner.switchSession(String(digit));
     }
 
@@ -1016,7 +1100,7 @@ class Model {
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
                 this.closeTabSettings();
                 const activeScreen = this.getActiveScreen();
-                if (activeScreen != null && activeScreen.getCurRemoteInstance() != null) {
+                if (activeScreen?.getCurRemoteInstance() != null) {
                     setTimeout(() => {
                         GlobalCommandRunner.syncShellState();
                     }, 100);
@@ -1225,6 +1309,9 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getThemeSource();
+        const oldTermTheme = this.getTermTheme();
+        const newTermTheme = clientData?.feopts?.termtheme;
+        const ttUpdated = this.termThemeUpdated(newTermTheme, oldTermTheme);
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1245,6 +1332,36 @@ class Model {
             getApi().setNativeThemeSource(newTheme);
             this.bumpRenderVersion();
         }
+        // Only for global terminal theme. For session and screen terminal theme,
+        // they are handled in workspace view.
+        if (newTermTheme) {
+            const el = document.documentElement;
+            const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
+            const reset = newTermTheme["global"] == null;
+            if (globaltt) {
+                const rtn = this.updateTermTheme(el, globaltt, reset);
+                rtn.then(() => {
+                    if (ttUpdated) {
+                        this.bumpTermRenderVersion();
+                    }
+                });
+                this.currGlobalTermTheme = globaltt;
+            }
+        }
+    }
+
+    termThemeUpdated(newTermTheme, oldTermTheme) {
+        for (const key in oldTermTheme) {
+            if (!(key in newTermTheme)) {
+                return true;
+            }
+        }
+        for (const key in newTermTheme) {
+            if (!oldTermTheme[key] || oldTermTheme[key] !== newTermTheme[key]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
@@ -1302,6 +1419,7 @@ class Model {
             kwargs: { ...kwargs },
             uicontext: this.getUIContext(),
             interactive: interactive,
+            ephemeralopts: null,
         };
         /** 
         console.log(
@@ -1313,6 +1431,97 @@ class Model {
         );
 		 */
         return this.submitCommandPacket(pk, interactive);
+    }
+
+    getSingleEphemeralCommandOutput(url: URL): Promise<string> {
+        return fetch(url, { method: "get", headers: this.getFetchHeaders() })
+            .then((resp) => resp.text())
+            .catch((err) => {
+                this.errorHandler("getting ephemeral command output", err, true);
+                return "";
+            });
+    }
+
+    async getEphemeralCommandOutput(
+        ephemeralCommandResponse: EphemeralCommandResponsePacketType
+    ): Promise<EphemeralCommandOutputType> {
+        let stdout = "";
+        let stderr = "";
+        if (ephemeralCommandResponse.stdouturl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stdouturl);
+            console.log("stdouturl", url);
+            stdout = await this.getSingleEphemeralCommandOutput(url);
+        }
+        if (ephemeralCommandResponse.stderrurl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stderrurl);
+            console.log("stderrurl", url);
+            stderr = await this.getSingleEphemeralCommandOutput(url);
+        }
+        return { stdout: stdout, stderr: stderr };
+    }
+
+    submitEphemeralCommandPacket(
+        cmdPk: FeCmdPacketType,
+        interactive: boolean
+    ): Promise<EphemeralCommandResponsePacketType> {
+        if (this.debugCmds > 0) {
+            console.log("[cmd]", cmdPacketString(cmdPk));
+            if (this.debugCmds > 1) {
+                console.trace();
+            }
+        }
+        // adding cmdStr for debugging only (easily filter run-command calls in the network tab of debugger)
+        const cmdStr = cmdPk.metacmd + (cmdPk.metasubcmd ? ":" + cmdPk.metasubcmd : "");
+        const url = new URL(this.getBaseHostPort() + "/api/run-ephemeral-command?cmd=" + cmdStr);
+        const fetchHeaders = this.getFetchHeaders();
+        const prtn = fetch(url, {
+            method: "post",
+            body: JSON.stringify(cmdPk),
+            headers: fetchHeaders,
+        })
+            .then(async (resp) => {
+                const data = await handleJsonFetchResponse(url, resp);
+                if (data.success) {
+                    return data.data as EphemeralCommandResponsePacketType;
+                } else {
+                    console.log("error running ephemeral command", data);
+                    return {};
+                }
+            })
+            .catch((err) => {
+                this.errorHandler("calling run-ephemeral-command", err, interactive);
+                return {};
+            });
+        return prtn;
+    }
+
+    submitEphemeralCommand(
+        metaCmd: string,
+        metaSubCmd: string,
+        args: string[],
+        kwargs: Record<string, string>,
+        interactive: boolean,
+        ephemeralopts?: EphemeralCmdOptsType
+    ): Promise<EphemeralCommandResponsePacketType> {
+        const pk: FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: metaCmd,
+            metasubcmd: metaSubCmd,
+            args: args,
+            kwargs: { ...kwargs },
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            ephemeralopts: ephemeralopts,
+        };
+        console.log(
+            "CMD",
+            pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
+            pk.args,
+            pk.kwargs,
+            pk.interactive,
+            pk.ephemeralopts
+        );
+        return this.submitEphemeralCommandPacket(pk, interactive);
     }
 
     submitChatInfoCommand(chatMsg: string, curLineStr: string, clear: boolean): Promise<CommandRtnType> {
@@ -1602,6 +1811,10 @@ class Model {
         mobx.action(() => {
             this.appUpdateStatus.set(status);
         })();
+    }
+
+    getElectronApi(): ElectronApi {
+        return getApi();
     }
 }
 

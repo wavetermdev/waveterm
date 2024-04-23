@@ -5,18 +5,19 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
-import { isBlank } from "@/util/util";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
 import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
+import { AuxiliaryCmdView } from "./auxview";
+import * as appconst from "@/app/appconst";
+
+import "./aichat.less";
 
 class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
     componentDidMount(): void {
-        let AIChatObject = this.props.AIChatObject;
-        let keybindManager = GlobalModel.keybindManager;
-        let inputModel = GlobalModel.inputModel;
+        const AIChatObject = this.props.AIChatObject;
+        const keybindManager = GlobalModel.keybindManager;
+        const inputModel = GlobalModel.inputModel;
 
         keybindManager.registerKeybinding("pane", "aichat", "generic:confirm", (waveEvent) => {
             AIChatObject.onEnterKeyPressed();
@@ -27,7 +28,7 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:cancel", (waveEvent) => {
-            inputModel.closeAIAssistantChat(true);
+            inputModel.closeAuxView();
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "aichat:clearHistory", (waveEvent) => {
@@ -54,24 +55,18 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
 @mobxReact.observer
 class AIChat extends React.Component<{}, {}> {
     chatListKeyCount: number = 0;
-    textAreaNumLines: mobx.IObservableValue<number> = mobx.observable.box(1, { name: "textAreaNumLines" });
     chatWindowScrollRef: React.RefObject<HTMLDivElement>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
-    isFocused: OV<boolean>;
+    termFontSize: number = 14;
 
     constructor(props: any) {
         super(props);
         this.chatWindowScrollRef = React.createRef();
         this.textAreaRef = React.createRef();
-        this.isFocused = mobx.observable.box(false, {
-            name: "aichat-isfocused",
-        });
     }
-
     componentDidMount() {
-        let model = GlobalModel;
-        let inputModel = model.inputModel;
-        if (this.chatWindowScrollRef != null && this.chatWindowScrollRef.current != null) {
+        const inputModel = GlobalModel.inputModel;
+        if (this.chatWindowScrollRef?.current != null) {
             this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
         }
         if (this.textAreaRef.current != null) {
@@ -79,10 +74,11 @@ class AIChat extends React.Component<{}, {}> {
             inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowScrollRef);
         }
         this.requestChatUpdate();
+        this.onTextAreaChange(null);
     }
 
     componentDidUpdate() {
-        if (this.chatWindowScrollRef != null && this.chatWindowScrollRef.current != null) {
+        if (this.chatWindowScrollRef?.current != null) {
             this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
         }
     }
@@ -92,51 +88,59 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     submitChatMessage(messageStr: string) {
-        let model = GlobalModel;
-        let inputModel = model.inputModel;
-        let curLine = inputModel.getCurLine();
-        let prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
+        const curLine = GlobalModel.inputModel.getCurLine();
+        const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
             if (!rtn.success) {
                 console.log("submit chat command error: " + rtn.error);
             }
-        }).catch((error) => {});
+        }).catch((_) => {});
     }
 
     getLinePos(elem: any): { numLines: number; linePos: number } {
-        let numLines = elem.value.split("\n").length;
-        let linePos = elem.value.substr(0, elem.selectionStart).split("\n").length;
+        const numLines = elem.value.split("\n").length;
+        const linePos = elem.value.substr(0, elem.selectionStart).split("\n").length;
         return { numLines, linePos };
     }
 
     onTextAreaFocused(e: any) {
         mobx.action(() => {
-            this.isFocused.set(true);
+            GlobalModel.inputModel.setAuxViewFocus(true);
         })();
     }
 
     onTextAreaBlur(e: any) {
         mobx.action(() => {
-            this.isFocused.set(false);
+            GlobalModel.inputModel.setAuxViewFocus(false);
         })();
     }
 
+    // Adjust the height of the textarea to fit the text
     onTextAreaChange(e: any) {
-        // set height of textarea based on number of newlines
-        mobx.action(() => {
-            this.textAreaNumLines.set(e.target.value.split(/\n/).length);
-            GlobalModel.inputModel.codeSelectDeselectAll();
-        })();
+        // Calculate the bounding height of the text area
+        const textAreaMaxLines = 4;
+        const textAreaLineHeight = this.termFontSize * 1.5;
+        const textAreaMinHeight = textAreaLineHeight;
+        const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
+
+        // Get the height of the wrapped text area content. Courtesy of https://stackoverflow.com/questions/995168/textarea-to-resize-based-on-content-length
+        this.textAreaRef.current.style.height = "1px";
+        const scrollHeight: number = this.textAreaRef.current.scrollHeight;
+
+        // Set the new height of the text area, bounded by the min and max height.
+        const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
+        this.textAreaRef.current.style.height = newHeight + "px";
+        GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
     onEnterKeyPressed() {
-        let inputModel = GlobalModel.inputModel;
-        let currentRef = this.textAreaRef.current;
+        const inputModel = GlobalModel.inputModel;
+        const currentRef = this.textAreaRef.current;
         if (currentRef == null) {
             return;
         }
         if (inputModel.getCodeSelectSelectedIndex() == -1) {
-            let messageStr = currentRef.value;
+            const messageStr = currentRef.value;
             this.submitChatMessage(messageStr);
             currentRef.value = "";
         } else {
@@ -145,7 +149,7 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     onExpandInputPressed() {
-        let currentRef = this.textAreaRef.current;
+        const currentRef = this.textAreaRef.current;
         if (currentRef == null) {
             return;
         }
@@ -154,7 +158,7 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     onArrowUpPressed(): boolean {
-        let currentRef = this.textAreaRef.current;
+        const currentRef = this.textAreaRef.current;
         if (currentRef == null) {
             return false;
         }
@@ -168,8 +172,8 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     onArrowDownPressed(): boolean {
-        let currentRef = this.textAreaRef.current;
-        let inputModel = GlobalModel.inputModel;
+        const currentRef = this.textAreaRef.current;
+        const inputModel = GlobalModel.inputModel;
         if (currentRef == null) {
             return false;
         }
@@ -190,10 +194,10 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     renderChatMessage(chatItem: OpenAICmdInfoChatMessageType): any {
-        let curKey = "chatmsg-" + this.chatListKeyCount;
+        const curKey = "chatmsg-" + this.chatListKeyCount;
         this.chatListKeyCount++;
-        let senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
-        let msgClassName = "chat-msg " + senderClassName;
+        const senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
+        const msgClassName = "chat-msg " + senderClassName;
         let innerHTML: React.JSX.Element = (
             <span>
                 <div className="chat-msg-header">
@@ -226,68 +230,42 @@ class AIChat extends React.Component<{}, {}> {
         );
     }
 
-    renderChatWindow(): any {
-        let model = GlobalModel;
-        let inputModel = model.inputModel;
-        let chatMessageItems = inputModel.AICmdInfoChatItems.slice();
-        let chitem: OpenAICmdInfoChatMessageType = null;
-        return (
-            <div className="chat-window" ref={this.chatWindowScrollRef}>
-                <For each="chitem" index="idx" of={chatMessageItems}>
-                    {this.renderChatMessage(chitem)}
-                </For>
-            </div>
-        );
-    }
-
     render() {
-        let model = GlobalModel;
-        let inputModel = model.inputModel;
-
-        const termFontSize = 14;
-        const textAreaMaxLines = 4;
-        const textAreaLineHeight = termFontSize * 1.5;
-        const textAreaPadding = 2 * 0.5 * termFontSize;
-        let textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines + textAreaPadding;
-        let textAreaInnerHeight = this.textAreaNumLines.get() * textAreaLineHeight + textAreaPadding;
-        let isFocused = this.isFocused.get();
-
+        const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
+        const chitem: OpenAICmdInfoChatMessageType = null;
+        const renderKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_AIChat);
         return (
-            <div className="cmd-aichat">
-                <If condition={isFocused}>
+            <AuxiliaryCmdView
+                title="Wave AI"
+                className="cmd-aichat"
+                onClose={() => GlobalModel.inputModel.closeAuxView()}
+                iconClass="fa-sharp fa-solid fa-sparkles"
+            >
+                <If condition={renderKeybindings}>
                     <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
                 </If>
-                <div className="cmdinput-titlebar">
-                    <div className="title-icon">
-                        <i className="fa-sharp fa-solid fa-sparkles" />
-                    </div>
-                    <div className="title-string">Wave AI</div>
-                    <div className="flex-spacer"></div>
-                    <div
-                        className="close-button"
-                        title="Close (ESC)"
-                        onClick={() => inputModel.closeAIAssistantChat(true)}
-                    >
-                        <i className="fa-sharp fa-solid fa-xmark-large" />
-                    </div>
+                <div className="chat-window" ref={this.chatWindowScrollRef}>
+                    <For each="chitem" index="idx" of={chatMessageItems}>
+                        {this.renderChatMessage(chitem)}
+                    </For>
                 </div>
-                <div className="titlebar-spacer" />
-                {this.renderChatWindow()}
-                <textarea
-                    key="main"
-                    ref={this.textAreaRef}
-                    autoComplete="off"
-                    autoCorrect="off"
-                    id="chat-cmd-input"
-                    onFocus={this.onTextAreaFocused.bind(this)}
-                    onBlur={this.onTextAreaBlur.bind(this)}
-                    onChange={this.onTextAreaChange.bind(this)}
-                    onKeyDown={this.onKeyDown}
-                    style={{ height: textAreaInnerHeight, maxHeight: textAreaMaxHeight, fontSize: termFontSize }}
-                    className={cn("chat-textarea")}
-                    placeholder="Send a Message..."
-                ></textarea>
-            </div>
+                <div className="chat-input">
+                    <textarea
+                        key="main"
+                        ref={this.textAreaRef}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        id="chat-cmd-input"
+                        onFocus={this.onTextAreaFocused.bind(this)}
+                        onBlur={this.onTextAreaBlur.bind(this)}
+                        onChange={this.onTextAreaChange.bind(this)}
+                        onKeyDown={this.onKeyDown}
+                        style={{ fontSize: this.termFontSize }}
+                        className="chat-textarea"
+                        placeholder="Send a Message..."
+                    ></textarea>
+                </div>
+            </AuxiliaryCmdView>
         );
     }
 }
