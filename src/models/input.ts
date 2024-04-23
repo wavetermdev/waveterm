@@ -412,35 +412,7 @@ class InputModel {
         if (elem == null) {
             return;
         }
-        const historyDiv = elem.closest(".cmd-history");
-        if (historyDiv == null) {
-            return;
-        }
-        const buffer = 15;
-        let titleHeight = 24;
-        const titleDiv: HTMLElement = document.querySelector(".cmd-history .history-title");
-        if (titleDiv != null) {
-            titleHeight = titleDiv.offsetHeight + 2;
-        }
-        const elemOffset = elem.offsetTop;
-        const elemHeight = elem.clientHeight;
-        const topPos = historyDiv.scrollTop;
-        const endPos = topPos + historyDiv.clientHeight;
-        if (elemOffset + elemHeight + buffer > endPos) {
-            if (elemHeight + buffer > historyDiv.clientHeight - titleHeight) {
-                historyDiv.scrollTop = elemOffset - titleHeight;
-                return;
-            }
-            historyDiv.scrollTop = elemOffset - historyDiv.clientHeight + elemHeight + buffer;
-            return;
-        }
-        if (elemOffset < topPos + titleHeight) {
-            if (elemHeight + buffer > historyDiv.clientHeight - titleHeight) {
-                historyDiv.scrollTop = elemOffset - titleHeight;
-                return;
-            }
-            historyDiv.scrollTop = elemOffset - titleHeight - buffer;
-        }
+        elem.scrollIntoView({ block: "nearest" });
     }
 
     grabSelectedHistoryItem(): void {
