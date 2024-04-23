@@ -95,6 +95,17 @@ func NumSessions(ctx context.Context) (int, error) {
 	return numSessions, txErr
 }
 
+func NumScreens(ctx context.Context) (int, error) {
+	var numScreens int
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := "SELECT count(*) FROM screen"
+		numScreens = tx.GetInt(query)
+		return nil
+	})
+	return numScreens, txErr
+
+}
+
 func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 	var rtn []*RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {

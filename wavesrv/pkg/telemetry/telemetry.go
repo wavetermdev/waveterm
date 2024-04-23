@@ -28,9 +28,13 @@ type ActivityUpdate struct {
 	HistoryView      int
 	BookmarksView    int
 	NumConns         int
-	WebShareLimit    int
+	NumWorkspaces    int
+	NumTabs          int
+	NewTab           int
 	ReinitBashErrors int
 	ReinitZshErrors  int
+	Startup          int
+	Shutdown         int
 	BuildTime        string
 }
 
@@ -56,7 +60,11 @@ type TelemetryData struct {
 	HistoryView      int `json:"historyview,omitempty"`
 	BookmarksView    int `json:"bookmarksview,omitempty"`
 	NumConns         int `json:"numconns"`
-	WebShareLimit    int `json:"websharelimit,omitempty"`
+	NumWorkspaces    int `json:"numworkspaces"`
+	NumTabs          int `json:"numtabs"`
+	NewTab           int `json:"newtab"`
+	NumStartup       int `json:"numstartup,omitempty"`
+	NumShutdown      int `json:"numshutdown,omitempty"`
 	ReinitBashErrors int `json:"reinitbasherrors,omitempty"`
 	ReinitZshErrors  int `json:"reinitzsherrors,omitempty"`
 }
@@ -69,13 +77,17 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 	return dbutil.QuickScanJson(tdata, val)
 }
 
-// Wraps UpdateCurrentActivity, but ignores errors
-func UpdateActivityWrap(ctx context.Context, update ActivityUpdate, debugStr string) {
-	err := UpdateCurrentActivity(ctx, update)
-	if err != nil {
-		// ignore error, just log, since this is not critical
-		log.Printf("error updating current activity (%s): %v\n", debugStr, err)
-	}
+// Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
+func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
+	go func() {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		err := UpdateCurrentActivity(ctx, update)
+		if err != nil {
+			// ignore error, just log, since this is not critical
+			log.Printf("error updating current activity (%s): %v\n", debugStr, err)
+		}
+	}()
 }
 
 func GetCurDayStr() string {
@@ -202,8 +214,17 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.BookmarksView += update.BookmarksView
 		tdata.ReinitBashErrors += update.ReinitBashErrors
 		tdata.ReinitZshErrors += update.ReinitZshErrors
+		tdata.NewTab += update.NewTab
+		tdata.NumStartup += update.Startup
+		tdata.NumShutdown += update.Shutdown
 		if update.NumConns > 0 {
 			tdata.NumConns = update.NumConns
+		}
+		if update.NumWorkspaces > 0 {
+			tdata.NumWorkspaces = update.NumWorkspaces
+		}
+		if update.NumTabs > 0 {
+			tdata.NumTabs = update.NumTabs
 		}
 		query = `UPDATE activity
                  SET tdata = ?,
