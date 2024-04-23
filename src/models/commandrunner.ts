@@ -382,27 +382,39 @@ class CommandRunner {
     }
 
     setRootTermTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+        let ftheme = theme;
+        if (ftheme == "inherit") {
+            ftheme = "";
+        }
         let kwargs = {
             nohist: "1",
-            termtheme: theme,
+            termtheme: ftheme,
         };
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
     setSessionTermTheme(sessionId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        let fname = name;
+        if (name == "inherit") {
+            fname = "";
+        }
         let kwargs = {
             nohist: "1",
             id: sessionId,
-            name: name,
+            name: fname,
         };
         return GlobalModel.submitCommand("session", "termtheme", null, kwargs, interactive);
     }
 
     setScreenTermTheme(screenId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        let fname = name;
+        if (name == "inherit") {
+            fname = "";
+        }
         let kwargs = {
             nohist: "1",
             id: screenId,
-            name: name,
+            name: fname,
         };
         return GlobalModel.submitCommand("screen", "termtheme", null, kwargs, interactive);
     }

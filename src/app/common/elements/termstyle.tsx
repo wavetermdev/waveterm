@@ -65,6 +65,9 @@ class TermStyle extends React.Component<{
     getStyleRules() {
         const { selector, themeName } = this.props;
         const termThemeOptions = GlobalModel.getTermThemes();
+        if (!(themeName in termThemeOptions)) {
+            return null;
+        }
         const theme = termThemeOptions[themeName];
         if (!theme) {
             return null;

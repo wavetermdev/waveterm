@@ -5,7 +5,7 @@ function getTermThemes(termThemeOptions: string[], noneLabel = "Inherit"): Dropd
     const tt: DropdownItem[] = [];
     tt.push({
         label: noneLabel,
-        value: null,
+        value: "inherit",
     });
     for (const themeName of Object.keys(termThemeOptions)) {
         tt.push({
