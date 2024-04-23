@@ -642,10 +642,17 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
+
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	feOpts := clientData.FeOpts
+
 	if sudoArg, ok := pk.Kwargs[KwArgSudo]; ok {
-		runPacket.IsSudo = resolveBool(sudoArg, false)
+		runPacket.IsSudo = resolveBool(sudoArg, false) && feOpts.SudoPwStore != "off"
 	} else {
-		runPacket.IsSudo = IsSudoCommand(cmdStr)
+		runPacket.IsSudo = IsSudoCommand(cmdStr) && feOpts.SudoPwStore != "off"
 	}
 	rcOpts := remote.RunCommandOpts{
 		SessionId:     ids.SessionId,
