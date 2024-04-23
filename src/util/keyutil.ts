@@ -25,18 +25,18 @@ const KeyTypeCode = "code";
 
 type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
 type KeybindConfigArray = Array<KeybindConfig>;
-type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string; info?: string };
+type KeybindConfig = { command: string; keys: Array<string>; commandStr?: Array<string>; info?: string };
 
 const Callback = "callback";
 const Command = "command";
-const DumpLogs = false;
+const DumpLogs = true;
 
 type Keybind = {
     domain: string;
     keybinding: string;
     action: string;
     callback: KeybindCallback;
-    commandStr: string;
+    commandStr: Array<string>;
 };
 
 const KeybindLevels = ["system", "modal", "app", "mainview", "pane", "plugin", "control"];
@@ -105,7 +105,7 @@ class KeybindManager {
                     if (
                         defaultCmd != null &&
                         defaultCmd.commandStr != null &&
-                        (curKeybind.commandStr == null || curKeybind.commandStr == "")
+                        (curKeybind.commandStr == null || curKeybind.commandStr.length == 0)
                     ) {
                         curKeybind.commandStr = this.keyDescriptionsMap.get(curKeybind.command).commandStr;
                     }
@@ -173,14 +173,14 @@ class KeybindManager {
     getUIDescription(keyDescription: string, prettyPrint: boolean = true): KeybindConfig {
         let keybinds = this.getKeybindsFromDescription(keyDescription, prettyPrint);
         if (!this.keyDescriptionsMap.has(keyDescription)) {
-            return { keys: keybinds, info: "", command: keyDescription, commandStr: "" };
+            return { keys: keybinds, info: "", command: keyDescription, commandStr: [] };
         }
         let curKeybindConfig = this.keyDescriptionsMap.get(keyDescription);
         let curInfo = "";
         if (curKeybindConfig.info) {
             curInfo = curKeybindConfig.info;
         }
-        let curCommandStr = "";
+        let curCommandStr = [];
         if (curKeybindConfig.commandStr) {
             curCommandStr = curKeybindConfig.commandStr;
         }
@@ -224,10 +224,16 @@ class KeybindManager {
 
     runSlashCommand(curKeybind: Keybind): boolean {
         let curConfigKeybind = this.keyDescriptionsMap.get(curKeybind.keybinding);
-        if (curConfigKeybind == null || curConfigKeybind.commandStr == null || curKeybind.commandStr == "") {
+        console.log("cur config keybind: ", curConfigKeybind.commandStr);
+        if (
+            curConfigKeybind == null ||
+            curConfigKeybind.commandStr == null ||
+            curConfigKeybind.commandStr.length == 0
+        ) {
             return false;
         }
-        let commandsList = curConfigKeybind.commandStr.trim().split(";");
+        console.log("running command");
+        let commandsList = [...curConfigKeybind.commandStr];
         this.runIndividualSlashCommand(commandsList);
         return true;
     }
@@ -237,7 +243,7 @@ class KeybindManager {
             return true;
         }
         let curCommand = commandsList.shift();
-        let prtn = this.globalModel.submitRawCommand(curCommand, false, false);
+        let prtn = this.globalModel.submitRawCommand(curCommand, false, true);
         prtn.then((rtn) => {
             if (!rtn.success) {
                 console.log("error running command ", curCommand);
@@ -281,6 +287,7 @@ class KeybindManager {
                     shouldRunCommand = false;
                 }
                 if (shouldRunCommand) {
+                    console.log("run slash command");
                     shouldReturn = this.runSlashCommand(curKeybind);
                 }
                 if (shouldReturn) {
