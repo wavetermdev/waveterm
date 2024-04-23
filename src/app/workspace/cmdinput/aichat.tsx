@@ -111,7 +111,6 @@ class AIChat extends React.Component<{}, {}> {
         mobx.action(() => {
             this.isFocused.set(true);
         })();
-        this.onTextAreaChange(e);
     }
 
     onTextAreaBlur(e: any) {
