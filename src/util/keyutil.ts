@@ -30,6 +30,7 @@ type KeybindConfig = { command: string; keys: Array<string>; commandStr?: Array<
 const Callback = "callback";
 const Command = "command";
 const DumpLogs = false;
+const DefaultConsoleCommandWait = 200;
 
 type Keybind = {
     domain: string;
@@ -51,6 +52,7 @@ class KeybindManager {
     globalModel: any;
     activeKeybindsVersion: OV<number>;
     lastKeyData: { domain: string; keyPress: string };
+    consoleCommandWait: number;
 
     constructor(GlobalModel: any) {
         this.levelMap = new Map();
@@ -69,6 +71,7 @@ class KeybindManager {
         this.globalModel = GlobalModel;
         this.initKeyDescriptionsMap();
         this.lastKeyData = { domain: "none", keyPress: "none" };
+        this.consoleCommandWait = DefaultConsoleCommandWait;
     }
 
     initKeyDescriptionsMap() {
@@ -247,7 +250,13 @@ class KeybindManager {
                 console.log("error running command ", curCommand);
                 return false;
             }
-            return this.runIndividualSlashCommand(commandsList);
+            if (curCommand.trim()[0] != "/") {
+                setTimeout(() => {
+                    return this.runIndividualSlashCommand(commandsList);
+                }, this.consoleCommandWait);
+            } else {
+                return this.runIndividualSlashCommand(commandsList);
+            }
         }).catch((error) => {
             console.log("caught error running command ", curCommand, ": ", error);
             return false;
