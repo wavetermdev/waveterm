@@ -121,6 +121,8 @@ export class Newton {
 
     private argIndex: number = 0;
 
+    private optionArgIndex: number = 0;
+
     /**
      * The available options for the current command. This is a map of option names to options. This is used to keep track of which options have already been used.
      */
@@ -366,10 +368,56 @@ export class Newton {
     }
 
     /**
+     * Check if the option has an argument separator. If so, break it up and add the arguments as separate entries.
+     */
+    private breakOutOptionArgs() {
+        const entry = this.currentEntry;
+        if (this.optionArgSeparators.length > 0) {
+            log.debug("optionArgSeparators", this.optionArgSeparators);
+            for (const sep of this.optionArgSeparators) {
+                log.debug("optionArgSeparators", sep);
+                if (entry.includes(sep)) {
+                    log.debug("optionArgSeparators", sep, entry);
+                    const optionStr = entry.substring(0, entry.indexOf(sep));
+                    log.debug("optionStr", optionStr);
+                    const option = this.getAvailableOption(optionStr);
+                    log.debug("option", option);
+                    if (
+                        option &&
+                        (option.requiresSeparator === sep ||
+                            (option.requiresSeparator === true && this.optionArgSeparators.length == 1))
+                    ) {
+                        this.entries[this.entryIndex] = optionStr;
+                        const argStr = entry.substring(entry.indexOf(sep) + 1, entry.length);
+                        log.debug("argStr", argStr);
+                        if (argStr.length > 0) {
+                            this.entries.splice(this.entryIndex + 1, 0, argStr);
+                        } else if (this.atLastEntry) {
+                            this.entries.push(" ");
+                        } else {
+                            this.error = `The option ${optionStr} requires an argument with a separator "${sep}".`;
+                        }
+                        return;
+                    }
+                } else if (!this.atLastEntry && this.getAvailableOption(entry)?.requiresSeparator) {
+                    this.error = `The option ${entry} requires an argument with a separator.`;
+                    return;
+                }
+            }
+        }
+    }
+
+    /**
      * Parses the flag in the current entry and modifies the available options set accordingly.
      */
     private parseFlag(): ParserState {
+        this.breakOutOptionArgs();
         const entry = this.currentEntry;
+        if (!entry) {
+            return;
+        }
+
+        log.debug("parseFlag", entry);
         const existingFlags = entry?.slice(1);
         const flagsArr = existingFlags?.split("") ?? [];
         if (flagsArr.length == 0) {
@@ -421,6 +469,8 @@ export class Newton {
      */
     private parseOption(): ParserState {
         // This means we cannot use POSIX-style flags, so we have to check each option individually
+
+        this.breakOutOptionArgs();
         const entry = this.currentEntry;
         if (!entry) {
             return ParserState.Subcommand;
@@ -437,6 +487,7 @@ export class Newton {
 
             this.currentOption = option;
             if (option.args !== undefined) {
+                log.debug("option has args", option.args);
                 return ParserState.OptionArgument;
             } else {
                 return ParserState.Subcommand;
@@ -453,12 +504,32 @@ export class Newton {
 
     private async parseArgument(): Promise<ParserState> {
         const entry = this.currentEntry;
-        if (!entry || this.args.length == 0) {
+        let args = this.args;
+        let argIndex = this.argIndex;
+        if (this.curState == ParserState.OptionArgument) {
+            if (this.prevState == ParserState.Option) {
+                // This is a new set of option arguments, so we need to reset the argIndex
+                this.optionArgIndex = 0;
+            }
+            argIndex = this.optionArgIndex;
+            args = getAll(this.currentOption.args);
+        }
+
+        function incrementArgIndex() {
+            argIndex++;
+            if (this.curState == ParserState.OptionArgument) {
+                this.optionArgIndex++;
+            } else {
+                this.argIndex++;
+            }
+        }
+
+        if (!entry || args.length == 0) {
             log.debug("returning early from parseArgument", this.prevState);
             return this.prevState;
         }
 
-        const currentArg = this.args[this.argIndex];
+        const currentArg = args[argIndex];
 
         if (currentArg) {
             if (currentArg.isCommand) {
@@ -483,7 +554,7 @@ export class Newton {
                 if (!this.atLastEntry && numAdded > 0) {
                     // We found a match and we are not at the end of the entry list, so let's keep matching arguments for the next entry
                     log.debug("has suggestion match for optional arg");
-                    this.argIndex++;
+                    incrementArgIndex();
                     return ParserState.SubcommandArgument;
                 } else {
                     // We did not find a match, we should return to the previous state.
@@ -495,7 +566,7 @@ export class Newton {
                 return this.curState;
             } else {
                 // Will try to match the next entry to the next argument in the list.
-                this.argIndex++;
+                incrementArgIndex();
                 return this.curState;
             }
         } else {
@@ -527,9 +598,7 @@ export class Newton {
         if (!suggestionMin.icon) {
             suggestionMin.icon = getIcon(suggestionMin.icon, suggestionMin.type);
         } else if (suggestionMin.icon.startsWith("fig://")) {
-            // For now, let's assume that if an icon is being provided, it deserves the highest priority
             suggestionMin.icon = getIcon(suggestionMin.icon, "special");
-            suggestionMin.priority = 100;
         }
         if (!suggestionMin.insertValue) {
             for (const name in getAll(suggestionMin.name)) {
@@ -988,11 +1057,22 @@ export class Newton {
                     break;
                 }
                 case ParserState.SubcommandArgument:
-                case ParserState.OptionArgument: {
-                    log.debug("currentArgs: ", this.args, "argIndex: ", this.argIndex);
+                    log.debug("SubCommandArgument", "currentArgs: ", this.args, "argIndex: ", this.argIndex);
                     // The parser is currently matching option arguments, so suggest all available arguments for the current option.
                     if (this.args && this.argIndex < this.args.length) {
                         const arg = this.args[this.argIndex];
+                        if (arg) {
+                            await this.addSuggestionsForArg(arg);
+                        }
+                    }
+                    break;
+                case ParserState.OptionArgument: {
+                    log.debug("OptionArgument", "currentArgs: ", this.currentOption.args, "argIndex: ", this.argIndex);
+                    // The parser is currently matching option arguments, so suggest all available arguments for the current option.
+                    const args = getAll(this.currentOption.args);
+                    const argIndex = this.optionArgIndex;
+                    if (args && argIndex < args.length) {
+                        const arg = args[argIndex];
                         if (arg) {
                             await this.addSuggestionsForArg(arg);
                         }
