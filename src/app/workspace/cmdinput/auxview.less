@@ -44,8 +44,9 @@
 
     .auxview-content {
         display: flex;
-        padding: var(--termpad) calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 3 - 1px);
+        flex-flow: column nowrap;
         flex: 1 1 auto;
+        padding: var(--termpad) calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 3 - 1px);
         overflow-y: auto;
     }
 }
