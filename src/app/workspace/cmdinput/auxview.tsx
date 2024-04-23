@@ -24,24 +24,26 @@ export const AuxiliaryCmdView: React.FC<AuxiliaryCmdViewProps> = observer((props
 
     return (
         <div className={cn("auxview", className)}>
-            <div className="auxview-titlebar">
-                <If condition={iconClass != null}>
-                    <div className="title-icon">
-                        <i className={iconClass} />
-                    </div>
-                </If>
-                <div className="title-string">{title}</div>
+            <If condition={title || onClose || titleBarContents || iconClass}>
+                <div className="auxview-titlebar">
+                    <If condition={iconClass != null}>
+                        <div className="title-icon">
+                            <i className={iconClass} />
+                        </div>
+                    </If>
+                    <div className="title-string">{title}</div>
 
-                <If condition={titleBarContents != null}>{titleBarContents}</If>
+                    <If condition={titleBarContents != null}>{titleBarContents}</If>
 
-                <div className="flex-spacer"></div>
+                    <div className="flex-spacer"></div>
 
-                <If condition={onClose != null}>
-                    <div className="close-button" title="Close (ESC)" onClick={onClose}>
-                        <i className="fa-sharp fa-solid fa-xmark-large" />
-                    </div>
-                </If>
-            </div>
+                    <If condition={onClose != null}>
+                        <div className="close-button" title="Close (ESC)" onClick={onClose}>
+                            <i className="fa-sharp fa-solid fa-xmark-large" />
+                        </div>
+                    </If>
+                </div>
+            </If>
             <If condition={children != null}>
                 <Choose>
                     <When condition={props.scrollable}>

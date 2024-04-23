@@ -239,7 +239,7 @@ class HistoryInfo extends React.Component<{}, {}> {
         return (
             <AuxiliaryCmdView
                 title="History"
-                className="cmd-history hide-scrollbar"
+                className="cmd-history"
                 onClose={this.handleClose}
                 titleBarContents={this.getTitleBarContents()}
                 iconClass="fa-sharp fa-solid fa-clock-rotate-left"
