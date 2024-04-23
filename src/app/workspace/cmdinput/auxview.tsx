@@ -24,7 +24,7 @@ export const AuxiliaryCmdView: React.FC<AuxiliaryCmdViewProps> = observer((props
 
     return (
         <div className={cn("auxview", className)}>
-            <If condition={title != null || onClose != null || titleBarContents != null || iconClass != null}>
+            <If condition={title || onClose || titleBarContents || iconClass}>
                 <div className="auxview-titlebar">
                     <If condition={iconClass != null}>
                         <div className="title-icon">
