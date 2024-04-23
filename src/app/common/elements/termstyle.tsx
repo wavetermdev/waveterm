@@ -97,8 +97,6 @@ class TermStyle extends React.Component<{
 
 @mobxReact.observer
 class TermStyleList extends React.Component<{ onRendered: () => void }, {}> {
-    termStylesRendered: OV<boolean> = mobx.observable.box(false, { name: "termStylesRendered" });
-
     componentDidMount(): void {
         this.props.onRendered();
     }
