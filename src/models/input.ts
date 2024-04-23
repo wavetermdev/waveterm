@@ -412,7 +412,7 @@ class InputModel {
         if (elem == null) {
             return;
         }
-        elem.scrollIntoView({ block: "nearest" });
+        elem.scrollIntoView();
     }
 
     grabSelectedHistoryItem(): void {
