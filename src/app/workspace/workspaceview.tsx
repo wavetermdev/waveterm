@@ -47,7 +47,10 @@ class SessionKeybindings extends React.Component<{}, {}> {
             return true;
         });
         for (let index = 1; index <= 9; index++) {
-            keybindManager.registerKeybinding("mainview", "session", "app:selectTab-" + index, null);
+            keybindManager.registerKeybinding("mainview", "session", "app:selectTab-" + index, (waveEvent) => {
+                GlobalModel.onSwitchScreenCmd(index);
+                return true;
+            });
         }
         keybindManager.registerKeybinding("mainview", "session", "app:selectTabLeft", (waveEvent) => {
             GlobalModel.onBracketCmd(-1);
@@ -121,7 +124,8 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
         if (screen == null) {
             return;
         }
-        if (screen.getScreenLines().lines.length == 0) {
+        let numLines = screen.getScreenLines().lines.length;
+        if (numLines < 10) {
             GlobalCommandRunner.screenDelete(screen.screenId, false);
             GlobalModel.modalsModel.popModal();
             return;

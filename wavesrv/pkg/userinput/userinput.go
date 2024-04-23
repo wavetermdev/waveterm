@@ -13,6 +13,8 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
 
+const UserInputRequestStr = "userinputrequest"
+
 // An RpcPacket for requesting user input from the client
 type UserInputRequestType struct {
 	RequestId    string `json:"requestid"`
@@ -26,7 +28,7 @@ type UserInputRequestType struct {
 }
 
 func (*UserInputRequestType) GetType() string {
-	return "userinputrequest"
+	return UserInputRequestStr
 }
 
 func (req *UserInputRequestType) SetReqId(reqId string) {
