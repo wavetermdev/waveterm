@@ -20,35 +20,12 @@ import {
     isFlagOrOption,
     isOption,
     matchAny,
-    mergeSubcomands,
     modifyPosixFlags,
     resolveCwdToken,
     sortSuggestions,
     startsWithAny,
 } from "./utils";
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- will be implemented in below TODO
-const lazyLoadSpecLocation = async (location: Fig.SpecLocation): Promise<Fig.Spec | undefined> => {
-    return; //TODO: implement spec location loading
-};
-
-// TODO: handle subcommands that are versioned
-const getSubcommand = (spec?: Fig.Spec): Fig.Subcommand | undefined => {
-    if (spec == null) return;
-    if (typeof spec === "function") {
-        const potentialSubcommand = spec();
-        if (Object.hasOwn(potentialSubcommand, "name")) {
-            return potentialSubcommand as Fig.Subcommand;
-        }
-        return;
-    }
-    return spec;
-};
-
-// this load spec function should only be used for `loadSpec` on the fly as it is cacheless
-const lazyLoadSpec = async (key: string): Promise<Fig.Spec | undefined> => {
-    return (await import(`@withfig/autocomplete/build/${key}.js`)).default;
-};
+import { getSubcommand, lazyLoadSpecLocation, loadSpec } from "./loadspec";
 
 /**
  * The parser state. This is used to determine what the parser is currently matching.
@@ -786,39 +763,7 @@ export class Newton {
      * @returns The spec for the current command.
      */
     private async loadSpec(specName: string): Promise<Fig.Spec | undefined> {
-        try {
-            log.debug("loading spec: ", specName);
-            const spec = await import(`@withfig/autocomplete/build/${specName}.js`);
-            if (Object.hasOwn(spec, "getVersionCommand") && typeof spec.getVersionCommand === "function") {
-                log.debug("has getVersionCommand fn");
-                const commandVersion = await (spec.getVersionCommand as Fig.GetVersionCommand)(
-                    buildExecuteShellCommand(5000)
-                );
-                log.debug("commandVersion: " + commandVersion);
-                log.debug("returning as version is not supported");
-                return;
-            }
-            if (typeof spec.default === "object") {
-                const command = spec.default as Fig.Subcommand;
-                log.debug("Spec is valid Subcommand", command);
-                if (command.generateSpec) {
-                    log.debug("has generateSpec function");
-                    const generatedSpec = await command.generateSpec(
-                        this.atLastEntry ? this.entries.slice(this.entryIndex + 1) : [],
-                        buildExecuteShellCommand(5000)
-                    );
-                    log.debug("generatedSpec: ", generatedSpec);
-                    return mergeSubcomands(command, generatedSpec);
-                } else {
-                    log.debug("no generateSpec function");
-                    return command;
-                }
-            } else {
-                this.error = "Spec is not valid Subcommand";
-            }
-        } catch (e) {
-            console.warn("import failed: ", e);
-        }
+        return await loadSpec(specName, this.atLastEntry ? this.entries.slice(this.entryIndex + 1) : []);
     }
 
     /**

@@ -11,8 +11,6 @@ import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
-import { Shell, getSuggestions } from "@/autocomplete";
-import { SuggestionBlob } from "@/autocomplete/runtime/model";
 
 type OV<T> = mobx.IObservableValue<T>;
 
@@ -614,10 +612,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 style={{ height: computedOuterHeight }}
             >
                 <If condition={renderCmdInputKeybindings}>
-                    <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
+                    <CmdInputKeybindings inputObject={this} />
                 </If>
                 <If condition={renderHistoryKeybindings}>
-                    <HistoryKeybindings inputObject={this}></HistoryKeybindings>
+                    <HistoryKeybindings />
                 </If>
 
                 <If condition={!util.isBlank(shellType)}>
