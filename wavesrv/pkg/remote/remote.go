@@ -2626,11 +2626,21 @@ func sendScreenUpdates(screens []*sstore.ScreenType) {
 	}
 }
 
-func (msh *MShellProc) startSudoPwClearChecker() {
+func (msh *MShellProc) startSudoPwClearChecker(clientData *sstore.ClientData) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	sudoPwStore := clientData.FeOpts.SudoPwStore
 	for {
+		clientData, err := sstore.EnsureClientData(ctx)
+		if err != nil {
+			log.Printf("*error: cannot obtain client data in sudo pw loop. using fallback: %v", err)
+		} else {
+			sudoPwStore = clientData.FeOpts.SudoPwStore
+		}
+
 		shouldExit := false
 		msh.WithLock(func() {
-			if msh.sudoClearDeadline > 0 && time.Now().Unix() > msh.sudoClearDeadline {
+			if msh.sudoClearDeadline > 0 && time.Now().Unix() > msh.sudoClearDeadline && sudoPwStore != "notimeout" {
 				msh.sudoPw = nil
 				msh.sudoClearDeadline = 0
 			}
@@ -2672,14 +2682,14 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	clientData, err := sstore.EnsureClientData(ctx)
-	pwTimeout := time.Duration(clientData.FeOpts.SudoPwTimeout) * time.Minute
 	if err != nil {
 		return fmt.Errorf("*error: cannot obtain client data: %v", err)
 	}
+	pwTimeout := time.Duration(clientData.FeOpts.SudoPwTimeout) * time.Minute
 	msh.WithLock(func() {
 		msh.sudoPw = rawSecret
 		if msh.sudoClearDeadline == 0 {
-			go msh.startSudoPwClearChecker()
+			go msh.startSudoPwClearChecker(clientData)
 		}
 		msh.sudoClearDeadline = time.Now().Add(pwTimeout).Unix()
 	})
