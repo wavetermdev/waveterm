@@ -949,10 +949,7 @@ class Model {
                     if (update.connect.screenstatusindicators != null) {
                         this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
                     }
-                    if (update.connect.termthemes != null) {
-                        this.mergeTermThemes(update.connect.termthemes);
-                    }
-
+                    this.mergeTermThemes(update.connect.termthemes ?? {});
                     this.sessionListLoaded.set(true);
                     this.remotesLoaded.set(true);
                 } else if (update.screen != null) {

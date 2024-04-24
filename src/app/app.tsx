@@ -97,7 +97,8 @@ class App extends React.Component<{}, {}> {
 
         // Previously, this is done in sidebar.tsx but it causes flicker when clientData is null cos screen-view shifts around.
         // Doing it here fixes the flicker cos app is not rendered until clientData is populated.
-        if (clientData == null) {
+        // wait for termThemes as well (this actually means that the "connect" packet has been received)
+        if (clientData == null || GlobalModel.termThemes.get() == null) {
             return null;
         }
 
