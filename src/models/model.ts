@@ -882,9 +882,19 @@ class Model {
         }
     }
 
-    setTermThemes(termThemes: TermThemesType) {
+    mergeTermThemes(termThemes: TermThemesType) {
         mobx.action(() => {
-            this.termThemes.set(termThemes);
+            if (this.termThemes.get() == null) {
+                this.termThemes.set(termThemes);
+                return;
+            }
+            for (const [themeName, theme] of Object.entries(termThemes)) {
+                if (theme == null) {
+                    delete this.termThemes.get()[themeName];
+                    continue;
+                }
+                this.termThemes.get()[themeName] = theme;
+            }
         })();
         this.bumpTermRenderVersion();
     }
@@ -940,7 +950,7 @@ class Model {
                         this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
                     }
                     if (update.connect.termthemes != null) {
-                        this.setTermThemes(update.connect.termthemes);
+                        this.mergeTermThemes(update.connect.termthemes);
                     }
 
                     this.sessionListLoaded.set(true);
@@ -1016,7 +1026,7 @@ class Model {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
                 } else if (update.termthemes != null) {
-                    this.setTermThemes(update.termthemes);
+                    this.mergeTermThemes(update.termthemes);
                 } else if (update.sessiontombstone != null || update.screentombstone != null) {
                     // nothing (ignore)
                 } else {

@@ -27,6 +27,7 @@ func GetWatcher() *Watcher {
 			return
 		}
 		instance = &Watcher{watcher: watcher}
+		log.Printf("started config watcher: %v\n", configDirAbsPath)
 		if err := instance.addPath(configDirAbsPath); err != nil {
 			log.Printf("failed to add path %s to watcher: %v", configDirAbsPath, err)
 			return
@@ -52,25 +53,20 @@ func (w *Watcher) addPath(path string) error {
 }
 
 func (w *Watcher) Start() {
-	go func() {
-		for {
-			select {
-			case event, ok := <-w.watcher.Events:
-				if !ok {
-					return
-				}
-				log.Printf("event: %s, Op: %v", event.Name, event.Op)
-				w.mutex.Lock()
-				w.handleEvent(event)
-				w.mutex.Unlock()
-			case err, ok := <-w.watcher.Errors:
-				if !ok {
-					return
-				}
-				log.Println("watcher error:", err)
+	for {
+		select {
+		case event, ok := <-w.watcher.Events:
+			if !ok {
+				return
 			}
+			w.handleEvent(event)
+		case err, ok := <-w.watcher.Errors:
+			if !ok {
+				return
+			}
+			log.Println("watcher error:", err)
 		}
-	}()
+	}
 }
 
 func (w *Watcher) Close() {
@@ -93,7 +89,7 @@ func (w *Watcher) handleEvent(event fsnotify.Event) {
 			log.Printf("error reading file %s: %v", normalizedPath, err)
 			return
 		}
-		config[fileName] = &content
+		config[fileName] = content
 	}
 
 	if event.Op&fsnotify.Remove == fsnotify.Remove {

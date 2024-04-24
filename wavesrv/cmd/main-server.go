@@ -159,11 +159,6 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 	log.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
 
 	state.RunWSRead()
-	watcher := configstore.GetWatcher()
-	if watcher != nil {
-		watcher.Start()
-
-	}
 }
 
 // todo: sync multiple writes to the same fifoName into a single go-routine and do liveness checking on fifo
@@ -1025,6 +1020,13 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(dirListJson)
 }
 
+func configWatcher() {
+	watcher := configstore.GetWatcher()
+	if watcher != nil {
+		watcher.Start()
+	}
+}
+
 func main() {
 	scbase.BuildTime = BuildTime
 	scbase.WaveVersion = WaveVersion
@@ -1104,6 +1106,7 @@ func main() {
 	telemetry.UpdateActivityWrap(context.Background(), telemetry.ActivityUpdate{NumConns: remote.NumRemotes()}, "numconns") // set at least one record into activity
 	installSignalHandlers()
 	go telemetryLoop()
+	go configWatcher()
 	go stdinReadWatch()
 	go runWebSocketServer()
 	go func() {

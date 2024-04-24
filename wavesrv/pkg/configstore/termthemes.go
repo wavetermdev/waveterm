@@ -17,7 +17,7 @@ const configDir = "config/terminal-themes/"
 
 var configDirAbsPath = path.Join(scbase.GetWaveHomeDir(), configDir)
 
-type ConfigReturn map[string]*map[string]string
+type ConfigReturn map[string]map[string]string
 
 func (tt ConfigReturn) GetType() string {
 	return ConfigReturnTypeStr
@@ -70,7 +70,7 @@ func ScanConfigs() (ConfigReturn, error) {
 				log.Printf("error getting relative file path %s: %v", path, err)
 				return nil // continue walking despite error in getting relative path
 			}
-			config[relPath] = &content
+			config[relPath] = content
 		}
 		return nil
 	})
