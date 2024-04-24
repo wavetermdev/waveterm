@@ -20,6 +20,18 @@ import (
 
 const MaxTzNameLen = 50
 
+// "terminal" should not be in this list
+var allowedRenderers = map[string]bool{
+	"markdown": true,
+	"code":     true,
+	"openai":   true,
+	"csv":      true,
+	"image":    true,
+	"pdf":      true,
+	"media":    true,
+	"mustache": true,
+}
+
 type ActivityUpdate struct {
 	FgMinutes        int
 	ActiveMinutes    int
@@ -39,6 +51,7 @@ type ActivityUpdate struct {
 	FeAIChatOpen     int
 	FeHistoryOpen    int
 	BuildTime        string
+	Renderers        map[string]int
 }
 
 type ActivityType struct {
@@ -55,23 +68,24 @@ type ActivityType struct {
 }
 
 type TelemetryData struct {
-	NumCommands      int `json:"numcommands"`
-	ActiveMinutes    int `json:"activeminutes"`
-	FgMinutes        int `json:"fgminutes"`
-	OpenMinutes      int `json:"openminutes"`
-	ClickShared      int `json:"clickshared,omitempty"`
-	HistoryView      int `json:"historyview,omitempty"`
-	BookmarksView    int `json:"bookmarksview,omitempty"`
-	NumConns         int `json:"numconns"`
-	NumWorkspaces    int `json:"numworkspaces"`
-	NumTabs          int `json:"numtabs"`
-	NewTab           int `json:"newtab"`
-	NumStartup       int `json:"numstartup,omitempty"`
-	NumShutdown      int `json:"numshutdown,omitempty"`
-	NumAIChatOpen    int `json:"numaichatopen,omitempty"`
-	NumHistoryOpen   int `json:"numhistoryopen,omitempty"`
-	ReinitBashErrors int `json:"reinitbasherrors,omitempty"`
-	ReinitZshErrors  int `json:"reinitzsherrors,omitempty"`
+	NumCommands      int            `json:"numcommands"`
+	ActiveMinutes    int            `json:"activeminutes"`
+	FgMinutes        int            `json:"fgminutes"`
+	OpenMinutes      int            `json:"openminutes"`
+	ClickShared      int            `json:"clickshared,omitempty"`
+	HistoryView      int            `json:"historyview,omitempty"`
+	BookmarksView    int            `json:"bookmarksview,omitempty"`
+	NumConns         int            `json:"numconns"`
+	NumWorkspaces    int            `json:"numworkspaces"`
+	NumTabs          int            `json:"numtabs"`
+	NewTab           int            `json:"newtab"`
+	NumStartup       int            `json:"numstartup,omitempty"`
+	NumShutdown      int            `json:"numshutdown,omitempty"`
+	NumAIChatOpen    int            `json:"numaichatopen,omitempty"`
+	NumHistoryOpen   int            `json:"numhistoryopen,omitempty"`
+	ReinitBashErrors int            `json:"reinitbasherrors,omitempty"`
+	ReinitZshErrors  int            `json:"reinitzsherrors,omitempty"`
+	Renderers        map[string]int `json:"renderers,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -80,6 +94,10 @@ func (tdata TelemetryData) Value() (driver.Value, error) {
 
 func (tdata *TelemetryData) Scan(val interface{}) error {
 	return dbutil.QuickScanJson(tdata, val)
+}
+
+func IsAllowedRenderer(renderer string) bool {
+	return allowedRenderers[renderer]
 }
 
 // Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
@@ -246,6 +264,14 @@ func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 		}
 		if update.NumTabs > 0 {
 			tdata.NumTabs = update.NumTabs
+		}
+		if len(update.Renderers) > 0 {
+			if tdata.Renderers == nil {
+				tdata.Renderers = make(map[string]int)
+			}
+			for key, val := range update.Renderers {
+				tdata.Renderers[key] += val
+			}
 		}
 		query = `UPDATE activity
                  SET tdata = ?,

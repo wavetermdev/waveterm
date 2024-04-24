@@ -699,9 +699,6 @@ INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr
 `
 			tx.NamedExec(query, cmdMap)
 		}
-		if isWebShare(tx, line.ScreenId) {
-			insertScreenLineUpdate(tx, line.ScreenId, line.LineId, UpdateType_LineNew)
-		}
 		return nil
 	})
 }
