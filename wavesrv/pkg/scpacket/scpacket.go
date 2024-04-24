@@ -80,12 +80,15 @@ func (r RemotePtrType) MakeFullRemoteRef() string {
 	return fmt.Sprintf("@%s:%s:%s", r.OwnerId, r.RemoteId, r.Name)
 }
 
-const FeCommandPacketStr = "fecmd"
-const WatchScreenPacketStr = "watchscreen"
-const FeInputPacketStr = "feinput"
-const RemoteInputPacketStr = "remoteinput"
-const CmdInputTextPacketStr = "cmdinputtext"
-const EphemeralCommandResponsePacketStr = "ephemeralcommandresponse"
+const (
+	FeCommandPacketStr                = "fecmd"
+	WatchScreenPacketStr              = "watchscreen"
+	FeInputPacketStr                  = "feinput"
+	RemoteInputPacketStr              = "remoteinput"
+	CmdInputTextPacketStr             = "cmdinputtext"
+	EphemeralCommandResponsePacketStr = "ephemeralcommandresponse"
+	FeActivityPacketStr               = "feactivity"
+)
 
 type FeCommandPacketType struct {
 	Type          string                      `json:"type"`
@@ -175,12 +178,19 @@ type CmdInputTextPacketType struct {
 	Text     utilfn.StrWithPos `json:"text"`
 }
 
+type FeActivityPacketType struct {
+	Type     string         `json:"type"`
+	Activity map[string]int `json:"activity"`
+}
+
 func init() {
 	packet.RegisterPacketType(FeCommandPacketStr, reflect.TypeOf(FeCommandPacketType{}))
 	packet.RegisterPacketType(WatchScreenPacketStr, reflect.TypeOf(WatchScreenPacketType{}))
 	packet.RegisterPacketType(FeInputPacketStr, reflect.TypeOf(FeInputPacketType{}))
 	packet.RegisterPacketType(RemoteInputPacketStr, reflect.TypeOf(RemoteInputPacketType{}))
 	packet.RegisterPacketType(CmdInputTextPacketStr, reflect.TypeOf(CmdInputTextPacketType{}))
+	packet.RegisterPacketType(EphemeralCommandResponsePacketStr, reflect.TypeOf(EphemeralCommandResponsePacketType{}))
+	packet.RegisterPacketType(FeActivityPacketStr, reflect.TypeOf(FeActivityPacketType{}))
 }
 
 type PacketType interface {
@@ -233,4 +243,12 @@ func MakeRemoteInputPacket() *RemoteInputPacketType {
 
 func (*RemoteInputPacketType) GetType() string {
 	return RemoteInputPacketStr
+}
+
+func MakeFeActivityPacket() *FeActivityPacketType {
+	return &FeActivityPacketType{Type: FeActivityPacketStr}
+}
+
+func (*FeActivityPacketType) GetType() string {
+	return FeActivityPacketStr
 }

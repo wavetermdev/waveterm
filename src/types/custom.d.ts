@@ -217,6 +217,11 @@ declare global {
         winsize?: TermWinSize;
     };
 
+    type FeActivityPacketType = {
+        type: string;
+        activity: Record<string, int>;
+    };
+
     type RemoteInputPacketType = {
         type: string;
         remoteid: string;

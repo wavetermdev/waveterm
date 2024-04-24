@@ -14,10 +14,23 @@ import (
 
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 )
 
 const MaxTzNameLen = 50
+
+// "terminal" should not be in this list
+var allowedRenderers = map[string]bool{
+	"markdown": true,
+	"code":     true,
+	"openai":   true,
+	"csv":      true,
+	"image":    true,
+	"pdf":      true,
+	"media":    true,
+	"mustache": true,
+}
 
 type ActivityUpdate struct {
 	FgMinutes        int
@@ -28,10 +41,17 @@ type ActivityUpdate struct {
 	HistoryView      int
 	BookmarksView    int
 	NumConns         int
-	WebShareLimit    int
+	NumWorkspaces    int
+	NumTabs          int
+	NewTab           int
 	ReinitBashErrors int
 	ReinitZshErrors  int
+	Startup          int
+	Shutdown         int
+	FeAIChatOpen     int
+	FeHistoryOpen    int
 	BuildTime        string
+	Renderers        map[string]int
 }
 
 type ActivityType struct {
@@ -48,17 +68,24 @@ type ActivityType struct {
 }
 
 type TelemetryData struct {
-	NumCommands      int `json:"numcommands"`
-	ActiveMinutes    int `json:"activeminutes"`
-	FgMinutes        int `json:"fgminutes"`
-	OpenMinutes      int `json:"openminutes"`
-	ClickShared      int `json:"clickshared,omitempty"`
-	HistoryView      int `json:"historyview,omitempty"`
-	BookmarksView    int `json:"bookmarksview,omitempty"`
-	NumConns         int `json:"numconns"`
-	WebShareLimit    int `json:"websharelimit,omitempty"`
-	ReinitBashErrors int `json:"reinitbasherrors,omitempty"`
-	ReinitZshErrors  int `json:"reinitzsherrors,omitempty"`
+	NumCommands      int            `json:"numcommands"`
+	ActiveMinutes    int            `json:"activeminutes"`
+	FgMinutes        int            `json:"fgminutes"`
+	OpenMinutes      int            `json:"openminutes"`
+	ClickShared      int            `json:"clickshared,omitempty"`
+	HistoryView      int            `json:"historyview,omitempty"`
+	BookmarksView    int            `json:"bookmarksview,omitempty"`
+	NumConns         int            `json:"numconns"`
+	NumWorkspaces    int            `json:"numworkspaces"`
+	NumTabs          int            `json:"numtabs"`
+	NewTab           int            `json:"newtab"`
+	NumStartup       int            `json:"numstartup,omitempty"`
+	NumShutdown      int            `json:"numshutdown,omitempty"`
+	NumAIChatOpen    int            `json:"numaichatopen,omitempty"`
+	NumHistoryOpen   int            `json:"numhistoryopen,omitempty"`
+	ReinitBashErrors int            `json:"reinitbasherrors,omitempty"`
+	ReinitZshErrors  int            `json:"reinitzsherrors,omitempty"`
+	Renderers        map[string]int `json:"renderers,omitempty"`
 }
 
 func (tdata TelemetryData) Value() (driver.Value, error) {
@@ -69,13 +96,21 @@ func (tdata *TelemetryData) Scan(val interface{}) error {
 	return dbutil.QuickScanJson(tdata, val)
 }
 
-// Wraps UpdateCurrentActivity, but ignores errors
-func UpdateActivityWrap(ctx context.Context, update ActivityUpdate, debugStr string) {
-	err := UpdateCurrentActivity(ctx, update)
-	if err != nil {
-		// ignore error, just log, since this is not critical
-		log.Printf("error updating current activity (%s): %v\n", debugStr, err)
-	}
+func IsAllowedRenderer(renderer string) bool {
+	return allowedRenderers[renderer]
+}
+
+// Wraps UpdateCurrentActivity, spawns goroutine, and logs errors
+func GoUpdateActivityWrap(update ActivityUpdate, debugStr string) {
+	go func() {
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		err := UpdateActivity(ctx, update)
+		if err != nil {
+			// ignore error, just log, since this is not critical
+			log.Printf("error updating current activity (%s): %v\n", debugStr, err)
+		}
+	}()
 }
 
 func GetCurDayStr() string {
@@ -174,10 +209,24 @@ func atoiNoErr(str string) int {
 	return val
 }
 
+func UpdateFeActivityWrap(feActivity *scpacket.FeActivityPacketType) {
+	update := ActivityUpdate{}
+	for key, val := range feActivity.Activity {
+		if key == "aichat-open" {
+			update.FeAIChatOpen = val
+		} else if key == "history-open" {
+			update.FeHistoryOpen = val
+		} else {
+			log.Printf("unknown feactivity key: %s\n", key)
+		}
+	}
+	GoUpdateActivityWrap(update, "feactivity")
+}
+
 var customDayStrRe = regexp.MustCompile(`^((?:\d{4}-\d{2}-\d{2})|today|yesterday|bom|bow)?((?:[+-]\d+[dwm])*)$`)
 var daystrRe = regexp.MustCompile(`^(\d{4})-(\d{2})-(\d{2})$`)
 
-func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
+func UpdateActivity(ctx context.Context, update ActivityUpdate) error {
 	now := time.Now()
 	dayStr := GetCurDayStr()
 	txErr := sstore.WithTx(ctx, func(tx *sstore.TxWrap) error {
@@ -202,8 +251,27 @@ func UpdateCurrentActivity(ctx context.Context, update ActivityUpdate) error {
 		tdata.BookmarksView += update.BookmarksView
 		tdata.ReinitBashErrors += update.ReinitBashErrors
 		tdata.ReinitZshErrors += update.ReinitZshErrors
+		tdata.NewTab += update.NewTab
+		tdata.NumStartup += update.Startup
+		tdata.NumShutdown += update.Shutdown
+		tdata.NumAIChatOpen += update.FeAIChatOpen
+		tdata.NumHistoryOpen += update.FeHistoryOpen
 		if update.NumConns > 0 {
 			tdata.NumConns = update.NumConns
+		}
+		if update.NumWorkspaces > 0 {
+			tdata.NumWorkspaces = update.NumWorkspaces
+		}
+		if update.NumTabs > 0 {
+			tdata.NumTabs = update.NumTabs
+		}
+		if len(update.Renderers) > 0 {
+			if tdata.Renderers == nil {
+				tdata.Renderers = make(map[string]int)
+			}
+			for key, val := range update.Renderers {
+				tdata.Renderers[key] += val
+			}
 		}
 		query = `UPDATE activity
                  SET tdata = ?,
