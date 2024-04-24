@@ -39,6 +39,8 @@ export const getIcon = (icon: string | undefined, suggestionType: Fig.Suggestion
             return SuggestionIcons.Shortcut;
         case "special":
             return SuggestionIcons.Special;
+        default:
+            return SuggestionIcons.Default;
     }
 };
 
