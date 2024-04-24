@@ -6028,7 +6028,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxtokens", clientData.OpenAIOpts.MaxTokens))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaimaxchoices", clientData.OpenAIOpts.MaxChoices))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaibaseurl", clientData.OpenAIOpts.BaseURL))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "openaitimeout", clientData.OpenAIOpts.Timeout))
+	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "openaitimeout", clientData.OpenAIOpts.Timeout))
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("client info"),
