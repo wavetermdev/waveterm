@@ -250,10 +250,10 @@ type ClientOptsType struct {
 }
 
 type FeOptsType struct {
-	TermFontSize   int               `json:"termfontsize,omitempty"`
-	TermFontFamily string            `json:"termfontfamily,omitempty"`
-	Theme          string            `json:"theme,omitempty"`
-	TermTheme      map[string]string `json:"termtheme"`
+	TermFontSize      int               `json:"termfontsize,omitempty"`
+	TermFontFamily    string            `json:"termfontfamily,omitempty"`
+	Theme             string            `json:"theme,omitempty"`
+	TermThemeSettings map[string]string `json:"termthemesettings"`
 }
 
 type ReleaseInfoType struct {

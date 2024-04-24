@@ -3640,13 +3640,13 @@ func TermSetThemeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	}
 	themeName, themeNameOk := pk.Kwargs["name"]
 	feOpts := clientData.FeOpts
-	if feOpts.TermTheme == nil {
-		feOpts.TermTheme = make(map[string]string)
+	if feOpts.TermThemeSettings == nil {
+		feOpts.TermThemeSettings = make(map[string]string)
 	}
 	if themeNameOk && themeName != "" {
-		feOpts.TermTheme[id] = themeName
+		feOpts.TermThemeSettings[id] = themeName
 	} else {
-		delete(feOpts.TermTheme, id)
+		delete(feOpts.TermThemeSettings, id)
 	}
 	err = sstore.UpdateClientFeOpts(ctx, feOpts)
 	if err != nil {
@@ -5856,13 +5856,13 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	}
 	if termthemeStr, found := pk.Kwargs["termtheme"]; found {
 		feOpts := clientData.FeOpts
-		if feOpts.TermTheme == nil {
-			feOpts.TermTheme = make(map[string]string)
+		if feOpts.TermThemeSettings == nil {
+			feOpts.TermThemeSettings = make(map[string]string)
 		}
 		if termthemeStr == "" {
-			delete(feOpts.TermTheme, "global")
+			delete(feOpts.TermThemeSettings, "root")
 		} else {
-			feOpts.TermTheme["global"] = termthemeStr
+			feOpts.TermThemeSettings["root"] = termthemeStr
 		}
 		err = sstore.UpdateClientFeOpts(ctx, feOpts)
 		if err != nil {
