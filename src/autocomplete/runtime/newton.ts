@@ -131,6 +131,8 @@ export class Newton {
      */
     private optionArgSeparators: string[];
 
+    private stopInterpretingOptions: boolean = false;
+
     /**
      * The spec for the current command.
      */
@@ -211,6 +213,7 @@ export class Newton {
         this.optionArgSeparators = spec?.parserDirectives?.optionArgSeparators
             ? getAll(spec.parserDirectives?.optionArgSeparators)
             : ["="];
+        this.stopInterpretingOptions = false;
         for (const option of this.options) {
             for (const name of getAll(option.name)) {
                 this.availableOptions[name] = option;
@@ -446,11 +449,26 @@ export class Newton {
      */
     private parseOption(): ParserState {
         // This means we cannot use POSIX-style flags, so we have to check each option individually
-
+        log.debug("parseOption");
         this.breakOutOptionArgs();
         const entry = this.currentEntry;
         if (!entry) {
+            log.debug("no entry, returning and setting state to subcommand");
             return ParserState.Subcommand;
+        }
+
+        if (entry === "--") {
+            if (this.atLastEntry) {
+                log.debug(
+                    "double dash at last entry, returning and setting state to option to process all available options"
+                );
+                this.currentOption = undefined;
+                return ParserState.Option;
+            } else {
+                log.debug("double dash not at last entry, disabling options and flags for all subsequent entries");
+                this.stopInterpretingOptions = true;
+                return ParserState.Subcommand;
+            }
         }
 
         // If the arg is not the last entry, we can check if it is a valid option
@@ -469,7 +487,7 @@ export class Newton {
             } else {
                 return ParserState.Subcommand;
             }
-        } else if (this.atLastEntry) {
+        } else if (!this.atLastEntry) {
             // If the option is not available, it has already been used or is not a valid option
             this.error = `The option ${entry} is not valid.`;
         } else {
@@ -731,6 +749,10 @@ export class Newton {
     }
 
     private addSuggestionsForOptions() {
+        if (this.stopInterpretingOptions) {
+            log.debug("cannot add suggestions for options after --");
+            return;
+        }
         const entry = this.lastEntry;
         const availableOptions = [
             ...this.availablePosixFlags.map((option) => modifyPosixFlags(option, entry?.slice(1))),
@@ -869,6 +891,15 @@ export class Newton {
                     const curEntry = this.currentEntry;
                     const isEntryOption = isOption(curEntry);
                     const isEntryFlag = isFlag(curEntry);
+                    if (this.stopInterpretingOptions) {
+                        if (isEntryOption || isEntryFlag) {
+                            this.error = "Options and flags are not allowed after --";
+                            break;
+                        } else {
+                            this.curState = ParserState.SubcommandArgument;
+                            break;
+                        }
+                    }
                     if (isEntryOption || (isEntryFlag && this.flagsArePosixNoncompliant)) {
                         log.debug("entry is option or non-posix flag");
                         this.curState = this.parseOption();
