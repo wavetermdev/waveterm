@@ -9,6 +9,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
 import { AuxiliaryCmdView } from "./auxview";
+import * as appconst from "@/app/appconst";
 
 import "./aichat.less";
 
@@ -56,18 +57,13 @@ class AIChat extends React.Component<{}, {}> {
     chatListKeyCount: number = 0;
     chatWindowScrollRef: React.RefObject<HTMLDivElement>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
-    isFocused: OV<boolean>;
     termFontSize: number = 14;
 
     constructor(props: any) {
         super(props);
         this.chatWindowScrollRef = React.createRef();
         this.textAreaRef = React.createRef();
-        this.isFocused = mobx.observable.box(false, {
-            name: "aichat-isfocused",
-        });
     }
-
     componentDidMount() {
         const inputModel = GlobalModel.inputModel;
         if (this.chatWindowScrollRef?.current != null) {
@@ -109,14 +105,14 @@ class AIChat extends React.Component<{}, {}> {
 
     onTextAreaFocused(e: any) {
         mobx.action(() => {
-            this.isFocused.set(true);
+            GlobalModel.inputModel.setAuxViewFocus(true);
         })();
         this.onTextAreaChange(e);
     }
 
     onTextAreaBlur(e: any) {
         mobx.action(() => {
-            this.isFocused.set(false);
+            GlobalModel.inputModel.setAuxViewFocus(false);
         })();
     }
 
@@ -238,17 +234,7 @@ class AIChat extends React.Component<{}, {}> {
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
-        const renderKeybindings = mobx
-            .computed(() => {
-                return (
-                    this.isFocused.get() ||
-                    GlobalModel.inputModel.hasFocus() ||
-                    (GlobalModel.getActiveScreen().getFocusType() == "input" &&
-                        GlobalModel.activeMainView.get() == "session")
-                );
-            })
-            .get();
-
+        const renderKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_AIChat);
         return (
             <AuxiliaryCmdView
                 title="Wave AI"
@@ -260,6 +246,7 @@ class AIChat extends React.Component<{}, {}> {
                     <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
                 </If>
                 <div className="chat-window" ref={this.chatWindowScrollRef}>
+                    <div className="filler"></div>
                     <For each="chitem" index="idx" of={chatMessageItems}>
                         {this.renderChatMessage(chitem)}
                     </For>

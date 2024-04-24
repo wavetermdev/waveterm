@@ -308,7 +308,9 @@ declare global {
 
     type DropdownItem = {
         label: string;
-        value: string;
+        value?: string;
+        icon?: React.ReactNode;
+        noop?: boolean;
     };
 
     /**

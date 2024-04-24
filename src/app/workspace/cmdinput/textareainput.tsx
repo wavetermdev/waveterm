@@ -600,7 +600,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-        const isHistoryFocused = auxViewFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
+
+        const renderCmdInputKeybindings = inputModel.shouldRenderAuxViewKeybindings(null);
+        const renderHistoryKeybindings = inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_History);
 
         // Will be null if the feature is disabled
         const primaryAutocompleteSuggestion = GlobalModel.autocompleteModel.getPrimarySuggestionCompletion();
@@ -611,11 +613,11 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 ref={this.controlRef}
                 style={{ height: computedOuterHeight }}
             >
-                <If condition={!auxViewFocused}>
-                    <CmdInputKeybindings inputObject={this} />
+                <If condition={renderCmdInputKeybindings}>
+                    <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
                 </If>
-                <If condition={isHistoryFocused}>
-                    <HistoryKeybindings />
+                <If condition={renderHistoryKeybindings}>
+                    <HistoryKeybindings inputObject={this}></HistoryKeybindings>
                 </If>
 
                 <If condition={!util.isBlank(shellType)}>

@@ -174,7 +174,7 @@ class HistoryInfo extends React.Component<{}, {}> {
     handleItemClick(hitem: HistoryItem) {
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
-        inputModel.setAuxViewFocus(false);
+        inputModel.setAuxViewFocus(!inputModel.getAuxViewFocus());
         if (this.lastClickHNum == hitem.historynum && selItem != null && selItem.historynum == hitem.historynum) {
             inputModel.grabSelectedHistoryItem();
             return;
