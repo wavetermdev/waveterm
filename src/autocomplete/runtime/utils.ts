@@ -51,6 +51,13 @@ export const buildExecuteShellCommand =
         return output;
     };
 
+/**
+ * Determine if the current token is a path or not. If it is an incomplete path, return the base name of the path as the new cwd to be used in downstream parsing operations. Otherwise, return the current cwd.
+ * @param token The token to check.
+ * @param cwd The current working directory.
+ * @param shell The shell being used.
+ * @returns The new cwd, whether the token is a path, and whether the path is complete.
+ */
 export const resolveCwdToken = async (
     token: string,
     cwd: string,
@@ -59,7 +66,8 @@ export const resolveCwdToken = async (
     if (token == null) return { cwd, pathy: false, complete: false };
     const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
     if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
-    return { cwd: cwd, pathy: true, complete: token.endsWith(sep) };
+    const complete = token.endsWith(sep);
+    return { cwd: complete ? getApi().pathBaseName(token) : cwd, pathy: true, complete };
 };
 
 /**

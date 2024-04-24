@@ -17,7 +17,7 @@ const foldersTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> =
     return await getCompletionSuggestions(cwd, "folders");
 };
 
-const historyTemplate = (): Fig.TemplateSuggestion[] => {
+const historyTemplate = (cwd: String): Fig.TemplateSuggestion[] => {
     const inputModel = GlobalModel.inputModel;
     const cmdLine = inputModel.curLine;
     const cmdLineMinusLastToken = cmdLine.substring(0, cmdLine.lastIndexOf(" "));
@@ -74,7 +74,7 @@ export const runTemplates = async (
                         case "folders":
                             return await foldersTemplate(cwd);
                         case "history":
-                            return historyTemplate();
+                            return historyTemplate(cwd);
                         case "help":
                             return helpTemplate();
                     }

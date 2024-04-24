@@ -711,21 +711,12 @@ export class Newton {
 
     private async addSuggestionsForArg(arg: Fig.Arg, prefixStr?: string): Promise<number> {
         let entry = this.lastEntry;
-
-        const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwdToken(entry, this.cwd, this.shell);
-        // log.debug("filterStrategy", arg.filterStrategy, this.spec.filterStrategy);
-
-        if (pathy) {
-            entry = pathyComplete ? "" : getApi().pathBaseName(entry ?? "");
-            // log.debug("pathy: ", pathy, "pathyComplete: ", pathyComplete, "entry: ", entry);
-        }
-
         const suggestions: Fig.Suggestion[] = [];
 
         if (arg?.generators) {
             const generators = getAll(arg.generators);
             suggestions.push(
-                ...(await Promise.all(generators.map((gen) => runGenerator(gen, this.entries, resolvedCwd)))).flat()
+                ...(await Promise.all(generators.map((gen) => runGenerator(gen, this.entries, this.cwd)))).flat()
             );
         }
 
@@ -735,7 +726,7 @@ export class Newton {
         }
 
         if (arg?.template) {
-            suggestions.push(...(await runTemplates(arg.template ?? [], resolvedCwd)));
+            suggestions.push(...(await runTemplates(arg.template ?? [], this.cwd)));
         }
 
         this.filterSuggestionsAndAddToMap(
@@ -775,9 +766,9 @@ export class Newton {
         );
     }
 
-    private async addSuggestionsForFilepaths(): Promise<void> {
+    private async addSuggestionsForFilepaths(cwd: string = this.cwd): Promise<void> {
         this.filterSuggestionsAndAddToMap(
-            await runTemplates("filepaths", this.cwd),
+            await runTemplates("filepaths", cwd),
             this.spec?.filterStrategy,
             undefined,
             "file"
@@ -976,7 +967,7 @@ export class Newton {
 
         if (!this.error) {
             // We parsed the entire entry array without error, so we can return suggestions
-            const lastEntry = this.lastEntry;
+            let lastEntry = this.lastEntry;
             log.debug(
                 "allEntries: ",
                 this.entries,
@@ -987,6 +978,12 @@ export class Newton {
                 "lastEntryEndsWithSpace: ",
                 lastEntry.endsWith(" ")
             );
+
+            await this.addSuggestionsForHistory();
+
+            // Determine the current working directory to use for file suggestions
+            const { cwd: resolvedCwd } = await resolveCwdToken(lastEntry, this.cwd, this.shell);
+            this.cwd = resolvedCwd;
 
             switch (this.curState) {
                 case ParserState.Subcommand: {
@@ -1102,8 +1099,6 @@ export class Newton {
                 log.debug("no suggestions found");
                 await this.addSuggestionsForFilepaths();
             }
-
-            await this.addSuggestionsForHistory();
 
             const suggestionsArr = Array.from(this.suggestions.values());
             sortSuggestions(suggestionsArr);
