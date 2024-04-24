@@ -175,9 +175,17 @@ export class AutocompleteModel {
         if (!this.isEnabled()) {
             return;
         }
-        const suggestionCompletion = this.getSuggestionCompletion(index);
+        let suggestionCompletion = this.getSuggestionCompletion(index);
         if (suggestionCompletion) {
-            this.globalModel.inputModel.setCurLine(this.globalModel.inputModel.curLine + suggestionCompletion);
+            let pos: number;
+            const curLine = this.globalModel.inputModel.curLine;
+            if (suggestionCompletion.includes("{cursor}")) {
+                pos = curLine.length + suggestionCompletion.indexOf("{cursor}");
+                suggestionCompletion = suggestionCompletion.replace("{cursor}", "");
+            }
+            const newLine = curLine + suggestionCompletion;
+            pos = pos ?? newLine.length;
+            this.globalModel.inputModel.updateCmdLine({ str: newLine, pos: pos });
         }
     }
 
