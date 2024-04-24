@@ -598,14 +598,18 @@ export class Newton {
             suggestionMin.icon = getIcon(suggestionMin.icon, "special");
         }
         if (!suggestionMin.insertValue) {
-            for (const name in getAll(suggestionMin.name)) {
+            log.debug("prepareSuggestion no insertValue", suggestionMin.name, partialCmd);
+            for (const name of getAll(suggestionMin.name)) {
                 if (name.startsWith(partialCmd) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
+                    log.debug("prepareSuggestion insertValue found", name, partialCmd);
                     suggestionMin.insertValue = name;
                 }
             }
 
             suggestionMin.insertValue = suggestionMin.insertValue?.substring(partialCmd.length);
+            log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
         } else {
+            log.debug("prepareSuggestion insertValue exists", suggestionMin.insertValue, partialCmd);
             // Handle situations where the maintainer of the spec includes the command in the insertValue, failing to account for the fact that the user may have already typed the command.
             const startsWithPartialCmd = suggestionMin.insertValue.startsWith(partialCmd);
             for (const name in getAll(suggestionMin.name)) {
@@ -614,6 +618,7 @@ export class Newton {
                     break;
                 }
             }
+            log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
         }
         if (!suggestionMin.priority) {
             switch (suggestionMin.type) {
@@ -651,17 +656,17 @@ export class Newton {
         suggestionType: Fig.SuggestionType,
         prefixStr?: string
     ) {
-        log.debug(
-            "filter",
-            "suggestions",
-            suggestions,
-            "filterStrategy",
-            filterStrategy,
-            "partialCmd",
-            `"${partialCmd}"`,
-            "suggestionType",
-            suggestionType
-        );
+        // log.debug(
+        //     "filter",
+        //     "suggestions",
+        //     suggestions,
+        //     "filterStrategy",
+        //     filterStrategy,
+        //     "partialCmd",
+        //     `"${partialCmd}"`,
+        //     "suggestionType",
+        //     suggestionType
+        // );
         const suggestionsArr = suggestions.map((s) => (typeof s === "string" ? { name: s } : s));
         if (!partialCmd || partialCmd === " ") {
             this.addSuggestionsToMap(suggestionsArr, suggestionType, prefixStr);
@@ -696,7 +701,6 @@ export class Newton {
     }
 
     private addSuggestionsToMap(suggestions: Fig.Suggestion[], suggestionType: Fig.SuggestionType, prefixStr?: string) {
-        log.debug("addSuggestionsToMap", suggestions);
         suggestions?.forEach((suggestion) => {
             this.suggestions.set(
                 getFirst(suggestion.name),
@@ -709,11 +713,11 @@ export class Newton {
         let entry = this.lastEntry;
 
         const { cwd: resolvedCwd, pathy, complete: pathyComplete } = await resolveCwdToken(entry, this.cwd, this.shell);
-        log.debug("filterStrategy", arg.filterStrategy, this.spec.filterStrategy);
+        // log.debug("filterStrategy", arg.filterStrategy, this.spec.filterStrategy);
 
         if (pathy) {
             entry = pathyComplete ? "" : getApi().pathBaseName(entry ?? "");
-            log.debug("pathy: ", pathy, "pathyComplete: ", pathyComplete, "entry: ", entry);
+            // log.debug("pathy: ", pathy, "pathyComplete: ", pathyComplete, "entry: ", entry);
         }
 
         const suggestions: Fig.Suggestion[] = [];

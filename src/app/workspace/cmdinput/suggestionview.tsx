@@ -7,7 +7,6 @@ import { If } from "tsx-control-statements/components";
 
 import "./suggestionview.less";
 import { getAll, getFirst } from "@/autocomplete/runtime/utils";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 export const SuggestionView: React.FC = observer(() => {
     const [selectedSuggestion, setSelectedSuggestion] = React.useState<number>(0);
@@ -21,29 +20,29 @@ export const SuggestionView: React.FC = observer(() => {
     useEffect(() => {
         const keybindManager = GlobalModel.keybindManager;
 
-        keybindManager.registerKeybinding("pane", "aichat", "generic:confirm", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "autocomplete", "generic:confirm", (waveEvent) => {
             setSuggestion(selectedSuggestion);
             return true;
         });
-        keybindManager.registerKeybinding("pane", "aichat", "generic:cancel", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "autocomplete", "generic:cancel", (waveEvent) => {
             closeView();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "aichat", "generic:selectAbove", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "autocomplete", "generic:selectAbove", (waveEvent) => {
             updateScroll(Math.max(0, selectedSuggestion - 1));
             return true;
         });
-        keybindManager.registerKeybinding("pane", "aichat", "generic:selectBelow", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "autocomplete", "generic:selectBelow", (waveEvent) => {
             updateScroll(Math.min(suggestions?.length - 1, selectedSuggestion + 1));
             return true;
         });
-        keybindManager.registerKeybinding("pane", "aichat", "generic:tab", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "autocomplete", "generic:tab", (waveEvent) => {
             updateScroll(Math.min(suggestions?.length - 1, selectedSuggestion + 1));
             return true;
         });
 
         return () => {
-            GlobalModel.keybindManager.unregisterDomain("aichat");
+            GlobalModel.keybindManager.unregisterDomain("autocomplete");
         };
     });
 
@@ -56,6 +55,7 @@ export const SuggestionView: React.FC = observer(() => {
     };
 
     const setSuggestion = (idx: number) => {
+        console.log("setSuggestion", idx);
         autocompleteModel.applySuggestion(idx);
         autocompleteModel.loadSuggestions();
         closeView();

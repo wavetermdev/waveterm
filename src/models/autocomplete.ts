@@ -119,20 +119,25 @@ export class AutocompleteModel {
      * @returns the additional text required to add to the current input line in order to apply the suggestion at the given index
      */
     getSuggestionCompletion(index: number): string {
+        log.debug("getSuggestionCompletion", index);
         const autocompleteSuggestions: Fig.Suggestion[] = this.getSuggestions();
 
         // Build the ghost prompt with the primary suggestion if available
         let retVal = "";
+        log.debug("autocompleteSuggestions", autocompleteSuggestions);
         if (autocompleteSuggestions != null && autocompleteSuggestions.length > index) {
             const suggestion = autocompleteSuggestions[index];
-            if (typeof suggestion.name === "string") {
+            log.debug("suggestion", suggestion);
+
+            if (suggestion.insertValue) {
+                retVal = suggestion.insertValue;
+            } else if (typeof suggestion.name === "string") {
                 retVal = suggestion.name;
             } else if (suggestion.name.length > 0) {
                 retVal = suggestion.name[0];
             }
-            if (suggestion.insertValue) {
-                retVal = suggestion.insertValue;
-            }
+
+            log.debug("retVal", retVal);
 
             // The following is a workaround for slow responses from underlying commands. It assumes that the primary suggestion will be a continuation of the current token.
             // The runtime will provide a number of chars to drop, but it will return after the render has already completed, meaning we will end up with a flicker. This is a workaround to prevent the flicker.
@@ -140,6 +145,7 @@ export class AutocompleteModel {
             const curLine = this.globalModel.inputModel.curLine;
             const curEndTokenLen = getEndTokenLength(curLine);
             const lastEndTokenLen = getEndTokenLength(this.globalModel.inputModel.lastCurLine);
+            log.debug("curEndTokenLen", curEndTokenLen, "lastEndTokenLen", lastEndTokenLen);
             if (curEndTokenLen > lastEndTokenLen) {
                 this.charsToDrop = Math.max(curEndTokenLen, this.charsToDrop ?? 0);
             } else {
@@ -149,6 +155,8 @@ export class AutocompleteModel {
             if (this.charsToDrop > 0) {
                 retVal = retVal.substring(this.charsToDrop);
             }
+            log.debug("charsToDrop", this.charsToDrop, "retVal", retVal);
+            log.debug("ghost prompt", curLine + retVal);
             log.debug("ghost prompt", curLine + retVal);
         }
         return retVal;
@@ -176,6 +184,7 @@ export class AutocompleteModel {
             return;
         }
         let suggestionCompletion = this.getSuggestionCompletion(index);
+        log.debug("applying suggestion: ", suggestionCompletion);
         if (suggestionCompletion) {
             let pos: number;
             const curLine = this.globalModel.inputModel.curLine;
@@ -185,6 +194,7 @@ export class AutocompleteModel {
             }
             const newLine = curLine + suggestionCompletion;
             pos = pos ?? newLine.length;
+            log.debug("new line", `"${newLine}"`, "pos", pos);
             this.globalModel.inputModel.updateCmdLine({ str: newLine, pos: pos });
         }
     }
