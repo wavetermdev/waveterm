@@ -2685,13 +2685,18 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 	if err != nil {
 		return fmt.Errorf("*error: cannot obtain client data: %v", err)
 	}
-	pwTimeout := time.Duration(clientData.FeOpts.SudoPwTimeout) * time.Minute
+	sudoPwTimeout := clientData.FeOpts.SudoPwTimeout
+	if sudoPwTimeout == 0 {
+		// 0 maps to default
+		sudoPwTimeout = sstore.DefaultSudoTimeout
+	}
+	pwTimeoutDur := time.Duration(sudoPwTimeout) * time.Minute
 	msh.WithLock(func() {
 		msh.sudoPw = rawSecret
 		if msh.sudoClearDeadline == 0 {
 			go msh.startSudoPwClearChecker(clientData)
 		}
-		msh.sudoClearDeadline = time.Now().Add(pwTimeout).Unix()
+		msh.sudoClearDeadline = time.Now().Add(pwTimeoutDur).Unix()
 	})
 
 	srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
@@ -2781,6 +2786,15 @@ func (msh *MShellProc) ClearCachedSudoPw() {
 	msh.WithLock(func() {
 		msh.sudoPw = nil
 		msh.sudoClearDeadline = 0
+	})
+}
+
+func (msh *MShellProc) ChangeSudoTimeout(deltaTime int64) {
+	msh.WithLock(func() {
+		if msh.sudoClearDeadline != 0 {
+			updated := msh.sudoClearDeadline + deltaTime*60
+			msh.sudoClearDeadline = max(0, updated)
+		}
 	})
 }
 

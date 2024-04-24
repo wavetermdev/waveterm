@@ -5987,6 +5987,10 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		varsUpdated = append(varsUpdated, "sudopwstore")
 	}
 	if sudoPwTimeoutStr, found := pk.Kwargs["sudopwtimeout"]; found {
+		oldPwTimeout := clientData.FeOpts.SudoPwTimeout
+		if oldPwTimeout == 0 {
+			oldPwTimeout = sstore.DefaultSudoTimeout
+		}
 		newSudoPwTimeout, err := resolveNonNegInt(sudoPwTimeoutStr, 0)
 		if err != nil {
 			return nil, fmt.Errorf("invalid sudo pw timeout, must be a non-negative number: %v", err)
@@ -5997,9 +6001,12 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		if err != nil {
 			return nil, fmt.Errorf("error updating client feopts: %v", err)
 		}
+		// note: it is impossible to have a 0 in the new timeout because of
+		// frontend behavior. because of this, we don't need to map to a
+		// default
 		// cancel existing deadlines to avoid weird behavior
 		for _, proc := range remote.GetRemoteMap() {
-			proc.ClearCachedSudoPw()
+			proc.ChangeSudoTimeout(int64(newSudoPwTimeout - oldPwTimeout))
 		}
 		varsUpdated = append(varsUpdated, "sudopwtimeout")
 	}

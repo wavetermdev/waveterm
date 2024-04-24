@@ -209,8 +209,10 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeSudoPwTimeoutConfig(timeout: string) {
-        const prtn = GlobalCommandRunner.setSudoPwTimeout(timeout);
-        commandRtnHandler(prtn, this.errorMessage);
+        if (Number(timeout) != 0) {
+            const prtn = GlobalCommandRunner.setSudoPwTimeout(timeout);
+            commandRtnHandler(prtn, this.errorMessage);
+        }
     }
 
     @boundMethod

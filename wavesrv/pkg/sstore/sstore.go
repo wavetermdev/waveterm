@@ -43,6 +43,7 @@ const DBWALFileNameBackup = "backup.waveterm.db-wal"
 const MaxWebShareLineCount = 50
 const MaxWebShareScreenCount = 3
 const MaxLineStateSize = 4 * 1024 // 4k for now, can raise if needed
+const DefaultSudoTimeout = 5
 
 const DefaultSessionName = "default"
 const LocalRemoteAlias = "local"
