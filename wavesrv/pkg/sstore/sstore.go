@@ -232,6 +232,10 @@ type ClientWinSizeType struct {
 	FullScreen bool `json:"fullscreen,omitempty"`
 }
 
+type PowerMonitorEventType struct {
+	Status string `json:"status"`
+}
+
 type SidebarValueType struct {
 	Collapsed bool `json:"collapsed"`
 	Width     int  `json:"width"`
