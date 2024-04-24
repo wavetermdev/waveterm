@@ -1066,7 +1066,7 @@ func main() {
 		log.Printf("[error] %v\n", err)
 		return
 	}
-	_, err = scbase.EnsureConfigDir()
+	_, err = scbase.EnsureConfigDirs()
 	if err != nil {
 		log.Printf("[error] ensuring config directory: %v\n", err)
 		return
