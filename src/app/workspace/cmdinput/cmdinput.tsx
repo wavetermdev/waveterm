@@ -19,7 +19,7 @@ import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
 import * as util from "@/util/util";
 import * as appconst from "@/app/appconst";
-import { SuggestionView } from "./suggestionview";
+import { AutocompleteSuggestionView } from "./suggestionview";
 
 import "./cmdinput.less";
 
@@ -198,7 +198,7 @@ class CmdInput extends React.Component<{}, {}> {
                         <InfoMsg key="infomsg" />
                     </When>
                     <When condition={openView === appconst.InputAuxView_Suggestions}>
-                        <SuggestionView />
+                        <AutocompleteSuggestionView />
                     </When>
                 </Choose>
                 <If condition={remote && remote.status != "connected"}>

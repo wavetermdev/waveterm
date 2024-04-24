@@ -67,36 +67,9 @@ export const resolveCwdToken = async (
     const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
     if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
     const complete = token.endsWith(sep);
-    return { cwd: complete ? getApi().pathBaseName(token) : cwd, pathy: true, complete };
-};
-
-/**
- * Retrieves the contents of the specified directory on the active remote machine.
- * @param cwd The directory whose contents should be returned.
- * @param tempType The template to use when returning the contents. If "folders" is passed, only the directories within the specified directory will be returned. Otherwise, all the contents will be returned.
- * @returns The contents of the directory formatted to the specified template.
- */
-export const getCompletionSuggestions = async (
-    cwd: string,
-    tempType: "filepaths" | "folders"
-): Promise<Fig.TemplateSuggestion[]> => {
-    const comptype = tempType === "filepaths" ? "file" : "directory";
-    if (comptype == null) return [];
-    const crtn = await GlobalModel.submitCommand("_compfiledir", null, [], { comptype, cwd }, false, false);
-    if (Array.isArray(crtn?.update?.data)) {
-        if (crtn.update.data.length === 0) return [];
-        const firstData = crtn.update.data[0];
-        if (firstData.info?.infocomps) {
-            return firstData.info.infocomps.map((comp: string) => ({
-                name: comp,
-                priority: comp.startsWith(".") ? 1 : 55,
-                context: { templateType: tempType },
-                type: comp.endsWith("/") ? "folder" : "file",
-            }));
-        } else {
-            return [];
-        }
-    }
+    const dirname = getApi().pathDirName(token);
+    log.debug("resolveCwdToken", { token, cwd, complete, dirname });
+    return { cwd: complete ? token : dirname, pathy: true, complete };
 };
 
 /**

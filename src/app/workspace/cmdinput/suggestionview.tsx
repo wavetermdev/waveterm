@@ -8,7 +8,7 @@ import { If } from "tsx-control-statements/components";
 import "./suggestionview.less";
 import { getAll, getFirst } from "@/autocomplete/runtime/utils";
 
-export const SuggestionView: React.FC = observer(() => {
+export const AutocompleteSuggestionView: React.FC = observer(() => {
     const [selectedSuggestion, setSelectedSuggestion] = React.useState<number>(0);
     const updateScroll = (index: number) => {
         setSelectedSuggestion(index);
@@ -63,7 +63,7 @@ export const SuggestionView: React.FC = observer(() => {
 
     return (
         <AuxiliaryCmdView title="Suggestions" className="suggestions-view" onClose={closeView} scrollable={true}>
-            <If condition={!suggestions}>
+            <If condition={!suggestions || suggestions.length == 0}>
                 <div className="no-suggestions">No suggestions</div>
             </If>
             {suggestions?.map((suggestion, idx) => (
@@ -75,8 +75,9 @@ export const SuggestionView: React.FC = observer(() => {
                         setSuggestion(idx);
                     }}
                 >
-                    {suggestion.icon} {getAll(suggestion.name).join(",")}{" "}
-                    {suggestion.description ? `- ${suggestion.description}` : ""}
+                    {`${suggestion.icon} ${suggestion.displayName ?? getAll(suggestion.name).join(",")} ${
+                        suggestion.description ? `- ${suggestion.description}` : ""
+                    }`}
                 </option>
             ))}
         </AuxiliaryCmdView>

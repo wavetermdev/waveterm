@@ -591,6 +591,10 @@ electron.ipcMain.on("path-basename", (event, p) => {
     event.returnValue = path.basename(p);
 });
 
+electron.ipcMain.on("path-dirname", (event, p) => {
+    event.returnValue = path.dirname(p);
+});
+
 electron.ipcMain.on("path-sep", (event) => {
     event.returnValue = path.sep;
 });

@@ -7,14 +7,50 @@
 
 import { GlobalModel } from "@/models";
 import log from "../utils/log";
-import { getCompletionSuggestions } from "./utils";
 
 const filepathsTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> => {
-    return await getCompletionSuggestions(cwd, "filepaths");
+    return await getFileCompletionSuggestions(cwd, "filepaths");
 };
 
 const foldersTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> => {
-    return await getCompletionSuggestions(cwd, "folders");
+    return await getFileCompletionSuggestions(cwd, "folders");
+};
+
+/**
+ * Retrieves the contents of the specified directory on the active remote machine.
+ * @param cwd The directory whose contents should be returned.
+ * @param tempType The template to use when returning the contents. If "folders" is passed, only the directories within the specified directory will be returned. Otherwise, all the contents will be returned.
+ * @returns The contents of the directory formatted to the specified template.
+ */
+export const getFileCompletionSuggestions = async (
+    cwd: string,
+    tempType: "filepaths" | "folders"
+): Promise<Fig.TemplateSuggestion[]> => {
+    const comptype = tempType === "filepaths" ? "file" : "directory";
+    if (comptype == null) return [];
+    const crtn = await GlobalModel.submitCommand("_compfiledir", null, [], { comptype, cwd }, false, false);
+    if (Array.isArray(crtn?.update?.data)) {
+        if (crtn.update.data.length === 0) return [];
+        const firstData = crtn.update.data[0];
+        if (firstData.info?.infocomps) {
+            if (firstData.info.infocomps.length === 0) return [];
+            if (firstData.info.infocomps[0] === "(no completions)") return [];
+            return firstData.info.infocomps.map((comp: string) => {
+                const fullPath = cwd + comp;
+                log.debug("getFileCompletionSuggestions", cwd, comp, fullPath);
+                return {
+                    name: fullPath,
+                    displayName: comp,
+                    priority: comp.startsWith(".") ? 1 : 55,
+                    context: { templateType: tempType },
+                    type: comp.endsWith("/") ? "folder" : "file",
+                    insertValue: fullPath,
+                };
+            });
+        } else {
+            return [];
+        }
+    }
 };
 
 const historyTemplate = (cwd: String): Fig.TemplateSuggestion[] => {

@@ -31,6 +31,7 @@ contextBridge.exposeInMainWorld("api", {
     onWaveSrvStatusChange: (callback) => ipcRenderer.on("wavesrv-status-change", callback),
     onToggleDevUI: (callback) => ipcRenderer.on("toggle-devui", callback),
     pathBaseName: (path) => ipcRenderer.sendSync("path-basename", path),
+    pathDirName: (path) => ipcRenderer.sendSync("path-dirname", path),
     pathSep: () => ipcRenderer.sendSync("path-sep"),
     showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", callback),

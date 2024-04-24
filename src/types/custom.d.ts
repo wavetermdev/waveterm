@@ -959,6 +959,7 @@ declare global {
         showContextMenu: (menu: ElectronContextMenuItem[], position: { x: number; y: number }) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
         pathBaseName: (path: string) => string;
+        pathDirName: (path: string) => string;
         pathSep: () => string;
     };
 

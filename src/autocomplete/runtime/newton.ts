@@ -656,17 +656,17 @@ export class Newton {
         suggestionType: Fig.SuggestionType,
         prefixStr?: string
     ) {
-        // log.debug(
-        //     "filter",
-        //     "suggestions",
-        //     suggestions,
-        //     "filterStrategy",
-        //     filterStrategy,
-        //     "partialCmd",
-        //     `"${partialCmd}"`,
-        //     "suggestionType",
-        //     suggestionType
-        // );
+        log.debug(
+            "filter",
+            "suggestions",
+            suggestions,
+            "filterStrategy",
+            filterStrategy,
+            "partialCmd",
+            `"${partialCmd}"`,
+            "suggestionType",
+            suggestionType
+        );
         const suggestionsArr = suggestions.map((s) => (typeof s === "string" ? { name: s } : s));
         if (!partialCmd || partialCmd === " ") {
             this.addSuggestionsToMap(suggestionsArr, suggestionType, prefixStr);
@@ -679,9 +679,10 @@ export class Newton {
                 if (s.name == null) return;
                 if (s.name instanceof Array) {
                     const matchedName = s.name.find((n) => n.toLowerCase().includes(partialCmd.toLowerCase()));
-                    return matchedName != null ? s : undefined;
-                }
-                if (s.name.toLowerCase().includes(partialCmd.toLowerCase())) {
+                    if (matchedName) {
+                        this.addSuggestionsToMap([{ name: matchedName }], suggestionType, prefixStr);
+                    }
+                } else if (s.name.toLowerCase().includes(partialCmd.toLowerCase())) {
                     this.addSuggestionsToMap([s], suggestionType, prefixStr);
                 }
             });
@@ -691,9 +692,10 @@ export class Newton {
                 if (s.name == null) return;
                 if (s.name instanceof Array) {
                     const matchedName = s.name.find((n) => n.toLowerCase().startsWith(partialCmd.toLowerCase()));
-                    return matchedName != null ? s : undefined;
-                }
-                if (s.name.toLowerCase().startsWith(partialCmd.toLowerCase())) {
+                    if (matchedName) {
+                        this.addSuggestionsToMap([{ name: matchedName }], suggestionType, prefixStr);
+                    }
+                } else if (s.name.toLowerCase().startsWith(partialCmd.toLowerCase())) {
                     this.addSuggestionsToMap([s], suggestionType, prefixStr);
                 }
             });
@@ -761,16 +763,17 @@ export class Newton {
         this.filterSuggestionsAndAddToMap(
             await runTemplates("history", this.cwd),
             this.spec?.filterStrategy,
-            undefined,
+            this.lastEntry,
             undefined
         );
     }
 
     private async addSuggestionsForFilepaths(cwd: string = this.cwd): Promise<void> {
+        log.debug("addSuggestionsForFilepaths", cwd, this.lastEntry, this.spec?.filterStrategy);
         this.filterSuggestionsAndAddToMap(
             await runTemplates("filepaths", cwd),
             this.spec?.filterStrategy,
-            undefined,
+            this.lastEntry,
             "file"
         );
     }
