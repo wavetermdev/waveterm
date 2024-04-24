@@ -284,7 +284,10 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                     </div>
                 </If>
                 <div
-                    className={cn("wave-dropdown-display unselectable", { "offset-left": decoration?.startDecoration })}
+                    className={cn("wave-dropdown-display unselectable truncate", {
+                        "offset-left": decoration?.startDecoration,
+                    })}
+                    style={{ width: this.wrapperRef.current?.clientWidth - 55 + "px" }}
                 >
                     {selectedOptionLabel}
                 </div>
