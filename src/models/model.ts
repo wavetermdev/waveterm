@@ -1816,6 +1816,15 @@ class Model {
     getElectronApi(): ElectronApi {
         return getApi();
     }
+
+    sendActivity(atype: string) {
+        const pk: FeActivityPacketType = {
+            type: "feactivity",
+            activity: {},
+        };
+        pk.activity[atype] = 1;
+        this.ws.pushMessage(pk);
+    }
 }
 
 export { Model, getApi };

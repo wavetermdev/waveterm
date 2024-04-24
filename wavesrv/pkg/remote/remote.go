@@ -1431,7 +1431,7 @@ func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType
 	}
 	defer func() {
 		if rtnErr != nil {
-			telemetry.UpdateActivityWrap(ctx, makeReinitErrorUpdate(shellType), "reiniterror")
+			telemetry.GoUpdateActivityWrap(makeReinitErrorUpdate(shellType), "reiniterror")
 		}
 	}()
 	startTs := time.Now()

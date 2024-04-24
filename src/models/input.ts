@@ -283,6 +283,7 @@ class InputModel {
         if (this.getActiveAuxView() != appconst.InputAuxView_History) {
             this.dropModHistory(true);
             this.setActiveAuxView(appconst.InputAuxView_History);
+            this.globalModel.sendActivity("history-open");
         }
     }
 
@@ -686,6 +687,7 @@ class InputModel {
 
     openAIAssistantChat(): void {
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
+        this.globalModel.sendActivity("aichat-open");
     }
 
     clearAIAssistantChat(): void {
