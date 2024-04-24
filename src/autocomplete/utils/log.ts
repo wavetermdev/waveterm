@@ -7,20 +7,11 @@
 
 import { GlobalModel } from "@/models";
 
-let logEnabled = false;
-
-const reset = async () => {};
-
-const debug = (...content) => {
+export const debug = (...content) => {
     if (!GlobalModel.isDev) {
         return;
     }
     console.log("[autocomplete]", ...content);
 };
 
-export const enable = async () => {
-    await reset();
-    logEnabled = true;
-};
-
-export default { reset, debug, enable };
+export default { debug };
