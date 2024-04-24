@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
@@ -292,6 +293,11 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		case uich <- userInputRespPk:
 		default:
 		}
+		return nil
+	}
+	if pk.GetType() == scpacket.FeActivityPacketStr {
+		feActivityPk := pk.(*scpacket.FeActivityPacketType)
+		telemetry.UpdateFeActivityWrap(feActivityPk)
 		return nil
 	}
 	return fmt.Errorf("got ws bad message: %v", pk.GetType())

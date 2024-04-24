@@ -174,7 +174,7 @@ class HistoryInfo extends React.Component<{}, {}> {
     handleItemClick(hitem: HistoryItem) {
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
-        inputModel.setAuxViewFocus(false);
+        inputModel.setAuxViewFocus(!inputModel.getAuxViewFocus());
         if (this.lastClickHNum == hitem.historynum && selItem != null && selItem.historynum == hitem.historynum) {
             inputModel.grabSelectedHistoryItem();
             return;
@@ -239,10 +239,11 @@ class HistoryInfo extends React.Component<{}, {}> {
         return (
             <AuxiliaryCmdView
                 title="History"
-                className="cmd-history hide-scrollbar"
+                className="cmd-history"
                 onClose={this.handleClose}
                 titleBarContents={this.getTitleBarContents()}
                 iconClass="fa-sharp fa-solid fa-clock-rotate-left"
+                scrollable={true}
             >
                 <div
                     className={cn(

@@ -251,7 +251,10 @@ class Model {
 
     initAppKeybindings() {
         for (let index = 1; index <= 9; index++) {
-            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, (waveEvent) => {
+                this.onSwitchSessionCmd(index);
+                return true;
+            });
         }
         this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
             this.onFocusCmdInputPressed();
@@ -563,6 +566,11 @@ class Model {
         if (activeScreen == null) {
             return;
         }
+        let numLines = activeScreen.getScreenLines().lines.length;
+        if (numLines < 10) {
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
+            return;
+        }
         const rtnp = this.showAlert({
             message: "Are you sure you want to delete this tab?",
             confirm: true,
@@ -571,7 +579,7 @@ class Model {
             if (!result) {
                 return;
             }
-            GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
         });
     }
 
@@ -708,11 +716,11 @@ class Model {
                 this.activeMainView.set("session");
                 setTimeout(() => {
                     // allows for the session view to load
-                    this.inputModel.giveFocus();
+                    this.inputModel.setAuxViewFocus(false);
                 }, 100);
             })();
         } else {
-            this.inputModel.giveFocus();
+            this.inputModel.setAuxViewFocus(false);
         }
     }
 
@@ -795,6 +803,10 @@ class Model {
         } else if (relative == -1) {
             GlobalCommandRunner.switchScreen("-");
         }
+    }
+
+    onSwitchScreenCmd(digit: number) {
+        GlobalCommandRunner.switchScreen(String(digit));
     }
 
     onSwitchSessionCmd(digit: number) {
@@ -1750,6 +1762,15 @@ class Model {
 
     getElectronApi(): ElectronApi {
         return getApi();
+    }
+
+    sendActivity(atype: string) {
+        const pk: FeActivityPacketType = {
+            type: "feactivity",
+            activity: {},
+        };
+        pk.activity[atype] = 1;
+        this.ws.pushMessage(pk);
     }
 }
 

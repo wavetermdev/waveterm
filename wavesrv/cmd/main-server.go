@@ -40,7 +40,6 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
@@ -50,6 +49,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scws"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
 
@@ -68,8 +68,8 @@ const WSStateReconnectTime = 30 * time.Second
 const WSStatePacketChSize = 20
 
 const InitialTelemetryWait = 30 * time.Second
-const TelemetryTick = 30 * time.Minute
-const TelemetryInterval = 8 * time.Hour
+const TelemetryTick = 10 * time.Minute
+const TelemetryInterval = 4 * time.Hour
 
 const MaxWriteFileMemSize = 20 * (1024 * 1024) // 20M
 
@@ -229,7 +229,9 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 		activity.OpenMinutes = 1
 	}
 	activity.NumConns = remote.NumRemotes()
-	err = telemetry.UpdateCurrentActivity(r.Context(), activity)
+	activity.NumWorkspaces, _ = sstore.NumSessions(r.Context())
+	activity.NumTabs, _ = sstore.NumScreens(r.Context())
+	err = telemetry.UpdateActivity(r.Context(), activity)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))
 		return
@@ -832,7 +834,7 @@ func AuthKeyWrapAllowHmac(fn WebFnType) WebFnType {
 				w.Write([]byte("no x-authkey header"))
 				return
 			}
-			hmacOk, err := promptenc.ValidateUrlHmac([]byte(scbase.WaveAuthKey), r.URL.Path, qvals)
+			hmacOk, err := waveenc.ValidateUrlHmac([]byte(scbase.WaveAuthKey), r.URL.Path, qvals)
 			if err != nil || !hmacOk {
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte(fmt.Sprintf("error validating hmac")))
@@ -932,12 +934,11 @@ func checkNewReleaseWrapper() {
 }
 
 func telemetryLoop() {
-	var lastSent time.Time
+	var nextSend int64
 	time.Sleep(InitialTelemetryWait)
 	for {
-		dur := time.Since(lastSent)
-		if lastSent.IsZero() || dur >= TelemetryInterval {
-			lastSent = time.Now()
+		if time.Now().Unix() > nextSend {
+			nextSend = time.Now().Add(TelemetryInterval).Unix()
 			sendTelemetryWrapper()
 			checkNewReleaseWrapper()
 		}
@@ -972,6 +973,7 @@ func installSignalHandlers() {
 func doShutdown(reason string) {
 	shutdownOnce.Do(func() {
 		log.Printf("[wave] local server %v, start shutdown\n", reason)
+		shutdownActivityUpdate()
 		sendTelemetryWrapper()
 		log.Printf("[wave] closing db connection\n")
 		sstore.CloseDB()
@@ -1024,6 +1026,31 @@ func configWatcher() {
 	watcher := configstore.GetWatcher()
 	if watcher != nil {
 		watcher.Start()
+	}
+}
+
+func startupActivityUpdate() {
+	activity := telemetry.ActivityUpdate{
+		NumConns: remote.NumRemotes(),
+		Startup:  1,
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	activity.NumWorkspaces, _ = sstore.NumSessions(ctx)
+	activity.NumTabs, _ = sstore.NumScreens(ctx)
+	err := telemetry.UpdateActivity(ctx, activity) // set at least one record into activity (don't use go routine wrap here)
+	if err != nil {
+		log.Printf("error updating startup activity: %v\n", err)
+	}
+}
+
+func shutdownActivityUpdate() {
+	activity := telemetry.ActivityUpdate{Shutdown: 1}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelFn()
+	err := telemetry.UpdateActivity(ctx, activity) // do NOT use the go routine wrap here (this needs to be synchronous)
+	if err != nil {
+		log.Printf("error updating shutdown activity: %v\n", err)
 	}
 }
 
@@ -1103,7 +1130,7 @@ func main() {
 	}
 
 	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
-	telemetry.UpdateActivityWrap(context.Background(), telemetry.ActivityUpdate{NumConns: remote.NumRemotes()}, "numconns") // set at least one record into activity
+	startupActivityUpdate()
 	installSignalHandlers()
 	go telemetryLoop()
 	go configWatcher()

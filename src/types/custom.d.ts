@@ -217,6 +217,11 @@ declare global {
         winsize?: TermWinSize;
     };
 
+    type FeActivityPacketType = {
+        type: string;
+        activity: Record<string, int>;
+    };
+
     type RemoteInputPacketType = {
         type: string;
         remoteid: string;
@@ -308,7 +313,9 @@ declare global {
 
     type DropdownItem = {
         label: string;
-        value: string;
+        value?: string;
+        icon?: React.ReactNode;
+        noop?: boolean;
     };
 
     /**

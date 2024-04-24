@@ -40,7 +40,6 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/history"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
-	"github.com/wavetermdev/waveterm/wavesrv/pkg/promptenc"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote/openai"
@@ -50,6 +49,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 	"golang.org/x/mod/semver"
 )
 
@@ -96,6 +96,7 @@ const (
 	KwArgLang     = "lang"
 	KwArgMinimap  = "minimap"
 	KwArgNoHist   = "nohist"
+	KwArgSudo     = "sudo"
 )
 
 var ColorNames = []string{"yellow", "blue", "pink", "mint", "cyan", "violet", "orange", "green", "red", "white"}
@@ -295,6 +296,8 @@ func init() {
 	registerCmdFn("csvview", CSVViewCommand)
 
 	registerCmdFn("_debug:ri", DebugRemoteInstanceCommand)
+
+	registerCmdFn("sudo:clear", ClearSudoCache)
 }
 
 func getValidCommands() []string {
@@ -607,6 +610,7 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	if err != nil {
 		return nil, fmt.Errorf("/run error, invalid lang: %w", err)
 	}
+
 	cmdStr := firstArg(pk)
 	expandedCmdStr, err := doCmdHistoryExpansion(ctx, ids, cmdStr)
 	if err != nil {
@@ -638,6 +642,11 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	}
 	runPacket.Command = strings.TrimSpace(cmdStr)
 	runPacket.ReturnState = resolveBool(pk.Kwargs["rtnstate"], isRtnStateCmd)
+	if sudoArg, ok := pk.Kwargs[KwArgSudo]; ok {
+		runPacket.IsSudo = resolveBool(sudoArg, false)
+	} else {
+		runPacket.IsSudo = IsSudoCommand(cmdStr)
+	}
 	rcOpts := remote.RunCommandOpts{
 		SessionId:     ids.SessionId,
 		ScreenId:      ids.ScreenId,
@@ -734,7 +743,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	}
 	evalDepth := getEvalDepth(ctx)
 	if pk.Interactive && evalDepth == 0 {
-		telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{NumCommands: 1}, "numcommands")
+		telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{NumCommands: 1}, "numcommands")
 	}
 	if evalDepth > MaxEvalDepth {
 		return nil, fmt.Errorf("alias/history expansion max-depth exceeded")
@@ -886,6 +895,7 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		return nil, err
 	}
 	update.Merge(crUpdate)
+	telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{NewTab: 1}, "screen:open")
 	return update, nil
 }
 
@@ -2946,6 +2956,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 	if err != nil {
 		return nil, fmt.Errorf("cannot add new line: %v", err)
 	}
+	sendRendererActivityUpdate("openai")
 
 	if resolveBool(pk.Kwargs["stream"], true) {
 		go doOpenAIStreamCompletion(cmd, clientData.ClientId, opts, prompt)
@@ -3129,6 +3140,7 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 	if err != nil {
 		return nil, err
 	}
+	sendRendererActivityUpdate(renderer)
 	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
 	if err != nil {
 		// ignore error here, because the command has already run (nothing to do)
@@ -3459,7 +3471,7 @@ func validateRemoteColor(color string, typeStr string) error {
 
 func SessionOpenSharedCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	activity := telemetry.ActivityUpdate{ClickShared: 1}
-	telemetry.UpdateActivityWrap(ctx, activity, "click-shared")
+	telemetry.GoUpdateActivityWrap(activity, "click-shared")
 	return nil, fmt.Errorf("shared sessions are not available in this version of prompt (stay tuned)")
 }
 
@@ -3915,6 +3927,30 @@ func DebugRemoteInstanceCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 	return update, nil
 }
 
+func ClearSudoCache(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnUpdate scbus.UpdatePacket, rtnErr error) {
+	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
+	if err != nil {
+		return nil, err
+	}
+	ids.Remote.MShell.ClearCachedSudoPw()
+	pluralize := ""
+
+	clearAll := resolveBool(pk.Kwargs["all"], false)
+	if clearAll {
+		for _, proc := range remote.GetRemoteMap() {
+			proc.ClearCachedSudoPw()
+		}
+		pluralize = "s"
+	}
+
+	update := scbus.MakeUpdatePacket()
+	update.AddUpdate(sstore.InfoMsgType{
+		InfoMsg:   fmt.Sprintf("sudo password%s cleared", pluralize),
+		TimeoutMs: 2000,
+	})
+	return update, nil
+}
+
 func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnUpdate scbus.UpdatePacket, rtnErr error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_Remote)
 	if err != nil {
@@ -4225,7 +4261,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	}
 	show := !resolveBool(pk.Kwargs["noshow"], false)
 	if show {
-		telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{HistoryView: 1}, "history")
+		telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{HistoryView: 1}, "history")
 	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(history.HistoryInfoType{
@@ -4453,6 +4489,15 @@ func focusScreenLine(ctx context.Context, screenId string, lineNum int64) (*ssto
 	return screen, nil
 }
 
+func sendRendererActivityUpdate(renderer string) {
+	if renderer == "" || !telemetry.IsAllowedRenderer(renderer) {
+		return
+	}
+	activity := telemetry.ActivityUpdate{Renderers: make(map[string]int)}
+	activity.Renderers[renderer] = 1
+	telemetry.GoUpdateActivityWrap(activity, "renderer")
+}
+
 func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
@@ -4475,6 +4520,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 		if err != nil {
 			return nil, fmt.Errorf("error changing line renderer: %v", err)
 		}
+		sendRendererActivityUpdate(renderer)
 		varsUpdated = append(varsUpdated, KwArgRenderer)
 	}
 	if view, found := pk.Kwargs[KwArgView]; found {
@@ -4485,6 +4531,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 		if err != nil {
 			return nil, fmt.Errorf("error changing line view: %v", err)
 		}
+		sendRendererActivityUpdate(view)
 		varsUpdated = append(varsUpdated, KwArgView)
 	}
 	if stateJson, found := pk.Kwargs[KwArgState]; found {
@@ -4575,7 +4622,7 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
 	}
-	telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{BookmarksView: 1}, "bookmarks")
+	telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{BookmarksView: 1}, "bookmarks")
 	update := scbus.MakeUpdatePacket()
 
 	update.AddUpdate(&MainViewUpdate{
@@ -5254,7 +5301,7 @@ func MakeReadFileUrl(screenId string, lineId string, filePath string) (string, e
 	qvals.Set("lineid", lineId)
 	qvals.Set("path", filePath)
 	qvals.Set("nonce", uuid.New().String())
-	hmacStr, err := promptenc.ComputeUrlHmac([]byte(scbase.WaveAuthKey), "/api/read-file", qvals)
+	hmacStr, err := waveenc.ComputeUrlHmac([]byte(scbase.WaveAuthKey), "/api/read-file", qvals)
 	if err != nil {
 		return "", fmt.Errorf("error computing hmac-url: %v", err)
 	}
