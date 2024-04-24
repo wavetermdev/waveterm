@@ -32,6 +32,7 @@ type FileInfo struct {
 }
 
 const MaxBlockSize = int64(128 * units.Kilobyte)
+const DefaultFlushTimeout = 1 * time.Second
 
 type CacheEntry struct {
 	Lock       *sync.Mutex
@@ -53,7 +54,7 @@ func MakeCacheEntry(info *FileInfo) *CacheEntry {
 // add ctx context.Context to all these methods
 type BlockStore interface {
 	MakeFile(ctx context.Context, blockId string, name string, meta FileMeta, opts FileOptsType) error
-	WriteFile(ctx context.Context, blockId string, name string, meta FileMeta, data []byte) error
+	WriteFile(ctx context.Context, blockId string, name string, meta FileMeta, opts FileOptsType, data []byte) (int, error)
 	AppendData(ctx context.Context, blockId string, name string, p []byte) (int, error)
 	WriteAt(ctx context.Context, blockId string, name string, p []byte, off int64) (int, error)
 	ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int64) (int, error)
@@ -62,7 +63,7 @@ type BlockStore interface {
 	WriteMeta(ctx context.Context, blockId string, name string, meta FileMeta) error
 	DeleteFile(ctx context.Context, blockId string, name string) error
 	DeleteBlock(ctx context.Context, blockId string) error
-	ListFiles(ctx context.Context, blockId string) []FileInfo
+	ListFiles(ctx context.Context, blockId string) []*FileInfo
 	FlushCache(ctx context.Context) error
 	GetAllBlockIds(ctx context.Context) []string
 }
@@ -70,6 +71,8 @@ type BlockStore interface {
 var cache map[string]*CacheEntry = make(map[string]*CacheEntry)
 var globalLock *sync.Mutex = &sync.Mutex{}
 var appendLock *sync.Mutex = &sync.Mutex{}
+var flushTimeout = DefaultFlushTimeout
+var lastWriteTime time.Time
 
 func InsertFileIntoDB(ctx context.Context, fileInfo FileInfo) error {
 	metaJson, err := json.Marshal(fileInfo.Meta)
@@ -128,13 +131,17 @@ func MakeFile(ctx context.Context, blockId string, name string, meta FileMeta, o
 	return nil
 }
 
-func WriteToCacheBlock(ctx context.Context, blockId string, name string, block *CacheBlock, p []byte, pos int, length int, cacheNum int) (int64, int, error) {
-	cacheEntry, found := GetCacheEntry(ctx, blockId, name)
-	if !found {
-		return 0, 0, fmt.Errorf("Cache entry not in cache")
+func WriteToCacheBlockNum(ctx context.Context, blockId string, name string, p []byte, pos int, length int, cacheNum int, pullFromDB bool) (int64, int, error) {
+	cacheEntry, err := GetCacheEntryOrPopulate(ctx, blockId, name)
+	if err != nil {
+		return 0, 0, err
 	}
+	block, err := GetCacheBlock(ctx, blockId, name, cacheNum, pullFromDB)
 	cacheEntry.Lock.Lock()
 	defer cacheEntry.Lock.Unlock()
+	if err != nil {
+		return 0, 0, fmt.Errorf("Error getting cache block: %v", err)
+	}
 	var bytesWritten = 0
 	blockLen := len(block.data)
 	fileMaxSize := cacheEntry.Info.Opts.MaxSize
@@ -239,6 +246,23 @@ func GetCacheEntry(ctx context.Context, blockId string, name string) (*CacheEntr
 	}
 }
 
+func GetCacheEntryOrPopulate(ctx context.Context, blockId string, name string) (*CacheEntry, error) {
+	if cacheEntry, found := GetCacheEntry(ctx, blockId, name); found {
+		return cacheEntry, nil
+	} else {
+		_, err := Stat(ctx, blockId, name)
+		if err != nil {
+			return nil, err
+		}
+		if cacheEntry, found := GetCacheEntry(ctx, blockId, name); found {
+			return cacheEntry, nil
+		} else {
+			return nil, fmt.Errorf("Error getting cache entry %v %v", blockId, name)
+		}
+	}
+
+}
+
 func SetCacheEntry(ctx context.Context, cacheId string, cacheEntry *CacheEntry) {
 	globalLock.Lock()
 	defer globalLock.Unlock()
@@ -255,40 +279,50 @@ func DeleteCacheEntry(ctx context.Context, blockId string, name string) {
 }
 
 func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum int, pullFromDB bool) (*CacheBlock, error) {
-	if curCacheEntry, found := GetCacheEntry(ctx, blockId, name); found {
-		curCacheEntry.Lock.Lock()
-		defer curCacheEntry.Lock.Unlock()
-		if len(curCacheEntry.DataBlocks) < cacheNum+1 {
-			for index := len(curCacheEntry.DataBlocks); index < cacheNum+1; index++ {
-				curCacheEntry.DataBlocks = append(curCacheEntry.DataBlocks, nil)
-			}
-		}
-		if curCacheEntry.DataBlocks[cacheNum] == nil {
-			var curCacheBlock *CacheBlock
-			if pullFromDB {
-				cacheData, err := GetCacheFromDB(ctx, blockId, name, 0, MaxBlockSize, int64(cacheNum))
-				if err != nil {
-					return nil, err
-				}
-				curCacheBlock = &CacheBlock{data: *cacheData, size: len(*cacheData)}
-				curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
-			} else {
-				curCacheBlock = &CacheBlock{data: []byte{}, size: 0}
-				curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
-			}
-			return curCacheBlock, nil
-		} else {
-			return curCacheEntry.DataBlocks[cacheNum], nil
-		}
-	} else {
-		return nil, fmt.Errorf("Cache entry for name: %v not found", name)
+	curCacheEntry, err := GetCacheEntryOrPopulate(ctx, blockId, name)
+	if err != nil {
+		return nil, err
 	}
+	curCacheEntry.Lock.Lock()
+	defer curCacheEntry.Lock.Unlock()
+	if len(curCacheEntry.DataBlocks) < cacheNum+1 {
+		for index := len(curCacheEntry.DataBlocks); index < cacheNum+1; index++ {
+			curCacheEntry.DataBlocks = append(curCacheEntry.DataBlocks, nil)
+		}
+	}
+	if curCacheEntry.DataBlocks[cacheNum] == nil {
+		var curCacheBlock *CacheBlock
+		if pullFromDB {
+			cacheData, err := GetCacheFromDB(ctx, blockId, name, 0, MaxBlockSize, int64(cacheNum))
+			if err != nil {
+				return nil, err
+			}
+			curCacheBlock = &CacheBlock{data: *cacheData, size: len(*cacheData)}
+			curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
+		} else {
+			curCacheBlock = &CacheBlock{data: []byte{}, size: 0}
+			curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
+		}
+		return curCacheBlock, nil
+	} else {
+		return curCacheEntry.DataBlocks[cacheNum], nil
+	}
+}
+
+func DeepCopyFileInfo(fInfo *FileInfo) *FileInfo {
+	fInfoMeta := make(FileMeta)
+	for k, v := range fInfo.Meta {
+		fInfoMeta[k] = v
+	}
+	fInfoOpts := fInfo.Opts
+	fInfoCopy := &FileInfo{BlockId: fInfo.BlockId, Name: fInfo.Name, Size: fInfo.Size, CreatedTs: fInfo.CreatedTs, ModTs: fInfo.ModTs, Opts: fInfoOpts, Meta: fInfoMeta}
+	return fInfoCopy
 }
 
 func Stat(ctx context.Context, blockId string, name string) (*FileInfo, error) {
 	cacheEntry, found := GetCacheEntry(ctx, blockId, name)
 	if found {
-		return cacheEntry.Info, nil
+		return DeepCopyFileInfo(cacheEntry.Info), nil
 	}
 	curCacheEntry := MakeCacheEntry(nil)
 	curCacheEntry.Lock.Lock()
@@ -299,10 +333,30 @@ func Stat(ctx context.Context, blockId string, name string) (*FileInfo, error) {
 	}
 	curCacheEntry.Info = fInfo
 	SetCacheEntry(ctx, GetCacheId(blockId, name), curCacheEntry)
-	return fInfo, nil
+	return DeepCopyFileInfo(fInfo), nil
+}
+
+func SetFlushTimeout(newTimeout time.Duration) {
+	flushTimeout = newTimeout
+}
+
+func StartFlushTimer(ctx context.Context) {
+	curTime := time.Now()
+	writeTimePassed := curTime.UnixNano() - lastWriteTime.UnixNano()
+	if writeTimePassed >= int64(flushTimeout) {
+		lastWriteTime = curTime
+		go func() {
+			time.Sleep(flushTimeout)
+			FlushCache(ctx)
+		}()
+	}
 }
 
 func WriteAt(ctx context.Context, blockId string, name string, p []byte, off int64) (int, error) {
+	return WriteAtHelper(ctx, blockId, name, p, off, true)
+}
+
+func WriteAtHelper(ctx context.Context, blockId string, name string, p []byte, off int64, flushCache bool) (int, error) {
 	bytesToWrite := len(p)
 	bytesWritten := 0
 	curCacheNum := int(math.Floor(float64(off) / float64(MaxBlockSize)))
@@ -326,11 +380,7 @@ func WriteAt(ctx context.Context, blockId string, name string, p []byte, off int
 		if cacheOffset == 0 && int64(bytesToWriteToCurCache) == MaxBlockSize {
 			pullFromDB = false
 		}
-		curCacheBlock, err := GetCacheBlock(ctx, blockId, name, index, pullFromDB)
-		if err != nil {
-			return bytesWritten, fmt.Errorf("Error getting cache block: %v", err)
-		}
-		_, b, err := WriteToCacheBlock(ctx, blockId, name, curCacheBlock, p, int(cacheOffset), bytesToWriteToCurCache, index)
+		_, b, err := WriteToCacheBlockNum(ctx, blockId, name, p, int(cacheOffset), bytesToWriteToCurCache, index, pullFromDB)
 		bytesWritten += b
 		bytesToWrite -= b
 		off += int64(b)
@@ -338,7 +388,7 @@ func WriteAt(ctx context.Context, blockId string, name string, p []byte, off int
 			if err.Error() == MaxSizeError {
 				if fInfo.Opts.Circular {
 					p = p[int64(b):]
-					b, err := WriteAt(ctx, blockId, name, p, 0)
+					b, err := WriteAtHelper(ctx, blockId, name, p, 0, false)
 					bytesWritten += b
 					if err != nil {
 						return bytesWritten, fmt.Errorf("Write to cache error: %v", err)
@@ -354,12 +404,13 @@ func WriteAt(ctx context.Context, blockId string, name string, p []byte, off int
 		}
 		p = p[int64(b):]
 	}
+	if flushCache {
+		StartFlushTimer(ctx)
+	}
 	return bytesWritten, nil
 }
 
 func FlushCache(ctx context.Context) error {
-	globalLock.Lock()
-	defer globalLock.Unlock()
 	for _, cacheEntry := range cache {
 		err := WriteFileToDB(ctx, *cacheEntry.Info)
 		if err != nil {
@@ -465,4 +516,49 @@ func DeleteBlock(ctx context.Context, blockId string) error {
 	}
 	err := DeleteBlockFromDB(ctx, blockId)
 	return err
+}
+
+func WriteFile(ctx context.Context, blockId string, name string, meta FileMeta, opts FileOptsType, data []byte) (int, error) {
+	MakeFile(ctx, blockId, name, meta, opts)
+	return AppendData(ctx, blockId, name, data)
+}
+
+func WriteMeta(ctx context.Context, blockId string, name string, meta FileMeta) error {
+	_, err := Stat(ctx, blockId, name)
+	// stat so that we can make sure cache entry is popuplated
+	if err != nil {
+		return err
+	}
+	cacheEntry, found := GetCacheEntry(ctx, blockId, name)
+	if !found {
+		return fmt.Errorf("WriteAt error: cache entry not found")
+	}
+	cacheEntry.Lock.Lock()
+	defer cacheEntry.Lock.Unlock()
+	cacheEntry.Info.Meta = meta
+	return nil
+}
+
+func ListFiles(ctx context.Context, blockId string) []*FileInfo {
+	fInfoArr, err := GetAllFilesInDBForBlockId(ctx, blockId)
+	if err != nil {
+		return nil
+	}
+	return fInfoArr
+}
+
+func ListAllFiles(ctx context.Context) []*FileInfo {
+	fInfoArr, err := GetAllFilesInDB(ctx)
+	if err != nil {
+		return nil
+	}
+	return fInfoArr
+}
+
+func GetAllBlockIds(ctx context.Context) []string {
+	rtn, err := GetAllBlockIdsInDB(ctx)
+	if err != nil {
+		return nil
+	}
+	return rtn
 }
