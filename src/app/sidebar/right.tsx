@@ -11,6 +11,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import { ResizableSidebar, Button } from "@/elements";
 import { WaveBookDisplay } from "./wavebook";
+import { AIChat } from "./aichat";
 
 import "./right.less";
 
@@ -99,12 +100,22 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                             >
                                 <i className="fa-sharp fa-solid fa-book-sparkles"></i>
                             </div>
+                            <div
+                                className="icon-container"
+                                title="Show Keybinding Debugger"
+                                onClick={() => this.setMode("ai")}
+                            >
+                                <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
+                            </div>
                         </div>
                         <If condition={this.mode.get() == "keybind"}>
                             <KeybindDevPane></KeybindDevPane>
                         </If>
                         <If condition={this.mode.get() == "wavebook"}>
                             <WaveBookDisplay></WaveBookDisplay>
+                        </If>
+                        <If condition={this.mode.get() == "ai"}>
+                            <AIChat />
                         </If>
                     </React.Fragment>
                 )}

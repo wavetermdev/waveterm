@@ -142,6 +142,7 @@ class InputModel {
     giveFocus(): void {
         // Override active view to the main input if aux view does not have focus
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
+        console.log("activeAuxView", activeAuxView);
         mobx.action(() => {
             switch (activeAuxView) {
                 case appconst.InputAuxView_History: {
@@ -463,6 +464,7 @@ class InputModel {
 
     // Sets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
     setAuxViewFocus(focus: boolean): void {
+        console.log("this.getAuxViewFocus()", this.getAuxViewFocus());
         if (this.getAuxViewFocus() == focus) {
             return;
         }
