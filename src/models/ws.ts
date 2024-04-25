@@ -5,6 +5,7 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import dayjs from "dayjs";
+import * as appconst from "@/app/appconst";
 
 class WSControl {
     wsConn: any;
@@ -171,7 +172,13 @@ class WSControl {
         if (!this.open.get()) {
             return;
         }
-        this.wsConn.send(JSON.stringify(data));
+        let msg = JSON.stringify(data);
+        const byteSize = new Blob([msg]).size;
+        if (byteSize > appconst.MaxWebSocketSendSize) {
+            console.log("ws message too large", byteSize, data.type, msg.substring(0, 100));
+            return;
+        }
+        this.wsConn.send(msg);
     }
 
     pushMessage(data: any) {
