@@ -258,7 +258,11 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                   document.getElementById("app")!
               )
             : null;
-
+        let selectedOptionLabelStyle = {};
+        const wrapperClientWidth = this.wrapperRef.current?.clientWidth;
+        if ((wrapperClientWidth ?? 0) > 0) {
+            selectedOptionLabelStyle["width"] = Math.max(wrapperClientWidth - 55, 0);
+        }
         return (
             <div
                 className={cn("wave-dropdown", className, {
@@ -284,7 +288,10 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                     </div>
                 </If>
                 <div
-                    className={cn("wave-dropdown-display unselectable", { "offset-left": decoration?.startDecoration })}
+                    className={cn("wave-dropdown-display unselectable truncate", {
+                        "offset-left": decoration?.startDecoration,
+                    })}
+                    style={selectedOptionLabelStyle}
                 >
                     {selectedOptionLabel}
                 </div>
