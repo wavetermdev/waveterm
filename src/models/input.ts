@@ -476,6 +476,9 @@ class InputModel {
                 if (view != null && this.getActiveAuxView() != view) {
                     return false;
                 }
+                if (view != null && !this.getAuxViewFocus()) {
+                    return false;
+                }
                 if (view == null && this.hasFocus() && !this.getAuxViewFocus()) {
                     return true;
                 }
