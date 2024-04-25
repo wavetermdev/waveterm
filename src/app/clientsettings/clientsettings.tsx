@@ -76,14 +76,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
 
     @boundMethod
     handleChangeTermTheme(theme: string): void {
-        // For global terminal theme, the key is global, otherwise it's either
+        // For root terminal theme, the key is root, otherwise it's either
         // sessionId or screenId.
-        const currTheme = GlobalModel.getTermTheme()["global"];
+        const currTheme = GlobalModel.getTermThemeSettings()["root"];
         if (currTheme == theme) {
             return;
         }
-
-        const prtn = GlobalCommandRunner.setGlobalTermTheme(theme, false);
+        const prtn = GlobalCommandRunner.setRootTermTheme(theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -236,8 +235,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getThemeSource();
-        const termThemes = getTermThemes(GlobalModel.termThemes, "Wave Default");
-        const currTermTheme = GlobalModel.getTermTheme()["global"] ?? termThemes[0].label;
+        const termThemes = getTermThemes(GlobalModel.termThemes.get(), "Wave Default");
+        const currTermTheme = GlobalModel.getTermThemeSettings()["root"] ?? termThemes[0].label;
         const curSudoPwStore = GlobalModel.getSudoPwStore();
         const curSudoPwTimeout = String(GlobalModel.getSudoPwTimeout());
         const curSudoPwClearOnSleep = GlobalModel.getSudoPwClearOnSleep();

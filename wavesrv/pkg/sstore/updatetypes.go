@@ -8,6 +8,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
 
@@ -104,6 +105,7 @@ type ConnectUpdate struct {
 	ScreenStatusIndicators   []*ScreenStatusIndicatorType    `json:"screenstatusindicators,omitempty"`
 	ScreenNumRunningCommands []*ScreenNumRunningCommandsType `json:"screennumrunningcommands,omitempty"`
 	ActiveSessionId          string                          `json:"activesessionid,omitempty"`
+	TermThemes               *configstore.ConfigReturn       `json:"termthemes,omitempty"`
 }
 
 func (ConnectUpdate) GetType() string {

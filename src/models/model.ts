@@ -137,22 +137,16 @@ class Model {
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
-
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
     });
-
-    termThemes: OMap<string, string> = mobx.observable.array([], {
+    termThemes: OV<TermThemesType> = mobx.observable.box(null, {
         name: "terminalThemes",
         deep: false,
-    });
-    termThemeSrcEl: OV<HTMLElement> = mobx.observable.box(null, {
-        name: "termThemeSrcEl",
     });
     termRenderVersion: OV<number> = mobx.observable.box(0, {
         name: "termRenderVersion",
     });
-    currGlobalTermTheme: string;
 
     private constructor() {
         this.clientId = getApi().getId();
@@ -166,7 +160,6 @@ class Model {
         this.ws.reconnect();
         this.keybindManager = new KeybindManager(this);
         this.readConfigKeybindings();
-        this.fetchTerminalThemes();
         this.initSystemKeybindings();
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
@@ -239,42 +232,6 @@ class Model {
         }
     }
 
-    fetchTerminalThemes() {
-        const url = new URL(this.getBaseHostPort() + "/config/terminal-themes");
-        fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
-            .then((resp) => {
-                if (resp.status == 404) {
-                    return [];
-                } else if (!resp.ok) {
-                    util.handleNotOkResp(resp, url);
-                }
-                return resp.json();
-            })
-            .then((themes) => {
-                const tt = themes.map((theme) => theme.name.split(".")[0]);
-                this.termThemes.replace(tt);
-            });
-    }
-
-    updateTermTheme(element: HTMLElement, themeFileName: string, reset: boolean) {
-        const url = new URL(this.getBaseHostPort() + `/config/terminal-themes/${themeFileName}.json`);
-        return fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() })
-            .then((resp) => resp.json())
-            .then((themeVars: TermThemeType) => {
-                Object.keys(themeVars).forEach((key) => {
-                    if (reset) {
-                        this.resetStyleVar(element, `--term-${key}`);
-                    } else {
-                        this.resetStyleVar(element, `--term-${key}`);
-                        this.setStyleVar(element, `--term-${key}`, themeVars[key]);
-                    }
-                });
-            })
-            .catch((error) => {
-                console.error(`error applying theme: ${themeFileName}`, error);
-            });
-    }
-
     bumpTermRenderVersion() {
         mobx.action(() => {
             this.termRenderVersion.set(this.termRenderVersion.get() + 1);
@@ -294,7 +251,10 @@ class Model {
 
     initAppKeybindings() {
         for (let index = 1; index <= 9; index++) {
-            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, (waveEvent) => {
+                this.onSwitchSessionCmd(index);
+                return true;
+            });
         }
         this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
             this.onFocusCmdInputPressed();
@@ -483,10 +443,10 @@ class Model {
         }
     }
 
-    getTermTheme(): TermThemeType {
+    getTermThemeSettings(): TermThemeSettingsType {
         let cdata = this.clientData.get();
-        if (cdata?.feopts?.termtheme) {
-            return mobx.toJS(cdata.feopts.termtheme);
+        if (cdata?.feopts?.termthemesettings) {
+            return mobx.toJS(cdata.feopts.termthemesettings);
         }
         return {};
     }
@@ -771,11 +731,11 @@ class Model {
                 this.activeMainView.set("session");
                 setTimeout(() => {
                     // allows for the session view to load
-                    this.inputModel.giveFocus();
+                    this.inputModel.setAuxViewFocus(false);
                 }, 100);
             })();
         } else {
-            this.inputModel.giveFocus();
+            this.inputModel.setAuxViewFocus(false);
         }
     }
 
@@ -858,6 +818,10 @@ class Model {
         } else if (relative == -1) {
             GlobalCommandRunner.switchScreen("-");
         }
+    }
+
+    onSwitchScreenCmd(digit: number) {
+        GlobalCommandRunner.switchScreen(String(digit));
     }
 
     onSwitchSessionCmd(digit: number) {
@@ -945,6 +909,27 @@ class Model {
         }
     }
 
+    mergeTermThemes(termThemes: TermThemesType) {
+        mobx.action(() => {
+            if (this.termThemes.get() == null) {
+                this.termThemes.set(termThemes);
+                return;
+            }
+            for (const [themeName, theme] of Object.entries(termThemes)) {
+                if (theme == null) {
+                    delete this.termThemes.get()[themeName];
+                    continue;
+                }
+                this.termThemes.get()[themeName] = theme;
+            }
+        })();
+        this.bumpTermRenderVersion();
+    }
+
+    getTermThemes(): TermThemesType {
+        return this.termThemes.get();
+    }
+
     updateScreenStatusIndicators(screenStatusIndicators: ScreenStatusIndicatorUpdateType[]) {
         for (const update of screenStatusIndicators) {
             this.getScreenById_single(update.screenid)?.setStatusIndicator(update.status);
@@ -991,7 +976,7 @@ class Model {
                     if (update.connect.screenstatusindicators != null) {
                         this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
                     }
-
+                    this.mergeTermThemes(update.connect.termthemes ?? {});
                     this.sessionListLoaded.set(true);
                     this.remotesLoaded.set(true);
                 } else if (update.screen != null) {
@@ -1064,6 +1049,8 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (update.termthemes != null) {
+                    this.mergeTermThemes(update.termthemes);
                 } else if (update.sessiontombstone != null || update.screentombstone != null) {
                     // nothing (ignore)
                 } else {
@@ -1317,9 +1304,6 @@ class Model {
             newTheme = appconst.DefaultTheme;
         }
         const themeUpdated = newTheme != this.getThemeSource();
-        const oldTermTheme = this.getTermTheme();
-        const newTermTheme = clientData?.feopts?.termtheme;
-        const ttUpdated = this.termThemeUpdated(newTermTheme, oldTermTheme);
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1340,36 +1324,6 @@ class Model {
             getApi().setNativeThemeSource(newTheme);
             this.bumpRenderVersion();
         }
-        // Only for global terminal theme. For session and screen terminal theme,
-        // they are handled in workspace view.
-        if (newTermTheme) {
-            const el = document.documentElement;
-            const globaltt = newTermTheme["global"] ?? this.currGlobalTermTheme;
-            const reset = newTermTheme["global"] == null;
-            if (globaltt) {
-                const rtn = this.updateTermTheme(el, globaltt, reset);
-                rtn.then(() => {
-                    if (ttUpdated) {
-                        this.bumpTermRenderVersion();
-                    }
-                });
-                this.currGlobalTermTheme = globaltt;
-            }
-        }
-    }
-
-    termThemeUpdated(newTermTheme, oldTermTheme) {
-        for (const key in oldTermTheme) {
-            if (!(key in newTermTheme)) {
-                return true;
-            }
-        }
-        for (const key in newTermTheme) {
-            if (!oldTermTheme[key] || oldTermTheme[key] !== newTermTheme[key]) {
-                return true;
-            }
-        }
-        return false;
     }
 
     submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
@@ -1823,6 +1777,15 @@ class Model {
 
     getElectronApi(): ElectronApi {
         return getApi();
+    }
+
+    sendActivity(atype: string) {
+        const pk: FeActivityPacketType = {
+            type: "feactivity",
+            activity: {},
+        };
+        pk.activity[atype] = 1;
+        this.ws.pushMessage(pk);
     }
 }
 

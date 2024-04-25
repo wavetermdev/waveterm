@@ -750,7 +750,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	}
 	evalDepth := getEvalDepth(ctx)
 	if pk.Interactive && evalDepth == 0 {
-		telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{NumCommands: 1}, "numcommands")
+		telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{NumCommands: 1}, "numcommands")
 	}
 	if evalDepth > MaxEvalDepth {
 		return nil, fmt.Errorf("alias/history expansion max-depth exceeded")
@@ -902,6 +902,7 @@ func ScreenOpenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 		return nil, err
 	}
 	update.Merge(crUpdate)
+	telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{NewTab: 1}, "screen:open")
 	return update, nil
 }
 
@@ -2962,6 +2963,7 @@ func OpenAICommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 	if err != nil {
 		return nil, fmt.Errorf("cannot add new line: %v", err)
 	}
+	sendRendererActivityUpdate("openai")
 
 	if resolveBool(pk.Kwargs["stream"], true) {
 		go doOpenAIStreamCompletion(cmd, clientData.ClientId, opts, prompt)
@@ -3145,6 +3147,7 @@ func addLineForCmd(ctx context.Context, metaCmd string, shouldFocus bool, ids re
 	if err != nil {
 		return nil, err
 	}
+	sendRendererActivityUpdate(renderer)
 	screen, err := sstore.GetScreenById(ctx, ids.ScreenId)
 	if err != nil {
 		// ignore error here, because the command has already run (nothing to do)
@@ -3475,7 +3478,7 @@ func validateRemoteColor(color string, typeStr string) error {
 
 func SessionOpenSharedCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	activity := telemetry.ActivityUpdate{ClickShared: 1}
-	telemetry.UpdateActivityWrap(ctx, activity, "click-shared")
+	telemetry.GoUpdateActivityWrap(activity, "click-shared")
 	return nil, fmt.Errorf("shared sessions are not available in this version of prompt (stay tuned)")
 }
 
@@ -3644,13 +3647,13 @@ func TermSetThemeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	}
 	themeName, themeNameOk := pk.Kwargs["name"]
 	feOpts := clientData.FeOpts
-	if feOpts.TermTheme == nil {
-		feOpts.TermTheme = make(map[string]string)
+	if feOpts.TermThemeSettings == nil {
+		feOpts.TermThemeSettings = make(map[string]string)
 	}
 	if themeNameOk && themeName != "" {
-		feOpts.TermTheme[id] = themeName
+		feOpts.TermThemeSettings[id] = themeName
 	} else {
-		delete(feOpts.TermTheme, id)
+		delete(feOpts.TermThemeSettings, id)
 	}
 	err = sstore.UpdateClientFeOpts(ctx, feOpts)
 	if err != nil {
@@ -4265,7 +4268,7 @@ func HistoryCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	}
 	show := !resolveBool(pk.Kwargs["noshow"], false)
 	if show {
-		telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{HistoryView: 1}, "history")
+		telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{HistoryView: 1}, "history")
 	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(history.HistoryInfoType{
@@ -4493,6 +4496,15 @@ func focusScreenLine(ctx context.Context, screenId string, lineNum int64) (*ssto
 	return screen, nil
 }
 
+func sendRendererActivityUpdate(renderer string) {
+	if renderer == "" || !telemetry.IsAllowedRenderer(renderer) {
+		return
+	}
+	activity := telemetry.ActivityUpdate{Renderers: make(map[string]int)}
+	activity.Renderers[renderer] = 1
+	telemetry.GoUpdateActivityWrap(activity, "renderer")
+}
+
 func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
 	if err != nil {
@@ -4515,6 +4527,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 		if err != nil {
 			return nil, fmt.Errorf("error changing line renderer: %v", err)
 		}
+		sendRendererActivityUpdate(renderer)
 		varsUpdated = append(varsUpdated, KwArgRenderer)
 	}
 	if view, found := pk.Kwargs[KwArgView]; found {
@@ -4525,6 +4538,7 @@ func LineSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 		if err != nil {
 			return nil, fmt.Errorf("error changing line view: %v", err)
 		}
+		sendRendererActivityUpdate(view)
 		varsUpdated = append(varsUpdated, KwArgView)
 	}
 	if stateJson, found := pk.Kwargs[KwArgState]; found {
@@ -4615,7 +4629,7 @@ func BookmarksShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, fmt.Errorf("cannot retrieve bookmarks: %v", err)
 	}
-	telemetry.UpdateActivityWrap(ctx, telemetry.ActivityUpdate{BookmarksView: 1}, "bookmarks")
+	telemetry.GoUpdateActivityWrap(telemetry.ActivityUpdate{BookmarksView: 1}, "bookmarks")
 	update := scbus.MakeUpdatePacket()
 
 	update.AddUpdate(&MainViewUpdate{
@@ -5856,13 +5870,13 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	}
 	if termthemeStr, found := pk.Kwargs["termtheme"]; found {
 		feOpts := clientData.FeOpts
-		if feOpts.TermTheme == nil {
-			feOpts.TermTheme = make(map[string]string)
+		if feOpts.TermThemeSettings == nil {
+			feOpts.TermThemeSettings = make(map[string]string)
 		}
 		if termthemeStr == "" {
-			delete(feOpts.TermTheme, "global")
+			delete(feOpts.TermThemeSettings, "root")
 		} else {
-			feOpts.TermTheme["global"] = termthemeStr
+			feOpts.TermThemeSettings["root"] = termthemeStr
 		}
 		err = sstore.UpdateClientFeOpts(ctx, feOpts)
 		if err != nil {

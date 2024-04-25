@@ -258,7 +258,7 @@ type FeOptsType struct {
 	TermFontSize         int               `json:"termfontsize,omitempty"`
 	TermFontFamily       string            `json:"termfontfamily,omitempty"`
 	Theme                string            `json:"theme,omitempty"`
-	TermTheme            map[string]string `json:"termtheme"`
+	TermThemeSettings    map[string]string `json:"termthemesettings"`
 	SudoPwStore          string            `json:"sudopwstore,omitempty"`
 	SudoPwTimeout        int               `json:"sudopwtimeout,omitempty"`
 	NoSudoPwClearOnSleep bool              `json:"nosudopwclearonsleep,omitempty"`

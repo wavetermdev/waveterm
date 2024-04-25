@@ -7,7 +7,7 @@ import { boundMethod } from "autobind-decorator";
 import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import type { Model } from "./model";
-import { GlobalCommandRunner } from "./global";
+import { GlobalCommandRunner, GlobalModel } from "./global";
 import { app } from "electron";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
@@ -283,6 +283,7 @@ class InputModel {
         if (this.getActiveAuxView() != appconst.InputAuxView_History) {
             this.dropModHistory(true);
             this.setActiveAuxView(appconst.InputAuxView_History);
+            this.globalModel.sendActivity("history-open");
         }
     }
 
@@ -412,35 +413,7 @@ class InputModel {
         if (elem == null) {
             return;
         }
-        const historyDiv = elem.closest(".cmd-history");
-        if (historyDiv == null) {
-            return;
-        }
-        const buffer = 15;
-        let titleHeight = 24;
-        const titleDiv: HTMLElement = document.querySelector(".cmd-history .history-title");
-        if (titleDiv != null) {
-            titleHeight = titleDiv.offsetHeight + 2;
-        }
-        const elemOffset = elem.offsetTop;
-        const elemHeight = elem.clientHeight;
-        const topPos = historyDiv.scrollTop;
-        const endPos = topPos + historyDiv.clientHeight;
-        if (elemOffset + elemHeight + buffer > endPos) {
-            if (elemHeight + buffer > historyDiv.clientHeight - titleHeight) {
-                historyDiv.scrollTop = elemOffset - titleHeight;
-                return;
-            }
-            historyDiv.scrollTop = elemOffset - historyDiv.clientHeight + elemHeight + buffer;
-            return;
-        }
-        if (elemOffset < topPos + titleHeight) {
-            if (elemHeight + buffer > historyDiv.clientHeight - titleHeight) {
-                historyDiv.scrollTop = elemOffset - titleHeight;
-                return;
-            }
-            historyDiv.scrollTop = elemOffset - titleHeight - buffer;
-        }
+        elem.scrollIntoView({ block: "nearest" });
     }
 
     grabSelectedHistoryItem(): void {
@@ -498,6 +471,29 @@ class InputModel {
             this.auxViewFocus.set(focus);
         })();
         this.giveFocus();
+    }
+
+    shouldRenderAuxViewKeybindings(view: InputAuxViewType): boolean {
+        return mobx
+            .computed(() => {
+                if (view != null && this.getActiveAuxView() != view) {
+                    return false;
+                }
+                if (view == null && this.hasFocus() && !this.getAuxViewFocus()) {
+                    return true;
+                }
+                if (view != null && this.getAuxViewFocus()) {
+                    return true;
+                }
+                if (
+                    GlobalModel.getActiveScreen().getFocusType() == "input" &&
+                    GlobalModel.activeMainView.get() == "session"
+                ) {
+                    return true;
+                }
+                return false;
+            })
+            .get();
     }
 
     setHistoryIndex(hidx: number, force?: boolean): void {
@@ -691,6 +687,7 @@ class InputModel {
 
     openAIAssistantChat(): void {
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
+        this.globalModel.sendActivity("aichat-open");
     }
 
     clearAIAssistantChat(): void {

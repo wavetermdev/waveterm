@@ -13,11 +13,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/mapqueue"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
@@ -164,6 +166,11 @@ func (ws *WSState) handleConnection() error {
 	connectUpdate.Remotes = remotes
 	// restore status indicators
 	connectUpdate.ScreenStatusIndicators, connectUpdate.ScreenNumRunningCommands = sstore.GetCurrentIndicatorState()
+	configs, err := configstore.ScanConfigs()
+	if err != nil {
+		return fmt.Errorf("getting configs: %w", err)
+	}
+	connectUpdate.TermThemes = &configs
 	mu := scbus.MakeUpdatePacket()
 	mu.AddUpdate(*connectUpdate)
 	err = ws.Shell.WriteJson(mu)
@@ -286,6 +293,11 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		case uich <- userInputRespPk:
 		default:
 		}
+		return nil
+	}
+	if pk.GetType() == scpacket.FeActivityPacketStr {
+		feActivityPk := pk.(*scpacket.FeActivityPacketType)
+		telemetry.UpdateFeActivityWrap(feActivityPk)
 		return nil
 	}
 	return fmt.Errorf("got ws bad message: %v", pk.GetType())
