@@ -2,6 +2,7 @@ import * as shellQuote from "shell-quote";
 import { Shell } from "../utils/shell";
 import { Newton } from "./newton";
 import { MemCache } from "@/util/memcache";
+import log from "../utils/log";
 
 const parserCache = new MemCache<string, Newton>(1000 * 60 * 5);
 
@@ -24,7 +25,7 @@ function findLastStmt(entry: shellQuote.ParseEntry[]): string[] {
 }
 
 export async function getSuggestions(curLine: string, cwd: string, shell: Shell): Promise<Fig.Suggestion[]> {
-    console.log("getSuggestions", curLine, cwd, shell);
+    log.debug("getSuggestions", curLine, cwd, shell);
     const entry = shellQuote.parse(curLine);
     if (curLine.endsWith(" ")) {
         // shell-quote doesn't include trailing space in parse. We need to know this to determine if we should suggest subcommands

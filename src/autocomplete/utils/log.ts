@@ -8,7 +8,7 @@
 import { GlobalModel } from "@/models";
 
 export const debug = (...content) => {
-    if (!GlobalModel.isDev) {
+    if (!GlobalModel.autocompleteModel.loggingEnabled) {
         return;
     }
     console.log("[autocomplete]", ...content);

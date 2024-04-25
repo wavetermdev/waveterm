@@ -1543,14 +1543,14 @@ class Model {
             interactive: interactive,
             ephemeralopts: ephemeralopts,
         };
-        console.log(
-            "CMD",
-            pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
-            pk.args,
-            pk.kwargs,
-            pk.interactive,
-            pk.ephemeralopts
-        );
+        // console.log(
+        //     "CMD",
+        //     pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
+        //     pk.args,
+        //     pk.kwargs,
+        //     pk.interactive,
+        //     pk.ephemeralopts
+        // );
         return this.submitEphemeralCommandPacket(pk, interactive);
     }
 

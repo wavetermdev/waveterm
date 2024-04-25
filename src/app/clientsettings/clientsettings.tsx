@@ -116,6 +116,13 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         commandRtnHandler(prtn, this.errorMessage);
     }
 
+    @boundMethod
+    handleChangeAutocompleteDebuggingEnabled(val: boolean): void {
+        mobx.action(() => {
+            GlobalModel.autocompleteModel.loggingEnabled = val;
+        })();
+    }
+
     getFontSizes(): DropdownItem[] {
         const availableFontSizes: DropdownItem[] = [];
         for (let s = appconst.MinFontSize; s <= appconst.MaxFontSize; s++) {
@@ -366,6 +373,15 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                             <Toggle
                                 checked={cdata.clientopts.autocompleteenabled ?? false}
                                 onChange={this.handleChangeAutocompleteEnabled}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Command Autocomplete Debugging</div>
+                        <div className="settings-input">
+                            <Toggle
+                                checked={GlobalModel.autocompleteModel.loggingEnabled}
+                                onChange={this.handleChangeAutocompleteDebuggingEnabled}
                             />
                         </div>
                     </div>
