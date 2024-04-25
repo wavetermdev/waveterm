@@ -18,6 +18,7 @@ jobs:
         id: testdriver
         # note that .testdriver/prerun.sh runs before this, so the app has launched already
         with:
+          version: 2.9.4
           prompt: |
             1. click "Continue"
             2. focus the Wave input with the keyboard shorcut Command + I
