@@ -42,8 +42,9 @@ type CacheEntry struct {
 }
 
 type CacheBlock struct {
-	data []byte
-	size int
+	data  []byte
+	size  int
+	dirty bool
 }
 
 func MakeCacheEntry(info *FileInfo) *CacheEntry {
@@ -162,6 +163,7 @@ func WriteToCacheBlockNum(ctx context.Context, blockId string, name string, p []
 		cacheEntry.Info.Size += (int64(cacheNum) * MaxBlockSize)
 	}
 	b, writeErr := WriteToCacheBuf(&block.data, p, pos, length, maxWriteSize)
+	block.dirty = true
 	bytesWritten += b
 	blockLenDiff := len(block.data) - blockLen
 	block.size += blockLenDiff
@@ -297,10 +299,10 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 			if err != nil {
 				return nil, err
 			}
-			curCacheBlock = &CacheBlock{data: *cacheData, size: len(*cacheData)}
+			curCacheBlock = &CacheBlock{data: *cacheData, size: len(*cacheData), dirty: false}
 			curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
 		} else {
-			curCacheBlock = &CacheBlock{data: []byte{}, size: 0}
+			curCacheBlock = &CacheBlock{data: []byte{}, size: 0, dirty: false}
 			curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
 		}
 		return curCacheBlock, nil
@@ -416,17 +418,25 @@ func FlushCache(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		clearEntry := true
 		for index, block := range cacheEntry.DataBlocks {
 			if block == nil || block.size == 0 {
+				continue
+			}
+			if !block.dirty {
+				clearEntry = false
 				continue
 			}
 			err := WriteDataBlockToDB(ctx, cacheEntry.Info.BlockId, cacheEntry.Info.Name, index, block.data)
 			if err != nil {
 				return err
 			}
+			cacheEntry.DataBlocks[index] = nil
+		}
+		if clearEntry {
+			DeleteCacheEntry(ctx, cacheEntry.Info.BlockId, cacheEntry.Info.Name)
 		}
 	}
-	cache = make(map[string]*CacheEntry)
 	return nil
 }
 

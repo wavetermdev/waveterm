@@ -202,3 +202,41 @@ func DeleteBlockFromDB(ctx context.Context, blockId string) error {
 	}
 	return nil
 }
+
+func GetAllFilesInDBForBlockId(ctx context.Context, blockId string) ([]*FileInfo, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]*FileInfo, error) {
+		var rtn []*FileInfo
+		query := `SELECT * FROM block_file where blockid = ?`
+		marr := tx.SelectMaps(query, blockId)
+		for _, m := range marr {
+			rtn = append(rtn, dbutil.FromMap[*FileInfo](m))
+		}
+		return rtn, nil
+	})
+}
+
+func GetAllFilesInDB(ctx context.Context) ([]*FileInfo, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]*FileInfo, error) {
+		var rtn []*FileInfo
+		query := `SELECT * FROM block_file`
+		marr := tx.SelectMaps(query)
+		for _, m := range marr {
+			rtn = append(rtn, dbutil.FromMap[*FileInfo](m))
+		}
+		return rtn, nil
+	})
+}
+
+func GetAllBlockIdsInDB(ctx context.Context) ([]string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) ([]string, error) {
+		var rtn []string
+		query := `SELECT DISTINCT blockid FROM block_file`
+		marr := tx.SelectMaps(query)
+		for _, m := range marr {
+			var blockId string
+			dbutil.QuickSetStr(&blockId, m, "blockid")
+			rtn = append(rtn, blockId)
+		}
+		return rtn, nil
+	})
+}
