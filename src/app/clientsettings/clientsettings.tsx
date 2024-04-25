@@ -397,7 +397,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">Sudo Password Timeout</div>
+                        <div className="settings-label">Sudo Timeout (Minutes)</div>
                         <div className="settings-input">
                             <InlineSettingsNumberEdit
                                 placeholder=""
