@@ -289,6 +289,8 @@ func (cdata *ClientData) Clean() *ClientData {
 			Model:      cdata.OpenAIOpts.Model,
 			MaxTokens:  cdata.OpenAIOpts.MaxTokens,
 			MaxChoices: cdata.OpenAIOpts.MaxChoices,
+			Timeout:    cdata.OpenAIOpts.Timeout,
+			BaseURL:    cdata.OpenAIOpts.BaseURL,
 			// omit API Token
 		}
 		if cdata.OpenAIOpts.APIToken != "" {
@@ -736,6 +738,7 @@ type OpenAIOptsType struct {
 	BaseURL    string `json:"baseurl,omitempty"`
 	MaxTokens  int    `json:"maxtokens,omitempty"`
 	MaxChoices int    `json:"maxchoices,omitempty"`
+	Timeout    int    `json:"timeout,omitempty"`
 }
 
 const (

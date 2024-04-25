@@ -158,6 +158,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
+    inlineUpdateOpenAITimeout(newTimeout: string): void {
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ timeout: newTimeout });
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     setErrorMessage(msg: string): void {
         mobx.action(() => {
             this.errorMessage.set(msg);
@@ -202,6 +208,9 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const apiTokenStr = isBlank(openAIOpts.apitoken) ? "(not set)" : "********";
         const maxTokensStr = String(
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
+        );
+        const aiTimeoutStr = String(
+            openAIOpts.timeout == null || openAIOpts.timeout == 0 ? 10 : openAIOpts.timeout / 1000
         );
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
@@ -337,6 +346,19 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 text={maxTokensStr}
                                 value={maxTokensStr}
                                 onChange={this.inlineUpdateOpenAIMaxTokens}
+                                maxLength={10}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">AI Timeout (seconds)</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={aiTimeoutStr}
+                                value={aiTimeoutStr}
+                                onChange={this.inlineUpdateOpenAITimeout}
                                 maxLength={10}
                                 showIcon={true}
                             />
