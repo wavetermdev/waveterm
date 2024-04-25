@@ -6005,7 +6005,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		if oldPwTimeout == 0 {
 			oldPwTimeout = sstore.DefaultSudoTimeout
 		}
-		newSudoPwTimeout, err := resolveNonNegInt(sudoPwTimeoutStr, 0)
+		newSudoPwTimeout, err := resolveNonNegInt(sudoPwTimeoutStr, sstore.DefaultSudoTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("invalid sudo pw timeout, must be a number greater than 0: %v", err)
 		}
