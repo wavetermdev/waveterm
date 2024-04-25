@@ -84,7 +84,7 @@ const TermFontSizeMax = 24
 
 const TsFormatStr = "2006-01-02 15:04:05"
 
-const OpenAIPacketTimeout = 10 * time.Second
+const OpenAIPacketTimeout = 10 * 1000 * time.Millisecond
 const OpenAIStreamTimeout = 5 * time.Minute
 const OpenAICloudCompletionTelemetryOffErrorMsg = "To ensure responsible usage and prevent misuse, Wave AI requires telemetry to be enabled when using its free AI features.\n\nIf you prefer not to enable telemetry, you can still access Wave AI's features by providing your own OpenAI API key or AI Base URL in the Settings menu. Please note that when using your personal API key, requests will be sent directly to the OpenAI API or the API that you specified with the AI Base URL, without being proxied through Wave's servers.\n\nIf you wish to continue using Wave AI's free features, you can easily enable telemetry by running the '/telemetry:on' command in the terminal. This will allow you to access the free AI features while helping to protect the platform from abuse."
 
@@ -2728,7 +2728,7 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 	writePacketToUpdateBus(ctx, cmd, asstMessagePk)
 	packetTimeout := OpenAIPacketTimeout
 	if opts.Timeout >= 0 {
-		packetTimeout = time.Duration(opts.Timeout) * time.Second
+		packetTimeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
 	doneWaitingForPackets := false
 	for !doneWaitingForPackets {
@@ -2823,7 +2823,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 	}
 	packetTimeout := OpenAIPacketTimeout
 	if opts.Timeout >= 0 {
-		packetTimeout = time.Duration(opts.Timeout) * time.Second
+		packetTimeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
 	doneWaitingForPackets := false
 	for !doneWaitingForPackets {
@@ -5956,7 +5956,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		}
 	}
 	if aiTimeoutStr, found := CheckOptionAlias(pk.Kwargs, "openaitimeout", "aitimeout"); found {
-		aiTimeout, err := strconv.Atoi(aiTimeoutStr)
+		aiTimeout, err := strconv.ParseFloat(aiTimeoutStr, 64)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client ai timeout, invalid number: %v", err)
 		}
@@ -5965,7 +5965,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			aiOpts = &sstore.OpenAIOptsType{}
 			clientData.OpenAIOpts = aiOpts
 		}
-		aiOpts.Timeout = aiTimeout
+		aiOpts.Timeout = int(aiTimeout * 1000)
 		varsUpdated = append(varsUpdated, "openaitimeout")
 		err = sstore.UpdateClientOpenAIOpts(ctx, *aiOpts)
 		if err != nil {
@@ -6028,7 +6028,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "aimaxtokens", clientData.OpenAIOpts.MaxTokens))
 	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "aimaxchoices", clientData.OpenAIOpts.MaxChoices))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "aibaseurl", clientData.OpenAIOpts.BaseURL))
-	buf.WriteString(fmt.Sprintf("  %-15s %ds\n", "aitimeout", clientData.OpenAIOpts.Timeout))
+	buf.WriteString(fmt.Sprintf("  %-15s %ss\n", "aitimeout", strconv.FormatFloat((float64(clientData.OpenAIOpts.Timeout)/1000.0), 'f', -1, 64)))
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("client info"),

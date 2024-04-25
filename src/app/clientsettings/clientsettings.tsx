@@ -210,7 +210,9 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const maxTokensStr = String(
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
-        const aiTimeoutStr = String(openAIOpts.timeout == null || openAIOpts.timeout == 0 ? 10 : openAIOpts.timeout);
+        const aiTimeoutStr = String(
+            openAIOpts.timeout == null || openAIOpts.timeout == 0 ? 10 : openAIOpts.timeout / 1000
+        );
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getThemeSource();
