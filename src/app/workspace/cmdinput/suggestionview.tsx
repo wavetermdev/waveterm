@@ -9,9 +9,12 @@ import "./suggestionview.less";
 import { getAll, getFirst } from "@/autocomplete/runtime/utils";
 
 export const AutocompleteSuggestionView: React.FC = observer(() => {
+    const inputModel = GlobalModel.inputModel;
+    const autocompleteModel = GlobalModel.autocompleteModel;
     const [selectedSuggestion, setSelectedSuggestion] = React.useState<number>(0);
     const updateScroll = (index: number) => {
         setSelectedSuggestion(index);
+        autocompleteModel.setPrimarySuggestionIndex(index);
         const element = document.getElementsByClassName("suggestion-item")[index] as HTMLElement;
         if (element) {
             element.scrollIntoView({ block: "nearest" });
@@ -45,9 +48,6 @@ export const AutocompleteSuggestionView: React.FC = observer(() => {
             GlobalModel.keybindManager.unregisterDomain("autocomplete");
         };
     });
-
-    const inputModel = GlobalModel.inputModel;
-    const autocompleteModel = GlobalModel.autocompleteModel;
     const suggestions: Fig.Suggestion[] = autocompleteModel.getSuggestions();
 
     const closeView = () => {

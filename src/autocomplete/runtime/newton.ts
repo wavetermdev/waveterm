@@ -457,6 +457,7 @@ export class Newton {
             return ParserState.Subcommand;
         }
 
+        // We need to handle cases where a double dash is used to disable options and flags, such as in git commands.
         if (entry === "--") {
             if (this.atLastEntry) {
                 log.debug(
@@ -471,25 +472,27 @@ export class Newton {
             }
         }
 
-        // If the arg is not the last entry, we can check if it is a valid option
-        const option = this.getAvailableOption(entry);
-        if (option) {
-            // If the option is available, record it and move on to the next arg
-            this.recordOption(option);
+        if (!this.atLastEntry) {
+            // If the arg is not the last entry, we can check if it is a valid option
+            const option = this.getAvailableOption(entry);
+            if (option) {
+                // If the option is available, record it and move on to the next arg
+                this.recordOption(option);
 
-            // Identify dependent and mutually exclusive options, verify that they are valid.
-            this.findDependentAndExclusiveOptions(option);
+                // Identify dependent and mutually exclusive options, verify that they are valid.
+                this.findDependentAndExclusiveOptions(option);
 
-            this.currentOption = option;
-            if (option.args !== undefined) {
-                log.debug("option has args", option.args);
-                return ParserState.OptionArgument;
+                this.currentOption = option;
+                if (option.args !== undefined) {
+                    log.debug("option has args", option.args);
+                    return ParserState.OptionArgument;
+                } else {
+                    return ParserState.Subcommand;
+                }
             } else {
-                return ParserState.Subcommand;
+                // If the option is not available, it has already been used or is not a valid option
+                this.error = `The option ${entry} is not valid.`;
             }
-        } else if (!this.atLastEntry) {
-            // If the option is not available, it has already been used or is not a valid option
-            this.error = `The option ${entry} is not valid.`;
         } else {
             // The entry is incomplete, but it's the last one so we can just suggest all that start with the entry.
             this.currentOption = undefined;
@@ -574,13 +577,13 @@ export class Newton {
         suggestion: Fig.Suggestion,
         partialCmd: string,
         defaultType: Fig.SuggestionType,
-        prefixStr: string = ""
+        prefixStr?: string
     ): Fig.Suggestion {
         if (suggestion == undefined) {
             return undefined;
         }
         const suggestionMin: Fig.Suggestion = {
-            name: prefixStr + suggestion.name,
+            name: suggestion.name,
             displayName: suggestion.displayName,
             description: suggestion.description,
             icon: suggestion.icon,
@@ -588,6 +591,19 @@ export class Newton {
             insertValue: suggestion.insertValue,
             priority: suggestion.priority,
         };
+        log.debug(
+            "prepareSuggestion",
+            "suggestion",
+            suggestion,
+            "suggestionMin",
+            suggestionMin,
+            "partialCmd",
+            partialCmd
+        );
+
+        if (suggestionMin.name && prefixStr) {
+            suggestionMin.name = getAll(suggestionMin.name).map((name) => prefixStr + name);
+        }
 
         if (!suggestionMin.type) {
             suggestionMin.type = defaultType;
@@ -599,14 +615,19 @@ export class Newton {
         }
         if (!suggestionMin.insertValue) {
             log.debug("prepareSuggestion no insertValue", suggestionMin.name, partialCmd);
-            for (const name of getAll(suggestionMin.name)) {
-                if (name.startsWith(partialCmd) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
-                    log.debug("prepareSuggestion insertValue found", name, partialCmd);
-                    suggestionMin.insertValue = name;
+            if (!partialCmd) {
+                log.debug("prepareSuggestion no insertValue, no partialCmd", getFirst(suggestionMin.name));
+                suggestionMin.insertValue = getFirst(suggestionMin.name);
+            } else {
+                for (const name of getAll(suggestionMin.name)) {
+                    if (name.startsWith(partialCmd) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
+                        log.debug("prepareSuggestion insertValue found", name, partialCmd);
+                        suggestionMin.insertValue = name;
+                    }
                 }
-            }
 
-            suggestionMin.insertValue = suggestionMin.insertValue?.substring(partialCmd.length);
+                suggestionMin.insertValue = suggestionMin.insertValue?.substring(partialCmd.length);
+            }
             log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
         } else {
             log.debug("prepareSuggestion insertValue exists", suggestionMin.insertValue, partialCmd);
