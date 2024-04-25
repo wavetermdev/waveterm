@@ -16,9 +16,11 @@ import {
     equalsAny,
     getAll,
     getFirst,
+    getPathSep,
     isFlag,
     isFlagOrOption,
     isOption,
+    isPath,
     matchAny,
     modifyPosixFlags,
     resolveCwdToken,
@@ -155,7 +157,9 @@ export class Newton {
 
     private suggestions: Map<string, Fig.Suggestion> = new Map();
 
-    public cwd: string;
+    private _cwd: string;
+
+    private overriddenCwd: string = undefined;
 
     public shell: Shell;
 
@@ -175,7 +179,11 @@ export class Newton {
     ) {
         this.spec = spec;
         this.entries = entries;
-        this.cwd = cwd;
+
+        // Clean the CWD to ensure it ends with a path separator
+        const sep = getPathSep(shell);
+        this._cwd = cwd.endsWith(sep) ? cwd : cwd + sep;
+
         this.shell = shell;
         this.entryIndex = entryIndex;
         this.flagsArePosixNoncompliant = flagsArePosixNoncompliant;
@@ -219,6 +227,7 @@ export class Newton {
                 this.availableOptions[name] = option;
             }
         }
+        this.overriddenCwd = undefined;
     }
 
     /**
@@ -283,6 +292,22 @@ export class Newton {
             ? Object.values(this.availableOptions)
             : Object.values(this.availableOptions).filter((value) => matchAny(value.name, isOption));
         return retVal;
+    }
+
+    public get cwd(): string {
+        return this.overriddenCwd ?? this._cwd;
+    }
+
+    public set cwd(cwd: string) {
+        if (cwd != this._cwd) this.overriddenCwd = cwd;
+    }
+
+    public get isCwdOverridden(): boolean {
+        return this.overriddenCwd != undefined;
+    }
+
+    public get originalCwd(): string {
+        return this._cwd;
     }
 
     /**
@@ -548,7 +573,7 @@ export class Newton {
                 return ParserState.Option;
             } else if (currentArg.isOptional) {
                 // The argument is optional, we want to see if we have any matches before determining if we should move on.
-                const numAdded = await this.addSuggestionsForArg(currentArg);
+                const numAdded = await this.addSuggestionsForArg(currentArg, true);
                 if (!this.atLastEntry && numAdded > 0) {
                     // We found a match and we are not at the end of the entry list, so let's keep matching arguments for the next entry
                     log.debug("has suggestion match for optional arg");
@@ -591,15 +616,15 @@ export class Newton {
             insertValue: suggestion.insertValue,
             priority: suggestion.priority,
         };
-        log.debug(
-            "prepareSuggestion",
-            "suggestion",
-            suggestion,
-            "suggestionMin",
-            suggestionMin,
-            "partialCmd",
-            partialCmd
-        );
+        // log.debug(
+        //     "prepareSuggestion",
+        //     "suggestion",
+        //     suggestion,
+        //     "suggestionMin",
+        //     suggestionMin,
+        //     "partialCmd",
+        //     partialCmd
+        // );
 
         if (suggestionMin.name && prefixStr) {
             suggestionMin.name = getAll(suggestionMin.name).map((name) => prefixStr + name);
@@ -614,23 +639,23 @@ export class Newton {
             suggestionMin.icon = getIcon(suggestionMin.icon, "special");
         }
         if (!suggestionMin.insertValue) {
-            log.debug("prepareSuggestion no insertValue", suggestionMin.name, partialCmd);
+            // log.debug("prepareSuggestion no insertValue", suggestionMin.name, partialCmd);
             if (!partialCmd) {
-                log.debug("prepareSuggestion no insertValue, no partialCmd", getFirst(suggestionMin.name));
+                // log.debug("prepareSuggestion no insertValue, no partialCmd", getFirst(suggestionMin.name));
                 suggestionMin.insertValue = getFirst(suggestionMin.name);
             } else {
                 for (const name of getAll(suggestionMin.name)) {
                     if (name.startsWith(partialCmd) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
-                        log.debug("prepareSuggestion insertValue found", name, partialCmd);
+                        // log.debug("prepareSuggestion insertValue found", name, partialCmd);
                         suggestionMin.insertValue = name;
                     }
                 }
 
                 suggestionMin.insertValue = suggestionMin.insertValue?.substring(partialCmd.length);
             }
-            log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
+            // log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
         } else {
-            log.debug("prepareSuggestion insertValue exists", suggestionMin.insertValue, partialCmd);
+            // log.debug("prepareSuggestion insertValue exists", suggestionMin.insertValue, partialCmd);
             // Handle situations where the maintainer of the spec includes the command in the insertValue, failing to account for the fact that the user may have already typed the command.
             const startsWithPartialCmd = suggestionMin.insertValue.startsWith(partialCmd);
             for (const name in getAll(suggestionMin.name)) {
@@ -639,7 +664,7 @@ export class Newton {
                     break;
                 }
             }
-            log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
+            // log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
         }
         if (!suggestionMin.priority) {
             switch (suggestionMin.type) {
@@ -732,12 +757,20 @@ export class Newton {
         });
     }
 
-    private async addSuggestionsForArg(arg: Fig.Arg, prefixStr?: string): Promise<number> {
+    /**
+     * Add suggestions for the current argument.
+     * @param arg The argument to add suggestions for.
+     * @param dryRun Whether to actually add the suggestions or just count them.
+     * @param prefixStr The prefix string to add to the suggestions.
+     * @returns The number of suggestions added.
+     */
+    private async addSuggestionsForArg(arg: Fig.Arg, dryRun: boolean, prefixStr?: string): Promise<number> {
         let entry = this.lastEntry;
         const suggestions: Fig.Suggestion[] = [];
 
         if (arg?.generators) {
             const generators = getAll(arg.generators);
+            log.debug("arg generators", generators);
             suggestions.push(
                 ...(await Promise.all(generators.map((gen) => runGenerator(gen, this.entries, this.cwd)))).flat()
             );
@@ -749,16 +782,19 @@ export class Newton {
         }
 
         if (arg?.template) {
-            suggestions.push(...(await runTemplates(arg.template ?? [], this.cwd)));
+            log.debug("arg template", arg.template, this.cwd);
+            suggestions.push(...(await runTemplates(arg.template ?? [], this.cwd, this.isCwdOverridden)));
         }
 
-        this.filterSuggestionsAndAddToMap(
-            suggestions,
-            arg.filterStrategy ?? this.spec.filterStrategy,
-            entry,
-            "arg",
-            prefixStr
-        );
+        if (!dryRun) {
+            this.filterSuggestionsAndAddToMap(
+                suggestions,
+                arg.filterStrategy ?? this.spec.filterStrategy,
+                entry,
+                "arg",
+                prefixStr
+            );
+        }
         return suggestions.length;
     }
 
@@ -792,7 +828,7 @@ export class Newton {
     private async addSuggestionsForFilepaths(cwd: string = this.cwd): Promise<void> {
         log.debug("addSuggestionsForFilepaths", cwd, this.lastEntry, this.spec?.filterStrategy);
         this.filterSuggestionsAndAddToMap(
-            await runTemplates("filepaths", cwd),
+            await runTemplates("filepaths", cwd, this.isCwdOverridden),
             this.spec?.filterStrategy,
             this.lastEntry,
             "file"
@@ -1007,7 +1043,9 @@ export class Newton {
 
             // Determine the current working directory to use for file suggestions
             const { cwd: resolvedCwd } = await resolveCwdToken(lastEntry, this.cwd, this.shell);
+            log.debug("resolvedCwd", resolvedCwd);
             this.cwd = resolvedCwd;
+            log.debug("cwd", this.cwd);
 
             switch (this.curState) {
                 case ParserState.Subcommand: {
@@ -1017,7 +1055,7 @@ export class Newton {
                         log.debug("lastEntry is space");
                         const arg = getFirst(this.spec?.args);
                         if (arg) {
-                            await this.addSuggestionsForArg(arg);
+                            await this.addSuggestionsForArg(arg, false);
                         }
                         if (this.spec?.additionalSuggestions) {
                             this.filterSuggestionsAndAddToMap(
@@ -1082,7 +1120,7 @@ export class Newton {
                     if (this.args && this.argIndex < this.args.length) {
                         const arg = this.args[this.argIndex];
                         if (arg) {
-                            await this.addSuggestionsForArg(arg);
+                            await this.addSuggestionsForArg(arg, false);
                         }
                     }
                     break;
@@ -1106,9 +1144,9 @@ export class Newton {
                                     this.entries[this.entryIndex - 1] +
                                     (option.requiresSeparator === true ? "=" : option.requiresSeparator);
                                 log.debug("prefixStr", prefixStr);
-                                await this.addSuggestionsForArg(arg, prefixStr);
+                                await this.addSuggestionsForArg(arg, false, prefixStr);
                             } else {
-                                await this.addSuggestionsForArg(arg);
+                                await this.addSuggestionsForArg(arg, false);
                             }
                         }
                     }
@@ -1119,13 +1157,14 @@ export class Newton {
                     break;
             }
 
-            if (this.suggestions.size == 0) {
+            if (this.suggestions.size == 0 && isPath(lastEntry, this.shell)) {
                 log.debug("no suggestions found");
                 await this.addSuggestionsForFilepaths();
             }
 
             const suggestionsArr = Array.from(this.suggestions.values());
             sortSuggestions(suggestionsArr);
+            log.debug("suggestionsArr", suggestionsArr);
             return suggestionsArr;
         }
 

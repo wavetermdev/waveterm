@@ -8,14 +8,6 @@
 import { GlobalModel } from "@/models";
 import log from "../utils/log";
 
-const filepathsTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> => {
-    return await getFileCompletionSuggestions(cwd, "filepaths");
-};
-
-const foldersTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> => {
-    return await getFileCompletionSuggestions(cwd, "folders");
-};
-
 /**
  * Retrieves the contents of the specified directory on the active remote machine.
  * @param cwd The directory whose contents should be returned.
@@ -24,10 +16,12 @@ const foldersTemplate = async (cwd: string): Promise<Fig.TemplateSuggestion[]> =
  */
 export const getFileCompletionSuggestions = async (
     cwd: string,
+    overriddenCwd: boolean,
     tempType: "filepaths" | "folders"
 ): Promise<Fig.TemplateSuggestion[]> => {
     const comptype = tempType === "filepaths" ? "file" : "directory";
     if (comptype == null) return [];
+    log.debug("getFileCompletionSuggestions", cwd, tempType, overriddenCwd);
     const crtn = await GlobalModel.submitCommand("_compfiledir", null, [], { comptype, cwd }, false, false);
     if (Array.isArray(crtn?.update?.data)) {
         if (crtn.update.data.length === 0) return [];
@@ -36,8 +30,8 @@ export const getFileCompletionSuggestions = async (
             if (firstData.info.infocomps.length === 0) return [];
             if (firstData.info.infocomps[0] === "(no completions)") return [];
             return firstData.info.infocomps.map((comp: string) => {
-                const fullPath = cwd + comp;
-                log.debug("getFileCompletionSuggestions", cwd, comp, fullPath);
+                const fullPath = overriddenCwd ? cwd + comp : comp;
+                // log.debug("getFileCompletionSuggestions", cwd, comp, fullPath);
                 return {
                     name: fullPath,
                     displayName: comp,
@@ -96,7 +90,8 @@ const helpTemplate = (): Fig.TemplateSuggestion[] => {
 
 export const runTemplates = async (
     template: Fig.TemplateStrings[] | Fig.Template,
-    cwd: string
+    cwd: string,
+    overriddenCwd: boolean = false
 ): Promise<Fig.TemplateSuggestion[]> => {
     const templates = template instanceof Array ? template : [template];
     log.debug("runTemplates", templates, cwd);
@@ -106,9 +101,9 @@ export const runTemplates = async (
                 try {
                     switch (t) {
                         case "filepaths":
-                            return await filepathsTemplate(cwd);
+                            return await getFileCompletionSuggestions(cwd, overriddenCwd, "filepaths");
                         case "folders":
-                            return await foldersTemplate(cwd);
+                            return await getFileCompletionSuggestions(cwd, overriddenCwd, "folders");
                         case "history":
                             return historyTemplate(cwd);
                         case "help":

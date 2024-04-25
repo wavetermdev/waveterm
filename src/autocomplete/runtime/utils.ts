@@ -51,6 +51,22 @@ export const buildExecuteShellCommand =
         return output;
     };
 
+const pathSeps = new Map<Shell, string>();
+
+/**
+ * Get the path separator for the given shell.
+ * @param shell The shell to get the path separator for.
+ * @returns The path separator.
+ */
+export function getPathSep(shell: Shell): string {
+    if (!pathSeps.has(shell)) {
+        const pathSep = getApi().pathSep();
+        pathSeps.set(shell, pathSep);
+        return pathSep;
+    }
+    return pathSeps.get(shell) as string;
+}
+
 /**
  * Determine if the current token is a path or not. If it is an incomplete path, return the base name of the path as the new cwd to be used in downstream parsing operations. Otherwise, return the current cwd.
  * @param token The token to check.
@@ -64,7 +80,7 @@ export const resolveCwdToken = async (
     shell: Shell
 ): Promise<{ cwd: string; pathy: boolean; complete: boolean }> => {
     if (token == null) return { cwd, pathy: false, complete: false };
-    const sep = shell == Shell.Bash ? "/" : getApi().pathSep();
+    const sep = getPathSep(shell);
     if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
     const complete = token.endsWith(sep);
     const dirname = getApi().pathDirName(token);
@@ -170,6 +186,10 @@ export function isFlag(value: string): boolean {
  */
 export function isFlagOrOption(value: string): boolean {
     return value.startsWith("-");
+}
+
+export function isPath(value: string, shell: Shell): boolean {
+    return value.includes(getPathSep(shell));
 }
 
 /**
