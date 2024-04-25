@@ -13,6 +13,7 @@ import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
 
 type OV<T> = mobx.IObservableValue<T>;
+const MaxInputLength = 10 * 1024;
 
 function pageSize(div: any): number {
     if (div == null) {
@@ -602,18 +603,21 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-        const isHistoryFocused = auxViewFocused && inputModel.getActiveAuxView() == appconst.InputAuxView_History;
+
+        const renderCmdInputKeybindings = inputModel.shouldRenderAuxViewKeybindings(null);
+        const renderHistoryKeybindings = inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_History);
+
         return (
             <div
                 className="textareainput-div control is-expanded"
                 ref={this.controlRef}
                 style={{ height: computedOuterHeight }}
             >
-                <If condition={!auxViewFocused}>
-                    <CmdInputKeybindings inputObject={this} />
+                <If condition={renderCmdInputKeybindings}>
+                    <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
                 </If>
-                <If condition={isHistoryFocused}>
-                    <HistoryKeybindings />
+                <If condition={renderHistoryKeybindings}>
+                    <HistoryKeybindings></HistoryKeybindings>
                 </If>
 
                 <If condition={!util.isBlank(shellType)}>
@@ -634,6 +638,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onChange={this.onChange}
                     onSelect={this.onSelect}
                     placeholder="Type here..."
+                    maxLength={MaxInputLength}
                     className={cn("textarea", { "display-disabled": auxViewFocused })}
                 ></textarea>
                 <input

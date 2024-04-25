@@ -95,6 +95,17 @@ func NumSessions(ctx context.Context) (int, error) {
 	return numSessions, txErr
 }
 
+func NumScreens(ctx context.Context) (int, error) {
+	var numScreens int
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := "SELECT count(*) FROM screen"
+		numScreens = tx.GetInt(query)
+		return nil
+	})
+	return numScreens, txErr
+
+}
+
 func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 	var rtn []*RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -687,9 +698,6 @@ INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr
           VALUES (:screenid,:lineid,:remoteownerid,:remoteid,:remotename,:cmdstr,:rawcmdstr,:festate,:statebasehash,:statediffhasharr,:termopts,:origtermopts,:status,:cmdpid,:remotepid,:donets,:restartts,:exitcode,:durationms,:rtnstate,:runout,:rtnbasehash,:rtndiffhasharr)
 `
 			tx.NamedExec(query, cmdMap)
-		}
-		if isWebShare(tx, line.ScreenId) {
-			insertScreenLineUpdate(tx, line.ScreenId, line.LineId, UpdateType_LineNew)
 		}
 		return nil
 	})

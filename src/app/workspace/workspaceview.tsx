@@ -15,10 +15,9 @@ import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
-import { Button } from "@/elements";
+import { Button, Dropdown } from "@/elements";
 import { commandRtnHandler } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
-import { Dropdown } from "@/elements/dropdown";
 import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
 import { TabColorSelector, TabIconSelector, TabNameTextField, TabRemoteSelector } from "./screen/newtabsettings";
 import * as util from "@/util/util";
@@ -145,7 +144,7 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
     @boundMethod
     handleChangeTermTheme(theme: string): void {
         const { screenId } = this.props.screen;
-        const currTheme = GlobalModel.getTermTheme()[screenId];
+        const currTheme = GlobalModel.getTermThemeSettings()[screenId];
         if (currTheme == theme) {
             return;
         }
@@ -156,8 +155,8 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
     render() {
         const { screen } = this.props;
         const rptr = screen.curRemote.get();
-        const termThemes = getTermThemes(GlobalModel.termThemes);
-        const currTermTheme = GlobalModel.getTermTheme()[screen.screenId] ?? termThemes[0].label;
+        const termThemes = getTermThemes(GlobalModel.termThemes.get());
+        const currTermTheme = GlobalModel.getTermThemeSettings()[screen.screenId] ?? termThemes[0].label;
         return (
             <div className="newtab-container">
                 <div className="newtab-section name-section">
@@ -179,6 +178,7 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
                 <If condition={termThemes.length > 0}>
                     <div className="newtab-section">
                         <Dropdown
+                            label="Terminal Theme"
                             className="terminal-theme-dropdown"
                             options={termThemes}
                             defaultValue={currTermTheme}
@@ -212,59 +212,6 @@ class TabSettings extends React.Component<{ screen: Screen }, {}> {
 @mobxReact.observer
 class WorkspaceView extends React.Component<{}, {}> {
     sessionRef = React.createRef<HTMLDivElement>();
-    theme: string;
-    themeReactionDisposer: mobx.IReactionDisposer;
-
-    componentDidMount() {
-        this.setupThemeReaction();
-    }
-
-    componentDidUpdate() {
-        this.setupThemeReaction();
-    }
-
-    setupThemeReaction() {
-        if (this.themeReactionDisposer) {
-            this.themeReactionDisposer();
-        }
-
-        // This handles session and screen-level terminal theming.
-        // Ideally, screen-level theming should be handled in the inner-level component, but
-        // the frequent mounting and unmounting of the screen view make it really difficult to work.
-        this.themeReactionDisposer = mobx.reaction(
-            () => {
-                return {
-                    termTheme: GlobalModel.getTermTheme(),
-                    session: GlobalModel.getActiveSession(),
-                    screen: GlobalModel.getActiveScreen(),
-                };
-            },
-            ({ termTheme, session, screen }) => {
-                let currTheme = termTheme[session.sessionId];
-                if (termTheme[screen.screenId]) {
-                    currTheme = termTheme[screen.screenId];
-                }
-                if (session && currTheme !== this.theme && this.sessionRef.current) {
-                    const reset = currTheme == null;
-                    const theme = currTheme ?? this.theme;
-                    const themeSrcEl = reset ? null : this.sessionRef.current;
-                    const rtn = GlobalModel.updateTermTheme(this.sessionRef.current, theme, reset);
-                    rtn.then(() => {
-                        GlobalModel.termThemeSrcEl.set(themeSrcEl);
-                    }).then(() => {
-                        GlobalModel.bumpTermRenderVersion();
-                    });
-                    this.theme = currTheme;
-                }
-            }
-        );
-    }
-
-    componentWillUnmount() {
-        if (this.themeReactionDisposer) {
-            this.themeReactionDisposer();
-        }
-    }
 
     @boundMethod
     toggleTabSettings() {
@@ -281,15 +228,14 @@ class WorkspaceView extends React.Component<{}, {}> {
             sessionId = session.sessionId;
             activeScreen = session.getActiveScreen();
         }
-
         const isHidden = GlobalModel.activeMainView.get() != "session";
         const mainSidebarModel = GlobalModel.mainSidebarModel;
-        const termRenderVersion = GlobalModel.termRenderVersion.get();
         const showTabSettings = GlobalModel.tabSettingsOpen.get();
         return (
             <div
                 ref={this.sessionRef}
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
+                id={sessionId}
                 data-sessionid={sessionId}
                 style={{
                     width: `${window.innerWidth - mainSidebarModel.getWidth()}px`,
@@ -301,9 +247,9 @@ class WorkspaceView extends React.Component<{}, {}> {
                 <ScreenTabs key={"tabs-" + sessionId} session={session} />
                 <If condition={activeScreen != null}>
                     <div key="pulldown" className={cn("tab-settings-pulldown", { closed: !showTabSettings })}>
-                        <button className="close-icon" onClick={this.toggleTabSettings}>
+                        <Button className="close-button secondary ghost" onClick={this.toggleTabSettings}>
                             <i className="fa-solid fa-sharp fa-xmark-large" />
-                        </button>
+                        </Button>
                         <TabSettings key={activeScreen.screenId} screen={activeScreen} />
                         <If condition={showTabSettings && !isHidden}>
                             <TabSettingsPulldownKeybindings />
@@ -311,11 +257,7 @@ class WorkspaceView extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <ErrorBoundary key="eb">
-                    <ScreenView
-                        key={`screenview-${sessionId}-${termRenderVersion}`}
-                        session={session}
-                        screen={activeScreen}
-                    />
+                    <ScreenView key={`screenview-${sessionId}`} session={session} screen={activeScreen} />
                     <If condition={activeScreen != null}>
                         <CmdInput key={"cmdinput-" + sessionId} />
                     </If>

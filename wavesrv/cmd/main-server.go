@@ -37,6 +37,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/bufferedpipe"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
@@ -156,6 +157,7 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 		removeWSStateAfterTimeout(clientId, stateConnectTime, WSStateReconnectTime)
 	}()
 	log.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
+
 	state.RunWSRead()
 }
 
@@ -227,7 +229,9 @@ func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 		activity.OpenMinutes = 1
 	}
 	activity.NumConns = remote.NumRemotes()
-	err = telemetry.UpdateCurrentActivity(r.Context(), activity)
+	activity.NumWorkspaces, _ = sstore.NumSessions(r.Context())
+	activity.NumTabs, _ = sstore.NumScreens(r.Context())
+	err = telemetry.UpdateActivity(r.Context(), activity)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error updating activity: %w", err))
 		return
@@ -969,10 +973,15 @@ func installSignalHandlers() {
 func doShutdown(reason string) {
 	shutdownOnce.Do(func() {
 		log.Printf("[wave] local server %v, start shutdown\n", reason)
+		shutdownActivityUpdate()
 		sendTelemetryWrapper()
 		log.Printf("[wave] closing db connection\n")
 		sstore.CloseDB()
 		log.Printf("[wave] *** shutting down local server\n")
+		watcher := configstore.GetWatcher()
+		if watcher != nil {
+			watcher.Close()
+		}
 		time.Sleep(1 * time.Second)
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		time.Sleep(5 * time.Second)
@@ -981,7 +990,6 @@ func doShutdown(reason string) {
 }
 
 func configDirHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("running?")
 	configPath := r.URL.Path
 	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
 	dirFile, err := os.Open(configFullPath)
@@ -1011,6 +1019,38 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(dirListJson)
+}
+
+func configWatcher() {
+	watcher := configstore.GetWatcher()
+	if watcher != nil {
+		watcher.Start()
+	}
+}
+
+func startupActivityUpdate() {
+	activity := telemetry.ActivityUpdate{
+		NumConns: remote.NumRemotes(),
+		Startup:  1,
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	activity.NumWorkspaces, _ = sstore.NumSessions(ctx)
+	activity.NumTabs, _ = sstore.NumScreens(ctx)
+	err := telemetry.UpdateActivity(ctx, activity) // set at least one record into activity (don't use go routine wrap here)
+	if err != nil {
+		log.Printf("error updating startup activity: %v\n", err)
+	}
+}
+
+func shutdownActivityUpdate() {
+	activity := telemetry.ActivityUpdate{Shutdown: 1}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancelFn()
+	err := telemetry.UpdateActivity(ctx, activity) // do NOT use the go routine wrap here (this needs to be synchronous)
+	if err != nil {
+		log.Printf("error updating shutdown activity: %v\n", err)
+	}
 }
 
 func main() {
@@ -1052,7 +1092,7 @@ func main() {
 		log.Printf("[error] %v\n", err)
 		return
 	}
-	_, err = scbase.EnsureConfigDir()
+	_, err = scbase.EnsureConfigDirs()
 	if err != nil {
 		log.Printf("[error] ensuring config directory: %v\n", err)
 		return
@@ -1089,9 +1129,10 @@ func main() {
 	}
 
 	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
-	telemetry.UpdateActivityWrap(context.Background(), telemetry.ActivityUpdate{NumConns: remote.NumRemotes()}, "numconns") // set at least one record into activity
+	startupActivityUpdate()
 	installSignalHandlers()
 	go telemetryLoop()
+	go configWatcher()
 	go stdinReadWatch()
 	go runWebSocketServer()
 	go func() {

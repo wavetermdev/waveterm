@@ -197,11 +197,7 @@ func StreamCommandWithExtraFd(ctx context.Context, ecmd *exec.Cmd, outputCh chan
 	go func() {
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer outputWg.Done()
-		err := utilfn.CopyToChannel(outputCh, cmdPty)
-		if err != nil {
-			errStr := fmt.Sprintf("\r\nerror reading from pty: %v\r\n", err)
-			outputCh <- []byte(errStr)
-		}
+		utilfn.CopyToChannel(outputCh, cmdPty)
 	}()
 	go func() {
 		defer outputWg.Done()

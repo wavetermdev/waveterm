@@ -36,7 +36,7 @@ const WaveDirName = ".waveterm"        // must match emain.ts
 const WaveDevDirName = ".waveterm-dev" // must match emain.ts
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const WaveAuthKeyFileName = "waveterm.authkey"
-const MShellVersion = "v0.6.0" // must match base.MShellVersion
+const MShellVersion = "v0.7.0" // must match base.MShellVersion
 
 // initialized by InitialzeWaveAuthKey (called by main-server)
 var WaveAuthKey string
@@ -234,7 +234,7 @@ func GetScreensDir() string {
 	return sdir
 }
 
-func EnsureConfigDir() (string, error) {
+func EnsureConfigDirs() (string, error) {
 	scHome := GetWaveHomeDir()
 	configDir := path.Join(scHome, "config")
 	err := ensureDir(configDir)
@@ -249,6 +249,11 @@ func EnsureConfigDir() (string, error) {
 	if keybindingsFileObj != nil {
 		keybindingsFileObj.WriteString("[]\n")
 		keybindingsFileObj.Close()
+	}
+	terminalThemesDir := path.Join(configDir, "terminal-themes")
+	err = ensureDir(terminalThemesDir)
+	if err != nil {
+		return "", err
 	}
 	return configDir, nil
 }

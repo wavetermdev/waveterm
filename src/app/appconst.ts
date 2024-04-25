@@ -47,6 +47,8 @@ export const TabIcons = [
     "file",
 ];
 
+export const MaxWebSocketSendSize = 64 * 1024 - 100;
+
 // @ts-ignore
 export const VERSION = __WAVETERM_VERSION__;
 // @ts-ignore

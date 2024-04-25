@@ -649,11 +649,6 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
         this.line = hvm.getLineById(this.historyItem.lineid);
     }
 
-    componentDidMount(): void {
-        GlobalModel.bumpTermRenderVersion();
-        GlobalModel.termThemeSrcEl.set(null);
-    }
-
     @boundMethod
     handleHeightChange(lineNum: number, newHeight: number, oldHeight: number): void {
         return;
