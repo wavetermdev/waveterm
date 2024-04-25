@@ -260,6 +260,7 @@ type FeOptsType struct {
 	Theme                string            `json:"theme,omitempty"`
 	TermThemeSettings    map[string]string `json:"termthemesettings"`
 	SudoPwStore          string            `json:"sudopwstore,omitempty"`
+	SudoPwTimeoutMs      int               `json:"sudopwtimeoutms,omitempty"`
 	SudoPwTimeout        int               `json:"sudopwtimeout,omitempty"`
 	NoSudoPwClearOnSleep bool              `json:"nosudopwclearonsleep,omitempty"`
 }

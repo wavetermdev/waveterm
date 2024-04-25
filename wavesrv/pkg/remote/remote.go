@@ -2685,7 +2685,7 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 	if err != nil {
 		return fmt.Errorf("*error: cannot obtain client data: %v", err)
 	}
-	sudoPwTimeout := clientData.FeOpts.SudoPwTimeout
+	sudoPwTimeout := clientData.FeOpts.SudoPwTimeoutMs / 1000 / 60
 	if sudoPwTimeout == 0 {
 		// 0 maps to default
 		sudoPwTimeout = sstore.DefaultSudoTimeout

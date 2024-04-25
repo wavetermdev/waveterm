@@ -599,7 +599,7 @@ declare global {
         theme: NativeThemeSource;
         termthemesettings: TermThemeSettingsType;
         sudopwstore: "on" | "off" | "notimeout";
-        sudopwtimeout: number;
+        sudopwtimeoutms: number;
         nosudopwclearonsleep: boolean;
     };
 

@@ -462,7 +462,7 @@ class Model {
 
     getSudoPwTimeout(): number {
         let cdata = this.clientData.get();
-        return cdata?.feopts?.sudopwtimeout ?? appconst.DefaultSudoPwTimeout;
+        return cdata?.feopts?.sudopwtimeoutms / 1000 / 60 ?? appconst.DefaultSudoPwTimeout;
     }
 
     getSudoPwClearOnSleep(): boolean {

@@ -6001,7 +6001,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 		varsUpdated = append(varsUpdated, "sudopwstore")
 	}
 	if sudoPwTimeoutStr, found := pk.Kwargs["sudopwtimeout"]; found {
-		oldPwTimeout := clientData.FeOpts.SudoPwTimeout
+		oldPwTimeout := clientData.FeOpts.SudoPwTimeoutMs / 1000 / 60 // ms to minutes
 		if oldPwTimeout == 0 {
 			oldPwTimeout = sstore.DefaultSudoTimeout
 		}
@@ -6013,7 +6013,7 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("invalid sudo pw timeout, must be a number greater than 0")
 		}
 		feOpts := clientData.FeOpts
-		feOpts.SudoPwTimeout = newSudoPwTimeout
+		feOpts.SudoPwTimeoutMs = newSudoPwTimeout * 60 * 1000 // minutes to ms
 		err = sstore.UpdateClientFeOpts(ctx, feOpts)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client feopts: %v", err)
