@@ -134,6 +134,10 @@ export class AutocompleteModel {
             const suggestion = autocompleteSuggestions[index];
             log.debug("suggestion", suggestion);
 
+            if (!suggestion) {
+                return null;
+            }
+
             if (suggestion.insertValue) {
                 retVal = suggestion.insertValue;
             } else if (typeof suggestion.name === "string") {

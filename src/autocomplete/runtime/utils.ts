@@ -74,19 +74,51 @@ export function getPathSep(shell: Shell): string {
  * @param shell The shell being used.
  * @returns The new cwd, whether the token is a path, and whether the path is complete.
  */
-export const resolveCwdToken = async (
+export async function resolveCwdToken(
     token: string,
     cwd: string,
-    shell: Shell
-): Promise<{ cwd: string; pathy: boolean; complete: boolean }> => {
+    shell: Shell = Shell.Bash
+): Promise<{ cwd: string; pathy: boolean; complete: boolean }> {
+    log.debug("resolveCwdToken start", { token, cwd, shell });
     if (token == null) return { cwd, pathy: false, complete: false };
+    log.debug("resolveCwdToken token not null");
     const sep = getPathSep(shell);
     if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
     const complete = token.endsWith(sep);
     const dirname = getApi().pathDirName(token);
-    log.debug("resolveCwdToken", { token, cwd, complete, dirname });
-    return { cwd: complete ? token : dirname, pathy: true, complete };
-};
+    log.debug("resolveCwdToken dirname", dirname);
+
+    // This accounts for cases where the somewhat dumb path.dirname function parses a path out of a token that is not a path, like "git commit -m 'foo/bar'"
+    if (dirname !== "." && !token.startsWith(dirname)) return { cwd, pathy: false, complete: false };
+
+    let respCwd = await resolvePathRemote(complete ? token : dirname);
+    const exists = respCwd !== undefined;
+    respCwd = respCwd ? (respCwd?.endsWith(sep) ? respCwd : respCwd + sep) : cwd;
+    log.debug("resolveCwdToken", { token, cwd, complete, dirname, respCwd, exists });
+    return { cwd: respCwd, pathy: exists, complete: complete && exists };
+}
+
+/**
+ * Determine if the given path exists on the remote machine.
+ * @param path The path to check.
+ * @returns True if the path exists.
+ */
+export async function resolvePathRemote(path: string): Promise<string | undefined> {
+    const resp = await GlobalModel.submitEphemeralCommand(
+        "eval",
+        null,
+        [`if [ -d "${path}" ]; then cd "${path}" || return 1; pwd; else return 1; fi`],
+        null,
+        false,
+        {
+            expectsresponse: true,
+            env: {},
+        }
+    );
+    const output = await GlobalModel.getEphemeralCommandOutput(resp);
+    console.log("pathExistsRemote", path, output);
+    return output.stderr?.length > 0 ? undefined : output.stdout.trimEnd();
+}
 
 /**
  * Runs the comparator function on each value and returns true if any of them match

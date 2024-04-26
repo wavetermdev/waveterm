@@ -161,6 +161,10 @@ export class Newton {
 
     private overriddenCwd: string = undefined;
 
+    private originalLastEntry: string;
+
+    private originalLastEntryDiff: string = undefined;
+
     public shell: Shell;
 
     constructor(
@@ -191,6 +195,7 @@ export class Newton {
         this.optionArgSeparators = optionArgSeparators;
         this.options = options;
         this.subcommands = subcommands;
+        this.originalLastEntry = this.lastEntry;
     }
 
     /**
@@ -235,8 +240,9 @@ export class Newton {
      * @see entries
      * @see entryIndex
      */
-    private get currentEntry(): string {
-        return this.entries.at(this.entryIndex) ?? "";
+    private get currentEntry(): string | undefined {
+        log.debug("currentEntry", this.entryIndex, this.entries);
+        return this.entries.at(this.entryIndex);
     }
 
     /**
@@ -245,6 +251,10 @@ export class Newton {
      */
     private get lastEntry(): string {
         return this.entries.at(-1);
+    }
+
+    private set lastEntry(entry: string) {
+        this.entries[this.entries.length - 1] = entry;
     }
 
     /**
@@ -308,6 +318,13 @@ export class Newton {
 
     public get originalCwd(): string {
         return this._cwd;
+    }
+
+    /**
+     * Gets the difference between the current value for the last entry and the original value for the last entry. This will only apply if the last entry was a path and we had to
+     */
+    private get lastEntryDiff(): string {
+        return this.originalLastEntry.slice(0, this.lastEntry.length);
     }
 
     /**
@@ -600,13 +617,13 @@ export class Newton {
 
     private prepareSuggestion(
         suggestion: Fig.Suggestion,
-        partialCmd: string,
         defaultType: Fig.SuggestionType,
         prefixStr?: string
     ): Fig.Suggestion {
         if (suggestion == undefined) {
             return undefined;
         }
+        const partialCmd = this.originalLastEntry;
         const suggestionMin: Fig.Suggestion = {
             name: suggestion.name,
             displayName: suggestion.displayName,
@@ -616,15 +633,15 @@ export class Newton {
             insertValue: suggestion.insertValue,
             priority: suggestion.priority,
         };
-        // log.debug(
-        //     "prepareSuggestion",
-        //     "suggestion",
-        //     suggestion,
-        //     "suggestionMin",
-        //     suggestionMin,
-        //     "partialCmd",
-        //     partialCmd
-        // );
+        log.debug(
+            "prepareSuggestion",
+            "suggestion",
+            suggestion,
+            "suggestionMin",
+            suggestionMin,
+            "partialCmd",
+            partialCmd
+        );
 
         if (suggestionMin.name && prefixStr) {
             suggestionMin.name = getAll(suggestionMin.name).map((name) => prefixStr + name);
@@ -639,32 +656,33 @@ export class Newton {
             suggestionMin.icon = getIcon(suggestionMin.icon, "special");
         }
         if (!suggestionMin.insertValue) {
-            // log.debug("prepareSuggestion no insertValue", suggestionMin.name, partialCmd);
+            log.debug("prepareSuggestion no insertValue", suggestionMin.name, partialCmd);
             if (!partialCmd) {
-                // log.debug("prepareSuggestion no insertValue, no partialCmd", getFirst(suggestionMin.name));
+                log.debug("prepareSuggestion no insertValue, no partialCmd", getFirst(suggestionMin.name));
                 suggestionMin.insertValue = getFirst(suggestionMin.name);
             } else {
                 for (const name of getAll(suggestionMin.name)) {
                     if (name.startsWith(partialCmd) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
-                        // log.debug("prepareSuggestion insertValue found", name, partialCmd);
+                        log.debug("prepareSuggestion insertValue found", name, partialCmd);
                         suggestionMin.insertValue = name;
                     }
                 }
 
-                suggestionMin.insertValue = suggestionMin.insertValue?.substring(partialCmd.length);
+                log.debug("prepareSuggestion substring length", suggestionMin.insertValue?.length, partialCmd.length);
+                suggestionMin.insertValue = suggestionMin.insertValue?.slice(partialCmd.length);
             }
-            // log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
+            log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
         } else {
-            // log.debug("prepareSuggestion insertValue exists", suggestionMin.insertValue, partialCmd);
+            log.debug("prepareSuggestion insertValue exists", suggestionMin.insertValue, partialCmd);
             // Handle situations where the maintainer of the spec includes the command in the insertValue, failing to account for the fact that the user may have already typed the command.
             const startsWithPartialCmd = suggestionMin.insertValue.startsWith(partialCmd);
             for (const name in getAll(suggestionMin.name)) {
                 if (suggestionMin.insertValue.startsWith(name) && !startsWithPartialCmd) {
-                    suggestionMin.insertValue = suggestionMin.insertValue.substring(name.length);
+                    suggestionMin.insertValue = suggestionMin.insertValue.slice(name.length);
                     break;
                 }
             }
-            // log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
+            log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
         }
         if (!suggestionMin.priority) {
             switch (suggestionMin.type) {
@@ -735,6 +753,7 @@ export class Newton {
         } else {
             log.debug("prefix");
             suggestionsArr.forEach((s) => {
+                log.debug("prefix", s.name, partialCmd);
                 if (s.name == null) return;
                 if (s.name instanceof Array) {
                     const matchedName = s.name.find((n) => n.toLowerCase().startsWith(partialCmd.toLowerCase()));
@@ -752,7 +771,7 @@ export class Newton {
         suggestions?.forEach((suggestion) => {
             this.suggestions.set(
                 getFirst(suggestion.name),
-                this.prepareSuggestion(suggestion, this.currentEntry, suggestionType, prefixStr)
+                this.prepareSuggestion(suggestion, suggestionType, prefixStr)
             );
         });
     }
@@ -783,7 +802,7 @@ export class Newton {
 
         if (arg?.template) {
             log.debug("arg template", arg.template, this.cwd);
-            suggestions.push(...(await runTemplates(arg.template ?? [], this.cwd, this.isCwdOverridden)));
+            suggestions.push(...(await runTemplates(arg.template ?? [], this.cwd)));
         }
 
         if (!dryRun) {
@@ -816,9 +835,9 @@ export class Newton {
         this.filterSuggestionsAndAddToMap(availableOptions, this.spec?.filterStrategy, entry, "option");
     }
 
-    private async addSuggestionsForHistory(): Promise<void> {
+    private async addSuggestionsForHistory(cwd: string = this.cwd): Promise<void> {
         this.filterSuggestionsAndAddToMap(
-            await runTemplates("history", this.cwd),
+            await runTemplates("history", cwd),
             this.spec?.filterStrategy,
             this.lastEntry,
             undefined
@@ -828,7 +847,7 @@ export class Newton {
     private async addSuggestionsForFilepaths(cwd: string = this.cwd): Promise<void> {
         log.debug("addSuggestionsForFilepaths", cwd, this.lastEntry, this.spec?.filterStrategy);
         this.filterSuggestionsAndAddToMap(
-            await runTemplates("filepaths", cwd, this.isCwdOverridden),
+            await runTemplates("filepaths", cwd),
             this.spec?.filterStrategy,
             this.lastEntry,
             "file"
@@ -1039,13 +1058,17 @@ export class Newton {
                 lastEntry.endsWith(" ")
             );
 
-            await this.addSuggestionsForHistory();
-
             // Determine the current working directory to use for file suggestions
             const { cwd: resolvedCwd } = await resolveCwdToken(lastEntry, this.cwd, this.shell);
             log.debug("resolvedCwd", resolvedCwd);
             this.cwd = resolvedCwd;
             log.debug("cwd", this.cwd);
+
+            if (this.isCwdOverridden) {
+                lastEntry = lastEntry.slice(lastEntry.lastIndexOf(getPathSep(this.shell)) + 1);
+                this.lastEntry = lastEntry;
+                log.debug("lastEntry", lastEntry);
+            }
 
             switch (this.curState) {
                 case ParserState.Subcommand: {
@@ -1157,10 +1180,12 @@ export class Newton {
                     break;
             }
 
-            if (this.suggestions.size == 0 && isPath(lastEntry, this.shell)) {
+            if (this.suggestions.size == 0) {
                 log.debug("no suggestions found");
                 await this.addSuggestionsForFilepaths();
             }
+
+            await this.addSuggestionsForHistory(this.originalCwd);
 
             const suggestionsArr = Array.from(this.suggestions.values());
             sortSuggestions(suggestionsArr);

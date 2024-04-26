@@ -16,12 +16,10 @@ import log from "../utils/log";
  */
 export const getFileCompletionSuggestions = async (
     cwd: string,
-    overriddenCwd: boolean,
     tempType: "filepaths" | "folders"
 ): Promise<Fig.TemplateSuggestion[]> => {
     const comptype = tempType === "filepaths" ? "file" : "directory";
     if (comptype == null) return [];
-    log.debug("getFileCompletionSuggestions", cwd, tempType, overriddenCwd);
     const crtn = await GlobalModel.submitCommand("_compfiledir", null, [], { comptype, cwd }, false, false);
     if (Array.isArray(crtn?.update?.data)) {
         if (crtn.update.data.length === 0) return [];
@@ -30,15 +28,13 @@ export const getFileCompletionSuggestions = async (
             if (firstData.info.infocomps.length === 0) return [];
             if (firstData.info.infocomps[0] === "(no completions)") return [];
             return firstData.info.infocomps.map((comp: string) => {
-                const fullPath = overriddenCwd ? cwd + comp : comp;
-                // log.debug("getFileCompletionSuggestions", cwd, comp, fullPath);
+                log.debug("getFileCompletionSuggestions", cwd, comp);
                 return {
-                    name: fullPath,
+                    name: comp,
                     displayName: comp,
                     priority: comp.startsWith(".") ? 1 : 55,
                     context: { templateType: tempType },
                     type: comp.endsWith("/") ? "folder" : "file",
-                    insertValue: fullPath,
                 };
             });
         } else {
@@ -90,8 +86,7 @@ const helpTemplate = (): Fig.TemplateSuggestion[] => {
 
 export const runTemplates = async (
     template: Fig.TemplateStrings[] | Fig.Template,
-    cwd: string,
-    overriddenCwd: boolean = false
+    cwd: string
 ): Promise<Fig.TemplateSuggestion[]> => {
     const templates = template instanceof Array ? template : [template];
     log.debug("runTemplates", templates, cwd);
@@ -101,9 +96,9 @@ export const runTemplates = async (
                 try {
                     switch (t) {
                         case "filepaths":
-                            return await getFileCompletionSuggestions(cwd, overriddenCwd, "filepaths");
+                            return await getFileCompletionSuggestions(cwd, "filepaths");
                         case "folders":
-                            return await getFileCompletionSuggestions(cwd, overriddenCwd, "folders");
+                            return await getFileCompletionSuggestions(cwd, "folders");
                         case "history":
                             return historyTemplate(cwd);
                         case "help":
