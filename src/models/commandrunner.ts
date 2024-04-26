@@ -467,6 +467,31 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "setrightsidebar", null, kwargs, false);
     }
 
+    setSudoPwStore(store: string): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwstore: store,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
+    }
+
+    setSudoPwTimeout(timeout: string): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwtimeout: timeout,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
+    }
+
+    setSudoPwClearOnSleep(clear: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwclearonsleep: String(clear),
+        };
+        console.log(kwargs);
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
+    }
+
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {
         let kwargs = {
             nohist: "1",

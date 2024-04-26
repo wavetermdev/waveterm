@@ -46,6 +46,8 @@ export const TabIcons = [
     "heart",
     "file",
 ];
+export const DefaultSudoPwStore = "on";
+export const DefaultSudoPwTimeoutMs = 5 * 60 * 1000;
 
 export const MaxWebSocketSendSize = 64 * 1024 - 100;
 

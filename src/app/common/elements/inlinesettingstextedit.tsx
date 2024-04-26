@@ -22,6 +22,7 @@ class InlineSettingsTextEdit extends React.Component<
         maxLength: number;
         placeholder: string;
         showIcon?: boolean;
+        isNumber?: boolean;
     },
     {}
 > {
@@ -46,6 +47,12 @@ class InlineSettingsTextEdit extends React.Component<
 
     @boundMethod
     handleChangeText(e: any): void {
+        const isNumber = this.props.isNumber ?? false;
+        const value = e.target.value;
+        if (isNumber && value !== "" && !/^\d*$/.test(value)) {
+            return;
+        }
+
         mobx.action(() => {
             this.tempText.set(e.target.value);
         })();

@@ -209,6 +209,33 @@ func HandleSetWinSize(w http.ResponseWriter, r *http.Request) {
 	WriteJsonSuccess(w, true)
 }
 
+func HandlePowerMonitor(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var body sstore.PowerMonitorEventType
+	err := decoder.Decode(&body)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
+		return
+	}
+	cdata, err := sstore.EnsureClientData(r.Context())
+	if err != nil {
+		WriteJsonError(w, err)
+		return
+	}
+	switch body.Status {
+	case "suspend":
+		if !cdata.FeOpts.NoSudoPwClearOnSleep && cdata.FeOpts.SudoPwStore != "notimeout" {
+			for _, proc := range remote.GetRemoteMap() {
+				proc.ClearCachedSudoPw()
+			}
+		}
+		WriteJsonSuccess(w, true)
+	default:
+		WriteJsonError(w, fmt.Errorf("unknown status: %s", body.Status))
+		return
+	}
+}
+
 // params: fg, active, open
 func HandleLogActiveState(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
@@ -1149,6 +1176,7 @@ func main() {
 	gr.HandleFunc(bufferedpipe.BufferedPipeGetterUrl, AuthKeyWrapAllowHmac(bufferedpipe.HandleGetBufferedPipeOutput))
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
+	gr.HandleFunc("/api/power-monitor", AuthKeyWrap(HandlePowerMonitor))
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
 	gr.HandleFunc("/api/read-file", AuthKeyWrapAllowHmac(HandleReadFile))
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
