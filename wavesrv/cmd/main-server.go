@@ -1018,7 +1018,7 @@ func doShutdown(reason string) {
 
 func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	configPath := r.URL.Path
-	if !fs.ValidPath(configPath) {
+	if !fs.ValidPath(configPath) && !strings.Contains(configPath, "..") {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("invalid path: %s", configPath)))
 		return
