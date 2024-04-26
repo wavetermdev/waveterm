@@ -810,7 +810,7 @@ func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler 
 		fstat, err := os.Stat(configFullPath)
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(fmt.Sprintf("file not found: %v", configPath)))
+			w.Write([]byte(fmt.Sprintf("file not found: %v", err)))
 			return
 		} else if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
