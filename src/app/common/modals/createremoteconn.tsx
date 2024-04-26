@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
-import { Modal, TextField, NumberField, InputDecoration, Dropdown, PasswordField, Tooltip } from "@/elements";
+import { Modal, TextField, InputDecoration, Dropdown, PasswordField, Tooltip } from "@/elements";
 import * as util from "@/util/util";
 
 import "./createremoteconn.less";
@@ -236,11 +236,12 @@ class CreateRemoteConnModal extends React.Component<{}, {}> {
                         />
                     </div>
                     <div className="port-section">
-                        <NumberField
+                        <TextField
                             label="Port"
                             placeholder="22"
                             value={this.tempPort.get()}
                             onChange={this.handleChangePort}
+                            isNumber={true}
                             decoration={{
                                 endDecoration: (
                                     <InputDecoration>
