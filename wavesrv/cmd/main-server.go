@@ -857,7 +857,7 @@ func AuthKeyWrapAllowHmac(fn WebFnType) WebFnType {
 			hmacOk, err := waveenc.ValidateUrlHmac([]byte(scbase.WaveAuthKey), r.URL.Path, qvals)
 			if err != nil || !hmacOk {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("error validating hmac")))
+				w.Write([]byte("error validating hmac"))
 				return
 			}
 			// fallthrough (hmac is valid)
