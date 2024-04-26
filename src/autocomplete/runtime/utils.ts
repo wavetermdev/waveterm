@@ -9,6 +9,7 @@ import { Shell } from "../utils/shell";
 import { GlobalModel, getApi } from "@/models";
 import { MemCache } from "@/util/memcache";
 import log from "../utils/log";
+import { Token, TokenType } from "./model";
 
 export type ExecuteShellCommandTTYResult = {
     code: number | null;
@@ -75,23 +76,23 @@ export function getPathSep(shell: Shell): string {
  * @returns The new cwd, whether the token is a path, and whether the path is complete.
  */
 export async function resolveCwdToken(
-    token: string,
+    token: Token,
     cwd: string,
-    shell: Shell = Shell.Bash
+    shell: Shell
 ): Promise<{ cwd: string; pathy: boolean; complete: boolean }> {
-    log.debug("resolveCwdToken start", { token, cwd, shell });
+    log.debug("resolveCwdToken start", { token, cwd });
     if (token == null) return { cwd, pathy: false, complete: false };
     log.debug("resolveCwdToken token not null");
+    if (token.type != TokenType.PATH) return { cwd, pathy: false, complete: false };
     const sep = getPathSep(shell);
-    if (!token.includes(sep)) return { cwd, pathy: false, complete: false };
-    const complete = token.endsWith(sep);
-    const dirname = getApi().pathDirName(token);
+    const complete = token.value.endsWith(sep);
+    const dirname = getApi().pathDirName(token.value);
     log.debug("resolveCwdToken dirname", dirname);
 
     // This accounts for cases where the somewhat dumb path.dirname function parses a path out of a token that is not a path, like "git commit -m 'foo/bar'"
-    if (dirname !== "." && !token.startsWith(dirname)) return { cwd, pathy: false, complete: false };
+    if (dirname !== "." && !token.value.startsWith(dirname)) return { cwd, pathy: false, complete: false };
 
-    let respCwd = await resolvePathRemote(complete ? token : dirname);
+    let respCwd = await resolvePathRemote(complete ? token.value : dirname);
     const exists = respCwd !== undefined;
     respCwd = respCwd ? (respCwd?.endsWith(sep) ? respCwd : respCwd + sep) : cwd;
     log.debug("resolveCwdToken", { token, cwd, complete, dirname, respCwd, exists });
@@ -116,7 +117,7 @@ export async function resolvePathRemote(path: string): Promise<string | undefine
         }
     );
     const output = await GlobalModel.getEphemeralCommandOutput(resp);
-    console.log("pathExistsRemote", path, output);
+    log.debug("pathExistsRemote", path, output);
     return output.stderr?.length > 0 ? undefined : output.stdout.trimEnd();
 }
 
@@ -242,13 +243,16 @@ export function getFlag(values: Fig.SingleOrArray<string>): string | undefined {
     return undefined;
 }
 
-/**
- * Checks if a string is a command, i.e. not a flag or option.
- * @param value The string to check.
- * @returns True if the string is a command.
- */
-export function isCommand(value: string): boolean {
-    return !isFlag(value) && !isOption(value);
+export function determineTokenType(value: string, shell: Shell): TokenType {
+    if (isOption(value)) {
+        return TokenType.OPTION;
+    } else if (isFlag(value)) {
+        return TokenType.FLAG;
+    } else if (isPath(value, shell)) {
+        return TokenType.PATH;
+    } else {
+        return TokenType.ARGUMENT;
+    }
 }
 
 /**
@@ -269,7 +273,7 @@ export function modifyPosixFlags(option: Fig.Option, precedingFlags: string): Fi
 
             // We want to prepend the existing flags to the name, except for the suggestion of the last flag (i.e. the `c` of an input `-abc`), which we want to replace with the existing flags.
             // The end result is that we will suggest -abc instead of -a -b -c. We do not want -abb. The case of -aba should already be covered by filterFlags.
-            if (name === precedingFlags.at(-1)) {
+            if (name === precedingFlags?.at(-1)) {
                 option.name = "-" + precedingFlags;
             } else {
                 option.name = "-" + precedingFlags + name;

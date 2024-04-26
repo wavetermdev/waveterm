@@ -5,7 +5,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { getApi } from "@/models";
 import log from "../utils/log";
 import { Shell } from "../utils/shell";
 import { runGenerator } from "./generator";
@@ -18,9 +17,7 @@ import {
     getFirst,
     getPathSep,
     isFlag,
-    isFlagOrOption,
     isOption,
-    isPath,
     matchAny,
     modifyPosixFlags,
     resolveCwdToken,
@@ -28,6 +25,7 @@ import {
     startsWithAny,
 } from "./utils";
 import { getSubcommand, lazyLoadSpecLocation, loadSpec } from "./loadspec";
+import { PathToken, Token, TokenType, whitespace } from "./model";
 
 /**
  * The parser state. This is used to determine what the parser is currently matching.
@@ -71,7 +69,7 @@ export class Newton {
     /**
      * The split segments of the current command.
      */
-    public entries: string[];
+    public entries: Token[];
 
     /**
      * The current index within `this.entries` that the parser is processing.
@@ -161,15 +159,17 @@ export class Newton {
 
     private overriddenCwd: string = undefined;
 
-    private originalLastEntry: string;
-
-    private originalLastEntryDiff: string = undefined;
+    /**
+     * Used when the user is filtering on a path. When evaluating the new current working directory, we remove any directories from the front of the path that are already present in the current working directory.
+     * This variable lets us add them back
+     */
+    private lastEntryPrefix: string = "";
 
     public shell: Shell;
 
     constructor(
         spec: Fig.Subcommand | undefined,
-        entries: string[],
+        entries: Token[],
         cwd: string,
         shell: Shell,
         entryIndex: number = 0,
@@ -195,7 +195,6 @@ export class Newton {
         this.optionArgSeparators = optionArgSeparators;
         this.options = options;
         this.subcommands = subcommands;
-        this.originalLastEntry = this.lastEntry;
     }
 
     /**
@@ -240,7 +239,7 @@ export class Newton {
      * @see entries
      * @see entryIndex
      */
-    private get currentEntry(): string | undefined {
+    private get currentEntry(): Token | undefined {
         log.debug("currentEntry", this.entryIndex, this.entries);
         return this.entries.at(this.entryIndex);
     }
@@ -249,12 +248,16 @@ export class Newton {
      * Gets the last entry in the list of entries.
      * @see entries
      */
-    private get lastEntry(): string {
+    private get lastEntry(): Token {
         return this.entries.at(-1);
     }
 
-    private set lastEntry(entry: string) {
-        this.entries[this.entries.length - 1] = entry;
+    /**
+     * Sets the last entry in the list of entries.
+     * @param value The value to set the last entry to.
+     */
+    private set lastEntry(value: Token) {
+        this.entries[this.entries.length - 1] = value;
     }
 
     /**
@@ -264,7 +267,7 @@ export class Newton {
      * @see entryIndex
      */
     private get atEndOfEntries(): boolean {
-        return this.entryIndex >= this.entries.length || this.currentEntry == " ";
+        return this.entryIndex >= this.entries.length || this.currentEntry.type == TokenType.WHITESPACE;
     }
 
     /**
@@ -321,20 +324,13 @@ export class Newton {
     }
 
     /**
-     * Gets the difference between the current value for the last entry and the original value for the last entry. This will only apply if the last entry was a path and we had to
-     */
-    private get lastEntryDiff(): string {
-        return this.originalLastEntry.slice(0, this.lastEntry.length);
-    }
-
-    /**
      * Get an option by name from the available options set.
      * @param name The name of the option to get.
      * @returns The option, or undefined if the option is not available.
      * @see availableOptions
      */
-    private getAvailableOption(name: string): Fig.Option | undefined {
-        return this.availableOptions[name];
+    private getAvailableOption(name: Token | string): Fig.Option | undefined {
+        return this.availableOptions[typeof name == "string" ? name : name.value];
     }
 
     /**
@@ -398,9 +394,9 @@ export class Newton {
             log.debug("optionArgSeparators", this.optionArgSeparators);
             for (const sep of this.optionArgSeparators) {
                 log.debug("optionArgSeparators", sep);
-                if (entry.includes(sep)) {
+                if (entry.value.includes(sep)) {
                     log.debug("optionArgSeparators", sep, entry);
-                    const optionStr = entry.substring(0, entry.indexOf(sep));
+                    const optionStr = entry.value.substring(0, entry.value.indexOf(sep));
                     log.debug("optionStr", optionStr);
                     const option = this.getAvailableOption(optionStr);
                     log.debug("option", option);
@@ -409,19 +405,22 @@ export class Newton {
                         (option.requiresSeparator === sep ||
                             (option.requiresSeparator === true && this.optionArgSeparators.length == 1))
                     ) {
-                        this.entries[this.entryIndex] = optionStr;
-                        const argStr = entry.substring(entry.indexOf(sep) + 1, entry.length);
-                        log.debug("argStr", argStr);
-                        if (argStr.length > 0) {
-                            this.entries.splice(this.entryIndex + 1, 0, argStr);
+                        this.entries[this.entryIndex].value = optionStr;
+                        const argToken = {
+                            type: TokenType.ARGUMENT,
+                            value: entry.value.substring(entry.value.indexOf(sep) + 1, entry.value.length),
+                        };
+                        log.debug("argStr", argToken);
+                        if (argToken.value.length > 0) {
+                            this.entries.splice(this.entryIndex + 1, 0, argToken);
                         } else if (this.atLastEntry) {
-                            this.entries.push(" ");
+                            this.entries.push(whitespace);
                         } else {
                             this.error = `The option ${optionStr} requires an argument with a separator "${sep}".`;
                         }
                         return;
                     }
-                } else if (!this.atLastEntry && this.getAvailableOption(entry)?.requiresSeparator) {
+                } else if (!this.atLastEntry && this.getAvailableOption(entry.value)?.requiresSeparator) {
                     this.error = `The option ${entry} requires an argument with a separator.`;
                     return;
                 }
@@ -440,7 +439,7 @@ export class Newton {
         }
 
         log.debug("parseFlag", entry);
-        const existingFlags = entry?.slice(1);
+        const existingFlags = entry?.value.slice(1);
         const flagsArr = existingFlags?.split("") ?? [];
         if (flagsArr.length == 0) {
             return ParserState.Option;
@@ -500,7 +499,7 @@ export class Newton {
         }
 
         // We need to handle cases where a double dash is used to disable options and flags, such as in git commands.
-        if (entry === "--") {
+        if (entry.value === "--") {
             if (this.atLastEntry) {
                 log.debug(
                     "double dash at last entry, returning and setting state to option to process all available options"
@@ -572,11 +571,12 @@ export class Newton {
         const currentArg = args[argIndex];
 
         if (currentArg) {
+            const curEntryType = entry.type;
             if (currentArg.isCommand) {
                 // The next entry is a command, so we need to load the spec for that command and start from scratch
                 this.spec = undefined;
                 return ParserState.Subcommand;
-            } else if (isFlagOrOption(entry)) {
+            } else if (curEntryType == TokenType.OPTION || curEntryType == TokenType.FLAG) {
                 // We found an option or a flag, we will need to determine if this is allowed before continuing
                 if (!currentArg.isOptional || !currentArg.isVariadic) {
                     this.error = `The argument ${currentArg.name} is required and cannot be a flag or option.`;
@@ -623,7 +623,8 @@ export class Newton {
         if (suggestion == undefined) {
             return undefined;
         }
-        const partialCmd = this.originalLastEntry;
+        let partialCmd = this.lastEntry;
+        const entryPathPrefix = (partialCmd as PathToken)?.prefix ?? "";
         const suggestionMin: Fig.Suggestion = {
             name: suggestion.name,
             displayName: suggestion.displayName,
@@ -657,25 +658,29 @@ export class Newton {
         }
         if (!suggestionMin.insertValue) {
             log.debug("prepareSuggestion no insertValue", suggestionMin.name, partialCmd);
-            if (!partialCmd) {
+            if (!partialCmd || !partialCmd.value) {
                 log.debug("prepareSuggestion no insertValue, no partialCmd", getFirst(suggestionMin.name));
                 suggestionMin.insertValue = getFirst(suggestionMin.name);
             } else {
                 for (const name of getAll(suggestionMin.name)) {
-                    if (name.startsWith(partialCmd) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
+                    if (name.startsWith(partialCmd.value) && name.length > (suggestionMin.insertValue?.length ?? 0)) {
                         log.debug("prepareSuggestion insertValue found", name, partialCmd);
                         suggestionMin.insertValue = name;
                     }
                 }
 
-                log.debug("prepareSuggestion substring length", suggestionMin.insertValue?.length, partialCmd.length);
-                suggestionMin.insertValue = suggestionMin.insertValue?.slice(partialCmd.length);
+                log.debug(
+                    "prepareSuggestion substring length",
+                    suggestionMin.insertValue?.length,
+                    partialCmd.value?.length
+                );
+                // suggestionMin.insertValue = suggestionMin.insertValue?.slice(partialCmd.length);
             }
             log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
         } else {
             log.debug("prepareSuggestion insertValue exists", suggestionMin.insertValue, partialCmd);
             // Handle situations where the maintainer of the spec includes the command in the insertValue, failing to account for the fact that the user may have already typed the command.
-            const startsWithPartialCmd = suggestionMin.insertValue.startsWith(partialCmd);
+            const startsWithPartialCmd = suggestionMin.insertValue.startsWith(partialCmd.value);
             for (const name in getAll(suggestionMin.name)) {
                 if (suggestionMin.insertValue.startsWith(name) && !startsWithPartialCmd) {
                     suggestionMin.insertValue = suggestionMin.insertValue.slice(name.length);
@@ -683,6 +688,13 @@ export class Newton {
                 }
             }
             log.debug("prepareSuggestion insertValue final", suggestionMin.insertValue);
+        }
+
+        if ((suggestionMin.insertValue && suggestionMin.type == "file") || suggestionMin.type == "folder") {
+            log.debug(
+                `prepareSuggestion add entryPathPrefix "${entryPathPrefix}" to insert value "${suggestionMin.insertValue}"`
+            );
+            suggestionMin.insertValue = entryPathPrefix + suggestionMin.insertValue;
         }
         if (!suggestionMin.priority) {
             switch (suggestionMin.type) {
@@ -716,7 +728,7 @@ export class Newton {
     private filterSuggestionsAndAddToMap(
         suggestions: (Fig.Suggestion | string)[],
         filterStrategy: FilterStrategy,
-        partialCmd: string,
+        partialCmd: Token,
         suggestionType: Fig.SuggestionType,
         prefixStr?: string
     ) {
@@ -732,7 +744,7 @@ export class Newton {
             suggestionType
         );
         const suggestionsArr = suggestions.map((s) => (typeof s === "string" ? { name: s } : s));
-        if (!partialCmd || partialCmd === " ") {
+        if (!partialCmd || partialCmd.type == TokenType.WHITESPACE) {
             this.addSuggestionsToMap(suggestionsArr, suggestionType, prefixStr);
             return;
         }
@@ -742,11 +754,11 @@ export class Newton {
             suggestionsArr.forEach((s) => {
                 if (s.name == null) return;
                 if (s.name instanceof Array) {
-                    const matchedName = s.name.find((n) => n.toLowerCase().includes(partialCmd.toLowerCase()));
+                    const matchedName = s.name.find((n) => n.toLowerCase().includes(partialCmd.value.toLowerCase()));
                     if (matchedName) {
                         this.addSuggestionsToMap([{ name: matchedName }], suggestionType, prefixStr);
                     }
-                } else if (s.name.toLowerCase().includes(partialCmd.toLowerCase())) {
+                } else if (s.name.toLowerCase().includes(partialCmd.value.toLowerCase())) {
                     this.addSuggestionsToMap([s], suggestionType, prefixStr);
                 }
             });
@@ -756,11 +768,11 @@ export class Newton {
                 log.debug("prefix", s.name, partialCmd);
                 if (s.name == null) return;
                 if (s.name instanceof Array) {
-                    const matchedName = s.name.find((n) => n.toLowerCase().startsWith(partialCmd.toLowerCase()));
+                    const matchedName = s.name.find((n) => n.toLowerCase().startsWith(partialCmd.value.toLowerCase()));
                     if (matchedName) {
                         this.addSuggestionsToMap([{ name: matchedName }], suggestionType, prefixStr);
                     }
-                } else if (s.name.toLowerCase().startsWith(partialCmd.toLowerCase())) {
+                } else if (s.name.toLowerCase().startsWith(partialCmd.value.toLowerCase())) {
                     this.addSuggestionsToMap([s], suggestionType, prefixStr);
                 }
             });
@@ -791,7 +803,17 @@ export class Newton {
             const generators = getAll(arg.generators);
             log.debug("arg generators", generators);
             suggestions.push(
-                ...(await Promise.all(generators.map((gen) => runGenerator(gen, this.entries, this.cwd)))).flat()
+                ...(
+                    await Promise.all(
+                        generators.map((gen) =>
+                            runGenerator(
+                                gen,
+                                this.entries.map((e) => e.value),
+                                this.cwd
+                            )
+                        )
+                    )
+                ).flat()
             );
         }
 
@@ -828,7 +850,7 @@ export class Newton {
         }
         const entry = this.lastEntry;
         const availableOptions = [
-            ...this.availablePosixFlags.map((option) => modifyPosixFlags(option, entry?.slice(1))),
+            ...this.availablePosixFlags.map((option) => modifyPosixFlags(option, entry?.value?.slice(1))),
             ...this.availableNonPosixFlags,
         ];
         log.debug("availableOptions:", availableOptions);
@@ -859,7 +881,10 @@ export class Newton {
      * @returns The spec for the current command.
      */
     private async loadSpec(specName: string): Promise<Fig.Spec | undefined> {
-        return await loadSpec(specName, this.atLastEntry ? this.entries.slice(this.entryIndex + 1) : []);
+        return await loadSpec(
+            specName,
+            this.atLastEntry ? this.entries.slice(this.entryIndex + 1).map((e) => e.value) : []
+        );
     }
 
     /**
@@ -877,7 +902,7 @@ export class Newton {
         if (this.spec) {
             // No need to run this if the user is typing an option
             // Determine if a subcommand matches the current entry, if so set it as our new spec
-            const subcommand = this.spec.subcommands?.find((subcommand) => equalsAny(subcommand.name, curEntry));
+            const subcommand = this.spec.subcommands?.find((subcommand) => equalsAny(subcommand.name, curEntry.value));
             if (subcommand) {
                 log.debug("subcommand exists", subcommand);
                 // Subcommand module found; traverse it.
@@ -899,7 +924,7 @@ export class Newton {
                         break;
                     case "function": {
                         log.debug("loadSpec is function");
-                        const partSpec = await subcommand.loadSpec(curEntry, buildExecuteShellCommand(5000));
+                        const partSpec = await subcommand.loadSpec(curEntry.value, buildExecuteShellCommand(5000));
                         if (partSpec instanceof Array) {
                             const locationSpecs = (
                                 await Promise.all(partSpec.map((s) => lazyLoadSpecLocation(s)))
@@ -907,7 +932,7 @@ export class Newton {
                             const subcommands = locationSpecs.map((s) => getSubcommand(s)).filter((s) => s != null);
                             this.spec = {
                                 ...subcommand,
-                                ...(subcommands.find((s) => s?.name == curEntry) ?? []),
+                                ...(subcommands.find((s) => s?.name == curEntry.value) ?? []),
                                 loadSpec: undefined,
                             };
                         } else if (Object.hasOwn(partSpec, "type")) {
@@ -933,7 +958,7 @@ export class Newton {
             }
         } else {
             log.debug("no spec");
-            this.spec = await this.loadSpec(curEntry);
+            this.spec = await this.loadSpec(curEntry.value);
         }
         return true;
     }
@@ -949,10 +974,14 @@ export class Newton {
                 case ParserState.Subcommand: {
                     log.debug("subcommand");
                     if (!(await this.findSubcommand())) {
-                        if (isFlagOrOption(this.currentEntry ?? "")) {
-                            this.curState = ParserState.Option;
-                        } else {
-                            this.curState = ParserState.SubcommandArgument;
+                        switch (this.currentEntry?.type) {
+                            case TokenType.FLAG:
+                            case TokenType.OPTION:
+                                this.curState = ParserState.Option;
+                                break;
+                            default:
+                                this.curState = ParserState.SubcommandArgument;
+                                break;
                         }
                         break;
                     }
@@ -963,8 +992,8 @@ export class Newton {
                 case ParserState.Option: {
                     log.debug("option", this.currentEntry);
                     const curEntry = this.currentEntry;
-                    const isEntryOption = isOption(curEntry);
-                    const isEntryFlag = isFlag(curEntry);
+                    const isEntryOption = curEntry?.type == TokenType.OPTION;
+                    const isEntryFlag = curEntry?.type == TokenType.FLAG;
                     if (this.stopInterpretingOptions) {
                         if (isEntryOption || isEntryFlag) {
                             this.error = "Options and flags are not allowed after --";
@@ -996,7 +1025,11 @@ export class Newton {
                 }
                 case ParserState.SubcommandArgument:
                     log.debug("subcommand argument");
-                    if (isFlagOrOption(this.currentEntry) && !this.optionsMustPrecedeArguments) {
+                    const curEntryType = this.currentEntry?.type;
+                    if (
+                        (curEntryType == TokenType.OPTION || curEntryType == TokenType.FLAG) &&
+                        !this.optionsMustPrecedeArguments
+                    ) {
                         log.debug("subcommand argument is flag or option");
                         this.curState = ParserState.Option;
                         break;
@@ -1055,26 +1088,39 @@ export class Newton {
                 "curState: ",
                 this.curState,
                 "lastEntryEndsWithSpace: ",
-                lastEntry.endsWith(" ")
+                lastEntry.type == TokenType.WHITESPACE
             );
 
-            // Determine the current working directory to use for file suggestions
-            const { cwd: resolvedCwd } = await resolveCwdToken(lastEntry, this.cwd, this.shell);
-            log.debug("resolvedCwd", resolvedCwd);
-            this.cwd = resolvedCwd;
-            log.debug("cwd", this.cwd);
+            // Determine the current working directory to use for file suggestions. If the last entry is a valid path, trim any directory prefixes off the entry and set the new working directory.
+            if (lastEntry.type == TokenType.PATH) {
+                const { cwd: resolvedCwd, pathy } = await resolveCwdToken(lastEntry, this.cwd, this.shell);
+                if (pathy) {
+                    this.cwd = resolvedCwd;
+                    const lastEntryValue = lastEntry.value;
+                    const lastSepIndex = lastEntryValue.lastIndexOf(getPathSep(this.shell));
+                    if (lastSepIndex != -1) {
+                        const lastEntryPathToken: PathToken = {
+                            type: TokenType.PATH,
+                            value: lastEntryValue.slice(lastSepIndex + 1),
+                            prefix: lastEntryValue.slice(0, lastSepIndex + 1),
+                        };
+                        lastEntry = lastEntryPathToken;
+                        this.lastEntry = lastEntry;
+                    }
 
-            if (this.isCwdOverridden) {
-                lastEntry = lastEntry.slice(lastEntry.lastIndexOf(getPathSep(this.shell)) + 1);
-                this.lastEntry = lastEntry;
-                log.debug("lastEntry", lastEntry);
+                    log.debug("cwd", this.cwd);
+                } else {
+                    lastEntry.type = TokenType.ARGUMENT;
+                    this.lastEntry = lastEntry;
+                }
+                log.debug("resolvedCwd", resolvedCwd);
             }
 
             switch (this.curState) {
                 case ParserState.Subcommand: {
                     log.debug("subcommands: ", this.subcommands, this.options, lastEntry);
                     // The parser never got to matching options or arguments, so suggest all available for the current spec.
-                    if (lastEntry == " ") {
+                    if (lastEntry.type == TokenType.WHITESPACE) {
                         log.debug("lastEntry is space");
                         const arg = getFirst(this.spec?.args);
                         if (arg) {
@@ -1097,7 +1143,7 @@ export class Newton {
                 case ParserState.PosixFlag: {
                     log.debug("option or posix flag");
                     const availableOptions = Object.values(this.availableOptions);
-                    if (lastEntry == " ") {
+                    if (lastEntry.type == TokenType.WHITESPACE) {
                         // The parser is currently matching options or subcommand arguments, so suggest all available options.
                         // TODO: this feels messy, not sure if there's a better way to do this
                         if (this.curState == ParserState.Option || !this.optionsMustPrecedeArguments) {
@@ -1108,7 +1154,7 @@ export class Newton {
                             case ParserState.Option: {
                                 // The parser is currently matching options, so suggest all available options.
                                 const suggestionsToAdd: Fig.Suggestion[] = availableOptions.filter((option) =>
-                                    startsWithAny(option.name, lastEntry ?? "")
+                                    startsWithAny(option.name, lastEntry.value ?? "")
                                 );
                                 if (this.currentOption) {
                                     suggestionsToAdd.push(this.currentOption);
@@ -1118,7 +1164,7 @@ export class Newton {
                             }
                             case ParserState.PosixFlag: {
                                 if (this.currentOption) {
-                                    const existingFlags = lastEntry?.slice(1) ?? "";
+                                    const existingFlags = lastEntry?.value.slice(1) ?? "";
 
                                     const newOption = modifyPosixFlags(this.currentOption, existingFlags);
                                     // Suggest the other available flags as additional suggestions
