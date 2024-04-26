@@ -2649,11 +2649,21 @@ func sendScreenUpdates(screens []*sstore.ScreenType) {
 	}
 }
 
-func (msh *MShellProc) startSudoPwClearChecker() {
+func (msh *MShellProc) startSudoPwClearChecker(clientData *sstore.ClientData) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	sudoPwStore := clientData.FeOpts.SudoPwStore
 	for {
+		clientData, err := sstore.EnsureClientData(ctx)
+		if err != nil {
+			log.Printf("*error: cannot obtain client data in sudo pw loop. using fallback: %v", err)
+		} else {
+			sudoPwStore = clientData.FeOpts.SudoPwStore
+		}
+
 		shouldExit := false
 		msh.WithLock(func() {
-			if msh.sudoClearDeadline > 0 && time.Now().Unix() > msh.sudoClearDeadline {
+			if msh.sudoClearDeadline > 0 && time.Now().Unix() > msh.sudoClearDeadline && sudoPwStore != "notimeout" {
 				msh.sudoPw = nil
 				msh.sudoClearDeadline = 0
 			}
@@ -2691,13 +2701,25 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 		}
 		rawSecret = []byte(guiResponse.Text)
 	}
-	//new
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return fmt.Errorf("*error: cannot obtain client data: %v", err)
+	}
+	sudoPwTimeout := clientData.FeOpts.SudoPwTimeoutMs / 1000 / 60
+	if sudoPwTimeout == 0 {
+		// 0 maps to default
+		sudoPwTimeout = sstore.DefaultSudoTimeout
+	}
+	pwTimeoutDur := time.Duration(sudoPwTimeout) * time.Minute
 	msh.WithLock(func() {
 		msh.sudoPw = rawSecret
 		if msh.sudoClearDeadline == 0 {
-			go msh.startSudoPwClearChecker()
+			go msh.startSudoPwClearChecker(clientData)
 		}
-		msh.sudoClearDeadline = time.Now().Add(SudoTimeoutTime).Unix()
+		msh.sudoClearDeadline = time.Now().Add(pwTimeoutDur).Unix()
 	})
 
 	srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
@@ -2787,6 +2809,15 @@ func (msh *MShellProc) ClearCachedSudoPw() {
 	msh.WithLock(func() {
 		msh.sudoPw = nil
 		msh.sudoClearDeadline = 0
+	})
+}
+
+func (msh *MShellProc) ChangeSudoTimeout(deltaTime int64) {
+	msh.WithLock(func() {
+		if msh.sudoClearDeadline != 0 {
+			updated := msh.sudoClearDeadline + deltaTime*60
+			msh.sudoClearDeadline = max(0, updated)
+		}
 	})
 }
 

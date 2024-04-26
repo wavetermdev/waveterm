@@ -381,29 +381,40 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
-    setGlobalTermTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+    setRootTermTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+        let ftheme = theme;
+        if (ftheme == "inherit") {
+            ftheme = "";
+        }
         let kwargs = {
             nohist: "1",
-            termtheme: theme,
+            termtheme: ftheme,
         };
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
     setSessionTermTheme(sessionId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
-        console.log("setSessionTermTheme-------");
+        let fname = name;
+        if (name == "inherit") {
+            fname = "";
+        }
         let kwargs = {
             nohist: "1",
             id: sessionId,
-            name: name,
+            name: fname,
         };
         return GlobalModel.submitCommand("session", "termtheme", null, kwargs, interactive);
     }
 
     setScreenTermTheme(screenId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        let fname = name;
+        if (name == "inherit") {
+            fname = "";
+        }
         let kwargs = {
             nohist: "1",
             id: screenId,
-            name: name,
+            name: fname,
         };
         return GlobalModel.submitCommand("screen", "termtheme", null, kwargs, interactive);
     }
@@ -413,6 +424,7 @@ class CommandRunner {
         apitoken?: string;
         maxtokens?: string;
         baseurl?: string;
+        timeout?: string;
     }): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
@@ -428,6 +440,9 @@ class CommandRunner {
         }
         if (opts.baseurl != null) {
             kwargs["openaibaseurl"] = opts.baseurl;
+        }
+        if (opts.timeout != null) {
+            kwargs["openaitimeout"] = opts.timeout;
         }
         return GlobalModel.submitCommand("client", "set", null, kwargs, false);
     }
@@ -450,6 +465,31 @@ class CommandRunner {
     clientSetRightSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
         let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
         return GlobalModel.submitCommand("client", "setrightsidebar", null, kwargs, false);
+    }
+
+    setSudoPwStore(store: string): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwstore: store,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
+    }
+
+    setSudoPwTimeout(timeout: string): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwtimeout: timeout,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
+    }
+
+    setSudoPwClearOnSleep(clear: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwclearonsleep: String(clear),
+        };
+        console.log(kwargs);
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

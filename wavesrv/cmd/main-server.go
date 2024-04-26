@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -37,6 +36,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/bufferedpipe"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/cmdrunner"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/pcloud"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/releasechecker"
@@ -156,6 +156,7 @@ func HandleWs(w http.ResponseWriter, r *http.Request) {
 		removeWSStateAfterTimeout(clientId, stateConnectTime, WSStateReconnectTime)
 	}()
 	log.Printf("WebSocket opened %s %s\n", state.ClientId, shell.RemoteAddr)
+
 	state.RunWSRead()
 }
 
@@ -205,6 +206,33 @@ func HandleSetWinSize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJsonSuccess(w, true)
+}
+
+func HandlePowerMonitor(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var body sstore.PowerMonitorEventType
+	err := decoder.Decode(&body)
+	if err != nil {
+		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
+		return
+	}
+	cdata, err := sstore.EnsureClientData(r.Context())
+	if err != nil {
+		WriteJsonError(w, err)
+		return
+	}
+	switch body.Status {
+	case "suspend":
+		if !cdata.FeOpts.NoSudoPwClearOnSleep && cdata.FeOpts.SudoPwStore != "notimeout" {
+			for _, proc := range remote.GetRemoteMap() {
+				proc.ClearCachedSudoPw()
+			}
+		}
+		WriteJsonSuccess(w, true)
+	default:
+		WriteJsonError(w, fmt.Errorf("unknown status: %s", body.Status))
+		return
+	}
 }
 
 // params: fg, active, open
@@ -769,26 +797,21 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
+// Checks if the /config request is for a specific file or a directory. Passes the request to the appropriate handler.
+func ConfigHandlerCheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		configPath := r.URL.Path
-		configAbsPath, err := filepath.Abs(configPath)
-		if err != nil {
+		configBaseDir := filepath.Join(scbase.GetWaveHomeDir(), "config")
+		configFullPath, err := filepath.Abs(filepath.Join(scbase.GetWaveHomeDir(), configPath))
+		if err != nil || !strings.HasPrefix(configFullPath, configBaseDir) {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("error getting absolute path: %v", err)))
-			return
-		}
-		configBaseDir := path.Join(scbase.GetWaveHomeDir(), "config")
-		configFullPath := path.Join(scbase.GetWaveHomeDir(), configAbsPath)
-		if !strings.HasPrefix(configFullPath, configBaseDir) {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("error: path is not in config folder")))
+			w.Write([]byte("error: path is not in config folder"))
 			return
 		}
 		fstat, err := os.Stat(configFullPath)
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(fmt.Sprintf("file not found: %v", configAbsPath)))
+			w.Write([]byte(fmt.Sprintf("file not found: %v", err)))
 			return
 		} else if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -835,7 +858,7 @@ func AuthKeyWrapAllowHmac(fn WebFnType) WebFnType {
 			hmacOk, err := waveenc.ValidateUrlHmac([]byte(scbase.WaveAuthKey), r.URL.Path, qvals)
 			if err != nil || !hmacOk {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("error validating hmac")))
+				w.Write([]byte("error validating hmac"))
 				return
 			}
 			// fallthrough (hmac is valid)
@@ -976,6 +999,10 @@ func doShutdown(reason string) {
 		log.Printf("[wave] closing db connection\n")
 		sstore.CloseDB()
 		log.Printf("[wave] *** shutting down local server\n")
+		watcher := configstore.GetWatcher()
+		if watcher != nil {
+			watcher.Close()
+		}
 		time.Sleep(1 * time.Second)
 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		time.Sleep(5 * time.Second)
@@ -984,9 +1011,14 @@ func doShutdown(reason string) {
 }
 
 func configDirHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("running?")
 	configPath := r.URL.Path
-	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
+	homeDir := scbase.GetWaveHomeDir()
+	configFullPath, err := filepath.Abs(filepath.Join(homeDir, configPath))
+	if err != nil || !strings.HasPrefix(configFullPath, homeDir) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Invalid path: %v", err)))
+		return
+	}
 	dirFile, err := os.Open(configFullPath)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1014,6 +1046,13 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(dirListJson)
+}
+
+func configWatcher() {
+	watcher := configstore.GetWatcher()
+	if watcher != nil {
+		watcher.Start()
+	}
 }
 
 func startupActivityUpdate() {
@@ -1080,7 +1119,7 @@ func main() {
 		log.Printf("[error] %v\n", err)
 		return
 	}
-	_, err = scbase.EnsureConfigDir()
+	_, err = scbase.EnsureConfigDirs()
 	if err != nil {
 		log.Printf("[error] ensuring config directory: %v\n", err)
 		return
@@ -1120,6 +1159,7 @@ func main() {
 	startupActivityUpdate()
 	installSignalHandlers()
 	go telemetryLoop()
+	go configWatcher()
 	go stdinReadWatch()
 	go runWebSocketServer()
 	go func() {
@@ -1136,14 +1176,15 @@ func main() {
 	gr.HandleFunc(bufferedpipe.BufferedPipeGetterUrl, AuthKeyWrapAllowHmac(bufferedpipe.HandleGetBufferedPipeOutput))
 	gr.HandleFunc("/api/get-client-data", AuthKeyWrap(HandleGetClientData))
 	gr.HandleFunc("/api/set-winsize", AuthKeyWrap(HandleSetWinSize))
+	gr.HandleFunc("/api/power-monitor", AuthKeyWrap(HandlePowerMonitor))
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
 	gr.HandleFunc("/api/read-file", AuthKeyWrapAllowHmac(HandleReadFile))
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
-	configPath := path.Join(scbase.GetWaveHomeDir(), "config") + "/"
+	configPath := filepath.Join(scbase.GetWaveHomeDir(), "config") + strconv.QuoteRune(filepath.Separator)
 	log.Printf("[wave] config path: %q\n", configPath)
 	isFileHandler := http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))
 	isDirHandler := http.HandlerFunc(configDirHandler)
-	gr.PathPrefix("/config/").Handler(CheckIsDir(isDirHandler, isFileHandler))
+	gr.PathPrefix("/config/").Handler(ConfigHandlerCheckIsDir(isDirHandler, isFileHandler))
 
 	serverAddr := MainServerAddr
 	if scbase.IsDevMode() {

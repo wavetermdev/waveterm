@@ -146,6 +146,7 @@ class AIChat extends React.Component<{}, {}> {
             currentRef.value = "";
         } else {
             inputModel.grabCodeSelectSelection();
+            inputModel.setAuxViewFocus(false);
         }
     }
 

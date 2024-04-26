@@ -459,9 +459,6 @@ class InputModel {
 
     // Sets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
     setAuxViewFocus(focus: boolean): void {
-        if (this.getAuxViewFocus() == focus) {
-            return;
-        }
         mobx.action(() => {
             this.auxViewFocus.set(focus);
         })();
@@ -472,6 +469,9 @@ class InputModel {
         return mobx
             .computed(() => {
                 if (view != null && this.getActiveAuxView() != view) {
+                    return false;
+                }
+                if (view != null && !this.getAuxViewFocus()) {
                     return false;
                 }
                 if (view == null && this.hasFocus() && !this.getAuxViewFocus()) {
@@ -682,6 +682,7 @@ class InputModel {
 
     openAIAssistantChat(): void {
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
+        this.setAuxViewFocus(true);
         this.globalModel.sendActivity("aichat-open");
     }
 

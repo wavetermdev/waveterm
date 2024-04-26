@@ -184,10 +184,12 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             winWidth = screenWidth - realWidth + "px";
             sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
         }
+        const termRenderVersion = GlobalModel.termRenderVersion.get();
+
         return (
-            <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
+            <div className="screen-view" id={screen.screenId} data-screenid={screen.screenId} ref={this.screenViewRef}>
                 <ScreenWindowView
-                    key={screen.screenId + ":" + fontSize + ":" + dprStr}
+                    key={screen.screenId + ":" + fontSize + ":" + dprStr + ":" + termRenderVersion}
                     session={session}
                     screen={screen}
                     width={winWidth}

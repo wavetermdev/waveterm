@@ -419,6 +419,17 @@ function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
         });
 }
 
+function mainPowerHandler(status: string) {
+    const url = new URL(getBaseHostPort() + "/api/power-monitor");
+    const fetchHeaders = getFetchHeaders();
+    const body = { status: status };
+    fetch(url, { method: "post", body: JSON.stringify(body), headers: fetchHeaders })
+        .then((resp) => handleJsonFetchResponse(url, resp))
+        .catch((err) => {
+            console.log("error setting power monitor state", err);
+        });
+}
+
 function calcBounds(clientData: ClientDataType): Electron.Rectangle {
     const primaryDisplay = electron.screen.getPrimaryDisplay();
     const pdBounds = primaryDisplay.bounds;
@@ -958,3 +969,5 @@ function configureAutoUpdater(enabled: boolean) {
         }
     });
 })();
+
+electron.powerMonitor.on("suspend", () => mainPowerHandler("suspend"));

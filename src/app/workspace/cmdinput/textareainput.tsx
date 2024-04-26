@@ -13,6 +13,7 @@ import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
 
 type OV<T> = mobx.IObservableValue<T>;
+const MaxInputLength = 10 * 1024;
 
 function pageSize(div: any): number {
     if (div == null) {
@@ -644,6 +645,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onChange={this.onChange}
                     onSelect={this.onSelect}
                     placeholder="Type here..."
+                    maxLength={MaxInputLength}
                     className={cn("textarea", { "display-disabled": auxViewFocused })}
                 ></textarea>
                 <input
