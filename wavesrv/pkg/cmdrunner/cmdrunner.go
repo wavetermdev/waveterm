@@ -6091,6 +6091,26 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if pk.UIContext != nil && pk.UIContext.Build != "" {
 		clientVersion = pk.UIContext.Build
 	}
+	aiModel := clientData.OpenAIOpts.Model
+	if aiModel == "" {
+		aiModel = "(default) " + openai.DefaultModel
+	}
+	aiMaxTokens := fmt.Sprintf("%d", clientData.OpenAIOpts.MaxTokens)
+	if clientData.OpenAIOpts.MaxTokens == 0 {
+		aiMaxTokens = fmt.Sprintf("(default) %d", openai.DefaultMaxTokens)
+	}
+	aiMaxChoices := fmt.Sprintf("%d", clientData.OpenAIOpts.MaxChoices)
+	if clientData.OpenAIOpts.MaxChoices == 0 {
+		aiMaxChoices = "(not set)"
+	}
+	aiBaseUrl := clientData.OpenAIOpts.BaseURL
+	if aiBaseUrl == "" {
+		aiBaseUrl = "(openai default)"
+	}
+	aiTimeout := fmt.Sprintf("(default) %d", (OpenAIPacketTimeout / 1000))
+	if clientData.OpenAIOpts.Timeout != 0 {
+		aiTimeout = strconv.FormatFloat((float64(clientData.OpenAIOpts.Timeout) / 1000.0), 'f', -1, 64)
+	}
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "clientid", clientData.ClientId))
@@ -6104,11 +6124,11 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termfontfamily", clientData.FeOpts.TermFontFamily))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "termfontfamily", clientData.FeOpts.Theme))
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "aiapitoken", clientData.OpenAIOpts.APIToken))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "aimodel", clientData.OpenAIOpts.Model))
-	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "aimaxtokens", clientData.OpenAIOpts.MaxTokens))
-	buf.WriteString(fmt.Sprintf("  %-15s %d\n", "aimaxchoices", clientData.OpenAIOpts.MaxChoices))
-	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "aibaseurl", clientData.OpenAIOpts.BaseURL))
-	buf.WriteString(fmt.Sprintf("  %-15s %ss\n", "aitimeout", strconv.FormatFloat((float64(clientData.OpenAIOpts.Timeout)/1000.0), 'f', -1, 64)))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "aimodel", aiModel))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "aimaxtokens", aiMaxTokens))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "aimaxchoices", aiMaxChoices))
+	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "aibaseurl", aiBaseUrl))
+	buf.WriteString(fmt.Sprintf("  %-15s %ss\n", "aitimeout", aiTimeout))
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
 		InfoTitle: fmt.Sprintf("client info"),
