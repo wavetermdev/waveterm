@@ -797,7 +797,8 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
+// Checks if the /config request is for a specific file or a directory. Passes the request to the appropriate handler.
+func ConfigHandlerCheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		configPath := r.URL.Path
 		configBaseDir, err := filepath.Abs(filepath.Join(scbase.GetWaveHomeDir(), "config"))
@@ -1188,7 +1189,7 @@ func main() {
 	log.Printf("[wave] config path: %q\n", configPath)
 	isFileHandler := http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)+"/"))
 	isDirHandler := http.HandlerFunc(configDirHandler)
-	gr.PathPrefix("/config/").Handler(CheckIsDir(isDirHandler, isFileHandler))
+	gr.PathPrefix("/config/").Handler(ConfigHandlerCheckIsDir(isDirHandler, isFileHandler))
 
 	serverAddr := MainServerAddr
 	if scbase.IsDevMode() {
