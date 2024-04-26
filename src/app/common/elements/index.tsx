@@ -4,7 +4,6 @@ export { CmdStrCode } from "./cmdstrcode";
 export { renderCmdText } from "./cmdtext";
 export { Dropdown } from "./dropdown";
 export { InlineSettingsTextEdit } from "./inlinesettingstextedit";
-export { InlineSettingsNumberEdit } from "./inlinesettingsnumberedit";
 export { InputDecoration } from "./inputdecoration";
 export { LinkButton } from "./linkbutton";
 export { Markdown } from "./markdown";

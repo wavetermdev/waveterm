@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown, InlineSettingsNumberEdit } from "@/common/elements";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
@@ -399,13 +399,14 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                     <div className="settings-field">
                         <div className="settings-label">Sudo Timeout (Minutes)</div>
                         <div className="settings-input">
-                            <InlineSettingsNumberEdit
+                            <InlineSettingsTextEdit
                                 placeholder=""
                                 text={curSudoPwTimeout}
                                 value={curSudoPwTimeout}
                                 onChange={this.handleChangeSudoPwTimeoutConfig}
                                 maxLength={6}
                                 showIcon={true}
+                                isNumber={true}
                             />
                         </div>
                     </div>
