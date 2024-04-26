@@ -662,6 +662,7 @@ declare global {
         maxtokens?: number;
         maxchoices?: number;
         baseurl?: string;
+        timeout?: number;
     };
 
     type PlaybookType = {

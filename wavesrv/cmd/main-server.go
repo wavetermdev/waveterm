@@ -1017,7 +1017,6 @@ func doShutdown(reason string) {
 }
 
 func configDirHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("running?")
 	configPath := r.URL.Path
 	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
 	dirFile, err := os.Open(configFullPath)

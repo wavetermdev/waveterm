@@ -119,7 +119,7 @@ func (ws *WSShell) ReadPump() {
 	defer func() {
 		ws.Conn.Close()
 	}()
-	ws.Conn.SetReadLimit(4096)
+	ws.Conn.SetReadLimit(64 * 1024)
 	ws.Conn.SetReadDeadline(time.Now().Add(readWait))
 	for {
 		_, message, err := ws.Conn.ReadMessage()
