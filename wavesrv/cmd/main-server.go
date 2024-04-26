@@ -1180,9 +1180,9 @@ func main() {
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
 	gr.HandleFunc("/api/read-file", AuthKeyWrapAllowHmac(HandleReadFile))
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
-	configPath := filepath.Join(scbase.GetWaveHomeDir(), "config")
+	configPath := filepath.Join(scbase.GetWaveHomeDir(), "config") + strconv.QuoteRune(filepath.Separator)
 	log.Printf("[wave] config path: %q\n", configPath)
-	isFileHandler := http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)+"/"))
+	isFileHandler := http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))
 	isDirHandler := http.HandlerFunc(configDirHandler)
 	gr.PathPrefix("/config/").Handler(ConfigHandlerCheckIsDir(isDirHandler, isFileHandler))
 
