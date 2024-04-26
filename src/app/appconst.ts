@@ -47,7 +47,7 @@ export const TabIcons = [
     "file",
 ];
 export const DefaultSudoPwStore = "on";
-export const DefaultSudoPwTimeout = 5;
+export const DefaultSudoPwTimeoutMs = 5 * 60 * 1000;
 
 // @ts-ignore
 export const VERSION = __WAVETERM_VERSION__;
