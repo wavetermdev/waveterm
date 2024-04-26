@@ -38,7 +38,7 @@ jobs:
             echo "Electron Done"
             exit
           prompt: |
-            2. click "Continue"
+            2. click "Create new tab"
             2. focus the Wave input with the keyboard shorcut Command + I
             3. type 'ls' into the input
             4. press return
