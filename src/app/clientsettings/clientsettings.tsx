@@ -158,6 +158,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
+    inlineUpdateOpenAITimeout(newTimeout: string): void {
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ timeout: newTimeout });
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     setErrorMessage(msg: string): void {
         mobx.action(() => {
             this.errorMessage.set(msg);
@@ -191,6 +197,35 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         GlobalModel.clientSettingsViewModel.closeView();
     }
 
+    @boundMethod
+    getSudoPwStoreOptions(): DropdownItem[] {
+        const sudoCacheSources: DropdownItem[] = [];
+        sudoCacheSources.push({ label: "On", value: "on" });
+        sudoCacheSources.push({ label: "Off", value: "off" });
+        sudoCacheSources.push({ label: "On Without Timeout", value: "notimeout" });
+        return sudoCacheSources;
+    }
+
+    @boundMethod
+    handleChangeSudoPwStoreConfig(store: string) {
+        const prtn = GlobalCommandRunner.setSudoPwStore(store);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    handleChangeSudoPwTimeoutConfig(timeout: string) {
+        if (Number(timeout) != 0) {
+            const prtn = GlobalCommandRunner.setSudoPwTimeout(timeout);
+            commandRtnHandler(prtn, this.errorMessage);
+        }
+    }
+
+    @boundMethod
+    handleChangeSudoPwClearOnSleepConfig(clearOnSleep: boolean) {
+        const prtn = GlobalCommandRunner.setSudoPwClearOnSleep(clearOnSleep);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
     render() {
         const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
@@ -203,11 +238,17 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const maxTokensStr = String(
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
+        const aiTimeoutStr = String(
+            openAIOpts.timeout == null || openAIOpts.timeout == 0 ? 10 : openAIOpts.timeout / 1000
+        );
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
         const curTheme = GlobalModel.getThemeSource();
         const termThemes = getTermThemes(GlobalModel.termThemes.get(), "Wave Default");
         const currTermTheme = GlobalModel.getTermThemeSettings()["root"] ?? termThemes[0].label;
+        const curSudoPwStore = GlobalModel.getSudoPwStore();
+        const curSudoPwTimeout = String(GlobalModel.getSudoPwTimeout());
+        const curSudoPwClearOnSleep = GlobalModel.getSudoPwClearOnSleep();
 
         return (
             <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
@@ -343,6 +384,19 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
+                        <div className="settings-label">AI Timeout (seconds)</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={aiTimeoutStr}
+                                value={aiTimeoutStr}
+                                onChange={this.inlineUpdateOpenAITimeout}
+                                maxLength={10}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
                         <div className="settings-label">Global Hotkey</div>
                         <div className="settings-input">
                             <Dropdown
@@ -350,6 +404,40 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 options={this.getFKeys()}
                                 defaultValue={this.getCurrentShortcut()}
                                 onChange={this.handleChangeShortcut}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Remember Sudo Password</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="hotkey-dropdown"
+                                options={this.getSudoPwStoreOptions()}
+                                defaultValue={curSudoPwStore}
+                                onChange={this.handleChangeSudoPwStoreConfig}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Sudo Timeout (Minutes)</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={curSudoPwTimeout}
+                                value={curSudoPwTimeout}
+                                onChange={this.handleChangeSudoPwTimeoutConfig}
+                                maxLength={6}
+                                showIcon={true}
+                                isNumber={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Clear Sudo Password on Sleep</div>
+                        <div className="settings-input">
+                            <Toggle
+                                checked={curSudoPwClearOnSleep}
+                                onChange={this.handleChangeSudoPwClearOnSleepConfig}
                             />
                         </div>
                     </div>

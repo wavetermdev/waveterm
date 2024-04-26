@@ -424,6 +424,7 @@ class CommandRunner {
         apitoken?: string;
         maxtokens?: string;
         baseurl?: string;
+        timeout?: string;
     }): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
@@ -439,6 +440,9 @@ class CommandRunner {
         }
         if (opts.baseurl != null) {
             kwargs["openaibaseurl"] = opts.baseurl;
+        }
+        if (opts.timeout != null) {
+            kwargs["openaitimeout"] = opts.timeout;
         }
         return GlobalModel.submitCommand("client", "set", null, kwargs, false);
     }
@@ -461,6 +465,31 @@ class CommandRunner {
     clientSetRightSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
         let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
         return GlobalModel.submitCommand("client", "setrightsidebar", null, kwargs, false);
+    }
+
+    setSudoPwStore(store: string): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwstore: store,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
+    }
+
+    setSudoPwTimeout(timeout: string): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwtimeout: timeout,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
+    }
+
+    setSudoPwClearOnSleep(clear: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwclearonsleep: String(clear),
+        };
+        console.log(kwargs);
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

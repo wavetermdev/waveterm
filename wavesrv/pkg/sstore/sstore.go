@@ -43,6 +43,7 @@ const DBWALFileNameBackup = "backup.waveterm.db-wal"
 const MaxWebShareLineCount = 50
 const MaxWebShareScreenCount = 3
 const MaxLineStateSize = 4 * 1024 // 4k for now, can raise if needed
+const DefaultSudoTimeout = 5
 
 const DefaultSessionName = "default"
 const LocalRemoteAlias = "local"
@@ -232,6 +233,10 @@ type ClientWinSizeType struct {
 	FullScreen bool `json:"fullscreen,omitempty"`
 }
 
+type PowerMonitorEventType struct {
+	Status string `json:"status"`
+}
+
 type SidebarValueType struct {
 	Collapsed bool `json:"collapsed"`
 	Width     int  `json:"width"`
@@ -250,10 +255,14 @@ type ClientOptsType struct {
 }
 
 type FeOptsType struct {
-	TermFontSize      int               `json:"termfontsize,omitempty"`
-	TermFontFamily    string            `json:"termfontfamily,omitempty"`
-	Theme             string            `json:"theme,omitempty"`
-	TermThemeSettings map[string]string `json:"termthemesettings"`
+	TermFontSize         int               `json:"termfontsize,omitempty"`
+	TermFontFamily       string            `json:"termfontfamily,omitempty"`
+	Theme                string            `json:"theme,omitempty"`
+	TermThemeSettings    map[string]string `json:"termthemesettings"`
+	SudoPwStore          string            `json:"sudopwstore,omitempty"`
+	SudoPwTimeoutMs      int               `json:"sudopwtimeoutms,omitempty"`
+	SudoPwTimeout        int               `json:"sudopwtimeout,omitempty"`
+	NoSudoPwClearOnSleep bool              `json:"nosudopwclearonsleep,omitempty"`
 }
 
 type ReleaseInfoType struct {
@@ -289,6 +298,8 @@ func (cdata *ClientData) Clean() *ClientData {
 			Model:      cdata.OpenAIOpts.Model,
 			MaxTokens:  cdata.OpenAIOpts.MaxTokens,
 			MaxChoices: cdata.OpenAIOpts.MaxChoices,
+			Timeout:    cdata.OpenAIOpts.Timeout,
+			BaseURL:    cdata.OpenAIOpts.BaseURL,
 			// omit API Token
 		}
 		if cdata.OpenAIOpts.APIToken != "" {
@@ -736,6 +747,7 @@ type OpenAIOptsType struct {
 	BaseURL    string `json:"baseurl,omitempty"`
 	MaxTokens  int    `json:"maxtokens,omitempty"`
 	MaxChoices int    `json:"maxchoices,omitempty"`
+	Timeout    int    `json:"timeout,omitempty"`
 }
 
 const (

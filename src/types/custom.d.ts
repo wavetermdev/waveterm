@@ -598,6 +598,9 @@ declare global {
         termfontfamily: string;
         theme: NativeThemeSource;
         termthemesettings: TermThemeSettingsType;
+        sudopwstore: "on" | "off" | "notimeout";
+        sudopwtimeoutms: number;
+        nosudopwclearonsleep: boolean;
     };
 
     type ConfirmFlagsType = {
@@ -659,6 +662,7 @@ declare global {
         maxtokens?: number;
         maxchoices?: number;
         baseurl?: string;
+        timeout?: number;
     };
 
     type PlaybookType = {
