@@ -12,7 +12,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -64,9 +64,9 @@ func GetWaveHomeDir() string {
 		}
 		pdev := os.Getenv(WaveDevVarName)
 		if pdev != "" {
-			scHome = path.Join(homeVar, WaveDevDirName)
+			scHome = filepath.Join(homeVar, WaveDevDirName)
 		} else {
-			scHome = path.Join(homeVar, WaveDirName)
+			scHome = filepath.Join(homeVar, WaveDirName)
 		}
 
 	}
@@ -78,7 +78,7 @@ func MShellBinaryDir() string {
 	if appPath == "" {
 		appPath = "."
 	}
-	return path.Join(appPath, "bin", "mshell")
+	return filepath.Join(appPath, "bin", "mshell")
 }
 
 func MShellBinaryPath(version string, goos string, goarch string) (string, error) {
@@ -91,7 +91,7 @@ func MShellBinaryPath(version string, goos string, goarch string) (string, error
 		return "", fmt.Errorf("invalid mshell version: %q", version)
 	}
 	fileName := fmt.Sprintf("mshell-%s-%s.%s", versionStr, goos, goarch)
-	fullFileName := path.Join(binaryDir, fileName)
+	fullFileName := filepath.Join(binaryDir, fileName)
 	return fullFileName, nil
 }
 
@@ -134,7 +134,7 @@ func InitializeWaveAuthKey() error {
 	if err != nil {
 		return fmt.Errorf("cannot find/create WAVETERM_HOME directory %q", homeDir)
 	}
-	fileName := path.Join(homeDir, WaveAuthKeyFileName)
+	fileName := filepath.Join(homeDir, WaveAuthKeyFileName)
 	fd, err := os.Open(fileName)
 	if err != nil && errors.Is(err, fs.ErrNotExist) {
 		return createWaveAuthKeyFile(fileName)
@@ -162,7 +162,7 @@ func AcquireWaveLock() (*os.File, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot find/create WAVETERM_HOME directory %q", homeDir)
 	}
-	lockFileName := path.Join(homeDir, WaveLockFile)
+	lockFileName := filepath.Join(homeDir, WaveLockFile)
 	log.Printf("[base] acquiring lock on %s\n", lockFileName)
 	fd, err := os.OpenFile(lockFileName, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
@@ -188,7 +188,7 @@ func EnsureSessionDir(sessionId string) (string, error) {
 		return sdir, nil
 	}
 	scHome := GetWaveHomeDir()
-	sdir = path.Join(scHome, SessionsDirBaseName, sessionId)
+	sdir = filepath.Join(scHome, SessionsDirBaseName, sessionId)
 	err := ensureDir(sdir)
 	if err != nil {
 		return "", err
@@ -202,7 +202,7 @@ func EnsureSessionDir(sessionId string) (string, error) {
 // deprecated (v0.1.8)
 func GetSessionsDir() string {
 	waveHome := GetWaveHomeDir()
-	sdir := path.Join(waveHome, SessionsDirBaseName)
+	sdir := filepath.Join(waveHome, SessionsDirBaseName)
 	return sdir
 }
 
@@ -217,7 +217,7 @@ func EnsureScreenDir(screenId string) (string, error) {
 		return sdir, nil
 	}
 	scHome := GetWaveHomeDir()
-	sdir = path.Join(scHome, ScreensDirBaseName, screenId)
+	sdir = filepath.Join(scHome, ScreensDirBaseName, screenId)
 	err := ensureDir(sdir)
 	if err != nil {
 		return "", err
@@ -230,18 +230,18 @@ func EnsureScreenDir(screenId string) (string, error) {
 
 func GetScreensDir() string {
 	waveHome := GetWaveHomeDir()
-	sdir := path.Join(waveHome, ScreensDirBaseName)
+	sdir := filepath.Join(waveHome, ScreensDirBaseName)
 	return sdir
 }
 
 func EnsureConfigDirs() (string, error) {
 	scHome := GetWaveHomeDir()
-	configDir := path.Join(scHome, "config")
+	configDir := filepath.Join(scHome, "config")
 	err := ensureDir(configDir)
 	if err != nil {
 		return "", err
 	}
-	keybindingsFile := path.Join(configDir, "keybindings.json")
+	keybindingsFile := filepath.Join(configDir, "keybindings.json")
 	keybindingsFileObj, err := ensureFile(keybindingsFile)
 	if err != nil {
 		return "", err
@@ -250,7 +250,7 @@ func EnsureConfigDirs() (string, error) {
 		keybindingsFileObj.WriteString("[]\n")
 		keybindingsFileObj.Close()
 	}
-	terminalThemesDir := path.Join(configDir, "terminal-themes")
+	terminalThemesDir := filepath.Join(configDir, "terminal-themes")
 	err = ensureDir(terminalThemesDir)
 	if err != nil {
 		return "", err
