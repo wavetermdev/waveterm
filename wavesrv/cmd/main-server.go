@@ -800,7 +800,12 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		configPath := r.URL.Path
-		configBaseDir := filepath.Join(scbase.GetWaveHomeDir(), "config")
+		configBaseDir, err := filepath.Abs(filepath.Join(scbase.GetWaveHomeDir(), "config"))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("error: cannot get config base dir"))
+			return
+		}
 		configFullPath, err := filepath.Abs(filepath.Join(scbase.GetWaveHomeDir(), configPath))
 		if err != nil || !strings.HasPrefix(configFullPath, configBaseDir) {
 			w.WriteHeader(http.StatusInternalServerError)
