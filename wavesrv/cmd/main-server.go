@@ -1018,12 +1018,12 @@ func doShutdown(reason string) {
 
 func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	configPath := r.URL.Path
-	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
-	if !fs.ValidPath(configFullPath) {
+	if !fs.ValidPath(configPath) {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("invalid path: %s", configPath)))
 		return
 	}
+	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
 	dirFile, err := os.Open(configFullPath)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
