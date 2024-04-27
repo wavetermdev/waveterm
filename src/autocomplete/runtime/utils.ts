@@ -68,6 +68,28 @@ export function getPathSep(shell: Shell): string {
     return pathSeps.get(shell) as string;
 }
 
+export async function getEnvironmentVariables(cwd?: string): Promise<Record<string, string>> {
+    const resp = await GlobalModel.submitEphemeralCommand("eval", null, ["env"], null, false, {
+        expectsresponse: true,
+        overridecwd: cwd,
+        env: null,
+    });
+    const { stdout, stderr } = await GlobalModel.getEphemeralCommandOutput(resp);
+    if (stderr) {
+        log.debug({ msg: "failed to get environment variables", stderr });
+    }
+
+    const env = {};
+    stdout
+        .split("\n")
+        .filter((s) => s.length > 0)
+        .forEach((line) => {
+            const [key, value] = line.split("=");
+            env[key] = value;
+        });
+    return env;
+}
+
 /**
  * Determine if the current token is a path or not. If it is an incomplete path, return the base name of the path as the new cwd to be used in downstream parsing operations. Otherwise, return the current cwd.
  * @param token The token to check.
@@ -81,7 +103,7 @@ export async function resolveCwdToken(
     shell: Shell
 ): Promise<{ cwd: string; pathy: boolean; complete: boolean }> {
     log.debug("resolveCwdToken start", { token, cwd });
-    if (token == null) return { cwd, pathy: false, complete: false };
+    if (!token?.value) return { cwd, pathy: false, complete: false };
     log.debug("resolveCwdToken token not null");
     if (token.type != TokenType.PATH) return { cwd, pathy: false, complete: false };
     const sep = getPathSep(shell);
@@ -117,7 +139,7 @@ export async function resolvePathRemote(path: string): Promise<string | undefine
         }
     );
     const output = await GlobalModel.getEphemeralCommandOutput(resp);
-    log.debug("pathExistsRemote", path, output);
+    log.debug("resolvePathRemote", path, output);
     return output.stderr?.length > 0 ? undefined : output.stdout.trimEnd();
 }
 

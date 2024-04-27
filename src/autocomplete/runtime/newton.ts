@@ -96,8 +96,14 @@ export class Newton {
      */
     private args: Fig.Arg[] | undefined;
 
-    private argIndex: number = 0;
+    /**
+     * The current argument index when parsing subcommand arguments. This is used to determine which argument the parser is currently matching.
+     */
+    private subcommandArgIndex: number = 0;
 
+    /**
+     * The current argument index when parsing option arguments. This is used to determine which argument the parser is currently matching.
+     */
     private optionArgIndex: number = 0;
 
     /**
@@ -131,6 +137,9 @@ export class Newton {
      */
     private optionArgSeparators: string[];
 
+    /**
+     * Determines whether the parser should stop interpreting options. This is used when the user enters a double dash `--` to disable options and flags.
+     */
     private stopInterpretingOptions: boolean = false;
 
     /**
@@ -153,18 +162,24 @@ export class Newton {
      */
     private prevState: ParserState | undefined;
 
+    /**
+     * The suggestions that will be returned to the user.
+     */
     private suggestions: Map<string, Fig.Suggestion> = new Map();
 
-    private _cwd: string;
-
-    private overriddenCwd: string = undefined;
+    /**
+     * The current working directory for the parser.
+     */
+    private cwd: string;
 
     /**
-     * Used when the user is filtering on a path. When evaluating the new current working directory, we remove any directories from the front of the path that are already present in the current working directory.
-     * This variable lets us add them back
+     * The environment variables for the current command.
      */
-    private lastEntryPrefix: string = "";
+    private envVars: Record<string, string>;
 
+    /**
+     * The user's shell type.
+     */
     public shell: Shell;
 
     constructor(
@@ -172,6 +187,7 @@ export class Newton {
         entries: Token[],
         cwd: string,
         shell: Shell,
+        envVars?: Record<string, string>,
         entryIndex: number = 0,
         flagsArePosixNoncompliant: boolean = spec?.parserDirectives?.flagsArePosixNoncompliant ?? false,
         optionsMustPrecedeArguments: boolean = spec?.parserDirectives?.optionsMustPrecedeArguments ?? false,
@@ -186,7 +202,8 @@ export class Newton {
 
         // Clean the CWD to ensure it ends with a path separator
         const sep = getPathSep(shell);
-        this._cwd = cwd.endsWith(sep) ? cwd : cwd + sep;
+        this.cwd = cwd.endsWith(sep) ? cwd : cwd + sep;
+        this.envVars = envVars;
 
         this.shell = shell;
         this.entryIndex = entryIndex;
@@ -212,7 +229,7 @@ export class Newton {
         this.options = spec?.options ?? [];
         this.currentOption = undefined;
         this.args = getAll(spec?.args);
-        this.argIndex = 0;
+        this.subcommandArgIndex = 0;
         this.availableOptions = {};
         this.dependentOptions = {};
         this.suggestions = new Map();
@@ -231,7 +248,6 @@ export class Newton {
                 this.availableOptions[name] = option;
             }
         }
-        this.overriddenCwd = undefined;
     }
 
     /**
@@ -305,22 +321,6 @@ export class Newton {
             ? Object.values(this.availableOptions)
             : Object.values(this.availableOptions).filter((value) => matchAny(value.name, isOption));
         return retVal;
-    }
-
-    public get cwd(): string {
-        return this.overriddenCwd ?? this._cwd;
-    }
-
-    public set cwd(cwd: string) {
-        if (cwd != this._cwd) this.overriddenCwd = cwd;
-    }
-
-    public get isCwdOverridden(): boolean {
-        return this.overriddenCwd != undefined;
-    }
-
-    public get originalCwd(): string {
-        return this._cwd;
     }
 
     /**
@@ -541,10 +541,13 @@ export class Newton {
         return ParserState.Option;
     }
 
+    /**
+     * Parses the the current entry as an argument for either a subcommand or an option. This will determine the next state of the parser.
+     */
     private async parseArgument(): Promise<ParserState> {
         const entry = this.currentEntry;
         let args = this.args;
-        let argIndex = this.argIndex;
+        let argIndex = this.subcommandArgIndex;
         if (this.curState == ParserState.OptionArgument) {
             if (this.prevState == ParserState.Option) {
                 // This is a new set of option arguments, so we need to reset the argIndex
@@ -559,7 +562,7 @@ export class Newton {
             if (this.curState == ParserState.OptionArgument) {
                 this.optionArgIndex++;
             } else {
-                this.argIndex++;
+                this.subcommandArgIndex++;
             }
         };
 
@@ -615,6 +618,13 @@ export class Newton {
         }
     }
 
+    /**
+     * After a set of suggestions has been generated, this function will clean up the suggestions and remove unnecessary fields.
+     * @param suggestion The suggestion to clean up.
+     * @param defaultType The default type to use if the suggestion does not have a type.
+     * @param prefixStr The prefix to add to the suggestion name, if any.
+     * @returns The cleaned up suggestion.
+     */
     private prepareSuggestion(
         suggestion: Fig.Suggestion,
         defaultType: Fig.SuggestionType,
@@ -658,7 +668,7 @@ export class Newton {
         }
         if (!suggestionMin.insertValue) {
             log.debug("prepareSuggestion no insertValue", suggestionMin.name, partialCmd);
-            if (!partialCmd || !partialCmd.value) {
+            if (!partialCmd?.value) {
                 log.debug("prepareSuggestion no insertValue, no partialCmd", getFirst(suggestionMin.name));
                 suggestionMin.insertValue = getFirst(suggestionMin.name);
             } else {
@@ -779,6 +789,12 @@ export class Newton {
         }
     }
 
+    /**
+     * Add suggestions to the suggestions map.
+     * @param suggestions The suggestions to add.
+     * @param suggestionType The default suggestion type to use if the suggestion does not have a type.
+     * @param prefixStr The prefix string to add to the suggestions, if any.
+     */
     private addSuggestionsToMap(suggestions: Fig.Suggestion[], suggestionType: Fig.SuggestionType, prefixStr?: string) {
         suggestions?.forEach((suggestion) => {
             this.suggestions.set(
@@ -792,7 +808,7 @@ export class Newton {
      * Add suggestions for the current argument.
      * @param arg The argument to add suggestions for.
      * @param dryRun Whether to actually add the suggestions or just count them.
-     * @param prefixStr The prefix string to add to the suggestions.
+     * @param prefixStr The prefix string to add to the suggestions, if any.
      * @returns The number of suggestions added.
      */
     private async addSuggestionsForArg(arg: Fig.Arg, dryRun: boolean, prefixStr?: string): Promise<number> {
@@ -809,7 +825,8 @@ export class Newton {
                             runGenerator(
                                 gen,
                                 this.entries.map((e) => e.value),
-                                this.cwd
+                                this.cwd,
+                                this.envVars
                             )
                         )
                     )
@@ -839,11 +856,17 @@ export class Newton {
         return suggestions.length;
     }
 
+    /**
+     * Add the subcommands for the current spec as suggestions.
+     */
     private addSuggestionsForSubcommands() {
         this.filterSuggestionsAndAddToMap(this.subcommands, this.spec?.filterStrategy, this.lastEntry, "subcommand");
     }
 
-    private addSuggestionsForOptions() {
+    /**
+     * Add all available options and flags as suggestions.
+     */
+    private addSuggestionsForOptionsAndFlags() {
         if (this.stopInterpretingOptions) {
             log.debug("cannot add suggestions for options after --");
             return;
@@ -857,15 +880,16 @@ export class Newton {
         this.filterSuggestionsAndAddToMap(availableOptions, this.spec?.filterStrategy, entry, "option");
     }
 
+    /**
+     * Runs the history template and adds the suggestions to the suggestions map. This skips the filtering as the history template already does this.
+     */
     private async addSuggestionsForHistory(cwd: string = this.cwd): Promise<void> {
-        this.filterSuggestionsAndAddToMap(
-            await runTemplates("history", cwd),
-            this.spec?.filterStrategy,
-            this.lastEntry,
-            undefined
-        );
+        this.addSuggestionsToMap(await runTemplates("history", cwd), "special");
     }
 
+    /**
+     * Runs the filepaths template and adds the suggestions to the suggestions map.
+     */
     private async addSuggestionsForFilepaths(cwd: string = this.cwd): Promise<void> {
         log.debug("addSuggestionsForFilepaths", cwd, this.lastEntry, this.spec?.filterStrategy);
         this.filterSuggestionsAndAddToMap(
@@ -1074,12 +1098,12 @@ export class Newton {
             "currentArgs: ",
             this.args,
             "argIndex: ",
-            this.argIndex
+            this.subcommandArgIndex
         );
 
         if (!this.error) {
             // We parsed the entire entry array without error, so we can return suggestions
-            let lastEntry = this.lastEntry;
+            let lastEntry: Token = this.lastEntry ?? { type: TokenType.UNKNOWN, value: undefined };
             log.debug(
                 "allEntries: ",
                 this.entries,
@@ -1091,8 +1115,11 @@ export class Newton {
                 lastEntry.type == TokenType.WHITESPACE
             );
 
+            // Add history before we override the current working directory
+            await this.addSuggestionsForHistory();
+
             // Determine the current working directory to use for file suggestions. If the last entry is a valid path, trim any directory prefixes off the entry and set the new working directory.
-            if (lastEntry.type == TokenType.PATH) {
+            if (lastEntry.type == TokenType.PATH && lastEntry.value) {
                 const { cwd: resolvedCwd, pathy } = await resolveCwdToken(lastEntry, this.cwd, this.shell);
                 if (pathy) {
                     this.cwd = resolvedCwd;
@@ -1134,7 +1161,7 @@ export class Newton {
                                 "subcommand"
                             );
                         }
-                        this.addSuggestionsForOptions();
+                        this.addSuggestionsForOptionsAndFlags();
                     }
                     this.addSuggestionsForSubcommands();
                     break;
@@ -1164,11 +1191,11 @@ export class Newton {
                             }
                             case ParserState.PosixFlag: {
                                 if (this.currentOption) {
-                                    const existingFlags = lastEntry?.value.slice(1) ?? "";
+                                    const existingFlags = lastEntry.value?.slice(1) ?? "";
 
                                     const newOption = modifyPosixFlags(this.currentOption, existingFlags);
                                     // Suggest the other available flags as additional suggestions
-                                    this.addSuggestionsForOptions();
+                                    this.addSuggestionsForOptionsAndFlags();
                                     // Push the last flag as a suggestion, in case that is as far as the user wants to go
                                     this.addSuggestionsToMap([newOption], "option");
                                 } else {
@@ -1184,10 +1211,10 @@ export class Newton {
                     break;
                 }
                 case ParserState.SubcommandArgument:
-                    log.debug("SubCommandArgument", "currentArgs: ", this.args, "argIndex: ", this.argIndex);
+                    log.debug("SubCommandArgument", "currentArgs: ", this.args, "argIndex: ", this.subcommandArgIndex);
                     // The parser is currently matching option arguments, so suggest all available arguments for the current option.
-                    if (this.args && this.argIndex < this.args.length) {
-                        const arg = this.args[this.argIndex];
+                    if (this.args && this.subcommandArgIndex < this.args.length) {
+                        const arg = this.args[this.subcommandArgIndex];
                         if (arg) {
                             await this.addSuggestionsForArg(arg, false);
                         }
@@ -1196,7 +1223,7 @@ export class Newton {
                 case ParserState.OptionArgument: {
                     // The parser is currently matching option arguments, so suggest all available arguments for the current option.
                     const option = this.currentOption;
-                    log.debug("OptionArgument", "currentArgs: ", option.args, "argIndex: ", this.argIndex);
+                    log.debug("OptionArgument", "currentArgs: ", option.args, "argIndex: ", this.subcommandArgIndex);
 
                     const args = getAll(option.args);
                     const argIndex = this.optionArgIndex;
@@ -1226,12 +1253,9 @@ export class Newton {
                     break;
             }
 
-            if (this.suggestions.size == 0) {
-                log.debug("no suggestions found");
+            if (lastEntry.type == TokenType.WHITESPACE || lastEntry.type == TokenType.PATH) {
                 await this.addSuggestionsForFilepaths();
             }
-
-            await this.addSuggestionsForHistory(this.originalCwd);
 
             const suggestionsArr = Array.from(this.suggestions.values());
             sortSuggestions(suggestionsArr);

@@ -5,51 +5,32 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { GlobalModel } from "@/models";
 import log from "../utils/log";
 import { runTemplates } from "./template";
-import { buildExecuteShellCommand } from "./utils";
+import { buildExecuteShellCommand, getEnvironmentVariables } from "./utils";
 
-const getGeneratorContext = async (cwd: string): Promise<Fig.GeneratorContext> => {
-    const resp = await GlobalModel.submitEphemeralCommand("eval", null, ["env"], null, false, {
-        expectsresponse: true,
-        overridecwd: cwd,
-        env: null,
-    });
-
-    const { stdout, stderr } = await GlobalModel.getEphemeralCommandOutput(resp);
-    if (stderr) {
-        log.debug({ msg: "failed to get environment variables", stderr });
-    }
-
-    const env = {};
-    stdout
-        .split("\n")
-        .filter((s) => s.length > 0)
-        .forEach((line) => {
-            const [key, value] = line.split("=");
-            env[key] = value;
-        });
+async function getGeneratorContext(cwd: string, env?: Record<string, string>): Promise<Fig.GeneratorContext> {
     return {
-        environmentVariables: env,
+        environmentVariables: env ?? (await getEnvironmentVariables(cwd)),
         currentWorkingDirectory: cwd,
         currentProcess: "", // TODO: define current process
-        sshPrefix: "", // deprecated, should be empty
+        sshPrefix: "", // deprecated, should be empt
         isDangerous: false,
         searchTerm: "", // TODO: define search term
     };
-};
+}
 
 let lastFirstToken = "";
 let lastFinalToken = "";
 let cachedSuggestions: Fig.Suggestion[] = [];
 
 // TODO: add support getQueryTerm
-export const runGenerator = async (
+export async function runGenerator(
     generator: Fig.Generator,
     tokens: string[],
-    cwd: string
-): Promise<Fig.Suggestion[]> => {
+    cwd: string,
+    env?: Record<string, string>
+): Promise<Fig.Suggestion[]> {
     const { script, postProcess, scriptTimeout, splitOn, custom, template, filterTemplateSuggestions, trigger } =
         generator;
 
@@ -141,7 +122,7 @@ export const runGenerator = async (
 
         if (custom) {
             log.debug("custom", custom);
-            const customSuggestions = await custom(tokens, executeShellCommand, await getGeneratorContext(cwd));
+            const customSuggestions = await custom(tokens, executeShellCommand, await getGeneratorContext(cwd, env));
             log.debug("customSuggestions", customSuggestions);
             suggestions.push(...customSuggestions);
         }
@@ -161,4 +142,4 @@ export const runGenerator = async (
         log.debug({ msg: "generator failed", err, script, splitOn, template });
     }
     return suggestions;
-};
+}
