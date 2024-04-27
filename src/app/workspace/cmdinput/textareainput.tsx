@@ -218,8 +218,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return rtn;
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectRight", (waveEvent) => {
-            inputObject.arrowRightPressed();
-            return true;
+            return inputObject.arrowRightPressed();
         });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageAbove", (waveEvent) => {
             this.curPress = "historyupdown";
@@ -416,8 +415,14 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     @boundMethod
-    arrowRightPressed() {
+    arrowRightPressed(): boolean {
+        // If the cursor is at the end of the line, apply the primary suggestion
+        const curSP = this.getCurSP();
+        if (curSP.pos < curSP.str.length) {
+            return false;
+        }
         GlobalModel.autocompleteModel.applyPrimarySuggestion();
+        return true;
     }
 
     scrollPage(up: boolean) {

@@ -9,8 +9,10 @@ import log from "@/autocomplete/utils/log";
  * @returns the length of the token at the end of the line
  */
 function getEndTokenLength(line: string): number {
-    const lastSpaceIndex = line?.lastIndexOf(" ");
-    return line ? line.length - lastSpaceIndex - 1 : 0;
+    if (!line) {
+        return 0;
+    }
+    return line.length - line.lastIndexOf(" ") - 1;
 }
 
 /**
@@ -144,27 +146,31 @@ export class AutocompleteModel {
             } else if (suggestion.name.length > 0) {
                 retVal = suggestion.name[0];
             }
-
-            log.debug("retVal", retVal);
-
-            // The following is a workaround for slow responses from underlying commands. It assumes that the primary suggestion will be a continuation of the current token.
-            // The runtime will provide a number of chars to drop, but it will return after the render has already completed, meaning we will end up with a flicker. This is a workaround to prevent the flicker.
-            // As we add more characters to the current token, we assume we need to drop the same number of characters from the primary suggestion, even if the runtime has not yet provided the updated characters to drop.
             const curLine = this.globalModel.inputModel.curLine;
-            const curEndTokenLen = getEndTokenLength(curLine);
-            const lastEndTokenLen = getEndTokenLength(this.globalModel.inputModel.lastCurLine);
-            log.debug("curEndTokenLen", curEndTokenLen, "lastEndTokenLen", lastEndTokenLen);
-            if (curEndTokenLen > lastEndTokenLen) {
-                this.charsToDrop = Math.max(curEndTokenLen, this.charsToDrop ?? 0);
-            } else {
-                this.charsToDrop = Math.min(curEndTokenLen, this.charsToDrop ?? 0);
-            }
 
-            if (this.charsToDrop > 0) {
-                retVal = retVal.substring(this.charsToDrop);
+            if (retVal.startsWith(curLine.trim())) {
+                // This accounts for if the first suggestion is a history item, since this will be the full command string.
+                retVal = retVal.substring(curLine.length);
+            } else {
+                log.debug("retVal", retVal);
+
+                // The following is a workaround for slow responses from underlying commands. It assumes that the primary suggestion will be a continuation of the current token.
+                // The runtime will provide a number of chars to drop, but it will return after the render has already completed, meaning we will end up with a flicker. This is a workaround to prevent the flicker.
+                // As we add more characters to the current token, we assume we need to drop the same number of characters from the primary suggestion, even if the runtime has not yet provided the updated characters to drop.
+                const curEndTokenLen = getEndTokenLength(curLine);
+                const lastEndTokenLen = getEndTokenLength(this.globalModel.inputModel.lastCurLine);
+                log.debug("curEndTokenLen", curEndTokenLen, "lastEndTokenLen", lastEndTokenLen);
+                if (curEndTokenLen > lastEndTokenLen) {
+                    this.charsToDrop = Math.max(curEndTokenLen, this.charsToDrop ?? 0);
+                } else {
+                    this.charsToDrop = Math.min(curEndTokenLen, this.charsToDrop ?? 0);
+                }
+
+                if (this.charsToDrop > 0) {
+                    retVal = retVal.substring(this.charsToDrop);
+                }
+                log.debug("charsToDrop", this.charsToDrop, "retVal", retVal);
             }
-            log.debug("charsToDrop", this.charsToDrop, "retVal", retVal);
-            log.debug("ghost prompt", curLine + retVal);
             log.debug("ghost prompt", curLine + retVal);
         }
         return retVal;
@@ -180,7 +186,13 @@ export class AutocompleteModel {
         if (!this.isEnabled()) {
             return null;
         }
-        return this.getSuggestionCompletion(this.getPrimarySuggestionIndex());
+        const suggestionIndex = this.getPrimarySuggestionIndex();
+        const retVal = this.getSuggestionCompletion(suggestionIndex);
+        if (retVal) {
+            return retVal;
+        } else if (suggestionIndex > 0) {
+            this.setPrimarySuggestionIndex(0);
+        }
     }
 
     /**
