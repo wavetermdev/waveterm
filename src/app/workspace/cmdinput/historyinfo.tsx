@@ -161,7 +161,7 @@ class HistoryInfo extends React.Component<{}, {}> {
             hitem = inputModel.getFirstHistoryItem();
         }
         if (hitem != null) {
-            // This is a hack to ensure that any other scrolling instru
+            // This is a hack to ensure that our call to scroll to the current item is not overwritten. 
             setTimeout(() => {
                 inputModel.scrollHistoryItemIntoView(hitem.historynum);
             }, 1);
