@@ -727,15 +727,19 @@ class Model {
     }
 
     onFocusCmdInputPressed() {
+        console.log("onFocusCmdInputPressed");
         if (this.activeMainView.get() != "session") {
+            console.log("setting activeMainView to session");
             mobx.action(() => {
                 this.activeMainView.set("session");
                 setTimeout(() => {
                     // allows for the session view to load
+                    console.log("focusing cmd input");
                     this.inputModel.setAuxViewFocus(false);
                 }, 100);
             })();
         } else {
+            console.log("focusing cmd input");
             this.inputModel.setAuxViewFocus(false);
         }
     }

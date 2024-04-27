@@ -601,6 +601,7 @@ class Screen {
         }
         let ftype = this.focusType.get();
         if (ftype == "input") {
+            console.log("screen give focus to input");
             this.globalModel.inputModel.giveFocus();
         } else {
             let sline: LineType = null;
