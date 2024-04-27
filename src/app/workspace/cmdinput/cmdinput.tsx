@@ -63,7 +63,6 @@ class CmdInput extends React.Component<{}, {}> {
 
     @boundMethod
     baseCmdInputClick(e: React.SyntheticEvent): void {
-        console.log("baseCmdInputClick");
         if (this.promptRef.current != null) {
             if (this.promptRef.current.contains(e.target)) {
                 return;

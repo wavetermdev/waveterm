@@ -140,14 +140,11 @@ class InputModel {
 
     // Focuses the main input or the auxiliary view, depending on the active auxiliary view
     giveFocus(): void {
-        console.log("giveFocus");
         // Override active view to the main input if aux view does not have focus
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
-        console.log("activeAuxView: ", activeAuxView);
         mobx.action(() => {
             switch (activeAuxView) {
                 case appconst.InputAuxView_History: {
-                    console.log("focus history input");
                     const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
                     if (elem != null) {
                         elem.focus();
@@ -155,11 +152,9 @@ class InputModel {
                     break;
                 }
                 case appconst.InputAuxView_AIChat:
-                    console.log("focus ai chat input");
                     this.setAIChatFocus();
                     break;
                 case null: {
-                    console.log("focus main input");
                     const elem = document.getElementById("main-cmd-input");
                     if (elem != null) {
                         elem.focus();
@@ -168,7 +163,6 @@ class InputModel {
                     break;
                 }
                 default: {
-                    console.log("focus aux view");
                     const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
                     if (elem != null) {
                         elem.focus();
@@ -304,7 +298,6 @@ class InputModel {
 
     getHistorySelectedItem(): HistoryItem {
         const hidx = this.historyIndex.get();
-        console.log("hidx: ", hidx);
         if (hidx == 0) {
             return null;
         }
@@ -416,7 +409,6 @@ class InputModel {
     }
 
     scrollHistoryItemIntoView(hnum: string): void {
-        console.log("scrolling to history item: ", hnum);
         const elem: HTMLElement = document.querySelector(".cmd-history .hnum-" + hnum);
         if (elem == null) {
             return;
@@ -451,7 +443,6 @@ class InputModel {
 
     // Sets the active auxiliary view
     setActiveAuxView(view: InputAuxViewType): void {
-        console.log("setActiveAuxView: ", view);
         if (view == this.activeAuxView.get()) {
             return;
         }
@@ -466,7 +457,6 @@ class InputModel {
     // If the auxiliary view is not open, this will return false.
     getAuxViewFocus(): boolean {
         if (this.getActiveAuxView() == null) {
-            console.log("getAuxViewFocus: false");
             return false;
         }
         return this.auxViewFocus.get();
@@ -474,7 +464,6 @@ class InputModel {
 
     // Sets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
     setAuxViewFocus(focus: boolean): void {
-        console.log("setAuxViewFocus: ", focus);
         mobx.action(() => {
             this.auxViewFocus.set(focus);
         })();
@@ -560,7 +549,6 @@ class InputModel {
 
         if (info != null && timeoutMs) {
             this.infoTimeoutId = setTimeout(() => {
-                console.log("clearing info msg");
                 if (this.activeAuxView.get() != appconst.InputAuxView_Info) {
                     return;
                 }
@@ -584,7 +572,6 @@ class InputModel {
     }
 
     grabCodeSelectSelection() {
-        console.log("grabCodeSelectSelection");
         if (
             this.codeSelectSelectedIndex.get() >= 0 &&
             this.codeSelectSelectedIndex.get() < this.codeSelectBlockRefArray.length

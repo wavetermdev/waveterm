@@ -279,7 +279,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     setFocus(): void {
-        console.log("TextAreaInput.setFocus");
         GlobalModel.inputModel.giveFocus();
     }
 
@@ -540,7 +539,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     @boundMethod
     handleFocus(e: any) {
         e.preventDefault();
-        console.log("TextAreaInput.handleFocus");
         GlobalModel.inputModel.giveFocus();
     }
 

@@ -104,12 +104,10 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     onTextAreaFocused(e: any) {
-        console.log("onTextAreaFocused");
         GlobalModel.inputModel.setAuxViewFocus(true);
     }
 
     onTextAreaBlur(e: any) {
-        console.log("onTextAreaBlur");
         GlobalModel.inputModel.setAuxViewFocus(false);
     }
 

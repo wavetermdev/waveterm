@@ -155,7 +155,6 @@ class HistoryInfo extends React.Component<{}, {}> {
     containingText: mobx.IObservableValue<string> = mobx.observable.box("");
 
     componentDidMount() {
-        console.log("HistoryInfo mounted");
         const inputModel = GlobalModel.inputModel;
         let hitem = inputModel.getHistorySelectedItem();
         if (hitem == null) {
@@ -176,7 +175,6 @@ class HistoryInfo extends React.Component<{}, {}> {
 
     @boundMethod
     handleItemClick(hitem: HistoryItem) {
-        console.log("handleItemClick", hitem);
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
         inputModel.setAuxViewFocus(!inputModel.getAuxViewFocus());
