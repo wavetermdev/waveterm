@@ -1115,8 +1115,7 @@ export class Newton {
                 lastEntry.type == TokenType.WHITESPACE
             );
 
-            // Add history before we override the current working directory
-            await this.addSuggestionsForHistory();
+            const originalCwd = this.cwd;
 
             // Determine the current working directory to use for file suggestions. If the last entry is a valid path, trim any directory prefixes off the entry and set the new working directory.
             if (lastEntry.type == TokenType.PATH && lastEntry.value) {
@@ -1253,9 +1252,12 @@ export class Newton {
                     break;
             }
 
-            if (lastEntry.type == TokenType.WHITESPACE || lastEntry.type == TokenType.PATH) {
+            if (this.suggestions.size == 0) {
                 await this.addSuggestionsForFilepaths();
             }
+
+            // Add history but use the original cwd, not the overridden one
+            await this.addSuggestionsForHistory(originalCwd);
 
             const suggestionsArr = Array.from(this.suggestions.values());
             sortSuggestions(suggestionsArr);
