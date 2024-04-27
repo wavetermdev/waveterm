@@ -2,7 +2,6 @@ import { Model } from "./model";
 import * as mobx from "mobx";
 import { Shell, getSuggestions } from "@/autocomplete";
 import log from "@/autocomplete/utils/log";
-import { m } from "framer-motion";
 
 /**
  * Gets the length of the token at the end of the line.
