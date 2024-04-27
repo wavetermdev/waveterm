@@ -114,13 +114,39 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
         const inputModel = GlobalModel.inputModel;
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:autocomplete", (waveEvent) => {
             this.curPress = "tab";
-            if (this.lastTab) {
-                const curLine = inputModel.curLine;
-                if (curLine != "") {
-                    inputModel.setActiveAuxView(appconst.InputAuxView_Suggestions);
+            // For now, we want to preserve the old behavior if autocomplete is disabled
+            if (GlobalModel.autocompleteModel.isEnabled()) {
+                if (this.lastTab) {
+                    const curLine = inputModel.curLine;
+                    if (curLine != "") {
+                        inputModel.setActiveAuxView(appconst.InputAuxView_Suggestions);
+                    }
+                } else {
+                    this.lastTab = true;
                 }
             } else {
+                const lastTab = this.lastTab;
                 this.lastTab = true;
+                this.curPress = "tab";
+                const curLine = inputModel.curLine;
+                if (lastTab) {
+                    GlobalModel.submitCommand(
+                        "_compgen",
+                        null,
+                        [curLine],
+                        { comppos: String(curLine.length), compshow: "1", nohist: "1" },
+                        true
+                    );
+                } else {
+                    GlobalModel.submitCommand(
+                        "_compgen",
+                        null,
+                        [curLine],
+                        { comppos: String(curLine.length), nohist: "1" },
+                        true
+                    );
+                }
+                return true;
             }
             return true;
         });
