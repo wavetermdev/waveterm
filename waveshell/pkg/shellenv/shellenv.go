@@ -11,6 +11,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
 const (
@@ -344,21 +345,21 @@ func ShellVarMapFromState(state *packet.ShellState) map[string]string {
 }
 
 func DumpVarMapFromState(state *packet.ShellState) {
-	fmt.Printf("DUMP-STATE-VARS:\n")
+	wlog.Logf("DUMP-STATE-VARS:\n")
 	if state == nil {
-		fmt.Printf("  nil\n")
+		wlog.Logf("  nil\n")
 		return
 	}
 	decls := VarDeclsFromState(state)
 	for _, decl := range decls {
-		fmt.Printf("  %s %#v\n", decl.Name, decl)
+		wlog.Logf("  %s %#v\n", decl.Name, decl)
 	}
 	envMap := EnvMapFromState(state)
-	fmt.Printf("DUMP-STATE-ENV:\n")
+	wlog.Logf("DUMP-STATE-ENV:\n")
 	for k, v := range envMap {
-		fmt.Printf("  %s=%s\n", k, v)
+		wlog.Logf("  %s=%s\n", k, v)
 	}
-	fmt.Printf("\n\n")
+	wlog.Logf("\n\n")
 }
 
 func VarDeclsFromState(state *packet.ShellState) []*DeclareDeclType {

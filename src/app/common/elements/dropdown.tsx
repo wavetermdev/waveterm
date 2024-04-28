@@ -163,7 +163,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         if (isOpen) {
             const option = options[highlightedIndex];
             if (option) {
-                this.handleSelect(option.value, undefined);
+                this.handleSelect(option, undefined);
             }
         } else {
             this.toggleDropdown();
@@ -185,18 +185,19 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
     handleKeyDown(event: React.KeyboardEvent) {}
 
     @boundMethod
-    handleSelect(value: string, event?: React.MouseEvent | React.KeyboardEvent) {
+    handleSelect({ value, noop }: DropdownItem, event?: React.MouseEvent | React.KeyboardEvent) {
         const { onChange } = this.props;
         if (event) {
             event.stopPropagation(); // This stops the event from bubbling up to the wrapper
         }
 
-        if (!("value" in this.props)) {
-            this.setState({ internalValue: value });
-        }
         onChange(value);
         this.setState({ isOpen: false, isTouched: true });
         this.unregisterKeybindings();
+
+        if (!("value" in this.props) && !noop) {
+            this.setState({ internalValue: value });
+        }
     }
 
     @boundMethod
@@ -245,10 +246,11 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                               className={cn("wave-dropdown-item unselectable", {
                                   "wave-dropdown-item-highlighted": index === highlightedIndex,
                               })}
-                              onClick={(e) => this.handleSelect(option.value, e)}
+                              onClick={(e) => this.handleSelect(option, e)}
                               onMouseEnter={() => this.setState({ highlightedIndex: index })}
                               onMouseLeave={() => this.setState({ highlightedIndex: -1 })}
                           >
+                              {option.icon && <span className="wave-dropdown-item-icon">{option.icon}</span>}
                               {option.label}
                           </div>
                       ))}
@@ -256,7 +258,11 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                   document.getElementById("app")!
               )
             : null;
-
+        let selectedOptionLabelStyle = {};
+        const wrapperClientWidth = this.wrapperRef.current?.clientWidth;
+        if ((wrapperClientWidth ?? 0) > 0) {
+            selectedOptionLabelStyle["width"] = Math.max(wrapperClientWidth - 55, 0);
+        }
         return (
             <div
                 className={cn("wave-dropdown", className, {
@@ -282,7 +288,10 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                     </div>
                 </If>
                 <div
-                    className={cn("wave-dropdown-display unselectable", { "offset-left": decoration?.startDecoration })}
+                    className={cn("wave-dropdown-display unselectable truncate", {
+                        "offset-left": decoration?.startDecoration,
+                    })}
+                    style={selectedOptionLabelStyle}
                 >
                     {selectedOptionLabel}
                 </div>

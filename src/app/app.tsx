@@ -4,10 +4,10 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
+import cn from "classnames";
+
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
-import dayjs from "dayjs";
-import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import { isBlank } from "@/util/util";
 import { WorkspaceView } from "./workspace/workspaceview";
@@ -22,15 +22,15 @@ import { DisconnectedModal, ClientStopModal } from "@/modals";
 import { ModalsProvider } from "@/modals/provider";
 import { Button } from "@/elements";
 import { ErrorBoundary } from "@/common/error/errorboundary";
-import cn from "classnames";
-import "./app.less";
+import { TermStyleList } from "@/elements";
 
-dayjs.extend(localizedFormat);
+import "./app.less";
 
 @mobxReact.observer
 class App extends React.Component<{}, {}> {
     dcWait: OV<boolean> = mobx.observable.box(false, { name: "dcWait" });
     mainContentRef: React.RefObject<HTMLDivElement> = React.createRef();
+    termThemesLoaded: OV<boolean> = mobx.observable.box(false, { name: "termThemesLoaded" });
 
     constructor(props: {}) {
         super(props);
@@ -80,6 +80,13 @@ class App extends React.Component<{}, {}> {
         rightSidebarModel.saveState(width, false);
     }
 
+    @boundMethod
+    handleTermThemesRendered() {
+        mobx.action(() => {
+            this.termThemesLoaded.set(true);
+        })();
+    }
+
     render() {
         const remotesModel = GlobalModel.remotesModel;
         const disconnected = !GlobalModel.ws.open.get() || !GlobalModel.waveSrvRunning.get();
@@ -90,7 +97,8 @@ class App extends React.Component<{}, {}> {
 
         // Previously, this is done in sidebar.tsx but it causes flicker when clientData is null cos screen-view shifts around.
         // Doing it here fixes the flicker cos app is not rendered until clientData is populated.
-        if (clientData == null) {
+        // wait for termThemes as well (this actually means that the "connect" packet has been received)
+        if (clientData == null || GlobalModel.termThemes.get() == null) {
             return null;
         }
 
@@ -118,52 +126,65 @@ class App extends React.Component<{}, {}> {
         if (dcWait) {
             setTimeout(() => this.updateDcWait(false), 0);
         }
+
         // used to force a full reload of the application
         const renderVersion = GlobalModel.renderVersion.get();
         const mainSidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
         const rightSidebarCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
         const activeMainView = GlobalModel.activeMainView.get();
         const lightDarkClass = GlobalModel.isDarkTheme.get() ? "is-dark" : "is-light";
+        const mainClassName = cn(
+            "platform-" + platform,
+            {
+                "mainsidebar-collapsed": mainSidebarCollapsed,
+                "rightsidebar-collapsed": rightSidebarCollapsed,
+            },
+            lightDarkClass
+        );
         return (
-            <div
-                key={"version-" + renderVersion}
-                id="main"
-                className={cn(
-                    "platform-" + platform,
-                    { "mainsidebar-collapsed": mainSidebarCollapsed, "rightsidebar-collapsed": rightSidebarCollapsed },
-                    lightDarkClass
-                )}
-                onContextMenu={this.handleContextMenu}
-            >
-                <If condition={mainSidebarCollapsed}>
-                    <div key="logo-button" className="logo-button-container">
-                        <div className="logo-button-spacer" />
-                        <div className="logo-button" onClick={this.openMainSidebar}>
-                            <img src="public/logos/wave-logo.png" alt="logo" />
+            <>
+                <TermStyleList onRendered={this.handleTermThemesRendered} />
+                <div
+                    key={`version- + ${renderVersion}`}
+                    id="main"
+                    className={mainClassName}
+                    onContextMenu={this.handleContextMenu}
+                >
+                    <If condition={this.termThemesLoaded.get()}>
+                        <If condition={mainSidebarCollapsed}>
+                            <div key="logo-button" className="logo-button-container">
+                                <div className="logo-button-spacer" />
+                                <div className="logo-button" onClick={this.openMainSidebar}>
+                                    <img src="public/logos/wave-logo.png" alt="logo" />
+                                </div>
+                            </div>
+                        </If>
+                        <If condition={GlobalModel.isDev && rightSidebarCollapsed && activeMainView == "session"}>
+                            <div className="right-sidebar-triggers">
+                                <Button
+                                    className="secondary ghost right-sidebar-trigger"
+                                    onClick={this.openRightSidebar}
+                                >
+                                    <i className="fa-sharp fa-solid fa-sidebar-flip"></i>
+                                </Button>
+                            </div>
+                        </If>
+                        <div ref={this.mainContentRef} className="main-content">
+                            <MainSideBar parentRef={this.mainContentRef} />
+                            <ErrorBoundary>
+                                <PluginsView />
+                                <WorkspaceView />
+                                <HistoryView />
+                                <BookmarksView />
+                                <ConnectionsView model={remotesModel} />
+                                <ClientSettingsView model={remotesModel} />
+                            </ErrorBoundary>
+                            <RightSideBar parentRef={this.mainContentRef} />
                         </div>
-                    </div>
-                </If>
-                <If condition={GlobalModel.isDev && rightSidebarCollapsed && activeMainView == "session"}>
-                    <div className="right-sidebar-triggers">
-                        <Button className="secondary ghost right-sidebar-trigger" onClick={this.openRightSidebar}>
-                            <i className="fa-sharp fa-regular fa-lightbulb"></i>
-                        </Button>
-                    </div>
-                </If>
-                <div ref={this.mainContentRef} className="main-content">
-                    <MainSideBar parentRef={this.mainContentRef} />
-                    <ErrorBoundary>
-                        <PluginsView />
-                        <WorkspaceView />
-                        <HistoryView />
-                        <BookmarksView />
-                        <ConnectionsView model={remotesModel} />
-                        <ClientSettingsView model={remotesModel} />
-                    </ErrorBoundary>
-                    <RightSideBar parentRef={this.mainContentRef} />
+                        <ModalsProvider />
+                    </If>
                 </div>
-                <ModalsProvider />
-            </div>
+            </>
         );
     }
 }

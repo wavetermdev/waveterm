@@ -419,6 +419,17 @@ function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
         });
 }
 
+function mainPowerHandler(status: string) {
+    const url = new URL(getBaseHostPort() + "/api/power-monitor");
+    const fetchHeaders = getFetchHeaders();
+    const body = { status: status };
+    fetch(url, { method: "post", body: JSON.stringify(body), headers: fetchHeaders })
+        .then((resp) => handleJsonFetchResponse(url, resp))
+        .catch((err) => {
+            console.log("error setting power monitor state", err);
+        });
+}
+
 function calcBounds(clientData: ClientDataType): Electron.Rectangle {
     const primaryDisplay = electron.screen.getPrimaryDisplay();
     const pdBounds = primaryDisplay.bounds;
@@ -467,6 +478,35 @@ electron.ipcMain.on("toggle-developer-tools", (event) => {
     if (MainWindow != null) {
         MainWindow.webContents.toggleDevTools();
     }
+    event.returnValue = true;
+});
+
+function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electron.Menu {
+    const menuItems: electron.MenuItem[] = [];
+    for (const menuDef of menuDefArr) {
+        const menuItemTemplate: electron.MenuItemConstructorOptions = {
+            role: menuDef.role as any,
+            label: menuDef.label,
+            type: menuDef.type,
+            click: () => {
+                MainWindow?.webContents.send("contextmenu-click", menuDef.id);
+            },
+        };
+        if (menuDef.submenu != null) {
+            menuItemTemplate.submenu = convertMenuDefArrToMenu(menuDef.submenu);
+        }
+        const menuItem = new electron.MenuItem(menuItemTemplate);
+        menuItems.push(menuItem);
+    }
+    return electron.Menu.buildFromTemplate(menuItems);
+}
+
+electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuItem[], { x, y }) => {
+    if (menuDefArr == null || menuDefArr.length == 0) {
+        return;
+    }
+    const menu = convertMenuDefArrToMenu(menuDefArr);
+    menu.popup({ x, y });
     event.returnValue = true;
 });
 
@@ -675,12 +715,6 @@ function runWaveSrv() {
     });
     return rtnPromise;
 }
-
-electron.ipcMain.on("context-screen", (_, { screenId }, { x, y }) => {
-    console.log("context-screen", screenId);
-    const menu = getContextMenu();
-    menu.popup({ x, y });
-});
 
 electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
     if (opts == null) {
@@ -923,3 +957,5 @@ function configureAutoUpdater(enabled: boolean) {
         }
     });
 })();
+
+electron.powerMonitor.on("suspend", () => mainPowerHandler("suspend"));

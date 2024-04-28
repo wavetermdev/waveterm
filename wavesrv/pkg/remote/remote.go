@@ -6,6 +6,9 @@ package remote
 import (
 	"bytes"
 	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -19,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -35,12 +37,14 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shexec"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/mod/semver"
@@ -56,6 +60,7 @@ const PtyReadBufSize = 100
 const RemoteConnectTimeout = 15 * time.Second
 const RpcIterChannelSize = 100
 const MaxInputDataSize = 1000
+const SudoTimeoutTime = 5 * time.Minute
 
 var envVarsToStrip map[string]bool = map[string]bool{
 	"PROMPT":               true,
@@ -164,7 +169,9 @@ type MShellProc struct {
 	RunningCmds      map[base.CommandKey]*RunCmdType
 	PendingStateCmds map[pendingStateKey]base.CommandKey // key=[remoteinstance name] (in progress commands that might update the state)
 
-	Client *ssh.Client
+	Client            *ssh.Client
+	sudoPw            []byte
+	sudoClearDeadline int64
 }
 
 type CommandInputSink interface {
@@ -172,13 +179,12 @@ type CommandInputSink interface {
 }
 
 type RunCmdType struct {
-	CK         base.CommandKey
-	SessionId  string
-	ScreenId   string
-	RemotePtr  sstore.RemotePtrType
-	RunPacket  *packet.RunPacketType
-	Ephemeral  bool
-	EphCancled atomic.Bool // only for Ephemeral commands, if true, then the command result should be discarded
+	CK            base.CommandKey
+	SessionId     string
+	ScreenId      string
+	RemotePtr     sstore.RemotePtrType
+	RunPacket     *packet.RunPacketType
+	EphemeralOpts *ephemeral.EphemeralRunOpts
 }
 
 type ReinitCommandSink struct {
@@ -1425,7 +1431,7 @@ func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType
 	}
 	defer func() {
 		if rtnErr != nil {
-			telemetry.UpdateActivityWrap(ctx, makeReinitErrorUpdate(shellType), "reiniterror")
+			telemetry.GoUpdateActivityWrap(makeReinitErrorUpdate(shellType), "reiniterror")
 		}
 	}()
 	startTs := time.Now()
@@ -1736,7 +1742,7 @@ func (msh *MShellProc) Launch(interactive bool) {
 	msh.WriteToPtyBuffer("connected to %s\n", remoteCopy.RemoteCanonicalName)
 	go func() {
 		exitErr := cproc.Cmd.Wait()
-		exitCode := shexec.GetExitCode(exitErr)
+		exitCode := utilfn.GetExitCode(exitErr)
 		msh.WithLock(func() {
 			if msh.Status == StatusConnected || msh.Status == StatusConnecting {
 				msh.Status = StatusDisconnected
@@ -1886,14 +1892,14 @@ type RunCommandOpts struct {
 	// optional, if not provided shellstate will look up state from remote instance
 	// ReturnState cannot be used with StatePtr
 	// this will also cause this command to bypass the pending state cmd logic
-	StatePtr *sstore.ShellStatePtr
+	StatePtr *packet.ShellStatePtr
 
 	// set to true to skip creating the pty file (for restarted commands)
 	NoCreateCmdPtyFile bool
 
 	// this command will not go into the DB, and will not have a ptyout file created
-	// forces special packet handling (sets RunCommandType.Ephemeral)
-	Ephemeral bool
+	// forces special packet handling (sets RunCommandType.EphemeralOpts)
+	EphemeralOpts *ephemeral.EphemeralRunOpts
 }
 
 // returns (CmdType, allow-updates-callback, err)
@@ -1920,6 +1926,13 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	if rcOpts.StatePtr != nil && runPacket.ReturnState {
 		return nil, nil, fmt.Errorf("RunCommand: cannot use ReturnState with StatePtr")
 	}
+	if runPacket.StatePtr != nil {
+		return nil, nil, fmt.Errorf("runPacket.StatePtr should not be set, it is set in RunCommand")
+	}
+
+	if rcOpts.EphemeralOpts != nil {
+		log.Printf("[info] running ephemeral command ck: %s\n", runPacket.CK)
+	}
 
 	// pending state command logic
 	// if we are currently running a command that can change the state, we need to wait for it to finish
@@ -1930,9 +1943,10 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		}
 		ok, existingRct := msh.testAndSetPendingStateCmd(screenId, remotePtr, newPSC)
 		if !ok {
-			if existingRct.Ephemeral {
+			if rcOpts.EphemeralOpts != nil {
 				// if the existing command is ephemeral, we cancel it and continue
-				existingRct.EphCancled.Store(true)
+				log.Printf("[warning] canceling existing ephemeral state cmd: %s\n", existingRct.CK)
+				rcOpts.EphemeralOpts.Canceled.Store(true)
 			} else {
 				line, _, err := sstore.GetLineCmdByLineId(ctx, screenId, existingRct.CK.GetCmdId())
 				return nil, nil, makePSCLineError(existingRct.CK, line, err)
@@ -1950,20 +1964,44 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	}
 
 	// get current remote-instance state
-	var statePtr *sstore.ShellStatePtr
+	var statePtr *packet.ShellStatePtr
 	if rcOpts.StatePtr != nil {
 		statePtr = rcOpts.StatePtr
 	} else {
 		var err error
 		statePtr, err = sstore.GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
 		if err != nil {
+			log.Printf("[error] RunCommand: cannot get remote state: %v\n", err)
 			return nil, nil, fmt.Errorf("cannot run command: %w", err)
 		}
 		if statePtr == nil {
+			log.Printf("[error] RunCommand: no valid shell state found\n")
 			return nil, nil, fmt.Errorf("cannot run command: no valid shell state found")
 		}
 	}
+	// statePtr will not be nil
+	runPacket.StatePtr = statePtr
 	currentState, err := sstore.GetFullState(ctx, *statePtr)
+
+	if rcOpts.EphemeralOpts != nil {
+		// Setting UsePty to false will ensure that the outputs get written to the correct file descriptors to extract stdout and stderr
+		runPacket.UsePty = rcOpts.EphemeralOpts.UsePty
+
+		// Ephemeral commands can override the cwd without persisting it to the DB
+		if rcOpts.EphemeralOpts.OverrideCwd != "" {
+			currentState.Cwd = rcOpts.EphemeralOpts.OverrideCwd
+		}
+
+		// Ephemeral commands can override the env without persisting it to the DB
+		if len(rcOpts.EphemeralOpts.Env) > 0 {
+			curEnvs := shellenv.DeclMapFromState(currentState)
+			for key, val := range rcOpts.EphemeralOpts.Env {
+				curEnvs[key] = &shellenv.DeclareDeclType{Name: key, Value: val, Args: "x"}
+			}
+			currentState.ShellVars = shellenv.SerializeDeclMap(curEnvs)
+		}
+	}
+
 	if err != nil || currentState == nil {
 		return nil, nil, fmt.Errorf("cannot load current remote state: %w", err)
 	}
@@ -1981,30 +2019,33 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 			removeCmdWait(runPacket.CK)
 		}
 	}()
-
+	runningCmdType := &RunCmdType{
+		CK:            runPacket.CK,
+		SessionId:     sessionId,
+		ScreenId:      screenId,
+		RemotePtr:     remotePtr,
+		RunPacket:     runPacket,
+		EphemeralOpts: rcOpts.EphemeralOpts,
+	}
 	// RegisterRpc + WaitForResponse is used to get any waveshell side errors
 	// waveshell will either return an error (in a ResponsePacketType) or a CmdStartPacketType
 	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
-	err = shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
-	if err != nil {
-		return nil, nil, fmt.Errorf("sending run packet to remote: %w", err)
-	}
-	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
-	if rtnPk == nil {
-		return nil, nil, ctx.Err()
-	}
-	startPk, ok := rtnPk.(*packet.CmdStartPacketType)
-	if !ok {
-		respPk, ok := rtnPk.(*packet.ResponsePacketType)
-		if !ok {
-			return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
-		}
-		if respPk.Error != "" {
-			return nil, nil, respPk.Err()
-		}
-		return nil, nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
-	}
-
+	go func() {
+		startPk, err := msh.sendRunPacketAndReturnResponse(runPacket)
+		runCmdUpdateFn(runPacket.CK, func() {
+			if err != nil {
+				// the cmd failed (never started)
+				msh.handleCmdStartError(runningCmdType, err)
+				return
+			}
+			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancelFn()
+			err = sstore.UpdateCmdStartInfo(ctx, runPacket.CK, startPk.Pid, startPk.MShellPid)
+			if err != nil {
+				log.Printf("error updating cmd start info (in remote.RunCommand): %v\n", err)
+			}
+		})
+	}()
 	// command is now successfully runnning
 	status := sstore.CmdStatusRunning
 	if runPacket.Detached {
@@ -2020,30 +2061,46 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		StatePtr:   *statePtr,
 		TermOpts:   makeTermOpts(runPacket),
 		Status:     status,
-		CmdPid:     startPk.Pid,
-		RemotePid:  startPk.MShellPid,
 		ExitCode:   0,
 		DurationMs: 0,
 		RunOut:     nil,
 		RtnState:   runPacket.ReturnState,
 	}
-	if !rcOpts.NoCreateCmdPtyFile && !rcOpts.Ephemeral {
+	if !rcOpts.NoCreateCmdPtyFile && rcOpts.EphemeralOpts == nil {
 		err = sstore.CreateCmdPtyFile(ctx, cmd.ScreenId, cmd.LineId, cmd.TermOpts.MaxPtySize)
 		if err != nil {
 			// TODO the cmd is running, so this is a tricky error to handle
 			return nil, nil, fmt.Errorf("cannot create local ptyout file for running command: %v", err)
 		}
 	}
-	msh.AddRunningCmd(&RunCmdType{
-		CK:        runPacket.CK,
-		SessionId: sessionId,
-		ScreenId:  screenId,
-		RemotePtr: remotePtr,
-		RunPacket: runPacket,
-		Ephemeral: rcOpts.Ephemeral,
-	})
-
+	msh.AddRunningCmd(runningCmdType)
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
+}
+
+// no context because it is called as a goroutine
+func (msh *MShellProc) sendRunPacketAndReturnResponse(runPacket *packet.RunPacketType) (*packet.CmdStartPacketType, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	err := shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
+	if err != nil {
+		return nil, fmt.Errorf("sending run packet to remote: %w", err)
+	}
+	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
+	if rtnPk == nil {
+		return nil, ctx.Err()
+	}
+	startPk, ok := rtnPk.(*packet.CmdStartPacketType)
+	if !ok {
+		respPk, ok := rtnPk.(*packet.ResponsePacketType)
+		if !ok {
+			return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
+		}
+		if respPk.Error != "" {
+			return nil, respPk.Err()
+		}
+		return nil, fmt.Errorf("invalid response received from server for run packet: %s", packet.AsString(rtnPk))
+	}
+	return startPk, nil
 }
 
 // helper func to construct the proper error given what information we have
@@ -2116,13 +2173,17 @@ func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error 
 func (msh *MShellProc) AddRunningCmd(rct *RunCmdType) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
+	if rct.EphemeralOpts != nil {
+		log.Printf("[info] adding ephemeral running command: %s\n", rct.CK)
+	}
 	msh.RunningCmds[rct.RunPacket.CK] = rct
 }
 
 func (msh *MShellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	return msh.RunningCmds[ck]
+	rtn := msh.RunningCmds[ck]
+	return rtn
 }
 
 func (msh *MShellProc) RemoveRunningCmd(ck base.CommandKey) {
@@ -2216,31 +2277,160 @@ func (msh *MShellProc) notifyHangups_nolock() {
 	msh.PendingStateCmds = make(map[pendingStateKey]base.CommandKey)
 }
 
-// either fullstate or statediff will be set (not both) <- this is so the result is compatible with the sstore.UpdateRemoteState function
-// note that this function *does* touch the DB, if FinalStateDiff is set, will ensure that StateBase is written to DB
-func (msh *MShellProc) makeStatePtrFromFinalState(ctx context.Context, donePk *packet.CmdDonePacketType) (*sstore.ShellStatePtr, map[string]string, *packet.ShellState, *packet.ShellStateDiff, error) {
+func (msh *MShellProc) resolveFinalState(ctx context.Context, origState *packet.ShellState, origStatePtr *packet.ShellStatePtr, donePk *packet.CmdDonePacketType) (*packet.ShellState, error) {
 	if donePk.FinalState != nil {
+		if origStatePtr == nil {
+			return nil, fmt.Errorf("command must have a stateptr to resolve final state")
+		}
 		finalState := stripScVarsFromState(donePk.FinalState)
-		feState := sstore.FeStateFromShellState(finalState)
-		statePtr := &sstore.ShellStatePtr{BaseHash: finalState.GetHashVal(false)}
-		return statePtr, feState, finalState, nil, nil
+		return finalState, nil
 	}
 	if donePk.FinalStateDiff != nil {
+		if donePk.FinalStateBasePtr == nil {
+			return nil, fmt.Errorf("invalid rtnstate, has diff but no baseptr")
+		}
 		stateDiff := stripScVarsFromStateDiff(donePk.FinalStateDiff)
-		feState, err := msh.getFeStateFromDiff(stateDiff)
+		if origStatePtr == donePk.FinalStateBasePtr {
+			// this is the normal case.  the stateptr from the run-packet should match the baseptr from the done-packet
+			// this is also the most efficient, because we don't need to fetch the original state
+			sapi, err := shellapi.MakeShellApi(origState.GetShellType())
+			if err != nil {
+				return nil, fmt.Errorf("cannot make shellapi from initial state: %w", err)
+			}
+			fullState, err := sapi.ApplyShellStateDiff(origState, stateDiff)
+			if err != nil {
+				return nil, fmt.Errorf("cannot apply shell state diff: %w", err)
+			}
+			return fullState, nil
+		}
+		// this is strange (why is backend returning non-original stateptr?)
+		// but here, we fetch the stateptr, and then apply the diff against that
+		realOrigState, err := sstore.GetFullState(ctx, *donePk.FinalStateBasePtr)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, fmt.Errorf("cannot get original state for diff: %w", err)
 		}
-		fullState := msh.StateMap.GetStateByHash(stateDiff.GetShellType(), stateDiff.BaseHash)
-		if fullState != nil {
-			sstore.StoreStateBase(ctx, fullState)
+		if realOrigState == nil {
+			return nil, fmt.Errorf("cannot get original state for diff: not found")
 		}
-		diffHashArr := append(([]string)(nil), donePk.FinalStateDiff.DiffHashArr...)
-		diffHashArr = append(diffHashArr, donePk.FinalStateDiff.GetHashVal(false))
-		statePtr := &sstore.ShellStatePtr{BaseHash: donePk.FinalStateDiff.BaseHash, DiffHashArr: diffHashArr}
-		return statePtr, feState, nil, stateDiff, nil
+		sapi, err := shellapi.MakeShellApi(realOrigState.GetShellType())
+		if err != nil {
+			return nil, fmt.Errorf("cannot make shellapi from original state: %w", err)
+		}
+		fullState, err := sapi.ApplyShellStateDiff(realOrigState, stateDiff)
+		if err != nil {
+			return nil, fmt.Errorf("cannot apply shell state diff: %w", err)
+		}
+		return fullState, nil
 	}
-	return nil, nil, nil, nil, nil
+	return nil, nil
+}
+
+// after this limit we'll switch to persisting the full state
+const NewStateDiffSizeThreshold = 30 * 1024
+
+// will update the remote instance with the final state
+// this is complicated because we want to be as efficient as possible.
+// so we pull the current remote-instance state (just the baseptr).  then we compute the diff.
+// then we check the size of the diff, and only persist the diff it is under some size threshold
+// also we check to see if the diff succeeds (it can fail if the shell or version changed).
+// in those cases we also update the RI with the full state
+func (msh *MShellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdType, newState *packet.ShellState) (*sstore.RemoteInstance, error) {
+	curRIState, err := sstore.GetRemoteStatePtr(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr)
+	if err != nil {
+		return nil, fmt.Errorf("error trying to get current screen stateptr: %w", err)
+	}
+	feState := sstore.FeStateFromShellState(newState)
+	if curRIState == nil {
+		// no current state, so just persist the full state
+		return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, newState, nil)
+	}
+	// pull the base (not the diff) state from the RI (right now we don't want to make multi-level diffs)
+	riBaseState, err := sstore.GetStateBase(ctx, curRIState.BaseHash)
+	if err != nil {
+		return nil, fmt.Errorf("error trying to get statebase: %w", err)
+	}
+	sapi, err := shellapi.MakeShellApi(riBaseState.GetShellType())
+	if err != nil {
+		return nil, fmt.Errorf("error trying to make shellapi: %w", err)
+	}
+	newStateDiff, err := sapi.MakeShellStateDiff(riBaseState, curRIState.BaseHash, newState)
+	if err != nil {
+		// if we can't make a diff, just persist the full state (this could happen if the shell type changes)
+		return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, newState, nil)
+	}
+	// we have a diff, let's check the diff size first
+	_, encodedDiff := newStateDiff.EncodeAndHash()
+	if len(encodedDiff) > NewStateDiffSizeThreshold {
+		// diff is too large, persist the full state
+		return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, newState, nil)
+	}
+	// diff is small enough, persist the diff
+	return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, nil, newStateDiff)
+}
+
+func (msh *MShellProc) handleSudoError(ck base.CommandKey, sudoErr error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	screenId, lineId := ck.Split()
+
+	update := scbus.MakeUpdatePacket()
+	errOutputStr := fmt.Sprintf("%serror: %v%s\n", utilfn.AnsiRedColor(), sudoErr, utilfn.AnsiResetColor())
+	msh.writeToCmdPtyOut(ctx, screenId, lineId, []byte(errOutputStr))
+	doneInfo := sstore.CmdDoneDataValues{
+		Ts:         time.Now().UnixMilli(),
+		ExitCode:   1,
+		DurationMs: 0,
+	}
+	err := sstore.UpdateCmdDoneInfo(ctx, update, ck, doneInfo, sstore.CmdStatusError)
+	if err != nil {
+		log.Printf("error updating cmddone info (in handleSudoError): %v\n", err)
+		return
+	}
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, screenId, lineId)
+	if err != nil {
+		log.Printf("error trying to update screen focus type (in handleSudoError): %v\n", err)
+		// fall-through (nothing to do)
+	}
+	if screen != nil {
+		update.AddUpdate(*screen)
+	}
+	scbus.MainUpdateBus.DoUpdate(update)
+}
+
+func (msh *MShellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
+	if rct == nil {
+		log.Printf("handleCmdStartError, no rct\n")
+		return
+	}
+	defer msh.RemoveRunningCmd(rct.CK)
+	if rct.EphemeralOpts != nil {
+		// nothing to do for ephemeral commands besides remove the running command
+		return
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	update := scbus.MakeUpdatePacket()
+	errOutputStr := fmt.Sprintf("%serror: %v%s\n", utilfn.AnsiRedColor(), startErr, utilfn.AnsiResetColor())
+	msh.writeToCmdPtyOut(ctx, rct.ScreenId, rct.CK.GetCmdId(), []byte(errOutputStr))
+	doneInfo := sstore.CmdDoneDataValues{
+		Ts:         time.Now().UnixMilli(),
+		ExitCode:   1,
+		DurationMs: 0,
+	}
+	err := sstore.UpdateCmdDoneInfo(ctx, update, rct.CK, doneInfo, sstore.CmdStatusError)
+	if err != nil {
+		log.Printf("error updating cmddone info (in handleCmdStartError): %v\n", err)
+		return
+	}
+	screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, rct.CK.GetGroupId(), rct.CK.GetCmdId())
+	if err != nil {
+		log.Printf("error trying to update screen focus type (in handleCmdDonePacket): %v\n", err)
+		// fall-through (nothing to do)
+	}
+	if screen != nil {
+		update.AddUpdate(*screen)
+	}
+	scbus.MainUpdateBus.DoUpdate(update)
 }
 
 func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDonePacketType) {
@@ -2250,48 +2440,66 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 	}
 	// this will remove from RunningCmds and from PendingStateCmds
 	defer msh.RemoveRunningCmd(donePk.CK)
-	if rct.Ephemeral && rct.EphCancled.Load() {
+	if rct.EphemeralOpts != nil && rct.EphemeralOpts.Canceled.Load() {
+		log.Printf("cmddone %s (ephemeral canceled)\n", donePk.CK)
 		// do nothing when an ephemeral command is canceled
 		return
 	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	update := scbus.MakeUpdatePacket()
-	if !rct.Ephemeral {
+	if rct.EphemeralOpts == nil {
 		// only update DB for non-ephemeral commands
-		err := sstore.UpdateCmdDoneInfo(ctx, update, donePk.CK, donePk, sstore.CmdStatusDone)
+		cmdDoneInfo := sstore.CmdDoneDataValues{
+			Ts:         donePk.Ts,
+			ExitCode:   donePk.ExitCode,
+			DurationMs: donePk.DurationMs,
+		}
+		err := sstore.UpdateCmdDoneInfo(ctx, update, donePk.CK, cmdDoneInfo, sstore.CmdStatusDone)
 		if err != nil {
-			msh.WriteToPtyBuffer("*error updating cmddone: %v\n", err)
+			log.Printf("error updating cmddone info (in handleCmdDonePacket): %v\n", err)
 			return
 		}
 		screen, err := sstore.UpdateScreenFocusForDoneCmd(ctx, donePk.CK.GetGroupId(), donePk.CK.GetCmdId())
 		if err != nil {
-			msh.WriteToPtyBuffer("*error trying to update screen focus type: %v\n", err)
+			log.Printf("error trying to update screen focus type (in handleCmdDonePacket): %v\n", err)
 			// fall-through (nothing to do)
 		}
 		if screen != nil {
 			update.AddUpdate(*screen)
 		}
 	}
+
+	// Close the ephemeral response writer if it exists
+	if rct.EphemeralOpts != nil && rct.EphemeralOpts.ExpectsResponse {
+		log.Printf("closing ephemeral response writers\n")
+		defer rct.EphemeralOpts.StdoutWriter.Close()
+		defer rct.EphemeralOpts.StderrWriter.Close()
+	}
+
 	// ephemeral commands *do* update the remote state
-	if donePk.FinalState != nil || donePk.FinalStateDiff != nil {
-		statePtr, feState, finalState, finalStateDiff, err := msh.makeStatePtrFromFinalState(ctx, donePk)
+	// not all commands get a final state (only RtnState commands have this returned)
+	// so in those cases finalState will be nil
+	finalState, err := msh.resolveFinalState(ctx, rct.RunPacket.State, rct.RunPacket.StatePtr, donePk)
+	if err != nil {
+		log.Printf("error resolving final state for cmd: %v\n", err)
+		// fallthrough
+	}
+	if finalState != nil {
+		newRI, err := msh.updateRIWithFinalState(ctx, rct, finalState)
 		if err != nil {
-			msh.WriteToPtyBuffer("*error trying to read final command state: %v\n", err)
+			log.Printf("error updating RI with final state (in handleCmdDonePacket): %v\n", err)
+			// fallthrough
 		}
-		remoteInst, err := sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, finalState, finalStateDiff)
-		if err != nil {
-			msh.WriteToPtyBuffer("*error trying to update remotestate: %v\n", err)
-			// fall-through (nothing to do)
-		}
-		if remoteInst != nil {
-			update.AddUpdate(sstore.MakeSessionUpdateForRemote(rct.SessionId, remoteInst))
+		if newRI != nil {
+			update.AddUpdate(sstore.MakeSessionUpdateForRemote(rct.SessionId, newRI))
 		}
 		// ephemeral commands *do not* update cmd state (there is no command)
-		if statePtr != nil && !rct.Ephemeral {
-			err = sstore.UpdateCmdRtnState(ctx, donePk.CK, *statePtr)
+		if newRI != nil && rct.EphemeralOpts == nil {
+			newRIStatePtr := packet.ShellStatePtr{BaseHash: newRI.StateBaseHash, DiffHashArr: newRI.StateDiffHashArr}
+			err = sstore.UpdateCmdRtnState(ctx, donePk.CK, newRIStatePtr)
 			if err != nil {
-				msh.WriteToPtyBuffer("*error trying to update cmd rtnstate: %v\n", err)
+				log.Printf("error trying to update cmd rtnstate: %v\n", err)
 				// fall-through (nothing to do)
 			}
 		}
@@ -2305,10 +2513,6 @@ func (msh *MShellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.Cmd
 		return
 	}
 	defer msh.RemoveRunningCmd(finalPk.CK)
-	if rct.Ephemeral {
-		// just remove the running command, but there is no DB state to update in this case
-		return
-	}
 	rtnCmd, err := sstore.GetCmdByScreenId(context.Background(), finalPk.CK.GetGroupId(), finalPk.CK.GetCmdId())
 	if err != nil {
 		log.Printf("error calling GetCmdById in handleCmdFinalPacket: %v\n", err)
@@ -2345,23 +2549,56 @@ func (msh *MShellProc) ResetDataPos(ck base.CommandKey) {
 	msh.DataPosMap.Delete(ck)
 }
 
+func (msh *MShellProc) writeToCmdPtyOut(ctx context.Context, screenId string, lineId string, data []byte) error {
+	dataPos := msh.DataPosMap.Get(base.MakeCommandKey(screenId, lineId))
+	update, err := sstore.AppendToCmdPtyBlob(ctx, screenId, lineId, data, dataPos)
+	if err != nil {
+		return err
+	}
+	utilfn.IncSyncMap(msh.DataPosMap, base.MakeCommandKey(screenId, lineId), int64(len(data)))
+	if update != nil {
+		scbus.MainUpdateBus.DoScreenUpdate(screenId, update)
+	}
+	return nil
+}
+
 func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) {
 	if rct == nil {
+		log.Printf("error handling data packet: no running cmd found %s\n", dataPk.CK)
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, fmt.Errorf("no running cmd found"))
 		msh.ServerProc.Input.SendPacket(ack)
 		return
 	}
 	realData, err := base64.StdEncoding.DecodeString(dataPk.Data64)
 	if err != nil {
+		log.Printf("error decoding data packet: %v\n", err)
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
 		msh.ServerProc.Input.SendPacket(ack)
 		return
 	}
-	if rct.Ephemeral {
+	if rct.EphemeralOpts != nil {
+		// Write to the response writer if it's set
+		if len(realData) > 0 && rct.EphemeralOpts.ExpectsResponse {
+			switch dataPk.FdNum {
+			case 1:
+				_, err := rct.EphemeralOpts.StdoutWriter.Write(realData)
+				if err != nil {
+					log.Printf("*error writing to ephemeral stdout writer: %v\n", err)
+				}
+			case 2:
+				_, err := rct.EphemeralOpts.StderrWriter.Write(realData)
+				if err != nil {
+					log.Printf("*error writing to ephemeral stderr writer: %v\n", err)
+				}
+			default:
+				log.Printf("error handling data packet: invalid fdnum %d\n", dataPk.FdNum)
+			}
+		}
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)
 		msh.ServerProc.Input.SendPacket(ack)
 		return
 	}
+
 	var ack *packet.DataAckPacketType
 	if len(realData) > 0 {
 		dataPos := dataPosMap.Get(dataPk.CK)
@@ -2387,6 +2624,104 @@ func sendScreenUpdates(screens []*sstore.ScreenType) {
 		update.AddUpdate(*screen)
 		scbus.MainUpdateBus.DoUpdate(update)
 	}
+}
+
+func (msh *MShellProc) startSudoPwClearChecker(clientData *sstore.ClientData) {
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	sudoPwStore := clientData.FeOpts.SudoPwStore
+	for {
+		clientData, err := sstore.EnsureClientData(ctx)
+		if err != nil {
+			log.Printf("*error: cannot obtain client data in sudo pw loop. using fallback: %v", err)
+		} else {
+			sudoPwStore = clientData.FeOpts.SudoPwStore
+		}
+
+		shouldExit := false
+		msh.WithLock(func() {
+			if msh.sudoClearDeadline > 0 && time.Now().Unix() > msh.sudoClearDeadline && sudoPwStore != "notimeout" {
+				msh.sudoPw = nil
+				msh.sudoClearDeadline = 0
+			}
+			if msh.sudoClearDeadline == 0 {
+				shouldExit = true
+			}
+		})
+		if shouldExit {
+			return
+		}
+		time.Sleep(time.Second * 2)
+	}
+}
+
+func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) error {
+	var storedPw []byte
+	var rawSecret []byte
+	msh.WithLock(func() {
+		storedPw = msh.sudoPw
+	})
+	if storedPw != nil && sudoPk.SudoStatus == "first-attempt" {
+		rawSecret = storedPw
+	} else {
+		request := &userinput.UserInputRequestType{
+			QueryText:    "Please enter your password",
+			ResponseType: "text",
+			Title:        "Sudo Password",
+			Markdown:     false,
+		}
+		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelFn()
+		guiResponse, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		if err != nil {
+			return err
+		}
+		rawSecret = []byte(guiResponse.Text)
+	}
+
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return fmt.Errorf("*error: cannot obtain client data: %v", err)
+	}
+	sudoPwTimeout := clientData.FeOpts.SudoPwTimeoutMs / 1000 / 60
+	if sudoPwTimeout == 0 {
+		// 0 maps to default
+		sudoPwTimeout = sstore.DefaultSudoTimeout
+	}
+	pwTimeoutDur := time.Duration(sudoPwTimeout) * time.Minute
+	msh.WithLock(func() {
+		msh.sudoPw = rawSecret
+		if msh.sudoClearDeadline == 0 {
+			go msh.startSudoPwClearChecker(clientData)
+		}
+		msh.sudoClearDeadline = time.Now().Add(pwTimeoutDur).Unix()
+	})
+
+	srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
+	if err != nil {
+		return fmt.Errorf("generate ecdh: %e", err)
+	}
+	encryptor, err := waveenc.MakeEncryptorEcdh(srvPrivKey, sudoPk.ShellPubKey)
+	if err != nil {
+		return err
+	}
+	encryptedSecret, err := encryptor.EncryptData(rawSecret, "sudopw")
+	if err != nil {
+		return fmt.Errorf("encrypt secret: %e", err)
+	}
+	srvPubKey, err := x509.MarshalPKIXPublicKey(srvPrivKey.PublicKey())
+	if err != nil {
+		return fmt.Errorf("marshal pub key: %e", err)
+	}
+	sudoResponse := packet.MakeSudoResponsePacket(sudoPk.CK, encryptedSecret, srvPubKey)
+	select {
+	case msh.ServerProc.Input.SendCh <- sudoResponse:
+	default:
+	}
+	return nil
+
 }
 
 func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
@@ -2417,6 +2752,25 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		})
 		return
 	}
+	if sudoPk, ok := pk.(*packet.SudoRequestPacketType); ok {
+		// final failure case -- clear cache
+		if sudoPk.SudoStatus == "failure" {
+			msh.sudoPw = nil
+			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: incorrect password entered"))
+			return
+		}
+
+		// handle waveshell errors here
+		if sudoPk.SudoStatus == "error" {
+			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: shell: %s", sudoPk.ErrStr))
+			return
+		}
+
+		err := msh.sendSudoPassword(sudoPk)
+		if err != nil {
+			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: srv: %s", err))
+		}
+	}
 	if msgPk, ok := pk.(*packet.MessagePacketType); ok {
 		msh.WriteToPtyBuffer("msg> [remote %s] [%s] %s\n", msh.GetRemoteName(), msgPk.CK, msgPk.Message)
 		return
@@ -2426,6 +2780,22 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 		return
 	}
 	msh.WriteToPtyBuffer("*[remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
+}
+
+func (msh *MShellProc) ClearCachedSudoPw() {
+	msh.WithLock(func() {
+		msh.sudoPw = nil
+		msh.sudoClearDeadline = 0
+	})
+}
+
+func (msh *MShellProc) ChangeSudoTimeout(deltaTime int64) {
+	msh.WithLock(func() {
+		if msh.sudoClearDeadline != 0 {
+			updated := msh.sudoClearDeadline + deltaTime*60
+			msh.sudoClearDeadline = max(0, updated)
+		}
+	})
 }
 
 func (msh *MShellProc) ProcessPackets() {
@@ -2605,7 +2975,7 @@ func (msh *MShellProc) getFullState(shellType string, stateDiff *packet.ShellSta
 		}
 		return newState, nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
+		fullState, err := sstore.GetFullState(context.Background(), packet.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}
@@ -2632,7 +3002,7 @@ func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map
 		}
 		return sstore.FeStateFromShellState(newState), nil
 	} else {
-		fullState, err := sstore.GetFullState(context.Background(), sstore.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
+		fullState, err := sstore.GetFullState(context.Background(), packet.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
 		if err != nil {
 			return nil, err
 		}

@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If } from "tsx-control-statements/components";
+import { Choose, If, When } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -18,6 +18,7 @@ import { Prompt } from "@/common/prompt/prompt";
 import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
 import * as util from "@/util/util";
+import * as appconst from "@/app/appconst";
 
 import "./cmdinput.less";
 
@@ -61,12 +62,17 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    cmdInputClick(e: any): void {
+    baseCmdInputClick(e: React.SyntheticEvent): void {
         if (this.promptRef.current != null) {
             if (this.promptRef.current.contains(e.target)) {
                 return;
             }
         }
+        if ((e.target as HTMLDivElement).classList.contains("cmd-input-context")) {
+            e.stopPropagation();
+            return;
+        }
+        GlobalModel.inputModel.setAuxViewFocus(false);
         GlobalModel.inputModel.giveFocus();
     }
 
@@ -74,8 +80,12 @@ class CmdInput extends React.Component<{}, {}> {
     clickAIAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
-        let inputModel = GlobalModel.inputModel;
-        inputModel.openAIAssistantChat();
+        const inputModel = GlobalModel.inputModel;
+        if (inputModel.getActiveAuxView() === appconst.InputAuxView_AIChat) {
+            inputModel.closeAuxView();
+        } else {
+            inputModel.openAIAssistantChat();
+        }
     }
 
     @boundMethod
@@ -84,7 +94,7 @@ class CmdInput extends React.Component<{}, {}> {
         e.stopPropagation();
 
         const inputModel = GlobalModel.inputModel;
-        if (inputModel.historyShow.get()) {
+        if (inputModel.getActiveAuxView() === appconst.InputAuxView_History) {
             inputModel.resetHistory();
         } else {
             inputModel.openHistory();
@@ -146,9 +156,6 @@ class CmdInput extends React.Component<{}, {}> {
             remote = GlobalModel.getRemote(rptr.remoteid);
         }
         feState = feState || {};
-        const infoShow = inputModel.infoShow.get();
-        const historyShow = !infoShow && inputModel.historyShow.get();
-        const aiChatShow = inputModel.aIChatShow.get();
         const focusVal = inputModel.physicalInputFocused.get();
         const inputMode: string = inputModel.inputMode.get();
         const textAreaInputKey = screen == null ? "null" : screen.screenId;
@@ -160,6 +167,9 @@ class CmdInput extends React.Component<{}, {}> {
         }
         let shellInitMsg: string = null;
         let hidePrompt = false;
+
+        const openView = inputModel.getActiveAuxView();
+        const hasOpenView = openView ? `has-${openView}` : null;
         if (ri == null) {
             let shellStr = "shell";
             if (!util.isBlank(remote?.defaultshelltype)) {
@@ -171,52 +181,22 @@ class CmdInput extends React.Component<{}, {}> {
                 hidePrompt = true;
             }
         }
+
         return (
-            <div
-                ref={this.cmdInputRef}
-                className={cn(
-                    "cmd-input",
-                    { "has-info": infoShow },
-                    { "has-aichat": aiChatShow },
-                    { "has-history": historyShow },
-                    { active: focusVal }
-                )}
-            >
-                <div className="cmdinput-actions">
-                    <If condition={numRunningLines > 0}>
-                        <div
-                            key="running"
-                            className={cn("cmdinput-icon", "running-cmds", { active: filterRunning })}
-                            title="Filter for Running Commands"
-                            onClick={() => this.toggleFilter(screen)}
-                        >
-                            <CenteredIcon>{numRunningLines}</CenteredIcon>{" "}
-                            <CenteredIcon>
-                                <RotateIcon className="rotate warning spin" />
-                            </CenteredIcon>
-                        </div>
-                    </If>
-                    <div key="ai" title="Wave AI (Ctrl-Space)" className="cmdinput-icon" onClick={this.clickAIAction}>
-                        <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
-                    </div>
-                    <div
-                        key="history"
-                        title="Tab History (Ctrl-R)"
-                        className="cmdinput-icon"
-                        onClick={this.clickHistoryAction}
-                    >
-                        <i className="fa-sharp fa-regular fa-clock-rotate-left fa-fw" />
-                    </div>
-                </div>
-                <If condition={historyShow}>
-                    <div className="cmd-input-grow-spacer"></div>
-                    <HistoryInfo />
-                </If>
-                <If condition={aiChatShow}>
-                    <div className="cmd-input-grow-spacer"></div>
-                    <AIChat />
-                </If>
-                <InfoMsg key="infomsg" />
+            <div ref={this.cmdInputRef} className={cn("cmd-input", hasOpenView, { active: focusVal })}>
+                <Choose>
+                    <When condition={openView === appconst.InputAuxView_History}>
+                        <div className="cmd-input-grow-spacer"></div>
+                        <HistoryInfo />
+                    </When>
+                    <When condition={openView === appconst.InputAuxView_AIChat}>
+                        <div className="cmd-input-grow-spacer"></div>
+                        <AIChat />
+                    </When>
+                    <When condition={openView === appconst.InputAuxView_Info}>
+                        <InfoMsg key="infomsg" />
+                    </When>
+                </Choose>
                 <If condition={remote && remote.status != "connected"}>
                     <div className="remote-status-warning">
                         WARNING:&nbsp;
@@ -252,7 +232,43 @@ class CmdInput extends React.Component<{}, {}> {
                         </Button>
                     </div>
                 </If>
-                <div key="base-cmdinput" className="base-cmdinput">
+                <div
+                    key="base-cmdinput"
+                    className="base-cmdinput"
+                    onClick={this.baseCmdInputClick}
+                    onSelect={this.baseCmdInputClick}
+                >
+                    <div className="cmdinput-actions">
+                        <If condition={numRunningLines > 0}>
+                            <div
+                                key="running"
+                                className={cn("cmdinput-icon", "running-cmds", { active: filterRunning })}
+                                title="Filter for Running Commands"
+                                onClick={() => this.toggleFilter(screen)}
+                            >
+                                <CenteredIcon>{numRunningLines}</CenteredIcon>{" "}
+                                <CenteredIcon>
+                                    <RotateIcon className="rotate warning spin" />
+                                </CenteredIcon>
+                            </div>
+                        </If>
+                        <div
+                            key="ai"
+                            title="Wave AI (Ctrl-Space)"
+                            className="cmdinput-icon"
+                            onClick={this.clickAIAction}
+                        >
+                            <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
+                        </div>
+                        <div
+                            key="history"
+                            title="Tab History (Ctrl-R)"
+                            className="cmdinput-icon"
+                            onClick={this.clickHistoryAction}
+                        >
+                            <i className="fa-sharp fa-regular fa-clock-rotate-left fa-fw" />
+                        </div>
+                    </div>
                     <If condition={!hidePrompt}>
                         <div key="prompt" className="cmd-input-context">
                             <div className="has-text-white">

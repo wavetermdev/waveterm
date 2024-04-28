@@ -95,6 +95,17 @@ func NumSessions(ctx context.Context) (int, error) {
 	return numSessions, txErr
 }
 
+func NumScreens(ctx context.Context) (int, error) {
+	var numScreens int
+	txErr := WithTx(ctx, func(tx *TxWrap) error {
+		query := "SELECT count(*) FROM screen"
+		numScreens = tx.GetInt(query)
+		return nil
+	})
+	return numScreens, txErr
+
+}
+
 func GetAllRemotes(ctx context.Context) ([]*RemoteType, error) {
 	var rtn []*RemoteType
 	err := WithTx(ctx, func(tx *TxWrap) error {
@@ -688,9 +699,6 @@ INSERT INTO cmd  ( screenid, lineid, remoteownerid, remoteid, remotename, cmdstr
 `
 			tx.NamedExec(query, cmdMap)
 		}
-		if isWebShare(tx, line.ScreenId) {
-			insertScreenLineUpdate(tx, line.ScreenId, line.LineId, UpdateType_LineNew)
-		}
 		return nil
 	})
 }
@@ -743,10 +751,21 @@ func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdP
 	})
 }
 
-func UpdateCmdDoneInfo(ctx context.Context, update *scbus.ModelUpdatePacketType, ck base.CommandKey, donePk *packet.CmdDonePacketType, status string) error {
-	if donePk == nil {
-		return fmt.Errorf("invalid cmddone packet")
-	}
+func UpdateCmdStartInfo(ctx context.Context, ck base.CommandKey, cmdPid int, mshellPid int) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		query := `UPDATE cmd SET cmdpid = ?, remotepid = ? WHERE screenid = ? AND lineid = ?`
+		tx.Exec(query, cmdPid, mshellPid, ck.GetGroupId(), lineIdFromCK(ck))
+		return nil
+	})
+}
+
+type CmdDoneDataValues struct {
+	Ts         int64
+	ExitCode   int
+	DurationMs int64
+}
+
+func UpdateCmdDoneInfo(ctx context.Context, update *scbus.ModelUpdatePacketType, ck base.CommandKey, donePk CmdDoneDataValues, status string) error {
 	if ck.IsEmpty() {
 		return fmt.Errorf("cannot update cmddoneinfo, empty ck")
 	}
@@ -789,11 +808,11 @@ func UpdateCmdDoneInfo(ctx context.Context, update *scbus.ModelUpdatePacketType,
 		// This is not a fatal error, so just log it
 		log.Printf("error setting status indicator level after done packet: %v\n", err)
 	}
-	IncrementNumRunningCmds_Update(update, screenId, -1)
+	go IncrementNumRunningCmds(screenId, -1)
 	return nil
 }
 
-func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr ShellStatePtr) error {
+func UpdateCmdRtnState(ctx context.Context, ck base.CommandKey, statePtr packet.ShellStatePtr) error {
 	if ck.IsEmpty() {
 		return fmt.Errorf("cannot update cmdrtnstate, empty ck")
 	}
@@ -1098,7 +1117,7 @@ func DeleteScreen(ctx context.Context, screenId string, sessionDel bool, update 
 	return update, nil
 }
 
-func GetRemoteState(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*packet.ShellState, *ShellStatePtr, error) {
+func GetRemoteState(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*packet.ShellState, *packet.ShellStatePtr, error) {
 	ssptr, err := GetRemoteStatePtr(ctx, sessionId, screenId, remotePtr)
 	if err != nil {
 		return nil, nil, err
@@ -1113,8 +1132,8 @@ func GetRemoteState(ctx context.Context, sessionId string, screenId string, remo
 	return state, ssptr, err
 }
 
-func GetRemoteStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*ShellStatePtr, error) {
-	var ssptr *ShellStatePtr
+func GetRemoteStatePtr(ctx context.Context, sessionId string, screenId string, remotePtr RemotePtrType) (*packet.ShellStatePtr, error) {
+	var ssptr *packet.ShellStatePtr
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		ri, err := GetRemoteInstance(tx.Context(), sessionId, screenId, remotePtr)
 		if err != nil {
@@ -1123,7 +1142,7 @@ func GetRemoteStatePtr(ctx context.Context, sessionId string, screenId string, r
 		if ri == nil {
 			return nil
 		}
-		ssptr = &ShellStatePtr{ri.StateBaseHash, ri.StateDiffHashArr}
+		ssptr = &packet.ShellStatePtr{ri.StateBaseHash, ri.StateDiffHashArr}
 		return nil
 	})
 	if txErr != nil {
@@ -1836,7 +1855,7 @@ func GetStateBaseVersion(ctx context.Context, baseHash string) (string, error) {
 	})
 }
 
-func GetCurStateDiffFromPtr(ctx context.Context, ssPtr *ShellStatePtr) (*packet.ShellStateDiff, error) {
+func GetCurStateDiffFromPtr(ctx context.Context, ssPtr *packet.ShellStatePtr) (*packet.ShellStateDiff, error) {
 	if ssPtr == nil {
 		return nil, fmt.Errorf("cannot resolve state, empty stateptr")
 	}
@@ -1894,7 +1913,7 @@ func GetStateDiff(ctx context.Context, diffHash string) (*packet.ShellStateDiff,
 }
 
 // returns error when not found
-func GetFullState(ctx context.Context, ssPtr ShellStatePtr) (*packet.ShellState, error) {
+func GetFullState(ctx context.Context, ssPtr packet.ShellStatePtr) (*packet.ShellState, error) {
 	var state *packet.ShellState
 	if ssPtr.BaseHash == "" {
 		return nil, fmt.Errorf("invalid empty basehash")

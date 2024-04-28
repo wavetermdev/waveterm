@@ -242,7 +242,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
-        let mainView = GlobalModel.activeMainView.get();
+        const mainView = GlobalModel.activeMainView.get();
         const historyActive = mainView == "history";
         const connectionsActive = mainView == "connections";
         const settingsActive = mainView == "clientsettings";

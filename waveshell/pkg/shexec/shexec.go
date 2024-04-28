@@ -4,8 +4,12 @@
 package shexec
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"crypto/ecdh"
+	"crypto/rand"
+	"crypto/x509"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -31,7 +35,9 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellapi"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 )
@@ -119,6 +125,8 @@ type ShExecType struct {
 	Exited         bool   // locked via Lock
 	TmpRcFileName  string // file *or* directory holding temporary rc file(s)
 	SAPI           shellapi.ShellApi
+	ShellPrivKey   *ecdh.PrivateKey
+	SudoWriter     *os.File
 }
 
 type StdContext struct{}
@@ -190,6 +198,23 @@ func (s *ShExecType) processSpecialInputPacket(pk *packet.SpecialInputPacketType
 	return nil
 }
 
+func (s ShExecUPR) processSudoResponsePacket(sudoPacket *packet.SudoResponsePacketType) error {
+	encryptor, err := waveenc.MakeEncryptorEcdh(s.ShExec.ShellPrivKey, sudoPacket.SrvPubKey)
+	if err != nil {
+		return err
+	}
+	decrypted, err := encryptor.DecryptData(sudoPacket.Secret, "sudopw")
+	if err != nil {
+		return fmt.Errorf("decrypt secret: %e", err)
+	}
+	decrypted = append(decrypted, '\n')
+	_, err = s.ShExec.SudoWriter.Write(decrypted)
+	if err != nil {
+		return fmt.Errorf("unable to write secret to stdin: %e", err)
+	}
+	return nil
+}
+
 func (s ShExecUPR) UnknownPacket(pk packet.PacketType) {
 	if pk.GetType() == packet.SpecialInputPacketStr {
 		inputPacket := pk.(*packet.SpecialInputPacketType)
@@ -198,6 +223,16 @@ func (s ShExecUPR) UnknownPacket(pk packet.PacketType) {
 			msg := packet.MakeMessagePacket(err.Error())
 			msg.CK = s.ShExec.CK
 			s.ShExec.MsgSender.SendPacket(msg)
+		}
+		return
+	}
+	if pk.GetType() == packet.SudoResponsePacketStr {
+		sudoPacket := pk.(*packet.SudoResponsePacketType)
+		err := s.processSudoResponsePacket(sudoPacket)
+		if err != nil {
+			sudoRequest := packet.MakeSudoRequestPacket(sudoPacket.CK, nil, "error")
+			sudoRequest.ErrStr = err.Error()
+			s.ShExec.MsgSender.SendPacket(sudoRequest)
 		}
 		return
 	}
@@ -826,6 +861,10 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 	var rtnStateWriter *os.File
 	rcFileStr := sapi.MakeRcFileStr(pk)
 	if pk.ReturnState {
+		err := sapi.ValidateCommandSyntax(pk.Command)
+		if err != nil {
+			return nil, err
+		}
 		pr, pw, err := os.Pipe()
 		if err != nil {
 			return nil, fmt.Errorf("cannot create returnstate pipe: %v", err)
@@ -894,7 +933,21 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			os.Remove(cmd.TmpRcFileName)
 		}()
 	}
-	cmd.Cmd = sapi.MakeShExecCommand(pk.Command, rcFileName, pk.UsePty)
+	fullCmdStr := pk.Command
+	if pk.ReturnState {
+		// this ensures that the last command is a shell buitin so we always get our exit trap to run
+		fullCmdStr = fullCmdStr + "\nexit $? 2> /dev/null"
+	}
+
+	var sudoKey uuid.UUID
+	var sudoErrKey uuid.UUID
+	if pk.IsSudo {
+		sudoKey = uuid.New()
+		sudoErrKey = uuid.New()
+		fullCmdStr = fmt.Sprintf("sudo -p \"%s\" -S true 2>&7 <&6; if [ $? != 0 ]; then echo %s >&7 && exit; fi; exec 6>&-; exec 7>&-; %s", sudoKey, sudoErrKey, fullCmdStr)
+	}
+
+	cmd.Cmd = sapi.MakeShExecCommand(fullCmdStr, rcFileName, pk.UsePty)
 	if !pk.StateComplete {
 		cmd.Cmd.Env = os.Environ()
 	}
@@ -963,6 +1016,66 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 		if err != nil {
 			return nil, err
 		}
+	}
+	if pk.IsSudo {
+		readToSudo, writeToSudo, err := os.Pipe()
+		if err != nil {
+			return nil, err
+		}
+
+		readFromSudo, writeFromSudo, err := os.Pipe()
+		if err != nil {
+			return nil, err
+		}
+
+		go func() {
+			reader := bufio.NewReader(readFromSudo)
+			buffer := bytes.NewBuffer(make([]byte, 0))
+			chunk := make([]byte, 1024)
+			firstAttempt := true
+			for {
+				len, _ := reader.Read(chunk)
+				buffer.Write(chunk[:len])
+				if bytes.Contains(buffer.Bytes(), []byte(sudoKey.String())) {
+					buffer.Reset()
+
+					// subsequent attempts get an extra \n
+					sudoStatus := "followup-attempt"
+					if firstAttempt {
+						sudoStatus = "first-attempt"
+					}
+					firstAttempt = false
+
+					shellPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
+					if err != nil {
+						sudoRequest := packet.MakeSudoRequestPacket(cmd.CK, nil, "error")
+						sudoRequest.ErrStr = fmt.Sprintf("generate ecdh: %s", err.Error())
+						rtnShExec.MsgSender.SendPacket(sudoRequest)
+						return
+					}
+					shellPubKey, err := x509.MarshalPKIXPublicKey(shellPrivKey.PublicKey())
+					if err != nil {
+						sudoRequest := packet.MakeSudoRequestPacket(cmd.CK, nil, "error")
+						sudoRequest.ErrStr = fmt.Sprintf("marshal pub key: %s", err.Error())
+						rtnShExec.MsgSender.SendPacket(sudoRequest)
+						return
+					}
+					rtnShExec.ShellPrivKey = shellPrivKey
+					rtnShExec.SudoWriter = writeToSudo
+					sudoRequest := packet.MakeSudoRequestPacket(cmd.CK, shellPubKey, sudoStatus)
+					rtnShExec.MsgSender.SendPacket(sudoRequest)
+				} else if bytes.Contains(buffer.Bytes(), []byte(sudoErrKey.String())) {
+					sudoRequest := packet.MakeSudoRequestPacket(cmd.CK, nil, "failure")
+					rtnShExec.MsgSender.SendPacket(sudoRequest)
+				}
+			}
+		}()
+
+		if 7 >= len(extraFiles) {
+			extraFiles = extraFiles[:7+1]
+		}
+		extraFiles[6] = readToSudo    //todo - make a constant for the 6
+		extraFiles[7] = writeFromSudo // todo - same
 	}
 	for _, rfd := range pk.Fds {
 		if rfd.FdNum >= len(extraFiles) {
@@ -1075,34 +1188,6 @@ func copyToCirFile(dest *cirfile.File, src io.Reader) error {
 	}
 }
 
-func GetCmdExitCode(cmd *exec.Cmd, err error) int {
-	if cmd == nil || cmd.ProcessState == nil {
-		return GetExitCode(err)
-	}
-	status, ok := cmd.ProcessState.Sys().(syscall.WaitStatus)
-	if !ok {
-		return cmd.ProcessState.ExitCode()
-	}
-	signaled := status.Signaled()
-	if signaled {
-		signal := status.Signal()
-		return 128 + int(signal)
-	}
-	exitStatus := status.ExitStatus()
-	return exitStatus
-}
-
-func GetExitCode(err error) int {
-	if err == nil {
-		return 0
-	}
-	if exitErr, ok := err.(*exec.ExitError); ok {
-		return exitErr.ExitCode()
-	} else {
-		return -1
-	}
-}
-
 func (c *ShExecType) ProcWait() error {
 	exitErr := c.Cmd.Wait()
 	c.Lock.Lock()
@@ -1139,7 +1224,7 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 	endTs := time.Now()
 	cmdDuration := endTs.Sub(c.StartTs)
 	donePacket.Ts = endTs.UnixMilli()
-	donePacket.ExitCode = GetCmdExitCode(c.Cmd, exitErr)
+	donePacket.ExitCode = utilfn.GetCmdExitCode(c.Cmd, exitErr)
 	donePacket.DurationMs = int64(cmdDuration / time.Millisecond)
 	if c.FileNames != nil {
 		os.Remove(c.FileNames.StdinFifo) // best effort (no need to check error)

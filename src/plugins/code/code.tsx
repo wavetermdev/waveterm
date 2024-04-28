@@ -229,7 +229,6 @@ class SourceCodeRenderer extends React.Component<
         }, 2000);
         editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
-            console.log("keydown?", waveEvent);
             if (
                 GlobalModel.keybindManager.checkKeysPressed(waveEvent, [
                     "codeedit:save",
@@ -568,7 +567,6 @@ class SourceCodeRenderer extends React.Component<
         );
 
         const theme = `wave-theme-${GlobalModel.isDarkTheme.get() ? "dark" : "light"}`;
-        console.log("lineis selected:", lineIsSelected.get());
         return (
             <div className="code-renderer">
                 <If condition={lineIsSelected.get()}>
