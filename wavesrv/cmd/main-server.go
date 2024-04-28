@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -798,26 +797,21 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
+// Checks if the /config request is for a specific file or a directory. Passes the request to the appropriate handler.
+func ConfigHandlerCheckIsDir(dirHandler http.Handler, fileHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		configPath := r.URL.Path
-		configAbsPath, err := filepath.Abs(configPath)
-		if err != nil {
+		configBaseDir := filepath.Join(scbase.GetWaveHomeDir(), "config")
+		configFullPath, err := filepath.Abs(filepath.Join(scbase.GetWaveHomeDir(), configPath))
+		if err != nil || !strings.HasPrefix(configFullPath, configBaseDir) {
 			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("error getting absolute path: %v", err)))
-			return
-		}
-		configBaseDir := path.Join(scbase.GetWaveHomeDir(), "config")
-		configFullPath := path.Join(scbase.GetWaveHomeDir(), configAbsPath)
-		if !strings.HasPrefix(configFullPath, configBaseDir) {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte(fmt.Sprintf("error: path is not in config folder")))
+			w.Write([]byte("error: path is not in config folder"))
 			return
 		}
 		fstat, err := os.Stat(configFullPath)
 		if errors.Is(err, fs.ErrNotExist) {
 			w.WriteHeader(http.StatusNotFound)
-			w.Write([]byte(fmt.Sprintf("file not found: %v", configAbsPath)))
+			w.Write([]byte(fmt.Sprintf("file not found: %v", err)))
 			return
 		} else if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
@@ -864,7 +858,7 @@ func AuthKeyWrapAllowHmac(fn WebFnType) WebFnType {
 			hmacOk, err := waveenc.ValidateUrlHmac([]byte(scbase.WaveAuthKey), r.URL.Path, qvals)
 			if err != nil || !hmacOk {
 				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte(fmt.Sprintf("error validating hmac")))
+				w.Write([]byte("error validating hmac"))
 				return
 			}
 			// fallthrough (hmac is valid)
@@ -1018,7 +1012,13 @@ func doShutdown(reason string) {
 
 func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	configPath := r.URL.Path
-	configFullPath := path.Join(scbase.GetWaveHomeDir(), configPath)
+	homeDir := scbase.GetWaveHomeDir()
+	configFullPath, err := filepath.Abs(filepath.Join(homeDir, configPath))
+	if err != nil || !strings.HasPrefix(configFullPath, homeDir) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Invalid path: %v", err)))
+		return
+	}
 	dirFile, err := os.Open(configFullPath)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1180,11 +1180,11 @@ func main() {
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
 	gr.HandleFunc("/api/read-file", AuthKeyWrapAllowHmac(HandleReadFile))
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
-	configPath := path.Join(scbase.GetWaveHomeDir(), "config") + "/"
+	configPath := filepath.Join(scbase.GetWaveHomeDir(), "config") + strconv.QuoteRune(filepath.Separator)
 	log.Printf("[wave] config path: %q\n", configPath)
 	isFileHandler := http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))
 	isDirHandler := http.HandlerFunc(configDirHandler)
-	gr.PathPrefix("/config/").Handler(CheckIsDir(isDirHandler, isFileHandler))
+	gr.PathPrefix("/config/").Handler(ConfigHandlerCheckIsDir(isDirHandler, isFileHandler))
 
 	serverAddr := MainServerAddr
 	if scbase.IsDevMode() {
