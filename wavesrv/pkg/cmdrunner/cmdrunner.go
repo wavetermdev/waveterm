@@ -2735,7 +2735,7 @@ func doOpenAICmdInfoCompletion(cmd *sstore.CmdType, clientId string, opts *sstor
 	}
 	writePacketToUpdateBus(ctx, cmd, asstMessagePk)
 	packetTimeout := OpenAIPacketTimeout
-	if opts.Timeout >= 0 {
+	if opts.Timeout > 0 {
 		packetTimeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
 	doneWaitingForPackets := false
@@ -2830,7 +2830,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 		return
 	}
 	packetTimeout := OpenAIPacketTimeout
-	if opts.Timeout >= 0 {
+	if opts.Timeout > 0 {
 		packetTimeout = time.Duration(opts.Timeout) * time.Millisecond
 	}
 	doneWaitingForPackets := false
