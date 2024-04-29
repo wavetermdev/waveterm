@@ -236,29 +236,19 @@ class AIChat extends React.Component<{}, {}> {
         const chitem: OpenAICmdInfoChatMessageType = null;
         const renderKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_AIChat);
         return (
-            // <AuxiliaryCmdView
-            //     title="Wave AI"
-            //     className="cmd-aichat"
-            //     onClose={() => GlobalModel.inputModel.closeAuxView()}
-            //     iconClass="fa-sharp fa-solid fa-sparkles"
-            // >
             <div className="sidebar-aichat">
-                {/* <If condition={renderKeybindings}> */}
                 <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
-                {/* </If> */}
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
                 </div>
 
                 <OverlayScrollbarsComponent className="content" options={{ scrollbars: { autoHide: "leave" } }}>
-                    {/* <div className="content"> */}
                     <div className="chat-window" ref={this.chatWindowScrollRef}>
                         <div className="filler"></div>
                         <For each="chitem" index="idx" of={chatMessageItems}>
                             {this.renderChatMessage(chitem)}
                         </For>
                     </div>
-                    {/* </div> */}
                 </OverlayScrollbarsComponent>
 
                 <div className="chat-input">
@@ -269,8 +259,6 @@ class AIChat extends React.Component<{}, {}> {
                         autoCorrect="off"
                         autoFocus={true}
                         id="chat-cmd-input"
-                        // onFocus={this.onTextAreaFocused.bind(this)}
-                        // onBlur={this.onTextAreaBlur.bind(this)}
                         onChange={this.onTextAreaChange.bind(this)}
                         onKeyDown={this.onKeyDown}
                         style={{ fontSize: this.termFontSize }}
@@ -279,7 +267,6 @@ class AIChat extends React.Component<{}, {}> {
                     ></textarea>
                 </div>
             </div>
-            // </AuxiliaryCmdView>
         );
     }
 }
