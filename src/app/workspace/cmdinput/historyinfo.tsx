@@ -154,17 +154,18 @@ class HistoryInfo extends React.Component<{}, {}> {
     lastClickTs: number = 0;
     containingText: mobx.IObservableValue<string> = mobx.observable.box("");
 
-    componentDidMount() {
+    /**
+     * Handles the OverlayScrollbars initialization event to set the scroll position without it being overridden.
+     */
+    @boundMethod
+    handleScrollbarInitialized() {
         const inputModel = GlobalModel.inputModel;
         let hitem = inputModel.getHistorySelectedItem();
         if (hitem == null) {
             hitem = inputModel.getFirstHistoryItem();
         }
         if (hitem != null) {
-            // This is a hack to ensure that our call to scroll to the current item is not overwritten. 
-            setTimeout(() => {
-                inputModel.scrollHistoryItemIntoView(hitem.historynum);
-            }, 1);
+            inputModel.scrollHistoryItemIntoView(hitem.historynum);
         }
     }
 
@@ -228,7 +229,7 @@ class HistoryInfo extends React.Component<{}, {}> {
     render() {
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
-        const hitems = inputModel.getFilteredHistoryItems().slice().reverse();
+        const hitems = inputModel.getFilteredHistoryItems();
         const opts = inputModel.historyQueryOpts.get();
         let hitem: HistoryItem = null;
         let snames: Record<string, string> = {};
@@ -247,6 +248,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                 titleBarContents={this.getTitleBarContents()}
                 iconClass="fa-sharp fa-solid fa-clock-rotate-left"
                 scrollable={true}
+                onScrollbarInitialized={this.handleScrollbarInitialized}
             >
                 <div
                     className={cn(
