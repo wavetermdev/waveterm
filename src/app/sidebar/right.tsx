@@ -78,35 +78,35 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                 {(toggleCollapse) => (
                     <React.Fragment>
                         <div className="header">
-                            <Button className="secondary ghost" onClick={toggleCollapse}>
-                                <i className="fa-sharp fa-regular fa-xmark"></i>
-                            </Button>
-                        </div>
-                        <div className="rsb-modes">
-                            <div className="flex-spacer" />
-                            <If condition={GlobalModel.isDev}>
+                            <div className="rsb-modes">
                                 <div
                                     className="icon-container"
                                     title="Show Keybinding Debugger"
-                                    onClick={() => this.setMode("keybind")}
+                                    onClick={() => this.setMode("ai")}
                                 >
-                                    <i className="fa-fw fa-sharp fa-keyboard fa-solid" />
+                                    <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
                                 </div>
-                            </If>
-                            <div
-                                className="icon-container"
-                                title="Show Keybinding Debugger"
-                                onClick={() => this.setMode("wavebook")}
-                            >
-                                <i className="fa-sharp fa-solid fa-book-sparkles"></i>
+                                <div className="flex-spacer" />
+                                <If condition={GlobalModel.isDev}>
+                                    <div
+                                        className="icon-container"
+                                        title="Show Keybinding Debugger"
+                                        onClick={() => this.setMode("keybind")}
+                                    >
+                                        <i className="fa-fw fa-sharp fa-keyboard fa-solid" />
+                                    </div>
+                                </If>
+                                <div
+                                    className="icon-container"
+                                    title="Show Keybinding Debugger"
+                                    onClick={() => this.setMode("wavebook")}
+                                >
+                                    <i className="fa-sharp fa-solid fa-book-sparkles"></i>
+                                </div>
                             </div>
-                            <div
-                                className="icon-container"
-                                title="Show Keybinding Debugger"
-                                onClick={() => this.setMode("ai")}
-                            >
-                                <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
-                            </div>
+                            <Button className="secondary ghost" onClick={toggleCollapse}>
+                                <i className="fa-sharp fa-regular fa-xmark"></i>
+                            </Button>
                         </div>
                         <If condition={this.mode.get() == "keybind"}>
                             <KeybindDevPane></KeybindDevPane>
