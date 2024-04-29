@@ -151,7 +151,7 @@ class InputModel {
                     }
                     break;
                 }
-                case "aichat":
+                case appconst.InputAuxView_AIChat:
                     this.setAIChatFocus();
                     break;
                 case null: {
@@ -549,7 +549,6 @@ class InputModel {
 
         if (info != null && timeoutMs) {
             this.infoTimeoutId = setTimeout(() => {
-                console.log("clearing info msg");
                 if (this.activeAuxView.get() != appconst.InputAuxView_Info) {
                     return;
                 }

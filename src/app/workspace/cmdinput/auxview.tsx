@@ -16,11 +16,12 @@ interface AuxiliaryCmdViewProps {
     titleBarContents?: React.ReactElement[];
     children?: React.ReactNode;
     onClose?: React.MouseEventHandler<HTMLDivElement>;
+    onScrollbarInitialized?: () => void;
     scrollable?: boolean;
 }
 
 export const AuxiliaryCmdView: React.FC<AuxiliaryCmdViewProps> = observer((props) => {
-    const { title, className, iconClass, titleBarContents, children, onClose } = props;
+    const { title, className, iconClass, titleBarContents, children, onClose, onScrollbarInitialized } = props;
 
     return (
         <div className={cn("auxview", className)}>
@@ -50,6 +51,8 @@ export const AuxiliaryCmdView: React.FC<AuxiliaryCmdViewProps> = observer((props
                         <OverlayScrollbarsComponent
                             className="auxview-content"
                             options={{ scrollbars: { autoHide: "leave" } }}
+                            defer={true}
+                            events={{ initialized: onScrollbarInitialized }}
                         >
                             {children}
                         </OverlayScrollbarsComponent>
