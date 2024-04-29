@@ -23,7 +23,7 @@ let MagicLayout = {
     MainSidebarDefaultWidth: 240,
 
     RightSidebarMinWidth: 0,
-    RightSidebarMaxWidth: 300,
+    RightSidebarMaxWidth: 400,
     RightSidebarSnapThreshold: 90,
     RightSidebarDragResistance: 50,
     RightSidebarDefaultWidth: 240,

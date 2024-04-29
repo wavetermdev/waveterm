@@ -13,58 +13,65 @@
     font-weight: var(--sidebar-font-weight);
     border-left: 1px solid var(--app-border-color);
 
-    .header {
-        height: 39px;
+    .sidebar-content {
         display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        padding: 0 5px;
-        border-bottom: 1px solid var(--app-border-color);
-    }
-
-    .rsb-modes {
-        display: flex;
-        flex-direction: row;
-        padding: 5px 10px;
-        gap: 5px;
-        border-bottom: 1px solid var(--app-border-color);
-
-        .icon-container {
-            padding: 2px;
-            cursor: pointer;
-        }
-
-        .icon-container:hover {
-            background-color: var(--app-selected-mask-color);
-        }
-    }
-
-    &.collapsed {
-        display: none;
-    }
-
-    .keybind-debug-pane {
-        padding: 10px;
+        flex-direction: column;
+        height: 100%;
         overflow: hidden;
-        width: 100%;
 
-        .keybind-pane-title {
-            font-size: 18px;
-            font-weight: bold;
-            padding-bottom: 5px;
+        .header {
+            height: 39px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 5px;
+            border-bottom: 1px solid var(--app-border-color);
         }
 
-        .keybind-level {
-            margin-top: 10px;
-            font-weight: bold;
-            font-size: 16px;
+        .rsb-modes {
+            display: flex;
+            flex-direction: row;
+            padding: 5px 10px;
+            gap: 5px;
+            border-bottom: 1px solid var(--app-border-color);
+
+            .icon-container {
+                padding: 2px;
+                cursor: pointer;
+            }
+
+            .icon-container:hover {
+                background-color: var(--app-selected-mask-color);
+            }
         }
 
-        .keybind-domain {
-            font-size: 14px;
-            margin-left: 20px;
-            white-space: nowrap;
+        &.collapsed {
+            display: none;
+        }
+
+        .keybind-debug-pane {
+            padding: 10px;
             overflow: hidden;
+            width: 100%;
+
+            .keybind-pane-title {
+                font-size: 18px;
+                font-weight: bold;
+                padding-bottom: 5px;
+            }
+
+            .keybind-level {
+                margin-top: 10px;
+                font-weight: bold;
+                font-size: 16px;
+            }
+
+            .keybind-domain {
+                font-size: 14px;
+                margin-left: 20px;
+                white-space: nowrap;
+                overflow: hidden;
+            }
         }
     }
 }

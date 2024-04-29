@@ -1,22 +1,90 @@
-.cmd-aichat {
-    padding-bottom: 0 !important;
+.sidebar-aichat {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
 
-    .chat-window {
+    .titlebar {
+        background-color: var(--app-panel-bg-color);
+        color: var(--term-blue);
+        padding: 6px 10px 6px 10px;
         display: flex;
-        overflow-y: auto;
-        margin-bottom: 5px;
-        flex-direction: column;
-        height: 100%;
+        flex: 0 0 auto;
+        flex-direction: row;
+        width: 100%;
+        border-bottom: 1px solid var(--app-border-color);
+        font: var(--base-font);
+        user-select: none;
+        cursor: default;
+        line-height: 18px;
+        overflow: hidden;
 
-        // This is the filler that will push the chat messages to the bottom until the chat window is full
-        .filler {
-            flex: 1 1 auto;
+        .title-string {
+            font-weight: bold;
+        }
+    }
+
+    .content {
+        display: flex;
+        flex-flow: column nowrap;
+        flex: 1;
+        padding: var(--termpad) calc(var(--termpad) * 2) var(--termpad) calc(var(--termpad) * 3 - 1px);
+
+        .chat-window {
+            display: flex;
+            overflow-y: auto;
+            margin-bottom: 5px;
+            flex-direction: column;
+            height: 100%;
+
+            // This is the filler that will push the chat messages to the bottom until the chat window is full
+            .filler {
+                flex: 1 1 auto;
+            }
+        }
+
+        .chat-msg {
+            margin-top: calc(var(--termpad) * 2);
+            margin-bottom: calc(var(--termpad) * 2);
+
+            .chat-msg-header {
+                display: flex;
+                margin-bottom: 2px;
+
+                i {
+                    margin-right: 0.5em;
+                }
+
+                .chat-username {
+                    font-weight: bold;
+                    margin-right: 5px;
+                }
+            }
+        }
+
+        .chat-msg-assistant {
+            color: var(--app-text-color);
+        }
+
+        .chat-msg-user {
+            .msg-text {
+                font-family: var(--markdown-font);
+                font-size: 14px;
+                white-space: pre-wrap;
+            }
+        }
+
+        .chat-msg-error {
+            color: var(--cmdinput-text-error);
+            font-family: var(--markdown-font);
+            font-size: 14px;
         }
     }
 
     .chat-input {
-        padding: 0.5em 0.5em 0.5em 0.5em;
+        padding: 16px 15px 7px;
         flex: 0 0 auto;
+        border-top: 1px solid var(--app-border-color);
 
         .chat-textarea {
             color: var(--app-text-primary-color);
@@ -31,42 +99,5 @@
             font-weight: normal;
             line-height: var(--termlineheight);
         }
-    }
-
-    .chat-msg {
-        margin-top: calc(var(--termpad) * 2);
-        margin-bottom: calc(var(--termpad) * 2);
-
-        .chat-msg-header {
-            display: flex;
-            margin-bottom: 2px;
-
-            i {
-                margin-right: 0.5em;
-            }
-
-            .chat-username {
-                font-weight: bold;
-                margin-right: 5px;
-            }
-        }
-    }
-
-    .chat-msg-assistant {
-        color: var(--app-text-color);
-    }
-
-    .chat-msg-user {
-        .msg-text {
-            font-family: var(--markdown-font);
-            font-size: 14px;
-            white-space: pre-wrap;
-        }
-    }
-
-    .chat-msg-error {
-        color: var(--cmdinput-text-error);
-        font-family: var(--markdown-font);
-        font-size: 14px;
     }
 }

@@ -8,8 +8,8 @@ import { GlobalModel } from "@/models";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
-import { AuxiliaryCmdView } from "@/app/workspace/cmdinput/auxview";
 import * as appconst from "@/app/appconst";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./aichat.less";
 
@@ -236,30 +236,41 @@ class AIChat extends React.Component<{}, {}> {
         const chitem: OpenAICmdInfoChatMessageType = null;
         const renderKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_AIChat);
         return (
-            <AuxiliaryCmdView
-                title="Wave AI"
-                className="cmd-aichat"
-                onClose={() => GlobalModel.inputModel.closeAuxView()}
-                iconClass="fa-sharp fa-solid fa-sparkles"
-            >
-                <If condition={renderKeybindings}>
-                    <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
-                </If>
-                <div className="chat-window" ref={this.chatWindowScrollRef}>
-                    <div className="filler"></div>
-                    <For each="chitem" index="idx" of={chatMessageItems}>
-                        {this.renderChatMessage(chitem)}
-                    </For>
+            // <AuxiliaryCmdView
+            //     title="Wave AI"
+            //     className="cmd-aichat"
+            //     onClose={() => GlobalModel.inputModel.closeAuxView()}
+            //     iconClass="fa-sharp fa-solid fa-sparkles"
+            // >
+            <div className="sidebar-aichat">
+                {/* <If condition={renderKeybindings}> */}
+                <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
+                {/* </If> */}
+                <div className="titlebar">
+                    <div className="title-string">Wave AI</div>
                 </div>
+
+                <OverlayScrollbarsComponent className="auxview-content" options={{ scrollbars: { autoHide: "leave" } }}>
+                    <div className="content">
+                        <div className="chat-window" ref={this.chatWindowScrollRef}>
+                            <div className="filler"></div>
+                            <For each="chitem" index="idx" of={chatMessageItems}>
+                                {this.renderChatMessage(chitem)}
+                            </For>
+                        </div>
+                    </div>
+                </OverlayScrollbarsComponent>
+
                 <div className="chat-input">
                     <textarea
                         key="main"
                         ref={this.textAreaRef}
                         autoComplete="off"
                         autoCorrect="off"
+                        autoFocus={true}
                         id="chat-cmd-input"
-                        onFocus={this.onTextAreaFocused.bind(this)}
-                        onBlur={this.onTextAreaBlur.bind(this)}
+                        // onFocus={this.onTextAreaFocused.bind(this)}
+                        // onBlur={this.onTextAreaBlur.bind(this)}
                         onChange={this.onTextAreaChange.bind(this)}
                         onKeyDown={this.onKeyDown}
                         style={{ fontSize: this.termFontSize }}
@@ -267,7 +278,8 @@ class AIChat extends React.Component<{}, {}> {
                         placeholder="Send a Message..."
                     ></textarea>
                 </div>
-            </AuxiliaryCmdView>
+            </div>
+            // </AuxiliaryCmdView>
         );
     }
 }
