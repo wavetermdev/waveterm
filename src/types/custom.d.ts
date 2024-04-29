@@ -821,6 +821,7 @@ declare global {
     type CommandRtnType = {
         success: boolean;
         error?: string;
+        update?: UpdatePacket;
     };
 
     type EphemeralCommandOutputType = {
