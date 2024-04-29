@@ -74,7 +74,6 @@ class CmdInput extends React.Component<{}, {}> {
             return;
         }
         GlobalModel.inputModel.setAuxViewFocus(false);
-        GlobalModel.inputModel.giveFocus();
     }
 
     @boundMethod
@@ -236,12 +235,7 @@ class CmdInput extends React.Component<{}, {}> {
                         </Button>
                     </div>
                 </If>
-                <div
-                    key="base-cmdinput"
-                    className="base-cmdinput"
-                    onClick={this.baseCmdInputClick}
-                    onSelect={this.baseCmdInputClick}
-                >
+                <div key="base-cmdinput" className="base-cmdinput" onClick={this.baseCmdInputClick}>
                     <div className="cmdinput-actions">
                         <If condition={numRunningLines > 0}>
                             <div

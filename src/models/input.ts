@@ -149,7 +149,7 @@ class InputModel {
                     }
                     break;
                 }
-                case "aichat":
+                case appconst.InputAuxView_AIChat:
                     this.setAIChatFocus();
                     break;
                 case null: {
