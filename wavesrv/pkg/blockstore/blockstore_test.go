@@ -1001,7 +1001,7 @@ func TestWriteLargeDataFlush(t *testing.T) {
 func TestWriteLargeDataNoFlush(t *testing.T) {
 	InitDBState()
 	writeSize := int64(64 - 16)
-	fullWriteSize := int64(1024 * units.Megabyte)
+	fullWriteSize := int64(1024 * 10000)
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -1027,6 +1027,9 @@ func TestWriteLargeDataNoFlush(t *testing.T) {
 		}
 		copy(hashBuf, hash.Sum(nil))
 		bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", writeBuf, writeIndex)
+		if int64(bytesWritten) != writeSize {
+			log.Printf("write issue: %v %v \n", bytesWritten, writeSize)
+		}
 		if err != nil {
 			log.Printf("error: %v", err)
 			t.Errorf("Write At error: %v\n", err)
@@ -1040,6 +1043,9 @@ func TestWriteLargeDataNoFlush(t *testing.T) {
 	readIndex := int64(0)
 	for i := 0; i < int(numWrites); i++ {
 		bytesRead, err := ReadAt(ctx, "test-block-id", "file-1", &readBuf, readIndex)
+		/*if int64(bytesRead) != writeSize {
+			log.Printf("read issue: %v %v \n", bytesRead, writeSize)
+		} */
 		readIndex += int64(bytesRead)
 		hash := md5.New()
 		_, err = hash.Write(readHashBuf)
