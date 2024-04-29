@@ -200,13 +200,13 @@ class AIChat extends React.Component<{}, {}> {
         const senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
         const msgClassName = "chat-msg " + senderClassName;
         let innerHTML: React.JSX.Element = (
-            <span>
+            <div className="chat-item">
                 <div className="chat-msg-header">
                     <i className="fa-sharp fa-solid fa-user"></i>
                     <div className="chat-username">You</div>
                 </div>
-                <p className="msg-text">{chatItem.userquery}</p>
-            </span>
+                <div className="msg-text">{chatItem.userquery}</div>
+            </div>
         );
         if (chatItem.isassistantresponse) {
             if (chatItem.assistantresponse.error != null && chatItem.assistantresponse.error != "") {
@@ -237,11 +237,12 @@ class AIChat extends React.Component<{}, {}> {
         const renderKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_AIChat);
         return (
             <div className="sidebar-aichat">
-                <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
+                <If condition={renderKeybindings}>
+                    <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
+                </If>
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
                 </div>
-
                 <OverlayScrollbarsComponent className="content" options={{ scrollbars: { autoHide: "leave" } }}>
                     <div className="chat-window" ref={this.chatWindowScrollRef}>
                         <div className="filler"></div>
