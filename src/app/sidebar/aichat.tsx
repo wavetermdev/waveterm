@@ -251,12 +251,14 @@ class AIChat extends React.Component<{}, {}> {
                 </div>
 
                 <OverlayScrollbarsComponent className="content" options={{ scrollbars: { autoHide: "leave" } }}>
+                    {/* <div className="content"> */}
                     <div className="chat-window" ref={this.chatWindowScrollRef}>
                         <div className="filler"></div>
                         <For each="chitem" index="idx" of={chatMessageItems}>
                             {this.renderChatMessage(chitem)}
                         </For>
                     </div>
+                    {/* </div> */}
                 </OverlayScrollbarsComponent>
 
                 <div className="chat-input">
