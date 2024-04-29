@@ -18,7 +18,7 @@ jobs:
         id: testdriver
         # note that .testdriver/prerun.sh runs before this, so the app has launched already
         with:
-          version: v2.9.4
+          version: v2.9.8
           prerun: |
             rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt
             cd ~/actions-runner/_work/testdriver/testdriver/
