@@ -232,7 +232,6 @@ class AIChat extends React.Component<{}, {}> {
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
-        const renderKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_AIChat);
         return (
             <div className="sidebar-aichat">
                 <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
