@@ -170,11 +170,13 @@ class HistoryInfo extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    @mobx.action
     handleClose() {
         GlobalModel.inputModel.closeAuxView();
     }
 
     @boundMethod
+    @mobx.action
     handleItemClick(hitem: HistoryItem) {
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
@@ -196,6 +198,7 @@ class HistoryInfo extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    @mobx.action
     handleClickType() {
         const inputModel = GlobalModel.inputModel;
         inputModel.setAuxViewFocus(true);
@@ -203,6 +206,7 @@ class HistoryInfo extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    @mobx.action
     handleClickRemote() {
         const inputModel = GlobalModel.inputModel;
         inputModel.setAuxViewFocus(true);
