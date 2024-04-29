@@ -229,7 +229,7 @@ class HistoryInfo extends React.Component<{}, {}> {
     render() {
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
-        const hitems = inputModel.getFilteredHistoryItems();
+        const hitems = inputModel.filteredHistoryItems;
         const opts = inputModel.historyQueryOpts.get();
         let hitem: HistoryItem = null;
         let snames: Record<string, string> = {};
