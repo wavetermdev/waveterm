@@ -24,7 +24,7 @@
         }
     }
 
-    .content {
+    > .content {
         flex-flow: column nowrap;
         flex: 1;
         padding: 0 15px;
@@ -46,6 +46,7 @@
         .chat-msg {
             margin-top: calc(var(--termpad) * 2);
             margin-bottom: calc(var(--termpad) * 2);
+            display: flex;
 
             .chat-msg-header {
                 display: flex;

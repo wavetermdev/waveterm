@@ -200,26 +200,24 @@ class AIChat extends React.Component<{}, {}> {
         const senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
         const msgClassName = "chat-msg " + senderClassName;
         let innerHTML: React.JSX.Element = (
-            <div className="chat-item">
+            <>
                 <div className="chat-msg-header">
                     <i className="fa-sharp fa-solid fa-user"></i>
-                    <div className="chat-username">You</div>
                 </div>
                 <div className="msg-text">{chatItem.userquery}</div>
-            </div>
+            </>
         );
         if (chatItem.isassistantresponse) {
             if (chatItem.assistantresponse.error != null && chatItem.assistantresponse.error != "") {
                 innerHTML = this.renderError(chatItem.assistantresponse.error);
             } else {
                 innerHTML = (
-                    <span>
+                    <>
                         <div className="chat-msg-header">
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
-                            <div className="chat-username">AI Assistant</div>
                         </div>
                         <Markdown text={chatItem.assistantresponse.message} codeSelect />
-                    </span>
+                    </>
                 );
             }
         }
@@ -237,9 +235,7 @@ class AIChat extends React.Component<{}, {}> {
         const renderKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_AIChat);
         return (
             <div className="sidebar-aichat">
-                <If condition={renderKeybindings}>
-                    <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
-                </If>
+                <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
                 </div>
