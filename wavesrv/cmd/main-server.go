@@ -1180,12 +1180,7 @@ func main() {
 	gr.HandleFunc("/api/log-active-state", AuthKeyWrap(HandleLogActiveState))
 	gr.HandleFunc("/api/read-file", AuthKeyWrapAllowHmac(HandleReadFile))
 	gr.HandleFunc("/api/write-file", AuthKeyWrap(HandleWriteFile)).Methods("POST")
-	fileSep, err := strconv.Unquote(strconv.QuoteRune(filepath.Separator))
-	if err != nil {
-		log.Printf("file separator err: %v\n", fileSep)
-		fileSep = "/"
-	}
-	configPath := filepath.Join(scbase.GetWaveHomeDir(), "config") + fileSep
+	configPath := filepath.Join(scbase.GetWaveHomeDir(), "config") + string(filepath.Separator)
 	log.Printf("[wave] config path: %q\n", configPath)
 	isFileHandler := http.StripPrefix("/config/", http.FileServer(http.Dir(configPath)))
 	isDirHandler := http.HandlerFunc(configDirHandler)
