@@ -13,7 +13,6 @@ import speclist, {
 import log from "../utils/log";
 import { buildExecuteShellCommand, mergeSubcomands } from "./utils";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive type, setting as any
 const specSet: Record<string, string> = {};
 
 (speclist as string[]).forEach((s) => {
