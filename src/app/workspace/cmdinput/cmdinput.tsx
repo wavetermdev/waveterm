@@ -56,7 +56,7 @@ class CmdInput extends React.Component<{}, {}> {
         this.updateCmdInputHeight();
     }
 
-    @boundMethod
+    @mobx.action.bound
     clickFocusInputHint(): void {
         GlobalModel.inputModel.giveFocus();
     }
@@ -73,10 +73,9 @@ class CmdInput extends React.Component<{}, {}> {
             return;
         }
         GlobalModel.inputModel.setAuxViewFocus(false);
-        GlobalModel.inputModel.giveFocus();
     }
 
-    @boundMethod
+    @mobx.action.bound
     clickAIAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -88,7 +87,7 @@ class CmdInput extends React.Component<{}, {}> {
         }
     }
 
-    @boundMethod
+    @mobx.action.bound
     clickHistoryAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -106,11 +105,9 @@ class CmdInput extends React.Component<{}, {}> {
         GlobalCommandRunner.connectRemote(remoteId);
     }
 
-    @boundMethod
+    @mobx.action.bound
     toggleFilter(screen: Screen) {
-        mobx.action(() => {
-            screen.filterRunning.set(!screen.filterRunning.get());
-        })();
+        screen.filterRunning.set(!screen.filterRunning.get());
     }
 
     @boundMethod
@@ -232,12 +229,7 @@ class CmdInput extends React.Component<{}, {}> {
                         </Button>
                     </div>
                 </If>
-                <div
-                    key="base-cmdinput"
-                    className="base-cmdinput"
-                    onClick={this.baseCmdInputClick}
-                    onSelect={this.baseCmdInputClick}
-                >
+                <div key="base-cmdinput" className="base-cmdinput" onClick={this.baseCmdInputClick}>
                     <div className="cmdinput-actions">
                         <If condition={numRunningLines > 0}>
                             <div
