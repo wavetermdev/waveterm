@@ -57,6 +57,7 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    @mobx.action
     clickFocusInputHint(): void {
         GlobalModel.inputModel.giveFocus();
     }
@@ -76,6 +77,7 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    @mobx.action
     clickAIAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -88,6 +90,7 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    @mobx.action
     clickHistoryAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -106,10 +109,9 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    @mobx.action
     toggleFilter(screen: Screen) {
-        mobx.action(() => {
-            screen.filterRunning.set(!screen.filterRunning.get());
-        })();
+        screen.filterRunning.set(!screen.filterRunning.get());
     }
 
     @boundMethod

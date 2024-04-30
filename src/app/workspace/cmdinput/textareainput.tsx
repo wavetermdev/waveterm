@@ -313,6 +313,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
     }
 
+    @mobx.action
     componentDidMount() {
         const activeScreen = GlobalModel.getActiveScreen();
         if (activeScreen != null) {
