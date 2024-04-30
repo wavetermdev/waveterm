@@ -334,6 +334,19 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
 
     componentDidMount() {
         this.handleComponentDidMount();
+        this.updateCursorPosIfForced();
+    }
+
+    updateCursorPosIfForced() {
+        const inputModel = GlobalModel.inputModel;
+        const fcpos = inputModel.forceCursorPos.get();
+        if (fcpos != null && fcpos != appconst.NoStrPos) {
+            if (this.mainInputRef.current != null) {
+                this.mainInputRef.current.selectionStart = fcpos;
+                this.mainInputRef.current.selectionEnd = fcpos;
+            }
+            inputModel.forceCursorPos.set(null);
+        }
     }
 
     @mobx.action
@@ -347,14 +360,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             this.lastFocusType = focusType;
         }
         const inputModel = GlobalModel.inputModel;
-        const fcpos = inputModel.forceCursorPos.get();
-        if (fcpos != null && fcpos != appconst.NoStrPos) {
-            if (this.mainInputRef.current != null) {
-                this.mainInputRef.current.selectionStart = fcpos;
-                this.mainInputRef.current.selectionEnd = fcpos;
-            }
-            inputModel.forceCursorPos.set(null);
-        }
+        this.updateCursorPosIfForced();
         if (inputModel.forceInputFocus) {
             inputModel.forceInputFocus = false;
             this.setFocus();
@@ -614,7 +620,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
 
         const renderCmdInputKeybindings = inputModel.shouldRenderAuxViewKeybindings(null);
         const renderHistoryKeybindings = inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_History);
-
         return (
             <div
                 className="textareainput-div control is-expanded"
