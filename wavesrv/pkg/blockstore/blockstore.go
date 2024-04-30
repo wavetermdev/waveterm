@@ -38,6 +38,15 @@ type CacheEntry struct {
 	CacheTs    int64
 	Info       *FileInfo
 	DataBlocks []*CacheBlock
+	Refs       int64
+}
+
+func (c *CacheEntry) IncRefs() {
+	c.Refs += 1
+}
+
+func (c *CacheEntry) DecRefs() {
+	c.Refs -= 1
 }
 
 type CacheBlock struct {
@@ -47,7 +56,7 @@ type CacheBlock struct {
 }
 
 func MakeCacheEntry(info *FileInfo) *CacheEntry {
-	rtn := &CacheEntry{Lock: &sync.Mutex{}, CacheTs: int64(time.Now().UnixMilli()), Info: info, DataBlocks: []*CacheBlock{}}
+	rtn := &CacheEntry{Lock: &sync.Mutex{}, CacheTs: int64(time.Now().UnixMilli()), Info: info, DataBlocks: []*CacheBlock{}, Refs: 0}
 	return rtn
 }
 
@@ -73,8 +82,6 @@ var globalLock *sync.Mutex = &sync.Mutex{}
 var appendLock *sync.Mutex = &sync.Mutex{}
 var flushTimeout = DefaultFlushTimeout
 var lastWriteTime time.Time
-var DebugRead = false
-var DebugWriteCount = 0
 
 func InsertFileIntoDB(ctx context.Context, fileInfo FileInfo) error {
 	metaJson, err := json.Marshal(fileInfo.Meta)
@@ -138,11 +145,9 @@ func WriteToCacheBlockNum(ctx context.Context, blockId string, name string, p []
 	if err != nil {
 		return 0, 0, err
 	}
+	cacheEntry.IncRefs()
 	cacheEntry.Lock.Lock()
 	defer cacheEntry.Lock.Unlock()
-	if DebugRead {
-		log.Printf("locking %p %p", cacheEntry, cacheEntry.Lock)
-	}
 	block, err := GetCacheBlock(ctx, blockId, name, cacheNum, pullFromDB)
 	if err != nil {
 		return 0, 0, fmt.Errorf("Error getting cache block: %v", err)
@@ -154,11 +159,6 @@ func WriteToCacheBlockNum(ctx context.Context, blockId string, name string, p []
 	numLeftPad := int64(0)
 	if pos > blockLen {
 		numLeftPad = int64(pos - blockLen)
-		log.Printf("left padding %v %v %v %v %v %v\n", numLeftPad, cacheNum, pos, length, len(block.data), block.size)
-		bSize, numNil := GetAllBlockSizes(cacheEntry.DataBlocks)
-		maybeDBSize := int64(numNil) * MaxBlockSize
-		maybeFullSize := int64(bSize) + maybeDBSize
-		log.Printf("sizes: %v %v %v %v %v", bSize, numNil, maybeDBSize, maybeFullSize, cacheEntry.Info.Size)
 		leftPadBytes := []byte{}
 		for index := 0; index < int(numLeftPad); index++ {
 			leftPadBytes = append(leftPadBytes, 0)
@@ -171,25 +171,13 @@ func WriteToCacheBlockNum(ctx context.Context, blockId string, name string, p []
 		numLeftPad = int64(b)
 		cacheEntry.Info.Size += (int64(cacheNum) * MaxBlockSize)
 	}
-	if DebugRead {
-		log.Printf("writing data: (%v) %v to %v", len(p), p, block)
-	}
 	b, writeErr := WriteToCacheBuf(&block.data, p, pos, length, maxWriteSize)
-	if DebugRead {
-		log.Printf("block after write: (%v) %v", b, block)
-	}
 	bytesWritten += b
 	blockLenDiff := len(block.data) - blockLen
-	if blockLenDiff > 48 {
-		log.Printf("block len diff: %v %v %v %v %v\n", blockLenDiff, b, pos, length, cacheNum)
-		os.Exit(0)
-	}
 	block.size = len(block.data)
 	cacheEntry.Info.Size += int64(blockLenDiff)
 	block.dirty = true
-	if DebugRead {
-		log.Printf("unlocking %p", cacheEntry)
-	}
+	cacheEntry.DecRefs()
 	return numLeftPad, bytesWritten, writeErr
 }
 
@@ -326,9 +314,6 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 		var curCacheBlock *CacheBlock
 		if pullFromDB {
 			cacheData, err := GetCacheFromDB(ctx, blockId, name, 0, MaxBlockSize, int64(cacheNum))
-			if DebugRead {
-				log.Printf("pulling from db? %v %v", cacheNum, cacheData)
-			}
 			if err != nil {
 				//log.Printf("returning err?")
 				return nil, err
@@ -344,9 +329,6 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 		//log.Printf("returning ?")
 		return curCacheBlock, nil
 	} else {
-		if DebugRead {
-			log.Printf("returning populated")
-		}
 		return curCacheEntry.DataBlocks[cacheNum], nil
 	}
 }
@@ -391,7 +373,6 @@ func StartFlushTimer(ctx context.Context) {
 	curTime := time.Now()
 	writeTimePassed := curTime.UnixNano() - lastWriteTime.UnixNano()
 	if writeTimePassed >= int64(flushTimeout) {
-		log.Printf("starting flush timer %v %v %v %v", GetClockString(lastWriteTime), GetClockString(curTime), writeTimePassed, int64(flushTimeout))
 		lastWriteTime = curTime
 		go func() {
 			time.Sleep(flushTimeout)
@@ -455,13 +436,6 @@ func WriteAtHelper(ctx context.Context, blockId string, name string, p []byte, o
 	if flushCache {
 		StartFlushTimer(ctx)
 	}
-	if DebugRead {
-		log.Printf("upping debugwrite count %v", DebugWriteCount)
-		if DebugWriteCount >= 5 {
-			os.Exit(0)
-		}
-		DebugWriteCount += 1
-	}
 	return bytesWritten, nil
 }
 
@@ -482,24 +456,13 @@ func GetAllBlockSizes(dataBlocks []*CacheBlock) (int, int) {
 }
 
 func FlushCache(ctx context.Context) error {
-	log.Printf("flushing? %v\n", cache)
 	for _, cacheEntry := range cache {
-		log.Printf("do we get here? \n")
 		err := WriteFileToDB(ctx, *cacheEntry.Info)
 		if err != nil {
 			return err
 		}
-		log.Printf("writing file to db %v\n", cacheEntry.Info.Name)
 		clearEntry := true
 		cacheEntry.Lock.Lock()
-		log.Printf("flushing blocks with cacheEntry %p %p", cacheEntry, cacheEntry.Lock)
-		cacheEntryLen := len(cacheEntry.DataBlocks)
-		log.Printf("flushing cache %v %v %v %v\n", cacheEntry.Info.Size, cacheEntry.Info.Name, cacheEntryLen, cacheEntry.DataBlocks[cacheEntryLen-1])
-		blockSize, numNil := GetAllBlockSizes(cacheEntry.DataBlocks)
-		maybeDBSize := int64(numNil) * MaxBlockSize
-		maybeFullSize := int64(blockSize) + maybeDBSize
-		log.Printf("block actual sizes: %v %v %v %v\n", blockSize, numNil, maybeDBSize, maybeFullSize)
-		DebugRead = true
 		for index, block := range cacheEntry.DataBlocks {
 			if block == nil || block.size == 0 {
 				continue
@@ -516,12 +479,8 @@ func FlushCache(ctx context.Context) error {
 			}
 			cacheEntry.DataBlocks[index] = nil
 		}
-		log.Printf("unlocking in flush: %p %p", cacheEntry, cacheEntry.Lock)
 		cacheEntry.Lock.Unlock()
-		if clearEntry {
-			if DebugRead {
-				log.Printf("clearing entry")
-			}
+		if clearEntry && cacheEntry.Refs <= 0 {
 			DeleteCacheEntry(ctx, cacheEntry.Info.BlockId, cacheEntry.Info.Name)
 		}
 	}
@@ -553,9 +512,6 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 		numCaches += 1
 	}
 	for index := curCacheNum; index < curCacheNum+numCaches; index++ {
-		if index < 70000 {
-			DebugRead = true
-		}
 		curCacheBlock, err := GetCacheBlock(ctx, blockId, name, index, true)
 		if err != nil {
 			return bytesRead, fmt.Errorf("Error getting cache block: %v", err)
