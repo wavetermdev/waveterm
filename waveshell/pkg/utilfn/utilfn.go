@@ -13,9 +13,13 @@ import (
 	"io"
 	"math"
 	mathrand "math/rand"
+	"net/http"
+	"os"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 	"unicode/utf8"
 )
 
@@ -610,4 +614,62 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 			return err
 		}
 	}
+}
+
+// on error just returns ""
+// does not return "application/octet-stream" as this is considered a detection failure
+func DetectMimeType(path string) string {
+	fd, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer fd.Close()
+	buf := make([]byte, 512)
+	// ignore the error (EOF / UnexpectedEOF is fine, just process how much we got back)
+	n, _ := io.ReadAtLeast(fd, buf, 512)
+	if n == 0 {
+		return ""
+	}
+	buf = buf[:n]
+	rtn := http.DetectContentType(buf)
+	if rtn == "application/octet-stream" {
+		return ""
+	}
+	return rtn
+}
+
+func GetCmdExitCode(cmd *exec.Cmd, err error) int {
+	if cmd == nil || cmd.ProcessState == nil {
+		return GetExitCode(err)
+	}
+	status, ok := cmd.ProcessState.Sys().(syscall.WaitStatus)
+	if !ok {
+		return cmd.ProcessState.ExitCode()
+	}
+	signaled := status.Signaled()
+	if signaled {
+		signal := status.Signal()
+		return 128 + int(signal)
+	}
+	exitStatus := status.ExitStatus()
+	return exitStatus
+}
+
+func GetExitCode(err error) int {
+	if err == nil {
+		return 0
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		return exitErr.ExitCode()
+	} else {
+		return -1
+	}
+}
+
+func GetFirstLine(s string) string {
+	idx := strings.Index(s, "\n")
+	if idx == -1 {
+		return s
+	}
+	return s[0:idx]
 }

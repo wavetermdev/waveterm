@@ -39,7 +39,7 @@ class AlertModal extends React.Component<{}, {}> {
 
         return (
             <Modal className="alert-modal">
-                <Modal.Header onClose={this.closeModal} title={title} />
+                <Modal.Header onClose={this.closeModal} title={title} keybindings={true} />
                 <div className="wave-modal-body">
                     <If condition={message?.markdown}>
                         <Markdown text={message?.message ?? ""} extraClassName="bottom-margin" />

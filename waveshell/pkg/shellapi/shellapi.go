@@ -19,7 +19,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
@@ -29,6 +28,7 @@ import (
 )
 
 const GetVersionTimeout = 5 * time.Second
+const ValidateTimeout = 2 * time.Second
 const GetGitBranchCmdStr = `printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`
 const GetK8sContextCmdStr = `printf "K8SCONTEXT %s\x00" "$(kubectl config current-context 2>/dev/null)"`
 const GetK8sNamespaceCmdStr = `printf "K8SNAMESPACE %s\x00" "$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)"`
@@ -64,9 +64,13 @@ type ShellStateOutput struct {
 	Error      string
 }
 
+// some timing info
+// MakeShellStateDiff takes ~1ms to run (even on a large diff)
+
 type ShellApi interface {
 	GetShellType() string
 	MakeExitTrap(fdNum int) (string, []byte)
+	ValidateCommandSyntax(cmdStr string) error
 	GetLocalMajorVersion() string
 	GetLocalShellPath() string
 	GetRemoteShellPath() string
@@ -193,11 +197,7 @@ func StreamCommandWithExtraFd(ctx context.Context, ecmd *exec.Cmd, outputCh chan
 	go func() {
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer outputWg.Done()
-		err := utilfn.CopyToChannel(outputCh, cmdPty)
-		if err != nil {
-			errStr := fmt.Sprintf("\r\nerror reading from pty: %v\r\n", err)
-			outputCh <- []byte(errStr)
-		}
+		utilfn.CopyToChannel(outputCh, cmdPty)
 	}()
 	go func() {
 		defer outputWg.Done()
@@ -278,12 +278,11 @@ func parseExtVarOutput(pvarBytes []byte, promptOutput string, zmodsOutput string
 		if pvarFields[0] == "" {
 			continue
 		}
-		if pvarFields[1] == "" {
-			continue
-		}
+		name := pvarFields[0]
+		val := pvarFields[1]
 		decl := &DeclareDeclType{IsExtVar: true}
-		decl.Name = "PROMPTVAR_" + pvarFields[0]
-		decl.Value = shellescape.Quote(pvarFields[1])
+		decl.Name = "PROMPTVAR_" + name
+		decl.Value = val
 		declMap[decl.Name] = decl
 	}
 	if promptOutput != "" {

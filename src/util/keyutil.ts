@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as mobx from "mobx";
 import * as electron from "electron";
+import * as util from "@/util/util";
 import { parse } from "node:path";
 import { v4 as uuidv4 } from "uuid";
 import defaultKeybindingsFile from "../../assets/default-keybindings.json";
@@ -25,18 +26,19 @@ const KeyTypeCode = "code";
 
 type KeybindCallback = (event: WaveKeyboardEvent) => boolean;
 type KeybindConfigArray = Array<KeybindConfig>;
-type KeybindConfig = { command: string; keys: Array<string>; commandStr?: string; info?: string };
+type KeybindConfig = { command: string; keys: Array<string>; commandStr?: Array<string>; info?: string };
 
 const Callback = "callback";
 const Command = "command";
 const DumpLogs = false;
+const DefaultConsoleCommandWait = 200;
 
 type Keybind = {
     domain: string;
     keybinding: string;
     action: string;
     callback: KeybindCallback;
-    commandStr: string;
+    commandStr: Array<string>;
 };
 
 const KeybindLevels = ["system", "modal", "app", "mainview", "pane", "plugin", "control"];
@@ -49,6 +51,9 @@ class KeybindManager {
     userKeybindings: KeybindConfigArray;
     userKeybindingError: OV<string>;
     globalModel: any;
+    activeKeybindsVersion: OV<number>;
+    lastKeyData: { domain: string; keyPress: string };
+    consoleCommandWait: number;
 
     constructor(GlobalModel: any) {
         this.levelMap = new Map();
@@ -59,10 +64,15 @@ class KeybindManager {
             this.levelMap.set(curLevel, new Array<Keybind>());
         }
         this.userKeybindingError = mobx.observable.box(null, {
-            name: "keyutil-userKeybindingError",
+            name: "keybindManager-userKeybindingError",
+        });
+        this.activeKeybindsVersion = mobx.observable.box(0, {
+            name: "keybindManager-activeKeybindsVersion",
         });
         this.globalModel = GlobalModel;
         this.initKeyDescriptionsMap();
+        this.lastKeyData = { domain: "none", keyPress: "none" };
+        this.consoleCommandWait = DefaultConsoleCommandWait;
     }
 
     initKeyDescriptionsMap() {
@@ -99,7 +109,7 @@ class KeybindManager {
                     if (
                         defaultCmd != null &&
                         defaultCmd.commandStr != null &&
-                        (curKeybind.commandStr == null || curKeybind.commandStr == "")
+                        (curKeybind.commandStr == null || curKeybind.commandStr.length == 0)
                     ) {
                         curKeybind.commandStr = this.keyDescriptionsMap.get(curKeybind.command).commandStr;
                     }
@@ -111,6 +121,10 @@ class KeybindManager {
                         curKeybind.info = this.keyDescriptionsMap.get(curKeybind.command).info;
                     }
                     newKeyDescriptions.set(curKeybind.command, curKeybind);
+
+                    if (this.isCustomCommand(curKeybind.command)) {
+                        this.registerKeybinding("app", "custom", curKeybind.command, null);
+                    }
                 }
             } catch (e) {
                 let userError = `${curUserCommand} is invalid: error: ${e}`;
@@ -123,8 +137,15 @@ class KeybindManager {
         this.keyDescriptionsMap = newKeyDescriptions;
     }
 
-    prettyPrintKeybind(keyDescription: string): string {
-        let keyPress = parseKeyDescription(keyDescription);
+    isCustomCommand(keyDescription: string): boolean {
+        let words = keyDescription.split(":");
+        if (words.length >= 2 && words[0] == "custom") {
+            return true;
+        }
+        return false;
+    }
+
+    prettyPrintKeyPress(keyPress: KeyPressDecl): string {
         let returnString = "";
         if (keyPress.mods.Cmd) {
             returnString += "⌘";
@@ -148,17 +169,22 @@ class KeybindManager {
         return returnString;
     }
 
+    prettyPrintKeybind(keyDescription: string): string {
+        let keyPress = parseKeyDescription(keyDescription);
+        return this.prettyPrintKeyPress(keyPress);
+    }
+
     getUIDescription(keyDescription: string, prettyPrint: boolean = true): KeybindConfig {
         let keybinds = this.getKeybindsFromDescription(keyDescription, prettyPrint);
         if (!this.keyDescriptionsMap.has(keyDescription)) {
-            return { keys: keybinds, info: "", command: keyDescription, commandStr: "" };
+            return { keys: keybinds, info: "", command: keyDescription, commandStr: [] };
         }
         let curKeybindConfig = this.keyDescriptionsMap.get(keyDescription);
         let curInfo = "";
         if (curKeybindConfig.info) {
             curInfo = curKeybindConfig.info;
         }
-        let curCommandStr = "";
+        let curCommandStr = [];
         if (curKeybindConfig.commandStr) {
             curCommandStr = curKeybindConfig.commandStr;
         }
@@ -202,10 +228,15 @@ class KeybindManager {
 
     runSlashCommand(curKeybind: Keybind): boolean {
         let curConfigKeybind = this.keyDescriptionsMap.get(curKeybind.keybinding);
-        if (curConfigKeybind == null || curConfigKeybind.commandStr == null || curKeybind.commandStr == "") {
+        if (
+            curConfigKeybind == null ||
+            curConfigKeybind.commandStr == null ||
+            !util.isArray(curConfigKeybind.commandStr) ||
+            curConfigKeybind.commandStr.length == 0
+        ) {
             return false;
         }
-        let commandsList = curConfigKeybind.commandStr.trim().split(";");
+        let commandsList = [...curConfigKeybind.commandStr];
         this.runIndividualSlashCommand(commandsList);
         return true;
     }
@@ -215,23 +246,55 @@ class KeybindManager {
             return true;
         }
         let curCommand = commandsList.shift();
-        let prtn = this.globalModel.submitRawCommand(curCommand, false, false);
+        let prtn = this.globalModel.submitRawCommand(curCommand, false, true);
         prtn.then((rtn) => {
             if (!rtn.success) {
                 console.log("error running command ", curCommand);
                 return false;
             }
-            return this.runIndividualSlashCommand(commandsList);
+            if (curCommand.trim()[0] != "/") {
+                setTimeout(() => {
+                    return this.runIndividualSlashCommand(commandsList);
+                }, this.consoleCommandWait);
+            } else if (curCommand.includes("/sleep")) {
+                const sleepMsStr = curCommand.trim().replace("/sleep", "").trim();
+                const sleepMs = Number(sleepMsStr);
+                if (Number.isNaN(sleepMs)) {
+                    console.log("sleep error: couldn't parse arg");
+                    return false;
+                }
+                setTimeout(() => {
+                    return this.runIndividualSlashCommand(commandsList);
+                }, sleepMs);
+            } else {
+                return this.runIndividualSlashCommand(commandsList);
+            }
         }).catch((error) => {
             console.log("caught error running command ", curCommand, ": ", error);
             return false;
         });
     }
 
+    runDomainCallbacks(event: WaveKeyboardEvent, curDomainCallbacks: Map<string, KeybindCallback>) {
+        for (let key of curDomainCallbacks.keys()) {
+            let callback = curDomainCallbacks.get(key);
+            if (callback != null) {
+                callback(event);
+            }
+        }
+    }
+
     processLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {
         // iterate through keybinds in backwards order
+        let domainCallbacksToRun: Map<string, KeybindCallback> = new Map();
         for (let index = keybindsArray.length - 1; index >= 0; index--) {
             let curKeybind = keybindsArray[index];
+            if (this.domainCallbacks.has(curKeybind.domain)) {
+                let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
+                if (curDomainCallback != null) {
+                    domainCallbacksToRun.set(curKeybind.domain, curDomainCallback);
+                }
+            }
             if (this.checkKeyPressed(event, curKeybind.keybinding)) {
                 if (DumpLogs) {
                     console.log("keybind found", curKeybind);
@@ -242,12 +305,60 @@ class KeybindManager {
                     shouldReturn = curKeybind.callback(event);
                     shouldRunCommand = false;
                 }
-                if (!shouldReturn && this.domainCallbacks.has(curKeybind.domain)) {
+                if (shouldRunCommand) {
+                    shouldReturn = this.runSlashCommand(curKeybind);
+                }
+                if (shouldReturn) {
+                    nativeEvent.preventDefault();
+                    nativeEvent.stopPropagation();
+                    this.lastKeyData.domain = curKeybind.domain;
+                    this.lastKeyData.keyPress = this.prettyPrintKeyPress(
+                        getKeyPressDeclFromKeyboardEvent(event, KeyTypeKey)
+                    );
+                    mobx.action(() => {
+                        this.activeKeybindsVersion.set(this.activeKeybindsVersion.get() + 1);
+                    })();
+                    this.runDomainCallbacks(event, domainCallbacksToRun);
+                    return true;
+                }
+            }
+        }
+        this.lastKeyData.domain = "none";
+        this.lastKeyData.keyPress = "none";
+        mobx.action(() => {
+            this.activeKeybindsVersion.set(this.activeKeybindsVersion.get() + 1);
+        })();
+        this.runDomainCallbacks(event, domainCallbacksToRun);
+        return false;
+    }
+
+    processModalLevel(nativeEvent: any, event: WaveKeyboardEvent, keybindsArray: Array<Keybind>): boolean {
+        let curModalDomain: string = "";
+        // iterate through keybinds in backwards order
+        let domainCallbacksToRun: Map<string, KeybindCallback> = new Map();
+        for (let index = keybindsArray.length - 1; index >= 0; index--) {
+            let curKeybind = keybindsArray[index];
+            if (curModalDomain == "") {
+                curModalDomain = curKeybind.domain;
+            }
+            if (curKeybind.domain != curModalDomain) {
+                continue;
+            }
+            if (this.domainCallbacks.has(curKeybind.domain)) {
+                let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
+                if (curDomainCallback != null) {
+                    domainCallbacksToRun.set(curKeybind.domain, curDomainCallback);
+                }
+            }
+            if (this.checkKeyPressed(event, curKeybind.keybinding)) {
+                if (DumpLogs) {
+                    console.log("keybind found", curKeybind);
+                }
+                let shouldReturn = false;
+                let shouldRunCommand = true;
+                if (curKeybind.callback != null) {
+                    shouldReturn = curKeybind.callback(event);
                     shouldRunCommand = false;
-                    let curDomainCallback = this.domainCallbacks.get(curKeybind.domain);
-                    if (curDomainCallback != null) {
-                        shouldReturn = curDomainCallback(event);
-                    }
                 }
                 if (shouldRunCommand) {
                     shouldReturn = this.runSlashCommand(curKeybind);
@@ -255,10 +366,12 @@ class KeybindManager {
                 if (shouldReturn) {
                     nativeEvent.preventDefault();
                     nativeEvent.stopPropagation();
+                    this.runDomainCallbacks(event, domainCallbacksToRun);
                     return true;
                 }
             }
         }
+        this.runDomainCallbacks(event, domainCallbacksToRun);
         return false;
     }
 
@@ -272,7 +385,7 @@ class KeybindManager {
             if (shouldReturn) {
                 return true;
             }
-            shouldReturn = this.processLevel(nativeEvent, event, modalLevel);
+            shouldReturn = this.processModalLevel(nativeEvent, event, modalLevel);
             if (shouldReturn) {
                 return true;
             }
@@ -307,11 +420,117 @@ class KeybindManager {
         for (let index = 0; index < keybindsArray.length; index++) {
             let curKeybind = keybindsArray[index];
             if (curKeybind.domain == domain && keybindingIsEqual(curKeybind.keybinding, keybinding)) {
-                console.log("keybinding is equal: ", curKeybind.keybinding, keybinding, curKeybind.domain, domain);
+                if (this.globalModel.isDev) {
+                    console.log(
+                        "keybinding already added",
+                        curKeybind.keybinding,
+                        keybinding,
+                        curKeybind.domain,
+                        domain
+                    );
+                }
                 return true;
             }
         }
         return false;
+    }
+
+    getActiveKeybindsVersion() {
+        return this.activeKeybindsVersion;
+    }
+
+    checkKeyInKeybinding(key: string, keyDescription: string) {
+        if (keyDescription == "any") {
+            return true;
+        }
+        if (!this.keyDescriptionsMap.has(keyDescription)) {
+            return false;
+        }
+        let keyPressArray = this.keyDescriptionsMap.get(keyDescription).keys;
+        for (let index = 0; index < keyPressArray.length; index++) {
+            let curKeyPress = keyPressArray[index];
+            if (keybindingIsEqual(key, curKeyPress)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    lookupKeyInLevel(key: string, level: Array<Keybind>): Array<Keybind> {
+        let toReturn: Array<Keybind> = [];
+        for (let index = level.length - 1; index >= 0; index--) {
+            let curKeybind = level[index];
+            console.log("index", index, "curKeybind: ", curKeybind);
+            if (this.checkKeyInKeybinding(key, curKeybind.keybinding)) {
+                toReturn.push({ ...curKeybind }); // shallow copy
+            }
+        }
+        return toReturn;
+    }
+
+    lookupKey(key: string) {
+        let modalLevel = this.levelMap.get("modal");
+        let toReturn: Array<Keybind> = [];
+        if (modalLevel.length != 0) {
+            let controlLevel = this.levelMap.get("control");
+            toReturn = toReturn.concat(this.lookupKeyInLevel(key, controlLevel));
+            toReturn = toReturn.concat(this.lookupKeyInLevel(key, modalLevel));
+            let systemLevel = this.levelMap.get("system");
+            toReturn = toReturn.concat(this.lookupKeyInLevel(key, systemLevel));
+            return toReturn;
+        }
+        for (let index = this.levelArray.length - 1; index >= 0; index--) {
+            let curLevel = this.levelArray[index];
+            let curKeybindsArray;
+            if (this.levelMap.has(curLevel)) {
+                curKeybindsArray = this.levelMap.get(curLevel);
+            } else {
+                console.error("error processing key event: couldn't find level: ", curLevel);
+                continue;
+            }
+            toReturn = toReturn.concat(this.lookupKeyInLevel(key, curKeybindsArray));
+        }
+        return toReturn;
+    }
+
+    getDomainListForLevel(level: Array<Keybind>): Array<string> {
+        let toReturn: Array<string> = [];
+        for (let index = 0; index < level.length; index++) {
+            let curDomain = level[index].domain;
+            if (!toReturn.includes(curDomain)) {
+                toReturn.push(curDomain);
+            }
+        }
+        return toReturn;
+    }
+
+    getLastKeyData() {
+        return this.lastKeyData;
+    }
+
+    getActiveKeybindings(): Array<{ name: string; domains: Array<string> }> {
+        let modalLevel = this.levelMap.get("modal");
+        let toReturn: Array<{ name: string; domains: Array<string> }> = [];
+        if (modalLevel.length != 0) {
+            let controlLevel = this.levelMap.get("control");
+            toReturn.push({ name: "control", domains: this.getDomainListForLevel(controlLevel) });
+            toReturn.push({ name: "modal", domains: this.getDomainListForLevel(modalLevel) });
+            let systemLevel = this.levelMap.get("system");
+            toReturn.push({ name: "system", domains: this.getDomainListForLevel(systemLevel) });
+            return toReturn;
+        }
+        for (let index = this.levelArray.length - 1; index >= 0; index--) {
+            let curLevel = this.levelArray[index];
+            let curKeybindsArray;
+            if (this.levelMap.has(curLevel)) {
+                curKeybindsArray = this.levelMap.get(curLevel);
+            } else {
+                console.error("error processing key event: couldn't find level: ", curLevel);
+                continue;
+            }
+            toReturn.push({ name: curLevel, domains: this.getDomainListForLevel(curKeybindsArray) });
+        }
+        return toReturn;
     }
 
     registerKeybinding(level: string, domain: string, keybinding: string, callback: KeybindCallback): boolean {
@@ -326,6 +545,9 @@ class KeybindManager {
         let curKeybindArray = this.levelMap.get(level);
         curKeybindArray.push(newKeybind);
         this.levelMap.set(level, curKeybindArray);
+        mobx.action(() => {
+            this.activeKeybindsVersion.set(this.activeKeybindsVersion.get() + 1);
+        })();
         return true;
     }
 
@@ -371,8 +593,11 @@ class KeybindManager {
                 keybindsArray.splice(index, 1);
                 index--;
                 this.levelMap.set(level, keybindsArray);
+                return true;
             }
-            return true;
+            mobx.action(() => {
+                this.activeKeybindsVersion.set(this.activeKeybindsVersion.get() + 1);
+            })();
         }
         return false;
     }
@@ -392,10 +617,13 @@ class KeybindManager {
             }
         }
         this.domainCallbacks.delete(domain);
+        mobx.action(() => {
+            this.activeKeybindsVersion.set(this.activeKeybindsVersion.get() + 1);
+        })();
         return foundKeybind;
     }
 
-    getKeyPressEventForDomain(domain: string, callback: KeybindCallback) {
+    registerDomainCallback(domain: string, callback: KeybindCallback) {
         if (callback == null) {
             console.log("domain callback can't be null");
         }
@@ -479,6 +707,25 @@ function parseKeyDescription(keyDescription: string): KeyPressDecl {
                 }
             }
         }
+    }
+    return rtn;
+}
+
+function getKeyPressDeclFromKeyboardEvent(waveEvent: WaveKeyboardEvent, keyType: string): KeyPressDecl {
+    let rtn = { key: "", mods: {} } as KeyPressDecl;
+    rtn.mods.Cmd = waveEvent.cmd;
+    rtn.mods.Ctrl = waveEvent.control;
+    rtn.mods.Shift = waveEvent.shift;
+    rtn.mods.Option = waveEvent.option;
+    rtn.mods.Alt = waveEvent.alt && !waveEvent.option;
+    rtn.mods.Meta = waveEvent.meta && !waveEvent.cmd;
+    if (keyType == KeyTypeKey) {
+        rtn.key = waveEvent.code;
+        rtn.keyType = KeyTypeKey;
+    }
+    if (keyType == KeyTypeCode) {
+        rtn.key = waveEvent.code;
+        rtn.keyType = KeyTypeCode;
     }
     return rtn;
 }

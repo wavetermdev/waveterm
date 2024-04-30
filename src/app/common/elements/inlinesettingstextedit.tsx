@@ -22,6 +22,7 @@ class InlineSettingsTextEdit extends React.Component<
         maxLength: number;
         placeholder: string;
         showIcon?: boolean;
+        isNumber?: boolean;
     },
     {}
 > {
@@ -46,6 +47,12 @@ class InlineSettingsTextEdit extends React.Component<
 
     @boundMethod
     handleChangeText(e: any): void {
+        const isNumber = this.props.isNumber ?? false;
+        const value = e.target.value;
+        if (isNumber && value !== "" && !/^\d*$/.test(value)) {
+            return;
+        }
+
         mobx.action(() => {
             this.tempText.set(e.target.value);
         })();
@@ -131,7 +138,7 @@ class InlineSettingsTextEdit extends React.Component<
                         </div>
                         <div className="control">
                             <div
-                                onClick={this.cancelChange}
+                                onMouseDown={this.cancelChange}
                                 title="Cancel (Esc)"
                                 className="button is-prompt-danger is-outlined is-small"
                             >
@@ -142,7 +149,7 @@ class InlineSettingsTextEdit extends React.Component<
                         </div>
                         <div className="control">
                             <div
-                                onClick={this.confirmChange}
+                                onMouseDown={this.confirmChange}
                                 title="Confirm (Enter)"
                                 className="button is-wave-green is-outlined is-small"
                             >

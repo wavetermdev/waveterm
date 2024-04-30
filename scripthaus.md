@@ -44,7 +44,7 @@ rm -rf bin/
 rm -rf build/
 node_modules/.bin/webpack --env prod
 WAVESRV_VERSION=$(node -e 'console.log(require("./version.js"))')
-WAVESHELL_VERSION=v0.5
+WAVESHELL_VERSION=v0.7
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 function buildWaveShell {
     (cd waveshell; CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-$WAVESHELL_VERSION-$1.$2 main-waveshell.go)
@@ -69,7 +69,7 @@ rm -rf bin/
 rm -rf build/
 node_modules/.bin/webpack --env prod
 WAVESRV_VERSION=$(node -e 'console.log(require("./version.js"))')
-WAVESHELL_VERSION=v0.5
+WAVESHELL_VERSION=v0.7
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 function buildWaveShell {
     (cd waveshell; CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-$WAVESHELL_VERSION-$1.$2 main-waveshell.go)
@@ -96,7 +96,7 @@ CGO_ENABLED=1 go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflag
 ```bash
 # @scripthaus command fullbuild-waveshell
 set -e
-WAVESHELL_VERSION=v0.5
+WAVESHELL_VERSION=v0.7
 GO_LDFLAGS="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
 function buildWaveShell {
     (cd waveshell; CGO_ENABLED=0 GOOS=$1 GOARCH=$2 go build -ldflags="$GO_LDFLAGS" -o ../bin/mshell/mshell-$WAVESHELL_VERSION-$1.$2 main-waveshell.go)

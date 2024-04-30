@@ -4,151 +4,26 @@
     max-height: max(300px, 40%);
     display: flex;
     flex-direction: column;
-    position: absolute;
-    bottom: 0;
     width: 100%;
-    padding: calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 2) calc(var(--termpad) * 3 - 1px);
     z-index: 100;
     border-top: 2px solid var(--app-border-color);
     background-color: var(--app-bg-color);
+    position: relative;
 
-    &.has-info,
+    // Apply a border between the base cmdinput and any views shown above it
+    // TODO: use a generic selector for this
     &.has-aichat,
-    &.has-history {
-        .cmdinput-actions {
-            display: none;
+    &.has-history,
+    &.has-info,
+    &.has-suggestions {
+        .base-cmdinput {
+            border-top: 1px solid var(--app-border-color);
         }
-    }
-
-    .titlebar-spacer {
-        height: 31px;
-    }
-
-    .cmdinput-conn {
-        position: absolute;
-        top: 0;
-        left: 0;
-        border-radius: 0 0 4px 0;
-        background-color: rgba(88, 193, 66, 0.3);
-        padding: 2px 10px 4px 10px;
-        font-size: calc(var(--termfontsize));
-        cursor: pointer;
-
-        i {
-            margin-left: 5px;
-        }
-
-        &:hover {
-            background-color: rgba(88, 193, 66, 0.5);
-        }
-    }
-
-    .cmdinput-actions {
-        position: absolute;
-        border-radius: 4px;
-        padding-left: 4px;
-        padding-right: 4px;
-        font-size: calc(var(--termfontsize) + 2px);
-        line-height: 1.2;
-
-        // we want to align to 2nd line of meta.  that's 2xPad + 1xLineHightSm
-        // height of actions is 1xLineHeight + 8px (2x2px padding on icons)
-        top: calc(var(--termpad));
-        right: calc(var(--termpad) * 2);
-
-        display: flex;
-        flex-direction: row;
-        align-items: center;
-
-        .cmdinput-icon {
-            display: inline-flex;
-            color: var(--app-icon-hover-color);
-            opacity: 0.5;
-
-            .centered-icon {
-                .positional-icon-visible;
-            }
-
-            &.running-cmds {
-                .rotate {
-                    fill: var(--app-warning-color);
-                }
-            }
-
-            &.active {
-                opacity: 1;
-            }
-
-            &:hover {
-                opacity: 1;
-            }
-
-            padding: 4px 6px;
-            cursor: pointer;
-        }
-
-        .line-icon + .line-icon:not(.line-icon-shrink-left) {
-            margin-left: 3px;
-        }
-    }
-
-    .cmdinput-titlebar {
-        position: absolute;
-        z-index: 22;
-        top: 0;
-        left: 0;
-        background-color: var(--app-panel-bg-color);
-        color: var(--term-blue);
-        padding: 6px 10px 6px 10px;
-        display: flex;
-        flex-direction: row;
-        width: 100%;
-        overflow-x: auto;
-        border-bottom: 1px solid var(--app-border-color);
-        font: var(--base-font);
-
-        .title-icon {
-            margin-right: 10px;
-        }
-
-        .title-string {
-            font-weight: bold;
-        }
-
-        .close-button {
-            cursor: pointer;
-            i {
-                color: var(--app-icon-color);
-
-                &:hover {
-                    color: var(--app-icon-hover-color);
-                }
-            }
-        }
-
-        .spacer {
-            flex: 0 0 10px;
-        }
-    }
-
-    &.has-info {
-        padding-top: var(--termpad);
-    }
-
-    .focus-indicator {
-        height: 90%;
-        top: 5%;
-        left: 4px;
     }
 
     &.has-history,
     &.has-aichat {
-        padding-top: var(--termpad);
         height: max(300px, 70%);
-    }
-
-    &.has-remote {
-        max-height: max(300px, 70%);
     }
 
     .remote-status-warning {
@@ -156,6 +31,8 @@
         flex-direction: row;
         color: var(--app-warning-color);
         align-items: center;
+        padding: var(--termpad) calc(var(--termpad) * 2) 0 calc(var(--termpad) * 2);
+        margin-left: 2px;
 
         .wave-button,
         .button {
@@ -164,394 +41,166 @@
         }
     }
 
-    .input-minmax-control {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        color: var(--term-foreground);
-
-        padding: 5px;
-        cursor: pointer;
-    }
-
     .cmd-input-grow-spacer {
         flex-grow: 1;
     }
 
-    .base-cmdinput:not(:first-child) {
-        margin-top: var(--termpad);
-    }
-
-    .cmd-input-context {
-        color: var(--term-bright-white);
-        white-space: nowrap;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-family: var(--termfontfamily);
-        font-size: var(--termfontsize);
-        line-height: var(--termlineheight);
-        margin-left: 2px;
-    }
-
-    .cmd-input-filter {
-        opacity: 0.5;
-        &:hover {
-            opacity: 1;
-        }
-
-        .avatar {
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            margin: 0 0.5em;
-            vertical-align: text-top;
-            fill: var(--term-foreground);
-        }
-
-        .warning {
-            fill: var(--term-yellow);
-        }
-    }
-
-    .cmd-input-field {
+    .base-cmdinput {
         position: relative;
-        padding-right: var(--termpad);
-        font-family: var(--termfontfamily);
-        font-weight: normal;
-        line-height: var(--termlineheight);
-        font-size: var(--termfontsize);
+        // Rather than apply the padding to the whole container, we will apply it to the inner contents directly.
+        // This is more fragile, but allows us to capture a larger target area for the individual components.
+        --padding-top: var(--termpad);
+        --padding-sides: calc(var(--termpad) * 2);
 
-        .cmd-hints {
-            position: absolute;
-            bottom: -14px;
-            right: 0px;
-        }
-        .control {
-            padding: 1em 2px;
-        }
-
-        .textareainput-div {
-            position: relative;
-
-            &.control {
-                padding: var(--termpad) 0;
-            }
-
-            .shelltag {
-                position: absolute;
-                // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding (2px not sure?)
-                bottom: calc(-13px + var(--termpad));
-                right: 0px;
-                font-size: 10px;
-                color: var(--app-text-secondary-color);
-                line-height: 1;
-                padding: 1px 8px 3px 8px;
-                background-color: var(--cmdinput-textarea-bg-color);
-                border-radius: 0 0 5px 5px;
-            }
-        }
-
-        textarea {
-            color: var(--app-text-primary-color);
-            background-color: var(--cmdinput-textarea-bg-color);
-            padding: var(--termpad);
-            resize: none;
-            overflow: auto;
-            overflow-wrap: anywhere;
-            border-color: transparent;
-            border: none;
+        .cmd-input-context {
+            color: var(--term-bright-white);
+            white-space: nowrap;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             font-family: var(--termfontfamily);
+            font-size: var(--termfontsize);
+            line-height: var(--termlineheight);
+
+            // We don't want to pad the bottom or it will push the input field down.
+            padding: var(--padding-top) var(--padding-sides) 0 var(--padding-sides);
+            margin-left: 2px;
+        }
+
+        .cmd-input-field {
+            position: relative;
+            font-family: var(--termfontfamily);
+            font-weight: normal;
             line-height: var(--termlineheight);
             font-size: var(--termfontsize);
-            border-radius: 4px 4px 0 4px; // 0 is for shelltag
+            border: none;
+            cursor: text;
 
-            &.display-disabled {
-                background-color: #444;
+            // We don't want to pad the top or it will push the input field down.
+            padding: 0 var(--padding-sides) var(--padding-top) var(--padding-sides);
+
+            .cmd-hints {
+                position: absolute;
+                bottom: -14px;
+                right: 0px;
+            }
+            .control {
+                padding: 1em 2px;
             }
 
-            &:focus {
+            .textareainput-div {
+                position: relative;
+
+                &.control {
+                    padding: var(--termpad) 0;
+                }
+
+                .shelltag {
+                    position: absolute;
+                    // 13px = 10px height + 3px padding.  subtract termpad to account for textareainput-div padding (2px not sure?)
+                    bottom: calc(-13px + var(--termpad));
+                    right: 0;
+                    font-size: 10px;
+                    color: var(--app-text-secondary-color);
+                    line-height: 1;
+                    user-select: none;
+                }
+            }
+
+            .textarea,
+            .textarea-ghost {
+                position: absolute;
+                top: 0;
+                left: 0;
+                padding: var(--termpad) 0;
+                resize: none;
+                overflow: auto;
+                overflow-wrap: anywhere;
+                font-family: var(--termfontfamily);
+                line-height: var(--termlineheight);
+                font-size: var(--termfontsize);
+                background-color: transparent;
                 border: none;
+                box-shadow: none;
+            }
+
+            .textarea {
+                color: var(--app-text-primary-color);
+                z-index: 2;
+            }
+
+            .textarea-ghost {
+                color: var(--app-text-secondary-color);
+                z-index: 1;
+            }
+
+            input.history-input {
+                border: 0;
+                padding: 0;
+                height: 0;
+            }
+
+            .cmd-quick-context .button {
+                background-color: var(--app-bg-color) !important;
+                color: var(--app-text-color);
+            }
+
+            &.inputmode-global .cmd-quick-context .button {
+                color: var(--app-bg-color);
+                background-color: var(--cmdinput-button-bg-color) !important;
+            }
+
+            &.inputmode-comment .cmd-quick-context .button {
+                color: var(--app-bg-color);
+                background-color: var(--cmdinput-comment-button-bg-color) !important;
             }
         }
 
-        input.history-input {
-            border: 0;
-            padding: 0;
-            height: 0;
-        }
-
-        .cmd-quick-context .button {
-            background-color: #000 !important;
-            color: var(--app-text-color);
-        }
-
-        &.inputmode-global .cmd-quick-context .button {
-            color: var(--app-bg-color);
-            background-color: var(--cmdinput-button-bg-color) !important;
-        }
-
-        &.inputmode-comment .cmd-quick-context .button {
-            color: var(--app-bg-color);
-            background-color: var(--cmdinput-comment-button-bg-color) !important;
-        }
-
-        .cmd-exec {
+        .cmdinput-actions {
             position: absolute;
-            right: 0;
-            .icon {
-                vertical-align: bottom;
-                margin-right: 1em;
-                width: 2.5em;
-                height: 2.5em;
-                cursor: pointer;
-                border-radius: 50%;
-                fill: var(--app-accent-color);
-                padding: 0.25em;
-            }
-            .icon.disabled {
-                fill: var(--cmdinput-disabled-icon-color);
-                cursor: default;
-            }
-            .cmd-btn {
-                display: inline-block;
-                margin-right: 0;
-                padding: 0.2em 0.7rem;
-                border-radius: 4px;
-                vertical-align: super;
+            font-size: calc(var(--termfontsize) + 2px);
+            line-height: 1.2;
 
-                .hint-elem {
-                    cursor: pointer;
-                    opacity: 0.5;
+            // Align to the same bounds as the input field
+            top: var(--padding-top);
+            right: var(--padding-sides);
 
-                    &:hover {
-                        opacity: 1;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+
+            .cmdinput-icon {
+                display: inline-flex;
+                color: var(--app-icon-hover-color);
+                opacity: 0.5;
+
+                .centered-icon {
+                    .positional-icon-visible;
+                }
+
+                &.running-cmds {
+                    .rotate {
+                        fill: var(--app-warning-color);
                     }
                 }
-            }
-        }
-    }
 
-    .cmd-aichat {
-        display: flex;
-        justify-content: flex-end;
-        flex-flow: column nowrap;
-        margin-bottom: 10px;
-        flex-shrink: 1;
-        overflow-y: auto;
-
-        .chat-window {
-            overflow-y: auto;
-            margin-bottom: 5px;
-            flex-shrink: 1;
-            flex-direction: column-reverse;
-        }
-
-        .chat-textarea {
-            color: var(--app-text-primary-color);
-            background-color: var(--cmdinput-textarea-bg);
-            padding: 0.5em;
-            resize: none;
-            overflow: auto;
-            overflow-wrap: anywhere;
-            border-color: transparent;
-            border: none;
-            font-family: var(--termfontfamily);
-            font-weight: normal;
-            flex-shrink: 0;
-            flex-grow: 1;
-            border-radius: 4px;
-
-            &:focus {
-                border: none;
-                outline: none;
-            }
-        }
-
-        .chat-msg {
-            margin-top: calc(var(--termpad) * 2);
-            margin-bottom: calc(var(--termpad) * 2);
-
-            .chat-msg-header {
-                display: flex;
-                margin-bottom: 2px;
-
-                i {
-                    margin-right: 0.5em;
+                &.active {
+                    opacity: 1;
                 }
-
-                .chat-username {
-                    font-weight: bold;
-                    margin-right: 5px;
-                }
-            }
-        }
-
-        .chat-msg-assistant {
-            color: var(--app-text-color);
-        }
-
-        .chat-msg-user {
-            .msg-text {
-                font-family: var(--markdown-font);
-                font-size: 14px;
-                white-space: pre-wrap;
-            }
-        }
-
-        .chat-msg-error {
-            color: var(--cmdinput-text-error);
-            font-family: var(--markdown-font);
-            font-size: 14px;
-        }
-
-        .grow-spacer {
-            flex: 1 0 10px;
-        }
-    }
-
-    .cmd-history {
-        color: var(--app-text-color);
-        font-family: var(--termfontfamily);
-        font-size: var(--termfontsize);
-        overflow: auto;
-        flex-shrink: 1;
-
-        .history-title {
-            div:first-child {
-                margin-left: var(--termpad);
-            }
-
-            .history-opt {
-                white-space: nowrap;
-            }
-
-            .history-clickable-opt {
-                cursor: pointer;
 
                 &:hover {
-                    color: var(--app-text-primary-color);
+                    opacity: 1;
                 }
-            }
 
-            .history-clickable-opt {
-                white-space: nowrap;
+                // This aligns the icons with the prompt field.
+                // We don't need right margin because the whole input field is already padded.
+                margin: 2px 0 0 12px;
                 cursor: pointer;
             }
-        }
 
-        .history-items {
-            color: var(--app-text-color);
-
-            padding-bottom: 6px;
-
-            .history-line {
-                white-space: pre;
+            .line-icon + .line-icon:not(.line-icon-shrink-left) {
+                margin-left: 3px;
             }
-
-            .history-item.history-haderror {
-                color: var(--cmdinput-history-item-error-color);
-            }
-
-            .history-line:first-child {
-                margin-left: 0 !important;
-            }
-
-            .history-item {
-                padding-left: 5px;
-                cursor: pointer;
-
-                &:hover {
-                    background-color: #222;
-                }
-            }
-
-            .history-item.is-selected {
-                font-weight: bold;
-                color: var(--app-text-primary-color);
-                background-color: #444;
-            }
-
-            .history-item.is-selected.history-haderror {
-                color: var(--cmdinput-history-item-selected-error-color);
-            }
-        }
-    }
-
-    .cmd-input-info {
-        flex-shrink: 1;
-        overflow-y: auto;
-        margin-bottom: var(--termpad);
-        font-family: var(--termfontfamily);
-        font-size: var(--termfontsize);
-        line-height: var(--termlineheight);
-
-        .info-title {
-            position: absolute;
-            z-index: 102;
-            top: 5px;
-            left: 0;
-            font-size: calc(var(--termfontsize) + 2px);
-            background-color: var(--app-bg-color);
-            color: var(--term-blue);
-            padding-bottom: 4px;
-            padding-left: calc(var(--termpad) * 2);
-            display: flex;
-            flex-direction: row;
-            width: 100%;
-            overflow-x: auto;
-            border-bottom: 1px solid var(--app-border-color);
-        }
-
-        .info-title + .info-msg,
-        .info-title + .info-lines,
-        .info-title + .info-comps,
-        .info-title + .info-error {
-            margin-top: 26px;
-        }
-
-        .info-msg {
-            color: var(--term-blue);
-            padding-bottom: 2px;
-
-            a {
-                color: var(--term-blue);
-            }
-        }
-
-        .info-lines {
-            color: var(--app-text-color);
-            white-space: pre;
-            padding-bottom: 6px;
-        }
-
-        .info-comps {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-            padding-bottom: 5px;
-            font-weight: normal;
-            font-family: var(--termfontfamily);
-            font-size: var(--termfontsize);
-
-            .info-comp {
-                min-width: 200px;
-                color: var(--term-foreground);
-                margin-right: 10px;
-
-                &.has-space {
-                    text-decoration: underline dotted #777;
-                }
-            }
-
-            .metacmd-comp {
-                color: var(--term-bright-green);
-            }
-        }
-
-        .info-error {
-            color: var(--cmdinput-text-error-color);
-            padding-bottom: 2px;
         }
     }
 }

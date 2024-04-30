@@ -292,7 +292,7 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 		return UserInputCancelError{Err: fmt.Errorf("canceled by the user")}
 	}
 
-	_, err = f.WriteString(newLine)
+	_, err = f.WriteString(newLine + "\n")
 	if err != nil {
 		f.Close()
 		return err
@@ -357,6 +357,7 @@ func lineContainsMatch(line []byte, matches [][]byte) bool {
 }
 
 func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
+	ssh_config.ReloadConfigs()
 	rawUserKnownHostsFiles, _ := ssh_config.GetStrict(opts.SSHHost, "UserKnownHostsFile")
 	userKnownHostsFiles := strings.Fields(rawUserKnownHostsFiles) // TODO - smarter splitting escaped spaces and quotes
 	rawGlobalKnownHostsFiles, _ := ssh_config.GetStrict(opts.SSHHost, "GlobalKnownHostsFile")
@@ -411,6 +412,12 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 		}
 	}
 
+	if basicCallback == nil {
+		basicCallback = func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			return &knownhosts.KeyError{}
+		}
+	}
+
 	waveHostKeyCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
 		err := basicCallback(hostname, remote, key)
 		if err == nil {
@@ -427,8 +434,8 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 		if len(serr.Want) == 0 {
 			// the key was not found
 
-			// try to write to a file that could be parsed
-			var err error
+			// try to write to a file that could be read
+			err := fmt.Errorf("placeholder, should not be returned") // a null value here can cause problems with empty slice
 			for _, filename := range knownHostsFiles {
 				newLine := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
 				getUserVerification := createUnknownKeyVerifier(filename, hostname, remote.String(), key)
@@ -458,7 +465,7 @@ func createHostKeyCallback(opts *sstore.SSHOpts) (ssh.HostKeyCallback, error) {
 				}
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("unable to create new knownhost key: %e", err)
 			}
 		} else {
 			// the key changed

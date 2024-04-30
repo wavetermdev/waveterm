@@ -97,7 +97,12 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
             </div>
             <Choose>
                 <When condition={userInputRequest.responsetype == "text"}>
-                    <Modal.Footer onCancel={handleSendCancel} onOk={handleSendText} okLabel="Continue" />
+                    <Modal.Footer
+                        onCancel={handleSendCancel}
+                        onOk={handleSendText}
+                        okLabel="Continue"
+                        keybindings={true}
+                    />
                 </When>
                 <When condition={userInputRequest.responsetype == "confirm"}>
                     <Modal.Footer
@@ -105,6 +110,7 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                         onOk={() => handleSendConfirm(true)}
                         okLabel="Yes"
                         cancelLabel="No"
+                        keybindings={true}
                     />
                 </When>
             </Choose>

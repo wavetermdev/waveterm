@@ -46,6 +46,10 @@ export const TabIcons = [
     "heart",
     "file",
 ];
+export const DefaultSudoPwStore = "on";
+export const DefaultSudoPwTimeoutMs = 5 * 60 * 1000;
+
+export const MaxWebSocketSendSize = 64 * 1024 - 100;
 
 // @ts-ignore
 export const VERSION = __WAVETERM_VERSION__;
@@ -64,3 +68,7 @@ export enum StatusIndicatorLevel {
 
 // matches packet.go
 export const ErrorCode_InvalidCwd = "ERRCWD";
+
+export const InputAuxView_History = "history";
+export const InputAuxView_Info = "info";
+export const InputAuxView_AIChat = "aichat";

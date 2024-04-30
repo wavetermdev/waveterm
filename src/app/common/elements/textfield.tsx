@@ -27,6 +27,7 @@ interface TextFieldProps {
     maxLength?: number;
     autoFocus?: boolean;
     disabled?: boolean;
+    isNumber?: boolean;
 }
 
 interface TextFieldState {
@@ -108,8 +109,12 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
 
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const { required, onChange } = this.props;
+        const { required, onChange, isNumber } = this.props;
         const inputValue = e.target.value;
+
+        if (isNumber && inputValue !== "" && !/^\d*$/.test(inputValue)) {
+            return;
+        }
 
         // Check if value is empty and the field is required
         if (required && !inputValue) {

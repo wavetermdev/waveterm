@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
+import { boundMethod } from "autobind-decorator";
 import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
 import cn from "classnames";
@@ -154,11 +155,13 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
+    @boundMethod
     saveLineState(kvp) {
         const { screenId, lineId } = this.props.context;
         GlobalCommandRunner.setLineState(screenId, lineId, { ...this.props.lineState, ...kvp }, false);
     }
 
+    @boundMethod
     setInitialLanguage(editor) {
         // set all languages
         const languages = monaco.languages.getLanguages().map((lang) => lang.id);
@@ -189,6 +192,7 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
+    @boundMethod
     registerKeybindings() {
         const { lineId } = this.props.context;
         const domain = "code-" + lineId;
@@ -207,12 +211,14 @@ class SourceCodeRenderer extends React.Component<
         });
     }
 
+    @boundMethod
     unregisterKeybindings() {
         const { lineId } = this.props.context;
         const domain = "code-" + lineId;
         GlobalModel.keybindManager.unregisterDomain(domain);
     }
 
+    @boundMethod
     handleEditorDidMount(editor: MonacoTypes.editor.IStandaloneCodeEditor, monaco: Monaco) {
         this.monacoEditor = editor;
         this.setInitialLanguage(editor);
@@ -223,7 +229,6 @@ class SourceCodeRenderer extends React.Component<
         }, 2000);
         editor.onKeyDown((e: MonacoTypes.IKeyboardEvent) => {
             const waveEvent = adaptFromReactOrNativeKeyEvent(e.browserEvent);
-            console.log("keydown?", waveEvent);
             if (
                 GlobalModel.keybindManager.checkKeysPressed(waveEvent, [
                     "codeedit:save",
@@ -256,6 +261,7 @@ class SourceCodeRenderer extends React.Component<
         if (!this.getAllowEditing()) this.setState({ showReadonly: true });
     }
 
+    @boundMethod
     handleEditorScrollChange(e) {
         if (!this.state.showPreview) return;
         const scrollableHeightEditor = this.monacoEditor.getScrollHeight() - this.monacoEditor.getLayoutInfo().height;
@@ -267,6 +273,7 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
+    @boundMethod
     handleDivScroll() {
         if (!this.syncing) {
             this.syncing = true;
@@ -284,6 +291,7 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
+    @boundMethod
     handleLanguageChange(e: any) {
         const selectedLanguage = e.target.value;
         this.setState({
@@ -299,6 +307,7 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
+    @boundMethod
     doSave(onSave = () => {}) {
         if (!this.state.isSave) return;
         const { screenId, lineId } = this.props.context;
@@ -321,6 +330,7 @@ class SourceCodeRenderer extends React.Component<
             });
     }
 
+    @boundMethod
     doClose() {
         // if there is unsaved data
         if (this.state.isSave)
@@ -358,6 +368,7 @@ class SourceCodeRenderer extends React.Component<
         }
     }
 
+    @boundMethod
     handleEditorChange(code) {
         SourceCodeRenderer.codeCache.set(this.cacheKey, code);
         this.setState({ code }, () => {
@@ -366,12 +377,14 @@ class SourceCodeRenderer extends React.Component<
         });
     }
 
+    @boundMethod
     getEditorHeightBuffer(): number {
         const heightBuffer = GlobalModel.lineHeightEnv.lineHeight + 11;
         return heightBuffer;
     }
 
-    setEditorHeight = () => {
+    @boundMethod
+    setEditorHeight() {
         const maxEditorHeight = this.props.opts.maxSize.height - this.getEditorHeightBuffer();
         let _editorHeight = maxEditorHeight;
         const allowEditing = this.getAllowEditing();
@@ -385,8 +398,9 @@ class SourceCodeRenderer extends React.Component<
                 this.props.scrollToBringIntoViewport();
             }
         });
-    };
+    }
 
+    @boundMethod
     getAllowEditing(): boolean {
         const lineState = this.props.lineState;
         const mode = lineState["mode"] || "view";
@@ -396,6 +410,7 @@ class SourceCodeRenderer extends React.Component<
         return !(this.props.readOnly || this.state.isClosed);
     }
 
+    @boundMethod
     updateEditorOpts(): void {
         if (!this.monacoEditor) {
             return;
@@ -404,6 +419,7 @@ class SourceCodeRenderer extends React.Component<
         this.monacoEditor.updateOptions(opts);
     }
 
+    @boundMethod
     getEditorOptions(): MonacoTypes.editor.IEditorOptions {
         const opts: MonacoTypes.editor.IEditorOptions = {
             scrollBeyondLastLine: false,
@@ -418,6 +434,7 @@ class SourceCodeRenderer extends React.Component<
         return opts;
     }
 
+    @boundMethod
     getCodeEditor(theme: string) {
         return (
             <div className="editor-wrap" style={{ maxHeight: this.state.editorHeight }}>
@@ -435,6 +452,7 @@ class SourceCodeRenderer extends React.Component<
         );
     }
 
+    @boundMethod
     getPreviewer() {
         return (
             <div
@@ -448,6 +466,7 @@ class SourceCodeRenderer extends React.Component<
         );
     }
 
+    @boundMethod
     togglePreview() {
         this.setState((prevState) => {
             const newPreviewState = { showPreview: !prevState.showPreview };
@@ -457,6 +476,7 @@ class SourceCodeRenderer extends React.Component<
         setTimeout(() => this.updateEditorOpts(), 0);
     }
 
+    @boundMethod
     getEditorControls() {
         const { selectedLanguage, languages, isPreviewerAvailable, showPreview } = this.state;
         const allowEditing = this.getAllowEditing();
@@ -498,6 +518,7 @@ class SourceCodeRenderer extends React.Component<
         );
     }
 
+    @boundMethod
     getMessage() {
         return (
             <div className="messageContainer">
@@ -508,6 +529,7 @@ class SourceCodeRenderer extends React.Component<
         );
     }
 
+    @boundMethod
     setSizes(sizes: number[]) {
         this.setState({ editorFraction: sizes[0] });
         this.saveLineState({ editorFraction: sizes[0] });
@@ -545,7 +567,6 @@ class SourceCodeRenderer extends React.Component<
         );
 
         const theme = `wave-theme-${GlobalModel.isDarkTheme.get() ? "dark" : "light"}`;
-        console.log("lineis selected:", lineIsSelected.get());
         return (
             <div className="code-renderer">
                 <If condition={lineIsSelected.get()}>

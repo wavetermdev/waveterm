@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import * as mobx from "mobx";
 import { If } from "tsx-control-statements/components";
 import ReactDOM from "react-dom";
 import { Button } from "./button";
@@ -14,11 +13,15 @@ import { boundMethod } from "autobind-decorator";
 
 interface ModalHeaderProps {
     onClose?: () => void;
+    keybindings?: boolean;
     title: string;
 }
 
-const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, title }) => (
+const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, keybindings, title }) => (
     <div className="wave-modal-header">
+        <If condition={keybindings && onClose}>
+            <ModalKeybindings onCancel={onClose}></ModalKeybindings>
+        </If>
         {<div className="wave-modal-title">{title}</div>}
         <If condition={onClose}>
             <Button className="secondary ghost" onClick={onClose}>
@@ -36,23 +39,27 @@ interface ModalFooterProps {
     keybindings?: boolean;
 }
 
-class ModalKeybindings extends React.Component<{ onOk; onCancel }, {}> {
+class ModalKeybindings extends React.Component<{ onOk?: () => void; onCancel?: () => void }, {}> {
     curId: string;
 
     @boundMethod
     componentDidMount(): void {
         this.curId = uuidv4();
-        let domain = "modal-" + this.curId;
-        let keybindManager = GlobalModel.keybindManager;
+        const domain = "modal-" + this.curId;
+        const keybindManager = GlobalModel.keybindManager;
         if (this.props.onOk) {
             keybindManager.registerKeybinding("modal", domain, "generic:confirm", (waveEvent) => {
-                this.props.onOk();
+                if (this.props.onOk) {
+                    this.props.onOk();
+                }
                 return true;
             });
         }
         if (this.props.onCancel) {
             keybindManager.registerKeybinding("modal", domain, "generic:cancel", (waveEvent) => {
-                this.props.onCancel();
+                if (this.props.onCancel) {
+                    this.props.onCancel();
+                }
                 return true;
             });
         }
@@ -73,7 +80,7 @@ const ModalFooter: React.FC<ModalFooterProps> = ({
     onOk,
     cancelLabel = "Cancel",
     okLabel = "Ok",
-    keybindings = true,
+    keybindings,
 }) => (
     <div className="wave-modal-footer">
         <If condition={keybindings}>

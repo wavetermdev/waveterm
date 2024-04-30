@@ -1,0 +1,61 @@
+.cmd-history {
+    color: var(--app-text-color);
+    font-family: var(--termfontfamily);
+    font-size: var(--termfontsize);
+
+    .auxview-titlebar {
+        .history-opt {
+            white-space: nowrap;
+        }
+
+        .history-clickable-opt {
+            cursor: pointer;
+            white-space: nowrap;
+
+            &:hover {
+                color: var(--app-text-primary-color);
+            }
+        }
+    }
+
+    .history-items {
+        color: var(--app-text-color);
+        display: flex;
+        flex-direction: column-reverse;
+        min-height: 100%;
+
+        .history-item {
+            cursor: pointer;
+            border-radius: 5px;
+
+            .history-line {
+                white-space: pre;
+
+                &:first-child {
+                    margin-left: 0 !important;
+                }
+            }
+
+            &:hover {
+                background-color: var(--table-tr-hover-bg-color);
+            }
+
+            &.history-haderror {
+                color: var(--cmdinput-history-item-error-color);
+            }
+
+            &.is-selected {
+                font-weight: bold;
+                color: var(--app-text-primary-color);
+                background-color: var(--table-tr-selected-bg-color);
+                &:hover {
+                    background-color: var(--table-tr-selected-hover-bg-color);
+                }
+            }
+
+            &.is-selected.history-haderror {
+                color: var(--cmdinput-history-item-selected-error-color);
+            }
+        }
+    }
+}

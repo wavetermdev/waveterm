@@ -1,0 +1,49 @@
+.cmd-input-info {
+    font-family: var(--termfontfamily);
+    font-size: var(--termfontsize);
+    line-height: var(--termlineheight);
+
+    .info-msg {
+        color: var(--term-blue);
+        padding-bottom: 2px;
+
+        a {
+            color: var(--term-blue);
+        }
+    }
+
+    .info-lines {
+        color: var(--app-text-color);
+        white-space: pre;
+        padding-bottom: 6px;
+    }
+
+    .info-comps {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding-bottom: 5px;
+        font-weight: normal;
+        font-family: var(--termfontfamily);
+        font-size: var(--termfontsize);
+
+        .info-comp {
+            min-width: 200px;
+            color: var(--term-foreground);
+            margin-right: 10px;
+
+            &.has-space {
+                text-decoration: underline dotted #777;
+            }
+        }
+
+        .metacmd-comp {
+            color: var(--term-bright-green);
+        }
+    }
+
+    .info-error {
+        color: var(--cmdinput-text-error-color);
+        padding-bottom: 2px;
+    }
+}

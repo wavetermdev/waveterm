@@ -15,9 +15,10 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/ephemeral"
 )
 
-var RemoteNameRe = regexp.MustCompile("^\\*?[a-zA-Z0-9_-]+$")
+var RemoteNameRe = regexp.MustCompile(`^\*?[a-zA-Z0-9_-]+$`)
 
 type RemotePtrType struct {
 	OwnerId  string `json:"ownerid"`
@@ -35,10 +36,10 @@ func (rptr *RemotePtrType) GetDisplayName(baseDisplayName string) string {
 		return name
 	}
 	if rptr.Name != "" {
-		name = name + ":" + rptr.Name
+		name = name + "#" + rptr.Name
 	}
 	if rptr.OwnerId != "" {
-		name = "@" + rptr.OwnerId + ":" + name
+		name = "@" + rptr.OwnerId + "#" + name
 	}
 	return name
 }
@@ -79,21 +80,26 @@ func (r RemotePtrType) MakeFullRemoteRef() string {
 	return fmt.Sprintf("@%s:%s:%s", r.OwnerId, r.RemoteId, r.Name)
 }
 
-const FeCommandPacketStr = "fecmd"
-const WatchScreenPacketStr = "watchscreen"
-const FeInputPacketStr = "feinput"
-const RemoteInputPacketStr = "remoteinput"
-const CmdInputTextPacketStr = "cmdinputtext"
+const (
+	FeCommandPacketStr                = "fecmd"
+	WatchScreenPacketStr              = "watchscreen"
+	FeInputPacketStr                  = "feinput"
+	RemoteInputPacketStr              = "remoteinput"
+	CmdInputTextPacketStr             = "cmdinputtext"
+	EphemeralCommandResponsePacketStr = "ephemeralcommandresponse"
+	FeActivityPacketStr               = "feactivity"
+)
 
 type FeCommandPacketType struct {
-	Type        string            `json:"type"`
-	MetaCmd     string            `json:"metacmd"`
-	MetaSubCmd  string            `json:"metasubcmd,omitempty"`
-	Args        []string          `json:"args,omitempty"`
-	Kwargs      map[string]string `json:"kwargs,omitempty"`
-	RawStr      string            `json:"rawstr,omitempty"`
-	UIContext   *UIContextType    `json:"uicontext,omitempty"`
-	Interactive bool              `json:"interactive"`
+	Type          string                      `json:"type"`
+	MetaCmd       string                      `json:"metacmd"`
+	MetaSubCmd    string                      `json:"metasubcmd,omitempty"`
+	Args          []string                    `json:"args,omitempty"`
+	Kwargs        map[string]string           `json:"kwargs,omitempty"`
+	RawStr        string                      `json:"rawstr,omitempty"`
+	UIContext     *UIContextType              `json:"uicontext,omitempty"`
+	Interactive   bool                        `json:"interactive"`
+	EphemeralOpts *ephemeral.EphemeralRunOpts `json:"ephemeralopts,omitempty"`
 }
 
 func (pk *FeCommandPacketType) GetRawStr() string {
@@ -120,6 +126,19 @@ func (pk *FeCommandPacketType) GetRawStr() string {
 	}
 	return cmd + " " + strings.Join(args, " ")
 }
+
+type EphemeralCommandResponsePacketType struct {
+	Type      string `json:"type"`
+	StdoutUrl string `json:"stdouturl"`
+	StderrUrl string `json:"stderrurl"`
+	Error     string `json:"error,omitempty"`
+}
+
+func (*EphemeralCommandResponsePacketType) GetType() string {
+	return EphemeralCommandResponsePacketStr
+}
+
+var _ PacketType = &EphemeralCommandResponsePacketType{}
 
 type UIContextType struct {
 	SessionId string          `json:"sessionid"`
@@ -159,12 +178,19 @@ type CmdInputTextPacketType struct {
 	Text     utilfn.StrWithPos `json:"text"`
 }
 
+type FeActivityPacketType struct {
+	Type     string         `json:"type"`
+	Activity map[string]int `json:"activity"`
+}
+
 func init() {
 	packet.RegisterPacketType(FeCommandPacketStr, reflect.TypeOf(FeCommandPacketType{}))
 	packet.RegisterPacketType(WatchScreenPacketStr, reflect.TypeOf(WatchScreenPacketType{}))
 	packet.RegisterPacketType(FeInputPacketStr, reflect.TypeOf(FeInputPacketType{}))
 	packet.RegisterPacketType(RemoteInputPacketStr, reflect.TypeOf(RemoteInputPacketType{}))
 	packet.RegisterPacketType(CmdInputTextPacketStr, reflect.TypeOf(CmdInputTextPacketType{}))
+	packet.RegisterPacketType(EphemeralCommandResponsePacketStr, reflect.TypeOf(EphemeralCommandResponsePacketType{}))
+	packet.RegisterPacketType(FeActivityPacketStr, reflect.TypeOf(FeActivityPacketType{}))
 }
 
 type PacketType interface {
@@ -217,4 +243,12 @@ func MakeRemoteInputPacket() *RemoteInputPacketType {
 
 func (*RemoteInputPacketType) GetType() string {
 	return RemoteInputPacketStr
+}
+
+func MakeFeActivityPacket() *FeActivityPacketType {
+	return &FeActivityPacketType{Type: FeActivityPacketStr}
+}
+
+func (*FeActivityPacketType) GetType() string {
+	return FeActivityPacketStr
 }

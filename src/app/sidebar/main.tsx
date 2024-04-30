@@ -8,7 +8,6 @@ import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
 import dayjs from "dayjs";
 import { If } from "tsx-control-statements/components";
-import { compareLoose } from "semver";
 
 import { ReactComponent as AppsIcon } from "@/assets/icons/apps.svg";
 import { ReactComponent as WorkspacesIcon } from "@/assets/icons/workspaces.svg";
@@ -23,6 +22,9 @@ import * as appconst from "@/app/appconst";
 
 import "./main.less";
 import { ActionsIcon, CenteredIcon, FrontIcon, StatusIndicator } from "@/common/icons/icons";
+
+import "overlayscrollbars/overlayscrollbars.css";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 dayjs.extend(localizedFormat);
 
@@ -59,7 +61,6 @@ class HotKeyIcon extends React.Component<{ hotkey: string }> {
 
 interface MainSideBarProps {
     parentRef: React.RefObject<HTMLElement>;
-    clientData: ClientDataType;
 }
 
 @mobxReact.observer
@@ -192,14 +193,15 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             }
         }
         return sessionList.map((session, index) => {
-            const isActive = GlobalModel.activeMainView.get() == "session" && activeSessionId == session.sessionId;
+            const isActive = activeSessionId == session.sessionId;
+            const showHighlight = isActive && GlobalModel.activeMainView.get() == "session";
             const sessionScreens = GlobalModel.getSessionScreens(session.sessionId);
             const sessionIndicator = Math.max(...sessionScreens.map((screen) => screen.statusIndicator.get()));
             const sessionRunningCommands = sessionScreens.some((screen) => screen.numRunningCmds.get() > 0);
             return (
                 <SideBarItem
                     key={session.sessionId}
-                    className={`${isActive ? "active" : ""}`}
+                    className={cn({ bold: isActive, highlight: showHighlight })}
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
                     endIcons={[
@@ -240,6 +242,10 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
     }
 
     render() {
+        const mainView = GlobalModel.activeMainView.get();
+        const historyActive = mainView == "history";
+        const connectionsActive = mainView == "connections";
+        const settingsActive = mainView == "clientsettings";
         return (
             <ResizableSidebar
                 model={GlobalModel.mainSidebarModel}
@@ -263,6 +269,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="history"
                                     frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
+                                    className={cn({ highlight: historyActive })}
                                     contents="History"
                                     endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
                                     onClick={this.handleHistoryClick}
@@ -271,6 +278,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="connections"
                                     frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
+                                    className={cn({ highlight: connectionsActive })}
                                     contents="Connections"
                                     onClick={this.handleConnectionsClick}
                                 />
@@ -291,18 +299,21 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                     </CenteredIcon>,
                                 ]}
                             />
-                            <div
-                                className="middle scrollbar-hide-until-hover"
+                            <OverlayScrollbarsComponent
+                                element="div"
+                                className="middle"
                                 id="sidebar-middle"
                                 style={{
                                     maxHeight: `calc(100vh - ${this.middleHeightSubtractor.get()}px)`,
                                 }}
+                                options={{ scrollbars: { autoHide: "leave" } }}
                             >
                                 {this.getSessions()}
-                            </div>
+                            </OverlayScrollbarsComponent>
+
                             <div className="bottom" id="sidebar-bottom">
                                 {this.getUpdateAppBanner()}
-                                <If condition={GlobalModel.isDev}>
+                                {/* <If condition={GlobalModel.isDev}>
                                     <SideBarItem
                                         key="apps"
                                         frontIcon={<AppsIcon className="icon" />}
@@ -310,10 +321,11 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                         onClick={this.handlePluginsClick}
                                         endIcons={[<HotKeyIcon key="hotkey" hotkey="A" />]}
                                     />
-                                </If>
+                                </If> */}
                                 <SideBarItem
                                     key="settings"
                                     frontIcon={<SettingsIcon className="icon" />}
+                                    className={cn({ highlight: settingsActive })}
                                     contents="Settings"
                                     onClick={this.handleSettingsClick}
                                 />
@@ -322,12 +334,22 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                     frontIcon={<i className="fa-sharp fa-regular fa-circle-question icon" />}
                                     contents="Documentation"
                                     onClick={() => openLink("https://docs.waveterm.dev")}
+                                    endIcons={[
+                                        <CenteredIcon key="offsite" className="link-offsite hoverEffect">
+                                            <i className="fa-sharp fa-solid fa-arrow-up-right-from-square"></i>
+                                        </CenteredIcon>,
+                                    ]}
                                 />
                                 <SideBarItem
                                     key="discord"
                                     frontIcon={<i className="fa-brands fa-discord icon" />}
                                     contents="Discord"
                                     onClick={() => openLink("https://discord.gg/XfvZ334gwU")}
+                                    endIcons={[
+                                        <CenteredIcon key="offsite" className="link-offsite hoverEffect">
+                                            <i className="fa-sharp fa-solid fa-arrow-up-right-from-square"></i>
+                                        </CenteredIcon>,
+                                    ]}
                                 />
                             </div>
                         </div>

@@ -32,6 +32,7 @@ import { MainSidebarModel } from "./mainsidebar";
 import { RightSidebarModel } from "./rightsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
+import { ContextMenuModel } from "./contextmenu";
 import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
@@ -120,6 +121,7 @@ class Model {
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
     rightSidebarModel: RightSidebarModel;
+    contextMenuModel: ContextMenuModel;
     isDarkTheme: OV<boolean> = mobx.observable.box(getApi().getShouldUseDarkColors(), {
         name: "isDarkTheme",
     });
@@ -134,9 +136,15 @@ class Model {
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
-
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
+    });
+    termThemes: OV<TermThemesType> = mobx.observable.box(null, {
+        name: "terminalThemes",
+        deep: false,
+    });
+    termRenderVersion: OV<number> = mobx.observable.box(0, {
+        name: "termRenderVersion",
     });
 
     private constructor() {
@@ -163,6 +171,7 @@ class Model {
         this.modalsModel = new ModalsModel();
         this.mainSidebarModel = new MainSidebarModel(this);
         this.rightSidebarModel = new RightSidebarModel(this);
+        this.contextMenuModel = new ContextMenuModel(this);
         const isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -189,6 +198,7 @@ class Model {
         getApi().onNativeThemeUpdated(this.onNativeThemeUpdated.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
+        window.addEventListener("focus", this.windowFocus.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
         this.lineHeightEnv = {
             // defaults
@@ -215,6 +225,18 @@ class Model {
         });
     }
 
+    windowFocus(): void {
+        if (this.activeMainView.get() == "session" && !this.modalsModel.hasOpenModals()) {
+            this.refocus();
+        }
+    }
+
+    bumpTermRenderVersion() {
+        mobx.action(() => {
+            this.termRenderVersion.set(this.termRenderVersion.get() + 1);
+        })();
+    }
+
     initSystemKeybindings() {
         this.keybindManager.registerKeybinding("system", "electron", "system:toggleDeveloperTools", (waveEvent) => {
             getApi().toggleDeveloperTools();
@@ -228,7 +250,10 @@ class Model {
 
     initAppKeybindings() {
         for (let index = 1; index <= 9; index++) {
-            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, null);
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, (waveEvent) => {
+                this.onSwitchSessionCmd(index);
+                return true;
+            });
         }
         this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
             this.onFocusCmdInputPressed();
@@ -315,7 +340,7 @@ class Model {
     refocus() {
         // givefocus() give back focus to cmd or input
         const activeScreen = this.getActiveScreen();
-        if (screen == null) {
+        if (activeScreen == null) {
             return;
         }
         activeScreen.giveFocus();
@@ -408,7 +433,6 @@ class Model {
     }
 
     onNativeThemeUpdated(): void {
-        console.log("native theme updated");
         const isDark = getApi().getShouldUseDarkColors();
         if (isDark != this.isDarkTheme.get()) {
             mobx.action(() => {
@@ -418,19 +442,43 @@ class Model {
         }
     }
 
+    getTermThemeSettings(): TermThemeSettingsType {
+        let cdata = this.clientData.get();
+        if (cdata?.feopts?.termthemesettings) {
+            return mobx.toJS(cdata.feopts.termthemesettings);
+        }
+        return {};
+    }
+
     getTermFontSize(): number {
         return this.termFontSize.get();
+    }
+
+    getSudoPwStore(): string {
+        let cdata = this.clientData.get();
+        return cdata?.feopts?.sudopwstore ?? appconst.DefaultSudoPwStore;
+    }
+
+    getSudoPwTimeout(): number {
+        let cdata = this.clientData.get();
+        const sudoPwTimeoutMs = cdata?.feopts?.sudopwtimeoutms ?? appconst.DefaultSudoPwTimeoutMs;
+        return sudoPwTimeoutMs / 1000 / 60;
+    }
+
+    getSudoPwClearOnSleep(): boolean {
+        let cdata = this.clientData.get();
+        return !cdata?.feopts?.nosudopwclearonsleep;
     }
 
     updateTermFontSizeVars() {
         let lhe = this.recomputeLineHeightEnv();
         mobx.action(() => {
             this.bumpRenderVersion();
-            this.setStyleVar("--termfontsize", lhe.fontSize + "px");
-            this.setStyleVar("--termlineheight", lhe.lineHeight + "px");
-            this.setStyleVar("--termpad", lhe.pad + "px");
-            this.setStyleVar("--termfontsize-sm", lhe.fontSizeSm + "px");
-            this.setStyleVar("--termlineheight-sm", lhe.lineHeightSm + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize", lhe.fontSize + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight", lhe.lineHeight + "px");
+            this.setStyleVar(document.documentElement, "--termpad", lhe.pad + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize-sm", lhe.fontSizeSm + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight-sm", lhe.lineHeightSm + "px");
         })();
     }
 
@@ -449,8 +497,12 @@ class Model {
         return this.lineHeightEnv;
     }
 
-    setStyleVar(name: string, value: string) {
-        document.documentElement.style.setProperty(name, value);
+    setStyleVar(element: HTMLElement, name: string, value: string): void {
+        element.style.setProperty(name, value);
+    }
+
+    resetStyleVar(element: HTMLElement, name: string): void {
+        element.style.removeProperty(name);
     }
 
     getBaseWsHostPort(): string {
@@ -529,6 +581,11 @@ class Model {
         if (activeScreen == null) {
             return;
         }
+        let numLines = activeScreen.getScreenLines().lines.length;
+        if (numLines < 10) {
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
+            return;
+        }
         const rtnp = this.showAlert({
             message: "Are you sure you want to delete this tab?",
             confirm: true,
@@ -537,7 +594,7 @@ class Model {
             if (!result) {
                 return;
             }
-            GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
         });
     }
 
@@ -633,10 +690,6 @@ class Model {
         GlobalCommandRunner.setTermUsedRows(context, height);
     }
 
-    contextScreen(e: any, screenId: string) {
-        getApi().contextScreen({ screenId: screenId }, { x: e.x, y: e.y });
-    }
-
     contextEditMenu(e: any, opts: ContextMenuOpts) {
         getApi().contextEditMenu({ x: e.x, y: e.y }, opts);
     }
@@ -678,11 +731,11 @@ class Model {
                 this.activeMainView.set("session");
                 setTimeout(() => {
                     // allows for the session view to load
-                    this.inputModel.giveFocus();
+                    this.inputModel.setAuxViewFocus(false);
                 }, 100);
             })();
         } else {
-            this.inputModel.giveFocus();
+            this.inputModel.setAuxViewFocus(false);
         }
     }
 
@@ -756,7 +809,6 @@ class Model {
     }
 
     onMetaArrowDown(): void {
-        console.log("meta arrow down?");
         GlobalCommandRunner.screenSelectLine("+1");
     }
 
@@ -768,8 +820,11 @@ class Model {
         }
     }
 
+    onSwitchScreenCmd(digit: number) {
+        GlobalCommandRunner.switchScreen(String(digit));
+    }
+
     onSwitchSessionCmd(digit: number) {
-        console.log("switching to ", digit);
         GlobalCommandRunner.switchSession(String(digit));
     }
 
@@ -854,6 +909,27 @@ class Model {
         }
     }
 
+    mergeTermThemes(termThemes: TermThemesType) {
+        mobx.action(() => {
+            if (this.termThemes.get() == null) {
+                this.termThemes.set(termThemes);
+                return;
+            }
+            for (const [themeName, theme] of Object.entries(termThemes)) {
+                if (theme == null) {
+                    delete this.termThemes.get()[themeName];
+                    continue;
+                }
+                this.termThemes.get()[themeName] = theme;
+            }
+        })();
+        this.bumpTermRenderVersion();
+    }
+
+    getTermThemes(): TermThemesType {
+        return this.termThemes.get();
+    }
+
     updateScreenStatusIndicators(screenStatusIndicators: ScreenStatusIndicatorUpdateType[]) {
         for (const update of screenStatusIndicators) {
             this.getScreenById_single(update.screenid)?.setStatusIndicator(update.status);
@@ -900,7 +976,7 @@ class Model {
                     if (update.connect.screenstatusindicators != null) {
                         this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
                     }
-
+                    this.mergeTermThemes(update.connect.termthemes ?? {});
                     this.sessionListLoaded.set(true);
                     this.remotesLoaded.set(true);
                 } else if (update.screen != null) {
@@ -973,6 +1049,8 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (update.termthemes != null) {
+                    this.mergeTermThemes(update.termthemes);
                 } else if (update.sessiontombstone != null || update.screentombstone != null) {
                     // nothing (ignore)
                 } else {
@@ -1017,7 +1095,7 @@ class Model {
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
                 this.closeTabSettings();
                 const activeScreen = this.getActiveScreen();
-                if (activeScreen != null && activeScreen.getCurRemoteInstance() != null) {
+                if (activeScreen?.getCurRemoteInstance() != null) {
                     setTimeout(() => {
                         GlobalCommandRunner.syncShellState();
                     }, 100);
@@ -1248,7 +1326,21 @@ class Model {
         }
     }
 
-    submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
+    /**
+     * Submits a command packet to the server and processes the response.
+     * @param cmdPk The command packet to submit.
+     * @param interactive Whether the command is interactive.
+     * @param runUpdate Whether to run the update after the command is submitted. If true, the update will be processed and the frontend will be updated. If false, the update will be returned in the promise.
+     * @returns A promise that resolves to a CommandRtnType.
+     * @throws An error if the command fails.
+     * @see CommandRtnType
+     * @see FeCmdPacketType
+     **/
+    submitCommandPacket(
+        cmdPk: FeCmdPacketType,
+        interactive: boolean,
+        runUpdate: boolean = true
+    ): Promise<CommandRtnType> {
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
@@ -1266,16 +1358,20 @@ class Model {
         })
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
-                mobx.action(() => {
+                return mobx.action(() => {
                     const update = data.data;
                     if (update != null) {
-                        this.runUpdate(update, interactive);
+                        if (runUpdate) {
+                            this.runUpdate(update, interactive);
+                        } else {
+                            return { success: true, update: update };
+                        }
                     }
                     if (interactive && !this.isInfoUpdate(update)) {
                         this.inputModel.clearInfoMsg(true);
                     }
+                    return { success: true };
                 })();
-                return { success: true };
             })
             .catch((err) => {
                 this.errorHandler("calling run-command", err, interactive);
@@ -1288,12 +1384,23 @@ class Model {
         return prtn;
     }
 
+    /**
+     * Submits a command to the server and processes the response.
+     * @param metaCmd The meta command to run.
+     * @param metaSubCmd The meta subcommand to run.
+     * @param args The arguments to pass to the command.
+     * @param kwargs The keyword arguments to pass to the command.
+     * @param interactive Whether the command is interactive.
+     * @param runUpdate Whether to run the update after the command is submitted. If true, the update will be processed and the frontend will be updated. If false, the update will be returned in the promise.
+     * @returns A promise that resolves to a CommandRtnType.
+     */
     submitCommand(
         metaCmd: string,
         metaSubCmd: string,
         args: string[],
         kwargs: Record<string, string>,
-        interactive: boolean
+        interactive: boolean,
+        runUpdate: boolean = true
     ): Promise<CommandRtnType> {
         const pk: FeCmdPacketType = {
             type: "fecmd",
@@ -1303,6 +1410,7 @@ class Model {
             kwargs: { ...kwargs },
             uicontext: this.getUIContext(),
             interactive: interactive,
+            ephemeralopts: null,
         };
         /** 
         console.log(
@@ -1313,7 +1421,96 @@ class Model {
             pk.interactive
         );
 		 */
-        return this.submitCommandPacket(pk, interactive);
+        return this.submitCommandPacket(pk, interactive, runUpdate);
+    }
+
+    getSingleEphemeralCommandOutput(url: URL): Promise<string> {
+        return fetch(url, { method: "get", headers: this.getFetchHeaders() })
+            .then((resp) => resp.text())
+            .catch((err) => {
+                this.errorHandler("getting ephemeral command output", err, true);
+                return "";
+            });
+    }
+
+    async getEphemeralCommandOutput(
+        ephemeralCommandResponse: EphemeralCommandResponsePacketType
+    ): Promise<EphemeralCommandOutputType> {
+        let stdout = "";
+        let stderr = "";
+        if (ephemeralCommandResponse.stdouturl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stdouturl);
+            stdout = await this.getSingleEphemeralCommandOutput(url);
+        }
+        if (ephemeralCommandResponse.stderrurl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stderrurl);
+            stderr = await this.getSingleEphemeralCommandOutput(url);
+        }
+        return { stdout: stdout, stderr: stderr };
+    }
+
+    submitEphemeralCommandPacket(
+        cmdPk: FeCmdPacketType,
+        interactive: boolean
+    ): Promise<EphemeralCommandResponsePacketType> {
+        if (this.debugCmds > 0) {
+            console.log("[cmd]", cmdPacketString(cmdPk));
+            if (this.debugCmds > 1) {
+                console.trace();
+            }
+        }
+        // adding cmdStr for debugging only (easily filter run-command calls in the network tab of debugger)
+        const cmdStr = cmdPk.metacmd + (cmdPk.metasubcmd ? ":" + cmdPk.metasubcmd : "");
+        const url = new URL(this.getBaseHostPort() + "/api/run-ephemeral-command?cmd=" + cmdStr);
+        const fetchHeaders = this.getFetchHeaders();
+        const prtn = fetch(url, {
+            method: "post",
+            body: JSON.stringify(cmdPk),
+            headers: fetchHeaders,
+        })
+            .then(async (resp) => {
+                const data = await handleJsonFetchResponse(url, resp);
+                if (data.success) {
+                    return data.data as EphemeralCommandResponsePacketType;
+                } else {
+                    console.log("error running ephemeral command", data);
+                    return {};
+                }
+            })
+            .catch((err) => {
+                this.errorHandler("calling run-ephemeral-command", err, interactive);
+                return {};
+            });
+        return prtn;
+    }
+
+    submitEphemeralCommand(
+        metaCmd: string,
+        metaSubCmd: string,
+        args: string[],
+        kwargs: Record<string, string>,
+        interactive: boolean,
+        ephemeralopts?: EphemeralCmdOptsType
+    ): Promise<EphemeralCommandResponsePacketType> {
+        const pk: FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: metaCmd,
+            metasubcmd: metaSubCmd,
+            args: args,
+            kwargs: { ...kwargs },
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            ephemeralopts: ephemeralopts,
+        };
+        // console.log(
+        //     "CMD",
+        //     pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
+        //     pk.args,
+        //     pk.kwargs,
+        //     pk.interactive,
+        //     pk.ephemeralopts
+        // );
+        return this.submitEphemeralCommandPacket(pk, interactive);
     }
 
     submitChatInfoCommand(chatMsg: string, curLineStr: string, clear: boolean): Promise<CommandRtnType> {
@@ -1603,6 +1800,19 @@ class Model {
         mobx.action(() => {
             this.appUpdateStatus.set(status);
         })();
+    }
+
+    getElectronApi(): ElectronApi {
+        return getApi();
+    }
+
+    sendActivity(atype: string) {
+        const pk: FeActivityPacketType = {
+            type: "feactivity",
+            activity: {},
+        };
+        pk.activity[atype] = 1;
+        this.ws.pushMessage(pk);
     }
 }
 

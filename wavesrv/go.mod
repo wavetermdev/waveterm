@@ -8,6 +8,7 @@ require (
 	github.com/alessio/shellescape v1.4.1
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/creack/pty v1.1.18
+	github.com/fsnotify/fsnotify v1.6.0
 	github.com/golang-migrate/migrate/v4 v4.16.2
 	github.com/google/go-github/v60 v60.0.0
 	github.com/google/uuid v1.3.0

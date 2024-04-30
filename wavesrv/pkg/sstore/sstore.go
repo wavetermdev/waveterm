@@ -43,6 +43,7 @@ const DBWALFileNameBackup = "backup.waveterm.db-wal"
 const MaxWebShareLineCount = 50
 const MaxWebShareScreenCount = 3
 const MaxLineStateSize = 4 * 1024 // 4k for now, can raise if needed
+const DefaultSudoTimeout = 5
 
 const DefaultSessionName = "default"
 const LocalRemoteAlias = "local"
@@ -232,6 +233,10 @@ type ClientWinSizeType struct {
 	FullScreen bool `json:"fullscreen,omitempty"`
 }
 
+type PowerMonitorEventType struct {
+	Status string `json:"status"`
+}
+
 type SidebarValueType struct {
 	Collapsed bool `json:"collapsed"`
 	Width     int  `json:"width"`
@@ -246,12 +251,18 @@ type ClientOptsType struct {
 	RightSidebar          *SidebarValueType `json:"rightsidebar,omitempty"`
 	GlobalShortcut        string            `json:"globalshortcut,omitempty"`
 	GlobalShortcutEnabled bool              `json:"globalshortcutenabled,omitempty"`
+	WebGL                 bool              `json:"webgl,omitempty"`
 }
 
 type FeOptsType struct {
-	TermFontSize   int    `json:"termfontsize,omitempty"`
-	TermFontFamily string `json:"termfontfamily,omitempty"`
-	Theme          string `json:"theme,omitempty"`
+	TermFontSize         int               `json:"termfontsize,omitempty"`
+	TermFontFamily       string            `json:"termfontfamily,omitempty"`
+	Theme                string            `json:"theme,omitempty"`
+	TermThemeSettings    map[string]string `json:"termthemesettings"`
+	SudoPwStore          string            `json:"sudopwstore,omitempty"`
+	SudoPwTimeoutMs      int               `json:"sudopwtimeoutms,omitempty"`
+	SudoPwTimeout        int               `json:"sudopwtimeout,omitempty"`
+	NoSudoPwClearOnSleep bool              `json:"nosudopwclearonsleep,omitempty"`
 }
 
 type ReleaseInfoType struct {
@@ -287,6 +298,8 @@ func (cdata *ClientData) Clean() *ClientData {
 			Model:      cdata.OpenAIOpts.Model,
 			MaxTokens:  cdata.OpenAIOpts.MaxTokens,
 			MaxChoices: cdata.OpenAIOpts.MaxChoices,
+			Timeout:    cdata.OpenAIOpts.Timeout,
+			BaseURL:    cdata.OpenAIOpts.BaseURL,
 			// omit API Token
 		}
 		if cdata.OpenAIOpts.APIToken != "" {
@@ -538,18 +551,6 @@ func (opts TermOpts) Value() (driver.Value, error) {
 	return quickValueJson(opts)
 }
 
-type ShellStatePtr struct {
-	BaseHash    string
-	DiffHashArr []string
-}
-
-func (ssptr *ShellStatePtr) IsEmpty() bool {
-	if ssptr == nil || ssptr.BaseHash == "" {
-		return true
-	}
-	return false
-}
-
 type RemoteInstance struct {
 	RIId             string            `json:"riid"`
 	Name             string            `json:"name"`
@@ -746,6 +747,7 @@ type OpenAIOptsType struct {
 	BaseURL    string `json:"baseurl,omitempty"`
 	MaxTokens  int    `json:"maxtokens,omitempty"`
 	MaxChoices int    `json:"maxchoices,omitempty"`
+	Timeout    int    `json:"timeout,omitempty"`
 }
 
 const (
@@ -863,34 +865,6 @@ func (r *RemoteType) GetName() string {
 	return r.RemoteCanonicalName
 }
 
-type CmdType struct {
-	ScreenId     string              `json:"screenid"`
-	LineId       string              `json:"lineid"`
-	Remote       RemotePtrType       `json:"remote"`
-	CmdStr       string              `json:"cmdstr"`
-	RawCmdStr    string              `json:"rawcmdstr"`
-	FeState      map[string]string   `json:"festate"`
-	StatePtr     ShellStatePtr       `json:"state"`
-	TermOpts     TermOpts            `json:"termopts"`
-	OrigTermOpts TermOpts            `json:"origtermopts"`
-	Status       string              `json:"status"`
-	CmdPid       int                 `json:"cmdpid"`
-	RemotePid    int                 `json:"remotepid"`
-	RestartTs    int64               `json:"restartts,omitempty"`
-	DoneTs       int64               `json:"donets"`
-	ExitCode     int                 `json:"exitcode"`
-	DurationMs   int                 `json:"durationms"`
-	RunOut       []packet.PacketType `json:"runout,omitempty"`
-	RtnState     bool                `json:"rtnstate,omitempty"`
-	RtnStatePtr  ShellStatePtr       `json:"rtnstateptr,omitempty"`
-	Remove       bool                `json:"remove,omitempty"`    // not persisted to DB
-	Restarted    bool                `json:"restarted,omitempty"` // not persisted to DB
-}
-
-func (CmdType) GetType() string {
-	return "cmd"
-}
-
 func (r *RemoteType) ToMap() map[string]interface{} {
 	rtn := make(map[string]interface{})
 	rtn["remoteid"] = r.RemoteId
@@ -934,6 +908,34 @@ func (r *RemoteType) FromMap(m map[string]interface{}) bool {
 	quickSetJson(&r.OpenAIOpts, m, "openaiopts")
 	quickSetStr(&r.ShellPref, m, "shellpref")
 	return true
+}
+
+type CmdType struct {
+	ScreenId     string               `json:"screenid"`
+	LineId       string               `json:"lineid"`
+	Remote       RemotePtrType        `json:"remote"`
+	CmdStr       string               `json:"cmdstr"`
+	RawCmdStr    string               `json:"rawcmdstr"`
+	FeState      map[string]string    `json:"festate"`
+	StatePtr     packet.ShellStatePtr `json:"state"`
+	TermOpts     TermOpts             `json:"termopts"`
+	OrigTermOpts TermOpts             `json:"origtermopts"`
+	Status       string               `json:"status"`
+	CmdPid       int                  `json:"cmdpid"`
+	RemotePid    int                  `json:"remotepid"`
+	RestartTs    int64                `json:"restartts,omitempty"`
+	DoneTs       int64                `json:"donets"`
+	ExitCode     int                  `json:"exitcode"`
+	DurationMs   int                  `json:"durationms"`
+	RunOut       []packet.PacketType  `json:"runout,omitempty"`
+	RtnState     bool                 `json:"rtnstate,omitempty"`
+	RtnStatePtr  packet.ShellStatePtr `json:"rtnstateptr,omitempty"`
+	Remove       bool                 `json:"remove,omitempty"`    // not persisted to DB
+	Restarted    bool                 `json:"restarted,omitempty"` // not persisted to DB
+}
+
+func (CmdType) GetType() string {
+	return "cmd"
 }
 
 func (cmd *CmdType) ToMap() map[string]interface{} {

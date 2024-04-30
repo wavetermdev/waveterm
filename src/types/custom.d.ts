@@ -1,3 +1,5 @@
+import { override } from "mobx";
+
 declare module "*.svg" {
     import * as React from "react";
     export const ReactComponent: React.FunctionComponent<React.SVGProps<SVGSVGElement> & { title?: string }>;
@@ -13,6 +15,7 @@ declare global {
     type LineContainerStrs = "main" | "sidebar" | "history";
     type AppUpdateStatusType = "unavailable" | "ready";
     type NativeThemeSource = "system" | "light" | "dark";
+    type InputAuxViewType = null | "history" | "info" | "aichat";
 
     type OV<V> = mobx.IObservableValue<V>;
     type OArr<V> = mobx.IObservableArray<V>;
@@ -186,6 +189,13 @@ declare global {
         build: string;
     };
 
+    type EphemeralCmdOptsType = {
+        overridecwd?: string;
+        timeoutms?: number;
+        expectsresponse: boolean;
+        env: { [k: string]: string };
+    };
+
     type FeCmdPacketType = {
         type: string;
         metacmd: string;
@@ -195,6 +205,7 @@ declare global {
         rawstr?: string;
         uicontext: UIContextType;
         interactive: boolean;
+        ephemeralopts?: EphemeralCmdOptsType;
     };
 
     type FeInputPacketType = {
@@ -204,6 +215,11 @@ declare global {
         inputdata64?: string;
         signame?: string;
         winsize?: TermWinSize;
+    };
+
+    type FeActivityPacketType = {
+        type: string;
+        activity: Record<string, int>;
     };
 
     type RemoteInputPacketType = {
@@ -297,7 +313,9 @@ declare global {
 
     type DropdownItem = {
         label: string;
-        value: string;
+        value?: string;
+        icon?: React.ReactNode;
+        noop?: boolean;
     };
 
     /**
@@ -327,6 +345,7 @@ declare global {
         screenstatusindicators: ScreenStatusIndicatorUpdateType[];
         screennumrunningcommands: ScreenNumRunningCommandsUpdateType[];
         activesessionid: string;
+        termthemes: TermThemesType;
     };
 
     type BookmarksUpdateType = {
@@ -368,6 +387,13 @@ declare global {
         userinputrequest?: UserInputRequest;
         screentombstone?: any;
         sessiontombstone?: any;
+        termthemes?: TermThemesType;
+    };
+
+    type TermThemesType = {
+        [key: string]: {
+            [innerKey: string]: string;
+        };
     };
 
     type HistoryViewDataType = {
@@ -563,10 +589,18 @@ declare global {
         data: Uint8Array;
     };
 
+    type TermThemeSettingsType = {
+        [k: string]: string | null;
+    };
+
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
         theme: NativeThemeSource;
+        termthemesettings: TermThemeSettingsType;
+        sudopwstore: "on" | "off" | "notimeout";
+        sudopwtimeoutms: number;
+        nosudopwclearonsleep: boolean;
     };
 
     type ConfirmFlagsType = {
@@ -588,6 +622,7 @@ declare global {
         };
         globalshortcut: string;
         globalshortcutenabled: boolean;
+        webgl: boolean;
     };
 
     type ReleaseInfoType = {
@@ -627,6 +662,7 @@ declare global {
         maxtokens?: number;
         maxchoices?: number;
         baseurl?: string;
+        timeout?: number;
     };
 
     type PlaybookType = {
@@ -785,6 +821,17 @@ declare global {
     type CommandRtnType = {
         success: boolean;
         error?: string;
+        update?: UpdatePacket;
+    };
+
+    type EphemeralCommandOutputType = {
+        stdout: string;
+        stderr: string;
+    };
+
+    type EphemeralCommandResponsePacketType = {
+        stdouturl?: string;
+        stderrurl?: string;
     };
 
     type LineHeightChangeCallbackType = (lineNum: number, newHeight: number, oldHeight: number) => void;
@@ -915,11 +962,28 @@ declare global {
         onAppUpdateStatus: (callback: (status: AppUpdateStatusType) => void) => void;
         onZoomChanged: (callback: () => void) => void;
         onMenuItemAbout: (callback: () => void) => void;
-        contextScreen: (screenOpts: { screenId: string }, position: { x: number; y: number }) => void;
         contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
         onWaveSrvStatusChange: (callback: (status: boolean, pid: number) => void) => void;
         getLastLogs: (numOfLines: number, callback: (logs: any) => void) => void;
         onToggleDevUI: (callback: () => void) => void;
+        showContextMenu: (menu: ElectronContextMenuItem[], position: { x: number; y: number }) => void;
+        onContextMenuClick: (callback: (id: string) => void) => void;
+    };
+
+    type ElectronContextMenuItem = {
+        id: string; // unique id, used for communication
+        label: string;
+        role?: string; // electron role (optional)
+        type?: "separator" | "normal" | "submenu";
+        submenu?: ElectronContextMenuItem[];
+    };
+
+    type ContextMenuItem = {
+        label?: string;
+        type?: "separator" | "normal" | "submenu";
+        role?: string; // electron role (optional)
+        click?: () => void; // not required if role is set
+        submenu?: ContextMenuItem[];
     };
 }
 
