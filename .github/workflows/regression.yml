@@ -52,13 +52,3 @@ jobs:
             1. validate Wave shows the result of 'ls'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: peter-evans/create-or-update-comment@v4
-        if: ${{always()}}
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ## TestDriver Summary
-            ${{ steps.testdriver.outputs.summary }}
-          reactions: |
-            +1
-            -1
