@@ -250,6 +250,11 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0, { name: "textAreaInput-version" }); // forces render updates
 
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     @mobx.action
     incVersion(): void {
         const v = this.version.get();
@@ -313,8 +318,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
     }
 
-    @mobx.action
-    componentDidMount() {
+    @mobx.action.bound
+    handleComponentDidMount() {
         const activeScreen = GlobalModel.getActiveScreen();
         if (activeScreen != null) {
             const focusType = activeScreen.focusType.get();
@@ -325,6 +330,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
         this.checkHeight(false);
         this.updateSP();
+    }
+
+    componentDidMount() {
+        this.handleComponentDidMount();
     }
 
     @mobx.action

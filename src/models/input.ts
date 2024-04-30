@@ -3,7 +3,6 @@
 
 import type React from "react";
 import * as mobx from "mobx";
-import { boundMethod } from "autobind-decorator";
 import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import type { Model } from "./model";
@@ -75,6 +74,7 @@ class InputModel {
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
+        mobx.makeObservable(this);
         mobx.action(() => {
             this.codeSelectSelectedIndex.set(-1);
             this.codeSelectBlockRefArray = [];
@@ -459,7 +459,6 @@ class InputModel {
         this.giveFocus();
     }
 
-    @mobx.computed
     shouldRenderAuxViewKeybindings(view: InputAuxViewType): boolean {
         if (view != null && this.getActiveAuxView() != view) {
             return false;
@@ -723,7 +722,6 @@ class InputModel {
         }
     }
 
-    @boundMethod
     uiSubmitCommand(): void {
         const commandStr = this.curLine;
         if (commandStr.trim() == "") {
@@ -757,7 +755,6 @@ class InputModel {
     }
 
     @mobx.action
-    @boundMethod
     toggleExpandInput(): void {
         this.inputExpanded.set(!this.inputExpanded.get());
         this.forceInputFocus = true;

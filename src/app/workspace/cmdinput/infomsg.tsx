@@ -3,6 +3,7 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
+import * as mobx from "mobx";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
@@ -17,6 +18,11 @@ dayjs.extend(localizedFormat);
 
 @mobxReact.observer
 class InfoMsg extends React.Component<{}, {}> {
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     getAfterSlash(s: string): string {
         if (s.startsWith("^/")) {
             return s.substring(1);

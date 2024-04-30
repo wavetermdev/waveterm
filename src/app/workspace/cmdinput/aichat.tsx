@@ -61,9 +61,11 @@ class AIChat extends React.Component<{}, {}> {
 
     constructor(props: any) {
         super(props);
+        mobx.makeObservable(this);
         this.chatWindowScrollRef = React.createRef();
         this.textAreaRef = React.createRef();
     }
+
     componentDidMount() {
         const inputModel = GlobalModel.inputModel;
         if (this.chatWindowScrollRef?.current != null) {
