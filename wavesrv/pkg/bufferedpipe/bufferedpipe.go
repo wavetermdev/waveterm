@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/waveenc"
 )
@@ -110,6 +111,7 @@ func (pipe *BufferedPipe) WriteTo(w io.Writer) (n int64, err error) {
 
 // Close the pipe. This will cause any blocking WriteTo calls to return.
 func (pipe *BufferedPipe) Close() error {
+	wlog.Logf("closing buffered pipe %s", pipe.Key)
 	defer pipe.bufferDataCond.Broadcast()
 	pipe.closed.Store(true)
 	return nil
