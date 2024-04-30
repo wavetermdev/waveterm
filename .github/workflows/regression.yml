@@ -22,7 +22,7 @@ jobs:
       - uses: dashcamio/testdriver@main
         id: testdriver
         with:
-          version: v2.9.8
+          version: v2.10.2
           prerun: |
             rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt
             cd ~/actions-runner/_work/testdriver/testdriver/
