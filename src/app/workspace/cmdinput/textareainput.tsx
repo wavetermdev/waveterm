@@ -424,14 +424,12 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     @boundMethod
     onKeyDown(e: any) {}
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     onChange(e: any) {
         GlobalModel.inputModel.curLine = e.target.value;
     }
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     onSelect(e: any) {
         this.incVersion();
     }
@@ -456,8 +454,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
     }
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     controlP() {
         const inputModel = GlobalModel.inputModel;
         if (!inputModel.isHistoryLoaded()) {
@@ -469,8 +466,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         this.lastHistoryUpDown = true;
     }
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     controlN() {
         const inputModel = GlobalModel.inputModel;
         inputModel.moveHistorySelection(-1);
@@ -531,8 +527,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         });
     }
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     handleHistoryInput(e: any) {
         const inputModel = GlobalModel.inputModel;
         const opts = mobx.toJS(inputModel.historyQueryOpts.get());
@@ -540,8 +535,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         inputModel.setHistoryQueryOpts(opts);
     }
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     handleFocus(e: any) {
         e.preventDefault();
         GlobalModel.inputModel.giveFocus();

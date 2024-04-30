@@ -56,8 +56,7 @@ class CmdInput extends React.Component<{}, {}> {
         this.updateCmdInputHeight();
     }
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     clickFocusInputHint(): void {
         GlobalModel.inputModel.giveFocus();
     }
@@ -76,8 +75,7 @@ class CmdInput extends React.Component<{}, {}> {
         GlobalModel.inputModel.setAuxViewFocus(false);
     }
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     clickAIAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -89,8 +87,7 @@ class CmdInput extends React.Component<{}, {}> {
         }
     }
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     clickHistoryAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -108,8 +105,7 @@ class CmdInput extends React.Component<{}, {}> {
         GlobalCommandRunner.connectRemote(remoteId);
     }
 
-    @boundMethod
-    @mobx.action
+    @mobx.action.bound
     toggleFilter(screen: Screen) {
         screen.filterRunning.set(!screen.filterRunning.get());
     }

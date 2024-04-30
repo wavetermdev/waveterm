@@ -103,15 +103,13 @@ class AIChat extends React.Component<{}, {}> {
         return { numLines, linePos };
     }
 
-    @mobx.action
-    @boundMethod
+    @mobx.action.bound
     onTextAreaFocused(e: any) {
         GlobalModel.inputModel.setAuxViewFocus(true);
         this.onTextAreaChange(e);
     }
 
-    @mobx.action
-    @boundMethod
+    @mobx.action.bound
     onTextAreaBlur(e: any) {
         GlobalModel.inputModel.setAuxViewFocus(false);
     }
