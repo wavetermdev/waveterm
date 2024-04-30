@@ -8,8 +8,7 @@ import { GlobalModel } from "@/models";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
-import * as appconst from "@/app/appconst";
-import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
+import { OverlayScrollbars } from "overlayscrollbars";
 
 import "./aichat.less";
 
@@ -53,35 +52,147 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
 }
 
 @mobxReact.observer
-class AIChat extends React.Component<{}, {}> {
+class ChatContent extends React.Component<{}, {}> {
     chatListKeyCount: number = 0;
-    chatWindowScrollRef: React.RefObject<any>;
-    textAreaRef: React.RefObject<HTMLTextAreaElement>;
+    containerRef: React.RefObject<HTMLDivElement> = React.createRef();
+    chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef();
+    osInstance: OverlayScrollbars = null;
+
+    componentDidMount() {
+        if (this.containerRef.current) {
+            this.osInstance = OverlayScrollbars(
+                this.containerRef.current,
+                {
+                    scrollbars: { autoHide: "leave" },
+                },
+                {
+                    initialized: (instance) => {
+                        const { viewport } = instance.elements();
+                        viewport.scrollTo({
+                            behavior: "auto",
+                            top: this.chatWindowRef.current.scrollHeight,
+                        });
+                    },
+                }
+            );
+        }
+    }
+
+    componentDidUpdate() {
+        if (this.containerRef?.current && this.osInstance) {
+            const { overflowAmount } = this.osInstance.state();
+            const { viewport } = this.osInstance.elements();
+            viewport.scrollTo({
+                behavior: "auto",
+                top: overflowAmount.y,
+            });
+        }
+    }
+
+    componentWillUnmount() {
+        if (this.osInstance) {
+            this.osInstance.destroy();
+            this.osInstance = null;
+        }
+    }
+
+    submitChatMessage(messageStr: string) {
+        const curLine = GlobalModel.inputModel.getCurLine();
+        const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
+        prtn.then((rtn) => {
+            if (!rtn.success) {
+                console.log("submit chat command error: " + rtn.error);
+            }
+        }).catch((_) => {});
+    }
+
+    getLinePos(elem: any): { numLines: number; linePos: number } {
+        const numLines = elem.value.split("\n").length;
+        const linePos = elem.value.substr(0, elem.selectionStart).split("\n").length;
+        return { numLines, linePos };
+    }
+
+    onTextAreaFocused(e: any) {
+        console.log("focused=====");
+        mobx.action(() => {
+            GlobalModel.inputModel.setAuxViewFocus(true);
+        })();
+    }
+
+    onTextAreaBlur(e: any) {
+        mobx.action(() => {
+            GlobalModel.inputModel.setAuxViewFocus(false);
+        })();
+    }
+
+    renderError(err: string): any {
+        return <div className="chat-msg-error">{err}</div>;
+    }
+
+    renderChatMessage(chatItem: OpenAICmdInfoChatMessageType): any {
+        const curKey = "chatmsg-" + this.chatListKeyCount;
+        this.chatListKeyCount++;
+        const senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
+        const msgClassName = "chat-msg " + senderClassName;
+        let innerHTML: React.JSX.Element = (
+            <>
+                <div className="chat-msg-header">
+                    <i className="fa-sharp fa-solid fa-user"></i>
+                </div>
+                <div className="msg-text">{chatItem.userquery}</div>
+            </>
+        );
+        if (chatItem.isassistantresponse) {
+            if (chatItem.assistantresponse.error != null && chatItem.assistantresponse.error != "") {
+                innerHTML = this.renderError(chatItem.assistantresponse.error);
+            } else {
+                innerHTML = (
+                    <>
+                        <div className="chat-msg-header">
+                            <i className="fa-sharp fa-solid fa-sparkles"></i>
+                        </div>
+                        <Markdown text={chatItem.assistantresponse.message} codeSelect />
+                    </>
+                );
+            }
+        }
+
+        return (
+            <div className={msgClassName} key={curKey}>
+                {innerHTML}
+            </div>
+        );
+    }
+
+    render() {
+        const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
+        const chitem: OpenAICmdInfoChatMessageType = null;
+        return (
+            <div ref={this.containerRef} className="content">
+                <div ref={this.chatWindowRef} className="chat-window">
+                    <div className="filler"></div>
+                    <For each="chitem" index="idx" of={chatMessageItems}>
+                        {this.renderChatMessage(chitem)}
+                    </For>
+                </div>
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class AIChat extends React.Component<{}, {}> {
+    textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
     termFontSize: number = 14;
 
-    constructor(props: any) {
-        super(props);
-        this.chatWindowScrollRef = React.createRef();
-        this.textAreaRef = React.createRef();
-    }
     componentDidMount() {
         const inputModel = GlobalModel.inputModel;
-        if (this.chatWindowScrollRef?.current != null) {
-            this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
-        }
         if (this.textAreaRef.current != null) {
             this.textAreaRef.current.focus();
             // inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowScrollRef);
         }
         this.requestChatUpdate();
         this.onTextAreaChange(null);
-    }
-
-    componentDidUpdate() {
-        if (this.chatWindowScrollRef?.current != null) {
-            console.log("scrolling to bottom", this.chatWindowScrollRef.current.osInstance().scrollHeight);
-            this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
-        }
     }
 
     requestChatUpdate() {
@@ -195,62 +306,18 @@ class AIChat extends React.Component<{}, {}> {
         return <div className="chat-msg-error">{err}</div>;
     }
 
-    renderChatMessage(chatItem: OpenAICmdInfoChatMessageType): any {
-        const curKey = "chatmsg-" + this.chatListKeyCount;
-        this.chatListKeyCount++;
-        const senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
-        const msgClassName = "chat-msg " + senderClassName;
-        let innerHTML: React.JSX.Element = (
-            <>
-                <div className="chat-msg-header">
-                    <i className="fa-sharp fa-solid fa-user"></i>
-                </div>
-                <div className="msg-text">{chatItem.userquery}</div>
-            </>
-        );
-        if (chatItem.isassistantresponse) {
-            if (chatItem.assistantresponse.error != null && chatItem.assistantresponse.error != "") {
-                innerHTML = this.renderError(chatItem.assistantresponse.error);
-            } else {
-                innerHTML = (
-                    <>
-                        <div className="chat-msg-header">
-                            <i className="fa-sharp fa-solid fa-sparkles"></i>
-                        </div>
-                        <Markdown text={chatItem.assistantresponse.message} codeSelect />
-                    </>
-                );
-            }
-        }
-
-        return (
-            <div className={msgClassName} key={curKey}>
-                {innerHTML}
-            </div>
-        );
-    }
-
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        const chitem: OpenAICmdInfoChatMessageType = null;
+        console.log("chatMessageItems", chatMessageItems);
         return (
             <div className="sidebar-aichat">
                 <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
                 </div>
-                <OverlayScrollbarsComponent
-                    ref={this.chatWindowScrollRef}
-                    className="content"
-                    options={{ scrollbars: { autoHide: "leave" } }}
-                >
-                    <div className="chat-window">
-                        <div className="filler"></div>
-                        <For each="chitem" index="idx" of={chatMessageItems}>
-                            {this.renderChatMessage(chitem)}
-                        </For>
-                    </div>
-                </OverlayScrollbarsComponent>
+                <If condition={chatMessageItems.length > 0}>
+                    <ChatContent />
+                </If>
                 <div className="chat-input">
                     <textarea
                         key="main"

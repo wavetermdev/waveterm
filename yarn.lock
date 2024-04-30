@@ -6938,7 +6938,7 @@ overlayscrollbars-react@^0.5.5:
   resolved "https://registry.yarnpkg.com/overlayscrollbars-react/-/overlayscrollbars-react-0.5.6.tgz#e9779f9fc2c1a3288570a45c83f8e42518bfb8c1"
   integrity sha512-E5To04bL5brn9GVCZ36SnfGanxa2I2MDkWoa4Cjo5wol7l+diAgi4DBc983V7l2nOk/OLJ6Feg4kySspQEGDBw==
 
-overlayscrollbars@^2.6.1:
+overlayscrollbars@^2.7.3:
   version "2.7.3"
   resolved "https://registry.yarnpkg.com/overlayscrollbars/-/overlayscrollbars-2.7.3.tgz#68c18096c563391e37a2c7ca7463fbd03a945271"
   integrity sha512-HmNo8RPtuGUjBhUbVpZBHH7SHci5iSAdg5zSekCZVsjzaM6z8MIr3F9RXrzf4y7m+fOY0nx0+y0emr1fqQmfoA==
