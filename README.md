@@ -21,6 +21,7 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 -   AI Integration with ChatGPT (or ChatGPT compatible APIs) to help write commands and get answers inline
 
 ![WaveTerm Screenshot](./assets/wave-screenshot.png)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
 
 ## Installation
 
@@ -56,3 +57,7 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 -   [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
 -   [Contribution guidelines](CONTRIBUTING.md#before-you-start)
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_large)
