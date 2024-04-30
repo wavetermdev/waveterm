@@ -43,4 +43,4 @@ jobs:
             3. type 'ls' into the input
             4. press return
             5. validate Wave shows the result of 'ls'
-            6. /load /Users/ec2-user/actions-runner/_work/testdriver/testdriver/.github/workflows/wave-theme-switch.yml
+            6. /load /Users/ec2-user/actions-runner/_work/testdriver/testdriver/.github/workflows/wave-theme-switch.md
