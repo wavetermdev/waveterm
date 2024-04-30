@@ -15,6 +15,7 @@ import * as appconst from "@/app/appconst";
 
 import "./viewremoteconndetail.less";
 import { ModalKeybindings } from "../elements/modal";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 @mobxReact.observer
 class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
@@ -132,6 +133,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
     @boundMethod
     handleClose(): void {
+        console.log("handleClose");
         this.model.closeModal();
         this.model.setRecentConnAdded(false);
     }
@@ -299,15 +301,33 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
         return (
             <Modal className="rconndetail-modal">
+                <ModalKeybindings
+                    onOk={() => {
+                        if (selectedRemoteStatus == "connecting") {
+                            return;
+                        }
+                        this.handleClose();
+                    }}
+                    onCancel={() => {
+                        if (selectedRemoteStatus == "connecting") {
+                            return;
+                        }
+                        this.handleClose();
+                    }}
+                ></ModalKeybindings>
                 <Modal.Header title="Connection" onClose={this.handleClose} />
-                <div className="wave-modal-body">
+                <OverlayScrollbarsComponent
+                    className="wave-modal-body"
+                    options={{ scrollbars: { autoHide: "leave" } }}
+                    defer={true}
+                >
                     <div className="name-header-actions-wrapper">
                         <div className="name text-primary name-wrapper">
                             {util.getRemoteName(remote)}&nbsp; {getImportTooltip(remote)}
                         </div>
                         <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
                     </div>
-                    <div className="remote-detail" style={{ overflow: "hidden" }}>
+                    <div className="remote-detail">
                         <div className="settings-field">
                             <div className="settings-label">Conn Id</div>
                             <div className="settings-input">{remote.remoteid}</div>
@@ -381,33 +401,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                             ></div>
                         </div>
                     </div>
-                </div>
-                <div className="wave-modal-footer">
-                    <ModalKeybindings
-                        onOk={() => {
-                            if (selectedRemoteStatus == "connecting") {
-                                return;
-                            }
-                            this.handleClose();
-                        }}
-                        onCancel={() => {
-                            if (selectedRemoteStatus == "connecting") {
-                                return;
-                            }
-                            this.handleClose();
-                        }}
-                    ></ModalKeybindings>
-                    <Button
-                        className="secondary"
-                        disabled={selectedRemoteStatus == "connecting"}
-                        onClick={this.handleClose}
-                    >
-                        Cancel
-                    </Button>
-                    <Button disabled={selectedRemoteStatus == "connecting"} onClick={this.handleClose}>
-                        Done
-                    </Button>
-                </div>
+                </OverlayScrollbarsComponent>
             </Modal>
         );
     }

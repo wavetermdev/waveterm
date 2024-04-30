@@ -24,7 +24,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({ onClose, keybindings, title }
         </If>
         {<div className="wave-modal-title">{title}</div>}
         <If condition={onClose}>
-            <Button className="secondary ghost" onClick={onClose}>
+            <Button className="secondary ghost" onClick={() => onClose()} title="Close (ESC)">
                 <i className="fa-sharp fa-solid fa-xmark"></i>
             </Button>
         </If>
