@@ -14,47 +14,14 @@ import log from "../utils/log";
 import { buildExecuteShellCommand, mergeSubcomands } from "./utils";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- recursive type, setting as any
-const specSet: any = {};
-const rootSpec: Fig.Spec = {
-    name: "root",
-    filterStrategy: "prefix",
-    subcommands: (speclist as string[])
-        .filter((s) => !s.includes("/") && !s.includes("@")) // filter out versioned commands and subcommands in subdirectories
-        .map((s) => {
-            return {
-                name: s,
-                loadSpec: s,
-            };
-        }),
-};
-
-const filepathSpec: Fig.Spec = {
-    name: "filepaths",
-    args: {
-        name: "filepaths",
-        isVariadic: true,
-        template: "filepaths",
-    },
-};
+const specSet: Record<string, string> = {};
 
 (speclist as string[]).forEach((s) => {
-    let activeSet = specSet;
-    const specRoutes = s.split("/");
-    specRoutes.forEach((route, idx) => {
-        if (typeof activeSet !== "object") {
-            return;
-        }
-        if (idx === specRoutes.length - 1) {
-            const prefix = versionedSpeclist.includes(s) ? "/index.js" : `.js`;
-            activeSet[route] = `${s}${prefix}`;
-        } else {
-            activeSet[route] = activeSet[route] || {};
-            activeSet = activeSet[route];
-        }
-    });
+    const suffix = versionedSpeclist.includes(s) ? "/index.js" : `.js`;
+    specSet[s] = `${s}${suffix}`;
 });
 
-const loadedSpecs: { [key: string]: Fig.Spec } = {};
+const loadedSpecs: Record<string, Fig.Spec> = {};
 
 /**
  * Loads the spec for the current command. If the spec has been loaded already, it will be returned.

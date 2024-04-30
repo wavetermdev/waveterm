@@ -917,7 +917,7 @@ export class Newton {
      */
     private async findSubcommand(): Promise<boolean> {
         const curEntry = this.currentEntry;
-        if (!curEntry) {
+        if (!curEntry || this.atLastEntry) {
             return false;
         }
 

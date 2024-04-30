@@ -266,7 +266,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0, { name: "textAreaInput-version" }); // forces render updates
 
-    @mobx.action
+    @mobx.action.bound
     incVersion(): void {
         const v = this.version.get();
         this.version.set(v + 1);
@@ -456,7 +456,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         GlobalModel.inputModel.curLine = e.target.value;
     }
 
-    @mobx.action.bound
+    @boundMethod
     onSelect(e: any) {
         this.incVersion();
     }
