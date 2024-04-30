@@ -709,16 +709,16 @@ export class Newton {
         if (!suggestionMin.priority) {
             switch (suggestionMin.type) {
                 case "option":
-                    suggestionMin.priority = 60;
+                    suggestionMin.priority = 50;
                     break;
                 case "subcommand":
-                    suggestionMin.priority = 70;
+                    suggestionMin.priority = 51;
                     break;
                 case "arg":
-                    suggestionMin.priority = 90;
+                    suggestionMin.priority = 52;
                     break;
                 case "file":
-                    suggestionMin.priority = 80;
+                    suggestionMin.priority = 49;
                     break;
                 default:
                     suggestionMin.priority = 50;
@@ -872,8 +872,9 @@ export class Newton {
             return;
         }
         const entry = this.lastEntry;
+        const precedingFlagsMaybe = entry?.value?.slice(1) ?? "";
         const availableOptions = [
-            ...this.availablePosixFlags.map((option) => modifyPosixFlags(option, entry?.value?.slice(1))),
+            ...this.availablePosixFlags.map((option) => modifyPosixFlags(option, precedingFlagsMaybe)),
             ...this.availableNonPosixFlags,
         ];
         log.debug("availableOptions:", availableOptions);
