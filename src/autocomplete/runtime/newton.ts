@@ -109,17 +109,17 @@ export class Newton {
     /**
      * The available options for the current command. This is a map of option names to options. This is used to keep track of which options have already been used.
      */
-    private availableOptions: { [key: string]: Fig.Option } = {};
+    private availableOptions: Record<string, Fig.Option> = {};
 
     /**
      * A map of option names to their dependent options. This is defined in the spec as `dependsOn`. Any options present in this map will be suggested with the highest priority.
      */
-    private dependentOptions: { [key: string]: Fig.Option[] } = {};
+    private dependentOptions: Record<string, Fig.Option[]> = {};
 
     /**
      * A map of option names to their mutually exclusive options. This is defined in the spec as `exclusiveOn`. Any options present in this map will be removed from the available options set and flagged as invalid.
      */
-    private mutuallyExclusiveOptions: { [key: string]: Fig.Option[] } = {};
+    private mutuallyExclusiveOptions: Record<string, Fig.Option[]> = {};
 
     /**
      * Determines whether the parser should treat flags as POSIX-compliant. This is defined in the spec as `parserDirectives.flagsArePosixNoncompliant`.
