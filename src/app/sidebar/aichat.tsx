@@ -60,12 +60,12 @@ class ChatContent extends React.Component<{}, {}> {
     osInstance: OverlayScrollbars = null;
 
     componentDidUpdate() {
+        console.log("triggered");
         if (this.containerRef?.current && this.osInstance) {
-            const { overflowAmount } = this.osInstance.state();
             const { viewport } = this.osInstance.elements();
             viewport.scrollTo({
                 behavior: "auto",
-                top: overflowAmount.y,
+                top: this.chatWindowRef.current.scrollHeight,
             });
         }
     }
@@ -85,35 +85,6 @@ class ChatContent extends React.Component<{}, {}> {
             behavior: "auto",
             top: this.chatWindowRef.current.scrollHeight,
         });
-    }
-
-    submitChatMessage(messageStr: string) {
-        const curLine = GlobalModel.inputModel.getCurLine();
-        const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
-        prtn.then((rtn) => {
-            if (!rtn.success) {
-                console.log("submit chat command error: " + rtn.error);
-            }
-        }).catch((_) => {});
-    }
-
-    getLinePos(elem: any): { numLines: number; linePos: number } {
-        const numLines = elem.value.split("\n").length;
-        const linePos = elem.value.substr(0, elem.selectionStart).split("\n").length;
-        return { numLines, linePos };
-    }
-
-    onTextAreaFocused(e: any) {
-        console.log("focused=====");
-        mobx.action(() => {
-            GlobalModel.inputModel.setAuxViewFocus(true);
-        })();
-    }
-
-    onTextAreaBlur(e: any) {
-        mobx.action(() => {
-            GlobalModel.inputModel.setAuxViewFocus(false);
-        })();
     }
 
     renderError(err: string): any {
