@@ -156,7 +156,7 @@
     --table-border-color: rgba(241, 246, 243, 0.15);
     --table-thead-border-top-color: rgba(250, 250, 250, 0.1);
     --table-thead-bright-border-color: rgb(204, 204, 204);
-    --table-thead-bg-color: rgba(250, 250, 250, 0.02);
+    --table-thead-bg-color: rgb(5, 5, 5);
     --table-tr-border-bottom-color: rgba(241, 246, 243, 0.15);
     --table-tr-hover-bg-color: rgba(255, 255, 255, 0.06);
     --table-tr-selected-bg-color: rgb(34, 34, 34);

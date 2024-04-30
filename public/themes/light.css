@@ -57,6 +57,10 @@
     --scrollbar-thumb-hover-color: rgba(0, 0, 0, 0.4);
     --scrollbar-thumb-active-color: rgba(0, 0, 0, 0.5);
 
+    /* table colors */
+    --table-thead-bg-color: rgb(253, 253, 253);
+    --table-tr-selected-bg-color: rgb(216, 216, 216);
+
     /* line color */
     --line-actions-bg-color: rgba(0, 0, 0, 0.1);
     --line-actions-inactive-color: rgba(0, 0, 0, 0.3);

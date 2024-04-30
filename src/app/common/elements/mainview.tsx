@@ -7,6 +7,8 @@ import cn from "classnames";
 import { GlobalModel } from "@/models";
 
 import "./mainview.less";
+import { Choose, If, Otherwise, When } from "tsx-control-statements/components";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 @mobxReact.observer
 class MainView extends React.Component<{
@@ -14,6 +16,8 @@ class MainView extends React.Component<{
     onClose: () => void;
     children: React.ReactNode;
     className?: string;
+    scrollable?: boolean;
+    onScrollbarInitialized?: () => void;
 }> {
     render() {
         const sidebarModel = GlobalModel.mainSidebarModel;
@@ -31,7 +35,21 @@ class MainView extends React.Component<{
                         </div>
                     </header>
                 </div>
-                <div className="mainview-content">{this.props.children}</div>
+                <Choose>
+                    <When condition={this.props.scrollable}>
+                        <OverlayScrollbarsComponent
+                            className="mainview-content"
+                            options={{ scrollbars: { autoHide: "leave" } }}
+                            defer={true}
+                            events={{ initialized: this.props.onScrollbarInitialized }}
+                        >
+                            {this.props.children}
+                        </OverlayScrollbarsComponent>
+                    </When>
+                    <Otherwise>
+                        <div className="mainview-content">{this.props.children}</div>
+                    </Otherwise>
+                </Choose>
             </div>
         );
     }
