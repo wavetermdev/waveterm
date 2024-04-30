@@ -266,9 +266,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0, { name: "textAreaInput-version" }); // forces render updates
 
+    @mobx.action
     incVersion(): void {
         const v = this.version.get();
-        mobx.action(() => this.version.set(v + 1))();
+        this.version.set(v + 1);
     }
 
     getCurSP(): StrWithPos {
@@ -294,6 +295,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         GlobalModel.sendCmdInputText(this.props.screen.screenId, curSP);
     }
 
+    @mobx.action
     setFocus(): void {
         GlobalModel.inputModel.giveFocus();
     }
@@ -327,6 +329,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
     }
 
+    @mobx.action
     componentDidMount() {
         const activeScreen = GlobalModel.getActiveScreen();
         if (activeScreen != null) {
@@ -340,6 +343,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         this.updateSP();
     }
 
+    @mobx.action
     componentDidUpdate() {
         const activeScreen = GlobalModel.getActiveScreen();
         if (activeScreen != null) {
@@ -356,7 +360,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 this.mainInputRef.current.selectionStart = fcpos;
                 this.mainInputRef.current.selectionEnd = fcpos;
             }
-            mobx.action(() => inputModel.forceCursorPos.set(null))();
+            inputModel.forceCursorPos.set(null);
         }
         if (inputModel.forceInputFocus) {
             inputModel.forceInputFocus = false;
@@ -441,21 +445,18 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
-        GlobalModel.inputModel.setCurLine(currentRef.value);
+        GlobalModel.inputModel.curLine = currentRef.value;
     }
 
-    @mobx.action
     @boundMethod
     onKeyDown(e: any) {}
 
-    @boundMethod
+    @mobx.action.bound
     onChange(e: any) {
-        mobx.action(() => {
-            GlobalModel.inputModel.setCurLine(e.target.value);
-        })();
+        GlobalModel.inputModel.curLine = e.target.value;
     }
 
-    @boundMethod
+    @mobx.action.bound
     onSelect(e: any) {
         this.incVersion();
     }
@@ -480,7 +481,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
     }
 
-    @boundMethod
+    @mobx.action.bound
     controlP() {
         const inputModel = GlobalModel.inputModel;
         if (!inputModel.isHistoryLoaded()) {
@@ -492,7 +493,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         this.lastHistoryUpDown = true;
     }
 
-    @boundMethod
+    @mobx.action.bound
     controlN() {
         const inputModel = GlobalModel.inputModel;
         inputModel.moveHistorySelection(-1);
@@ -553,17 +554,15 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         });
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleHistoryInput(e: any) {
         const inputModel = GlobalModel.inputModel;
-        mobx.action(() => {
-            const opts = mobx.toJS(inputModel.historyQueryOpts.get());
-            opts.queryStr = e.target.value;
-            inputModel.setHistoryQueryOpts(opts);
-        })();
+        const opts = mobx.toJS(inputModel.historyQueryOpts.get());
+        opts.queryStr = e.target.value;
+        inputModel.setHistoryQueryOpts(opts);
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleFocus(e: any) {
         e.preventDefault();
         GlobalModel.inputModel.giveFocus();

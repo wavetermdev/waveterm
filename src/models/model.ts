@@ -37,7 +37,6 @@ import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
 import * as util from "@/util/util";
-import { url } from "node:inspector";
 import { AutocompleteModel } from "./autocomplete";
 
 type SWLinePtr = {

@@ -83,12 +83,12 @@ class InputModel {
         this.codeSelectUuid = "";
     }
 
+    @mobx.action
     setInputMode(inputMode: null | "comment" | "global"): void {
-        mobx.action(() => {
-            this.inputMode.set(inputMode);
-        })();
+        this.inputMode.set(inputMode);
     }
 
+    @mobx.action
     toggleHistoryType(): void {
         const opts = mobx.toJS(this.historyQueryOpts.get());
         let htype = opts.queryType;
@@ -102,6 +102,7 @@ class InputModel {
         this.setHistoryType(htype);
     }
 
+    @mobx.action
     toggleRemoteType(): void {
         const opts = mobx.toJS(this.historyQueryOpts.get());
         if (opts.limitRemote) {
@@ -114,67 +115,63 @@ class InputModel {
         this.setHistoryQueryOpts(opts);
     }
 
+    @mobx.action
     onInputFocus(isFocused: boolean): void {
-        mobx.action(() => {
-            if (isFocused) {
-                this.inputFocused.set(true);
-                this.lineFocused.set(false);
-            } else if (this.inputFocused.get()) {
-                this.inputFocused.set(false);
-            }
-        })();
+        if (isFocused) {
+            this.inputFocused.set(true);
+            this.lineFocused.set(false);
+        } else if (this.inputFocused.get()) {
+            this.inputFocused.set(false);
+        }
     }
 
+    @mobx.action
     onLineFocus(isFocused: boolean): void {
-        mobx.action(() => {
-            if (isFocused) {
-                this.inputFocused.set(false);
-                this.lineFocused.set(true);
-            } else if (this.lineFocused.get()) {
-                this.lineFocused.set(false);
-            }
-        })();
+        if (isFocused) {
+            this.inputFocused.set(false);
+            this.lineFocused.set(true);
+        } else if (this.lineFocused.get()) {
+            this.lineFocused.set(false);
+        }
     }
 
     // Focuses the main input or the auxiliary view, depending on the active auxiliary view
+    @mobx.action
     giveFocus(): void {
         // Override active view to the main input if aux view does not have focus
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
-        mobx.action(() => {
-            switch (activeAuxView) {
-                case appconst.InputAuxView_History: {
-                    const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
-                    if (elem != null) {
-                        elem.focus();
-                    }
-                    break;
+        switch (activeAuxView) {
+            case appconst.InputAuxView_History: {
+                const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
+                if (elem != null) {
+                    elem.focus();
                 }
-                case appconst.InputAuxView_AIChat:
-                    this.setAIChatFocus();
-                    break;
-                case null: {
-                    const elem = document.getElementById("main-cmd-input");
-                    if (elem != null) {
-                        elem.focus();
-                    }
-                    this.setPhysicalInputFocused(true);
-                    break;
-                }
-                default: {
-                    const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
-                    if (elem != null) {
-                        elem.focus();
-                    }
-                    break;
-                }
+                break;
             }
-        })();
+            case appconst.InputAuxView_AIChat:
+                this.setAIChatFocus();
+                break;
+            case null: {
+                const elem = document.getElementById("main-cmd-input");
+                if (elem != null) {
+                    elem.focus();
+                }
+                this.setPhysicalInputFocused(true);
+                break;
+            }
+            default: {
+                const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
+                if (elem != null) {
+                    elem.focus();
+                }
+                break;
+            }
+        }
     }
 
+    @mobx.action
     setPhysicalInputFocused(isFocused: boolean): void {
-        mobx.action(() => {
-            this.physicalInputFocused.set(isFocused);
-        })();
+        this.physicalInputFocused.set(isFocused);
         if (isFocused) {
             const screen = this.globalModel.getActiveScreen();
             if (screen != null) {
@@ -201,6 +198,7 @@ class InputModel {
         return false;
     }
 
+    @mobx.action
     setHistoryType(htype: HistoryTypeStrs): void {
         if (this.historyQueryOpts.get().queryType == htype) {
             return;
@@ -232,15 +230,15 @@ class InputModel {
         return bestIdx + 1;
     }
 
+    @mobx.action
     setHistoryQueryOpts(opts: HistoryQueryOpts): void {
-        mobx.action(() => {
-            const oldItem = this.getHistorySelectedItem();
-            this.historyQueryOpts.set(opts);
-            const bestIndex = this.findBestNewIndex(oldItem);
-            setTimeout(() => this.setHistoryIndex(bestIndex, true), 10);
-        })();
+        const oldItem = this.getHistorySelectedItem();
+        this.historyQueryOpts.set(opts);
+        const bestIndex = this.findBestNewIndex(oldItem);
+        setTimeout(() => this.setHistoryIndex(bestIndex, true), 10);
     }
 
+    @mobx.action
     setOpenAICmdInfoChat(chat: OpenAICmdInfoChatMessageType[]): void {
         this.AICmdInfoChatItems.replace(chat);
         this.codeSelectBlockRefArray = [];
@@ -254,6 +252,7 @@ class InputModel {
         return hitems != null;
     }
 
+    @mobx.action
     loadHistory(show: boolean, afterLoadIndex: number, htype: HistoryTypeStrs) {
         if (this.historyLoading.get()) {
             return;
@@ -264,12 +263,11 @@ class InputModel {
             }
         }
         this.historyAfterLoadIndex = afterLoadIndex;
-        mobx.action(() => {
-            this.historyLoading.set(true);
-        })();
+        this.historyLoading.set(true);
         GlobalCommandRunner.loadHistory(show, htype);
     }
 
+    @mobx.action
     openHistory(): void {
         if (this.historyLoading.get()) {
             return;
@@ -285,13 +283,12 @@ class InputModel {
         }
     }
 
+    @mobx.action
     updateCmdLine(cmdLine: StrWithPos): void {
-        mobx.action(() => {
-            this.setCurLine(cmdLine.str);
-            if (cmdLine.pos != appconst.NoStrPos) {
-                this.forceCursorPos.set(cmdLine.pos);
-            }
-        })();
+        this.curLine = cmdLine.str;
+        if (cmdLine.pos != appconst.NoStrPos) {
+            this.forceCursorPos.set(cmdLine.pos);
+        }
     }
 
     getHistorySelectedItem(): HistoryItem {
@@ -314,6 +311,7 @@ class InputModel {
         return hitems[0];
     }
 
+    @mobx.action
     setHistorySelectionNum(hnum: string): void {
         const hitems = this.filteredHistoryItems;
         for (const [i, hitem] of hitems.entries()) {
@@ -324,30 +322,29 @@ class InputModel {
         }
     }
 
+    @mobx.action
     setHistoryInfo(hinfo: HistoryInfoType): void {
-        mobx.action(() => {
-            const oldItem = this.getHistorySelectedItem();
-            const hitems: HistoryItem[] = hinfo.items ?? [];
-            this.historyItems.set(hitems);
-            this.historyLoading.set(false);
-            this.historyQueryOpts.get().queryType = hinfo.historytype;
-            if (hinfo.historytype == "session" || hinfo.historytype == "global") {
-                this.historyQueryOpts.get().limitRemote = false;
-                this.historyQueryOpts.get().limitRemoteInstance = false;
+        const oldItem = this.getHistorySelectedItem();
+        const hitems: HistoryItem[] = hinfo.items ?? [];
+        this.historyItems.set(hitems);
+        this.historyLoading.set(false);
+        this.historyQueryOpts.get().queryType = hinfo.historytype;
+        if (hinfo.historytype == "session" || hinfo.historytype == "global") {
+            this.historyQueryOpts.get().limitRemote = false;
+            this.historyQueryOpts.get().limitRemoteInstance = false;
+        }
+        if (this.historyAfterLoadIndex == -1) {
+            const bestIndex = this.findBestNewIndex(oldItem);
+            setTimeout(() => this.setHistoryIndex(bestIndex, true), 100);
+        } else if (this.historyAfterLoadIndex) {
+            if (hitems.length >= this.historyAfterLoadIndex) {
+                this.setHistoryIndex(this.historyAfterLoadIndex);
             }
-            if (this.historyAfterLoadIndex == -1) {
-                const bestIndex = this.findBestNewIndex(oldItem);
-                setTimeout(() => this.setHistoryIndex(bestIndex, true), 100);
-            } else if (this.historyAfterLoadIndex) {
-                if (hitems.length >= this.historyAfterLoadIndex) {
-                    this.setHistoryIndex(this.historyAfterLoadIndex);
-                }
-            }
-            this.historyAfterLoadIndex = 0;
-            if (hinfo.show) {
-                this.openHistory();
-            }
-        })();
+        }
+        this.historyAfterLoadIndex = 0;
+        if (hinfo.show) {
+            this.openHistory();
+        }
     }
 
     @mobx.computed
@@ -411,16 +408,15 @@ class InputModel {
         elem.scrollIntoView({ block: "nearest" });
     }
 
+    @mobx.action
     grabSelectedHistoryItem(): void {
         const hitem = this.getHistorySelectedItem();
         if (hitem == null) {
             this.resetHistory();
             return;
         }
-        mobx.action(() => {
-            this.resetInput();
-            this.setCurLine(hitem.cmdstr);
-        })();
+        this.resetInput();
+        this.curLine = hitem.cmdstr;
     }
 
     // Closes the auxiliary view if it is open, focuses the main input
@@ -444,8 +440,8 @@ class InputModel {
         mobx.action(() => {
             this.auxViewFocus.set(view != null);
             this.activeAuxView.set(view);
+            this.giveFocus();
         })();
-        this.giveFocus();
     }
 
     // Gets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
@@ -458,39 +454,33 @@ class InputModel {
     }
 
     // Sets the focus state of the auxiliary view. If true, the view will get focus. Otherwise, the main input will get focus.
+    @mobx.action
     setAuxViewFocus(focus: boolean): void {
-        mobx.action(() => {
-            this.auxViewFocus.set(focus);
-        })();
+        this.auxViewFocus.set(focus);
         this.giveFocus();
     }
 
+    @mobx.computed
     shouldRenderAuxViewKeybindings(view: InputAuxViewType): boolean {
-        return mobx
-            .computed(() => {
-                if (view != null && this.getActiveAuxView() != view) {
-                    return false;
-                }
-                if (view != null && !this.getAuxViewFocus()) {
-                    return false;
-                }
-                if (view == null && this.hasFocus() && !this.getAuxViewFocus()) {
-                    return true;
-                }
-                if (view != null && this.getAuxViewFocus()) {
-                    return true;
-                }
-                if (
-                    GlobalModel.getActiveScreen().getFocusType() == "input" &&
-                    GlobalModel.activeMainView.get() == "session"
-                ) {
-                    return true;
-                }
-                return false;
-            })
-            .get();
+        if (view != null && this.getActiveAuxView() != view) {
+            return false;
+        }
+        if (view != null && !this.getAuxViewFocus()) {
+            return false;
+        }
+        if (view == null && this.hasFocus() && !this.getAuxViewFocus()) {
+            return true;
+        }
+        if (view != null && this.getAuxViewFocus()) {
+            return true;
+        }
+        if (GlobalModel.getActiveScreen().getFocusType() == "input" && GlobalModel.activeMainView.get() == "session") {
+            return true;
+        }
+        return false;
     }
 
+    @mobx.action
     setHistoryIndex(hidx: number, force?: boolean): void {
         if (hidx < 0) {
             return;
@@ -498,19 +488,17 @@ class InputModel {
         if (!force && this.historyIndex.get() == hidx) {
             return;
         }
-        mobx.action(() => {
-            this.historyIndex.set(hidx);
-            if (this.getActiveAuxView() == appconst.InputAuxView_History) {
-                let hitem = this.getHistorySelectedItem();
-                if (hitem == null) {
-                    hitem = this.getFirstHistoryItem();
-                }
-                if (hitem != null) {
-                    this.scrollHistoryItemIntoView(hitem.historynum);
-                }
+        this.historyIndex.set(hidx);
+        if (this.getActiveAuxView() == appconst.InputAuxView_History) {
+            let hitem = this.getHistorySelectedItem();
+            if (hitem == null) {
+                hitem = this.getFirstHistoryItem();
             }
-            this.globalModel.autocompleteModel.clearSuggestions();
-        })();
+            if (hitem != null) {
+                this.scrollHistoryItemIntoView(hitem.historynum);
+            }
+        }
+        this.globalModel.autocompleteModel.clearSuggestions();
     }
 
     moveHistorySelection(amt: number): void {
@@ -531,11 +519,10 @@ class InputModel {
         this.setHistoryIndex(idx);
     }
 
+    @mobx.action
     flashInfoMsg(info: InfoType, timeoutMs: number): void {
         this._clearInfoTimeout();
-        mobx.action(() => {
-            this.infoMsg.set(info);
-        })();
+        this.infoMsg.set(info);
 
         if (info == null && this.getActiveAuxView() == appconst.InputAuxView_Info) {
             this.setActiveAuxView(null);
@@ -574,7 +561,7 @@ class InputModel {
         ) {
             const curBlockRef = this.codeSelectBlockRefArray[this.codeSelectSelectedIndex.get()];
             const codeText = curBlockRef.current.innerText.replace(/\n$/, ""); // remove trailing newline
-            this.setCurLine(codeText);
+            this.curLine = codeText;
             this.giveFocus();
         }
     }
@@ -590,72 +577,68 @@ class InputModel {
         return rtn;
     }
 
+    @mobx.action
     setCodeSelectSelectedCodeBlock(blockIndex: number) {
-        mobx.action(() => {
-            if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
-                this.codeSelectSelectedIndex.set(blockIndex);
-                const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
-                if (currentRef != null && this.aiChatWindowRef?.current != null) {
-                    const chatWindowTop = this.aiChatWindowRef.current.scrollTop;
-                    const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
-                    const elemTop = currentRef.offsetTop;
-                    let elemBottom = elemTop - currentRef.offsetHeight;
-                    const elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
-                    if (!elementIsInView) {
-                        this.aiChatWindowRef.current.scrollTop =
-                            elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
-                    }
+        if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
+            this.codeSelectSelectedIndex.set(blockIndex);
+            const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
+            if (currentRef != null && this.aiChatWindowRef?.current != null) {
+                const chatWindowTop = this.aiChatWindowRef.current.scrollTop;
+                const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
+                const elemTop = currentRef.offsetTop;
+                let elemBottom = elemTop - currentRef.offsetHeight;
+                const elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
+                if (!elementIsInView) {
+                    this.aiChatWindowRef.current.scrollTop = elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
                 }
             }
-            this.codeSelectBlockRefArray = [];
-            this.setAIChatFocus();
-        })();
+        }
+        this.codeSelectBlockRefArray = [];
+        this.setAIChatFocus();
     }
 
+    @mobx.action
     codeSelectSelectNextNewestCodeBlock() {
         // oldest code block = index 0 in array
         // this decrements codeSelectSelected index
-        mobx.action(() => {
-            if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
-                this.codeSelectSelectedIndex.set(this.codeSelectBottom);
-            } else if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
-                return;
+        if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+            this.codeSelectSelectedIndex.set(this.codeSelectBottom);
+        } else if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
+            return;
+        }
+        const incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
+        if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
+            this.codeSelectDeselectAll();
+            if (this.aiChatWindowRef?.current != null) {
+                this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
             }
-            const incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
-            if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
-                this.codeSelectDeselectAll();
-                if (this.aiChatWindowRef?.current != null) {
-                    this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
-                }
-            }
-            if (incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
-                this.setCodeSelectSelectedCodeBlock(incBlockIndex);
-            }
-        })();
+        }
+        if (incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
+            this.setCodeSelectSelectedCodeBlock(incBlockIndex);
+        }
     }
 
+    @mobx.action
     codeSelectSelectNextOldestCodeBlock() {
-        mobx.action(() => {
-            if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
-                if (this.codeSelectBlockRefArray.length > 0) {
-                    this.codeSelectSelectedIndex.set(this.codeSelectBlockRefArray.length);
-                } else {
-                    return;
-                }
-            } else if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+        if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
+            if (this.codeSelectBlockRefArray.length > 0) {
+                this.codeSelectSelectedIndex.set(this.codeSelectBlockRefArray.length);
+            } else {
                 return;
             }
-            const decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
-            if (decBlockIndex < 0) {
-                this.codeSelectDeselectAll(this.codeSelectTop);
-                if (this.aiChatWindowRef?.current != null) {
-                    this.aiChatWindowRef.current.scrollTop = 0;
-                }
+        } else if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+            return;
+        }
+        const decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
+        if (decBlockIndex < 0) {
+            this.codeSelectDeselectAll(this.codeSelectTop);
+            if (this.aiChatWindowRef?.current != null) {
+                this.aiChatWindowRef.current.scrollTop = 0;
             }
-            if (decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {
-                this.setCodeSelectSelectedCodeBlock(decBlockIndex);
-            }
-        })();
+        }
+        if (decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {
+            this.setCodeSelectSelectedCodeBlock(decBlockIndex);
+        }
     }
 
     getCodeSelectSelectedIndex() {
@@ -680,6 +663,7 @@ class InputModel {
         })();
     }
 
+    @mobx.action
     openAIAssistantChat(): void {
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
         this.setAuxViewFocus(true);
@@ -719,19 +703,19 @@ class InputModel {
         }
     }
 
+    @mobx.action
     clearInfoMsg(setNull: boolean): void {
         this._clearInfoTimeout();
 
         if (this.getActiveAuxView() == appconst.InputAuxView_Info) {
             this.setActiveAuxView(null);
         }
-        mobx.action(() => {
-            if (setNull) {
-                this.infoMsg.set(null);
-            }
-        })();
+        if (setNull) {
+            this.infoMsg.set(null);
+        }
     }
 
+    @mobx.action
     toggleInfoMsg(): void {
         this._clearInfoTimeout();
         if (this.activeAuxView.get() == appconst.InputAuxView_Info) {
@@ -743,45 +727,42 @@ class InputModel {
 
     @boundMethod
     uiSubmitCommand(): void {
+        const commandStr = this.curLine;
+        if (commandStr.trim() == "") {
+            return;
+        }
         mobx.action(() => {
-            const commandStr = this.curLine;
-            if (commandStr.trim() == "") {
-                return;
-            }
             this.resetInput();
-            this.globalModel.submitRawCommand(commandStr, true, true);
         })();
+        this.globalModel.submitRawCommand(commandStr, true, true);
     }
 
     isEmpty(): boolean {
         return this.curLine.trim() == "";
     }
 
+    @mobx.action
     resetInputMode(): void {
-        mobx.action(() => {
-            this.setInputMode(null);
-            this.setCurLine("");
-        })();
+        this.setInputMode(null);
+        this.curLine = "";
     }
 
+    @mobx.action
     resetInput(): void {
-        mobx.action(() => {
-            this.setActiveAuxView(null);
-            this.inputMode.set(null);
-            this.resetHistory();
-            this.dropModHistory(false);
-            this.infoMsg.set(null);
-            this.inputExpanded.set(false);
-            this._clearInfoTimeout();
-        })();
+        this.setActiveAuxView(null);
+        this.inputMode.set(null);
+        this.resetHistory();
+        this.dropModHistory(false);
+        this.infoMsg.set(null);
+        this.inputExpanded.set(false);
+        this._clearInfoTimeout();
     }
 
+    @mobx.action
     @boundMethod
     toggleExpandInput(): void {
-        mobx.action(() => {
-            this.inputExpanded.set(!this.inputExpanded.get());
-            this.forceInputFocus = true;
-        })();
+        this.inputExpanded.set(!this.inputExpanded.get());
+        this.forceInputFocus = true;
     }
 
     @mobx.computed
@@ -801,11 +782,11 @@ class InputModel {
         return hitem.cmdstr;
     }
 
-    setCurLine(val: string): void {
+    set curLine(val: string) {
         this.lastCurLine = this.curLine;
         const hidx = this.historyIndex.get();
+        const runGetSuggestions = this.curLine != val;
         mobx.action(() => {
-            const runGetSuggestions = this.curLine != val;
             if (this.modHistory.length <= hidx) {
                 this.modHistory.length = hidx + 1;
             }
@@ -822,32 +803,30 @@ class InputModel {
         })();
     }
 
+    @mobx.action
     dropModHistory(keepLine0: boolean): void {
-        mobx.action(() => {
-            if (keepLine0) {
-                if (this.modHistory.length > 1) {
-                    this.modHistory.splice(1, this.modHistory.length - 1);
-                }
-            } else {
-                this.modHistory.replace([""]);
+        if (keepLine0) {
+            if (this.modHistory.length > 1) {
+                this.modHistory.splice(1, this.modHistory.length - 1);
             }
-        })();
+        } else {
+            this.modHistory.replace([""]);
+        }
     }
 
+    @mobx.action
     resetHistory(): void {
-        mobx.action(() => {
-            if (this.getActiveAuxView() == appconst.InputAuxView_History) {
-                this.setActiveAuxView(null);
-            }
-            this.historyLoading.set(false);
-            this.historyType.set("screen");
-            this.historyItems.set(null);
-            this.historyIndex.set(0);
-            this.historyQueryOpts.set(getDefaultHistoryQueryOpts());
-            this.historyAfterLoadIndex = 0;
-            this.dropModHistory(true);
-            this.globalModel.autocompleteModel.clearSuggestions();
-        })();
+        if (this.getActiveAuxView() == appconst.InputAuxView_History) {
+            this.setActiveAuxView(null);
+        }
+        this.historyLoading.set(false);
+        this.historyType.set("screen");
+        this.historyItems.set(null);
+        this.historyIndex.set(0);
+        this.historyQueryOpts.set(getDefaultHistoryQueryOpts());
+        this.historyAfterLoadIndex = 0;
+        this.dropModHistory(true);
+        this.globalModel.autocompleteModel.clearSuggestions();
     }
 }
 
