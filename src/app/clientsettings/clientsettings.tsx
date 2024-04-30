@@ -14,6 +14,7 @@ import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
 import { MainView } from "../common/elements/mainview";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 class ClientSettingsKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
@@ -251,7 +252,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curSudoPwClearOnSleep = GlobalModel.getSudoPwClearOnSleep();
 
         return (
-            <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
+            <MainView
+                className="clientsettings-view"
+                title="Client Settings"
+                onClose={this.handleClose}
+                scrollable={true}
+            >
                 <If condition={!isHidden}>
                     <ClientSettingsKeybindings></ClientSettingsKeybindings>
                 </If>
