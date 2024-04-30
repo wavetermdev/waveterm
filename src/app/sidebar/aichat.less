@@ -55,23 +55,18 @@
                 i {
                     margin-right: 0.5em;
                 }
-
-                .chat-username {
-                    font-weight: bold;
-                    margin-right: 5px;
-                }
             }
         }
 
         .chat-msg-assistant {
             color: var(--app-text-color);
-        }
 
-        .chat-msg-user {
-            .msg-text {
-                font-family: var(--markdown-font);
-                font-size: 14px;
+            pre {
                 white-space: pre-wrap;
+                word-break: break-word;
+                max-width: 100%;
+                overflow-x: auto;
+                margin-left: 0;
             }
         }
 

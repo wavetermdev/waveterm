@@ -9,7 +9,7 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
 import * as appconst from "@/app/appconst";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
+import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 
 import "./aichat.less";
 
@@ -55,7 +55,7 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
 @mobxReact.observer
 class AIChat extends React.Component<{}, {}> {
     chatListKeyCount: number = 0;
-    chatWindowScrollRef: React.RefObject<HTMLDivElement>;
+    chatWindowScrollRef: React.RefObject<any>;
     textAreaRef: React.RefObject<HTMLTextAreaElement>;
     termFontSize: number = 14;
 
@@ -79,6 +79,7 @@ class AIChat extends React.Component<{}, {}> {
 
     componentDidUpdate() {
         if (this.chatWindowScrollRef?.current != null) {
+            console.log("scrolling to bottom", this.chatWindowScrollRef.current.osInstance().scrollHeight);
             this.chatWindowScrollRef.current.scrollTop = this.chatWindowScrollRef.current.scrollHeight;
         }
     }
@@ -238,15 +239,18 @@ class AIChat extends React.Component<{}, {}> {
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
                 </div>
-                <OverlayScrollbarsComponent className="content" options={{ scrollbars: { autoHide: "leave" } }}>
-                    <div className="chat-window" ref={this.chatWindowScrollRef}>
+                <OverlayScrollbarsComponent
+                    ref={this.chatWindowScrollRef}
+                    className="content"
+                    options={{ scrollbars: { autoHide: "leave" } }}
+                >
+                    <div className="chat-window">
                         <div className="filler"></div>
                         <For each="chitem" index="idx" of={chatMessageItems}>
                             {this.renderChatMessage(chitem)}
                         </For>
                     </div>
                 </OverlayScrollbarsComponent>
-
                 <div className="chat-input">
                     <textarea
                         key="main"
