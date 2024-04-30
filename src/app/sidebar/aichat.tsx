@@ -8,7 +8,8 @@ import { GlobalModel } from "@/models";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
-import { OverlayScrollbars } from "overlayscrollbars";
+import type { OverlayScrollbars } from "overlayscrollbars";
+import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 
 import "./aichat.less";
 
@@ -54,29 +55,9 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
 @mobxReact.observer
 class ChatContent extends React.Component<{}, {}> {
     chatListKeyCount: number = 0;
-    containerRef: React.RefObject<HTMLDivElement> = React.createRef();
+    containerRef: React.RefObject<OverlayScrollbarsComponentRef> = React.createRef();
     chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef();
     osInstance: OverlayScrollbars = null;
-
-    componentDidMount() {
-        if (this.containerRef.current) {
-            this.osInstance = OverlayScrollbars(
-                this.containerRef.current,
-                {
-                    scrollbars: { autoHide: "leave" },
-                },
-                {
-                    initialized: (instance) => {
-                        const { viewport } = instance.elements();
-                        viewport.scrollTo({
-                            behavior: "auto",
-                            top: this.chatWindowRef.current.scrollHeight,
-                        });
-                    },
-                }
-            );
-        }
-    }
 
     componentDidUpdate() {
         if (this.containerRef?.current && this.osInstance) {
@@ -94,6 +75,16 @@ class ChatContent extends React.Component<{}, {}> {
             this.osInstance.destroy();
             this.osInstance = null;
         }
+    }
+
+    @boundMethod
+    onScrollbarInitialized(instance) {
+        this.osInstance = instance;
+        const { viewport } = instance.elements();
+        viewport.scrollTo({
+            behavior: "auto",
+            top: this.chatWindowRef.current.scrollHeight,
+        });
     }
 
     submitChatMessage(messageStr: string) {
@@ -168,14 +159,19 @@ class ChatContent extends React.Component<{}, {}> {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
         return (
-            <div ref={this.containerRef} className="content">
+            <OverlayScrollbarsComponent
+                ref={this.containerRef}
+                className="content"
+                options={{ scrollbars: { autoHide: "leave" } }}
+                events={{ initialized: this.onScrollbarInitialized }}
+            >
                 <div ref={this.chatWindowRef} className="chat-window">
                     <div className="filler"></div>
                     <For each="chitem" index="idx" of={chatMessageItems}>
                         {this.renderChatMessage(chitem)}
                     </For>
                 </div>
-            </div>
+            </OverlayScrollbarsComponent>
         );
     }
 }
@@ -308,7 +304,6 @@ class AIChat extends React.Component<{}, {}> {
 
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        console.log("chatMessageItems", chatMessageItems);
         return (
             <div className="sidebar-aichat">
                 <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
