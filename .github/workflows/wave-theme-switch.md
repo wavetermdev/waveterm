@@ -8,7 +8,7 @@ First, we need to find the "Theme" text on the screen and click on it to expand 
 
 ```yml
 commands:
-  - command: find-text
+  - command: click-text
     text: Theme
     comment: "Locate the 'Theme' dropdown menu on the screen."
   - command: wait
@@ -32,7 +32,7 @@ After confirming the dropdown is expanded, find the "Dark" text and click on it 
 
 ```yml
 commands:
-  - command: find-text
+  - command: click-text
     text: Dark
     comment: "Locate the 'Dark' option within the expanded 'Theme' dropdown menu."
   - command: wait
