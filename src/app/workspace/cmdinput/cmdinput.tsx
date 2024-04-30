@@ -29,6 +29,11 @@ class CmdInput extends React.Component<{}, {}> {
     cmdInputRef: React.RefObject<any> = React.createRef();
     promptRef: React.RefObject<any> = React.createRef();
 
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     componentDidMount() {
         this.updateCmdInputHeight();
     }

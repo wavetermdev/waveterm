@@ -42,6 +42,11 @@ class HItem extends React.Component<
     },
     {}
 > {
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     renderRemote(hitem: HistoryItem): any {
         if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
             return sprintf("%-15s ", "");
