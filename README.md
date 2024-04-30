@@ -9,7 +9,7 @@
 
 # Wave Terminal
 
-A open-source, cross-platform, AI-integrated, modern terminal for seamless workflows.
+Wave is an open-source AI-native terminal built for seamless workflows.
 
 Wave isn't just another terminal emulator; it's a rethink on how terminals are built. Wave combines command line with the power of the open web to help veteran CLI users and new developers alike.
 
@@ -17,13 +17,14 @@ Wave isn't just another terminal emulator; it's a rethink on how terminals are b
 -   Persistent sessions that can restore state across network disconnections and reboots
 -   Searchable contextual command history across all remote sessions (saved locally)
 -   Workspaces, tabs, and command blocks to keep you organized
+-   CodeEdit, to edit local and remote files with a VSCode-like inline editor
 -   AI Integration with ChatGPT (or ChatGPT compatible APIs) to help write commands and get answers inline
 
-![WaveTerm Screenshot](./assets/wave-screenshot.jpeg)
+![WaveTerm Screenshot](./assets/wave-screenshot.png)
 
 ## Installation
 
-Wave Terminal works with MacOS and Linux (preliminary).
+Wave Terminal works with MacOS and Linux.
 
 Install Wave Terminal from: [www.waveterm.dev/download](https://www.waveterm.dev/download)
 
@@ -49,7 +50,7 @@ brew install --cask wave
 
 ## Contributing
 
-Wave uses Github Project for tracking issues.
+Wave uses Github Issues for issue tracking.
 
 Find more information in our [Contributions Guide](CONTRIBUTING.md), which includes:
 

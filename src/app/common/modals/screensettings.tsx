@@ -5,22 +5,26 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If, For } from "tsx-control-statements/components";
+import { For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Dropdown, Tooltip } from "@/elements";
+import { SettingsError, Modal, Dropdown, Tooltip } from "@/elements";
 import * as util from "@/util/util";
-import { TabIcon } from "@/common/elements/tabicon";
-import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
-import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
-import * as appconst from "@/app/appconst";
+import { Button } from "@/elements";
+import { If } from "tsx-control-statements/components";
+import { commandRtnHandler } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
+import {
+    TabColorSelector,
+    TabIconSelector,
+    TabNameTextField,
+    TabRemoteSelector,
+} from "@/app/workspace/screen/newtabsettings";
 
 import "./screensettings.less";
 
 const ScreenDeleteMessage = `
 Are you sure you want to delete this tab?
-
-All commands and output will be deleted.  To hide the tab, and retain the commands and output, use 'archive'.
 `.trim();
 
 const WebShareConfirmMarkdown = `
@@ -38,15 +42,13 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
     shareCopied: OV<boolean> = mobx.observable.box(false, { name: "ScreenSettings-shareCopied" });
     errorMessage: OV<string> = mobx.observable.box(null, { name: "ScreenSettings-errorMessage" });
     screen: Screen;
-    sessionId: string;
     screenId: string;
     remotes: RemoteType[];
 
     constructor(props) {
         super(props);
-        let screenSettingsModal = GlobalModel.screenSettingsModal.get();
-        let { sessionId, screenId } = screenSettingsModal;
-        this.sessionId = sessionId;
+        const screenSettingsModal = GlobalModel.screenSettingsModal.get();
+        const { sessionId, screenId } = screenSettingsModal;
         this.screenId = screenId;
         this.screen = GlobalModel.getScreenById(sessionId, screenId);
         if (this.screen == null || sessionId == null || screenId == null) {
@@ -67,8 +69,8 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                 value: remote.remotecanonicalname,
             }))
             .sort((a, b) => {
-                let connValA = util.getRemoteConnVal(a);
-                let connValB = util.getRemoteConnVal(b);
+                const connValA = util.getRemoteConnVal(a);
+                const connValB = util.getRemoteConnVal(b);
                 if (connValA !== connValB) {
                     return connValA - connValB;
                 }
@@ -85,39 +87,6 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    selectTabColor(color: string): void {
-        if (this.screen == null) {
-            return;
-        }
-        if (this.screen.getTabColor() == color) {
-            return;
-        }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { tabcolor: color }, false);
-        util.commandRtnHandler(prtn, this.errorMessage);
-    }
-
-    @boundMethod
-    selectTabIcon(icon: string): void {
-        if (this.screen.getTabIcon() == icon) {
-            return;
-        }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screen.screenId, { tabicon: icon }, false);
-        util.commandRtnHandler(prtn, this.errorMessage);
-    }
-
-    @boundMethod
-    handleChangeArchived(val: boolean): void {
-        if (this.screen == null) {
-            return;
-        }
-        if (this.screen.archived.get() == val) {
-            return;
-        }
-        let prtn = GlobalCommandRunner.screenArchive(this.screenId, val);
-        util.commandRtnHandler(prtn, this.errorMessage);
-    }
-
-    @boundMethod
     handleChangeWebShare(val: boolean): void {
         if (this.screen == null) {
             return;
@@ -125,13 +94,13 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen.isWebShared() == val) {
             return;
         }
-        let message = val ? WebShareConfirmMarkdown : WebStopShareConfirmMarkdown;
-        let alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
+        const message = val ? WebShareConfirmMarkdown : WebStopShareConfirmMarkdown;
+        const alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
         alertRtn.then((result) => {
             if (!result) {
                 return;
             }
-            let prtn = GlobalCommandRunner.screenWebShare(this.screen.screenId, val);
+            const prtn = GlobalCommandRunner.screenWebShare(this.screen.screenId, val);
             util.commandRtnHandler(prtn, this.errorMessage);
         });
     }
@@ -141,7 +110,7 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
         if (this.screen == null) {
             return null;
         }
-        let shareLink = this.screen.getWebShareUrl();
+        const shareLink = this.screen.getWebShareUrl();
         if (shareLink == null) {
             return;
         }
@@ -154,30 +123,6 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                 this.shareCopied.set(false);
             })();
         }, 600);
-    }
-
-    @boundMethod
-    inlineUpdateName(val: string): void {
-        if (this.screen == null) {
-            return;
-        }
-        if (util.isStrEq(val, this.screen.name.get())) {
-            return;
-        }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { name: val }, false);
-        util.commandRtnHandler(prtn, this.errorMessage);
-    }
-
-    @boundMethod
-    inlineUpdateShareName(val: string): void {
-        if (this.screen == null) {
-            return;
-        }
-        if (util.isStrEq(val, this.screen.getShareName())) {
-            return;
-        }
-        let prtn = GlobalCommandRunner.screenSetSettings(this.screenId, { sharename: val }, false);
-        util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     @boundMethod
@@ -210,120 +155,69 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    handleChangeTermTheme(theme: string): void {
+        const currTheme = GlobalModel.getTermThemeSettings()[this.screenId];
+        if (currTheme == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setScreenTermTheme(this.screenId, theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     selectRemote(cname: string): void {
         let prtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
         util.commandRtnHandler(prtn, this.errorMessage);
     }
 
     render() {
-        let screen = this.screen;
+        const screen = this.screen;
         if (screen == null) {
             return null;
         }
-        let color: string = null;
-        let icon: string = null;
-        let index: number = 0;
-        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
-
+        const termThemes = getTermThemes(GlobalModel.termThemes.get());
+        const currTermTheme = GlobalModel.getTermThemeSettings()[this.screenId] ?? termThemes[0].label;
         return (
             <Modal className="screen-settings-modal">
                 <Modal.Header onClose={this.closeModal} title={`Tab Settings (${screen.name.get()})`} />
                 <div className="wave-modal-body">
                     <div className="settings-field">
-                        <div className="settings-label">Tab Id</div>
-                        <div className="settings-input">{screen.screenId}</div>
-                    </div>
-                    <div className="settings-field">
                         <div className="settings-label">Name</div>
                         <div className="settings-input">
-                            <InlineSettingsTextEdit
-                                placeholder="name"
-                                text={screen.name.get() ?? "(none)"}
-                                value={screen.name.get() ?? ""}
-                                onChange={this.inlineUpdateName}
-                                maxLength={50}
-                                showIcon={true}
-                            />
+                            <TabNameTextField screen={screen} errorMessage={this.errorMessage} />
                         </div>
                     </div>
                     <div className="settings-field">
                         <div className="settings-label">Connection</div>
                         <div className="settings-input">
-                            <Dropdown
-                                className="screen-settings-dropdown"
-                                options={this.getOptions()}
-                                defaultValue={curRemote.remotecanonicalname}
-                                onChange={this.selectRemote}
-                                decoration={{
-                                    startDecoration: (
-                                        <div className="lefticon">
-                                            <GlobeIcon className="globe-icon" />
-                                            <StatusCircleIcon
-                                                className={cn("status-icon", "status-" + curRemote.status)}
-                                            />
-                                        </div>
-                                    ),
-                                }}
-                            />
+                            <TabRemoteSelector screen={screen} errorMessage={this.errorMessage} />
                         </div>
                     </div>
                     <div className="settings-field">
                         <div className="settings-label">Tab Color</div>
                         <div className="settings-input">
-                            <div className="tab-colors">
-                                <div className="tab-color-cur">
-                                    <TabIcon icon={screen.getTabIcon()} color={screen.getTabColor()} />
-                                    <div className="tab-color-name">{screen.getTabColor()}</div>
-                                </div>
-                                <div className="tab-color-sep">|</div>
-                                <For each="color" of={appconst.TabColors}>
-                                    <div
-                                        key={color}
-                                        className="tab-color-select"
-                                        onClick={() => this.selectTabColor(color)}
-                                    >
-                                        <TabIcon icon="square" color={color} />
-                                    </div>
-                                </For>
-                            </div>
+                            <TabColorSelector screen={screen} errorMessage={this.errorMessage} />
                         </div>
                     </div>
                     <div className="settings-field">
                         <div className="settings-label">Tab Icon</div>
                         <div className="settings-input">
-                            <div className="tab-icons">
-                                <div className="tab-icon-cur">
-                                    <TabIcon icon={screen.getTabIcon()} color="white" />
-                                    <div className="tab-icon-name">{screen.getTabIcon()}</div>
-                                </div>
-                                <div className="tab-icon-sep">|</div>
-                                <For each="icon" index="index" of={appconst.TabIcons}>
-                                    <div
-                                        key={`${color}-${index}`}
-                                        className="tab-icon-select"
-                                        onClick={() => this.selectTabIcon(icon)}
-                                    >
-                                        <TabIcon icon={icon} color="white" />
-                                    </div>
-                                </For>
+                            <TabIconSelector screen={screen} errorMessage={this.errorMessage} />
+                        </div>
+                    </div>
+                    <If condition={termThemes.length > 0}>
+                        <div className="settings-field">
+                            <div className="settings-label">Terminal Theme</div>
+                            <div className="settings-input">
+                                <Dropdown
+                                    className="terminal-theme-dropdown"
+                                    options={termThemes}
+                                    defaultValue={currTermTheme}
+                                    onChange={this.handleChangeTermTheme}
+                                />
                             </div>
                         </div>
-                    </div>
-                    <div className="settings-field">
-                        <div className="settings-label archived-label">
-                            <div className="">Archived</div>
-                            <Tooltip
-                                message={`Archive will hide the tab. Commands and output will be retained, but hidden.`}
-                                icon={<i className="fa-sharp fa-regular fa-circle-question" />}
-                                className="screen-settings-tooltip"
-                            >
-                                <i className="fa-sharp fa-regular fa-circle-question" />
-                            </Tooltip>
-                        </div>
-                        <div className="settings-input">
-                            <Toggle checked={screen.archived.get()} onChange={this.handleChangeArchived} />
-                        </div>
-                    </div>
+                    </If>
                     <div className="settings-field">
                         <div className="settings-label actions-label">
                             <div>Actions</div>
@@ -336,17 +230,14 @@ class ScreenSettingsModal extends React.Component<{}, {}> {
                             </Tooltip>
                         </div>
                         <div className="settings-input">
-                            <div
-                                onClick={this.handleDeleteScreen}
-                                className="button is-prompt-danger is-outlined is-small"
-                            >
+                            <Button onClick={this.handleDeleteScreen} className="secondary small danger">
                                 Delete Tab
-                            </div>
+                            </Button>
                         </div>
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />
                 </div>
-                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} keybindings={true} />
             </Modal>
         );
     }

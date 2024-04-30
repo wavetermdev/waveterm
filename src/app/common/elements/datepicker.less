@@ -1,0 +1,187 @@
+.day-picker-modal {
+    background-color: var(--form-element-bg-color);
+    z-index: 1000;
+    width: 250px;
+    height: 293px;
+    font-size: 13px;
+    border: 1px solid var(--form-element-border-color);
+    border-radius: 4px;
+    color: var(--form-element-text-color);
+}
+
+.day-picker-input {
+    cursor: default;
+    border: 1px solid var(--form-element-border-color) !important;
+    height: 34px;
+    user-select: none;
+    display: flex;
+    border-radius: 4px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--form-element-bg-color);
+
+    input {
+        outline: none !important;
+        border: none !important;
+        height: 100%;
+        padding: 0 !important;
+        cursor: default !important;
+        background-color: inherit !important;
+    }
+
+    .fa-calendar {
+        margin-left: 10px;
+        cursor: pointer;
+    }
+}
+
+.day-picker-header {
+    color: var(--form-element-text-color);
+    padding: 10px 10px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+    position: sticky;
+
+    div {
+        cursor: default;
+        font-weight: bold;
+        user-select: none;
+
+        &.fade {
+            color: var(--datepicker-header-fade-color);
+        }
+    }
+
+    .arrows {
+        display: flex;
+
+        .wave-button {
+            padding: 5px !important;
+            font-size: 18px !important;
+            cursor: default !important;
+        }
+    }
+}
+
+.day-header {
+    display: flex;
+    color: var(--form-element-text-color);
+    padding: 0 10px;
+
+    .day-header-cell {
+        flex: 1;
+        padding: 10px;
+        color: var(--form-element-text-color);
+        text-align: center;
+        font-weight: bold;
+        user-select: none;
+    }
+}
+
+.day-picker {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0;
+    padding: 0 10px 10px;
+
+    .day {
+        padding: 10px 4px;
+        color: var(--form-element-text-color);
+        text-align: center;
+        cursor: default;
+        border-radius: 3px;
+
+        &:hover {
+            background-color: var(--datepicker-cell-hover-bg-color);
+        }
+        &.selected {
+            color: var(--form-element-primary-text-color);
+            background-color: var(--form-element-primary-color);
+            font-weight: bold;
+        }
+    }
+
+    .other-month {
+        color: var(--datepicker-cell-other-text-color);
+    }
+}
+
+.year-month-accordion-wrapper {
+    overflow-y: auto;
+    height: 243px;
+    margin-top: 8px;
+    padding: 0 10px 10px;
+
+    .year-month-accordion {
+        color: var(--form-element-text-color);
+    }
+
+    .year-header {
+        padding: 5px 10px;
+        background-color: var(--datepicker-year-header-bg-color);
+        border-bottom: 1px solid var(--datepicker-year-header-border-color);
+        margin-bottom: 5px;
+        font-weight: bold;
+        text-align: center;
+        cursor: default;
+        color: var(--form-element-text-color);
+        user-select: none;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+    }
+
+    .month-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+        padding: 10px;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        cursor: default;
+    }
+
+    .month {
+        padding: 5px;
+        text-align: center;
+        border-radius: 3px;
+        color: var(--form-element-text-color);
+
+        &:hover {
+            background-color: var(--datepicker-cell-hover-bg-color);
+        }
+
+        &.selected {
+            color: var(--form-element-primary-text-color);
+            background-color: var(--form-element-primary-color);
+        }
+    }
+
+    .expanded {
+        max-height: 500px;
+    }
+}
+
+.dropdown-arrow {
+    display: inline-block;
+    margin-left: 5px;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--form-element-text-color);
+    vertical-align: middle;
+    user-select: none;
+
+    &.fade {
+        border-top: 5px solid var(--datepicker-header-fade-color);
+    }
+}

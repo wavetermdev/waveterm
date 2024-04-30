@@ -5,14 +5,34 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, RemotesModel, getApi } from "@/models";
+import { If } from "tsx-control-statements/components";
+import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
 import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/common/elements";
 import { commandRtnHandler, isBlank } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
 
 import "./clientsettings.less";
 import { MainView } from "../common/elements/mainview";
+
+class ClientSettingsKeybindings extends React.Component<{}, {}> {
+    componentDidMount() {
+        let clientSettingsViewModel = GlobalModel.clientSettingsViewModel;
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("mainview", "clientsettings", "generic:cancel", (waveEvent) => {
+            clientSettingsViewModel.closeView();
+            return true;
+        });
+    }
+
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("clientsettings");
+    }
+
+    render() {
+        return null;
+    }
+}
 
 @mobxReact.observer
 class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -45,11 +65,24 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     }
 
     @boundMethod
-    handleChangeTheme(theme: string): void {
-        if (GlobalModel.getTheme() == theme) {
+    handleChangeThemeSource(themeSource: NativeThemeSource): void {
+        if (GlobalModel.getThemeSource() == themeSource) {
             return;
         }
-        const prtn = GlobalCommandRunner.setTheme(theme, false);
+        const prtn = GlobalCommandRunner.setTheme(themeSource, false);
+        GlobalModel.getElectronApi().setNativeThemeSource(themeSource);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    handleChangeTermTheme(theme: string): void {
+        // For root terminal theme, the key is root, otherwise it's either
+        // sessionId or screenId.
+        const currTheme = GlobalModel.getTermThemeSettings()["root"];
+        if (currTheme == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setRootTermTheme(theme, false);
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -73,7 +106,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
             prtn = GlobalCommandRunner.releaseCheckAutoOff(false);
         }
         commandRtnHandler(prtn, this.errorMessage);
-        getApi().changeAutoUpdate(val);
+        GlobalModel.getElectronApi().changeAutoUpdate(val);
     }
 
     getFontSizes(): DropdownItem[] {
@@ -88,14 +121,16 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const availableFontFamilies: DropdownItem[] = [];
         availableFontFamilies.push({ label: "JetBrains Mono", value: "JetBrains Mono" });
         availableFontFamilies.push({ label: "Hack", value: "Hack" });
+        availableFontFamilies.push({ label: "Fira Code", value: "Fira Code" });
         return availableFontFamilies;
     }
 
-    getThemes(): DropdownItem[] {
-        const themes: DropdownItem[] = [];
-        themes.push({ label: "Dark", value: "dark" });
-        themes.push({ label: "Light", value: "light" });
-        return themes;
+    getThemeSources(): DropdownItem[] {
+        const themeSources: DropdownItem[] = [];
+        themeSources.push({ label: "Dark", value: "dark" });
+        themeSources.push({ label: "Light", value: "light" });
+        themeSources.push({ label: "System", value: "system" });
+        return themeSources;
     }
 
     @boundMethod
@@ -113,6 +148,18 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
     @boundMethod
     inlineUpdateOpenAIMaxTokens(newMaxTokensStr: string): void {
         const prtn = GlobalCommandRunner.setClientOpenAISettings({ maxtokens: newMaxTokensStr });
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    inlineUpdateOpenAIBaseURL(newBaseURL: string): void {
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ baseurl: newBaseURL });
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    inlineUpdateOpenAITimeout(newTimeout: string): void {
+        const prtn = GlobalCommandRunner.setClientOpenAISettings({ timeout: newTimeout });
         commandRtnHandler(prtn, this.errorMessage);
     }
 
@@ -150,6 +197,35 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         GlobalModel.clientSettingsViewModel.closeView();
     }
 
+    @boundMethod
+    getSudoPwStoreOptions(): DropdownItem[] {
+        const sudoCacheSources: DropdownItem[] = [];
+        sudoCacheSources.push({ label: "On", value: "on" });
+        sudoCacheSources.push({ label: "Off", value: "off" });
+        sudoCacheSources.push({ label: "On Without Timeout", value: "notimeout" });
+        return sudoCacheSources;
+    }
+
+    @boundMethod
+    handleChangeSudoPwStoreConfig(store: string) {
+        const prtn = GlobalCommandRunner.setSudoPwStore(store);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    handleChangeSudoPwTimeoutConfig(timeout: string) {
+        if (Number(timeout) != 0) {
+            const prtn = GlobalCommandRunner.setSudoPwTimeout(timeout);
+            commandRtnHandler(prtn, this.errorMessage);
+        }
+    }
+
+    @boundMethod
+    handleChangeSudoPwClearOnSleepConfig(clearOnSleep: boolean) {
+        const prtn = GlobalCommandRunner.setSudoPwClearOnSleep(clearOnSleep);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
     render() {
         const isHidden = GlobalModel.activeMainView.get() != "clientsettings";
         if (isHidden) {
@@ -162,12 +238,23 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const maxTokensStr = String(
             openAIOpts.maxtokens == null || openAIOpts.maxtokens == 0 ? 1000 : openAIOpts.maxtokens
         );
+        const aiTimeoutStr = String(
+            openAIOpts.timeout == null || openAIOpts.timeout == 0 ? 10 : openAIOpts.timeout / 1000
+        );
         const curFontSize = GlobalModel.getTermFontSize();
         const curFontFamily = GlobalModel.getTermFontFamily();
-        const curTheme = GlobalModel.getTheme();
+        const curTheme = GlobalModel.getThemeSource();
+        const termThemes = getTermThemes(GlobalModel.termThemes.get(), "Wave Default");
+        const currTermTheme = GlobalModel.getTermThemeSettings()["root"] ?? termThemes[0].label;
+        const curSudoPwStore = GlobalModel.getSudoPwStore();
+        const curSudoPwTimeout = String(GlobalModel.getSudoPwTimeout());
+        const curSudoPwClearOnSleep = GlobalModel.getSudoPwClearOnSleep();
 
         return (
-            <MainView viewName="clientsettings" title="Client Settings" onClose={this.handleClose}>
+            <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
+                <If condition={!isHidden}>
+                    <ClientSettingsKeybindings></ClientSettingsKeybindings>
+                </If>
                 <div className="content">
                     <div className="settings-field">
                         <div className="settings-label">Term Font Size</div>
@@ -196,12 +283,25 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         <div className="settings-input">
                             <Dropdown
                                 className="theme-dropdown"
-                                options={this.getThemes()}
+                                options={this.getThemeSources()}
                                 defaultValue={curTheme}
-                                onChange={this.handleChangeTheme}
+                                onChange={this.handleChangeThemeSource}
                             />
                         </div>
                     </div>
+                    <If condition={termThemes.length > 0}>
+                        <div className="settings-field">
+                            <div className="settings-label">Terminal Theme</div>
+                            <div className="settings-input">
+                                <Dropdown
+                                    className="terminal-theme-dropdown"
+                                    options={termThemes}
+                                    defaultValue={currTermTheme}
+                                    onChange={this.handleChangeTermTheme}
+                                />
+                            </div>
+                        </div>
+                    </If>
                     <div className="settings-field">
                         <div className="settings-label">Client ID</div>
                         <div className="settings-input">{cdata.clientid}</div>
@@ -232,7 +332,7 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">OpenAI Token</div>
+                        <div className="settings-label">AI Token</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
                                 placeholder=""
@@ -245,7 +345,20 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">OpenAI Model</div>
+                        <div className="settings-label">AI Base URL</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={isBlank(openAIOpts.baseurl) ? "openai default" : openAIOpts.baseurl}
+                                value={openAIOpts.baseurl ?? ""}
+                                onChange={this.inlineUpdateOpenAIBaseURL}
+                                maxLength={200}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">AI Model</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
                                 placeholder="gpt-3.5-turbo"
@@ -258,13 +371,26 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         </div>
                     </div>
                     <div className="settings-field">
-                        <div className="settings-label">OpenAI MaxTokens</div>
+                        <div className="settings-label">AI MaxTokens</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
                                 placeholder=""
                                 text={maxTokensStr}
                                 value={maxTokensStr}
                                 onChange={this.inlineUpdateOpenAIMaxTokens}
+                                maxLength={10}
+                                showIcon={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">AI Timeout (seconds)</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={aiTimeoutStr}
+                                value={aiTimeoutStr}
+                                onChange={this.inlineUpdateOpenAITimeout}
                                 maxLength={10}
                                 showIcon={true}
                             />
@@ -278,6 +404,40 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                                 options={this.getFKeys()}
                                 defaultValue={this.getCurrentShortcut()}
                                 onChange={this.handleChangeShortcut}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Remember Sudo Password</div>
+                        <div className="settings-input">
+                            <Dropdown
+                                className="hotkey-dropdown"
+                                options={this.getSudoPwStoreOptions()}
+                                defaultValue={curSudoPwStore}
+                                onChange={this.handleChangeSudoPwStoreConfig}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Sudo Timeout (Minutes)</div>
+                        <div className="settings-input">
+                            <InlineSettingsTextEdit
+                                placeholder=""
+                                text={curSudoPwTimeout}
+                                value={curSudoPwTimeout}
+                                onChange={this.handleChangeSudoPwTimeoutConfig}
+                                maxLength={6}
+                                showIcon={true}
+                                isNumber={true}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Clear Sudo Password on Sleep</div>
+                        <div className="settings-input">
+                            <Toggle
+                                checked={curSudoPwClearOnSleep}
+                                onChange={this.handleChangeSudoPwClearOnSleepConfig}
                             />
                         </div>
                     </div>

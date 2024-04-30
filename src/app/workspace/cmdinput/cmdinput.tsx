@@ -5,18 +5,20 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import { If } from "tsx-control-statements/components";
+import { Choose, If, When } from "tsx-control-statements/components";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
-import { renderCmdText } from "@/elements";
+import { Button } from "@/elements";
 import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
 import { Prompt } from "@/common/prompt/prompt";
-import { RotateIcon } from "@/common/icons/icons";
+import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
+import * as util from "@/util/util";
+import * as appconst from "@/app/appconst";
 
 import "./cmdinput.less";
 
@@ -54,36 +56,44 @@ class CmdInput extends React.Component<{}, {}> {
         this.updateCmdInputHeight();
     }
 
-    @boundMethod
+    @mobx.action.bound
     clickFocusInputHint(): void {
         GlobalModel.inputModel.giveFocus();
     }
 
     @boundMethod
-    cmdInputClick(e: any): void {
+    baseCmdInputClick(e: React.SyntheticEvent): void {
         if (this.promptRef.current != null) {
             if (this.promptRef.current.contains(e.target)) {
                 return;
             }
         }
-        GlobalModel.inputModel.giveFocus();
+        if ((e.target as HTMLDivElement).classList.contains("cmd-input-context")) {
+            e.stopPropagation();
+            return;
+        }
+        GlobalModel.inputModel.setAuxViewFocus(false);
     }
 
-    @boundMethod
-    clickAIHint(e: any): void {
+    @mobx.action.bound
+    clickAIAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
-        let inputModel = GlobalModel.inputModel;
-        inputModel.openAIAssistantChat();
+        const inputModel = GlobalModel.inputModel;
+        if (inputModel.getActiveAuxView() === appconst.InputAuxView_AIChat) {
+            inputModel.closeAuxView();
+        } else {
+            inputModel.openAIAssistantChat();
+        }
     }
 
-    @boundMethod
-    clickHistoryHint(e: any): void {
+    @mobx.action.bound
+    clickHistoryAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
 
         const inputModel = GlobalModel.inputModel;
-        if (inputModel.historyShow.get()) {
+        if (inputModel.getActiveAuxView() === appconst.InputAuxView_History) {
             inputModel.resetHistory();
         } else {
             inputModel.openHistory();
@@ -95,16 +105,32 @@ class CmdInput extends React.Component<{}, {}> {
         GlobalCommandRunner.connectRemote(remoteId);
     }
 
-    @boundMethod
+    @mobx.action.bound
     toggleFilter(screen: Screen) {
-        mobx.action(() => {
-            screen.filterRunning.set(!screen.filterRunning.get());
-        })();
+        screen.filterRunning.set(!screen.filterRunning.get());
     }
 
     @boundMethod
     clickResetState(): void {
         GlobalCommandRunner.resetShellState();
+    }
+
+    getRemoteDisplayName(rptr: RemotePtrType): string {
+        if (rptr == null) {
+            return "(unknown)";
+        }
+        const remote = GlobalModel.getRemote(rptr.remoteid);
+        if (remote == null) {
+            return "(invalid)";
+        }
+        let remoteNamePart = "";
+        if (!util.isBlank(rptr.name)) {
+            remoteNamePart = "#" + rptr.name;
+        }
+        if (remote.remotealias) {
+            return remote.remotealias + remoteNamePart;
+        }
+        return remote.remotecanonicalname + remoteNamePart;
     }
 
     render() {
@@ -123,80 +149,127 @@ class CmdInput extends React.Component<{}, {}> {
             remote = GlobalModel.getRemote(ri.remoteid);
             feState = ri.festate;
         }
+        if (remote == null && rptr != null) {
+            remote = GlobalModel.getRemote(rptr.remoteid);
+        }
         feState = feState || {};
-        const infoShow = inputModel.infoShow.get();
-        const historyShow = !infoShow && inputModel.historyShow.get();
-        const aiChatShow = inputModel.aIChatShow.get();
         const focusVal = inputModel.physicalInputFocused.get();
         const inputMode: string = inputModel.inputMode.get();
         const textAreaInputKey = screen == null ? "null" : screen.screenId;
         const win = GlobalModel.getScreenLinesById(screen.screenId);
+        const filterRunning = screen.filterRunning.get();
         let numRunningLines = 0;
         if (win != null) {
             numRunningLines = mobx.computed(() => win.getRunningCmdLines().length).get();
         }
+        let shellInitMsg: string = null;
+        let hidePrompt = false;
+
+        const openView = inputModel.getActiveAuxView();
+        const hasOpenView = openView ? `has-${openView}` : null;
+        if (ri == null) {
+            let shellStr = "shell";
+            if (!util.isBlank(remote?.defaultshelltype)) {
+                shellStr = remote.defaultshelltype;
+            }
+            if (numRunningLines > 0) {
+                shellInitMsg = `initializing ${shellStr}...`;
+            } else {
+                hidePrompt = true;
+            }
+        }
+
         return (
-            <div
-                ref={this.cmdInputRef}
-                className={cn(
-                    "cmd-input",
-                    { "has-info": infoShow },
-                    { "has-aichat": aiChatShow },
-                    { active: focusVal }
-                )}
-            >
-                <If condition={historyShow}>
-                    <div className="cmd-input-grow-spacer"></div>
-                    <HistoryInfo />
-                </If>
-                <If condition={aiChatShow}>
-                    <div className="cmd-input-grow-spacer"></div>
-                    <AIChat />
-                </If>
-                <InfoMsg key="infomsg" />
+            <div ref={this.cmdInputRef} className={cn("cmd-input", hasOpenView, { active: focusVal })}>
+                <Choose>
+                    <When condition={openView === appconst.InputAuxView_History}>
+                        <div className="cmd-input-grow-spacer"></div>
+                        <HistoryInfo />
+                    </When>
+                    <When condition={openView === appconst.InputAuxView_AIChat}>
+                        <div className="cmd-input-grow-spacer"></div>
+                        <AIChat />
+                    </When>
+                    <When condition={openView === appconst.InputAuxView_Info}>
+                        <InfoMsg key="infomsg" />
+                    </When>
+                </Choose>
                 <If condition={remote && remote.status != "connected"}>
                     <div className="remote-status-warning">
                         WARNING:&nbsp;
                         <span className="remote-name">[{GlobalModel.resolveRemoteIdToFullRef(remote.remoteid)}]</span>
                         &nbsp;is {remote.status}
                         <If condition={remote.status != "connecting"}>
-                            <div
-                                className="button is-wave-green is-outlined is-small"
+                            <Button
+                                className="primary outlined"
                                 onClick={() => this.clickConnectRemote(remote.remoteid)}
                             >
-                                connect now
-                            </div>
+                                Connect Now
+                            </Button>
                         </If>
                     </div>
                 </If>
                 <If condition={feState["invalidshellstate"]}>
                     <div className="remote-status-warning">
-                        WARNING:&nbsp; The shell state for this tab is invalid (
+                        The shell state for this tab is invalid (
                         <a target="_blank" href="https://docs.waveterm.dev/reference/faq">
                             see FAQ
                         </a>
                         ). Must reset to continue.
-                        <div className="button is-wave-green is-outlined is-small" onClick={this.clickResetState}>
-                            reset shell state
-                        </div>
+                        <Button className="primary outlined" onClick={this.clickResetState}>
+                            Reset Now
+                        </Button>
                     </div>
                 </If>
-                <div key="base-cmdinput" className="base-cmdinput">
-                    <div key="prompt" className="cmd-input-context">
-                        <div className="has-text-white">
-                            <span ref={this.promptRef}>
-                                <Prompt rptr={rptr} festate={feState} color={true} />
-                            </span>
-                        </div>
+                <If condition={ri == null && numRunningLines == 0}>
+                    <div className="remote-status-warning">
+                        Shell is not initialized, must reset to continue.
+                        <Button className="primary outlined" onClick={this.clickResetState}>
+                            Reset Now
+                        </Button>
+                    </div>
+                </If>
+                <div key="base-cmdinput" className="base-cmdinput" onClick={this.baseCmdInputClick}>
+                    <div className="cmdinput-actions">
                         <If condition={numRunningLines > 0}>
-                            <div onClick={() => this.toggleFilter(screen)} className="cmd-input-filter">
-                                {numRunningLines}
-                                <div className="avatar">
-                                    <RotateIcon className="warning spin" />
-                                </div>
+                            <div
+                                key="running"
+                                className={cn("cmdinput-icon", "running-cmds", { active: filterRunning })}
+                                title="Filter for Running Commands"
+                                onClick={() => this.toggleFilter(screen)}
+                            >
+                                <CenteredIcon>{numRunningLines}</CenteredIcon>{" "}
+                                <CenteredIcon>
+                                    <RotateIcon className="rotate warning spin" />
+                                </CenteredIcon>
                             </div>
                         </If>
+                        <div
+                            key="ai"
+                            title="Wave AI (Ctrl-Space)"
+                            className="cmdinput-icon"
+                            onClick={this.clickAIAction}
+                        >
+                            <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
+                        </div>
+                        <div
+                            key="history"
+                            title="Tab History (Ctrl-R)"
+                            className="cmdinput-icon"
+                            onClick={this.clickHistoryAction}
+                        >
+                            <i className="fa-sharp fa-regular fa-clock-rotate-left fa-fw" />
+                        </div>
                     </div>
+                    <If condition={!hidePrompt}>
+                        <div key="prompt" className="cmd-input-context">
+                            <div className="has-text-white">
+                                <span ref={this.promptRef}>
+                                    <Prompt rptr={rptr} festate={feState} color={true} shellInitMsg={shellInitMsg} />
+                                </span>
+                            </div>
+                        </div>
+                    </If>
                     <div
                         key="input"
                         className={cn(

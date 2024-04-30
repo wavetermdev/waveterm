@@ -86,12 +86,20 @@ class CommandRunner {
         return GlobalModel.submitCommand("line", "restart", [lineArg], { nohist: "1" }, interactive);
     }
 
+    lineSignal(lineArg: string, signal: string, interactive: boolean): Promise<CommandRtnType> {
+        return GlobalModel.submitCommand("signal", null, [lineArg, signal], { nohist: "1" }, interactive);
+    }
+
     lineSet(lineArg: string, opts: { renderer?: string }): Promise<CommandRtnType> {
         let kwargs = { nohist: "1" };
         if ("renderer" in opts) {
             kwargs["renderer"] = opts.renderer ?? "";
         }
         return GlobalModel.submitCommand("line", "set", [lineArg], kwargs, false);
+    }
+
+    ensureWorkspace() {
+        GlobalModel.submitCommand("session", "ensureone", null, { nohist: "1" }, true);
     }
 
     createNewSession() {
@@ -304,6 +312,10 @@ class CommandRunner {
         GlobalModel.clientSettingsViewModel.showClientSettingsView();
     }
 
+    syncShellState() {
+        GlobalModel.submitCommand("sync", null, null, { nohist: "1" }, false);
+    }
+
     historyView(params: HistorySearchParams) {
         let kwargs = { nohist: "1" };
         kwargs["offset"] = String(params.offset);
@@ -361,7 +373,7 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
-    setTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+    setTheme(theme: NativeThemeSource, interactive: boolean): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
             theme: theme,
@@ -369,7 +381,51 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
     }
 
-    setClientOpenAISettings(opts: { model?: string; apitoken?: string; maxtokens?: string }): Promise<CommandRtnType> {
+    setRootTermTheme(theme: string, interactive: boolean): Promise<CommandRtnType> {
+        let ftheme = theme;
+        if (ftheme == "inherit") {
+            ftheme = "";
+        }
+        let kwargs = {
+            nohist: "1",
+            termtheme: ftheme,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, interactive);
+    }
+
+    setSessionTermTheme(sessionId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        let fname = name;
+        if (name == "inherit") {
+            fname = "";
+        }
+        let kwargs = {
+            nohist: "1",
+            id: sessionId,
+            name: fname,
+        };
+        return GlobalModel.submitCommand("session", "termtheme", null, kwargs, interactive);
+    }
+
+    setScreenTermTheme(screenId: string, name: string, interactive: boolean): Promise<CommandRtnType> {
+        let fname = name;
+        if (name == "inherit") {
+            fname = "";
+        }
+        let kwargs = {
+            nohist: "1",
+            id: screenId,
+            name: fname,
+        };
+        return GlobalModel.submitCommand("screen", "termtheme", null, kwargs, interactive);
+    }
+
+    setClientOpenAISettings(opts: {
+        model?: string;
+        apitoken?: string;
+        maxtokens?: string;
+        baseurl?: string;
+        timeout?: string;
+    }): Promise<CommandRtnType> {
         let kwargs = {
             nohist: "1",
         };
@@ -381,6 +437,12 @@ class CommandRunner {
         }
         if (opts.maxtokens != null) {
             kwargs["openaimaxtokens"] = opts.maxtokens;
+        }
+        if (opts.baseurl != null) {
+            kwargs["openaibaseurl"] = opts.baseurl;
+        }
+        if (opts.timeout != null) {
+            kwargs["openaitimeout"] = opts.timeout;
         }
         return GlobalModel.submitCommand("client", "set", null, kwargs, false);
     }
@@ -395,9 +457,39 @@ class CommandRunner {
         return GlobalModel.submitCommand("client", "setconfirmflag", [flag, valueStr], kwargs, false);
     }
 
-    clientSetSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
+    clientSetMainSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
         let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
-        return GlobalModel.submitCommand("client", "setsidebar", null, kwargs, false);
+        return GlobalModel.submitCommand("client", "setmainsidebar", null, kwargs, false);
+    }
+
+    clientSetRightSidebar(width: number, collapsed: boolean): Promise<CommandRtnType> {
+        let kwargs = { nohist: "1", width: `${width}`, collapsed: collapsed ? "1" : "0" };
+        return GlobalModel.submitCommand("client", "setrightsidebar", null, kwargs, false);
+    }
+
+    setSudoPwStore(store: string): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwstore: store,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
+    }
+
+    setSudoPwTimeout(timeout: string): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwtimeout: timeout,
+        };
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
+    }
+
+    setSudoPwClearOnSleep(clear: boolean): Promise<CommandRtnType> {
+        let kwargs = {
+            nohist: "1",
+            sudopwclearonsleep: String(clear),
+        };
+        console.log(kwargs);
+        return GlobalModel.submitCommand("client", "set", null, kwargs, false);
     }
 
     editBookmark(bookmarkId: string, desc: string, cmdstr: string) {

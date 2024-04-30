@@ -13,13 +13,11 @@ import {
     isModKeyPress,
     isBlank,
 } from "@/util/util";
-import { loadFonts } from "@/util/fontutil";
-import { loadTheme } from "@/util/themeutil";
 import { WSControl } from "./ws";
 import { cmdStatusIsRunning } from "@/app/line/lineutil";
 import * as appconst from "@/app/appconst";
 import { remotePtrToString, cmdPacketString } from "@/util/modelutil";
-import { checkKeyPressed, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
+import { KeybindManager, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
@@ -31,11 +29,14 @@ import { ClientSettingsViewModel } from "./clientsettingsview";
 import { RemotesModel } from "./remotes";
 import { ModalsModel } from "./modals";
 import { MainSidebarModel } from "./mainsidebar";
+import { RightSidebarModel } from "./rightsidebar";
 import { Screen } from "./screen";
 import { Cmd } from "./cmd";
+import { ContextMenuModel } from "./contextmenu";
 import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
+import * as util from "@/util/util";
 
 type SWLinePtr = {
     line: LineType;
@@ -104,9 +105,13 @@ class Model {
     devicePixelRatio: OV<number> = mobx.observable.box(window.devicePixelRatio, {
         name: "devicePixelRatio",
     });
+    tabSettingsOpen: OV<boolean> = mobx.observable.box(false, {
+        name: "tabSettingsOpen",
+    });
     remotesModel: RemotesModel;
     lineHeightEnv: LineHeightEnv;
 
+    keybindManager: KeybindManager;
     inputModel: InputModel;
     pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
@@ -115,6 +120,11 @@ class Model {
     clientSettingsViewModel: ClientSettingsViewModel;
     modalsModel: ModalsModel;
     mainSidebarModel: MainSidebarModel;
+    rightSidebarModel: RightSidebarModel;
+    contextMenuModel: ContextMenuModel;
+    isDarkTheme: OV<boolean> = mobx.observable.box(getApi().getShouldUseDarkColors(), {
+        name: "isDarkTheme",
+    });
     clientData: OV<ClientDataType> = mobx.observable.box(null, {
         name: "clientData",
     });
@@ -126,20 +136,31 @@ class Model {
     renderVersion: OV<number> = mobx.observable.box(0, {
         name: "renderVersion",
     });
-
     appUpdateStatus = mobx.observable.box(getApi().getAppUpdateStatus(), {
         name: "appUpdateStatus",
+    });
+    termThemes: OV<TermThemesType> = mobx.observable.box(null, {
+        name: "terminalThemes",
+        deep: false,
+    });
+    termRenderVersion: OV<number> = mobx.observable.box(0, {
+        name: "termRenderVersion",
     });
 
     private constructor() {
         this.clientId = getApi().getId();
         this.isDev = getApi().getIsDev();
         this.authKey = getApi().getAuthKey();
+        getApi().onToggleDevUI(this.toggleDevUI.bind(this));
         this.ws = new WSControl(this.getBaseWsHostPort(), this.clientId, this.authKey, (message: any) => {
             const interactive = message?.interactive ?? false;
             this.runUpdate(message, interactive);
         });
         this.ws.reconnect();
+        this.keybindManager = new KeybindManager(this);
+        this.readConfigKeybindings();
+        this.initSystemKeybindings();
+        this.initAppKeybindings();
         this.inputModel = new InputModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
@@ -149,6 +170,8 @@ class Model {
         this.remotesModel = new RemotesModel(this);
         this.modalsModel = new ModalsModel();
         this.mainSidebarModel = new MainSidebarModel(this);
+        this.rightSidebarModel = new RightSidebarModel(this);
+        this.contextMenuModel = new ContextMenuModel(this);
         const isWaveSrvRunning = getApi().getWaveSrvStatus();
         this.waveSrvRunning = mobx.observable.box(isWaveSrvRunning, {
             name: "model-wavesrv-running",
@@ -168,25 +191,14 @@ class Model {
             }
             return fontSize;
         });
-        getApi().onTCmd(this.onTCmd.bind(this));
-        getApi().onICmd(this.onICmd.bind(this));
-        getApi().onLCmd(this.onLCmd.bind(this));
-        getApi().onHCmd(this.onHCmd.bind(this));
-        getApi().onPCmd(this.onPCmd.bind(this));
-        getApi().onWCmd(this.onWCmd.bind(this));
-        getApi().onRCmd(this.onRCmd.bind(this));
         getApi().onZoomChanged(this.onZoomChanged.bind(this));
         getApi().onMenuItemAbout(this.onMenuItemAbout.bind(this));
-        getApi().onMetaArrowUp(this.onMetaArrowUp.bind(this));
-        getApi().onMetaArrowDown(this.onMetaArrowDown.bind(this));
-        getApi().onMetaPageUp(this.onMetaPageUp.bind(this));
-        getApi().onMetaPageDown(this.onMetaPageDown.bind(this));
-        getApi().onBracketCmd(this.onBracketCmd.bind(this));
-        getApi().onDigitCmd(this.onDigitCmd.bind(this));
         getApi().onWaveSrvStatusChange(this.onWaveSrvStatusChange.bind(this));
         getApi().onAppUpdateStatus(this.onAppUpdateStatus.bind(this));
+        getApi().onNativeThemeUpdated(this.onNativeThemeUpdated.bind(this));
         document.addEventListener("keydown", this.docKeyDownHandler.bind(this));
         document.addEventListener("selectionchange", this.docSelectionChangeHandler.bind(this));
+        window.addEventListener("focus", this.windowFocus.bind(this));
         setTimeout(() => this.getClientDataLoop(1), 10);
         this.lineHeightEnv = {
             // defaults
@@ -198,11 +210,85 @@ class Model {
         };
     }
 
+    readConfigKeybindings() {
+        const url = new URL(this.getBaseHostPort() + "/config/keybindings.json");
+        let prtn = fetch(url, { method: "get", body: null, headers: this.getFetchHeaders() });
+        prtn.then((resp) => {
+            if (resp.status == 404) {
+                return [];
+            } else if (!resp.ok) {
+                util.handleNotOkResp(resp, url);
+            }
+            return resp.json();
+        }).then((userKeybindings) => {
+            this.keybindManager.setUserKeybindings(userKeybindings);
+        });
+    }
+
+    windowFocus(): void {
+        if (this.activeMainView.get() == "session" && !this.modalsModel.hasOpenModals()) {
+            this.refocus();
+        }
+    }
+
+    bumpTermRenderVersion() {
+        mobx.action(() => {
+            this.termRenderVersion.set(this.termRenderVersion.get() + 1);
+        })();
+    }
+
+    initSystemKeybindings() {
+        this.keybindManager.registerKeybinding("system", "electron", "system:toggleDeveloperTools", (waveEvent) => {
+            getApi().toggleDeveloperTools();
+            return true;
+        });
+        this.keybindManager.registerKeybinding("system", "electron", "system:minimizeWindow", (waveEvent) => {
+            getApi().hideWindow();
+            return true;
+        });
+    }
+
+    initAppKeybindings() {
+        for (let index = 1; index <= 9; index++) {
+            this.keybindManager.registerKeybinding("app", "model", "app:selectWorkspace-" + index, (waveEvent) => {
+                this.onSwitchSessionCmd(index);
+                return true;
+            });
+        }
+        this.keybindManager.registerKeybinding("app", "model", "app:focusCmdInput", (waveEvent) => {
+            this.onFocusCmdInputPressed();
+            return true;
+        });
+        this.keybindManager.registerKeybinding("app", "model", "app:openBookmarksView", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openHistoryView", (waveEvent) => {
+            this.onOpenHistoryPressed();
+            return true;
+        });
+        this.keybindManager.registerKeybinding("app", "model", "app:openTabSearchModal", (waveEvent) => {
+            this.onOpenTabSearchModalPressed();
+            return true;
+        });
+        this.keybindManager.registerKeybinding("app", "model", "app:openConnectionsView", null);
+        this.keybindManager.registerKeybinding("app", "model", "app:openSettingsView", null);
+    }
+
     static getInstance(): Model {
         if (!(window as any).GlobalModel) {
             (window as any).GlobalModel = new Model();
         }
         return (window as any).GlobalModel;
+    }
+
+    closeTabSettings() {
+        if (this.tabSettingsOpen.get()) {
+            mobx.action(() => {
+                this.tabSettingsOpen.set(false);
+            })();
+        }
+    }
+
+    toggleDevUI(): void {
+        document.body.classList.toggle("is-dev");
     }
 
     bumpRenderVersion() {
@@ -254,7 +340,7 @@ class Model {
     refocus() {
         // givefocus() give back focus to cmd or input
         const activeScreen = this.getActiveScreen();
-        if (screen == null) {
+        if (activeScreen == null) {
             return;
         }
         activeScreen.giveFocus();
@@ -302,7 +388,6 @@ class Model {
     cancelAlert(): void {
         mobx.action(() => {
             this.alertMessage.set(null);
-            this.modalsModel.popModal();
         })();
         if (this.alertPromiseResolver != null) {
             this.alertPromiseResolver(false);
@@ -327,12 +412,6 @@ class Model {
         })();
     }
 
-    showWebShareView(): void {
-        mobx.action(() => {
-            this.activeMainView.set("webshare");
-        })();
-    }
-
     getBaseHostPort(): string {
         if (this.isDev) {
             return appconst.DevServerEndpoint;
@@ -349,28 +428,57 @@ class Model {
         return ff;
     }
 
-    getTheme(): string {
-        let cdata = this.clientData.get();
-        let theme = cdata?.feopts?.theme;
-        if (theme == null) {
-            theme = appconst.DefaultTheme;
+    getThemeSource(): NativeThemeSource {
+        return getApi().getNativeThemeSource();
+    }
+
+    onNativeThemeUpdated(): void {
+        const isDark = getApi().getShouldUseDarkColors();
+        if (isDark != this.isDarkTheme.get()) {
+            mobx.action(() => {
+                this.isDarkTheme.set(isDark);
+                this.bumpRenderVersion();
+            })();
         }
-        return theme;
+    }
+
+    getTermThemeSettings(): TermThemeSettingsType {
+        let cdata = this.clientData.get();
+        if (cdata?.feopts?.termthemesettings) {
+            return mobx.toJS(cdata.feopts.termthemesettings);
+        }
+        return {};
     }
 
     getTermFontSize(): number {
         return this.termFontSize.get();
     }
 
+    getSudoPwStore(): string {
+        let cdata = this.clientData.get();
+        return cdata?.feopts?.sudopwstore ?? appconst.DefaultSudoPwStore;
+    }
+
+    getSudoPwTimeout(): number {
+        let cdata = this.clientData.get();
+        const sudoPwTimeoutMs = cdata?.feopts?.sudopwtimeoutms ?? appconst.DefaultSudoPwTimeoutMs;
+        return sudoPwTimeoutMs / 1000 / 60;
+    }
+
+    getSudoPwClearOnSleep(): boolean {
+        let cdata = this.clientData.get();
+        return !cdata?.feopts?.nosudopwclearonsleep;
+    }
+
     updateTermFontSizeVars() {
         let lhe = this.recomputeLineHeightEnv();
         mobx.action(() => {
             this.bumpRenderVersion();
-            this.setStyleVar("--termfontsize", lhe.fontSize + "px");
-            this.setStyleVar("--termlineheight", lhe.lineHeight + "px");
-            this.setStyleVar("--termpad", lhe.pad + "px");
-            this.setStyleVar("--termfontsize-sm", lhe.fontSizeSm + "px");
-            this.setStyleVar("--termlineheight-sm", lhe.lineHeightSm + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize", lhe.fontSize + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight", lhe.lineHeight + "px");
+            this.setStyleVar(document.documentElement, "--termpad", lhe.pad + "px");
+            this.setStyleVar(document.documentElement, "--termfontsize-sm", lhe.fontSizeSm + "px");
+            this.setStyleVar(document.documentElement, "--termlineheight-sm", lhe.lineHeightSm + "px");
         })();
     }
 
@@ -389,8 +497,12 @@ class Model {
         return this.lineHeightEnv;
     }
 
-    setStyleVar(name: string, value: string) {
-        document.documentElement.style.setProperty(name, value);
+    setStyleVar(element: HTMLElement, name: string, value: string): void {
+        element.style.setProperty(name, value);
+    }
+
+    resetStyleVar(element: HTMLElement, name: string): void {
+        element.style.removeProperty(name);
     }
 
     getBaseWsHostPort(): string {
@@ -410,77 +522,29 @@ class Model {
         // nothing for now
     }
 
+    handleToggleSidebar() {
+        const activeScreen = this.getActiveScreen();
+        if (activeScreen != null) {
+            const isSidebarOpen = activeScreen.isSidebarOpen();
+            if (isSidebarOpen) {
+                GlobalCommandRunner.screenSidebarClose();
+            } else {
+                GlobalCommandRunner.screenSidebarOpen();
+            }
+        }
+    }
+
+    handleDeleteActiveLine(): boolean {
+        return this.deleteActiveLine();
+    }
+
     docKeyDownHandler(e: KeyboardEvent) {
         const waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (isModKeyPress(e)) {
             return;
         }
-        if (this.alertMessage.get() != null) {
-            if (checkKeyPressed(waveEvent, "Escape")) {
-                e.preventDefault();
-                this.cancelAlert();
-                return;
-            }
-            if (checkKeyPressed(waveEvent, "Enter")) {
-                e.preventDefault();
-                this.confirmAlert();
-                return;
-            }
+        if (this.keybindManager.processKeyEvent(e, waveEvent)) {
             return;
-        }
-        if (this.activeMainView.get() == "bookmarks") {
-            this.bookmarksModel.handleDocKeyDown(e);
-            return;
-        }
-        if (this.activeMainView.get() == "history") {
-            this.historyViewModel.handleDocKeyDown(e);
-            return;
-        }
-        if (this.activeMainView.get() == "connections") {
-            this.historyViewModel.handleDocKeyDown(e);
-            return;
-        }
-        if (this.activeMainView.get() == "clientsettings") {
-            this.historyViewModel.handleDocKeyDown(e);
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            if (this.activeMainView.get() == "webshare") {
-                this.showSessionView();
-                return;
-            }
-            if (this.clearModals()) {
-                return;
-            }
-            const inputModel = this.inputModel;
-            inputModel.toggleInfoMsg();
-            if (inputModel.inputMode.get() != null) {
-                inputModel.resetInputMode();
-            }
-            return;
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:b")) {
-            e.preventDefault();
-            GlobalCommandRunner.bookmarksView();
-        }
-        if (this.activeMainView.get() == "session" && checkKeyPressed(waveEvent, "Cmd:Ctrl:s")) {
-            e.preventDefault();
-            const activeScreen = this.getActiveScreen();
-            if (activeScreen != null) {
-                const isSidebarOpen = activeScreen.isSidebarOpen();
-                if (isSidebarOpen) {
-                    GlobalCommandRunner.screenSidebarClose();
-                } else {
-                    GlobalCommandRunner.screenSidebarOpen();
-                }
-            }
-        }
-        if (checkKeyPressed(waveEvent, "Cmd:d")) {
-            const ranDelete = this.deleteActiveLine();
-            if (ranDelete) {
-                e.preventDefault();
-            }
         }
     }
 
@@ -509,7 +573,7 @@ class Model {
         return true;
     }
 
-    onWCmd(e: any, mods: KeyModsType) {
+    onCloseCurrentTab() {
         if (this.activeMainView.get() != "session") {
             return;
         }
@@ -517,19 +581,24 @@ class Model {
         if (activeScreen == null) {
             return;
         }
+        let numLines = activeScreen.getScreenLines().lines.length;
+        if (numLines < 10) {
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
+            return;
+        }
         const rtnp = this.showAlert({
-            message: "Are you sure you want to delete this screen?",
+            message: "Are you sure you want to delete this tab?",
             confirm: true,
         });
         rtnp.then((result) => {
             if (!result) {
                 return;
             }
-            GlobalCommandRunner.screenDelete(activeScreen.screenId, true);
+            GlobalCommandRunner.screenDelete(activeScreen.screenId, false);
         });
     }
 
-    onRCmd(e: any, mods: KeyModsType) {
+    onRestartLastCommand() {
         if (this.activeMainView.get() != "session") {
             return;
         }
@@ -537,17 +606,22 @@ class Model {
         if (activeScreen == null) {
             return;
         }
-        if (mods.shift) {
-            // restart last line
-            GlobalCommandRunner.lineRestart("E", true);
-        } else {
-            // restart selected line
-            const selectedLine = activeScreen.selectedLine.get();
-            if (selectedLine == null || selectedLine == 0) {
-                return;
-            }
-            GlobalCommandRunner.lineRestart(String(selectedLine), true);
+        GlobalCommandRunner.lineRestart("E", true);
+    }
+
+    onRestartCommand() {
+        if (this.activeMainView.get() != "session") {
+            return;
         }
+        const activeScreen = this.getActiveScreen();
+        if (activeScreen == null) {
+            return;
+        }
+        const selectedLine = activeScreen.selectedLine.get();
+        if (selectedLine == null || selectedLine == 0) {
+            return;
+        }
+        GlobalCommandRunner.lineRestart(String(selectedLine), true);
     }
 
     onZoomChanged(): void {
@@ -574,40 +648,13 @@ class Model {
         return screen.getTermWrap(line.lineid);
     }
 
-    clearModals(): boolean {
-        let didSomething = false;
-        mobx.action(() => {
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.sessionSettingsModal.get()) {
-                this.sessionSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.screenSettingsModal.get()) {
-                this.screenSettingsModal.set(null);
-                didSomething = true;
-            }
-            if (this.clientSettingsModal.get()) {
-                this.clientSettingsModal.set(false);
-                didSomething = true;
-            }
-            if (this.lineSettingsModal.get()) {
-                this.lineSettingsModal.set(null);
-                didSomething = true;
-            }
-        })();
-        return didSomething;
-    }
-
     restartWaveSrv(): void {
         getApi().restartWaveSrv();
     }
 
     getLocalRemote(): RemoteType {
         for (const remote of this.remotes) {
-            if (remote.local) {
+            if (remote.local && !remote.issudo) {
                 return remote;
             }
         }
@@ -643,10 +690,6 @@ class Model {
         GlobalCommandRunner.setTermUsedRows(context, height);
     }
 
-    contextScreen(e: any, screenId: string) {
-        getApi().contextScreen({ screenId: screenId }, { x: e.x, y: e.y });
-    }
-
     contextEditMenu(e: any, opts: ContextMenuOpts) {
         getApi().contextEditMenu({ x: e.x, y: e.y }, opts);
     }
@@ -674,27 +717,49 @@ class Model {
         return rtn;
     }
 
-    onTCmd(e: any, mods: KeyModsType) {
+    onNewTab() {
         GlobalCommandRunner.createNewScreen();
     }
 
-    onICmd(e: any, mods: KeyModsType) {
-        this.inputModel.giveFocus();
+    onBookmarkViewPressed() {
+        GlobalCommandRunner.bookmarksView();
     }
 
-    onLCmd(e: any, mods: KeyModsType) {
+    onFocusCmdInputPressed() {
+        if (this.activeMainView.get() != "session") {
+            mobx.action(() => {
+                this.activeMainView.set("session");
+                setTimeout(() => {
+                    // allows for the session view to load
+                    this.inputModel.setAuxViewFocus(false);
+                }, 100);
+            })();
+        } else {
+            this.inputModel.setAuxViewFocus(false);
+        }
+    }
+
+    onFocusSelectedLine() {
         const screen = this.getActiveScreen();
         if (screen != null) {
             GlobalCommandRunner.screenSetFocus("cmd");
         }
     }
 
-    onHCmd(e: any, mods: KeyModsType) {
+    onOpenHistoryPressed() {
         this.historyViewModel.reSearch();
     }
 
-    onPCmd(e: any, mods: KeyModsType) {
+    onOpenTabSearchModalPressed() {
         this.modalsModel.pushModal(appconst.TAB_SWITCHER);
+    }
+
+    onOpenConnectionsViewPressed() {
+        this.activeMainView.set("connections");
+    }
+
+    onOpenSettingsViewPressed() {
+        this.activeMainView.set("clientsettings");
     }
 
     getFocusedLine(): LineFocusType {
@@ -739,14 +804,6 @@ class Model {
         })();
     }
 
-    onMetaPageUp(): void {
-        GlobalCommandRunner.screenSelectLine("-1");
-    }
-
-    onMetaPageDown(): void {
-        GlobalCommandRunner.screenSelectLine("+1");
-    }
-
     onMetaArrowUp(): void {
         GlobalCommandRunner.screenSelectLine("-1");
     }
@@ -755,19 +812,23 @@ class Model {
         GlobalCommandRunner.screenSelectLine("+1");
     }
 
-    onBracketCmd(e: any, arg: { relative: number }, mods: KeyModsType) {
-        if (arg.relative == 1) {
+    onBracketCmd(relative: number) {
+        if (relative == 1) {
             GlobalCommandRunner.switchScreen("+");
-        } else if (arg.relative == -1) {
+        } else if (relative == -1) {
             GlobalCommandRunner.switchScreen("-");
         }
     }
 
+    onSwitchScreenCmd(digit: number) {
+        GlobalCommandRunner.switchScreen(String(digit));
+    }
+
+    onSwitchSessionCmd(digit: number) {
+        GlobalCommandRunner.switchSession(String(digit));
+    }
+
     onDigitCmd(e: any, arg: { digit: number }, mods: KeyModsType) {
-        if (mods.meta && mods.ctrl) {
-            GlobalCommandRunner.switchSession(String(arg.digit));
-            return;
-        }
         GlobalCommandRunner.switchScreen(String(arg.digit));
     }
 
@@ -816,6 +877,12 @@ class Model {
         }
     }
 
+    markScreensAsNotNew(): void {
+        for (const screen of this.screenMap.values()) {
+            screen.isNew = false;
+        }
+    }
+
     updateSessions(sessions: SessionDataType[]): void {
         genMergeData(
             this.sessionList,
@@ -840,6 +907,27 @@ class Model {
         for (const update of numRunningCommandUpdates) {
             this.getScreenById_single(update.screenid)?.setNumRunningCmds(update.num);
         }
+    }
+
+    mergeTermThemes(termThemes: TermThemesType) {
+        mobx.action(() => {
+            if (this.termThemes.get() == null) {
+                this.termThemes.set(termThemes);
+                return;
+            }
+            for (const [themeName, theme] of Object.entries(termThemes)) {
+                if (theme == null) {
+                    delete this.termThemes.get()[themeName];
+                    continue;
+                }
+                this.termThemes.get()[themeName] = theme;
+            }
+        })();
+        this.bumpTermRenderVersion();
+    }
+
+    getTermThemes(): TermThemesType {
+        return this.termThemes.get();
     }
 
     updateScreenStatusIndicators(screenStatusIndicators: ScreenStatusIndicatorUpdateType[]) {
@@ -869,6 +957,7 @@ class Model {
                     if (update.connect.screens != null) {
                         this.screenMap.clear();
                         this.updateScreens(update.connect.screens);
+                        this.markScreensAsNotNew();
                     }
                     if (update.connect.sessions != null) {
                         this.sessionList.clear();
@@ -887,7 +976,7 @@ class Model {
                     if (update.connect.screenstatusindicators != null) {
                         this.updateScreenStatusIndicators(update.connect.screenstatusindicators);
                     }
-
+                    this.mergeTermThemes(update.connect.termthemes ?? {});
                     this.sessionListLoaded.set(true);
                     this.remotesLoaded.set(true);
                 } else if (update.screen != null) {
@@ -931,6 +1020,12 @@ class Model {
                                 console.warn("invalid bookmarksview in update:", update.mainview);
                             }
                             break;
+                        case "clientsettings":
+                            this.activeMainView.set("clientsettings");
+                            break;
+                        case "connections":
+                            this.activeMainView.set("connections");
+                            break;
                         case "plugins":
                             this.pluginsModel.showPluginsView();
                             break;
@@ -954,6 +1049,10 @@ class Model {
                 } else if (update.userinputrequest != null) {
                     const userInputRequest: UserInputRequest = update.userinputrequest;
                     this.modalsModel.pushModal(appconst.USER_INPUT, userInputRequest);
+                } else if (update.termthemes != null) {
+                    this.mergeTermThemes(update.termthemes);
+                } else if (update.sessiontombstone != null || update.screentombstone != null) {
+                    // nothing (ignore)
                 } else {
                     // interactive-only updates follow below
                     // we check interactive *inside* of the conditions because of isDev console.log message
@@ -994,6 +1093,13 @@ class Model {
                 this.activeMainView.set("session");
                 this.deactivateScreenLines();
                 this.ws.watchScreen(newActiveSessionId, newActiveScreenId);
+                this.closeTabSettings();
+                const activeScreen = this.getActiveScreen();
+                if (activeScreen?.getCurRemoteInstance() != null) {
+                    setTimeout(() => {
+                        GlobalCommandRunner.syncShellState();
+                    }, 100);
+                }
             }
         } else {
             console.warn("unknown update", genUpdate);
@@ -1181,6 +1287,7 @@ class Model {
     }
 
     setClientData(clientData: ClientDataType) {
+        let curClientDataIsNull = this.clientData.get() == null;
         let newFontFamily = clientData?.feopts?.termfontfamily;
         if (newFontFamily == null) {
             newFontFamily = appconst.DefaultTermFontFamily;
@@ -1189,14 +1296,14 @@ class Model {
         if (newFontSize == null) {
             newFontSize = appconst.DefaultTermFontSize;
         }
-        const ffUpdated = newFontFamily != this.getTermFontFamily();
+        const ffUpdated = curClientDataIsNull || newFontFamily != this.getTermFontFamily();
         const fsUpdated = newFontSize != this.getTermFontSize();
 
         let newTheme = clientData?.feopts?.theme;
         if (newTheme == null) {
             newTheme = appconst.DefaultTheme;
         }
-        const themeUpdated = newTheme != this.getTheme();
+        const themeUpdated = newTheme != this.getThemeSource();
         mobx.action(() => {
             this.clientData.set(clientData);
         })();
@@ -1214,12 +1321,26 @@ class Model {
             this.updateTermFontSizeVars();
         }
         if (themeUpdated) {
-            loadTheme(newTheme);
+            getApi().setNativeThemeSource(newTheme);
             this.bumpRenderVersion();
         }
     }
 
-    submitCommandPacket(cmdPk: FeCmdPacketType, interactive: boolean): Promise<CommandRtnType> {
+    /**
+     * Submits a command packet to the server and processes the response.
+     * @param cmdPk The command packet to submit.
+     * @param interactive Whether the command is interactive.
+     * @param runUpdate Whether to run the update after the command is submitted. If true, the update will be processed and the frontend will be updated. If false, the update will be returned in the promise.
+     * @returns A promise that resolves to a CommandRtnType.
+     * @throws An error if the command fails.
+     * @see CommandRtnType
+     * @see FeCmdPacketType
+     **/
+    submitCommandPacket(
+        cmdPk: FeCmdPacketType,
+        interactive: boolean,
+        runUpdate: boolean = true
+    ): Promise<CommandRtnType> {
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
@@ -1237,16 +1358,20 @@ class Model {
         })
             .then((resp) => handleJsonFetchResponse(url, resp))
             .then((data) => {
-                mobx.action(() => {
+                return mobx.action(() => {
                     const update = data.data;
                     if (update != null) {
-                        this.runUpdate(update, interactive);
+                        if (runUpdate) {
+                            this.runUpdate(update, interactive);
+                        } else {
+                            return { success: true, update: update };
+                        }
                     }
                     if (interactive && !this.isInfoUpdate(update)) {
                         this.inputModel.clearInfoMsg(true);
                     }
+                    return { success: true };
                 })();
-                return { success: true };
             })
             .catch((err) => {
                 this.errorHandler("calling run-command", err, interactive);
@@ -1259,12 +1384,23 @@ class Model {
         return prtn;
     }
 
+    /**
+     * Submits a command to the server and processes the response.
+     * @param metaCmd The meta command to run.
+     * @param metaSubCmd The meta subcommand to run.
+     * @param args The arguments to pass to the command.
+     * @param kwargs The keyword arguments to pass to the command.
+     * @param interactive Whether the command is interactive.
+     * @param runUpdate Whether to run the update after the command is submitted. If true, the update will be processed and the frontend will be updated. If false, the update will be returned in the promise.
+     * @returns A promise that resolves to a CommandRtnType.
+     */
     submitCommand(
         metaCmd: string,
         metaSubCmd: string,
         args: string[],
         kwargs: Record<string, string>,
-        interactive: boolean
+        interactive: boolean,
+        runUpdate: boolean = true
     ): Promise<CommandRtnType> {
         const pk: FeCmdPacketType = {
             type: "fecmd",
@@ -1274,17 +1410,107 @@ class Model {
             kwargs: { ...kwargs },
             uicontext: this.getUIContext(),
             interactive: interactive,
+            ephemeralopts: null,
         };
         /** 
         console.log(
-            "CMD",
+            "CMD"
             pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
             pk.args,
             pk.kwargs,
             pk.interactive
         );
 		 */
-        return this.submitCommandPacket(pk, interactive);
+        return this.submitCommandPacket(pk, interactive, runUpdate);
+    }
+
+    getSingleEphemeralCommandOutput(url: URL): Promise<string> {
+        return fetch(url, { method: "get", headers: this.getFetchHeaders() })
+            .then((resp) => resp.text())
+            .catch((err) => {
+                this.errorHandler("getting ephemeral command output", err, true);
+                return "";
+            });
+    }
+
+    async getEphemeralCommandOutput(
+        ephemeralCommandResponse: EphemeralCommandResponsePacketType
+    ): Promise<EphemeralCommandOutputType> {
+        let stdout = "";
+        let stderr = "";
+        if (ephemeralCommandResponse.stdouturl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stdouturl);
+            stdout = await this.getSingleEphemeralCommandOutput(url);
+        }
+        if (ephemeralCommandResponse.stderrurl) {
+            const url = new URL(this.getBaseHostPort() + ephemeralCommandResponse.stderrurl);
+            stderr = await this.getSingleEphemeralCommandOutput(url);
+        }
+        return { stdout: stdout, stderr: stderr };
+    }
+
+    submitEphemeralCommandPacket(
+        cmdPk: FeCmdPacketType,
+        interactive: boolean
+    ): Promise<EphemeralCommandResponsePacketType> {
+        if (this.debugCmds > 0) {
+            console.log("[cmd]", cmdPacketString(cmdPk));
+            if (this.debugCmds > 1) {
+                console.trace();
+            }
+        }
+        // adding cmdStr for debugging only (easily filter run-command calls in the network tab of debugger)
+        const cmdStr = cmdPk.metacmd + (cmdPk.metasubcmd ? ":" + cmdPk.metasubcmd : "");
+        const url = new URL(this.getBaseHostPort() + "/api/run-ephemeral-command?cmd=" + cmdStr);
+        const fetchHeaders = this.getFetchHeaders();
+        const prtn = fetch(url, {
+            method: "post",
+            body: JSON.stringify(cmdPk),
+            headers: fetchHeaders,
+        })
+            .then(async (resp) => {
+                const data = await handleJsonFetchResponse(url, resp);
+                if (data.success) {
+                    return data.data as EphemeralCommandResponsePacketType;
+                } else {
+                    console.log("error running ephemeral command", data);
+                    return {};
+                }
+            })
+            .catch((err) => {
+                this.errorHandler("calling run-ephemeral-command", err, interactive);
+                return {};
+            });
+        return prtn;
+    }
+
+    submitEphemeralCommand(
+        metaCmd: string,
+        metaSubCmd: string,
+        args: string[],
+        kwargs: Record<string, string>,
+        interactive: boolean,
+        ephemeralopts?: EphemeralCmdOptsType
+    ): Promise<EphemeralCommandResponsePacketType> {
+        const pk: FeCmdPacketType = {
+            type: "fecmd",
+            metacmd: metaCmd,
+            metasubcmd: metaSubCmd,
+            args: args,
+            kwargs: { ...kwargs },
+            uicontext: this.getUIContext(),
+            interactive: interactive,
+            ephemeralopts: ephemeralopts,
+        };
+        // console.log(
+        //     "CMD",
+        //     pk.metacmd + (pk.metasubcmd != null ? ":" + pk.metasubcmd : ""),
+        //     pk.args,
+        //     pk.kwargs,
+        //     pk.interactive,
+        //     pk.ephemeralopts
+        // );
+        return this.submitEphemeralCommandPacket(pk, interactive);
     }
 
     submitChatInfoCommand(chatMsg: string, curLineStr: string, clear: boolean): Promise<CommandRtnType> {
@@ -1314,7 +1540,7 @@ class Model {
             type: "fecmd",
             metacmd: "eval",
             args: [cmdStr],
-            kwargs: null,
+            kwargs: {},
             uicontext: this.getUIContext(),
             interactive: interactive,
             rawstr: cmdStr,
@@ -1438,7 +1664,11 @@ class Model {
             if (err?.message) {
                 errMsg = err.message;
             }
-            this.inputModel.flashInfoMsg({ infoerror: errMsg }, null);
+            let info: InfoType = { infoerror: errMsg };
+            if (err?.errorcode) {
+                info.infoerrorcode = err.errorcode;
+            }
+            this.inputModel.flashInfoMsg(info, null);
         }
     }
 
@@ -1486,12 +1716,15 @@ class Model {
         return remote.remotecanonicalname;
     }
 
-    readRemoteFile(screenId: string, lineId: string, path: string): Promise<ExtFile> {
-        const urlParams = {
+    readRemoteFile(screenId: string, lineId: string, path: string, mimetype?: string): Promise<ExtFile> {
+        const urlParams: Record<string, string> = {
             screenid: screenId,
             lineid: lineId,
             path: path,
         };
+        if (mimetype != null) {
+            urlParams["mimetype"] = mimetype;
+        }
         const usp = new URLSearchParams(urlParams);
         const url = new URL(this.getBaseHostPort() + "/api/read-file?" + usp.toString());
         const fetchHeaders = this.getFetchHeaders();
@@ -1501,7 +1734,7 @@ class Model {
             .then((resp) => {
                 if (!resp.ok) {
                     badResponseStr = sprintf(
-                        "Bad fetch response for /api/read-file: %d %s",
+                        "Bad fetch response for /apiread-file: %d %s",
                         resp.status,
                         resp.statusText
                     );
@@ -1567,6 +1800,19 @@ class Model {
         mobx.action(() => {
             this.appUpdateStatus.set(status);
         })();
+    }
+
+    getElectronApi(): ElectronApi {
+        return getApi();
+    }
+
+    sendActivity(atype: string) {
+        const pk: FeActivityPacketType = {
+            type: "feactivity",
+            activity: {},
+        };
+        pk.activity[atype] = 1;
+        this.ws.pushMessage(pk);
     }
 }
 

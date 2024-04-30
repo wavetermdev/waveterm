@@ -1,10 +1,19 @@
-function loadTheme(theme: string) {
-    const linkTag: any = document.getElementById("theme-stylesheet");
-    if (theme === "dark") {
-        linkTag.href = "public/themes/default.css";
-    } else {
-        linkTag.href = `public/themes/${theme}.css`;
+function getTermThemes(termThemeOptions: string[], noneLabel = "Inherit"): DropdownItem[] {
+    if (!termThemeOptions) {
+        return [];
     }
+    const tt: DropdownItem[] = [];
+    tt.push({
+        label: noneLabel,
+        value: "inherit",
+    });
+    for (const themeName of Object.keys(termThemeOptions)) {
+        tt.push({
+            label: themeName,
+            value: themeName,
+        });
+    }
+    return tt;
 }
 
-export { loadTheme };
+export { getTermThemes };

@@ -95,19 +95,6 @@ class Session {
                 return rdata;
             }
         }
-        let remote = this.globalModel.getRemote(rptr.remoteid);
-        if (remote != null) {
-            return {
-                riid: "",
-                sessionid: this.sessionId,
-                screenid: screenId,
-                remoteownerid: rptr.ownerid,
-                remoteid: rptr.remoteid,
-                name: rptr.name,
-                festate: remote.defaultfestate,
-                shelltype: remote.defaultshelltype,
-            };
-        }
         return null;
     }
 }

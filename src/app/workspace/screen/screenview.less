@@ -95,33 +95,6 @@
         height: 100%;
         overflow-x: hidden;
 
-        .rendermode-tag {
-            position: absolute;
-            top: 0;
-            right: 0;
-            background-color: rgba(78, 154, 6, 0.65);
-            color: var(--app-black);
-            padding: 2px 8px 2px 4px;
-            border-bottom-left-radius: 5px;
-            z-index: 10;
-
-            &.is-active {
-                color: var(--app-text-color);
-            }
-
-            .render-mode {
-                padding-top: 2px;
-
-                position: relative;
-                cursor: pointer;
-                color: var(--app-text-color);
-
-                &:hover {
-                    color: var(--app-text-color);
-                }
-            }
-        }
-
         .window-empty {
             display: flex;
             align-items: center;
@@ -129,11 +102,11 @@
             width: 100%;
             padding: 10px;
             height: 100%;
-            color: #ccc;
+            color: var(--app-text-color);
 
             code {
                 background-color: transparent;
-                color: #4e9a06;
+                color: var(--term-green);
             }
 
             &.should-fade {
@@ -142,47 +115,33 @@
             }
         }
 
-        .share-tag {
-            color: var(--app-text-color);
-            position: absolute;
-            top: 0;
-            left: 40%;
-            background-color: darken(rgb(0, 177, 10), 20%);
-            padding: 2px 8px 2px 4px;
-            z-index: 11;
-
-            /* border-radius: 0 0 5px 5px; */
-            opacity: 0.8;
-            display: flex;
-            flex-direction: column;
-
-            .share-tag-link {
-                margin-top: 10px;
-                display: none;
-            }
-
-            &:hover {
-                .share-tag-title {
-                    font-weight: bold;
-                }
-                opacity: 1;
-                padding: 20px;
-                width: 250px;
-                border: 1px solid #ccc;
-                border-top: 0;
-
-                .share-tag-link {
-                    display: flex;
-                    flex-direction: row;
-                    align-items: center;
-                    gap: 10px;
-                }
-            }
-        }
-
         .filter-running {
-            margin: auto 1rem 0 1rem;
-            align-self: center;
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            border-top: 1px solid var(--app-border-color);
+            padding: calc(var(--termpad) + 2px) var(--termpad) calc(var(--termpad) + 2px) var(--termpad);
+            align-items: center;
+            justify-content: center;
+
+            .filter-content {
+                cursor: pointer;
+                padding: 2px;
+                color: var(--app-text-primary-color);
+                z-index: 2;
+            }
+
+            .filter-mask {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: var(--app-accent-bg-color);
+                z-index: 1;
+                pointer-events: none;
+            }
         }
     }
 
@@ -196,164 +155,6 @@
             border-top: 1px solid var(--app-border);
             &:first-child {
                 border-top: none;
-            }
-        }
-    }
-}
-
-.newtab-container {
-    margin: 16px;
-
-    .newtab-section {
-        display: flex;
-        padding: 16px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-        align-self: stretch;
-
-        .conn-dropdown {
-            width: 412px;
-
-            .lefticon {
-                position: absolute;
-                top: 50%;
-                left: 16px;
-                transform: translateY(-50%);
-
-                .globe-icon {
-                    width: 16px;
-                    height: 16px;
-                    flex-shrink: 0;
-                }
-
-                .status-icon {
-                    position: absolute;
-                    left: 7px;
-                    top: 8px;
-                }
-            }
-
-            .wave-dropdown-display {
-                bottom: 7px;
-            }
-        }
-
-        &.conn-section {
-            gap: 8px;
-        }
-    }
-
-    .cr-help-text {
-        color: var(--screen-view-text-caption-color);
-        margin-left: 5px;
-    }
-
-    .newtab-spacer {
-        height: 1px;
-        background: var(--app-border-color);
-    }
-
-    .control-iconlist {
-        display: flex;
-        margin-left: -2px;
-        padding: 8px 0 8px 2px;
-        align-items: flex-start;
-        gap: 14px;
-
-        &.tabicon-list {
-            gap: 12px;
-        }
-
-        .icondiv {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-            position: relative;
-            font-size: 14px;
-
-            &.tabicon {
-                display: flex;
-                align-items: center;
-                width: 22px;
-            }
-
-            .icon {
-                width: 20px;
-                height: 20px;
-            }
-
-            i {
-                padding-left: 3px;
-                padding-right: 3px;
-            }
-
-            .icon.square-icon {
-                position: relative;
-                top: 3px;
-                width: 16px;
-                height: 16px;
-            }
-
-            .check-icon {
-                width: 12px;
-                height: 12px;
-                position: absolute;
-                top: 4px;
-                left: 4px;
-
-                path {
-                    fill: black;
-                }
-            }
-
-            .status-div {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 16px;
-                height: 16px;
-                padding: 3px;
-
-                svg.status-icon {
-                    width: 10px;
-                    height: 10px;
-                }
-            }
-
-            .add-div {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 16px;
-                height: 16px;
-
-                svg.add-icon {
-                    width: 16px;
-                    height: 16px;
-
-                    path {
-                        fill: var(--app-text-primary-color);
-                    }
-                }
-            }
-
-            .text-standard {
-                color: var(--app-text-secondary-color);
-            }
-
-            .ellipsis {
-                text-overflow: ellipsis;
-            }
-
-            &:hover {
-                background-color: rgba(241, 246, 243, 0.08);
-            }
-
-            .icon.color-white + .check-icon {
-                path {
-                    fill: black;
-                }
             }
         }
     }

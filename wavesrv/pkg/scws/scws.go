@@ -13,17 +13,18 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/mapqueue"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/wsshell"
 )
 
 const WSStatePacketChSize = 20
-const MaxInputDataSize = 1000
 const RemoteInputQueueSize = 100
 
 var RemoteInputMapQueue *mapqueue.MapQueue
@@ -165,6 +166,11 @@ func (ws *WSState) handleConnection() error {
 	connectUpdate.Remotes = remotes
 	// restore status indicators
 	connectUpdate.ScreenStatusIndicators, connectUpdate.ScreenNumRunningCommands = sstore.GetCurrentIndicatorState()
+	configs, err := configstore.ScanConfigs()
+	if err != nil {
+		return fmt.Errorf("getting configs: %w", err)
+	}
+	connectUpdate.TermThemes = &configs
 	mu := scbus.MakeUpdatePacket()
 	mu.AddUpdate(*connectUpdate)
 	err = ws.Shell.WriteJson(mu)
@@ -247,7 +253,7 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		err := RemoteInputMapQueue.Enqueue(feInputPk.Remote.RemoteId, func() {
 			sendErr := sendCmdInput(feInputPk)
 			if sendErr != nil {
-				log.Printf("[scws] sending command input: %v\n", err)
+				log.Printf("[scws] sending command input: %v\n", sendErr)
 			}
 		})
 		if err != nil {
@@ -263,7 +269,7 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		go func() {
 			sendErr := remote.SendRemoteInput(inputPk)
 			if sendErr != nil {
-				log.Printf("[scws] error processing remote input: %v\n", err)
+				log.Printf("[scws] error processing remote input: %v\n", sendErr)
 			}
 		}()
 		return nil
@@ -287,6 +293,11 @@ func (ws *WSState) processMessage(msgBytes []byte) error {
 		case uich <- userInputRespPk:
 		default:
 		}
+		return nil
+	}
+	if pk.GetType() == scpacket.FeActivityPacketStr {
+		feActivityPk := pk.(*scpacket.FeActivityPacketType)
+		telemetry.UpdateFeActivityWrap(feActivityPk)
 		return nil
 	}
 	return fmt.Errorf("got ws bad message: %v", pk.GetType())
@@ -319,29 +330,5 @@ func sendCmdInput(pk *scpacket.FeInputPacketType) error {
 	if msh == nil {
 		return fmt.Errorf("remote %s not found", pk.Remote.RemoteId)
 	}
-	if len(pk.InputData64) > 0 {
-		inputLen := packet.B64DecodedLen(pk.InputData64)
-		if inputLen > MaxInputDataSize {
-			return fmt.Errorf("input data size too large, len=%d (max=%d)", inputLen, MaxInputDataSize)
-		}
-		dataPk := packet.MakeDataPacket()
-		dataPk.CK = pk.CK
-		dataPk.FdNum = 0 // stdin
-		dataPk.Data64 = pk.InputData64
-		err = msh.SendInput(dataPk)
-		if err != nil {
-			return err
-		}
-	}
-	if pk.SigName != "" || pk.WinSize != nil {
-		siPk := packet.MakeSpecialInputPacket()
-		siPk.CK = pk.CK
-		siPk.SigName = pk.SigName
-		siPk.WinSize = pk.WinSize
-		err = msh.SendSpecialInput(siPk)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return msh.HandleFeInput(pk)
 }

@@ -4,6 +4,7 @@
 import * as mobx from "mobx";
 import { MagicLayout } from "@/app/magiclayout";
 import { Model } from "./model";
+import { GlobalCommandRunner } from "@/models";
 
 class MainSidebarModel {
     globalModel: Model = null;
@@ -79,6 +80,14 @@ class MainSidebarModel {
             return this.tempCollapsed.get();
         }
         return collapsed;
+    }
+
+    saveState(width: number, collapsed: boolean): void {
+        GlobalCommandRunner.clientSetMainSidebar(width, collapsed).finally(() => {
+            mobx.action(() => {
+                this.isDragging.set(false);
+            })();
+        });
     }
 }
 

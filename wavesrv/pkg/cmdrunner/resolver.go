@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/remote"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scpacket"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
@@ -41,8 +42,8 @@ type ResolvedRemote struct {
 	MShell      *remote.MShellProc
 	RState      remote.RemoteRuntimeState
 	RemoteCopy  *sstore.RemoteType
-	ShellType   string
-	StatePtr    *sstore.ShellStatePtr
+	ShellType   string // default remote shell preference
+	StatePtr    *packet.ShellStatePtr
 	FeState     map[string]string
 }
 
@@ -488,10 +489,10 @@ func ResolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 		} else {
 			if ri == nil {
 				rtn.ShellType = msh.GetShellPref()
-				rtn.StatePtr = msh.GetDefaultStatePtr(rtn.ShellType)
-				rtn.FeState = msh.GetDefaultFeState(rtn.ShellType)
+				rtn.StatePtr = nil
+				rtn.FeState = nil
 			} else {
-				rtn.StatePtr = &sstore.ShellStatePtr{BaseHash: ri.StateBaseHash, DiffHashArr: ri.StateDiffHashArr}
+				rtn.StatePtr = &packet.ShellStatePtr{BaseHash: ri.StateBaseHash, DiffHashArr: ri.StateDiffHashArr}
 				rtn.FeState = ri.FeState
 				rtn.ShellType = ri.ShellType
 			}

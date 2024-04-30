@@ -6,15 +6,16 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { GlobalModel, GlobalCommandRunner, Session } from "@/models";
-import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip } from "@/elements";
+import { If } from "tsx-control-statements/components";
+import { Toggle, InlineSettingsTextEdit, SettingsError, Modal, Tooltip, Button, Dropdown } from "@/elements";
+import { commandRtnHandler } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
 import * as util from "@/util/util";
 
 import "./sessionsettings.less";
 
 const SessionDeleteMessage = `
 Are you sure you want to delete this workspace?
-
-All commands and output will be deleted.  To hide the workspace, and retain the commands and output, use 'archive'.
 `.trim();
 
 @mobxReact.observer
@@ -78,6 +79,16 @@ class SessionSettingsModal extends React.Component<{}, {}> {
     }
 
     @boundMethod
+    handleChangeTermTheme(theme: string): void {
+        const currTheme = GlobalModel.getTermThemeSettings()[this.sessionId];
+        if (currTheme == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setSessionTermTheme(this.sessionId, theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
     dismissError(): void {
         mobx.action(() => {
             this.errorMessage.set(null);
@@ -88,6 +99,9 @@ class SessionSettingsModal extends React.Component<{}, {}> {
         if (this.session == null) {
             return null;
         }
+        const termThemes = getTermThemes(GlobalModel.termThemes.get());
+        const currTermTheme = GlobalModel.getTermThemeSettings()[this.sessionId] ?? termThemes[0].label;
+
         return (
             <Modal className="session-settings-modal">
                 <Modal.Header onClose={this.closeModal} title={`Workspace Settings (${this.session.name.get()})`} />
@@ -105,6 +119,19 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                             />
                         </div>
                     </div>
+                    <If condition={termThemes.length > 0}>
+                        <div className="settings-field">
+                            <div className="settings-label">Terminal Theme</div>
+                            <div className="settings-input">
+                                <Dropdown
+                                    className="terminal-theme-dropdown"
+                                    options={termThemes}
+                                    defaultValue={currTermTheme}
+                                    onChange={this.handleChangeTermTheme}
+                                />
+                            </div>
+                        </div>
+                    </If>
                     <div className="settings-field">
                         <div className="settings-label">
                             <div>Archived</div>
@@ -133,17 +160,14 @@ class SessionSettingsModal extends React.Component<{}, {}> {
                             </Tooltip>
                         </div>
                         <div className="settings-input">
-                            <div
-                                onClick={this.handleDeleteSession}
-                                className="button is-prompt-danger is-outlined is-small"
-                            >
+                            <Button onClick={this.handleDeleteSession} className="secondary small danger">
                                 Delete Workspace
-                            </div>
+                            </Button>
                         </div>
                     </div>
                     <SettingsError errorMessage={this.errorMessage} />
                 </div>
-                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} />
+                <Modal.Footer cancelLabel="Close" onCancel={this.closeModal} keybindings={true} />
             </Modal>
         );
     }

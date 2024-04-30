@@ -22,6 +22,59 @@ type BookmarkProps = {
     bookmark: BookmarkType;
 };
 
+class BookmarkKeybindings extends React.Component<{}, {}> {
+    @boundMethod
+    componentDidMount(): void {
+        let keybindManager = GlobalModel.keybindManager;
+        let bookmarksModel = GlobalModel.bookmarksModel;
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:cancel", (waveEvent) => {
+            bookmarksModel.handleUserClose();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:deleteItem", (waveEvent) => {
+            bookmarksModel.handleUserDelete();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectAbove", (waveEvent) => {
+            bookmarksModel.handleUserNavigate(-1);
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectBelow", (waveEvent) => {
+            bookmarksModel.handleUserNavigate(1);
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectPageAbove", (waveEvent) => {
+            bookmarksModel.handleUserNavigate(-10);
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:selectPageBelow", (waveEvent) => {
+            bookmarksModel.handleUserNavigate(10);
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "generic:confirm", (waveEvent) => {
+            bookmarksModel.handleUserConfirm();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "bookmarks:edit", (waveEvent) => {
+            bookmarksModel.handleUserEdit();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "bookmarks", "bookmarks:copy", (waveEvent) => {
+            bookmarksModel.handleUserCopy();
+            return true;
+        });
+    }
+
+    @boundMethod
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("bookmarks");
+    }
+
+    render() {
+        return null;
+    }
+}
+
 @mobxReact.observer
 class Bookmark extends React.Component<BookmarkProps, {}> {
     @boundMethod
@@ -193,7 +246,10 @@ class BookmarksView extends React.Component<{}, {}> {
         let bookmarks = GlobalModel.bookmarksModel.bookmarks;
         let bookmark: BookmarkType = null;
         return (
-            <MainView viewName="bookmarks" title="Bookmarks" onClose={this.handleClose}>
+            <MainView className="bookmarks-view" title="Bookmarks" onClose={this.handleClose}>
+                <If condition={!isHidden}>
+                    <BookmarkKeybindings></BookmarkKeybindings>
+                </If>
                 <div className="bookmarks-list">
                     <For index="idx" each="bookmark" of={bookmarks}>
                         <Bookmark key={bookmark.bookmarkid} bookmark={bookmark} />

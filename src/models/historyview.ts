@@ -290,13 +290,8 @@ class HistoryViewModel {
         GlobalCommandRunner.historyView(this._getSearchParams(0, 0));
     }
 
-    handleDocKeyDown(e: any): void {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
-        if (checkKeyPressed(waveEvent, "Escape")) {
-            e.preventDefault();
-            this.closeView();
-            return;
-        }
+    handleUserClose() {
+        this.closeView();
     }
 
     showHistoryView(data: HistoryViewDataType): void {

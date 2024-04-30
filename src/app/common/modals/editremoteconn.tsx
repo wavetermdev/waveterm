@@ -338,7 +338,7 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                             endDecoration: (
                                 <InputDecoration>
                                     <Tooltip
-                                        message={`(Required) The path to your ssh key file.`}
+                                        message={`(Required) The path to your ssh private key file.`}
                                         icon={<i className="fa-sharp fa-regular fa-circle-question" />}
                                     >
                                         <i className="fa-sharp fa-regular fa-circle-question" />
@@ -383,7 +383,12 @@ class EditRemoteConnModal extends React.Component<{}, {}> {
                         <div className="settings-field settings-error">Error: {this.remoteEdit?.errorstr}</div>
                     </If>
                 </div>
-                <Modal.Footer onOk={this.submitRemote} onCancel={this.model.closeModal} okLabel="Save" />
+                <Modal.Footer
+                    onOk={this.submitRemote}
+                    onCancel={this.model.closeModal}
+                    okLabel="Save"
+                    keybindings={true}
+                />
             </Modal>
         );
     }

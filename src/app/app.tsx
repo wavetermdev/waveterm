@@ -4,11 +4,11 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
+import cn from "classnames";
+
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
-import dayjs from "dayjs";
-import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalCommandRunner, GlobalModel } from "@/models";
+import { GlobalModel } from "@/models";
 import { isBlank } from "@/util/util";
 import { WorkspaceView } from "./workspace/workspaceview";
 import { PluginsView } from "./pluginsview/pluginsview";
@@ -16,23 +16,25 @@ import { BookmarksView } from "./bookmarks/bookmarks";
 import { HistoryView } from "./history/history";
 import { ConnectionsView } from "./connections/connections";
 import { ClientSettingsView } from "./clientsettings/clientsettings";
-import { MainSideBar } from "./sidebar/sidebar";
-import { DisconnectedModal, ClientStopModal } from "./common/modals";
-import { ModalsProvider } from "./common/modals/provider";
-import { ErrorBoundary } from "./common/error/errorboundary";
-import cn from "classnames";
-import "./app.less";
+import { MainSideBar } from "./sidebar/main";
+import { RightSideBar } from "./sidebar/right";
+import { DisconnectedModal, ClientStopModal } from "@/modals";
+import { ModalsProvider } from "@/modals/provider";
+import { Button } from "@/elements";
+import { ErrorBoundary } from "@/common/error/errorboundary";
+import { TermStyleList } from "@/elements";
 
-dayjs.extend(localizedFormat);
+import "./app.less";
 
 @mobxReact.observer
 class App extends React.Component<{}, {}> {
     dcWait: OV<boolean> = mobx.observable.box(false, { name: "dcWait" });
     mainContentRef: React.RefObject<HTMLDivElement> = React.createRef();
+    termThemesLoaded: OV<boolean> = mobx.observable.box(false, { name: "termThemesLoaded" });
 
     constructor(props: {}) {
         super(props);
-        if (GlobalModel.isDev) document.body.className = "is-dev";
+        if (GlobalModel.isDev) document.body.classList.add("is-dev");
     }
 
     @boundMethod
@@ -65,9 +67,24 @@ class App extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    openSidebar() {
-        const width = GlobalModel.mainSidebarModel.getWidth(true);
-        GlobalCommandRunner.clientSetSidebar(width, false);
+    openMainSidebar() {
+        const mainSidebarModel = GlobalModel.mainSidebarModel;
+        const width = mainSidebarModel.getWidth(true);
+        mainSidebarModel.saveState(width, false);
+    }
+
+    @boundMethod
+    openRightSidebar() {
+        const rightSidebarModel = GlobalModel.rightSidebarModel;
+        const width = rightSidebarModel.getWidth(true);
+        rightSidebarModel.saveState(width, false);
+    }
+
+    @boundMethod
+    handleTermThemesRendered() {
+        mobx.action(() => {
+            this.termThemesLoaded.set(true);
+        })();
     }
 
     render() {
@@ -80,7 +97,8 @@ class App extends React.Component<{}, {}> {
 
         // Previously, this is done in sidebar.tsx but it causes flicker when clientData is null cos screen-view shifts around.
         // Doing it here fixes the flicker cos app is not rendered until clientData is populated.
-        if (clientData == null) {
+        // wait for termThemes as well (this actually means that the "connect" packet has been received)
+        if (clientData == null || GlobalModel.termThemes.get() == null) {
             return null;
         }
 
@@ -91,7 +109,7 @@ class App extends React.Component<{}, {}> {
             return (
                 <div id="main" className={"platform-" + platform} onContextMenu={this.handleContextMenu}>
                     <div ref={this.mainContentRef} className="main-content">
-                        <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
+                        <MainSideBar parentRef={this.mainContentRef} />
                         <div className="session-view" />
                     </div>
                     <If condition={dcWait}>
@@ -108,37 +126,65 @@ class App extends React.Component<{}, {}> {
         if (dcWait) {
             setTimeout(() => this.updateDcWait(false), 0);
         }
+
         // used to force a full reload of the application
         const renderVersion = GlobalModel.renderVersion.get();
-        const sidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
+        const mainSidebarCollapsed = GlobalModel.mainSidebarModel.getCollapsed();
+        const rightSidebarCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
+        const activeMainView = GlobalModel.activeMainView.get();
+        const lightDarkClass = GlobalModel.isDarkTheme.get() ? "is-dark" : "is-light";
+        const mainClassName = cn(
+            "platform-" + platform,
+            {
+                "mainsidebar-collapsed": mainSidebarCollapsed,
+                "rightsidebar-collapsed": rightSidebarCollapsed,
+            },
+            lightDarkClass
+        );
         return (
-            <div
-                key={"version-" + renderVersion}
-                id="main"
-                className={cn("platform-" + platform, { "sidebar-collapsed": sidebarCollapsed })}
-                onContextMenu={this.handleContextMenu}
-            >
-                <If condition={sidebarCollapsed}>
-                    <div key="logo-button" className="logo-button-container">
-                        <div className="logo-button-spacer" />
-                        <div className="logo-button" onClick={this.openSidebar}>
-                            <img src="public/logos/wave-logo.png" alt="logo" />
+            <>
+                <TermStyleList onRendered={this.handleTermThemesRendered} />
+                <div
+                    key={`version- + ${renderVersion}`}
+                    id="main"
+                    className={mainClassName}
+                    onContextMenu={this.handleContextMenu}
+                >
+                    <If condition={this.termThemesLoaded.get()}>
+                        <If condition={mainSidebarCollapsed}>
+                            <div key="logo-button" className="logo-button-container">
+                                <div className="logo-button-spacer" />
+                                <div className="logo-button" onClick={this.openMainSidebar}>
+                                    <img src="public/logos/wave-logo.png" alt="logo" />
+                                </div>
+                            </div>
+                        </If>
+                        <If condition={GlobalModel.isDev && rightSidebarCollapsed && activeMainView == "session"}>
+                            <div className="right-sidebar-triggers">
+                                <Button
+                                    className="secondary ghost right-sidebar-trigger"
+                                    onClick={this.openRightSidebar}
+                                >
+                                    <i className="fa-sharp fa-solid fa-sidebar-flip"></i>
+                                </Button>
+                            </div>
+                        </If>
+                        <div ref={this.mainContentRef} className="main-content">
+                            <MainSideBar parentRef={this.mainContentRef} />
+                            <ErrorBoundary>
+                                <PluginsView />
+                                <WorkspaceView />
+                                <HistoryView />
+                                <BookmarksView />
+                                <ConnectionsView model={remotesModel} />
+                                <ClientSettingsView model={remotesModel} />
+                            </ErrorBoundary>
+                            <RightSideBar parentRef={this.mainContentRef} />
                         </div>
-                    </div>
-                </If>
-                <div ref={this.mainContentRef} className="main-content">
-                    <MainSideBar parentRef={this.mainContentRef} clientData={clientData} />
-                    <ErrorBoundary>
-                        <PluginsView />
-                        <WorkspaceView />
-                        <HistoryView />
-                        <BookmarksView />
-                        <ConnectionsView model={remotesModel} />
-                        <ClientSettingsView model={remotesModel} />
-                    </ErrorBoundary>
+                        <ModalsProvider />
+                    </If>
                 </div>
-                <ModalsProvider />
-            </div>
+            </>
         );
     }
 }

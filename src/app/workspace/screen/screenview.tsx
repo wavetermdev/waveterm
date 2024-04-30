@@ -6,22 +6,16 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import { If, For } from "tsx-control-statements/components";
+import { If } from "tsx-control-statements/components";
 import cn from "classnames";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import { GlobalCommandRunner, ForwardLineContainer, GlobalModel, ScreenLines, Screen, Session } from "@/models";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { Button, TextField, Dropdown } from "@/elements";
-import { getRemoteStr } from "@/common/prompt/prompt";
+import { Button } from "@/elements";
 import { Line } from "@/app/line/linecomps";
 import { LinesView } from "@/app/line/linesview";
 import * as util from "@/util/util";
-import { TabIcon } from "@/elements/tabicon";
-import { ReactComponent as EllipseIcon } from "@/assets/icons/ellipse.svg";
-import { ReactComponent as Check12Icon } from "@/assets/icons/check12.svg";
-import { ReactComponent as GlobeIcon } from "@/assets/icons/globe.svg";
-import { ReactComponent as StatusCircleIcon } from "@/assets/icons/statuscircle.svg";
 import * as appconst from "@/app/appconst";
 import * as textmeasure from "@/util/textmeasure";
 
@@ -40,30 +34,34 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     sidebarShowing: OV<boolean> = mobx.observable.box(false, { name: "screenview-sidebarShowing" });
     sidebarShowingTimeoutId: any = null;
 
-    constructor(props: any) {
+    constructor(props: { session: Session; screen: Screen }) {
         super(props);
         this.handleResize_debounced = debounce(100, this.handleResize.bind(this));
+        const screen = this.props.screen;
+        let hasSidebar = false;
+        if (screen != null) {
+            const viewOpts = screen.viewOpts.get();
+            hasSidebar = viewOpts?.sidebar?.open;
+        }
+        this.sidebarShowing = mobx.observable.box(hasSidebar, { name: "screenview-sidebarShowing" });
     }
 
     componentDidMount(): void {
-        let { screen } = this.props;
-        let elem = this.screenViewRef.current;
+        const elem = this.screenViewRef.current;
         if (elem != null) {
             this.rszObs = new ResizeObserver(this.handleResize_debounced);
             this.rszObs.observe(elem);
             this.handleResize();
         }
-        let viewOpts = screen.viewOpts.get();
-        let hasSidebar = viewOpts?.sidebar?.open;
-        if (hasSidebar) {
-            mobx.action(() => this.sidebarShowing.set(true))();
-        }
     }
 
     componentDidUpdate(): void {
-        let { screen } = this.props;
-        let viewOpts = screen.viewOpts.get();
-        let hasSidebar = viewOpts?.sidebar?.open;
+        const { screen } = this.props;
+        if (screen == null) {
+            return;
+        }
+        const viewOpts = screen.viewOpts.get();
+        const hasSidebar = viewOpts?.sidebar?.open;
         if (hasSidebar && !this.sidebarShowing.get()) {
             this.sidebarShowingTimeoutId = setTimeout(() => {
                 mobx.action(() => {
@@ -87,7 +85,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
     }
 
     handleResize() {
-        let elem = this.screenViewRef.current;
+        const elem = this.screenViewRef.current;
         if (elem == null) {
             return;
         }
@@ -96,27 +94,70 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
         })();
     }
 
+    @boundMethod
+    createWorkspace() {
+        GlobalCommandRunner.createNewSession();
+    }
+
+    @boundMethod
+    createTab() {
+        GlobalCommandRunner.createNewScreen();
+    }
+
     render() {
-        let { session, screen } = this.props;
-        if (screen == null) {
-            return (
-                <div className="screen-view" ref={this.screenViewRef}>
-                    (no screen found)
-                </div>
-            );
-        }
-        let screenWidth = this.width.get();
+        const { session, screen } = this.props;
+        const screenWidth = this.width.get();
         if (screenWidth == null) {
             return <div className="screen-view" ref={this.screenViewRef}></div>;
         }
-        let fontSize = GlobalModel.getTermFontSize();
-        let dprStr = sprintf("%0.3f", GlobalModel.devicePixelRatio.get());
-        let viewOpts = screen.viewOpts.get();
-        let hasSidebar = viewOpts?.sidebar?.open;
+        if (session == null) {
+            const sessionCount = GlobalModel.sessionList.length;
+            return (
+                <div className="screen-view" ref={this.screenViewRef}>
+                    <div className="window-view" style={{ width: "100%" }}>
+                        <div key="lines" className="lines"></div>
+                        <div key="window-empty" className={cn("window-empty")}>
+                            <div className="flex-centered-column">
+                                <code className="text-standard">[no workspace]</code>
+                                <If condition={sessionCount == 0}>
+                                    <Button onClick={this.createWorkspace} style={{ marginTop: 10 }}>
+                                        Create New Workspace
+                                    </Button>
+                                </If>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        if (screen == null) {
+            const screens = GlobalModel.getSessionScreens(session.sessionId);
+            return (
+                <div className="screen-view" ref={this.screenViewRef}>
+                    <div className="window-view" style={{ width: "100%" }}>
+                        <div key="lines" className="lines"></div>
+                        <div key="window-empty" className={cn("window-empty")}>
+                            <div className="flex-centered-column">
+                                <code className="text-standard">[no active tab]</code>
+                                <If condition={screens.length == 0}>
+                                    <Button onClick={this.createTab} style={{ marginTop: 10 }}>
+                                        Create New Tab
+                                    </Button>
+                                </If>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        const fontSize = GlobalModel.getTermFontSize();
+        const dprStr = sprintf("%0.3f", GlobalModel.devicePixelRatio.get());
+        const viewOpts = screen.viewOpts.get();
+        const hasSidebar = viewOpts?.sidebar?.open;
         let winWidth = "100%";
         let sidebarWidth = "0px";
         if (hasSidebar) {
-            let targetWidth = viewOpts?.sidebar?.width;
+            const targetWidth = viewOpts?.sidebar?.width;
             let realWidth = 0;
             if (util.isBlank(targetWidth) || screenWidth < MagicLayout.ScreenSidebarMinWidth * 2) {
                 realWidth = Math.floor(screenWidth / 2) - MagicLayout.ScreenSidebarWidthPadding;
@@ -125,7 +166,6 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
                 if (targetPercent > 100) {
                     targetPercent = 100;
                 }
-                let targetMul = targetPercent / 100;
                 realWidth = Math.floor((screenWidth * targetPercent) / 100);
                 realWidth = util.boundInt(
                     realWidth,
@@ -134,7 +174,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
                 );
             } else {
                 // screen is at least 400px wide
-                let targetWidthNum = parseInt(targetWidth);
+                const targetWidthNum = parseInt(targetWidth);
                 realWidth = util.boundInt(
                     targetWidthNum,
                     MagicLayout.ScreenSidebarMinWidth,
@@ -144,10 +184,12 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
             winWidth = screenWidth - realWidth + "px";
             sidebarWidth = realWidth - MagicLayout.ScreenSidebarWidthPadding + "px";
         }
+        const termRenderVersion = GlobalModel.termRenderVersion.get();
+
         return (
-            <div className="screen-view" data-screenid={screen.screenId} ref={this.screenViewRef}>
+            <div className="screen-view" id={screen.screenId} data-screenid={screen.screenId} ref={this.screenViewRef}>
                 <ScreenWindowView
-                    key={screen.screenId + ":" + fontSize + ":" + dprStr}
+                    key={screen.screenId + ":" + fontSize + ":" + dprStr + ":" + termRenderVersion}
                     session={session}
                     screen={screen}
                     width={winWidth}
@@ -325,7 +367,7 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
                             <br />
                         </div>
                         <div onClick={this.sidebarClose} className="close-button-container">
-                            <Button theme="secondary" onClick={this.sidebarClose}>
+                            <Button className="secondary" onClick={this.sidebarClose}>
                                 Close Sidebar
                             </Button>
                         </div>
@@ -339,196 +381,15 @@ class ScreenSidebar extends React.Component<{ screen: Screen; width: string }, {
     }
 }
 
-@mobxReact.observer
-class NewTabSettings extends React.Component<{ screen: Screen }, {}> {
-    connDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "NewTabSettings-connDropdownActive" });
-    errorMessage: OV<string | null> = mobx.observable.box(null, { name: "NewTabSettings-errorMessage" });
-    remotes: RemoteType[];
-
-    constructor(props) {
-        super(props);
-        this.remotes = GlobalModel.remotes;
-    }
-
-    @boundMethod
-    selectTabColor(color: string): void {
-        let { screen } = this.props;
-        if (screen.getTabColor() == color) {
-            return;
-        }
-        let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { tabcolor: color }, false);
-        util.commandRtnHandler(prtn, this.errorMessage);
-    }
-
-    @boundMethod
-    selectTabIcon(icon: string): void {
-        let { screen } = this.props;
-        if (screen.getTabIcon() == icon) {
-            return;
-        }
-        let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { tabicon: icon }, false);
-        util.commandRtnHandler(prtn, this.errorMessage);
-    }
-
-    @boundMethod
-    updateName(val: string): void {
-        let { screen } = this.props;
-        let prtn = GlobalCommandRunner.screenSetSettings(screen.screenId, { name: val }, false);
-        util.commandRtnHandler(prtn, this.errorMessage);
-    }
-
-    @boundMethod
-    toggleConnDropdown(): void {
-        mobx.action(() => {
-            this.connDropdownActive.set(!this.connDropdownActive.get());
-        })();
-    }
-
-    @boundMethod
-    selectRemote(cname: string): void {
-        let prtn = GlobalCommandRunner.screenSetRemote(cname, true, false);
-        util.commandRtnHandler(prtn, this.errorMessage);
-    }
-
-    @boundMethod
-    clickNewConnection(): void {
-        GlobalModel.remotesModel.openAddModal({ remoteedit: true });
-    }
-
-    @boundMethod
-    getOptions(): { label: string; value: string }[] {
-        return this.remotes
-            .filter((r) => !r.archived)
-            .map((remote) => ({
-                ...remote,
-                label: !util.isBlank(remote.remotealias)
-                    ? `${remote.remotealias} - ${remote.remotecanonicalname}`
-                    : remote.remotecanonicalname,
-                value: remote.remotecanonicalname,
-            }))
-            .sort((a, b) => {
-                let connValA = util.getRemoteConnVal(a);
-                let connValB = util.getRemoteConnVal(b);
-                if (connValA !== connValB) {
-                    return connValA - connValB;
-                }
-                return a.remoteidx - b.remoteidx;
-            });
-    }
-
-    renderTabIconSelector(): React.ReactNode {
-        let { screen } = this.props;
-        let curIcon = screen.getTabIcon();
-        if (util.isBlank(curIcon) || curIcon == "default") {
-            curIcon = "square";
-        }
-        let icon: string | null = null;
-        let curColor = screen.getTabColor();
-        return (
-            <>
-                <div className="bold unselectable">Tab Icon:</div>
-                <div className="control-iconlist tabicon-list">
-                    <For each="icon" of={appconst.TabIcons}>
-                        <div
-                            className="icondiv tabicon"
-                            key={icon}
-                            title={icon || ""}
-                            onClick={() => this.selectTabIcon(icon || "")}
-                        >
-                            <TabIcon icon={icon} color={curColor} />
-                        </div>
-                    </For>
-                </div>
-            </>
-        );
-    }
-
-    renderTabColorSelector(): React.ReactNode {
-        let { screen } = this.props;
-        let curColor = screen.getTabColor();
-        if (util.isBlank(curColor) || curColor == "default") {
-            curColor = "green";
-        }
-        let color: string | null = null;
-
-        return (
-            <>
-                <div className="bold unselectable">Tab Color:</div>
-                <div className="control-iconlist">
-                    <For each="color" of={appconst.TabColors}>
-                        <div
-                            className="icondiv"
-                            key={color}
-                            title={color || ""}
-                            onClick={() => this.selectTabColor(color || "")}
-                        >
-                            <EllipseIcon className={cn("icon", "color-" + color)} />
-                            <If condition={color == curColor}>
-                                <Check12Icon className="check-icon" />
-                            </If>
-                        </div>
-                    </For>
-                </div>
-            </>
-        );
-    }
-
-    render() {
-        let { screen } = this.props;
-        let rptr = screen.curRemote.get();
-        let curRemote = GlobalModel.getRemote(GlobalModel.getActiveScreen().getCurRemoteInstance().remoteid);
-
-        return (
-            <div className="newtab-container">
-                <div className="newtab-section name-section">
-                    <TextField
-                        label="Name"
-                        required={true}
-                        defaultValue={screen.name.get() ?? ""}
-                        onChange={this.updateName}
-                    />
-                </div>
-                <div className="newtab-spacer" />
-                <div className="newtab-section conn-section">
-                    <div className="unselectable">
-                        You're connected to [{getRemoteStr(rptr)}]. Do you want to change it?
-                    </div>
-                    <div>
-                        <Dropdown
-                            className="conn-dropdown"
-                            options={this.getOptions()}
-                            defaultValue={curRemote.remotecanonicalname}
-                            onChange={this.selectRemote}
-                            decoration={{
-                                startDecoration: (
-                                    <div className="lefticon">
-                                        <GlobeIcon className="globe-icon" />
-                                        <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)} />
-                                    </div>
-                                ),
-                            }}
-                        />
-                    </div>
-                    <div className="text-caption cr-help-text">
-                        To change connection from the command line use `cr [alias|user@host]`
-                    </div>
-                </div>
-                <div className="newtab-spacer" />
-                <div className="newtab-section">
-                    <div>{this.renderTabIconSelector()}</div>
-                </div>
-                <div className="newtab-spacer" />
-                <div className="newtab-section">
-                    <div>{this.renderTabColorSelector()}</div>
-                </div>
-            </div>
-        );
-    }
+interface ScreenWindowViewProps {
+    session: Session;
+    screen: Screen;
+    width: string;
 }
 
 // screen is not null
 @mobxReact.observer
-class ScreenWindowView extends React.Component<{ session: Session; screen: Screen; width: string }, {}> {
+class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
     rszObs: ResizeObserver;
     windowViewRef: React.RefObject<any>;
 
@@ -546,7 +407,7 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     }
 
     setSize(width: number, height: number): void {
-        let { screen } = this.props;
+        const { screen } = this.props;
         if (screen == null) {
             return;
         }
@@ -561,13 +422,20 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
     }
 
     componentDidMount() {
-        let wvElem = this.windowViewRef.current;
+        const { screen } = this.props;
+        const wvElem = this.windowViewRef.current;
         if (wvElem != null) {
-            let width = wvElem.offsetWidth;
-            let height = wvElem.offsetHeight;
+            const width = wvElem.offsetWidth;
+            const height = wvElem.offsetHeight;
             this.setSize(width, height);
             this.rszObs = new ResizeObserver(this.handleResize.bind(this));
             this.rszObs.observe(wvElem);
+        }
+        if (screen.isNew) {
+            screen.isNew = false;
+            mobx.action(() => {
+                GlobalModel.tabSettingsOpen.set(true);
+            })();
         }
     }
 
@@ -581,16 +449,16 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         if (entries.length == 0) {
             return;
         }
-        let entry = entries[0];
-        let width = entry.target.offsetWidth;
-        let height = entry.target.offsetHeight;
+        const entry = entries[0];
+        const width = entry.target.offsetWidth;
+        const height = entry.target.offsetHeight;
         mobx.action(() => {
             this.setSize_debounced(width, height);
         })();
     }
 
     getScreenLines(): ScreenLines {
-        let { screen } = this.props;
+        const { screen } = this.props;
         let win = GlobalModel.getScreenLinesById(screen.screenId);
         if (win == null) {
             win = GlobalModel.loadScreenLines(screen.screenId);
@@ -600,21 +468,16 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
 
     @boundMethod
     toggleRenderMode() {
-        let renderMode = this.renderMode.get();
+        const renderMode = this.renderMode.get();
         mobx.action(() => {
             this.renderMode.set(renderMode == "normal" ? "collapsed" : "normal");
         })();
     }
 
     renderError(message: string, fade: boolean) {
-        let { screen } = this.props;
+        const { screen, width } = this.props;
         return (
-            <div
-                className="window-view"
-                ref={this.windowViewRef}
-                data-screenid={screen.screenId}
-                style={{ width: this.props.width }}
-            >
+            <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId} style={{ width }}>
                 <div key="lines" className="lines"></div>
                 <div key="window-empty" className={cn("window-empty", { "should-fade": fade })}>
                     <div className="text-standard">{message}</div>
@@ -625,8 +488,8 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
 
     @boundMethod
     copyShareLink(): void {
-        let { screen } = this.props;
-        let shareLink = screen.getWebShareUrl();
+        const { screen } = this.props;
+        const shareLink = screen.getWebShareUrl();
         if (shareLink == null) {
             return;
         }
@@ -643,22 +506,22 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
 
     @boundMethod
     openScreenSettings(): void {
-        let { screen } = this.props;
+        const { screen } = this.props;
         mobx.action(() => {
             GlobalModel.screenSettingsModal.set({ sessionId: screen.sessionId, screenId: screen.screenId });
         })();
     }
 
     @boundMethod
-    buildLineComponent(lineProps: LineFactoryProps): JSX.Element {
-        let { screen } = this.props;
-        let { line, ...restProps } = lineProps;
-        let realLine: LineType = line as LineType;
+    buildLineComponent(lineProps: LineFactoryProps): React.JSX.Element {
+        const { screen } = this.props;
+        const { line, ...restProps } = lineProps;
+        const realLine: LineType = line as LineType;
         return <Line key={realLine.lineid} screen={screen} line={realLine} {...restProps} />;
     }
 
     determineVisibleLines(win: ScreenLines): LineType[] {
-        let { screen } = this.props;
+        const { screen } = this.props;
         if (screen.filterRunning.get()) {
             return win.getRunningCmdLines();
         }
@@ -667,16 +530,16 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
 
     @boundMethod
     disableFilter() {
-        let { screen } = this.props;
+        const { screen } = this.props;
         mobx.action(() => {
             screen.filterRunning.set(false);
         })();
     }
 
     render() {
-        let { session, screen } = this.props;
-        let win = this.getScreenLines();
-        if (win == null || !win.loaded.get()) {
+        const { session, screen, width } = this.props;
+        const win = this.getScreenLines();
+        if (!win.loaded.get()) {
             return this.renderError("...", true);
         }
         if (win.loadError.get() != null) {
@@ -685,69 +548,22 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
         if (this.width.get() == 0) {
             return this.renderError("", false);
         }
-        let cdata = GlobalModel.clientData.get();
+        const cdata = GlobalModel.clientData.get();
         if (cdata == null) {
             return this.renderError("loading client data", true);
         }
-        let isActive = screen.isActive();
-        let lines = this.determineVisibleLines(win);
-        let renderMode = this.renderMode.get();
+        const lines = this.determineVisibleLines(win);
+        const renderMode = this.renderMode.get();
         return (
-            <div className="window-view" ref={this.windowViewRef} style={{ width: this.props.width }}>
-                <div
-                    key="rendermode-tag"
-                    className={cn("rendermode-tag", { "is-active": isActive })}
-                    style={{ display: "none" }}
-                >
-                    <div className="render-mode" onClick={this.toggleRenderMode}>
-                        <If condition={renderMode == "normal"}>
-                            <i title="collapse" className="fa-sharp fa-solid fa-arrows-to-line" />
-                        </If>
-                        <If condition={renderMode == "collapsed"}>
-                            <i title="expand" className="fa-sharp fa-solid fa-arrows-from-line" />
-                        </If>
-                    </div>
-                </div>
-                <If condition={lines.length == 0}>
-                    <If condition={screen.nextLineNum.get() == 1}>
-                        <NewTabSettings screen={screen} />
-                    </If>
-                    <If condition={screen.nextLineNum.get() != 1}>
-                        <div className="window-empty" ref={this.windowViewRef} data-screenid={screen.screenId}>
-                            <div key="lines" className="lines"></div>
-                            <div key="window-empty" className={cn("window-empty")}>
-                                <div>
-                                    <code className="text-standard">
-                                        [workspace="{session.name.get()}" screen="{screen.name.get()}"]
-                                    </code>
-                                </div>
-                            </div>
-                        </div>
-                    </If>
-                </If>
-                <If condition={screen.isWebShared()}>
-                    <div key="share-tag" className="share-tag">
-                        <If condition={this.shareCopied.get()}>
-                            <div className="copied-indicator" />
-                        </If>
-                        <div className="share-tag-title">
-                            <i title="archived" className="fa-sharp fa-solid fa-share-nodes" /> web shared
-                        </div>
-                        <div className="share-tag-link">
-                            <div className="button is-wave-green is-outlined is-small" onClick={this.copyShareLink}>
-                                <span>copy link</span>
-                                <span className="icon">
-                                    <i className="fa-sharp fa-solid fa-copy" />
-                                </span>
-                            </div>
-                            <div
-                                className="button is-wave-green is-outlined is-small"
-                                onClick={this.openScreenSettings}
-                            >
-                                <span>open settings</span>
-                                <span className="icon">
-                                    <i className="fa-sharp fa-solid fa-cog" />
-                                </span>
+            <div className="window-view" ref={this.windowViewRef} style={{ width }}>
+                <If condition={lines.length == 0 && screen.nextLineNum.get() != 1}>
+                    <div className="window-empty" ref={this.windowViewRef} data-screenid={screen.screenId}>
+                        <div key="lines" className="lines"></div>
+                        <div key="window-empty" className={cn("window-empty")}>
+                            <div>
+                                <code className="text-standard">
+                                    [workspace="{session.name.get()}" tab="{screen.name.get()}"]
+                                </code>
                             </div>
                         </div>
                     </div>
@@ -763,15 +579,11 @@ class ScreenWindowView extends React.Component<{ session: Session; screen: Scree
                 </If>
                 <If condition={screen.filterRunning.get()}>
                     <div className="filter-running">
-                        <Button
-                            variant="outlined"
-                            color="color-yellow"
-                            style={{ borderRadius: "999px" }}
-                            onClick={this.disableFilter}
-                        >
+                        <div className="filter-mask" />
+                        <div className="filter-content" onClick={this.disableFilter}>
                             Showing Running Commands &nbsp;
-                            <i className="fa-sharp fa-solid fa-xmark" />
-                        </Button>
+                            <i className="fa-sharp fa-solid fa-xmark-large" />
+                        </div>
                     </div>
                 </If>
             </div>

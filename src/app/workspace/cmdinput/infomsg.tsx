@@ -8,7 +8,10 @@ import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
-import { makeExternLink } from "@/util/util";
+import * as appconst from "@/app/appconst";
+import { AuxiliaryCmdView } from "./auxview";
+
+import "./infomsg.less";
 
 dayjs.extend(localizedFormat);
 
@@ -40,29 +43,22 @@ class InfoMsg extends React.Component<{}, {}> {
     }
 
     render() {
-        let model = GlobalModel;
-        let inputModel = model.inputModel;
-        let infoMsg = inputModel.infoMsg.get();
-        let infoShow = inputModel.infoShow.get();
+        const inputModel = GlobalModel.inputModel;
+        const infoMsg: InfoType = inputModel.infoMsg.get();
+        const infoShow = inputModel.getActiveAuxView() == appconst.InputAuxView_Info;
         let line: string = null;
         let istr: string = null;
         let idx: number = 0;
         let titleStr = null;
-        let remoteEditKey = "inforemoteedit";
         if (infoMsg != null) {
             titleStr = infoMsg.infotitle;
         }
-        let activeScreen = model.getActiveScreen();
         if (!infoShow) {
             return null;
         }
+
         return (
-            <div className="cmd-input-info" style={{ display: infoShow ? "block" : "none" }}>
-                <If condition={infoMsg?.infotitle}>
-                    <div key="infotitle" className="info-title">
-                        {titleStr}
-                    </div>
-                </If>
+            <AuxiliaryCmdView title={titleStr} className="cmd-input-info">
                 <If condition={infoMsg?.infomsg}>
                     <div key="infomsg" className="info-msg">
                         <If condition={infoMsg.infomsghtml}>
@@ -104,8 +100,11 @@ class InfoMsg extends React.Component<{}, {}> {
                     <div key="infoerror" className="info-error">
                         [error] {infoMsg.infoerror}
                     </div>
+                    <If condition={infoMsg.infoerrorcode == appconst.ErrorCode_InvalidCwd}>
+                        <div className="info-error">to reset, run: /reset:cwd</div>
+                    </If>
                 </If>
-            </div>
+            </AuxiliaryCmdView>
         );
     }
 }

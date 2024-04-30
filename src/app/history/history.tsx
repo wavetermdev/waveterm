@@ -8,23 +8,20 @@ import { If, For } from "tsx-control-statements/components";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import cn from "classnames";
-import { GlobalModel, GlobalCommandRunner, Cmd } from "@/models";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Line } from "@/app/line/linecomps";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
-import { TextField } from "@/elements";
+import { TextField, Dropdown, Button, CopyButton } from "@/elements";
 
-import { ReactComponent as AngleDownIcon } from "@/assets/icons/history/angle-down.svg";
 import { ReactComponent as ChevronLeftIcon } from "@/assets/icons/history/chevron-left.svg";
 import { ReactComponent as ChevronRightIcon } from "@/assets/icons/history/chevron-right.svg";
 import { ReactComponent as RightIcon } from "@/assets/icons/history/right.svg";
 import { ReactComponent as SearchIcon } from "@/assets/icons/history/search.svg";
 import { ReactComponent as TrashIcon } from "@/assets/icons/trash.svg";
 import { ReactComponent as CheckedCheckbox } from "@/assets/icons/checked-checkbox.svg";
-import { ReactComponent as CheckIcon } from "@/assets/icons/line/check.svg";
-import { ReactComponent as CopyIcon } from "@/assets/icons/history/copy.svg";
 
 import "./history.less";
 import { MainView } from "../common/elements/mainview";
@@ -37,7 +34,7 @@ function isBlank(s: string) {
 }
 
 function getHistoryViewTs(nowDate: Date, ts: number): string {
-    let itemDate = new Date(ts);
+    const itemDate = new Date(ts);
     if (nowDate.getFullYear() != itemDate.getFullYear()) {
         return dayjs(itemDate).format("M/D/YY");
     } else if (nowDate.getMonth() != itemDate.getMonth() || nowDate.getDate() != itemDate.getDate()) {
@@ -53,7 +50,7 @@ function formatRemoteName(rnames: Record<string, string>, rptr: RemotePtrType): 
     }
     let rname = rnames[rptr.remoteid];
     if (rname == null) {
-        rname = rptr.remoteid.substr(0, 8);
+        rname = rptr.remoteid.substring(0, 8);
     }
     if (!isBlank(rptr.name)) {
         rname = rname + ":" + rptr.name;
@@ -65,22 +62,16 @@ function formatSSName(snames: Record<string, string>, scrnames: Record<string, s
     if (isBlank(item.sessionid)) {
         return "";
     }
-    let sessionName = "#" + (snames[item.sessionid] ?? item.sessionid.substr(0, 8));
-    if (isBlank(item.screenid)) {
-        return sessionName;
-    }
-    // let screenName = "/" + (scrnames[item.screenid] ?? item.screenid.substr(0, 8));
-    // return sessionName + screenName;
-    return sessionName;
+    return "#" + (snames[item.sessionid] ?? item.sessionid.substring(0, 8));
 }
 
 function formatSessionName(snames: Record<string, string>, sessionId: string): string {
     if (isBlank(sessionId)) {
         return "";
     }
-    let sname = snames[sessionId];
+    const sname = snames[sessionId];
     if (sname == null) {
-        return sessionId.substr(0, 8);
+        return sessionId.substring(0, 8);
     }
     return "#" + sname;
 }
@@ -122,7 +113,6 @@ class HistoryCmdStr extends React.Component<
         cmdstr: string;
         onUse: () => void;
         onCopy: () => void;
-        isCopied: boolean;
         fontSize: "normal" | "large";
         limitHeight: boolean;
     },
@@ -145,27 +135,41 @@ class HistoryCmdStr extends React.Component<
     }
 
     render() {
-        let { isCopied, cmdstr, fontSize, limitHeight } = this.props;
+        const { cmdstr, fontSize, limitHeight } = this.props;
         return (
             <div className={cn("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
-                <If condition={isCopied}>
-                    <div key="copied" className="copied-indicator">
-                        <div>copied</div>
-                    </div>
-                </If>
-                <div key="use" className="use-button hoverEffect" title="Use Command" onClick={this.handleUse}>
-                    <CheckIcon className="icon" />
-                </div>
                 <div key="code" className="code-div">
                     <code>{cmdstr}</code>
                 </div>
-                <div key="copy" className="copy-control hoverEffect">
-                    <div className="inner-copy" onClick={this.handleCopy} title="copy">
-                        <CopyIcon className="icon" />
-                    </div>
+                <div key="copy" className="actions-block">
+                    <CopyButton onClick={this.handleCopy} title="Copy" />
+                    <Button className="secondary ghost" title="Use Command" onClick={this.handleUse}>
+                        <i className="fa-sharp fa-solid fa-play"></i>
+                    </Button>
                 </div>
             </div>
         );
+    }
+}
+
+class HistoryKeybindings extends React.Component<{}, {}> {
+    @boundMethod
+    componentDidMount() {
+        const historyViewModel = GlobalModel.historyViewModel;
+        const keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("mainview", "history", "generic:cancel", (waveEvent) => {
+            historyViewModel.handleUserClose();
+            return true;
+        });
+    }
+
+    @boundMethod
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("history");
+    }
+
+    render() {
+        return null;
     }
 }
 
@@ -176,7 +180,6 @@ class HistoryView extends React.Component<{}, {}> {
     tableRszObs: ResizeObserver;
     sessionDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "sessionDropdownActive" });
     remoteDropdownActive: OV<boolean> = mobx.observable.box(false, { name: "remoteDropdownActive" });
-    copiedItemId: OV<string> = mobx.observable.box(null, { name: "copiedItemId" });
 
     @boundMethod
     handleNext() {
@@ -197,7 +200,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     searchKeyDown(e: any) {
-        let waveEvent = adaptFromReactOrNativeKeyEvent(e);
+        const waveEvent = adaptFromReactOrNativeKeyEvent(e);
         if (checkKeyPressed(waveEvent, "Enter")) {
             e.preventDefault();
             GlobalModel.historyViewModel.submitSearch();
@@ -206,7 +209,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     handleSelect(historyId: string) {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             if (hvm.selectedItems.get(historyId)) {
                 hvm.selectedItems.delete(historyId);
@@ -218,9 +221,9 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     handleControlCheckbox() {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
-            let numSelected = hvm.selectedItems.size;
+            const numSelected = hvm.selectedItems.size;
             if (numSelected > 0) {
                 hvm.selectedItems.clear();
             } else {
@@ -277,8 +280,8 @@ class HistoryView extends React.Component<{}, {}> {
     }
 
     searchFromTsInputValue(): string {
-        let hvm = GlobalModel.historyViewModel;
-        let fromDate = hvm.searchFromDate.get();
+        const hvm = GlobalModel.historyViewModel;
+        const fromDate = hvm.searchFromDate.get();
         if (fromDate == null) {
             return dayjs().format("YYYY-MM-DD");
         }
@@ -286,15 +289,15 @@ class HistoryView extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handleFromTsChange(e: any): void {
-        let hvm = GlobalModel.historyViewModel;
-        let newDate = e.target.value;
-        let today = dayjs().format("YYYY-MM-DD");
+    handleFromTsChange(date: Date): void {
+        const hvm = GlobalModel.historyViewModel;
+        const newDate = dayjs(date).format("YYYY-MM-DD");
+        const today = dayjs().format("YYYY-MM-DD");
         if (newDate == "" || newDate == today) {
             hvm.setFromDate(null);
             return;
         }
-        hvm.setFromDate(e.target.value);
+        hvm.setFromDate(newDate);
     }
 
     @boundMethod
@@ -309,7 +312,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     clickLimitSession(sessionId: string): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             this.sessionDropdownActive.set(false);
             hvm.setSearchSessionId(sessionId);
@@ -328,7 +331,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     clickLimitRemote(remoteId: string): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             this.remoteDropdownActive.set(false);
             hvm.setSearchRemoteId(remoteId);
@@ -337,7 +340,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     toggleShowMeta(): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             hvm.setSearchShowMeta(!hvm.searchShowMeta.get());
         })();
@@ -345,7 +348,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     toggleFilterCmds(): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         mobx.action(() => {
             hvm.setSearchFilterCmds(!hvm.searchFilterCmds.get());
         })();
@@ -353,7 +356,7 @@ class HistoryView extends React.Component<{}, {}> {
 
     @boundMethod
     resetAllFilters(): void {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         hvm.resetAllFilters();
     }
 
@@ -363,14 +366,6 @@ class HistoryView extends React.Component<{}, {}> {
             return;
         }
         navigator.clipboard.writeText(item.cmdstr);
-        mobx.action(() => {
-            this.copiedItemId.set(item.historyid);
-        })();
-        setTimeout(() => {
-            mobx.action(() => {
-                this.copiedItemId.set(null);
-            })();
-        }, 600);
     }
 
     @boundMethod
@@ -380,7 +375,7 @@ class HistoryView extends React.Component<{}, {}> {
         }
         mobx.action(() => {
             GlobalModel.showSessionView();
-            GlobalModel.inputModel.setCurLine(item.cmdstr);
+            GlobalModel.inputModel.updateCmdLine({ str: item.cmdstr, pos: item.cmdstr.length });
             setTimeout(() => GlobalModel.inputModel.giveFocus(), 50);
         })();
     }
@@ -390,29 +385,65 @@ class HistoryView extends React.Component<{}, {}> {
         GlobalModel.historyViewModel.closeView();
     }
 
+    @boundMethod
+    getDefaultWorkspace(sessionId: string, names: Record<string, string>): string {
+        if (sessionId == null) {
+            return "Limit Workspace";
+        }
+        return formatSessionName(names, sessionId);
+    }
+
+    @boundMethod
+    getWorkspaceItems(snames: Record<string, string>, sessionIds: string[]): { label: string; value: string }[] {
+        return sessionIds.reduce<{ label: string; value: string }[]>((items, sessionId) => {
+            items.push({ label: "#" + snames[sessionId], value: sessionId });
+            return items;
+        }, []);
+    }
+
+    @boundMethod
+    getDefaultRemote(remoteId: string, names: Record<string, string>): string {
+        if (remoteId == null) {
+            return "Limit Remote";
+        }
+        return formatRemoteName(names, { remoteid: remoteId });
+    }
+
+    @boundMethod
+    getRemoteItems(rnames: Record<string, string>, remoteIds: string[]): { label: string; value: string }[] {
+        return remoteIds.reduce<{ label: string; value: string }[]>(
+            (items, remoteId) => {
+                items.push({ label: "[" + rnames[remoteId] + "]", value: remoteId });
+                return items;
+            },
+            [{ label: "(all remotes)", value: null }]
+        );
+    }
+
     render() {
-        let isHidden = GlobalModel.activeMainView.get() != "history";
+        const isHidden = GlobalModel.activeMainView.get() != "history";
         if (isHidden) {
             return null;
         }
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         let item: HistoryItem = null;
-        let items = hvm.items.slice();
-        let nowDate = new Date();
-        let snames = GlobalModel.getSessionNames();
-        let rnames = GlobalModel.getRemoteNames();
-        let scrnames = GlobalModel.getScreenNames();
-        let hasMore = hvm.hasMore.get();
-        let offset = hvm.offset.get();
-        let numSelected = hvm.selectedItems.size;
-        let activeItemId = hvm.activeItem.get();
-        let sessionIds = Object.keys(snames);
-        let sessionId: string = null;
-        let remoteIds = Object.keys(rnames);
-        let remoteId: string = null;
+        const items = hvm.items.slice();
+        const nowDate = new Date();
+        const snames = GlobalModel.getSessionNames();
+        const rnames = GlobalModel.getRemoteNames();
+        const scrnames = GlobalModel.getScreenNames();
+        const hasMore = hvm.hasMore.get();
+        const offset = hvm.offset.get();
+        const numSelected = hvm.selectedItems.size;
+        const activeItemId = hvm.activeItem.get();
+        const sessionIds = Object.keys(snames);
+        const remoteIds = Object.keys(rnames);
 
         return (
-            <MainView viewName="history" title="History" onClose={this.handleClose}>
+            <MainView className="history-view" title="History" onClose={this.handleClose}>
+                <If condition={!isHidden}>
+                    <HistoryKeybindings></HistoryKeybindings>
+                </If>
                 <div key="search" className="history-search">
                     <div className="main-search field">
                         <TextField
@@ -423,84 +454,22 @@ class HistoryView extends React.Component<{}, {}> {
                         />
                     </div>
                     <div className="advanced-search">
-                        <div
-                            className={cn("dropdown", "session-dropdown", {
-                                "is-active": this.sessionDropdownActive.get(),
-                            })}
-                        >
-                            <div onClick={this.toggleSessionDropdown}>
-                                <span className="label">
-                                    {hvm.searchSessionId.get() == null
-                                        ? "Limit Workspace"
-                                        : formatSessionName(snames, hvm.searchSessionId.get())}
-                                </span>
-                                <AngleDownIcon className="icon" />
-                            </div>
-                            <div className="dropdown-menu" role="menu">
-                                <div className="dropdown-content has-background-black-ter">
-                                    <div
-                                        onClick={() => this.clickLimitSession(null)}
-                                        key="all"
-                                        className="dropdown-item"
-                                    >
-                                        (all workspaces)
-                                    </div>
-                                    <For each="sessionId" of={sessionIds}>
-                                        <div
-                                            onClick={() => this.clickLimitSession(sessionId)}
-                                            key={sessionId}
-                                            className="dropdown-item"
-                                        >
-                                            #{snames[sessionId]}
-                                        </div>
-                                    </For>
-                                </div>
-                            </div>
-                        </div>
-                        <div
-                            className={cn("dropdown", "remote-dropdown", {
-                                "is-active": this.remoteDropdownActive.get(),
-                            })}
-                        >
-                            <div onClick={this.toggleRemoteDropdown}>
-                                <span className="label">
-                                    {hvm.searchRemoteId.get() == null
-                                        ? "Limit Remote"
-                                        : formatRemoteName(rnames, { remoteid: hvm.searchRemoteId.get() })}
-                                </span>
-                                <AngleDownIcon className="icon" />
-                            </div>
-                            <div className="dropdown-menu" role="menu">
-                                <div className="dropdown-content has-background-black-ter">
-                                    <div
-                                        onClick={() => this.clickLimitRemote(null)}
-                                        key="all"
-                                        className="dropdown-item"
-                                    >
-                                        (all remotes)
-                                    </div>
-                                    <For each="remoteId" of={remoteIds}>
-                                        <div
-                                            onClick={() => this.clickLimitRemote(remoteId)}
-                                            key={remoteId}
-                                            className="dropdown-item"
-                                        >
-                                            [{rnames[remoteId]}]
-                                        </div>
-                                    </For>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="fromts">
+                        <Dropdown
+                            className="workspace-dropdown"
+                            defaultValue={this.getDefaultWorkspace(hvm.searchSessionId.get(), snames)}
+                            options={this.getWorkspaceItems(snames, sessionIds)}
+                            onChange={this.clickLimitSession}
+                        />
+                        <Dropdown
+                            className="remote-dropdown"
+                            defaultValue={this.getDefaultRemote(hvm.searchRemoteId.get(), rnames)}
+                            options={this.getRemoteItems(rnames, remoteIds)}
+                            onChange={this.clickLimitRemote}
+                        />
+                        {/* <div className="fromts">
                             <div className="fromts-text">From:&nbsp;</div>
-                            <div className="hoverEffect">
-                                <input
-                                    type="date"
-                                    onChange={this.handleFromTsChange}
-                                    value={this.searchFromTsInputValue()}
-                                />
-                            </div>
-                        </div>
+                            <DatePicker selectedDate={new Date()} onSelectDate={this.handleFromTsChange} />
+                        </div> */}
                         <div
                             className="filter-cmds search-checkbox hoverEffect"
                             title="Filter common commands like 'ls' and 'cd' from the results"
@@ -516,9 +485,9 @@ class HistoryView extends React.Component<{}, {}> {
                                 Filter Cmds
                             </div>
                         </div>
-                        <div onClick={this.resetAllFilters} className="button reset-button hoverEffect">
+                        <Button className="secondary reset-button" onClick={this.resetAllFilters}>
                             Reset All
-                        </div>
+                        </Button>
                     </div>
                 </div>
                 <div key="control1" className={cn("control-bar", "is-top", { "is-hidden": items.length == 0 })}>
@@ -565,78 +534,82 @@ class HistoryView extends React.Component<{}, {}> {
                     </div>
                 </If>
                 <div key="hsr" className="history-scroll-region">
-                    <table className="history-table" cellSpacing="0" cellPadding="0" border={0} ref={this.tableRef}>
-                        <tbody>
-                            <For index="idx" each="item" of={items}>
-                                <tr
-                                    key={item.historyid}
-                                    className={cn("history-item", {
-                                        "is-selected": hvm.selectedItems.get(item.historyid),
-                                    })}
-                                >
-                                    <td className="selectbox" onClick={() => this.handleSelect(item.historyid)}>
-                                        <HistoryCheckbox checked={hvm.selectedItems.get(item.historyid)} />
-                                    </td>
-                                    <td className="cmdstr">
-                                        <HistoryCmdStr
-                                            cmdstr={item.cmdstr}
-                                            onUse={() => this.handleUse(item)}
-                                            onCopy={() => this.handleCopy(item)}
-                                            isCopied={this.copiedItemId.get() == item.historyid}
-                                            fontSize="normal"
-                                            limitHeight={true}
-                                        />
-                                    </td>
-                                    <td className="workspace text-standard">{formatSSName(snames, scrnames, item)}</td>
-                                    <td className="remote text-standard">{formatRemoteName(rnames, item.remote)}</td>
-                                    <td className="ts text-standard">{getHistoryViewTs(nowDate, item.ts)}</td>
-                                    <td className="downarrow" onClick={() => this.activateItem(item.historyid)}>
-                                        <If condition={activeItemId != item.historyid}>
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 16 16"
-                                                fill="none"
-                                            >
-                                                <path
-                                                    d="M12.1297 6.62492C12.3999 6.93881 12.3645 7.41237 12.0506 7.68263L8.48447 10.7531C8.20296 10.9955 7.78645 10.9952 7.50519 10.7526L3.94636 7.68213C3.63274 7.41155 3.59785 6.93796 3.86843 6.62434C4.13901 6.31072 4.6126 6.27583 4.92622 6.54641L7.99562 9.19459L11.0719 6.54591C11.3858 6.27565 11.8594 6.31102 12.1297 6.62492Z"
-                                                    fill="#C3C8C2"
-                                                />
-                                            </svg>
-                                        </If>
-                                        <If condition={activeItemId == item.historyid}>
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                width="16"
-                                                height="16"
-                                                viewBox="0 0 16 16"
-                                                fill="none"
-                                            >
-                                                <path
-                                                    d="M3.87035 9.37508C3.60009 9.06119 3.63546 8.58763 3.94936 8.31737L7.51553 5.24692C7.79704 5.00455 8.21355 5.00476 8.49481 5.24742L12.0536 8.31787C12.3673 8.58845 12.4022 9.06204 12.1316 9.37566C11.861 9.68928 11.3874 9.72417 11.0738 9.45359L8.00438 6.80541L4.92806 9.45409C4.61416 9.72435 4.14061 9.68898 3.87035 9.37508Z"
-                                                    fill="#C3C8C2"
-                                                />
-                                            </svg>
-                                        </If>
-                                    </td>
-                                </tr>
-                                <If condition={activeItemId == item.historyid}>
-                                    <tr className="active-history-item">
-                                        <td colSpan={6}>
-                                            <LineContainer
-                                                key={activeItemId}
-                                                historyId={activeItemId}
-                                                width={this.tableWidth.get()}
+                    <div className="history-table" ref={this.tableRef}>
+                        <For index="idx" each="item" of={items}>
+                            <div
+                                key={item.historyid}
+                                className={cn("row history-item", {
+                                    "is-selected": hvm.selectedItems.get(item.historyid),
+                                })}
+                            >
+                                <div className="cell selectbox" onClick={() => this.handleSelect(item.historyid)}>
+                                    <HistoryCheckbox checked={hvm.selectedItems.get(item.historyid)} />
+                                </div>
+                                <div className="cell cmdstr">
+                                    <HistoryCmdStr
+                                        cmdstr={item.cmdstr}
+                                        onUse={() => this.handleUse(item)}
+                                        onCopy={() => this.handleCopy(item)}
+                                        fontSize="normal"
+                                        limitHeight={true}
+                                    />
+                                    <div
+                                        className="flex-spacer activate-item-spacer"
+                                        onClick={() => this.activateItem(item.historyid)}
+                                    />
+                                </div>
+                                <div className="cell workspace">{formatSSName(snames, scrnames, item)}</div>
+                                <div className="cell remote">{formatRemoteName(rnames, item.remote)}</div>
+                                <div className="cell ts">{getHistoryViewTs(nowDate, item.ts)}</div>
+                                <div className="cell downarrow" onClick={() => this.activateItem(item.historyid)}>
+                                    <If condition={activeItemId != item.historyid}>
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 16 16"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M12.1297 6.62492C12.3999 6.93881 12.3645 7.41237 12.0506 7.68263L8.48447 10.7531C8.20296 10.9955 7.78645 10.9952 7.50519 10.7526L3.94636 7.68213C3.63274 7.41155 3.59785 6.93796 3.86843 6.62434C4.13901 6.31072 4.6126 6.27583 4.92622 6.54641L7.99562 9.19459L11.0719 6.54591C11.3858 6.27565 11.8594 6.31102 12.1297 6.62492Z"
+                                                fill="#C3C8C2"
                                             />
-                                        </td>
-                                    </tr>
-                                </If>
-                            </For>
-                        </tbody>
-                    </table>
+                                        </svg>
+                                    </If>
+                                    <If condition={activeItemId == item.historyid}>
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 16 16"
+                                            fill="none"
+                                        >
+                                            <path
+                                                d="M3.87035 9.37508C3.60009 9.06119 3.63546 8.58763 3.94936 8.31737L7.51553 5.24692C7.79704 5.00455 8.21355 5.00476 8.49481 5.24742L12.0536 8.31787C12.3673 8.58845 12.4022 9.06204 12.1316 9.37566C11.861 9.68928 11.3874 9.72417 11.0738 9.45359L8.00438 6.80541L4.92806 9.45409C4.61416 9.72435 4.14061 9.68898 3.87035 9.37508Z"
+                                                fill="#C3C8C2"
+                                            />
+                                        </svg>
+                                    </If>
+                                </div>
+                            </div>
+                            <If condition={activeItemId == item.historyid}>
+                                <div className="row active-history-item">
+                                    <div className="cell">
+                                        <LineContainer
+                                            key={activeItemId}
+                                            historyId={activeItemId}
+                                            width={this.tableWidth.get()}
+                                        />
+                                    </div>
+                                </div>
+                            </If>
+                        </For>
+                    </div>
                 </div>
-                <div key="control2" className={cn("control-bar", { "is-hidden": items.length == 0 || !hasMore })}>
+                <div
+                    key="control2"
+                    className={cn("control-bar", "is-bottom", { "is-hidden": items.length == 0 || !hasMore })}
+                >
                     <div className="spacer" />
                     <div className="showing-text">
                         Showing {offset + 1}-{offset + items.length}
@@ -668,7 +641,7 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
 
     constructor(props: any) {
         super(props);
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         this.historyItem = hvm.getHistoryItemById(props.historyId);
         if (this.historyItem == null) {
             return;
@@ -683,7 +656,7 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
 
     @boundMethod
     viewInContext() {
-        let screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
+        const screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
         if (screen == null) {
             return null;
         }
@@ -692,7 +665,7 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
     }
 
     render() {
-        let hvm = GlobalModel.historyViewModel;
+        const hvm = GlobalModel.historyViewModel;
         if (this.historyItem == null || this.props.width == 0) {
             return null;
         }
@@ -708,16 +681,17 @@ class LineContainer extends React.Component<{ historyId: string; width: number }
         if (width < 400) {
             width = 400;
         }
-        let session = GlobalModel.getSessionById(this.historyItem.sessionid);
-        let screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
+        const session = GlobalModel.getSessionById(this.historyItem.sessionid);
+        const screen = GlobalModel.getScreenById(this.historyItem.sessionid, this.historyItem.screenid);
         let ssStr = "";
         let canViewInContext = false;
         if (session != null && screen != null) {
             ssStr = sprintf("#%s[%s]", session.name.get(), screen.name.get());
             canViewInContext = true;
         }
+        const termRenderVersion = GlobalModel.termRenderVersion.get();
         return (
-            <div className="line-container">
+            <div className="line-container" key={termRenderVersion}>
                 <If condition={canViewInContext}>
                     <div className="line-context">
                         <div title="View in Context" className="vic-btn" onClick={this.viewInContext}>

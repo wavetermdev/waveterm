@@ -18,6 +18,8 @@ interface TextFieldProps {
     className?: string;
     onChange?: (value: string) => void;
     onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+    onFocus?: () => void;
+    onBlur?: () => void;
     placeholder?: string;
     defaultValue?: string;
     decoration?: TextFieldDecorationProps;
@@ -25,6 +27,7 @@ interface TextFieldProps {
     maxLength?: number;
     autoFocus?: boolean;
     disabled?: boolean;
+    isNumber?: boolean;
 }
 
 interface TextFieldState {
@@ -78,6 +81,9 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
     @boundMethod
     handleFocus() {
         this.setState({ focused: true });
+        if (this.props.onFocus) {
+            this.props.onFocus();
+        }
     }
 
     @boundMethod
@@ -91,6 +97,9 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                 this.setState({ error: false, focused: false });
             }
         }
+        if (this.props.onBlur) {
+            this.props.onBlur();
+        }
     }
 
     @boundMethod
@@ -100,8 +109,12 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
 
     @boundMethod
     handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const { required, onChange } = this.props;
+        const { required, onChange, isNumber } = this.props;
         const inputValue = e.target.value;
+
+        if (isNumber && inputValue !== "" && !/^\d*$/.test(inputValue)) {
+            return;
+        }
 
         // Check if value is empty and the field is required
         if (required && !inputValue) {
@@ -151,7 +164,9 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         </label>
                     </If>
                     <input
-                        className={cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration })}
+                        className={cn("wave-textfield-inner-input", "wave-input", {
+                            "offset-left": decoration?.startDecoration,
+                        })}
                         ref={this.inputRef}
                         id={label}
                         value={inputValue}

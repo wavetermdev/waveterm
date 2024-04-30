@@ -11,9 +11,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"log"
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
@@ -43,12 +46,10 @@ const (
 	DataEndPacketStr        = "dataend"
 	ResponsePacketStr       = "resp" // rpc-response
 	DonePacketStr           = "done"
-	CmdErrorPacketStr       = "cmderror" // command
 	MessagePacketStr        = "message"
 	GetCmdPacketStr         = "getcmd"    // rpc
 	UntailCmdPacketStr      = "untailcmd" // rpc
 	CdPacketStr             = "cd"        // rpc
-	CmdDataPacketStr        = "cmddata"   // rpc-response
 	RawPacketStr            = "raw"
 	SpecialInputPacketStr   = "sinput"         // command
 	CompGenPacketStr        = "compgen"        // rpc
@@ -60,8 +61,12 @@ const (
 	WriteFileReadyPacketStr = "writefileready" // rpc-response
 	WriteFileDonePacketStr  = "writefiledone"  // rpc-response
 	FileDataPacketStr       = "filedata"
+	FileStatPacketStr       = "filestat"
 	LogPacketStr            = "log" // logging packet (sent from waveshell back to server)
 	ShellStatePacketStr     = "shellstate"
+	RpcInputPacketStr       = "rpcinput" // rpc-followup
+	SudoRequestPacketStr    = "sudorequest"
+	SudoResponsePacketStr   = "sudoresponse"
 
 	OpenAIPacketStr   = "openai" // other
 	OpenAICloudReqStr = "openai-cloudreq"
@@ -70,6 +75,11 @@ const (
 const (
 	ShellType_bash = "bash"
 	ShellType_zsh  = "zsh"
+)
+
+const (
+	EC_InvalidCwd    = "ERRCWD"
+	EC_CmdNotRunning = "CMDNOTRUNNING"
 )
 
 const PacketSenderQueueSize = 20
@@ -86,7 +96,6 @@ func init() {
 	TypeStrToFactory[PingPacketStr] = reflect.TypeOf(PingPacketType{})
 	TypeStrToFactory[ResponsePacketStr] = reflect.TypeOf(ResponsePacketType{})
 	TypeStrToFactory[DonePacketStr] = reflect.TypeOf(DonePacketType{})
-	TypeStrToFactory[CmdErrorPacketStr] = reflect.TypeOf(CmdErrorPacketType{})
 	TypeStrToFactory[MessagePacketStr] = reflect.TypeOf(MessagePacketType{})
 	TypeStrToFactory[CmdStartPacketStr] = reflect.TypeOf(CmdStartPacketType{})
 	TypeStrToFactory[CmdDonePacketStr] = reflect.TypeOf(CmdDonePacketType{})
@@ -94,7 +103,6 @@ func init() {
 	TypeStrToFactory[UntailCmdPacketStr] = reflect.TypeOf(UntailCmdPacketType{})
 	TypeStrToFactory[InitPacketStr] = reflect.TypeOf(InitPacketType{})
 	TypeStrToFactory[CdPacketStr] = reflect.TypeOf(CdPacketType{})
-	TypeStrToFactory[CmdDataPacketStr] = reflect.TypeOf(CmdDataPacketType{})
 	TypeStrToFactory[RawPacketStr] = reflect.TypeOf(RawPacketType{})
 	TypeStrToFactory[SpecialInputPacketStr] = reflect.TypeOf(SpecialInputPacketType{})
 	TypeStrToFactory[DataPacketStr] = reflect.TypeOf(DataPacketType{})
@@ -112,6 +120,10 @@ func init() {
 	TypeStrToFactory[WriteFileDonePacketStr] = reflect.TypeOf(WriteFileDonePacketType{})
 	TypeStrToFactory[LogPacketStr] = reflect.TypeOf(LogPacketType{})
 	TypeStrToFactory[ShellStatePacketStr] = reflect.TypeOf(ShellStatePacketType{})
+	TypeStrToFactory[FileStatPacketStr] = reflect.TypeOf(FileStatPacketType{})
+	TypeStrToFactory[RpcInputPacketStr] = reflect.TypeOf(RpcInputPacketType{})
+	TypeStrToFactory[SudoRequestPacketStr] = reflect.TypeOf(SudoRequestPacketType{})
+	TypeStrToFactory[SudoResponsePacketStr] = reflect.TypeOf(SudoResponsePacketType{})
 
 	var _ RpcPacketType = (*RunPacketType)(nil)
 	var _ RpcPacketType = (*GetCmdPacketType)(nil)
@@ -124,18 +136,21 @@ func init() {
 
 	var _ RpcResponsePacketType = (*CmdStartPacketType)(nil)
 	var _ RpcResponsePacketType = (*ResponsePacketType)(nil)
-	var _ RpcResponsePacketType = (*CmdDataPacketType)(nil)
 	var _ RpcResponsePacketType = (*StreamFileResponseType)(nil)
 	var _ RpcResponsePacketType = (*FileDataPacketType)(nil)
 	var _ RpcResponsePacketType = (*WriteFileReadyPacketType)(nil)
 	var _ RpcResponsePacketType = (*WriteFileDonePacketType)(nil)
 	var _ RpcResponsePacketType = (*ShellStatePacketType)(nil)
 
+	var _ RpcFollowUpPacketType = (*FileDataPacketType)(nil)
+	var _ RpcFollowUpPacketType = (*RpcInputPacketType)(nil)
+
 	var _ CommandPacketType = (*DataPacketType)(nil)
 	var _ CommandPacketType = (*DataAckPacketType)(nil)
 	var _ CommandPacketType = (*CmdDonePacketType)(nil)
 	var _ CommandPacketType = (*SpecialInputPacketType)(nil)
 	var _ CommandPacketType = (*CmdFinalPacketType)(nil)
+	var _ CommandPacketType = (*SudoResponsePacketType)(nil)
 }
 
 func RegisterPacketType(typeStr string, rtype reflect.Type) {
@@ -151,36 +166,6 @@ func MakePacket(packetType string) (PacketType, error) {
 	return rtn.Interface().(PacketType), nil
 }
 
-type CmdDataPacketType struct {
-	Type       string          `json:"type"`
-	RespId     string          `json:"respid"`
-	CK         base.CommandKey `json:"ck"`
-	PtyPos     int64           `json:"ptypos"`
-	PtyLen     int64           `json:"ptylen"`
-	RunPos     int64           `json:"runpos"`
-	RunLen     int64           `json:"runlen"`
-	PtyData64  string          `json:"ptydata64"`
-	PtyDataLen int             `json:"ptydatalen"`
-	RunData64  string          `json:"rundata64"`
-	RunDataLen int             `json:"rundatalen"`
-}
-
-func (*CmdDataPacketType) GetType() string {
-	return CmdDataPacketStr
-}
-
-func (p *CmdDataPacketType) GetResponseId() string {
-	return p.RespId
-}
-
-func (*CmdDataPacketType) GetResponseDone() bool {
-	return false
-}
-
-func MakeCmdDataPacket(reqId string) *CmdDataPacketType {
-	return &CmdDataPacketType{Type: CmdDataPacketStr, RespId: reqId}
-}
-
 type PingPacketType struct {
 	Type string `json:"type"`
 }
@@ -193,6 +178,26 @@ func MakePingPacket() *PingPacketType {
 	return &PingPacketType{Type: PingPacketStr}
 }
 
+type RpcInputPacketType struct {
+	Type  string `json:"type"`
+	ReqId string `json:"reqid"`
+	Data  []byte `json:"data"`
+}
+
+func (*RpcInputPacketType) GetType() string {
+	return RpcInputPacketStr
+}
+
+func (p *RpcInputPacketType) GetAssociatedReqId() string {
+	return p.ReqId
+}
+
+func MakeRpcInputPacket(reqId string) *RpcInputPacketType {
+	return &RpcInputPacketType{Type: RpcInputPacketStr, ReqId: reqId}
+}
+
+// these packets can travel either direction
+// so it is both a RpcResponsePacketType and an RpcFollowUpPacketType
 type FileDataPacketType struct {
 	Type   string `json:"type"`
 	RespId string `json:"respid"`
@@ -210,6 +215,10 @@ func MakeFileDataPacket(reqId string) *FileDataPacketType {
 		Type:   FileDataPacketStr,
 		RespId: reqId,
 	}
+}
+
+func (p *FileDataPacketType) GetAssociatedReqId() string {
+	return p.RespId
 }
 
 func (p *FileDataPacketType) GetResponseId() string {
@@ -410,6 +419,51 @@ func MakeReInitPacket() *ReInitPacketType {
 	return &ReInitPacketType{Type: ReInitPacketStr}
 }
 
+type FileStatPacketType struct {
+	Type    string    `json:"type"`
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	ModTs   time.Time `json:"modts"`
+	IsDir   bool      `json:"isdir"`
+	Perm    int       `json:"perm"`
+	ModeStr string    `json:"modestr"`
+	Error   string    `json:"error"`
+	Done    bool      `json:"done"`
+	RespId  string    `json:"respid"`
+	Path    string    `json:"path"`
+}
+
+func (*FileStatPacketType) GetType() string {
+	return FileStatPacketStr
+}
+
+func (p *FileStatPacketType) GetResponseDone() bool {
+	return p.Done
+}
+
+func (p *FileStatPacketType) GetResponseId() string {
+	return p.RespId
+}
+
+func MakeFileStatPacketType() *FileStatPacketType {
+	return &FileStatPacketType{Type: FileStatPacketStr}
+}
+
+func MakeFileStatPacketFromFileInfo(finfo fs.FileInfo, err string, done bool) *FileStatPacketType {
+	resp := MakeFileStatPacketType()
+	resp.Error = err
+	resp.Done = done
+
+	resp.IsDir = finfo.IsDir()
+	resp.Name = finfo.Name()
+
+	resp.Size = finfo.Size()
+	resp.ModTs = finfo.ModTime()
+	resp.Perm = int(finfo.Mode().Perm())
+	resp.ModeStr = finfo.Mode().String()
+	return resp
+}
+
 type StreamFilePacketType struct {
 	Type      string  `json:"type"`
 	ReqId     string  `json:"reqid"`
@@ -436,6 +490,7 @@ type FileInfo struct {
 	ModTs    int64  `json:"modts"`
 	IsDir    bool   `json:"isdir,omitempty"`
 	Perm     int    `json:"perm"`
+	MimeType string `json:"mimetype,omitempty"`
 	NotFound bool   `json:"notfound,omitempty"` // when NotFound is set, Perm will be set to permission for directory
 }
 
@@ -491,11 +546,12 @@ func MakeCompGenPacket() *CompGenPacketType {
 }
 
 type ResponsePacketType struct {
-	Type    string      `json:"type"`
-	RespId  string      `json:"respid"`
-	Success bool        `json:"success"`
-	Error   string      `json:"error,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
+	Type      string      `json:"type"`
+	RespId    string      `json:"respid"`
+	Success   bool        `json:"success"`
+	Error     string      `json:"error,omitempty"`
+	ErrorCode string      `json:"errorcode,omitempty"` // can be used for structured errors
+	Data      interface{} `json:"data,omitempty"`
 }
 
 func (*ResponsePacketType) GetType() string {
@@ -516,6 +572,9 @@ func (p *ResponsePacketType) Err() error {
 	}
 	if !p.Success {
 		if p.Error != "" {
+			if p.ErrorCode != "" {
+				return &base.CodedError{ErrorCode: p.ErrorCode, Err: errors.New(p.Error)}
+			}
 			return errors.New(p.Error)
 		}
 		return fmt.Errorf("rpc failed")
@@ -531,6 +590,9 @@ func (p *ResponsePacketType) String() string {
 }
 
 func MakeErrorResponsePacket(reqId string, err error) *ResponsePacketType {
+	if codedErr, ok := err.(*base.CodedError); ok {
+		return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: codedErr.Err.Error(), ErrorCode: codedErr.ErrorCode}
+	}
 	return &ResponsePacketType{Type: ResponsePacketStr, RespId: reqId, Error: err.Error()}
 }
 
@@ -573,11 +635,12 @@ func MakeLogPacket(entry wlog.LogEntry) *LogPacketType {
 }
 
 type ShellStatePacketType struct {
-	Type      string      `json:"type"`
-	ShellType string      `json:"shelltype"`
-	RespId    string      `json:"respid,omitempty"`
-	State     *ShellState `json:"state"`
-	Error     string      `json:"error,omitempty"`
+	Type      string           `json:"type"`
+	ShellType string           `json:"shelltype"`
+	RespId    string           `json:"respid,omitempty"`
+	State     *ShellState      `json:"state"`
+	Stats     *ShellStateStats `json:"stats"`
+	Error     string           `json:"error,omitempty"`
 }
 
 func (*ShellStatePacketType) GetType() string {
@@ -686,13 +749,14 @@ func MakeCmdFinalPacket(ck base.CommandKey) *CmdFinalPacketType {
 }
 
 type CmdDonePacketType struct {
-	Type           string          `json:"type"`
-	Ts             int64           `json:"ts"`
-	CK             base.CommandKey `json:"ck"`
-	ExitCode       int             `json:"exitcode"`
-	DurationMs     int64           `json:"durationms"`
-	FinalState     *ShellState     `json:"finalstate,omitempty"`
-	FinalStateDiff *ShellStateDiff `json:"finalstatediff,omitempty"`
+	Type              string          `json:"type"`
+	Ts                int64           `json:"ts"`
+	CK                base.CommandKey `json:"ck"`
+	ExitCode          int             `json:"exitcode"`
+	DurationMs        int64           `json:"durationms"`
+	FinalState        *ShellState     `json:"finalstate,omitempty"`
+	FinalStateDiff    *ShellStateDiff `json:"finalstatediff,omitempty"`
+	FinalStateBasePtr *ShellStatePtr  `json:"finalstatebaseptr,omitempty"`
 }
 
 func (*CmdDonePacketType) GetType() string {
@@ -757,17 +821,19 @@ type RunPacketType struct {
 	Type          string          `json:"type"`
 	ReqId         string          `json:"reqid"`
 	CK            base.CommandKey `json:"ck"`
-	ShellType     string          `json:"shelltype"` // new in v0.6.0 (either "bash" or "zsh") (set by remote.go)
+	ShellType     string          `json:"shelltype"` // added in Wave v0.6.0 (either "bash" or "zsh") (set by remote.go)
 	Command       string          `json:"command"`
 	State         *ShellState     `json:"state,omitempty"`
-	StateDiff     *ShellStateDiff `json:"statediff,omitempty"`
+	StatePtr      *ShellStatePtr  `json:"stateptr,omitempty"`      // added in Wave v0.7.2
 	StateComplete bool            `json:"statecomplete,omitempty"` // set to true if state is complete (the default env should not be set)
-	UsePty        bool            `json:"usepty,omitempty"`
+	UsePty        bool            `json:"usepty,omitempty"`        // Set to true if the command should be run in a pty. This will write all output to the stdout file descriptor with PTY formatting.
 	TermOpts      *TermOpts       `json:"termopts,omitempty"`
 	Fds           []RemoteFd      `json:"fds,omitempty"`
 	RunData       []RunDataType   `json:"rundata,omitempty"`
 	Detached      bool            `json:"detached,omitempty"`
 	ReturnState   bool            `json:"returnstate,omitempty"`
+	IsSudo        bool            `json:"issudo,omitempty"`
+	Timeout       time.Duration   `json:"timeout"` // TODO: added vnext. This is the timeout for the command to run.  If the command does not complete in this time, it will be killed. The default zero value will not impose a timeout.
 }
 
 func (*RunPacketType) GetType() string {
@@ -817,28 +883,6 @@ func MakeOpenAIPacket() *OpenAIPacketType {
 
 type BarePacketType struct {
 	Type string `json:"type"`
-}
-
-type CmdErrorPacketType struct {
-	Type  string          `json:"type"`
-	CK    base.CommandKey `json:"ck"`
-	Error string          `json:"error"`
-}
-
-func (*CmdErrorPacketType) GetType() string {
-	return CmdErrorPacketStr
-}
-
-func (p *CmdErrorPacketType) GetCK() base.CommandKey {
-	return p.CK
-}
-
-func (p *CmdErrorPacketType) String() string {
-	return fmt.Sprintf("error[%s]", p.Error)
-}
-
-func MakeCmdErrorPacket(ck base.CommandKey, err error) *CmdErrorPacketType {
-	return &CmdErrorPacketType{Type: CmdErrorPacketStr, CK: ck, Error: err.Error()}
 }
 
 type WriteFilePacketType struct {
@@ -942,6 +986,55 @@ func MakeOpenAICloudReqPacket() *OpenAICloudReqPacketType {
 	}
 }
 
+type SudoRequestPacketType struct {
+	Type        string          `json:"type"`
+	CK          base.CommandKey `json:"ck"`
+	ShellPubKey []byte          `json:"shellpubkey"`
+	SudoStatus  string          `json:"sudostatus"`
+	ErrStr      string          `json:"errstr"`
+}
+
+func (*SudoRequestPacketType) GetType() string {
+	return SudoRequestPacketStr
+}
+
+func (p *SudoRequestPacketType) GetCK() base.CommandKey {
+	return p.CK
+}
+
+func MakeSudoRequestPacket(ck base.CommandKey, pubKey []byte, sudoStatus string) *SudoRequestPacketType {
+	return &SudoRequestPacketType{
+		Type:        SudoRequestPacketStr,
+		CK:          ck,
+		ShellPubKey: pubKey,
+		SudoStatus:  sudoStatus,
+	}
+}
+
+type SudoResponsePacketType struct {
+	Type      string          `json:"type"`
+	CK        base.CommandKey `json:"ck"`
+	Secret    []byte          `json:"secret"`
+	SrvPubKey []byte          `json:"srvpubkey"`
+}
+
+func (*SudoResponsePacketType) GetType() string {
+	return SudoResponsePacketStr
+}
+
+func (p *SudoResponsePacketType) GetCK() base.CommandKey {
+	return p.CK
+}
+
+func MakeSudoResponsePacket(ck base.CommandKey, secret []byte, srvPubKey []byte) *SudoResponsePacketType {
+	return &SudoResponsePacketType{
+		Type:      SudoResponsePacketStr,
+		CK:        ck,
+		Secret:    secret,
+		SrvPubKey: srvPubKey,
+	}
+}
+
 type PacketType interface {
 	GetType() string
 }
@@ -970,6 +1063,12 @@ type RpcResponsePacketType interface {
 type CommandPacketType interface {
 	GetType() string
 	GetCK() base.CommandKey
+}
+
+// RpcPackets initiate an Rpc.  these can be part of the data passed back and forth
+type RpcFollowUpPacketType interface {
+	GetType() string
+	GetAssociatedReqId() string
 }
 
 type ModelUpdatePacketType struct {
@@ -1061,10 +1160,6 @@ func SendPacket(w io.Writer, packet PacketType) error {
 		return &SendError{IsWriteError: true, PacketType: packet.GetType(), Err: err}
 	}
 	return nil
-}
-
-func SendCmdError(w io.Writer, ck base.CommandKey, err error) error {
-	return SendPacket(w, MakeCmdErrorPacket(ck, err))
 }
 
 type PacketSender struct {
@@ -1178,16 +1273,20 @@ func (sender *PacketSender) SendPacketCtx(ctx context.Context, pk PacketType) er
 }
 
 func (sender *PacketSender) SendPacket(pk PacketType) error {
+	if pk == nil {
+		log.Printf("tried to send nil packet\n")
+		return fmt.Errorf("tried to send nil packet")
+	}
+	if pk.GetType() == "" {
+		log.Printf("tried to send invalid packet: %T\n", pk)
+		return fmt.Errorf("tried to send packet without a type: %T", pk)
+	}
 	err := sender.checkStatus()
 	if err != nil {
 		return err
 	}
 	sender.SendCh <- pk
 	return nil
-}
-
-func (sender *PacketSender) SendCmdError(ck base.CommandKey, err error) error {
-	return sender.SendPacket(MakeCmdErrorPacket(ck, err))
 }
 
 func (sender *PacketSender) SendErrorResponse(reqId string, err error) error {
@@ -1211,17 +1310,13 @@ type UnknownPacketReporter interface {
 type DefaultUPR struct{}
 
 func (DefaultUPR) UnknownPacket(pk PacketType) {
-	if pk.GetType() == CmdErrorPacketStr {
-		errPacket := pk.(*CmdErrorPacketType)
-		// at this point, just send the error packet to stderr rather than try to do something special
-		fmt.Fprintf(os.Stderr, "[error] %s\n", errPacket.Error)
-	} else if pk.GetType() == RawPacketStr {
+	if pk.GetType() == RawPacketStr {
 		rawPacket := pk.(*RawPacketType)
 		fmt.Fprintf(os.Stderr, "%s\n", rawPacket.Data)
 	} else if pk.GetType() == CmdStartPacketStr {
 		return // do nothing
 	} else {
-		fmt.Fprintf(os.Stderr, "[error] invalid packet received '%s'", AsExtType(pk))
+		wlog.Logf("[upr] invalid packet received '%s'", AsExtType(pk))
 	}
 }
 

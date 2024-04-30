@@ -14,6 +14,7 @@ import * as textmeasure from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
 
 import "./viewremoteconndetail.less";
+import { ModalKeybindings } from "../elements/modal";
 
 @mobxReact.observer
 class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
@@ -162,42 +163,42 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     renderHeaderBtns(remote: RemoteType): React.ReactNode {
         let buttons: React.ReactNode[] = [];
         const disconnectButton = (
-            <Button theme="secondary" onClick={() => this.disconnectRemote(remote.remoteid)}>
+            <Button className="secondary" onClick={() => this.disconnectRemote(remote.remoteid)}>
                 Disconnect Now
             </Button>
         );
         const connectButton = (
-            <Button theme="secondary" onClick={() => this.connectRemote(remote.remoteid)}>
+            <Button className="secondary" onClick={() => this.connectRemote(remote.remoteid)}>
                 Connect Now
             </Button>
         );
         const tryReconnectButton = (
-            <Button theme="secondary" onClick={() => this.connectRemote(remote.remoteid)}>
+            <Button className="secondary" onClick={() => this.connectRemote(remote.remoteid)}>
                 Try Reconnect
             </Button>
         );
         let updateAuthButton = (
-            <Button theme="secondary" onClick={() => this.openEditModal()}>
+            <Button className="secondary" onClick={() => this.openEditModal()}>
                 Edit
             </Button>
         );
         let cancelInstallButton = (
-            <Button theme="secondary" onClick={() => this.cancelInstall(remote.remoteid)}>
+            <Button className="secondary" onClick={() => this.cancelInstall(remote.remoteid)}>
                 Cancel Install
             </Button>
         );
         let installNowButton = (
-            <Button theme="secondary" onClick={() => this.installRemote(remote.remoteid)}>
+            <Button className="secondary" onClick={() => this.installRemote(remote.remoteid)}>
                 Install Now
             </Button>
         );
         let archiveButton = (
-            <Button theme="secondary" onClick={() => this.clickArchive()}>
+            <Button className="secondary danger" onClick={() => this.clickArchive()}>
                 Delete
             </Button>
         );
         const reinstallButton = (
-            <Button theme="secondary" onClick={this.clickReinstall}>
+            <Button className="secondary" onClick={this.clickReinstall}>
                 Reinstall
             </Button>
         );
@@ -207,7 +208,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         }
         if (remote.sshconfigsrc == "sshconfig-import") {
             archiveButton = (
-                <Button theme="secondary" onClick={() => this.clickArchive()}>
+                <Button className="secondary danger" onClick={() => this.clickArchive()}>
                     Delete
                     <Tooltip
                         message={
@@ -382,8 +383,22 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                     </div>
                 </div>
                 <div className="wave-modal-footer">
+                    <ModalKeybindings
+                        onOk={() => {
+                            if (selectedRemoteStatus == "connecting") {
+                                return;
+                            }
+                            this.handleClose();
+                        }}
+                        onCancel={() => {
+                            if (selectedRemoteStatus == "connecting") {
+                                return;
+                            }
+                            this.handleClose();
+                        }}
+                    ></ModalKeybindings>
                     <Button
-                        theme="secondary"
+                        className="secondary"
                         disabled={selectedRemoteStatus == "connecting"}
                         onClick={this.handleClose}
                     >

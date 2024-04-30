@@ -6,8 +6,8 @@ package shellapi
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
-	"math/rand"
 	"os/exec"
 	"strings"
 	"sync"
@@ -20,13 +20,29 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellenv"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/statediff"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 )
 
 const BaseZshOpts = ``
 
 const ZshShellVersionCmdStr = `echo zsh v$ZSH_VERSION`
-const StateOutputFdNum = 20
+
+const (
+	ZshSection_Version = iota
+	ZshSection_Cwd
+	ZshSection_Env
+	ZshSection_Mods
+	ZshSection_Vars
+	ZshSection_Aliases
+	ZshSection_Fpath
+	ZshSection_Funcs
+	ZshSection_PVars
+	ZshSection_Prompt
+	ZshSection_EndBytes
+
+	ZshSection_NumFieldsExpected // must be last
+)
 
 // TODO these need updating
 const RunZshSudoCommandFmt = `sudo -n -C %d zsh /dev/fd/%d`
@@ -52,11 +68,12 @@ var ZshIgnoreVars = map[string]bool{
 	"SHLVL":                true,
 	"TTY":                  true,
 	"ZDOTDIR":              true,
+	"PPID":                 true,
 	"epochtime":            true,
 	"langinfo":             true,
 	"keymaps":              true,
 	"widgets":              true,
-
+	"options":              true,
 	"aliases":              true,
 	"dis_aliases":          true,
 	"saliases":             true,
@@ -75,6 +92,8 @@ var ZshIgnoreVars = map[string]bool{
 	"funcsourcetrace":      true,
 	"funcstack":            true,
 	"functrace":            true,
+	"nameddirs":            true,
+	"userdirs":             true,
 	"parameters":           true,
 	"commands":             true,
 	"functions":            true,
@@ -84,6 +103,58 @@ var ZshIgnoreVars = map[string]bool{
 	"_comps":               true,
 	"_patcomps":            true,
 	"_postpatcomps":        true,
+
+	// zsh/system
+	"errnos":    true,
+	"sysparams": true,
+
+	// zsh/curses
+	"ZCURSES_COLORS":      true,
+	"ZCURSES_COLOR_PAIRS": true,
+	"zcurses_attrs":       true,
+	"zcurses_colors":      true,
+	"zcurses_keycodes":    true,
+	"zcurses_windows":     true,
+
+	// not listed, but we also exclude all ZFTP_* variables
+
+	// powerlevel10k
+	"_GITSTATUS_CLIENT_PID_POWERLEVEL9K":  true,
+	"GITSTATUS_DAEMON_PID_POWERLEVEL9K":   true,
+	"_GITSTATUS_FILE_PREFIX_POWERLEVEL9K": true,
+}
+
+var ZshIgnoreFuncs = map[string]bool{
+	"zftp_chpwd":    true,
+	"zftp_progress": true,
+}
+
+// only options we restore (other than ZshForceOptions)
+var ZshIgnoreOptions = map[string]bool{
+	"globalrcs":        true, // must stay off (otherwise /etc/zprofile runs)
+	"ksharrays":        true,
+	"kshtypeset":       true,
+	"kshautoload":      true,
+	"kshzerosubscript": true,
+	"interactive":      true,
+	"login":            true,
+	"zle":              true,
+	"shinstdin":        true,
+	"privileged":       true,
+	"restricted":       true,
+	"singlecommand":    true,
+}
+
+// force these options on/off at beginning of rcfile
+var ZshForceOptions = map[string]bool{
+	"globalrcs":        false,
+	"ksharrays":        false,
+	"kshtypeset":       false,
+	"kshautoload":      false,
+	"kshzerosubscript": false,
+	"xtrace":           false, // not in ZshIgnoreOptions
+	"verbose":          false, // not in ZshIgnoreOptions
+	"debugbeforecmd":   false, // not in ZshIgnoreOptions
 }
 
 var ZshUniqueArrayVars = map[string]bool{
@@ -100,6 +171,13 @@ var ZshUnsetVars = []string{
 	"HISTFILE",
 	"ZSH_EXECUTION_STRING",
 }
+
+var ZshForceLoadMods = map[string]bool{
+	"zsh/parameter": true,
+	"zsh/langinfo":  true,
+}
+
+const ZModsVarName = "WAVESTATE_ZMODS"
 
 // do not use these directly, call GetLocalMajorVersion()
 var localZshMajorVersionOnce = &sync.Once{}
@@ -133,27 +211,41 @@ type ZshMap = map[ZshParamKey]string
 
 type zshShellApi struct{}
 
-func (z zshShellApi) GetShellType() string {
+func (zshShellApi) GetShellType() string {
 	return packet.ShellType_zsh
 }
 
-func (z zshShellApi) MakeExitTrap(fdNum int) string {
+func (zshShellApi) MakeExitTrap(fdNum int) (string, []byte) {
 	return MakeZshExitTrap(fdNum)
 }
 
-func (z zshShellApi) GetLocalMajorVersion() string {
+func (zshShellApi) GetLocalMajorVersion() string {
 	return GetLocalZshMajorVersion()
 }
 
-func (z zshShellApi) GetLocalShellPath() string {
+func (zshShellApi) GetLocalShellPath() string {
 	return "/bin/zsh"
 }
 
-func (z zshShellApi) GetRemoteShellPath() string {
+func (zshShellApi) GetRemoteShellPath() string {
 	return "zsh"
 }
 
-func (z zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
+func (zshShellApi) ValidateCommandSyntax(cmdStr string) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), ValidateTimeout)
+	defer cancelFn()
+	cmd := exec.CommandContext(ctx, GetLocalZshPath(), "-n", "-c", cmdStr)
+	output, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	if len(output) == 0 {
+		return errors.New("zsh syntax error")
+	}
+	return errors.New(utilfn.GetFirstLine(string(output)))
+}
+
+func (zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
 	if !opts.Sudo {
 		return cmdStr
 	}
@@ -164,27 +256,39 @@ func (z zshShellApi) MakeRunCommand(cmdStr string, opts RunCommandOpts) string {
 	}
 }
 
-func (z zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {
+func (zshShellApi) MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd {
 	return exec.Command(GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
 }
 
-func (z zshShellApi) GetShellState() (*packet.ShellState, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
-	defer cancelFn()
-	cmdStr := BaseZshOpts + "; " + GetZshShellStateCmd(StateOutputFdNum)
+func (z zshShellApi) GetShellState(ctx context.Context, outCh chan ShellStateOutput, stdinDataCh chan []byte) {
+	defer close(outCh)
+	stateCmd, endBytes := GetZshShellStateCmd(StateOutputFdNum)
+	cmdStr := BaseZshOpts + "; " + stateCmd
 	ecmd := exec.CommandContext(ctx, GetLocalZshPath(), "-l", "-i", "-c", cmdStr)
-	_, outputBytes, err := RunCommandWithExtraFd(ecmd, StateOutputFdNum)
+	outputCh := make(chan []byte, 10)
+	var outputWg sync.WaitGroup
+	outputWg.Add(1)
+	go func() {
+		defer outputWg.Done()
+		for outputBytes := range outputCh {
+			outCh <- ShellStateOutput{Output: outputBytes}
+		}
+	}()
+	outputBytes, err := StreamCommandWithExtraFd(ctx, ecmd, outputCh, StateOutputFdNum, endBytes, stdinDataCh)
+	outputWg.Wait()
 	if err != nil {
-		return nil, err
+		outCh <- ShellStateOutput{Error: err.Error()}
+		return
 	}
-	rtn, err := z.ParseShellStateOutput(outputBytes)
+	rtn, stats, err := z.ParseShellStateOutput(outputBytes)
 	if err != nil {
-		return nil, err
+		outCh <- ShellStateOutput{Error: err.Error()}
+		return
 	}
-	return rtn, nil
+	outCh <- ShellStateOutput{ShellState: rtn, Stats: stats}
 }
 
-func (z zshShellApi) GetBaseShellOpts() string {
+func (zshShellApi) GetBaseShellOpts() string {
 	return BaseZshOpts
 }
 
@@ -223,13 +327,40 @@ func isZshSafeNameStr(name string) bool {
 func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 	var rcBuf bytes.Buffer
 	rcBuf.WriteString(z.GetBaseShellOpts() + "\n")
-	rcBuf.WriteString("unsetopt GLOBAL_RCS\n")
-	rcBuf.WriteString("unset KSH_ARRAYS\n")
-	rcBuf.WriteString("zmodload zsh/parameter\n")
+	// rcBuf.WriteString("echo 'running generated rcfile' $0 $ZSH_ARGZERO '|' $ZDOTDIR\n")
 	varDecls := shellenv.VarDeclsFromState(pk.State)
+	// force options come at the beginning of the file (other options come at the end)
+	for optName, optVal := range ZshForceOptions {
+		if optVal {
+			rcBuf.WriteString(fmt.Sprintf("setopt %s\n", optName))
+		} else {
+			rcBuf.WriteString(fmt.Sprintf("unsetopt %s\n", optName))
+		}
+	}
+	for modName := range ZshForceLoadMods {
+		rcBuf.WriteString(fmt.Sprintf("zmodload %s\n", modName))
+	}
+	modDecl := getDeclByName(varDecls, ZModsVarName)
+	if modDecl != nil {
+		modsArr := utilfn.QuickParseJson[[]string](modDecl.Value)
+		for _, modName := range modsArr {
+			if !ZshForceLoadMods[modName] {
+				rcBuf.WriteString(fmt.Sprintf("zmodload %s\n", modName))
+			}
+		}
+	}
 	var postDecls []*shellenv.DeclareDeclType
 	for _, varDecl := range varDecls {
 		if ZshIgnoreVars[varDecl.Name] {
+			continue
+		}
+		if strings.HasPrefix(varDecl.Name, "ZFTP_") {
+			continue
+		}
+		if strings.HasPrefix(varDecl.Name, "_wavetemp_") {
+			continue
+		}
+		if varDecl.IsExtVar {
 			continue
 		}
 		if ZshUniqueArrayVars[varDecl.Name] && !varDecl.IsUniqueArray() {
@@ -283,6 +414,9 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 		rcBuf.WriteString("# error decoding zsh functions\n")
 	} else {
 		for fnKey, fnValue := range fnMap {
+			if ZshIgnoreFuncs[fnKey.ParamName] {
+				continue
+			}
 			if fnValue == ZshFnAutoLoad {
 				rcBuf.WriteString(fmt.Sprintf("autoload %s\n", shellescape.Quote(fnKey.ParamName)))
 			} else {
@@ -294,14 +428,35 @@ func (z zshShellApi) MakeRcFileStr(pk *packet.RunPacketType) string {
 			}
 		}
 	}
-
 	// write postdecls
 	for _, varDecl := range postDecls {
 		rcBuf.WriteString(makeZshTypesetStmt(varDecl))
 		rcBuf.WriteString("\n")
 	}
-
+	writeZshOptions(&rcBuf, varDecls)
 	return rcBuf.String()
+}
+
+func writeZshOptions(rcBuf *bytes.Buffer, declArr []*shellenv.DeclareDeclType) {
+	optionDecl := getDeclByName(declArr, "options")
+	var optionsMap map[string]string
+	if optionDecl != nil {
+		var err error
+		optionsMap, err = parseSimpleZshOptions(optionDecl.Value)
+		if err != nil {
+			wlog.Logf("error decoding zsh options: %v\n", err)
+		}
+	}
+	for optName := range optionsMap {
+		if ZshIgnoreOptions[optName] {
+			continue
+		}
+		if optionsMap[optName] == "on" {
+			rcBuf.WriteString(fmt.Sprintf("setopt %s\n", optName))
+		} else {
+			rcBuf.WriteString(fmt.Sprintf("unsetopt %s\n", optName))
+		}
+	}
 }
 
 func writeZshId(buf *bytes.Buffer, idStr string) {
@@ -310,19 +465,15 @@ func writeZshId(buf *bytes.Buffer, idStr string) {
 
 const numRandomBytes = 4
 
-// returns (cmd-string)
-func GetZshShellStateCmd(fdNum int) string {
+// returns (cmd-string, endbytes)
+func GetZshShellStateCmd(fdNum int) (string, []byte) {
 	var sectionSeparator []byte
 	// adding this extra "\n" helps with debuging and readability of output
 	sectionSeparator = append(sectionSeparator, byte('\n'))
-	for len(sectionSeparator) < numRandomBytes {
-		// any character *except* null (0)
-		rn := rand.Intn(256)
-		if rn > 0 && rn < 256 { // exclude 0, also helps to suppress security warning to have a guard here
-			sectionSeparator = append(sectionSeparator, byte(rn))
-		}
-	}
+	sectionSeparator = utilfn.AppendNonZeroRandomBytes(sectionSeparator, numRandomBytes)
 	sectionSeparator = append(sectionSeparator, 0, 0)
+	endBytes := utilfn.AppendNonZeroRandomBytes(nil, NumRandomEndBytes)
+	endBytes = append(endBytes, byte('\n'))
 	// we have to use these crazy separators because zsh allows basically anything in
 	// variable names and values (including nulls).
 	// note that we don't need crazy separators for "env" or "typeset".
@@ -334,11 +485,14 @@ func GetZshShellStateCmd(fdNum int) string {
 exec > [%OUTPUTFD%]
 unsetopt SH_WORD_SPLIT;
 zmodload zsh/parameter;
+zmodload zsh/langinfo;
 [%ZSHVERSION%];
 printf "\x00[%SECTIONSEP%]";
 pwd;
 printf "[%SECTIONSEP%]";
 env -0;
+printf "[%SECTIONSEP%]";
+zmodload -L
 printf "[%SECTIONSEP%]";
 typeset -p +H -m '*';
 printf "[%SECTIONSEP%]";
@@ -377,28 +531,38 @@ for var in "${(@k)dis_functions_source}"; do
 done
 printf "[%SECTIONSEP%]";
 [%GITBRANCH%]
+[%K8SCONTEXT%]
+[%K8SNAMESPACE%]
+printf "[%SECTIONSEP%]";
+print -P "$PS1"
+printf "[%SECTIONSEP%]";
+printf "[%ENDBYTES%]"
 `
 	cmd = strings.TrimSpace(cmd)
 	cmd = strings.ReplaceAll(cmd, "[%ZSHVERSION%]", ZshShellVersionCmdStr)
 	cmd = strings.ReplaceAll(cmd, "[%GITBRANCH%]", GetGitBranchCmdStr)
+	cmd = strings.ReplaceAll(cmd, "[%K8SCONTEXT%]", GetK8sContextCmdStr)
+	cmd = strings.ReplaceAll(cmd, "[%K8SNAMESPACE%]", GetK8sNamespaceCmdStr)
 	cmd = strings.ReplaceAll(cmd, "[%PARTSEP%]", utilfn.ShellHexEscape(string(sectionSeparator[0:len(sectionSeparator)-1])))
 	cmd = strings.ReplaceAll(cmd, "[%SECTIONSEP%]", utilfn.ShellHexEscape(string(sectionSeparator)))
 	cmd = strings.ReplaceAll(cmd, "[%OUTPUTFD%]", fmt.Sprintf("/dev/fd/%d", fdNum))
-	return cmd
+	cmd = strings.ReplaceAll(cmd, "[%OUTPUTFDNUM%]", fmt.Sprintf("%d", fdNum))
+	cmd = strings.ReplaceAll(cmd, "[%ENDBYTES%]", utilfn.ShellHexEscape(string(endBytes)))
+	return cmd, endBytes
 }
 
-func MakeZshExitTrap(fdNum int) string {
-	stateCmd := GetZshShellStateCmd(fdNum)
+func MakeZshExitTrap(fdNum int) (string, []byte) {
+	stateCmd, endBytes := GetZshShellStateCmd(fdNum)
 	fmtStr := `
 zshexit () {
     %s
 }
 `
-	return fmt.Sprintf(fmtStr, stateCmd)
+	return fmt.Sprintf(fmtStr, stateCmd), endBytes
 }
 
 func execGetLocalZshShellVersion() string {
-	ctx, cancelFn := context.WithTimeout(context.Background(), GetStateTimeout)
+	ctx, cancelFn := context.WithTimeout(context.Background(), GetVersionTimeout)
 	defer cancelFn()
 	ecmd := exec.CommandContext(ctx, "zsh", "-c", ZshShellVersionCmdStr)
 	out, err := ecmd.Output()
@@ -528,6 +692,9 @@ func ParseZshFunctions(fpathArr []string, fnBytes []byte, partSeparator []byte) 
 		if fnName == "zshexit" {
 			continue
 		}
+		if ZshIgnoreFuncs[fnName] {
+			continue
+		}
 		if fnType == "functions" || fnType == "dis_functions" {
 			fnBody[ZshParamKey{ParamType: fnType, ParamName: fnName}] = fnValue
 		}
@@ -538,10 +705,13 @@ func ParseZshFunctions(fpathArr []string, fnBytes []byte, partSeparator []byte) 
 	// ok, so the trick here is that we want to only include functions that are *not* autoloaded
 	// the ones that are pending autoloading or come from a source file in fpath, can just be set to autoload
 	for fnKey := range fnBody {
+		var inFpath bool
 		source := fnSource[fnKey.ParamName]
-		if isSourceFileInFpath(fpathArr, source) {
-			fnBody[fnKey] = ZshFnAutoLoad
-		} else if strings.TrimSpace(fnBody[fnKey]) == ZshAutoloadFnBody {
+		if source != "" {
+			inFpath = isSourceFileInFpath(fpathArr, source)
+		}
+		isAutoloadFnBody := strings.TrimSpace(fnBody[fnKey]) == ZshAutoloadFnBody
+		if inFpath || isAutoloadFnBody {
 			fnBody[fnKey] = ZshFnAutoLoad
 		}
 	}
@@ -556,56 +726,64 @@ func makeZshFuncsStrForShellState(fnMap map[ZshParamKey]string) string {
 	return buf.String()
 }
 
-func (z zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, error) {
+func (zshShellApi) ParseShellStateOutput(outputBytes []byte) (*packet.ShellState, *packet.ShellStateStats, error) {
 	if scbase.IsDevMode() && DebugState {
 		writeStateToFile(packet.ShellType_zsh, outputBytes)
 	}
 	firstZeroIdx := bytes.Index(outputBytes, []byte{0})
 	firstDZeroIdx := bytes.Index(outputBytes, []byte{0, 0})
 	if firstZeroIdx == -1 || firstDZeroIdx == -1 {
-		return nil, fmt.Errorf("invalid zsh shell state output, could not parse separator bytes")
+		return nil, nil, fmt.Errorf("invalid zsh shell state output, could not parse separator bytes")
 	}
 	versionStr := string(outputBytes[0:firstZeroIdx])
 	sectionSeparator := outputBytes[firstZeroIdx+1 : firstDZeroIdx+2]
 	partSeparator := sectionSeparator[0 : len(sectionSeparator)-1]
-	// 8 fields: version [0], cwd [1], env [2], vars [3], aliases [4], fpath [5], functions [6], pvars [7]
-	fields := bytes.Split(outputBytes, sectionSeparator)
-	if len(fields) != 8 {
-		base.Logf("invalid -- numfields\n")
-		return nil, fmt.Errorf("invalid zsh shell state output, wrong number of fields, fields=%d", len(fields))
+	// sections: see ZshSection_* consts
+	sections := bytes.Split(outputBytes, sectionSeparator)
+	if len(sections) != ZshSection_NumFieldsExpected {
+		return nil, nil, fmt.Errorf("invalid zsh shell state output, wrong number of sections, section=%d", len(sections))
 	}
 	rtn := &packet.ShellState{}
 	rtn.Version = strings.TrimSpace(versionStr)
 	if rtn.GetShellType() != packet.ShellType_zsh {
-		return nil, fmt.Errorf("invalid zsh shell state output, wrong shell type")
+		return nil, nil, fmt.Errorf("invalid zsh shell state output, wrong shell type")
 	}
 	if _, _, err := packet.ParseShellStateVersion(rtn.Version); err != nil {
-		return nil, fmt.Errorf("invalid zsh shell state output, invalid version: %v", err)
+		return nil, nil, fmt.Errorf("invalid zsh shell state output, invalid version: %v", err)
 	}
-	cwdStr := stripNewLineChars(string(fields[1]))
+	cwdStr := stripNewLineChars(string(sections[ZshSection_Cwd]))
 	rtn.Cwd = cwdStr
-	zshEnv := parseZshEnv(fields[2])
-	zshDecls, err := parseZshDecls(fields[3])
+	zshEnv := parseZshEnv(sections[ZshSection_Env])
+	zshDecls, err := parseZshDecls(sections[ZshSection_Vars])
 	if err != nil {
 		base.Logf("invalid - parsedecls %v\n", err)
-		return nil, err
+		return nil, nil, err
 	}
 	for _, decl := range zshDecls {
 		if decl.IsZshScalarBound() {
 			decl.ZshEnvValue = zshEnv[decl.ZshBoundScalar]
 		}
 	}
-	aliasMap := parseZshAliasStateOutput(fields[4], partSeparator)
+	aliasMap := parseZshAliasStateOutput(sections[ZshSection_Aliases], partSeparator)
 	rtn.Aliases = string(EncodeZshMap(aliasMap))
-	fpathStr := stripNewLineChars(string(string(fields[5])))
+	fpathStr := stripNewLineChars(string(string(sections[ZshSection_Fpath])))
 	fpathArr := strings.Split(fpathStr, ":")
-	zshFuncs := ParseZshFunctions(fpathArr, fields[6], partSeparator)
+	zshFuncs := ParseZshFunctions(fpathArr, sections[ZshSection_Funcs], partSeparator)
 	rtn.Funcs = string(EncodeZshMap(zshFuncs))
-	pvarMap := parsePVarOutput(fields[7], true)
+	pvarMap := parseExtVarOutput(sections[ZshSection_PVars], string(sections[ZshSection_Prompt]), string(sections[ZshSection_Mods]))
 	utilfn.CombineMaps(zshDecls, pvarMap)
 	rtn.ShellVars = shellenv.SerializeDeclMap(zshDecls)
-	base.Logf("parse shellstate done\n")
-	return rtn, nil
+	stats := &packet.ShellStateStats{
+		Version:    rtn.Version,
+		AliasCount: int(len(aliasMap)),
+		FuncCount:  int(len(zshFuncs)),
+		VarCount:   int(len(zshDecls)),
+		EnvCount:   int(len(zshEnv)),
+		HashVal:    rtn.GetHashVal(false),
+		OutputSize: int64(len(outputBytes)),
+		StateSize:  rtn.ApproximateSize(),
+	}
+	return rtn, stats, nil
 }
 
 func parseZshEnv(output []byte) map[string]string {
@@ -852,4 +1030,43 @@ func (zshShellApi) ApplyShellStateDiff(oldState *packet.ShellState, diff *packet
 		return nil, fmt.Errorf("applying diff 'funcs': %v", err)
 	}
 	return rtnState, nil
+}
+
+// this will *not* parse general zsh assoc arrays, used to parse zsh options (no spaces)
+// ( [posixargzero]=off [autolist]=on )
+func parseSimpleZshOptions(decl string) (map[string]string, error) {
+	decl = strings.TrimSpace(decl)
+	if !strings.HasPrefix(decl, "(") || !strings.HasSuffix(decl, ")") {
+		return nil, errors.New("invalid assoc array decl, must start and end with parens")
+	}
+	decl = decl[1 : len(decl)-1]
+	parts := strings.Split(decl, " ")
+	rtn := make(map[string]string)
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		eqIdx := strings.Index(part, "=")
+		if eqIdx == -1 {
+			return nil, fmt.Errorf("invalid assoc array decl part: %q", part)
+		}
+		bracketedKey := part[0:eqIdx]
+		val := part[eqIdx+1:]
+		if !strings.HasPrefix(bracketedKey, "[") || !strings.HasSuffix(bracketedKey, "]") {
+			return nil, fmt.Errorf("invalid assoc array decl part: %q", part)
+		}
+		key := bracketedKey[1 : len(bracketedKey)-1]
+		rtn[key] = val
+	}
+	return rtn, nil
+}
+
+func getDeclByName(decls []*shellenv.DeclareDeclType, name string) *shellenv.DeclareDeclType {
+	for _, decl := range decls {
+		if decl.Name == name {
+			return decl
+		}
+	}
+	return nil
 }

@@ -13,6 +13,9 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import { isBlank } from "@/util/util";
 
+import "./historyinfo.less";
+import { AuxiliaryCmdView } from "./auxview";
+
 dayjs.extend(localizedFormat);
 
 const TDots = "⋮";
@@ -43,7 +46,7 @@ class HItem extends React.Component<
         if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
             return sprintf("%-15s ", "");
         }
-        let r = GlobalModel.getRemote(hitem.remote.remoteid);
+        const r = GlobalModel.getRemote(hitem.remote.remoteid);
         if (r == null) {
             return sprintf("%-15s ", "???");
         }
@@ -71,15 +74,15 @@ class HItem extends React.Component<
         if (!opts.limitRemote) {
             remoteStr = this.renderRemote(hitem);
         }
-        let selectedStr = isSelected ? "*" : " ";
-        let lineNumStr = hitem.linenum > 0 ? "(" + hitem.linenum + ")" : "";
+        const selectedStr = isSelected ? "*" : " ";
+        const lineNumStr = hitem.linenum > 0 ? "(" + hitem.linenum + ")" : "";
         if (isBlank(opts.queryType) || opts.queryType == "screen") {
             return selectedStr + sprintf("%7s", lineNumStr) + " " + remoteStr;
         }
         if (opts.queryType == "session") {
             let screenStr = "";
             if (!isBlank(hitem.screenid)) {
-                let scrName = scrNames[hitem.screenid];
+                const scrName = scrNames[hitem.screenid];
                 if (scrName != null) {
                     screenStr = "[" + truncateWithTDots(scrName, 15) + "]";
                 }
@@ -89,19 +92,18 @@ class HItem extends React.Component<
         if (opts.queryType == "global") {
             let sessionStr = "";
             if (!isBlank(hitem.sessionid)) {
-                let sessionName = snames[hitem.sessionid];
+                const sessionName = snames[hitem.sessionid];
                 if (sessionName != null) {
                     sessionStr = "#" + truncateWithTDots(sessionName, 15);
                 }
             }
             let screenStr = "";
             if (!isBlank(hitem.screenid)) {
-                let scrName = scrNames[hitem.screenid];
+                const scrName = scrNames[hitem.screenid];
                 if (scrName != null) {
                     screenStr = "[" + truncateWithTDots(scrName, 13) + "]";
                 }
             }
-            let ssStr = sessionStr + screenStr;
             return (
                 selectedStr +
                 sprintf("%15s ", sessionStr) +
@@ -116,12 +118,12 @@ class HItem extends React.Component<
     }
 
     render() {
-        let { hitem, isSelected, opts, snames, scrNames } = this.props;
-        let lines = hitem.cmdstr.split("\n");
+        const { hitem, isSelected, opts, snames, scrNames } = this.props;
+        const lines = hitem.cmdstr.split("\n");
         let line: string = "";
         let idx = 0;
-        let infoText = this.renderHInfoText(hitem, opts, isSelected, snames, scrNames);
-        let infoTextSpacer = sprintf("%" + infoText.length + "s", "");
+        const infoText = this.renderHInfoText(hitem, opts, isSelected, snames, scrNames);
+        const infoTextSpacer = sprintf("%" + infoText.length + "s", "");
         return (
             <div
                 key={hitem.historynum}
@@ -152,8 +154,12 @@ class HistoryInfo extends React.Component<{}, {}> {
     lastClickTs: number = 0;
     containingText: mobx.IObservableValue<string> = mobx.observable.box("");
 
-    componentDidMount() {
-        let inputModel = GlobalModel.inputModel;
+    /**
+     * Handles the OverlayScrollbars initialization event to set the scroll position without it being overridden.
+     */
+    @boundMethod
+    handleScrollbarInitialized() {
+        const inputModel = GlobalModel.inputModel;
         let hitem = inputModel.getHistorySelectedItem();
         if (hitem == null) {
             hitem = inputModel.getFirstHistoryItem();
@@ -163,22 +169,22 @@ class HistoryInfo extends React.Component<{}, {}> {
         }
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleClose() {
-        GlobalModel.inputModel.toggleInfoMsg();
+        GlobalModel.inputModel.closeAuxView();
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleItemClick(hitem: HistoryItem) {
-        let inputModel = GlobalModel.inputModel;
-        let selItem = inputModel.getHistorySelectedItem();
+        const inputModel = GlobalModel.inputModel;
+        const selItem = inputModel.getHistorySelectedItem();
+        inputModel.setAuxViewFocus(!inputModel.getAuxViewFocus());
         if (this.lastClickHNum == hitem.historynum && selItem != null && selItem.historynum == hitem.historynum) {
             inputModel.grabSelectedHistoryItem();
             return;
         }
-        inputModel.giveFocus();
         inputModel.setHistorySelectionNum(hitem.historynum);
-        let now = Date.now();
+        const now = Date.now();
         this.lastClickHNum = hitem.historynum;
         this.lastClickTs = now;
         setTimeout(() => {
@@ -189,14 +195,43 @@ class HistoryInfo extends React.Component<{}, {}> {
         }, 3000);
     }
 
+    @mobx.action.bound
+    handleClickType() {
+        const inputModel = GlobalModel.inputModel;
+        inputModel.setAuxViewFocus(true);
+        inputModel.toggleHistoryType();
+    }
+
+    @mobx.action.bound
+    handleClickRemote() {
+        const inputModel = GlobalModel.inputModel;
+        inputModel.setAuxViewFocus(true);
+        inputModel.toggleRemoteType();
+    }
+
+    @boundMethod
+    getTitleBarContents(): React.ReactElement[] {
+        const opts = GlobalModel.inputModel.historyQueryOpts.get();
+
+        return [
+            <div className="history-opt history-clickable-opt" key="screen" onClick={this.handleClickType}>
+                [for {opts.queryType} &#x2318;S]
+            </div>,
+            <div className="history-opt" key="query-str" title="type to search">
+                [containing '{opts.queryStr}']
+            </div>,
+            <div className="history-opt history-clickable-opt" key="remote" onClick={this.handleClickRemote}>
+                [{opts.limitRemote ? "this" : "any"} remote &#x2318;R]
+            </div>,
+        ];
+    }
+
     render() {
-        let inputModel = GlobalModel.inputModel;
-        let idx: number = 0;
-        let selItem = inputModel.getHistorySelectedItem();
-        let hitems = inputModel.getFilteredHistoryItems();
-        hitems = hitems.slice().reverse();
+        const inputModel = GlobalModel.inputModel;
+        const selItem = inputModel.getHistorySelectedItem();
+        const hitems = inputModel.filteredHistoryItems;
+        const opts = inputModel.historyQueryOpts.get();
         let hitem: HistoryItem = null;
-        let opts = inputModel.historyQueryOpts.get();
         let snames: Record<string, string> = {};
         let scrNames: Record<string, string> = {};
         if (opts.queryType == "global") {
@@ -206,21 +241,15 @@ class HistoryInfo extends React.Component<{}, {}> {
             scrNames = GlobalModel.getScreenNames();
         }
         return (
-            <div className="cmd-history hide-scrollbar">
-                <div className="history-title">
-                    <div className="history-label">history</div>
-                    <div className="spacer"></div>
-                    <div className="history-opt">[for {opts.queryType} &#x2318;S]</div>
-                    <div className="spacer"></div>
-                    <div className="history-opt">[containing '{opts.queryStr}']</div>
-                    <div className="spacer"></div>
-                    <div className="history-opt">[{opts.limitRemote ? "this" : "any"} remote &#x2318;R]</div>
-                    <div className="grow-spacer"></div>
-                    <div className="history-clickable-opt" onClick={this.handleClose}>
-                        (ESC)
-                    </div>
-                    <div className="spacer"></div>
-                </div>
+            <AuxiliaryCmdView
+                title="History"
+                className="cmd-history"
+                onClose={this.handleClose}
+                titleBarContents={this.getTitleBarContents()}
+                iconClass="fa-sharp fa-solid fa-clock-rotate-left"
+                scrollable={true}
+                onScrollbarInitialized={this.handleScrollbarInitialized}
+            >
                 <div
                     className={cn(
                         "history-items",
@@ -243,7 +272,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                         </For>
                     </If>
                 </div>
-            </div>
+            </AuxiliaryCmdView>
         );
     }
 }

@@ -6,11 +6,11 @@
     }
 
     .bookmarks-list {
-        color: var(--bookmarks-text-color);
+        color: var(--app-text-color);
         margin: 4px 10px 5px 5px;
 
         .no-bookmarks {
-            color: var(--bookmarks-text-color);
+            color: var(--app-text-color);
             padding: 30px 10px 35px 10px;
             border-bottom: 1px solid white;
         }
@@ -46,21 +46,21 @@
         }
 
         label {
-            color: var(--bookmarks-text-color);
+            color: var(--app-text-color);
             margin-bottom: 4px;
         }
 
         textarea {
             width: 80%;
             min-width: 50%;
-            color: var(--bookmarks-text-color);
-            background-color: var(--bookmarks-textarea-bg-color);
+            color: var(--app-text-color);
+            background-color: var(--form-element-bg-color);
         }
 
         .bookmark-id-div {
             display: none;
             position: absolute;
-            color: var(--bookmarks-disabled-text-color);
+            color: var(--app-text-disabled-color);
             right: 5px;
             bottom: 2px;
             font-size: 0.8em;
@@ -75,7 +75,7 @@
             flex-direction: row;
 
             visibility: hidden;
-            color: var(--bookmarks-text-color);
+            color: var(--app-text-color);
 
             .bookmark-control:first-child {
                 margin-left: 0;
@@ -85,10 +85,6 @@
                 margin-left: 10px;
                 cursor: pointer;
                 padding: 2px;
-
-                &:hover {
-                    color: var(--bookmarks-control-hover-color);
-                }
             }
         }
 

@@ -9,12 +9,13 @@ import { Markdown, Modal, Button, Checkbox } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 
 import "./alert.less";
+import { ModalKeybindings } from "../elements/modal";
 
 @mobxReact.observer
 class AlertModal extends React.Component<{}, {}> {
     @boundMethod
     closeModal(): void {
-        GlobalModel.cancelAlert();
+        GlobalModel.modalsModel.popModal(() => GlobalModel.cancelAlert());
     }
 
     @boundMethod
@@ -38,13 +39,13 @@ class AlertModal extends React.Component<{}, {}> {
 
         return (
             <Modal className="alert-modal">
-                <Modal.Header onClose={this.closeModal} title={title} />
+                <Modal.Header onClose={this.closeModal} title={title} keybindings={true} />
                 <div className="wave-modal-body">
                     <If condition={message?.markdown}>
                         <Markdown text={message?.message ?? ""} extraClassName="bottom-margin" />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
-                    <If condition={message.confirmflag}>
+                    <If condition={message?.confirmflag}>
                         <Checkbox
                             onChange={this.handleDontShowAgain}
                             label={"Don't show me this again"}
@@ -54,7 +55,8 @@ class AlertModal extends React.Component<{}, {}> {
                 </div>
                 <div className="wave-modal-footer">
                     <If condition={isConfirm}>
-                        <Button theme="secondary" onClick={this.closeModal}>
+                        <ModalKeybindings onOk={this.handleOK} onCancel={this.closeModal}></ModalKeybindings>
+                        <Button className="secondary" onClick={this.closeModal}>
                             Cancel
                         </Button>
                         <Button autoFocus={true} onClick={this.handleOK}>
@@ -62,6 +64,7 @@ class AlertModal extends React.Component<{}, {}> {
                         </Button>
                     </If>
                     <If condition={!isConfirm}>
+                        <ModalKeybindings onOk={this.handleOK} onCancel={null}></ModalKeybindings>
                         <Button autoFocus={true} onClick={this.handleOK}>
                             Ok
                         </Button>

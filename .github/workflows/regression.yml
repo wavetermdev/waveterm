@@ -1,4 +1,4 @@
-name: TestDriver.ai Regression Testing
+name: TestDriver.ai Regression Testing (test)
 
 on:
   push:
@@ -18,8 +18,27 @@ jobs:
         id: testdriver
         # note that .testdriver/prerun.sh runs before this, so the app has launched already
         with:
+          version: v2.9.4
+          prerun: |
+            rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt
+            cd ~/actions-runner/_work/testdriver/testdriver/
+            brew install go
+            brew tap scripthaus-dev/scripthaus
+            brew install scripthaus
+            npm install -g yarn
+            scripthaus run build-backend
+            echo "Yarn"
+            yarn
+            echo "Rebuild"
+            scripthaus run electron-rebuild
+            echo "Webpack"
+            scripthaus run webpack-build
+            echo "Starting Electron"
+            scripthaus run electron 1>/dev/null 2>&1 &
+            echo "Electron Done"
+            exit
           prompt: |
-            2. click "Continue"
+            2. click "Create new tab"
             2. focus the Wave input with the keyboard shorcut Command + I
             3. type 'ls' into the input
             4. press return

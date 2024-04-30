@@ -8,11 +8,30 @@ import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
 import cn from "classnames";
 import { GlobalModel, RemotesModel, GlobalCommandRunner } from "@/models";
-import { Button, Status, ShowWaveShellInstallPrompt } from "@/common/elements";
+import { Button, Status } from "@/common/elements";
 import * as util from "@/util/util";
 
 import "./connections.less";
 import { MainView } from "../common/elements/mainview";
+
+class ConnectionsKeybindings extends React.Component<{}, {}> {
+    componentDidMount() {
+        let connectionViewModel = GlobalModel.connectionViewModel;
+        let keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("mainview", "connections", "generic:cancel", (waveEvent) => {
+            connectionViewModel.closeView();
+            return true;
+        });
+    }
+
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("connections");
+    }
+
+    render() {
+        return null;
+    }
+}
 
 @mobxReact.observer
 class ConnectionsView extends React.Component<{ model: RemotesModel }, { hoveredItemId: string }> {
@@ -72,13 +91,8 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
     }
 
     @boundMethod
-    importSshConfig(): void {
-        GlobalCommandRunner.importSshConfig();
-    }
-
-    @boundMethod
     handleImportSshConfig(): void {
-        ShowWaveShellInstallPrompt(this.importSshConfig);
+        GlobalCommandRunner.importSshConfig();
     }
 
     @boundMethod
@@ -131,7 +145,10 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
         let item: RemoteType = null;
 
         return (
-            <MainView viewName="connections" title="Connections" onClose={this.handleClose}>
+            <MainView className="connections-view" title="Connections" onClose={this.handleClose}>
+                <If condition={!isHidden}>
+                    <ConnectionsKeybindings></ConnectionsKeybindings>
+                </If>
                 <table
                     className="connections-table"
                     cellSpacing="0"
@@ -185,14 +202,14 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                 </table>
                 <footer>
                     <Button
-                        theme="secondary"
+                        className="secondary"
                         leftIcon={<i className="fa-sharp fa-solid fa-plus"></i>}
                         onClick={this.handleAddConnection}
                     >
                         New Connection
                     </Button>
                     <Button
-                        theme="secondary"
+                        className="secondary"
                         leftIcon={<i className="fa-sharp fa-solid fa-fw fa-file-import"></i>}
                         onClick={this.handleImportSshConfig}
                     >

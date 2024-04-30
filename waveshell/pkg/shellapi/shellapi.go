@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"os/user"
@@ -20,17 +19,23 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/alessio/shellescape"
 	"github.com/creack/pty"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/base"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/shellutil"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
-const GetStateTimeout = 5 * time.Second
+const GetVersionTimeout = 5 * time.Second
+const ValidateTimeout = 2 * time.Second
 const GetGitBranchCmdStr = `printf "GITBRANCH %s\x00" "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"`
+const GetK8sContextCmdStr = `printf "K8SCONTEXT %s\x00" "$(kubectl config current-context 2>/dev/null)"`
+const GetK8sNamespaceCmdStr = `printf "K8SNAMESPACE %s\x00" "$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)"`
 const RunCommandFmt = `%s`
 const DebugState = false
+const StateOutputFdNum = 20
+const NumRandomEndBytes = 8
 
 var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
 
@@ -48,21 +53,39 @@ type RunCommandOpts struct {
 	CommandStdinFdNum int // needed for SudoWithPass
 }
 
+const (
+	ShellStateOutputStatus_Done = "done"
+)
+
+type ShellStateOutput struct {
+	Output     []byte
+	ShellState *packet.ShellState
+	Stats      *packet.ShellStateStats
+	Error      string
+}
+
+// some timing info
+// MakeShellStateDiff takes ~1ms to run (even on a large diff)
+
 type ShellApi interface {
 	GetShellType() string
-	MakeExitTrap(fdNum int) string
+	MakeExitTrap(fdNum int) (string, []byte)
+	ValidateCommandSyntax(cmdStr string) error
 	GetLocalMajorVersion() string
 	GetLocalShellPath() string
 	GetRemoteShellPath() string
 	MakeRunCommand(cmdStr string, opts RunCommandOpts) string
 	MakeShExecCommand(cmdStr string, rcFileName string, usePty bool) *exec.Cmd
-	GetShellState() (*packet.ShellState, error)
+	GetShellState(ctx context.Context, outCh chan ShellStateOutput, stdinDataCh chan []byte)
 	GetBaseShellOpts() string
-	ParseShellStateOutput(output []byte) (*packet.ShellState, error)
+	ParseShellStateOutput(output []byte) (*packet.ShellState, *packet.ShellStateStats, error)
 	MakeRcFileStr(pk *packet.RunPacketType) string
 	MakeShellStateDiff(oldState *packet.ShellState, oldStateHash string, newState *packet.ShellState) (*packet.ShellStateDiff, error)
 	ApplyShellStateDiff(oldState *packet.ShellState, diff *packet.ShellStateDiff) (*packet.ShellState, error)
 }
+
+var _ ShellApi = &bashShellApi{}
+var _ ShellApi = &zshShellApi{}
 
 func DetectLocalShellType() string {
 	shellPath := GetMacUserShell()
@@ -136,12 +159,13 @@ func internalMacUserShell() string {
 const FirstExtraFilesFdNum = 3
 
 // returns output(stdout+stderr), extraFdOutput, error
-func RunCommandWithExtraFd(ecmd *exec.Cmd, extraFdNum int) ([]byte, []byte, error) {
+func StreamCommandWithExtraFd(ctx context.Context, ecmd *exec.Cmd, outputCh chan []byte, extraFdNum int, endBytes []byte, stdinDataCh chan []byte) ([]byte, error) {
+	defer close(outputCh)
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
-		return nil, nil, fmt.Errorf("opening new pty: %w", err)
+		return nil, fmt.Errorf("opening new pty: %w", err)
 	}
 	defer cmdTty.Close()
 	defer cmdPty.Close()
@@ -154,42 +178,59 @@ func RunCommandWithExtraFd(ecmd *exec.Cmd, extraFdNum int) ([]byte, []byte, erro
 	ecmd.SysProcAttr.Setctty = true
 	pipeReader, pipeWriter, err := os.Pipe()
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not create pipe: %w", err)
+		return nil, fmt.Errorf("could not create pipe: %w", err)
 	}
 	defer pipeWriter.Close()
 	defer pipeReader.Close()
 	extraFiles := make([]*os.File, extraFdNum+1)
 	extraFiles[extraFdNum] = pipeWriter
 	ecmd.ExtraFiles = extraFiles[FirstExtraFilesFdNum:]
-	defer pipeReader.Close()
-	ecmd.Start()
+	err = ecmd.Start()
 	cmdTty.Close()
 	pipeWriter.Close()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	var outputWg sync.WaitGroup
-	var outputBuf bytes.Buffer
 	var extraFdOutputBuf bytes.Buffer
 	outputWg.Add(2)
 	go func() {
 		// ignore error (/dev/ptmx has read error when process is done)
 		defer outputWg.Done()
-		io.Copy(&outputBuf, cmdPty)
+		utilfn.CopyToChannel(outputCh, cmdPty)
 	}()
 	go func() {
 		defer outputWg.Done()
-		io.Copy(&extraFdOutputBuf, pipeReader)
+		utilfn.CopyWithEndBytes(&extraFdOutputBuf, pipeReader, endBytes)
 	}()
+	if stdinDataCh != nil {
+		go func() {
+			// continue this loop even after an error to drain stdinDataCh
+			hadErr := false
+			for stdinData := range stdinDataCh {
+				if hadErr {
+					continue
+				}
+				_, err := cmdPty.Write(stdinData)
+				if err != nil {
+					wlog.Logf("error writing to shellstate cmdpty (stdin): %v\n", err)
+					hadErr = true
+				}
+			}
+		}()
+	}
 	exitErr := ecmd.Wait()
 	if exitErr != nil {
-		return nil, nil, exitErr
+		if ctx.Err() != nil {
+			return nil, fmt.Errorf("%w (%w)", ctx.Err(), exitErr)
+		}
+		return nil, exitErr
 	}
 	outputWg.Wait()
-	return outputBuf.Bytes(), extraFdOutputBuf.Bytes(), nil
+	return extraFdOutputBuf.Bytes(), nil
 }
 
-func RunSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
+func RunSimpleCmdInPty(ecmd *exec.Cmd, endBytes []byte) ([]byte, error) {
 	ecmd.Env = os.Environ()
 	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
 	cmdPty, cmdTty, err := pty.Open()
@@ -214,8 +255,8 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	var outputBuf bytes.Buffer
 	go func() {
 		// ignore error (/dev/ptmx has read error when process is done)
-		io.Copy(&outputBuf, cmdPty)
-		close(ioDone)
+		defer close(ioDone)
+		utilfn.CopyWithEndBytes(&outputBuf, cmdPty, endBytes)
 	}()
 	exitErr := ecmd.Wait()
 	if exitErr != nil {
@@ -225,7 +266,7 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd) ([]byte, error) {
 	return outputBuf.Bytes(), nil
 }
 
-func parsePVarOutput(pvarBytes []byte, isZsh bool) map[string]*DeclareDeclType {
+func parseExtVarOutput(pvarBytes []byte, promptOutput string, zmodsOutput string) map[string]*DeclareDeclType {
 	declMap := make(map[string]*DeclareDeclType)
 	pvars := bytes.Split(pvarBytes, []byte{0})
 	for _, pvarBA := range pvars {
@@ -237,9 +278,32 @@ func parsePVarOutput(pvarBytes []byte, isZsh bool) map[string]*DeclareDeclType {
 		if pvarFields[0] == "" {
 			continue
 		}
-		decl := &DeclareDeclType{IsZshDecl: isZsh, Args: "x"}
-		decl.Name = "PROMPTVAR_" + pvarFields[0]
-		decl.Value = shellescape.Quote(pvarFields[1])
+		name := pvarFields[0]
+		val := pvarFields[1]
+		decl := &DeclareDeclType{IsExtVar: true}
+		decl.Name = "PROMPTVAR_" + name
+		decl.Value = val
+		declMap[decl.Name] = decl
+	}
+	if promptOutput != "" {
+		decl := &DeclareDeclType{IsExtVar: true}
+		decl.Name = "PROMPTVAR_PS1"
+		decl.Value = promptOutput
+		declMap[decl.Name] = decl
+	}
+	if zmodsOutput != "" {
+		var zmods []string
+		lines := strings.Split(zmodsOutput, "\n")
+		for _, line := range lines {
+			fields := strings.Fields(line)
+			if len(fields) != 2 || fields[0] != "zmodload" {
+				continue
+			}
+			zmods = append(zmods, fields[1])
+		}
+		decl := &DeclareDeclType{IsExtVar: true}
+		decl.Name = ZModsVarName
+		decl.Value = utilfn.QuickJson(zmods)
 		declMap[decl.Name] = decl
 	}
 	return declMap

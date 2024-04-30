@@ -23,6 +23,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/rtnstate"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/telemetry"
 )
 
 const PCloudEndpoint = "https://api.waveterm.dev/central"
@@ -156,7 +157,7 @@ func SendTelemetry(ctx context.Context, force bool) error {
 	if !force && clientData.ClientOpts.NoTelemetry {
 		return nil
 	}
-	activity, err := sstore.GetNonUploadedActivity(ctx)
+	activity, err := telemetry.GetNonUploadedActivity(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get activity: %v", err)
 	}
@@ -164,7 +165,7 @@ func SendTelemetry(ctx context.Context, force bool) error {
 		return nil
 	}
 	log.Printf("[pcloud] sending telemetry data\n")
-	dayStr := sstore.GetCurDayStr()
+	dayStr := telemetry.GetCurDayStr()
 	defaultShellType := shellapi.DetectLocalShellType()
 	input := TelemetryInputType{UserId: clientData.UserId, ClientId: clientData.ClientId, CurDay: dayStr, DefaultShell: defaultShellType, Activity: activity}
 	req, err := makeAnonPostReq(ctx, TelemetryUrl, input)
@@ -175,7 +176,7 @@ func SendTelemetry(ctx context.Context, force bool) error {
 	if err != nil {
 		return err
 	}
-	err = sstore.MarkActivityAsUploaded(ctx, activity)
+	err = telemetry.MarkActivityAsUploaded(ctx, activity)
 	if err != nil {
 		return fmt.Errorf("error marking activity as uploaded: %v", err)
 	}

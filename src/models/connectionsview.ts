@@ -3,6 +3,7 @@
 
 import * as mobx from "mobx";
 import { Model } from "./model";
+import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 
 class ConnectionsViewModel {
     globalModel: Model;

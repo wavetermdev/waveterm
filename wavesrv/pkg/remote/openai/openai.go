@@ -144,7 +144,7 @@ func RunCompletionStream(ctx context.Context, opts *sstore.OpenAIOptsType, promp
 	if opts.Model == "" {
 		return nil, fmt.Errorf("no openai model specified")
 	}
-	if opts.APIToken == "" {
+	if opts.BaseURL == "" && opts.APIToken == "" {
 		return nil, fmt.Errorf("no api token")
 	}
 	clientConfig := openaiapi.DefaultConfig(opts.APIToken)

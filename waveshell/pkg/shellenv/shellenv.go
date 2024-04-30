@@ -11,6 +11,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/simpleexpand"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
 const (
@@ -22,6 +23,7 @@ const (
 
 type DeclareDeclType struct {
 	IsZshDecl bool
+	IsExtVar  bool // set for "special" wave internal variables
 
 	Args string
 	Name string
@@ -36,31 +38,31 @@ type DeclareDeclType struct {
 }
 
 func (d *DeclareDeclType) IsExport() bool {
-	return strings.Index(d.Args, "x") >= 0
+	return strings.Contains(d.Args, "x")
 }
 
 func (d *DeclareDeclType) IsReadOnly() bool {
-	return strings.Index(d.Args, "r") >= 0
+	return strings.Contains(d.Args, "r")
 }
 
 func (d *DeclareDeclType) IsZshScalarBound() bool {
-	return strings.Index(d.Args, "T") >= 0
+	return strings.Contains(d.Args, "T")
 }
 
 func (d *DeclareDeclType) IsArray() bool {
-	return strings.Index(d.Args, "a") >= 0
+	return strings.Contains(d.Args, "a")
 }
 
 func (d *DeclareDeclType) IsAssocArray() bool {
-	return strings.Index(d.Args, "A") >= 0
+	return strings.Contains(d.Args, "A")
 }
 
 func (d *DeclareDeclType) IsUniqueArray() bool {
-	return d.IsArray() && strings.Index(d.Args, "U") >= 0
+	return d.IsArray() && strings.Contains(d.Args, "U")
 }
 
 func (d *DeclareDeclType) AddFlag(flag string) {
-	if strings.Index(d.Args, flag) >= 0 {
+	if strings.Contains(d.Args, flag) {
 		return
 	}
 	d.Args += flag
@@ -101,13 +103,13 @@ func (d *DeclareDeclType) SortZshFlags() {
 }
 
 func (d *DeclareDeclType) DataType() string {
-	if strings.Index(d.Args, "a") >= 0 {
+	if strings.Contains(d.Args, "a") {
 		return DeclTypeArray
 	}
-	if strings.Index(d.Args, "A") >= 0 {
+	if strings.Contains(d.Args, "A") {
 		return DeclTypeAssocArray
 	}
-	if strings.Index(d.Args, "i") >= 0 {
+	if strings.Contains(d.Args, "i") {
 		return DeclTypeInt
 	}
 	return DeclTypeNormal
@@ -124,7 +126,15 @@ func FindVarDecl(decls []*DeclareDeclType, name string) *DeclareDeclType {
 
 // NOTE Serialize no longer writes the final null byte
 func (d *DeclareDeclType) Serialize() []byte {
-	if d.IsZshDecl {
+	if d.IsExtVar {
+		parts := []string{
+			"e1",
+			d.Args,
+			d.Name,
+			d.Value,
+		}
+		return utilfn.EncodeStringArray(parts)
+	} else if d.IsZshDecl {
 		d.SortZshFlags()
 		parts := []string{
 			"z1",
@@ -149,6 +159,15 @@ func (d *DeclareDeclType) Serialize() []byte {
 	// return []byte(rtn)
 }
 
+func (d *DeclareDeclType) UnescapedValue() string {
+	if d.IsExtVar {
+		return d.Value
+	}
+	ectx := simpleexpand.SimpleExpandContext{}
+	rtn, _ := simpleexpand.SimpleExpandPartialWord(ectx, d.Value, false)
+	return rtn
+}
+
 func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool {
 	if d1.IsExport() != d2.IsExport() {
 		return false
@@ -164,7 +183,8 @@ func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool
 
 // envline should be valid
 func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
-	if utilfn.EncodedStringArrayHasFirstKey(envLineBytes, "z1") {
+	esFirstVal := utilfn.EncodedStringArrayGetFirstVal(envLineBytes)
+	if esFirstVal == "z1" {
 		parts, err := utilfn.DecodeStringArray(envLineBytes)
 		if err != nil {
 			return nil
@@ -180,7 +200,7 @@ func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 			ZshBoundScalar: parts[4],
 			ZshEnvValue:    parts[5],
 		}
-	} else if utilfn.EncodedStringArrayHasFirstKey(envLineBytes, "b1") {
+	} else if esFirstVal == "b1" {
 		parts, err := utilfn.DecodeStringArray(envLineBytes)
 		if err != nil {
 			return nil
@@ -193,8 +213,25 @@ func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 			Name:  parts[2],
 			Value: parts[3],
 		}
+	} else if esFirstVal == "e1" {
+		parts, err := utilfn.DecodeStringArray(envLineBytes)
+		if err != nil {
+			return nil
+		}
+		if len(parts) != 4 {
+			return nil
+		}
+		return &DeclareDeclType{
+			IsExtVar: true,
+			Args:     parts[1],
+			Name:     parts[2],
+			Value:    parts[3],
+		}
+	} else if esFirstVal == "p1" {
+		// deprecated
+		return nil
 	}
-	// legacy decoding (v0)
+	// legacy decoding (v0) (not an encoded string array)
 	envLine := string(envLineBytes)
 	eqIdx := strings.Index(envLine, "=")
 	if eqIdx == -1 {
@@ -308,21 +345,21 @@ func ShellVarMapFromState(state *packet.ShellState) map[string]string {
 }
 
 func DumpVarMapFromState(state *packet.ShellState) {
-	fmt.Printf("DUMP-STATE-VARS:\n")
+	wlog.Logf("DUMP-STATE-VARS:\n")
 	if state == nil {
-		fmt.Printf("  nil\n")
+		wlog.Logf("  nil\n")
 		return
 	}
 	decls := VarDeclsFromState(state)
 	for _, decl := range decls {
-		fmt.Printf("  %s %#v\n", decl.Name, decl)
+		wlog.Logf("  %s %#v\n", decl.Name, decl)
 	}
 	envMap := EnvMapFromState(state)
-	fmt.Printf("DUMP-STATE-ENV:\n")
+	wlog.Logf("DUMP-STATE-ENV:\n")
 	for k, v := range envMap {
-		fmt.Printf("  %s=%s\n", k, v)
+		wlog.Logf("  %s=%s\n", k, v)
 	}
-	fmt.Printf("\n\n")
+	wlog.Logf("\n\n")
 }
 
 func VarDeclsFromState(state *packet.ShellState) []*DeclareDeclType {

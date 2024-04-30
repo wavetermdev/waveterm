@@ -186,6 +186,9 @@ func readEncodedStringArray(buf *bytes.Buffer) ([]string, error) {
 
 func (rtn *LineDiffType) Decode(diffBytes []byte) error {
 	rtn.Clear()
+	if len(diffBytes) == 0 {
+		return nil
+	}
 	r := bytes.NewBuffer(diffBytes)
 	version, err := binary.ReadUvarint(r)
 	if err != nil {

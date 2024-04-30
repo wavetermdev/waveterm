@@ -3,10 +3,10 @@
     align-items: center;
     border-radius: 6px;
     position: relative;
-    height: 44px;
+    min-height: 44px;
     min-width: 412px;
     gap: 6px;
-    border: 1px solid var(--form-element-border-color);
+    border: 2px solid var(--form-element-border-color);
     background: var(--form-element-bg-color);
 
     &:hover {
@@ -27,19 +27,19 @@
 
     &-inner {
         display: flex;
-        align-items: flex-end;
-        height: 100%;
+        flex-direction: column;
         position: relative;
         flex-grow: 1;
+        --inner-padding: 5px 0 5px 16px;
 
         &-label {
-            position: absolute;
-            left: 16px;
-            top: 16px;
+            padding: var(--inner-padding);
+            margin-bottom: -10px;
             font-size: 12.5px;
             transition: all 0.3s;
             color: var(--form-element-label-color);
             line-height: 10px;
+            user-select: none;
 
             &.float {
                 font-size: 10px;
@@ -55,7 +55,7 @@
             width: 100%;
             height: 30px;
             border: none;
-            padding: 5px 0 5px 16px;
+            padding: var(--inner-padding);
             font-size: 16px;
             outline: none;
             background-color: transparent;
@@ -64,6 +64,10 @@
 
             &.offset-left {
                 padding: 5px 16px 5px 0;
+            }
+
+            &:placeholder-shown {
+                user-select: none;
             }
         }
     }

@@ -18,10 +18,15 @@ class ModalsModel {
         }
     }
 
-    popModal() {
+    popModal(callback?: () => void) {
         mobx.action(() => {
             this.store.pop();
         })();
+        callback && callback();
+    }
+
+    hasOpenModals(): boolean {
+        return this.store.length > 0;
     }
 }
 

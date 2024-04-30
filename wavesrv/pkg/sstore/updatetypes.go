@@ -8,6 +8,7 @@ import (
 
 	"github.com/wavetermdev/waveterm/waveshell/pkg/packet"
 	"github.com/wavetermdev/waveterm/waveshell/pkg/utilfn"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/configstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbus"
 )
 
@@ -48,6 +49,7 @@ func (CmdLineUpdate) GetType() string {
 type InfoMsgType struct {
 	InfoTitle     string   `json:"infotitle"`
 	InfoError     string   `json:"infoerror,omitempty"`
+	InfoErrorCode string   `json:"infoerrorcode,omitempty"`
 	InfoMsg       string   `json:"infomsg,omitempty"`
 	InfoMsgHtml   bool     `json:"infomsghtml,omitempty"`
 	WebShareLink  bool     `json:"websharelink,omitempty"`
@@ -90,18 +92,6 @@ func (ClearInfoUpdate) GetType() string {
 	return "clearinfo"
 }
 
-type HistoryInfoType struct {
-	HistoryType string             `json:"historytype"`
-	SessionId   string             `json:"sessionid,omitempty"`
-	ScreenId    string             `json:"screenid,omitempty"`
-	Items       []*HistoryItemType `json:"items"`
-	Show        bool               `json:"show"`
-}
-
-func (HistoryInfoType) GetType() string {
-	return "history"
-}
-
 type InteractiveUpdate bool
 
 func (InteractiveUpdate) GetType() string {
@@ -115,47 +105,11 @@ type ConnectUpdate struct {
 	ScreenStatusIndicators   []*ScreenStatusIndicatorType    `json:"screenstatusindicators,omitempty"`
 	ScreenNumRunningCommands []*ScreenNumRunningCommandsType `json:"screennumrunningcommands,omitempty"`
 	ActiveSessionId          string                          `json:"activesessionid,omitempty"`
+	TermThemes               *configstore.ConfigReturn       `json:"termthemes,omitempty"`
 }
 
 func (ConnectUpdate) GetType() string {
 	return "connect"
-}
-
-type MainViewUpdate struct {
-	MainView      string           `json:"mainview"`
-	HistoryView   *HistoryViewData `json:"historyview,omitempty"`
-	BookmarksView *BookmarksUpdate `json:"bookmarksview,omitempty"`
-}
-
-func (MainViewUpdate) GetType() string {
-	return "mainview"
-}
-
-type BookmarksUpdate struct {
-	Bookmarks        []*BookmarkType `json:"bookmarks"`
-	SelectedBookmark string          `json:"selectedbookmark,omitempty"`
-}
-
-func (BookmarksUpdate) GetType() string {
-	return "bookmarks"
-}
-
-func AddBookmarksUpdate(update *scbus.ModelUpdatePacketType, bookmarks []*BookmarkType, selectedBookmark *string) {
-	if selectedBookmark == nil {
-		update.AddUpdate(BookmarksUpdate{Bookmarks: bookmarks})
-	} else {
-		update.AddUpdate(BookmarksUpdate{Bookmarks: bookmarks, SelectedBookmark: *selectedBookmark})
-	}
-}
-
-type HistoryViewData struct {
-	Items         []*HistoryItemType `json:"items"`
-	Offset        int                `json:"offset"`
-	RawOffset     int                `json:"rawoffset"`
-	NextRawOffset int                `json:"nextrawoffset"`
-	HasMore       bool               `json:"hasmore"`
-	Lines         []*LineType        `json:"lines"`
-	Cmds          []*CmdType         `json:"cmds"`
 }
 
 type RemoteEditType struct {

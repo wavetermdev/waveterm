@@ -7,55 +7,260 @@ import * as mobx from "mobx";
 import cn from "classnames";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
-import { GlobalModel } from "@/models";
+import { If } from "tsx-control-statements/components";
+import { GlobalModel, GlobalCommandRunner } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
 import { ScreenTabs } from "./screen/tabs";
 import { ErrorBoundary } from "@/common/error/errorboundary";
-import * as textmeasure from "@/util/textmeasure";
+import { boundMethod } from "autobind-decorator";
+import type { Screen } from "@/models";
+import { Button, Dropdown } from "@/elements";
+import { commandRtnHandler } from "@/util/util";
+import { getTermThemes } from "@/util/themeutil";
+import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
+import { TabColorSelector, TabIconSelector, TabNameTextField, TabRemoteSelector } from "./screen/newtabsettings";
+import * as util from "@/util/util";
+
 import "./workspace.less";
 
 dayjs.extend(localizedFormat);
 
-@mobxReact.observer
-class WorkspaceView extends React.Component<{}, {}> {
+const ScreenDeleteMessage = `
+Are you sure you want to delete this tab?
+`.trim();
+
+class SessionKeybindings extends React.Component<{}, {}> {
+    componentDidMount() {
+        const keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("mainview", "session", "app:toggleSidebar", (waveEvent) => {
+            GlobalModel.handleToggleSidebar();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "session", "app:newTab", (waveEvent) => {
+            GlobalModel.onNewTab();
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "session", "app:closeCurrentTab", (waveEvent) => {
+            GlobalModel.onCloseCurrentTab();
+            return true;
+        });
+        for (let index = 1; index <= 9; index++) {
+            keybindManager.registerKeybinding("mainview", "session", "app:selectTab-" + index, (waveEvent) => {
+                GlobalModel.onSwitchScreenCmd(index);
+                return true;
+            });
+        }
+        keybindManager.registerKeybinding("mainview", "session", "app:selectTabLeft", (waveEvent) => {
+            GlobalModel.onBracketCmd(-1);
+            return true;
+        });
+        keybindManager.registerKeybinding("mainview", "session", "app:selectTabRight", (waveEvent) => {
+            GlobalModel.onBracketCmd(1);
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "screen", "app:selectLineAbove", (waveEvent) => {
+            GlobalModel.onMetaArrowUp();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "screen", "app:selectLineBelow", (waveEvent) => {
+            GlobalModel.onMetaArrowDown();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "screen", "app:restartCommand", (waveEvent) => {
+            GlobalModel.onRestartCommand();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "screen", "app:restartLastCommand", (waveEvent) => {
+            GlobalModel.onRestartLastCommand();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "screen", "app:focusSelectedLine", (waveEvent) => {
+            GlobalModel.onFocusSelectedLine();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "screen", "app:deleteActiveLine", (waveEvent) => {
+            return GlobalModel.handleDeleteActiveLine();
+        });
+    }
+
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("session");
+        GlobalModel.keybindManager.unregisterDomain("screen");
+    }
+
     render() {
-        let model = GlobalModel;
-        let session = model.getActiveSession();
-        if (session == null) {
-            return (
-                <div className="session-view">
-                    <div className="center-message">
-                        <div>(no active workspace)</div>
+        return null;
+    }
+}
+
+@mobxReact.observer
+class TabSettingsPulldownKeybindings extends React.Component<{}, {}> {
+    componentDidMount() {
+        const keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("pane", "tabsettings", "generic:cancel", (waveEvent) => {
+            GlobalModel.closeTabSettings();
+            return true;
+        });
+    }
+
+    componentWillUnmount() {
+        GlobalModel.keybindManager.unregisterDomain("tabsettings");
+    }
+
+    render() {
+        return null;
+    }
+}
+
+@mobxReact.observer
+class TabSettings extends React.Component<{ screen: Screen }, {}> {
+    errorMessage: OV<string> = mobx.observable.box(null, { name: "TabSettings-errorMessage" });
+
+    @boundMethod
+    handleDeleteScreen(): void {
+        const { screen } = this.props;
+        if (screen == null) {
+            return;
+        }
+        let numLines = screen.getScreenLines().lines.length;
+        if (numLines < 10) {
+            GlobalCommandRunner.screenDelete(screen.screenId, false);
+            GlobalModel.modalsModel.popModal();
+            return;
+        }
+        const message = ScreenDeleteMessage;
+        const alertRtn = GlobalModel.showAlert({ message: message, confirm: true, markdown: true });
+        alertRtn.then((result) => {
+            if (!result) {
+                return;
+            }
+            const prtn = GlobalCommandRunner.screenDelete(screen.screenId, false);
+            util.commandRtnHandler(prtn, this.errorMessage);
+            GlobalModel.modalsModel.popModal();
+        });
+    }
+
+    @boundMethod
+    handleChangeTermTheme(theme: string): void {
+        const { screenId } = this.props.screen;
+        const currTheme = GlobalModel.getTermThemeSettings()[screenId];
+        if (currTheme == theme) {
+            return;
+        }
+        const prtn = GlobalCommandRunner.setScreenTermTheme(screenId, theme, false);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    render() {
+        const { screen } = this.props;
+        const rptr = screen.curRemote.get();
+        const termThemes = getTermThemes(GlobalModel.termThemes.get());
+        const currTermTheme = GlobalModel.getTermThemeSettings()[screen.screenId] ?? termThemes[0].label;
+        return (
+            <div className="newtab-container">
+                <div className="newtab-section name-section">
+                    <TabNameTextField screen={screen} errorMessage={this.errorMessage} />
+                </div>
+                <div className="newtab-spacer" />
+                <div className="newtab-section conn-section">
+                    <div className="unselectable truncate">
+                        You're connected to "{getRemoteStrWithAlias(rptr)}". Do you want to change it?
+                    </div>
+                    <div>
+                        <TabRemoteSelector screen={screen} errorMessage={this.errorMessage} />
+                    </div>
+                    <div className="text-caption cr-help-text truncate">
+                        To change connection from the command line use `cr [alias|user@host]`
                     </div>
                 </div>
-            );
-        }
-        let activeScreen = session.getActiveScreen();
-        let cmdInputHeight = model.inputModel.cmdInputHeight.get();
-        if (cmdInputHeight == 0) {
-            cmdInputHeight = textmeasure.baseCmdInputHeight(GlobalModel.lineHeightEnv); // this is the base size of cmdInput (measured using devtools)
-        }
-        let isHidden = GlobalModel.activeMainView.get() != "session";
-        let mainSidebarModel = GlobalModel.mainSidebarModel;
+                <div className="newtab-spacer" />
+                <If condition={termThemes.length > 0}>
+                    <div className="newtab-section">
+                        <Dropdown
+                            label="Terminal Theme"
+                            className="terminal-theme-dropdown"
+                            options={termThemes}
+                            defaultValue={currTermTheme}
+                            onChange={this.handleChangeTermTheme}
+                        />
+                    </div>
+                </If>
+                <div className="newtab-spacer" />
+                <div className="newtab-section">
+                    <TabIconSelector screen={screen} errorMessage={this.errorMessage} />
+                </div>
+                <div className="newtab-spacer" />
+                <div className="newtab-section">
+                    <TabColorSelector screen={screen} errorMessage={this.errorMessage} />
+                </div>
+                <div className="newtab-spacer" />
+                <div className="newtab-section">
+                    <Button
+                        onClick={this.handleDeleteScreen}
+                        style={{ paddingTop: 4, paddingBottom: 4 }}
+                        className="primary greyoutlined greytext hover-danger"
+                    >
+                        Delete Tab
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+}
 
-        // Has to calc manually because when tabs overflow, the width of the session view is increased for some reason causing inconsistent width.
-        // 6px is the right margin of session view.
-        let width = window.innerWidth - 6 - mainSidebarModel.getWidth();
+@mobxReact.observer
+class WorkspaceView extends React.Component<{}, {}> {
+    sessionRef = React.createRef<HTMLDivElement>();
 
+    @boundMethod
+    toggleTabSettings() {
+        mobx.action(() => {
+            GlobalModel.tabSettingsOpen.set(!GlobalModel.tabSettingsOpen.get());
+        })();
+    }
+
+    render() {
+        const session = GlobalModel.getActiveSession();
+        let activeScreen: Screen = null;
+        let sessionId: string = "none";
+        if (session != null) {
+            sessionId = session.sessionId;
+            activeScreen = session.getActiveScreen();
+        }
+        const isHidden = GlobalModel.activeMainView.get() != "session";
+        const mainSidebarModel = GlobalModel.mainSidebarModel;
+        const showTabSettings = GlobalModel.tabSettingsOpen.get();
         return (
             <div
+                ref={this.sessionRef}
                 className={cn("mainview", "session-view", { "is-hidden": isHidden })}
-                data-sessionid={session.sessionId}
+                id={sessionId}
+                data-sessionid={sessionId}
                 style={{
-                    width: `${width}px`,
+                    width: `${window.innerWidth - mainSidebarModel.getWidth()}px`,
                 }}
             >
-                <ScreenTabs key={"tabs-" + session.sessionId} session={session} />
-                <ErrorBoundary>
-                    <ScreenView key={"screenview-" + session.sessionId} session={session} screen={activeScreen} />
-                    <div className="cmdinput-height-placeholder" style={{ height: cmdInputHeight }}></div>
-                    <CmdInput key={"cmdinput-" + session.sessionId} />
+                <If condition={!isHidden}>
+                    <SessionKeybindings key="keybindings"></SessionKeybindings>
+                </If>
+                <ScreenTabs key={"tabs-" + sessionId} session={session} />
+                <If condition={activeScreen != null}>
+                    <div key="pulldown" className={cn("tab-settings-pulldown", { closed: !showTabSettings })}>
+                        <Button className="close-button secondary ghost" onClick={this.toggleTabSettings}>
+                            <i className="fa-solid fa-sharp fa-xmark-large" />
+                        </Button>
+                        <TabSettings key={activeScreen.screenId} screen={activeScreen} />
+                        <If condition={showTabSettings && !isHidden}>
+                            <TabSettingsPulldownKeybindings />
+                        </If>
+                    </div>
+                </If>
+                <ErrorBoundary key="eb">
+                    <ScreenView key={`screenview-${sessionId}`} session={session} screen={activeScreen} />
+                    <If condition={activeScreen != null}>
+                        <CmdInput key={"cmdinput-" + sessionId} />
+                    </If>
                 </ErrorBoundary>
             </div>
         );

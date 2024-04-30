@@ -1,5 +1,6 @@
 .rconndetail-modal {
-    width: 631px;
+    width: auto;
+    max-width: 80vw;
     min-height: 565px;
 
     .wave-modal-content {
@@ -89,25 +90,12 @@
                     margin-top: 5px;
                     overflow-x: auto;
                     overflow-y: hidden;
+                    border: 1px solid var(--app-border-color);
+                    border-radius: 6px;
+                    padding: 6px 10px;
 
                     .terminal-connectelem {
                         height: 163px !important; // Needed to override plugin height
-
-                        .xterm-viewport {
-                            display: flex;
-                            padding: 6px 10px;
-                            gap: 8px;
-                            align-items: flex-start;
-                            align-self: stretch;
-                            border-radius: 6px;
-                            border: 1px solid var(--xterm-viewport-border-color);
-                            background: #080a08;
-                            height: 163px !important; // Needed to override plugin height
-                        }
-
-                        .xterm-screen {
-                            padding: 10px;
-                        }
                     }
                 }
             }

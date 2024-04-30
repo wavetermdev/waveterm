@@ -17,6 +17,7 @@ import (
 	"github.com/wavetermdev/waveterm/waveshell/pkg/wlog"
 )
 
+// this is set from build/linker flags
 var BuildTime = "0"
 
 func readFullRunPacket(packetParser *packet.PacketParser) (*packet.RunPacketType, error) {
@@ -61,15 +62,7 @@ func handleSingle() {
 		sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("run packets from server must have a CK: %v", err))
 	}
 	if runPacket.Detached {
-		cmd, startPk, err := shexec.RunCommandDetached(runPacket, sender)
-		if err != nil {
-			sender.SendErrorResponse(runPacket.ReqId, err)
-			return
-		}
-		sender.SendPacket(startPk)
-		sender.Close()
-		sender.WaitForDone()
-		cmd.DetachedWait(startPk)
+		sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("detached mode not supported"))
 		return
 	} else {
 		shexec.IgnoreSigPipe()
@@ -143,6 +136,7 @@ func main() {
 		base.ProcessType = base.ProcessType_WaveShellServer
 		wlog.GlobalSubsystem = base.ProcessType_WaveShellServer
 		base.InitDebugLog("server")
+		base.EnsureRcFilesDir()
 		rtnCode, err := server.RunServer()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "[error] %v\n", err)
