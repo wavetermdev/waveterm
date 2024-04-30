@@ -798,8 +798,9 @@ class InputModel {
                 return;
             }
             if (runGetSuggestions) {
-                this.globalModel.autocompleteModel.loadSuggestions();
+                this.globalModel.autocompleteModel.loadSuggestions(); 
             }
+            this.modHistory[hidx] = val;
         })();
     }
 
