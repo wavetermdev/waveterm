@@ -139,7 +139,6 @@ class InputModel {
     giveFocus(): void {
         // Override active view to the main input if aux view does not have focus
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
-        console.log("giving focus", activeAuxView, this.getAuxViewFocus());
         switch (activeAuxView) {
             case appconst.InputAuxView_History: {
                 const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
@@ -149,7 +148,6 @@ class InputModel {
                 break;
             }
             case appconst.InputAuxView_AIChat:
-                console.log("giving focus to ai chat?");
                 this.setAIChatFocus();
                 break;
             case null: {
@@ -435,7 +433,6 @@ class InputModel {
 
     // Sets the active auxiliary view
     setActiveAuxView(view: InputAuxViewType): void {
-        console.log("setting aux view: ", view);
         if (view == this.activeAuxView.get()) {
             return;
         }
@@ -579,13 +576,10 @@ class InputModel {
 
     @mobx.action
     setCodeSelectSelectedCodeBlock(blockIndex: number) {
-        console.log("setting code select block: ", blockIndex);
         if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
             this.codeSelectSelectedIndex.set(blockIndex);
-            console.log("setting?", this.codeSelectSelectedIndex.get());
             const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
             if (currentRef != null && this.aiChatWindowRef?.current != null) {
-                console.log("current ref?");
                 const chatWindowTop = this.aiChatWindowRef.current.scrollTop;
                 const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
                 const elemTop = currentRef.offsetTop;
@@ -597,7 +591,6 @@ class InputModel {
             }
         }
         this.codeSelectBlockRefArray = [];
-        console.log("setting aux view focus");
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
         this.setAuxViewFocus(true);
     }
@@ -659,7 +652,6 @@ class InputModel {
     }
 
     codeSelectDeselectAll(direction: number = this.codeSelectBottom) {
-        console.log("deselect?");
         if (this.codeSelectSelectedIndex.get() == direction) {
             return;
         }
