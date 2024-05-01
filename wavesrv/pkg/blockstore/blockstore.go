@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/alecthomas/units"
 )
 
 type FileOptsType struct {
@@ -30,7 +32,7 @@ type FileInfo struct {
 	Meta      FileMeta
 }
 
-const MaxBlockSize = int64(128)
+const MaxBlockSize = int64(128 * units.Kilobyte)
 const DefaultFlushTimeout = 1 * time.Second
 
 type CacheEntry struct {
@@ -310,7 +312,6 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 		}
 	}
 	if curCacheEntry.DataBlocks[cacheNum] == nil {
-		//log.Printf("populating cache block\n")
 		var curCacheBlock *CacheBlock
 		if pullFromDB {
 			cacheData, err := GetCacheFromDB(ctx, blockId, name, 0, MaxBlockSize, int64(cacheNum))
@@ -320,13 +321,10 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 			}
 			curCacheBlock = &CacheBlock{data: *cacheData, size: len(*cacheData), dirty: false}
 			curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
-			//log.Printf("curCacheBlock = %v\n", curCacheBlock)
 		} else {
-			//log.Printf("populating with nil")
 			curCacheBlock = &CacheBlock{data: []byte{}, size: 0, dirty: false}
 			curCacheEntry.DataBlocks[cacheNum] = curCacheBlock
 		}
-		//log.Printf("returning ?")
 		return curCacheBlock, nil
 	} else {
 		return curCacheEntry.DataBlocks[cacheNum], nil

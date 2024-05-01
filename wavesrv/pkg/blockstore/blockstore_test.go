@@ -1001,7 +1001,7 @@ func TestWriteLargeDataFlush(t *testing.T) {
 func TestWriteLargeDataNoFlush(t *testing.T) {
 	InitDBState()
 	writeSize := int64(64 - 16)
-	fullWriteSize := int64(1024 * 10000)
+	fullWriteSize := int64(1024 * units.Megabyte)
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
