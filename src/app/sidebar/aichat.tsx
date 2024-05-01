@@ -207,6 +207,7 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     // Adjust the height of the textarea to fit the text
+    @boundMethod
     onTextAreaChange(e: any) {
         // Calculate the bounding height of the text area
         const textAreaMaxLines = 4;
