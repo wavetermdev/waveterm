@@ -72,7 +72,7 @@ fi
 `
 
 func MakeClientCommandStr() string {
-	return strings.ReplaceAll(ClientCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
+	return strings.ReplaceAll(ClientCommandFmt, "[%VERSION%]", semver.MajorMinor(base.WaveshellVersion))
 }
 
 const InstallCommandFmt = `
@@ -88,7 +88,7 @@ fi
 `
 
 func MakeInstallCommandStr() string {
-	return strings.ReplaceAll(InstallCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
+	return strings.ReplaceAll(InstallCommandFmt, "[%VERSION%]", semver.MajorMinor(base.WaveshellVersion))
 }
 
 type MShellBinaryReaderFn func(version string, goos string, goarch string) (io.ReadCloser, error)
@@ -295,7 +295,7 @@ func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
 }
 
 func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
-	msPath, err := base.GetMShellPath()
+	msPath, err := base.GetWaveshellPath()
 	if err != nil {
 		return nil, err
 	}
@@ -688,9 +688,9 @@ func RunInstallFromCmd(ctx context.Context, ecmd ConnInterface, tryDetect bool, 
 			if err != nil {
 				return fmt.Errorf("arch cannot be detected (might be incompatible with mshell): %w", err)
 			}
-			msgStr := fmt.Sprintf("mshell detected remote architecture as '%s.%s'\n", goos, goarch)
+			msgStr := fmt.Sprintf("waveshell detected remote architecture as '%s.%s'\n", goos, goarch)
 			msgFn(msgStr)
-			detectedMSS, err := mshellReaderFn(base.MShellVersion, goos, goarch)
+			detectedMSS, err := mshellReaderFn(base.WaveshellVersion, goos, goarch)
 			if err != nil {
 				return err
 			}
@@ -700,10 +700,10 @@ func RunInstallFromCmd(ctx context.Context, ecmd ConnInterface, tryDetect bool, 
 		}
 		if pk.GetType() == packet.InitPacketStr && !firstInit {
 			initPacket := pk.(*packet.InitPacketType)
-			if initPacket.Version == base.MShellVersion {
+			if initPacket.Version == base.WaveshellVersion {
 				return nil
 			}
-			return fmt.Errorf("invalid version '%s' received from client, expecting '%s'", initPacket.Version, base.MShellVersion)
+			return fmt.Errorf("invalid version '%s' received from client, expecting '%s'", initPacket.Version, base.WaveshellVersion)
 		}
 		if pk.GetType() == packet.RawPacketStr {
 			rawPk := pk.(*packet.RawPacketType)
@@ -1241,10 +1241,10 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 
 func MakeInitPacket() *packet.InitPacketType {
 	initPacket := packet.MakeInitPacket()
-	initPacket.Version = base.MShellVersion
+	initPacket.Version = base.WaveshellVersion
 	initPacket.BuildTime = base.BuildTime
 	initPacket.HomeDir = base.GetHomeDir()
-	initPacket.MShellHomeDir = base.GetMShellHomeDir()
+	initPacket.MShellHomeDir = base.GetWaveshellHomeDir()
 	if user, _ := user.Current(); user != nil {
 		initPacket.User = user.Username
 	}

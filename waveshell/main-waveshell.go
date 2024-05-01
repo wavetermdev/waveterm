@@ -124,7 +124,7 @@ func main() {
 		handleUsage()
 		return
 	} else if firstArg == "--version" {
-		fmt.Printf("mshell %s+%s\n", base.MShellVersion, base.BuildTime)
+		fmt.Printf("waveshell %s+%s\n", base.WaveshellVersion, base.BuildTime)
 		return
 	} else if firstArg == "--single" || firstArg == "--single-from-server" {
 		base.ProcessType = base.ProcessType_WaveShellSingle

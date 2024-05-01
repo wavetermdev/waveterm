@@ -117,8 +117,8 @@ const (
 )
 
 func init() {
-	if scbase.MShellVersion != base.MShellVersion {
-		panic(fmt.Sprintf("prompt-server apishell version must match '%s' vs '%s'", scbase.MShellVersion, base.MShellVersion))
+	if scbase.MShellVersion != base.WaveshellVersion {
+		panic(fmt.Sprintf("prompt-server apishell version must match '%s' vs '%s'", scbase.MShellVersion, base.WaveshellVersion))
 	}
 }
 
