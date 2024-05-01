@@ -178,7 +178,7 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     submitChatMessage(messageStr: string) {
-        const curLine = GlobalModel.inputModel.getCurLine();
+        const curLine = GlobalModel.inputModel.curLine;
         const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
             if (!rtn.success) {
@@ -193,13 +193,13 @@ class AIChat extends React.Component<{}, {}> {
         return { numLines, linePos };
     }
 
+    @mobx.action.bound
     onTextAreaFocused(e: any) {
-        console.log("focused=====");
-        mobx.action(() => {
-            GlobalModel.inputModel.setAuxViewFocus(true);
-        })();
+        GlobalModel.inputModel.setAuxViewFocus(true);
+        this.onTextAreaChange(e);
     }
 
+    @mobx.action.bound
     onTextAreaBlur(e: any) {
         mobx.action(() => {
             GlobalModel.inputModel.setAuxViewFocus(false);
@@ -235,7 +235,10 @@ class AIChat extends React.Component<{}, {}> {
             this.submitChatMessage(messageStr);
             currentRef.value = "";
         } else {
-            inputModel.grabCodeSelectSelection();
+            mobx.action(() => {
+                inputModel.grabCodeSelectSelection();
+                inputModel.setAuxViewFocus(false);
+            })();
         }
     }
 
@@ -303,7 +306,7 @@ class AIChat extends React.Component<{}, {}> {
                         autoCorrect="off"
                         autoFocus={true}
                         id="chat-cmd-input"
-                        onChange={this.onTextAreaChange.bind(this)}
+                        onChange={this.onTextAreaChange}
                         onKeyDown={this.onKeyDown}
                         style={{ fontSize: this.termFontSize }}
                         className="chat-textarea"
