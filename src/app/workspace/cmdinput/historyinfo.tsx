@@ -42,6 +42,11 @@ class HItem extends React.Component<
     },
     {}
 > {
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     renderRemote(hitem: HistoryItem): any {
         if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
             return sprintf("%-15s ", "");
@@ -169,12 +174,12 @@ class HistoryInfo extends React.Component<{}, {}> {
         }
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleClose() {
         GlobalModel.inputModel.closeAuxView();
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleItemClick(hitem: HistoryItem) {
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
@@ -195,14 +200,14 @@ class HistoryInfo extends React.Component<{}, {}> {
         }, 3000);
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleClickType() {
         const inputModel = GlobalModel.inputModel;
         inputModel.setAuxViewFocus(true);
         inputModel.toggleHistoryType();
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleClickRemote() {
         const inputModel = GlobalModel.inputModel;
         inputModel.setAuxViewFocus(true);
@@ -229,7 +234,7 @@ class HistoryInfo extends React.Component<{}, {}> {
     render() {
         const inputModel = GlobalModel.inputModel;
         const selItem = inputModel.getHistorySelectedItem();
-        const hitems = inputModel.getFilteredHistoryItems();
+        const hitems = inputModel.filteredHistoryItems;
         const opts = inputModel.historyQueryOpts.get();
         let hitem: HistoryItem = null;
         let snames: Record<string, string> = {};

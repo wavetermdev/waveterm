@@ -1987,9 +1987,22 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		// Setting UsePty to false will ensure that the outputs get written to the correct file descriptors to extract stdout and stderr
 		runPacket.UsePty = rcOpts.EphemeralOpts.UsePty
 
-		// Ephemeral commands can override the cwd without persisting it to the DB
+		// Ephemeral commands can override the current working directory. We need to expand the home dir if it's relative.
 		if rcOpts.EphemeralOpts.OverrideCwd != "" {
-			currentState.Cwd = rcOpts.EphemeralOpts.OverrideCwd
+			overrideCwd := rcOpts.EphemeralOpts.OverrideCwd
+			if !strings.HasPrefix(overrideCwd, "/") {
+				expandedCwd, err := msh.GetRemoteRuntimeState().ExpandHomeDir(overrideCwd)
+				if err != nil {
+					return nil, nil, fmt.Errorf("cannot expand home dir for cwd: %w", err)
+				}
+				overrideCwd = expandedCwd
+			}
+			currentState.Cwd = overrideCwd
+		}
+
+		// Ephemeral commands can override the timeout
+		if rcOpts.EphemeralOpts.TimeoutMs > 0 {
+			runPacket.Timeout = time.Duration(rcOpts.EphemeralOpts.TimeoutMs) * time.Millisecond
 		}
 
 		// Ephemeral commands can override the env without persisting it to the DB
@@ -2405,6 +2418,7 @@ func (msh *MShellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
 	defer msh.RemoveRunningCmd(rct.CK)
 	if rct.EphemeralOpts != nil {
 		// nothing to do for ephemeral commands besides remove the running command
+		log.Printf("ephemeral command start error: %v\n", startErr)
 		return
 	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
@@ -2472,6 +2486,11 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 
 	// Close the ephemeral response writer if it exists
 	if rct.EphemeralOpts != nil && rct.EphemeralOpts.ExpectsResponse {
+		if donePk.ExitCode != 0 {
+			// if the command failed, we need to write the error to the response writer
+			log.Printf("writing error to ephemeral response writer\n")
+			rct.EphemeralOpts.StderrWriter.Write([]byte(fmt.Sprintf("error: %d\n", donePk.ExitCode)))
+		}
 		log.Printf("closing ephemeral response writers\n")
 		defer rct.EphemeralOpts.StdoutWriter.Close()
 		defer rct.EphemeralOpts.StderrWriter.Close()
@@ -2577,6 +2596,7 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 		return
 	}
 	if rct.EphemeralOpts != nil {
+		log.Printf("ephemeral data packet: %s\n", dataPk.CK)
 		// Write to the response writer if it's set
 		if len(realData) > 0 && rct.EphemeralOpts.ExpectsResponse {
 			switch dataPk.FdNum {
@@ -2593,6 +2613,9 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 			default:
 				log.Printf("error handling data packet: invalid fdnum %d\n", dataPk.FdNum)
 			}
+		}
+		if dataPk.Error != "" {
+			log.Printf("ephemeral data packet error: %s\n", dataPk.Error)
 		}
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)
 		msh.ServerProc.Input.SendPacket(ack)

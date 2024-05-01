@@ -260,8 +260,8 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                             <div className="logo">
                                 <WaveLogo />
                             </div>
-                            <div className="close-button">
-                                <i className="fa-sharp fa-solid fa-xmark-large" onClick={toggleCollapse} />
+                            <div className="close-button" onClick={toggleCollapse}>
+                                <i className="fa-sharp fa-solid fa-xmark-large" />
                             </div>
                         </div>
                         <div className="contents">

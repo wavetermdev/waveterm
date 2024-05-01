@@ -117,7 +117,7 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             const lastTab = this.lastTab;
             this.lastTab = true;
             this.curPress = "tab";
-            const curLine = inputModel.getCurLine();
+            const curLine = inputModel.curLine;
             if (lastTab) {
                 GlobalModel.submitCommand(
                     "_compgen",
@@ -250,9 +250,15 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0, { name: "textAreaInput-version" }); // forces render updates
 
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
+    @mobx.action
     incVersion(): void {
         const v = this.version.get();
-        mobx.action(() => this.version.set(v + 1))();
+        this.version.set(v + 1);
     }
 
     getCurSP(): StrWithPos {
@@ -278,6 +284,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         GlobalModel.sendCmdInputText(this.props.screen.screenId, curSP);
     }
 
+    @mobx.action
     setFocus(): void {
         GlobalModel.inputModel.giveFocus();
     }
@@ -311,7 +318,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
     }
 
-    componentDidMount() {
+    @mobx.action.bound
+    handleComponentDidMount() {
         const activeScreen = GlobalModel.getActiveScreen();
         if (activeScreen != null) {
             const focusType = activeScreen.focusType.get();
@@ -324,6 +332,24 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         this.updateSP();
     }
 
+    componentDidMount() {
+        this.handleComponentDidMount();
+        this.updateCursorPosIfForced();
+    }
+
+    updateCursorPosIfForced() {
+        const inputModel = GlobalModel.inputModel;
+        const fcpos = inputModel.forceCursorPos.get();
+        if (fcpos != null && fcpos != appconst.NoStrPos) {
+            if (this.mainInputRef.current != null) {
+                this.mainInputRef.current.selectionStart = fcpos;
+                this.mainInputRef.current.selectionEnd = fcpos;
+            }
+            inputModel.forceCursorPos.set(null);
+        }
+    }
+
+    @mobx.action
     componentDidUpdate() {
         const activeScreen = GlobalModel.getActiveScreen();
         if (activeScreen != null) {
@@ -334,14 +360,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             this.lastFocusType = focusType;
         }
         const inputModel = GlobalModel.inputModel;
-        const fcpos = inputModel.forceCursorPos.get();
-        if (fcpos != null && fcpos != appconst.NoStrPos) {
-            if (this.mainInputRef.current != null) {
-                this.mainInputRef.current.selectionStart = fcpos;
-                this.mainInputRef.current.selectionEnd = fcpos;
-            }
-            mobx.action(() => inputModel.forceCursorPos.set(null))();
-        }
+        this.updateCursorPosIfForced();
         if (inputModel.forceInputFocus) {
             inputModel.forceInputFocus = false;
             this.setFocus();
@@ -414,21 +433,18 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             return;
         }
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
-        GlobalModel.inputModel.setCurLine(currentRef.value);
+        GlobalModel.inputModel.curLine = currentRef.value;
     }
 
-    @mobx.action
     @boundMethod
     onKeyDown(e: any) {}
 
-    @boundMethod
+    @mobx.action.bound
     onChange(e: any) {
-        mobx.action(() => {
-            GlobalModel.inputModel.setCurLine(e.target.value);
-        })();
+        GlobalModel.inputModel.curLine = e.target.value;
     }
 
-    @boundMethod
+    @mobx.action.bound
     onSelect(e: any) {
         this.incVersion();
     }
@@ -453,7 +469,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         GlobalModel.inputModel.updateCmdLine(cmdLineUpdate);
     }
 
-    @boundMethod
+    @mobx.action.bound
     controlP() {
         const inputModel = GlobalModel.inputModel;
         if (!inputModel.isHistoryLoaded()) {
@@ -465,7 +481,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         this.lastHistoryUpDown = true;
     }
 
-    @boundMethod
+    @mobx.action.bound
     controlN() {
         const inputModel = GlobalModel.inputModel;
         inputModel.moveHistorySelection(-1);
@@ -526,17 +542,15 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         });
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleHistoryInput(e: any) {
         const inputModel = GlobalModel.inputModel;
-        mobx.action(() => {
-            const opts = mobx.toJS(inputModel.historyQueryOpts.get());
-            opts.queryStr = e.target.value;
-            inputModel.setHistoryQueryOpts(opts);
-        })();
+        const opts = mobx.toJS(inputModel.historyQueryOpts.get());
+        opts.queryStr = e.target.value;
+        inputModel.setHistoryQueryOpts(opts);
     }
 
-    @boundMethod
+    @mobx.action.bound
     handleFocus(e: any) {
         e.preventDefault();
         GlobalModel.inputModel.giveFocus();
@@ -561,7 +575,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     render() {
         const model = GlobalModel;
         const inputModel = model.inputModel;
-        const curLine = inputModel.getCurLine();
+        const curLine = inputModel.curLine;
         let displayLines = 1;
         const numLines = curLine.split("\n").length;
         const maxCols = this.getTextAreaMaxCols();
@@ -606,7 +620,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
 
         const renderCmdInputKeybindings = inputModel.shouldRenderAuxViewKeybindings(null);
         const renderHistoryKeybindings = inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_History);
-
         return (
             <div
                 className="textareainput-div control is-expanded"
