@@ -568,25 +568,25 @@ func (wsh *WaveshellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	wsh.Lock.Lock()
 	defer wsh.Lock.Unlock()
 	state := RemoteRuntimeState{
-		RemoteType:          wsh.Remote.RemoteType,
-		RemoteId:            wsh.Remote.RemoteId,
-		RemoteAlias:         wsh.Remote.RemoteAlias,
-		RemoteCanonicalName: wsh.Remote.RemoteCanonicalName,
-		Status:              wsh.Status,
-		ConnectMode:         wsh.Remote.ConnectMode,
-		AutoInstall:         wsh.Remote.AutoInstall,
-		Archived:            wsh.Remote.Archived,
-		RemoteIdx:           wsh.Remote.RemoteIdx,
-		SSHConfigSrc:        wsh.Remote.SSHConfigSrc,
-		UName:               wsh.UName,
-		InstallStatus:       wsh.InstallStatus,
-		NeedsMShellUpgrade:  wsh.NeedsWaveshellUpgrade,
-		Local:               wsh.Remote.Local,
-		IsSudo:              wsh.Remote.IsSudo(),
-		NoInitPk:            wsh.ErrNoInitPk,
-		AuthType:            sstore.RemoteAuthTypeNone,
-		ShellPref:           wsh.Remote.ShellPref,
-		DefaultShellType:    shellPref,
+		RemoteType:            wsh.Remote.RemoteType,
+		RemoteId:              wsh.Remote.RemoteId,
+		RemoteAlias:           wsh.Remote.RemoteAlias,
+		RemoteCanonicalName:   wsh.Remote.RemoteCanonicalName,
+		Status:                wsh.Status,
+		ConnectMode:           wsh.Remote.ConnectMode,
+		AutoInstall:           wsh.Remote.AutoInstall,
+		Archived:              wsh.Remote.Archived,
+		RemoteIdx:             wsh.Remote.RemoteIdx,
+		SSHConfigSrc:          wsh.Remote.SSHConfigSrc,
+		UName:                 wsh.UName,
+		InstallStatus:         wsh.InstallStatus,
+		NeedsWaveshellUpgrade: wsh.NeedsWaveshellUpgrade,
+		Local:                 wsh.Remote.Local,
+		IsSudo:                wsh.Remote.IsSudo(),
+		NoInitPk:              wsh.ErrNoInitPk,
+		AuthType:              sstore.RemoteAuthTypeNone,
+		ShellPref:             wsh.Remote.ShellPref,
+		DefaultShellType:      shellPref,
 	}
 	if wsh.Remote.SSHOpts != nil {
 		state.AuthType = wsh.Remote.SSHOpts.GetAuthType()
@@ -644,9 +644,9 @@ func (wsh *WaveshellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	if wsh.ServerProc != nil && wsh.ServerProc.InitPk != nil {
 		initPk := wsh.ServerProc.InitPk
 		if initPk.BuildTime == "" || initPk.BuildTime == "0" {
-			state.MShellVersion = initPk.Version
+			state.WaveshellVersion = initPk.Version
 		} else {
-			state.MShellVersion = fmt.Sprintf("%s+%s", initPk.Version, initPk.BuildTime)
+			state.WaveshellVersion = fmt.Sprintf("%s+%s", initPk.Version, initPk.BuildTime)
 		}
 		vars["home"] = initPk.HomeDir
 		vars["remoteuser"] = initPk.User
