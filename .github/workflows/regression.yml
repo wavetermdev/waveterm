@@ -45,3 +45,4 @@ jobs:
             4. press return
             5. validate Wave shows the result of 'ls'
             6. /load /Users/ec2-user/actions-runner/_work/testdriver/testdriver/.github/workflows/wave-theme-switch.md
+            7. /load /Users/ec2-user/actions-runner/_work/testdriver/testdriver/.github/workflows/wave-create-workspace.md
