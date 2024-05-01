@@ -215,10 +215,10 @@ func GetWaveshellPath() (string, error) {
 		return exec.LookPath(wsPath)
 	}
 	mhome := GetWaveshellHomeDir()
-	userMShellPath := path.Join(mhome, DefaultWaveshellName) // look in ~/.mshell -- will require rename
-	msPath, err := exec.LookPath(userMShellPath)
+	userWaveshellPath := path.Join(mhome, DefaultWaveshellName) // look in ~/.mshell -- will require rename
+	wsPath, err := exec.LookPath(userWaveshellPath)
 	if err == nil {
-		return msPath, nil
+		return wsPath, nil
 	}
 	return exec.LookPath(DefaultWaveshellName) // standard path lookup for 'mshell'-- will require rename
 }

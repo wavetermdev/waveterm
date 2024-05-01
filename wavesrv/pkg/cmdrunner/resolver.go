@@ -39,7 +39,7 @@ type resolvedIds struct {
 type ResolvedRemote struct {
 	DisplayName string
 	RemotePtr   sstore.RemotePtrType
-	MShell      *remote.MShellProc
+	MShell      *remote.WaveshellProc
 	RState      remote.RemoteRuntimeState
 	RemoteCopy  *sstore.RemoteType
 	ShellType   string // default remote shell preference

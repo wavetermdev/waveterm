@@ -1311,7 +1311,7 @@ func checkForWriteFinished(ctx context.Context, iter *packet.RpcResponseIter) er
 	return nil
 }
 
-func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, localPath string, destPath string, outputPos int64) {
+func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.WaveshellProc, localPath string, destPath string, outputPos int64) {
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
@@ -1405,7 +1405,7 @@ func getStatusBarString(filePercentageInt int) string {
 	return statusBarString
 }
 
-func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMsh *remote.MShellProc, destMsh *remote.MShellProc, sourcePath string, destPath string, outputPos int64) {
+func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceMsh *remote.WaveshellProc, destMsh *remote.WaveshellProc, sourcePath string, destPath string, outputPos int64) {
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
@@ -1542,7 +1542,7 @@ func doCopyLocalFileToLocal(ctx context.Context, cmd *sstore.CmdType, sourcePath
 	exitSuccess = true
 }
 
-func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.MShellProc, sourcePath string, localPath string, outputPos int64) {
+func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remote_msh *remote.WaveshellProc, sourcePath string, localPath string, outputPos int64) {
 	var exitSuccess bool
 	startTime := time.Now()
 	defer func() {
@@ -4007,7 +4007,7 @@ type connectOptsType struct {
 }
 
 // this does the asynchroneous part of the connection reset
-func doAsyncResetCommand(msh *remote.MShellProc, opts connectOptsType, cmd *sstore.CmdType) {
+func doAsyncResetCommand(msh *remote.WaveshellProc, opts connectOptsType, cmd *sstore.CmdType) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	startTime := time.Now()
