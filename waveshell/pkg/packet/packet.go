@@ -777,7 +777,7 @@ type CmdStartPacketType struct {
 	Ts           int64           `json:"ts"`
 	CK           base.CommandKey `json:"ck"`
 	Pid          int             `json:"pid,omitempty"`
-	WaveshellPid int             `json:"mshellpid,omitempty"` // leave database for now - will require migration
+	WaveshellPid int             `json:"waveshellpid,omitempty"`
 }
 
 func (*CmdStartPacketType) GetType() string {
