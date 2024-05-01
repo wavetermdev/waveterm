@@ -162,7 +162,7 @@ const FirstExtraFilesFdNum = 3
 func StreamCommandWithExtraFd(ctx context.Context, ecmd *exec.Cmd, outputCh chan []byte, extraFdNum int, endBytes []byte, stdinDataCh chan []byte) ([]byte, error) {
 	defer close(outputCh)
 	ecmd.Env = os.Environ()
-	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
+	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellEnvVars(shellutil.DefaultTermType))
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
 		return nil, fmt.Errorf("opening new pty: %w", err)
@@ -232,7 +232,7 @@ func StreamCommandWithExtraFd(ctx context.Context, ecmd *exec.Cmd, outputCh chan
 
 func RunSimpleCmdInPty(ecmd *exec.Cmd, endBytes []byte) ([]byte, error) {
 	ecmd.Env = os.Environ()
-	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(shellutil.DefaultTermType))
+	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellEnvVars(shellutil.DefaultTermType))
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
 		return nil, fmt.Errorf("opening new pty: %w", err)
