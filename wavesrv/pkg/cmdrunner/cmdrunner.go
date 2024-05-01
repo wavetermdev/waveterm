@@ -1700,11 +1700,11 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 
 	var sourceFullPath string
 	var destFullPath string
-	sourceMsh := sourceRemoteId.MShell
-	if sourceMsh == nil {
+	sourceWsh := sourceRemoteId.Waveshell
+	if sourceWsh == nil {
 		return nil, fmt.Errorf("failure getting source remote mshell")
 	}
-	sourceRRState := sourceMsh.GetRemoteRuntimeState()
+	sourceRRState := sourceWsh.GetRemoteRuntimeState()
 	sourcePathWithHome, err := sourceRRState.ExpandHomeDir(sourcePath)
 	if err != nil {
 		return nil, fmt.Errorf("expand home dir err: %v", err)
@@ -1720,11 +1720,11 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 		sourceFileName := filepath.Base(sourceFullPath)
 		destPath = filepath.Join(destPath, sourceFileName)
 	}
-	destMsh := destRemoteId.MShell
-	if destMsh == nil {
+	destWsh := destRemoteId.Waveshell
+	if destWsh == nil {
 		return nil, fmt.Errorf("failure getting dest remote mshell")
 	}
-	destRRState := destMsh.GetRemoteRuntimeState()
+	destRRState := destWsh.GetRemoteRuntimeState()
 	destPathWithHome, err := destRRState.ExpandHomeDir(destPath)
 	if err != nil {
 		return nil, fmt.Errorf("expand home dir err: %v", err)
@@ -1757,7 +1757,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	update.AddUpdate(sstore.InteractiveUpdate(pk.Interactive))
 	if destRemote != ConnectedRemote && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos)
-		err = destRemoteId.MShell.TryAutoConnect()
+		err = destRemoteId.Waveshell.TryAutoConnect()
 		if err != nil {
 			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos)
 		} else {
@@ -1766,7 +1766,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	}
 	if sourceRemote != LocalRemote && sourceRemoteId != nil && !sourceRemoteId.RState.IsConnected() {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", sourceRemote), &outputPos)
-		err = sourceRemoteId.MShell.TryAutoConnect()
+		err = sourceRemoteId.Waveshell.TryAutoConnect()
 		if err != nil {
 			writeStringToPty(ctx, cmd, fmt.Sprintf("Couldn't connect to remote %v\r\n", sourceRemote), &outputPos)
 		} else {
@@ -1778,11 +1778,11 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	if destRemote == LocalRemote && sourceRemote == LocalRemote {
 		go doCopyLocalFileToLocal(context.Background(), cmd, sourceFullPath, destFullPath, outputPos)
 	} else if destRemote == LocalRemote && sourceRemote != LocalRemote {
-		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyRemoteFileToLocal(context.Background(), cmd, sourceWsh, sourceFullPath, destFullPath, outputPos)
 	} else if destRemote != LocalRemote && sourceRemote == LocalRemote {
-		go doCopyLocalFileToRemote(context.Background(), cmd, destMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyLocalFileToRemote(context.Background(), cmd, destWsh, sourceFullPath, destFullPath, outputPos)
 	} else if destRemote != LocalRemote && sourceRemote != LocalRemote {
-		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceMsh, destMsh, sourceFullPath, destFullPath, outputPos)
+		go doCopyRemoteFileToRemote(context.Background(), cmd, sourceWsh, destWsh, sourceFullPath, destFullPath, outputPos)
 	}
 	return update, nil
 }
@@ -1792,8 +1792,8 @@ func RemoteInstallCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, err
 	}
-	mshell := ids.Remote.MShell
-	go mshell.RunInstall(false)
+	wshell := ids.Remote.Waveshell
+	go wshell.RunInstall(false)
 	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
@@ -1802,8 +1802,8 @@ func RemoteInstallCancelCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 	if err != nil {
 		return nil, err
 	}
-	mshell := ids.Remote.MShell
-	go mshell.CancelInstall()
+	wshell := ids.Remote.Waveshell
+	go wshell.CancelInstall()
 	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
@@ -1812,7 +1812,7 @@ func RemoteConnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, err
 	}
-	go ids.Remote.MShell.Launch(true)
+	go ids.Remote.Waveshell.Launch(true)
 	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
@@ -1822,7 +1822,7 @@ func RemoteDisconnectCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 		return nil, err
 	}
 	force := resolveBool(pk.Kwargs["force"], false)
-	go ids.Remote.MShell.Disconnect(force)
+	go ids.Remote.Waveshell.Disconnect(force)
 	return createRemoteViewRemoteIdUpdate(ids.Remote.RemotePtr.RemoteId), nil
 }
 
@@ -2082,7 +2082,7 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	}
 	visualEdit := resolveBool(pk.Kwargs["visual"], false)
 	isSubmitted := resolveBool(pk.Kwargs["submit"], false)
-	editArgs, err := parseRemoteEditArgs(false, pk, ids.Remote.MShell.IsLocal())
+	editArgs, err := parseRemoteEditArgs(false, pk, ids.Remote.Waveshell.IsLocal())
 	if err != nil {
 		return makeRemoteEditErrorReturn_edit(ids, visualEdit, fmt.Errorf("/remote:new %v", err))
 	}
@@ -2092,7 +2092,7 @@ func RemoteSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	if !visualEdit && len(editArgs.EditMap) == 0 {
 		return nil, fmt.Errorf("/remote:set no updates, can set %s.  (set visual=1 to edit in UI)", formatStrs(RemoteSetArgs, "or", false))
 	}
-	err = ids.Remote.MShell.UpdateRemote(ctx, editArgs.EditMap)
+	err = ids.Remote.Waveshell.UpdateRemote(ctx, editArgs.EditMap)
 	if err != nil {
 		return makeRemoteEditErrorReturn_edit(ids, visualEdit, fmt.Errorf("/remote:new error updating remote: %v", err))
 	}
@@ -3298,7 +3298,7 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	cgPacket.CompType = compType
 	cgPacket.Prefix = prefix
 	cgPacket.Cwd = ids.Remote.FeState["cwd"]
-	resp, err := ids.Remote.MShell.PacketRpc(ctx, cgPacket)
+	resp, err := ids.Remote.Waveshell.PacketRpc(ctx, cgPacket)
 	if err != nil {
 		return nil, false, err
 	}
@@ -3942,7 +3942,7 @@ func ClearSudoCache(ctx context.Context, pk *scpacket.FeCommandPacketType) (rtnU
 	if err != nil {
 		return nil, err
 	}
-	ids.Remote.MShell.ClearCachedSudoPw()
+	ids.Remote.Waveshell.ClearCachedSudoPw()
 	pluralize := ""
 
 	clearAll := resolveBool(pk.Kwargs["all"], false)
@@ -3966,7 +3966,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if err != nil {
 		return nil, err
 	}
-	if !ids.Remote.MShell.IsConnected() {
+	if !ids.Remote.Waveshell.IsConnected() {
 		return nil, fmt.Errorf("cannot reinit, remote is not connected")
 	}
 	verbose := resolveBool(pk.Kwargs["verbose"], false)
@@ -3994,7 +3994,7 @@ func RemoteResetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 		ScreenId:  ids.ScreenId,
 		RPtr:      ids.Remote.RemotePtr,
 	}
-	go doAsyncResetCommand(ids.Remote.MShell, opts, cmd)
+	go doAsyncResetCommand(ids.Remote.Waveshell, opts, cmd)
 	return update, nil
 }
 
@@ -4421,12 +4421,12 @@ func LineRestartCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (
 	if cmd.Status == sstore.CmdStatusRunning || cmd.Status == sstore.CmdStatusDetached {
 		killCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 		defer cancel()
-		err = ids.Remote.MShell.KillRunningCommandAndWait(killCtx, base.MakeCommandKey(ids.ScreenId, lineId))
+		err = ids.Remote.Waveshell.KillRunningCommandAndWait(killCtx, base.MakeCommandKey(ids.ScreenId, lineId))
 		if err != nil {
 			return nil, err
 		}
 	}
-	ids.Remote.MShell.ResetDataPos(base.MakeCommandKey(ids.ScreenId, lineId))
+	ids.Remote.Waveshell.ResetDataPos(base.MakeCommandKey(ids.ScreenId, lineId))
 	err = sstore.ClearCmdPtyFile(ctx, ids.ScreenId, lineId)
 	if err != nil {
 		return nil, fmt.Errorf("error clearing existing pty file: %v", err)
@@ -5065,8 +5065,8 @@ func ViewStatCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 		return nil, err
 	}
 	streamPk.StatOnly = true
-	msh := ids.Remote.MShell
-	iter, err := msh.StreamFile(ctx, streamPk)
+	wsh := ids.Remote.Waveshell
+	iter, err := wsh.StreamFile(ctx, streamPk)
 	if err != nil {
 		return nil, fmt.Errorf("/view:stat error: %v", err)
 	}
@@ -5116,8 +5116,8 @@ func ViewTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	if err != nil {
 		return nil, err
 	}
-	msh := ids.Remote.MShell
-	iter, err := msh.StreamFile(ctx, streamPk)
+	wsh := ids.Remote.Waveshell
+	iter, err := wsh.StreamFile(ctx, streamPk)
 	if err != nil {
 		return nil, fmt.Errorf("/view:test error: %v", err)
 	}
@@ -5413,8 +5413,8 @@ func EditTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	} else {
 		writePk.Path = filepath.Join(cwd, fileArg)
 	}
-	msh := ids.Remote.MShell
-	iter, err := msh.PacketRpcIter(ctx, writePk)
+	wsh := ids.Remote.Waveshell
+	iter, err := wsh.PacketRpcIter(ctx, writePk)
 	if err != nil {
 		return nil, fmt.Errorf("/edit:test error: %v", err)
 	}
@@ -5433,7 +5433,7 @@ func EditTestCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	dataPk := packet.MakeFileDataPacket(writePk.ReqId)
 	dataPk.Data = []byte(content)
 	dataPk.Eof = true
-	err = msh.SendFileData(dataPk)
+	err = wsh.SendFileData(dataPk)
 	if err != nil {
 		return nil, fmt.Errorf("/edit:test error sending data packet: %v", err)
 	}

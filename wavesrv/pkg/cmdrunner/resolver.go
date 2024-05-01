@@ -39,7 +39,7 @@ type resolvedIds struct {
 type ResolvedRemote struct {
 	DisplayName string
 	RemotePtr   sstore.RemotePtrType
-	MShell      *remote.WaveshellProc
+	Waveshell   *remote.WaveshellProc
 	RState      remote.RemoteRuntimeState
 	RemoteCopy  *sstore.RemoteType
 	ShellType   string // default remote shell preference
@@ -201,11 +201,11 @@ func resolveRemoteArg(remoteArg string) (*sstore.RemotePtrType, error) {
 	if rrUser != "" {
 		return nil, fmt.Errorf("remoteusers not supported")
 	}
-	msh := remote.GetRemoteByArg(rrRemote)
-	if msh == nil {
+	wsh := remote.GetRemoteByArg(rrRemote)
+	if wsh == nil {
 		return nil, nil
 	}
-	rcopy := msh.GetRemoteCopy()
+	rcopy := wsh.GetRemoteCopy()
 	return &sstore.RemotePtrType{RemoteId: rcopy.RemoteId, Name: rrName}, nil
 }
 
@@ -269,7 +269,7 @@ func resolveUiIds(ctx context.Context, pk *scpacket.FeCommandPacketType, rtype i
 	}
 	if rtype&R_RemoteConnected > 0 {
 		if !rtn.Remote.RState.IsConnected() {
-			err = rtn.Remote.MShell.TryAutoConnect()
+			err = rtn.Remote.Waveshell.TryAutoConnect()
 			if err != nil {
 				return rtn, fmt.Errorf("error trying to auto-connect remote [%s]: %w", rtn.Remote.DisplayName, err)
 			}
@@ -464,18 +464,18 @@ func ResolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 	if rptr == nil || rptr.RemoteId == "" {
 		return nil, nil
 	}
-	msh := remote.GetRemoteById(rptr.RemoteId)
-	if msh == nil {
+	wsh := remote.GetRemoteById(rptr.RemoteId)
+	if wsh == nil {
 		return nil, fmt.Errorf("invalid remote '%s', not found", rptr.RemoteId)
 	}
-	rstate := msh.GetRemoteRuntimeState()
-	rcopy := msh.GetRemoteCopy()
+	rstate := wsh.GetRemoteRuntimeState()
+	rcopy := wsh.GetRemoteCopy()
 	displayName := rstate.GetDisplayName(rptr)
 	rtn := &ResolvedRemote{
 		DisplayName: displayName,
 		RemotePtr:   *rptr,
 		RState:      rstate,
-		MShell:      msh,
+		Waveshell:   wsh,
 		RemoteCopy:  &rcopy,
 		StatePtr:    nil,
 		FeState:     nil,
@@ -488,7 +488,7 @@ func ResolveRemoteFromPtr(ctx context.Context, rptr *sstore.RemotePtrType, sessi
 			// continue with state set to nil
 		} else {
 			if ri == nil {
-				rtn.ShellType = msh.GetShellPref()
+				rtn.ShellType = wsh.GetShellPref()
 				rtn.StatePtr = nil
 				rtn.FeState = nil
 			} else {
