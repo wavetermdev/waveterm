@@ -120,7 +120,7 @@ func WriteFileToDB(ctx context.Context, fileInfo FileInfo) error {
 
 func WriteDataBlockToDB(ctx context.Context, blockId string, name string, index int, data []byte) error {
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		query := `REPLACE INTO block_data values (?, ?, ?, ?) ` //ON CONFLICT (blockid, name) DO UPDATE SET blockid = ?, name = ?, partidx = ?, data = ?`
+		query := `REPLACE INTO block_data values (?, ?, ?, ?)`
 		tx.Exec(query, blockId, name, index, data)
 		return nil
 	})
@@ -306,7 +306,6 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 		return nil, err
 	}
 	if len(curCacheEntry.DataBlocks) < cacheNum+1 {
-		//log.Printf("making %v new empty cache block %v %v", cacheNum+1-len(curCacheEntry.DataBlocks), cacheNum, len(curCacheEntry.DataBlocks))
 		for index := len(curCacheEntry.DataBlocks); index < cacheNum+1; index++ {
 			curCacheEntry.DataBlocks = append(curCacheEntry.DataBlocks, nil)
 		}
@@ -316,7 +315,6 @@ func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum in
 		if pullFromDB {
 			cacheData, err := GetCacheFromDB(ctx, blockId, name, 0, MaxBlockSize, int64(cacheNum))
 			if err != nil {
-				//log.Printf("returning err?")
 				return nil, err
 			}
 			curCacheBlock = &CacheBlock{data: *cacheData, size: len(*cacheData), dirty: false}
@@ -466,11 +464,9 @@ func FlushCache(ctx context.Context) error {
 				continue
 			}
 			if !block.dirty {
-				//log.Printf("found a clean block\n")
 				clearEntry = false
 				continue
 			}
-			//log.Printf("writing block %v index to db\n", index)
 			err := WriteDataBlockToDB(ctx, cacheEntry.Info.BlockId, cacheEntry.Info.Name, index, block.data)
 			if err != nil {
 				return err
@@ -484,9 +480,6 @@ func FlushCache(ctx context.Context) error {
 	}
 	return nil
 }
-
-// TODO, how does the cache handle race conditions with the read? If we are caching writes every second and the front end writes to the line, we would oveerrite it unless we read first
-// we would need a tcp like protocol if we need to do both reads and writes
 
 func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int64) (int, error) {
 	bytesRead := 0
