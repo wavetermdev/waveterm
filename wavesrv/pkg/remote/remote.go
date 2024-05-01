@@ -92,7 +92,7 @@ fi
 `
 
 func MakeLocalMShellCommandStr(isSudo bool) (string, error) {
-	mshellPath, err := scbase.LocalMShellBinaryPath()
+	mshellPath, err := scbase.LocalWaveshellBinaryPath()
 	if err != nil {
 		return "", err
 	}
@@ -104,7 +104,7 @@ func MakeLocalMShellCommandStr(isSudo bool) (string, error) {
 }
 
 func MakeServerCommandStr() string {
-	rtn := strings.ReplaceAll(MShellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(scbase.MShellVersion))
+	rtn := strings.ReplaceAll(MShellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(scbase.WaveshellVersion))
 	rtn = strings.ReplaceAll(rtn, "[%PINGPACKET%]", PrintPingPacket)
 	return rtn
 }
@@ -117,8 +117,8 @@ const (
 )
 
 func init() {
-	if scbase.MShellVersion != base.WaveshellVersion {
-		panic(fmt.Sprintf("prompt-server apishell version must match '%s' vs '%s'", scbase.MShellVersion, base.WaveshellVersion))
+	if scbase.WaveshellVersion != base.WaveshellVersion {
+		panic(fmt.Sprintf("prompt-server apishell version must match '%s' vs '%s'", scbase.WaveshellVersion, base.WaveshellVersion))
 	}
 }
 
@@ -1338,7 +1338,7 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 		return
 	}
 	installSession := shexec.SessionWrap{Session: session, StartCmd: shexec.MakeInstallCommandStr()}
-	msh.WriteToPtyBuffer("installing waveshell %s to %s...\n", scbase.MShellVersion, remoteCopy.RemoteCanonicalName)
+	msh.WriteToPtyBuffer("installing waveshell %s to %s...\n", scbase.WaveshellVersion, remoteCopy.RemoteCanonicalName)
 	clientCtx, clientCancelFn := context.WithCancel(context.Background())
 	defer clientCancelFn()
 	msh.WithLock(func() {
@@ -1350,7 +1350,7 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 	msgFn := func(msg string) {
 		msh.WriteToPtyBuffer("%s", msg)
 	}
-	err = shexec.RunInstallFromCmd(clientCtx, installSession, true, nil, scbase.MShellBinaryReader, msgFn)
+	err = shexec.RunInstallFromCmd(clientCtx, installSession, true, nil, scbase.WaveshellBinaryReader, msgFn)
 	if err == context.Canceled {
 		msh.WriteToPtyBuffer("*install canceled\n")
 		msh.WithLock(func() {
@@ -1373,7 +1373,7 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 		msh.Err = nil
 		connectMode = msh.Remote.ConnectMode
 	})
-	msh.WriteToPtyBuffer("successfully installed waveshell %s to ~/.mshell\n", scbase.MShellVersion)
+	msh.WriteToPtyBuffer("successfully installed waveshell %s to ~/.mshell\n", scbase.WaveshellVersion)
 	go msh.NotifyRemoteUpdate()
 	if connectMode == sstore.ConnectModeStartup || connectMode == sstore.ConnectModeAuto || autoInstall {
 		// the install was successful, and we didn't click the install button with manual connect mode, try to connect
