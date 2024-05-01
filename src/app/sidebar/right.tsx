@@ -108,9 +108,9 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                                 <i className="fa-sharp fa-regular fa-xmark"></i>
                             </Button>
                         </div>
-                        <If condition={this.mode.get() == "keybind"}>
+                        {/* <If condition={this.mode.get() == "keybind"}>
                             <KeybindDevPane></KeybindDevPane>
-                        </If>
+                        </If> */}
                         <If condition={this.mode.get() == "wavebook"}>
                             <WaveBookDisplay></WaveBookDisplay>
                         </If>
