@@ -2053,7 +2053,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 			}
 			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancelFn()
-			err = sstore.UpdateCmdStartInfo(ctx, runPacket.CK, startPk.Pid, startPk.MShellPid)
+			err = sstore.UpdateCmdStartInfo(ctx, runPacket.CK, startPk.Pid, startPk.WaveshellPid)
 			if err != nil {
 				log.Printf("error updating cmd start info (in remote.RunCommand): %v\n", err)
 			}

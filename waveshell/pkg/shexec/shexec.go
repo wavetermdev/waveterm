@@ -277,7 +277,7 @@ func (c *ShExecType) MakeCmdStartPacket(reqId string) *packet.CmdStartPacketType
 	startPacket.Ts = time.Now().UnixMilli()
 	startPacket.CK = c.CK
 	startPacket.Pid = c.Cmd.Process.Pid
-	startPacket.MShellPid = os.Getpid()
+	startPacket.WaveshellPid = os.Getpid()
 	return startPacket
 }
 
@@ -1219,7 +1219,7 @@ func MakeInitPacket() *packet.InitPacketType {
 	initPacket.Version = base.WaveshellVersion
 	initPacket.BuildTime = base.BuildTime
 	initPacket.HomeDir = base.GetHomeDir()
-	initPacket.MShellHomeDir = base.GetWaveshellHomeDir()
+	initPacket.WaveshellHomeDir = base.GetWaveshellHomeDir()
 	if user, _ := user.Current(); user != nil {
 		initPacket.User = user.Username
 	}
