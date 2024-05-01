@@ -460,22 +460,18 @@ class InputModel {
     }
 
     shouldRenderAuxViewKeybindings(view: InputAuxViewType): boolean {
-        if (view != null && this.getActiveAuxView() != view) {
+        if (GlobalModel.activeMainView.get() != "session") {
             return false;
         }
-        if (view != null && !this.getAuxViewFocus()) {
+        if (GlobalModel.getActiveScreen()?.getFocusType() != "input") {
             return false;
         }
-        if (view == null && this.hasFocus() && !this.getAuxViewFocus()) {
-            return true;
+        // (view == null) means standard cmdinput keybindings
+        if (view == null) {
+            return !this.getAuxViewFocus();
+        } else {
+            return this.getAuxViewFocus() && view == this.getActiveAuxView();
         }
-        if (view != null && this.getAuxViewFocus()) {
-            return true;
-        }
-        if (GlobalModel.getActiveScreen().getFocusType() == "input" && GlobalModel.activeMainView.get() == "session") {
-            return true;
-        }
-        return false;
     }
 
     @mobx.action
