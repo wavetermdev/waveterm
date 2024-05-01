@@ -9,6 +9,8 @@
 
 # Wave Terminal
 
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fwavetermdev%2Fwaveterm?ref=badge_shield)
+
 Wave is an open-source AI-native terminal built for seamless workflows.
 
 Wave isn't just another terminal emulator; it's a rethink on how terminals are built. Wave combines command line with the power of the open web to help veteran CLI users and new developers alike.
@@ -56,3 +58,7 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 
 -   [Ways to contribute](CONTRIBUTING.md#contributing-to-wave-terminal)
 -   [Contribution guidelines](CONTRIBUTING.md#before-you-start)
+
+## License
+
+Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./acknowledgements/README.md).

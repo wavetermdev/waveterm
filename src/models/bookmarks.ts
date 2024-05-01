@@ -81,7 +81,7 @@ class BookmarksModel {
         mobx.action(() => {
             this.reset();
             this.globalModel.showSessionView();
-            this.globalModel.inputModel.setCurLine(bm.cmdstr);
+            this.globalModel.inputModel.curLine = bm.cmdstr;
             setTimeout(() => this.globalModel.inputModel.giveFocus(), 50);
         })();
     }

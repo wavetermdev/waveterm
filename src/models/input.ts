@@ -587,7 +587,8 @@ class InputModel {
             }
         }
         this.codeSelectBlockRefArray = [];
-        this.setAIChatFocus();
+        this.setActiveAuxView(appconst.InputAuxView_AIChat);
+        this.setAuxViewFocus(true);
     }
 
     @mobx.action

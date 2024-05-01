@@ -1,25 +1,24 @@
 .rconndetail-modal {
-    width: auto;
-    max-width: 80vw;
-    min-height: 565px;
-
     .wave-modal-content {
         display: flex;
         padding-bottom: 0px;
         flex-direction: column;
         align-items: center;
-        gap: 20px;
         flex-shrink: 0;
+        width: auto;
+        max-width: 80vw;
+        max-height: 90vh;
 
         .wave-modal-body {
             display: flex;
-            padding: 0px 20px;
+            padding: 20px;
             align-items: flex-start;
             width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
-            gap: 16px;
             align-self: stretch;
+            overflow-y: scroll;
 
             .name-header-actions-wrapper {
                 display: flex;
@@ -53,6 +52,7 @@
 
             .remote-detail {
                 width: 100%;
+                padding-top: 16px;
 
                 .settings-field {
                     display: flex;

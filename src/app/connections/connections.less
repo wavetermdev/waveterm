@@ -9,10 +9,20 @@
         margin: 20px 50px 20px 20px;
     }
 
+    .connections-table-container {
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        overflow-y: scroll;
+        max-height: 85vh;
+        width: fit-content;
+        max-width: 970px;
+    }
+
     .connections-table {
         margin: 0px 10px 10px 10px;
         table-layout: fixed;
-        max-width: 970px;
+        position: relative;
 
         colgroup {
             .first-col {
@@ -28,13 +38,16 @@
 
         thead {
             border-radius: var(--sizing-2-xs, 4px);
-            border-bottom: 2px solid var(--table-thead-bright-border-color);
             user-select: none;
 
             th {
+                position: sticky;
+                top: 0;
                 height: 32px;
                 padding: 5px 15px 5px 10px;
                 color: var(--app-text-color);
+                border-bottom: 2px solid var(--table-thead-bright-border-color);
+                background: var(--table-thead-bg-color);
             }
         }
 
@@ -78,8 +91,10 @@
 
     footer {
         margin-left: 10px;
+        margin-top: 10px;
         display: flex;
         flex-direction: row;
+        flex-shrink: 0;
         gap: 8px;
     }
 
