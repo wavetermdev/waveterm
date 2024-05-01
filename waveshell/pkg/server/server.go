@@ -455,7 +455,7 @@ func (m *MServer) writeFile(pk *packet.WriteFilePacketType, wfc *WriteFileContex
 	}
 	var writeFd *os.File
 	if pk.UseTemp {
-		writeFd, err = os.CreateTemp("", "mshell.writefile.*") // "" means make this file in standard TempDir
+		writeFd, err = os.CreateTemp("", "waveshell.writefile.*") // "" means make this file in standard TempDir
 		if err != nil {
 			resp := packet.MakeWriteFileReadyPacket(pk.ReqId)
 			resp.Error = fmt.Sprintf("cannot create temp file: %v", err)
@@ -761,7 +761,7 @@ func (m *MServer) runCommand(runPacket *packet.RunPacketType) {
 	}
 	cproc, err := shexec.MakeClientProc(context.Background(), shexec.CmdWrap{Cmd: ecmd})
 	if err != nil {
-		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("starting mshell client: %s", err))
+		m.Sender.SendErrorResponse(runPacket.ReqId, fmt.Errorf("starting waveshell client: %s", err))
 		return
 	}
 	m.Lock.Lock()
@@ -833,7 +833,7 @@ func (server *MServer) runReadLoop() {
 			}
 			continue
 		}
-		server.Sender.SendMessageFmt("invalid packet '%s' sent to mshell server", packet.AsString(pk))
+		server.Sender.SendMessageFmt("invalid packet '%s' sent to waveshell server", packet.AsString(pk))
 		continue
 	}
 }
