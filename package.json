@@ -48,6 +48,7 @@
         "remark-gfm": "^4.0.0",
         "sprintf-js": "^1.1.2",
         "throttle-debounce": "^5.0.0",
+        "tinycolor2": "^1.6.0",
         "tsx-control-statements": "^5.1.1",
         "uuid": "^9.0.0",
         "winston": "^3.8.2",

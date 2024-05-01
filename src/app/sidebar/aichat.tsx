@@ -10,6 +10,7 @@ import { If, For } from "tsx-control-statements/components";
 import { Markdown } from "@/elements";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
+import tinycolor from "tinycolor2";
 
 import "./aichat.less";
 
@@ -60,7 +61,7 @@ class ChatContent extends React.Component<{}, {}> {
     osInstance: OverlayScrollbars = null;
 
     componentDidUpdate() {
-        console.log("triggered");
+        this.chatListKeyCount = 0;
         if (this.containerRef?.current && this.osInstance) {
             const { viewport } = this.osInstance.elements();
             viewport.scrollTo({
@@ -95,7 +96,8 @@ class ChatContent extends React.Component<{}, {}> {
         const curKey = "chatmsg-" + this.chatListKeyCount;
         this.chatListKeyCount++;
         const senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
-        const msgClassName = "chat-msg " + senderClassName;
+        const msgClassName = `chat-msg ${senderClassName}`;
+
         let innerHTML: React.JSX.Element = (
             <>
                 <div className="chat-msg-header">
@@ -105,7 +107,7 @@ class ChatContent extends React.Component<{}, {}> {
             </>
         );
         if (chatItem.isassistantresponse) {
-            if (chatItem.assistantresponse.error != null && chatItem.assistantresponse.error != "") {
+            if (chatItem.assistantresponse.error != null && chatItem.assistantresponse.error !== "") {
                 innerHTML = this.renderError(chatItem.assistantresponse.error);
             } else {
                 innerHTML = (
@@ -119,8 +121,14 @@ class ChatContent extends React.Component<{}, {}> {
             }
         }
 
+        const cssVar = GlobalModel.isDev ? "--app-panel-bg-color-dev" : "--app-panel-bg-color";
+        const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+        const color = tinycolor(panelBgColor);
+        const newColor = color.isValid() ? tinycolor(panelBgColor).darken(6).toString() : "none";
+        const backgroundColor = this.chatListKeyCount % 2 === 0 ? "none" : newColor;
+
         return (
-            <div className={msgClassName} key={curKey}>
+            <div className={msgClassName} key={curKey} style={{ backgroundColor }}>
                 {innerHTML}
             </div>
         );
@@ -163,7 +171,10 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     requestChatUpdate() {
-        this.submitChatMessage("");
+        const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
+        if (chatMessageItems == null || chatMessageItems.length == 0) {
+            this.submitChatMessage("");
+        }
     }
 
     submitChatMessage(messageStr: string) {
