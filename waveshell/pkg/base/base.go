@@ -174,13 +174,13 @@ func HasDebugFlag(envMap map[string]string, flagName string) bool {
 }
 
 func GetDebugRcFileName() string {
-	msHome := GetWaveshellHomeDir()
-	return path.Join(msHome, DebugRcFileName)
+	wsHome := GetWaveshellHomeDir()
+	return path.Join(wsHome, DebugRcFileName)
 }
 
 func GetDebugReturnStateFileName() string {
-	msHome := GetWaveshellHomeDir()
-	return path.Join(msHome, DebugReturnStateFileName)
+	wsHome := GetWaveshellHomeDir()
+	return path.Join(wsHome, DebugReturnStateFileName)
 }
 
 func GetHomeDir() string {

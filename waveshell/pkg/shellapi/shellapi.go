@@ -311,8 +311,8 @@ func parseExtVarOutput(pvarBytes []byte, promptOutput string, zmodsOutput string
 
 // for debugging (not for production use)
 func writeStateToFile(shellType string, outputBytes []byte) error {
-	msHome := base.GetWaveshellHomeDir()
-	stateFileName := path.Join(msHome, shellType+"-state.txt")
+	wsHome := base.GetWaveshellHomeDir()
+	stateFileName := path.Join(wsHome, shellType+"-state.txt")
 	os.WriteFile(stateFileName, outputBytes, 0644)
 	return nil
 }
