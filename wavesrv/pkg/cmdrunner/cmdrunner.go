@@ -1702,7 +1702,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	var destFullPath string
 	sourceWsh := sourceRemoteId.Waveshell
 	if sourceWsh == nil {
-		return nil, fmt.Errorf("failure getting source remote mshell")
+		return nil, fmt.Errorf("failure getting source remote waveshell")
 	}
 	sourceRRState := sourceWsh.GetRemoteRuntimeState()
 	sourcePathWithHome, err := sourceRRState.ExpandHomeDir(sourcePath)
@@ -1722,7 +1722,7 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	}
 	destWsh := destRemoteId.Waveshell
 	if destWsh == nil {
-		return nil, fmt.Errorf("failure getting dest remote mshell")
+		return nil, fmt.Errorf("failure getting dest remote waveshell")
 	}
 	destRRState := destWsh.GetRemoteRuntimeState()
 	destPathWithHome, err := destRRState.ExpandHomeDir(destPath)
