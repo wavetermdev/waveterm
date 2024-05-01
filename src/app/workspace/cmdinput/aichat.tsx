@@ -113,7 +113,7 @@ class AIChat extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onTextAreaBlur(e: any) {
-        GlobalModel.inputModel.setAuxViewFocus(false);
+        //GlobalModel.inputModel.setAuxViewFocus(false);
     }
 
     // Adjust the height of the textarea to fit the text
@@ -132,6 +132,9 @@ class AIChat extends React.Component<{}, {}> {
         // Set the new height of the text area, bounded by the min and max height.
         const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
         this.textAreaRef.current.style.height = newHeight + "px";
+    }
+
+    onTextAreaInput(e: any) {
         GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
@@ -264,6 +267,7 @@ class AIChat extends React.Component<{}, {}> {
                         onFocus={this.onTextAreaFocused}
                         onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}
+                        onInput={this.onTextAreaInput}
                         onKeyDown={this.onKeyDown}
                         style={{ fontSize: this.termFontSize }}
                         className="chat-textarea"
