@@ -46,7 +46,7 @@ export const getFileCompletionSuggestions = async (
 const historyTemplate = (cwd: String): Fig.TemplateSuggestion[] => {
     const inputModel = GlobalModel.inputModel;
     const cmdLine = inputModel.curLine;
-    inputModel.loadHistory(false, 0, "screen");
+    inputModel.loadHistory(false, 0, "session");
     const hitems = GlobalModel.inputModel.filteredHistoryItems;
     if (hitems.length > 0) {
         const hmap: Map<string, Fig.TemplateSuggestion> = new Map();
