@@ -24,8 +24,15 @@ brew install scripthaus
 
 You also need a relatively modern nodejs with npm and yarn installed.
 
--   Node can be installed from [https://nodejs.org](https://nodejs.org).
--   npm can install yarn using:
+Node can be installed from [https://nodejs.org](https://nodejs.org).
+
+We use Yarn Modern to manage our packages. The recommended way to install Yarn Modern is using Corepack, a new utility shipped by NodeJS that lets you manage your package manager versioning as you would any packages.
+
+If you installed NodeJS from the official feed (via the website or using NVM), this should come preinstalled. If you use Homebrew or some other feed, you may need to manually install Corepack using `npm install -g corepack`.
+
+For more information on Corepack, check out [this link](https://yarnpkg.com/corepack).
+
+Once you've verified that you have Corepack installed, run the following script to set up Yarn for the repository:
 
 ```sh
 corepack enable
