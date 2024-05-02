@@ -733,7 +733,6 @@ func HandleRunEphemeralCommand(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf(ErrorDecodingJson, err))
 		return
 	}
-	log.Printf("Running ephemeral command: %v\n", commandPk)
 
 	if commandPk.EphemeralOpts == nil {
 		commandPk.EphemeralOpts = &ephemeral.EphemeralRunOpts{}

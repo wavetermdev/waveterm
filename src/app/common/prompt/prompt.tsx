@@ -172,16 +172,16 @@ class Prompt extends React.Component<
                 </span>
             );
         }
-        if (!isBlank(festate["K8SCONTEXT"])) {
-            const k8sContext = festate["K8SCONTEXT"];
-            const k8sNs = festate["K8SNAMESPACE"];
-            k8sElem = (
-                <span title="k8s context:namespace" className="term-prompt-k8s">
-                    k8s:({k8sContext}
-                    {isBlank(k8sNs) ? "" : ":" + k8sNs}){" "}
-                </span>
-            );
-        }
+        // if (!isBlank(festate["K8SCONTEXT"])) {
+        //     const k8sContext = festate["K8SCONTEXT"];
+        //     const k8sNs = festate["K8SNAMESPACE"];
+        //     k8sElem = (
+        //         <span title="k8s context:namespace" className="term-prompt-k8s">
+        //             k8s:({k8sContext}
+        //             {isBlank(k8sNs) ? "" : ":" + k8sNs}){" "}
+        //         </span>
+        //     );
+        // }
         return (
             <span className={termClassNames}>
                 {remoteElem} {cwdElem} {branchElem} {condaElem} {pythonElem} {k8sElem}
