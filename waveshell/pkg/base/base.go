@@ -20,18 +20,18 @@ import (
 )
 
 const HomeVarName = "HOME"
-const DefaultMShellHome = "~/.mshell"
-const DefaultMShellName = "mshell"
-const MShellPathVarName = "MSHELL_PATH"
-const MShellHomeVarName = "MSHELL_HOME"
-const MShellInstallBinVarName = "MSHELL_INSTALLBIN_PATH"
+const DefaultWaveshellHome = "~/.mshell"
+const DefaultWaveshellName = "mshell"
+const WaveshellPathVarName = "MSHELL_PATH"
+const WaveshellHomeVarName = "MSHELL_HOME"
+const WaveshellInstallBinVarName = "MSHELL_INSTALLBIN_PATH"
 const SSHCommandVarName = "SSH_COMMAND"
-const MShellDebugVarName = "MSHELL_DEBUG"
+const WaveshellDebugVarName = "MSHELL_DEBUG"
 const SessionsDirBaseName = "sessions"
 const RcFilesDirBaseName = "rcfiles"
-const MShellVersion = "v0.7.0"
+const WaveshellVersion = "v0.7.0"
 const RemoteIdFile = "remoteid"
-const DefaultMShellInstallBinDir = "/opt/mshell/bin"
+const DefaultWaveshellInstallBinDir = "/opt/mshell/bin"
 const LogFileName = "mshell.log"
 const ForceDebugLog = false
 
@@ -90,7 +90,7 @@ func Logf(fmtStr string, args ...interface{}) {
 }
 
 func InitDebugLog(prefix string) {
-	homeDir := GetMShellHomeDir()
+	homeDir := GetWaveshellHomeDir()
 	err := os.MkdirAll(homeDir, 0777)
 	if err != nil {
 		return
@@ -163,7 +163,7 @@ func (ckey CommandKey) Validate(typeStr string) error {
 }
 
 func HasDebugFlag(envMap map[string]string, flagName string) bool {
-	msDebug := envMap[MShellDebugVarName]
+	msDebug := envMap[WaveshellDebugVarName]
 	flags := strings.Split(msDebug, ",")
 	for _, flag := range flags {
 		if strings.TrimSpace(flag) == flagName {
@@ -174,13 +174,13 @@ func HasDebugFlag(envMap map[string]string, flagName string) bool {
 }
 
 func GetDebugRcFileName() string {
-	msHome := GetMShellHomeDir()
-	return path.Join(msHome, DebugRcFileName)
+	wsHome := GetWaveshellHomeDir()
+	return path.Join(wsHome, DebugRcFileName)
 }
 
 func GetDebugReturnStateFileName() string {
-	msHome := GetMShellHomeDir()
-	return path.Join(msHome, DebugReturnStateFileName)
+	wsHome := GetWaveshellHomeDir()
+	return path.Join(wsHome, DebugReturnStateFileName)
 }
 
 func GetHomeDir() string {
@@ -191,16 +191,16 @@ func GetHomeDir() string {
 	return homeVar
 }
 
-func GetMShellHomeDir() string {
-	homeVar := os.Getenv(MShellHomeVarName)
+func GetWaveshellHomeDir() string {
+	homeVar := os.Getenv(WaveshellHomeVarName)
 	if homeVar != "" {
 		return homeVar
 	}
-	return ExpandHomeDir(DefaultMShellHome)
+	return ExpandHomeDir(DefaultWaveshellHome)
 }
 
 func EnsureRcFilesDir() (string, error) {
-	mhome := GetMShellHomeDir()
+	mhome := GetWaveshellHomeDir()
 	dirName := path.Join(mhome, RcFilesDirBaseName)
 	err := CacheEnsureDir(dirName, RcFilesDirBaseName, 0700, "rcfiles dir")
 	if err != nil {
@@ -209,18 +209,18 @@ func EnsureRcFilesDir() (string, error) {
 	return dirName, nil
 }
 
-func GetMShellPath() (string, error) {
-	msPath := os.Getenv(MShellPathVarName) // use MSHELL_PATH
-	if msPath != "" {
-		return exec.LookPath(msPath)
+func GetWaveshellPath() (string, error) {
+	wsPath := os.Getenv(WaveshellPathVarName) // use MSHELL_PATH -- will require rename
+	if wsPath != "" {
+		return exec.LookPath(wsPath)
 	}
-	mhome := GetMShellHomeDir()
-	userMShellPath := path.Join(mhome, DefaultMShellName) // look in ~/.mshell
-	msPath, err := exec.LookPath(userMShellPath)
+	mhome := GetWaveshellHomeDir()
+	userWaveshellPath := path.Join(mhome, DefaultWaveshellName) // look in ~/.mshell -- will require rename
+	wsPath, err := exec.LookPath(userWaveshellPath)
 	if err == nil {
-		return msPath, nil
+		return wsPath, nil
 	}
-	return exec.LookPath(DefaultMShellName) // standard path lookup for 'mshell'
+	return exec.LookPath(DefaultWaveshellName) // standard path lookup for 'mshell'-- will require rename
 }
 
 func ExpandHomeDir(pathStr string) string {
@@ -239,9 +239,9 @@ func ValidGoArch(goos string, goarch string) bool {
 }
 
 func GoArchOptFile(version string, goos string, goarch string) string {
-	installBinDir := os.Getenv(MShellInstallBinVarName)
+	installBinDir := os.Getenv(WaveshellInstallBinVarName)
 	if installBinDir == "" {
-		installBinDir = DefaultMShellInstallBinDir
+		installBinDir = DefaultWaveshellInstallBinDir
 	}
 	versionStr := semver.MajorMinor(version)
 	if versionStr == "" {
@@ -252,22 +252,22 @@ func GoArchOptFile(version string, goos string, goarch string) string {
 }
 
 func GetRemoteId() (string, error) {
-	mhome := GetMShellHomeDir()
-	homeInfo, err := os.Stat(mhome)
+	wsHome := GetWaveshellHomeDir()
+	homeInfo, err := os.Stat(wsHome)
 	if errors.Is(err, fs.ErrNotExist) {
-		err = os.MkdirAll(mhome, 0777)
+		err = os.MkdirAll(wsHome, 0777)
 		if err != nil {
-			return "", fmt.Errorf("cannot make mshell home directory[%s]: %w", mhome, err)
+			return "", fmt.Errorf("cannot make waveshell home directory[%s]: %w", wsHome, err)
 		}
-		homeInfo, err = os.Stat(mhome)
+		homeInfo, err = os.Stat(wsHome)
 	}
 	if err != nil {
-		return "", fmt.Errorf("cannot stat mshell home directory[%s]: %w", mhome, err)
+		return "", fmt.Errorf("cannot stat waveshell home directory[%s]: %w", wsHome, err)
 	}
 	if !homeInfo.IsDir() {
-		return "", fmt.Errorf("mshell home directory[%s] is not a directory", mhome)
+		return "", fmt.Errorf("waveshell home directory[%s] is not a directory", wsHome)
 	}
-	remoteIdFile := path.Join(mhome, RemoteIdFile)
+	remoteIdFile := path.Join(wsHome, RemoteIdFile)
 	fd, err := os.Open(remoteIdFile)
 	if errors.Is(err, fs.ErrNotExist) {
 		// write the file
