@@ -12,6 +12,7 @@ import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
 import { MainView } from "@/common/elements/mainview";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./clientsettings.less";
 
@@ -264,7 +265,12 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         const curSudoPwClearOnSleep = GlobalModel.getSudoPwClearOnSleep();
 
         return (
-            <MainView className="clientsettings-view" title="Client Settings" onClose={this.handleClose}>
+            <MainView
+                className="clientsettings-view"
+                title="Client Settings"
+                onClose={this.handleClose}
+                scrollable={true}
+            >
                 <If condition={!isHidden}>
                     <ClientSettingsKeybindings></ClientSettingsKeybindings>
                 </If>

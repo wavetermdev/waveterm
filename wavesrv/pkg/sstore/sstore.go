@@ -759,34 +759,34 @@ const (
 )
 
 type RemoteRuntimeState struct {
-	RemoteType          string            `json:"remotetype"`
-	RemoteId            string            `json:"remoteid"`
-	RemoteAlias         string            `json:"remotealias,omitempty"`
-	RemoteCanonicalName string            `json:"remotecanonicalname"`
-	RemoteVars          map[string]string `json:"remotevars"`
-	Status              string            `json:"status"`
-	ConnectTimeout      int               `json:"connecttimeout,omitempty"`
-	CountdownActive     bool              `json:"countdownactive"`
-	ErrorStr            string            `json:"errorstr,omitempty"`
-	InstallStatus       string            `json:"installstatus"`
-	InstallErrorStr     string            `json:"installerrorstr,omitempty"`
-	NeedsMShellUpgrade  bool              `json:"needsmshellupgrade,omitempty"`
-	NoInitPk            bool              `json:"noinitpk,omitempty"`
-	AuthType            string            `json:"authtype,omitempty"`
-	ConnectMode         string            `json:"connectmode"`
-	AutoInstall         bool              `json:"autoinstall"`
-	Archived            bool              `json:"archived,omitempty"`
-	RemoteIdx           int64             `json:"remoteidx"`
-	SSHConfigSrc        string            `json:"sshconfigsrc"`
-	UName               string            `json:"uname"`
-	MShellVersion       string            `json:"mshellversion"`
-	WaitingForPassword  bool              `json:"waitingforpassword,omitempty"`
-	Local               bool              `json:"local,omitempty"`
-	IsSudo              bool              `json:"issudo,omitempty"`
-	RemoteOpts          *RemoteOptsType   `json:"remoteopts,omitempty"`
-	CanComplete         bool              `json:"cancomplete,omitempty"`
-	ShellPref           string            `json:"shellpref,omitempty"`
-	DefaultShellType    string            `json:"defaultshelltype,omitempty"`
+	RemoteType            string            `json:"remotetype"`
+	RemoteId              string            `json:"remoteid"`
+	RemoteAlias           string            `json:"remotealias,omitempty"`
+	RemoteCanonicalName   string            `json:"remotecanonicalname"`
+	RemoteVars            map[string]string `json:"remotevars"`
+	Status                string            `json:"status"`
+	ConnectTimeout        int               `json:"connecttimeout,omitempty"`
+	CountdownActive       bool              `json:"countdownactive"`
+	ErrorStr              string            `json:"errorstr,omitempty"`
+	InstallStatus         string            `json:"installstatus"`
+	InstallErrorStr       string            `json:"installerrorstr,omitempty"`
+	NeedsWaveshellUpgrade bool              `json:"needswaveshellupgrade,omitempty"`
+	NoInitPk              bool              `json:"noinitpk,omitempty"`
+	AuthType              string            `json:"authtype,omitempty"`
+	ConnectMode           string            `json:"connectmode"`
+	AutoInstall           bool              `json:"autoinstall"`
+	Archived              bool              `json:"archived,omitempty"`
+	RemoteIdx             int64             `json:"remoteidx"`
+	SSHConfigSrc          string            `json:"sshconfigsrc"`
+	UName                 string            `json:"uname"`
+	WaveshellVersion      string            `json:"waveshellversion"`
+	WaitingForPassword    bool              `json:"waitingforpassword,omitempty"`
+	Local                 bool              `json:"local,omitempty"`
+	IsSudo                bool              `json:"issudo,omitempty"`
+	RemoteOpts            *RemoteOptsType   `json:"remoteopts,omitempty"`
+	CanComplete           bool              `json:"cancomplete,omitempty"`
+	ShellPref             string            `json:"shellpref,omitempty"`
+	DefaultShellType      string            `json:"defaultshelltype,omitempty"`
 }
 
 func (state RemoteRuntimeState) IsConnected() bool {

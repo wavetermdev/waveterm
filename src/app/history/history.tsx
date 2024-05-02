@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { If, For } from "tsx-control-statements/components";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
@@ -137,7 +137,7 @@ class HistoryCmdStr extends React.Component<
     render() {
         const { cmdstr, fontSize, limitHeight } = this.props;
         return (
-            <div className={cn("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
+            <div className={clsx("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
                 <div key="code" className="code-div">
                     <code>{cmdstr}</code>
                 </div>
@@ -490,7 +490,7 @@ class HistoryView extends React.Component<{}, {}> {
                         </Button>
                     </div>
                 </div>
-                <div key="control1" className={cn("control-bar", "is-top", { "is-hidden": items.length == 0 })}>
+                <div key="control1" className={clsx("control-bar", "is-top", { "is-hidden": items.length == 0 })}>
                     <div className="control-checkbox" onClick={this.handleControlCheckbox} title="Toggle Selection">
                         <HistoryCheckbox
                             checked={numSelected > 0 && numSelected == items.length}
@@ -498,7 +498,7 @@ class HistoryView extends React.Component<{}, {}> {
                         />
                     </div>
                     <div
-                        className={cn(
+                        className={clsx(
                             "control-button delete-button",
                             { "is-disabled": numSelected == 0 },
                             { "is-active": hvm.deleteActive.get() }
@@ -515,14 +515,14 @@ class HistoryView extends React.Component<{}, {}> {
                         Showing {offset + 1}-{offset + items.length}
                     </div>
                     <div
-                        className={cn("showing-btn", { "is-disabled": offset == 0 })}
+                        className={clsx("showing-btn", { "is-disabled": offset == 0 })}
                         onClick={offset != 0 ? this.handlePrev : null}
                     >
                         <ChevronLeftIcon className="icon" />
                     </div>
                     <div className="btn-spacer" />
                     <div
-                        className={cn("showing-btn", { "is-disabled": !hasMore })}
+                        className={clsx("showing-btn", { "is-disabled": !hasMore })}
                         onClick={hasMore ? this.handleNext : null}
                     >
                         <ChevronRightIcon className="icon" />
@@ -538,7 +538,7 @@ class HistoryView extends React.Component<{}, {}> {
                         <For index="idx" each="item" of={items}>
                             <div
                                 key={item.historyid}
-                                className={cn("row history-item", {
+                                className={clsx("row history-item", {
                                     "is-selected": hvm.selectedItems.get(item.historyid),
                                 })}
                             >
@@ -608,21 +608,21 @@ class HistoryView extends React.Component<{}, {}> {
                 </div>
                 <div
                     key="control2"
-                    className={cn("control-bar", "is-bottom", { "is-hidden": items.length == 0 || !hasMore })}
+                    className={clsx("control-bar", "is-bottom", { "is-hidden": items.length == 0 || !hasMore })}
                 >
                     <div className="spacer" />
                     <div className="showing-text">
                         Showing {offset + 1}-{offset + items.length}
                     </div>
                     <div
-                        className={cn("showing-btn", { "is-disabled": offset == 0 })}
+                        className={clsx("showing-btn", { "is-disabled": offset == 0 })}
                         onClick={offset != 0 ? this.handlePrev : null}
                     >
                         <ChevronLeftIcon className="icon" />
                     </div>
                     <div className="btn-spacer" />
                     <div
-                        className={cn("showing-btn", { "is-disabled": !hasMore })}
+                        className={clsx("showing-btn", { "is-disabled": !hasMore })}
                         onClick={hasMore ? this.handleNext : null}
                     >
                         <ChevronRightIcon className="icon" />

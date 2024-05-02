@@ -6,13 +6,14 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel, RemotesModel, GlobalCommandRunner } from "@/models";
 import { Button, Status } from "@/common/elements";
 import * as util from "@/util/util";
 
 import "./connections.less";
 import { MainView } from "../common/elements/mainview";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 class ConnectionsKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
@@ -149,57 +150,63 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                 <If condition={!isHidden}>
                     <ConnectionsKeybindings></ConnectionsKeybindings>
                 </If>
-                <table
-                    className="connections-table"
-                    cellSpacing="0"
-                    cellPadding="0"
-                    border={0}
-                    ref={this.tableRef}
-                    onMouseLeave={this.handleTableHoverLeave}
+                <OverlayScrollbarsComponent
+                    className="connections-table-container"
+                    options={{ scrollbars: { autoHide: "leave" } }}
+                    defer={true}
                 >
-                    <colgroup>
-                        <col className="first-col" />
-                        <col className="second-col" />
-                        <col className="third-col" />
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th className="text-standard col-name">
-                                <div>Name</div>
-                            </th>
-                            <th className="text-standard col-type">
-                                <div>Type</div>
-                            </th>
-                            <th className="text-standard col-status">
-                                <div>Status</div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <For index="idx" each="item" of={items}>
-                            <tr
-                                key={item.remoteid}
-                                className={cn("connections-item", {
-                                    hovered: this.state.hoveredItemId === item.remoteid,
-                                })}
-                                onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
-                            >
-                                <td className="col-name">
-                                    <Status status={this.getStatus(item.status)} text=""></Status>
-                                    {this.getName(item)}&nbsp;{this.getImportSymbol(item)}
-                                </td>
-                                <td className="col-type">
-                                    <div>{item.remotetype}</div>
-                                </td>
-                                <td className="col-status">
-                                    <div>
-                                        <Status status={this.getStatus(item.status)} text={item.status} />
-                                    </div>
-                                </td>
+                    <table
+                        className="connections-table"
+                        cellSpacing="0"
+                        cellPadding="0"
+                        border={0}
+                        ref={this.tableRef}
+                        onMouseLeave={this.handleTableHoverLeave}
+                    >
+                        <colgroup>
+                            <col className="first-col" />
+                            <col className="second-col" />
+                            <col className="third-col" />
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th className="text-standard col-name">
+                                    <div>Name</div>
+                                </th>
+                                <th className="text-standard col-type">
+                                    <div>Type</div>
+                                </th>
+                                <th className="text-standard col-status">
+                                    <div>Status</div>
+                                </th>
                             </tr>
-                        </For>
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            <For index="idx" each="item" of={items}>
+                                <tr
+                                    key={item.remoteid}
+                                    className={clsx("connections-item", {
+                                        hovered: this.state.hoveredItemId === item.remoteid,
+                                    })}
+                                    onClick={() => this.handleRead(item.remoteid)} // Moved onClick here
+                                >
+                                    <td className="col-name">
+                                        <Status status={this.getStatus(item.status)} text=""></Status>
+                                        {this.getName(item)}&nbsp;{this.getImportSymbol(item)}
+                                    </td>
+                                    <td className="col-type">
+                                        <div>{item.remotetype}</div>
+                                    </td>
+                                    <td className="col-status">
+                                        <div>
+                                            <Status status={this.getStatus(item.status)} text={item.status} />
+                                        </div>
+                                    </td>
+                                </tr>
+                            </For>
+                        </tbody>
+                    </table>
+                </OverlayScrollbarsComponent>
                 <footer>
                     <Button
                         className="secondary"

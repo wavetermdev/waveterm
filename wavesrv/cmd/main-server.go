@@ -452,12 +452,12 @@ func HandleWriteFile(w http.ResponseWriter, r *http.Request) {
 		WriteJsonError(w, fmt.Errorf("invalid line, no remote"))
 		return
 	}
-	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
-	if msh == nil {
+	wsh := remote.GetRemoteById(cmd.Remote.RemoteId)
+	if wsh == nil {
 		WriteJsonError(w, fmt.Errorf("invalid line, cannot resolve remote"))
 		return
 	}
-	rrState := msh.GetRemoteRuntimeState()
+	rrState := wsh.GetRemoteRuntimeState()
 	fullPath, err := rrState.ExpandHomeDir(params.Path)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error expanding homedir: %v", err))
@@ -472,7 +472,7 @@ func HandleWriteFile(w http.ResponseWriter, r *http.Request) {
 	} else {
 		writePk.Path = filepath.Join(cwd, fullPath)
 	}
-	iter, err := msh.PacketRpcIter(r.Context(), writePk)
+	iter, err := wsh.PacketRpcIter(r.Context(), writePk)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error: %v", err))
 		return
@@ -502,7 +502,7 @@ func HandleWriteFile(w http.ResponseWriter, r *http.Request) {
 		} else if err != nil {
 			dataErr := fmt.Errorf("error reading file data: %v", err)
 			dataPk.Error = dataErr.Error()
-			msh.SendFileData(dataPk)
+			wsh.SendFileData(dataPk)
 			WriteJsonError(w, dataErr)
 			return
 		}
@@ -510,7 +510,7 @@ func HandleWriteFile(w http.ResponseWriter, r *http.Request) {
 			dataPk.Data = make([]byte, nr)
 			copy(dataPk.Data, bufSlice[0:nr])
 		}
-		msh.SendFileData(dataPk)
+		wsh.SendFileData(dataPk)
 		if dataPk.Eof {
 			break
 		}
@@ -581,13 +581,13 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("invalid line, no remote"))
 		return
 	}
-	msh := remote.GetRemoteById(cmd.Remote.RemoteId)
-	if msh == nil {
+	wsh := remote.GetRemoteById(cmd.Remote.RemoteId)
+	if wsh == nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("invalid line, cannot resolve remote"))
 		return
 	}
-	rrState := msh.GetRemoteRuntimeState()
+	rrState := wsh.GetRemoteRuntimeState()
 	fullPath, err := rrState.ExpandHomeDir(path)
 	if err != nil {
 		WriteJsonError(w, fmt.Errorf("error expanding homedir: %v", err))
@@ -601,7 +601,7 @@ func HandleReadFile(w http.ResponseWriter, r *http.Request) {
 	} else {
 		streamPk.Path = filepath.Join(cwd, fullPath)
 	}
-	iter, err := msh.StreamFile(r.Context(), streamPk)
+	iter, err := wsh.StreamFile(r.Context(), streamPk)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf("error trying to stream file: %v", err)))

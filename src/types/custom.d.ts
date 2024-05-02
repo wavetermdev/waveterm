@@ -121,8 +121,8 @@ declare global {
         sshconfigsrc: string;
         archived: boolean;
         uname: string;
-        mshellversion: string;
-        needsmshellupgrade: boolean;
+        waveshellversion: string;
+        needswaveshellupgrade: boolean;
         noinitpk: boolean;
         authtype: string;
         waitingforpassword: boolean;

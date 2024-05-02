@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import * as util from "@/util/util";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
@@ -266,6 +266,11 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     lastSP: StrWithPos = { str: "", pos: appconst.NoStrPos };
     version: OV<number> = mobx.observable.box(0, { name: "textAreaInput-version" }); // forces render updates
 
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     @mobx.action.bound
     incVersion(): void {
         const v = this.version.get();
@@ -329,8 +334,8 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
     }
 
-    @mobx.action
-    componentDidMount() {
+    @mobx.action.bound
+    handleComponentDidMount() {
         const activeScreen = GlobalModel.getActiveScreen();
         if (activeScreen != null) {
             const focusType = activeScreen.focusType.get();
@@ -341,6 +346,23 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         }
         this.checkHeight(false);
         this.updateSP();
+    }
+
+    componentDidMount() {
+        this.handleComponentDidMount();
+        this.updateCursorPosIfForced();
+    }
+
+    updateCursorPosIfForced() {
+        const inputModel = GlobalModel.inputModel;
+        const fcpos = inputModel.forceCursorPos.get();
+        if (fcpos != null && fcpos != appconst.NoStrPos) {
+            if (this.mainInputRef.current != null) {
+                this.mainInputRef.current.selectionStart = fcpos;
+                this.mainInputRef.current.selectionEnd = fcpos;
+            }
+            inputModel.forceCursorPos.set(null);
+        }
     }
 
     @mobx.action
@@ -354,14 +376,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             this.lastFocusType = focusType;
         }
         const inputModel = GlobalModel.inputModel;
-        const fcpos = inputModel.forceCursorPos.get();
-        if (fcpos != null && fcpos != appconst.NoStrPos) {
-            if (this.mainInputRef.current != null) {
-                this.mainInputRef.current.selectionStart = fcpos;
-                this.mainInputRef.current.selectionEnd = fcpos;
-            }
-            inputModel.forceCursorPos.set(null);
-        }
+        this.updateCursorPosIfForced();
         if (inputModel.forceInputFocus) {
             inputModel.forceInputFocus = false;
             this.setFocus();
@@ -676,7 +691,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onSelect={this.onSelect}
                     placeholder="Type here..."
                     maxLength={MaxInputLength}
-                    className={cn("textarea", { "display-disabled": auxViewFocused })}
+                    className={clsx("textarea", { "display-disabled": auxViewFocused })}
                 ></textarea>
                 <input
                     key="history"

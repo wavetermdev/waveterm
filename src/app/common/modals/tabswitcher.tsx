@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import { Modal, TextField, InputDecoration, Tooltip } from "@/elements";
 import * as util from "@/util/util";
@@ -287,7 +287,7 @@ class TabSwitcherModal extends React.Component<{}, {}> {
             <div
                 key={option.sessionId + "/" + option.screenId}
                 ref={this.optionRefs[index]}
-                className={cn("search-option unselectable", {
+                className={clsx("search-option unselectable", {
                     "focused-option": this.focusedIdx.get() === index,
                 })}
                 onClick={() => this.handleSelect(index)}

@@ -3,8 +3,9 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
+import * as mobx from "mobx";
 import { If, For } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
@@ -17,6 +18,11 @@ dayjs.extend(localizedFormat);
 
 @mobxReact.observer
 class InfoMsg extends React.Component<{}, {}> {
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     getAfterSlash(s: string): string {
         if (s.startsWith("^/")) {
             return s.substring(1);
@@ -80,7 +86,7 @@ class InfoMsg extends React.Component<{}, {}> {
                             <div
                                 onClick={() => this.handleCompClick(istr)}
                                 key={idx}
-                                className={cn(
+                                className={clsx(
                                     "info-comp",
                                     { "has-space": this.hasSpace(istr) },
                                     { "metacmd-comp": istr.startsWith("^") }

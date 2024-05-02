@@ -9,7 +9,7 @@ import { GlobalModel } from "@/models";
 import { Modal, LinkButton } from "@/elements";
 import * as util from "@/util/util";
 import * as appconst from "@/app/appconst";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { If } from "tsx-control-statements/components";
 
 import logo from "@/assets/waveterm-logo-with-bg.svg";
@@ -36,7 +36,7 @@ class AboutModal extends React.Component<{}, {}> {
         const isUpToDate = !showUpdateStatus || GlobalModel.appUpdateStatus.get() !== "ready";
 
         return (
-            <div className={cn("status", { outdated: !isUpToDate })}>
+            <div className={clsx("status", { outdated: !isUpToDate })}>
                 <If condition={!isUpToDate}>
                     <div>
                         <i className="fa-sharp fa-solid fa-triangle-exclamation" />

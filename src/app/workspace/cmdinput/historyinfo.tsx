@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
@@ -42,6 +42,11 @@ class HItem extends React.Component<
     },
     {}
 > {
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     renderRemote(hitem: HistoryItem): any {
         if (hitem.remote == null || isBlank(hitem.remote.remoteid)) {
             return sprintf("%-15s ", "");
@@ -127,7 +132,7 @@ class HItem extends React.Component<
         return (
             <div
                 key={hitem.historynum}
-                className={cn(
+                className={clsx(
                     "history-item",
                     { "is-selected": isSelected },
                     { "history-haderror": hitem.haderror },
@@ -251,7 +256,7 @@ class HistoryInfo extends React.Component<{}, {}> {
                 onScrollbarInitialized={this.handleScrollbarInitialized}
             >
                 <div
-                    className={cn(
+                    className={clsx(
                         "history-items",
                         { "show-remotes": !opts.limitRemote },
                         { "show-sessions": opts.queryType == "global" }

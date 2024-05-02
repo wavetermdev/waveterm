@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
 import { Modal, Tooltip, Button, Status } from "@/elements";
 import * as util from "@/util/util";
@@ -15,6 +15,7 @@ import * as appconst from "@/app/appconst";
 
 import "./viewremoteconndetail.less";
 import { ModalKeybindings } from "../elements/modal";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 @mobxReact.observer
 class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
@@ -139,12 +140,12 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     renderInstallStatus(remote: RemoteType): any {
         let statusStr: string = null;
         if (remote.installstatus == "disconnected") {
-            if (remote.needsmshellupgrade) {
-                statusStr = "mshell " + remote.mshellversion + " - needs upgrade";
-            } else if (util.isBlank(remote.mshellversion)) {
-                statusStr = "mshell unknown";
+            if (remote.needswaveshellupgrade) {
+                statusStr = "waveshell " + remote.waveshellversion + " - needs upgrade";
+            } else if (util.isBlank(remote.waveshellversion)) {
+                statusStr = "waveshell unknown";
             } else {
-                statusStr = "mshell " + remote.mshellversion + " - current";
+                statusStr = "waveshell " + remote.waveshellversion + " - current";
             }
         } else {
             statusStr = remote.installstatus;
@@ -230,7 +231,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         } else if (remote.status == "disconnected") {
             buttons.push(connectButton);
         } else if (remote.status == "error") {
-            if (remote.needsmshellupgrade) {
+            if (remote.needswaveshellupgrade) {
                 if (remote.installstatus == "connecting") {
                     buttons.push(cancelInstallButton);
                 } else {
@@ -269,7 +270,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         } else if (remote.status == "error") {
             if (remote.noinitpk) {
                 message = "Error, could not connect.";
-            } else if (remote.needsmshellupgrade) {
+            } else if (remote.needswaveshellupgrade) {
                 if (remote.installstatus == "connecting") {
                     message = "Installing...";
                 } else {
@@ -299,15 +300,33 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
 
         return (
             <Modal className="rconndetail-modal">
+                <ModalKeybindings
+                    onOk={() => {
+                        if (selectedRemoteStatus == "connecting") {
+                            return;
+                        }
+                        this.handleClose();
+                    }}
+                    onCancel={() => {
+                        if (selectedRemoteStatus == "connecting") {
+                            return;
+                        }
+                        this.handleClose();
+                    }}
+                ></ModalKeybindings>
                 <Modal.Header title="Connection" onClose={this.handleClose} />
-                <div className="wave-modal-body">
+                <OverlayScrollbarsComponent
+                    className="wave-modal-body"
+                    options={{ scrollbars: { autoHide: "leave" } }}
+                    defer={true}
+                >
                     <div className="name-header-actions-wrapper">
                         <div className="name text-primary name-wrapper">
                             {util.getRemoteName(remote)}&nbsp; {getImportTooltip(remote)}
                         </div>
                         <div className="header-actions">{this.renderHeaderBtns(remote)}</div>
                     </div>
-                    <div className="remote-detail" style={{ overflow: "hidden" }}>
+                    <div className="remote-detail">
                         <div className="settings-field">
                             <div className="settings-label">Conn Id</div>
                             <div className="settings-input">{remote.remoteid}</div>
@@ -351,7 +370,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                         </div>
                         <div
                             key="term"
-                            className={cn(
+                            className={clsx(
                                 "terminal-wrapper",
                                 { focus: isTermFocused },
                                 remote != null ? "status-" + remote.status : null
@@ -381,33 +400,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                             ></div>
                         </div>
                     </div>
-                </div>
-                <div className="wave-modal-footer">
-                    <ModalKeybindings
-                        onOk={() => {
-                            if (selectedRemoteStatus == "connecting") {
-                                return;
-                            }
-                            this.handleClose();
-                        }}
-                        onCancel={() => {
-                            if (selectedRemoteStatus == "connecting") {
-                                return;
-                            }
-                            this.handleClose();
-                        }}
-                    ></ModalKeybindings>
-                    <Button
-                        className="secondary"
-                        disabled={selectedRemoteStatus == "connecting"}
-                        onClick={this.handleClose}
-                    >
-                        Cancel
-                    </Button>
-                    <Button disabled={selectedRemoteStatus == "connecting"} onClick={this.handleClose}>
-                        Done
-                    </Button>
-                </div>
+                </OverlayScrollbarsComponent>
             </Modal>
         );
     }

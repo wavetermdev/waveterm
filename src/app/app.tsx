@@ -4,7 +4,7 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import cn from "classnames";
+import { clsx } from "clsx";
 
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
@@ -133,7 +133,7 @@ class App extends React.Component<{}, {}> {
         const rightSidebarCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
         const activeMainView = GlobalModel.activeMainView.get();
         const lightDarkClass = GlobalModel.isDarkTheme.get() ? "is-dark" : "is-light";
-        const mainClassName = cn(
+        const mainClassName = clsx(
             "platform-" + platform,
             {
                 "mainsidebar-collapsed": mainSidebarCollapsed,

@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import dayjs from "dayjs";
 import { If } from "tsx-control-statements/components";
 
@@ -38,7 +38,7 @@ class SideBarItem extends React.Component<{
     render() {
         return (
             <div
-                className={cn("item", "unselectable", "hoverEffect", this.props.className)}
+                className={clsx("item", "unselectable", "hoverEffect", this.props.className)}
                 onClick={this.props.onClick}
             >
                 <FrontIcon>{this.props.frontIcon}</FrontIcon>
@@ -201,7 +201,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
             return (
                 <SideBarItem
                     key={session.sessionId}
-                    className={cn({ bold: isActive, highlight: showHighlight })}
+                    className={clsx({ bold: isActive, highlight: showHighlight })}
                     frontIcon={<span className="index">{index + 1}</span>}
                     contents={session.name.get()}
                     endIcons={[
@@ -260,8 +260,8 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                             <div className="logo">
                                 <WaveLogo />
                             </div>
-                            <div className="close-button">
-                                <i className="fa-sharp fa-solid fa-xmark-large" onClick={toggleCollapse} />
+                            <div className="close-button" onClick={toggleCollapse}>
+                                <i className="fa-sharp fa-solid fa-xmark-large" />
                             </div>
                         </div>
                         <div className="contents">
@@ -269,7 +269,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="history"
                                     frontIcon={<i className="fa-sharp fa-regular fa-clock-rotate-left icon" />}
-                                    className={cn({ highlight: historyActive })}
+                                    className={clsx({ highlight: historyActive })}
                                     contents="History"
                                     endIcons={[<HotKeyIcon key="hotkey" hotkey="H" />]}
                                     onClick={this.handleHistoryClick}
@@ -278,7 +278,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="connections"
                                     frontIcon={<i className="fa-sharp fa-regular fa-globe icon " />}
-                                    className={cn({ highlight: connectionsActive })}
+                                    className={clsx({ highlight: connectionsActive })}
                                     contents="Connections"
                                     onClick={this.handleConnectionsClick}
                                 />
@@ -325,7 +325,7 @@ class MainSideBar extends React.Component<MainSideBarProps, {}> {
                                 <SideBarItem
                                     key="settings"
                                     frontIcon={<SettingsIcon className="icon" />}
-                                    className={cn({ highlight: settingsActive })}
+                                    className={clsx({ highlight: settingsActive })}
                                     contents="Settings"
                                     onClick={this.handleSettingsClick}
                                 />

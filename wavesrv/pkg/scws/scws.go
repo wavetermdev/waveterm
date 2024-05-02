@@ -326,9 +326,9 @@ func sendCmdInput(pk *scpacket.FeInputPacketType) error {
 	if pk.Remote.RemoteId == "" {
 		return fmt.Errorf("input must set remoteid")
 	}
-	msh := remote.GetRemoteById(pk.Remote.RemoteId)
-	if msh == nil {
+	wsh := remote.GetRemoteById(pk.Remote.RemoteId)
+	if wsh == nil {
 		return fmt.Errorf("remote %s not found", pk.Remote.RemoteId)
 	}
-	return msh.HandleFeInput(pk)
+	return wsh.HandleFeInput(pk)
 }

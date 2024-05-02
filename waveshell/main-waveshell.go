@@ -28,7 +28,7 @@ func readFullRunPacket(packetParser *packet.PacketParser) (*packet.RunPacketType
 			return runPacket, nil
 		}
 		if !ok {
-			return nil, fmt.Errorf("invalid packet '%s' sent to mshell", pk.GetType())
+			return nil, fmt.Errorf("invalid packet '%s' sent to waveshell", pk.GetType())
 		}
 	}
 	return nil, fmt.Errorf("no run packet received")
@@ -97,7 +97,7 @@ func handleSingle() {
 
 func handleUsage() {
 	usage := `
-mshell is a helper program for wave terminal.  it is used to execute commands
+waveshell is a helper program for wave terminal.  it is used to execute commands
 
 Options:
     --help                 - prints this message
@@ -106,7 +106,7 @@ Options:
 	--single               - run a single command (connected to multiplexer)
 	--single --version     - return an init packet with version info
 
-mshell does not open any external ports and does not require any additional permissions.
+waveshell does not open any external ports and does not require any additional permissions.
 it communicates exclusively through stdin/stdout with an attached process
 via a JSON packet format.
 `
@@ -124,7 +124,7 @@ func main() {
 		handleUsage()
 		return
 	} else if firstArg == "--version" {
-		fmt.Printf("mshell %s+%s\n", base.MShellVersion, base.BuildTime)
+		fmt.Printf("waveshell %s+%s\n", base.WaveshellVersion, base.BuildTime)
 		return
 	} else if firstArg == "--single" || firstArg == "--single-from-server" {
 		base.ProcessType = base.ProcessType_WaveShellSingle

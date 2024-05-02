@@ -50,7 +50,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const RemoteTypeMShell = "mshell"
+const RemoteTypeWaveshell = "mshell"
 const DefaultTerm = "xterm-256color"
 const DefaultMaxPtySize = 1024 * 1024
 const CircBufSize = 64 * 1024
@@ -74,12 +74,12 @@ var envVarsToStrip map[string]bool = map[string]bool{
 	"TERM_SESSION_ID":      true,
 }
 
-// we add this ping packet to the MShellServer Commands in order to deal with spurious SSH output
+// we add this ping packet to the WaveshellServer Commands in order to deal with spurious SSH output
 // basically we guarantee the parser will see a valid packet (either an init error or a ping)
 // so we can pass ignoreUntilValid to PacketParser
 const PrintPingPacket = `printf "\n##N{\"type\": \"ping\"}\n"`
 
-const MShellServerCommandFmt = `
+const WaveshellServerCommandFmt = `
 PATH=$PATH:~/.mshell;
 which mshell-[%VERSION%] > /dev/null;
 if [[ "$?" -ne 0 ]]
@@ -91,20 +91,20 @@ else
 fi
 `
 
-func MakeLocalMShellCommandStr(isSudo bool) (string, error) {
-	mshellPath, err := scbase.LocalMShellBinaryPath()
+func MakeLocalWaveshellCommandStr(isSudo bool) (string, error) {
+	waveshellPath, err := scbase.LocalWaveshellBinaryPath()
 	if err != nil {
 		return "", err
 	}
 	if isSudo {
-		return fmt.Sprintf(`%s; sudo %s --server`, PrintPingPacket, shellescape.Quote(mshellPath)), nil
+		return fmt.Sprintf(`%s; sudo %s --server`, PrintPingPacket, shellescape.Quote(waveshellPath)), nil
 	} else {
-		return fmt.Sprintf(`%s; %s --server`, PrintPingPacket, shellescape.Quote(mshellPath)), nil
+		return fmt.Sprintf(`%s; %s --server`, PrintPingPacket, shellescape.Quote(waveshellPath)), nil
 	}
 }
 
 func MakeServerCommandStr() string {
-	rtn := strings.ReplaceAll(MShellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(scbase.MShellVersion))
+	rtn := strings.ReplaceAll(WaveshellServerCommandFmt, "[%VERSION%]", semver.MajorMinor(scbase.WaveshellVersion))
 	rtn = strings.ReplaceAll(rtn, "[%PINGPACKET%]", PrintPingPacket)
 	return rtn
 }
@@ -117,8 +117,8 @@ const (
 )
 
 func init() {
-	if scbase.MShellVersion != base.MShellVersion {
-		panic(fmt.Sprintf("prompt-server apishell version must match '%s' vs '%s'", scbase.MShellVersion, base.MShellVersion))
+	if scbase.WaveshellVersion != base.WaveshellVersion {
+		panic(fmt.Sprintf("prompt-server apishell version must match '%s' vs '%s'", scbase.WaveshellVersion, base.WaveshellVersion))
 	}
 }
 
@@ -126,7 +126,7 @@ var GlobalStore *Store
 
 type Store struct {
 	Lock       *sync.Mutex
-	Map        map[string]*MShellProc // key=remoteid
+	Map        map[string]*WaveshellProc // key=remoteid
 	CmdWaitMap map[base.CommandKey][]func()
 }
 
@@ -136,7 +136,7 @@ type pendingStateKey struct {
 }
 
 // provides state, acccess, and control for a waveshell server process
-type MShellProc struct {
+type WaveshellProc struct {
 	Lock   *sync.Mutex
 	Remote *sstore.RemoteType
 
@@ -157,10 +157,10 @@ type MShellProc struct {
 	DataPosMap         *utilfn.SyncMap[base.CommandKey, int64]
 
 	// install
-	InstallStatus      string
-	NeedsMShellUpgrade bool
-	InstallCancelFn    context.CancelFunc
-	InstallErr         error
+	InstallStatus         string
+	NeedsWaveshellUpgrade bool
+	InstallCancelFn       context.CancelFunc
+	InstallErr            error
 
 	// for synthetic commands (not run through RunCommand), this provides a way for them
 	// to register to receive input events from the frontend (e.g. ReInit)
@@ -188,7 +188,7 @@ type RunCmdType struct {
 }
 
 type ReinitCommandSink struct {
-	Remote *MShellProc
+	Remote *WaveshellProc
 	ReqId  string
 }
 
@@ -214,28 +214,28 @@ func CanComplete(remoteType string) bool {
 	}
 }
 
-func (msh *MShellProc) GetStatus() string {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.Status
+func (wsh *WaveshellProc) GetStatus() string {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.Status
 }
 
-func (msh *MShellProc) GetRemoteId() string {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.Remote.RemoteId
+func (wsh *WaveshellProc) GetRemoteId() string {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.Remote.RemoteId
 }
 
-func (msh *MShellProc) GetInstallStatus() string {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.InstallStatus
+func (wsh *WaveshellProc) GetInstallStatus() string {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.InstallStatus
 }
 
 func LoadRemotes(ctx context.Context) error {
 	GlobalStore = &Store{
 		Lock:       &sync.Mutex{},
-		Map:        make(map[string]*MShellProc),
+		Map:        make(map[string]*WaveshellProc),
 		CmdWaitMap: make(map[base.CommandKey][]func()),
 	}
 	allRemotes, err := sstore.GetAllRemotes(ctx)
@@ -245,10 +245,10 @@ func LoadRemotes(ctx context.Context) error {
 	var numLocal int
 	var numSudoLocal int
 	for _, remote := range allRemotes {
-		msh := MakeMShell(remote)
-		GlobalStore.Map[remote.RemoteId] = msh
+		wsh := MakeWaveshell(remote)
+		GlobalStore.Map[remote.RemoteId] = wsh
 		if remote.ConnectMode == sstore.ConnectModeStartup {
-			go msh.Launch(false)
+			go wsh.Launch(false)
 		}
 		if remote.Local {
 			if remote.IsSudo() {
@@ -278,16 +278,16 @@ func LoadRemoteById(ctx context.Context, remoteId string) error {
 	if r == nil {
 		return fmt.Errorf("remote %s not found", remoteId)
 	}
-	msh := MakeMShell(r)
+	wsh := MakeWaveshell(r)
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	existingRemote := GlobalStore.Map[remoteId]
 	if existingRemote != nil {
 		return fmt.Errorf("cannot add remote %s, already in global map", remoteId)
 	}
-	GlobalStore.Map[r.RemoteId] = msh
+	GlobalStore.Map[r.RemoteId] = wsh
 	if r.ConnectMode == sstore.ConnectModeStartup {
-		go msh.Launch(false)
+		go wsh.Launch(false)
 	}
 	return nil
 }
@@ -295,14 +295,14 @@ func LoadRemoteById(ctx context.Context, remoteId string) error {
 func ReadRemotePty(ctx context.Context, remoteId string) (int64, []byte, error) {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
-	msh := GlobalStore.Map[remoteId]
-	if msh == nil {
+	wsh := GlobalStore.Map[remoteId]
+	if wsh == nil {
 		return 0, nil, nil
 	}
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	barr := msh.PtyBuffer.Bytes()
-	offset := msh.PtyBuffer.TotalWritten() - int64(len(barr))
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	barr := wsh.PtyBuffer.Bytes()
+	offset := wsh.PtyBuffer.TotalWritten() - int64(len(barr))
 	return offset, barr, nil
 }
 
@@ -326,11 +326,11 @@ func AddRemote(ctx context.Context, r *sstore.RemoteType, shouldStart bool) erro
 	if err != nil {
 		return fmt.Errorf("cannot create remote %q: %v", r.RemoteCanonicalName, err)
 	}
-	newMsh := MakeMShell(r)
-	GlobalStore.Map[r.RemoteId] = newMsh
-	go newMsh.NotifyRemoteUpdate()
+	newWsh := MakeWaveshell(r)
+	GlobalStore.Map[r.RemoteId] = newWsh
+	go newWsh.NotifyRemoteUpdate()
 	if shouldStart {
-		go newMsh.Launch(true)
+		go newWsh.Launch(true)
 	}
 	return nil
 }
@@ -338,17 +338,17 @@ func AddRemote(ctx context.Context, r *sstore.RemoteType, shouldStart bool) erro
 func ArchiveRemote(ctx context.Context, remoteId string) error {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
-	msh := GlobalStore.Map[remoteId]
-	if msh == nil {
+	wsh := GlobalStore.Map[remoteId]
+	if wsh == nil {
 		return fmt.Errorf("remote not found, cannot archive")
 	}
-	if msh.Status == StatusConnected {
+	if wsh.Status == StatusConnected {
 		return fmt.Errorf("cannot archive connected remote")
 	}
-	if msh.Remote.Local {
+	if wsh.Remote.Local {
 		return fmt.Errorf("cannot archive local remote")
 	}
-	rcopy := msh.GetRemoteCopy()
+	rcopy := wsh.GetRemoteCopy()
 	archivedRemote := &sstore.RemoteType{
 		RemoteId:            rcopy.RemoteId,
 		RemoteType:          rcopy.RemoteType,
@@ -361,9 +361,9 @@ func ArchiveRemote(ctx context.Context, remoteId string) error {
 	if err != nil {
 		return err
 	}
-	newMsh := MakeMShell(archivedRemote)
-	GlobalStore.Map[remoteId] = newMsh
-	go newMsh.NotifyRemoteUpdate()
+	newWsh := MakeWaveshell(archivedRemote)
+	GlobalStore.Map[remoteId] = newWsh
+	go newWsh.NotifyRemoteUpdate()
 	return nil
 }
 
@@ -379,63 +379,63 @@ func NumRemotes() int {
 	return len(GlobalStore.Map)
 }
 
-func GetRemoteByArg(arg string) *MShellProc {
+func GetRemoteByArg(arg string) *WaveshellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	isPuid := isPartialUUID(arg)
-	for _, msh := range GlobalStore.Map {
-		rcopy := msh.GetRemoteCopy()
+	for _, wsh := range GlobalStore.Map {
+		rcopy := wsh.GetRemoteCopy()
 		if rcopy.RemoteAlias == arg || rcopy.RemoteCanonicalName == arg || rcopy.RemoteId == arg {
-			return msh
+			return wsh
 		}
 		if isPuid && strings.HasPrefix(rcopy.RemoteId, arg) {
-			return msh
+			return wsh
 		}
 	}
 	return nil
 }
 
-func getRemoteByCanonicalName_nolock(name string) *MShellProc {
-	for _, msh := range GlobalStore.Map {
-		rcopy := msh.GetRemoteCopy()
+func getRemoteByCanonicalName_nolock(name string) *WaveshellProc {
+	for _, wsh := range GlobalStore.Map {
+		rcopy := wsh.GetRemoteCopy()
 		if rcopy.RemoteCanonicalName == name {
-			return msh
+			return wsh
 		}
 	}
 	return nil
 }
 
-func GetRemoteById(remoteId string) *MShellProc {
+func GetRemoteById(remoteId string) *WaveshellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
 	return GlobalStore.Map[remoteId]
 }
 
 func GetRemoteCopyById(remoteId string) *sstore.RemoteType {
-	msh := GetRemoteById(remoteId)
-	if msh == nil {
+	wsh := GetRemoteById(remoteId)
+	if wsh == nil {
 		return nil
 	}
-	rcopy := msh.GetRemoteCopy()
+	rcopy := wsh.GetRemoteCopy()
 	return &rcopy
 }
 
-func GetRemoteMap() map[string]*MShellProc {
+func GetRemoteMap() map[string]*WaveshellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
-	rtn := make(map[string]*MShellProc)
-	for remoteId, msh := range GlobalStore.Map {
-		rtn[remoteId] = msh
+	rtn := make(map[string]*WaveshellProc)
+	for remoteId, wsh := range GlobalStore.Map {
+		rtn[remoteId] = wsh
 	}
 	return rtn
 }
 
-func GetLocalRemote() *MShellProc {
+func GetLocalRemote() *WaveshellProc {
 	GlobalStore.Lock.Lock()
 	defer GlobalStore.Lock.Unlock()
-	for _, msh := range GlobalStore.Map {
-		if msh.IsLocal() && !msh.IsSudo() {
-			return msh
+	for _, wsh := range GlobalStore.Map {
+		if wsh.IsLocal() && !wsh.IsSudo() {
+			return wsh
 		}
 	}
 	return nil
@@ -447,16 +447,16 @@ func ResolveRemoteRef(remoteRef string) *RemoteRuntimeState {
 
 	_, err := uuid.Parse(remoteRef)
 	if err == nil {
-		msh := GlobalStore.Map[remoteRef]
-		if msh != nil {
-			state := msh.GetRemoteRuntimeState()
+		wsh := GlobalStore.Map[remoteRef]
+		if wsh != nil {
+			state := wsh.GetRemoteRuntimeState()
 			return &state
 		}
 		return nil
 	}
-	for _, msh := range GlobalStore.Map {
-		if msh.Remote.RemoteAlias == remoteRef || msh.Remote.RemoteCanonicalName == remoteRef {
-			state := msh.GetRemoteRuntimeState()
+	for _, wsh := range GlobalStore.Map {
+		if wsh.Remote.RemoteAlias == remoteRef || wsh.Remote.RemoteCanonicalName == remoteRef {
+			state := wsh.GetRemoteRuntimeState()
 			return &state
 		}
 	}
@@ -464,15 +464,15 @@ func ResolveRemoteRef(remoteRef string) *RemoteRuntimeState {
 }
 
 func SendSignalToCmd(ctx context.Context, cmd *sstore.CmdType, sig string) error {
-	msh := GetRemoteById(cmd.Remote.RemoteId)
-	if msh == nil {
+	wsh := GetRemoteById(cmd.Remote.RemoteId)
+	if wsh == nil {
 		return fmt.Errorf("no connection found")
 	}
-	if !msh.IsConnected() {
+	if !wsh.IsConnected() {
 		return fmt.Errorf("not connected")
 	}
 	cmdCk := base.MakeCommandKey(cmd.ScreenId, cmd.LineId)
-	if !msh.IsCmdRunning(cmdCk) {
+	if !wsh.IsCmdRunning(cmdCk) {
 		// this could also return nil (depends on use case)
 		// settled on coded error so we can check for this error
 		return base.CodedErrorf(packet.EC_CmdNotRunning, "cmd not running")
@@ -480,7 +480,7 @@ func SendSignalToCmd(ctx context.Context, cmd *sstore.CmdType, sig string) error
 	sigPk := packet.MakeSpecialInputPacket()
 	sigPk.CK = cmdCk
 	sigPk.SigName = sig
-	return msh.ServerProc.Input.SendPacket(sigPk)
+	return wsh.ServerProc.Input.SendPacket(sigPk)
 }
 
 func unquoteDQBashString(str string) (string, bool) {
@@ -527,84 +527,84 @@ func makeShortHost(host string) string {
 	return host[0:dotIdx]
 }
 
-func (msh *MShellProc) IsLocal() bool {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.Remote.Local
+func (wsh *WaveshellProc) IsLocal() bool {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.Remote.Local
 }
 
-func (msh *MShellProc) IsSudo() bool {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.Remote.IsSudo()
+func (wsh *WaveshellProc) IsSudo() bool {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.Remote.IsSudo()
 }
 
-func (msh *MShellProc) tryAutoInstall() {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	if !msh.Remote.AutoInstall || !msh.NeedsMShellUpgrade || msh.InstallErr != nil {
+func (wsh *WaveshellProc) tryAutoInstall() {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	if !wsh.Remote.AutoInstall || !wsh.NeedsWaveshellUpgrade || wsh.InstallErr != nil {
 		return
 	}
-	msh.writeToPtyBuffer_nolock("trying auto-install\n")
-	go msh.RunInstall(true)
+	wsh.writeToPtyBuffer_nolock("trying auto-install\n")
+	go wsh.RunInstall(true)
 }
 
-// if msh.IsConnected() then GetShellPref() should return a valid shell
-// if msh is not connected, then InitPkShellType might be empty
-func (msh *MShellProc) GetShellPref() string {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	if msh.Remote.ShellPref == sstore.ShellTypePref_Detect {
-		return msh.InitPkShellType
+// if wsh.IsConnected() then GetShellPref() should return a valid shell
+// if wsh is not connected, then InitPkShellType might be empty
+func (wsh *WaveshellProc) GetShellPref() string {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	if wsh.Remote.ShellPref == sstore.ShellTypePref_Detect {
+		return wsh.InitPkShellType
 	}
-	if msh.Remote.ShellPref == "" {
+	if wsh.Remote.ShellPref == "" {
 		return packet.ShellType_bash
 	}
-	return msh.Remote.ShellPref
+	return wsh.Remote.ShellPref
 }
 
-func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
-	shellPref := msh.GetShellPref()
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
+func (wsh *WaveshellProc) GetRemoteRuntimeState() RemoteRuntimeState {
+	shellPref := wsh.GetShellPref()
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
 	state := RemoteRuntimeState{
-		RemoteType:          msh.Remote.RemoteType,
-		RemoteId:            msh.Remote.RemoteId,
-		RemoteAlias:         msh.Remote.RemoteAlias,
-		RemoteCanonicalName: msh.Remote.RemoteCanonicalName,
-		Status:              msh.Status,
-		ConnectMode:         msh.Remote.ConnectMode,
-		AutoInstall:         msh.Remote.AutoInstall,
-		Archived:            msh.Remote.Archived,
-		RemoteIdx:           msh.Remote.RemoteIdx,
-		SSHConfigSrc:        msh.Remote.SSHConfigSrc,
-		UName:               msh.UName,
-		InstallStatus:       msh.InstallStatus,
-		NeedsMShellUpgrade:  msh.NeedsMShellUpgrade,
-		Local:               msh.Remote.Local,
-		IsSudo:              msh.Remote.IsSudo(),
-		NoInitPk:            msh.ErrNoInitPk,
-		AuthType:            sstore.RemoteAuthTypeNone,
-		ShellPref:           msh.Remote.ShellPref,
-		DefaultShellType:    shellPref,
+		RemoteType:            wsh.Remote.RemoteType,
+		RemoteId:              wsh.Remote.RemoteId,
+		RemoteAlias:           wsh.Remote.RemoteAlias,
+		RemoteCanonicalName:   wsh.Remote.RemoteCanonicalName,
+		Status:                wsh.Status,
+		ConnectMode:           wsh.Remote.ConnectMode,
+		AutoInstall:           wsh.Remote.AutoInstall,
+		Archived:              wsh.Remote.Archived,
+		RemoteIdx:             wsh.Remote.RemoteIdx,
+		SSHConfigSrc:          wsh.Remote.SSHConfigSrc,
+		UName:                 wsh.UName,
+		InstallStatus:         wsh.InstallStatus,
+		NeedsWaveshellUpgrade: wsh.NeedsWaveshellUpgrade,
+		Local:                 wsh.Remote.Local,
+		IsSudo:                wsh.Remote.IsSudo(),
+		NoInitPk:              wsh.ErrNoInitPk,
+		AuthType:              sstore.RemoteAuthTypeNone,
+		ShellPref:             wsh.Remote.ShellPref,
+		DefaultShellType:      shellPref,
 	}
-	if msh.Remote.SSHOpts != nil {
-		state.AuthType = msh.Remote.SSHOpts.GetAuthType()
+	if wsh.Remote.SSHOpts != nil {
+		state.AuthType = wsh.Remote.SSHOpts.GetAuthType()
 	}
-	if msh.Remote.RemoteOpts != nil {
-		optsCopy := *msh.Remote.RemoteOpts
+	if wsh.Remote.RemoteOpts != nil {
+		optsCopy := *wsh.Remote.RemoteOpts
 		state.RemoteOpts = &optsCopy
 	}
-	if msh.Err != nil {
-		state.ErrorStr = msh.Err.Error()
+	if wsh.Err != nil {
+		state.ErrorStr = wsh.Err.Error()
 	}
-	if msh.InstallErr != nil {
-		state.InstallErrorStr = msh.InstallErr.Error()
+	if wsh.InstallErr != nil {
+		state.InstallErrorStr = wsh.InstallErr.Error()
 	}
-	if msh.Status == StatusConnecting {
-		state.WaitingForPassword = msh.isWaitingForPassword_nolock()
-		if msh.MakeClientDeadline != nil {
-			state.ConnectTimeout = int(time.Until(*msh.MakeClientDeadline) / time.Second)
+	if wsh.Status == StatusConnecting {
+		state.WaitingForPassword = wsh.isWaitingForPassword_nolock()
+		if wsh.MakeClientDeadline != nil {
+			state.ConnectTimeout = int(time.Until(*wsh.MakeClientDeadline) / time.Second)
 			if state.ConnectTimeout < 0 {
 				state.ConnectTimeout = 0
 			}
@@ -613,40 +613,40 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 			state.CountdownActive = false
 		}
 	}
-	vars := msh.Remote.StateVars
+	vars := wsh.Remote.StateVars
 	if vars == nil {
 		vars = make(map[string]string)
 	}
-	vars["user"] = msh.Remote.RemoteUser
+	vars["user"] = wsh.Remote.RemoteUser
 	vars["bestuser"] = vars["user"]
-	vars["host"] = msh.Remote.RemoteHost
-	vars["shorthost"] = makeShortHost(msh.Remote.RemoteHost)
-	vars["alias"] = msh.Remote.RemoteAlias
-	vars["cname"] = msh.Remote.RemoteCanonicalName
-	vars["remoteid"] = msh.Remote.RemoteId
-	vars["status"] = msh.Status
-	vars["type"] = msh.Remote.RemoteType
-	if msh.Remote.IsSudo() {
+	vars["host"] = wsh.Remote.RemoteHost
+	vars["shorthost"] = makeShortHost(wsh.Remote.RemoteHost)
+	vars["alias"] = wsh.Remote.RemoteAlias
+	vars["cname"] = wsh.Remote.RemoteCanonicalName
+	vars["remoteid"] = wsh.Remote.RemoteId
+	vars["status"] = wsh.Status
+	vars["type"] = wsh.Remote.RemoteType
+	if wsh.Remote.IsSudo() {
 		vars["sudo"] = "1"
 	}
-	if msh.Remote.Local {
+	if wsh.Remote.Local {
 		vars["local"] = "1"
 	}
 	vars["port"] = "22"
-	if msh.Remote.SSHOpts != nil {
-		if msh.Remote.SSHOpts.SSHPort != 0 {
-			vars["port"] = strconv.Itoa(msh.Remote.SSHOpts.SSHPort)
+	if wsh.Remote.SSHOpts != nil {
+		if wsh.Remote.SSHOpts.SSHPort != 0 {
+			vars["port"] = strconv.Itoa(wsh.Remote.SSHOpts.SSHPort)
 		}
 	}
-	if msh.Remote.RemoteOpts != nil && msh.Remote.RemoteOpts.Color != "" {
-		vars["color"] = msh.Remote.RemoteOpts.Color
+	if wsh.Remote.RemoteOpts != nil && wsh.Remote.RemoteOpts.Color != "" {
+		vars["color"] = wsh.Remote.RemoteOpts.Color
 	}
-	if msh.ServerProc != nil && msh.ServerProc.InitPk != nil {
-		initPk := msh.ServerProc.InitPk
+	if wsh.ServerProc != nil && wsh.ServerProc.InitPk != nil {
+		initPk := wsh.ServerProc.InitPk
 		if initPk.BuildTime == "" || initPk.BuildTime == "0" {
-			state.MShellVersion = initPk.Version
+			state.WaveshellVersion = initPk.Version
 		} else {
-			state.MShellVersion = fmt.Sprintf("%s+%s", initPk.Version, initPk.BuildTime)
+			state.WaveshellVersion = fmt.Sprintf("%s+%s", initPk.Version, initPk.BuildTime)
 		}
 		vars["home"] = initPk.HomeDir
 		vars["remoteuser"] = initPk.User
@@ -656,12 +656,12 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 		vars["besthost"] = vars["remotehost"]
 		vars["bestshorthost"] = vars["remoteshorthost"]
 	}
-	if msh.Remote.Local && msh.Remote.IsSudo() {
+	if wsh.Remote.Local && wsh.Remote.IsSudo() {
 		vars["bestuser"] = "sudo"
-	} else if msh.Remote.IsSudo() {
+	} else if wsh.Remote.IsSudo() {
 		vars["bestuser"] = "sudo@" + vars["bestuser"]
 	}
-	if msh.Remote.Local {
+	if wsh.Remote.Local {
 		vars["bestname"] = vars["bestuser"] + "@local"
 		vars["bestshortname"] = vars["bestuser"] + "@local"
 	} else {
@@ -680,8 +680,8 @@ func (msh *MShellProc) GetRemoteRuntimeState() RemoteRuntimeState {
 	return state
 }
 
-func (msh *MShellProc) NotifyRemoteUpdate() {
-	rstate := msh.GetRemoteRuntimeState()
+func (wsh *WaveshellProc) NotifyRemoteUpdate() {
+	rstate := wsh.GetRemoteRuntimeState()
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(rstate)
 	scbus.MainUpdateBus.DoUpdate(update)
@@ -699,12 +699,12 @@ func GetAllRemoteRuntimeState() []*RemoteRuntimeState {
 	return rtn
 }
 
-func MakeMShell(r *sstore.RemoteType) *MShellProc {
+func MakeWaveshell(r *sstore.RemoteType) *WaveshellProc {
 	buf, err := circbuf.NewBuffer(CircBufSize)
 	if err != nil {
 		panic(err) // this should never happen (NewBuffer only returns an error if CirBufSize <= 0)
 	}
-	rtn := &MShellProc{
+	rtn := &WaveshellProc{
 		Lock:             &sync.Mutex{},
 		Remote:           r,
 		RemoteId:         r.RemoteId,
@@ -727,13 +727,13 @@ func SendRemoteInput(pk *scpacket.RemoteInputPacketType) error {
 	if err != nil {
 		return fmt.Errorf("cannot decode base64: %v", err)
 	}
-	msh := GetRemoteById(pk.RemoteId)
-	if msh == nil {
+	wsh := GetRemoteById(pk.RemoteId)
+	if wsh == nil {
 		return fmt.Errorf("remote not found")
 	}
 	var cmdPty *os.File
-	msh.WithLock(func() {
-		cmdPty = msh.ControllingPty
+	wsh.WithLock(func() {
+		cmdPty = wsh.ControllingPty
 	})
 	if cmdPty == nil {
 		return fmt.Errorf("remote has no attached pty")
@@ -742,46 +742,46 @@ func SendRemoteInput(pk *scpacket.RemoteInputPacketType) error {
 	if err != nil {
 		return fmt.Errorf("writing to pty: %v", err)
 	}
-	msh.resetClientDeadline()
+	wsh.resetClientDeadline()
 	return nil
 }
 
-func (msh *MShellProc) getClientDeadline() *time.Time {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.MakeClientDeadline
+func (wsh *WaveshellProc) getClientDeadline() *time.Time {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.MakeClientDeadline
 }
 
-func (msh *MShellProc) resetClientDeadline() {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	if msh.Status != StatusConnecting {
+func (wsh *WaveshellProc) resetClientDeadline() {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	if wsh.Status != StatusConnecting {
 		return
 	}
-	deadline := msh.MakeClientDeadline
+	deadline := wsh.MakeClientDeadline
 	if deadline == nil {
 		return
 	}
 	newDeadline := time.Now().Add(RemoteConnectTimeout)
-	msh.MakeClientDeadline = &newDeadline
+	wsh.MakeClientDeadline = &newDeadline
 }
 
-func (msh *MShellProc) watchClientDeadlineTime() {
+func (wsh *WaveshellProc) watchClientDeadlineTime() {
 	for {
 		time.Sleep(1 * time.Second)
-		status := msh.GetStatus()
+		status := wsh.GetStatus()
 		if status != StatusConnecting {
 			break
 		}
-		deadline := msh.getClientDeadline()
+		deadline := wsh.getClientDeadline()
 		if deadline == nil {
 			break
 		}
 		if time.Now().After(*deadline) {
-			msh.Disconnect(false)
+			wsh.Disconnect(false)
 			break
 		}
-		go msh.NotifyRemoteUpdate()
+		go wsh.NotifyRemoteUpdate()
 	}
 }
 
@@ -798,16 +798,16 @@ func convertSSHOpts(opts *sstore.SSHOpts) shexec.SSHOpts {
 	}
 }
 
-func (msh *MShellProc) addControllingTty(ecmd *exec.Cmd) (*os.File, error) {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
+func (wsh *WaveshellProc) addControllingTty(ecmd *exec.Cmd) (*os.File, error) {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
 
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
 		return nil, err
 	}
 	pty.Setsize(cmdPty, &pty.Winsize{Rows: RemoteTermRows, Cols: RemoteTermCols})
-	msh.ControllingPty = cmdPty
+	wsh.ControllingPty = cmdPty
 	ecmd.ExtraFiles = append(ecmd.ExtraFiles, cmdTty)
 	if ecmd.SysProcAttr == nil {
 		ecmd.SysProcAttr = &syscall.SysProcAttr{}
@@ -818,101 +818,101 @@ func (msh *MShellProc) addControllingTty(ecmd *exec.Cmd) (*os.File, error) {
 	return cmdPty, nil
 }
 
-func (msh *MShellProc) setErrorStatus(err error) {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	msh.Status = StatusError
-	msh.Err = err
-	go msh.NotifyRemoteUpdate()
+func (wsh *WaveshellProc) setErrorStatus(err error) {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	wsh.Status = StatusError
+	wsh.Err = err
+	go wsh.NotifyRemoteUpdate()
 }
 
-func (msh *MShellProc) setInstallErrorStatus(err error) {
-	msh.WriteToPtyBuffer("*error, %s\n", err.Error())
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	msh.InstallStatus = StatusError
-	msh.InstallErr = err
-	go msh.NotifyRemoteUpdate()
+func (wsh *WaveshellProc) setInstallErrorStatus(err error) {
+	wsh.WriteToPtyBuffer("*error, %s\n", err.Error())
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	wsh.InstallStatus = StatusError
+	wsh.InstallErr = err
+	go wsh.NotifyRemoteUpdate()
 }
 
-func (msh *MShellProc) GetRemoteCopy() sstore.RemoteType {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return *msh.Remote
+func (wsh *WaveshellProc) GetRemoteCopy() sstore.RemoteType {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return *wsh.Remote
 }
 
-func (msh *MShellProc) GetUName() string {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.UName
+func (wsh *WaveshellProc) GetUName() string {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.UName
 }
 
-func (msh *MShellProc) GetNumRunningCommands() int {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return len(msh.RunningCmds)
+func (wsh *WaveshellProc) GetNumRunningCommands() int {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return len(wsh.RunningCmds)
 }
 
-func (msh *MShellProc) UpdateRemote(ctx context.Context, editMap map[string]interface{}) error {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	updatedRemote, err := sstore.UpdateRemote(ctx, msh.Remote.RemoteId, editMap)
+func (wsh *WaveshellProc) UpdateRemote(ctx context.Context, editMap map[string]interface{}) error {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	updatedRemote, err := sstore.UpdateRemote(ctx, wsh.Remote.RemoteId, editMap)
 	if err != nil {
 		return err
 	}
 	if updatedRemote == nil {
 		return fmt.Errorf("no remote returned from UpdateRemote")
 	}
-	msh.Remote = updatedRemote
-	go msh.NotifyRemoteUpdate()
+	wsh.Remote = updatedRemote
+	go wsh.NotifyRemoteUpdate()
 	return nil
 }
 
-func (msh *MShellProc) Disconnect(force bool) {
-	status := msh.GetStatus()
+func (wsh *WaveshellProc) Disconnect(force bool) {
+	status := wsh.GetStatus()
 	if status != StatusConnected && status != StatusConnecting {
-		msh.WriteToPtyBuffer("remote already disconnected (no action taken)\n")
+		wsh.WriteToPtyBuffer("remote already disconnected (no action taken)\n")
 		return
 	}
-	numCommands := msh.GetNumRunningCommands()
+	numCommands := wsh.GetNumRunningCommands()
 	if numCommands > 0 && !force {
-		msh.WriteToPtyBuffer("remote not disconnected, has %d running commands.  use force=1 to force disconnection\n", numCommands)
+		wsh.WriteToPtyBuffer("remote not disconnected, has %d running commands.  use force=1 to force disconnection\n", numCommands)
 		return
 	}
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	if msh.ServerProc != nil {
-		msh.ServerProc.Close()
-		msh.Client = nil
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	if wsh.ServerProc != nil {
+		wsh.ServerProc.Close()
+		wsh.Client = nil
 	}
-	if msh.MakeClientCancelFn != nil {
-		msh.MakeClientCancelFn()
-		msh.MakeClientCancelFn = nil
-	}
-}
-
-func (msh *MShellProc) CancelInstall() {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	if msh.InstallCancelFn != nil {
-		msh.InstallCancelFn()
-		msh.InstallCancelFn = nil
+	if wsh.MakeClientCancelFn != nil {
+		wsh.MakeClientCancelFn()
+		wsh.MakeClientCancelFn = nil
 	}
 }
 
-func (msh *MShellProc) GetRemoteName() string {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.Remote.GetName()
+func (wsh *WaveshellProc) CancelInstall() {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	if wsh.InstallCancelFn != nil {
+		wsh.InstallCancelFn()
+		wsh.InstallCancelFn = nil
+	}
 }
 
-func (msh *MShellProc) WriteToPtyBuffer(strFmt string, args ...interface{}) {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	msh.writeToPtyBuffer_nolock(strFmt, args...)
+func (wsh *WaveshellProc) GetRemoteName() string {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.Remote.GetName()
 }
 
-func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{}) {
+func (wsh *WaveshellProc) WriteToPtyBuffer(strFmt string, args ...interface{}) {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	wsh.writeToPtyBuffer_nolock(strFmt, args...)
+}
+
+func (wsh *WaveshellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{}) {
 	// inefficient string manipulation here and read of PtyBuffer, but these messages are rare, nbd
 	realStr := fmt.Sprintf(strFmt, args...)
 	if !strings.HasPrefix(realStr, "~") {
@@ -925,17 +925,17 @@ func (msh *MShellProc) writeToPtyBuffer_nolock(strFmt string, args ...interface{
 		} else {
 			realStr = "\033[0m\033[32mwave>\033[0m " + realStr
 		}
-		barr := msh.PtyBuffer.Bytes()
+		barr := wsh.PtyBuffer.Bytes()
 		if len(barr) > 0 && barr[len(barr)-1] != '\n' {
 			realStr = "\r\n" + realStr
 		}
 	} else {
 		realStr = realStr[1:]
 	}
-	curOffset := msh.PtyBuffer.TotalWritten()
+	curOffset := wsh.PtyBuffer.TotalWritten()
 	data := []byte(realStr)
-	msh.PtyBuffer.Write(data)
-	sendRemotePtyUpdate(msh.Remote.RemoteId, curOffset, data)
+	wsh.PtyBuffer.Write(data)
+	sendRemotePtyUpdate(wsh.Remote.RemoteId, curOffset, data)
 }
 
 func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
@@ -949,8 +949,8 @@ func sendRemotePtyUpdate(remoteId string, dataOffset int64, data []byte) {
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
-func (msh *MShellProc) isWaitingForPassword_nolock() bool {
-	barr := msh.PtyBuffer.Bytes()
+func (wsh *WaveshellProc) isWaitingForPassword_nolock() bool {
+	barr := wsh.PtyBuffer.Bytes()
 	if len(barr) == 0 {
 		return false
 	}
@@ -965,8 +965,8 @@ func (msh *MShellProc) isWaitingForPassword_nolock() bool {
 	return pwIdx != -1
 }
 
-func (msh *MShellProc) isWaitingForPassphrase_nolock() bool {
-	barr := msh.PtyBuffer.Bytes()
+func (wsh *WaveshellProc) isWaitingForPassphrase_nolock() bool {
+	barr := wsh.PtyBuffer.Bytes()
 	if len(barr) == 0 {
 		return false
 	}
@@ -981,7 +981,7 @@ func (msh *MShellProc) isWaitingForPassphrase_nolock() bool {
 	return pwIdx != -1
 }
 
-func (msh *MShellProc) RunPasswordReadLoop(cmdPty *os.File) {
+func (wsh *WaveshellProc) RunPasswordReadLoop(cmdPty *os.File) {
 	buf := make([]byte, PtyReadBufSize)
 	for {
 		_, readErr := cmdPty.Read(buf)
@@ -989,12 +989,12 @@ func (msh *MShellProc) RunPasswordReadLoop(cmdPty *os.File) {
 			return
 		}
 		if readErr != nil {
-			msh.WriteToPtyBuffer("*error reading from controlling-pty: %v\n", readErr)
+			wsh.WriteToPtyBuffer("*error reading from controlling-pty: %v\n", readErr)
 			return
 		}
 		var newIsWaiting bool
-		msh.WithLock(func() {
-			newIsWaiting = msh.isWaitingForPassword_nolock()
+		wsh.WithLock(func() {
+			newIsWaiting = wsh.isWaitingForPassword_nolock()
 		})
 		if newIsWaiting {
 			break
@@ -1010,17 +1010,17 @@ func (msh *MShellProc) RunPasswordReadLoop(cmdPty *os.File) {
 	defer cancelFn()
 	response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 	if err != nil {
-		msh.WriteToPtyBuffer("*error timed out waiting for password: %v\n", err)
+		wsh.WriteToPtyBuffer("*error timed out waiting for password: %v\n", err)
 		return
 	}
-	msh.WithLock(func() {
-		curOffset := msh.PtyBuffer.TotalWritten()
-		msh.PtyBuffer.Write([]byte(response.Text))
-		sendRemotePtyUpdate(msh.Remote.RemoteId, curOffset, []byte(response.Text))
+	wsh.WithLock(func() {
+		curOffset := wsh.PtyBuffer.TotalWritten()
+		wsh.PtyBuffer.Write([]byte(response.Text))
+		sendRemotePtyUpdate(wsh.Remote.RemoteId, curOffset, []byte(response.Text))
 	})
 }
 
-func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
+func (wsh *WaveshellProc) RunPtyReadLoop(cmdPty *os.File) {
 	buf := make([]byte, PtyReadBufSize)
 	var isWaiting bool
 	for {
@@ -1029,34 +1029,34 @@ func (msh *MShellProc) RunPtyReadLoop(cmdPty *os.File) {
 			break
 		}
 		if readErr != nil {
-			msh.WriteToPtyBuffer("*error reading from controlling-pty: %v\n", readErr)
+			wsh.WriteToPtyBuffer("*error reading from controlling-pty: %v\n", readErr)
 			break
 		}
 		var newIsWaiting bool
-		msh.WithLock(func() {
-			curOffset := msh.PtyBuffer.TotalWritten()
-			msh.PtyBuffer.Write(buf[0:n])
-			sendRemotePtyUpdate(msh.Remote.RemoteId, curOffset, buf[0:n])
-			newIsWaiting = msh.isWaitingForPassword_nolock()
+		wsh.WithLock(func() {
+			curOffset := wsh.PtyBuffer.TotalWritten()
+			wsh.PtyBuffer.Write(buf[0:n])
+			sendRemotePtyUpdate(wsh.Remote.RemoteId, curOffset, buf[0:n])
+			newIsWaiting = wsh.isWaitingForPassword_nolock()
 		})
 		if newIsWaiting != isWaiting {
 			isWaiting = newIsWaiting
-			go msh.NotifyRemoteUpdate()
+			go wsh.NotifyRemoteUpdate()
 		}
 	}
 }
 
-func (msh *MShellProc) CheckPasswordRequested(ctx context.Context, requiresPassword chan bool) {
+func (wsh *WaveshellProc) CheckPasswordRequested(ctx context.Context, requiresPassword chan bool) {
 	for {
-		msh.WithLock(func() {
-			if msh.isWaitingForPassword_nolock() {
+		wsh.WithLock(func() {
+			if wsh.isWaitingForPassword_nolock() {
 				select {
 				case requiresPassword <- true:
 				default:
 				}
 				return
 			}
-			if msh.Status != StatusConnecting {
+			if wsh.Status != StatusConnecting {
 				select {
 				case requiresPassword <- false:
 				default:
@@ -1073,25 +1073,25 @@ func (msh *MShellProc) CheckPasswordRequested(ctx context.Context, requiresPassw
 	}
 }
 
-func (msh *MShellProc) SendPassword(pw string) {
-	msh.WithLock(func() {
-		if msh.ControllingPty == nil {
+func (wsh *WaveshellProc) SendPassword(pw string) {
+	wsh.WithLock(func() {
+		if wsh.ControllingPty == nil {
 			return
 		}
 		pwBytes := []byte(pw + "\r")
-		msh.writeToPtyBuffer_nolock("~[sent password]\r\n")
-		_, err := msh.ControllingPty.Write(pwBytes)
+		wsh.writeToPtyBuffer_nolock("~[sent password]\r\n")
+		_, err := wsh.ControllingPty.Write(pwBytes)
 		if err != nil {
-			msh.writeToPtyBuffer_nolock("*cannot write password to controlling pty: %v\n", err)
+			wsh.writeToPtyBuffer_nolock("*cannot write password to controlling pty: %v\n", err)
 		}
 	})
 }
 
-func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
+func (wsh *WaveshellProc) WaitAndSendPasswordNew(pw string) {
 	requiresPassword := make(chan bool, 1)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelFn()
-	go msh.CheckPasswordRequested(ctx, requiresPassword)
+	go wsh.CheckPasswordRequested(ctx, requiresPassword)
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
@@ -1101,8 +1101,8 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 		} else {
 			errMsg = fmt.Errorf("timed out waiting for password prompt")
 		}
-		msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
-		msh.setErrorStatus(errMsg)
+		wsh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+		wsh.setErrorStatus(errMsg)
 		return
 	case required := <-requiresPassword:
 		if !required {
@@ -1125,14 +1125,14 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 		} else {
 			errMsg = fmt.Errorf("timed out waiting for user input")
 		}
-		msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
-		msh.setErrorStatus(errMsg)
+		wsh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+		wsh.setErrorStatus(errMsg)
 		return
 	}
-	msh.SendPassword(response.Text)
+	wsh.SendPassword(response.Text)
 
 	//error out if requested again
-	go msh.CheckPasswordRequested(ctx, requiresPassword)
+	go wsh.CheckPasswordRequested(ctx, requiresPassword)
 	select {
 	case <-ctx.Done():
 		err := ctx.Err()
@@ -1142,8 +1142,8 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 		} else {
 			errMsg = fmt.Errorf("timed out waiting for password prompt")
 		}
-		msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
-		msh.setErrorStatus(errMsg)
+		wsh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+		wsh.setErrorStatus(errMsg)
 		return
 	case required := <-requiresPassword:
 		if !required {
@@ -1152,22 +1152,22 @@ func (msh *MShellProc) WaitAndSendPasswordNew(pw string) {
 		}
 	}
 	errMsg := fmt.Errorf("*error, incorrect password")
-	msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
-	msh.setErrorStatus(errMsg)
+	wsh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+	wsh.setErrorStatus(errMsg)
 }
 
-func (msh *MShellProc) WaitAndSendPassword(pw string) {
+func (wsh *WaveshellProc) WaitAndSendPassword(pw string) {
 	var numWaits int
 	for {
 		var isWaiting bool
 		var isConnecting bool
-		msh.WithLock(func() {
-			if msh.Remote.SSHOpts.GetAuthType() == sstore.RemoteAuthTypeKeyPassword {
-				isWaiting = msh.isWaitingForPassphrase_nolock()
+		wsh.WithLock(func() {
+			if wsh.Remote.SSHOpts.GetAuthType() == sstore.RemoteAuthTypeKeyPassword {
+				isWaiting = wsh.isWaitingForPassphrase_nolock()
 			} else {
-				isWaiting = msh.isWaitingForPassword_nolock()
+				isWaiting = wsh.isWaitingForPassword_nolock()
 			}
-			isConnecting = msh.Status == StatusConnecting
+			isConnecting = wsh.Status == StatusConnecting
 		})
 		if !isConnecting {
 			break
@@ -1182,15 +1182,15 @@ func (msh *MShellProc) WaitAndSendPassword(pw string) {
 			time.Sleep(100 * time.Millisecond)
 		} else {
 			// send password
-			msh.WithLock(func() {
-				if msh.ControllingPty == nil {
+			wsh.WithLock(func() {
+				if wsh.ControllingPty == nil {
 					return
 				}
 				pwBytes := []byte(pw + "\r")
-				msh.writeToPtyBuffer_nolock("~[sent password]\r\n")
-				_, err := msh.ControllingPty.Write(pwBytes)
+				wsh.writeToPtyBuffer_nolock("~[sent password]\r\n")
+				_, err := wsh.ControllingPty.Write(pwBytes)
 				if err != nil {
-					msh.writeToPtyBuffer_nolock("*cannot write password to controlling pty: %v\n", err)
+					wsh.writeToPtyBuffer_nolock("*cannot write password to controlling pty: %v\n", err)
 				}
 			})
 			break
@@ -1198,38 +1198,38 @@ func (msh *MShellProc) WaitAndSendPassword(pw string) {
 	}
 }
 
-func (msh *MShellProc) RunInstall(autoInstall bool) {
+func (wsh *WaveshellProc) RunInstall(autoInstall bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			errMsg := fmt.Errorf("this should not happen. if it does, please reach out to us in our discord or open an issue on our github\n\n"+
 				"error:\n%v\n\nstack trace:\n%s", r, string(debug.Stack()))
 			log.Printf("fatal error, %s\n", errMsg)
-			msh.WriteToPtyBuffer("*fatal error, %s\n", errMsg)
-			msh.setErrorStatus(errMsg)
+			wsh.WriteToPtyBuffer("*fatal error, %s\n", errMsg)
+			wsh.setErrorStatus(errMsg)
 		}
 	}()
-	remoteCopy := msh.GetRemoteCopy()
+	remoteCopy := wsh.GetRemoteCopy()
 	if remoteCopy.Archived {
-		msh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
+		wsh.WriteToPtyBuffer("*error: cannot install on archived remote\n")
 		return
 	}
 
 	var makeClientCtx context.Context
 	var makeClientCancelFn context.CancelFunc
-	msh.WithLock(func() {
+	wsh.WithLock(func() {
 		makeClientCtx, makeClientCancelFn = context.WithCancel(context.Background())
-		msh.MakeClientCancelFn = makeClientCancelFn
-		msh.MakeClientDeadline = nil
-		go msh.NotifyRemoteUpdate()
+		wsh.MakeClientCancelFn = makeClientCancelFn
+		wsh.MakeClientDeadline = nil
+		go wsh.NotifyRemoteUpdate()
 	})
 	defer makeClientCancelFn()
 	clientData, err := sstore.EnsureClientData(makeClientCtx)
 	if err != nil {
-		msh.WriteToPtyBuffer("*error: cannot obtain client data: %v", err)
+		wsh.WriteToPtyBuffer("*error: cannot obtain client data: %v", err)
 		return
 	}
 	hideShellPrompt := clientData.ClientOpts.ConfirmFlags["hideshellprompt"]
-	baseStatus := msh.GetStatus()
+	baseStatus := wsh.GetStatus()
 
 	if baseStatus == StatusConnected {
 		ctx, cancelFn := context.WithTimeout(makeClientCtx, 60*time.Second)
@@ -1242,14 +1242,14 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 		response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
 		if err != nil {
 			if err == context.Canceled {
-				msh.WriteToPtyBuffer("installation canceled by user\n")
+				wsh.WriteToPtyBuffer("installation canceled by user\n")
 			} else {
-				msh.WriteToPtyBuffer("timed out waiting for user input\n")
+				wsh.WriteToPtyBuffer("timed out waiting for user input\n")
 			}
 			return
 		}
 		if !response.Confirm {
-			msh.WriteToPtyBuffer("installation canceled by user\n")
+			wsh.WriteToPtyBuffer("installation canceled by user\n")
 			return
 		}
 	} else if !hideShellPrompt {
@@ -1269,19 +1269,19 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 			} else {
 				errMsg = fmt.Errorf("timed out waiting for user input")
 			}
-			msh.WithLock(func() {
-				msh.Client = nil
+			wsh.WithLock(func() {
+				wsh.Client = nil
 			})
-			msh.WriteToPtyBuffer("*error, %s\n", errMsg)
-			msh.setErrorStatus(errMsg)
+			wsh.WriteToPtyBuffer("*error, %s\n", errMsg)
+			wsh.setErrorStatus(errMsg)
 			return
 		}
 		if !response.Confirm {
 			errMsg := fmt.Errorf("installation canceled by user")
-			msh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
-			msh.setErrorStatus(err)
-			msh.WithLock(func() {
-				msh.Client = nil
+			wsh.WriteToPtyBuffer("*error, %s\n", errMsg.Error())
+			wsh.setErrorStatus(err)
+			wsh.WithLock(func() {
+				wsh.Client = nil
 			})
 			return
 		}
@@ -1289,106 +1289,106 @@ func (msh *MShellProc) RunInstall(autoInstall bool) {
 			clientData.ClientOpts.ConfirmFlags["hideshellprompt"] = true
 			err = sstore.SetClientOpts(makeClientCtx, clientData.ClientOpts)
 			if err != nil {
-				msh.WriteToPtyBuffer("*error, %s\n", err)
-				msh.setErrorStatus(err)
+				wsh.WriteToPtyBuffer("*error, %s\n", err)
+				wsh.setErrorStatus(err)
 				return
 			}
 
 			//reload updated clientdata before sending
 			clientData, err = sstore.EnsureClientData(makeClientCtx)
 			if err != nil {
-				msh.WriteToPtyBuffer("*error, %s\n", err)
-				msh.setErrorStatus(err)
+				wsh.WriteToPtyBuffer("*error, %s\n", err)
+				wsh.setErrorStatus(err)
 				return
 			}
 			update := scbus.MakeUpdatePacket()
 			update.AddUpdate(*clientData)
 		}
 	}
-	curStatus := msh.GetInstallStatus()
+	curStatus := wsh.GetInstallStatus()
 	if curStatus == StatusConnecting {
-		msh.WriteToPtyBuffer("*error: cannot install on remote that is already trying to install, cancel current install to try again\n")
+		wsh.WriteToPtyBuffer("*error: cannot install on remote that is already trying to install, cancel current install to try again\n")
 		return
 	}
 	if remoteCopy.Local {
-		msh.WriteToPtyBuffer("*error: cannot install on a local remote\n")
+		wsh.WriteToPtyBuffer("*error: cannot install on a local remote\n")
 		return
 	}
 	_, err = shellapi.MakeShellApi(packet.ShellType_bash)
 	if err != nil {
-		msh.WriteToPtyBuffer("*error: %v\n", err)
+		wsh.WriteToPtyBuffer("*error: %v\n", err)
 		return
 	}
-	if msh.Client == nil {
+	if wsh.Client == nil {
 		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
 		client, err := ConnectToClient(makeClientCtx, remoteCopy.SSHOpts, remoteDisplayName)
 		if err != nil {
 			statusErr := fmt.Errorf("ssh cannot connect to client: %w", err)
-			msh.setInstallErrorStatus(statusErr)
+			wsh.setInstallErrorStatus(statusErr)
 			return
 		}
-		msh.WithLock(func() {
-			msh.Client = client
+		wsh.WithLock(func() {
+			wsh.Client = client
 		})
 	}
-	session, err := msh.Client.NewSession()
+	session, err := wsh.Client.NewSession()
 	if err != nil {
 		statusErr := fmt.Errorf("ssh cannot connect to client: %w", err)
-		msh.setInstallErrorStatus(statusErr)
+		wsh.setInstallErrorStatus(statusErr)
 		return
 	}
 	installSession := shexec.SessionWrap{Session: session, StartCmd: shexec.MakeInstallCommandStr()}
-	msh.WriteToPtyBuffer("installing waveshell %s to %s...\n", scbase.MShellVersion, remoteCopy.RemoteCanonicalName)
+	wsh.WriteToPtyBuffer("installing waveshell %s to %s...\n", scbase.WaveshellVersion, remoteCopy.RemoteCanonicalName)
 	clientCtx, clientCancelFn := context.WithCancel(context.Background())
 	defer clientCancelFn()
-	msh.WithLock(func() {
-		msh.InstallErr = nil
-		msh.InstallStatus = StatusConnecting
-		msh.InstallCancelFn = clientCancelFn
-		go msh.NotifyRemoteUpdate()
+	wsh.WithLock(func() {
+		wsh.InstallErr = nil
+		wsh.InstallStatus = StatusConnecting
+		wsh.InstallCancelFn = clientCancelFn
+		go wsh.NotifyRemoteUpdate()
 	})
 	msgFn := func(msg string) {
-		msh.WriteToPtyBuffer("%s", msg)
+		wsh.WriteToPtyBuffer("%s", msg)
 	}
-	err = shexec.RunInstallFromCmd(clientCtx, installSession, true, nil, scbase.MShellBinaryReader, msgFn)
+	err = shexec.RunInstallFromCmd(clientCtx, installSession, true, nil, scbase.WaveshellBinaryReader, msgFn)
 	if err == context.Canceled {
-		msh.WriteToPtyBuffer("*install canceled\n")
-		msh.WithLock(func() {
-			msh.InstallStatus = StatusDisconnected
-			go msh.NotifyRemoteUpdate()
+		wsh.WriteToPtyBuffer("*install canceled\n")
+		wsh.WithLock(func() {
+			wsh.InstallStatus = StatusDisconnected
+			go wsh.NotifyRemoteUpdate()
 		})
 		return
 	}
 	if err != nil {
 		statusErr := fmt.Errorf("install failed: %w", err)
-		msh.setInstallErrorStatus(statusErr)
+		wsh.setInstallErrorStatus(statusErr)
 		return
 	}
 	var connectMode string
-	msh.WithLock(func() {
-		msh.InstallStatus = StatusDisconnected
-		msh.InstallCancelFn = nil
-		msh.NeedsMShellUpgrade = false
-		msh.Status = StatusDisconnected
-		msh.Err = nil
-		connectMode = msh.Remote.ConnectMode
+	wsh.WithLock(func() {
+		wsh.InstallStatus = StatusDisconnected
+		wsh.InstallCancelFn = nil
+		wsh.NeedsWaveshellUpgrade = false
+		wsh.Status = StatusDisconnected
+		wsh.Err = nil
+		connectMode = wsh.Remote.ConnectMode
 	})
-	msh.WriteToPtyBuffer("successfully installed waveshell %s to ~/.mshell\n", scbase.MShellVersion)
-	go msh.NotifyRemoteUpdate()
+	wsh.WriteToPtyBuffer("successfully installed waveshell %s to ~/.mshell\n", scbase.WaveshellVersion)
+	go wsh.NotifyRemoteUpdate()
 	if connectMode == sstore.ConnectModeStartup || connectMode == sstore.ConnectModeAuto || autoInstall {
 		// the install was successful, and we didn't click the install button with manual connect mode, try to connect
-		go msh.Launch(true)
+		go wsh.Launch(true)
 	}
 }
 
-func (msh *MShellProc) updateRemoteStateVars(ctx context.Context, remoteId string, initPk *packet.InitPacketType) {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
+func (wsh *WaveshellProc) updateRemoteStateVars(ctx context.Context, remoteId string, initPk *packet.InitPacketType) {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
 	stateVars := getStateVarsFromInitPk(initPk)
 	if stateVars == nil {
 		return
 	}
-	msh.Remote.StateVars = stateVars
+	wsh.Remote.StateVars = stateVars
 	err := sstore.UpdateRemoteStateVars(ctx, remoteId, stateVars)
 	if err != nil {
 		// ignore error, nothing to do
@@ -1419,8 +1419,8 @@ func makeReinitErrorUpdate(shellType string) telemetry.ActivityUpdate {
 	return rtn
 }
 
-func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType string, dataFn func([]byte), verbose bool) (rtnPk *packet.ShellStatePacketType, rtnErr error) {
-	if !msh.IsConnected() {
+func (wsh *WaveshellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType string, dataFn func([]byte), verbose bool) (rtnPk *packet.ShellStatePacketType, rtnErr error) {
+	if !wsh.IsConnected() {
 		return nil, fmt.Errorf("cannot reinit, remote is not connected")
 	}
 	if shellType != packet.ShellType_bash && shellType != packet.ShellType_zsh {
@@ -1438,18 +1438,18 @@ func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType
 	reinitPk := packet.MakeReInitPacket()
 	reinitPk.ReqId = uuid.New().String()
 	reinitPk.ShellType = shellType
-	rpcIter, err := msh.PacketRpcIter(ctx, reinitPk)
+	rpcIter, err := wsh.PacketRpcIter(ctx, reinitPk)
 	if err != nil {
 		return nil, err
 	}
 	defer rpcIter.Close()
 	if ck != "" {
 		reinitSink := &ReinitCommandSink{
-			Remote: msh,
+			Remote: wsh,
 			ReqId:  reinitPk.ReqId,
 		}
-		msh.registerInputSink(ck, reinitSink)
-		defer msh.unregisterInputSink(ck)
+		wsh.registerInputSink(ck, reinitSink)
+		defer wsh.unregisterInputSink(ck)
 	}
 	var ssPk *packet.ShellStatePacketType
 	for {
@@ -1485,15 +1485,15 @@ func (msh *MShellProc) ReInit(ctx context.Context, ck base.CommandKey, shellType
 	}
 	// TODO: maybe we don't need to save statebase here.  should be possible to save it on demand
 	//    when it is actually used.  complication from other functions that try to get the statebase
-	//    from the DB.  probably need to route those through MShellProc.
+	//    from the DB.  probably need to route those through WaveshellProc.
 	err = sstore.StoreStateBase(ctx, ssPk.State)
 	if err != nil {
 		return nil, fmt.Errorf("error storing remote state: %w", err)
 	}
-	msh.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
+	wsh.StateMap.SetCurrentState(ssPk.State.GetShellType(), ssPk.State)
 	timeDur := time.Since(startTs)
 	dataFn([]byte(makeShellInitOutputMsg(verbose, ssPk.State, ssPk.Stats, timeDur, false)))
-	msh.WriteToPtyBuffer("%s", makeShellInitOutputMsg(false, ssPk.State, ssPk.Stats, timeDur, true))
+	wsh.WriteToPtyBuffer("%s", makeShellInitOutputMsg(false, ssPk.State, ssPk.Stats, timeDur, true))
 	return ssPk, nil
 }
 
@@ -1514,12 +1514,12 @@ func makeShellInitOutputMsg(verbose bool, state *packet.ShellState, stats *packe
 	return buf.String()
 }
 
-func (msh *MShellProc) WriteFile(ctx context.Context, writePk *packet.WriteFilePacketType) (*packet.RpcResponseIter, error) {
-	return msh.PacketRpcIter(ctx, writePk)
+func (wsh *WaveshellProc) WriteFile(ctx context.Context, writePk *packet.WriteFilePacketType) (*packet.RpcResponseIter, error) {
+	return wsh.PacketRpcIter(ctx, writePk)
 }
 
-func (msh *MShellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFilePacketType) (*packet.RpcResponseIter, error) {
-	return msh.PacketRpcIter(ctx, streamPk)
+func (wsh *WaveshellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFilePacketType) (*packet.RpcResponseIter, error) {
+	return wsh.PacketRpcIter(ctx, streamPk)
 }
 
 func addScVarsToState(state *packet.ShellState) *packet.ShellState {
@@ -1575,51 +1575,51 @@ func stripScVarsFromStateDiff(stateDiff *packet.ShellStateDiff) *packet.ShellSta
 	return &rtn
 }
 
-func (msh *MShellProc) getActiveShellTypes(ctx context.Context) ([]string, error) {
-	shellPref := msh.GetShellPref()
+func (wsh *WaveshellProc) getActiveShellTypes(ctx context.Context) ([]string, error) {
+	shellPref := wsh.GetShellPref()
 	rtn := []string{shellPref}
-	activeShells, err := sstore.GetRemoteActiveShells(ctx, msh.RemoteId)
+	activeShells, err := sstore.GetRemoteActiveShells(ctx, wsh.RemoteId)
 	if err != nil {
 		return nil, err
 	}
 	return utilfn.CombineStrArrays(rtn, activeShells), nil
 }
 
-func (msh *MShellProc) createWaveshellSession(clientCtx context.Context, remoteCopy sstore.RemoteType) (shexec.ConnInterface, error) {
-	msh.WithLock(func() {
-		msh.Err = nil
-		msh.ErrNoInitPk = false
-		msh.Status = StatusConnecting
-		msh.MakeClientDeadline = nil
-		go msh.NotifyRemoteUpdate()
+func (wsh *WaveshellProc) createWaveshellSession(clientCtx context.Context, remoteCopy sstore.RemoteType) (shexec.ConnInterface, error) {
+	wsh.WithLock(func() {
+		wsh.Err = nil
+		wsh.ErrNoInitPk = false
+		wsh.Status = StatusConnecting
+		wsh.MakeClientDeadline = nil
+		go wsh.NotifyRemoteUpdate()
 	})
-	sapi, err := shellapi.MakeShellApi(msh.GetShellType())
+	sapi, err := shellapi.MakeShellApi(wsh.GetShellType())
 	if err != nil {
 		return nil, err
 	}
 	var wsSession shexec.ConnInterface
 	if remoteCopy.SSHOpts.SSHHost == "" && remoteCopy.Local {
-		cmdStr, err := MakeLocalMShellCommandStr(remoteCopy.IsSudo())
+		cmdStr, err := MakeLocalWaveshellCommandStr(remoteCopy.IsSudo())
 		if err != nil {
 			return nil, fmt.Errorf("cannot find local waveshell binary: %v", err)
 		}
 		ecmd := shexec.MakeLocalExecCmd(cmdStr, sapi)
 		var cmdPty *os.File
-		cmdPty, err = msh.addControllingTty(ecmd)
+		cmdPty, err = wsh.addControllingTty(ecmd)
 		if err != nil {
 			return nil, fmt.Errorf("cannot attach controlling tty to waveshell command: %v", err)
 		}
-		go msh.RunPtyReadLoop(cmdPty)
-		go msh.WaitAndSendPasswordNew(remoteCopy.SSHOpts.SSHPassword)
+		go wsh.RunPtyReadLoop(cmdPty)
+		go wsh.WaitAndSendPasswordNew(remoteCopy.SSHOpts.SSHPassword)
 		wsSession = shexec.CmdWrap{Cmd: ecmd}
-	} else if msh.Client == nil {
+	} else if wsh.Client == nil {
 		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
 		client, err := ConnectToClient(clientCtx, remoteCopy.SSHOpts, remoteDisplayName)
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot connect to client: %w", err)
 		}
-		msh.WithLock(func() {
-			msh.Client = client
+		wsh.WithLock(func() {
+			wsh.Client = client
 		})
 		session, err := client.NewSession()
 		if err != nil {
@@ -1628,7 +1628,7 @@ func (msh *MShellProc) createWaveshellSession(clientCtx context.Context, remoteC
 		cmd := fmt.Sprintf("%s -c %s", sapi.GetLocalShellPath(), shellescape.Quote(MakeServerCommandStr()))
 		wsSession = shexec.SessionWrap{Session: session, StartCmd: cmd}
 	} else {
-		session, err := msh.Client.NewSession()
+		session, err := wsh.Client.NewSession()
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot create session: %w", err)
 		}
@@ -1638,131 +1638,131 @@ func (msh *MShellProc) createWaveshellSession(clientCtx context.Context, remoteC
 	return wsSession, nil
 }
 
-func (msh *MShellProc) Launch(interactive bool) {
+func (wsh *WaveshellProc) Launch(interactive bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			errMsg := fmt.Errorf("this should not happen. if it does, please reach out to us in our discord or open an issue on our github\n\n"+
 				"error:\n%v\n\nstack trace:\n%s", r, string(debug.Stack()))
 			log.Printf("fatal error, %s\n", errMsg)
-			msh.WriteToPtyBuffer("*fatal error, %s\n", errMsg)
-			msh.setErrorStatus(errMsg)
+			wsh.WriteToPtyBuffer("*fatal error, %s\n", errMsg)
+			wsh.setErrorStatus(errMsg)
 		}
 	}()
-	remoteCopy := msh.GetRemoteCopy()
+	remoteCopy := wsh.GetRemoteCopy()
 	if remoteCopy.Archived {
-		msh.WriteToPtyBuffer("cannot launch archived remote\n")
+		wsh.WriteToPtyBuffer("cannot launch archived remote\n")
 		return
 	}
-	curStatus := msh.GetStatus()
+	curStatus := wsh.GetStatus()
 	if curStatus == StatusConnected {
-		msh.WriteToPtyBuffer("remote is already connected (no action taken)\n")
+		wsh.WriteToPtyBuffer("remote is already connected (no action taken)\n")
 		return
 	}
 	if curStatus == StatusConnecting {
-		msh.WriteToPtyBuffer("remote is already connecting, disconnect before trying to connect again\n")
+		wsh.WriteToPtyBuffer("remote is already connecting, disconnect before trying to connect again\n")
 		return
 	}
-	istatus := msh.GetInstallStatus()
+	istatus := wsh.GetInstallStatus()
 	if istatus == StatusConnecting {
-		msh.WriteToPtyBuffer("remote is trying to install, cancel install before trying to connect again\n")
+		wsh.WriteToPtyBuffer("remote is trying to install, cancel install before trying to connect again\n")
 		return
 	}
 	var makeClientCtx context.Context
 	var makeClientCancelFn context.CancelFunc
-	msh.WithLock(func() {
+	wsh.WithLock(func() {
 		makeClientCtx, makeClientCancelFn = context.WithCancel(context.Background())
-		msh.MakeClientCancelFn = makeClientCancelFn
-		msh.MakeClientDeadline = nil
-		go msh.NotifyRemoteUpdate()
+		wsh.MakeClientCancelFn = makeClientCancelFn
+		wsh.MakeClientDeadline = nil
+		go wsh.NotifyRemoteUpdate()
 	})
 	defer makeClientCancelFn()
-	msh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
-	wsSession, err := msh.createWaveshellSession(makeClientCtx, remoteCopy)
+	wsh.WriteToPtyBuffer("connecting to %s...\n", remoteCopy.RemoteCanonicalName)
+	wsSession, err := wsh.createWaveshellSession(makeClientCtx, remoteCopy)
 	if err != nil {
-		msh.WriteToPtyBuffer("*error, %s\n", err.Error())
-		msh.setErrorStatus(err)
-		msh.WithLock(func() {
-			msh.Client = nil
+		wsh.WriteToPtyBuffer("*error, %s\n", err.Error())
+		wsh.setErrorStatus(err)
+		wsh.WithLock(func() {
+			wsh.Client = nil
 		})
 		return
 	}
 	cproc, err := shexec.MakeClientProc(makeClientCtx, wsSession)
-	msh.WithLock(func() {
-		msh.MakeClientCancelFn = nil
-		msh.MakeClientDeadline = nil
+	wsh.WithLock(func() {
+		wsh.MakeClientCancelFn = nil
+		wsh.MakeClientDeadline = nil
 	})
 	if err == context.DeadlineExceeded {
-		msh.WriteToPtyBuffer("*connect timeout\n")
-		msh.setErrorStatus(errors.New("connect timeout"))
-		msh.WithLock(func() {
-			msh.Client = nil
+		wsh.WriteToPtyBuffer("*connect timeout\n")
+		wsh.setErrorStatus(errors.New("connect timeout"))
+		wsh.WithLock(func() {
+			wsh.Client = nil
 		})
 		return
 	} else if err == context.Canceled {
-		msh.WriteToPtyBuffer("*forced disconnection\n")
-		msh.WithLock(func() {
-			msh.Status = StatusDisconnected
-			go msh.NotifyRemoteUpdate()
+		wsh.WriteToPtyBuffer("*forced disconnection\n")
+		wsh.WithLock(func() {
+			wsh.Status = StatusDisconnected
+			go wsh.NotifyRemoteUpdate()
 		})
-		msh.WithLock(func() {
-			msh.Client = nil
+		wsh.WithLock(func() {
+			wsh.Client = nil
 		})
 		return
 	} else if serr, ok := err.(shexec.WaveshellLaunchError); ok {
-		msh.WithLock(func() {
-			msh.UName = serr.InitPk.UName
-			msh.NeedsMShellUpgrade = true
-			msh.InitPkShellType = serr.InitPk.Shell
+		wsh.WithLock(func() {
+			wsh.UName = serr.InitPk.UName
+			wsh.NeedsWaveshellUpgrade = true
+			wsh.InitPkShellType = serr.InitPk.Shell
 		})
-		msh.StateMap.Clear()
-		msh.WriteToPtyBuffer("*error, %s\n", serr.Error())
-		msh.setErrorStatus(serr)
-		go msh.tryAutoInstall()
+		wsh.StateMap.Clear()
+		wsh.WriteToPtyBuffer("*error, %s\n", serr.Error())
+		wsh.setErrorStatus(serr)
+		go wsh.tryAutoInstall()
 		return
 	} else if err != nil {
-		msh.WriteToPtyBuffer("*error, %s\n", err.Error())
-		msh.setErrorStatus(err)
-		msh.WithLock(func() {
-			msh.Client = nil
+		wsh.WriteToPtyBuffer("*error, %s\n", err.Error())
+		wsh.setErrorStatus(err)
+		wsh.WithLock(func() {
+			wsh.Client = nil
 		})
 		return
 	}
-	msh.WithLock(func() {
-		msh.UName = cproc.InitPk.UName
-		msh.InitPkShellType = cproc.InitPk.Shell
-		msh.StateMap.Clear()
+	wsh.WithLock(func() {
+		wsh.UName = cproc.InitPk.UName
+		wsh.InitPkShellType = cproc.InitPk.Shell
+		wsh.StateMap.Clear()
 		// no notify here, because we'll call notify in either case below
 	})
 
-	msh.updateRemoteStateVars(context.Background(), msh.RemoteId, cproc.InitPk)
-	msh.WithLock(func() {
-		msh.ServerProc = cproc
-		msh.Status = StatusConnected
+	wsh.updateRemoteStateVars(context.Background(), wsh.RemoteId, cproc.InitPk)
+	wsh.WithLock(func() {
+		wsh.ServerProc = cproc
+		wsh.Status = StatusConnected
 	})
-	msh.WriteToPtyBuffer("connected to %s\n", remoteCopy.RemoteCanonicalName)
+	wsh.WriteToPtyBuffer("connected to %s\n", remoteCopy.RemoteCanonicalName)
 	go func() {
 		exitErr := cproc.Cmd.Wait()
 		exitCode := utilfn.GetExitCode(exitErr)
-		msh.WithLock(func() {
-			if msh.Status == StatusConnected || msh.Status == StatusConnecting {
-				msh.Status = StatusDisconnected
-				go msh.NotifyRemoteUpdate()
+		wsh.WithLock(func() {
+			if wsh.Status == StatusConnected || wsh.Status == StatusConnecting {
+				wsh.Status = StatusDisconnected
+				go wsh.NotifyRemoteUpdate()
 			}
 		})
-		msh.WriteToPtyBuffer("*disconnected exitcode=%d\n", exitCode)
+		wsh.WriteToPtyBuffer("*disconnected exitcode=%d\n", exitCode)
 	}()
-	go msh.ProcessPackets()
-	// msh.initActiveShells()
-	go msh.NotifyRemoteUpdate()
+	go wsh.ProcessPackets()
+	// wsh.initActiveShells()
+	go wsh.NotifyRemoteUpdate()
 }
 
-func (msh *MShellProc) initActiveShells() {
+func (wsh *WaveshellProc) initActiveShells() {
 	gasCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	activeShells, err := msh.getActiveShellTypes(gasCtx)
+	activeShells, err := wsh.getActiveShellTypes(gasCtx)
 	if err != nil {
 		// we're not going to fail the connect for this error (it will be unusable, but technically connected)
-		msh.WriteToPtyBuffer("*error getting active shells: %v\n", err)
+		wsh.WriteToPtyBuffer("*error getting active shells: %v\n", err)
 		return
 	}
 	var wg sync.WaitGroup
@@ -1772,25 +1772,25 @@ func (msh *MShellProc) initActiveShells() {
 			defer wg.Done()
 			reinitCtx, cancelFn := context.WithTimeout(context.Background(), 12*time.Second)
 			defer cancelFn()
-			_, err = msh.ReInit(reinitCtx, base.CommandKey(""), shellType, nil, false)
+			_, err = wsh.ReInit(reinitCtx, base.CommandKey(""), shellType, nil, false)
 			if err != nil {
-				msh.WriteToPtyBuffer("*error reiniting shell %q: %v\n", shellType, err)
+				wsh.WriteToPtyBuffer("*error reiniting shell %q: %v\n", shellType, err)
 			}
 		}(shellTypeForVar)
 	}
 	wg.Wait()
 }
 
-func (msh *MShellProc) IsConnected() bool {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.Status == StatusConnected
+func (wsh *WaveshellProc) IsConnected() bool {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.Status == StatusConnected
 }
 
-func (msh *MShellProc) GetShellType() string {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	return msh.InitPkShellType
+func (wsh *WaveshellProc) GetShellType() string {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	return wsh.InitPkShellType
 }
 
 func replaceHomePath(pathStr string, homeDir string) string {
@@ -1806,21 +1806,21 @@ func replaceHomePath(pathStr string, homeDir string) string {
 	return pathStr
 }
 
-func (msh *MShellProc) IsCmdRunning(ck base.CommandKey) bool {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	_, ok := msh.RunningCmds[ck]
+func (wsh *WaveshellProc) IsCmdRunning(ck base.CommandKey) bool {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	_, ok := wsh.RunningCmds[ck]
 	return ok
 }
 
-func (msh *MShellProc) KillRunningCommandAndWait(ctx context.Context, ck base.CommandKey) error {
-	if !msh.IsCmdRunning(ck) {
+func (wsh *WaveshellProc) KillRunningCommandAndWait(ctx context.Context, ck base.CommandKey) error {
+	if !wsh.IsCmdRunning(ck) {
 		return nil
 	}
 	feiPk := scpacket.MakeFeInputPacket()
 	feiPk.CK = ck
 	feiPk.SigName = "SIGTERM"
-	err := msh.HandleFeInput(feiPk)
+	err := wsh.HandleFeInput(feiPk)
 	if err != nil {
 		return fmt.Errorf("error trying to kill running cmd: %w", err)
 	}
@@ -1828,20 +1828,20 @@ func (msh *MShellProc) KillRunningCommandAndWait(ctx context.Context, ck base.Co
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		if !msh.IsCmdRunning(ck) {
+		if !wsh.IsCmdRunning(ck) {
 			return nil
 		}
-		// TODO fix busy wait (sync with msh.RunningCmds)
+		// TODO fix busy wait (sync with wsh.RunningCmds)
 		// not a huge deal though since this is not processor intensive and not widely used
 		time.Sleep(100 * time.Millisecond)
 	}
 }
 
-func (msh *MShellProc) SendFileData(dataPk *packet.FileDataPacketType) error {
-	if !msh.IsConnected() {
+func (wsh *WaveshellProc) SendFileData(dataPk *packet.FileDataPacketType) error {
+	if !wsh.IsConnected() {
 		return fmt.Errorf("remote is not connected, cannot send input")
 	}
-	return msh.ServerProc.Input.SendPacket(dataPk)
+	return wsh.ServerProc.Input.SendPacket(dataPk)
 }
 
 func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
@@ -1851,14 +1851,14 @@ func makeTermOpts(runPk *packet.RunPacketType) sstore.TermOpts {
 // returns (ok, rct)
 // if ok is true, rct will be nil
 // if ok is false, rct will be the existing pending state command (not nil)
-func (msh *MShellProc) testAndSetPendingStateCmd(screenId string, rptr sstore.RemotePtrType, newCK *base.CommandKey) (bool, *RunCmdType) {
+func (wsh *WaveshellProc) testAndSetPendingStateCmd(screenId string, rptr sstore.RemotePtrType, newCK *base.CommandKey) (bool, *RunCmdType) {
 	key := pendingStateKey{ScreenId: screenId, RemotePtr: rptr}
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	ck, found := msh.PendingStateCmds[key]
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	ck, found := wsh.PendingStateCmds[key]
 	if found {
-		// we don't call GetRunningCmd here because we already hold msh.Lock
-		rct := msh.RunningCmds[ck]
+		// we don't call GetRunningCmd here because we already hold wsh.Lock
+		rct := wsh.RunningCmds[ck]
 		if rct != nil {
 			return false, rct
 		}
@@ -1866,21 +1866,21 @@ func (msh *MShellProc) testAndSetPendingStateCmd(screenId string, rptr sstore.Re
 		log.Printf("[warning] found pending state cmd with no running cmd: %s\n", ck)
 	}
 	if newCK != nil {
-		msh.PendingStateCmds[key] = *newCK
+		wsh.PendingStateCmds[key] = *newCK
 	}
 	return true, nil
 }
 
-func (msh *MShellProc) removePendingStateCmd(screenId string, rptr sstore.RemotePtrType, ck base.CommandKey) {
+func (wsh *WaveshellProc) removePendingStateCmd(screenId string, rptr sstore.RemotePtrType, ck base.CommandKey) {
 	key := pendingStateKey{ScreenId: screenId, RemotePtr: rptr}
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	existingCK, found := msh.PendingStateCmds[key]
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	existingCK, found := wsh.PendingStateCmds[key]
 	if !found {
 		return
 	}
 	if existingCK == ck {
-		delete(msh.PendingStateCmds, key)
+		delete(wsh.PendingStateCmds, key)
 	}
 }
 
@@ -1913,11 +1913,11 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	if screenId != runPacket.CK.GetGroupId() {
 		return nil, nil, fmt.Errorf("run commands screenids do not match")
 	}
-	msh := GetRemoteById(remotePtr.RemoteId)
-	if msh == nil {
+	wsh := GetRemoteById(remotePtr.RemoteId)
+	if wsh == nil {
 		return nil, nil, fmt.Errorf("no remote id=%s found", remotePtr.RemoteId)
 	}
-	if !msh.IsConnected() {
+	if !wsh.IsConnected() {
 		return nil, nil, fmt.Errorf("remote '%s' is not connected", remotePtr.RemoteId)
 	}
 	if runPacket.State != nil {
@@ -1941,7 +1941,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		if runPacket.ReturnState {
 			newPSC = &runPacket.CK
 		}
-		ok, existingRct := msh.testAndSetPendingStateCmd(screenId, remotePtr, newPSC)
+		ok, existingRct := wsh.testAndSetPendingStateCmd(screenId, remotePtr, newPSC)
 		if !ok {
 			if rcOpts.EphemeralOpts != nil {
 				// if the existing command is ephemeral, we cancel it and continue
@@ -1957,7 +1957,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 				// if we get an error, remove the pending state cmd
 				// if no error, PSC will get removed when we see a CmdDone or CmdFinal packet
 				if rtnErr != nil {
-					msh.removePendingStateCmd(screenId, remotePtr, *newPSC)
+					wsh.removePendingStateCmd(screenId, remotePtr, *newPSC)
 				}
 			}()
 		}
@@ -1991,7 +1991,7 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		if rcOpts.EphemeralOpts.OverrideCwd != "" {
 			overrideCwd := rcOpts.EphemeralOpts.OverrideCwd
 			if !strings.HasPrefix(overrideCwd, "/") {
-				expandedCwd, err := msh.GetRemoteRuntimeState().ExpandHomeDir(overrideCwd)
+				expandedCwd, err := wsh.GetRemoteRuntimeState().ExpandHomeDir(overrideCwd)
 				if err != nil {
 					return nil, nil, fmt.Errorf("cannot expand home dir for cwd: %w", err)
 				}
@@ -2042,18 +2042,18 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 	}
 	// RegisterRpc + WaitForResponse is used to get any waveshell side errors
 	// waveshell will either return an error (in a ResponsePacketType) or a CmdStartPacketType
-	msh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
+	wsh.ServerProc.Output.RegisterRpc(runPacket.ReqId)
 	go func() {
-		startPk, err := msh.sendRunPacketAndReturnResponse(runPacket)
+		startPk, err := wsh.sendRunPacketAndReturnResponse(runPacket)
 		runCmdUpdateFn(runPacket.CK, func() {
 			if err != nil {
 				// the cmd failed (never started)
-				msh.handleCmdStartError(runningCmdType, err)
+				wsh.handleCmdStartError(runningCmdType, err)
 				return
 			}
 			ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancelFn()
-			err = sstore.UpdateCmdStartInfo(ctx, runPacket.CK, startPk.Pid, startPk.MShellPid)
+			err = sstore.UpdateCmdStartInfo(ctx, runPacket.CK, startPk.Pid, startPk.WaveshellPid)
 			if err != nil {
 				log.Printf("error updating cmd start info (in remote.RunCommand): %v\n", err)
 			}
@@ -2086,19 +2086,19 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 			return nil, nil, fmt.Errorf("cannot create local ptyout file for running command: %v", err)
 		}
 	}
-	msh.AddRunningCmd(runningCmdType)
+	wsh.AddRunningCmd(runningCmdType)
 	return cmd, func() { removeCmdWait(runPacket.CK) }, nil
 }
 
 // no context because it is called as a goroutine
-func (msh *MShellProc) sendRunPacketAndReturnResponse(runPacket *packet.RunPacketType) (*packet.CmdStartPacketType, error) {
+func (wsh *WaveshellProc) sendRunPacketAndReturnResponse(runPacket *packet.RunPacketType) (*packet.CmdStartPacketType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	err := shexec.SendRunPacketAndRunData(ctx, msh.ServerProc.Input, runPacket)
+	err := shexec.SendRunPacketAndRunData(ctx, wsh.ServerProc.Input, runPacket)
 	if err != nil {
 		return nil, fmt.Errorf("sending run packet to remote: %w", err)
 	}
-	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
+	rtnPk := wsh.ServerProc.Output.WaitForResponse(ctx, runPacket.ReqId)
 	if rtnPk == nil {
 		return nil, ctx.Err()
 	}
@@ -2127,26 +2127,26 @@ func makePSCLineError(existingPSC base.CommandKey, line *sstore.LineType, lineEr
 	return fmt.Errorf("cannot run command while a stateful command (linenum=%d) is still running", line.LineNum)
 }
 
-func (msh *MShellProc) registerInputSink(ck base.CommandKey, sink CommandInputSink) {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	msh.CommandInputMap[ck] = sink
+func (wsh *WaveshellProc) registerInputSink(ck base.CommandKey, sink CommandInputSink) {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	wsh.CommandInputMap[ck] = sink
 }
 
-func (msh *MShellProc) unregisterInputSink(ck base.CommandKey) {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	delete(msh.CommandInputMap, ck)
+func (wsh *WaveshellProc) unregisterInputSink(ck base.CommandKey) {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	delete(wsh.CommandInputMap, ck)
 }
 
-func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error {
+func (wsh *WaveshellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error {
 	if inputPk == nil {
 		return nil
 	}
-	if !msh.IsConnected() {
+	if !wsh.IsConnected() {
 		return fmt.Errorf("connection is not connected, cannot send input")
 	}
-	if msh.IsCmdRunning(inputPk.CK) {
+	if wsh.IsCmdRunning(inputPk.CK) {
 		if len(inputPk.InputData64) > 0 {
 			inputLen := packet.B64DecodedLen(inputPk.InputData64)
 			if inputLen > MaxInputDataSize {
@@ -2156,7 +2156,7 @@ func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error 
 			dataPk.CK = inputPk.CK
 			dataPk.FdNum = 0 // stdin
 			dataPk.Data64 = inputPk.InputData64
-			err := msh.ServerProc.Input.SendPacket(dataPk)
+			err := wsh.ServerProc.Input.SendPacket(dataPk)
 			if err != nil {
 				return err
 			}
@@ -2166,16 +2166,16 @@ func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error 
 			siPk.CK = inputPk.CK
 			siPk.SigName = inputPk.SigName
 			siPk.WinSize = inputPk.WinSize
-			err := msh.ServerProc.Input.SendPacket(siPk)
+			err := wsh.ServerProc.Input.SendPacket(siPk)
 			if err != nil {
 				return err
 			}
 		}
 		return nil
 	}
-	msh.Lock.Lock()
-	sink := msh.CommandInputMap[inputPk.CK]
-	msh.Lock.Unlock()
+	wsh.Lock.Lock()
+	sink := wsh.CommandInputMap[inputPk.CK]
+	wsh.Lock.Unlock()
 	if sink == nil {
 		// no sink and no running command
 		return fmt.Errorf("cannot send input, cmd is not running (%s)", inputPk.CK)
@@ -2183,72 +2183,72 @@ func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error 
 	return sink.HandleInput(inputPk)
 }
 
-func (msh *MShellProc) AddRunningCmd(rct *RunCmdType) {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
+func (wsh *WaveshellProc) AddRunningCmd(rct *RunCmdType) {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
 	if rct.EphemeralOpts != nil {
 		log.Printf("[info] adding ephemeral running command: %s\n", rct.CK)
 	}
-	msh.RunningCmds[rct.RunPacket.CK] = rct
+	wsh.RunningCmds[rct.RunPacket.CK] = rct
 }
 
-func (msh *MShellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	rtn := msh.RunningCmds[ck]
+func (wsh *WaveshellProc) GetRunningCmd(ck base.CommandKey) *RunCmdType {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	rtn := wsh.RunningCmds[ck]
 	return rtn
 }
 
-func (msh *MShellProc) RemoveRunningCmd(ck base.CommandKey) {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
-	delete(msh.RunningCmds, ck)
-	for key, pendingCk := range msh.PendingStateCmds {
+func (wsh *WaveshellProc) RemoveRunningCmd(ck base.CommandKey) {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
+	delete(wsh.RunningCmds, ck)
+	for key, pendingCk := range wsh.PendingStateCmds {
 		if pendingCk == ck {
-			delete(msh.PendingStateCmds, key)
+			delete(wsh.PendingStateCmds, key)
 		}
 	}
 }
 
-func (msh *MShellProc) PacketRpcIter(ctx context.Context, pk packet.RpcPacketType) (*packet.RpcResponseIter, error) {
-	if !msh.IsConnected() {
+func (wsh *WaveshellProc) PacketRpcIter(ctx context.Context, pk packet.RpcPacketType) (*packet.RpcResponseIter, error) {
+	if !wsh.IsConnected() {
 		return nil, fmt.Errorf("remote is not connected")
 	}
 	if pk == nil {
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
 	reqId := pk.GetReqId()
-	msh.ServerProc.Output.RegisterRpcSz(reqId, RpcIterChannelSize)
-	err := msh.ServerProc.Input.SendPacketCtx(ctx, pk)
+	wsh.ServerProc.Output.RegisterRpcSz(reqId, RpcIterChannelSize)
+	err := wsh.ServerProc.Input.SendPacketCtx(ctx, pk)
 	if err != nil {
 		return nil, err
 	}
-	return msh.ServerProc.Output.GetResponseIter(reqId), nil
+	return wsh.ServerProc.Output.GetResponseIter(reqId), nil
 }
 
-func (msh *MShellProc) PacketRpcRaw(ctx context.Context, pk packet.RpcPacketType) (packet.RpcResponsePacketType, error) {
-	if !msh.IsConnected() {
+func (wsh *WaveshellProc) PacketRpcRaw(ctx context.Context, pk packet.RpcPacketType) (packet.RpcResponsePacketType, error) {
+	if !wsh.IsConnected() {
 		return nil, fmt.Errorf("remote is not connected")
 	}
 	if pk == nil {
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
 	reqId := pk.GetReqId()
-	msh.ServerProc.Output.RegisterRpc(reqId)
-	defer msh.ServerProc.Output.UnRegisterRpc(reqId)
-	err := msh.ServerProc.Input.SendPacketCtx(ctx, pk)
+	wsh.ServerProc.Output.RegisterRpc(reqId)
+	defer wsh.ServerProc.Output.UnRegisterRpc(reqId)
+	err := wsh.ServerProc.Input.SendPacketCtx(ctx, pk)
 	if err != nil {
 		return nil, err
 	}
-	rtnPk := msh.ServerProc.Output.WaitForResponse(ctx, reqId)
+	rtnPk := wsh.ServerProc.Output.WaitForResponse(ctx, reqId)
 	if rtnPk == nil {
 		return nil, ctx.Err()
 	}
 	return rtnPk, nil
 }
 
-func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (*packet.ResponsePacketType, error) {
-	rtnPk, err := msh.PacketRpcRaw(ctx, pk)
+func (wsh *WaveshellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (*packet.ResponsePacketType, error) {
+	rtnPk, err := wsh.PacketRpcRaw(ctx, pk)
 	if err != nil {
 		return nil, err
 	}
@@ -2258,9 +2258,9 @@ func (msh *MShellProc) PacketRpc(ctx context.Context, pk packet.RpcPacketType) (
 	return nil, fmt.Errorf("invalid response packet received: %s", packet.AsString(rtnPk))
 }
 
-func (msh *MShellProc) WithLock(fn func()) {
-	msh.Lock.Lock()
-	defer msh.Lock.Unlock()
+func (wsh *WaveshellProc) WithLock(fn func()) {
+	wsh.Lock.Lock()
+	defer wsh.Lock.Unlock()
 	fn()
 }
 
@@ -2275,8 +2275,8 @@ func makeDataAckPacket(ck base.CommandKey, fdNum int, ackLen int, err error) *pa
 	return ack
 }
 
-func (msh *MShellProc) notifyHangups_nolock() {
-	for ck := range msh.RunningCmds {
+func (wsh *WaveshellProc) notifyHangups_nolock() {
+	for ck := range wsh.RunningCmds {
 		cmd, err := sstore.GetCmdByScreenId(context.Background(), ck.GetGroupId(), ck.GetCmdId())
 		if err != nil {
 			continue
@@ -2286,11 +2286,11 @@ func (msh *MShellProc) notifyHangups_nolock() {
 		scbus.MainUpdateBus.DoScreenUpdate(ck.GetGroupId(), update)
 		go pushNumRunningCmdsUpdate(&ck, -1)
 	}
-	msh.RunningCmds = make(map[base.CommandKey]*RunCmdType)
-	msh.PendingStateCmds = make(map[pendingStateKey]base.CommandKey)
+	wsh.RunningCmds = make(map[base.CommandKey]*RunCmdType)
+	wsh.PendingStateCmds = make(map[pendingStateKey]base.CommandKey)
 }
 
-func (msh *MShellProc) resolveFinalState(ctx context.Context, origState *packet.ShellState, origStatePtr *packet.ShellStatePtr, donePk *packet.CmdDonePacketType) (*packet.ShellState, error) {
+func (wsh *WaveshellProc) resolveFinalState(ctx context.Context, origState *packet.ShellState, origStatePtr *packet.ShellStatePtr, donePk *packet.CmdDonePacketType) (*packet.ShellState, error) {
 	if donePk.FinalState != nil {
 		if origStatePtr == nil {
 			return nil, fmt.Errorf("command must have a stateptr to resolve final state")
@@ -2347,7 +2347,7 @@ const NewStateDiffSizeThreshold = 30 * 1024
 // then we check the size of the diff, and only persist the diff it is under some size threshold
 // also we check to see if the diff succeeds (it can fail if the shell or version changed).
 // in those cases we also update the RI with the full state
-func (msh *MShellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdType, newState *packet.ShellState) (*sstore.RemoteInstance, error) {
+func (wsh *WaveshellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdType, newState *packet.ShellState) (*sstore.RemoteInstance, error) {
 	curRIState, err := sstore.GetRemoteStatePtr(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr)
 	if err != nil {
 		return nil, fmt.Errorf("error trying to get current screen stateptr: %w", err)
@@ -2381,14 +2381,14 @@ func (msh *MShellProc) updateRIWithFinalState(ctx context.Context, rct *RunCmdTy
 	return sstore.UpdateRemoteState(ctx, rct.SessionId, rct.ScreenId, rct.RemotePtr, feState, nil, newStateDiff)
 }
 
-func (msh *MShellProc) handleSudoError(ck base.CommandKey, sudoErr error) {
+func (wsh *WaveshellProc) handleSudoError(ck base.CommandKey, sudoErr error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	screenId, lineId := ck.Split()
 
 	update := scbus.MakeUpdatePacket()
 	errOutputStr := fmt.Sprintf("%serror: %v%s\n", utilfn.AnsiRedColor(), sudoErr, utilfn.AnsiResetColor())
-	msh.writeToCmdPtyOut(ctx, screenId, lineId, []byte(errOutputStr))
+	wsh.writeToCmdPtyOut(ctx, screenId, lineId, []byte(errOutputStr))
 	doneInfo := sstore.CmdDoneDataValues{
 		Ts:         time.Now().UnixMilli(),
 		ExitCode:   1,
@@ -2410,12 +2410,12 @@ func (msh *MShellProc) handleSudoError(ck base.CommandKey, sudoErr error) {
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
-func (msh *MShellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
+func (wsh *WaveshellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
 	if rct == nil {
 		log.Printf("handleCmdStartError, no rct\n")
 		return
 	}
-	defer msh.RemoveRunningCmd(rct.CK)
+	defer wsh.RemoveRunningCmd(rct.CK)
 	if rct.EphemeralOpts != nil {
 		// nothing to do for ephemeral commands besides remove the running command
 		log.Printf("ephemeral command start error: %v\n", startErr)
@@ -2425,7 +2425,7 @@ func (msh *MShellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
 	defer cancelFn()
 	update := scbus.MakeUpdatePacket()
 	errOutputStr := fmt.Sprintf("%serror: %v%s\n", utilfn.AnsiRedColor(), startErr, utilfn.AnsiResetColor())
-	msh.writeToCmdPtyOut(ctx, rct.ScreenId, rct.CK.GetCmdId(), []byte(errOutputStr))
+	wsh.writeToCmdPtyOut(ctx, rct.ScreenId, rct.CK.GetCmdId(), []byte(errOutputStr))
 	doneInfo := sstore.CmdDoneDataValues{
 		Ts:         time.Now().UnixMilli(),
 		ExitCode:   1,
@@ -2447,13 +2447,13 @@ func (msh *MShellProc) handleCmdStartError(rct *RunCmdType, startErr error) {
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
-func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDonePacketType) {
+func (wsh *WaveshellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDonePacketType) {
 	if rct == nil {
 		log.Printf("cmddone packet received, but no running command found for it %q\n", donePk.CK)
 		return
 	}
 	// this will remove from RunningCmds and from PendingStateCmds
-	defer msh.RemoveRunningCmd(donePk.CK)
+	defer wsh.RemoveRunningCmd(donePk.CK)
 	if rct.EphemeralOpts != nil && rct.EphemeralOpts.Canceled.Load() {
 		log.Printf("cmddone %s (ephemeral canceled)\n", donePk.CK)
 		// do nothing when an ephemeral command is canceled
@@ -2499,13 +2499,13 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 	// ephemeral commands *do* update the remote state
 	// not all commands get a final state (only RtnState commands have this returned)
 	// so in those cases finalState will be nil
-	finalState, err := msh.resolveFinalState(ctx, rct.RunPacket.State, rct.RunPacket.StatePtr, donePk)
+	finalState, err := wsh.resolveFinalState(ctx, rct.RunPacket.State, rct.RunPacket.StatePtr, donePk)
 	if err != nil {
 		log.Printf("error resolving final state for cmd: %v\n", err)
 		// fallthrough
 	}
 	if finalState != nil {
-		newRI, err := msh.updateRIWithFinalState(ctx, rct, finalState)
+		newRI, err := wsh.updateRIWithFinalState(ctx, rct, finalState)
 		if err != nil {
 			log.Printf("error updating RI with final state (in handleCmdDonePacket): %v\n", err)
 			// fallthrough
@@ -2526,12 +2526,12 @@ func (msh *MShellProc) handleCmdDonePacket(rct *RunCmdType, donePk *packet.CmdDo
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
-func (msh *MShellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.CmdFinalPacketType) {
+func (wsh *WaveshellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.CmdFinalPacketType) {
 	if rct == nil {
 		// this is somewhat expected, since cmddone should have removed the running command
 		return
 	}
-	defer msh.RemoveRunningCmd(finalPk.CK)
+	defer wsh.RemoveRunningCmd(finalPk.CK)
 	rtnCmd, err := sstore.GetCmdByScreenId(context.Background(), finalPk.CK.GetGroupId(), finalPk.CK.GetCmdId())
 	if err != nil {
 		log.Printf("error calling GetCmdById in handleCmdFinalPacket: %v\n", err)
@@ -2564,35 +2564,35 @@ func (msh *MShellProc) handleCmdFinalPacket(rct *RunCmdType, finalPk *packet.Cmd
 	scbus.MainUpdateBus.DoUpdate(update)
 }
 
-func (msh *MShellProc) ResetDataPos(ck base.CommandKey) {
-	msh.DataPosMap.Delete(ck)
+func (wsh *WaveshellProc) ResetDataPos(ck base.CommandKey) {
+	wsh.DataPosMap.Delete(ck)
 }
 
-func (msh *MShellProc) writeToCmdPtyOut(ctx context.Context, screenId string, lineId string, data []byte) error {
-	dataPos := msh.DataPosMap.Get(base.MakeCommandKey(screenId, lineId))
+func (wsh *WaveshellProc) writeToCmdPtyOut(ctx context.Context, screenId string, lineId string, data []byte) error {
+	dataPos := wsh.DataPosMap.Get(base.MakeCommandKey(screenId, lineId))
 	update, err := sstore.AppendToCmdPtyBlob(ctx, screenId, lineId, data, dataPos)
 	if err != nil {
 		return err
 	}
-	utilfn.IncSyncMap(msh.DataPosMap, base.MakeCommandKey(screenId, lineId), int64(len(data)))
+	utilfn.IncSyncMap(wsh.DataPosMap, base.MakeCommandKey(screenId, lineId), int64(len(data)))
 	if update != nil {
 		scbus.MainUpdateBus.DoScreenUpdate(screenId, update)
 	}
 	return nil
 }
 
-func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) {
+func (wsh *WaveshellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPacketType, dataPosMap *utilfn.SyncMap[base.CommandKey, int64]) {
 	if rct == nil {
 		log.Printf("error handling data packet: no running cmd found %s\n", dataPk.CK)
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, fmt.Errorf("no running cmd found"))
-		msh.ServerProc.Input.SendPacket(ack)
+		wsh.ServerProc.Input.SendPacket(ack)
 		return
 	}
 	realData, err := base64.StdEncoding.DecodeString(dataPk.Data64)
 	if err != nil {
 		log.Printf("error decoding data packet: %v\n", err)
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, 0, err)
-		msh.ServerProc.Input.SendPacket(ack)
+		wsh.ServerProc.Input.SendPacket(ack)
 		return
 	}
 	if rct.EphemeralOpts != nil {
@@ -2618,7 +2618,7 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 			log.Printf("ephemeral data packet error: %s\n", dataPk.Error)
 		}
 		ack := makeDataAckPacket(dataPk.CK, dataPk.FdNum, len(realData), nil)
-		msh.ServerProc.Input.SendPacket(ack)
+		wsh.ServerProc.Input.SendPacket(ack)
 		return
 	}
 
@@ -2637,7 +2637,7 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 		}
 	}
 	if ack != nil {
-		msh.ServerProc.Input.SendPacket(ack)
+		wsh.ServerProc.Input.SendPacket(ack)
 	}
 }
 
@@ -2649,7 +2649,7 @@ func sendScreenUpdates(screens []*sstore.ScreenType) {
 	}
 }
 
-func (msh *MShellProc) startSudoPwClearChecker(clientData *sstore.ClientData) {
+func (wsh *WaveshellProc) startSudoPwClearChecker(clientData *sstore.ClientData) {
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
 	sudoPwStore := clientData.FeOpts.SudoPwStore
@@ -2662,12 +2662,12 @@ func (msh *MShellProc) startSudoPwClearChecker(clientData *sstore.ClientData) {
 		}
 
 		shouldExit := false
-		msh.WithLock(func() {
-			if msh.sudoClearDeadline > 0 && time.Now().Unix() > msh.sudoClearDeadline && sudoPwStore != "notimeout" {
-				msh.sudoPw = nil
-				msh.sudoClearDeadline = 0
+		wsh.WithLock(func() {
+			if wsh.sudoClearDeadline > 0 && time.Now().Unix() > wsh.sudoClearDeadline && sudoPwStore != "notimeout" {
+				wsh.sudoPw = nil
+				wsh.sudoClearDeadline = 0
 			}
-			if msh.sudoClearDeadline == 0 {
+			if wsh.sudoClearDeadline == 0 {
 				shouldExit = true
 			}
 		})
@@ -2678,11 +2678,11 @@ func (msh *MShellProc) startSudoPwClearChecker(clientData *sstore.ClientData) {
 	}
 }
 
-func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) error {
+func (wsh *WaveshellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) error {
 	var storedPw []byte
 	var rawSecret []byte
-	msh.WithLock(func() {
-		storedPw = msh.sudoPw
+	wsh.WithLock(func() {
+		storedPw = wsh.sudoPw
 	})
 	if storedPw != nil && sudoPk.SudoStatus == "first-attempt" {
 		rawSecret = storedPw
@@ -2714,12 +2714,12 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 		sudoPwTimeout = sstore.DefaultSudoTimeout
 	}
 	pwTimeoutDur := time.Duration(sudoPwTimeout) * time.Minute
-	msh.WithLock(func() {
-		msh.sudoPw = rawSecret
-		if msh.sudoClearDeadline == 0 {
-			go msh.startSudoPwClearChecker(clientData)
+	wsh.WithLock(func() {
+		wsh.sudoPw = rawSecret
+		if wsh.sudoClearDeadline == 0 {
+			go wsh.startSudoPwClearChecker(clientData)
 		}
-		msh.sudoClearDeadline = time.Now().Add(pwTimeoutDur).Unix()
+		wsh.sudoClearDeadline = time.Now().Add(pwTimeoutDur).Unix()
 	})
 
 	srvPrivKey, err := ecdh.P256().GenerateKey(rand.Reader)
@@ -2740,14 +2740,14 @@ func (msh *MShellProc) sendSudoPassword(sudoPk *packet.SudoRequestPacketType) er
 	}
 	sudoResponse := packet.MakeSudoResponsePacket(sudoPk.CK, encryptedSecret, srvPubKey)
 	select {
-	case msh.ServerProc.Input.SendCh <- sudoResponse:
+	case wsh.ServerProc.Input.SendCh <- sudoResponse:
 	default:
 	}
 	return nil
 
 }
 
-func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
+func (wsh *WaveshellProc) processSinglePacket(pk packet.PacketType) {
 	if _, ok := pk.(*packet.DataAckPacketType); ok {
 		// TODO process ack (need to keep track of buffer size for sending)
 		// this is low priority though since most input is coming from keyboard and won't overflow this buffer
@@ -2755,89 +2755,89 @@ func (msh *MShellProc) processSinglePacket(pk packet.PacketType) {
 	}
 	if dataPk, ok := pk.(*packet.DataPacketType); ok {
 		runCmdUpdateFn(dataPk.CK, func() {
-			rct := msh.GetRunningCmd(dataPk.CK)
-			msh.handleDataPacket(rct, dataPk, msh.DataPosMap)
+			rct := wsh.GetRunningCmd(dataPk.CK)
+			wsh.handleDataPacket(rct, dataPk, wsh.DataPosMap)
 		})
 		go pushStatusIndicatorUpdate(&dataPk.CK, sstore.StatusIndicatorLevel_Output)
 		return
 	}
 	if donePk, ok := pk.(*packet.CmdDonePacketType); ok {
 		runCmdUpdateFn(donePk.CK, func() {
-			rct := msh.GetRunningCmd(donePk.CK)
-			msh.handleCmdDonePacket(rct, donePk)
+			rct := wsh.GetRunningCmd(donePk.CK)
+			wsh.handleCmdDonePacket(rct, donePk)
 		})
 		return
 	}
 	if finalPk, ok := pk.(*packet.CmdFinalPacketType); ok {
 		runCmdUpdateFn(finalPk.CK, func() {
-			rct := msh.GetRunningCmd(finalPk.CK)
-			msh.handleCmdFinalPacket(rct, finalPk)
+			rct := wsh.GetRunningCmd(finalPk.CK)
+			wsh.handleCmdFinalPacket(rct, finalPk)
 		})
 		return
 	}
 	if sudoPk, ok := pk.(*packet.SudoRequestPacketType); ok {
 		// final failure case -- clear cache
 		if sudoPk.SudoStatus == "failure" {
-			msh.sudoPw = nil
-			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: incorrect password entered"))
+			wsh.sudoPw = nil
+			wsh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: incorrect password entered"))
 			return
 		}
 
 		// handle waveshell errors here
 		if sudoPk.SudoStatus == "error" {
-			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: shell: %s", sudoPk.ErrStr))
+			wsh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: shell: %s", sudoPk.ErrStr))
 			return
 		}
 
-		err := msh.sendSudoPassword(sudoPk)
+		err := wsh.sendSudoPassword(sudoPk)
 		if err != nil {
-			msh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: srv: %s", err))
+			wsh.handleSudoError(sudoPk.CK, fmt.Errorf("sudo: srv: %s", err))
 		}
 	}
 	if msgPk, ok := pk.(*packet.MessagePacketType); ok {
-		msh.WriteToPtyBuffer("msg> [remote %s] [%s] %s\n", msh.GetRemoteName(), msgPk.CK, msgPk.Message)
+		wsh.WriteToPtyBuffer("msg> [remote %s] [%s] %s\n", wsh.GetRemoteName(), msgPk.CK, msgPk.Message)
 		return
 	}
 	if rawPk, ok := pk.(*packet.RawPacketType); ok {
-		msh.WriteToPtyBuffer("stderr> [remote %s] %s\n", msh.GetRemoteName(), rawPk.Data)
+		wsh.WriteToPtyBuffer("stderr> [remote %s] %s\n", wsh.GetRemoteName(), rawPk.Data)
 		return
 	}
-	msh.WriteToPtyBuffer("*[remote %s] unhandled packet %s\n", msh.GetRemoteName(), packet.AsString(pk))
+	wsh.WriteToPtyBuffer("*[remote %s] unhandled packet %s\n", wsh.GetRemoteName(), packet.AsString(pk))
 }
 
-func (msh *MShellProc) ClearCachedSudoPw() {
-	msh.WithLock(func() {
-		msh.sudoPw = nil
-		msh.sudoClearDeadline = 0
+func (wsh *WaveshellProc) ClearCachedSudoPw() {
+	wsh.WithLock(func() {
+		wsh.sudoPw = nil
+		wsh.sudoClearDeadline = 0
 	})
 }
 
-func (msh *MShellProc) ChangeSudoTimeout(deltaTime int64) {
-	msh.WithLock(func() {
-		if msh.sudoClearDeadline != 0 {
-			updated := msh.sudoClearDeadline + deltaTime*60
-			msh.sudoClearDeadline = max(0, updated)
+func (wsh *WaveshellProc) ChangeSudoTimeout(deltaTime int64) {
+	wsh.WithLock(func() {
+		if wsh.sudoClearDeadline != 0 {
+			updated := wsh.sudoClearDeadline + deltaTime*60
+			wsh.sudoClearDeadline = max(0, updated)
 		}
 	})
 }
 
-func (msh *MShellProc) ProcessPackets() {
-	defer msh.WithLock(func() {
-		if msh.Status == StatusConnected {
-			msh.Status = StatusDisconnected
+func (wsh *WaveshellProc) ProcessPackets() {
+	defer wsh.WithLock(func() {
+		if wsh.Status == StatusConnected {
+			wsh.Status = StatusDisconnected
 		}
-		screens, err := sstore.HangupRunningCmdsByRemoteId(context.Background(), msh.Remote.RemoteId)
+		screens, err := sstore.HangupRunningCmdsByRemoteId(context.Background(), wsh.Remote.RemoteId)
 		if err != nil {
-			msh.writeToPtyBuffer_nolock("error calling HUP on cmds %v\n", err)
+			wsh.writeToPtyBuffer_nolock("error calling HUP on cmds %v\n", err)
 		}
-		msh.notifyHangups_nolock()
-		go msh.NotifyRemoteUpdate()
+		wsh.notifyHangups_nolock()
+		go wsh.NotifyRemoteUpdate()
 		if len(screens) > 0 {
 			go sendScreenUpdates(screens)
 		}
 	})
-	for pk := range msh.ServerProc.Output.MainCh {
-		msh.processSinglePacket(pk)
+	for pk := range wsh.ServerProc.Output.MainCh {
+		wsh.processSinglePacket(pk)
 	}
 }
 
@@ -2988,8 +2988,8 @@ func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellSt
 	return "(" + escCode + ")"
 }
 
-func (msh *MShellProc) getFullState(shellType string, stateDiff *packet.ShellStateDiff) (*packet.ShellState, error) {
-	baseState := msh.StateMap.GetStateByHash(shellType, stateDiff.BaseHash)
+func (wsh *WaveshellProc) getFullState(shellType string, stateDiff *packet.ShellStateDiff) (*packet.ShellState, error) {
+	baseState := wsh.StateMap.GetStateByHash(shellType, stateDiff.BaseHash)
 	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
 		sapi, err := shellapi.MakeShellApi(baseState.GetShellType())
 		newState, err := sapi.ApplyShellStateDiff(baseState, stateDiff)
@@ -3012,8 +3012,8 @@ func (msh *MShellProc) getFullState(shellType string, stateDiff *packet.ShellSta
 }
 
 // internal func, first tries the StateMap, otherwise will fallback on sstore.GetFullState
-func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map[string]string, error) {
-	baseState := msh.StateMap.GetStateByHash(stateDiff.GetShellType(), stateDiff.BaseHash)
+func (wsh *WaveshellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map[string]string, error) {
+	baseState := wsh.StateMap.GetStateByHash(stateDiff.GetShellType(), stateDiff.BaseHash)
 	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
 		sapi, err := shellapi.MakeShellApi(baseState.GetShellType())
 		if err != nil {
@@ -3041,34 +3041,34 @@ func (msh *MShellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map
 	}
 }
 
-func (msh *MShellProc) TryAutoConnect() error {
-	if msh.IsConnected() {
+func (wsh *WaveshellProc) TryAutoConnect() error {
+	if wsh.IsConnected() {
 		return nil
 	}
-	rcopy := msh.GetRemoteCopy()
+	rcopy := wsh.GetRemoteCopy()
 	if rcopy.ConnectMode == sstore.ConnectModeManual {
 		return nil
 	}
 	var err error
-	msh.WithLock(func() {
-		if msh.NumTryConnect > 5 {
+	wsh.WithLock(func() {
+		if wsh.NumTryConnect > 5 {
 			err = fmt.Errorf("too many unsuccessful tries")
 			return
 		}
-		msh.NumTryConnect++
+		wsh.NumTryConnect++
 	})
 	if err != nil {
 		return err
 	}
-	msh.Launch(false)
-	if !msh.IsConnected() {
+	wsh.Launch(false)
+	if !wsh.IsConnected() {
 		return fmt.Errorf("error connecting")
 	}
 	return nil
 }
 
-func (msh *MShellProc) GetDisplayName() string {
-	rcopy := msh.GetRemoteCopy()
+func (wsh *WaveshellProc) GetDisplayName() string {
+	rcopy := wsh.GetRemoteCopy()
 	return rcopy.GetName()
 }
 
