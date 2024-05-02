@@ -28,6 +28,7 @@ jobs:
                       cd ~/actions-runner/_work/testdriver/testdriver/
                       brew install go
                       brew tap scripthaus-dev/scripthaus
+                      brew install corepack
                       brew install scripthaus
                       corepack enable
                       yarn install
