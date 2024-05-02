@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel } from "@/models";
 import { CmdStrCode, Markdown } from "@/common/elements";
 
@@ -152,11 +152,11 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
             return (
                 <div
                     data-bookmarkid={bm.bookmarkid}
-                    className={cn("bookmark focus-parent is-editing", {
+                    className={clsx("bookmark focus-parent is-editing", {
                         "pending-delete": model.pendingDelete.get() == bm.bookmarkid,
                     })}
                 >
-                    <div className={cn("focus-indicator", { active: isSelected })} />
+                    <div className={clsx("focus-indicator", { active: isSelected })} />
                     <div className="bookmark-edit">
                         <div className="field">
                             <label className="label">Description (markdown)</label>
@@ -198,12 +198,12 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
         }
         return (
             <div
-                className={cn("bookmark focus-parent", {
+                className={clsx("bookmark focus-parent", {
                     "pending-delete": model.pendingDelete.get() == bm.bookmarkid,
                 })}
                 onClick={this.handleClick}
             >
-                <div className={cn("focus-indicator", { active: isSelected })} />
+                <div className={clsx("focus-indicator", { active: isSelected })} />
                 <div className="bookmark-id-div">{bm.bookmarkid.substr(0, 8)}</div>
                 <div className="bookmark-content">
                     <If condition={hasDesc}>

@@ -6,7 +6,7 @@ import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import Editor, { Monaco } from "@monaco-editor/react";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { If } from "tsx-control-statements/components";
 import { Markdown, Button } from "@/elements";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
@@ -579,7 +579,7 @@ class SourceCodeRenderer extends React.Component<
                 <div className="flex-spacer" />
                 <div className="code-statusbar">
                     <If condition={message != null}>
-                        <div className={cn("code-message", { error: message.status == "error" })}>
+                        <div className={clsx("code-message", { error: message.status == "error" })}>
                             {this.state.message.text}
                         </div>
                     </If>

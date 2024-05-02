@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel, RemotesModel, GlobalCommandRunner } from "@/models";
 import { Button, Status } from "@/common/elements";
 import * as util from "@/util/util";
@@ -185,7 +185,7 @@ class ConnectionsView extends React.Component<{ model: RemotesModel }, { hovered
                             <For index="idx" each="item" of={items}>
                                 <tr
                                     key={item.remoteid}
-                                    className={cn("connections-item", {
+                                    className={clsx("connections-item", {
                                         hovered: this.state.hoveredItemId === item.remoteid,
                                     })}
                                     onClick={() => this.handleRead(item.remoteid)} // Moved onClick here

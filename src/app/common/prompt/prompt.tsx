@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { isBlank } from "@/util/util";
 
 import "./prompt.less";
@@ -108,7 +108,7 @@ class Prompt extends React.Component<
         let remoteElem = null;
         if (remoteStr != "local") {
             remoteElem = (
-                <span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>
+                <span title={remoteTitle} className={clsx("term-prompt-remote", remoteColorClass)}>
                     [{remoteStr}]{" "}
                 </span>
             );
@@ -124,10 +124,10 @@ class Prompt extends React.Component<
     render() {
         const rptr = this.props.rptr;
         if (rptr == null || isBlank(rptr.remoteid)) {
-            return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>;
+            return <span className={clsx("term-prompt", "color-green")}>&nbsp;</span>;
         }
         let { remoteElem, isRoot } = this.getRemoteElem();
-        let termClassNames = cn(
+        let termClassNames = clsx(
             "term-prompt",
             { "term-prompt-color": this.props.color },
             { "term-prompt-isroot": isRoot }

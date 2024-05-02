@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { If, For, When, Otherwise, Choose } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { debounce, throttle } from "throttle-debounce";
@@ -496,7 +496,7 @@ class LinesView extends React.Component<
             // let lineElem = <Line key={line.lineid} line={line} screen={screen} width={width} visible={this.visibleMap.get(lineNumStr)} staticRender={this.staticRender.get()} onHeightChange={this.onHeightChange} overrideCollapsed={this.collapsedMap.get(lineNumStr)} topBorder={topBorder} renderMode={renderMode}/>;
             lineElements.push(lineElem);
         }
-        let linesClass = cn("lines", renderMode == "normal" ? "lines-expanded" : "lines-collapsed", "wide-scrollbar");
+        let linesClass = clsx("lines", renderMode == "normal" ? "lines-expanded" : "lines-collapsed", "wide-scrollbar");
         return (
             <div key="lines" className={linesClass} onScroll={this.scrollHandler} ref={this.linesRef}>
                 <div className="lines-spacer"></div>
