@@ -27,7 +27,6 @@ export const AutocompleteSuggestionView: React.FC = observer(() => {
     });
 
     const setSuggestion = action((idx: number) => {
-        console.log("setSuggestion", idx);
         autocompleteModel.applySuggestion(idx);
         autocompleteModel.loadSuggestions();
         closeView();
