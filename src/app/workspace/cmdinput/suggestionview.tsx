@@ -1,13 +1,13 @@
+import { getAll, getFirst } from "@/autocomplete/runtime/utils";
 import { AuxiliaryCmdView } from "./auxview";
-import { GlobalModel } from "@/models";
 import { clsx } from "clsx";
-import React, { useEffect } from "react";
-import { observer } from "mobx-react";
-import { If } from "tsx-control-statements/components";
 import { action } from "mobx";
+import { observer } from "mobx-react";
+import { GlobalModel } from "@/models";
+import React, { useEffect } from "react";
+import { If } from "tsx-control-statements/components";
 
 import "./suggestionview.less";
-import { getAll, getFirst } from "@/autocomplete/runtime/utils";
 
 export const AutocompleteSuggestionView: React.FC = observer(() => {
     const inputModel = GlobalModel.inputModel;
