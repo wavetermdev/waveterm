@@ -759,22 +759,28 @@ class InputModel {
 
     @mobx.computed
     get curLine(): string {
+        console.log("triggered get curLine");
         const hidx = this.historyIndex.get();
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
+            console.log("this.modHistory[hidx]", this.modHistory[hidx]);
             return this.modHistory[hidx];
         }
         const hitems = this.filteredHistoryItems;
         if (hidx == 0 || hitems == null || hidx > hitems.length) {
+            console.log("returning empty string 1");
             return "";
         }
         const hitem = hitems[hidx - 1];
         if (hitem == null) {
+            console.log("returning empty string 2");
             return "";
         }
+        console.log("returning hitem.cmdstr", hitem.cmdstr);
         return hitem.cmdstr;
     }
 
     set curLine(val: string) {
+        console.log("triggered set curLine");
         this.lastCurLine = this.curLine;
         const hidx = this.historyIndex.get();
         mobx.action(() => {

@@ -64,7 +64,11 @@ export const UserInputModal = (userInputRequest: UserInputRequest) => {
                 <div className="wave-modal-dialog">
                     <div className="userinput-query">
                         <If condition={userInputRequest.markdown}>
-                            <Markdown text={userInputRequest.querytext} extraClassName="bottom-margin" />
+                            <Markdown
+                                inputModel={GlobalModel.inputModel}
+                                text={userInputRequest.querytext}
+                                extraClassName="bottom-margin"
+                            />
                         </If>
                         <If condition={!userInputRequest.markdown}>{userInputRequest.querytext}</If>
                     </div>

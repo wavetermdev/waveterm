@@ -115,7 +115,11 @@ class ChatContent extends React.Component<{}, {}> {
                         <div className="chat-msg-header">
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
                         </div>
-                        <Markdown text={chatItem.assistantresponse.message} codeSelect />
+                        <Markdown
+                            inputModel={GlobalModel.aichatModel}
+                            text={chatItem.assistantresponse.message}
+                            codeSelect
+                        />
                     </>
                 );
             }
@@ -179,6 +183,7 @@ class AIChat extends React.Component<{}, {}> {
 
     submitChatMessage(messageStr: string) {
         const curLine = GlobalModel.inputModel.curLine;
+        console.log("enter key pressed", messageStr, "curLine: ", curLine);
         const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
             if (!rtn.success) {

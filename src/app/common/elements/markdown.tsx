@@ -31,7 +31,7 @@ function CodeRenderer(props: any): any {
 
 @mobxReact.observer
 class CodeBlockMarkdown extends React.Component<
-    { children: React.ReactNode; codeSelectSelectedIndex?: number; uuid: string },
+    { inputModel: any; children: React.ReactNode; codeSelectSelectedIndex?: number; uuid: string },
     {}
 > {
     blockIndex: number;
@@ -40,13 +40,12 @@ class CodeBlockMarkdown extends React.Component<
     constructor(props) {
         super(props);
         this.blockRef = React.createRef();
-        this.blockIndex = GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef, this.props.uuid);
+        this.blockIndex = props.inputModel.addCodeBlockToCodeSelect(this.blockRef, this.props.uuid);
     }
 
     render() {
-        let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
-        let inputModel = GlobalModel.inputModel;
-        clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
+        const inputModel = this.props.inputModel;
+        const clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
             inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
         };
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
@@ -64,7 +63,7 @@ class CodeBlockMarkdown extends React.Component<
 
 @mobxReact.observer
 class Markdown extends React.Component<
-    { text: string; style?: any; extraClassName?: string; codeSelect?: boolean },
+    { inputModel: any; text: string; style?: any; extraClassName?: string; codeSelect?: boolean },
     {}
 > {
     curUuid: string;
@@ -75,10 +74,14 @@ class Markdown extends React.Component<
     }
 
     @boundMethod
-    CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number, curUuid: string): any {
+    codeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number, curUuid: string): any {
         if (codeSelect) {
             return (
-                <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex} uuid={curUuid}>
+                <CodeBlockMarkdown
+                    inputModel={this.props.inputModel}
+                    codeSelectSelectedIndex={codeSelectIndex}
+                    uuid={curUuid}
+                >
                     {props.children}
                 </CodeBlockMarkdown>
             );
@@ -95,9 +98,9 @@ class Markdown extends React.Component<
     }
 
     render() {
-        let text = this.props.text;
+        let { text, inputModel } = this.props;
         let codeSelect = this.props.codeSelect;
-        let curCodeSelectIndex = GlobalModel.inputModel.getCodeSelectSelectedIndex();
+        let curCodeSelectIndex = inputModel.getCodeSelectSelectedIndex();
         let markdownComponents = {
             a: LinkRenderer,
             h1: (props) => HeaderRenderer(props, 1),
@@ -107,7 +110,7 @@ class Markdown extends React.Component<
             h5: (props) => HeaderRenderer(props, 5),
             h6: (props) => HeaderRenderer(props, 6),
             code: (props) => CodeRenderer(props),
-            pre: (props) => this.CodeBlockRenderer(props, codeSelect, curCodeSelectIndex, this.curUuid),
+            pre: (props) => this.codeBlockRenderer(props, codeSelect, curCodeSelectIndex, this.curUuid),
         };
         return (
             <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>

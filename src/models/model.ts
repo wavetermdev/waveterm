@@ -21,6 +21,7 @@ import { KeybindManager, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } fr
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
+import { AIChatModel } from "./aichat";
 import { PluginsModel } from "./plugins";
 import { BookmarksModel } from "./bookmarks";
 import { HistoryViewModel } from "./historyview";
@@ -113,6 +114,7 @@ class Model {
 
     keybindManager: KeybindManager;
     inputModel: InputModel;
+    aichatModel: AIChatModel;
     pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
@@ -162,6 +164,7 @@ class Model {
         this.initSystemKeybindings();
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
+        this.aichatModel = new AIChatModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
         this.historyViewModel = new HistoryViewModel(this);
@@ -1341,6 +1344,7 @@ class Model {
         interactive: boolean,
         runUpdate: boolean = true
     ): Promise<CommandRtnType> {
+        console.log("cmdPk", cmdPk);
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {

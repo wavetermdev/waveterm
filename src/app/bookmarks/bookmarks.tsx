@@ -207,7 +207,7 @@ class Bookmark extends React.Component<BookmarkProps, {}> {
                 <div className="bookmark-id-div">{bm.bookmarkid.substr(0, 8)}</div>
                 <div className="bookmark-content">
                     <If condition={hasDesc}>
-                        <Markdown text={markdown} extraClassName="bottom-margin" />
+                        <Markdown inputModel={GlobalModel.inputModel} text={markdown} extraClassName="bottom-margin" />
                     </If>
                     <CmdStrCode
                         cmdstr={bm.cmdstr}

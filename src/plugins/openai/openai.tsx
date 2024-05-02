@@ -8,6 +8,7 @@ import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
 import { PacketDataBuffer } from "../core/ptydata";
 import { Markdown } from "@/elements";
+import { GlobalModel } from "@/models/global";
 
 import "./openai.less";
 
@@ -207,7 +208,11 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
                             paddingRight: 5,
                         }}
                     >
-                        <Markdown text={message} style={{ maxHeight: opts.maxSize.height }} />
+                        <Markdown
+                            inputModel={GlobalModel.aichatModel}
+                            text={message}
+                            style={{ maxHeight: opts.maxSize.height }}
+                        />
                     </div>
                 </div>
             </div>

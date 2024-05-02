@@ -224,7 +224,11 @@ class AIChat extends React.Component<{}, {}> {
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
                             <div className="chat-username">AI Assistant</div>
                         </div>
-                        <Markdown text={chatItem.assistantresponse.message} codeSelect />
+                        <Markdown
+                            inputModel={GlobalModel.inputModel}
+                            text={chatItem.assistantresponse.message}
+                            codeSelect
+                        />
                     </span>
                 );
             }
