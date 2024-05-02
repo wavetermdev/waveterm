@@ -1,9 +1,6 @@
 import React from "react";
 import cn from "classnames";
 import { ReactComponent as SpinnerIndicator } from "@/assets/icons/spinner-indicator.svg";
-import { boundMethod } from "autobind-decorator";
-import * as mobx from "mobx";
-import * as mobxReact from "mobx-react";
 import * as appconst from "@/app/appconst";
 
 import { ReactComponent as RotateIconSvg } from "@/assets/icons/line/rotate.svg";
@@ -15,77 +12,52 @@ interface PositionalIconProps {
     divRef?: React.RefObject<HTMLDivElement>;
 }
 
-export class FrontIcon extends React.Component<PositionalIconProps> {
-    render() {
-        return (
-            <div
-                ref={this.props.divRef}
-                className={cn("front-icon", "positional-icon", this.props.className)}
-                onClick={this.props.onClick}
-            >
-                <div className="positional-icon-inner">{this.props.children}</div>
-            </div>
-        );
-    }
-}
+export const FrontIcon: React.FC<PositionalIconProps> = (props) => {
+    return (
+        <div
+            ref={props.divRef}
+            className={cn("front-icon", "positional-icon", props.className)}
+            onClick={props.onClick}
+        >
+            <div className="positional-icon-inner">{props.children}</div>
+        </div>
+    );
+};
 
-export class CenteredIcon extends React.Component<PositionalIconProps> {
-    render() {
-        return (
-            <div
-                ref={this.props.divRef}
-                className={cn("centered-icon", "positional-icon", this.props.className)}
-                onClick={this.props.onClick}
-            >
-                <div className="positional-icon-inner">{this.props.children}</div>
-            </div>
-        );
-    }
-}
+export const CenteredIcon: React.FC<PositionalIconProps> = (props) => {
+    return (
+        <div
+            ref={props.divRef}
+            className={cn("centered-icon", "positional-icon", props.className)}
+            onClick={props.onClick}
+        >
+            <div className="positional-icon-inner">{props.children}</div>
+        </div>
+    );
+};
 
 interface ActionsIconProps {
     onClick: React.MouseEventHandler<HTMLDivElement>;
 }
 
-export class ActionsIcon extends React.Component<ActionsIconProps> {
-    render() {
-        return (
-            <CenteredIcon className="actions" onClick={this.props.onClick}>
-                <div className="icon hoverEffect fa-sharp fa-solid fa-1x fa-ellipsis-vertical"></div>
-            </CenteredIcon>
-        );
-    }
-}
+export const ActionsIcon: React.FC<ActionsIconProps> = (props) => {
+    return (
+        <CenteredIcon className="actions" onClick={props.onClick}>
+            <div className="icon hoverEffect fa-sharp fa-solid fa-1x fa-ellipsis-vertical"></div>
+        </CenteredIcon>
+    );
+};
 
-class SyncSpin extends React.Component<{
-    classRef?: React.RefObject<HTMLDivElement>;
+export const SyncSpin: React.FC<{
+    classRef?: React.RefObject<Element>;
     children?: React.ReactNode;
     shouldSync?: boolean;
-}> {
-    listenerAdded: boolean = false;
+}> = (props) => {
+    const { classRef, children, shouldSync } = props;
+    const [listenerAdded, setListenerAdded] = React.useState(false);
 
-    componentDidMount() {
-        this.syncSpinner();
-    }
-
-    componentDidUpdate() {
-        this.syncSpinner();
-    }
-
-    componentWillUnmount(): void {
-        const classRef = this.props.classRef;
-        if (classRef.current != null && this.listenerAdded) {
-            const elem = classRef.current;
-            const svgElem = elem.querySelector("svg");
-            if (svgElem != null) {
-                svgElem.removeEventListener("animationstart", this.handleAnimationStart);
-            }
-        }
-    }
-
-    @boundMethod
-    handleAnimationStart(e: AnimationEvent) {
-        const classRef = this.props.classRef;
+    const handleAnimationStart = (e: AnimationEvent) => {
+        const classRef = props.classRef;
         if (classRef.current == null) {
             return;
         }
@@ -98,10 +70,9 @@ class SyncSpin extends React.Component<{
             return;
         }
         animArr[0].startTime = 0;
-    }
+    };
 
-    syncSpinner() {
-        const { classRef, shouldSync } = this.props;
+    React.useEffect(() => {
         const shouldSyncVal = shouldSync ?? true;
         if (!shouldSyncVal || classRef.current == null) {
             return;
@@ -111,21 +82,24 @@ class SyncSpin extends React.Component<{
         if (svgElem == null) {
             return;
         }
-        if (!this.listenerAdded) {
-            svgElem.addEventListener("animationstart", this.handleAnimationStart);
-            this.listenerAdded = true;
+        if (!listenerAdded) {
+            svgElem.addEventListener("animationstart", handleAnimationStart);
+            setListenerAdded(true);
         }
         const animArr = svgElem.getAnimations();
         if (animArr == null || animArr.length == 0) {
             return;
         }
         animArr[0].startTime = 0;
-    }
-
-    render() {
-        return this.props.children;
-    }
-}
+        return () => {
+            if (listenerAdded) {
+                svgElem.removeEventListener("animationstart", handleAnimationStart);
+                setListenerAdded(false);
+            }
+        };
+    });
+    return children;
+};
 
 interface StatusIndicatorProps {
     /**
@@ -142,97 +116,79 @@ interface StatusIndicatorProps {
 /**
  * This component is used to show the status of a command. It will show a spinner around the status indicator if there are running commands. It will also delay showing the spinner for a short time to prevent flickering.
  */
-@mobxReact.observer
-export class StatusIndicator extends React.Component<StatusIndicatorProps> {
-    iconRef: React.RefObject<HTMLDivElement> = React.createRef();
-    spinnerVisible: mobx.IObservableValue<boolean> = mobx.observable.box(false);
-    timeout: NodeJS.Timeout;
+export const StatusIndicator: React.FC<StatusIndicatorProps> = (props) => {
+    const { level, className, runningCommands } = props;
+    const iconRef = React.useRef<HTMLDivElement>();
+    const [spinnerVisible, setSpinnerVisible] = React.useState(false);
+    const [timeoutState, setTimeoutState] = React.useState<NodeJS.Timeout>(undefined);
 
-    clearSpinnerTimeout() {
-        if (this.timeout) {
-            clearTimeout(this.timeout);
-            this.timeout = null;
+    const clearSpinnerTimeout = () => {
+        if (timeoutState) {
+            clearTimeout(timeoutState);
+            setTimeoutState(undefined);
         }
-        mobx.action(() => {
-            this.spinnerVisible.set(false);
-        })();
-    }
+        setSpinnerVisible(false);
+    };
 
     /**
      * This will apply a delay after there is a running command before showing the spinner. This prevents flickering for commands that return quickly.
      */
-    updateMountCallback() {
-        const runningCommands = this.props.runningCommands ?? false;
-        if (runningCommands && !this.timeout) {
-            this.timeout = setTimeout(
-                mobx.action(() => {
-                    this.spinnerVisible.set(true);
-                }),
-                100
+    React.useEffect(() => {
+        if (runningCommands && !timeoutState) {
+            console.log("show spinner");
+            setTimeoutState(
+                setTimeout(() => {
+                    setSpinnerVisible(true);
+                }, 100)
             );
         } else if (!runningCommands) {
-            this.clearSpinnerTimeout();
+            console.log("clear spinner");
+            clearSpinnerTimeout();
         }
-    }
+        return () => {
+            clearSpinnerTimeout();
+        };
+    }, [runningCommands]);
 
-    componentDidUpdate(): void {
-        this.updateMountCallback();
-    }
-
-    componentDidMount(): void {
-        this.updateMountCallback();
-    }
-
-    componentWillUnmount(): void {
-        this.clearSpinnerTimeout();
-    }
-
-    render() {
-        const { level, className, runningCommands } = this.props;
-        const spinnerVisible = this.spinnerVisible.get();
-        let statusIndicator = null;
-        if (level != appconst.StatusIndicatorLevel.None || spinnerVisible) {
-            let indicatorLevelClass = null;
-            switch (level) {
-                case appconst.StatusIndicatorLevel.Output:
-                    indicatorLevelClass = "output";
-                    break;
-                case appconst.StatusIndicatorLevel.Success:
-                    indicatorLevelClass = "success";
-                    break;
-                case appconst.StatusIndicatorLevel.Error:
-                    indicatorLevelClass = "error";
-                    break;
-            }
-
-            const spinnerVisibleClass = spinnerVisible ? "spinner-visible" : null;
-            statusIndicator = (
-                <CenteredIcon
-                    divRef={this.iconRef}
-                    className={cn(className, indicatorLevelClass, spinnerVisibleClass, "status-indicator")}
-                >
-                    <SpinnerIndicator className={spinnerVisible ? "spin" : null} />
-                </CenteredIcon>
-            );
+    let statusIndicator = null;
+    if (level != appconst.StatusIndicatorLevel.None || spinnerVisible) {
+        let indicatorLevelClass = null;
+        switch (level) {
+            case appconst.StatusIndicatorLevel.Output:
+                indicatorLevelClass = "output";
+                break;
+            case appconst.StatusIndicatorLevel.Success:
+                indicatorLevelClass = "success";
+                break;
+            case appconst.StatusIndicatorLevel.Error:
+                indicatorLevelClass = "error";
+                break;
         }
-        return (
-            <SyncSpin classRef={this.iconRef} shouldSync={runningCommands}>
-                {statusIndicator}
-            </SyncSpin>
+
+        const spinnerVisibleClass = spinnerVisible ? "spinner-visible" : null;
+        statusIndicator = (
+            <CenteredIcon
+                divRef={iconRef}
+                className={cn(className, indicatorLevelClass, spinnerVisibleClass, "status-indicator")}
+            >
+                <SpinnerIndicator className={spinnerVisible ? "spin" : null} />
+            </CenteredIcon>
         );
     }
-}
+    return (
+        <SyncSpin classRef={iconRef} shouldSync={runningCommands}>
+            {statusIndicator}
+        </SyncSpin>
+    );
+};
 
-export class RotateIcon extends React.Component<{
-    className?: string;
-    onClick?: React.MouseEventHandler<HTMLDivElement>;
-}> {
-    iconRef: React.RefObject<HTMLDivElement> = React.createRef();
-    render() {
-        return (
-            <SyncSpin classRef={this.iconRef}>
-                <RotateIconSvg className={this.props.className ?? ""} />
-            </SyncSpin>
-        );
-    }
-}
+export const RotateIcon: React.FC<{ className?: string; onClick?: React.MouseEventHandler<SVGSVGElement> }> = (
+    props
+) => {
+    const iconRef = React.useRef<SVGSVGElement>();
+    return (
+        <SyncSpin classRef={iconRef}>
+            <RotateIconSvg ref={iconRef} className={props.className ?? ""} onClick={props.onClick} />
+        </SyncSpin>
+    );
+};
