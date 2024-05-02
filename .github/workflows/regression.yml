@@ -43,8 +43,7 @@ jobs:
             exit
           prompt: |
             1. wait 10 seconds
-            1. click "Continue"
-            1. click "Create new tab"
+            1. click "Get Started"
             1. validate that overlapping text does not appear in the application
             1. focus the Wave input with the keyboard shorcut Command + I
             1. type 'ls' into the input
