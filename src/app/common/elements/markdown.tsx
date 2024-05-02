@@ -29,6 +29,8 @@ function CodeRenderer(props: any): any {
     return <code>{props.children}</code>;
 }
 
+const maxClickTime = 200;
+
 @mobxReact.observer
 class CodeBlockMarkdown extends React.Component<
     { children: React.ReactNode; codeSelectSelectedIndex?: number; uuid: string },
@@ -36,6 +38,7 @@ class CodeBlockMarkdown extends React.Component<
 > {
     blockIndex: number;
     blockRef: React.RefObject<HTMLPreElement>;
+    mouseDownTime: number;
 
     constructor(props) {
         super(props);
@@ -49,12 +52,23 @@ class CodeBlockMarkdown extends React.Component<
         clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
             inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
         };
+        let mouseDown = (e: React.MouseEvent<HTMLElement>) => {
+            this.mouseDownTime = Date.now();
+        };
+        let mouseUp = (e: React.MouseEvent<HTMLElement>) => {
+            const mouseUpTime = Date.now();
+            const clickTime = mouseUpTime - this.mouseDownTime;
+            if (clickTime < maxClickTime) {
+                clickHandler(e, this.blockIndex);
+            }
+        };
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (
             <pre
                 ref={this.blockRef}
                 className={cn({ selected: selected })}
-                onClick={(event) => clickHandler(event, this.blockIndex)}
+                onMouseUp={(event) => mouseUp(event)}
+                onMouseDown={(event) => mouseDown(event)}
             >
                 {this.props.children}
             </pre>
