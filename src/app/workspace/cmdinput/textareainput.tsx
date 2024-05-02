@@ -617,8 +617,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-
-        const renderCmdInputKeybindings = inputModel.shouldRenderAuxViewKeybindings(null);
+        const renderCmdInputKeybindings =
+            inputModel.shouldRenderAuxViewKeybindings(null) ||
+            inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_Info);
         const renderHistoryKeybindings = inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_History);
         return (
             <div
