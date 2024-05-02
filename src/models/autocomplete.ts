@@ -27,7 +27,6 @@ export class AutocompleteModel {
     @mobx.observable suggestions: Fig.Suggestion[] = null;
     @mobx.observable primarySuggestionIndex: number = 0;
     charsToDrop: number = 0;
-    @mobx.observable historyLoaded: boolean = false;
     @mobx.observable loggingEnabled: boolean;
 
     constructor(globalModel: Model) {
