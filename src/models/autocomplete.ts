@@ -204,7 +204,7 @@ export class AutocompleteModel {
      * @param index the index of the suggestion to apply
      */
     applySuggestion(index: number): void {
-        if (!this.isEnabled()) {
+        if (!this.isEnabled) {
             return;
         }
         let suggestionCompletion = this.getSuggestionCompletion(index);
