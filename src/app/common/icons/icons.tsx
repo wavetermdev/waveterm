@@ -1,5 +1,5 @@
 import React from "react";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { ReactComponent as SpinnerIndicator } from "@/assets/icons/spinner-indicator.svg";
 import { boundMethod } from "autobind-decorator";
 import * as mobx from "mobx";
@@ -20,7 +20,7 @@ export class FrontIcon extends React.Component<PositionalIconProps> {
         return (
             <div
                 ref={this.props.divRef}
-                className={cn("front-icon", "positional-icon", this.props.className)}
+                className={clsx("front-icon", "positional-icon", this.props.className)}
                 onClick={this.props.onClick}
             >
                 <div className="positional-icon-inner">{this.props.children}</div>
@@ -34,7 +34,7 @@ export class CenteredIcon extends React.Component<PositionalIconProps> {
         return (
             <div
                 ref={this.props.divRef}
-                className={cn("centered-icon", "positional-icon", this.props.className)}
+                className={clsx("centered-icon", "positional-icon", this.props.className)}
                 onClick={this.props.onClick}
             >
                 <div className="positional-icon-inner">{this.props.children}</div>
@@ -209,7 +209,7 @@ export class StatusIndicator extends React.Component<StatusIndicatorProps> {
             statusIndicator = (
                 <CenteredIcon
                     divRef={this.iconRef}
-                    className={cn(className, indicatorLevelClass, spinnerVisibleClass, "status-indicator")}
+                    className={clsx(className, indicatorLevelClass, spinnerVisibleClass, "status-indicator")}
                 >
                     <SpinnerIndicator className={spinnerVisible ? "spin" : null} />
                 </CenteredIcon>

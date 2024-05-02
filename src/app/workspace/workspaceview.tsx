@@ -4,7 +4,7 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
-import cn from "classnames";
+import { clsx } from "clsx";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { If } from "tsx-control-statements/components";
@@ -234,7 +234,7 @@ class WorkspaceView extends React.Component<{}, {}> {
         return (
             <div
                 ref={this.sessionRef}
-                className={cn("mainview", "session-view", { "is-hidden": isHidden })}
+                className={clsx("mainview", "session-view", { "is-hidden": isHidden })}
                 id={sessionId}
                 data-sessionid={sessionId}
                 style={{
@@ -246,7 +246,7 @@ class WorkspaceView extends React.Component<{}, {}> {
                 </If>
                 <ScreenTabs key={"tabs-" + sessionId} session={session} />
                 <If condition={activeScreen != null}>
-                    <div key="pulldown" className={cn("tab-settings-pulldown", { closed: !showTabSettings })}>
+                    <div key="pulldown" className={clsx("tab-settings-pulldown", { closed: !showTabSettings })}>
                         <Button className="close-button secondary ghost" onClick={this.toggleTabSettings}>
                             <i className="fa-solid fa-sharp fa-xmark-large" />
                         </Button>

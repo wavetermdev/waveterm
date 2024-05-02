@@ -4,7 +4,7 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { If } from "tsx-control-statements/components";
 import ReactDOM from "react-dom";
 import { v4 as uuidv4 } from "uuid";
@@ -239,11 +239,11 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
 
         const dropdownMenu = isOpen
             ? ReactDOM.createPortal(
-                  <div className={cn("wave-dropdown-menu")} ref={this.menuRef} style={this.calculatePosition()}>
+                  <div className={clsx("wave-dropdown-menu")} ref={this.menuRef} style={this.calculatePosition()}>
                       {options.map((option, index) => (
                           <div
                               key={option.value}
-                              className={cn("wave-dropdown-item unselectable", {
+                              className={clsx("wave-dropdown-item unselectable", {
                                   "wave-dropdown-item-highlighted": index === highlightedIndex,
                               })}
                               onClick={(e) => this.handleSelect(option, e)}
@@ -265,7 +265,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
         }
         return (
             <div
-                className={cn("wave-dropdown", className, {
+                className={clsx("wave-dropdown", className, {
                     "wave-dropdown-error": isError,
                     "no-label": !label,
                 })}
@@ -279,7 +279,7 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <If condition={label}>
                     <div
-                        className={cn("wave-dropdown-label unselectable", {
+                        className={clsx("wave-dropdown-label unselectable", {
                             float: shouldLabelFloat,
                             "offset-left": decoration?.startDecoration,
                         })}
@@ -288,14 +288,14 @@ class Dropdown extends React.Component<DropdownProps, DropdownState> {
                     </div>
                 </If>
                 <div
-                    className={cn("wave-dropdown-display unselectable truncate", {
+                    className={clsx("wave-dropdown-display unselectable truncate", {
                         "offset-left": decoration?.startDecoration,
                     })}
                     style={selectedOptionLabelStyle}
                 >
                     {selectedOptionLabel}
                 </div>
-                <div className={cn("wave-dropdown-arrow", { "wave-dropdown-arrow-rotate": isOpen })}>
+                <div className={clsx("wave-dropdown-arrow", { "wave-dropdown-arrow-rotate": isOpen })}>
                     <i className="fa-sharp fa-solid fa-chevron-down"></i>
                 </div>
                 {dropdownMenu}

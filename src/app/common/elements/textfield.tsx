@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { If } from "tsx-control-statements/components";
 
 import "./textfield.less";
@@ -140,7 +140,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
 
         return (
             <div
-                className={cn("wave-textfield", className, {
+                className={clsx("wave-textfield", className, {
                     focused: focused,
                     error: error,
                     disabled: disabled,
@@ -154,7 +154,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                 <div className="wave-textfield-inner">
                     <If condition={label}>
                         <label
-                            className={cn("wave-textfield-inner-label", {
+                            className={clsx("wave-textfield-inner-label", {
                                 float: this.state.hasContent || this.state.focused || placeholder,
                                 "offset-left": decoration?.startDecoration,
                             })}
@@ -164,7 +164,7 @@ class TextField extends React.Component<TextFieldProps, TextFieldState> {
                         </label>
                     </If>
                     <input
-                        className={cn("wave-textfield-inner-input", "wave-input", {
+                        className={clsx("wave-textfield-inner-input", "wave-input", {
                             "offset-left": decoration?.startDecoration,
                         })}
                         ref={this.inputRef}

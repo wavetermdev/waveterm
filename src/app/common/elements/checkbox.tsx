@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobx from "mobx";
-import cn from "classnames";
+import { clsx } from "clsx";
 
 import "./checkbox.less";
 
@@ -49,7 +49,7 @@ class Checkbox extends React.Component<
         const checkboxId = id || this.generatedId;
 
         return (
-            <div className={cn("checkbox", className)}>
+            <div className={clsx("checkbox", className)}>
                 <input
                     type="checkbox"
                     id={checkboxId}

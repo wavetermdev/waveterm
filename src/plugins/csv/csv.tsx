@@ -15,7 +15,7 @@ import {
 import { useTableNav } from "@table-nav/react";
 import SortUpIcon from "./img/sort-up-solid.svg";
 import SortDownIcon from "./img/sort-down-solid.svg";
-import cn from "classnames";
+import { clsx } from "clsx";
 
 import "./csv.less";
 
@@ -190,7 +190,7 @@ const CSVRenderer: FC<Props> = (props: Props) => {
 
     return (
         <div
-            className={cn("csv-renderer", { show: tableLoaded })}
+            className={clsx("csv-renderer", { show: tableLoaded })}
             style={{ height: tableLoaded ? "auto" : savedHeight }}
         >
             <table className="probe">

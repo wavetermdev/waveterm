@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { debounce } from "throttle-debounce";
 import * as util from "@/util/util";
 import { GlobalModel } from "@/models";
-import cn from "classnames";
+import { clsx } from "clsx";
 
 class SimpleBlobRendererModel {
     context: RendererContext;
@@ -247,7 +247,7 @@ class SimpleBlobRenderer extends React.Component<
             return (
                 <div
                     ref={this.wrapperDivRef}
-                    className={cn("renderer-loading", { "zero-height": height == 0 })}
+                    className={clsx("renderer-loading", { "zero-height": height == 0 })}
                     style={{ minHeight: height, fontSize: model.opts.termFontSize }}
                 >
                     loading content <i className="fa fa-ellipsis fa-fade" />
@@ -260,7 +260,7 @@ class SimpleBlobRenderer extends React.Component<
         }
         let { festate, cmdstr, exitcode } = this.props.initParams.rawCmd;
         return (
-            <div ref={this.wrapperDivRef} className={cn("sr-wrapper", { "zero-height": model.savedHeight == 0 })}>
+            <div ref={this.wrapperDivRef} className={clsx("sr-wrapper", { "zero-height": model.savedHeight == 0 })}>
                 <Comp
                     cwd={festate.cwd}
                     cmdstr={cmdstr}
