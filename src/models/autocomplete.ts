@@ -12,7 +12,11 @@ function getEndTokenLength(line: string): number {
     if (!line) {
         return 0;
     }
-    return line.length - line.lastIndexOf(" ") - 1;
+    const lastSpaceIndex = line.lastIndexOf(" ");
+    if (lastSpaceIndex < line.length) {
+        return line.length - line.lastIndexOf(" ") - 1;
+    }
+    return line.length;
 }
 
 /**
@@ -20,8 +24,8 @@ function getEndTokenLength(line: string): number {
  */
 export class AutocompleteModel {
     globalModel: Model;
-    suggestions: OV<Fig.Suggestion[]> = mobx.observable.box(null);
-    primarySuggestionIndex: OV<number> = mobx.observable.box(0);
+    @mobx.observable suggestions: Fig.Suggestion[] = null;
+    @mobx.observable primarySuggestionIndex: number = 0;
     charsToDrop: number = 0;
     @mobx.observable historyLoaded: boolean = false;
     @mobx.observable loggingEnabled: boolean;
@@ -56,7 +60,7 @@ export class AutocompleteModel {
      */
     loadSuggestions = mobx.flow(function* (this: AutocompleteModel) {
         if (!this.isEnabled()) {
-            this.suggestions.set(null);
+            this.suggestions = null;
             return;
         }
         log.debug("get suggestions");
@@ -67,7 +71,7 @@ export class AutocompleteModel {
                 festate.cwd,
                 festate.shell as Shell
             );
-            this.suggestions.set(suggestions);
+            this.suggestions = suggestions;
         } catch (error) {
             console.error("error getting suggestions: ", error);
         }
@@ -82,7 +86,7 @@ export class AutocompleteModel {
             return null;
         }
 
-        return this.suggestions.get();
+        return this.suggestions;
     }
 
     /**
@@ -93,8 +97,8 @@ export class AutocompleteModel {
             return;
         }
         mobx.action(() => {
-            this.suggestions.set(null);
-            this.primarySuggestionIndex.set(0);
+            this.suggestions = null;
+            this.primarySuggestionIndex = 0;
         })();
     }
 
@@ -103,7 +107,7 @@ export class AutocompleteModel {
      * @returns the index of the primary suggestion
      */
     getPrimarySuggestionIndex(): number {
-        return this.primarySuggestionIndex.get();
+        return this.primarySuggestionIndex;
     }
 
     /**
@@ -115,7 +119,7 @@ export class AutocompleteModel {
             return;
         }
         mobx.action(() => {
-            this.primarySuggestionIndex.set(index);
+            this.primarySuggestionIndex = index;
         })();
     }
 

@@ -73,9 +73,8 @@ class InputModel {
     lastCurLine: string = "";
 
     constructor(globalModel: Model) {
-        mobx.makeAutoObservable(this);
-        this.globalModel = globalModel;
         mobx.makeObservable(this);
+        this.globalModel = globalModel;
         mobx.action(() => {
             this.codeSelectSelectedIndex.set(-1);
             this.codeSelectBlockRefArray = [];
@@ -792,7 +791,7 @@ class InputModel {
                 return;
             }
             if (runGetSuggestions) {
-                this.globalModel.autocompleteModel.loadSuggestions(); 
+                this.globalModel.autocompleteModel.loadSuggestions();
             }
             this.modHistory[hidx] = val;
         })();
