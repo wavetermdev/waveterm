@@ -49,7 +49,7 @@ export const ActionsIcon: React.FC<ActionsIconProps> = (props) => {
 };
 
 export const SyncSpin: React.FC<{
-    classRef?: React.RefObject<HTMLDivElement>;
+    classRef?: React.RefObject<Element>;
     children?: React.ReactNode;
     shouldSync?: boolean;
 }> = (props) => {
@@ -120,11 +120,11 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = (props) => {
     const { level, className, runningCommands } = props;
     const iconRef = React.useRef<HTMLDivElement>();
     const [spinnerVisible, setSpinnerVisible] = React.useState(false);
-    const [timeout, setTimeoutState] = React.useState<NodeJS.Timeout>(undefined);
+    const [timeoutState, setTimeoutState] = React.useState<NodeJS.Timeout>(undefined);
 
     const clearSpinnerTimeout = () => {
-        if (timeout) {
-            clearTimeout(timeout);
+        if (timeoutState) {
+            clearTimeout(timeoutState);
             setTimeoutState(undefined);
         }
         setSpinnerVisible(false);
@@ -134,7 +134,7 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = (props) => {
      * This will apply a delay after there is a running command before showing the spinner. This prevents flickering for commands that return quickly.
      */
     React.useEffect(() => {
-        if (runningCommands && !timeout) {
+        if (runningCommands && !timeoutState) {
             console.log("show spinner");
             setTimeoutState(
                 setTimeout(() => {
@@ -182,13 +182,13 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = (props) => {
     );
 };
 
-export const RotateIcon: React.FC<{ className?: string; onClick?: React.MouseEventHandler<HTMLDivElement> }> = (
+export const RotateIcon: React.FC<{ className?: string; onClick?: React.MouseEventHandler<SVGSVGElement> }> = (
     props
 ) => {
-    const iconRef = React.useRef<HTMLDivElement>();
+    const iconRef = React.useRef<SVGSVGElement>();
     return (
         <SyncSpin classRef={iconRef}>
-            <RotateIconSvg className={props.className ?? ""} />
+            <RotateIconSvg ref={iconRef} className={props.className ?? ""} onClick={props.onClick} />
         </SyncSpin>
     );
 };
