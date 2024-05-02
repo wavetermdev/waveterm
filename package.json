@@ -6,7 +6,7 @@
     },
     "productName": "Wave",
     "description": "An Open-Source, AI-Native, Terminal Built for Seamless Workflows",
-    "version": "0.7.4",
+    "version": "0.7.5",
     "main": "dist/emain.js",
     "license": "Apache-2.0",
     "repository": {
