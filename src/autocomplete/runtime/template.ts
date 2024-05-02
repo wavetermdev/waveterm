@@ -43,7 +43,7 @@ export const getFileCompletionSuggestions = async (
     }
 };
 
-const historyTemplate = (cwd: String): Fig.TemplateSuggestion[] => {
+const historyTemplate = (): Fig.TemplateSuggestion[] => {
     const inputModel = GlobalModel.inputModel;
     const cmdLine = inputModel.curLine;
     inputModel.loadHistory(false, 0, "session");
@@ -96,7 +96,7 @@ export const runTemplates = async (
                         case "folders":
                             return await getFileCompletionSuggestions(cwd, "folders");
                         case "history":
-                            return historyTemplate(cwd);
+                            return historyTemplate();
                         case "help":
                             return helpTemplate();
                     }
