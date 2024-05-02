@@ -22,3 +22,12 @@ test/
 .vscode/
 make/
 waveterm-builds.zip
+
+# Yarn Modern
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
