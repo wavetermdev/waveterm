@@ -106,5 +106,6 @@
     },
     "scripts": {
         "postinstall": "electron-builder install-app-deps"
-    }
+    },
+    "packageManager": "yarn@4.1.1"
 }

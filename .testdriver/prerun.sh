@@ -3,7 +3,8 @@ cd ~/actions-runner/_work/testdriver/testdriver/
 brew install go
 brew tap scripthaus-dev/scripthaus
 brew install scripthaus
-npm install -g yarn
+corepack enable
+yarn install
 scripthaus run build-backend
 echo "Yarn"
 yarn
