@@ -49,7 +49,8 @@ export class AutocompleteModel {
      * Returns whether the autocomplete feature is enabled.
      * @returns whether the autocomplete feature is enabled
      */
-    isEnabled(): boolean {
+    @mobx.computed
+    get isEnabled(): boolean {
         const clientData: ClientDataType = this.globalModel.clientData.get();
         return clientData?.clientopts.autocompleteenabled ?? false;
     }
@@ -58,7 +59,7 @@ export class AutocompleteModel {
      * Lazily loads suggestions for the current input line.
      */
     loadSuggestions = mobx.flow(function* (this: AutocompleteModel) {
-        if (!this.isEnabled()) {
+        if (!this.isEnabled) {
             this.suggestions = null;
             return;
         }
@@ -81,7 +82,7 @@ export class AutocompleteModel {
      * @returns the current suggestions
      */
     getSuggestions(): Fig.Suggestion[] {
-        if (!this.isEnabled()) {
+        if (!this.isEnabled) {
             return null;
         }
 
@@ -92,7 +93,7 @@ export class AutocompleteModel {
      * Clears the current suggestions.
      */
     clearSuggestions(): void {
-        if (!this.isEnabled()) {
+        if (!this.isEnabled) {
             return;
         }
         mobx.action(() => {
@@ -114,7 +115,7 @@ export class AutocompleteModel {
      * @param index the index of the primary suggestion
      */
     setPrimarySuggestionIndex(index: number): void {
-        if (!this.isEnabled()) {
+        if (!this.isEnabled) {
             return;
         }
         mobx.action(() => {
@@ -186,7 +187,7 @@ export class AutocompleteModel {
      * @see getPrimarySuggestionIndex
      */
     getPrimarySuggestionCompletion(): string {
-        if (!this.isEnabled()) {
+        if (!this.isEnabled) {
             return null;
         }
         const suggestionIndex = this.getPrimarySuggestionIndex();
