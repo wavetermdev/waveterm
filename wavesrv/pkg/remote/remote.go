@@ -1930,10 +1930,6 @@ func RunCommand(ctx context.Context, rcOpts RunCommandOpts, runPacket *packet.Ru
 		return nil, nil, fmt.Errorf("runPacket.StatePtr should not be set, it is set in RunCommand")
 	}
 
-	if rcOpts.EphemeralOpts != nil {
-		log.Printf("[info] running ephemeral command ck: %s\n", runPacket.CK)
-	}
-
 	// pending state command logic
 	// if we are currently running a command that can change the state, we need to wait for it to finish
 	if rcOpts.StatePtr == nil {
@@ -2186,9 +2182,6 @@ func (msh *MShellProc) HandleFeInput(inputPk *scpacket.FeInputPacketType) error 
 func (msh *MShellProc) AddRunningCmd(rct *RunCmdType) {
 	msh.Lock.Lock()
 	defer msh.Lock.Unlock()
-	if rct.EphemeralOpts != nil {
-		log.Printf("[info] adding ephemeral running command: %s\n", rct.CK)
-	}
 	msh.RunningCmds[rct.RunPacket.CK] = rct
 }
 
@@ -2596,7 +2589,6 @@ func (msh *MShellProc) handleDataPacket(rct *RunCmdType, dataPk *packet.DataPack
 		return
 	}
 	if rct.EphemeralOpts != nil {
-		log.Printf("ephemeral data packet: %s\n", dataPk.CK)
 		// Write to the response writer if it's set
 		if len(realData) > 0 && rct.EphemeralOpts.ExpectsResponse {
 			switch dataPk.FdNum {
