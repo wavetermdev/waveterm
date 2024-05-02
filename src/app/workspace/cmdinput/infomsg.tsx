@@ -64,7 +64,11 @@ class InfoMsg extends React.Component<{}, {}> {
         }
 
         return (
-            <AuxiliaryCmdView title={titleStr} className="cmd-input-info">
+            <AuxiliaryCmdView
+                title={titleStr}
+                className="cmd-input-info"
+                onClose={() => GlobalModel.inputModel.closeAuxView()}
+            >
                 <If condition={infoMsg?.infomsg}>
                     <div key="infomsg" className="info-msg">
                         <If condition={infoMsg.infomsghtml}>
