@@ -1,6 +1,6 @@
 import * as React from "react";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 
 import "./button.less";
 
@@ -35,7 +35,7 @@ class Button extends React.Component<ButtonProps> {
 
         return (
             <button
-                className={cn("wave-button", { disabled }, { "term-inline": termInline }, className)}
+                className={clsx("wave-button", { disabled }, { "term-inline": termInline }, className)}
                 onClick={this.handleClick}
                 disabled={disabled}
                 style={style}

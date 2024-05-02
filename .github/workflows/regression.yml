@@ -1,65 +1,66 @@
 name: TestDriver.ai Regression Testing
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  schedule:
-    - cron: 0 21 * * *
-  workflow_dispatch: null
-  
+    push:
+        branches:
+            - main
+    pull_request:
+        branches:
+            - main
+    schedule:
+        - cron: 0 21 * * *
+    workflow_dispatch: null
+
 permissions:
-  contents: read  # To allow the action to read repository contents
-  pull-requests: write  # To allow the action to create/update pull request comments
+    contents: read # To allow the action to read repository contents
+    pull-requests: write # To allow the action to create/update pull request comments
 
 jobs:
-  test:
-    name: TestDriver
-    runs-on: ubuntu-latest
-    steps:
-      - uses: dashcamio/testdriver@main
-        id: testdriver
-        with:
-          version: v2.10.2
-          prerun: |
-            rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt
-            cd ~/actions-runner/_work/testdriver/testdriver/
-            brew install go
-            brew tap scripthaus-dev/scripthaus
-            brew install scripthaus
-            npm install -g yarn
-            scripthaus run build-backend
-            echo "Yarn"
-            yarn
-            echo "Rebuild"
-            scripthaus run electron-rebuild
-            echo "Webpack"
-            scripthaus run webpack-build
-            echo "Starting Electron"
-            scripthaus run electron 1>/dev/null 2>&1 &
-            echo "Electron Done"
-            exit
-          prompt: |
-            1. wait 10 seconds
-            1. click "Continue"
-            1. click "Create new tab"
-            1. validate that overlapping text does not appear in the application
-            1. focus the Wave input with the keyboard shorcut Command + I
-            1. type 'ls' into the input
-            1. press return
-            1. validate Wave shows the result of 'ls'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: peter-evans/create-or-update-comment@v4
-        if: ${{always()}}
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            ## TestDriver Summary
-            ${{ steps.testdriver.outputs.markdown }}
-            ${{ steps.testdriver.outputs.summary }}
-          reactions: |
-            +1
-            -1
+    test:
+        name: TestDriver
+        runs-on: ubuntu-latest
+        steps:
+            - uses: dashcamio/testdriver@main
+              id: testdriver
+              with:
+                  version: v2.10.2
+                  prerun: |
+                      rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt
+                      cd ~/actions-runner/_work/testdriver/testdriver/
+                      brew install go
+                      brew tap scripthaus-dev/scripthaus
+                      brew install corepack
+                      brew install scripthaus
+                      corepack enable
+                      yarn install
+                      scripthaus run build-backend
+                      echo "Yarn"
+                      yarn
+                      echo "Rebuild"
+                      scripthaus run electron-rebuild
+                      echo "Webpack"
+                      scripthaus run webpack-build
+                      echo "Starting Electron"
+                      scripthaus run electron 1>/dev/null 2>&1 &
+                      echo "Electron Done"
+                      exit
+                  prompt: |
+                      1. wait 10 seconds
+                      1. click "Get Started"
+                      1. validate that overlapping text does not appear in the application
+                      1. focus the Wave input with the keyboard shorcut Command + I
+                      1. type 'ls' into the input
+                      1. press return
+                      1. validate Wave shows the result of 'ls'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            - uses: peter-evans/create-or-update-comment@v4
+              if: ${{always()}}
+              with:
+                  issue-number: ${{ github.event.pull_request.number }}
+                  body: |
+                      ## TestDriver Summary
+                      ${{ steps.testdriver.outputs.markdown }}
+                      ${{ steps.testdriver.outputs.summary }}
+                  reactions: |
+                      +1
+                      -1

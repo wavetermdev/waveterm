@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel } from "@/models";
 
 import "./mainview.less";
@@ -24,7 +24,7 @@ class MainView extends React.Component<{
         const maxWidthSubtractor = sidebarModel.getCollapsed() ? 0 : sidebarModel.getWidth();
         return (
             <div
-                className={cn("mainview", this.props.className)}
+                className={clsx("mainview", this.props.className)}
                 style={{ maxWidth: `calc(100vw - ${maxWidthSubtractor}px)` }}
             >
                 <div className="header-container">

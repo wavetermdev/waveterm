@@ -751,10 +751,10 @@ func UpdateCmdForRestart(ctx context.Context, ck base.CommandKey, ts int64, cmdP
 	})
 }
 
-func UpdateCmdStartInfo(ctx context.Context, ck base.CommandKey, cmdPid int, mshellPid int) error {
+func UpdateCmdStartInfo(ctx context.Context, ck base.CommandKey, cmdPid int, waveshellPid int) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE cmd SET cmdpid = ?, remotepid = ? WHERE screenid = ? AND lineid = ?`
-		tx.Exec(query, cmdPid, mshellPid, ck.GetGroupId(), lineIdFromCK(ck))
+		tx.Exec(query, cmdPid, waveshellPid, ck.GetGroupId(), lineIdFromCK(ck))
 		return nil
 	})
 }

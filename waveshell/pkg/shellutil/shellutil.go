@@ -15,13 +15,13 @@ const DefaultTermType = "xterm-256color"
 const DefaultTermRows = 24
 const DefaultTermCols = 80
 
-func MShellEnvVars(termType string) map[string]string {
+func WaveshellEnvVars(termType string) map[string]string {
 	rtn := make(map[string]string)
 	if termType != "" {
 		rtn["TERM"] = termType
 	}
 	rtn["WAVESHELL"], _ = os.Executable()
-	rtn["WAVESHELL_VERSION"] = base.MShellVersion
+	rtn["WAVESHELL_VERSION"] = base.WaveshellVersion
 	return rtn
 }
 
