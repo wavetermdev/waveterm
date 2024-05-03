@@ -14,7 +14,7 @@ import * as waveutil from "../util/util";
 import { sprintf } from "sprintf-js";
 import { handleJsonFetchResponse, fireAndForget } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
-import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
+import { adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
@@ -22,7 +22,6 @@ const WaveDevVarName = "WAVETERM_DEV";
 const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
-const startTs = Date.now();
 
 const isDev = process.env[WaveDevVarName] != null;
 const waveHome = getWaveHomeDir();
@@ -754,7 +753,7 @@ async function createMainWindowWrap() {
         console.log("error getting wavesrv clientdata", e.toString());
     }
     MainWindow = createMainWindow(clientData);
-    if (clientData && clientData.winsize.fullscreen) {
+    if (clientData?.winsize.fullscreen) {
         MainWindow.setFullScreen(true);
     }
     configureAutoUpdaterStartup(clientData);
@@ -774,7 +773,7 @@ function logActiveState() {
             console.log("error logging active state", err);
         });
     // for next iteration
-    wasInFg = MainWindow != null && MainWindow.isFocused();
+    wasInFg = MainWindow?.isFocused();
     wasActive = false;
 }
 
@@ -814,10 +813,12 @@ function reregisterGlobalShortcut(shortcut: string) {
 
 // ====== AUTO-UPDATER ====== //
 let autoUpdateLock = false;
+let autoUpdateEnabled = false;
 let autoUpdateInterval: NodeJS.Timeout | null = null;
 let availableUpdateReleaseName: string | null = null;
 let availableUpdateReleaseNotes: string | null = null;
 let appUpdateStatus = "unavailable";
+let lastUpdateCheck: Date = null;
 
 /**
  * Sets the app update status and sends it to the main window
@@ -827,6 +828,20 @@ function setAppUpdateStatus(status: string) {
     appUpdateStatus = status;
     if (MainWindow != null) {
         MainWindow.webContents.send("app-update-status", appUpdateStatus);
+    }
+}
+
+/**
+ * Checks if an hour has passed since the last update check, and if so, checks for updates using the `autoUpdater` object
+ */
+function checkForUpdates() {
+    if (!autoUpdateEnabled) {
+        return;
+    }
+    const now = new Date();
+    if (!lastUpdateCheck || Math.abs(now.getTime() - lastUpdateCheck.getTime()) > 3600000) {
+        fireAndForget(() => autoUpdater.checkForUpdates());
+        lastUpdateCheck = now;
     }
 }
 
@@ -873,14 +888,16 @@ function initUpdater(): NodeJS.Timeout {
             body: "A new version of Wave Terminal is ready to install.",
         });
         updateNotification.on("click", () => {
-            fireAndForget(installAppUpdate);
+            fireAndForget(() => installAppUpdate());
         });
         updateNotification.show();
     });
 
     // check for updates right away and keep checking later
-    autoUpdater.checkForUpdates();
-    return setInterval(() => fireAndForget(autoUpdater.checkForUpdates), 3600000); // 1 hour in ms
+    checkForUpdates();
+    return setInterval(() => {
+        checkForUpdates();
+    }, 600000); // intervals are unreliable when an app is suspended so we will check every 10 mins if an hour has passed.
 }
 
 /**
@@ -900,7 +917,7 @@ async function installAppUpdate() {
     });
 }
 
-electron.ipcMain.on("install-app-update", () => fireAndForget(installAppUpdate));
+electron.ipcMain.on("install-app-update", () => fireAndForget(() => installAppUpdate()));
 electron.ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = appUpdateStatus;
 });
@@ -931,15 +948,22 @@ function configureAutoUpdater(enabled: boolean) {
         console.log("auto-update configuration already in progress, skipping");
         return;
     }
+
+    autoUpdateEnabled = enabled;
     autoUpdateLock = true;
 
-    if (enabled && autoUpdateInterval == null) {
+    if (autoUpdateEnabled && autoUpdateInterval == null) {
+        lastUpdateCheck = null;
         try {
             console.log("configuring auto updater");
             autoUpdateInterval = initUpdater();
         } catch (e) {
             console.log("error configuring auto updater", e.toString());
         }
+    } else if (!autoUpdateEnabled && autoUpdateInterval != null) {
+        console.log("disabling auto updater");
+        clearInterval(autoUpdateInterval);
+        autoUpdateInterval = null;
     }
     autoUpdateLock = false;
 }
@@ -967,6 +991,7 @@ function configureAutoUpdater(enabled: boolean) {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
             createMainWindowWrap().then();
         }
+        checkForUpdates();
     });
 })();
 
