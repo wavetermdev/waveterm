@@ -377,7 +377,7 @@ function createWindow(id: string, clientData: ClientDataType | null): Electron.B
         wasActive = true;
     });
     win.on("close", () => {
-        windows[id] = null;
+        delete windows[id];
     });
     win.webContents.on("zoom-changed", (e) => {
         win.webContents.send("zoom-changed");
