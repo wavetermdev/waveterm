@@ -16,7 +16,6 @@ import { handleJsonFetchResponse, fireAndForget } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
 import { adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
-import { get } from "http";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
