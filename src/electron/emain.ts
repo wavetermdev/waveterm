@@ -34,7 +34,9 @@ let wasActive = true;
 let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
 let initialClientData: ClientDataType = null;
-let MainWindow: Electron.BrowserWindow | null = null;
+let windows: Windows = {};
+
+interface Windows extends Record<string, Electron.BrowserWindow> {}
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -200,14 +202,15 @@ function readAuthKey(): string {
 }
 const reloadAcceleratorKey = unamePlatform == "darwin" ? "Option+R" : "Super+R";
 const cmdOrAlt = process.platform === "darwin" ? "Cmd" : "Alt";
+
 let viewSubMenu: Electron.MenuItemConstructorOptions[] = [];
 viewSubMenu.push({ role: "reload", accelerator: reloadAcceleratorKey });
 viewSubMenu.push({ role: "toggleDevTools" });
 if (isDev) {
     viewSubMenu.push({
         label: "Toggle Dev UI",
-        click: () => {
-            MainWindow?.webContents.send("toggle-devui");
+        click: (_, window) => {
+            window?.webContents.send("toggle-devui");
         },
     });
 }
@@ -215,36 +218,33 @@ viewSubMenu.push({ type: "separator" });
 viewSubMenu.push({
     label: "Actual Size",
     accelerator: cmdOrAlt + "+0",
-    click: () => {
-        if (MainWindow == null) {
-            return;
-        }
-        MainWindow.webContents.setZoomFactor(1);
-        MainWindow.webContents.send("zoom-changed");
+    click: (_, window) => {
+        window?.webContents.setZoomFactor(1);
+        window?.webContents.send("zoom-changed");
     },
 });
 viewSubMenu.push({
     label: "Zoom In",
     accelerator: cmdOrAlt + "+Plus",
-    click: () => {
-        if (MainWindow == null) {
+    click: (_, window) => {
+        if (window == null) {
             return;
         }
-        const zoomFactor = MainWindow.webContents.getZoomFactor();
-        MainWindow.webContents.setZoomFactor(zoomFactor * 1.1);
-        MainWindow.webContents.send("zoom-changed");
+        const zoomFactor = window.webContents.getZoomFactor();
+        window.webContents.setZoomFactor(zoomFactor * 1.1);
+        window.webContents.send("zoom-changed");
     },
 });
 viewSubMenu.push({
     label: "Zoom Out",
     accelerator: cmdOrAlt + "+-",
-    click: () => {
-        if (MainWindow == null) {
+    click: (_, window) => {
+        if (window == null) {
             return;
         }
-        const zoomFactor = MainWindow.webContents.getZoomFactor();
-        MainWindow.webContents.setZoomFactor(zoomFactor / 1.1);
-        MainWindow.webContents.send("zoom-changed");
+        const zoomFactor = window.webContents.getZoomFactor();
+        window.webContents.setZoomFactor(zoomFactor / 1.1);
+        window.webContents.send("zoom-changed");
     },
 });
 viewSubMenu.push({ type: "separator" });
@@ -255,8 +255,8 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
         submenu: [
             {
                 label: "About Wave Terminal",
-                click: () => {
-                    MainWindow?.webContents.send("menu-item-about");
+                click: (_, window) => {
+                    window?.webContents.send("menu-item-about");
                 },
             },
             { type: "separator" },
@@ -325,7 +325,10 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWindow {
+function createWindow(id: string, clientData: ClientDataType | null): Electron.BrowserWindow {
+    if (windows[id]) {
+        console.error(`createWindow called for existing window ${id}`);
+    }
     const bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
     const win = new electron.BrowserWindow({
@@ -374,11 +377,17 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         wasActive = true;
     });
     win.on("close", () => {
-        MainWindow = null;
+        delete windows[id];
     });
     win.webContents.on("zoom-changed", (e) => {
         win.webContents.send("zoom-changed");
     });
+    windows[id] = win;
+    return win;
+}
+
+function createMainWindow(clientData: ClientDataType | null) {
+    const win = createWindow("main", clientData);
     win.webContents.setWindowOpenHandler(({ url, frameName }) => {
         if (url.startsWith("https://docs.waveterm.dev/")) {
             console.log("openExternal docs", url);
@@ -399,8 +408,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         console.log("window-open denied", url);
         return { action: "deny" };
     });
-
-    return win;
 }
 
 function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
@@ -474,8 +481,9 @@ app.on("window-all-closed", () => {
 });
 
 electron.ipcMain.on("toggle-developer-tools", (event) => {
-    if (MainWindow != null) {
-        MainWindow.webContents.toggleDevTools();
+    const window = getWindowForEvent(event);
+    if (window != null) {
+        window.webContents.toggleDevTools();
     }
     event.returnValue = true;
 });
@@ -487,8 +495,8 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
             role: menuDef.role as any,
             label: menuDef.label,
             type: menuDef.type,
-            click: () => {
-                MainWindow?.webContents.send("contextmenu-click", menuDef.id);
+            click: (_, window) => {
+                window?.webContents.send("contextmenu-click", menuDef.id);
             },
         };
         if (menuDef.submenu != null) {
@@ -498,6 +506,11 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
         menuItems.push(menuItem);
     }
     return electron.Menu.buildFromTemplate(menuItems);
+}
+
+function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
+    const windowId = event.sender.id;
+    return electron.BrowserWindow.fromId(windowId);
 }
 
 electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuItem[], { x, y }) => {
@@ -510,8 +523,9 @@ electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuI
 });
 
 electron.ipcMain.on("hide-window", (event) => {
-    if (MainWindow != null) {
-        MainWindow.hide();
+    const window = getWindowForEvent(event);
+    if (window) {
+        window.hide();
     }
     event.returnValue = true;
 });
@@ -552,8 +566,9 @@ electron.ipcMain.on("restart-server", (event) => {
 });
 
 electron.ipcMain.on("reload-window", (event) => {
-    if (MainWindow != null) {
-        MainWindow.reload();
+    const window = getWindowForEvent(event);
+    if (window) {
+        window.reload();
     }
     event.returnValue = true;
 });
@@ -592,9 +607,9 @@ electron.ipcMain.on("set-nativethemesource", (event, themeSource: "system" | "li
 });
 
 electron.nativeTheme.on("updated", () => {
-    if (MainWindow != null) {
-        MainWindow.webContents.send("nativetheme-updated");
-    }
+    electron.BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send("nativetheme-updated");
+    });
 });
 
 function readLastLinesOfFile(filePath: string, lineCount: number) {
@@ -658,12 +673,12 @@ async function getClientData(willRetry: boolean, retryNum: number): Promise<Clie
 }
 
 function sendWSSC() {
-    if (MainWindow != null) {
+    if (windows["main"] != null) {
         if (waveSrvProc == null) {
-            MainWindow.webContents.send("wavesrv-status-change", false);
+            windows["main"].webContents.send("wavesrv-status-change", false);
             return;
         }
-        MainWindow.webContents.send("wavesrv-status-change", true, waveSrvProc.pid);
+        windows["main"].webContents.send("wavesrv-status-change", true, waveSrvProc.pid);
     }
 }
 
@@ -740,9 +755,9 @@ async function createMainWindowWrap() {
     } catch (e) {
         console.log("error getting wavesrv clientdata", e.toString());
     }
-    MainWindow = createMainWindow(clientData);
+    createMainWindow(clientData);
     if (clientData?.winsize.fullscreen) {
-        MainWindow.setFullScreen(true);
+        windows["main"].setFullScreen(true);
     }
     configureAutoUpdaterStartup(clientData);
 }
@@ -761,7 +776,7 @@ function logActiveState() {
             console.log("error logging active state", err);
         });
     // for next iteration
-    wasInFg = MainWindow?.isFocused();
+    wasInFg = windows["main"]?.isFocused();
     wasActive = false;
 }
 
@@ -789,7 +804,7 @@ function reregisterGlobalShortcut(shortcut: string) {
     }
     const ok = electron.globalShortcut.register(shortcut, () => {
         console.log("global shortcut triggered, showing window");
-        MainWindow?.show();
+        windows["main"]?.show();
     });
     console.log("registered global shortcut", shortcut, ok ? "ok" : "failed");
     if (!ok) {
@@ -814,8 +829,8 @@ let lastUpdateCheck: Date = null;
  */
 function setAppUpdateStatus(status: string) {
     appUpdateStatus = status;
-    if (MainWindow != null) {
-        MainWindow.webContents.send("app-update-status", appUpdateStatus);
+    if (windows["main"] != null) {
+        windows["main"].webContents.send("app-update-status", appUpdateStatus);
     }
 }
 
@@ -900,7 +915,7 @@ async function installAppUpdate() {
         detail: "A new version has been downloaded. Restart the application to apply the updates.",
     };
 
-    await electron.dialog.showMessageBox(MainWindow, dialogOpts).then(({ response }) => {
+    await electron.dialog.showMessageBox(windows["main"], dialogOpts).then(({ response }) => {
         if (response === 0) autoUpdater.quitAndInstall();
     });
 }
