@@ -508,8 +508,8 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
     return electron.Menu.buildFromTemplate(menuItems);
 }
 
-function getWindowForEvent(event: Electron.IpcMainEvent) {
-    const windowId = event.sender.id;
+function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
+    const windowId = event?.sender?.id;
     return electron.BrowserWindow.fromId(windowId);
 }
 
@@ -606,11 +606,10 @@ electron.ipcMain.on("set-nativethemesource", (event, themeSource: "system" | "li
     event.returnValue = true;
 });
 
-electron.nativeTheme.on("updated", (event) => {
-    const window = getWindowForEvent(event);
-    if (window) {
-        window.webContents.send("nativetheme-updated");
-    }
+electron.nativeTheme.on("updated", () => {
+    electron.BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send("theme-updated");
+    });
 });
 
 function readLastLinesOfFile(filePath: string, lineCount: number) {
