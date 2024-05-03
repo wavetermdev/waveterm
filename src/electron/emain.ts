@@ -980,9 +980,7 @@ function configureAutoUpdater(enabled: boolean) {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
             createMainWindowWrap().then();
         }
-        if (autoUpdateInterval) {
-            checkForUpdates();
-        }
+        checkForUpdates();
     });
 })();
 
