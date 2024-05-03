@@ -509,7 +509,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
 }
 
 function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
-    const windowId = event?.sender?.id;
+    const windowId = event.sender.id;
     return electron.BrowserWindow.fromId(windowId);
 }
 
