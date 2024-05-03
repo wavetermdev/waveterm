@@ -481,8 +481,7 @@ app.on("window-all-closed", () => {
 });
 
 electron.ipcMain.on("toggle-developer-tools", (event) => {
-    const windowId = event.sender.id;
-    const window = electron.BrowserWindow.fromId(windowId);
+    const window = getWindowForEvent(event);
     if (window != null) {
         window.webContents.toggleDevTools();
     }
