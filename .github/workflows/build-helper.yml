@@ -45,7 +45,6 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
-                  cache: "yarn"
             - name: Install yarn
               run: |
                   corepack enable
@@ -55,8 +54,6 @@ jobs:
               run: |
                   VERSION=$(node -e 'console.log(require("./version.js"))')
                   echo "WAVETERM_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
-            - name: Install Yarn Dependencies
-              run: yarn --frozen-lockfile
             - name: Build ${{ matrix.platform }}/${{ matrix.arch }}
               run: scripthaus run ${{ matrix.scripthaus }}
               env:
