@@ -976,7 +976,6 @@ function configureAutoUpdater(enabled: boolean) {
     await app.whenReady();
     await createMainWindowWrap();
     app.on("activate", () => {
-        console.log("activated");
         if (electron.BrowserWindow.getAllWindows().length === 0) {
             createMainWindowWrap().then();
         }
