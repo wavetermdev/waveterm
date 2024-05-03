@@ -45,11 +45,21 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
-                  cache: "yarn"
             - name: Install yarn
               run: |
                   corepack enable
                   yarn install
+            - name: Get yarn cache directory path
+              id: yarn-cache-dir-path
+              run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+            - name: Setup Yarn cache
+              uses: actions/cache@v4
+              id: yarn-cache # use this to check for `cache-hit` (`steps.yarn-cache.outputs.cache-hit != 'true'`)
+              with:
+                  path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+                  key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-yarn-
             - name: Set Version
               id: set-version
               run: |
