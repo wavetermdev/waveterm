@@ -608,7 +608,7 @@ electron.ipcMain.on("set-nativethemesource", (event, themeSource: "system" | "li
 
 electron.nativeTheme.on("updated", () => {
     electron.BrowserWindow.getAllWindows().forEach((win) => {
-        win.webContents.send("theme-updated");
+        win.webContents.send("nativetheme-updated");
     });
 });
 
