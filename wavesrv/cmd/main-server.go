@@ -1033,7 +1033,7 @@ func configDirHandler(w http.ResponseWriter, r *http.Request) {
 	var files []*packet.FileStatPacketType
 	for index := 0; index < len(entries); index++ {
 		curEntry := entries[index]
-		curFile := packet.MakeFileStatPacketFromFileInfo(curEntry, "", false)
+		curFile := packet.MakeFileStatPacketFromFileInfo(nil, curEntry, "", false)
 		files = append(files, curFile)
 	}
 	dirListJson, err := json.Marshal(files)

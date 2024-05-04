@@ -1522,6 +1522,18 @@ func (wsh *WaveshellProc) StreamFile(ctx context.Context, streamPk *packet.Strea
 	return wsh.PacketRpcIter(ctx, streamPk)
 }
 
+func (msh *WaveshellProc) ListDir(ctx context.Context, listDirPk *packet.ListDirPacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, listDirPk)
+}
+
+func (msh *WaveshellProc) SearchDir(ctx context.Context, searchDirPk *packet.SearchDirPacketType) (*packet.RpcResponseIter, error) {
+	return msh.PacketRpcIter(ctx, searchDirPk)
+}
+
+func (wsh *WaveshellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFilePacketType) (*packet.RpcResponseIter, error) {
+	return wsh.PacketRpcIter(ctx, streamPk)
+}
+
 func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	if state == nil {
 		return nil
@@ -2210,6 +2222,7 @@ func (wsh *WaveshellProc) PacketRpcIter(ctx context.Context, pk packet.RpcPacket
 	if pk == nil {
 		return nil, fmt.Errorf("PacketRpc passed nil packet")
 	}
+	log.Printf("sending packet: %v", pk)
 	reqId := pk.GetReqId()
 	wsh.ServerProc.Output.RegisterRpcSz(reqId, RpcIterChannelSize)
 	err := wsh.ServerProc.Input.SendPacketCtx(ctx, pk)
