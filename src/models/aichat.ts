@@ -8,34 +8,20 @@ import { GlobalCommandRunner } from "./global";
 
 class AIChatModel {
     globalModel: Model;
-    activeAuxView: OV<InputAuxViewType> = mobx.observable.box(null);
-    auxViewFocus: OV<boolean> = mobx.observable.box(false);
-    cmdInputHeight: OV<number> = mobx.observable.box(0);
     aiChatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
     codeSelectUuid: string;
 
-    AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
+    aiCmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat",
     });
     readonly codeSelectTop: number = -2;
     readonly codeSelectBottom: number = -1;
 
-    infoMsg: OV<InfoType> = mobx.observable.box(null);
-    infoTimeoutId: any = null;
-    inputExpanded: OV<boolean> = mobx.observable.box(false, {
-        name: "inputExpanded",
-    });
-
     // focus
-    inputFocused: OV<boolean> = mobx.observable.box(false);
-    lineFocused: OV<boolean> = mobx.observable.box(false);
     physicalInputFocused: OV<boolean> = mobx.observable.box(false);
-    forceInputFocus: boolean = false;
-
-    lastCurLine: string = "";
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
@@ -84,7 +70,7 @@ class AIChatModel {
 
     @mobx.action
     setOpenAICmdInfoChat(chat: OpenAICmdInfoChatMessageType[]): void {
-        this.AICmdInfoChatItems.replace(chat);
+        this.aiCmdInfoChatItems.replace(chat);
         this.codeSelectBlockRefArray = [];
     }
 
@@ -221,13 +207,6 @@ class AIChatModel {
         }).catch((error) => {
             console.log("submit chat command error: ", error);
         });
-    }
-
-    _clearInfoTimeout(): void {
-        if (this.infoTimeoutId != null) {
-            clearTimeout(this.infoTimeoutId);
-            this.infoTimeoutId = null;
-        }
     }
 }
 

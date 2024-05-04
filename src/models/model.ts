@@ -1044,6 +1044,7 @@ class Model {
                 } else if (update.cmdline != null) {
                     this.inputModel.updateCmdLine(update.cmdline);
                 } else if (update.openaicmdinfochat != null) {
+                    this.aichatModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
                     this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
                 } else if (update.screenstatusindicator != null) {
                     this.updateScreenStatusIndicators([update.screenstatusindicator]);

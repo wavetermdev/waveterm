@@ -294,7 +294,7 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     render() {
-        const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
+        const chatMessageItems = GlobalModel.aichatModel.aiCmdInfoChatItems.slice();
         return (
             <div className="sidebar-aichat">
                 <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
