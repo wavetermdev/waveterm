@@ -16,12 +16,13 @@ import { handleJsonFetchResponse, fireAndForget } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
 import { adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
+import * as https from "https";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
 const AuthKeyFile = "waveterm.authkey";
-const DevServerEndpoint = "http://127.0.0.1:8090";
-const ProdServerEndpoint = "http://127.0.0.1:1619";
+const DevServerEndpoint = "https://127.0.0.1:8090";
+const ProdServerEndpoint = "https://127.0.0.1:1619";
 
 const isDev = process.env[WaveDevVarName] != null;
 const waveHome = getWaveHomeDir();
@@ -35,6 +36,10 @@ let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
 let initialClientData: ClientDataType = null;
 let windows: Windows = {};
+
+const httpsAgentIgnoreCert = new https.Agent({
+    rejectUnauthorized: false,
+});
 
 interface Windows extends Record<string, Electron.BrowserWindow> {}
 
@@ -418,7 +423,7 @@ function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
     const winSize = { width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x };
     const url = new URL(getBaseHostPort() + "/api/set-winsize");
     const fetchHeaders = getFetchHeaders();
-    fetch(url, { method: "post", body: JSON.stringify(winSize), headers: fetchHeaders })
+    fetch(url, { method: "post", body: JSON.stringify(winSize), headers: fetchHeaders, agent: httpsAgentIgnoreCert })
         .then((resp) => handleJsonFetchResponse(url, resp))
         .catch((err) => {
             console.log("error setting winsize", err);
@@ -429,7 +434,7 @@ function mainPowerHandler(status: string) {
     const url = new URL(getBaseHostPort() + "/api/power-monitor");
     const fetchHeaders = getFetchHeaders();
     const body = { status: status };
-    fetch(url, { method: "post", body: JSON.stringify(body), headers: fetchHeaders })
+    fetch(url, { method: "post", body: JSON.stringify(body), headers: fetchHeaders, agent: httpsAgentIgnoreCert })
         .then((resp) => handleJsonFetchResponse(url, resp))
         .catch((err) => {
             console.log("error setting power monitor state", err);
@@ -478,6 +483,14 @@ function calcBounds(clientData: ClientDataType): Electron.Rectangle {
 
 app.on("window-all-closed", () => {
     if (unamePlatform !== "darwin") app.quit();
+});
+app.on("certificate-error", (event, webContents, url, error, certificate, callback) => {
+    if (url.startsWith(getBaseHostPort())) {
+        event.preventDefault();
+        callback(true);
+    } else {
+        callback(false);
+    }
 });
 
 electron.ipcMain.on("toggle-developer-tools", (event) => {
@@ -654,7 +667,7 @@ async function getClientDataPoll(loopNum: number): Promise<ClientDataType | null
 async function getClientData(willRetry: boolean, retryNum: number): Promise<ClientDataType | null> {
     const url = new URL(getBaseHostPort() + "/api/get-client-data");
     const fetchHeaders = getFetchHeaders();
-    return fetch(url, { headers: fetchHeaders })
+    return fetch(url, { headers: fetchHeaders, agent: httpsAgentIgnoreCert })
         .then((resp) => handleJsonFetchResponse(url, resp))
         .then((data) => {
             if (data == null) {
@@ -770,7 +783,12 @@ function logActiveState() {
     const activeState = { fg: wasInFg, active: wasActive, open: true };
     const url = new URL(getBaseHostPort() + "/api/log-active-state");
     const fetchHeaders = getFetchHeaders();
-    fetch(url, { method: "post", body: JSON.stringify(activeState), headers: fetchHeaders })
+    fetch(url, {
+        method: "post",
+        body: JSON.stringify(activeState),
+        headers: fetchHeaders,
+        agent: httpsAgentIgnoreCert,
+    })
         .then((resp) => handleJsonFetchResponse(url, resp))
         .catch((err) => {
             console.log("error logging active state", err);

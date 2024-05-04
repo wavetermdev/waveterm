@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 	"io/fs"
 	"log"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -1153,6 +1155,11 @@ func main() {
 	if err != nil {
 		log.Printf("[error] resetting screen focus: %v\n", err)
 	}
+	tlsCert, err := waveenc.CreateSelfSignedLocalHostTlsCert()
+	if err != nil {
+		log.Printf("[error] creating self-signed tls cert: %v\n", err)
+		return
+	}
 
 	log.Printf("PCLOUD_ENDPOINT=%s\n", pcloud.GetEndpoint())
 	startupActivityUpdate()
@@ -1189,16 +1196,25 @@ func main() {
 	if scbase.IsDevMode() {
 		serverAddr = MainServerDevAddr
 	}
+	tlsConfig := &tls.Config{}
+	tlsConfig.NextProtos = []string{"h2", "http/1.1"}
+	tlsConfig.Certificates = []tls.Certificate{*tlsCert}
 	server := &http.Server{
 		Addr:           serverAddr,
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
 		Handler:        http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout"),
+		TLSConfig:      tlsConfig,
 	}
 	server.SetKeepAlivesEnabled(false)
+	netListener, err := net.Listen("tcp", serverAddr)
+	if err != nil {
+		log.Printf("[error] cannot listen on %s: %v\n", serverAddr, err)
+		return
+	}
 	log.Printf("Running main server on %s\n", serverAddr)
-	err = server.ListenAndServe()
+	err = server.ServeTLS(netListener, "", "")
 	if err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}
