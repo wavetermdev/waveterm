@@ -10,8 +10,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/alecthomas/units"
 )
 
 type FileOptsType struct {
@@ -32,7 +30,11 @@ type FileInfo struct {
 	Meta      FileMeta
 }
 
-const MaxBlockSize = int64(128 * units.Kilobyte)
+const UnitsKB = 1024 * 1024
+const UnitsMB = 1024 * UnitsKB
+const UnitsGB = 1024 * UnitsMB
+
+const MaxBlockSize = int64(128 * UnitsKB)
 const DefaultFlushTimeout = 1 * time.Second
 
 type CacheEntry struct {
@@ -84,6 +86,13 @@ var globalLock *sync.Mutex = &sync.Mutex{}
 var appendLock *sync.Mutex = &sync.Mutex{}
 var flushTimeout = DefaultFlushTimeout
 var lastWriteTime time.Time
+
+// for testing
+func clearCache() {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+	cache = make(map[string]*CacheEntry)
+}
 
 func InsertFileIntoDB(ctx context.Context, fileInfo FileInfo) error {
 	metaJson, err := json.Marshal(fileInfo.Meta)
@@ -392,7 +401,7 @@ func WriteAtHelper(ctx context.Context, blockId string, name string, p []byte, o
 	}
 	fInfo, err := Stat(ctx, blockId, name)
 	if err != nil {
-		return 0, fmt.Errorf("Write At err: %v", err)
+		return 0, fmt.Errorf("WriteAt err: %v", err)
 	}
 	if off > fInfo.Opts.MaxSize && fInfo.Opts.Circular {
 		numOver := off / fInfo.Opts.MaxSize

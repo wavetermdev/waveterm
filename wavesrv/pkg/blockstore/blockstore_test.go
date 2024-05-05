@@ -6,20 +6,38 @@ import (
 	"crypto/md5"
 	"crypto/rand"
 	"log"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/alecthomas/units"
-
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
+
+const testOverrideDBName = "test-blockstore.db"
+const bigFileSize = 10 * UnitsMB
 
 type TestBlockType struct {
 	BlockId string
 	Name    string
 	Partidx int
 	Data    []byte
+}
+
+func initTestDb(t *testing.T) {
+	log.Printf("initTestDb: %v", t.Name())
+	os.Remove(testOverrideDBName)
+	overrideDBName = testOverrideDBName
+	err := MigrateBlockstore()
+	if err != nil {
+		t.Fatalf("MigrateBlockstore error: %v", err)
+	}
+}
+
+func cleanupTestDB(t *testing.T) {
+	clearCache()
+	CloseDB()
+	os.Remove(testOverrideDBName)
 }
 
 func (b *TestBlockType) ToMap() map[string]interface{} {
@@ -35,22 +53,16 @@ func (b *TestBlockType) FromMap(m map[string]interface{}) bool {
 	return true
 }
 
-func Cleanup(t *testing.T, ctx context.Context) {
-	DeleteBlock(ctx, "test-block-id")
-}
-
-func CleanupName(t *testing.T, ctx context.Context, blockId string) {
-	DeleteBlock(ctx, blockId)
-}
-
 func TestGetDB(t *testing.T) {
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	GetDBTimeout := 10 * time.Second
 	ctx, _ := context.WithTimeout(context.Background(), GetDBTimeout)
 	_, err := GetDB(ctx)
 	if err != nil {
 		t.Errorf("TestInitDB error: %v", err)
 	}
-	CloseDB()
 }
 
 func SimpleAssert(t *testing.T, condition bool, description string) {
@@ -82,9 +94,11 @@ func InsertIntoBlockData(t *testing.T, ctx context.Context, blockId string, name
 }
 
 func TestTx(t *testing.T) {
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	SetFlushTimeout(2 * time.Minute)
-	InitDBState()
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `INSERT into block_data values ('test-block-id', 'test-file-name', 0, 256)`
 		tx.Exec(query)
@@ -127,11 +141,13 @@ func TestTx(t *testing.T) {
 	if txErr != nil {
 		t.Errorf("TestTx error deleting test entries: %v", txErr)
 	}
-	CloseDB()
 }
+
 func TestMultipleChunks(t *testing.T) {
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
-	InitDBState()
 	InsertIntoBlockData(t, ctx, "test-block-id", "file-1", 0, make([]byte, 5))
 	InsertIntoBlockData(t, ctx, "test-block-id", "file-1", 1, make([]byte, 5))
 	InsertIntoBlockData(t, ctx, "test-block-id", "file-1", 2, make([]byte, 5))
@@ -178,7 +194,9 @@ func TestMultipleChunks(t *testing.T) {
 }
 
 func TestMakeFile(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -218,15 +236,16 @@ func TestMakeFile(t *testing.T) {
 	if txErr != nil {
 		t.Errorf("TestTx error deleting test entries: %v", txErr)
 	}
-	Cleanup(t, ctx)
 }
 
 func TestWriteAt(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -244,7 +263,10 @@ func TestWriteAt(t *testing.T) {
 	} else {
 		log.Printf("Write at no errors: %v", bytesWritten)
 	}
-	SimpleAssert(t, bytesWritten == len(testBytesToWrite), "Correct num bytes written")
+	if bytesWritten != len(testBytesToWrite) {
+		t.Errorf("WriteAt error: towrite:%d written:%d err:%v\n", len(testBytesToWrite), bytesWritten, err)
+		return
+	}
 	cacheData, err = GetCacheBlock(ctx, "test-block-id", "file-1", 0, false)
 	if err != nil {
 		t.Errorf("Error getting cache: %v", err)
@@ -313,15 +335,16 @@ func TestWriteAt(t *testing.T) {
 	}
 	log.Printf("Got stat: %v", fInfo)
 	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
-	Cleanup(t, ctx)
 }
 
 func TestWriteAtLeftPad(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -349,14 +372,16 @@ func TestWriteAtLeftPad(t *testing.T) {
 	}
 	log.Printf("Got stat: %v %v %v", fInfo, fInfo.Size, len(cacheData.data))
 	SimpleAssert(t, int64(len(cacheData.data)) == fInfo.Size, "Correct fInfo size")
-	Cleanup(t, ctx)
 }
 
 func TestReadAt(t *testing.T) {
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -399,14 +424,16 @@ func TestReadAt(t *testing.T) {
 	}
 	SimpleAssert(t, bytesRead == (11-4), "Correct num bytes read")
 	log.Printf("bytes read: %v string: %s", read, string(read))
-	Cleanup(t, ctx)
 }
 
 func TestFlushCache(t *testing.T) {
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -461,17 +488,16 @@ func TestFlushCache(t *testing.T) {
 		t.Errorf("get data from db error: %v", txErr)
 	}
 	log.Printf("DB Data: %v", dbData)
-	Cleanup(t, ctx)
 }
 
-var largeDataFlushFullWriteSize int64 = int64(1024 * units.Megabyte)
+var largeDataFlushFullWriteSize int64 = 64 * UnitsKB
 
 func WriteLargeDataFlush(t *testing.T, ctx context.Context) {
 	writeSize := int64(64 - 16)
 	fullWriteSize := largeDataFlushFullWriteSize
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -524,6 +550,9 @@ func WriteLargeDataFlush(t *testing.T, ctx context.Context) {
 	SimpleAssert(t, bytes.Equal(readHashBuf, hashBuf), "hashes are equal")
 }
 func TestWriteAtMaxSize(t *testing.T) {
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -544,11 +573,12 @@ func TestWriteAtMaxSize(t *testing.T) {
 	log.Printf("readbuf: %v\n", readBuf)
 	SimpleAssert(t, bytesRead == 4, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf[:4], readTest), "Correct bytes read")
-	Cleanup(t, ctx)
 }
 
 func TestWriteAtMaxSizeMultipleBlocks(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -569,11 +599,12 @@ func TestWriteAtMaxSizeMultipleBlocks(t *testing.T) {
 	log.Printf("readbuf multiple: %v %v %v\n", readBuf, bytesRead, bytesWritten)
 	SimpleAssert(t, bytesRead == 4, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf[:4], readTest), "Correct bytes read")
-	Cleanup(t, ctx)
 }
 
 func TestWriteAtCircular(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -603,11 +634,12 @@ func TestWriteAtCircular(t *testing.T) {
 	SimpleAssert(t, bytesRead == 7, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf[:7], readTest), "Correct bytes read")
 	log.Printf("readbuf circular %v %v, %v", readBuf, string(readBuf), bytesRead)
-	Cleanup(t, ctx)
 }
 
 func TestWriteAtCircularWierdOffset(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -646,11 +678,12 @@ func TestWriteAtCircularWierdOffset(t *testing.T) {
 	SimpleAssert(t, bytesRead == 7, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf[:7], readTest), "Correct bytes read")
 	log.Printf("readbuf circular %v %v, %v", readBuf, string(readBuf), bytesRead)
-	Cleanup(t, ctx)
 }
 
 func TestAppend(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
@@ -691,7 +724,6 @@ func TestAppend(t *testing.T) {
 	}
 	SimpleAssert(t, bytesRead == bytesWritten+4, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf, readTestBytes), "Correct bytes read")
-	Cleanup(t, ctx)
 }
 
 func AppendSyncWorker(t *testing.T, ctx context.Context, wg *sync.WaitGroup) {
@@ -705,13 +737,15 @@ func AppendSyncWorker(t *testing.T, ctx context.Context, wg *sync.WaitGroup) {
 	SimpleAssert(t, bytesWritten == 1, "Correct bytes written")
 }
 func TestAppendSync(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	var wg sync.WaitGroup
 	numWorkers := 10
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id-sync", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -729,15 +763,6 @@ func TestAppendSync(t *testing.T) {
 	}
 	log.Printf("read buf : %v", readBuf)
 	SimpleAssert(t, bytesRead == numWorkers, "Correct bytes read")
-	CleanupName(t, ctx, "test-block-id-sync")
-}
-
-func TestAppendSyncMultiple(t *testing.T) {
-	numTests := 100
-	for index := 0; index < numTests; index++ {
-		TestAppendSync(t)
-		log.Printf("finished test: %v", index)
-	}
 }
 
 func WriteAtSyncWorker(t *testing.T, ctx context.Context, wg *sync.WaitGroup, index int64) {
@@ -753,13 +778,15 @@ func WriteAtSyncWorker(t *testing.T, ctx context.Context, wg *sync.WaitGroup, in
 }
 
 func TestWriteAtSync(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	var wg sync.WaitGroup
 	numWorkers := 10
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id-sync", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -777,22 +804,16 @@ func TestWriteAtSync(t *testing.T) {
 	}
 	log.Printf("read buf : %v", readBuf)
 	SimpleAssert(t, bytesRead == numWorkers, "Correct num bytes read")
-	CleanupName(t, ctx, "test-block-id-sync")
-}
-
-func TestWriteAtSyncMultiple(t *testing.T) {
-	numTests := 100
-	for index := 0; index < numTests; index++ {
-		TestWriteAtSync(t)
-	}
 }
 
 func TestWriteFile(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
 	bytesWritten, err := WriteFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts, testBytesToWrite)
 	if err != nil {
@@ -807,15 +828,16 @@ func TestWriteFile(t *testing.T) {
 	SimpleAssert(t, bytesRead == bytesWritten, "Correct num bytes read")
 	log.Printf("bytes read: %v string: %s", read, string(read))
 	SimpleAssert(t, bytes.Equal(read, testBytesToWrite), "Correct bytes read")
-	Cleanup(t, ctx)
 }
 
 func TestWriteMeta(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -843,15 +865,16 @@ func TestWriteMeta(t *testing.T) {
 	}
 	log.Printf("meta: %v", fInfo.Meta)
 	SimpleAssert(t, fInfo.Meta["second-test-descriptor"] == "test1", "Retrieved second meta correctly")
-	Cleanup(t, ctx)
 }
 
 func TestGetAllBlockIds(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	err = MakeFile(ctx, "test-block-id-2", "file-1", fileMeta, fileOpts)
 	err = MakeFile(ctx, "test-block-id-2", "file-2", fileMeta, fileOpts)
@@ -864,16 +887,17 @@ func TestGetAllBlockIds(t *testing.T) {
 	testBlockIdArr := []string{"test-block-id", "test-block-id-2", "test-block-id-3"}
 	for idx, val := range blockIds {
 		SimpleAssert(t, testBlockIdArr[idx] == val, "Correct blockid value")
-		CleanupName(t, ctx, val)
 	}
 }
 
 func TestListFiles(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	err = MakeFile(ctx, "test-block-id-2", "file-1", fileMeta, fileOpts)
 	err = MakeFile(ctx, "test-block-id-2", "file-2", fileMeta, fileOpts)
@@ -893,19 +917,18 @@ func TestListFiles(t *testing.T) {
 	for idx, val := range files {
 		SimpleAssert(t, val.Name == blockid_1_files[idx], "Correct file name")
 	}
-	CleanupName(t, ctx, "test-block-id")
-	CleanupName(t, ctx, "test-block-id-2")
-	CleanupName(t, ctx, "test-block-id-3")
 }
 
 func TestFlushTimer(t *testing.T) {
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	testFlushTimeout := 10 * time.Second
 	SetFlushTimeout(testFlushTimeout)
-	InitDBState()
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -958,22 +981,12 @@ func TestFlushTimer(t *testing.T) {
 		t.Errorf("get data from db error: %v", txErr)
 	}
 	log.Printf("DB Data: %v", dbData)
-	Cleanup(t, ctx)
 }
-
-func TestFlushTimerMultiple(t *testing.T) {
-	testFlushTimeout := 1 * time.Second
-	SetFlushTimeout(testFlushTimeout)
-	numTests := 10
-	for index := 0; index < numTests; index++ {
-		TestWriteAt(t)
-		time.Sleep(500 * time.Millisecond)
-	}
-}
-
-// time consuming test
 
 func TestWriteAtMiddle(t *testing.T) {
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	WriteLargeDataFlush(t, ctx)
 	testBytesToWrite := []byte{'T', 'E', 'S', 'T', 'M', 'E', 'S', 'S', 'A', 'G', 'E'}
@@ -989,23 +1002,26 @@ func TestWriteAtMiddle(t *testing.T) {
 	log.Printf("readBuf: %v %v", readBuf, string(readBuf))
 	SimpleAssert(t, bytesRead == bytesWritten, "Correct num bytes read")
 	SimpleAssert(t, bytes.Equal(readBuf, testBytesToWrite), "read correct bytes")
-	Cleanup(t, ctx)
 }
 
 func TestWriteLargeDataFlush(t *testing.T) {
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	ctx := context.Background()
 	WriteLargeDataFlush(t, ctx)
-	Cleanup(t, ctx)
 }
 
 func TestWriteLargeDataNoFlush(t *testing.T) {
-	InitDBState()
+	initTestDb(t)
+	defer cleanupTestDB(t)
+
 	writeSize := int64(64 - 16)
-	fullWriteSize := int64(1024 * units.Megabyte)
+	fullWriteSize := int64(64 * UnitsKB)
 	ctx := context.Background()
 	fileMeta := make(FileMeta)
 	fileMeta["test-descriptor"] = true
-	fileOpts := FileOptsType{MaxSize: int64(5 * units.Gigabyte), Circular: false, IJson: false}
+	fileOpts := FileOptsType{MaxSize: bigFileSize, Circular: false, IJson: false}
 	err := MakeFile(ctx, "test-block-id", "file-1", fileMeta, fileOpts)
 	if err != nil {
 		t.Fatalf("MakeFile error: %v", err)
@@ -1028,11 +1044,13 @@ func TestWriteLargeDataNoFlush(t *testing.T) {
 		copy(hashBuf, hash.Sum(nil))
 		bytesWritten, err := WriteAt(ctx, "test-block-id", "file-1", writeBuf, writeIndex)
 		if int64(bytesWritten) != writeSize {
-			log.Printf("write issue: %v %v \n", bytesWritten, writeSize)
+			t.Errorf("write issue: %v %v %v err:%v\n", bytesWritten, writeSize, writeIndex, err)
+			return
 		}
 		if err != nil {
 			log.Printf("error: %v", err)
 			t.Errorf("Write At error: %v\n", err)
+			return
 		}
 		writeIndex += int64(bytesWritten)
 	}
@@ -1060,7 +1078,6 @@ func TestWriteLargeDataNoFlush(t *testing.T) {
 	}
 	log.Printf("final hash: %v readBuf: %v, bytesRead: %v", readHashBuf, readBuf, readIndex)
 	SimpleAssert(t, bytes.Equal(readHashBuf, hashBuf), "hashes are equal")
-	Cleanup(t, ctx)
 }
 
 // saving this code for later

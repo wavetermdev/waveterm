@@ -10,3 +10,6 @@ import "embed"
 
 //go:embed migrations/*.sql
 var MigrationFS embed.FS
+
+//go:embed blockstore-migrations/*.sql
+var BlockstoreMigrationFS embed.FS
