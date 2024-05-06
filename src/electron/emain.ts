@@ -322,7 +322,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function createWindow(isMain: boolean, clientData: ClientDataType | null): Electron.BrowserWindow {
+function createWindow(clientData: ClientDataType | null): Electron.BrowserWindow {
     const bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
     const win = new electron.BrowserWindow({
@@ -339,7 +339,6 @@ function createWindow(isMain: boolean, clientData: ClientDataType | null): Elect
                 : undefined,
         webPreferences: {
             preload: path.join(getElectronAppBasePath(), DistDir, "preload.js"),
-            additionalArguments: isMain ? ["main"] : [],
         },
         show: false,
     });
@@ -374,11 +373,6 @@ function createWindow(isMain: boolean, clientData: ClientDataType | null): Elect
     win.webContents.on("zoom-changed", (e) => {
         win.webContents.send("zoom-changed");
     });
-    return win;
-}
-
-function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWindow {
-    const win = createWindow(true, clientData);
     win.webContents.setWindowOpenHandler(({ url, frameName }) => {
         if (url.startsWith("https://docs.waveterm.dev/")) {
             console.log("openExternal docs", url);
@@ -739,7 +733,7 @@ electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
     menu.popup({ x, y });
 });
 
-async function createMainWindowWrap() {
+async function createWindowWrap() {
     let clientData: ClientDataType | null = null;
     try {
         clientData = await getClientDataPoll(1);
@@ -747,7 +741,7 @@ async function createMainWindowWrap() {
     } catch (e) {
         console.log("error getting wavesrv clientdata", e.toString());
     }
-    const win = createMainWindow(clientData);
+    const win = createWindow(clientData);
     if (clientData?.winsize.fullscreen) {
         win.setFullScreen(true);
     }
@@ -797,7 +791,7 @@ function reregisterGlobalShortcut(shortcut: string) {
     const ok = electron.globalShortcut.register(shortcut, async () => {
         console.log("global shortcut triggered, showing window");
         if (electron.BrowserWindow.getAllWindows().length == 0) {
-            await createMainWindowWrap();
+            await createWindowWrap();
         }
         const winToShow = electron.BrowserWindow.getFocusedWindow() ?? electron.BrowserWindow.getAllWindows()[0];
         winToShow?.show();
@@ -990,11 +984,11 @@ function configureAutoUpdater(enabled: boolean) {
     }
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
-    await createMainWindowWrap();
+    await createWindowWrap();
 
     app.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
-            createMainWindowWrap().then();
+            createWindowWrap().then();
         }
         checkForUpdates();
     });
