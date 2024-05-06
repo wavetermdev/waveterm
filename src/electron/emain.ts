@@ -34,9 +34,6 @@ let wasActive = true;
 let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
 let initialClientData: ClientDataType = null;
-let windows: Windows = {};
-
-interface Windows extends Record<string, Electron.BrowserWindow> {}
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -325,10 +322,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function createWindow(id: string, clientData: ClientDataType | null): Electron.BrowserWindow {
-    if (windows[id]) {
-        console.error(`createWindow called for existing window ${id}`);
-    }
+function createWindow(clientData: ClientDataType | null): Electron.BrowserWindow {
     const bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
     const win = new electron.BrowserWindow({
@@ -376,18 +370,9 @@ function createWindow(id: string, clientData: ClientDataType | null): Electron.B
         wasInFg = true;
         wasActive = true;
     });
-    win.on("close", () => {
-        delete windows[id];
-    });
     win.webContents.on("zoom-changed", (e) => {
         win.webContents.send("zoom-changed");
     });
-    windows[id] = win;
-    return win;
-}
-
-function createMainWindow(clientData: ClientDataType | null) {
-    const win = createWindow("main", clientData);
     win.webContents.setWindowOpenHandler(({ url, frameName }) => {
         if (url.startsWith("https://docs.waveterm.dev/")) {
             console.log("openExternal docs", url);
@@ -408,6 +393,7 @@ function createMainWindow(clientData: ClientDataType | null) {
         console.log("window-open denied", url);
         return { action: "deny" };
     });
+    return win;
 }
 
 function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
@@ -673,13 +659,13 @@ async function getClientData(willRetry: boolean, retryNum: number): Promise<Clie
 }
 
 function sendWSSC() {
-    if (windows["main"] != null) {
+    electron.BrowserWindow.getAllWindows().forEach((win) => {
         if (waveSrvProc == null) {
-            windows["main"].webContents.send("wavesrv-status-change", false);
-            return;
+            win.webContents.send("wavesrv-status-change", false);
+        } else {
+            win.webContents.send("wavesrv-status-change", true, waveSrvProc.pid);
         }
-        windows["main"].webContents.send("wavesrv-status-change", true, waveSrvProc.pid);
-    }
+    });
 }
 
 function runWaveSrv() {
@@ -747,7 +733,7 @@ electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
     menu.popup({ x, y });
 });
 
-async function createMainWindowWrap() {
+async function createWindowWrap() {
     let clientData: ClientDataType | null = null;
     try {
         clientData = await getClientDataPoll(1);
@@ -755,9 +741,9 @@ async function createMainWindowWrap() {
     } catch (e) {
         console.log("error getting wavesrv clientdata", e.toString());
     }
-    createMainWindow(clientData);
+    const win = createWindow(clientData);
     if (clientData?.winsize.fullscreen) {
-        windows["main"].setFullScreen(true);
+        win.setFullScreen(true);
     }
     configureAutoUpdaterStartup(clientData);
 }
@@ -776,7 +762,7 @@ function logActiveState() {
             console.log("error logging active state", err);
         });
     // for next iteration
-    wasInFg = windows["main"]?.isFocused();
+    wasInFg = electron.BrowserWindow.getFocusedWindow()?.isFocused() ?? false;
     wasActive = false;
 }
 
@@ -802,9 +788,13 @@ function reregisterGlobalShortcut(shortcut: string) {
         currentGlobalShortcut = null;
         return;
     }
-    const ok = electron.globalShortcut.register(shortcut, () => {
+    const ok = electron.globalShortcut.register(shortcut, async () => {
         console.log("global shortcut triggered, showing window");
-        windows["main"]?.show();
+        if (electron.BrowserWindow.getAllWindows().length == 0) {
+            await createWindowWrap();
+        }
+        const winToShow = electron.BrowserWindow.getFocusedWindow() ?? electron.BrowserWindow.getAllWindows()[0];
+        winToShow?.show();
     });
     console.log("registered global shortcut", shortcut, ok ? "ok" : "failed");
     if (!ok) {
@@ -829,9 +819,9 @@ let lastUpdateCheck: Date = null;
  */
 function setAppUpdateStatus(status: string) {
     appUpdateStatus = status;
-    if (windows["main"] != null) {
-        windows["main"].webContents.send("app-update-status", appUpdateStatus);
-    }
+    electron.BrowserWindow.getAllWindows().forEach((window) => {
+        window.webContents.send("app-update-status", appUpdateStatus);
+    });
 }
 
 /**
@@ -915,9 +905,14 @@ async function installAppUpdate() {
         detail: "A new version has been downloaded. Restart the application to apply the updates.",
     };
 
-    await electron.dialog.showMessageBox(windows["main"], dialogOpts).then(({ response }) => {
-        if (response === 0) autoUpdater.quitAndInstall();
-    });
+    const allWindows = electron.BrowserWindow.getAllWindows();
+    if (allWindows.length > 0) {
+        await electron.dialog
+            .showMessageBox(electron.BrowserWindow.getFocusedWindow() ?? allWindows[0], dialogOpts)
+            .then(({ response }) => {
+                if (response === 0) autoUpdater.quitAndInstall();
+            });
+    }
 }
 
 electron.ipcMain.on("install-app-update", () => fireAndForget(() => installAppUpdate()));
@@ -989,10 +984,11 @@ function configureAutoUpdater(enabled: boolean) {
     }
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
-    await createMainWindowWrap();
+    await createWindowWrap();
+
     app.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
-            createMainWindowWrap().then();
+            createWindowWrap().then();
         }
         checkForUpdates();
     });
