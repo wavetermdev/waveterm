@@ -79,7 +79,6 @@ class SimpleMarkdownRenderer extends React.Component<
                     }}
                 >
                     <Markdown
-                        inputModel={GlobalModel.inputModel}
                         text={this.markdownText.get()}
                         style={{ maxHeight: opts.maxSize.height, maxWidth: DefaultMaxMarkdownWidth }}
                     />

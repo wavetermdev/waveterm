@@ -78,7 +78,7 @@ class PluginsView extends React.Component<{}, {}> {
                     {plugin.readme && (
                         <div className="plugin-readme">
                             <div className="plugin-label">{"Readme"}</div>
-                            <Markdown inputModel={GlobalModel.inputModel} text={plugin.readme} />
+                            <Markdown text={plugin.readme} />
                         </div>
                     )}
                 </div>

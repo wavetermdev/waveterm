@@ -42,11 +42,7 @@ class AlertModal extends React.Component<{}, {}> {
                 <Modal.Header onClose={this.closeModal} title={title} keybindings={true} />
                 <div className="wave-modal-body">
                     <If condition={message?.markdown}>
-                        <Markdown
-                            inputModel={GlobalModel.inputModel}
-                            text={message?.message ?? ""}
-                            extraClassName="bottom-margin"
-                        />
+                        <Markdown text={message?.message ?? ""} extraClassName="bottom-margin" />
                     </If>
                     <If condition={!message?.markdown}>{message?.message}</If>
                     <If condition={message?.confirmflag}>

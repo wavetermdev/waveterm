@@ -115,11 +115,7 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
                         <div className="chat-msg-header">
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
                         </div>
-                        <Markdown
-                            inputModel={GlobalModel.inputModel}
-                            text={chatItem.assistantresponse.message}
-                            codeSelect
-                        />
+                        <Markdown text={chatItem.assistantresponse.message} codeSelect />
                     </>
                 );
             }
@@ -287,7 +283,6 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     onArrowDownPressed(): boolean {
-        console.log("got here");
         const currentRef = this.textAreaRef.current;
         const inputModel = GlobalModel.inputModel;
         if (currentRef == null) {

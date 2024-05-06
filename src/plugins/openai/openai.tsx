@@ -208,11 +208,7 @@ class OpenAIRenderer extends React.Component<{ model: OpenAIRendererModel }> {
                             paddingRight: 5,
                         }}
                     >
-                        <Markdown
-                            inputModel={GlobalModel.aichatModel}
-                            text={message}
-                            style={{ maxHeight: opts.maxSize.height }}
-                        />
+                        <Markdown text={message} style={{ maxHeight: opts.maxSize.height }} />
                     </div>
                 </div>
             </div>
