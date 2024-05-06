@@ -161,6 +161,26 @@ class AIChat extends React.Component<{}, {}> {
     chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef();
     termFontSize: number = 14;
 
+    componentDidMount() {
+        const inputModel = GlobalModel.inputModel;
+
+        inputModel.openAIAssistantChat();
+
+        if (this.textAreaRef.current != null) {
+            this.textAreaRef.current.focus();
+            inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowRef);
+        }
+        this.requestChatUpdate();
+        this.onTextAreaChange(null);
+    }
+
+    requestChatUpdate() {
+        const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
+        if (chatMessageItems == null || chatMessageItems.length == 0) {
+            this.submitChatMessage("");
+        }
+    }
+
     // Adjust the height of the textarea to fit the text
     @boundMethod
     onTextAreaChange(e: any) {
@@ -183,26 +203,6 @@ class AIChat extends React.Component<{}, {}> {
         GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
-    componentDidMount() {
-        const inputModel = GlobalModel.inputModel;
-
-        inputModel.openAIAssistantChat();
-
-        if (this.textAreaRef.current != null) {
-            this.textAreaRef.current.focus();
-            inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowRef);
-        }
-        this.requestChatUpdate();
-        this.onTextAreaChange(null);
-    }
-
-    requestChatUpdate() {
-        const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        if (chatMessageItems == null || chatMessageItems.length == 0) {
-            this.submitChatMessage("");
-        }
-    }
-
     submitChatMessage(messageStr: string) {
         const curLine = GlobalModel.inputModel.curLine;
         const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
@@ -222,7 +222,6 @@ class AIChat extends React.Component<{}, {}> {
     @mobx.action
     @boundMethod
     onTextAreaFocused(e: any) {
-        console.log("focused");
         GlobalModel.inputModel.setAuxViewFocus(true);
         GlobalModel.inputModel.setActiveAuxView(appconst.InputAuxView_AIChat);
 
@@ -307,8 +306,7 @@ class AIChat extends React.Component<{}, {}> {
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const renderAIChatKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(
-            appconst.InputAuxView_AIChat,
-            "sidebar"
+            appconst.InputAuxView_AIChat
         );
         console.log("renderAIChatKeybindings=====", renderAIChatKeybindings);
         return (

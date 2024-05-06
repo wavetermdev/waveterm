@@ -460,7 +460,7 @@ class InputModel {
         this.giveFocus();
     }
 
-    shouldRenderAuxViewKeybindings(view: InputAuxViewType, test?: string): boolean {
+    shouldRenderAuxViewKeybindings(view: InputAuxViewType): boolean {
         console.log("view", view, this.getAuxViewFocus(), this.getActiveAuxView());
         if (GlobalModel.activeMainView.get() != "session") {
             console.log("1");
