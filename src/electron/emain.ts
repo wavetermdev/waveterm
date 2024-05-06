@@ -34,9 +34,8 @@ let wasActive = true;
 let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
 let initialClientData: ClientDataType = null;
-let windows: Windows = {};
 
-interface Windows extends Record<string, Electron.BrowserWindow> {}
+let mainWindowId: number | undefined;
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -325,9 +324,9 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function createWindow(id: string, clientData: ClientDataType | null): Electron.BrowserWindow {
-    if (windows[id]) {
-        console.error(`createWindow called for existing window ${id}`);
+function createWindow(isMain: boolean, clientData: ClientDataType | null): Electron.BrowserWindow {
+    if (mainWindowId !== undefined && electron.BrowserWindow.fromId(mainWindowId)) {
+        console.error(`createWindow called for main window, which already exists`);
     }
     const bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
@@ -345,6 +344,7 @@ function createWindow(id: string, clientData: ClientDataType | null): Electron.B
                 : undefined,
         webPreferences: {
             preload: path.join(getElectronAppBasePath(), DistDir, "preload.js"),
+            additionalArguments: isMain ? ["main"] : [],
         },
         show: false,
     });
@@ -377,17 +377,18 @@ function createWindow(id: string, clientData: ClientDataType | null): Electron.B
         wasActive = true;
     });
     win.on("close", () => {
-        delete windows[id];
+        if (isMain) {
+            mainWindowId = undefined;
+        }
     });
     win.webContents.on("zoom-changed", (e) => {
         win.webContents.send("zoom-changed");
     });
-    windows[id] = win;
     return win;
 }
 
-function createMainWindow(clientData: ClientDataType | null) {
-    const win = createWindow("main", clientData);
+function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWindow {
+    const win = createWindow(true, clientData);
     win.webContents.setWindowOpenHandler(({ url, frameName }) => {
         if (url.startsWith("https://docs.waveterm.dev/")) {
             console.log("openExternal docs", url);
@@ -408,6 +409,7 @@ function createMainWindow(clientData: ClientDataType | null) {
         console.log("window-open denied", url);
         return { action: "deny" };
     });
+    return win;
 }
 
 function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
@@ -673,13 +675,13 @@ async function getClientData(willRetry: boolean, retryNum: number): Promise<Clie
 }
 
 function sendWSSC() {
-    if (windows["main"] != null) {
+    electron.BrowserWindow.getAllWindows().forEach((win) => {
         if (waveSrvProc == null) {
-            windows["main"].webContents.send("wavesrv-status-change", false);
-            return;
+            win.webContents.send("wavesrv-status-change", false);
+        } else {
+            win.webContents.send("wavesrv-status-change", true, waveSrvProc.pid);
         }
-        windows["main"].webContents.send("wavesrv-status-change", true, waveSrvProc.pid);
-    }
+    });
 }
 
 function runWaveSrv() {
@@ -755,11 +757,22 @@ async function createMainWindowWrap() {
     } catch (e) {
         console.log("error getting wavesrv clientdata", e.toString());
     }
-    createMainWindow(clientData);
+    const win = createMainWindow(clientData);
     if (clientData?.winsize.fullscreen) {
-        windows["main"].setFullScreen(true);
+        win.setFullScreen(true);
     }
     configureAutoUpdaterStartup(clientData);
+}
+
+async function createAuxWindowWrap() {
+    let clientData: ClientDataType | null = null;
+    try {
+        clientData = await getClientDataPoll(1);
+        initialClientData = clientData;
+    } catch (e) {
+        console.log("error getting wavesrv clientdata", e.toString());
+    }
+    createWindow(false, clientData);
 }
 
 async function sleep(ms: number) {
@@ -776,7 +789,7 @@ function logActiveState() {
             console.log("error logging active state", err);
         });
     // for next iteration
-    wasInFg = windows["main"]?.isFocused();
+    wasInFg = electron.BrowserWindow.getFocusedWindow()?.isFocused() ?? false;
     wasActive = false;
 }
 
@@ -802,9 +815,12 @@ function reregisterGlobalShortcut(shortcut: string) {
         currentGlobalShortcut = null;
         return;
     }
-    const ok = electron.globalShortcut.register(shortcut, () => {
+    const ok = electron.globalShortcut.register(shortcut, async () => {
         console.log("global shortcut triggered, showing window");
-        windows["main"]?.show();
+        if (mainWindowId === undefined) {
+            await createMainWindowWrap();
+        }
+        electron.BrowserWindow.fromId(mainWindowId)?.show();
     });
     console.log("registered global shortcut", shortcut, ok ? "ok" : "failed");
     if (!ok) {
@@ -829,9 +845,9 @@ let lastUpdateCheck: Date = null;
  */
 function setAppUpdateStatus(status: string) {
     appUpdateStatus = status;
-    if (windows["main"] != null) {
-        windows["main"].webContents.send("app-update-status", appUpdateStatus);
-    }
+    electron.BrowserWindow.getAllWindows().forEach((window) => {
+        window.webContents.send("app-update-status", appUpdateStatus);
+    });
 }
 
 /**
@@ -915,9 +931,16 @@ async function installAppUpdate() {
         detail: "A new version has been downloaded. Restart the application to apply the updates.",
     };
 
-    await electron.dialog.showMessageBox(windows["main"], dialogOpts).then(({ response }) => {
-        if (response === 0) autoUpdater.quitAndInstall();
-    });
+    if (mainWindowId !== undefined) {
+        await electron.dialog
+            .showMessageBox(
+                electron.BrowserWindow.getFocusedWindow() ?? electron.BrowserWindow.fromId(mainWindowId),
+                dialogOpts
+            )
+            .then(({ response }) => {
+                if (response === 0) autoUpdater.quitAndInstall();
+            });
+    }
 }
 
 electron.ipcMain.on("install-app-update", () => fireAndForget(() => installAppUpdate()));
@@ -990,6 +1013,8 @@ function configureAutoUpdater(enabled: boolean) {
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();
+    await createAuxWindowWrap();
+
     app.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
             createMainWindowWrap().then();
