@@ -58,7 +58,8 @@ func TestGetDB(t *testing.T) {
 	defer cleanupTestDB(t)
 
 	GetDBTimeout := 10 * time.Second
-	ctx, _ := context.WithTimeout(context.Background(), GetDBTimeout)
+	ctx, cancelFn := context.WithTimeout(context.Background(), GetDBTimeout)
+	defer cancelFn()
 	_, err := GetDB(ctx)
 	if err != nil {
 		t.Errorf("TestInitDB error: %v", err)
@@ -223,7 +224,7 @@ func TestMakeFile(t *testing.T) {
 	log.Printf("cur file info: %v", curFileInfo)
 	SimpleAssert(t, curFileInfo.Name == "file-1", "correct file name")
 	SimpleAssert(t, curFileInfo.Meta["test-descriptor"] == true, "meta correct")
-	curCacheEntry := cache[GetCacheId("test-block-id", "file-1")]
+	curCacheEntry := blockstoreCache[GetCacheId("test-block-id", "file-1")]
 	curFileInfo = curCacheEntry.Info
 	log.Printf("cache entry: %v", curCacheEntry)
 	SimpleAssert(t, curFileInfo.Name == "file-1", "cache correct file name")

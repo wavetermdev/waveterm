@@ -81,7 +81,7 @@ type BlockStore interface {
 	GetAllBlockIds(ctx context.Context) []string
 }
 
-var cache map[string]*CacheEntry = make(map[string]*CacheEntry)
+var blockstoreCache map[string]*CacheEntry = make(map[string]*CacheEntry)
 var globalLock *sync.Mutex = &sync.Mutex{}
 var appendLock *sync.Mutex = &sync.Mutex{}
 var flushTimeout = DefaultFlushTimeout
@@ -91,13 +91,13 @@ var lastWriteTime time.Time
 func clearCache() {
 	globalLock.Lock()
 	defer globalLock.Unlock()
-	cache = make(map[string]*CacheEntry)
+	blockstoreCache = make(map[string]*CacheEntry)
 }
 
 func InsertFileIntoDB(ctx context.Context, fileInfo FileInfo) error {
 	metaJson, err := json.Marshal(fileInfo.Meta)
 	if err != nil {
-		return fmt.Errorf("Error writing file %s to db: %v", fileInfo.Name, err)
+		return fmt.Errorf("error writing file %s to db: %v", fileInfo.Name, err)
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `INSERT INTO block_file VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
@@ -105,7 +105,7 @@ func InsertFileIntoDB(ctx context.Context, fileInfo FileInfo) error {
 		return nil
 	})
 	if txErr != nil {
-		return fmt.Errorf("Error writing file %s to db: %v", fileInfo.Name, txErr)
+		return fmt.Errorf("error writing file %s to db: %v", fileInfo.Name, txErr)
 	}
 	return nil
 }
@@ -113,7 +113,7 @@ func InsertFileIntoDB(ctx context.Context, fileInfo FileInfo) error {
 func WriteFileToDB(ctx context.Context, fileInfo FileInfo) error {
 	metaJson, err := json.Marshal(fileInfo.Meta)
 	if err != nil {
-		return fmt.Errorf("Error writing file %s to db: %v", fileInfo.Name, err)
+		return fmt.Errorf("error writing file %s to db: %v", fileInfo.Name, err)
 	}
 	txErr := WithTx(ctx, func(tx *TxWrap) error {
 		query := `UPDATE block_file SET blockid = ?, name = ?, maxsize = ?, circular = ?, size = ?, createdts = ?, modts = ?, meta = ? where blockid = ? and name = ?`
@@ -121,7 +121,7 @@ func WriteFileToDB(ctx context.Context, fileInfo FileInfo) error {
 		return nil
 	})
 	if txErr != nil {
-		return fmt.Errorf("Error writing file %s to db: %v", fileInfo.Name, txErr)
+		return fmt.Errorf("error writing file %s to db: %v", fileInfo.Name, txErr)
 	}
 	return nil
 
@@ -134,7 +134,7 @@ func WriteDataBlockToDB(ctx context.Context, blockId string, name string, index 
 		return nil
 	})
 	if txErr != nil {
-		return fmt.Errorf("Error writing data block to db: %v", txErr)
+		return fmt.Errorf("error writing data block to db: %v", txErr)
 	}
 	return nil
 }
@@ -161,7 +161,7 @@ func WriteToCacheBlockNum(ctx context.Context, blockId string, name string, p []
 	defer cacheEntry.Lock.Unlock()
 	block, err := GetCacheBlock(ctx, blockId, name, cacheNum, pullFromDB)
 	if err != nil {
-		return 0, 0, fmt.Errorf("Error getting cache block: %v", err)
+		return 0, 0, fmt.Errorf("error getting cache block: %v", err)
 	}
 	var bytesWritten = 0
 	blockLen := len(block.data)
@@ -201,7 +201,7 @@ func ReadFromCacheBlock(ctx context.Context, blockId string, name string, block 
 		}
 	}()
 	if pos > len(block.data) {
-		return 0, fmt.Errorf("Reading past end of cache block, should never happen")
+		return 0, fmt.Errorf("reading past end of cache block, should never happen")
 	}
 	bytesWritten := 0
 	index := pos
@@ -225,7 +225,7 @@ func ReadFromCacheBlock(ctx context.Context, blockId string, name string, block 
 	return bytesWritten, nil
 }
 
-const MaxSizeError = "Hit Max Size"
+const MaxSizeError = "MaxSizeError"
 
 func WriteToCacheBuf(buf *[]byte, p []byte, pos int, length int, maxWrite int64) (int, error) {
 	bytesToWrite := length
@@ -269,7 +269,7 @@ func GetValuesFromCacheId(cacheId string) (blockId string, name string) {
 func GetCacheEntry(ctx context.Context, blockId string, name string) (*CacheEntry, bool) {
 	globalLock.Lock()
 	defer globalLock.Unlock()
-	if curCacheEntry, found := cache[GetCacheId(blockId, name)]; found {
+	if curCacheEntry, found := blockstoreCache[GetCacheId(blockId, name)]; found {
 		return curCacheEntry, true
 	} else {
 		return nil, false
@@ -288,7 +288,7 @@ func GetCacheEntryOrPopulate(ctx context.Context, blockId string, name string) (
 		if cacheEntry, found := GetCacheEntry(ctx, blockId, name); found {
 			return cacheEntry, nil
 		} else {
-			return nil, fmt.Errorf("Error getting cache entry %v %v", blockId, name)
+			return nil, fmt.Errorf("error getting cache entry %v %v", blockId, name)
 		}
 	}
 
@@ -297,16 +297,16 @@ func GetCacheEntryOrPopulate(ctx context.Context, blockId string, name string) (
 func SetCacheEntry(ctx context.Context, cacheId string, cacheEntry *CacheEntry) {
 	globalLock.Lock()
 	defer globalLock.Unlock()
-	if _, found := cache[cacheId]; found {
+	if _, found := blockstoreCache[cacheId]; found {
 		return
 	}
-	cache[cacheId] = cacheEntry
+	blockstoreCache[cacheId] = cacheEntry
 }
 
 func DeleteCacheEntry(ctx context.Context, blockId string, name string) {
 	globalLock.Lock()
 	defer globalLock.Unlock()
-	delete(cache, GetCacheId(blockId, name))
+	delete(blockstoreCache, GetCacheId(blockId, name))
 }
 
 func GetCacheBlock(ctx context.Context, blockId string, name string, cacheNum int, pullFromDB bool) (*CacheBlock, error) {
@@ -425,12 +425,12 @@ func WriteAtHelper(ctx context.Context, blockId string, name string, p []byte, o
 					b, err := WriteAtHelper(ctx, blockId, name, p, 0, false)
 					bytesWritten += b
 					if err != nil {
-						return bytesWritten, fmt.Errorf("Write to cache error: %v", err)
+						return bytesWritten, fmt.Errorf("write to cache error: %v", err)
 					}
 					break
 				}
 			} else {
-				return bytesWritten, fmt.Errorf("Write to cache error: %v", err)
+				return bytesWritten, fmt.Errorf("write to cache error: %v", err)
 			}
 		}
 		if len(p) == b {
@@ -461,7 +461,7 @@ func GetAllBlockSizes(dataBlocks []*CacheBlock) (int, int) {
 }
 
 func FlushCache(ctx context.Context) error {
-	for _, cacheEntry := range cache {
+	for _, cacheEntry := range blockstoreCache {
 		err := WriteFileToDB(ctx, *cacheEntry.Info)
 		if err != nil {
 			return err
@@ -494,14 +494,14 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 	bytesRead := 0
 	fInfo, err := Stat(ctx, blockId, name)
 	if err != nil {
-		return 0, fmt.Errorf("Read At err: %v", err)
+		return 0, fmt.Errorf("ReadAt err: %v", err)
 	}
 	if off > fInfo.Opts.MaxSize && fInfo.Opts.Circular {
 		numOver := off / fInfo.Opts.MaxSize
 		off = off - (numOver * fInfo.Opts.MaxSize)
 	}
 	if off > fInfo.Size {
-		return 0, fmt.Errorf("Read At error: tried to read past the end of the file")
+		return 0, fmt.Errorf("ReadAt error: tried to read past the end of the file")
 	}
 	endReadPos := math.Min(float64(int64(len(*p))+off), float64(fInfo.Size))
 	bytesToRead := int64(endReadPos) - off
@@ -514,7 +514,7 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 	for index := curCacheNum; index < curCacheNum+numCaches; index++ {
 		curCacheBlock, err := GetCacheBlock(ctx, blockId, name, index, true)
 		if err != nil {
-			return bytesRead, fmt.Errorf("Error getting cache block: %v", err)
+			return bytesRead, fmt.Errorf("error getting cache block: %v", err)
 		}
 		cacheOffset := off - (int64(index) * MaxBlockSize)
 		if cacheOffset < 0 {
@@ -549,7 +549,7 @@ func ReadAt(ctx context.Context, blockId string, name string, p *[]byte, off int
 					break
 				}
 			} else {
-				return bytesRead, fmt.Errorf("Read from cache error: %v", err)
+				return bytesRead, fmt.Errorf("read from cache error: %v", err)
 			}
 		}
 	}
@@ -561,7 +561,7 @@ func AppendData(ctx context.Context, blockId string, name string, p []byte) (int
 	defer appendLock.Unlock()
 	fInfo, err := Stat(ctx, blockId, name)
 	if err != nil {
-		return 0, fmt.Errorf("Append stat error: %v", err)
+		return 0, fmt.Errorf("append stat error: %v", err)
 	}
 	return WriteAt(ctx, blockId, name, p, fInfo.Size)
 }
@@ -573,12 +573,12 @@ func DeleteFile(ctx context.Context, blockId string, name string) error {
 }
 
 func DeleteBlock(ctx context.Context, blockId string) error {
-	for cacheId, _ := range cache {
+	for cacheId := range blockstoreCache {
 		curBlockId, name := GetValuesFromCacheId(cacheId)
 		if curBlockId == blockId {
 			err := DeleteFile(ctx, blockId, name)
 			if err != nil {
-				return fmt.Errorf("Error deleting %v %v: %v", blockId, name, err)
+				return fmt.Errorf("error deleting %v %v: %v", blockId, name, err)
 			}
 		}
 	}
