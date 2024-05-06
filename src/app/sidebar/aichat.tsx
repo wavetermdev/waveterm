@@ -11,6 +11,7 @@ import { Markdown } from "@/elements";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import tinycolor from "tinycolor2";
+import * as appconst from "@/app/appconst";
 
 import "./aichat.less";
 
@@ -54,10 +55,9 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
 }
 
 @mobxReact.observer
-class ChatContent extends React.Component<{}, {}> {
+class ChatContent extends React.Component<{ chatWindowRef }, {}> {
     chatListKeyCount: number = 0;
     containerRef: React.RefObject<OverlayScrollbarsComponentRef> = React.createRef();
-    chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef();
     osInstance: OverlayScrollbars = null;
 
     componentDidUpdate() {
@@ -66,7 +66,7 @@ class ChatContent extends React.Component<{}, {}> {
             const { viewport } = this.osInstance.elements();
             viewport.scrollTo({
                 behavior: "auto",
-                top: this.chatWindowRef.current.scrollHeight,
+                top: this.props.chatWindowRef.current.scrollHeight,
             });
         }
     }
@@ -84,7 +84,7 @@ class ChatContent extends React.Component<{}, {}> {
         const { viewport } = instance.elements();
         viewport.scrollTo({
             behavior: "auto",
-            top: this.chatWindowRef.current.scrollHeight,
+            top: this.props.chatWindowRef.current.scrollHeight,
         });
     }
 
@@ -116,7 +116,7 @@ class ChatContent extends React.Component<{}, {}> {
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
                         </div>
                         <Markdown
-                            inputModel={GlobalModel.aichatModel}
+                            inputModel={GlobalModel.inputModel}
                             text={chatItem.assistantresponse.message}
                             codeSelect
                         />
@@ -148,7 +148,7 @@ class ChatContent extends React.Component<{}, {}> {
                 options={{ scrollbars: { autoHide: "leave" } }}
                 events={{ initialized: this.onScrollbarInitialized }}
             >
-                <div ref={this.chatWindowRef} className="chat-window">
+                <div ref={this.props.chatWindowRef} className="chat-window">
                     <div className="filler"></div>
                     <For each="chitem" index="idx" of={chatMessageItems}>
                         {this.renderChatMessage(chitem)}
@@ -162,13 +162,39 @@ class ChatContent extends React.Component<{}, {}> {
 @mobxReact.observer
 class AIChat extends React.Component<{}, {}> {
     textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
+    chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef();
     termFontSize: number = 14;
+
+    // Adjust the height of the textarea to fit the text
+    @boundMethod
+    onTextAreaChange(e: any) {
+        if (this.textAreaRef.current == null) {
+            return;
+        }
+        // Calculate the bounding height of the text area
+        const textAreaMaxLines = 4;
+        const textAreaLineHeight = this.termFontSize * 1.5;
+        const textAreaMinHeight = textAreaLineHeight;
+        const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
+
+        // Get the height of the wrapped text area content. Courtesy of https://stackoverflow.com/questions/995168/textarea-to-resize-based-on-content-length
+        this.textAreaRef.current.style.height = "1px";
+        const scrollHeight: number = this.textAreaRef.current.scrollHeight;
+
+        // Set the new height of the text area, bounded by the min and max height.
+        const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
+        this.textAreaRef.current.style.height = newHeight + "px";
+        GlobalModel.inputModel.codeSelectDeselectAll();
+    }
 
     componentDidMount() {
         const inputModel = GlobalModel.inputModel;
+
+        inputModel.openAIAssistantChat();
+
         if (this.textAreaRef.current != null) {
             this.textAreaRef.current.focus();
-            // inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowScrollRef);
+            inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowRef);
         }
         this.requestChatUpdate();
         this.onTextAreaChange(null);
@@ -183,7 +209,6 @@ class AIChat extends React.Component<{}, {}> {
 
     submitChatMessage(messageStr: string) {
         const curLine = GlobalModel.inputModel.curLine;
-        console.log("enter key pressed", messageStr, "curLine: ", curLine);
         const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
             if (!rtn.success) {
@@ -198,9 +223,13 @@ class AIChat extends React.Component<{}, {}> {
         return { numLines, linePos };
     }
 
-    @mobx.action.bound
+    @mobx.action
+    @boundMethod
     onTextAreaFocused(e: any) {
+        console.log("focused");
         GlobalModel.inputModel.setAuxViewFocus(true);
+        GlobalModel.inputModel.setActiveAuxView(appconst.InputAuxView_AIChat);
+
         this.onTextAreaChange(e);
     }
 
@@ -211,22 +240,8 @@ class AIChat extends React.Component<{}, {}> {
         })();
     }
 
-    // Adjust the height of the textarea to fit the text
     @boundMethod
-    onTextAreaChange(e: any) {
-        // Calculate the bounding height of the text area
-        const textAreaMaxLines = 4;
-        const textAreaLineHeight = this.termFontSize * 1.5;
-        const textAreaMinHeight = textAreaLineHeight;
-        const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
-
-        // Get the height of the wrapped text area content. Courtesy of https://stackoverflow.com/questions/995168/textarea-to-resize-based-on-content-length
-        this.textAreaRef.current.style.height = "1px";
-        const scrollHeight: number = this.textAreaRef.current.scrollHeight;
-
-        // Set the new height of the text area, bounded by the min and max height.
-        const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
-        this.textAreaRef.current.style.height = newHeight + "px";
+    onTextAreaInput(e: any) {
         GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
@@ -272,6 +287,7 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     onArrowDownPressed(): boolean {
+        console.log("got here");
         const currentRef = this.textAreaRef.current;
         const inputModel = GlobalModel.inputModel;
         if (currentRef == null) {
@@ -294,15 +310,22 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     render() {
-        const chatMessageItems = GlobalModel.aichatModel.aiCmdInfoChatItems.slice();
+        const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
+        const renderAIChatKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(
+            appconst.InputAuxView_AIChat,
+            "sidebar"
+        );
+        console.log("renderAIChatKeybindings=====", renderAIChatKeybindings);
         return (
             <div className="sidebar-aichat">
-                <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
+                <If condition={renderAIChatKeybindings}>
+                    <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
+                </If>
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
                 </div>
                 <If condition={chatMessageItems.length > 0}>
-                    <ChatContent />
+                    <ChatContent chatWindowRef={this.chatWindowRef} />
                 </If>
                 <div className="chat-input">
                     <textarea
@@ -311,11 +334,13 @@ class AIChat extends React.Component<{}, {}> {
                         autoComplete="off"
                         autoCorrect="off"
                         autoFocus={true}
-                        id="chat-cmd-input"
+                        className="chat-cmd-input chat-textarea"
+                        onFocus={this.onTextAreaFocused}
+                        onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}
+                        onInput={this.onTextAreaInput}
                         onKeyDown={this.onKeyDown}
                         style={{ fontSize: this.termFontSize }}
-                        className="chat-textarea"
                         placeholder="Send a Message..."
                     ></textarea>
                 </div>

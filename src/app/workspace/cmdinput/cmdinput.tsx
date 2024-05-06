@@ -86,9 +86,9 @@ class CmdInput extends React.Component<{}, {}> {
         e.stopPropagation();
         const inputModel = GlobalModel.inputModel;
         if (inputModel.getActiveAuxView() === appconst.InputAuxView_AIChat) {
-            inputModel.closeAuxView();
+            // inputModel.closeAuxView();
         } else {
-            inputModel.openAIAssistantChat();
+            // inputModel.openAIAssistantChat();
         }
     }
 
@@ -191,10 +191,10 @@ class CmdInput extends React.Component<{}, {}> {
                         <div className="cmd-input-grow-spacer"></div>
                         <HistoryInfo />
                     </When>
-                    <When condition={openView === appconst.InputAuxView_AIChat}>
+                    {/* <When condition={openView === appconst.InputAuxView_AIChat}>
                         <div className="cmd-input-grow-spacer"></div>
                         <AIChat />
-                    </When>
+                    </When> */}
                     <When condition={openView === appconst.InputAuxView_Info}>
                         <InfoMsg key="infomsg" />
                     </When>

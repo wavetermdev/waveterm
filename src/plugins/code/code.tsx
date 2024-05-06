@@ -461,7 +461,11 @@ class SourceCodeRenderer extends React.Component<
                 ref={this.markdownRef}
                 onScroll={() => this.handleDivScroll()}
             >
-                <Markdown text={this.state.code} style={{ width: "100%", padding: "1rem" }} />
+                <Markdown
+                    inputModel={GlobalModel.inputModel}
+                    text={this.state.code}
+                    style={{ width: "100%", padding: "1rem" }}
+                />
             </div>
         );
     }

@@ -139,6 +139,7 @@ class InputModel {
     giveFocus(): void {
         // Override active view to the main input if aux view does not have focus
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
+        console.log("activeAuxView", activeAuxView);
         switch (activeAuxView) {
             case appconst.InputAuxView_History: {
                 const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
@@ -190,7 +191,7 @@ class InputModel {
         if (document.activeElement == historyInputElem) {
             return true;
         }
-        let aiChatInputElem = document.querySelector(".cmd-input chat-cmd-input");
+        let aiChatInputElem = document.querySelector(".cmd-input .chat-cmd-input");
         if (document.activeElement == aiChatInputElem) {
             return true;
         }
@@ -459,17 +460,22 @@ class InputModel {
         this.giveFocus();
     }
 
-    shouldRenderAuxViewKeybindings(view: InputAuxViewType): boolean {
+    shouldRenderAuxViewKeybindings(view: InputAuxViewType, test?: string): boolean {
+        console.log("view", view, this.getAuxViewFocus(), this.getActiveAuxView());
         if (GlobalModel.activeMainView.get() != "session") {
+            console.log("1");
             return false;
         }
         if (GlobalModel.getActiveScreen()?.getFocusType() != "input") {
+            console.log("2");
             return false;
         }
         // (view == null) means standard cmdinput keybindings
         if (view == null) {
+            console.log("3");
             return !this.getAuxViewFocus();
         } else {
+            console.log("4");
             return this.getAuxViewFocus() && view == this.getActiveAuxView();
         }
     }
@@ -659,6 +665,7 @@ class InputModel {
 
     @mobx.action
     openAIAssistantChat(): void {
+        console.log("openAIAssistantChat");
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
         this.setAuxViewFocus(true);
         this.globalModel.sendActivity("aichat-open");
@@ -759,23 +766,18 @@ class InputModel {
 
     @mobx.computed
     get curLine(): string {
-        console.log("triggered get curLine");
         const hidx = this.historyIndex.get();
         if (hidx < this.modHistory.length && this.modHistory[hidx] != null) {
-            console.log("this.modHistory[hidx]", this.modHistory[hidx]);
             return this.modHistory[hidx];
         }
         const hitems = this.filteredHistoryItems;
         if (hidx == 0 || hitems == null || hidx > hitems.length) {
-            console.log("returning empty string 1");
             return "";
         }
         const hitem = hitems[hidx - 1];
         if (hitem == null) {
-            console.log("returning empty string 2");
             return "";
         }
-        console.log("returning hitem.cmdstr", hitem.cmdstr);
         return hitem.cmdstr;
     }
 

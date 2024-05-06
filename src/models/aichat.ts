@@ -3,25 +3,24 @@
 
 import type React from "react";
 import * as mobx from "mobx";
-import type { Model } from "./model";
+import { Model } from "./model";
 import { GlobalCommandRunner } from "./global";
 
 class AIChatModel {
     globalModel: Model;
-    aiChatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
-    aiChatWindowRef: React.RefObject<HTMLDivElement>;
+    chatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
+    chatWindowRef: React.RefObject<HTMLDivElement>;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
     codeSelectUuid: string;
-
     aiCmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat",
     });
+    isFocused: OV<boolean> = mobx.observable.box(false, {
+        name: "isFocused",
+    });
     readonly codeSelectTop: number = -2;
     readonly codeSelectBottom: number = -1;
-
-    // focus
-    physicalInputFocused: OV<boolean> = mobx.observable.box(false);
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
@@ -33,39 +32,20 @@ class AIChatModel {
         this.codeSelectUuid = "";
     }
 
-    // Focuses the main input or the auxiliary view, depending on the active auxiliary view
     @mobx.action
-    giveFocus(): void {
-        // focus aichat sidebar input
+    focus(): void {
+        if (this.chatTextAreaRef?.current != null) {
+            this.chatTextAreaRef.current.focus();
+        }
+        this.isFocused.set(true);
     }
 
     @mobx.action
-    setPhysicalInputFocused(isFocused: boolean): void {
-        this.physicalInputFocused.set(isFocused);
-        if (isFocused) {
-            const screen = this.globalModel.getActiveScreen();
-            if (screen != null) {
-                if (screen.focusType.get() != "input") {
-                    GlobalCommandRunner.screenSetFocus("input");
-                }
-            }
+    unFocus() {
+        if (this.chatTextAreaRef?.current != null) {
+            this.chatTextAreaRef.current.blur();
         }
-    }
-
-    hasFocus(): boolean {
-        const mainInputElem = document.getElementById("main-cmd-input");
-        if (document.activeElement == mainInputElem) {
-            return true;
-        }
-        const historyInputElem = document.querySelector(".cmd-input input.history-input");
-        if (document.activeElement == historyInputElem) {
-            return true;
-        }
-        let aiChatInputElem = document.querySelector(".cmd-input chat-cmd-input");
-        if (document.activeElement == aiChatInputElem) {
-            return true;
-        }
-        return false;
+        this.isFocused.set(false);
     }
 
     @mobx.action
@@ -74,27 +54,23 @@ class AIChatModel {
         this.codeSelectBlockRefArray = [];
     }
 
-    closeAuxView(): void {
+    close(): void {
         // close and give focus back to main input
     }
 
-    shouldRenderAuxViewKeybindings(view: InputAuxViewType): boolean {
+    shouldRenderKeybindings(view: InputAuxViewType): boolean {
         // when aichat sidebar is mounted, it will render the keybindings
         return true;
     }
 
-    setCmdInfoChatRefs(
-        textAreaRef: React.RefObject<HTMLTextAreaElement>,
-        chatWindowRef: React.RefObject<HTMLDivElement>
-    ) {
-        this.aiChatTextAreaRef = textAreaRef;
-        this.aiChatWindowRef = chatWindowRef;
+    setRefs(textAreaRef: React.RefObject<HTMLTextAreaElement>, chatWindowRef: React.RefObject<HTMLDivElement>) {
+        this.chatTextAreaRef = textAreaRef;
+        this.chatWindowRef = chatWindowRef;
     }
 
-    setAIChatFocus() {
-        if (this.aiChatTextAreaRef?.current != null) {
-            this.aiChatTextAreaRef.current.focus();
-        }
+    unsetRefs() {
+        this.chatTextAreaRef = null;
+        this.chatWindowRef = null;
     }
 
     addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>, uuid: string): number {
@@ -113,14 +89,14 @@ class AIChatModel {
         if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
             this.codeSelectSelectedIndex.set(blockIndex);
             const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
-            if (currentRef != null && this.aiChatWindowRef?.current != null) {
-                const chatWindowTop = this.aiChatWindowRef.current.scrollTop;
-                const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
+            if (currentRef != null && this.chatWindowRef?.current != null) {
+                const chatWindowTop = this.chatWindowRef.current.scrollTop;
+                const chatWindowBottom = chatWindowTop + this.chatWindowRef.current.clientHeight - 100;
                 const elemTop = currentRef.offsetTop;
                 let elemBottom = elemTop - currentRef.offsetHeight;
                 const elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
                 if (!elementIsInView) {
-                    this.aiChatWindowRef.current.scrollTop = elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
+                    this.chatWindowRef.current.scrollTop = elemBottom - this.chatWindowRef.current.clientHeight / 3;
                 }
             }
         }
@@ -139,8 +115,8 @@ class AIChatModel {
         const incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
         if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
             this.codeSelectDeselectAll();
-            if (this.aiChatWindowRef?.current != null) {
-                this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
+            if (this.chatWindowRef?.current != null) {
+                this.chatWindowRef.current.scrollTop = this.chatWindowRef.current.scrollHeight;
             }
         }
         if (incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
@@ -162,8 +138,8 @@ class AIChatModel {
         const decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
         if (decBlockIndex < 0) {
             this.codeSelectDeselectAll(this.codeSelectTop);
-            if (this.aiChatWindowRef?.current != null) {
-                this.aiChatWindowRef.current.scrollTop = 0;
+            if (this.chatWindowRef?.current != null) {
+                this.chatWindowRef.current.scrollTop = 0;
             }
         }
         if (decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {

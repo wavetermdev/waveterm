@@ -1345,7 +1345,6 @@ class Model {
         interactive: boolean,
         runUpdate: boolean = true
     ): Promise<CommandRtnType> {
-        console.log("cmdPk", cmdPk);
         if (this.debugCmds > 0) {
             console.log("[cmd]", cmdPacketString(cmdPk));
             if (this.debugCmds > 1) {
