@@ -35,8 +35,6 @@ let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
 let initialClientData: ClientDataType = null;
 
-let mainWindowId: number | undefined;
-
 checkPromptMigrate();
 ensureDir(waveHome);
 
@@ -325,9 +323,6 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
 }
 
 function createWindow(isMain: boolean, clientData: ClientDataType | null): Electron.BrowserWindow {
-    if (mainWindowId !== undefined && electron.BrowserWindow.fromId(mainWindowId)) {
-        console.error(`createWindow called for main window, which already exists`);
-    }
     const bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
     const win = new electron.BrowserWindow({
@@ -375,11 +370,6 @@ function createWindow(isMain: boolean, clientData: ClientDataType | null): Elect
     win.on("focus", () => {
         wasInFg = true;
         wasActive = true;
-    });
-    win.on("close", () => {
-        if (isMain) {
-            mainWindowId = undefined;
-        }
     });
     win.webContents.on("zoom-changed", (e) => {
         win.webContents.send("zoom-changed");
@@ -764,17 +754,6 @@ async function createMainWindowWrap() {
     configureAutoUpdaterStartup(clientData);
 }
 
-async function createAuxWindowWrap() {
-    let clientData: ClientDataType | null = null;
-    try {
-        clientData = await getClientDataPoll(1);
-        initialClientData = clientData;
-    } catch (e) {
-        console.log("error getting wavesrv clientdata", e.toString());
-    }
-    createWindow(false, clientData);
-}
-
 async function sleep(ms: number) {
     return new Promise((resolve, _) => setTimeout(resolve, ms));
 }
@@ -817,10 +796,11 @@ function reregisterGlobalShortcut(shortcut: string) {
     }
     const ok = electron.globalShortcut.register(shortcut, async () => {
         console.log("global shortcut triggered, showing window");
-        if (mainWindowId === undefined) {
+        if (electron.BrowserWindow.getAllWindows().length == 0) {
             await createMainWindowWrap();
         }
-        electron.BrowserWindow.fromId(mainWindowId)?.show();
+        const winToShow = electron.BrowserWindow.getFocusedWindow() ?? electron.BrowserWindow.getAllWindows()[0];
+        winToShow?.show();
     });
     console.log("registered global shortcut", shortcut, ok ? "ok" : "failed");
     if (!ok) {
@@ -931,12 +911,10 @@ async function installAppUpdate() {
         detail: "A new version has been downloaded. Restart the application to apply the updates.",
     };
 
-    if (mainWindowId !== undefined) {
+    const allWindows = electron.BrowserWindow.getAllWindows();
+    if (allWindows.length > 0) {
         await electron.dialog
-            .showMessageBox(
-                electron.BrowserWindow.getFocusedWindow() ?? electron.BrowserWindow.fromId(mainWindowId),
-                dialogOpts
-            )
+            .showMessageBox(electron.BrowserWindow.getFocusedWindow() ?? allWindows[0], dialogOpts)
             .then(({ response }) => {
                 if (response === 0) autoUpdater.quitAndInstall();
             });
@@ -1013,7 +991,6 @@ function configureAutoUpdater(enabled: boolean) {
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
     await createMainWindowWrap();
-    await createAuxWindowWrap();
 
     app.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
