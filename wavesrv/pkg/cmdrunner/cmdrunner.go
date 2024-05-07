@@ -1778,13 +1778,6 @@ func CopyFileCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	if err != nil {
 		return nil, fmt.Errorf("cannot make termopts: %w", err)
 	}
-	pkTermOpts := convertTermOpts(termOpts)
-	cmd, err := makeDynCmd(ctx, "copy file", ids, pk.GetRawStr(), *pkTermOpts, nil)
-	writeStringToPty(ctx, cmd, outputStr, &outputPos)
-	if err != nil {
-		// TODO tricky error since the command was a success, but we can't show the output
-		return nil, err
-	}
 	if destRemote != ConnectedRemote && destRemoteId != nil && !destRemoteId.RState.IsConnected() {
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Attempting to autoconnect to remote %v\r\n", destRemote), &outputPos)
 		err = destRemoteId.Waveshell.TryAutoConnect()
@@ -6252,7 +6245,6 @@ func ClientSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 			return nil, fmt.Errorf("error updating client ai base url: %v", err)
 		}
 		feOpts := clientData.FeOpts
-		feOpts.SudoPwStore = strings.ToLower(sudoPwStoreStr)
 		err = sstore.UpdateClientFeOpts(ctx, feOpts)
 		if err != nil {
 			return nil, fmt.Errorf("error updating client feopts: %v", err)

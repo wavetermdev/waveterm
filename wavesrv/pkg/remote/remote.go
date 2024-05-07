@@ -1530,10 +1530,6 @@ func (msh *WaveshellProc) SearchDir(ctx context.Context, searchDirPk *packet.Sea
 	return msh.PacketRpcIter(ctx, searchDirPk)
 }
 
-func (wsh *WaveshellProc) StreamFile(ctx context.Context, streamPk *packet.StreamFilePacketType) (*packet.RpcResponseIter, error) {
-	return wsh.PacketRpcIter(ctx, streamPk)
-}
-
 func addScVarsToState(state *packet.ShellState) *packet.ShellState {
 	if state == nil {
 		return nil
