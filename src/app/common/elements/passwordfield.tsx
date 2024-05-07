@@ -4,7 +4,7 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { If } from "tsx-control-statements/components";
 import { TextFieldState, TextField } from "./textfield";
 
@@ -48,7 +48,7 @@ class PasswordField extends TextField {
 
         // The input should always receive the real value
         const inputProps = {
-            className: cn("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration }),
+            className: clsx("wave-textfield-inner-input", { "offset-left": decoration?.startDecoration }),
             ref: this.inputRef,
             id: label,
             value: inputValue, // Always use the real value here
@@ -63,7 +63,7 @@ class PasswordField extends TextField {
 
         return (
             <div
-                className={cn(`wave-textfield wave-password ${className || ""}`, {
+                className={clsx(`wave-textfield wave-password ${className || ""}`, {
                     focused: focused,
                     error: error,
                     "no-label": !label,
@@ -72,7 +72,7 @@ class PasswordField extends TextField {
                 {decoration?.startDecoration && <>{decoration.startDecoration}</>}
                 <div className="wave-textfield-inner">
                     <label
-                        className={cn("wave-textfield-inner-label", {
+                        className={clsx("wave-textfield-inner-label", {
                             float: this.state.hasContent || this.state.focused || placeholder,
                             "offset-left": decoration?.startDecoration,
                         })}

@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { isBlank } from "@/util/util";
-import cn from "classnames";
+import { clsx } from "clsx";
 
 class TabIcon extends React.Component<{ icon: string; color: string }> {
     render() {
@@ -20,7 +20,7 @@ class TabIcon extends React.Component<{ icon: string; color: string }> {
             color = "green";
         }
         return (
-            <div className={cn("tabicon", "color-" + color)}>
+            <div className={clsx("tabicon", "color-" + color)}>
                 <i className={iconClass} />
             </div>
         );

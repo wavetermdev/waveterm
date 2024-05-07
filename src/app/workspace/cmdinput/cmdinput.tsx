@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { Choose, If, When } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
@@ -185,7 +185,7 @@ class CmdInput extends React.Component<{}, {}> {
         }
 
         return (
-            <div ref={this.cmdInputRef} className={cn("cmd-input", hasOpenView, { active: focusVal })}>
+            <div ref={this.cmdInputRef} className={clsx("cmd-input", hasOpenView, { active: focusVal })}>
                 <Choose>
                     <When condition={openView === appconst.InputAuxView_History}>
                         <div className="cmd-input-grow-spacer"></div>
@@ -239,7 +239,7 @@ class CmdInput extends React.Component<{}, {}> {
                         <If condition={numRunningLines > 0}>
                             <div
                                 key="running"
-                                className={cn("cmdinput-icon", "running-cmds", { active: filterRunning })}
+                                className={clsx("cmdinput-icon", "running-cmds", { active: filterRunning })}
                                 title="Filter for Running Commands"
                                 onClick={() => this.toggleFilter(screen)}
                             >
@@ -277,7 +277,7 @@ class CmdInput extends React.Component<{}, {}> {
                     </If>
                     <div
                         key="input"
-                        className={cn(
+                        className={clsx(
                             "cmd-input-field field has-addons",
                             inputMode != null ? "inputmode-" + inputMode : null
                         )}

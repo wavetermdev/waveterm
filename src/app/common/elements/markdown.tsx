@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel } from "@/models";
 import { v4 as uuidv4 } from "uuid";
 
@@ -22,7 +22,7 @@ function LinkRenderer(props: any): any {
 }
 
 function HeaderRenderer(props: any, hnum: number): any {
-    return <div className={cn("title", "is-" + hnum)}>{props.children}</div>;
+    return <div className={clsx("title", "is-" + hnum)}>{props.children}</div>;
 }
 
 function CodeRenderer(props: any): any {
@@ -47,13 +47,16 @@ class CodeBlockMarkdown extends React.Component<
         let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
         let inputModel = GlobalModel.inputModel;
         clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
-            inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
+            const sel = window.getSelection();
+            if (sel?.toString().length == 0) {
+                inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
+            }
         };
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (
             <pre
                 ref={this.blockRef}
-                className={cn({ selected: selected })}
+                className={clsx({ selected: selected })}
                 onClick={(event) => clickHandler(event, this.blockIndex)}
             >
                 {this.props.children}
@@ -110,7 +113,7 @@ class Markdown extends React.Component<
             pre: (props) => this.CodeBlockRenderer(props, codeSelect, curCodeSelectIndex, this.curUuid),
         };
         return (
-            <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>
+            <div className={clsx("markdown content", this.props.extraClassName)} style={this.props.style}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                     {text}
                 </ReactMarkdown>

@@ -170,8 +170,8 @@ type WaveshellLaunchError struct {
 func (wle WaveshellLaunchError) Error() string {
 	if wle.InitPk.NotFound {
 		return "waveshell client not found"
-	} else if semver.MajorMinor(wle.InitPk.Version) != semver.MajorMinor(base.MShellVersion) {
-		return fmt.Sprintf("invalid remote waveshell version '%s', must be '=%s'", wle.InitPk.Version, semver.MajorMinor(base.MShellVersion))
+	} else if semver.MajorMinor(wle.InitPk.Version) != semver.MajorMinor(base.WaveshellVersion) {
+		return fmt.Sprintf("invalid remote waveshell version '%s', must be '=%s'", wle.InitPk.Version, semver.MajorMinor(base.WaveshellVersion))
 	}
 	return fmt.Sprintf("invalid waveshell: init packet=%v", *wle.InitPk)
 }
@@ -232,7 +232,7 @@ func MakeClientProc(ctx context.Context, ecmd ConnInterface) (*ClientProc, error
 		cproc.Close()
 		return nil, WaveshellLaunchError{InitPk: initPk}
 	}
-	if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.MShellVersion) {
+	if semver.MajorMinor(initPk.Version) != semver.MajorMinor(base.WaveshellVersion) {
 		cproc.Close()
 		return nil, WaveshellLaunchError{InitPk: initPk}
 	}

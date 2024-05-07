@@ -11,7 +11,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { Choose, If, Otherwise, When } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner, Cmd } from "@/models";
 import { termHeightFromRows } from "@/util/textmeasure";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { getTermPtyData } from "@/util/modelutil";
 
 import { renderCmdText } from "@/common/elements";
@@ -172,7 +172,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
                         <div
                             key="bookmark"
                             title="Bookmark"
-                            className={cn("line-icon", "line-bookmark")}
+                            className={clsx("line-icon", "line-bookmark")}
                             onClick={this.clickBookmark}
                         >
                             <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
@@ -180,7 +180,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
                         <div
                             key="minimize"
                             title={`${isMinimized ? "Show Output" : "Hide Output"}`}
-                            className={cn("line-icon", isMinimized ? "active" : "")}
+                            className={clsx("line-icon", isMinimized ? "active" : "")}
                             onClick={this.clickMinimize}
                         >
                             <Choose>
@@ -220,7 +220,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
                         <div
                             key="bookmark"
                             title="Bookmark"
-                            className={cn("line-icon", "line-bookmark")}
+                            className={clsx("line-icon", "line-bookmark")}
                             onClick={this.clickBookmark}
                         >
                             <i className="fa-sharp fa-regular fa-bookmark fa-fw" />
@@ -254,7 +254,7 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
             <React.Fragment>
                 <div
                     key="meta2"
-                    className={cn(
+                    className={clsx(
                         "meta meta-line2 cmdtext-expanded no-highlight-scrollbar scrollbar-hide-until-hover",
                         {
                             "is-multiline": isMultiLine,
@@ -304,7 +304,7 @@ class LineHeader extends React.Component<{ screen: LineContainerType; line: Line
         const { line, cmd } = this.props;
         const hidePrompt = getIsHidePrompt(line);
         return (
-            <div key="header" className={cn("line-header", { "hide-prompt": hidePrompt })}>
+            <div key="header" className={clsx("line-header", { "hide-prompt": hidePrompt })}>
                 {this.renderMeta1(cmd)}
                 <If condition={!hidePrompt}>{this.renderCmdText(cmd)}</If>
             </div>
@@ -349,7 +349,7 @@ class SmallLineAvatar extends React.Component<{ line: LineType; cmd: Cmd; onRigh
         return (
             <>
                 <div className="linenum">{lineNumStr}</div>
-                <div title={iconTitle} className={cn("status-icon", "status-" + status)}>
+                <div title={iconTitle} className={clsx("status-icon", "status-" + status)}>
                     {icon}
                 </div>
             </>
@@ -567,7 +567,7 @@ class LineCmd extends React.Component<
             const { screen, line, width } = this.props;
             contentHeight = screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, width);
         }
-        const mainDivCn = cn("line", "line-cmd");
+        const mainDivCn = clsx("line", "line-cmd");
         if (DebugHeightProblems && line.linenum >= MinLine && line.linenum <= MaxLine) {
             heightLog[line.linenum] = heightLog[line.linenum] || {};
             heightLog[line.linenum].contentHeight = contentHeight;
@@ -582,7 +582,7 @@ class LineCmd extends React.Component<
             >
                 <LineHeader screen={screen} line={line} cmd={cmd} />
                 <div
-                    className={cn("line-content", { "zero-height": contentHeight == 0 })}
+                    className={clsx("line-content", { "zero-height": contentHeight == 0 })}
                     style={{ height: contentHeight }}
                 />
             </div>
@@ -801,7 +801,7 @@ class LineCmd extends React.Component<
             .get();
         const isRunning = cmd.isRunning();
         const cmdError = cmdShouldMarkError(cmd);
-        const mainDivCn = cn(
+        const mainDivCn = clsx(
             "line",
             "line-cmd",
             { selected: isSelected },
@@ -830,7 +830,7 @@ class LineCmd extends React.Component<
                 onContextMenu={this.handleContextMenu}
             >
                 <If condition={isSelected || cmdError}>
-                    <div key="mask" className={cn("line-mask", { "error-mask": cmdError })}></div>
+                    <div key="mask" className={clsx("line-mask", { "error-mask": cmdError })}></div>
                 </If>
                 <LineActions screen={screen} line={line} cmd={cmd} />
                 <LineHeader screen={screen} line={line} cmd={cmd} />
@@ -971,7 +971,7 @@ class LineText extends React.Component<
                 name: "computed-isSelected",
             })
             .get();
-        const mainClass = cn("line", "line-text", "focus-parent", { selected: isSelected });
+        const mainClass = clsx("line", "line-text", "focus-parent", { selected: isSelected });
         return (
             <div
                 className={mainClass}

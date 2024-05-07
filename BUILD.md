@@ -11,35 +11,43 @@ If you install the production version of Wave, you'll see a semi-transparent gra
 
 Download and install Go (must be at least go 1.18):
 
-```
+```sh
 brew install go
 ```
 
 Download and install ScriptHaus (to run the build commands):
 
-```
+```sh
 brew tap scripthaus-dev/scripthaus
 brew install scripthaus
 ```
 
 You also need a relatively modern nodejs with npm and yarn installed.
 
--   Node can be installed from [https://nodejs.org](https://nodejs.org).
--   npm can install yarn using:
+Node can be installed from [https://nodejs.org](https://nodejs.org).
 
-```
-npm install -g yarn
+We use Yarn Modern to manage our packages. The recommended way to install Yarn Modern is using Corepack, a new utility shipped by NodeJS that lets you manage your package manager versioning as you would any packages.
+
+If you installed NodeJS from the official feed (via the website or using NVM), this should come preinstalled. If you use Homebrew or some other feed, you may need to manually install Corepack using `npm install -g corepack`.
+
+For more information on Corepack, check out [this link](https://yarnpkg.com/corepack).
+
+Once you've verified that you have Corepack installed, run the following script to set up Yarn for the repository:
+
+```sh
+corepack enable
+yarn install
 ```
 
 ## Clone the Repo
 
-```
+```sh
 git clone git@github.com:wavetermdev/waveterm.git
 ```
 
 ## Building WaveShell / WaveSrv
 
-```
+```sh
 scripthaus run build-backend
 ```
 
@@ -49,7 +57,7 @@ This builds the Golang backends for Wave. The binaries will put in waveshell/bin
 
 Install modules (we use yarn):
 
-```
+```sh
 yarn
 ```
 
@@ -57,7 +65,7 @@ yarn
 
 We use webpack to build both the React and Electron App Wrapper code. They are both run together using:
 
-```
+```sh
 scripthaus run webpack-watch
 ```
 
@@ -65,7 +73,7 @@ scripthaus run webpack-watch
 
 Now that webpack is running (and watching for file changes) we can finally run the WaveTerm Dev Client! To start the client run:
 
-```
+```sh
 scripthaus run electron
 ```
 

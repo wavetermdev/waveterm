@@ -3,7 +3,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalCommandRunner, GlobalModel, Screen } from "@/models";
 import { TextField, Dropdown } from "@/elements";
 import { getRemoteStrWithAlias } from "@/common/prompt/prompt";
@@ -183,7 +183,7 @@ class TabRemoteSelector extends React.Component<{ screen: Screen; errorMessage?:
                     startDecoration: (
                         <div className="lefticon">
                             <GlobeIcon className="globe-icon" />
-                            <StatusCircleIcon className={cn("status-icon", "status-" + curRemote.status)} />
+                            <StatusCircleIcon className={clsx("status-icon", "status-" + curRemote.status)} />
                         </div>
                     ),
                 }}
