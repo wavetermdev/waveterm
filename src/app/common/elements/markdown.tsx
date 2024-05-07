@@ -29,8 +29,6 @@ function CodeRenderer(props: any): any {
     return <code>{props.children}</code>;
 }
 
-const maxClickTime = 200;
-
 @mobxReact.observer
 class CodeBlockMarkdown extends React.Component<
     { children: React.ReactNode; codeSelectSelectedIndex?: number; uuid: string },
@@ -38,7 +36,6 @@ class CodeBlockMarkdown extends React.Component<
 > {
     blockIndex: number;
     blockRef: React.RefObject<HTMLPreElement>;
-    mouseDownTime: number;
 
     constructor(props) {
         super(props);
