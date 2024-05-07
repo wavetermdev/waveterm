@@ -66,10 +66,10 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
             const { viewport, scrollOffsetElement } = this.osInstance.elements();
             const { scrollTop } = scrollOffsetElement;
             console.log("this.props.chatWindowRef.current.scrollTop", scrollTop);
-            // viewport.scrollTo({
-            //     behavior: "auto",
-            //     top: this.props.chatWindowRef.current.scrollHeight,
-            // });
+            viewport.scrollTo({
+                behavior: "auto",
+                top: this.props.chatWindowRef.current.scrollHeight,
+            });
         }
     }
 
@@ -86,10 +86,10 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
         GlobalModel.inputModel.setChatOsInstance(instance);
         this.osInstance = instance;
         const { viewport } = instance.elements();
-        // viewport.scrollTo({
-        //     behavior: "auto",
-        //     top: this.props.chatWindowRef.current.scrollHeight,
-        // });
+        viewport.scrollTo({
+            behavior: "auto",
+            top: this.props.chatWindowRef.current.scrollHeight,
+        });
     }
 
     renderError(err: string): any {
