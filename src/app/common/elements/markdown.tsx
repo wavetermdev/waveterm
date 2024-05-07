@@ -50,6 +50,7 @@ class CodeBlockMarkdown extends React.Component<
     }
 
     render() {
+        console.log("this.blockIndex", this.blockIndex);
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (
             <pre ref={this.blockRef} className={cn({ selected: selected })} onClick={this.handleClick}>

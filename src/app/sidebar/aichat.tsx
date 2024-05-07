@@ -63,11 +63,13 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
     componentDidUpdate() {
         this.chatListKeyCount = 0;
         if (this.containerRef?.current && this.osInstance) {
-            const { viewport } = this.osInstance.elements();
-            viewport.scrollTo({
-                behavior: "auto",
-                top: this.props.chatWindowRef.current.scrollHeight,
-            });
+            const { viewport, scrollOffsetElement } = this.osInstance.elements();
+            const { scrollTop } = scrollOffsetElement;
+            console.log("this.props.chatWindowRef.current.scrollTop", scrollTop);
+            // viewport.scrollTo({
+            //     behavior: "auto",
+            //     top: this.props.chatWindowRef.current.scrollHeight,
+            // });
         }
     }
 
@@ -80,12 +82,14 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
 
     @boundMethod
     onScrollbarInitialized(instance) {
+        console.log("got here");
+        GlobalModel.inputModel.setChatOsInstance(instance);
         this.osInstance = instance;
         const { viewport } = instance.elements();
-        viewport.scrollTo({
-            behavior: "auto",
-            top: this.props.chatWindowRef.current.scrollHeight,
-        });
+        // viewport.scrollTo({
+        //     behavior: "auto",
+        //     top: this.props.chatWindowRef.current.scrollHeight,
+        // });
     }
 
     renderError(err: string): any {
@@ -309,6 +313,8 @@ class AIChat extends React.Component<{}, {}> {
             appconst.InputAuxView_AIChat
         );
         console.log("renderAIChatKeybindings=====", renderAIChatKeybindings);
+        console.log("codeSelectBlockRefArray", GlobalModel.inputModel.codeSelectBlockRefArray);
+
         return (
             <div className="sidebar-aichat">
                 <If condition={renderAIChatKeybindings}>

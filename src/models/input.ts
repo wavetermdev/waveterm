@@ -7,6 +7,8 @@ import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import type { Model } from "./model";
 import { GlobalCommandRunner, GlobalModel } from "./global";
+import type { OverlayScrollbars } from "overlayscrollbars";
+import { boundMethod } from "autobind-decorator";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
     return {
@@ -28,6 +30,7 @@ class InputModel {
     cmdInputHeight: OV<number> = mobx.observable.box(0);
     aiChatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
+    chatOsInstance: OverlayScrollbars;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
     codeSelectUuid: string;
@@ -547,6 +550,11 @@ class InputModel {
         this.aiChatWindowRef = chatWindowRef;
     }
 
+    setChatOsInstance(osInstance: OverlayScrollbars) {
+        console.log("triggered***********");
+        this.chatOsInstance = osInstance;
+    }
+
     setAIChatFocus() {
         if (this.aiChatTextAreaRef?.current != null) {
             this.aiChatTextAreaRef.current.focus();
@@ -565,11 +573,14 @@ class InputModel {
         }
     }
 
+    @mobx.action
     addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>, uuid: string): number {
         let rtn = -1;
+        // Why is codeSelectBlockRefArray being reset here? This causes a bug where multiple code blocks are highlighted
+        // because multiple code blocks have the same index.
         if (uuid != this.codeSelectUuid) {
-            this.codeSelectUuid = uuid;
-            this.codeSelectBlockRefArray = [];
+            // this.codeSelectUuid = uuid;
+            // this.codeSelectBlockRefArray = [];
         }
         rtn = this.codeSelectBlockRefArray.length;
         this.codeSelectBlockRefArray.push(blockRef);
@@ -578,6 +589,10 @@ class InputModel {
 
     @mobx.action
     setCodeSelectSelectedCodeBlock(blockIndex: number) {
+        // const { viewport, scrollOffsetElement } = this.chatOsInstance.elements();
+        // const { scrollTop } = scrollOffsetElement;
+        // console.log("setCodeSelectSelectedCodeBlock", scrollTop);
+        // console.log("clientHeight", this.aiChatWindowRef.current.clientHeight);
         if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
             this.codeSelectSelectedIndex.set(blockIndex);
             const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
@@ -596,6 +611,39 @@ class InputModel {
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
         this.setAuxViewFocus(true);
     }
+
+    // @mobx.action
+    // setCodeSelectSelectedCodeBlock(blockIndex: number) {
+    //     const { viewport, scrollOffsetElement } = this.chatOsInstance.elements();
+    //     const { scrollTop } = scrollOffsetElement;
+    //     console.log("setCodeSelectSelectedCodeBlock", scrollTop);
+    //     console.log("clientHeight", this.aiChatWindowRef.current.clientHeight);
+    //     if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
+    //         this.codeSelectSelectedIndex.set(blockIndex);
+    //         const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
+    //         if (currentRef != null && this.aiChatWindowRef?.current != null) {
+    //             const chatWindowTop = scrollTop;
+    //             const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
+    //             const elemTop = currentRef.offsetTop;
+    //             let elemBottom = elemTop - currentRef.offsetHeight;
+    //             const elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
+    //             if (!elementIsInView) {
+    //                 console.log(
+    //                     "elemBottom - this.aiChatWindowRef.current.clientHeight / 3",
+    //                     elemBottom - this.aiChatWindowRef.current.clientHeight / 3
+    //                 );
+    //                 viewport.scrollTo({
+    //                     behavior: "auto",
+    //                     top: elemBottom - this.aiChatWindowRef.current.clientHeight / 3,
+    //                 });
+    //                 // this.aiChatWindowRef.current.scrollTop = elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
+    //             }
+    //         }
+    //     }
+    //     this.codeSelectBlockRefArray = [];
+    //     this.setActiveAuxView(appconst.InputAuxView_AIChat);
+    //     this.setAuxViewFocus(true);
+    // }
 
     @mobx.action
     codeSelectSelectNextNewestCodeBlock() {

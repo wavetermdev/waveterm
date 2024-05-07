@@ -4,7 +4,6 @@
 import type React from "react";
 import * as mobx from "mobx";
 import { Model } from "./model";
-import { GlobalCommandRunner } from "./global";
 
 class AIChatModel {
     globalModel: Model;
