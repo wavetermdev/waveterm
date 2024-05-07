@@ -160,6 +160,11 @@ class AIChat extends React.Component<{}, {}> {
     textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
     termFontSize: number = 14;
 
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     componentDidMount() {
         const inputModel = GlobalModel.inputModel;
         if (this.textAreaRef.current != null) {
