@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as mobxReact from "mobx-react";
-import cn from "classnames";
+import { clsx } from "clsx";
 
 import "./inputdecoration.less";
 
@@ -18,7 +18,7 @@ class InputDecoration extends React.Component<InputDecorationProps, {}> {
         const { children, position = "end" } = this.props;
         return (
             <div
-                className={cn("wave-input-decoration", {
+                className={clsx("wave-input-decoration", {
                     "start-position": position === "start",
                     "end-position": position === "end",
                 })}

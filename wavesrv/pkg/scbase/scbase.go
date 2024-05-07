@@ -36,7 +36,7 @@ const WaveDirName = ".waveterm"        // must match emain.ts
 const WaveDevDirName = ".waveterm-dev" // must match emain.ts
 const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const WaveAuthKeyFileName = "waveterm.authkey"
-const MShellVersion = "v0.7.0" // must match base.MShellVersion
+const WaveshellVersion = "v0.7.0" // must match base.WaveshellVersion
 
 // initialized by InitialzeWaveAuthKey (called by main-server)
 var WaveAuthKey string
@@ -73,7 +73,7 @@ func GetWaveHomeDir() string {
 	return scHome
 }
 
-func MShellBinaryDir() string {
+func WaveshellBinaryDir() string {
 	appPath := os.Getenv(WaveAppPathVarName)
 	if appPath == "" {
 		appPath = "."
@@ -81,32 +81,32 @@ func MShellBinaryDir() string {
 	return filepath.Join(appPath, "bin", "mshell")
 }
 
-func MShellBinaryPath(version string, goos string, goarch string) (string, error) {
+func WaveshellBinaryPath(version string, goos string, goarch string) (string, error) {
 	if !base.ValidGoArch(goos, goarch) {
 		return "", fmt.Errorf("invalid goos/goarch combination: %s/%s", goos, goarch)
 	}
-	binaryDir := MShellBinaryDir()
+	binaryDir := WaveshellBinaryDir()
 	versionStr := semver.MajorMinor(version)
 	if versionStr == "" {
-		return "", fmt.Errorf("invalid mshell version: %q", version)
+		return "", fmt.Errorf("invalid waveshell version: %q", version)
 	}
 	fileName := fmt.Sprintf("mshell-%s-%s.%s", versionStr, goos, goarch)
 	fullFileName := filepath.Join(binaryDir, fileName)
 	return fullFileName, nil
 }
 
-func LocalMShellBinaryPath() (string, error) {
-	return MShellBinaryPath(MShellVersion, runtime.GOOS, runtime.GOARCH)
+func LocalWaveshellBinaryPath() (string, error) {
+	return WaveshellBinaryPath(WaveshellVersion, runtime.GOOS, runtime.GOARCH)
 }
 
-func MShellBinaryReader(version string, goos string, goarch string) (io.ReadCloser, error) {
-	mshellPath, err := MShellBinaryPath(version, goos, goarch)
+func WaveshellBinaryReader(version string, goos string, goarch string) (io.ReadCloser, error) {
+	waveshellPath, err := WaveshellBinaryPath(version, goos, goarch)
 	if err != nil {
 		return nil, err
 	}
-	fd, err := os.Open(mshellPath)
+	fd, err := os.Open(waveshellPath)
 	if err != nil {
-		return nil, fmt.Errorf("cannot open mshell binary %q: %v", mshellPath, err)
+		return nil, fmt.Errorf("cannot open waveshell binary %q: %v", waveshellPath, err)
 	}
 	return fd, nil
 }

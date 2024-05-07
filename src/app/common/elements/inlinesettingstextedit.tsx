@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { If } from "tsx-control-statements/components";
 import { checkKeyPressed, adaptFromReactOrNativeKeyEvent } from "@/util/keyutil";
 import { GlobalModel } from "@/models";
@@ -121,7 +121,7 @@ class InlineSettingsTextEdit extends React.Component<
     render() {
         if (this.isEditing.get()) {
             return (
-                <div className={cn("settings-input inline-edit", "edit-active")}>
+                <div className={clsx("settings-input inline-edit", "edit-active")}>
                     <div className="field has-addons">
                         <div className="control">
                             <input
@@ -163,7 +163,7 @@ class InlineSettingsTextEdit extends React.Component<
             );
         } else {
             return (
-                <div onClick={this.clickEdit} className={cn("settings-input inline-edit", "edit-not-active")}>
+                <div onClick={this.clickEdit} className={clsx("settings-input inline-edit", "edit-not-active")}>
                     {this.props.text}
                     <If condition={this.props.showIcon}>
                         <i className="fa-sharp fa-solid fa-pen" />

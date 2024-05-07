@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, createRef } from "react";
 import * as mobx from "mobx";
 import ReactDOM from "react-dom";
 import dayjs from "dayjs";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { Button } from "@/elements";
 import { If } from "tsx-control-statements/components";
 import { GlobalModel } from "@/models";
@@ -102,7 +102,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
         return (
             <div className="day-picker-header">
                 <div
-                    className={cn({ fade: showYearAccordion })}
+                    className={clsx({ fade: showYearAccordion })}
                     onClick={() => {
                         if (!showYearAccordion) {
                             setExpandedYear(selDate.year()); // Set expandedYear when opening accordion
@@ -111,7 +111,7 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
                     }}
                 >
                     {selDate.format("MMMM YYYY")}
-                    <span className={cn("dropdown-arrow", { fade: showYearAccordion })}></span>
+                    <span className={clsx("dropdown-arrow", { fade: showYearAccordion })}></span>
                 </div>
                 <If condition={!showYearAccordion}>
                     <div className="arrows">
@@ -250,14 +250,14 @@ const DatePicker: React.FC<DatePickerProps> = ({ selectedDate, format = "MM/DD/Y
                             </div>
                             <If condition={expandedYear === year}>
                                 <div
-                                    className={cn("month-container", {
+                                    className={clsx("month-container", {
                                         expanded: expandedYear === year,
                                     })}
                                 >
                                     {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
                                         <div
                                             key={month}
-                                            className={cn("month", {
+                                            className={clsx("month", {
                                                 selected: year === currentYear && month === selDate.month() + 1,
                                             })}
                                             onClick={() => handleMonthYearSelect(month, year)}

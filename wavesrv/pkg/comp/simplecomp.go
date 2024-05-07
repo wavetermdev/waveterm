@@ -65,8 +65,8 @@ func doCompGen(ctx context.Context, prefix string, compType string, compCtx Comp
 	if !packet.IsValidCompGenType(compType) {
 		return nil, fmt.Errorf("/_compgen invalid type '%s'", compType)
 	}
-	msh := remote.GetRemoteById(compCtx.RemotePtr.RemoteId)
-	if msh == nil {
+	wsh := remote.GetRemoteById(compCtx.RemotePtr.RemoteId)
+	if wsh == nil {
 		return nil, fmt.Errorf("invalid remote '%s', not found", compCtx.RemotePtr)
 	}
 	cgPacket := packet.MakeCompGenPacket()
@@ -74,7 +74,7 @@ func doCompGen(ctx context.Context, prefix string, compType string, compCtx Comp
 	cgPacket.CompType = compType
 	cgPacket.Prefix = prefix
 	cgPacket.Cwd = compCtx.Cwd
-	resp, err := msh.PacketRpc(ctx, cgPacket)
+	resp, err := wsh.PacketRpc(ctx, cgPacket)
 	if err != nil {
 		return nil, err
 	}

@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel } from "@/models";
 import { v4 as uuidv4 } from "uuid";
 
@@ -22,7 +22,7 @@ function LinkRenderer(props: any): any {
 }
 
 function HeaderRenderer(props: any, hnum: number): any {
-    return <div className={cn("title", "is-" + hnum)}>{props.children}</div>;
+    return <div className={clsx("title", "is-" + hnum)}>{props.children}</div>;
 }
 
 function CodeRenderer(props: any): any {
@@ -53,7 +53,7 @@ class CodeBlockMarkdown extends React.Component<
         console.log("this.blockIndex", this.blockIndex);
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (
-            <pre ref={this.blockRef} className={cn({ selected: selected })} onClick={this.handleClick}>
+            <pre ref={this.blockRef} className={clsx({ selected: selected })} onClick={this.handleClick}>
                 {this.props.children}
             </pre>
         );
@@ -108,7 +108,7 @@ class Markdown extends React.Component<
             pre: (props) => this.codeBlockRenderer(props, codeSelect, curCodeSelectIndex, this.curUuid),
         };
         return (
-            <div className={cn("markdown content", this.props.extraClassName)} style={this.props.style}>
+            <div className={clsx("markdown content", this.props.extraClassName)} style={this.props.style}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                     {text}
                 </ReactMarkdown>

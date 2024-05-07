@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as React from "react";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { Choose, If, Otherwise, When } from "tsx-control-statements/components";
 import { observer } from "mobx-react";
 
@@ -24,7 +24,7 @@ export const AuxiliaryCmdView: React.FC<AuxiliaryCmdViewProps> = observer((props
     const { title, className, iconClass, titleBarContents, children, onClose, onScrollbarInitialized } = props;
 
     return (
-        <div className={cn("auxview", className)}>
+        <div className={clsx("auxview", className)}>
             <If condition={title || onClose || titleBarContents || iconClass}>
                 <div className="auxview-titlebar">
                     <If condition={iconClass != null}>

@@ -4,7 +4,7 @@
 import * as React from "react";
 import * as mobxReact from "mobx-react";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import ReactDOM from "react-dom";
 
 import "./tooltip.less";
@@ -63,7 +63,7 @@ class Tooltip extends React.Component<TooltipProps, TooltipState> {
         const style = this.calculatePosition();
 
         return ReactDOM.createPortal(
-            <div className={cn("wave-tooltip", this.props.className)} style={style}>
+            <div className={clsx("wave-tooltip", this.props.className)} style={style}>
                 {this.props.icon && <div className="wave-tooltip-icon">{this.props.icon}</div>}
                 <div className="wave-tooltip-message">{this.props.message}</div>
             </div>,

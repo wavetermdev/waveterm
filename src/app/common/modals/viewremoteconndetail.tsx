@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel, GlobalCommandRunner, RemotesModel } from "@/models";
 import { Modal, Tooltip, Button, Status } from "@/elements";
 import * as util from "@/util/util";
@@ -140,12 +140,12 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
     renderInstallStatus(remote: RemoteType): any {
         let statusStr: string = null;
         if (remote.installstatus == "disconnected") {
-            if (remote.needsmshellupgrade) {
-                statusStr = "mshell " + remote.mshellversion + " - needs upgrade";
-            } else if (util.isBlank(remote.mshellversion)) {
-                statusStr = "mshell unknown";
+            if (remote.needswaveshellupgrade) {
+                statusStr = "waveshell " + remote.waveshellversion + " - needs upgrade";
+            } else if (util.isBlank(remote.waveshellversion)) {
+                statusStr = "waveshell unknown";
             } else {
-                statusStr = "mshell " + remote.mshellversion + " - current";
+                statusStr = "waveshell " + remote.waveshellversion + " - current";
             }
         } else {
             statusStr = remote.installstatus;
@@ -231,7 +231,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         } else if (remote.status == "disconnected") {
             buttons.push(connectButton);
         } else if (remote.status == "error") {
-            if (remote.needsmshellupgrade) {
+            if (remote.needswaveshellupgrade) {
                 if (remote.installstatus == "connecting") {
                     buttons.push(cancelInstallButton);
                 } else {
@@ -270,7 +270,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
         } else if (remote.status == "error") {
             if (remote.noinitpk) {
                 message = "Error, could not connect.";
-            } else if (remote.needsmshellupgrade) {
+            } else if (remote.needswaveshellupgrade) {
                 if (remote.installstatus == "connecting") {
                     message = "Installing...";
                 } else {
@@ -370,7 +370,7 @@ class ViewRemoteConnDetailModal extends React.Component<{}, {}> {
                         </div>
                         <div
                             key="term"
-                            className={cn(
+                            className={clsx(
                                 "terminal-wrapper",
                                 { focus: isTermFocused },
                                 remote != null ? "status-" + remote.status : null

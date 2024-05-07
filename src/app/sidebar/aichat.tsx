@@ -165,6 +165,11 @@ class AIChat extends React.Component<{}, {}> {
     chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef();
     termFontSize: number = 14;
 
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
     componentDidMount() {
         const inputModel = GlobalModel.inputModel;
 
@@ -223,8 +228,7 @@ class AIChat extends React.Component<{}, {}> {
         return { numLines, linePos };
     }
 
-    @mobx.action
-    @boundMethod
+    @mobx.action.bound
     onTextAreaFocused(e: any) {
         GlobalModel.inputModel.setAuxViewFocus(true);
         GlobalModel.inputModel.setActiveAuxView(appconst.InputAuxView_AIChat);
@@ -299,8 +303,7 @@ class AIChat extends React.Component<{}, {}> {
         return true;
     }
 
-    @mobx.action
-    @boundMethod
+    @mobx.action.bound
     onKeyDown(e: any) {}
 
     renderError(err: string): any {

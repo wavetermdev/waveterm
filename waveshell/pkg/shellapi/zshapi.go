@@ -531,8 +531,6 @@ for var in "${(@k)dis_functions_source}"; do
 done
 printf "[%SECTIONSEP%]";
 [%GITBRANCH%]
-[%K8SCONTEXT%]
-[%K8SNAMESPACE%]
 printf "[%SECTIONSEP%]";
 print -P "$PS1"
 printf "[%SECTIONSEP%]";
