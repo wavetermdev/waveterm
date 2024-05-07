@@ -52,23 +52,12 @@ class CodeBlockMarkdown extends React.Component<
         clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
             inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
         };
-        let mouseDown = (e: React.MouseEvent<HTMLElement>) => {
-            this.mouseDownTime = Date.now();
-        };
-        let mouseUp = (e: React.MouseEvent<HTMLElement>) => {
-            const mouseUpTime = Date.now();
-            const clickTime = mouseUpTime - this.mouseDownTime;
-            if (clickTime < maxClickTime) {
-                clickHandler(e, this.blockIndex);
-            }
-        };
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (
             <pre
                 ref={this.blockRef}
                 className={cn({ selected: selected })}
-                onMouseUp={(event) => mouseUp(event)}
-                onMouseDown={(event) => mouseDown(event)}
+                onClick={(event) => clickHandler(event, this.blockIndex)}
             >
                 {this.props.children}
             </pre>
