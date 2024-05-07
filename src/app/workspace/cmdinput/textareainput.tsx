@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import * as util from "@/util/util";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { getMonoFontSize } from "@/util/textmeasure";
 import * as appconst from "@/app/appconst";
@@ -617,8 +617,9 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 }
             }
         }
-
-        const renderCmdInputKeybindings = inputModel.shouldRenderAuxViewKeybindings(null);
+        const renderCmdInputKeybindings =
+            inputModel.shouldRenderAuxViewKeybindings(null) ||
+            inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_Info);
         const renderHistoryKeybindings = inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_History);
         return (
             <div
@@ -652,7 +653,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                     onSelect={this.onSelect}
                     placeholder="Type here..."
                     maxLength={MaxInputLength}
-                    className={cn("textarea", { "display-disabled": auxViewFocused })}
+                    className={clsx("textarea", { "display-disabled": auxViewFocused })}
                 ></textarea>
                 <input
                     key="history"

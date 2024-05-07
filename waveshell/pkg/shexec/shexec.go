@@ -72,7 +72,7 @@ fi
 `
 
 func MakeClientCommandStr() string {
-	return strings.ReplaceAll(ClientCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
+	return strings.ReplaceAll(ClientCommandFmt, "[%VERSION%]", semver.MajorMinor(base.WaveshellVersion))
 }
 
 const InstallCommandFmt = `
@@ -88,10 +88,10 @@ fi
 `
 
 func MakeInstallCommandStr() string {
-	return strings.ReplaceAll(InstallCommandFmt, "[%VERSION%]", semver.MajorMinor(base.MShellVersion))
+	return strings.ReplaceAll(InstallCommandFmt, "[%VERSION%]", semver.MajorMinor(base.WaveshellVersion))
 }
 
-type MShellBinaryReaderFn func(version string, goos string, goarch string) (io.ReadCloser, error)
+type WaveshellBinaryReaderFn func(version string, goos string, goarch string) (io.ReadCloser, error)
 
 type ReturnStateBuf struct {
 	Lock     *sync.Mutex
@@ -277,7 +277,7 @@ func (c *ShExecType) MakeCmdStartPacket(reqId string) *packet.CmdStartPacketType
 	startPacket.Ts = time.Now().UnixMilli()
 	startPacket.CK = c.CK
 	startPacket.Pid = c.Cmd.Process.Pid
-	startPacket.MShellPid = os.Getpid()
+	startPacket.WaveshellPid = os.Getpid()
 	return startPacket
 }
 
@@ -295,7 +295,7 @@ func MakeSimpleStaticWriterPipe(data []byte) (*os.File, error) {
 }
 
 func MakeRunnerExec(ck base.CommandKey) (*exec.Cmd, error) {
-	msPath, err := base.GetMShellPath()
+	msPath, err := base.GetWaveshellPath()
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +317,7 @@ func MakeDetachedExecCmd(pk *packet.RunPacketType, cmdTty *os.File) (*exec.Cmd, 
 		ecmd.Env = os.Environ()
 	}
 	shellutil.UpdateCmdEnv(ecmd, shellenv.EnvMapFromState(state))
-	shellutil.UpdateCmdEnv(ecmd, shellutil.MShellEnvVars(getTermType(pk)))
+	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellEnvVars(getTermType(pk)))
 	if state.Cwd != "" {
 		ecmd.Dir = base.ExpandHomeDir(state.Cwd)
 	}
@@ -470,10 +470,10 @@ type ClientOpts struct {
 	UsePty       bool
 }
 
-func MakeMShellSingleCmd() (*exec.Cmd, error) {
+func MakeWaveshellSingleCmd() (*exec.Cmd, error) {
 	execFile, err := os.Executable()
 	if err != nil {
-		return nil, fmt.Errorf("cannot find local mshell executable: %w", err)
+		return nil, fmt.Errorf("cannot find local waveshell executable: %w", err)
 	}
 	ecmd := exec.Command(execFile, "--single-from-server")
 	return ecmd, nil
@@ -526,31 +526,6 @@ func (opts SSHOpts) MakeSSHExecCmd(remoteCommand string, sapi shellapi.ShellApi)
 		ecmd := exec.Command(sapi.GetRemoteShellPath(), "-c", sshCmd)
 		return ecmd
 	}
-}
-
-func (opts SSHOpts) MakeMShellSSHOpts() string {
-	var moreSSHOpts []string
-	if opts.SSHIdentity != "" {
-		identityOpt := fmt.Sprintf("-i %s", shellescape.Quote(opts.SSHIdentity))
-		moreSSHOpts = append(moreSSHOpts, identityOpt)
-	}
-	if opts.SSHUser != "" {
-		userOpt := fmt.Sprintf("-l %s", shellescape.Quote(opts.SSHUser))
-		moreSSHOpts = append(moreSSHOpts, userOpt)
-	}
-	if opts.SSHPort != 0 {
-		portOpt := fmt.Sprintf("-p %d", opts.SSHPort)
-		moreSSHOpts = append(moreSSHOpts, portOpt)
-	}
-	if opts.SSHOptsStr != "" {
-		optsOpt := fmt.Sprintf("--ssh-opts %s", shellescape.Quote(opts.SSHOptsStr))
-		moreSSHOpts = append(moreSSHOpts, optsOpt)
-	}
-	if opts.SSHHost != "" {
-		sshArg := fmt.Sprintf("--ssh %s", shellescape.Quote(opts.SSHHost))
-		moreSSHOpts = append(moreSSHOpts, sshArg)
-	}
-	return strings.Join(moreSSHOpts, " ")
 }
 
 func GetTerminalSize() (int, int, error) {
@@ -610,19 +585,19 @@ func ValidateRemoteFds(rfds []packet.RemoteFd) error {
 	dupMap := make(map[int]bool)
 	for _, rfd := range rfds {
 		if rfd.FdNum < 0 {
-			return fmt.Errorf("mshell negative fd numbers fd=%d", rfd.FdNum)
+			return fmt.Errorf("waveshell negative fd numbers fd=%d", rfd.FdNum)
 		}
 		if rfd.FdNum < FirstExtraFilesFdNum {
-			return fmt.Errorf("mshell does not support re-opening fd=%d (0, 1, and 2, are always open)", rfd.FdNum)
+			return fmt.Errorf("waveshell does not support re-opening fd=%d (0, 1, and 2, are always open)", rfd.FdNum)
 		}
 		if rfd.FdNum > MaxFdNum {
-			return fmt.Errorf("mshell does not support opening fd numbers above %d", MaxFdNum)
+			return fmt.Errorf("waveshell does not support opening fd numbers above %d", MaxFdNum)
 		}
 		if dupMap[rfd.FdNum] {
-			return fmt.Errorf("mshell got duplicate entries for fd=%d", rfd.FdNum)
+			return fmt.Errorf("waveshell got duplicate entries for fd=%d", rfd.FdNum)
 		}
 		if rfd.Read && rfd.Write {
-			return fmt.Errorf("mshell does not support opening fd numbers for reading and writing, fd=%d", rfd.FdNum)
+			return fmt.Errorf("waveshell does not support opening fd numbers for reading and writing, fd=%d", rfd.FdNum)
 		}
 		if !rfd.Read && !rfd.Write {
 			return fmt.Errorf("invalid fd=%d, neither reading or writing mode specified", rfd.FdNum)
@@ -632,14 +607,14 @@ func ValidateRemoteFds(rfds []packet.RemoteFd) error {
 	return nil
 }
 
-func sendMShellBinary(input io.WriteCloser, mshellStream io.Reader) {
+func sendWaveshellBinary(input io.WriteCloser, waveshellStream io.Reader) {
 	go func() {
 		defer input.Close()
-		io.Copy(input, mshellStream)
+		io.Copy(input, waveshellStream)
 	}()
 }
 
-func RunInstallFromCmd(ctx context.Context, ecmd ConnInterface, tryDetect bool, mshellStream io.Reader, mshellReaderFn MShellBinaryReaderFn, msgFn func(string)) error {
+func RunInstallFromCmd(ctx context.Context, ecmd ConnInterface, tryDetect bool, waveshellStream io.Reader, waveshellReaderFn WaveshellBinaryReaderFn, msgFn func(string)) error {
 	inputWriter, err := ecmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("creating stdin pipe: %v", err)
@@ -655,8 +630,8 @@ func RunInstallFromCmd(ctx context.Context, ecmd ConnInterface, tryDetect bool, 
 	go func() {
 		io.Copy(os.Stderr, stderrReader)
 	}()
-	if mshellStream != nil {
-		sendMShellBinary(inputWriter, mshellStream)
+	if waveshellStream != nil {
+		sendWaveshellBinary(inputWriter, waveshellStream)
 	}
 	packetParser := packet.MakePacketParser(stdoutReader, nil)
 	err = ecmd.Start()
@@ -686,24 +661,24 @@ func RunInstallFromCmd(ctx context.Context, ecmd ConnInterface, tryDetect bool, 
 			}
 			goos, goarch, err := DetectGoArch(initPacket.UName)
 			if err != nil {
-				return fmt.Errorf("arch cannot be detected (might be incompatible with mshell): %w", err)
+				return fmt.Errorf("arch cannot be detected (might be incompatible with waveshell): %w", err)
 			}
-			msgStr := fmt.Sprintf("mshell detected remote architecture as '%s.%s'\n", goos, goarch)
+			msgStr := fmt.Sprintf("waveshell detected remote architecture as '%s.%s'\n", goos, goarch)
 			msgFn(msgStr)
-			detectedMSS, err := mshellReaderFn(base.MShellVersion, goos, goarch)
+			detectedMSS, err := waveshellReaderFn(base.WaveshellVersion, goos, goarch)
 			if err != nil {
 				return err
 			}
 			defer detectedMSS.Close()
-			sendMShellBinary(inputWriter, detectedMSS)
+			sendWaveshellBinary(inputWriter, detectedMSS)
 			continue
 		}
 		if pk.GetType() == packet.InitPacketStr && !firstInit {
 			initPacket := pk.(*packet.InitPacketType)
-			if initPacket.Version == base.MShellVersion {
+			if initPacket.Version == base.WaveshellVersion {
 				return nil
 			}
-			return fmt.Errorf("invalid version '%s' received from client, expecting '%s'", initPacket.Version, base.MShellVersion)
+			return fmt.Errorf("invalid version '%s' received from client, expecting '%s'", initPacket.Version, base.WaveshellVersion)
 		}
 		if pk.GetType() == packet.RawPacketStr {
 			rawPk := pk.(*packet.RawPacketType)
@@ -770,7 +745,7 @@ func DetectGoArch(uname string) (string, string, error) {
 	osVal := strings.TrimSpace(strings.ToLower(fields[0]))
 	archVal := strings.TrimSpace(strings.ToLower(fields[1]))
 	if osVal != "darwin" && osVal != "linux" {
-		return "", "", fmt.Errorf("invalid uname OS '%s', mshell only supports OS X (darwin) and linux", osVal)
+		return "", "", fmt.Errorf("invalid uname OS '%s', waveshell only supports OS X (darwin) and linux", osVal)
 	}
 	goos := osVal
 	goarch := ""
@@ -780,7 +755,7 @@ func DetectGoArch(uname string) (string, string, error) {
 		goarch = "arm64"
 	}
 	if goarch == "" {
-		return "", "", fmt.Errorf("invalid uname machine type '%s', mshell only supports aarch64 (amd64) and x86_64 (amd64)", archVal)
+		return "", "", fmt.Errorf("invalid uname machine type '%s', waveshell only supports aarch64 (amd64) and x86_64 (amd64)", archVal)
 	}
 	if !base.ValidGoArch(goos, goarch) {
 		return "", "", fmt.Errorf("invalid arch detected %s.%s", goos, goarch)
@@ -975,7 +950,7 @@ func RunCommandSimple(pk *packet.RunPacketType, sender *packet.PacketSender, fro
 			cmdTty.Close()
 		}()
 		cmd.CmdPty = cmdPty
-		shellutil.UpdateCmdEnv(cmd.Cmd, shellutil.MShellEnvVars(getTermType(pk)))
+		shellutil.UpdateCmdEnv(cmd.Cmd, shellutil.WaveshellEnvVars(getTermType(pk)))
 	}
 	if cmdTty != nil {
 		cmd.Cmd.Stdin = cmdTty
@@ -1151,8 +1126,8 @@ func (rs *ReturnStateBuf) Run() {
 	}
 }
 
-// in detached run mode, we don't want mshell to die from signals
-// since we want mshell to persist even if the mshell --server is terminated
+// in detached run mode, we don't want waveshell to die from signals since
+// we want waveshell to persist even if the waveshell --server is terminated
 func SetupSignalsForDetach() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGPIPE)
@@ -1163,8 +1138,8 @@ func SetupSignalsForDetach() {
 	}()
 }
 
-// in detached run mode, we don't want mshell to die from signals
-// since we want mshell to persist even if the mshell --server is terminated
+// in detached run mode, we don't want waveshell to die from signals since
+// we want waveshell to persist even if the waveshell --server is terminated
 func IgnoreSigPipe() {
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGPIPE)
@@ -1241,10 +1216,10 @@ func (c *ShExecType) WaitForCommand() *packet.CmdDonePacketType {
 
 func MakeInitPacket() *packet.InitPacketType {
 	initPacket := packet.MakeInitPacket()
-	initPacket.Version = base.MShellVersion
+	initPacket.Version = base.WaveshellVersion
 	initPacket.BuildTime = base.BuildTime
 	initPacket.HomeDir = base.GetHomeDir()
-	initPacket.MShellHomeDir = base.GetMShellHomeDir()
+	initPacket.WaveshellHomeDir = base.GetWaveshellHomeDir()
 	if user, _ := user.Current(); user != nil {
 		initPacket.User = user.Username
 	}

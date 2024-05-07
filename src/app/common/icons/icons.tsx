@@ -1,5 +1,5 @@
 import React from "react";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { ReactComponent as SpinnerIndicator } from "@/assets/icons/spinner-indicator.svg";
 import * as appconst from "@/app/appconst";
 
@@ -16,7 +16,7 @@ export const FrontIcon: React.FC<PositionalIconProps> = (props) => {
     return (
         <div
             ref={props.divRef}
-            className={cn("front-icon", "positional-icon", props.className)}
+            className={clsx("front-icon", "positional-icon", props.className)}
             onClick={props.onClick}
         >
             <div className="positional-icon-inner">{props.children}</div>
@@ -28,7 +28,7 @@ export const CenteredIcon: React.FC<PositionalIconProps> = (props) => {
     return (
         <div
             ref={props.divRef}
-            className={cn("centered-icon", "positional-icon", props.className)}
+            className={clsx("centered-icon", "positional-icon", props.className)}
             onClick={props.onClick}
         >
             <div className="positional-icon-inner">{props.children}</div>
@@ -169,7 +169,7 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = (props) => {
         statusIndicator = (
             <CenteredIcon
                 divRef={iconRef}
-                className={cn(className, indicatorLevelClass, spinnerVisibleClass, "status-indicator")}
+                className={clsx(className, indicatorLevelClass, spinnerVisibleClass, "status-indicator")}
             >
                 <SpinnerIndicator className={spinnerVisible ? "spin" : null} />
             </CenteredIcon>

@@ -17,7 +17,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/mattn/go-sqlite3"
-	sh2db "github.com/wavetermdev/waveterm/wavesrv/db"
+	dbfs "github.com/wavetermdev/waveterm/wavesrv/db"
 
 	"github.com/golang-migrate/migrate/v4"
 )
@@ -29,7 +29,7 @@ const CmdLineSpecialMigration = 20
 const RISpecialMigration = 30
 
 func MakeMigrate() (*migrate.Migrate, error) {
-	fsVar, err := iofs.New(sh2db.MigrationFS, "migrations")
+	fsVar, err := iofs.New(dbfs.MigrationFS, "migrations")
 	if err != nil {
 		return nil, fmt.Errorf("opening iofs: %w", err)
 	}

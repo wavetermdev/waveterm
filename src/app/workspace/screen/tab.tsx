@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalModel, GlobalCommandRunner, Screen } from "@/models";
 import { ActionsIcon, StatusIndicator, CenteredIcon } from "@/common/icons/icons";
 import * as constants from "@/app/appconst";
@@ -131,7 +131,7 @@ class ScreenTab extends React.Component<
                 value={screen}
                 id={"screentab-" + screen.screenId}
                 data-screenid={screen.screenId}
-                className={cn(
+                className={clsx(
                     "screen-tab",
                     { "is-active": activeScreenId == screen.screenId, "is-archived": screen.archived.get() },
                     "color-" + screen.getTabColor()

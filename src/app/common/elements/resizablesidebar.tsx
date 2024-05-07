@@ -5,7 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { GlobalCommandRunner, SidebarModel } from "@/models";
 import { MagicLayout } from "@/app/magiclayout";
 
@@ -142,7 +142,7 @@ class ResizableSidebar extends React.Component<ResizableSidebarProps> {
         const isCollapsed = model.getCollapsed();
 
         return (
-            <div className={cn("sidebar", className, { collapsed: isCollapsed })} style={{ width, minWidth: width }}>
+            <div className={clsx("sidebar", className, { collapsed: isCollapsed })} style={{ width, minWidth: width }}>
                 <div className="sidebar-content">{children(this.toggleCollapsed)}</div>
                 <div
                     className="sidebar-handle"

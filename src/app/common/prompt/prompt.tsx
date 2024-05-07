@@ -6,7 +6,7 @@ import * as mobxReact from "mobx-react";
 import dayjs from "dayjs";
 import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { isBlank } from "@/util/util";
 
 import "./prompt.less";
@@ -108,7 +108,7 @@ class Prompt extends React.Component<
         let remoteElem = null;
         if (remoteStr != "local") {
             remoteElem = (
-                <span title={remoteTitle} className={cn("term-prompt-remote", remoteColorClass)}>
+                <span title={remoteTitle} className={clsx("term-prompt-remote", remoteColorClass)}>
                     [{remoteStr}]{" "}
                 </span>
             );
@@ -124,10 +124,10 @@ class Prompt extends React.Component<
     render() {
         const rptr = this.props.rptr;
         if (rptr == null || isBlank(rptr.remoteid)) {
-            return <span className={cn("term-prompt", "color-green")}>&nbsp;</span>;
+            return <span className={clsx("term-prompt", "color-green")}>&nbsp;</span>;
         }
         let { remoteElem, isRoot } = this.getRemoteElem();
-        let termClassNames = cn(
+        let termClassNames = clsx(
             "term-prompt",
             { "term-prompt-color": this.props.color },
             { "term-prompt-isroot": isRoot }
@@ -172,16 +172,16 @@ class Prompt extends React.Component<
                 </span>
             );
         }
-        if (!isBlank(festate["K8SCONTEXT"])) {
-            const k8sContext = festate["K8SCONTEXT"];
-            const k8sNs = festate["K8SNAMESPACE"];
-            k8sElem = (
-                <span title="k8s context:namespace" className="term-prompt-k8s">
-                    k8s:({k8sContext}
-                    {isBlank(k8sNs) ? "" : ":" + k8sNs}){" "}
-                </span>
-            );
-        }
+        // if (!isBlank(festate["K8SCONTEXT"])) {
+        //     const k8sContext = festate["K8SCONTEXT"];
+        //     const k8sNs = festate["K8SNAMESPACE"];
+        //     k8sElem = (
+        //         <span title="k8s context:namespace" className="term-prompt-k8s">
+        //             k8s:({k8sContext}
+        //             {isBlank(k8sNs) ? "" : ":" + k8sNs}){" "}
+        //         </span>
+        //     );
+        // }
         return (
             <span className={termClassNames}>
                 {remoteElem} {cwdElem} {branchElem} {condaElem} {pythonElem} {k8sElem}

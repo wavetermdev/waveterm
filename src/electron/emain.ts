@@ -14,7 +14,7 @@ import * as waveutil from "../util/util";
 import { sprintf } from "sprintf-js";
 import { handleJsonFetchResponse, fireAndForget } from "@/util/util";
 import { v4 as uuidv4 } from "uuid";
-import { checkKeyPressed, adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
+import { adaptFromElectronKeyEvent, setKeyUtilPlatform } from "@/util/keyutil";
 import { platform } from "os";
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
@@ -22,7 +22,6 @@ const WaveDevVarName = "WAVETERM_DEV";
 const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
 const ProdServerEndpoint = "http://127.0.0.1:1619";
-const startTs = Date.now();
 
 const isDev = process.env[WaveDevVarName] != null;
 const waveHome = getWaveHomeDir();
@@ -35,7 +34,6 @@ let wasActive = true;
 let wasInFg = true;
 let currentGlobalShortcut: string | null = null;
 let initialClientData: ClientDataType = null;
-let MainWindow: Electron.BrowserWindow | null = null;
 
 checkPromptMigrate();
 ensureDir(waveHome);
@@ -201,14 +199,15 @@ function readAuthKey(): string {
 }
 const reloadAcceleratorKey = unamePlatform == "darwin" ? "Option+R" : "Super+R";
 const cmdOrAlt = process.platform === "darwin" ? "Cmd" : "Alt";
+
 let viewSubMenu: Electron.MenuItemConstructorOptions[] = [];
 viewSubMenu.push({ role: "reload", accelerator: reloadAcceleratorKey });
 viewSubMenu.push({ role: "toggleDevTools" });
 if (isDev) {
     viewSubMenu.push({
         label: "Toggle Dev UI",
-        click: () => {
-            MainWindow?.webContents.send("toggle-devui");
+        click: (_, window) => {
+            window?.webContents.send("toggle-devui");
         },
     });
 }
@@ -216,36 +215,33 @@ viewSubMenu.push({ type: "separator" });
 viewSubMenu.push({
     label: "Actual Size",
     accelerator: cmdOrAlt + "+0",
-    click: () => {
-        if (MainWindow == null) {
-            return;
-        }
-        MainWindow.webContents.setZoomFactor(1);
-        MainWindow.webContents.send("zoom-changed");
+    click: (_, window) => {
+        window?.webContents.setZoomFactor(1);
+        window?.webContents.send("zoom-changed");
     },
 });
 viewSubMenu.push({
     label: "Zoom In",
     accelerator: cmdOrAlt + "+Plus",
-    click: () => {
-        if (MainWindow == null) {
+    click: (_, window) => {
+        if (window == null) {
             return;
         }
-        const zoomFactor = MainWindow.webContents.getZoomFactor();
-        MainWindow.webContents.setZoomFactor(zoomFactor * 1.1);
-        MainWindow.webContents.send("zoom-changed");
+        const zoomFactor = window.webContents.getZoomFactor();
+        window.webContents.setZoomFactor(zoomFactor * 1.1);
+        window.webContents.send("zoom-changed");
     },
 });
 viewSubMenu.push({
     label: "Zoom Out",
     accelerator: cmdOrAlt + "+-",
-    click: () => {
-        if (MainWindow == null) {
+    click: (_, window) => {
+        if (window == null) {
             return;
         }
-        const zoomFactor = MainWindow.webContents.getZoomFactor();
-        MainWindow.webContents.setZoomFactor(zoomFactor / 1.1);
-        MainWindow.webContents.send("zoom-changed");
+        const zoomFactor = window.webContents.getZoomFactor();
+        window.webContents.setZoomFactor(zoomFactor / 1.1);
+        window.webContents.send("zoom-changed");
     },
 });
 viewSubMenu.push({ type: "separator" });
@@ -256,8 +252,8 @@ const menuTemplate: Electron.MenuItemConstructorOptions[] = [
         submenu: [
             {
                 label: "About Wave Terminal",
-                click: () => {
-                    MainWindow?.webContents.send("menu-item-about");
+                click: (_, window) => {
+                    window?.webContents.send("menu-item-about");
                 },
             },
             { type: "separator" },
@@ -326,7 +322,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWindow {
+function createWindow(clientData: ClientDataType | null): Electron.BrowserWindow {
     const bounds = calcBounds(clientData);
     setKeyUtilPlatform(platform());
     const win = new electron.BrowserWindow({
@@ -374,9 +370,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         wasInFg = true;
         wasActive = true;
     });
-    win.on("close", () => {
-        MainWindow = null;
-    });
     win.webContents.on("zoom-changed", (e) => {
         win.webContents.send("zoom-changed");
     });
@@ -400,7 +393,6 @@ function createMainWindow(clientData: ClientDataType | null): Electron.BrowserWi
         console.log("window-open denied", url);
         return { action: "deny" };
     });
-
     return win;
 }
 
@@ -475,8 +467,9 @@ app.on("window-all-closed", () => {
 });
 
 electron.ipcMain.on("toggle-developer-tools", (event) => {
-    if (MainWindow != null) {
-        MainWindow.webContents.toggleDevTools();
+    const window = getWindowForEvent(event);
+    if (window != null) {
+        window.webContents.toggleDevTools();
     }
     event.returnValue = true;
 });
@@ -488,8 +481,8 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
             role: menuDef.role as any,
             label: menuDef.label,
             type: menuDef.type,
-            click: () => {
-                MainWindow?.webContents.send("contextmenu-click", menuDef.id);
+            click: (_, window) => {
+                window?.webContents.send("contextmenu-click", menuDef.id);
             },
         };
         if (menuDef.submenu != null) {
@@ -499,6 +492,11 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
         menuItems.push(menuItem);
     }
     return electron.Menu.buildFromTemplate(menuItems);
+}
+
+function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
+    const windowId = event.sender.id;
+    return electron.BrowserWindow.fromId(windowId);
 }
 
 electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuItem[], { x, y }) => {
@@ -511,8 +509,9 @@ electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuI
 });
 
 electron.ipcMain.on("hide-window", (event) => {
-    if (MainWindow != null) {
-        MainWindow.hide();
+    const window = getWindowForEvent(event);
+    if (window) {
+        window.hide();
     }
     event.returnValue = true;
 });
@@ -553,8 +552,9 @@ electron.ipcMain.on("restart-server", (event) => {
 });
 
 electron.ipcMain.on("reload-window", (event) => {
-    if (MainWindow != null) {
-        MainWindow.reload();
+    const window = getWindowForEvent(event);
+    if (window) {
+        window.reload();
     }
     event.returnValue = true;
 });
@@ -593,9 +593,9 @@ electron.ipcMain.on("set-nativethemesource", (event, themeSource: "system" | "li
 });
 
 electron.nativeTheme.on("updated", () => {
-    if (MainWindow != null) {
-        MainWindow.webContents.send("nativetheme-updated");
-    }
+    electron.BrowserWindow.getAllWindows().forEach((win) => {
+        win.webContents.send("nativetheme-updated");
+    });
 });
 
 function readLastLinesOfFile(filePath: string, lineCount: number) {
@@ -659,13 +659,13 @@ async function getClientData(willRetry: boolean, retryNum: number): Promise<Clie
 }
 
 function sendWSSC() {
-    if (MainWindow != null) {
+    electron.BrowserWindow.getAllWindows().forEach((win) => {
         if (waveSrvProc == null) {
-            MainWindow.webContents.send("wavesrv-status-change", false);
-            return;
+            win.webContents.send("wavesrv-status-change", false);
+        } else {
+            win.webContents.send("wavesrv-status-change", true, waveSrvProc.pid);
         }
-        MainWindow.webContents.send("wavesrv-status-change", true, waveSrvProc.pid);
-    }
+    });
 }
 
 function runWaveSrv() {
@@ -733,7 +733,7 @@ electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
     menu.popup({ x, y });
 });
 
-async function createMainWindowWrap() {
+async function createWindowWrap() {
     let clientData: ClientDataType | null = null;
     try {
         clientData = await getClientDataPoll(1);
@@ -741,9 +741,9 @@ async function createMainWindowWrap() {
     } catch (e) {
         console.log("error getting wavesrv clientdata", e.toString());
     }
-    MainWindow = createMainWindow(clientData);
-    if (clientData && clientData.winsize.fullscreen) {
-        MainWindow.setFullScreen(true);
+    const win = createWindow(clientData);
+    if (clientData?.winsize.fullscreen) {
+        win.setFullScreen(true);
     }
     configureAutoUpdaterStartup(clientData);
 }
@@ -762,7 +762,7 @@ function logActiveState() {
             console.log("error logging active state", err);
         });
     // for next iteration
-    wasInFg = MainWindow != null && MainWindow.isFocused();
+    wasInFg = electron.BrowserWindow.getFocusedWindow()?.isFocused() ?? false;
     wasActive = false;
 }
 
@@ -788,9 +788,13 @@ function reregisterGlobalShortcut(shortcut: string) {
         currentGlobalShortcut = null;
         return;
     }
-    const ok = electron.globalShortcut.register(shortcut, () => {
+    const ok = electron.globalShortcut.register(shortcut, async () => {
         console.log("global shortcut triggered, showing window");
-        MainWindow?.show();
+        if (electron.BrowserWindow.getAllWindows().length == 0) {
+            await createWindowWrap();
+        }
+        const winToShow = electron.BrowserWindow.getFocusedWindow() ?? electron.BrowserWindow.getAllWindows()[0];
+        winToShow?.show();
     });
     console.log("registered global shortcut", shortcut, ok ? "ok" : "failed");
     if (!ok) {
@@ -802,10 +806,12 @@ function reregisterGlobalShortcut(shortcut: string) {
 
 // ====== AUTO-UPDATER ====== //
 let autoUpdateLock = false;
+let autoUpdateEnabled = false;
 let autoUpdateInterval: NodeJS.Timeout | null = null;
 let availableUpdateReleaseName: string | null = null;
 let availableUpdateReleaseNotes: string | null = null;
 let appUpdateStatus = "unavailable";
+let lastUpdateCheck: Date = null;
 
 /**
  * Sets the app update status and sends it to the main window
@@ -813,8 +819,22 @@ let appUpdateStatus = "unavailable";
  */
 function setAppUpdateStatus(status: string) {
     appUpdateStatus = status;
-    if (MainWindow != null) {
-        MainWindow.webContents.send("app-update-status", appUpdateStatus);
+    electron.BrowserWindow.getAllWindows().forEach((window) => {
+        window.webContents.send("app-update-status", appUpdateStatus);
+    });
+}
+
+/**
+ * Checks if an hour has passed since the last update check, and if so, checks for updates using the `autoUpdater` object
+ */
+function checkForUpdates() {
+    if (!autoUpdateEnabled) {
+        return;
+    }
+    const now = new Date();
+    if (!lastUpdateCheck || Math.abs(now.getTime() - lastUpdateCheck.getTime()) > 3600000) {
+        fireAndForget(() => autoUpdater.checkForUpdates());
+        lastUpdateCheck = now;
     }
 }
 
@@ -861,14 +881,16 @@ function initUpdater(): NodeJS.Timeout {
             body: "A new version of Wave Terminal is ready to install.",
         });
         updateNotification.on("click", () => {
-            fireAndForget(installAppUpdate);
+            fireAndForget(() => installAppUpdate());
         });
         updateNotification.show();
     });
 
     // check for updates right away and keep checking later
-    autoUpdater.checkForUpdates();
-    return setInterval(() => fireAndForget(autoUpdater.checkForUpdates), 3600000); // 1 hour in ms
+    checkForUpdates();
+    return setInterval(() => {
+        checkForUpdates();
+    }, 600000); // intervals are unreliable when an app is suspended so we will check every 10 mins if an hour has passed.
 }
 
 /**
@@ -883,12 +905,17 @@ async function installAppUpdate() {
         detail: "A new version has been downloaded. Restart the application to apply the updates.",
     };
 
-    await electron.dialog.showMessageBox(MainWindow, dialogOpts).then(({ response }) => {
-        if (response === 0) autoUpdater.quitAndInstall();
-    });
+    const allWindows = electron.BrowserWindow.getAllWindows();
+    if (allWindows.length > 0) {
+        await electron.dialog
+            .showMessageBox(electron.BrowserWindow.getFocusedWindow() ?? allWindows[0], dialogOpts)
+            .then(({ response }) => {
+                if (response === 0) autoUpdater.quitAndInstall();
+            });
+    }
 }
 
-electron.ipcMain.on("install-app-update", () => fireAndForget(installAppUpdate));
+electron.ipcMain.on("install-app-update", () => fireAndForget(() => installAppUpdate()));
 electron.ipcMain.on("get-app-update-status", (event) => {
     event.returnValue = appUpdateStatus;
 });
@@ -919,15 +946,22 @@ function configureAutoUpdater(enabled: boolean) {
         console.log("auto-update configuration already in progress, skipping");
         return;
     }
+
+    autoUpdateEnabled = enabled;
     autoUpdateLock = true;
 
-    if (enabled && autoUpdateInterval == null) {
+    if (autoUpdateEnabled && autoUpdateInterval == null) {
+        lastUpdateCheck = null;
         try {
             console.log("configuring auto updater");
             autoUpdateInterval = initUpdater();
         } catch (e) {
             console.log("error configuring auto updater", e.toString());
         }
+    } else if (!autoUpdateEnabled && autoUpdateInterval != null) {
+        console.log("disabling auto updater");
+        clearInterval(autoUpdateInterval);
+        autoUpdateInterval = null;
     }
     autoUpdateLock = false;
 }
@@ -950,11 +984,13 @@ function configureAutoUpdater(enabled: boolean) {
     }
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     await app.whenReady();
-    await createMainWindowWrap();
+    await createWindowWrap();
+
     app.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
-            createMainWindowWrap().then();
+            createWindowWrap().then();
         }
+        checkForUpdates();
     });
 })();
 

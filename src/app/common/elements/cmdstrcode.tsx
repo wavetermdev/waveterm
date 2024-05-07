@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import { boundMethod } from "autobind-decorator";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { If } from "tsx-control-statements/components";
 
 import { ReactComponent as CheckIcon } from "@/assets/icons/line/check.svg";
@@ -41,7 +41,7 @@ class CmdStrCode extends React.Component<
     render() {
         let { isCopied, cmdstr, fontSize, limitHeight } = this.props;
         return (
-            <div className={cn("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
+            <div className={clsx("cmdstr-code", { "is-large": fontSize == "large" }, { "limit-height": limitHeight })}>
                 <If condition={isCopied}>
                     <div key="copied" className="copied-indicator">
                         <div>copied</div>

@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { sprintf } from "sprintf-js";
 import { boundMethod } from "autobind-decorator";
 import { If } from "tsx-control-statements/components";
-import cn from "classnames";
+import { clsx } from "clsx";
 import { debounce } from "throttle-debounce";
 import dayjs from "dayjs";
 import { GlobalCommandRunner, ForwardLineContainer, GlobalModel, ScreenLines, Screen, Session } from "@/models";
@@ -116,7 +116,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
                 <div className="screen-view" ref={this.screenViewRef}>
                     <div className="window-view" style={{ width: "100%" }}>
                         <div key="lines" className="lines"></div>
-                        <div key="window-empty" className={cn("window-empty")}>
+                        <div key="window-empty" className={clsx("window-empty")}>
                             <div className="flex-centered-column">
                                 <code className="text-standard">[no workspace]</code>
                                 <If condition={sessionCount == 0}>
@@ -136,7 +136,7 @@ class ScreenView extends React.Component<{ session: Session; screen: Screen }, {
                 <div className="screen-view" ref={this.screenViewRef}>
                     <div className="window-view" style={{ width: "100%" }}>
                         <div key="lines" className="lines"></div>
-                        <div key="window-empty" className={cn("window-empty")}>
+                        <div key="window-empty" className={clsx("window-empty")}>
                             <div className="flex-centered-column">
                                 <code className="text-standard">[no active tab]</code>
                                 <If condition={screens.length == 0}>
@@ -479,7 +479,7 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
         return (
             <div className="window-view" ref={this.windowViewRef} data-screenid={screen.screenId} style={{ width }}>
                 <div key="lines" className="lines"></div>
-                <div key="window-empty" className={cn("window-empty", { "should-fade": fade })}>
+                <div key="window-empty" className={clsx("window-empty", { "should-fade": fade })}>
                     <div className="text-standard">{message}</div>
                 </div>
             </div>
@@ -559,7 +559,7 @@ class ScreenWindowView extends React.Component<ScreenWindowViewProps, {}> {
                 <If condition={lines.length == 0 && screen.nextLineNum.get() != 1}>
                     <div className="window-empty" ref={this.windowViewRef} data-screenid={screen.screenId}>
                         <div key="lines" className="lines"></div>
-                        <div key="window-empty" className={cn("window-empty")}>
+                        <div key="window-empty" className={clsx("window-empty")}>
                             <div>
                                 <code className="text-standard">
                                     [workspace="{session.name.get()}" tab="{screen.name.get()}"]

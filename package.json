@@ -6,7 +6,7 @@
     },
     "productName": "Wave",
     "description": "An Open-Source, AI-Native, Terminal Built for Seamless Workflows",
-    "version": "0.7.3",
+    "version": "0.7.5",
     "main": "dist/emain.js",
     "license": "Apache-2.0",
     "repository": {
@@ -26,7 +26,7 @@
         "@tanstack/react-table": "^8.10.3",
         "autobind-decorator": "^2.4.0",
         "base64-js": "^1.5.1",
-        "classnames": "^2.3.1",
+        "clsx": "^2.1.1",
         "dayjs": "^1.11.3",
         "dompurify": "^3.0.2",
         "electron-squirrel-startup": "^1.0.0",
@@ -70,7 +70,6 @@
         "@babel/preset-typescript": "^7.17.12",
         "@electron/rebuild": "^3.6.0",
         "@svgr/webpack": "^8.1.0",
-        "@types/classnames": "^2.3.1",
         "@types/electron": "^1.6.10",
         "@types/node": "^20.11.0",
         "@types/papaparse": "^5.3.10",
@@ -107,5 +106,6 @@
     },
     "scripts": {
         "postinstall": "electron-builder install-app-deps"
-    }
+    },
+    "packageManager": "yarn@4.1.1"
 }

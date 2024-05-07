@@ -8,11 +8,16 @@ import (
 	"path"
 	"sync"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sawka/txwrap"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/scbase"
+
+	dbfs "github.com/wavetermdev/waveterm/wavesrv/db"
 )
 
 const DBFileName = "blockstore.db"
@@ -21,12 +26,64 @@ type SingleConnDBGetter struct {
 	SingleConnLock *sync.Mutex
 }
 
-var dbWrap *SingleConnDBGetter
+var dbWrap *SingleConnDBGetter = &SingleConnDBGetter{SingleConnLock: &sync.Mutex{}}
 
 type TxWrap = txwrap.TxWrap
 
-func InitDBState() {
-	dbWrap = &SingleConnDBGetter{SingleConnLock: &sync.Mutex{}}
+func MakeBlockstoreMigrate() (*migrate.Migrate, error) {
+	fsVar, err := iofs.New(dbfs.BlockstoreMigrationFS, "blockstore-migrations")
+	if err != nil {
+		return nil, fmt.Errorf("opening iofs: %w", err)
+	}
+	dbUrl := fmt.Sprintf("sqlite3://%s", GetDBName())
+	m, err := migrate.NewWithSourceInstance("iofs", fsVar, dbUrl)
+	if err != nil {
+		return nil, fmt.Errorf("making blockstore migration db[%s]: %w", GetDBName(), err)
+	}
+	return m, nil
+}
+
+func MigrateBlockstore() error {
+	log.Printf("migrate blockstore\n")
+	m, err := MakeBlockstoreMigrate()
+	if err != nil {
+		return err
+	}
+	curVersion, dirty, err := GetMigrateVersion(m)
+	if dirty {
+		return fmt.Errorf("cannot migrate up, database is dirty")
+	}
+	if err != nil {
+		return fmt.Errorf("cannot get current migration version: %v", err)
+	}
+	defer m.Close()
+	err = m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("migrating blockstore: %w", err)
+	}
+	newVersion, _, err := GetMigrateVersion(m)
+	if err != nil {
+		return fmt.Errorf("cannot get new migration version: %v", err)
+	}
+	if newVersion != curVersion {
+		log.Printf("[db] blockstore migration done, version %d -> %d\n", curVersion, newVersion)
+	}
+	return nil
+}
+
+func GetMigrateVersion(m *migrate.Migrate) (uint, bool, error) {
+	if m == nil {
+		var err error
+		m, err = MakeBlockstoreMigrate()
+		if err != nil {
+			return 0, false, err
+		}
+	}
+	curVersion, dirty, err := m.Version()
+	if err == migrate.ErrNilVersion {
+		return 0, false, nil
+	}
+	return curVersion, dirty, err
 }
 
 func (dbg *SingleConnDBGetter) GetDB(ctx context.Context) (*sqlx.DB, error) {
@@ -62,8 +119,12 @@ func WithTxRtn[RT any](ctx context.Context, fn func(tx *TxWrap) (RT, error)) (RT
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
 var globalDBErr error
+var overrideDBName string
 
 func GetDBName() string {
+	if overrideDBName != "" {
+		return overrideDBName
+	}
 	scHome := scbase.GetWaveHomeDir()
 	return path.Join(scHome, DBFileName)
 }

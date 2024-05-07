@@ -115,15 +115,3 @@ scripthaus run fullbuild-waveshell
 echo building wavesrv
 scripthaus run build-wavesrv
 ```
-
-```bash
-# @scripthaus command generate-license-disclaimers
-DISCLAIMER_DIR="./acknowledgements"
-DISCLAIMER_OUTPUT_DIR="$DISCLAIMER_DIR/disclaimers"
-if [ -d "$DISCLAIMER_OUTPUT_DIR" ]; then
-    rm -rf "$DISCLAIMER_OUTPUT_DIR"
-fi
-mkdir "$DISCLAIMER_OUTPUT_DIR"
-go run github.com/google/go-licenses@latest report ./wavesrv/... ./waveshell/... --template "$DISCLAIMER_DIR/go_licenses_report.tpl" --ignore github.com/wavetermdev/waveterm > "$DISCLAIMER_OUTPUT_DIR/backend.md"
-yarn licenses generate-disclaimer > "$DISCLAIMER_OUTPUT_DIR/frontend.md"
-```
