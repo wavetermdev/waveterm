@@ -1128,6 +1128,11 @@ func main() {
 		log.Printf("[error] migrate up: %v\n", err)
 		return
 	}
+	// err = blockstore.MigrateBlockstore()
+	// if err != nil {
+	// 	log.Printf("[error] migrate blockstore: %v\n", err)
+	// 	return
+	// }
 	clientData, err := sstore.EnsureClientData(context.Background())
 	if err != nil {
 		log.Printf("[error] ensuring client data: %v\n", err)
