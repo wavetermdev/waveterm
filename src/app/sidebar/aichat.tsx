@@ -63,9 +63,7 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
     componentDidUpdate() {
         this.chatListKeyCount = 0;
         if (this.containerRef?.current && this.osInstance) {
-            const { viewport, scrollOffsetElement } = this.osInstance.elements();
-            const { scrollTop } = scrollOffsetElement;
-            console.log("this.props.chatWindowRef.current.scrollTop", scrollTop);
+            const { viewport } = this.osInstance.elements();
             viewport.scrollTo({
                 behavior: "auto",
                 top: this.props.chatWindowRef.current.scrollHeight,

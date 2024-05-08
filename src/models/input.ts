@@ -578,10 +578,10 @@ class InputModel {
         let rtn = -1;
         // Why is codeSelectBlockRefArray being reset here? This causes a bug where multiple code blocks are highlighted
         // because multiple code blocks have the same index.
-        if (uuid != this.codeSelectUuid) {
-            // this.codeSelectUuid = uuid;
-            // this.codeSelectBlockRefArray = [];
-        }
+        // if (uuid != this.codeSelectUuid) {
+        //     this.codeSelectUuid = uuid;
+        //     this.codeSelectBlockRefArray = [];
+        // }
         rtn = this.codeSelectBlockRefArray.length;
         this.codeSelectBlockRefArray.push(blockRef);
         return rtn;
@@ -597,13 +597,29 @@ class InputModel {
             this.codeSelectSelectedIndex.set(blockIndex);
             const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
             if (currentRef != null && this.aiChatWindowRef?.current != null) {
-                const chatWindowTop = this.aiChatWindowRef.current.scrollTop;
+                // const chatWindowTop = this.aiChatWindowRef.current.scrollTop;
+                const { viewport, scrollOffsetElement } = this.chatOsInstance.elements();
+                const chatWindowTop = scrollOffsetElement.scrollTop;
+
+                console.log("chatWindowTop", chatWindowTop);
                 const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
+                console.log("chatWindowTop", chatWindowTop);
+                console.log("this.aiChatWindowRef.current.clientHeight", this.aiChatWindowRef.current.clientHeight);
                 const elemTop = currentRef.offsetTop;
                 let elemBottom = elemTop - currentRef.offsetHeight;
                 const elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
                 if (!elementIsInView) {
-                    this.aiChatWindowRef.current.scrollTop = elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
+                    console.log("elemBottom", elemBottom);
+                    console.log(
+                        "this.aiChatWindowRef.current.clientHeight",
+                        this.aiChatWindowRef.current.clientHeight,
+                        this.aiChatWindowRef.current.clientHeight / 2
+                    );
+                    // this.aiChatWindowRef.current.scrollTop = elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
+                    viewport.scrollTo({
+                        behavior: "auto",
+                        top: elemTop - 20,
+                    });
                 }
             }
         }
