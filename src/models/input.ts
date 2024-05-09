@@ -32,16 +32,15 @@ class InputModel {
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
     chatOsInstance: OverlayScrollbars;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
-    codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
+    codeSelectSelectedIndex: OV<number> = mobx.observable.box(null, {
+        name: "codeSelectSelectedIndex",
+    });
     codeSelectUuid: string;
     inputPopUpType: OV<string> = mobx.observable.box("none");
 
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat",
     });
-    readonly codeSelectTop: number = -2;
-    readonly codeSelectBottom: number = -1;
-
     historyType: mobx.IObservableValue<HistoryTypeStrs> = mobx.observable.box("screen");
     historyLoading: mobx.IObservableValue<boolean> = mobx.observable.box(false);
     historyAfterLoadIndex: number = 0;
@@ -665,18 +664,21 @@ class InputModel {
     codeSelectSelectNextNewestCodeBlock() {
         // oldest code block = index 0 in array
         // this decrements codeSelectSelected index
-        if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
-            this.codeSelectSelectedIndex.set(this.codeSelectBottom);
-        } else if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
-            return;
-        }
+        // if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+
+        //     this.codeSelectSelectedIndex.set(this.codeSelectBottom);
+        // } else if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
+        //     return;
+        // }
         const incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
-        if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
-            this.codeSelectDeselectAll();
-            if (this.aiChatWindowRef?.current != null) {
-                this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
-            }
-        }
+        // if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
+        //     // this.codeSelectDeselectAll();
+        //     // if (this.aiChatWindowRef?.current != null) {
+        //     //     this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
+        //     // }
+        // }
+        // console.log("incBlockIndex", incBlockIndex);
+        // console.log("this.codeSelectBlockRefArray.length", this.codeSelectBlockRefArray.length);
         if (incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
             this.setCodeSelectSelectedCodeBlock(incBlockIndex);
         }
@@ -684,23 +686,29 @@ class InputModel {
 
     @mobx.action
     codeSelectSelectNextOldestCodeBlock() {
-        if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
-            if (this.codeSelectBlockRefArray.length > 0) {
-                this.codeSelectSelectedIndex.set(this.codeSelectBlockRefArray.length);
-            } else {
-                return;
-            }
-        } else if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+        if (this.codeSelectSelectedIndex.get() == null && this.codeSelectBlockRefArray.length > 0) {
+            console.log("triggered====== 1");
+            // if (this.codeSelectBlockRefArray.length > 0) {
+            //     this.codeSelectSelectedIndex.set(this.codeSelectBlockRefArray.length - 1);
+            // }
+            this.setCodeSelectSelectedCodeBlock(this.codeSelectBlockRefArray.length - 1);
             return;
+            // } else if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+            //     console.log("triggered====== 2");
+            //     return;
         }
         const decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
-        if (decBlockIndex < 0) {
-            this.codeSelectDeselectAll(this.codeSelectTop);
-            if (this.aiChatWindowRef?.current != null) {
-                this.aiChatWindowRef.current.scrollTop = 0;
-            }
-        }
+        // if (decBlockIndex < 0) {
+        //     console.log("triggered====== 3");
+
+        //     this.codeSelectDeselectAll(this.codeSelectTop);
+        //     if (this.aiChatWindowRef?.current != null) {
+        //         this.aiChatWindowRef.current.scrollTop = 0;
+        //     }
+        // }
         if (decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {
+            console.log("triggered====== 4");
+
             this.setCodeSelectSelectedCodeBlock(decBlockIndex);
         }
     }
@@ -717,7 +725,7 @@ class InputModel {
         return blockIndex == this.codeSelectSelectedIndex.get();
     }
 
-    codeSelectDeselectAll(direction: number = this.codeSelectBottom) {
+    codeSelectDeselectAll(direction: number) {
         if (this.codeSelectSelectedIndex.get() == direction) {
             return;
         }

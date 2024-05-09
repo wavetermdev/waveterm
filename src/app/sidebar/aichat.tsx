@@ -64,10 +64,10 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
         this.chatListKeyCount = 0;
         if (this.containerRef?.current && this.osInstance) {
             const { viewport } = this.osInstance.elements();
-            viewport.scrollTo({
-                behavior: "auto",
-                top: this.props.chatWindowRef.current.scrollHeight,
-            });
+            // viewport.scrollTo({
+            //     behavior: "auto",
+            //     top: this.props.chatWindowRef.current.scrollHeight,
+            // });
         }
     }
 
@@ -274,15 +274,18 @@ class AIChat extends React.Component<{}, {}> {
     }
 
     onArrowUpPressed(): boolean {
+        console.log("arrow up pressed==================");
         const currentRef = this.textAreaRef.current;
+        console.log("inputModel.getCodeSelectSelectedIndex()", GlobalModel.inputModel.getCodeSelectSelectedIndex());
         if (currentRef == null) {
             return false;
         }
-        if (this.getLinePos(currentRef).linePos > 1) {
-            // normal up arrow
-            GlobalModel.inputModel.codeSelectDeselectAll();
-            return false;
-        }
+        // if (this.getLinePos(currentRef).linePos > 1) {
+        //     // normal up arrow
+        //     // GlobalModel.inputModel.codeSelectDeselectAll();
+        //     // return false;
+        // }
+
         GlobalModel.inputModel.codeSelectSelectNextOldestCodeBlock();
         return true;
     }

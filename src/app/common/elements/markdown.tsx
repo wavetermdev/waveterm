@@ -45,12 +45,12 @@ class CodeBlockMarkdown extends React.Component<
 
     @boundMethod
     handleClick(e: React.MouseEvent<HTMLPreElement>) {
-        console.log("this.blockIndex", this.blockIndex);
+        // console.log("this.blockIndex", this.blockIndex);
         GlobalModel.inputModel.setCodeSelectSelectedCodeBlock(this.blockIndex);
     }
 
     render() {
-        console.log("this.blockIndex", this.blockIndex);
+        // console.log("this.blockIndex", this.blockIndex);
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (
             <pre ref={this.blockRef} className={clsx({ selected: selected })} onClick={this.handleClick}>
