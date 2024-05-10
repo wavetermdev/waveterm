@@ -295,6 +295,8 @@ class AIChat extends React.Component<{}, {}> {
         }
         console.log("GlobalModel.inputModel.codeBlockIds.size", codeBlockIds.size);
         console.log("onArrowUpPressed:this.blockIndex", this.blockIndex);
+        GlobalModel.inputModel.setSelectedCodeBlockByIndex(appconst.Markdown_AiChatSidebar, this.blockIndex);
+        console.log("codeBlockIds", GlobalModel.inputModel.codeBlockIds);
         return true;
     }
 
@@ -313,6 +315,7 @@ class AIChat extends React.Component<{}, {}> {
         }
         console.log("GlobalModel.inputModel.codeBlockIds.size", codeBlockIds.size);
         console.log("onArrowDownPressed:this.blockIndex", this.blockIndex);
+        GlobalModel.inputModel.setSelectedCodeBlockByIndex(appconst.Markdown_AiChatSidebar, this.blockIndex);
         return true;
     }
 
@@ -330,8 +333,6 @@ class AIChat extends React.Component<{}, {}> {
         );
         console.log("renderAIChatKeybindings=====", renderAIChatKeybindings);
         console.log("codeSelectBlockRefArray", GlobalModel.inputModel.codeSelectBlockRefArray);
-        console.log("codeBlockIds", GlobalModel.inputModel.codeBlockIds);
-
         return (
             <div className="sidebar-aichat">
                 <If condition={renderAIChatKeybindings}>

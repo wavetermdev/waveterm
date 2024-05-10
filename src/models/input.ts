@@ -602,7 +602,7 @@ class InputModel {
     }
 
     @mobx.action
-    setSelectedCodeBlock(nameSpace: string, id: string): void {
+    setSelectedCodeBlockById(nameSpace: string, id: string): void {
         const idsMap = this.codeBlockIds.get(nameSpace);
         if (idsMap) {
             // Reset all entries to false
@@ -612,6 +612,24 @@ class InputModel {
 
             // Set the selected ID to true
             idsMap.set(id, true);
+        }
+    }
+
+    @mobx.action
+    setSelectedCodeBlockByIndex(nameSpace: string, index: number): void {
+        const idsMap = this.codeBlockIds.get(nameSpace);
+        if (idsMap) {
+            // Reset all entries to false
+            idsMap.forEach((value, key) => {
+                idsMap.set(key, false);
+            });
+
+            // Find and set the selected index to true
+            const keys = Array.from(idsMap.keys());
+            if (index >= 0 && index < keys.length) {
+                const selectedKey = keys[index];
+                idsMap.set(selectedKey, true);
+            }
         }
     }
 
