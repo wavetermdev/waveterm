@@ -117,7 +117,11 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
                         <div className="chat-msg-header">
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
                         </div>
-                        <Markdown text={chatItem.assistantresponse.message} codeSelect />
+                        <Markdown
+                            nameSpace={appconst.Markdown_AiChatSidebar}
+                            text={chatItem.assistantresponse.message}
+                            codeSelect
+                        />
                     </>
                 );
             }
@@ -162,6 +166,7 @@ class AIChat extends React.Component<{}, {}> {
     textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
     chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef();
     termFontSize: number = 14;
+    blockIndex: number;
 
     constructor(props) {
         super(props);
@@ -207,7 +212,7 @@ class AIChat extends React.Component<{}, {}> {
         // Set the new height of the text area, bounded by the min and max height.
         const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
         this.textAreaRef.current.style.height = newHeight + "px";
-        GlobalModel.inputModel.codeSelectDeselectAll();
+        // GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
     submitChatMessage(messageStr: string) {
@@ -241,10 +246,10 @@ class AIChat extends React.Component<{}, {}> {
         })();
     }
 
-    @boundMethod
-    onTextAreaInput(e: any) {
-        GlobalModel.inputModel.codeSelectDeselectAll();
-    }
+    // @boundMethod
+    // onTextAreaInput(e: any) {
+    //     GlobalModel.inputModel.codeSelectDeselectAll();
+    // }
 
     onEnterKeyPressed() {
         const inputModel = GlobalModel.inputModel;
@@ -270,37 +275,44 @@ class AIChat extends React.Component<{}, {}> {
             return;
         }
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
-        GlobalModel.inputModel.codeSelectDeselectAll();
+        // GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
     onArrowUpPressed(): boolean {
+        const codeBlockIds = GlobalModel.inputModel.codeBlockIds.get(appconst.Markdown_AiChatSidebar);
         console.log("arrow up pressed==================");
         const currentRef = this.textAreaRef.current;
         console.log("inputModel.getCodeSelectSelectedIndex()", GlobalModel.inputModel.getCodeSelectSelectedIndex());
         if (currentRef == null) {
             return false;
         }
-        // if (this.getLinePos(currentRef).linePos > 1) {
-        //     // normal up arrow
-        //     // GlobalModel.inputModel.codeSelectDeselectAll();
-        //     // return false;
-        // }
-
-        GlobalModel.inputModel.codeSelectSelectNextOldestCodeBlock();
+        if (this.blockIndex == null) {
+            // Set to last index (size - 1)
+            this.blockIndex = codeBlockIds.size - 1;
+        } else if (this.blockIndex > 0) {
+            // Decrement the blockIndex
+            this.blockIndex--;
+        }
+        console.log("GlobalModel.inputModel.codeBlockIds.size", codeBlockIds.size);
+        console.log("onArrowUpPressed:this.blockIndex", this.blockIndex);
         return true;
     }
 
     onArrowDownPressed(): boolean {
+        const codeBlockIds = GlobalModel.inputModel.codeBlockIds.get(appconst.Markdown_AiChatSidebar);
+        console.log("arrow down pressed==================");
         const currentRef = this.textAreaRef.current;
-        const inputModel = GlobalModel.inputModel;
-        if (currentRef == null) {
+        if (currentRef == null || this.blockIndex == null) {
+            // Do nothing if blockIndex has not been initialized yet
             return false;
         }
-        if (inputModel.getCodeSelectSelectedIndex() == inputModel.codeSelectBottom) {
-            GlobalModel.inputModel.codeSelectDeselectAll();
-            return false;
+        console.log("inputModel.getCodeSelectSelectedIndex()", GlobalModel.inputModel.getCodeSelectSelectedIndex());
+        if (this.blockIndex < codeBlockIds.size - 1) {
+            // Increment the blockIndex
+            this.blockIndex++;
         }
-        inputModel.codeSelectSelectNextNewestCodeBlock();
+        console.log("GlobalModel.inputModel.codeBlockIds.size", codeBlockIds.size);
+        console.log("onArrowDownPressed:this.blockIndex", this.blockIndex);
         return true;
     }
 
@@ -318,6 +330,7 @@ class AIChat extends React.Component<{}, {}> {
         );
         console.log("renderAIChatKeybindings=====", renderAIChatKeybindings);
         console.log("codeSelectBlockRefArray", GlobalModel.inputModel.codeSelectBlockRefArray);
+        console.log("codeBlockIds", GlobalModel.inputModel.codeBlockIds);
 
         return (
             <div className="sidebar-aichat">
@@ -341,7 +354,7 @@ class AIChat extends React.Component<{}, {}> {
                         onFocus={this.onTextAreaFocused}
                         onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}
-                        onInput={this.onTextAreaInput}
+                        // onInput={this.onTextAreaInput}
                         onKeyDown={this.onKeyDown}
                         style={{ fontSize: this.termFontSize }}
                         placeholder="Send a Message..."

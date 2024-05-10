@@ -32,6 +32,7 @@ class InputModel {
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
     chatOsInstance: OverlayScrollbars;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
+    codeBlockIds: OMap<string, OMap<string, boolean>> = mobx.observable.map({}, { name: "codeBlockIds", deep: false });
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(null, {
         name: "codeSelectSelectedIndex",
     });
@@ -587,6 +588,34 @@ class InputModel {
     }
 
     @mobx.action
+    addCodeBlock(nameSpace: string, id: string): void {
+        let curBlockIds = this.codeBlockIds.get(nameSpace);
+
+        if (!curBlockIds) {
+            // If there's no entry for the namespace, create a new observable map
+            curBlockIds = mobx.observable.map({}, { name: `${nameSpace}_codeBlockIds`, deep: false });
+            this.codeBlockIds.set(nameSpace, curBlockIds);
+        }
+
+        // Set the new id in the corresponding namespace's map
+        curBlockIds.set(id, false);
+    }
+
+    @mobx.action
+    setSelectedCodeBlock(nameSpace: string, id: string): void {
+        const idsMap = this.codeBlockIds.get(nameSpace);
+        if (idsMap) {
+            // Reset all entries to false
+            idsMap.forEach((value, key) => {
+                idsMap.set(key, false);
+            });
+
+            // Set the selected ID to true
+            idsMap.set(id, true);
+        }
+    }
+
+    @mobx.action
     setCodeSelectSelectedCodeBlock(blockIndex: number) {
         // const { viewport, scrollOffsetElement } = this.chatOsInstance.elements();
         // const { scrollTop } = scrollOffsetElement;
@@ -600,25 +629,26 @@ class InputModel {
                 const { viewport, scrollOffsetElement } = this.chatOsInstance.elements();
                 const chatWindowTop = scrollOffsetElement.scrollTop;
 
-                console.log("chatWindowTop", chatWindowTop);
                 const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
-                console.log("chatWindowTop", chatWindowTop);
-                console.log("this.aiChatWindowRef.current.clientHeight", this.aiChatWindowRef.current.clientHeight);
+                // console.log("chatWindowTop", chatWindowTop);
+                // console.log("this.aiChatWindowRef.current.clientHeight", this.aiChatWindowRef.current.clientHeight);
                 const elemTop = currentRef.offsetTop;
                 let elemBottom = elemTop - currentRef.offsetHeight;
                 const elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
                 if (!elementIsInView) {
-                    console.log("elemBottom", elemBottom);
-                    console.log(
-                        "this.aiChatWindowRef.current.clientHeight",
-                        this.aiChatWindowRef.current.clientHeight,
-                        this.aiChatWindowRef.current.clientHeight / 2
-                    );
+                    // console.log("elemBottom", elemBottom);
+                    // console.log(
+                    //     "this.aiChatWindowRef.current.clientHeight",
+                    //     this.aiChatWindowRef.current.clientHeight,
+                    //     this.aiChatWindowRef.current.clientHeight / 2
+                    // );
                     // this.aiChatWindowRef.current.scrollTop = elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
+                    console.log("chatWindowTop", chatWindowTop);
                     viewport.scrollTo({
                         behavior: "auto",
-                        top: elemTop - 20,
+                        top: elemTop - 10,
                     });
+                    // viewport.scrollIntoView({ behavior: "auto", block: "nearest" });
                 }
             }
         }

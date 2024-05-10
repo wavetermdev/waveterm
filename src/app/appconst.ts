@@ -72,3 +72,6 @@ export const ErrorCode_InvalidCwd = "ERRCWD";
 export const InputAuxView_History = "history";
 export const InputAuxView_Info = "info";
 export const InputAuxView_AIChat = "aichat";
+
+export const Markdown_AiChatSidebar = "aichat-sidebar";
+export const Markdown_AiChat = "aichat";
