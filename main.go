@@ -1,0 +1,74 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+package main
+
+// Note, main.go needs to be in the root of the project for the go:embed directive to work.
+
+import (
+	"embed"
+	"log"
+	"time"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
+
+//go:embed frontend/dist
+var assets embed.FS
+
+//go:embed build/appicon.png
+var appIcon []byte
+
+type GreetService struct{}
+
+func (g *GreetService) Greet(name string) string {
+	return "Hello " + name + "!"
+}
+
+func main() {
+	app := application.New(application.Options{
+		Name:        "NextWave",
+		Description: "The Next Wave Terminal",
+		Bind: []any{
+			&GreetService{},
+		},
+		Icon: appIcon,
+		Assets: application.AssetOptions{
+			Handler: application.AssetFileServerFS(assets),
+		},
+		Mac: application.MacOptions{
+			ApplicationShouldTerminateAfterLastWindowClosed: true,
+		},
+	})
+
+	app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
+		Title: "Wave Terminal",
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:                application.MacBackdropTranslucent,
+			TitleBar:                application.MacTitleBarHiddenInset,
+		},
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		URL:              "/",
+	})
+
+	// Event Testing
+	go func() {
+		for {
+			now := time.Now().Format("03:04:05pm")
+			app.Events.Emit(&application.WailsEvent{
+				Name: "time",
+				Data: now,
+			})
+			time.Sleep(time.Second)
+		}
+	}()
+
+	// blocking
+	err := app.Run()
+
+	// If an error occurred while running the application, log it and exit.
+	if err != nil {
+		log.Printf("run error: %v\n", err)
+	}
+}

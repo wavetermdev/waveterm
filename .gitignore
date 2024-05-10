@@ -1,0 +1,19 @@
+.task
+frontend/dist
+frontend/node_modules
+frontend/bindings
+*.log
+bin/
+*.dmg
+*.exe
+.DS_Store
+*~
+
+# Yarn Modern
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
