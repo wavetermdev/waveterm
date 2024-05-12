@@ -15,6 +15,8 @@ import * as appconst from "@/app/appconst";
 
 import "./aichat.less";
 
+const outline = "2px solid var(--markdown-outline-color)";
+
 class ChatKeybindings extends React.Component<{ AIChatObject: ChatSidebar }, {}> {
     componentDidMount(): void {
         const AIChatObject = this.props.AIChatObject;
@@ -143,6 +145,7 @@ class Content extends React.Component<{ chatWindowRef; onRendered }, {}> {
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
+        console.log("chatMessageItems>>>>>>>>>>>>>", chatMessageItems);
         let idx;
         return (
             <OverlayScrollbarsComponent
@@ -219,6 +222,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     submitChatMessage(messageStr: string) {
+        GlobalModel.inputModel.resetCodeBlocksMap(appconst.Markdown_AiChatSidebar);
         const curLine = GlobalModel.inputModel.curLine;
         const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
@@ -277,30 +281,27 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     updateScrollTop() {
-        this.selectedBlock = GlobalModel.inputModel.getSelectedBlockItem(appconst.Markdown_AiChatSidebar);
-        if (this.selectedBlock.ref == null) {
-            return;
-        }
-        const blockRef = this.selectedBlock.ref.current;
-        if (blockRef == null) {
+        const pres = this.chatWindowRef.current.querySelectorAll("pre");
+        const block = pres[this.blockIndex];
+        if (block == null) {
             return;
         }
         const { viewport, scrollOffsetElement } = this.osInstance.elements();
         const chatWindowTop = scrollOffsetElement.scrollTop;
         const chatWindowHeight = this.chatWindowRef.current.clientHeight;
         const chatWindowBottom = chatWindowTop + chatWindowHeight;
-        const elemTop = blockRef.offsetTop;
-        const elemBottom = elemTop + blockRef.offsetHeight;
+        const elemTop = block.offsetTop;
+        const elemBottom = elemTop + block.offsetHeight;
         const elementIsInView = elemBottom <= chatWindowBottom && elemTop >= chatWindowTop;
 
         if (!elementIsInView) {
             let scrollPosition;
             if (elemBottom > chatWindowBottom) {
                 // If the element bottom is below the view, scroll down to make it visible at the bottom
-                scrollPosition = elemTop - chatWindowHeight + blockRef.offsetHeight + 10; // Adjust +10 for some margin
+                scrollPosition = elemTop - chatWindowHeight + block.offsetHeight + 15; // Adjust +15 for some margin
             } else if (elemTop < chatWindowTop) {
                 // If the element top is above the view, scroll up to make it visible at the top
-                scrollPosition = elemTop - 10; // Adjust -10 for some margin
+                scrollPosition = elemTop - 15; // Adjust -15 for some margin
             }
             viewport.scrollTo({
                 behavior: "auto",
@@ -315,35 +316,41 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowUpPressed(): boolean {
-        const codeBlockIds = GlobalModel.inputModel.codeBlocksMap.get(appconst.Markdown_AiChatSidebar);
+        const pres = this.chatWindowRef.current.querySelectorAll("pre");
         const currentRef = this.textAreaRef.current;
         if (currentRef == null) {
             return false;
         }
         if (this.blockIndex == null) {
             // Set to last index (size - 1)
-            this.blockIndex = codeBlockIds.size - 1;
+            this.blockIndex = pres.length - 1;
         } else if (this.blockIndex > 0) {
             // Decrement the blockIndex
             this.blockIndex--;
         }
-        GlobalModel.inputModel.setSelectedCodeBlockByIndex(appconst.Markdown_AiChatSidebar, this.blockIndex);
+        for (let i = 0; i < pres.length; i++) {
+            pres[i].style.outline = "none";
+        }
+        pres[this.blockIndex].style.outline = outline;
         this.updateScrollTop();
         return true;
     }
 
     onArrowDownPressed(): boolean {
-        const codeBlockIds = GlobalModel.inputModel.codeBlocksMap.get(appconst.Markdown_AiChatSidebar);
+        const pres = this.chatWindowRef.current.querySelectorAll("pre");
         const currentRef = this.textAreaRef.current;
         if (currentRef == null || this.blockIndex == null) {
             // Do nothing if blockIndex has not been initialized yet
             return false;
         }
-        if (this.blockIndex < codeBlockIds.size - 1) {
+        if (this.blockIndex < pres.length - 1) {
             // Increment the blockIndex
             this.blockIndex++;
         }
-        GlobalModel.inputModel.setSelectedCodeBlockByIndex(appconst.Markdown_AiChatSidebar, this.blockIndex);
+        for (let i = 0; i < pres.length; i++) {
+            pres[i].style.outline = "none";
+        }
+        pres[this.blockIndex].style.outline = outline;
         this.updateScrollTop();
         return true;
     }

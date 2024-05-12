@@ -50,6 +50,10 @@ class CodeBlockMarkdown extends React.Component<
         GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef, this.props.uuid);
     }
 
+    componentWillUnmount(): void {
+        GlobalModel.inputModel.removeCodeBlocksItem(this.props.nameSpace, this.id);
+    }
+
     @boundMethod
     handleClick(e: React.MouseEvent<HTMLPreElement>) {
         // console.log("this.blockIndex", this.blockIndex);

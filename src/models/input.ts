@@ -593,7 +593,7 @@ class InputModel {
         let codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
 
         if (!codeBlockMapInner) {
-            codeBlockMapInner = mobx.observable.map({ deep: true });
+            codeBlockMapInner = mobx.observable.map();
             this.codeBlocksMap.set(nameSpace, codeBlockMapInner);
         }
 
@@ -640,6 +640,22 @@ class InputModel {
                     codeBlockMapInner.set(selectedKey, { ...existingItem, selected: true });
                 }
             }
+        }
+    }
+
+    @mobx.action
+    removeCodeBlocksItem(nameSpace: string, id: string): void {
+        const innerMap = this.codeBlocksMap.get(nameSpace);
+        if (innerMap) {
+            innerMap.delete(id);
+        }
+    }
+
+    @mobx.action
+    resetCodeBlocksMap(nameSpace: string): void {
+        const innerMap = this.codeBlocksMap.get(nameSpace);
+        if (innerMap) {
+            innerMap.clear();
         }
     }
 
