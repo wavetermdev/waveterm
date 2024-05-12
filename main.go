@@ -10,6 +10,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/wavetermdev/thenextwave/pkg/blockstore"
+	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -26,6 +29,18 @@ func (g *GreetService) Greet(name string) string {
 }
 
 func main() {
+	err := wavebase.EnsureWaveHomeDir()
+	if err != nil {
+		log.Printf("error ensuring wave home dir: %v\n", err)
+		return
+	}
+	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
+	err = blockstore.InitBlockstore()
+	if err != nil {
+		log.Printf("error initializing blockstore: %v\n", err)
+		return
+	}
+
 	app := application.New(application.Options{
 		Name:        "NextWave",
 		Description: "The Next Wave Terminal",
@@ -65,7 +80,7 @@ func main() {
 	}()
 
 	// blocking
-	err := app.Run()
+	err = app.Run()
 
 	// If an error occurred while running the application, log it and exit.
 	if err != nil {

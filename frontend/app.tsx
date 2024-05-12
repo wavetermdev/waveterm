@@ -6,6 +6,8 @@ import { Greet } from "./bindings/main/GreetService.js";
 import { Events } from "@wailsio/runtime";
 import * as rx from "rxjs";
 
+import "/public/style.less";
+
 const jotaiStore = createStore();
 const counterSubject = rx.interval(1000).pipe(rx.map((i) => i));
 const timeAtom = jotai.atom("No time yet");
