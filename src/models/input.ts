@@ -7,8 +7,6 @@ import { isBlank } from "@/util/util";
 import * as appconst from "@/app/appconst";
 import type { Model } from "./model";
 import { GlobalCommandRunner, GlobalModel } from "./global";
-import type { OverlayScrollbars } from "overlayscrollbars";
-import { boundMethod } from "autobind-decorator";
 
 function getDefaultHistoryQueryOpts(): HistoryQueryOpts {
     return {
@@ -30,19 +28,17 @@ class InputModel {
     cmdInputHeight: OV<number> = mobx.observable.box(0);
     aiChatTextAreaRef: React.RefObject<HTMLTextAreaElement>;
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
-    chatOsInstance: OverlayScrollbars;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
-    codeBlocksMap: CodeBlocksMapType = mobx.observable.map({}, { name: "codeBlocksMap", deep: true });
-    codeBlockSelectedId: OV<string> = mobx.observable.box(null, { name: "codeBlockSelectedId" });
-    codeSelectSelectedIndex: OV<number> = mobx.observable.box(null, {
-        name: "codeSelectSelectedIndex",
-    });
+    codeSelectSelectedIndex: OV<number> = mobx.observable.box(-1);
     codeSelectUuid: string;
     inputPopUpType: OV<string> = mobx.observable.box("none");
 
     AICmdInfoChatItems: mobx.IObservableArray<OpenAICmdInfoChatMessageType> = mobx.observable.array([], {
         name: "aicmdinfo-chat",
     });
+    readonly codeSelectTop: number = -2;
+    readonly codeSelectBottom: number = -1;
+
     historyType: mobx.IObservableValue<HistoryTypeStrs> = mobx.observable.box("screen");
     historyLoading: mobx.IObservableValue<boolean> = mobx.observable.box(false);
     historyAfterLoadIndex: number = 0;
@@ -143,7 +139,6 @@ class InputModel {
     giveFocus(): void {
         // Override active view to the main input if aux view does not have focus
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
-        console.log("activeAuxView", activeAuxView);
         switch (activeAuxView) {
             case appconst.InputAuxView_History: {
                 const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
@@ -195,7 +190,7 @@ class InputModel {
         if (document.activeElement == historyInputElem) {
             return true;
         }
-        let aiChatInputElem = document.querySelector(".cmd-input .chat-cmd-input");
+        let aiChatInputElem = document.querySelector(".cmd-input chat-cmd-input");
         if (document.activeElement == aiChatInputElem) {
             return true;
         }
@@ -465,21 +460,16 @@ class InputModel {
     }
 
     shouldRenderAuxViewKeybindings(view: InputAuxViewType): boolean {
-        console.log("view", view, this.getAuxViewFocus(), this.getActiveAuxView());
         if (GlobalModel.activeMainView.get() != "session") {
-            console.log("1");
             return false;
         }
         if (GlobalModel.getActiveScreen()?.getFocusType() != "input") {
-            console.log("2");
             return false;
         }
         // (view == null) means standard cmdinput keybindings
         if (view == null) {
-            console.log("3");
             return !this.getAuxViewFocus();
         } else {
-            console.log("4");
             return this.getAuxViewFocus() && view == this.getActiveAuxView();
         }
     }
@@ -551,11 +541,6 @@ class InputModel {
         this.aiChatWindowRef = chatWindowRef;
     }
 
-    setChatOsInstance(osInstance: OverlayScrollbars) {
-        console.log("triggered***********");
-        this.chatOsInstance = osInstance;
-    }
-
     setAIChatFocus() {
         if (this.aiChatTextAreaRef?.current != null) {
             this.aiChatTextAreaRef.current.focus();
@@ -574,144 +559,30 @@ class InputModel {
         }
     }
 
-    @mobx.action
     addCodeBlockToCodeSelect(blockRef: React.RefObject<HTMLElement>, uuid: string): number {
         let rtn = -1;
-        // Why is codeSelectBlockRefArray being reset here? This causes a bug where multiple code blocks are highlighted
-        // because multiple code blocks have the same index.
-        // if (uuid != this.codeSelectUuid) {
-        //     this.codeSelectUuid = uuid;
-        //     this.codeSelectBlockRefArray = [];
-        // }
+        if (uuid != this.codeSelectUuid) {
+            this.codeSelectUuid = uuid;
+            this.codeSelectBlockRefArray = [];
+        }
         rtn = this.codeSelectBlockRefArray.length;
         this.codeSelectBlockRefArray.push(blockRef);
         return rtn;
     }
 
     @mobx.action
-    addCodeBlock(nameSpace: string, id: string, ref: React.RefObject<HTMLPreElement>): void {
-        let codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
-
-        if (!codeBlockMapInner) {
-            codeBlockMapInner = mobx.observable.map();
-            this.codeBlocksMap.set(nameSpace, codeBlockMapInner);
-        }
-
-        // Set the new id in the corresponding namespace's map
-        codeBlockMapInner.set(id, {
-            id: id,
-            ref: ref,
-            selected: false,
-        });
-    }
-
-    @mobx.action
-    setSelectedCodeBlockById(nameSpace: string, id: string): void {
-        const codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
-        if (codeBlockMapInner) {
-            // Reset all entries to false
-            codeBlockMapInner.forEach((value, key) => {
-                codeBlockMapInner.set(key, { ...value, selected: false });
-            });
-
-            // Correct access to the existing item using get()
-            const existingItem = codeBlockMapInner.get(id);
-            if (existingItem) {
-                codeBlockMapInner.set(id, { ...existingItem, selected: true });
-            }
-        }
-    }
-
-    @mobx.action
-    setSelectedCodeBlockByIndex(nameSpace: string, index: number): void {
-        const codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
-        if (codeBlockMapInner) {
-            // Reset all entries to false
-            codeBlockMapInner.forEach((value, key) => {
-                codeBlockMapInner.set(key, { ...value, selected: false });
-            });
-
-            // Find and set the selected index to true
-            const keys = Array.from(codeBlockMapInner.keys());
-            if (index >= 0 && index < keys.length) {
-                const selectedKey = keys[index];
-                const existingItem = codeBlockMapInner.get(selectedKey);
-                if (existingItem) {
-                    codeBlockMapInner.set(selectedKey, { ...existingItem, selected: true });
-                }
-            }
-        }
-    }
-
-    @mobx.action
-    removeCodeBlocksItem(nameSpace: string, id: string): void {
-        const innerMap = this.codeBlocksMap.get(nameSpace);
-        if (innerMap) {
-            innerMap.delete(id);
-        }
-    }
-
-    @mobx.action
-    resetCodeBlocksMap(nameSpace: string): void {
-        const innerMap = this.codeBlocksMap.get(nameSpace);
-        if (innerMap) {
-            innerMap.clear();
-        }
-    }
-
-    getSelectedBlockItem(nameSpace: string): CodeBlockItemType {
-        const codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
-        if (codeBlockMapInner) {
-            for (const [key, value] of codeBlockMapInner) {
-                if (value.selected) {
-                    return value;
-                }
-            }
-        }
-        return null;
-    }
-
-    @mobx.action
-    deselectCodeBlock(nameSpace: string, id: string): void {
-        const codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
-        const value = codeBlockMapInner.get(id);
-        codeBlockMapInner.set(id, { ...value, selected: false });
-    }
-
-    @mobx.action
     setCodeSelectSelectedCodeBlock(blockIndex: number) {
-        // const { viewport, scrollOffsetElement } = this.chatOsInstance.elements();
-        // const { scrollTop } = scrollOffsetElement;
-        // console.log("setCodeSelectSelectedCodeBlock", scrollTop);
-        // console.log("clientHeight", this.aiChatWindowRef.current.clientHeight);
         if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
             this.codeSelectSelectedIndex.set(blockIndex);
             const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
             if (currentRef != null && this.aiChatWindowRef?.current != null) {
-                // const chatWindowTop = this.aiChatWindowRef.current.scrollTop;
-                const { viewport, scrollOffsetElement } = this.chatOsInstance.elements();
-                const chatWindowTop = scrollOffsetElement.scrollTop;
-
+                const chatWindowTop = this.aiChatWindowRef.current.scrollTop;
                 const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
-                // console.log("chatWindowTop", chatWindowTop);
-                // console.log("this.aiChatWindowRef.current.clientHeight", this.aiChatWindowRef.current.clientHeight);
                 const elemTop = currentRef.offsetTop;
                 let elemBottom = elemTop - currentRef.offsetHeight;
                 const elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
                 if (!elementIsInView) {
-                    // console.log("elemBottom", elemBottom);
-                    // console.log(
-                    //     "this.aiChatWindowRef.current.clientHeight",
-                    //     this.aiChatWindowRef.current.clientHeight,
-                    //     this.aiChatWindowRef.current.clientHeight / 2
-                    // );
-                    // this.aiChatWindowRef.current.scrollTop = elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
-                    console.log("chatWindowTop", chatWindowTop);
-                    viewport.scrollTo({
-                        behavior: "auto",
-                        top: elemTop - 10,
-                    });
-                    // viewport.scrollIntoView({ behavior: "auto", block: "nearest" });
+                    this.aiChatWindowRef.current.scrollTop = elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
                 }
             }
         }
@@ -720,58 +591,22 @@ class InputModel {
         this.setAuxViewFocus(true);
     }
 
-    // @mobx.action
-    // setCodeSelectSelectedCodeBlock(blockIndex: number) {
-    //     const { viewport, scrollOffsetElement } = this.chatOsInstance.elements();
-    //     const { scrollTop } = scrollOffsetElement;
-    //     console.log("setCodeSelectSelectedCodeBlock", scrollTop);
-    //     console.log("clientHeight", this.aiChatWindowRef.current.clientHeight);
-    //     if (blockIndex >= 0 && blockIndex < this.codeSelectBlockRefArray.length) {
-    //         this.codeSelectSelectedIndex.set(blockIndex);
-    //         const currentRef = this.codeSelectBlockRefArray[blockIndex].current;
-    //         if (currentRef != null && this.aiChatWindowRef?.current != null) {
-    //             const chatWindowTop = scrollTop;
-    //             const chatWindowBottom = chatWindowTop + this.aiChatWindowRef.current.clientHeight - 100;
-    //             const elemTop = currentRef.offsetTop;
-    //             let elemBottom = elemTop - currentRef.offsetHeight;
-    //             const elementIsInView = elemBottom < chatWindowBottom && elemTop > chatWindowTop;
-    //             if (!elementIsInView) {
-    //                 console.log(
-    //                     "elemBottom - this.aiChatWindowRef.current.clientHeight / 3",
-    //                     elemBottom - this.aiChatWindowRef.current.clientHeight / 3
-    //                 );
-    //                 viewport.scrollTo({
-    //                     behavior: "auto",
-    //                     top: elemBottom - this.aiChatWindowRef.current.clientHeight / 3,
-    //                 });
-    //                 // this.aiChatWindowRef.current.scrollTop = elemBottom - this.aiChatWindowRef.current.clientHeight / 3;
-    //             }
-    //         }
-    //     }
-    //     this.codeSelectBlockRefArray = [];
-    //     this.setActiveAuxView(appconst.InputAuxView_AIChat);
-    //     this.setAuxViewFocus(true);
-    // }
-
     @mobx.action
     codeSelectSelectNextNewestCodeBlock() {
         // oldest code block = index 0 in array
         // this decrements codeSelectSelected index
-        // if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
-
-        //     this.codeSelectSelectedIndex.set(this.codeSelectBottom);
-        // } else if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
-        //     return;
-        // }
+        if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
+            this.codeSelectSelectedIndex.set(this.codeSelectBottom);
+        } else if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
+            return;
+        }
         const incBlockIndex = this.codeSelectSelectedIndex.get() + 1;
-        // if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
-        //     // this.codeSelectDeselectAll();
-        //     // if (this.aiChatWindowRef?.current != null) {
-        //     //     this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
-        //     // }
-        // }
-        // console.log("incBlockIndex", incBlockIndex);
-        // console.log("this.codeSelectBlockRefArray.length", this.codeSelectBlockRefArray.length);
+        if (this.codeSelectSelectedIndex.get() == this.codeSelectBlockRefArray.length - 1) {
+            this.codeSelectDeselectAll();
+            if (this.aiChatWindowRef?.current != null) {
+                this.aiChatWindowRef.current.scrollTop = this.aiChatWindowRef.current.scrollHeight;
+            }
+        }
         if (incBlockIndex >= 0 && incBlockIndex < this.codeSelectBlockRefArray.length) {
             this.setCodeSelectSelectedCodeBlock(incBlockIndex);
         }
@@ -779,29 +614,23 @@ class InputModel {
 
     @mobx.action
     codeSelectSelectNextOldestCodeBlock() {
-        if (this.codeSelectSelectedIndex.get() == null && this.codeSelectBlockRefArray.length > 0) {
-            console.log("triggered====== 1");
-            // if (this.codeSelectBlockRefArray.length > 0) {
-            //     this.codeSelectSelectedIndex.set(this.codeSelectBlockRefArray.length - 1);
-            // }
-            this.setCodeSelectSelectedCodeBlock(this.codeSelectBlockRefArray.length - 1);
+        if (this.codeSelectSelectedIndex.get() == this.codeSelectBottom) {
+            if (this.codeSelectBlockRefArray.length > 0) {
+                this.codeSelectSelectedIndex.set(this.codeSelectBlockRefArray.length);
+            } else {
+                return;
+            }
+        } else if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
             return;
-            // } else if (this.codeSelectSelectedIndex.get() == this.codeSelectTop) {
-            //     console.log("triggered====== 2");
-            //     return;
         }
         const decBlockIndex = this.codeSelectSelectedIndex.get() - 1;
-        // if (decBlockIndex < 0) {
-        //     console.log("triggered====== 3");
-
-        //     this.codeSelectDeselectAll(this.codeSelectTop);
-        //     if (this.aiChatWindowRef?.current != null) {
-        //         this.aiChatWindowRef.current.scrollTop = 0;
-        //     }
-        // }
+        if (decBlockIndex < 0) {
+            this.codeSelectDeselectAll(this.codeSelectTop);
+            if (this.aiChatWindowRef?.current != null) {
+                this.aiChatWindowRef.current.scrollTop = 0;
+            }
+        }
         if (decBlockIndex >= 0 && decBlockIndex < this.codeSelectBlockRefArray.length) {
-            console.log("triggered====== 4");
-
             this.setCodeSelectSelectedCodeBlock(decBlockIndex);
         }
     }
@@ -818,7 +647,7 @@ class InputModel {
         return blockIndex == this.codeSelectSelectedIndex.get();
     }
 
-    codeSelectDeselectAll(direction: number) {
+    codeSelectDeselectAll(direction: number = this.codeSelectBottom) {
         if (this.codeSelectSelectedIndex.get() == direction) {
             return;
         }
@@ -830,7 +659,6 @@ class InputModel {
 
     @mobx.action
     openAIAssistantChat(): void {
-        console.log("openAIAssistantChat");
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
         this.setAuxViewFocus(true);
         this.globalModel.sendActivity("aichat-open");
@@ -947,7 +775,6 @@ class InputModel {
     }
 
     set curLine(val: string) {
-        console.log("triggered set curLine");
         this.lastCurLine = this.curLine;
         const hidx = this.historyIndex.get();
         mobx.action(() => {

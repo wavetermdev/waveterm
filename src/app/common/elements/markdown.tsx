@@ -31,41 +31,34 @@ function CodeRenderer(props: any): any {
 
 @mobxReact.observer
 class CodeBlockMarkdown extends React.Component<
-    { nameSpace?: string; children: React.ReactNode; codeSelectSelectedIndex?: number; uuid: string },
+    { children: React.ReactNode; codeSelectSelectedIndex?: number; uuid: string },
     {}
 > {
-    blockRef: React.RefObject<HTMLPreElement> = React.createRef();
     blockIndex: number;
-    id: string;
-    nameSpace: string;
+    blockRef: React.RefObject<HTMLPreElement>;
 
     constructor(props) {
         super(props);
-        this.nameSpace = this.props.nameSpace;
-        this.id = uuidv4();
-    }
-
-    componentDidMount(): void {
-        GlobalModel.inputModel.addCodeBlock(this.props.nameSpace, this.id, this.blockRef);
-        GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef, this.props.uuid);
-    }
-
-    componentWillUnmount(): void {
-        GlobalModel.inputModel.removeCodeBlocksItem(this.props.nameSpace, this.id);
-    }
-
-    @boundMethod
-    handleClick(e: React.MouseEvent<HTMLPreElement>) {
-        // console.log("this.blockIndex", this.blockIndex);
-        GlobalModel.inputModel.setCodeSelectSelectedCodeBlock(this.blockIndex);
+        this.blockRef = React.createRef();
+        this.blockIndex = GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef, this.props.uuid);
     }
 
     render() {
-        // console.log("this.blockIndex", this.blockIndex);
-        const selectedBlock = GlobalModel.inputModel.getSelectedBlockItem(this.nameSpace);
-        const selected = this.id == selectedBlock?.id;
+        let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
+        let inputModel = GlobalModel.inputModel;
+        clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
+            const sel = window.getSelection();
+            if (sel?.toString().length == 0) {
+                inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
+            }
+        };
+        let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (
-            <pre ref={this.blockRef} data-blockid={this.id} className={clsx({ selected })} onClick={this.handleClick}>
+            <pre
+                ref={this.blockRef}
+                className={clsx({ selected: selected })}
+                onClick={(event) => clickHandler(event, this.blockIndex)}
+            >
                 {this.props.children}
             </pre>
         );
@@ -74,7 +67,7 @@ class CodeBlockMarkdown extends React.Component<
 
 @mobxReact.observer
 class Markdown extends React.Component<
-    { nameSpace?: string; text: string; style?: any; extraClassName?: string; codeSelect?: boolean },
+    { text: string; style?: any; extraClassName?: string; codeSelect?: boolean },
     {}
 > {
     curUuid: string;
@@ -85,14 +78,10 @@ class Markdown extends React.Component<
     }
 
     @boundMethod
-    codeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number, curUuid: string): any {
+    CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number, curUuid: string): any {
         if (codeSelect) {
             return (
-                <CodeBlockMarkdown
-                    nameSpace={this.props.nameSpace}
-                    codeSelectSelectedIndex={codeSelectIndex}
-                    uuid={curUuid}
-                >
+                <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex} uuid={curUuid}>
                     {props.children}
                 </CodeBlockMarkdown>
             );
@@ -109,7 +98,7 @@ class Markdown extends React.Component<
     }
 
     render() {
-        let { text } = this.props;
+        let text = this.props.text;
         let codeSelect = this.props.codeSelect;
         let curCodeSelectIndex = GlobalModel.inputModel.getCodeSelectSelectedIndex();
         let markdownComponents = {
@@ -121,7 +110,7 @@ class Markdown extends React.Component<
             h5: (props) => HeaderRenderer(props, 5),
             h6: (props) => HeaderRenderer(props, 6),
             code: (props) => CodeRenderer(props),
-            pre: (props) => this.codeBlockRenderer(props, codeSelect, curCodeSelectIndex, this.curUuid),
+            pre: (props) => this.CodeBlockRenderer(props, codeSelect, curCodeSelectIndex, this.curUuid),
         };
         return (
             <div className={clsx("markdown content", this.props.extraClassName)} style={this.props.style}>

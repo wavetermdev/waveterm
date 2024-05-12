@@ -131,8 +131,6 @@ class Content extends React.Component<{ chatWindowRef; onRendered }, {}> {
 
     @boundMethod
     onScrollbarInitialized(instance) {
-        console.log("got here");
-        GlobalModel.inputModel.setChatOsInstance(instance);
         this.osInstance = instance;
         const { viewport } = instance.elements();
         viewport.scrollTo({
@@ -145,7 +143,6 @@ class Content extends React.Component<{ chatWindowRef; onRendered }, {}> {
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
-        console.log("chatMessageItems>>>>>>>>>>>>>", chatMessageItems);
         let idx;
         return (
             <OverlayScrollbarsComponent
@@ -218,11 +215,9 @@ class ChatSidebar extends React.Component<{}, {}> {
         // Set the new height of the text area, bounded by the min and max height.
         const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
         this.textAreaRef.current.style.height = newHeight + "px";
-        // GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
     submitChatMessage(messageStr: string) {
-        GlobalModel.inputModel.resetCodeBlocksMap(appconst.Markdown_AiChatSidebar);
         const curLine = GlobalModel.inputModel.curLine;
         const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
@@ -277,7 +272,6 @@ class ChatSidebar extends React.Component<{}, {}> {
             return;
         }
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
-        this.onTextAreaInput();
     }
 
     updateScrollTop() {
@@ -355,13 +349,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         return true;
     }
 
-    @boundMethod
-    onTextAreaInput() {
-        if (this.selectedBlock) {
-            GlobalModel.inputModel.deselectCodeBlock(appconst.Markdown_AiChatSidebar, this.selectedBlock.id);
-        }
-    }
-
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const renderAIChatKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(
@@ -389,7 +376,6 @@ class ChatSidebar extends React.Component<{}, {}> {
                         onFocus={this.onTextAreaFocused}
                         onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}
-                        onInput={this.onTextAreaInput}
                         style={{ fontSize: this.termFontSize }}
                         placeholder="Send a Message..."
                     ></textarea>
