@@ -51,18 +51,15 @@ class ChatKeybindings extends React.Component<{ AIChatObject: ChatSidebar }, {}>
 }
 
 @mobxReact.observer
-class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType }, {}> {
-    static count: number = 0;
-
+class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType; itemCount: number }, {}> {
     renderError(err: string): any {
         return <div className="chat-msg-error">{err}</div>;
     }
 
     render() {
-        ChatItem.count++;
-        const { chatItem } = this.props;
+        const { chatItem, itemCount } = this.props;
         const { isassistantresponse, assistantresponse } = chatItem;
-        const curKey = "chatmsg-" + ChatItem.count;
+        const curKey = "chatmsg-" + itemCount;
         const senderClassName = isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
         const msgClassName = `chat-msg ${senderClassName}`;
 
@@ -97,7 +94,7 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType 
         const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
         const color = tinycolor(panelBgColor);
         const newColor = color.isValid() ? tinycolor(panelBgColor).darken(6).toString() : "none";
-        const backgroundColor = ChatItem.count % 2 === 0 ? "none" : newColor;
+        const backgroundColor = itemCount % 2 === 0 ? "none" : newColor;
 
         return (
             <div className={msgClassName} key={curKey} style={{ backgroundColor }}>
@@ -109,12 +106,11 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType 
 
 @mobxReact.observer
 class Content extends React.Component<{ chatWindowRef; onRendered }, {}> {
-    chatListKeyCount: number = 0;
+    itemCount: number = 0;
     containerRef: React.RefObject<OverlayScrollbarsComponentRef> = React.createRef();
     osInstance: OverlayScrollbars = null;
 
     componentDidUpdate() {
-        this.chatListKeyCount = 0;
         if (this.containerRef?.current && this.osInstance) {
             const { viewport } = this.osInstance.elements();
             viewport.scrollTo({
@@ -158,7 +154,7 @@ class Content extends React.Component<{ chatWindowRef; onRendered }, {}> {
                 <div ref={this.props.chatWindowRef} className="chat-window">
                     <div className="filler"></div>
                     <For each="chitem" index="idx" of={chatMessageItems}>
-                        <ChatItem key={idx} chatItem={chitem} />
+                        <ChatItem key={idx} chatItem={chitem} itemCount={idx + 1} />
                     </For>
                 </div>
             </OverlayScrollbarsComponent>
@@ -372,7 +368,9 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @boundMethod
     onTextAreaInput(e: any) {
-        GlobalModel.inputModel.deselectCodeBlock(appconst.Markdown_AiChatSidebar, this.selectedBlock.id);
+        if (this.selectedBlock) {
+            GlobalModel.inputModel.deselectCodeBlock(appconst.Markdown_AiChatSidebar, this.selectedBlock.id);
+        }
     }
 
     render() {
