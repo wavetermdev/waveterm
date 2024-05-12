@@ -82,11 +82,7 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
                         <div className="chat-msg-header">
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
                         </div>
-                        <Markdown
-                            nameSpace={appconst.Markdown_AiChatSidebar}
-                            text={assistantresponse.message}
-                            codeSelect
-                        />
+                        <Markdown text={assistantresponse.message} codeSelect />
                     </>
                 );
             }
@@ -169,7 +165,6 @@ class ChatSidebar extends React.Component<{}, {}> {
     osInstance: OverlayScrollbars;
     termFontSize: number = 14;
     blockIndex: number;
-    selectedBlock: CodeBlockItemType;
 
     constructor(props) {
         super(props);

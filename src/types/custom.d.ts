@@ -593,14 +593,6 @@ declare global {
         [k: string]: string | null;
     };
 
-    type CodeBlockItemType = {
-        id: string;
-        selected: boolean;
-        ref: React.RefObject<HTMLPreElement>;
-    };
-    type CodeBlockMapInnerType = OMap<string, CodeBlockItemType>;
-    type CodeBlocksMapType = OMap<string, CodeBlockMapInnerType>;
-
     type FeOptsType = {
         termfontsize: number;
         termfontfamily: string;
