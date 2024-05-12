@@ -32,7 +32,8 @@ class InputModel {
     aiChatWindowRef: React.RefObject<HTMLDivElement>;
     chatOsInstance: OverlayScrollbars;
     codeSelectBlockRefArray: Array<React.RefObject<HTMLElement>>;
-    codeBlockIds: OMap<string, OMap<string, boolean>> = mobx.observable.map({}, { name: "codeBlockIds", deep: false });
+    codeBlocksMap: CodeBlocksMapType = mobx.observable.map({}, { name: "codeBlocksMap", deep: true });
+    codeBlockSelectedId: OV<string> = mobx.observable.box(null, { name: "codeBlockSelectedId" });
     codeSelectSelectedIndex: OV<number> = mobx.observable.box(null, {
         name: "codeSelectSelectedIndex",
     });
@@ -588,49 +589,77 @@ class InputModel {
     }
 
     @mobx.action
-    addCodeBlock(nameSpace: string, id: string): void {
-        let curBlockIds = this.codeBlockIds.get(nameSpace);
+    addCodeBlock(nameSpace: string, id: string, ref: React.RefObject<HTMLPreElement>): void {
+        let codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
 
-        if (!curBlockIds) {
-            // If there's no entry for the namespace, create a new observable map
-            curBlockIds = mobx.observable.map({}, { name: `${nameSpace}_codeBlockIds`, deep: false });
-            this.codeBlockIds.set(nameSpace, curBlockIds);
+        if (!codeBlockMapInner) {
+            codeBlockMapInner = mobx.observable.map({ deep: true });
+            this.codeBlocksMap.set(nameSpace, codeBlockMapInner);
         }
 
         // Set the new id in the corresponding namespace's map
-        curBlockIds.set(id, false);
+        codeBlockMapInner.set(id, {
+            id: id,
+            ref: ref,
+            selected: false,
+        });
     }
 
     @mobx.action
     setSelectedCodeBlockById(nameSpace: string, id: string): void {
-        const idsMap = this.codeBlockIds.get(nameSpace);
-        if (idsMap) {
+        const codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
+        if (codeBlockMapInner) {
             // Reset all entries to false
-            idsMap.forEach((value, key) => {
-                idsMap.set(key, false);
+            codeBlockMapInner.forEach((value, key) => {
+                codeBlockMapInner.set(key, { ...value, selected: false });
             });
 
-            // Set the selected ID to true
-            idsMap.set(id, true);
+            // Correct access to the existing item using get()
+            const existingItem = codeBlockMapInner.get(id);
+            if (existingItem) {
+                codeBlockMapInner.set(id, { ...existingItem, selected: true });
+            }
         }
     }
 
     @mobx.action
     setSelectedCodeBlockByIndex(nameSpace: string, index: number): void {
-        const idsMap = this.codeBlockIds.get(nameSpace);
-        if (idsMap) {
+        const codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
+        if (codeBlockMapInner) {
             // Reset all entries to false
-            idsMap.forEach((value, key) => {
-                idsMap.set(key, false);
+            codeBlockMapInner.forEach((value, key) => {
+                codeBlockMapInner.set(key, { ...value, selected: false });
             });
 
             // Find and set the selected index to true
-            const keys = Array.from(idsMap.keys());
+            const keys = Array.from(codeBlockMapInner.keys());
             if (index >= 0 && index < keys.length) {
                 const selectedKey = keys[index];
-                idsMap.set(selectedKey, true);
+                const existingItem = codeBlockMapInner.get(selectedKey);
+                if (existingItem) {
+                    codeBlockMapInner.set(selectedKey, { ...existingItem, selected: true });
+                }
             }
         }
+    }
+
+    getSelectedBlockItem(nameSpace: string): CodeBlockItemType {
+        const codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
+        if (codeBlockMapInner) {
+            for (const [key, value] of codeBlockMapInner) {
+                if (value.selected) {
+                    return value;
+                }
+            }
+        }
+        return null;
+    }
+
+    @mobx.action
+    deselectCodeBlock(nameSpace: string, id: string): void {
+        const codeBlockMapInner: CodeBlockMapInnerType = this.codeBlocksMap.get(nameSpace);
+        const value = codeBlockMapInner.get(id);
+        codeBlockMapInner.set(id, { ...value, selected: false });
     }
 
     @mobx.action

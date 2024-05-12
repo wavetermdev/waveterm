@@ -15,7 +15,7 @@ import * as appconst from "@/app/appconst";
 
 import "./aichat.less";
 
-class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
+class ChatKeybindings extends React.Component<{ AIChatObject: ChatSidebar }, {}> {
     componentDidMount(): void {
         const AIChatObject = this.props.AIChatObject;
         const keybindManager = GlobalModel.keybindManager;
@@ -27,10 +27,6 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
         });
         keybindManager.registerKeybinding("pane", "aichat", "generic:expandTextInput", (waveEvent) => {
             AIChatObject.onExpandInputPressed();
-            return true;
-        });
-        keybindManager.registerKeybinding("pane", "aichat", "generic:cancel", (waveEvent) => {
-            inputModel.closeAuxView();
             return true;
         });
         keybindManager.registerKeybinding("pane", "aichat", "aichat:clearHistory", (waveEvent) => {
@@ -55,7 +51,64 @@ class AIChatKeybindings extends React.Component<{ AIChatObject: AIChat }, {}> {
 }
 
 @mobxReact.observer
-class ChatContent extends React.Component<{ chatWindowRef }, {}> {
+class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType }, {}> {
+    static count: number = 0;
+
+    renderError(err: string): any {
+        return <div className="chat-msg-error">{err}</div>;
+    }
+
+    render() {
+        ChatItem.count++;
+        const { chatItem } = this.props;
+        const { isassistantresponse, assistantresponse } = chatItem;
+        const curKey = "chatmsg-" + ChatItem.count;
+        const senderClassName = isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
+        const msgClassName = `chat-msg ${senderClassName}`;
+
+        let innerHTML: React.JSX.Element = (
+            <>
+                <div className="chat-msg-header">
+                    <i className="fa-sharp fa-solid fa-user"></i>
+                </div>
+                <div className="msg-text">{chatItem.userquery}</div>
+            </>
+        );
+        if (isassistantresponse) {
+            if (assistantresponse.error != null && assistantresponse.error !== "") {
+                innerHTML = this.renderError(assistantresponse.error);
+            } else {
+                innerHTML = (
+                    <>
+                        <div className="chat-msg-header">
+                            <i className="fa-sharp fa-solid fa-sparkles"></i>
+                        </div>
+                        <Markdown
+                            nameSpace={appconst.Markdown_AiChatSidebar}
+                            text={assistantresponse.message}
+                            codeSelect
+                        />
+                    </>
+                );
+            }
+        }
+
+        const cssVar = GlobalModel.isDev ? "--app-panel-bg-color-dev" : "--app-panel-bg-color";
+        const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+        const color = tinycolor(panelBgColor);
+        const newColor = color.isValid() ? tinycolor(panelBgColor).darken(6).toString() : "none";
+        const backgroundColor = ChatItem.count % 2 === 0 ? "none" : newColor;
+
+        return (
+            <div className={msgClassName} key={curKey} style={{ backgroundColor }}>
+                {innerHTML}
+            </div>
+        );
+    }
+}
+
+@mobxReact.observer
+class Content extends React.Component<{ chatWindowRef; onRendered }, {}> {
     chatListKeyCount: number = 0;
     containerRef: React.RefObject<OverlayScrollbarsComponentRef> = React.createRef();
     osInstance: OverlayScrollbars = null;
@@ -64,10 +117,10 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
         this.chatListKeyCount = 0;
         if (this.containerRef?.current && this.osInstance) {
             const { viewport } = this.osInstance.elements();
-            // viewport.scrollTo({
-            //     behavior: "auto",
-            //     top: this.props.chatWindowRef.current.scrollHeight,
-            // });
+            viewport.scrollTo({
+                behavior: "auto",
+                top: this.props.chatWindowRef.current.scrollHeight,
+            });
         }
     }
 
@@ -88,61 +141,13 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
             behavior: "auto",
             top: this.props.chatWindowRef.current.scrollHeight,
         });
-    }
-
-    renderError(err: string): any {
-        return <div className="chat-msg-error">{err}</div>;
-    }
-
-    renderChatMessage(chatItem: OpenAICmdInfoChatMessageType): any {
-        const curKey = "chatmsg-" + this.chatListKeyCount;
-        this.chatListKeyCount++;
-        const senderClassName = chatItem.isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
-        const msgClassName = `chat-msg ${senderClassName}`;
-
-        let innerHTML: React.JSX.Element = (
-            <>
-                <div className="chat-msg-header">
-                    <i className="fa-sharp fa-solid fa-user"></i>
-                </div>
-                <div className="msg-text">{chatItem.userquery}</div>
-            </>
-        );
-        if (chatItem.isassistantresponse) {
-            if (chatItem.assistantresponse.error != null && chatItem.assistantresponse.error !== "") {
-                innerHTML = this.renderError(chatItem.assistantresponse.error);
-            } else {
-                innerHTML = (
-                    <>
-                        <div className="chat-msg-header">
-                            <i className="fa-sharp fa-solid fa-sparkles"></i>
-                        </div>
-                        <Markdown
-                            nameSpace={appconst.Markdown_AiChatSidebar}
-                            text={chatItem.assistantresponse.message}
-                            codeSelect
-                        />
-                    </>
-                );
-            }
-        }
-
-        const cssVar = GlobalModel.isDev ? "--app-panel-bg-color-dev" : "--app-panel-bg-color";
-        const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
-        const color = tinycolor(panelBgColor);
-        const newColor = color.isValid() ? tinycolor(panelBgColor).darken(6).toString() : "none";
-        const backgroundColor = this.chatListKeyCount % 2 === 0 ? "none" : newColor;
-
-        return (
-            <div className={msgClassName} key={curKey} style={{ backgroundColor }}>
-                {innerHTML}
-            </div>
-        );
+        this.props.onRendered(instance);
     }
 
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
+        let idx;
         return (
             <OverlayScrollbarsComponent
                 ref={this.containerRef}
@@ -153,7 +158,7 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
                 <div ref={this.props.chatWindowRef} className="chat-window">
                     <div className="filler"></div>
                     <For each="chitem" index="idx" of={chatMessageItems}>
-                        {this.renderChatMessage(chitem)}
+                        <ChatItem key={idx} chatItem={chitem} />
                     </For>
                 </div>
             </OverlayScrollbarsComponent>
@@ -162,11 +167,13 @@ class ChatContent extends React.Component<{ chatWindowRef }, {}> {
 }
 
 @mobxReact.observer
-class AIChat extends React.Component<{}, {}> {
+class ChatSidebar extends React.Component<{}, {}> {
     textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
     chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef();
+    osInstance: OverlayScrollbars;
     termFontSize: number = 14;
     blockIndex: number;
+    selectedBlock: CodeBlockItemType;
 
     constructor(props) {
         super(props);
@@ -278,8 +285,50 @@ class AIChat extends React.Component<{}, {}> {
         // GlobalModel.inputModel.codeSelectDeselectAll();
     }
 
+    updateScrollTop() {
+        this.selectedBlock = GlobalModel.inputModel.getSelectedBlockItem(appconst.Markdown_AiChatSidebar);
+        if (this.selectedBlock.ref == null) {
+            return;
+        }
+        const blockRef = this.selectedBlock.ref.current;
+        console.log("blockRef>>>>>>>>>>>>>", blockRef);
+        if (blockRef == null) {
+            return;
+        }
+        const { viewport, scrollOffsetElement } = this.osInstance.elements();
+        const chatWindowTop = scrollOffsetElement.scrollTop;
+        const chatWindowHeight = this.chatWindowRef.current.clientHeight;
+        const chatWindowBottom = chatWindowTop + chatWindowHeight;
+        const elemTop = blockRef.offsetTop;
+        const elemBottom = elemTop + blockRef.offsetHeight;
+        const elementIsInView = elemBottom <= chatWindowBottom && elemTop >= chatWindowTop;
+
+        if (!elementIsInView) {
+            console.log("chatWindowTop", chatWindowTop);
+            let scrollPosition;
+
+            if (elemBottom > chatWindowBottom) {
+                // If the element bottom is below the view, scroll down to make it visible at the bottom
+                scrollPosition = elemTop - chatWindowHeight + blockRef.offsetHeight + 10; // Adjust +10 for some margin
+            } else if (elemTop < chatWindowTop) {
+                // If the element top is above the view, scroll up to make it visible at the top
+                scrollPosition = elemTop - 10; // Adjust -10 for some margin
+            }
+
+            viewport.scrollTo({
+                behavior: "auto",
+                top: scrollPosition,
+            });
+        }
+    }
+
+    @boundMethod
+    onChatConTentRendered(osInstance: OverlayScrollbars) {
+        this.osInstance = osInstance;
+    }
+
     onArrowUpPressed(): boolean {
-        const codeBlockIds = GlobalModel.inputModel.codeBlockIds.get(appconst.Markdown_AiChatSidebar);
+        const codeBlockIds = GlobalModel.inputModel.codeBlocksMap.get(appconst.Markdown_AiChatSidebar);
         console.log("arrow up pressed==================");
         const currentRef = this.textAreaRef.current;
         console.log("inputModel.getCodeSelectSelectedIndex()", GlobalModel.inputModel.getCodeSelectSelectedIndex());
@@ -296,12 +345,13 @@ class AIChat extends React.Component<{}, {}> {
         console.log("GlobalModel.inputModel.codeBlockIds.size", codeBlockIds.size);
         console.log("onArrowUpPressed:this.blockIndex", this.blockIndex);
         GlobalModel.inputModel.setSelectedCodeBlockByIndex(appconst.Markdown_AiChatSidebar, this.blockIndex);
-        console.log("codeBlockIds", GlobalModel.inputModel.codeBlockIds);
+        console.log("codeBlockIds", GlobalModel.inputModel.codeBlocksMap);
+        this.updateScrollTop();
         return true;
     }
 
     onArrowDownPressed(): boolean {
-        const codeBlockIds = GlobalModel.inputModel.codeBlockIds.get(appconst.Markdown_AiChatSidebar);
+        const codeBlockIds = GlobalModel.inputModel.codeBlocksMap.get(appconst.Markdown_AiChatSidebar);
         console.log("arrow down pressed==================");
         const currentRef = this.textAreaRef.current;
         if (currentRef == null || this.blockIndex == null) {
@@ -316,14 +366,13 @@ class AIChat extends React.Component<{}, {}> {
         console.log("GlobalModel.inputModel.codeBlockIds.size", codeBlockIds.size);
         console.log("onArrowDownPressed:this.blockIndex", this.blockIndex);
         GlobalModel.inputModel.setSelectedCodeBlockByIndex(appconst.Markdown_AiChatSidebar, this.blockIndex);
+        this.updateScrollTop();
         return true;
     }
 
-    @mobx.action.bound
-    onKeyDown(e: any) {}
-
-    renderError(err: string): any {
-        return <div className="chat-msg-error">{err}</div>;
+    @boundMethod
+    onTextAreaInput(e: any) {
+        GlobalModel.inputModel.deselectCodeBlock(appconst.Markdown_AiChatSidebar, this.selectedBlock.id);
     }
 
     render() {
@@ -336,13 +385,13 @@ class AIChat extends React.Component<{}, {}> {
         return (
             <div className="sidebar-aichat">
                 <If condition={renderAIChatKeybindings}>
-                    <AIChatKeybindings AIChatObject={this}></AIChatKeybindings>
+                    <ChatKeybindings AIChatObject={this} />
                 </If>
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
                 </div>
                 <If condition={chatMessageItems.length > 0}>
-                    <ChatContent chatWindowRef={this.chatWindowRef} />
+                    <Content chatWindowRef={this.chatWindowRef} onRendered={this.onChatConTentRendered} />
                 </If>
                 <div className="chat-input">
                     <textarea
@@ -355,8 +404,7 @@ class AIChat extends React.Component<{}, {}> {
                         onFocus={this.onTextAreaFocused}
                         onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}
-                        // onInput={this.onTextAreaInput}
-                        onKeyDown={this.onKeyDown}
+                        onInput={this.onTextAreaInput}
                         style={{ fontSize: this.termFontSize }}
                         placeholder="Send a Message..."
                     ></textarea>
@@ -366,4 +414,4 @@ class AIChat extends React.Component<{}, {}> {
     }
 }
 
-export { AIChat };
+export { ChatSidebar };

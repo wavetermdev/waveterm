@@ -34,16 +34,20 @@ class CodeBlockMarkdown extends React.Component<
     { nameSpace?: string; children: React.ReactNode; codeSelectSelectedIndex?: number; uuid: string },
     {}
 > {
+    blockRef: React.RefObject<HTMLPreElement> = React.createRef();
     blockIndex: number;
-    blockRef: React.RefObject<HTMLPreElement>;
     id: string;
+    nameSpace: string;
 
     constructor(props) {
         super(props);
-        this.blockRef = React.createRef();
+        this.nameSpace = this.props.nameSpace;
         this.id = uuidv4();
-        GlobalModel.inputModel.addCodeBlock(this.props.nameSpace, this.id);
-        this.blockIndex = GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef, this.props.uuid);
+    }
+
+    componentDidMount(): void {
+        GlobalModel.inputModel.addCodeBlock(this.props.nameSpace, this.id, this.blockRef);
+        GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef, this.props.uuid);
     }
 
     @boundMethod
@@ -54,14 +58,10 @@ class CodeBlockMarkdown extends React.Component<
 
     render() {
         // console.log("this.blockIndex", this.blockIndex);
-        let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
+        const selectedBlock = GlobalModel.inputModel.getSelectedBlockItem(this.nameSpace);
+        const selected = this.id == selectedBlock?.id;
         return (
-            <pre
-                ref={this.blockRef}
-                data-blockid={this.id}
-                // className={clsx({ selected: selected })}
-                onClick={this.handleClick}
-            >
+            <pre ref={this.blockRef} data-blockid={this.id} className={clsx({ selected })} onClick={this.handleClick}>
                 {this.props.children}
             </pre>
         );

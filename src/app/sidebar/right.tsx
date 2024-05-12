@@ -11,7 +11,7 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import { ResizableSidebar, Button } from "@/elements";
 import { WaveBookDisplay } from "./wavebook";
-import { AIChat } from "./aichat";
+import { ChatSidebar } from "./aichat";
 
 import "./right.less";
 
@@ -115,7 +115,7 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                             <WaveBookDisplay></WaveBookDisplay>
                         </If>
                         <If condition={this.mode.get() == "ai"}>
-                            <AIChat />
+                            <ChatSidebar />
                         </If>
                     </React.Fragment>
                 )}
