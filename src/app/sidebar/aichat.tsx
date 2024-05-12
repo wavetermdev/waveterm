@@ -249,11 +249,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         })();
     }
 
-    // @boundMethod
-    // onTextAreaInput(e: any) {
-    //     GlobalModel.inputModel.codeSelectDeselectAll();
-    // }
-
     onEnterKeyPressed() {
         const inputModel = GlobalModel.inputModel;
         const currentRef = this.textAreaRef.current;
@@ -278,7 +273,7 @@ class ChatSidebar extends React.Component<{}, {}> {
             return;
         }
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
-        // GlobalModel.inputModel.codeSelectDeselectAll();
+        this.onTextAreaInput();
     }
 
     updateScrollTop() {
@@ -287,7 +282,6 @@ class ChatSidebar extends React.Component<{}, {}> {
             return;
         }
         const blockRef = this.selectedBlock.ref.current;
-        console.log("blockRef>>>>>>>>>>>>>", blockRef);
         if (blockRef == null) {
             return;
         }
@@ -300,9 +294,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         const elementIsInView = elemBottom <= chatWindowBottom && elemTop >= chatWindowTop;
 
         if (!elementIsInView) {
-            console.log("chatWindowTop", chatWindowTop);
             let scrollPosition;
-
             if (elemBottom > chatWindowBottom) {
                 // If the element bottom is below the view, scroll down to make it visible at the bottom
                 scrollPosition = elemTop - chatWindowHeight + blockRef.offsetHeight + 10; // Adjust +10 for some margin
@@ -310,7 +302,6 @@ class ChatSidebar extends React.Component<{}, {}> {
                 // If the element top is above the view, scroll up to make it visible at the top
                 scrollPosition = elemTop - 10; // Adjust -10 for some margin
             }
-
             viewport.scrollTo({
                 behavior: "auto",
                 top: scrollPosition,
@@ -325,9 +316,7 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     onArrowUpPressed(): boolean {
         const codeBlockIds = GlobalModel.inputModel.codeBlocksMap.get(appconst.Markdown_AiChatSidebar);
-        console.log("arrow up pressed==================");
         const currentRef = this.textAreaRef.current;
-        console.log("inputModel.getCodeSelectSelectedIndex()", GlobalModel.inputModel.getCodeSelectSelectedIndex());
         if (currentRef == null) {
             return false;
         }
@@ -338,36 +327,29 @@ class ChatSidebar extends React.Component<{}, {}> {
             // Decrement the blockIndex
             this.blockIndex--;
         }
-        console.log("GlobalModel.inputModel.codeBlockIds.size", codeBlockIds.size);
-        console.log("onArrowUpPressed:this.blockIndex", this.blockIndex);
         GlobalModel.inputModel.setSelectedCodeBlockByIndex(appconst.Markdown_AiChatSidebar, this.blockIndex);
-        console.log("codeBlockIds", GlobalModel.inputModel.codeBlocksMap);
         this.updateScrollTop();
         return true;
     }
 
     onArrowDownPressed(): boolean {
         const codeBlockIds = GlobalModel.inputModel.codeBlocksMap.get(appconst.Markdown_AiChatSidebar);
-        console.log("arrow down pressed==================");
         const currentRef = this.textAreaRef.current;
         if (currentRef == null || this.blockIndex == null) {
             // Do nothing if blockIndex has not been initialized yet
             return false;
         }
-        console.log("inputModel.getCodeSelectSelectedIndex()", GlobalModel.inputModel.getCodeSelectSelectedIndex());
         if (this.blockIndex < codeBlockIds.size - 1) {
             // Increment the blockIndex
             this.blockIndex++;
         }
-        console.log("GlobalModel.inputModel.codeBlockIds.size", codeBlockIds.size);
-        console.log("onArrowDownPressed:this.blockIndex", this.blockIndex);
         GlobalModel.inputModel.setSelectedCodeBlockByIndex(appconst.Markdown_AiChatSidebar, this.blockIndex);
         this.updateScrollTop();
         return true;
     }
 
     @boundMethod
-    onTextAreaInput(e: any) {
+    onTextAreaInput() {
         if (this.selectedBlock) {
             GlobalModel.inputModel.deselectCodeBlock(appconst.Markdown_AiChatSidebar, this.selectedBlock.id);
         }
@@ -378,8 +360,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         const renderAIChatKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(
             appconst.InputAuxView_AIChat
         );
-        console.log("renderAIChatKeybindings=====", renderAIChatKeybindings);
-        console.log("codeSelectBlockRefArray", GlobalModel.inputModel.codeSelectBlockRefArray);
         return (
             <div className="sidebar-aichat">
                 <If condition={renderAIChatKeybindings}>

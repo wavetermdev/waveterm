@@ -119,7 +119,6 @@ class Markdown extends React.Component<
             code: (props) => CodeRenderer(props),
             pre: (props) => this.codeBlockRenderer(props, codeSelect, curCodeSelectIndex, this.curUuid),
         };
-        console.log("Markdown===this.curUuid", this.curUuid);
         return (
             <div className={clsx("markdown content", this.props.extraClassName)} style={this.props.style}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
