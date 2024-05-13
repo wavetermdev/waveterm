@@ -174,14 +174,14 @@ class ChatSidebar extends React.Component<{}, {}> {
     componentDidMount() {
         GlobalModel.sidebarchatModel.setFocus("input", true);
         if (this.sidebarRef.current) {
-            this.sidebarRef.current.addEventListener("click", this.handlePreClick);
+            this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
         }
         this.requestChatUpdate();
     }
 
     componentWillUnmount() {
         if (this.sidebarRef.current) {
-            this.sidebarRef.current.removeEventListener("click", this.handlePreClick);
+            this.sidebarRef.current.removeEventListener("click", this.handleSidebarClick);
         }
     }
 
@@ -264,12 +264,22 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     @boundMethod
-    handlePreClick(event: MouseEvent) {
+    handleSidebarClick(event: MouseEvent) {
+        let detection = 0;
         const target = event.target as HTMLElement;
+        // handle chat window click
+        const chatWindow = target.closest(".chat-window");
+        if (chatWindow) {
+            detection++;
+        }
+        // handle pre click
         const pre = target.closest("pre");
-
         if (pre) {
+            detection++;
             this.updatePreTagOutline(pre as HTMLPreElement);
+        }
+        if (detection > 0) {
+            GlobalModel.sidebarchatModel.setFocus("block", true);
         }
     }
 

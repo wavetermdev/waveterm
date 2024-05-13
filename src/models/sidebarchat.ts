@@ -20,6 +20,7 @@ class SidebarChatModel {
         };
     }
 
+    // block could be the chat-window in terms of focus
     @mobx.action
     setFocus(section: "input" | "block", focus: boolean): void {
         document.querySelector(".sidebarchat .sidebarchat-input");
