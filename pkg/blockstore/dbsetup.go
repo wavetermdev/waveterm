@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log"
 	"path"
-	"sync"
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
@@ -25,26 +24,20 @@ import (
 
 const BlockstoreDbName = "blockstore.db"
 
-type SingleConnDBGetter struct {
-	SingleConnLock *sync.Mutex
-}
-
 type TxWrap = txwrap.TxWrap
 
-var dbWrap *SingleConnDBGetter = &SingleConnDBGetter{SingleConnLock: &sync.Mutex{}}
-var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
-var globalDBErr error
 var useTestingDb bool // just for testing (forces GetDB() to return an in-memory db)
 
 func InitBlockstore() error {
-	err := MigrateBlockstore(false)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	var err error
+	globalDB, err = MakeDB(ctx)
 	if err != nil {
 		return err
 	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	_, err = GetDB(ctx)
+	err = MigrateBlockstore()
 	if err != nil {
 		return err
 	}
@@ -57,63 +50,31 @@ func GetDBName() string {
 	return path.Join(scHome, BlockstoreDbName)
 }
 
-func GetDB(ctx context.Context) (*sqlx.DB, error) {
-	if txwrap.IsTxWrapContext(ctx) {
-		return nil, fmt.Errorf("cannot call GetDB from within a running transaction")
-	}
-	globalDBLock.Lock()
-	defer globalDBLock.Unlock()
-	if globalDB == nil && globalDBErr == nil {
-		if useTestingDb {
-			dbName := ":memory:"
-			globalDB, globalDBErr = sqlx.Open("sqlite3", dbName)
-			if globalDBErr != nil {
-				log.Printf("[db] in-memory db err: %v\n", globalDBErr)
-			} else {
-				log.Printf("[db] using in-memory db\n")
-			}
-			return globalDB, globalDBErr
-		}
+func MakeDB(ctx context.Context) (*sqlx.DB, error) {
+	var rtn *sqlx.DB
+	var err error
+	if useTestingDb {
+		dbName := ":memory:"
+		log.Printf("[db] using in-memory db\n")
+		rtn, err = sqlx.Open("sqlite3", dbName)
+	} else {
 		dbName := GetDBName()
-		globalDB, globalDBErr = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", dbName))
-		if globalDBErr != nil {
-			globalDBErr = fmt.Errorf("opening db[%s]: %w", dbName, globalDBErr)
-			log.Printf("[db] error: %v\n", globalDBErr)
-		} else {
-			log.Printf("[db] successfully opened db %s\n", dbName)
-		}
+		log.Printf("[db] opening db %s\n", dbName)
+		rtn, err = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", dbName))
 	}
-	return globalDB, globalDBErr
-}
-
-func (dbg *SingleConnDBGetter) GetDB(ctx context.Context) (*sqlx.DB, error) {
-	db, err := GetDB(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("opening db: %w", err)
 	}
-	dbg.SingleConnLock.Lock()
-	return db, nil
-}
-
-func (dbg *SingleConnDBGetter) ReleaseDB(db *sqlx.DB) {
-	dbg.SingleConnLock.Unlock()
+	rtn.DB.SetMaxOpenConns(1)
+	return rtn, nil
 }
 
 func WithTx(ctx context.Context, fn func(tx *TxWrap) error) error {
-	return txwrap.DBGWithTx(ctx, dbWrap, fn)
+	return txwrap.WithTx(ctx, globalDB, fn)
 }
 
 func WithTxRtn[RT any](ctx context.Context, fn func(tx *TxWrap) (RT, error)) (RT, error) {
-	var rtn RT
-	txErr := WithTx(ctx, func(tx *TxWrap) error {
-		temp, err := fn(tx)
-		if err != nil {
-			return err
-		}
-		rtn = temp
-		return nil
-	})
-	return rtn, txErr
+	return txwrap.WithTxRtn(ctx, globalDB, fn)
 }
 
 func MakeBlockstoreMigrate() (*migrate.Migrate, error) {
@@ -121,13 +82,7 @@ func MakeBlockstoreMigrate() (*migrate.Migrate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening iofs: %w", err)
 	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelFn()
-	db, err := GetDB(ctx)
-	if err != nil {
-		return nil, err
-	}
-	mdriver, err := sqlite3migrate.WithInstance(db.DB, &sqlite3migrate.Config{})
+	mdriver, err := sqlite3migrate.WithInstance(globalDB.DB, &sqlite3migrate.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("making blockstore migration driver: %w", err)
 	}
@@ -138,7 +93,7 @@ func MakeBlockstoreMigrate() (*migrate.Migrate, error) {
 	return m, nil
 }
 
-func MigrateBlockstore(shouldClose bool) error {
+func MigrateBlockstore() error {
 	log.Printf("migrate blockstore\n")
 	m, err := MakeBlockstoreMigrate()
 	if err != nil {
@@ -150,9 +105,6 @@ func MigrateBlockstore(shouldClose bool) error {
 	}
 	if err != nil {
 		return fmt.Errorf("cannot get current migration version: %v", err)
-	}
-	if shouldClose {
-		defer m.Close()
 	}
 	err = m.Up()
 	if err != nil && err != migrate.ErrNoChange {

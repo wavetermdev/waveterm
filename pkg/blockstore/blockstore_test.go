@@ -15,21 +15,18 @@ func initDb(t *testing.T) {
 	t.Logf("initializing db for %q", t.Name())
 	useTestingDb = true
 	partDataSize = 64
-	err := MigrateBlockstore(false)
+	err := InitBlockstore()
 	if err != nil {
-		t.Fatalf("error migrating blockstore: %v", err)
+		t.Fatalf("error initializing blockstore: %v", err)
 	}
 }
 
 func cleanupDb(t *testing.T) {
 	t.Logf("cleaning up db for %q", t.Name())
-	globalDBLock.Lock()
-	defer globalDBLock.Unlock()
 	if globalDB != nil {
 		globalDB.Close()
 		globalDB = nil
 	}
-	globalDBErr = nil
 	useTestingDb = false
 	partDataSize = DefaultPartDataSize
 	GBS.clearCache()
