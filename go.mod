@@ -10,6 +10,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/sawka/txwrap v0.1.2
 	github.com/wailsapp/wails/v3 v3.0.0-alpha.0
+	github.com/wavetermdev/waveterm/wavesrv v0.0.0-20240508181017-d07068c09d94
 )
 
 require (
