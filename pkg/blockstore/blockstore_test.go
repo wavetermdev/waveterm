@@ -4,7 +4,9 @@
 package blockstore
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -14,7 +16,7 @@ import (
 func initDb(t *testing.T) {
 	t.Logf("initializing db for %q", t.Name())
 	useTestingDb = true
-	partDataSize = 64
+	partDataSize = 50
 	err := InitBlockstore()
 	if err != nil {
 		t.Fatalf("error initializing blockstore: %v", err)
@@ -182,4 +184,41 @@ func TestAppend(t *testing.T) {
 	// fmt.Print(GBS.dump())
 	checkFileSize(t, ctx, blockId, fileName, 11)
 	checkFileData(t, ctx, blockId, fileName, "hello world")
+}
+
+func makeText(n int) string {
+	var buf bytes.Buffer
+	for i := 0; i < n; i++ {
+		buf.WriteByte(byte('0' + (i % 10)))
+	}
+	return buf.String()
+}
+
+func TestMultiPart(t *testing.T) {
+	initDb(t)
+	defer cleanupDb(t)
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	blockId := uuid.New().String()
+	fileName := "m2"
+	data := makeText(80)
+	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	err = GBS.AppendData(ctx, blockId, fileName, []byte(data))
+	if err != nil {
+		t.Fatalf("error appending data: %v", err)
+	}
+	checkFileSize(t, ctx, blockId, fileName, 80)
+	checkFileData(t, ctx, blockId, fileName, data)
+	_, barr, err := GBS.ReadAt(ctx, blockId, fileName, 42, 10)
+	if err != nil {
+		t.Fatalf("error reading data: %v", err)
+	}
+	if string(barr) != data[42:52] {
+		t.Errorf("data mismatch: expected %q, got %q", data[42:52], string(barr))
+	}
+	fmt.Print(GBS.dump())
 }
