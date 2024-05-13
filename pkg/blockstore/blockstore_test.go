@@ -132,3 +132,57 @@ func TestSetMeta(t *testing.T) {
 	}
 	checkMapsEqual(t, map[string]any{"a": 6, "b": "hello", "c": "world", "d": 7}, file.Meta, "meta")
 }
+
+func checkFileSize(t *testing.T, ctx context.Context, blockId string, name string, size int64) {
+	file, err := GBS.Stat(ctx, blockId, name)
+	if err != nil {
+		t.Errorf("error stating file %q: %v", name, err)
+		return
+	}
+	if file == nil {
+		t.Errorf("file %q not found", name)
+		return
+	}
+	if file.Size != size {
+		t.Errorf("size mismatch for file %q: expected %d, got %d", name, size, file.Size)
+	}
+}
+
+func checkFileData(t *testing.T, ctx context.Context, blockId string, name string, data string) {
+	_, rdata, err := GBS.ReadFile(ctx, blockId, name)
+	if err != nil {
+		t.Errorf("error reading data for file %q: %v", name, err)
+		return
+	}
+	if string(rdata) != data {
+		t.Errorf("data mismatch for file %q: expected %q, got %q", name, data, string(rdata))
+	}
+}
+
+func TestAppend(t *testing.T) {
+	initDb(t)
+	defer cleanupDb(t)
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	blockId := uuid.New().String()
+	fileName := "t2"
+	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	err = GBS.AppendData(ctx, blockId, fileName, []byte("hello"))
+	if err != nil {
+		t.Fatalf("error appending data: %v", err)
+	}
+	// fmt.Print(GBS.dump())
+	checkFileSize(t, ctx, blockId, fileName, 5)
+	checkFileData(t, ctx, blockId, fileName, "hello")
+	err = GBS.AppendData(ctx, blockId, fileName, []byte(" world"))
+	if err != nil {
+		t.Fatalf("error appending data: %v", err)
+	}
+	// fmt.Print(GBS.dump())
+	checkFileSize(t, ctx, blockId, fileName, 11)
+	checkFileData(t, ctx, blockId, fileName, "hello world")
+}

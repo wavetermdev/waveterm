@@ -395,10 +395,11 @@ func (s *BlockStore) ReadAt(ctx context.Context, blockId string, name string, of
 			// limit read to the actual size of the file
 			size = entry.FileEntry.File.Size - offset
 		}
-		for partIdx, _ := range dataEntries {
-			if entry.DataEntries[partIdx] != nil {
-				dataEntries[partIdx] = entry.DataEntries[partIdx]
+		for _, partIdx := range partsNeeded {
+			if len(entry.DataEntries) <= partIdx || entry.DataEntries[partIdx] == nil {
+				continue
 			}
+			dataEntries[partIdx] = entry.DataEntries[partIdx]
 		}
 		return nil
 	})
@@ -426,6 +427,17 @@ func (s *BlockStore) ReadAt(ctx context.Context, blockId string, name string, of
 		curReadOffset += amtToRead
 	}
 	return offset, rtn, nil
+}
+
+func (s *BlockStore) ReadFile(ctx context.Context, blockId string, name string) (int64, []byte, error) {
+	file, err := s.Stat(ctx, blockId, name)
+	if err != nil {
+		return 0, nil, fmt.Errorf("error getting file: %v", err)
+	}
+	if file == nil {
+		return 0, nil, fmt.Errorf("file not found")
+	}
+	return s.ReadAt(ctx, blockId, name, 0, file.Size)
 }
 
 func minInt64(a, b int64) int64 {

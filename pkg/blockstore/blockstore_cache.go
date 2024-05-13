@@ -4,6 +4,7 @@
 package blockstore
 
 import (
+	"bytes"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -41,6 +42,35 @@ type CacheEntry struct {
 	Deleted     bool
 	FileEntry   *FileCacheEntry
 	DataEntries []*DataCacheEntry
+}
+
+func (e *CacheEntry) dump() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "CacheEntry{\nBlockId: %q, Name: %q, Version: %d, PinCount: %d, Deleted: %v\n", e.BlockId, e.Name, e.Version, e.PinCount, e.Deleted)
+	if e.FileEntry != nil {
+		fmt.Fprintf(&buf, "FileEntry: %v\n", e.FileEntry.File)
+	}
+	for i, dce := range e.DataEntries {
+		if dce != nil {
+			fmt.Fprintf(&buf, "DataEntry[%d][%v]: %q\n", i, dce.Dirty.Load(), string(dce.Data))
+		}
+	}
+	buf.WriteString("}\n")
+	return buf.String()
+}
+
+func (s *BlockStore) dump() string {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("BlockStore %d entries\n", len(s.Cache)))
+	for _, v := range s.Cache {
+		entryStr := v.dump()
+		buf.WriteString(entryStr)
+		buf.WriteString("\n")
+	}
+	return buf.String()
+
 }
 
 // for testing
