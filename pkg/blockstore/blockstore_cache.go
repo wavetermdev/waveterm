@@ -43,6 +43,20 @@ type CacheEntry struct {
 	DataEntries []*DataCacheEntry
 }
 
+// for testing
+func (s *BlockStore) getCacheSize() int {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	return len(s.Cache)
+}
+
+// for testing
+func (s *BlockStore) clearCache() {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	s.Cache = make(map[cacheKey]*CacheEntry)
+}
+
 func (e *CacheEntry) ensurePart(partIdx int, create bool) *DataCacheEntry {
 	for len(e.DataEntries) <= partIdx {
 		e.DataEntries = append(e.DataEntries, nil)
