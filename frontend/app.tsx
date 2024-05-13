@@ -5,6 +5,7 @@ import { atomWithObservable } from "jotai/utils";
 import { Greet } from "./bindings/main/GreetService.js";
 import { Events } from "@wailsio/runtime";
 import * as rx from "rxjs";
+import { clsx } from "clsx";
 
 import "/public/style.less";
 
@@ -27,6 +28,41 @@ const App = () => {
         <Provider store={jotaiStore}>
             <AppInner />
         </Provider>
+    );
+};
+
+const Tabs = () => {
+    return (
+        <div className="tabs">
+            <div className="tab">Tab 1</div>
+            <div className="tab">Tab 2</div>
+            <div className="tab">Tab 3</div>
+        </div>
+    );
+};
+
+const Block = () => {
+    return (
+        <div className="block">
+            <div>Block Content</div>
+        </div>
+    );
+};
+
+const TabContent = () => {
+    return (
+        <div className="tabcontent">
+            <Block />
+        </div>
+    );
+};
+
+const Workspace = () => {
+    return (
+        <div className="workspace">
+            <Tabs />
+            <TabContent />
+        </div>
     );
 };
 
@@ -53,19 +89,9 @@ const AppInner = () => {
     }
 
     return (
-        <div>
-            <h1>Hello Wails!</h1>
-            <input
-                id="name"
-                type="text"
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Your name"
-            />
-            <button onClick={() => doGreet()}>Greet</button>
-            <div id="result">{result}</div>
-            <div id="time">{timeVal}</div>
-            <div>Counter: {counterVal}</div>
+        <div className="mainapp">
+            <div className="titlebar"></div>
+            <Workspace />
         </div>
     );
 };

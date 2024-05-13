@@ -209,6 +209,11 @@
   dependencies:
     nanoid "^5.0.7"
 
+clsx@^2.1.1:
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/clsx/-/clsx-2.1.1.tgz#eed397c9fd8bd882bfb18deab7102049a2f32999"
+  integrity sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==
+
 copy-anything@^2.0.1:
   version "2.0.6"
   resolved "https://registry.npmjs.org/copy-anything/-/copy-anything-2.0.6.tgz"
