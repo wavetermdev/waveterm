@@ -38,7 +38,7 @@ function getThemeFromCSSVars(el: Element): ITheme {
     return theme;
 }
 
-const Block = () => {
+const Block = ({ blockId }: { blockId: string }) => {
     const blockRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const [dims, setDims] = React.useState({ width: 0, height: 0 });
@@ -71,8 +71,8 @@ const Block = () => {
     return (
         <div className="block" ref={blockRef}>
             <div key="header" className="block-header">
-                <div>
-                    Block {dims.width}x{dims.height}
+                <div className="text-fixed">
+                    Block [{blockId.substring(0, 8)}] {dims.width}x{dims.height}
                 </div>
             </div>
             <div key="conntectElem" className="block-term-connectelem" ref={connectElemRef}></div>

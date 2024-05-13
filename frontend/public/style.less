@@ -1,4 +1,4 @@
-// Copyright 2023, Command Line Inc.
+// Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 @import "./reset.less";
@@ -8,6 +8,7 @@
     --border-color: #333333;
     --main-color: #f7f7f7;
     --base-font: normal 15px / normal "Lato", sans-serif;
+    --fixed-font: normal 12px / normal "Hack", monospace;
     --app-accent-color: rgb(88, 193, 66);
     --panel-bg-color: rgba(31, 33, 31, 1);
 }
@@ -21,6 +22,14 @@ body {
     color: var(--main-color);
     font: var(--base-font);
     overflow: hidden;
+}
+
+.flex-spacer {
+    flex-grow: 1;
+}
+
+.text-fixed {
+    font: var(--fixed-font);
 }
 
 #main,
@@ -42,9 +51,10 @@ body {
     flex-direction: column;
     width: 100%;
     flex-grow: 1;
+    overflow: hidden;
 }
 
-.tabs {
+.tab-bar {
     display: flex;
     flex-direction: row;
     height: 35px;
@@ -63,14 +73,4 @@ body {
             background-color: var(--border-color);
         }
     }
-}
-
-.tabcontent {
-    display: flex;
-    flex-direction: row;
-    flex-grow: 1;
-    min-height: 0;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
 }

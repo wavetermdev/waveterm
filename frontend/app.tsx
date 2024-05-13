@@ -10,6 +10,7 @@ import { Events } from "@wailsio/runtime";
 import * as rx from "rxjs";
 import { clsx } from "clsx";
 import { Block } from "./block.tsx";
+import { TabContent } from "./tab.tsx";
 
 import "/public/style.less";
 
@@ -35,9 +36,9 @@ const App = () => {
     );
 };
 
-const Tabs = () => {
+const TabBar = () => {
     return (
-        <div className="tabs">
+        <div className="tab-bar">
             <div className="tab">Tab 1</div>
             <div className="tab">Tab 2</div>
             <div className="tab">Tab 3</div>
@@ -45,18 +46,10 @@ const Tabs = () => {
     );
 };
 
-const TabContent = () => {
-    return (
-        <div className="tabcontent">
-            <Block />
-        </div>
-    );
-};
-
 const Workspace = () => {
     return (
         <div className="workspace">
-            <Tabs />
+            <TabBar />
             <TabContent />
         </div>
     );
