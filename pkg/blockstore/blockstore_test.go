@@ -6,7 +6,6 @@ package blockstore
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -158,6 +157,17 @@ func checkFileData(t *testing.T, ctx context.Context, blockId string, name strin
 	}
 }
 
+func checkFileDataAt(t *testing.T, ctx context.Context, blockId string, name string, offset int64, data string) {
+	_, rdata, err := GBS.ReadAt(ctx, blockId, name, offset, int64(len(data)))
+	if err != nil {
+		t.Errorf("error reading data for file %q: %v", name, err)
+		return
+	}
+	if string(rdata) != data {
+		t.Errorf("data mismatch for file %q: expected %q, got %q", name, data, string(rdata))
+	}
+}
+
 func TestAppend(t *testing.T) {
 	initDb(t)
 	defer cleanupDb(t)
@@ -220,5 +230,8 @@ func TestMultiPart(t *testing.T) {
 	if string(barr) != data[42:52] {
 		t.Errorf("data mismatch: expected %q, got %q", data[42:52], string(barr))
 	}
-	fmt.Print(GBS.dump())
+	GBS.WriteAt(ctx, blockId, fileName, 49, []byte("world"))
+	checkFileSize(t, ctx, blockId, fileName, 80)
+	checkFileDataAt(t, ctx, blockId, fileName, 49, "world")
+	checkFileDataAt(t, ctx, blockId, fileName, 48, "8world4")
 }

@@ -303,7 +303,7 @@ func (s *BlockStore) loadDataParts(ctx context.Context, blockId string, name str
 }
 
 func (s *BlockStore) writeAt_nolock(entry *CacheEntry, offset int64, data []byte) {
-	endWrite := entry.FileEntry.File.Size + int64(len(data))
+	endWrite := offset + int64(len(data))
 	entry.writeAt(offset, data)
 	if endWrite > entry.FileEntry.File.Size {
 		entry.FileEntry.File.Size = endWrite
