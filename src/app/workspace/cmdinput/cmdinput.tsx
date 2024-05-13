@@ -191,10 +191,10 @@ class CmdInput extends React.Component<{}, {}> {
                         <div className="cmd-input-grow-spacer"></div>
                         <HistoryInfo />
                     </When>
-                    {/* <When condition={openView === appconst.InputAuxView_AIChat}>
+                    <When condition={openView === appconst.InputAuxView_AIChat}>
                         <div className="cmd-input-grow-spacer"></div>
                         <AIChat />
-                    </When> */}
+                    </When>
                     <When condition={openView === appconst.InputAuxView_Info}>
                         <InfoMsg key="infomsg" />
                     </When>
