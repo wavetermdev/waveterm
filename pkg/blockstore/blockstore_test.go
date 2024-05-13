@@ -104,7 +104,7 @@ func TestSetMeta(t *testing.T) {
 	if GBS.getCacheSize() != 0 {
 		t.Errorf("cache size mismatch -- should have 0 entries after create")
 	}
-	err = GBS.WriteMeta(ctx, blockId, "testfile", map[string]any{"a": 5, "b": "hello"})
+	err = GBS.WriteMeta(ctx, blockId, "testfile", map[string]any{"a": 5, "b": "hello", "q": 8}, false)
 	if err != nil {
 		t.Fatalf("error setting meta: %v", err)
 	}
@@ -115,8 +115,20 @@ func TestSetMeta(t *testing.T) {
 	if file == nil {
 		t.Fatalf("file not found")
 	}
-	checkMapsEqual(t, map[string]any{"a": 5, "b": "hello"}, file.Meta, "meta")
+	checkMapsEqual(t, map[string]any{"a": 5, "b": "hello", "q": 8}, file.Meta, "meta")
 	if GBS.getCacheSize() != 1 {
 		t.Errorf("cache size mismatch")
 	}
+	err = GBS.WriteMeta(ctx, blockId, "testfile", map[string]any{"a": 6, "c": "world", "d": 7, "q": nil}, true)
+	if err != nil {
+		t.Fatalf("error setting meta: %v", err)
+	}
+	file, err = GBS.Stat(ctx, blockId, "testfile")
+	if err != nil {
+		t.Fatalf("error stating file: %v", err)
+	}
+	if file == nil {
+		t.Fatalf("file not found")
+	}
+	checkMapsEqual(t, map[string]any{"a": 6, "b": "hello", "c": "world", "d": 7}, file.Meta, "meta")
 }

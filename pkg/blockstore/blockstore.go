@@ -167,7 +167,7 @@ func (s *BlockStore) ListFiles(ctx context.Context, blockId string) ([]*BlockFil
 	return files, nil
 }
 
-func (s *BlockStore) WriteMeta(ctx context.Context, blockId string, name string, meta FileMeta) error {
+func (s *BlockStore) WriteMeta(ctx context.Context, blockId string, name string, meta FileMeta, merge bool) error {
 	file, ok := s.getFileFromCache(blockId, name)
 	if !ok {
 		dbFile, err := dbGetBlockFile(ctx, blockId, name)
@@ -186,7 +186,17 @@ func (s *BlockStore) WriteMeta(ctx context.Context, blockId string, name string,
 			return
 		}
 		newFileEntry := entry.copyOrCreateFileEntry(file)
-		newFileEntry.File.Meta = meta
+		if merge {
+			for k, v := range meta {
+				if v == nil {
+					delete(newFileEntry.File.Meta, k)
+					continue
+				}
+				newFileEntry.File.Meta[k] = v
+			}
+		} else {
+			newFileEntry.File.Meta = meta
+		}
 		entry.FileEntry = newFileEntry
 		entry.FileEntry.File.ModTs = time.Now().UnixMilli()
 		entry.Version++
