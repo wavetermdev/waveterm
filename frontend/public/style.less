@@ -20,6 +20,7 @@ body {
     background-color: var(--main-bg-color);
     color: var(--main-color);
     font: var(--base-font);
+    overflow: hidden;
 }
 
 #main,
@@ -33,13 +34,14 @@ body {
 .titlebar {
     height: 35px;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 .workspace {
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
+    flex-grow: 1;
 }
 
 .tabs {
@@ -47,6 +49,7 @@ body {
     flex-direction: row;
     height: 35px;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 
     .tab {
         display: flex;
@@ -65,7 +68,8 @@ body {
 .tabcontent {
     display: flex;
     flex-direction: row;
-    height: 100%;
+    flex-grow: 1;
+    min-height: 0;
     width: 100%;
     align-items: center;
     justify-content: center;
