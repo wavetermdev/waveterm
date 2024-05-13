@@ -174,7 +174,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     componentDidMount() {
         const inputModel = GlobalModel.inputModel;
 
-        inputModel.openAIAssistantChat();
+        // inputModel.openAIAssistantChat();
 
         if (this.textAreaRef.current != null) {
             this.textAreaRef.current.focus();
@@ -350,7 +350,7 @@ class ChatSidebar extends React.Component<{}, {}> {
             appconst.InputAuxView_AIChat
         );
         return (
-            <div className="sidebar-aichat">
+            <div className="sidebarchat">
                 <If condition={renderAIChatKeybindings}>
                     <ChatKeybindings AIChatObject={this} />
                 </If>
@@ -360,14 +360,14 @@ class ChatSidebar extends React.Component<{}, {}> {
                 <If condition={chatMessageItems.length > 0}>
                     <Content chatWindowRef={this.chatWindowRef} onRendered={this.onChatConTentRendered} />
                 </If>
-                <div className="chat-input">
+                <div className="sidebarchat-input-wrapper">
                     <textarea
-                        key="main"
+                        key="sidebarchat"
                         ref={this.textAreaRef}
                         autoComplete="off"
                         autoCorrect="off"
                         autoFocus={true}
-                        className="chat-cmd-input chat-textarea"
+                        className="sidebarchat-input chat-textarea"
                         onFocus={this.onTextAreaFocused}
                         onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}

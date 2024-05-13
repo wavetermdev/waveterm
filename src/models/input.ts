@@ -39,6 +39,8 @@ class InputModel {
     readonly codeSelectTop: number = -2;
     readonly codeSelectBottom: number = -1;
 
+    chatSidebarFocus: OV<boolean> = mobx.observable.box(false, { name: "chatSidebarFocus" });
+
     historyType: mobx.IObservableValue<HistoryTypeStrs> = mobx.observable.box("screen");
     historyLoading: mobx.IObservableValue<boolean> = mobx.observable.box(false);
     historyAfterLoadIndex: number = 0;
@@ -134,13 +136,14 @@ class InputModel {
         }
     }
 
-    // Focuses the main input or the auxiliary view, depending on the active auxiliary view
+    // Focuses the main input or sidebarchat or the auxiliary view, depending on the active auxiliary view
     @mobx.action
     giveFocus(): void {
         // Override active view to the main input if aux view does not have focus
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
         switch (activeAuxView) {
             case appconst.InputAuxView_History: {
+                console.log("1");
                 const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
                 if (elem != null) {
                     elem.focus();
@@ -148,9 +151,12 @@ class InputModel {
                 break;
             }
             case appconst.InputAuxView_AIChat:
+                console.log("2");
                 this.setAIChatFocus();
                 break;
             case null: {
+                // if ()
+                console.log("3");
                 const elem = document.getElementById("main-cmd-input");
                 if (elem != null) {
                     elem.focus();
@@ -159,6 +165,7 @@ class InputModel {
                 break;
             }
             default: {
+                console.log("4");
                 const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
                 if (elem != null) {
                     elem.focus();
@@ -662,6 +669,14 @@ class InputModel {
         this.setActiveAuxView(appconst.InputAuxView_AIChat);
         this.setAuxViewFocus(true);
         this.globalModel.sendActivity("aichat-open");
+    }
+
+    @mobx.action
+    openChatSidebar(): void {
+        this.chatSidebarFocus.set(true);
+        mobx.action(() => {
+            this.giveFocus();
+        })();
     }
 
     clearAIAssistantChat(): void {

@@ -86,9 +86,9 @@ class CmdInput extends React.Component<{}, {}> {
         e.stopPropagation();
         const inputModel = GlobalModel.inputModel;
         if (inputModel.getActiveAuxView() === appconst.InputAuxView_AIChat) {
-            // inputModel.closeAuxView();
+            inputModel.closeAuxView();
         } else {
-            // inputModel.openAIAssistantChat();
+            inputModel.openAIAssistantChat();
         }
     }
 
