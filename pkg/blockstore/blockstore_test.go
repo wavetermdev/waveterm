@@ -16,6 +16,7 @@ func initDb(t *testing.T) {
 	t.Logf("initializing db for %q", t.Name())
 	useTestingDb = true
 	partDataSize = 50
+	stopFlush.Store(true)
 	err := InitBlockstore()
 	if err != nil {
 		t.Fatalf("error initializing blockstore: %v", err)

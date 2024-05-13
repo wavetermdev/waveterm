@@ -11,6 +11,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,11 +20,11 @@ const DefaultFlushTime = 5 * time.Second
 const NoPartIdx = -1
 
 var partDataSize int64 = DefaultPartDataSize // overridden in tests
+var stopFlush = &atomic.Bool{}
 
 var GBS *BlockStore = &BlockStore{
-	Lock:      &sync.Mutex{},
-	Cache:     make(map[cacheKey]*CacheEntry),
-	FlushTime: DefaultFlushTime,
+	Lock:  &sync.Mutex{},
+	Cache: make(map[cacheKey]*CacheEntry),
 }
 
 type FileOptsType struct {

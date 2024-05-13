@@ -36,16 +36,6 @@ func dbGetBlockFileNames(ctx context.Context, blockId string) ([]string, error) 
 	})
 }
 
-func dbDeleteBlock(ctx context.Context, blockId string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
-		query := "DELETE FROM db_block_file WHERE blockid = ?"
-		tx.Exec(query, blockId)
-		query = "DELETE FROM db_block_data WHERE blockid = ?"
-		tx.Exec(query, blockId)
-		return nil
-	})
-}
-
 func dbGetBlockFile(ctx context.Context, blockId string, name string) (*BlockFile, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*BlockFile, error) {
 		query := "SELECT * FROM db_block_file WHERE blockid = ? AND name = ?"
@@ -112,6 +102,7 @@ func dbWriteCacheEntry(ctx context.Context, fileEntry *FileCacheEntry, dataEntri
 			for _, dataEntry := range dataEntries {
 				if dataEntry != nil {
 					dataEntry.Dirty.Store(false)
+					dataEntry.Flushing.Store(false)
 				}
 			}
 		}

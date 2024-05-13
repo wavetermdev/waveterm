@@ -5,10 +5,10 @@ package blockstore
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 )
 
 type cacheKey struct {
@@ -17,9 +17,10 @@ type cacheKey struct {
 }
 
 type DataCacheEntry struct {
-	Dirty   *atomic.Bool
-	PartIdx int
-	Data    []byte // capacity is always BlockDataPartSize
+	Dirty    *atomic.Bool
+	Flushing *atomic.Bool
+	PartIdx  int
+	Data     []byte // capacity is always BlockDataPartSize
 }
 
 type FileCacheEntry struct {
@@ -70,7 +71,15 @@ func (s *BlockStore) dump() string {
 		buf.WriteString("\n")
 	}
 	return buf.String()
+}
 
+func makeDataCacheEntry(partIdx int) *DataCacheEntry {
+	return &DataCacheEntry{
+		Dirty:    &atomic.Bool{},
+		Flushing: &atomic.Bool{},
+		PartIdx:  partIdx,
+		Data:     make([]byte, 0, partDataSize),
+	}
 }
 
 // for testing
@@ -92,16 +101,24 @@ func (e *CacheEntry) ensurePart(partIdx int, create bool) *DataCacheEntry {
 		e.DataEntries = append(e.DataEntries, nil)
 	}
 	if create && e.DataEntries[partIdx] == nil {
-		e.DataEntries[partIdx] = &DataCacheEntry{
-			PartIdx: partIdx,
-			Data:    make([]byte, 0, partDataSize),
-			Dirty:   &atomic.Bool{},
-		}
+		e.DataEntries[partIdx] = makeDataCacheEntry(partIdx)
 	}
 	return e.DataEntries[partIdx]
 }
 
-func (dce *DataCacheEntry) writeToPart(offset int64, data []byte) int64 {
+func (dce *DataCacheEntry) clonePart() *DataCacheEntry {
+	rtn := makeDataCacheEntry(dce.PartIdx)
+	copy(rtn.Data, dce.Data)
+	if dce.Dirty.Load() {
+		rtn.Dirty.Store(true)
+	}
+	return rtn
+}
+
+func (dce *DataCacheEntry) writeToPart(offset int64, data []byte) (int64, *DataCacheEntry) {
+	if dce.Flushing.Load() {
+		dce = dce.clonePart()
+	}
 	leftInPart := partDataSize - offset
 	toWrite := int64(len(data))
 	if toWrite > leftInPart {
@@ -112,7 +129,7 @@ func (dce *DataCacheEntry) writeToPart(offset int64, data []byte) int64 {
 	}
 	copy(dce.Data[offset:], data[:toWrite])
 	dce.Dirty.Store(true)
-	return toWrite
+	return toWrite, dce
 }
 
 func (entry *CacheEntry) writeAt(offset int64, data []byte) {
@@ -124,16 +141,16 @@ func (entry *CacheEntry) writeAt(offset int64, data []byte) {
 		}
 		partOffset := offset % partDataSize
 		partData := entry.ensurePart(partIdx, true)
-		nw := partData.writeToPart(partOffset, data)
+		nw, newDce := partData.writeToPart(partOffset, data)
+		entry.DataEntries[partIdx] = newDce
 		data = data[nw:]
 		offset += nw
 	}
 }
 
 type BlockStore struct {
-	Lock      *sync.Mutex
-	Cache     map[cacheKey]*CacheEntry
-	FlushTime time.Duration
+	Lock  *sync.Mutex
+	Cache map[cacheKey]*CacheEntry
 }
 
 func (s *BlockStore) withLock(blockId string, name string, shouldCreate bool, f func(*CacheEntry)) {
@@ -235,4 +252,41 @@ func (e *CacheEntry) copyOrCreateFileEntry(dbFile *BlockFile) *FileCacheEntry {
 		Dirty: &atomic.Bool{},
 		File:  *e.FileEntry.File.DeepCopy(),
 	}
+}
+
+// also sets Flushing to true
+func (s *BlockStore) getDirtyDataEntries(entry *CacheEntry) (*FileCacheEntry, []*DataCacheEntry) {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	if entry.Deleted || entry.FileEntry == nil {
+		return nil, nil
+	}
+	var dirtyData []*DataCacheEntry
+	for _, dce := range entry.DataEntries {
+		if dce != nil && dce.Dirty.Load() {
+			dirtyData = append(dirtyData, dce)
+		}
+	}
+	if !entry.FileEntry.Dirty.Load() && len(dirtyData) == 0 {
+		return nil, nil
+	}
+	for _, data := range dirtyData {
+		data.Flushing.Store(true)
+	}
+	return entry.FileEntry, dirtyData
+}
+
+// clean is true if the block was clean (nothing to write)
+// returns (clean, error)
+func (s *BlockStore) flushEntry(ctx context.Context, entry *CacheEntry) error {
+	fileEntry, dirtyData := s.getDirtyDataEntries(entry)
+	if fileEntry == nil && len(dirtyData) == 0 {
+		s.tryDeleteCacheEntry(entry.BlockId, entry.Name)
+		return nil
+	}
+	err := dbWriteCacheEntry(ctx, fileEntry, dirtyData)
+	if err != nil {
+		return err
+	}
+	return nil
 }
