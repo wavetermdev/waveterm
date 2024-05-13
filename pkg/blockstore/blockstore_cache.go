@@ -50,7 +50,7 @@ func (e *CacheEntry) ensurePart(partIdx int, create bool) *DataCacheEntry {
 	if create && e.DataEntries[partIdx] == nil {
 		e.DataEntries[partIdx] = &DataCacheEntry{
 			PartIdx: partIdx,
-			Data:    make([]byte, 0, PartDataSize),
+			Data:    make([]byte, 0, partDataSize),
 			Dirty:   &atomic.Bool{},
 		}
 	}
@@ -58,7 +58,7 @@ func (e *CacheEntry) ensurePart(partIdx int, create bool) *DataCacheEntry {
 }
 
 func (dce *DataCacheEntry) writeToPart(offset int64, data []byte) int64 {
-	leftInPart := PartDataSize - offset
+	leftInPart := partDataSize - offset
 	toWrite := int64(len(data))
 	if toWrite > leftInPart {
 		toWrite = leftInPart
@@ -73,12 +73,12 @@ func (dce *DataCacheEntry) writeToPart(offset int64, data []byte) int64 {
 
 func (entry *CacheEntry) writeAt(offset int64, data []byte) {
 	for len(data) > 0 {
-		partIdx := int(offset / PartDataSize)
+		partIdx := int(offset / partDataSize)
 		if entry.FileEntry.File.Opts.Circular {
-			maxPart := int(entry.FileEntry.File.Opts.MaxSize / PartDataSize)
+			maxPart := int(entry.FileEntry.File.Opts.MaxSize / partDataSize)
 			partIdx = partIdx % maxPart
 		}
-		partOffset := offset % PartDataSize
+		partOffset := offset % partDataSize
 		partData := entry.ensurePart(partIdx, true)
 		nw := partData.writeToPart(partOffset, data)
 		data = data[nw:]

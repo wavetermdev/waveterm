@@ -14,7 +14,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 
 	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
+	sqlite3migrate "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
@@ -35,9 +35,10 @@ var dbWrap *SingleConnDBGetter = &SingleConnDBGetter{SingleConnLock: &sync.Mutex
 var globalDBLock = &sync.Mutex{}
 var globalDB *sqlx.DB
 var globalDBErr error
+var useTestingDb bool // just for testing (forces GetDB() to return an in-memory db)
 
 func InitBlockstore() error {
-	err := MigrateBlockstore()
+	err := MigrateBlockstore(false)
 	if err != nil {
 		return err
 	}
@@ -63,6 +64,16 @@ func GetDB(ctx context.Context) (*sqlx.DB, error) {
 	globalDBLock.Lock()
 	defer globalDBLock.Unlock()
 	if globalDB == nil && globalDBErr == nil {
+		if useTestingDb {
+			dbName := ":memory:"
+			globalDB, globalDBErr = sqlx.Open("sqlite3", dbName)
+			if globalDBErr != nil {
+				log.Printf("[db] in-memory db err: %v\n", globalDBErr)
+			} else {
+				log.Printf("[db] using in-memory db\n")
+			}
+			return globalDB, globalDBErr
+		}
 		dbName := GetDBName()
 		globalDB, globalDBErr = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", dbName))
 		if globalDBErr != nil {
@@ -110,15 +121,24 @@ func MakeBlockstoreMigrate() (*migrate.Migrate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("opening iofs: %w", err)
 	}
-	dbUrl := fmt.Sprintf("sqlite3://%s", GetDBName())
-	m, err := migrate.NewWithSourceInstance("iofs", fsVar, dbUrl)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	db, err := GetDB(ctx)
+	if err != nil {
+		return nil, err
+	}
+	mdriver, err := sqlite3migrate.WithInstance(db.DB, &sqlite3migrate.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("making blockstore migration driver: %w", err)
+	}
+	m, err := migrate.NewWithInstance("iofs", fsVar, "sqlite3", mdriver)
 	if err != nil {
 		return nil, fmt.Errorf("making blockstore migration db[%s]: %w", GetDBName(), err)
 	}
 	return m, nil
 }
 
-func MigrateBlockstore() error {
+func MigrateBlockstore(shouldClose bool) error {
 	log.Printf("migrate blockstore\n")
 	m, err := MakeBlockstoreMigrate()
 	if err != nil {
@@ -131,7 +151,9 @@ func MigrateBlockstore() error {
 	if err != nil {
 		return fmt.Errorf("cannot get current migration version: %v", err)
 	}
-	defer m.Close()
+	if shouldClose {
+		defer m.Close()
+	}
 	err = m.Up()
 	if err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("migrating blockstore: %w", err)

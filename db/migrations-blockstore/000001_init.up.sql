@@ -1,11 +1,10 @@
 CREATE TABLE db_block_file (
     blockid varchar(36) NOT NULL,
     name varchar(200) NOT NULL,
-    maxsize bigint NOT NULL,
-    circular boolean NOT NULL,
     size bigint NOT NULL,
     createdts bigint NOT NULL,
     modts bigint NOT NULL,
+    opts json NOT NULL,
     meta json NOT NULL,
     PRIMARY KEY (blockid, name)
 );

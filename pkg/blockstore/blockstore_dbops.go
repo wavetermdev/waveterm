@@ -12,7 +12,7 @@ func dbInsertFile(ctx context.Context, file *BlockFile) error {
 	// will fail if file already exists
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := "INSERT INTO db_block_file (blockid, name, size, createdts, modts, opts, meta) VALUES (?, ?, ?, ?, ?, ?, ?)"
-		tx.Exec(query, file.BlockId, file.Name, file.Size, file.CreatedTs, file.ModTs, file.Opts, file.Meta)
+		tx.Exec(query, file.BlockId, file.Name, file.Size, file.CreatedTs, file.ModTs, dbutil.QuickJson(file.Opts), dbutil.QuickJson(file.Meta))
 		return nil
 	})
 }
@@ -46,12 +46,11 @@ func dbDeleteBlock(ctx context.Context, blockId string) error {
 	})
 }
 
-func dbGetFile(ctx context.Context, blockId string, name string) (*BlockFile, error) {
+func dbGetBlockFile(ctx context.Context, blockId string, name string) (*BlockFile, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*BlockFile, error) {
-		var file BlockFile
 		query := "SELECT * FROM db_block_file WHERE blockid = ? AND name = ?"
-		tx.Get(&file, query, blockId, name)
-		return &file, nil
+		file := dbutil.GetMappable[*BlockFile](tx, query, blockId, name)
+		return file, nil
 	})
 }
 
@@ -80,9 +79,8 @@ func dbGetFileParts(ctx context.Context, blockId string, name string, parts []in
 
 func dbGetBlockFiles(ctx context.Context, blockId string) ([]*BlockFile, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) ([]*BlockFile, error) {
-		var files []*BlockFile
 		query := "SELECT * FROM db_block_file WHERE blockid = ?"
-		tx.Select(&files, query, blockId)
+		files := dbutil.SelectMappable[*BlockFile](tx, query, blockId)
 		return files, nil
 	})
 }
@@ -99,7 +97,7 @@ func dbWriteCacheEntry(ctx context.Context, fileEntry *FileCacheEntry, dataEntri
 		}
 		if fileEntry.Dirty.Load() {
 			query := `UPDATE db_block_file SET size = ?, createdts = ?, modts = ?, opts = ?, meta = ? WHERE blockid = ? AND name = ?`
-			tx.Exec(query, fileEntry.File.Size, fileEntry.File.CreatedTs, fileEntry.File.ModTs, fileEntry.File.Opts, fileEntry.File.Meta, fileEntry.File.BlockId, fileEntry.File.Name)
+			tx.Exec(query, fileEntry.File.Size, fileEntry.File.CreatedTs, fileEntry.File.ModTs, dbutil.QuickJson(fileEntry.File.Opts), dbutil.QuickJson(fileEntry.File.Meta), fileEntry.File.BlockId, fileEntry.File.Name)
 		}
 		dataPartQuery := `REPLACE INTO db_block_data (blockid, name, partidx, data) VALUES (?, ?, ?, ?)`
 		for _, dataEntry := range dataEntries {

@@ -14,11 +14,13 @@ import (
 	"time"
 )
 
-const PartDataSize = 64 * 1024
+const DefaultPartDataSize = 64 * 1024
 const DefaultFlushTime = 5 * time.Second
 const NoPartIdx = -1
 
-var GlobalBlockStore *BlockStore = &BlockStore{
+var partDataSize int64 = DefaultPartDataSize // overridden in tests
+
+var GBS *BlockStore = &BlockStore{
 	Lock:      &sync.Mutex{},
 	Cache:     make(map[cacheKey]*CacheEntry),
 	FlushTime: DefaultFlushTime,
@@ -81,6 +83,11 @@ func (s *BlockStore) MakeFile(ctx context.Context, blockId string, name string, 
 	if opts.Circular && opts.IJson {
 		return fmt.Errorf("circular file cannot be ijson")
 	}
+	if opts.Circular {
+		if opts.MaxSize%partDataSize != 0 {
+			opts.MaxSize = (opts.MaxSize/partDataSize + 1) * partDataSize
+		}
+	}
 	now := time.Now().UnixMilli()
 	file := &BlockFile{
 		BlockId:   blockId,
@@ -124,7 +131,7 @@ func (s *BlockStore) Stat(ctx context.Context, blockId string, name string) (*Bl
 	if ok {
 		return file, nil
 	}
-	return dbGetFile(ctx, blockId, name)
+	return dbGetBlockFile(ctx, blockId, name)
 }
 
 func stripNils[T any](arr []*T) []*T {
@@ -163,7 +170,7 @@ func (s *BlockStore) ListFiles(ctx context.Context, blockId string) ([]*BlockFil
 func (s *BlockStore) WriteMeta(ctx context.Context, blockId string, name string, meta FileMeta) error {
 	file, ok := s.getFileFromCache(blockId, name)
 	if !ok {
-		dbFile, err := dbGetFile(ctx, blockId, name)
+		dbFile, err := dbGetBlockFile(ctx, blockId, name)
 		if err != nil {
 			return fmt.Errorf("error getting file: %v", err)
 		}
@@ -195,7 +202,7 @@ func (s *BlockStore) loadFileInfo(ctx context.Context, blockId string, name stri
 		}
 		return file, nil
 	}
-	dbFile, err := dbGetFile(ctx, blockId, name)
+	dbFile, err := dbGetBlockFile(ctx, blockId, name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting file: %v", err)
 	}
@@ -222,16 +229,16 @@ func (s *BlockStore) loadFileInfo(ctx context.Context, blockId string, name stri
 }
 
 func (f *BlockFile) getLastIncompletePartNum() int {
-	if f.Size%PartDataSize == 0 {
+	if f.Size%partDataSize == 0 {
 		return NoPartIdx
 	}
 	return f.partIdxAtOffset(f.Size)
 }
 
 func (f *BlockFile) partIdxAtOffset(offset int64) int {
-	partIdx := int(offset / PartDataSize)
+	partIdx := int(offset / partDataSize)
 	if f.Opts.Circular {
-		maxPart := int(f.Opts.MaxSize / PartDataSize)
+		maxPart := int(f.Opts.MaxSize / partDataSize)
 		partIdx = partIdx % maxPart
 	}
 	return partIdx
@@ -363,9 +370,9 @@ func (s *BlockStore) ReadAt(ctx context.Context, blockId string, name string, of
 		}
 	}
 	var partsNeeded []int
-	lastPartOffset := (offset + size) % PartDataSize
-	endOffsetOfLastPart := offset + size - lastPartOffset + PartDataSize
-	for i := offset; i < endOffsetOfLastPart; i += PartDataSize {
+	lastPartOffset := (offset + size) % partDataSize
+	endOffsetOfLastPart := offset + size - lastPartOffset + partDataSize
+	for i := offset; i < endOffsetOfLastPart; i += partDataSize {
 		partsNeeded = append(partsNeeded, file.partIdxAtOffset(i))
 	}
 	dataEntries, err := dbGetFileParts(ctx, blockId, name, partsNeeded)
@@ -398,12 +405,12 @@ func (s *BlockStore) ReadAt(ctx context.Context, blockId string, name string, of
 		partDataEntry := dataEntries[partIdx]
 		var partData []byte
 		if partDataEntry == nil {
-			partData = make([]byte, PartDataSize)
+			partData = make([]byte, partDataSize)
 		} else {
-			partData = partDataEntry.Data[0:PartDataSize]
+			partData = partDataEntry.Data[0:partDataSize]
 		}
-		partOffset := curReadOffset % PartDataSize
-		amtToRead := minInt64(PartDataSize-partOffset, amtLeftToRead)
+		partOffset := curReadOffset % partDataSize
+		amtToRead := minInt64(partDataSize-partOffset, amtLeftToRead)
 		rtn = append(rtn, partData[partOffset:partOffset+amtToRead]...)
 		amtLeftToRead -= amtToRead
 		curReadOffset += amtToRead
