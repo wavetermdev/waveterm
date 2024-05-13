@@ -21,7 +21,7 @@ import { KeybindManager, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } fr
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
-import { AIChatModel } from "./aichat";
+import { SidebarChatModel } from "./sidebarchat";
 import { PluginsModel } from "./plugins";
 import { BookmarksModel } from "./bookmarks";
 import { HistoryViewModel } from "./historyview";
@@ -114,7 +114,7 @@ class Model {
 
     keybindManager: KeybindManager;
     inputModel: InputModel;
-    aichatModel: AIChatModel;
+    sidebarchatModel: SidebarChatModel;
     pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
@@ -164,7 +164,7 @@ class Model {
         this.initSystemKeybindings();
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
-        this.aichatModel = new AIChatModel(this);
+        this.sidebarchatModel = new SidebarChatModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
         this.historyViewModel = new HistoryViewModel(this);
@@ -1044,7 +1044,6 @@ class Model {
                 } else if (update.cmdline != null) {
                     this.inputModel.updateCmdLine(update.cmdline);
                 } else if (update.openaicmdinfochat != null) {
-                    this.aichatModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
                     this.inputModel.setOpenAICmdInfoChat(update.openaicmdinfochat);
                 } else if (update.screenstatusindicator != null) {
                     this.updateScreenStatusIndicators([update.screenstatusindicator]);

@@ -139,33 +139,62 @@ class InputModel {
     giveFocus(): void {
         // Override active view to the main input if aux view does not have focus
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
-        switch (activeAuxView) {
-            case appconst.InputAuxView_History: {
+        if (activeAuxView) {
+            if (activeAuxView == appconst.InputAuxView_History) {
+                console.log("1");
                 const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
                 if (elem != null) {
                     elem.focus();
                 }
-                break;
-            }
-            case appconst.InputAuxView_AIChat:
+            } else if (activeAuxView == appconst.InputAuxView_AIChat) {
+                console.log("2");
                 this.setAIChatFocus();
-                break;
-            case null: {
-                const elem = document.getElementById("main-cmd-input");
-                if (elem != null) {
-                    elem.focus();
-                }
-                this.setPhysicalInputFocused(true);
-                break;
             }
-            default: {
-                const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
-                if (elem != null) {
-                    elem.focus();
-                }
-                break;
+        } else if (GlobalModel.sidebarchatModel.getFocus()) {
+            console.log("3");
+            this.setAuxViewFocus(false);
+        } else {
+            console.log("4");
+            const elem = document.getElementById("main-cmd-input");
+            if (elem != null) {
+                elem.focus();
             }
+            this.setPhysicalInputFocused(true);
         }
+
+        // switch (activeAuxView) {
+        //     case appconst.InputAuxView_History: {
+        //         console.log("1");
+        //         const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
+        //         if (elem != null) {
+        //             elem.focus();
+        //         }
+        //         break;
+        //     }
+        //     case appconst.InputAuxView_AIChat:
+        //         console.log("2");
+        //         this.setAIChatFocus();
+        //         break;
+        //     case null:
+
+        //     default: {
+        //         console.log("3");
+        //         const elem = document.getElementById("main-cmd-input");
+        //         if (elem != null) {
+        //             elem.focus();
+        //         }
+        //         this.setPhysicalInputFocused(true);
+        //         break;
+        //     }
+        //     // default: {
+        //     //     console.log("4");
+        //     //     const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
+        //     //     if (elem != null) {
+        //     //         elem.focus();
+        //     //     }
+        //     //     break;
+        //     // }
+        // }
     }
 
     @mobx.action

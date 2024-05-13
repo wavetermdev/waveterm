@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import { Markdown } from "@/elements";
+import { Markdown2 } from "@/elements/markdown2";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import tinycolor from "tinycolor2";
@@ -82,7 +82,7 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
                         <div className="chat-msg-header">
                             <i className="fa-sharp fa-solid fa-sparkles"></i>
                         </div>
-                        <Markdown text={assistantresponse.message} codeSelect />
+                        <Markdown2 text={assistantresponse.message} />
                     </>
                 );
             }
@@ -178,7 +178,7 @@ class ChatSidebar extends React.Component<{}, {}> {
 
         if (this.textAreaRef.current != null) {
             this.textAreaRef.current.focus();
-            inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowRef);
+            // inputModel.setCmdInfoChatRefs(this.textAreaRef, this.chatWindowRef);
         }
         this.requestChatUpdate();
         this.onTextAreaChange(null);
@@ -230,8 +230,8 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onTextAreaFocused(e: any) {
-        GlobalModel.inputModel.setAuxViewFocus(true);
-        GlobalModel.inputModel.setActiveAuxView(appconst.InputAuxView_AIChat);
+        GlobalModel.sidebarchatModel.setFocus("input", true);
+        // GlobalModel.inputModel.setActiveAuxView(appconst.InputAuxView_AIChat);
 
         this.onTextAreaChange(e);
     }
@@ -346,9 +346,7 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        const renderAIChatKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(
-            appconst.InputAuxView_AIChat
-        );
+        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.getFocus();
         return (
             <div className="sidebarchat">
                 <If condition={renderAIChatKeybindings}>
