@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import * as React from "react";
 import * as jotai from "jotai";
 import { Provider, createStore } from "jotai";
@@ -6,6 +9,7 @@ import { Greet } from "./bindings/main/GreetService.js";
 import { Events } from "@wailsio/runtime";
 import * as rx from "rxjs";
 import { clsx } from "clsx";
+import { Block } from "./block.tsx";
 
 import "/public/style.less";
 
@@ -37,14 +41,6 @@ const Tabs = () => {
             <div className="tab">Tab 1</div>
             <div className="tab">Tab 2</div>
             <div className="tab">Tab 3</div>
-        </div>
-    );
-};
-
-const Block = () => {
-    return (
-        <div className="block">
-            <div>Block Content</div>
         </div>
     );
 };

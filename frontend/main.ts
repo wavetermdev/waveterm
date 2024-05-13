@@ -4,6 +4,9 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app.tsx";
+import { loadFonts } from "./util/fontutil.ts";
+
+loadFonts();
 
 document.addEventListener("DOMContentLoaded", () => {
     let reactElem = React.createElement(App, null, null);

@@ -15,6 +15,8 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "clsx": "^2.1.1",
     "jotai": "^2.8.0",
     "react": "^18.3.1",
