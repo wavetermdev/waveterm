@@ -11,6 +11,7 @@
     --fixed-font: normal 12px / normal "Hack", monospace;
     --app-accent-color: rgb(88, 193, 66);
     --panel-bg-color: rgba(31, 33, 31, 1);
+    --highlight-bg-color: rgba(255, 255, 255, 0.2);
 }
 
 body {
@@ -70,7 +71,7 @@ body {
         border-right: 1px solid var(--border-color);
         cursor: pointer;
         &.active {
-            background-color: var(--border-color);
+            background-color: var(--highlight-bg-color);
         }
     }
 }

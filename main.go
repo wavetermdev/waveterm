@@ -8,7 +8,6 @@ package main
 import (
 	"embed"
 	"log"
-	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockstore"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
@@ -66,18 +65,6 @@ func main() {
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/",
 	})
-
-	// Event Testing
-	go func() {
-		for {
-			now := time.Now().Format("03:04:05pm")
-			app.Events.Emit(&application.WailsEvent{
-				Name: "time",
-				Data: now,
-			})
-			time.Sleep(time.Second)
-		}
-	}()
 
 	// blocking
 	err = app.Run()

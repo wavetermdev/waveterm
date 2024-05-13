@@ -9,24 +9,20 @@ import { Greet } from "./bindings/main/GreetService.js";
 import { Events } from "@wailsio/runtime";
 import * as rx from "rxjs";
 import { clsx } from "clsx";
-import { Block } from "./block.tsx";
 import { TabContent } from "./tab.tsx";
+import { v4 as uuidv4 } from "uuid";
 
 import "/public/style.less";
 
 const jotaiStore = createStore();
-const counterSubject = rx.interval(1000).pipe(rx.map((i) => i));
-const timeAtom = jotai.atom("No time yet");
 
-Events.On("time", (time) => {
-    jotaiStore.set(timeAtom, time.data);
-});
+const tabArr = [
+    { name: "Tab 1", tabid: uuidv4() },
+    { name: "Tab 2", tabid: uuidv4() },
+    { name: "Tab 3", tabid: uuidv4() },
+];
 
-const nameAtom = jotai.atom("");
-const resultAtom = jotai.atom("");
-const counterAtom = atomWithObservable(() => counterSubject, {
-    initialValue: 10,
-});
+const activeTabIdAtom = jotai.atom(tabArr[0].tabid);
 
 const App = () => {
     return (
@@ -37,46 +33,35 @@ const App = () => {
 };
 
 const TabBar = () => {
+    const [activeTab, setActiveTab] = jotai.useAtom(activeTabIdAtom);
     return (
         <div className="tab-bar">
-            <div className="tab">Tab 1</div>
-            <div className="tab">Tab 2</div>
-            <div className="tab">Tab 3</div>
+            {tabArr.map((tab, idx) => {
+                return (
+                    <div
+                        key={idx}
+                        className={clsx("tab", { active: activeTab === tab.tabid })}
+                        onClick={() => setActiveTab(tab.tabid)}
+                    >
+                        {tab.name}
+                    </div>
+                );
+            })}
         </div>
     );
 };
 
 const Workspace = () => {
+    const activeTabId = jotai.useAtomValue(activeTabIdAtom);
     return (
         <div className="workspace">
             <TabBar />
-            <TabContent />
+            <TabContent tabId={activeTabId} />
         </div>
     );
 };
 
 const AppInner = () => {
-    const [name, setName] = jotai.useAtom(nameAtom);
-    const [result, setResult] = jotai.useAtom(resultAtom);
-    const counterVal = jotai.useAtomValue(counterAtom);
-    const timeVal = jotai.useAtomValue(timeAtom);
-
-    function doGreet() {
-        Greet(name)
-            .then((result) => {
-                setResult(result);
-            })
-            .catch((err) => {
-                console.log(err);
-            });
-    }
-
-    function handleKeyDown(e: any) {
-        if (e.key === "Enter") {
-            doGreet();
-        }
-    }
-
     return (
         <div className="mainapp">
             <div className="titlebar"></div>

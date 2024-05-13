@@ -42,14 +42,17 @@ const Block = ({ blockId }: { blockId: string }) => {
     const blockRef = React.useRef<HTMLDivElement>(null);
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const [dims, setDims] = React.useState({ width: 0, height: 0 });
-    if (blockRef.current) {
+    React.useEffect(() => {
+        if (!blockRef.current) {
+            return;
+        }
         const rect = blockRef.current.getBoundingClientRect();
         const newWidth = parseInt(rect.width);
         const newHeight = parseInt(rect.height);
         if (newWidth !== dims.width || newHeight !== dims.height) {
             setDims({ width: newWidth, height: newHeight });
         }
-    }
+    }, [blockRef.current]);
     React.useEffect(() => {
         const term = new Terminal({
             theme: getThemeFromCSSVars(blockRef.current),
