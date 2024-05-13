@@ -1,10 +1,18 @@
-module thenextwave
+module github.com/wavetermdev/thenextwave
 
 go 1.22
 
 toolchain go1.22.1
 
-require github.com/wailsapp/wails/v3 v3.0.0-alpha.0
+require (
+	github.com/golang-migrate/migrate/v4 v4.17.1
+	github.com/google/uuid v1.4.0
+	github.com/jmoiron/sqlx v1.4.0
+	github.com/mattn/go-sqlite3 v1.14.22
+	github.com/sawka/txwrap v0.2.0
+	github.com/wailsapp/wails/v3 v3.0.0-alpha.0
+	github.com/wavetermdev/waveterm/wavesrv v0.0.0-20240508181017-d07068c09d94
+)
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
@@ -21,7 +29,8 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
@@ -40,6 +49,7 @@ require (
 	github.com/wailsapp/go-webview2 v1.0.9 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
 	golang.org/x/mod v0.12.0 // indirect
