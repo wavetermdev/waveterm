@@ -241,7 +241,6 @@ class AIChat extends React.Component<{}, {}> {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
         const renderKeybindings = GlobalModel.inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_AIChat);
-        console.log("renderKeybindings", renderKeybindings);
         return (
             <AuxiliaryCmdView
                 title="Wave AI"
@@ -264,13 +263,14 @@ class AIChat extends React.Component<{}, {}> {
                         ref={this.textAreaRef}
                         autoComplete="off"
                         autoCorrect="off"
-                        className="chat-cmd-input chat-textarea"
+                        id="chat-cmd-input"
                         onFocus={this.onTextAreaFocused}
                         onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}
                         onInput={this.onTextAreaInput}
                         onKeyDown={this.onKeyDown}
                         style={{ fontSize: this.termFontSize }}
+                        className="chat-textarea"
                         placeholder="Send a Message..."
                     ></textarea>
                 </div>
