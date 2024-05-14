@@ -12,6 +12,7 @@ function PlotConfig() {
 
 function PlotBlock() {
     const containerRef = React.useRef<HTMLInputElement>();
+    const [plotDef, setPlotDef] = React.useState<string>();
     const [data, setData] = React.useState();
 
     React.useEffect(() => {
@@ -19,11 +20,9 @@ function PlotBlock() {
     }, []);
 
     React.useEffect(() => {
-        if (data === undefined) {
-            return;
-        }
         // replace start
-        const plot = Plot.plot({
+        /*
+        return Plot.plot({
             aspectRatio: 1,
             x: { label: "Age (years)" },
             y: {
@@ -45,18 +44,37 @@ function PlotBlock() {
                 Plot.ruleY([0]),
             ],
         });
+        */
         // replace end
-        containerRef.current.append(plot);
+        let plot;
+        let plotErr;
+        try {
+            console.log(plotDef);
+            plot = new Function("Plot", "data", plotDef)(Plot, data);
+        } catch (e) {
+            plotErr = e;
+            console.log("error: ", e);
+            return;
+        }
+        console.log(plot);
+
+        if (plot !== undefined) {
+            containerRef.current.append(plot);
+        } else {
+            // todo
+        }
 
         return () => {
-            plot.remove();
+            if (plot !== undefined) {
+                plot.remove();
+            }
         };
-    }, [data]);
+    }, [data, plotDef]);
 
     return (
         <div className="plot-block">
             <div className="plot-window" ref={containerRef} />
-            <PlotConfig />
+            <input type="text" className="plot-config" onChange={(e) => setPlotDef(e.target.value)} />
         </div>
     );
 }
