@@ -267,17 +267,25 @@ class ChatSidebar extends React.Component<{}, {}> {
     handleSidebarClick(event: MouseEvent) {
         let detection = 0;
         const target = event.target as HTMLElement;
+
+        // handle copy button click
+        if (target.closest(".copy-button")) {
+            return;
+        }
+
         // handle chat window click
         const chatWindow = target.closest(".chat-window");
         if (chatWindow) {
             detection++;
         }
+
         // handle pre click
         const pre = target.closest("pre");
         if (pre) {
             detection++;
             this.updatePreTagOutline(pre as HTMLPreElement);
         }
+
         if (detection > 0) {
             GlobalModel.sidebarchatModel.setFocus("block", true);
         }

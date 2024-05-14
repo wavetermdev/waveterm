@@ -49,7 +49,7 @@
     pre {
         background-color: var(--markdown-bg-color);
         margin: 4px 10px 4px 10px;
-        padding: 0.7em;
+        padding: 0.7em 0.7em 0.5em 0.7em;
         border-radius: 4px;
 
         code {
@@ -70,6 +70,16 @@
         background-color: var(--markdown-bg-color);
         padding: 0.15em 0.5em;
         line-height: 1.5;
+        cursor: default;
+    }
+
+    .codeblock-actions {
+        display: flex;
+        justify-content: flex-end;
+
+        .copy-button {
+            outline: none;
+        }
     }
 
     .title {

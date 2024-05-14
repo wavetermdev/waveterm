@@ -5,6 +5,7 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CopyButton } from "@/elements";
 import { clsx } from "clsx";
 
 import "./markdown.less";
@@ -28,8 +29,34 @@ function Code(props: any): JSX.Element {
 }
 
 function CodeBlock(props: any): JSX.Element {
-    console.log("props.children", props.children);
-    return <pre>{props.children}</pre>;
+    const [, setCopied] = React.useState(false);
+
+    const getTextContent = (children: any) => {
+        if (typeof children === "string") {
+            return children;
+        } else if (Array.isArray(children)) {
+            return children.map(getTextContent).join("");
+        } else if (children.props && children.props.children) {
+            return getTextContent(children.props.children);
+        }
+        return "";
+    };
+
+    const handleCopy = async (e: any) => {
+        const textToCopy = getTextContent(props.children);
+        await navigator.clipboard.writeText(textToCopy);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000); // Reset copied state after 2 seconds
+    };
+
+    return (
+        <pre>
+            {props.children}
+            <div className="codeblock-actions">
+                <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
+            </div>
+        </pre>
+    );
 }
 
 @mobxReact.observer
