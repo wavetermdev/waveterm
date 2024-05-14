@@ -350,7 +350,6 @@ tasks:
 
     install:frontend:deps:
         summary: Install frontend dependencies
-        dir: frontend
         sources:
             - package.json
             - yarn.lock
@@ -364,7 +363,6 @@ tasks:
 
     build:frontend:
         summary: Build the frontend project
-        dir: frontend
         sources:
             - "**/*"
         generates:
@@ -416,7 +414,6 @@ tasks:
 
     dev:frontend:
         summary: Runs the frontend in development mode
-        dir: frontend
         deps:
             - task: install:frontend:deps
         cmds:

@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as jotai from "jotai";
-import { Block } from "./block.tsx";
+import { Block } from "../block/block.tsx";
 import { v4 as uuidv4 } from "uuid";
 
 import "./tab.less";

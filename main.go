@@ -15,7 +15,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-//go:embed frontend/dist
+//go:embed dist
 var assets embed.FS
 
 //go:embed build/appicon.png
@@ -63,7 +63,7 @@ func main() {
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
 		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/",
+		URL:              "/public/index.html",
 	})
 
 	// blocking

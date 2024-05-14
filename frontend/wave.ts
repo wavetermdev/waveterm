@@ -3,8 +3,8 @@
 
 import * as React from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./app.tsx";
-import { loadFonts } from "./util/fontutil.ts";
+import { App } from "./app/app";
+import { loadFonts } from "./util/fontutil";
 
 loadFonts();
 

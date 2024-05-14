@@ -17,15 +17,15 @@ function loadJetBrainsMonoFont() {
         return;
     }
     isJetBrainsMonoLoaded = true;
-    const jbmFontNormal = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-regular.woff2')", {
+    const jbmFontNormal = new FontFace("JetBrains Mono", "url('/fonts/jetbrains-mono-v13-latin-regular.woff2')", {
         style: "normal",
         weight: "400",
     });
-    const jbmFont200 = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-200.woff2')", {
+    const jbmFont200 = new FontFace("JetBrains Mono", "url('/fonts/jetbrains-mono-v13-latin-200.woff2')", {
         style: "normal",
         weight: "200",
     });
-    const jbmFont700 = new FontFace("JetBrains Mono", "url('public/fonts/jetbrains-mono-v13-latin-700.woff2')", {
+    const jbmFont700 = new FontFace("JetBrains Mono", "url('/fonts/jetbrains-mono-v13-latin-700.woff2')", {
         style: "normal",
         weight: "700",
     });
@@ -42,11 +42,11 @@ function loadLatoFont() {
         return;
     }
     isLatoFontLoaded = true;
-    const latoFont = new FontFace("Lato", "url('public/fonts/lato-regular.woff')", {
+    const latoFont = new FontFace("Lato", "url('/fonts/lato-regular.woff')", {
         style: "normal",
         weight: "400",
     });
-    const latoFontBold = new FontFace("Lato", "url('public/fonts/lato-bold.woff')", {
+    const latoFontBold = new FontFace("Lato", "url('/fonts/lato-bold.woff')", {
         style: "normal",
         weight: "700",
     });
@@ -61,11 +61,11 @@ function loadFiraCodeFont() {
         return;
     }
     isFiraCodeLoaded = true;
-    let firaCodeRegular = new FontFace("Fira Code", "url('public/fonts/firacode-regular.woff2')", {
+    let firaCodeRegular = new FontFace("Fira Code", "url('/fonts/firacode-regular.woff2')", {
         style: "normal",
         weight: "400",
     });
-    let firaCodeBold = new FontFace("Fira Code", "url('public/fonts/firacode-bold.woff2')", {
+    let firaCodeBold = new FontFace("Fira Code", "url('/fonts/firacode-bold.woff2')", {
         style: "normal",
         weight: "700",
     });
@@ -80,19 +80,19 @@ function loadHackFont() {
         return;
     }
     isHackFontLoaded = true;
-    let hackRegular = new FontFace("Hack", "url('public/fonts/hack-regular.woff2')", {
+    let hackRegular = new FontFace("Hack", "url('/fonts/hack-regular.woff2')", {
         style: "normal",
         weight: "400",
     });
-    let hackBold = new FontFace("Hack", "url('public/fonts/hack-bold.woff2')", {
+    let hackBold = new FontFace("Hack", "url('/fonts/hack-bold.woff2')", {
         style: "normal",
         weight: "700",
     });
-    let hackItalic = new FontFace("Hack", "url('public/fonts/hack-italic.woff2')", {
+    let hackItalic = new FontFace("Hack", "url('/fonts/hack-italic.woff2')", {
         style: "italic",
         weight: "400",
     });
-    let hackBoldItalic = new FontFace("Hack", "url('public/fonts/hack-bolditalic.woff2')", {
+    let hackBoldItalic = new FontFace("Hack", "url('/fonts/hack-bolditalic.woff2')", {
         style: "italic",
         weight: "700",
     });
@@ -111,7 +111,7 @@ function loadBaseFonts() {
         return;
     }
     isBaseFontsLoaded = true;
-    let mmFont = new FontFace("Martian Mono", "url(public/fonts/MartianMono-VariableFont_wdth,wght.ttf)", {
+    let mmFont = new FontFace("Martian Mono", "url(/fonts/MartianMono-VariableFont_wdth,wght.ttf)", {
         style: "normal",
         weight: "normal",
     });

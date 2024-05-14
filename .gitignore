@@ -1,7 +1,10 @@
 .task
 frontend/dist
+dist/
 frontend/node_modules
+node_modules/
 frontend/bindings
+bindings/
 *.log
 bin/
 *.dmg

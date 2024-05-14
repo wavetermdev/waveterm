@@ -1,0 +1,22 @@
+{
+    "include": ["frontend/**/*"],
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "jsx": "preserve",
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "experimentalDecorators": true,
+        "downlevelIteration": true,
+        "baseUrl": "./", 
+        "paths": {
+            "@/app/*": ["frontend/app/*"], // Points to the src folder
+            "@/util/*": ["frontend/util/*"], // Points to the src folder
+        }
+    }
+}
