@@ -10,6 +10,8 @@ import (
 	"log"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockstore"
+	"github.com/wavetermdev/thenextwave/pkg/eventbus"
+	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 
@@ -21,12 +23,6 @@ var assets embed.FS
 
 //go:embed build/appicon.png
 var appIcon []byte
-
-type GreetService struct{}
-
-func (g *GreetService) Greet(name string) string {
-	return "Hello " + name + "!"
-}
 
 func main() {
 	err := wavebase.EnsureWaveHomeDir()
@@ -45,8 +41,8 @@ func main() {
 		Name:        "NextWave",
 		Description: "The Next Wave Terminal",
 		Bind: []any{
-			&GreetService{},
 			&fileservice.FileService{},
+			&blockservice.BlockService{},
 		},
 		Icon: appIcon,
 		Assets: application.AssetOptions{
@@ -56,8 +52,9 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+	eventbus.RegisterWailsApp(app)
 
-	app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
+	window := app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
 		Title: "Wave Terminal",
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
@@ -67,6 +64,10 @@ func main() {
 		BackgroundColour: application.NewRGB(27, 38, 54),
 		URL:              "/public/index.html",
 	})
+	eventbus.RegisterWailsWindow(window)
+
+	eventbus.Start()
+	defer eventbus.Shutdown()
 
 	// blocking
 	err = app.Run()
