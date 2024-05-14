@@ -227,6 +227,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     onTextAreaFocused(e: any) {
         GlobalModel.sidebarchatModel.setFocus("input", true);
         this.onTextAreaChange(e);
+        this.updatePreTagOutline();
     }
 
     @mobx.action.bound
@@ -248,7 +249,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
     }
 
-    updatePreTagOutline(clickedPre: HTMLPreElement) {
+    updatePreTagOutline(clickedPre?: HTMLPreElement) {
         const pres = this.chatWindowRef.current.querySelectorAll("pre");
         pres.forEach((preElement, idx) => {
             const outlineStyle = preElement === clickedPre ? outline : "none";
