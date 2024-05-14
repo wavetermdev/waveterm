@@ -4,6 +4,9 @@
 import * as jotai from "jotai";
 import { atomFamily } from "jotai/utils";
 import { v4 as uuidv4 } from "uuid";
+import * as rxjs from "rxjs";
+import type { WailsEvent } from "@wailsio/runtime/types/events";
+import { Events } from "@wailsio/runtime";
 
 const globalStore = jotai.createStore();
 
@@ -42,4 +45,40 @@ const atoms = {
     blockAtomFamily,
 };
 
-export { globalStore, atoms };
+type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
+
+const blockSubjects = new Map<string, SubjectWithRef<any>>();
+
+function getBlockSubject(blockId: string): SubjectWithRef<any> {
+    let subject = blockSubjects.get(blockId);
+    if (subject == null) {
+        subject = new rxjs.Subject<any>() as any;
+        subject.refCount = 0;
+        subject.release = () => {
+            subject.refCount--;
+            if (subject.refCount === 0) {
+                subject.complete();
+                blockSubjects.delete(blockId);
+            }
+        };
+        blockSubjects.set(blockId, subject);
+    }
+    subject.refCount++;
+    return subject;
+}
+
+Events.On("block:ptydata", (event: any) => {
+    const data = event?.data;
+    if (data?.blockid == null) {
+        console.log("block:ptydata with null blockid");
+        return;
+    }
+    // we don't use getBlockSubject here because we don't want to create a new subject
+    const subject = blockSubjects.get(data.blockid);
+    if (subject == null) {
+        return;
+    }
+    subject.next(data);
+});
+
+export { globalStore, atoms, getBlockSubject };

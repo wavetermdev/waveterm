@@ -4,6 +4,7 @@
 package blockcontroller
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -16,14 +17,15 @@ var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
 
 type BlockCommand interface {
-	GetType() string
+	GetCommand() string
 }
 
 type MessageCommand struct {
+	Command string `json:"command"`
 	Message string `json:"message"`
 }
 
-func (mc *MessageCommand) GetType() string {
+func (mc *MessageCommand) GetCommand() string {
 	return "message"
 }
 
@@ -33,9 +35,9 @@ type BlockController struct {
 }
 
 func ParseCmdMap(cmdMap map[string]any) (BlockCommand, error) {
-	cmdType, ok := cmdMap["type"].(string)
+	cmdType, ok := cmdMap["command"].(string)
 	if !ok {
-		return nil, fmt.Errorf("no type field in command map")
+		return nil, fmt.Errorf("no command field in command map")
 	}
 	mapJson, err := json.Marshal(cmdMap)
 	if err != nil {
@@ -65,10 +67,20 @@ func (bc *BlockController) Run() {
 		delete(blockControllerMap, bc.BlockId)
 	}()
 
+	messageCount := 0
 	for genCmd := range bc.InputCh {
 		switch cmd := genCmd.(type) {
 		case *MessageCommand:
 			fmt.Printf("MESSAGE: %s | %q\n", bc.BlockId, cmd.Message)
+			messageCount++
+			eventbus.SendEvent(application.WailsEvent{
+				Name: "block:ptydata",
+				Data: map[string]any{
+					"blockid":   bc.BlockId,
+					"blockfile": "main",
+					"ptydata":   base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("message %d\r\n", messageCount))),
+				},
+			})
 
 		default:
 			fmt.Printf("unknown command type %T\n", cmd)
@@ -76,9 +88,12 @@ func (bc *BlockController) Run() {
 	}
 }
 
-func NewBlockController(blockId string) *BlockController {
+func StartBlockController(blockId string) *BlockController {
 	globalLock.Lock()
 	defer globalLock.Unlock()
+	if existingBC, ok := blockControllerMap[blockId]; ok {
+		return existingBC
+	}
 	bc := &BlockController{
 		BlockId: blockId,
 		InputCh: make(chan BlockCommand),

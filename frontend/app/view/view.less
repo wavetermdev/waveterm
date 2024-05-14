@@ -7,6 +7,23 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
+
+    .term-header {
+        display: flex;
+        flex-direction: row;
+        padding: 4px 10px;
+        height: 35px;
+        gap: 10px;
+        align-items: center;
+        flex-shrink: 0;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .term-connectelem {
+        flex-grow: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
 }
 
 .view-preview {
