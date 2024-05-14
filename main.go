@@ -10,6 +10,7 @@ import (
 	"log"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockstore"
+	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -45,6 +46,7 @@ func main() {
 		Description: "The Next Wave Terminal",
 		Bind: []any{
 			&GreetService{},
+			&fileservice.FileService{},
 		},
 		Icon: appIcon,
 		Assets: application.AssetOptions{

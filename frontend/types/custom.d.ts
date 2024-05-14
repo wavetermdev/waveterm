@@ -11,6 +11,7 @@ declare global {
     type BlockData = {
         blockid: string;
         view: string;
+        meta?: Record<string, any>;
     };
 }
 

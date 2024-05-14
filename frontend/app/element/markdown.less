@@ -1,0 +1,102 @@
+.markdown {
+    color: var(--main-color);
+    font-family: var(--markdown-font);
+    font-size: 14px;
+    overflow-wrap: break-word;
+
+    &.bottom-margin {
+        margin-bottom: 10px;
+    }
+
+    .title {
+        color: var(--main-color);
+        margin-top: 16px;
+        margin-bottom: 8px;
+    }
+
+    strong {
+        color: var(--main-color);
+    }
+
+    a {
+        color: #32afff;
+    }
+
+    table {
+        tr th {
+            color: var(--main-color);
+        }
+    }
+
+    ul {
+        list-style-type: disc;
+        list-style-position: outside;
+        margin-left: 16px;
+    }
+
+    ol {
+        list-style-position: outside;
+        margin-left: 19px;
+    }
+
+    blockquote {
+        margin: 4px 10px 4px 10px;
+        border-radius: 3px;
+        background-color: var(--panel-bg-color);
+        padding: 2px 4px 2px 6px;
+    }
+
+    pre {
+        background-color: var(--panel-bg-color);
+        margin: 4px 10px 4px 10px;
+        padding: 0.7em;
+        border-radius: 4px;
+
+        code {
+            background-color: transparent;
+            padding: 0;
+            line-height: normal;
+        }
+    }
+
+    code {
+        font: var(--fixed-font);
+        color: var(--main-color);
+        border-radius: 4px;
+        background-color: var(--panel-bg-color);
+        padding: 0.15em 0.5em;
+        line-height: 1.5;
+    }
+
+    .title {
+        font-weight: semibold;
+        padding-top: 6px;
+    }
+
+    .title.is-1 {
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+        font-size: 2em;
+    }
+    .title.is-2 {
+        border-bottom: 1px solid #777;
+        padding-bottom: 6px;
+        font-size: 1.5em;
+    }
+    .title.is-3 {
+        font-size: 1.25em;
+    }
+    .title.is-4 {
+        font-size: 1em;
+    }
+    .title.is-5 {
+        font-size: 0.875em;
+    }
+    .title.is-6 {
+        font-size: 0.85em;
+    }
+}
+
+.markdown > *:first-child {
+    margin-top: 0 !important;
+}

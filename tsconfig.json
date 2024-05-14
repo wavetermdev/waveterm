@@ -18,6 +18,7 @@
             "@/app/*": ["frontend/app/*"],
             "@/util/*": ["frontend/util/*"],
             "@/store/*": ["frontend/app/store/*"],
+            "@/element/*": ["frontend/app/element/*"],
         }
     }
 }
