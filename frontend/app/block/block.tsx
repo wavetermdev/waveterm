@@ -7,6 +7,7 @@ import { atoms } from "@/store/global";
 
 import { TerminalView } from "@/app/view/term";
 import { PreviewView } from "@/app/view/preview";
+import { CenteredLoadingDiv } from "@/element/quickelems";
 
 import "./block.less";
 
@@ -40,7 +41,7 @@ const Block = ({ blockId }: { blockId: string }) => {
                 </div>
             </div>
             <div key="content" className="block-content">
-                {blockElem}
+                <React.Suspense fallback={<CenteredLoadingDiv />}>{blockElem}</React.Suspense>
             </div>
         </div>
     );

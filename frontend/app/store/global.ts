@@ -24,7 +24,11 @@ const blockAtomFamily = atomFamily<string, jotai.Atom<BlockData>>((blockId: stri
         return jotai.atom({ blockid: blockId1, view: "term" });
     }
     if (blockId === blockId2) {
-        return jotai.atom({ blockid: blockId2, view: "preview", meta: { mimetype: "text/markdown" } });
+        return jotai.atom({
+            blockid: blockId2,
+            view: "preview",
+            meta: { mimetype: "text/markdown", file: "README.md" },
+        });
     }
     if (blockId === blockId3) {
         return jotai.atom({ blockid: blockId3, view: "term" });

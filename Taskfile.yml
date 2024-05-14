@@ -371,7 +371,7 @@ tasks:
             - install:frontend:deps
             - generate:bindings
         cmds:
-            - npm run build -q
+            - yarn build
 
     generate:bindings:
         summary: Generates bindings for the frontend
@@ -417,7 +417,7 @@ tasks:
         deps:
             - task: install:frontend:deps
         cmds:
-            - npm run dev -- --port {{.VITE_PORT}} --strictPort
+            - yarn dev -- --port {{.VITE_PORT}} --strictPort
 
     dev:
         summary: Runs the application in development mode

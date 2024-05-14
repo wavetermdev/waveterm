@@ -5,6 +5,8 @@ import * as React from "react";
 import * as jotai from "jotai";
 import { atoms } from "@/store/global";
 import { Markdown } from "@/element/markdown";
+import * as FileService from "@/bindings/pkg/service/fileservice/FileService";
+import * as util from "@/util/util";
 
 import "./view.less";
 
@@ -21,10 +23,16 @@ console.log(foo);
 \`\`\`
 `;
 
+const readmeAtom = jotai.atom(async () => {
+    const readme = await FileService.ReadFile("README.md");
+    return util.base64ToString(readme);
+});
+
 const MarkdownPreview = ({ blockData }: { blockData: BlockData }) => {
+    const readmeText = jotai.useAtomValue(readmeAtom);
     return (
         <div className="view-preview view-preview-markdown">
-            <Markdown text={markdownText} />
+            <Markdown text={readmeText} />
         </div>
     );
 };

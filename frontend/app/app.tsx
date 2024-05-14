@@ -4,10 +4,8 @@
 import * as React from "react";
 import * as jotai from "jotai";
 import { Provider } from "jotai";
-import * as rx from "rxjs";
 import { clsx } from "clsx";
 import { TabContent } from "@/app/tab/tab";
-import { v4 as uuidv4 } from "uuid";
 import { globalStore, atoms } from "@/store/global";
 
 import "/public/style.less";
