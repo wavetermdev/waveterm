@@ -252,8 +252,12 @@ class ChatSidebar extends React.Component<{}, {}> {
     updatePreTagOutline(clickedPre?: HTMLPreElement) {
         const pres = this.chatWindowRef.current.querySelectorAll("pre");
         pres.forEach((preElement, idx) => {
-            const outlineStyle = preElement === clickedPre ? outline : "none";
-            preElement.style.outline = outlineStyle;
+            if (preElement === clickedPre) {
+                this.blockIndex = idx;
+                preElement.style.outline = outline;
+            } else {
+                preElement.style.outline = "none";
+            }
         });
     }
 
