@@ -6,6 +6,7 @@ export default defineConfig({
     plugins: [react({}), tsconfigPaths()],
     publicDir: "public",
     build: {
+        target: "es6",
         rollupOptions: {
             input: {
                 app: "public/index.html",

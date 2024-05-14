@@ -1,7 +1,7 @@
 {
     "include": ["frontend/**/*"],
     "compilerOptions": {
-        "target": "es5",
+        "target": "es6",
         "module": "commonjs",
         "jsx": "preserve",
         "esModuleInterop": true,
@@ -15,8 +15,9 @@
         "downlevelIteration": true,
         "baseUrl": "./", 
         "paths": {
-            "@/app/*": ["frontend/app/*"], // Points to the src folder
-            "@/util/*": ["frontend/util/*"], // Points to the src folder
+            "@/app/*": ["frontend/app/*"],
+            "@/util/*": ["frontend/util/*"],
+            "@/store/*": ["frontend/app/store/*"],
         }
     }
 }

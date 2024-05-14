@@ -8,48 +8,41 @@ import * as rx from "rxjs";
 import { clsx } from "clsx";
 import { TabContent } from "@/app/tab/tab";
 import { v4 as uuidv4 } from "uuid";
+import { globalStore, atoms } from "@/store/global";
 
 import "/public/style.less";
 
-const jotaiStore = jotai.createStore();
-
-const tabArr = [
-    { name: "Tab 1", tabid: uuidv4() },
-    { name: "Tab 2", tabid: uuidv4() },
-    { name: "Tab 3", tabid: uuidv4() },
-];
-
-const activeTabIdAtom = jotai.atom(tabArr[0].tabid);
-
 const App = () => {
     return (
-        <Provider store={jotaiStore}>
+        <Provider store={globalStore}>
             <AppInner />
         </Provider>
     );
 };
 
+const Tab = ({ tab }: { tab: TabData }) => {
+    const [activeTab, setActiveTab] = jotai.useAtom(atoms.activeTabId);
+    return (
+        <div className={clsx("tab", { active: activeTab === tab.tabid })} onClick={() => setActiveTab(tab.tabid)}>
+            {tab.name}
+        </div>
+    );
+};
+
 const TabBar = () => {
-    const [activeTab, setActiveTab] = jotai.useAtom(activeTabIdAtom);
+    const [activeTab, setActiveTab] = jotai.useAtom(atoms.activeTabId);
+    const tabs = jotai.useAtomValue(atoms.tabsAtom);
     return (
         <div className="tab-bar">
-            {tabArr.map((tab, idx) => {
-                return (
-                    <div
-                        key={idx}
-                        className={clsx("tab", { active: activeTab === tab.tabid })}
-                        onClick={() => setActiveTab(tab.tabid)}
-                    >
-                        {tab.name}
-                    </div>
-                );
+            {tabs.map((tab, idx) => {
+                return <Tab key={idx} tab={tab} />;
             })}
         </div>
     );
 };
 
 const Workspace = () => {
-    const activeTabId = jotai.useAtomValue(activeTabIdAtom);
+    const activeTabId = jotai.useAtomValue(atoms.activeTabId);
     return (
         <div className="workspace">
             <TabBar />

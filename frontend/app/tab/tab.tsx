@@ -3,23 +3,29 @@
 
 import * as React from "react";
 import * as jotai from "jotai";
-import { Block } from "../block/block.tsx";
-import { v4 as uuidv4 } from "uuid";
+import { Block } from "@/app/block/block";
+import { atoms } from "@/store/global";
 
 import "./tab.less";
 
-const TabContent = () => {
-    const blockId1 = React.useMemo(() => uuidv4(), []);
-    const blockId2 = React.useMemo(() => uuidv4(), []);
+const blockId1 = "44113b0c-1528-4db1-94f0-2cafa1542941";
+const blockId2 = "6bd76ccb-76ae-4f29-aa64-35206767e1ac";
 
+const TabContent = ({ tabId }: { tabId: string }) => {
+    const tabs = jotai.useAtomValue(atoms.tabsAtom);
+    const tabData = tabs.find((tab) => tab.tabid === tabId);
+    if (!tabData) {
+        return <div className="tabcontent">Tab not found</div>;
+    }
     return (
         <div className="tabcontent">
-            <div className="block-container block1">
-                <Block blockId={blockId1} />
-            </div>
-            <div className="block-container block2">
-                <Block blockId={blockId2} />
-            </div>
+            {tabData.blockIds.map((blockId: string) => {
+                return (
+                    <div key={blockId} className="block-container">
+                        <Block blockId={blockId} />
+                    </div>
+                );
+            })}
         </div>
     );
 };
