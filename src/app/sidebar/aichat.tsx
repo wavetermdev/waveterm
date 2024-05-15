@@ -177,6 +177,7 @@ class ChatSidebar extends React.Component<{}, {}> {
             this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
         }
         this.requestChatUpdate();
+        this.onTextAreaChange(null);
     }
 
     componentWillUnmount() {
