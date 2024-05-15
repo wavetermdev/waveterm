@@ -64,29 +64,33 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         fitAddon.fit();
         term.write("Hello, world!\r\n");
         setTerm(term);
-        return () => {
-            term.dispose();
-        };
-    }, [connectElemRef.current]);
-    React.useEffect(() => {
-        if (!term) {
-            return;
-        }
+
+        // resize observer
+        const rszObs = new ResizeObserver(() => {
+            fitAddon.fit();
+        });
+        rszObs.observe(connectElemRef.current);
+
+        // block subject
         const blockSubject = getBlockSubject(blockId);
         blockSubject.subscribe((data) => {
             // base64 decode
             const decodedData = base64ToArray(data.ptydata);
             term.write(decodedData);
         });
+
         return () => {
+            term.dispose();
+            rszObs.disconnect();
             blockSubject.release();
         };
-    }, [term]);
+    }, [connectElemRef.current]);
 
     async function handleRunClick() {
         try {
             await BlockService.StartBlock(blockId);
-            await BlockService.SendCommand(blockId, { command: "message", message: "Run clicked" });
+            let termSize = { rows: term.rows, cols: term.cols };
+            await BlockService.SendCommand(blockId, { command: "run", cmdstr: "ls -l", termsize: termSize });
         } catch (e) {
             console.log("run click error: ", e);
         }

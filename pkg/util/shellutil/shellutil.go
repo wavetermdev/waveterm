@@ -4,9 +4,15 @@
 package shellutil
 
 import (
+	"context"
 	"os"
 	"os/exec"
+	"os/user"
+	"regexp"
+	"runtime"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 )
@@ -14,6 +20,55 @@ import (
 const DefaultTermType = "xterm-256color"
 const DefaultTermRows = 24
 const DefaultTermCols = 80
+
+var cachedMacUserShell string
+var macUserShellOnce = &sync.Once{}
+var userShellRegexp = regexp.MustCompile(`^UserShell: (.*)$`)
+
+const DefaultShellPath = "/bin/bash"
+
+func DetectLocalShellPath() string {
+	shellPath := GetMacUserShell()
+	if shellPath == "" {
+		shellPath = os.Getenv("SHELL")
+	}
+	if shellPath == "" {
+		return DefaultShellPath
+	}
+	return shellPath
+}
+
+func GetMacUserShell() string {
+	if runtime.GOOS != "darwin" {
+		return ""
+	}
+	macUserShellOnce.Do(func() {
+		cachedMacUserShell = internalMacUserShell()
+	})
+	return cachedMacUserShell
+}
+
+// dscl . -read /User/[username] UserShell
+// defaults to /bin/bash
+func internalMacUserShell() string {
+	osUser, err := user.Current()
+	if err != nil {
+		return DefaultShellPath
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	userStr := "/Users/" + osUser.Username
+	out, err := exec.CommandContext(ctx, "dscl", ".", "-read", userStr, "UserShell").CombinedOutput()
+	if err != nil {
+		return DefaultShellPath
+	}
+	outStr := strings.TrimSpace(string(out))
+	m := userShellRegexp.FindStringSubmatch(outStr)
+	if m == nil {
+		return DefaultShellPath
+	}
+	return m[1]
+}
 
 func WaveshellEnvVars(termType string) map[string]string {
 	rtn := make(map[string]string)
