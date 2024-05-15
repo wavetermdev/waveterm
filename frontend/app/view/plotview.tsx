@@ -2,6 +2,8 @@ import * as React from "react";
 import * as Plot from "@observablehq/plot";
 import * as d3 from "d3";
 
+import "./plotview.less";
+
 function PlotWindow() {
     return <div className="plot-window"></div>;
 }
@@ -91,10 +93,14 @@ function PlotView() {
     }, [plotDef]);
 
     return (
-        <div className="plot-block">
-            ß
+        <div className="plot-view">
             <div className="plot-window" ref={containerRef} />
-            <textarea className="plot-config" onChange={(e) => setPlotDef(e.target.value)} />
+            <textarea
+                className="plot-config"
+                rows={5}
+                onChange={(e) => setPlotDef(e.target.value)}
+                spellCheck={false}
+            />
         </div>
     );
 }
