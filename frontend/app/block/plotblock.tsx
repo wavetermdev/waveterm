@@ -38,7 +38,7 @@ function PlotBlock() {
     React.useEffect(() => {
         // replace start
         /*
-        d3.csv("/plotdata/congress.csv", d3.autoType).then((out) => data = out)
+        d3.csv("/plotdata/congress.csv", d3.autoType).then((out) => data = out);
         return Plot.plot({
             aspectRatio: 1,
             x: { label: "Age (years)" },
@@ -92,8 +92,9 @@ function PlotBlock() {
 
     return (
         <div className="plot-block">
+            ß
             <div className="plot-window" ref={containerRef} />
-            <input type="text" className="plot-config" onChange={(e) => setPlotDef(e.target.value)} />
+            <textarea className="plot-config" onChange={(e) => setPlotDef(e.target.value)} />
         </div>
     );
 }
