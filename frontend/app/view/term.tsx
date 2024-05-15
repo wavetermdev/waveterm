@@ -6,6 +6,10 @@ import * as jotai from "jotai";
 import { Terminal } from "@xterm/xterm";
 import type { ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { Button } from "@/element/button";
+import * as BlockService from "@/bindings/pkg/service/blockservice/BlockService";
+import { getBlockSubject } from "@/store/global";
+import { base64ToArray } from "@/util/util";
 
 import "./view.less";
 import "/public/xterm.css";
@@ -40,6 +44,8 @@ function getThemeFromCSSVars(el: Element): ITheme {
 
 const TerminalView = ({ blockId }: { blockId: string }) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
+    const [term, setTerm] = React.useState<Terminal | null>(null);
+    const [blockStarted, setBlockStarted] = React.useState<boolean>(false);
 
     React.useEffect(() => {
         if (!connectElemRef.current) {
@@ -53,17 +59,85 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             fontWeight: "normal",
             fontWeightBold: "bold",
         });
+        setTerm(term);
         const fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
         term.open(connectElemRef.current);
         fitAddon.fit();
-        term.write("Hello, world!");
+        term.write("Hello, world!\r\n");
+        console.log(term);
+        term.onData((data) => {
+            const b64data = btoa(data);
+            const inputCmd = { command: "input", blockid: blockId, inputdata64: b64data };
+            BlockService.SendCommand(blockId, inputCmd);
+        });
+
+        // resize observer
+        const rszObs = new ResizeObserver(() => {
+            const oldRows = term.rows;
+            const oldCols = term.cols;
+            fitAddon.fit();
+            if (oldRows !== term.rows || oldCols !== term.cols) {
+                BlockService.SendCommand(blockId, { command: "input", termsize: { rows: term.rows, cols: term.cols } });
+            }
+        });
+        rszObs.observe(connectElemRef.current);
+
+        // block subject
+        const blockSubject = getBlockSubject(blockId);
+        blockSubject.subscribe((data) => {
+            // base64 decode
+            const decodedData = base64ToArray(data.ptydata);
+            term.write(decodedData);
+        });
+
         return () => {
             term.dispose();
+            rszObs.disconnect();
+            blockSubject.release();
         };
     }, [connectElemRef.current]);
 
-    return <div key="conntectElem" className="view-term term-connectelem" ref={connectElemRef}></div>;
+    async function handleRunClick() {
+        try {
+            if (!blockStarted) {
+                await BlockService.StartBlock(blockId);
+                setBlockStarted(true);
+            }
+            let termSize = { rows: term.rows, cols: term.cols };
+            await BlockService.SendCommand(blockId, { command: "run", cmdstr: "ls -l", termsize: termSize });
+        } catch (e) {
+            console.log("run click error: ", e);
+        }
+    }
+
+    async function handleStartTerminalClick() {
+        try {
+            if (!blockStarted) {
+                await BlockService.StartBlock(blockId);
+                setBlockStarted(true);
+            }
+            let termSize = { rows: term.rows, cols: term.cols };
+            await BlockService.SendCommand(blockId, { command: "runshell", termsize: termSize });
+        } catch (e) {
+            console.log("start terminal click error: ", e);
+        }
+    }
+
+    return (
+        <div className="view-term">
+            <div className="term-header">
+                <div>Terminal</div>
+                <Button className="term-inline" onClick={() => handleRunClick()}>
+                    Run `ls`
+                </Button>
+                <Button className="term-inline" onClick={() => handleStartTerminalClick()}>
+                    Start Terminal
+                </Button>
+            </div>
+            <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
+        </div>
+    );
 };
 
 export { TerminalView };

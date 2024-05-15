@@ -1,0 +1,135 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.wave-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    outline: inherit;
+    display: flex;
+    padding: 6px 16px;
+    align-items: center;
+    gap: 4px;
+    border-radius: 6px;
+    height: auto;
+    line-height: 1.5;
+    white-space: nowrap;
+    user-select: none;
+
+    color: var(--main-text-color);
+    background: var(--accent-color);
+    i {
+        fill: var(--main-text-color);
+    }
+
+    &.primary {
+        color: var(--main-text-color);
+        background: var(--accent-color);
+        i {
+            fill: var(--main-text-color);
+        }
+    }
+
+    &.primary.danger {
+        background: var(--error-color);
+    }
+
+    &.primary.outlined {
+        background: none;
+        border: 1px solid var(--accent-color);
+
+        i {
+            fill: var(--accent-color);
+        }
+    }
+
+    &.primary.greyoutlined {
+        background: none;
+        border: 1px solid var(--secondary-text-color);
+
+        i {
+            fill: var(--secondary-text-color);
+        }
+    }
+
+    &.primary.outlined,
+    &.primary.greyoutlined {
+        &.hover-danger:hover {
+            color: var(--main-text-color);
+            border: 1px solid var(--error-color);
+            background: var(--error-color);
+        }
+    }
+
+    &.primary.outlined.danger {
+        background: none;
+        border: 1px solid var(--error-color);
+
+        i {
+            fill: var(--error-color);
+        }
+    }
+
+    &.greytext {
+        color: var(--secondary-text-color);
+    }
+
+    &.primary.ghost {
+        background: none;
+        i {
+            fill: var(--accent-color);
+        }
+    }
+
+    &.primary.ghost.danger {
+        background: none;
+        i {
+            fill: var(--app-error-color);
+        }
+    }
+
+    &.secondary {
+        color: var(--main-text-color);
+        background: var(--highlight-bg-color);
+        i {
+            fill: var(--main-text-color);
+        }
+    }
+
+    &.secondary.outlined {
+        background: none;
+        border: 1px solid var(--main-text-color);
+    }
+
+    &.secondary.outlined.danger {
+        background: none;
+        border: 1px solid var(--error-color);
+    }
+
+    &.secondary.ghost {
+        background: none;
+    }
+
+    &.secondary.danger {
+        color: var(--error-color);
+    }
+
+    &.small {
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 3.6px;
+    }
+
+    &.term-inline {
+        padding: 2px 8px;
+        border-radius: 3px;
+    }
+
+    &.disabled {
+        opacity: 0.5;
+    }
+
+    &.link-button {
+        cursor: pointer;
+    }
+}

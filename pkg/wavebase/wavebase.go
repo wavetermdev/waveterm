@@ -13,6 +13,7 @@ import (
 	"sync"
 )
 
+const WaveVersion = "v0.1.0"
 const DefaultWaveHome = "~/.w2"
 const WaveHomeVarName = "WAVETERM_HOME"
 const WaveDevVarName = "WAVETERM_DEV"

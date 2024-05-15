@@ -11,6 +11,11 @@ import (
 
 type BlockService struct{}
 
+func (bs *BlockService) StartBlock(blockId string) error {
+	blockcontroller.StartBlockController(blockId)
+	return nil
+}
+
 func (bs *BlockService) SendCommand(blockId string, cmdMap map[string]any) error {
 	bc := blockcontroller.GetBlockController(blockId)
 	if bc == nil {

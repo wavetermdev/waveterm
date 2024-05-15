@@ -2,19 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 @import "./reset.less";
-
-:root {
-    --main-bg-color: #000000;
-    --border-color: #333333;
-    --main-color: #f7f7f7;
-    --base-font: normal 15px / normal "Lato", sans-serif;
-    --fixed-font: normal 12px / normal "Hack", monospace;
-    --app-accent-color: rgb(88, 193, 66);
-    --panel-bg-color: rgba(31, 33, 31, 1);
-    --highlight-bg-color: rgba(255, 255, 255, 0.2);
-    --markdown-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
-        "Apple Color Emoji", "Segoe UI Emoji";
-}
+@import "./theme.less";
 
 body {
     display: flex;
@@ -22,7 +10,7 @@ body {
     width: 100vw;
     height: 100vh;
     background-color: var(--main-bg-color);
-    color: var(--main-color);
+    color: var(--main-text-color);
     font: var(--base-font);
     overflow: hidden;
 }
