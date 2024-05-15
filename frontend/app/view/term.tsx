@@ -44,7 +44,8 @@ function getThemeFromCSSVars(el: Element): ITheme {
 
 const TerminalView = ({ blockId }: { blockId: string }) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
-    const [term, setTerm] = React.useState<Terminal>(null);
+    const [term, setTerm] = React.useState<Terminal | null>(null);
+    const [blockStarted, setBlockStarted] = React.useState<boolean>(false);
 
     React.useEffect(() => {
         if (!connectElemRef.current) {
@@ -58,16 +59,27 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             fontWeight: "normal",
             fontWeightBold: "bold",
         });
+        setTerm(term);
         const fitAddon = new FitAddon();
         term.loadAddon(fitAddon);
         term.open(connectElemRef.current);
         fitAddon.fit();
         term.write("Hello, world!\r\n");
-        setTerm(term);
+        console.log(term);
+        term.onData((data) => {
+            const b64data = btoa(data);
+            const inputCmd = { command: "input", blockid: blockId, inputdata64: b64data };
+            BlockService.SendCommand(blockId, inputCmd);
+        });
 
         // resize observer
         const rszObs = new ResizeObserver(() => {
+            const oldRows = term.rows;
+            const oldCols = term.cols;
             fitAddon.fit();
+            if (oldRows !== term.rows || oldCols !== term.cols) {
+                BlockService.SendCommand(blockId, { command: "input", termsize: { rows: term.rows, cols: term.cols } });
+            }
         });
         rszObs.observe(connectElemRef.current);
 
@@ -88,11 +100,27 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
 
     async function handleRunClick() {
         try {
-            await BlockService.StartBlock(blockId);
+            if (!blockStarted) {
+                await BlockService.StartBlock(blockId);
+                setBlockStarted(true);
+            }
             let termSize = { rows: term.rows, cols: term.cols };
             await BlockService.SendCommand(blockId, { command: "run", cmdstr: "ls -l", termsize: termSize });
         } catch (e) {
             console.log("run click error: ", e);
+        }
+    }
+
+    async function handleStartTerminalClick() {
+        try {
+            if (!blockStarted) {
+                await BlockService.StartBlock(blockId);
+                setBlockStarted(true);
+            }
+            let termSize = { rows: term.rows, cols: term.cols };
+            await BlockService.SendCommand(blockId, { command: "runshell", termsize: termSize });
+        } catch (e) {
+            console.log("start terminal click error: ", e);
         }
     }
 
@@ -101,7 +129,10 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             <div className="term-header">
                 <div>Terminal</div>
                 <Button className="term-inline" onClick={() => handleRunClick()}>
-                    Run
+                    Run `ls`
+                </Button>
+                <Button className="term-inline" onClick={() => handleStartTerminalClick()}>
+                    Start Terminal
                 </Button>
             </div>
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
