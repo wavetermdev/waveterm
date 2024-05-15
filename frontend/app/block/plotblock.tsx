@@ -10,18 +10,35 @@ function PlotConfig() {
     return <input type="text" className="plot-config" />;
 }
 
+const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+
+function evalAsync(Plot: any, d3: any, funcText: string): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+        new AsyncFunction(
+            "resolve",
+            "reject",
+            "Plot",
+            "d3",
+            `try { await ${funcText}; resolve(); } catch(e) { reject(e); } }`
+        )(resolve, reject, Plot, d3);
+    });
+}
+
 function PlotBlock() {
     const containerRef = React.useRef<HTMLInputElement>();
     const [plotDef, setPlotDef] = React.useState<string>();
+    /*
     const [data, setData] = React.useState();
 
     React.useEffect(() => {
         d3.csv("/plotdata/congress.csv", d3.autoType).then(setData);
     }, []);
+    */
 
     React.useEffect(() => {
         // replace start
         /*
+        d3.csv("/plotdata/congress.csv", d3.autoType).then((out) => data = out)
         return Plot.plot({
             aspectRatio: 1,
             x: { label: "Age (years)" },
@@ -50,7 +67,9 @@ function PlotBlock() {
         let plotErr;
         try {
             console.log(plotDef);
-            plot = new Function("Plot", "data", plotDef)(Plot, data);
+            plot = new Function("Plot", "d3", plotDef)(Plot, d3);
+            //plot = new Function("Plot", "data", "d3", plotDef)(Plot, data, d3);
+            //evalAsync(Plot, d3, plotDef).then((out) => (plot = out));
         } catch (e) {
             plotErr = e;
             console.log("error: ", e);
@@ -69,7 +88,7 @@ function PlotBlock() {
                 plot.remove();
             }
         };
-    }, [data, plotDef]);
+    }, [plotDef]);
 
     return (
         <div className="plot-block">
