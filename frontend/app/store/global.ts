@@ -18,7 +18,7 @@ const blockId2 = uuidv4();
 const blockId3 = uuidv4();
 
 const tabArr: TabData[] = [
-    { name: "Tab 1", tabid: tabId1, blockIds: [blockId1, blockId2] },
+    { name: "Tab 1", tabid: tabId1, blockIds: [blockId1, blockId2, blockId3] },
     { name: "Tab 2", tabid: tabId2, blockIds: [blockId3] },
 ];
 
@@ -34,7 +34,7 @@ const blockAtomFamily = atomFamily<string, jotai.Atom<BlockData>>((blockId: stri
         });
     }
     if (blockId === blockId3) {
-        return jotai.atom({ blockid: blockId3, view: "term" });
+        return jotai.atom({ blockid: blockId3, view: "plot" });
     }
     return jotai.atom(null);
 });

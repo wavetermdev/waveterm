@@ -24,7 +24,7 @@ function evalAsync(Plot: any, d3: any, funcText: string): Promise<unknown> {
     });
 }
 
-function PlotBlock() {
+function PlotView() {
     const containerRef = React.useRef<HTMLInputElement>();
     const [plotDef, setPlotDef] = React.useState<string>();
     /*
@@ -99,4 +99,4 @@ function PlotBlock() {
     );
 }
 
-export { PlotBlock };
+export { PlotView };

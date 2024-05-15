@@ -5,7 +5,6 @@ import * as React from "react";
 import * as jotai from "jotai";
 import { Block } from "@/app/block/block";
 import { atoms } from "@/store/global";
-import { PlotBlock } from "@/app/block/plotblock";
 
 import "./tab.less";
 
@@ -24,7 +23,6 @@ const TabContent = ({ tabId }: { tabId: string }) => {
                     </div>
                 );
             })}
-            <PlotBlock />
         </div>
     );
 };

@@ -7,6 +7,7 @@ import { atoms } from "@/store/global";
 
 import { TerminalView } from "@/app/view/term";
 import { PreviewView } from "@/app/view/preview";
+import { PlotView } from "@/app/view/plotview";
 import { CenteredLoadingDiv } from "@/element/quickelems";
 
 import "./block.less";
@@ -32,6 +33,8 @@ const Block = ({ blockId }: { blockId: string }) => {
         blockElem = <TerminalView blockId={blockId} />;
     } else if (blockData.view === "preview") {
         blockElem = <PreviewView blockId={blockId} />;
+    } else if (blockData.view === "plot") {
+        blockElem = <PlotView />;
     }
     return (
         <div className="block" ref={blockRef}>
