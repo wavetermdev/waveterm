@@ -31,7 +31,6 @@ function evalAsync(Plot: any, d3: any, funcText: string): Promise<unknown> {
 function PlotView() {
     const containerRef = React.useRef<HTMLInputElement>();
     const [plotDef, setPlotDef] = React.useState<string>();
-    const [tempDef, setTempDef] = React.useState<string>();
     const [savedDef, setSavedDef] = React.useState<string>();
     const [modalUp, setModalUp] = React.useState(false);
     /*
@@ -97,22 +96,33 @@ function PlotView() {
         };
     }, [plotDef]);
 
+    const handleOpen = React.useCallback(() => {
+        setSavedDef(plotDef);
+        setModalUp(true);
+    }, []);
+
+    const handleCancel = React.useCallback(() => {
+        setPlotDef(savedDef);
+        setModalUp(false);
+    }, []);
+
+    const handleSave = React.useCallback(() => {
+        setModalUp(false);
+    }, []);
+
     return (
         <div className="plot-view">
-            <Button onClick={() => setModalUp(true)}>Edit</Button>
+            <Button onClick={handleOpen}>Edit</Button>
             <div className="plot-window" ref={containerRef} />
             {modalUp && (
-                <WaveModal
-                    title="Plot Definition"
-                    onCancel={() => setModalUp(false)}
-                    onSubmit={() => setModalUp(false)}
-                >
+                <WaveModal title="Plot Definition" onCancel={handleCancel} onSubmit={handleSave} buttonLabel={"Save"}>
                     <textarea
                         className="plot-config"
                         rows={5}
                         onChange={(e) => setPlotDef(e.target.value)}
                         spellCheck={false}
                         defaultValue={plotDef}
+                        wrap={"off"}
                     />
                 </WaveModal>
             )}
