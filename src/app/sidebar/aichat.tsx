@@ -177,7 +177,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (GlobalModel.sidebarchatModel.getFocus("input")) {
             this.textAreaRef.current.focus();
         }
-
         if (GlobalModel.sidebarchatModel.hasCmdAndOutput()) {
             const newCmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
             const newValue = this.formChatMessage(newCmdAndOutput);
@@ -185,6 +184,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                 this.value.set(newValue);
             }
         }
+        this.adjustTextAreaHeight();
     }
 
     componentDidMount() {
@@ -212,13 +212,16 @@ class ChatSidebar extends React.Component<{}, {}> {
     onTextAreaChange(e) {
         const newValue = e.target.value;
         this.value.set(newValue);
+        this.adjustTextAreaHeight();
+    }
 
+    adjustTextAreaHeight() {
         if (this.textAreaRef.current == null) {
             return;
         }
 
         // Adjust the height of the textarea to fit the text
-        const textAreaMaxLines = 4;
+        const textAreaMaxLines = 100;
         const textAreaLineHeight = this.termFontSize * 1.5;
         const textAreaMinHeight = textAreaLineHeight;
         const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;

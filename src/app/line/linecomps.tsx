@@ -121,6 +121,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
         const termWrap = screen.getTermWrap(line.lineid);
         const cmd = screen.getCmd(line);
         if (termWrap && cmd) {
+            // console.log("screen.getUsedRows()", screen.getCmd(line)?.getUsedRows());
             GlobalModel.sidebarchatModel.setCmdAndOutput(
                 screen.getCmd(line)?.getCmdStr(),
                 termWrap?.getOutput(false),
