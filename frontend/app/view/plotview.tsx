@@ -1,6 +1,8 @@
 import * as React from "react";
 import * as Plot from "@observablehq/plot";
 import * as d3 from "d3";
+import { Button } from "@/element/button";
+import { WaveModal } from "@/element/modal";
 
 import "./plotview.less";
 
@@ -29,6 +31,9 @@ function evalAsync(Plot: any, d3: any, funcText: string): Promise<unknown> {
 function PlotView() {
     const containerRef = React.useRef<HTMLInputElement>();
     const [plotDef, setPlotDef] = React.useState<string>();
+    const [tempDef, setTempDef] = React.useState<string>();
+    const [savedDef, setSavedDef] = React.useState<string>();
+    const [modalUp, setModalUp] = React.useState(false);
     /*
     const [data, setData] = React.useState();
 
@@ -94,13 +99,23 @@ function PlotView() {
 
     return (
         <div className="plot-view">
+            <Button onClick={() => setModalUp(true)}>Edit</Button>
             <div className="plot-window" ref={containerRef} />
-            <textarea
-                className="plot-config"
-                rows={5}
-                onChange={(e) => setPlotDef(e.target.value)}
-                spellCheck={false}
-            />
+            {modalUp && (
+                <WaveModal
+                    title="Plot Definition"
+                    onCancel={() => setModalUp(false)}
+                    onSubmit={() => setModalUp(false)}
+                >
+                    <textarea
+                        className="plot-config"
+                        rows={5}
+                        onChange={(e) => setPlotDef(e.target.value)}
+                        spellCheck={false}
+                        defaultValue={plotDef}
+                    />
+                </WaveModal>
+            )}
         </div>
     );
 }
