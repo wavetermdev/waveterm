@@ -115,6 +115,7 @@ func CloseBlock(blockId string) {
 	}
 	bc.Close()
 	close(bc.InputCh)
+	removeBlockData(blockId)
 }
 
 func GetBlockData(blockId string) *BlockData {
@@ -127,6 +128,12 @@ func setBlockData(bd *BlockData) {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	blockDataMap[bd.BlockId] = bd
+}
+
+func removeBlockData(blockId string) {
+	globalLock.Lock()
+	defer globalLock.Unlock()
+	delete(blockDataMap, blockId)
 }
 
 func (bc *BlockController) setShellProc(shellProc *shellexec.ShellProc) error {

@@ -16,6 +16,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 //go:embed dist
@@ -23,6 +24,42 @@ var assets embed.FS
 
 //go:embed build/appicon.png
 var appIcon []byte
+
+func createAppMenu(app *application.App) *application.Menu {
+	menu := application.NewMenu()
+	menu.AddRole(application.AppMenu)
+	fileMenu := menu.AddSubmenu("File")
+	newWindow := fileMenu.Add("New Window")
+	newWindow.OnClick(func(appContext *application.Context) {
+		createWindow(app)
+	})
+	closeWindow := fileMenu.Add("Close Window")
+	closeWindow.OnClick(func(appContext *application.Context) {
+		app.CurrentWindow().Close()
+	})
+	menu.AddRole(application.EditMenu)
+	menu.AddRole(application.ViewMenu)
+	menu.AddRole(application.WindowMenu)
+	menu.AddRole(application.HelpMenu)
+	return menu
+}
+
+func createWindow(app *application.App) {
+	window := app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
+		Title: "Wave Terminal",
+		Mac: application.MacWindow{
+			InvisibleTitleBarHeight: 50,
+			Backdrop:                application.MacBackdropTranslucent,
+			TitleBar:                application.MacTitleBarHiddenInset,
+		},
+		BackgroundColour: application.NewRGB(27, 38, 54),
+		URL:              "/public/index.html",
+	})
+	eventbus.RegisterWailsWindow(window)
+	window.On(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		eventbus.UnregisterWailsWindow(window.ID())
+	})
+}
 
 func main() {
 	err := wavebase.EnsureWaveHomeDir()
@@ -52,19 +89,11 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+	menu := createAppMenu(app)
+	app.SetMenu(menu)
 	eventbus.RegisterWailsApp(app)
 
-	window := app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
-		Title: "Wave Terminal",
-		Mac: application.MacWindow{
-			InvisibleTitleBarHeight: 50,
-			Backdrop:                application.MacBackdropTranslucent,
-			TitleBar:                application.MacTitleBarHiddenInset,
-		},
-		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/public/index.html",
-	})
-	eventbus.RegisterWailsWindow(window)
+	createWindow(app)
 
 	eventbus.Start()
 	defer eventbus.Shutdown()
