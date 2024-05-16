@@ -69,13 +69,14 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
                 <div className="chat-msg-header">
                     <i className="fa-sharp fa-solid fa-user"></i>
                 </div>
-                <div className="msg-text">{chatItem.userquery}</div>
+                <Markdown2 className="msg-text" text={chatItem.userquery} />
             </>
         );
         if (isassistantresponse) {
             if (assistantresponse.error != null && assistantresponse.error !== "") {
                 innerHTML = this.renderError(assistantresponse.error);
             } else {
+                console.log("assistantresponse.message", assistantresponse.message);
                 innerHTML = (
                     <>
                         <div className="chat-msg-header">
@@ -366,10 +367,30 @@ class ChatSidebar extends React.Component<{}, {}> {
         return true;
     }
 
+    formChatMessage(cmdAndOutput: CmdAndOutput) {
+        const { cmd, output, isError } = cmdAndOutput;
+        if (cmd == null || cmd === "") {
+            return "";
+        }
+        let chatMessage = "I ran the command: `" + cmd + "` and got the following output:\n\n";
+        if (output != null && output !== "") {
+            chatMessage += "```\n" + `${output}`;
+            chatMessage = chatMessage + "\n```";
+        }
+        if (isError) {
+            chatMessage += "\n\nHow should I fix this?";
+        } else {
+            chatMessage += "\n\nWhat should I do next?";
+        }
+        return chatMessage;
+    }
+
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const renderAIChatKeybindings = GlobalModel.sidebarchatModel.getFocus();
-        console.log("GlobalModel.sidebarchatModel.getFocus()", GlobalModel.sidebarchatModel.getFocus());
+        const cmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
+        const value = this.formChatMessage(cmdAndOutput);
+        console.log("cmdAndOutput", cmdAndOutput);
         return (
             <div ref={this.sidebarRef} className="sidebarchat">
                 <If condition={renderAIChatKeybindings}>
@@ -394,6 +415,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                         onChange={this.onTextAreaChange}
                         style={{ fontSize: this.termFontSize }}
                         placeholder="Send a Message..."
+                        value={value || ""}
                     ></textarea>
                 </div>
             </div>
