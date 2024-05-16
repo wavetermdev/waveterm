@@ -172,6 +172,12 @@ class ChatSidebar extends React.Component<{}, {}> {
         mobx.makeObservable(this);
     }
 
+    componentDidUpdate() {
+        if (GlobalModel.sidebarchatModel.getFocus("input")) {
+            this.textAreaRef.current.focus();
+        }
+    }
+
     componentDidMount() {
         GlobalModel.sidebarchatModel.setFocus("input", true);
         if (this.sidebarRef.current) {
@@ -391,7 +397,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         const renderAIChatKeybindings = GlobalModel.sidebarchatModel.getFocus();
         const cmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
         const value = this.formChatMessage(cmdAndOutput);
-        console.log("cmdAndOutput", cmdAndOutput);
         return (
             <div ref={this.sidebarRef} className="sidebarchat">
                 <If condition={renderAIChatKeybindings}>

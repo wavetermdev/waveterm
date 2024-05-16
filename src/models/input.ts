@@ -162,8 +162,6 @@ class InputModel {
                 // nothing to do here
                 break;
         }
-
-        GlobalModel.sidebarchatModel.resetFocus();
     }
 
     @mobx.action

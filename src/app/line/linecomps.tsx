@@ -115,7 +115,8 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
     }
 
     @boundMethod
-    clickChat() {
+    clickChat(e: any) {
+        e.stopPropagation();
         const { line, screen } = this.props;
         const termWrap = screen.getTermWrap(line.lineid);
         const cmd = screen.getCmd(line);
@@ -125,6 +126,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
                 termWrap?.getOutput(false),
                 cmdShouldMarkError(cmd)
             );
+            GlobalModel.sidebarchatModel.setFocus("input", true);
         }
     }
 
