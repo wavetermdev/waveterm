@@ -160,9 +160,10 @@ class ChatWindow extends React.Component<{ chatWindowRef; onRendered }, {}> {
 
 @mobxReact.observer
 class ChatSidebar extends React.Component<{}, {}> {
-    sidebarRef: React.RefObject<HTMLDivElement> = React.createRef();
-    textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef();
-    chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef();
+    sidebarRef: React.RefObject<HTMLDivElement> = React.createRef<HTMLDivElement>();
+    textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef<HTMLTextAreaElement>();
+    chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef<HTMLDivElement>();
+    value: OV<string> = mobx.observable.box("", { deep: false, name: "chat-input" });
     osInstance: OverlayScrollbars;
     termFontSize: number = 14;
     blockIndex: number;
@@ -176,6 +177,14 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (GlobalModel.sidebarchatModel.getFocus("input")) {
             this.textAreaRef.current.focus();
         }
+
+        if (GlobalModel.sidebarchatModel.hasCmdAndOutput()) {
+            const newCmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
+            const newValue = this.formChatMessage(newCmdAndOutput);
+            if (newValue !== this.value.get()) {
+                this.value.set(newValue);
+            }
+        }
     }
 
     componentDidMount() {
@@ -184,7 +193,6 @@ class ChatSidebar extends React.Component<{}, {}> {
             this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
         }
         this.requestChatUpdate();
-        this.onTextAreaChange(null);
     }
 
     componentWillUnmount() {
@@ -195,28 +203,28 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     requestChatUpdate() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        if (chatMessageItems == null || chatMessageItems.length == 0) {
+        if (chatMessageItems == null || chatMessageItems.length === 0) {
             this.submitChatMessage("");
         }
     }
 
-    // Adjust the height of the textarea to fit the text
-    @boundMethod
-    onTextAreaChange(e: any) {
+    @mobx.action.bound
+    onTextAreaChange(e) {
+        const newValue = e.target.value;
+        this.value.set(newValue);
+
         if (this.textAreaRef.current == null) {
             return;
         }
-        // Calculate the bounding height of the text area
+
+        // Adjust the height of the textarea to fit the text
         const textAreaMaxLines = 4;
         const textAreaLineHeight = this.termFontSize * 1.5;
         const textAreaMinHeight = textAreaLineHeight;
         const textAreaMaxHeight = textAreaLineHeight * textAreaMaxLines;
 
-        // Get the height of the wrapped text area content. Courtesy of https://stackoverflow.com/questions/995168/textarea-to-resize-based-on-content-length
         this.textAreaRef.current.style.height = "1px";
-        const scrollHeight: number = this.textAreaRef.current.scrollHeight;
-
-        // Set the new height of the text area, bounded by the min and max height.
+        const scrollHeight = this.textAreaRef.current.scrollHeight;
         const newHeight = Math.min(Math.max(scrollHeight, textAreaMinHeight), textAreaMaxHeight);
         this.textAreaRef.current.style.height = newHeight + "px";
     }
@@ -233,21 +241,22 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     @mobx.action.bound
-    onTextAreaFocused(e: any) {
+    onTextAreaFocused(e) {
         GlobalModel.sidebarchatModel.setFocus("input", true);
         this.onTextAreaChange(e);
         this.updatePreTagOutline();
     }
 
     @mobx.action.bound
-    onTextAreaBlur(e: any) {
+    onTextAreaBlur(e) {
         GlobalModel.sidebarchatModel.resetFocus();
     }
 
     onEnterKeyPressed() {
-        const messageStr = this.textAreaRef.current.value;
+        const messageStr = this.value.get();
         this.submitChatMessage(messageStr);
-        this.textAreaRef.current.value = "";
+        this.value.set("");
+        GlobalModel.sidebarchatModel.resetCmdAndOutput();
     }
 
     onExpandInputPressed() {
@@ -258,7 +267,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
     }
 
-    updatePreTagOutline(clickedPre?: HTMLPreElement) {
+    updatePreTagOutline(clickedPre?) {
         const pres = this.chatWindowRef.current.querySelectorAll("pre");
         pres.forEach((preElement, idx) => {
             if (preElement === clickedPre) {
@@ -277,27 +286,24 @@ class ChatSidebar extends React.Component<{}, {}> {
         });
     }
 
-    @boundMethod
-    handleSidebarClick(event: MouseEvent) {
+    @mobx.action.bound
+    handleSidebarClick(event) {
         let detection = 0;
         const target = event.target as HTMLElement;
 
-        // handle copy button click
         if (target.closest(".copy-button")) {
             return;
         }
 
-        // handle chat window click
         const chatWindow = target.closest(".chat-window");
         if (chatWindow) {
             detection++;
         }
 
-        // handle pre click
         const pre = target.closest("pre");
         if (pre) {
             detection++;
-            this.updatePreTagOutline(pre as HTMLPreElement);
+            this.updatePreTagOutline(pre);
         }
 
         if (detection > 0) {
@@ -322,11 +328,9 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (!elementIsInView) {
             let scrollPosition;
             if (elemBottom > chatWindowBottom) {
-                // If the element bottom is below the view, scroll down to make it visible at the bottom
-                scrollPosition = elemTop - chatWindowHeight + block.offsetHeight + 15; // Adjust +15 for some margin
+                scrollPosition = elemTop - chatWindowHeight + block.offsetHeight + 15;
             } else if (elemTop < chatWindowTop) {
-                // If the element top is above the view, scroll up to make it visible at the top
-                scrollPosition = elemTop - 15; // Adjust -15 for some margin
+                scrollPosition = elemTop - 15;
             }
             viewport.scrollTo({
                 behavior: "auto",
@@ -335,54 +339,44 @@ class ChatSidebar extends React.Component<{}, {}> {
         }
     }
 
-    @boundMethod
-    onChatWindowRendered(osInstance: OverlayScrollbars) {
+    @mobx.action.bound
+    onChatWindowRendered(osInstance) {
         this.osInstance = osInstance;
     }
 
-    onArrowUpPressed(): boolean {
+    onArrowUpPressed() {
         const pres = this.chatWindowRef.current.querySelectorAll("pre");
-        const currentRef = this.textAreaRef.current;
-        if (currentRef == null) {
-            return false;
-        }
         if (this.blockIndex == null) {
-            // Set to last index (size - 1)
             this.blockIndex = pres.length - 1;
         } else if (this.blockIndex > 0) {
-            // Decrement the blockIndex
             this.blockIndex--;
         }
-        this.updatePreTagOutline(pres[this.blockIndex] as HTMLPreElement);
+        this.updatePreTagOutline(pres[this.blockIndex]);
         this.updateScrollTop();
         return true;
     }
 
-    onArrowDownPressed(): boolean {
+    onArrowDownPressed() {
         const pres = this.chatWindowRef.current.querySelectorAll("pre");
-        const currentRef = this.textAreaRef.current;
-        if (currentRef == null || this.blockIndex == null) {
-            // Do nothing if blockIndex has not been initialized yet
-            return false;
+        if (this.blockIndex == null) {
+            return;
         }
         if (this.blockIndex < pres.length - 1) {
-            // Increment the blockIndex
             this.blockIndex++;
         }
-        this.updatePreTagOutline(pres[this.blockIndex] as HTMLPreElement);
+        this.updatePreTagOutline(pres[this.blockIndex]);
         this.updateScrollTop();
         return true;
     }
 
-    formChatMessage(cmdAndOutput: CmdAndOutput) {
+    formChatMessage(cmdAndOutput) {
         const { cmd, output, isError } = cmdAndOutput;
         if (cmd == null || cmd === "") {
             return "";
         }
-        let chatMessage = "I ran the command: `" + cmd + "` and got the following output:\n\n";
+        let chatMessage = `I ran the command: \`${cmd}\` and got the following output:\n\n`;
         if (output != null && output !== "") {
-            chatMessage += "```\n" + `${output}`;
-            chatMessage = chatMessage + "\n```";
+            chatMessage += `\`\`\`\n${output}\n\`\`\``;
         }
         if (isError) {
             chatMessage += "\n\nHow should I fix this?";
@@ -395,19 +389,17 @@ class ChatSidebar extends React.Component<{}, {}> {
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const renderAIChatKeybindings = GlobalModel.sidebarchatModel.getFocus();
-        const cmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
-        const value = this.formChatMessage(cmdAndOutput);
+        const textAreaValue = this.value.get();
+
         return (
             <div ref={this.sidebarRef} className="sidebarchat">
-                <If condition={renderAIChatKeybindings}>
-                    <ChatKeybindings component={this} />
-                </If>
+                {renderAIChatKeybindings && <ChatKeybindings component={this} />}
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
                 </div>
-                <If condition={chatMessageItems.length > 0}>
+                {chatMessageItems.length > 0 && (
                     <ChatWindow chatWindowRef={this.chatWindowRef} onRendered={this.onChatWindowRendered} />
-                </If>
+                )}
                 <div className="sidebarchat-input-wrapper">
                     <textarea
                         key="sidebarchat"
@@ -421,7 +413,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                         onChange={this.onTextAreaChange}
                         style={{ fontSize: this.termFontSize }}
                         placeholder="Send a Message..."
-                        value={value || ""}
+                        value={textAreaValue}
                     ></textarea>
                 </div>
             </div>

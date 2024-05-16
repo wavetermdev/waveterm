@@ -69,6 +69,10 @@ class SidebarChatModel {
         this.cmdAndOutput.output = "";
         this.cmdAndOutput.isError = false;
     }
+
+    hasCmdAndOutput(): boolean {
+        return this.cmdAndOutput.cmd.length > 0 || this.cmdAndOutput.output.length > 0;
+    }
 }
 
 export { SidebarChatModel };
