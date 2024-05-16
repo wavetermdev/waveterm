@@ -8,6 +8,7 @@ import * as rxjs from "rxjs";
 import type { WailsEvent } from "@wailsio/runtime/types/events";
 import { Events } from "@wailsio/runtime";
 import { produce } from "immer";
+import * as BlockService from "@/bindings/pkg/service/blockservice/BlockService";
 
 const globalStore = jotai.createStore();
 
@@ -95,6 +96,7 @@ function removeBlockFromTab(tabId: string, blockId: string) {
     });
     globalStore.set(atoms.tabsAtom, newTabArr);
     removeBlock(blockId);
+    BlockService.CloseBlock(blockId);
 }
 
 export { globalStore, atoms, getBlockSubject, addBlockIdToTab, blockDataMap, useBlockAtom, removeBlockFromTab };

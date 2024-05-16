@@ -108,6 +108,15 @@ func CreateBlock(bdef *BlockDef, rtOpts *RuntimeOpts) (*BlockData, error) {
 	return blockData, nil
 }
 
+func CloseBlock(blockId string) {
+	bc := GetBlockController(blockId)
+	if bc == nil {
+		return
+	}
+	bc.Close()
+	close(bc.InputCh)
+}
+
 func GetBlockData(blockId string) *BlockData {
 	globalLock.Lock()
 	defer globalLock.Unlock()
@@ -138,6 +147,12 @@ func (bc *BlockController) getShellProc() *shellexec.ShellProc {
 
 type RunShellOpts struct {
 	TermSize shellexec.TermSize `json:"termsize,omitempty"`
+}
+
+func (bc *BlockController) Close() {
+	if bc.getShellProc() != nil {
+		bc.ShellProc.Close()
+	}
 }
 
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {

@@ -34,6 +34,10 @@ func (bs *BlockService) CreateBlock(bdefMap map[string]any, rtOptsMap map[string
 	return rtnMap, nil
 }
 
+func (bs *BlockService) CloseBlock(blockId string) {
+	blockcontroller.CloseBlock(blockId)
+}
+
 func (bs *BlockService) GetBlockData(blockId string) (map[string]any, error) {
 	blockData := blockcontroller.GetBlockData(blockId)
 	if blockData == nil {
