@@ -28,6 +28,7 @@ class SidebarChatModel {
         this.cmdAndOutput = {
             cmd: "",
             output: "",
+            usedRows: 0,
             isError: false,
         };
     }
@@ -50,9 +51,10 @@ class SidebarChatModel {
         this.sidebarChatFocus.block = false;
     }
 
-    setCmdAndOutput(cmd: string, output: string, isError: boolean): void {
+    setCmdAndOutput(cmd: string, output: string, usedRows: number, isError: boolean): void {
         this.cmdAndOutput.cmd = cmd;
         this.cmdAndOutput.output = output;
+        this.cmdAndOutput.usedRows = usedRows;
         this.cmdAndOutput.isError = isError;
     }
 
@@ -60,6 +62,7 @@ class SidebarChatModel {
         return {
             cmd: this.cmdAndOutput.cmd,
             output: this.cmdAndOutput.output,
+            usedRows: this.cmdAndOutput.usedRows,
             isError: this.cmdAndOutput.isError,
         };
     }
@@ -67,6 +70,7 @@ class SidebarChatModel {
     resetCmdAndOutput(): void {
         this.cmdAndOutput.cmd = "";
         this.cmdAndOutput.output = "";
+        this.cmdAndOutput.usedRows = 0;
         this.cmdAndOutput.isError = false;
     }
 

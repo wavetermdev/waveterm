@@ -372,13 +372,21 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     formChatMessage(cmdAndOutput) {
-        const { cmd, output, isError } = cmdAndOutput;
+        const { cmd, output, usedRows, isError } = cmdAndOutput;
         if (cmd == null || cmd === "") {
             return "";
         }
 
         // Escape backticks in the output
-        const escapedOutput = output ? output.replace(/`/g, "\\`") : "";
+        let escapedOutput = output ? output.replace(/`/g, "\\`") : "";
+
+        // Truncate the output if usedRows is over 100
+        if (usedRows > 100) {
+            const outputLines = escapedOutput.split("\n");
+            const leadingLines = outputLines.slice(0, 15).join("\n");
+            const trailingLines = outputLines.slice(-15).join("\n");
+            escapedOutput = `${leadingLines}\n.\n.\n.\n${trailingLines}`;
+        }
 
         let chatMessage = `I ran the command: \`${cmd}\` and got the following output:\n\n`;
         if (escapedOutput !== "") {

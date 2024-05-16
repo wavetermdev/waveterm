@@ -124,6 +124,8 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
             GlobalModel.sidebarchatModel.setCmdAndOutput(
                 screen.getCmd(line)?.getCmdStr(),
                 termWrap?.getOutput(false),
+                // multiply by 2 to get a rough estimate of the number of rows within the chatbox
+                screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, 300) * 2,
                 cmdShouldMarkError(cmd)
             );
             GlobalModel.sidebarchatModel.setFocus("input", true);
@@ -534,7 +536,6 @@ class LineCmd extends React.Component<
         const lastHeight = this.lastHeight;
         this.lastHeight = curHeight;
         this.props.onHeightChange(line.linenum, curHeight, lastHeight);
-        // console.log("line height change: ", line.linenum, lastHeight, "=>", curHeight);
     }
 
     @boundMethod

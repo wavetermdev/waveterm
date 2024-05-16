@@ -989,6 +989,7 @@ declare global {
     type CmdAndOutput = {
         cmd: string;
         output: string;
+        usedRows: number;
         isError: boolean;
     };
 }
