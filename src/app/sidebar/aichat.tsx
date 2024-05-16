@@ -76,7 +76,6 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
             if (assistantresponse.error != null && assistantresponse.error !== "") {
                 innerHTML = this.renderError(assistantresponse.error);
             } else {
-                console.log("assistantresponse.message", assistantresponse.message);
                 innerHTML = (
                     <>
                         <div className="chat-msg-header">
