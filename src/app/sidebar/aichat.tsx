@@ -376,9 +376,13 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (cmd == null || cmd === "") {
             return "";
         }
+
+        // Escape backticks in the output
+        const escapedOutput = output ? output.replace(/`/g, "\\`") : "";
+
         let chatMessage = `I ran the command: \`${cmd}\` and got the following output:\n\n`;
-        if (output != null && output !== "") {
-            chatMessage += `\`\`\`\n${output}\n\`\`\``;
+        if (escapedOutput !== "") {
+            chatMessage += `\`\`\`\n${escapedOutput}\n\`\`\``;
         }
         if (isError) {
             chatMessage += "\n\nHow should I fix this?";
