@@ -6098,16 +6098,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron@npm:^30.0.1":
-  version: 30.0.1
-  resolution: "electron@npm:30.0.1"
+"electron@npm:^30.0.6":
+  version: 30.0.6
+  resolution: "electron@npm:30.0.6"
   dependencies:
     "@electron/get": "npm:^2.0.0"
     "@types/node": "npm:^20.9.0"
     extract-zip: "npm:^2.0.1"
   bin:
     electron: cli.js
-  checksum: 10c0/7ec38c2dca9cfbec7df6ae4b3abc2cfc0bf9d19456759c369a398b1e678262171dc292735b2bced82e9a32dfc6458ac4c487e1336e4f1dda24fc0b177e404a85
+  checksum: 10c0/92cc9a5013774f3b69c44fc964096e5de4217e297cd5d16cfd1654690d725c6d5acb1111d5637216ee3e12ee814336808208acbc24460d6bd2ac160be41443d1
   languageName: node
   linkType: hard
 
@@ -11864,7 +11864,7 @@ __metadata:
     css-loader: "npm:^7.1.0"
     dayjs: "npm:^1.11.3"
     dompurify: "npm:^3.0.2"
-    electron: "npm:^30.0.1"
+    electron: "npm:^30.0.6"
     electron-builder: "npm:^24.13.3"
     electron-builder-squirrel-windows: "npm:^24.13.3"
     electron-squirrel-startup: "npm:^1.0.0"
