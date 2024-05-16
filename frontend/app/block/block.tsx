@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as jotai from "jotai";
-import { atoms } from "@/store/global";
+import { atoms, blockDataMap } from "@/store/global";
 
 import { TerminalView } from "@/app/view/term";
 import { PreviewView } from "@/app/view/preview";
@@ -26,7 +26,7 @@ const Block = ({ blockId }: { blockId: string }) => {
         }
     }, [blockRef.current]);
     let blockElem: JSX.Element = null;
-    const blockAtom = atoms.blockAtomFamily(blockId);
+    const blockAtom = blockDataMap.get(blockId);
     const blockData = jotai.useAtomValue(blockAtom);
     if (blockData.view === "term") {
         blockElem = <TerminalView blockId={blockId} />;

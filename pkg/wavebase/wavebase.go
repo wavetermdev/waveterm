@@ -4,13 +4,18 @@
 package wavebase
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
+	"os/exec"
 	"path"
+	"runtime"
 	"strings"
 	"sync"
+	"time"
 )
 
 const WaveVersion = "v0.1.0"
@@ -44,6 +49,17 @@ func ExpandHomeDir(pathStr string) string {
 		return homeDir
 	}
 	return path.Join(homeDir, pathStr[2:])
+}
+
+func ReplaceHomeDir(pathStr string) string {
+	homeDir := GetHomeDir()
+	if pathStr == homeDir {
+		return "~"
+	}
+	if strings.HasPrefix(pathStr, homeDir+"/") {
+		return "~" + pathStr[len(homeDir):]
+	}
+	return pathStr
 }
 
 func GetWaveHomeDir() string {
@@ -91,4 +107,33 @@ func TryMkdirs(dirName string, perm os.FileMode, dirDesc string) error {
 		return fmt.Errorf("%s %q must be a directory", dirDesc, dirName)
 	}
 	return nil
+}
+
+var osLangOnce = &sync.Once{}
+var osLang string
+
+func determineLang() string {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	if runtime.GOOS == "darwin" {
+		out, err := exec.CommandContext(ctx, "defaults", "read", "-g", "AppleLocale").CombinedOutput()
+		if err != nil {
+			log.Printf("error executing 'defaults read -g AppleLocale': %v\n", err)
+			return ""
+		}
+		strOut := string(out)
+		truncOut := strings.Split(strOut, "@")[0]
+		return strings.TrimSpace(truncOut) + ".UTF-8"
+	} else {
+		// this is specifically to get the wavesrv LANG so waveshell
+		// on a remote uses the same LANG
+		return os.Getenv("LANG")
+	}
+}
+
+func DetermineLang() string {
+	osLangOnce.Do(func() {
+		osLang = determineLang()
+	})
+	return osLang
 }

@@ -36,32 +36,3 @@ body {
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
 }
-
-.workspace {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    flex-grow: 1;
-    overflow: hidden;
-}
-
-.tab-bar {
-    display: flex;
-    flex-direction: row;
-    height: 35px;
-    border-bottom: 1px solid var(--border-color);
-    flex-shrink: 0;
-
-    .tab {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100px;
-        height: 100%;
-        border-right: 1px solid var(--border-color);
-        cursor: pointer;
-        &.active {
-            background-color: var(--highlight-bg-color);
-        }
-    }
-}

@@ -7,42 +7,20 @@ import { v4 as uuidv4 } from "uuid";
 import * as rxjs from "rxjs";
 import type { WailsEvent } from "@wailsio/runtime/types/events";
 import { Events } from "@wailsio/runtime";
+import { produce } from "immer";
 
 const globalStore = jotai.createStore();
 
 const tabId1 = uuidv4();
-const tabId2 = uuidv4();
 
-const blockId1 = uuidv4();
-const blockId2 = uuidv4();
-const blockId3 = uuidv4();
-
-const tabArr: TabData[] = [
-    { name: "Tab 1", tabid: tabId1, blockIds: [blockId1, blockId2] },
-    { name: "Tab 2", tabid: tabId2, blockIds: [blockId3] },
-];
-
-const blockAtomFamily = atomFamily<string, jotai.Atom<BlockData>>((blockId: string) => {
-    if (blockId === blockId1) {
-        return jotai.atom({ blockid: blockId1, view: "term" });
-    }
-    if (blockId === blockId2) {
-        return jotai.atom({
-            blockid: blockId2,
-            view: "preview",
-            meta: { mimetype: "text/markdown", file: "README.md" },
-        });
-    }
-    if (blockId === blockId3) {
-        return jotai.atom({ blockid: blockId3, view: "term" });
-    }
-    return jotai.atom(null);
-});
+const tabArr: TabData[] = [{ name: "Tab 1", tabid: tabId1, blockIds: [] }];
+const blockDataMap = new Map<string, jotai.Atom<BlockData>>();
+const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
 
 const atoms = {
     activeTabId: jotai.atom<string>(tabId1),
     tabsAtom: jotai.atom<TabData[]>(tabArr),
-    blockAtomFamily,
+    blockDataMap: blockDataMap,
 };
 
 type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
@@ -81,4 +59,32 @@ Events.On("block:ptydata", (event: any) => {
     subject.next(data);
 });
 
-export { globalStore, atoms, getBlockSubject };
+function addBlockIdToTab(tabId: string, blockId: string) {
+    let tabArr = globalStore.get(atoms.tabsAtom);
+    const newTabArr = produce(tabArr, (draft) => {
+        const tab = draft.find((tab) => tab.tabid == tabId);
+        tab.blockIds.push(blockId);
+    });
+    globalStore.set(atoms.tabsAtom, newTabArr);
+}
+
+function removeBlock(blockId: string) {
+    blockDataMap.delete(blockId);
+    blockAtomCache.delete(blockId);
+}
+
+function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom<T>): jotai.Atom<T> {
+    let blockCache = blockAtomCache.get(blockId);
+    if (blockCache == null) {
+        blockCache = new Map<string, jotai.Atom<any>>();
+        blockAtomCache.set(blockId, blockCache);
+    }
+    let atom = blockCache.get(name);
+    if (atom == null) {
+        atom = makeFn();
+        blockCache.set(name, atom);
+    }
+    return atom as jotai.Atom<T>;
+}
+
+export { globalStore, atoms, getBlockSubject, addBlockIdToTab, blockDataMap, useBlockAtom };
