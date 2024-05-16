@@ -216,6 +216,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     submitChatMessage(messageStr: string) {
+        GlobalModel.sidebarchatModel.resetCmdAndOutput();
         const curLine = GlobalModel.inputModel.curLine;
         const prtn = GlobalModel.submitChatInfoCommand(messageStr, curLine, false);
         prtn.then((rtn) => {
