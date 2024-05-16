@@ -13,9 +13,11 @@ import (
 	"io"
 	"math"
 	mathrand "math/rand"
+	"mime"
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -616,9 +618,22 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 	}
 }
 
+// TODO more
+var StaticMimeTypeMap = map[string]string{
+	".md":   "text/markdown",
+	".json": "application/json",
+}
+
 // on error just returns ""
 // does not return "application/octet-stream" as this is considered a detection failure
 func DetectMimeType(path string) string {
+	ext := filepath.Ext(path)
+	if mimeType, ok := StaticMimeTypeMap[ext]; ok {
+		return mimeType
+	}
+	if mimeType := mime.TypeByExtension(ext); mimeType != "" {
+		return mimeType
+	}
 	fd, err := os.Open(path)
 	if err != nil {
 		return ""
@@ -672,4 +687,25 @@ func GetFirstLine(s string) string {
 		return s
 	}
 	return s[0:idx]
+}
+
+func JsonMapToStruct(m map[string]any, v interface{}) error {
+	barr, err := json.Marshal(m)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(barr, v)
+}
+
+func StructToJsonMap(v interface{}) (map[string]any, error) {
+	barr, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var m map[string]any
+	err = json.Unmarshal(barr, &m)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
 }

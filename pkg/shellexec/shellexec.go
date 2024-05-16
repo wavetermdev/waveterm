@@ -13,6 +13,7 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
+	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 )
 
 type TermSize struct {
@@ -37,7 +38,11 @@ func StartShellProc(termSize TermSize) (*ShellProc, error) {
 	shellPath := shellutil.DetectLocalShellPath()
 	ecmd := exec.Command(shellPath, "-i", "-l")
 	ecmd.Env = os.Environ()
-	shellutil.UpdateCmdEnv(ecmd, shellutil.WaveshellEnvVars(shellutil.DefaultTermType))
+	envToAdd := shellutil.WaveshellEnvVars(shellutil.DefaultTermType)
+	if os.Getenv("LANG") == "" {
+		envToAdd["LANG"] = wavebase.DetermineLang()
+	}
+	shellutil.UpdateCmdEnv(ecmd, envToAdd)
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
 		return nil, fmt.Errorf("opening new pty: %w", err)

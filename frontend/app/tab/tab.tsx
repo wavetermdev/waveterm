@@ -19,7 +19,7 @@ const TabContent = ({ tabId }: { tabId: string }) => {
             {tabData.blockIds.map((blockId: string) => {
                 return (
                     <div key={blockId} className="block-container">
-                        <Block blockId={blockId} />
+                        <Block tabId={tabId} blockId={blockId} />
                     </div>
                 );
             })}

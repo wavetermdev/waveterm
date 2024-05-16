@@ -1,0 +1,76 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.workspace {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    flex-grow: 1;
+    overflow: hidden;
+
+    .workspace-tabcontent {
+        display: flex;
+        flex-direction: row;
+        flex-grow: 1;
+        overflow: hidden;
+    }
+
+    .workspace-widgets {
+        display: flex;
+        flex-direction: column;
+        width: 40px;
+        overflow: hidden;
+        background-color: var(--panel-bg-color);
+        border-left: 1px solid var(--border-color);
+
+        .widget {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 10px 2px 10px 0;
+            color: var(--secondary-text-color);
+            font-size: 20px;
+            &:hover:not(.no-hover) {
+                background-color: var(--highlight-bg-color);
+                cursor: pointer;
+                color: white;
+            }
+        }
+    }
+}
+
+.tab-bar {
+    display: flex;
+    flex-direction: row;
+    height: 35px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+
+    .tab {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100px;
+        height: 100%;
+        border-right: 1px solid var(--border-color);
+        cursor: pointer;
+        &.active {
+            background-color: var(--highlight-bg-color);
+        }
+    }
+
+    .tab-add {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 40px;
+        height: 100%;
+        cursor: pointer;
+        border-left: 1px solid transparent;
+        &:hover {
+            border-left: 1px solid white;
+            background-color: var(--highlight-bg-color);
+        }
+    }
+}

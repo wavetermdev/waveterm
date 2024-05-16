@@ -63,6 +63,18 @@ func emitEventToWindow(event WindowEvent) {
 	}
 }
 
+func emitEventToAllWindows(event *application.WailsEvent) {
+	globalLock.Lock()
+	wins := make([]*application.WebviewWindow, 0, len(wailsWindowMap))
+	for _, window := range wailsWindowMap {
+		wins = append(wins, window)
+	}
+	globalLock.Unlock()
+	for _, window := range wins {
+		window.DispatchWailsEvent(event)
+	}
+}
+
 func SendEvent(event application.WailsEvent) {
 	EventCh <- event
 }
@@ -107,10 +119,7 @@ func processEvents() {
 	for {
 		select {
 		case event := <-EventCh:
-			// no lock needed for wailsApp since it is never updated
-			if wailsApp != nil {
-				wailsApp.Events.Emit(&event)
-			}
+			emitEventToAllWindows(&event)
 		case windowEvent := <-WindowEventCh:
 			emitEventToWindow(windowEvent)
 

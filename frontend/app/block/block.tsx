@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as jotai from "jotai";
-import { atoms } from "@/store/global";
+import { atoms, blockDataMap, removeBlockFromTab } from "@/store/global";
 
 import { TerminalView } from "@/app/view/term";
 import { PreviewView } from "@/app/view/preview";
@@ -12,9 +12,14 @@ import { CenteredLoadingDiv } from "@/element/quickelems";
 
 import "./block.less";
 
-const Block = ({ blockId }: { blockId: string }) => {
+const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
     const blockRef = React.useRef<HTMLDivElement>(null);
     const [dims, setDims] = React.useState({ width: 0, height: 0 });
+
+    function handleClose() {
+        removeBlockFromTab(tabId, blockId);
+    }
+
     React.useEffect(() => {
         if (!blockRef.current) {
             return;
@@ -27,7 +32,7 @@ const Block = ({ blockId }: { blockId: string }) => {
         }
     }, [blockRef.current]);
     let blockElem: JSX.Element = null;
-    const blockAtom = atoms.blockAtomFamily(blockId);
+    const blockAtom = blockDataMap.get(blockId);
     const blockData = jotai.useAtomValue(blockAtom);
     if (blockData.view === "term") {
         blockElem = <TerminalView blockId={blockId} />;
@@ -39,8 +44,12 @@ const Block = ({ blockId }: { blockId: string }) => {
     return (
         <div className="block" ref={blockRef}>
             <div key="header" className="block-header">
-                <div className="text-fixed">
+                <div className="block-header-text text-fixed">
                     Block [{blockId.substring(0, 8)}] {dims.width}x{dims.height}
+                </div>
+                <div className="flex-spacer" />
+                <div className="close-button" onClick={() => handleClose()}>
+                    <i className="fa fa-solid fa-xmark-large" />
                 </div>
             </div>
             <div key="content" className="block-content">

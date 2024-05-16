@@ -3,33 +3,16 @@
 
 import * as React from "react";
 import * as jotai from "jotai";
-import { atoms } from "@/store/global";
+import { atoms, blockDataMap, useBlockAtom } from "@/store/global";
 import { Markdown } from "@/element/markdown";
 import * as FileService from "@/bindings/pkg/service/fileservice/FileService";
 import * as util from "@/util/util";
+import { loadable } from "jotai/utils";
 
 import "./view.less";
 
-const markdownText = `
-# Markdown Preview
-
-* list item 1
-* list item 2
-* item 3
-
-\`\`\`
-let foo = "bar";
-console.log(foo);
-\`\`\`
-`;
-
-const readmeAtom = jotai.atom(async () => {
-    const readme = await FileService.ReadFile("README.md");
-    return util.base64ToString(readme);
-});
-
-const MarkdownPreview = ({ blockData }: { blockData: BlockData }) => {
-    const readmeText = jotai.useAtomValue(readmeAtom);
+const MarkdownPreview = ({ contentAtom }: { contentAtom: jotai.Atom<Promise<string>> }) => {
+    const readmeText = jotai.useAtomValue(contentAtom);
     return (
         <div className="view-preview view-preview-markdown">
             <Markdown text={readmeText} />
@@ -37,14 +20,54 @@ const MarkdownPreview = ({ blockData }: { blockData: BlockData }) => {
     );
 };
 
+let counter = 0;
+
 const PreviewView = ({ blockId }: { blockId: string }) => {
-    const blockData: BlockData = jotai.useAtomValue(atoms.blockAtomFamily(blockId));
-    if (blockData.meta?.mimetype === "text/markdown") {
-        return <MarkdownPreview blockData={blockData} />;
+    const blockDataAtom: jotai.Atom<BlockData> = blockDataMap.get(blockId);
+    const fileNameAtom = useBlockAtom(blockId, "preview:filename", () =>
+        jotai.atom<string>((get) => {
+            return get(blockDataAtom)?.meta?.file;
+        })
+    );
+    const fullFileAtom = useBlockAtom(blockId, "preview:fullfile", () =>
+        jotai.atom<Promise<FullFile>>(async (get) => {
+            const fileName = get(fileNameAtom);
+            if (fileName == null) {
+                return null;
+            }
+            const file = await FileService.ReadFile(fileName);
+            return file;
+        })
+    );
+    const fileMimeTypeAtom = useBlockAtom(blockId, "preview:mimetype", () =>
+        jotai.atom<Promise<string>>(async (get) => {
+            const fullFile = await get(fullFileAtom);
+            return fullFile?.info?.mimetype;
+        })
+    );
+    const fileContentAtom = useBlockAtom(blockId, "preview:filecontent", () =>
+        jotai.atom<Promise<string>>(async (get) => {
+            const fullFile = await get(fullFileAtom);
+            return util.base64ToString(fullFile?.data64);
+        })
+    );
+    let mimeType = jotai.useAtomValue(fileMimeTypeAtom);
+    if (mimeType == null) {
+        mimeType = "";
+    }
+    if (mimeType === "text/markdown") {
+        return <MarkdownPreview contentAtom={fileContentAtom} />;
+    }
+    if (mimeType.startsWith("text/")) {
+        return (
+            <div className="view-preview view-preview-text">
+                <pre>{jotai.useAtomValue(fileContentAtom)}</pre>
+            </div>
+        );
     }
     return (
         <div className="view-preview">
-            <div>Preview</div>
+            <div>Preview ({mimeType})</div>
         </div>
     );
 };

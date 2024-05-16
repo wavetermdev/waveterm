@@ -14,17 +14,13 @@ import (
 const CommandKey = "command"
 
 const (
-	BlockCommand_Message  = "message"
-	BlockCommand_Run      = "run"
-	BlockCommand_Input    = "input"
-	BlockCommand_RunShell = "runshell"
+	BlockCommand_Message = "message"
+	BlockCommand_Input   = "controller:input"
 )
 
 var CommandToTypeMap = map[string]reflect.Type{
-	BlockCommand_Message:  reflect.TypeOf(MessageCommand{}),
-	BlockCommand_Run:      reflect.TypeOf(RunCommand{}),
-	BlockCommand_Input:    reflect.TypeOf(InputCommand{}),
-	BlockCommand_RunShell: reflect.TypeOf(RunShellCommand{}),
+	BlockCommand_Message: reflect.TypeOf(MessageCommand{}),
+	BlockCommand_Input:   reflect.TypeOf(InputCommand{}),
 }
 
 type BlockCommand interface {
@@ -61,16 +57,6 @@ func (mc *MessageCommand) GetCommand() string {
 	return BlockCommand_Message
 }
 
-type RunCommand struct {
-	Command  string             `json:"command"`
-	CmdStr   string             `json:"cmdstr"`
-	TermSize shellexec.TermSize `json:"termsize"`
-}
-
-func (rc *RunCommand) GetCommand() string {
-	return BlockCommand_Run
-}
-
 type InputCommand struct {
 	Command     string              `json:"command"`
 	InputData64 string              `json:"inputdata64"`
@@ -80,13 +66,4 @@ type InputCommand struct {
 
 func (ic *InputCommand) GetCommand() string {
 	return BlockCommand_Input
-}
-
-type RunShellCommand struct {
-	Command  string             `json:"command"`
-	TermSize shellexec.TermSize `json:"termsize"`
-}
-
-func (rsc *RunShellCommand) GetCommand() string {
-	return BlockCommand_RunShell
 }
