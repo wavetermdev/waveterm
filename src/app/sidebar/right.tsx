@@ -58,7 +58,7 @@ class KeybindDevPane extends React.Component<{}, {}> {
 
 @mobxReact.observer
 class RightSideBar extends React.Component<RightSideBarProps, {}> {
-    mode: OV<string> = mobx.observable.box(null, { name: "RightSideBar-mode" });
+    mode: OV<string> = mobx.observable.box("aichat", { name: "RightSideBar-mode" });
 
     setMode(mode: string) {
         mobx.action(() => {
@@ -114,7 +114,7 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                         <If condition={this.mode.get() == "wavebook"}>
                             <WaveBookDisplay></WaveBookDisplay>
                         </If>
-                        <If condition={this.mode.get() == "ai"}>
+                        <If condition={this.mode.get() == "aichat"}>
                             <ChatSidebar />
                         </If>
                     </React.Fragment>
