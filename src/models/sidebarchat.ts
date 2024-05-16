@@ -38,16 +38,11 @@ class SidebarChatModel {
         this.sidebarChatFocus[section] = focus;
     }
 
-    getFocus(section?: "input" | "block"): string | null {
+    getFocus(section?: "input" | "block"): boolean {
         if (section == null) {
-            if (this.sidebarChatFocus.input) {
-                return "input";
-            } else if (this.sidebarChatFocus.block) {
-                return "block";
-            }
-            return null;
+            return this.sidebarChatFocus.input || this.sidebarChatFocus.block;
         }
-        return this.sidebarChatFocus[section] ? section : null;
+        return this.sidebarChatFocus[section];
     }
 
     resetFocus(): void {
