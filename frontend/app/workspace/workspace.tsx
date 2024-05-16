@@ -102,7 +102,7 @@ function Workspace() {
         <div className="workspace">
             <TabBar />
             <div className="workspace-tabcontent">
-                <TabContent tabId={activeTabId} />
+                <TabContent key={activeTabId} tabId={activeTabId} />
                 <Widgets />
             </div>
         </div>

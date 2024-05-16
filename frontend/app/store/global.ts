@@ -87,4 +87,14 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
     return atom as jotai.Atom<T>;
 }
 
-export { globalStore, atoms, getBlockSubject, addBlockIdToTab, blockDataMap, useBlockAtom };
+function removeBlockFromTab(tabId: string, blockId: string) {
+    let tabArr = globalStore.get(atoms.tabsAtom);
+    const newTabArr = produce(tabArr, (draft) => {
+        const tab = draft.find((tab) => tab.tabid == tabId);
+        tab.blockIds = tab.blockIds.filter((id) => id !== blockId);
+    });
+    globalStore.set(atoms.tabsAtom, newTabArr);
+    removeBlock(blockId);
+}
+
+export { globalStore, atoms, getBlockSubject, addBlockIdToTab, blockDataMap, useBlockAtom, removeBlockFromTab };
