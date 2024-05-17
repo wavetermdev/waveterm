@@ -72,7 +72,10 @@ function Widgets() {
     }
 
     async function clickPlot() {
-        console.log("TODO plot");
+        const plotDef = {
+            view: "plot",
+        };
+        createBlock(plotDef);
     }
 
     return (
