@@ -259,20 +259,8 @@ func (bc *BlockController) Run(bdata *BlockData) {
 		}
 	}()
 
-	messageCount := 0
 	for genCmd := range bc.InputCh {
 		switch cmd := genCmd.(type) {
-		case *MessageCommand:
-			fmt.Printf("MESSAGE: %s | %q\n", bc.BlockId, cmd.Message)
-			messageCount++
-			eventbus.SendEvent(application.WailsEvent{
-				Name: "block:ptydata",
-				Data: map[string]any{
-					"blockid":   bc.BlockId,
-					"blockfile": "main",
-					"ptydata":   base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("message %d\r\n", messageCount))),
-				},
-			})
 		case *InputCommand:
 			fmt.Printf("INPUT: %s | %q\n", bc.BlockId, cmd.InputData64)
 			if bc.ShellInputCh != nil {
@@ -316,4 +304,33 @@ func GetBlockController(blockId string) *BlockController {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	return blockControllerMap[blockId]
+}
+
+func ProcessStaticCommand(blockId string, cmdGen BlockCommand) {
+	switch cmd := cmdGen.(type) {
+	case *MessageCommand:
+		log.Printf("MESSAGE: %s | %q\n", blockId, cmd.Message)
+	case *SetViewCommand:
+		log.Printf("SETVIEW: %s | %q\n", blockId, cmd.View)
+		block := GetBlockData(blockId)
+		if block != nil {
+			block.WithLock(func() {
+				block.View = cmd.View
+			})
+		}
+	case *SetMetaCommand:
+		log.Printf("SETMETA: %s | %v\n", blockId, cmd.Meta)
+		block := GetBlockData(blockId)
+		if block != nil {
+			block.WithLock(func() {
+				for k, v := range cmd.Meta {
+					if v == nil {
+						delete(block.Meta, k)
+						continue
+					}
+					block.Meta[k] = v
+				}
+			})
+		}
+	}
 }

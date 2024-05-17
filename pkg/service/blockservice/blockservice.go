@@ -5,6 +5,7 @@ package blockservice
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
@@ -52,14 +53,18 @@ func (bs *BlockService) GetBlockData(blockId string) (map[string]any, error) {
 }
 
 func (bs *BlockService) SendCommand(blockId string, cmdMap map[string]any) error {
-	bc := blockcontroller.GetBlockController(blockId)
-	if bc == nil {
-		return fmt.Errorf("block controller not found for block %q", blockId)
-	}
 	cmd, err := blockcontroller.ParseCmdMap(cmdMap)
 	if err != nil {
 		return fmt.Errorf("error parsing command map: %w", err)
 	}
-	bc.InputCh <- cmd
+	if strings.HasPrefix(cmd.GetCommand(), "controller:") {
+		bc := blockcontroller.GetBlockController(blockId)
+		if bc == nil {
+			return fmt.Errorf("block controller not found for block %q", blockId)
+		}
+		bc.InputCh <- cmd
+	} else {
+		blockcontroller.ProcessStaticCommand(blockId, cmd)
+	}
 	return nil
 }

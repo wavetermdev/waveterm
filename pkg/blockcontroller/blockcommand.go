@@ -15,12 +15,16 @@ const CommandKey = "command"
 
 const (
 	BlockCommand_Message = "message"
+	BlockCommand_SetView = "setview"
+	BlockCommand_SetMeta = "setmeta"
 	BlockCommand_Input   = "controller:input"
 )
 
 var CommandToTypeMap = map[string]reflect.Type{
 	BlockCommand_Message: reflect.TypeOf(MessageCommand{}),
 	BlockCommand_Input:   reflect.TypeOf(InputCommand{}),
+	BlockCommand_SetView: reflect.TypeOf(SetViewCommand{}),
+	BlockCommand_SetMeta: reflect.TypeOf(SetMetaCommand{}),
 }
 
 type BlockCommand interface {
@@ -66,4 +70,22 @@ type InputCommand struct {
 
 func (ic *InputCommand) GetCommand() string {
 	return BlockCommand_Input
+}
+
+type SetViewCommand struct {
+	Command string `json:"command"`
+	View    string `json:"view"`
+}
+
+func (svc *SetViewCommand) GetCommand() string {
+	return BlockCommand_SetView
+}
+
+type SetMetaCommand struct {
+	Command string         `json:"command"`
+	Meta    map[string]any `json:"meta"`
+}
+
+func (smc *SetMetaCommand) GetCommand() string {
+	return BlockCommand_SetMeta
 }

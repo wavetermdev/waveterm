@@ -19,9 +19,6 @@ const MarkdownPreview = ({ contentAtom }: { contentAtom: jotai.Atom<Promise<stri
         </div>
     );
 };
-
-let counter = 0;
-
 const PreviewView = ({ blockId }: { blockId: string }) => {
     const blockDataAtom: jotai.Atom<BlockData> = blockDataMap.get(blockId);
     const fileNameAtom = useBlockAtom(blockId, "preview:filename", () =>
