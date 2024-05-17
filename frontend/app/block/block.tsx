@@ -8,7 +8,7 @@ import { atoms, blockDataMap, removeBlockFromTab } from "@/store/global";
 import { TerminalView } from "@/app/view/term";
 import { PreviewView } from "@/app/view/preview";
 import { PlotView } from "@/app/view/plotview";
-import { CenteredLoadingDiv } from "@/element/quickelems";
+import { CenteredDiv } from "@/element/quickelems";
 
 import "./block.less";
 
@@ -53,7 +53,7 @@ const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
                 </div>
             </div>
             <div key="content" className="block-content">
-                <React.Suspense fallback={<CenteredLoadingDiv />}>{blockElem}</React.Suspense>
+                <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{blockElem}</React.Suspense>
             </div>
         </div>
     );

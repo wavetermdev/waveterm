@@ -8,6 +8,8 @@ package main
 import (
 	"embed"
 	"log"
+	"net/http"
+	"strings"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockstore"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
@@ -61,6 +63,28 @@ func createWindow(app *application.App) {
 	})
 }
 
+type waveAssetHandler struct {
+	AssetHandler http.Handler
+}
+
+func serveWaveUrls(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/wave/stream-file" {
+		fileName := r.URL.Query().Get("path")
+		fileName = wavebase.ExpandHomeDir(fileName)
+		http.ServeFile(w, r, fileName)
+		return
+	}
+	http.NotFound(w, r)
+}
+
+func (wah waveAssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/wave/") {
+		serveWaveUrls(w, r)
+		return
+	}
+	wah.AssetHandler.ServeHTTP(w, r)
+}
+
 func main() {
 	err := wavebase.EnsureWaveHomeDir()
 	if err != nil {
@@ -83,7 +107,7 @@ func main() {
 		},
 		Icon: appIcon,
 		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
+			Handler: waveAssetHandler{AssetHandler: application.AssetFileServerFS(assets)},
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,

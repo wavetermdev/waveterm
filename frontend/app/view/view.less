@@ -51,4 +51,16 @@
             font: var(--fixed-font);
         }
     }
+
+    &.view-preview-image,
+    &.view-preview-video,
+    &.view-preview-audio {
+        video,
+        audio,
+        img {
+            width: 100%;
+            padding: 10px;
+            object-fit: contain;
+        }
+    }
 }

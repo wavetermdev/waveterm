@@ -89,6 +89,9 @@ function Widgets() {
             <div className="widget" onClick={() => clickPreview("go.mod")}>
                 <i className="fa fa-solid fa-files fa-fw" />
             </div>
+            <div className="widget" onClick={() => clickPreview("build/appicon.png")}>
+                <i className="fa fa-solid fa-files fa-fw" />
+            </div>
             <div className="widget" onClick={() => clickPlot()}>
                 <i className="fa fa-solid fa-chart-simple fa-fw" />
             </div>

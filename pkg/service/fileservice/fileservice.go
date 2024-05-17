@@ -13,6 +13,8 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 )
 
+const MaxFileSize = 10 * 1024 * 1024 // 10M
+
 type FileService struct{}
 
 type FileInfo struct {
@@ -57,6 +59,9 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 	}
 	if finfo.NotFound {
 		return &FullFile{Info: finfo}, nil
+	}
+	if finfo.Size > MaxFileSize {
+		return nil, fmt.Errorf("file %q is too large to read, use /wave/stream-file", path)
 	}
 	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
 	barr, err := os.ReadFile(cleanedPath)
