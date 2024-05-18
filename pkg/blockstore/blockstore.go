@@ -89,6 +89,25 @@ func (s *BlockStore) MakeFile(ctx context.Context, blockId string, name string, 
 			opts.MaxSize = (opts.MaxSize/partDataSize + 1) * partDataSize
 		}
 	}
+	var cacheErr error
+	s.withLock(blockId, name, false, func(entry *CacheEntry) {
+		if entry == nil {
+			return
+		}
+		if !entry.Deleted {
+			cacheErr = fmt.Errorf("file exists")
+			return
+		}
+		// deleted is set.  check intentions
+		if entry.PinCount == 0 && len(entry.WriteIntentions) == 0 {
+			delete(s.Cache, cacheKey{BlockId: blockId, Name: name})
+			return
+		}
+		cacheErr = fmt.Errorf("file is deleted but has active requests")
+	})
+	if cacheErr != nil {
+		return cacheErr
+	}
 	now := time.Now().UnixMilli()
 	file := &BlockFile{
 		BlockId:   blockId,
@@ -111,7 +130,12 @@ func (s *BlockStore) DeleteFile(ctx context.Context, blockId string, name string
 		if entry == nil {
 			return
 		}
-		entry.Deleted = true
+		if entry.PinCount > 0 || len(entry.WriteIntentions) > 0 {
+			// mark as deleted if we have a active requests
+			entry.Deleted = true
+		} else {
+			delete(s.Cache, cacheKey{BlockId: blockId, Name: name})
+		}
 	})
 	return nil
 }
@@ -340,6 +364,28 @@ func (s *BlockStore) AppendData(ctx context.Context, blockId string, name string
 
 func (s *BlockStore) GetAllBlockIds(ctx context.Context) ([]string, error) {
 	return dbGetAllBlockIds(ctx)
+}
+
+// returns a map of partIdx to amount of data to write to that part
+func (file *BlockFile) computePartMap(startOffset int64, size int64) map[int]int {
+	partMap := make(map[int]int)
+	endOffset := startOffset + size
+	startBlockOffset := startOffset - (startOffset % partDataSize)
+	for testOffset := startBlockOffset; testOffset < endOffset; testOffset += partDataSize {
+		partIdx := file.partIdxAtOffset(testOffset)
+		partStartOffset := testOffset
+		partEndOffset := testOffset + partDataSize
+		partWriteStartOffset := 0
+		partWriteEndOffset := int(partDataSize)
+		if startOffset > partStartOffset && startOffset < partEndOffset {
+			partWriteStartOffset = int(startOffset - partStartOffset)
+		}
+		if endOffset > partStartOffset && endOffset < partEndOffset {
+			partWriteEndOffset = int(endOffset - partStartOffset)
+		}
+		partMap[partIdx] = partWriteEndOffset - partWriteStartOffset
+	}
+	return partMap
 }
 
 func (s *BlockStore) WriteAt(ctx context.Context, blockId string, name string, offset int64, data []byte) error {

@@ -6,6 +6,7 @@ package blockstore
 import (
 	"bytes"
 	"context"
+	"log"
 	"testing"
 	"time"
 
@@ -76,6 +77,74 @@ func TestCreate(t *testing.T) {
 	if file.Opts.Circular || file.Opts.IJson || file.Opts.MaxSize != 0 {
 		t.Fatalf("opts not empty")
 	}
+	err = GBS.DeleteFile(ctx, blockId, "testfile")
+	if err != nil {
+		t.Fatalf("error deleting file: %v", err)
+	}
+}
+
+func containsFile(arr []*BlockFile, name string) bool {
+	for _, f := range arr {
+		if f.Name == name {
+			return true
+		}
+	}
+	return false
+}
+
+func TestDelete(t *testing.T) {
+	initDb(t)
+	defer cleanupDb(t)
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	blockId := uuid.New().String()
+	err := GBS.MakeFile(ctx, blockId, "testfile", nil, FileOptsType{})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	err = GBS.DeleteFile(ctx, blockId, "testfile")
+	if err != nil {
+		t.Fatalf("error deleting file: %v", err)
+	}
+	file, err := GBS.Stat(ctx, blockId, "testfile")
+	if err != nil {
+		t.Fatalf("error stating file: %v", err)
+	}
+	if file != nil {
+		t.Fatalf("file should not be found")
+	}
+
+	// create two files in same block, use DeleteBlock to delete
+	err = GBS.MakeFile(ctx, blockId, "testfile1", nil, FileOptsType{})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	err = GBS.MakeFile(ctx, blockId, "testfile2", nil, FileOptsType{})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	files, err := GBS.ListFiles(ctx, blockId)
+	if err != nil {
+		t.Fatalf("error listing files: %v", err)
+	}
+	if len(files) != 2 {
+		t.Fatalf("file count mismatch")
+	}
+	if !containsFile(files, "testfile1") || !containsFile(files, "testfile2") {
+		t.Fatalf("file names mismatch")
+	}
+	err = GBS.DeleteBlock(ctx, blockId)
+	if err != nil {
+		t.Fatalf("error deleting block: %v", err)
+	}
+	files, err = GBS.ListFiles(ctx, blockId)
+	if err != nil {
+		t.Fatalf("error listing files: %v", err)
+	}
+	if len(files) != 0 {
+		t.Fatalf("file count mismatch")
+	}
 }
 
 func checkMapsEqual(t *testing.T, m1 map[string]any, m2 map[string]any, msg string) {
@@ -130,6 +199,12 @@ func TestSetMeta(t *testing.T) {
 		t.Fatalf("file not found")
 	}
 	checkMapsEqual(t, map[string]any{"a": 6, "b": "hello", "c": "world", "d": 7}, file.Meta, "meta")
+
+	err = GBS.WriteMeta(ctx, blockId, "testfile-notexist", map[string]any{"a": 6}, true)
+	if err == nil {
+		t.Fatalf("expected error setting meta")
+	}
+	err = nil
 }
 
 func checkFileSize(t *testing.T, ctx context.Context, blockId string, name string, size int64) {
@@ -235,4 +310,48 @@ func TestMultiPart(t *testing.T) {
 	checkFileSize(t, ctx, blockId, fileName, 80)
 	checkFileDataAt(t, ctx, blockId, fileName, 49, "world")
 	checkFileDataAt(t, ctx, blockId, fileName, 48, "8world4")
+}
+
+func testIntMapsEq(t *testing.T, msg string, m map[int]int, expected map[int]int) {
+	if len(m) != len(expected) {
+		t.Errorf("%s: map length mismatch got:%d expected:%d", msg, len(m), len(expected))
+		return
+	}
+	for k, v := range m {
+		if expected[k] != v {
+			t.Errorf("%s: value mismatch for key %d, got:%d expected:%d", msg, k, v, expected[k])
+		}
+	}
+}
+
+func TestComputePartMap(t *testing.T) {
+	partDataSize = 100
+	defer func() {
+		partDataSize = DefaultPartDataSize
+	}()
+	file := &BlockFile{}
+	m := file.computePartMap(0, 250)
+	testIntMapsEq(t, "map1", m, map[int]int{0: 100, 1: 100, 2: 50})
+	m = file.computePartMap(110, 40)
+	log.Printf("map2:%#v\n", m)
+	testIntMapsEq(t, "map2", m, map[int]int{1: 40})
+	m = file.computePartMap(110, 90)
+	testIntMapsEq(t, "map3", m, map[int]int{1: 90})
+	m = file.computePartMap(110, 91)
+	testIntMapsEq(t, "map4", m, map[int]int{1: 90, 2: 1})
+	m = file.computePartMap(820, 340)
+	testIntMapsEq(t, "map5", m, map[int]int{8: 80, 9: 100, 10: 100, 11: 60})
+
+	// now test circular
+	file = &BlockFile{Opts: FileOptsType{Circular: true, MaxSize: 1000}}
+	m = file.computePartMap(10, 250)
+	testIntMapsEq(t, "map6", m, map[int]int{0: 90, 1: 100, 2: 60})
+	m = file.computePartMap(990, 40)
+	testIntMapsEq(t, "map7", m, map[int]int{9: 10, 0: 30})
+	m = file.computePartMap(990, 130)
+	testIntMapsEq(t, "map8", m, map[int]int{9: 10, 0: 100, 1: 20})
+	m = file.computePartMap(5, 1105)
+	testIntMapsEq(t, "map9", m, map[int]int{0: 100, 1: 10, 2: 100, 3: 100, 4: 100, 5: 100, 6: 100, 7: 100, 8: 100, 9: 100})
+	m = file.computePartMap(2005, 1105)
+	testIntMapsEq(t, "map9", m, map[int]int{0: 100, 1: 10, 2: 100, 3: 100, 4: 100, 5: 100, 6: 100, 7: 100, 8: 100, 9: 100})
 }

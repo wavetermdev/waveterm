@@ -28,6 +28,11 @@ type FileCacheEntry struct {
 	File  BlockFile
 }
 
+type WriteIntention struct {
+	Parts  map[int]bool
+	Append bool
+}
+
 // invariants:
 // - we only modify CacheEntry fields when we are holding the BlockStore lock
 // - FileEntry can be nil, if pinned
@@ -36,18 +41,20 @@ type FileCacheEntry struct {
 // - when pinned, the cache entry is never removed
 // this allows us to flush the cache entry to disk without holding the lock
 type CacheEntry struct {
-	BlockId     string
-	Name        string
-	Version     int
-	PinCount    int
-	Deleted     bool
-	FileEntry   *FileCacheEntry
-	DataEntries []*DataCacheEntry
+	BlockId         string
+	Name            string
+	Version         int
+	PinCount        int
+	Deleted         bool
+	WriteIntentions map[string]*WriteIntention // map from intentionid -> WriteIntention
+	FileEntry       *FileCacheEntry
+	DataEntries     []*DataCacheEntry
 }
 
+//lint:ignore U1000 used for testing
 func (e *CacheEntry) dump() string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "CacheEntry{\nBlockId: %q, Name: %q, Version: %d, PinCount: %d, Deleted: %v\n", e.BlockId, e.Name, e.Version, e.PinCount, e.Deleted)
+	fmt.Fprintf(&buf, "CacheEntry{\nBlockId: %q, Name: %q, Version: %d, PinCount: %d, Deleted: %v, IW: %v\n", e.BlockId, e.Name, e.Version, e.PinCount, e.Deleted, e.WriteIntentions)
 	if e.FileEntry != nil {
 		fmt.Fprintf(&buf, "FileEntry: %v\n", e.FileEntry.File)
 	}
@@ -60,6 +67,7 @@ func (e *CacheEntry) dump() string {
 	return buf.String()
 }
 
+//lint:ignore U1000 used for testing
 func (s *BlockStore) dump() string {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
@@ -153,19 +161,24 @@ type BlockStore struct {
 	Cache map[cacheKey]*CacheEntry
 }
 
+func makeCacheEntry(blockId string, name string) *CacheEntry {
+	return &CacheEntry{
+		BlockId:         blockId,
+		Name:            name,
+		PinCount:        0,
+		WriteIntentions: make(map[string]*WriteIntention),
+		FileEntry:       nil,
+		DataEntries:     nil,
+	}
+}
+
 func (s *BlockStore) withLock(blockId string, name string, shouldCreate bool, f func(*CacheEntry)) {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
 	if entry == nil {
 		if shouldCreate {
-			entry = &CacheEntry{
-				BlockId:     blockId,
-				Name:        name,
-				PinCount:    0,
-				FileEntry:   nil,
-				DataEntries: nil,
-			}
+			entry = makeCacheEntry(blockId, name)
 			s.Cache[cacheKey{BlockId: blockId, Name: name}] = entry
 		}
 	}
@@ -187,13 +200,7 @@ func (s *BlockStore) pinCacheEntry(blockId string, name string) {
 	defer s.Lock.Unlock()
 	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
 	if entry == nil {
-		entry = &CacheEntry{
-			BlockId:     blockId,
-			Name:        name,
-			PinCount:    0,
-			FileEntry:   nil,
-			DataEntries: nil,
-		}
+		entry = makeCacheEntry(blockId, name)
 		s.Cache[cacheKey{BlockId: blockId, Name: name}] = entry
 	}
 	entry.PinCount++
@@ -210,17 +217,22 @@ func (s *BlockStore) unpinCacheEntry(blockId string, name string) {
 	entry.PinCount--
 }
 
-func (s *BlockStore) tryDeleteCacheEntry(blockId string, name string) {
+// returns true if the entry was deleted (or there is no cache entry)
+func (s *BlockStore) tryDeleteCacheEntry(blockId string, name string) bool {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
 	if entry == nil {
-		return
+		return true
 	}
 	if entry.PinCount > 0 {
-		return
+		return false
+	}
+	if len(entry.WriteIntentions) > 0 {
+		return false
 	}
 	delete(s.Cache, cacheKey{BlockId: blockId, Name: name})
+	return true
 }
 
 // getFileFromCache returns the file from the cache if it exists
