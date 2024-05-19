@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -256,6 +257,23 @@ func checkFileData(t *testing.T, ctx context.Context, blockId string, name strin
 	}
 	if string(rdata) != data {
 		t.Errorf("data mismatch for file %q: expected %q, got %q", name, data, string(rdata))
+	}
+}
+
+func checkFileByteCount(t *testing.T, ctx context.Context, blockId string, name string, val byte, expected int) {
+	_, rdata, err := GBS.ReadFile(ctx, blockId, name)
+	if err != nil {
+		t.Errorf("error reading data for file %q: %v", name, err)
+		return
+	}
+	var count int
+	for _, b := range rdata {
+		if b == val {
+			count++
+		}
+	}
+	if count != expected {
+		t.Errorf("byte count mismatch for file %q: expected %d, got %d", name, expected, count)
 	}
 }
 
@@ -536,4 +554,47 @@ func TestSimpleDBFlush(t *testing.T) {
 	}
 	checkFileDataAt(t, ctx, blockId, fileName, 6, "world!")
 	checkFileSize(t, ctx, blockId, fileName, 12)
+	checkFileByteCount(t, ctx, blockId, fileName, 'l', 3)
+}
+
+func TestConcurrentAppend(t *testing.T) {
+	initDb(t)
+	defer cleanupDb(t)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	blockId := uuid.New().String()
+	fileName := "t1"
+	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			const hexChars = "0123456789abcdef"
+			ch := hexChars[n]
+			for j := 0; j < 100; j++ {
+				err := GBS.AppendData(ctx, blockId, fileName, []byte{ch})
+				if err != nil {
+					t.Errorf("error appending data (%d): %v", n, err)
+				}
+				if j == 50 {
+					err = GBS.FlushCache(ctx)
+					if err != nil {
+						t.Errorf("error flushing cache: %v", err)
+					}
+				}
+			}
+		}(i)
+	}
+	wg.Wait()
+	checkFileSize(t, ctx, blockId, fileName, 1600)
+	checkFileByteCount(t, ctx, blockId, fileName, 'a', 100)
+	checkFileByteCount(t, ctx, blockId, fileName, 'e', 100)
+	GBS.FlushCache(ctx)
+	checkFileSize(t, ctx, blockId, fileName, 1600)
+	checkFileByteCount(t, ctx, blockId, fileName, 'a', 100)
+	checkFileByteCount(t, ctx, blockId, fileName, 'e', 100)
 }

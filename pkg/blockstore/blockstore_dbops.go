@@ -61,6 +61,7 @@ func dbGetFileParts(ctx context.Context, blockId string, name string, parts []in
 		rtn := make(map[int]*DataCacheEntry)
 		for _, d := range data {
 			d.Dirty = &atomic.Bool{}
+			d.Flushing = &atomic.Bool{}
 			if cap(d.Data) != int(partDataSize) {
 				newData := make([]byte, len(d.Data), partDataSize)
 				copy(newData, d.Data)

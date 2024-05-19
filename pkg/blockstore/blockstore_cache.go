@@ -321,6 +321,7 @@ func (s *BlockStore) getDirtyDataEntriesForFlush(blockId string, name string) (*
 	for _, data := range dirtyData {
 		data.Flushing.Store(true)
 	}
+	entry.FileEntry.Flushing.Store(true)
 	return entry.FileEntry, dirtyData
 }
 
