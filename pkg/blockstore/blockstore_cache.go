@@ -10,6 +10,7 @@ import (
 	"log"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type cacheKey struct {
@@ -51,6 +52,7 @@ type WriteIntention struct {
 // - DataCacheEntry items are never updated in place, the entire DataCacheEntry is replaced
 // - when pinned, the cache entry is never removed
 // this allows us to flush the cache entry to disk without holding the lock
+// if there is a dirty data entry, then FileEntry must also be dirty
 type CacheEntry struct {
 	BlockId         string
 	Name            string
@@ -58,7 +60,7 @@ type CacheEntry struct {
 	Deleted         bool
 	WriteIntentions map[int]WriteIntention // map from intentionid -> WriteIntention
 	FileEntry       *FileCacheEntry
-	DataEntries     []*DataCacheEntry
+	DataEntries     map[int]*DataCacheEntry
 }
 
 //lint:ignore U1000 used for testing
@@ -68,10 +70,8 @@ func (e *CacheEntry) dump() string {
 	if e.FileEntry != nil {
 		fmt.Fprintf(&buf, "FileEntry: %v\n", e.FileEntry.File)
 	}
-	for i, dce := range e.DataEntries {
-		if dce != nil {
-			fmt.Fprintf(&buf, "DataEntry[%d][%v]: %q\n", i, dce.Dirty.Load(), string(dce.Data))
-		}
+	for idx, dce := range e.DataEntries {
+		fmt.Fprintf(&buf, "DataEntry[%d][%v]: %q\n", idx, dce.Dirty.Load(), string(dce.Data))
 	}
 	buf.WriteString("}\n")
 	return buf.String()
@@ -114,11 +114,8 @@ func (s *BlockStore) clearCache() {
 	s.Cache = make(map[cacheKey]*CacheEntry)
 }
 
-func (e *CacheEntry) ensurePart(partIdx int, create bool) *DataCacheEntry {
-	for len(e.DataEntries) <= partIdx {
-		e.DataEntries = append(e.DataEntries, nil)
-	}
-	if create && e.DataEntries[partIdx] == nil {
+func (e *CacheEntry) getOrCreateDataCacheEntry(partIdx int) *DataCacheEntry {
+	if e.DataEntries[partIdx] == nil {
 		e.DataEntries[partIdx] = makeDataCacheEntry(partIdx)
 	}
 	return e.DataEntries[partIdx]
@@ -151,8 +148,9 @@ func (dce *DataCacheEntry) writeToPart(offset int64, data []byte) (int64, *DataC
 }
 
 func (entry *CacheEntry) writeAt(offset int64, data []byte, replace bool) {
+	endWriteOffset := offset + int64(len(data))
 	if replace {
-		entry.DataEntries = nil
+		entry.DataEntries = make(map[int]*DataCacheEntry)
 	}
 	for len(data) > 0 {
 		partIdx := int(offset / partDataSize)
@@ -161,12 +159,17 @@ func (entry *CacheEntry) writeAt(offset int64, data []byte, replace bool) {
 			partIdx = partIdx % maxPart
 		}
 		partOffset := offset % partDataSize
-		partData := entry.ensurePart(partIdx, true)
+		partData := entry.getOrCreateDataCacheEntry(partIdx)
 		nw, newDce := partData.writeToPart(partOffset, data)
 		entry.DataEntries[partIdx] = newDce
 		data = data[nw:]
 		offset += nw
 	}
+	entry.modifyFileData(func(file *BlockFile) {
+		if endWriteOffset > file.Size || replace {
+			file.Size = endWriteOffset
+		}
+	})
 }
 
 type BlockStore struct {
@@ -182,7 +185,7 @@ func makeCacheEntry(blockId string, name string) *CacheEntry {
 		PinCount:        0,
 		WriteIntentions: make(map[int]WriteIntention),
 		FileEntry:       nil,
-		DataEntries:     nil,
+		DataEntries:     make(map[int]*DataCacheEntry),
 	}
 }
 
@@ -238,6 +241,7 @@ func (s *BlockStore) clearWriteIntention(blockId string, name string, intentionI
 	defer s.Lock.Unlock()
 	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
 	if entry == nil {
+		warningCount.Add(1)
 		log.Printf("warning: cannot find write intention to clear %q %q", blockId, name)
 		return
 	}
@@ -249,28 +253,11 @@ func (s *BlockStore) unpinCacheEntry(blockId string, name string) {
 	defer s.Lock.Unlock()
 	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
 	if entry == nil {
+		warningCount.Add(1)
 		log.Printf("warning: unpinning non-existent cache entry %q %q", blockId, name)
 		return
 	}
 	entry.PinCount--
-}
-
-// returns true if the entry was deleted (or there is no cache entry)
-func (s *BlockStore) tryDeleteCacheEntry(blockId string, name string) bool {
-	s.Lock.Lock()
-	defer s.Lock.Unlock()
-	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
-	if entry == nil {
-		return true
-	}
-	if entry.PinCount > 0 {
-		return false
-	}
-	if len(entry.WriteIntentions) > 0 {
-		return false
-	}
-	delete(s.Cache, cacheKey{BlockId: blockId, Name: name})
-	return true
 }
 
 // getFileFromCache returns the file from the cache if it exists
@@ -305,6 +292,7 @@ func (e *CacheEntry) modifyFileData(fn func(*BlockFile)) {
 	}
 	// always set to dirty (we're modifying it)
 	fileEntry.Dirty.Store(true)
+	fileEntry.File.ModTs = time.Now().UnixMilli()
 	fn(&fileEntry.File)
 }
 
@@ -335,7 +323,6 @@ func (s *BlockStore) getDirtyDataEntries(entry *CacheEntry) (*FileCacheEntry, []
 func (s *BlockStore) flushEntry(ctx context.Context, entry *CacheEntry) error {
 	fileEntry, dirtyData := s.getDirtyDataEntries(entry)
 	if fileEntry == nil && len(dirtyData) == 0 {
-		s.tryDeleteCacheEntry(entry.BlockId, entry.Name)
 		return nil
 	}
 	err := dbWriteCacheEntry(ctx, fileEntry, dirtyData)
@@ -343,4 +330,52 @@ func (s *BlockStore) flushEntry(ctx context.Context, entry *CacheEntry) error {
 		return err
 	}
 	return nil
+}
+
+func (entry *CacheEntry) isDataBlockPinned(partIdx int) bool {
+	if entry.FileEntry == nil {
+		warningCount.Add(1)
+		log.Printf("warning: checking pinned, but no FileEntry %q %q", entry.BlockId, entry.Name)
+		return false
+	}
+	lastIncomplete := entry.FileEntry.File.getLastIncompletePartNum()
+	for _, intention := range entry.WriteIntentions {
+		if intention.Append && partIdx == lastIncomplete {
+			return true
+		}
+		if intention.Parts[partIdx] > 0 {
+			return true
+		}
+		// note "replace" does not pin anything
+	}
+	return false
+}
+
+// removes clean data entries (if they aren't pinned)
+// and if the entire cache entry is not in use and is clean, removes the entry
+func (s *BlockStore) cleanCacheEntry(blockId string, name string) {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
+	if entry == nil {
+		return
+	}
+	var hasDirtyData bool
+	for _, dce := range entry.DataEntries {
+		if dce.Flushing.Load() || dce.Dirty.Load() || entry.isDataBlockPinned(dce.PartIdx) {
+			hasDirtyData = true
+			continue
+		}
+		delete(entry.DataEntries, dce.PartIdx)
+	}
+	if hasDirtyData || (entry.FileEntry != nil && entry.FileEntry.Dirty.Load()) {
+		return
+	}
+	if entry.PinCount > 0 {
+		return
+	}
+	if len(entry.WriteIntentions) > 0 {
+		return
+	}
+	delete(s.Cache, cacheKey{BlockId: blockId, Name: name})
 }

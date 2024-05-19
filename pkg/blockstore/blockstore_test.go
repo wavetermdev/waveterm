@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ func initDb(t *testing.T) {
 	t.Logf("initializing db for %q", t.Name())
 	useTestingDb = true
 	partDataSize = 50
+	warningCount = &atomic.Int32{}
 	stopFlush.Store(true)
 	err := InitBlockstore()
 	if err != nil {
@@ -34,6 +36,9 @@ func cleanupDb(t *testing.T) {
 	useTestingDb = false
 	partDataSize = DefaultPartDataSize
 	GBS.clearCache()
+	if warningCount.Load() > 0 {
+		t.Errorf("warning count: %d", warningCount.Load())
+	}
 }
 
 func TestCreate(t *testing.T) {

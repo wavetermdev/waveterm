@@ -10,6 +10,7 @@ package blockstore
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,6 +20,7 @@ const DefaultPartDataSize = 64 * 1024
 const DefaultFlushTime = 5 * time.Second
 const NoPartIdx = -1
 
+var warningCount = &atomic.Int32{}
 var partDataSize int64 = DefaultPartDataSize // overridden in tests
 var stopFlush = &atomic.Bool{}
 
@@ -311,9 +313,7 @@ func (s *BlockStore) loadDataParts(ctx context.Context, blockId string, name str
 	if err != nil {
 		return fmt.Errorf("error getting file part: %v", err)
 	}
-	maxPart := maxOfIntArr(parts)
 	return s.withLockExists(blockId, name, func(entry *CacheEntry) error {
-		entry.ensurePart(maxPart, false)
 		for partIdx, partData := range partDataMap {
 			if entry.DataEntries[partIdx] != nil {
 				// someone beat us to it
@@ -325,20 +325,9 @@ func (s *BlockStore) loadDataParts(ctx context.Context, blockId string, name str
 	})
 }
 
-func (entry *CacheEntry) writeAtToCache(offset int64, data []byte, replace bool) {
-	endWrite := offset + int64(len(data))
-	entry.writeAt(offset, data, replace)
-	entry.modifyFileData(func(file *BlockFile) {
-		if endWrite > file.Size || replace {
-			file.Size = endWrite
-		}
-		file.ModTs = time.Now().UnixMilli()
-	})
-}
-
 func (s *BlockStore) appendDataToCache(blockId string, name string, data []byte) error {
 	return s.withLockExists(blockId, name, func(entry *CacheEntry) error {
-		entry.writeAtToCache(entry.FileEntry.File.Size, data, false)
+		entry.writeAt(entry.FileEntry.File.Size, data, false)
 		return nil
 	})
 }
@@ -409,7 +398,7 @@ func (s *BlockStore) WriteFile(ctx context.Context, blockId string, name string,
 		return fmt.Errorf("error loading file info: %v", err)
 	}
 	return s.withLockExists(blockId, name, func(entry *CacheEntry) error {
-		entry.writeAtToCache(0, data, true)
+		entry.writeAt(0, data, true)
 		return nil
 	})
 }
@@ -448,7 +437,7 @@ func (s *BlockStore) WriteAt(ctx context.Context, blockId string, name string, o
 		return fmt.Errorf("error loading data parts: %v", err)
 	}
 	return s.withLockExists(blockId, name, func(entry *CacheEntry) error {
-		entry.writeAtToCache(offset, data, false)
+		entry.writeAt(offset, data, false)
 		return nil
 	})
 }
@@ -531,22 +520,35 @@ func (s *BlockStore) ReadFile(ctx context.Context, blockId string, name string) 
 	return s.ReadAt(ctx, blockId, name, 0, file.Size)
 }
 
-func (s *BlockStore) FlushCache(ctx context.Context) error {
+func (s *BlockStore) getDirtyCacheKeys() []cacheKey {
 	var dirtyCacheKeys []cacheKey
 	s.Lock.Lock()
+	defer s.Lock.Unlock()
 	for key, entry := range s.Cache {
 		if entry.FileEntry != nil && entry.FileEntry.Dirty.Load() {
 			dirtyCacheKeys = append(dirtyCacheKeys, key)
-			continue
-		}
-		for _, dataEntry := range entry.DataEntries {
-			if dataEntry != nil && dataEntry.Dirty.Load() {
-				dirtyCacheKeys = append(dirtyCacheKeys, key)
-				break
-			}
 		}
 	}
-	s.Lock.Unlock()
+	return dirtyCacheKeys
+}
+
+func (s *BlockStore) flushFile(ctx context.Context, blockId string, name string) error {
+	// todo
+	return nil
+}
+
+func (s *BlockStore) FlushCache(ctx context.Context) error {
+	// get a copy of dirty keys so we can iterate without the lock
+	dirtyCacheKeys := s.getDirtyCacheKeys()
+	for _, key := range dirtyCacheKeys {
+		err := s.flushFile(ctx, key.BlockId, key.Name)
+		if err != nil {
+			// if error is not transient, we should probably delete the offending entry :/
+			log.Printf("error flushing file %s/%s: %v", key.BlockId, key.Name, err)
+			continue
+		}
+		s.cleanCacheEntry(key.BlockId, key.Name)
+	}
 	return nil
 }
 
