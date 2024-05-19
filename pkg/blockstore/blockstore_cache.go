@@ -5,7 +5,6 @@ package blockstore
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"log"
 	"sync"
@@ -61,6 +60,7 @@ type CacheEntry struct {
 	WriteIntentions map[int]WriteIntention // map from intentionid -> WriteIntention
 	FileEntry       *FileCacheEntry
 	DataEntries     map[int]*DataCacheEntry
+	FlushErrors     int
 }
 
 //lint:ignore U1000 used for testing
@@ -186,6 +186,7 @@ func makeCacheEntry(blockId string, name string) *CacheEntry {
 		WriteIntentions: make(map[int]WriteIntention),
 		FileEntry:       nil,
 		DataEntries:     make(map[int]*DataCacheEntry),
+		FlushErrors:     0,
 	}
 }
 
@@ -296,16 +297,21 @@ func (e *CacheEntry) modifyFileData(fn func(*BlockFile)) {
 	fn(&fileEntry.File)
 }
 
-// also sets Flushing to true
-func (s *BlockStore) getDirtyDataEntries(entry *CacheEntry) (*FileCacheEntry, []*DataCacheEntry) {
+// also sets Flushing to true on fileentry / dataentries
+func (s *BlockStore) getDirtyDataEntriesForFlush(blockId string, name string) (*FileCacheEntry, []*DataCacheEntry) {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
+	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
+	if entry == nil {
+		return nil, nil
+	}
 	if entry.Deleted || entry.FileEntry == nil {
 		return nil, nil
 	}
 	var dirtyData []*DataCacheEntry
 	for _, dce := range entry.DataEntries {
 		if dce != nil && dce.Dirty.Load() {
+			dce.Flushing.Store(true)
 			dirtyData = append(dirtyData, dce)
 		}
 	}
@@ -316,20 +322,6 @@ func (s *BlockStore) getDirtyDataEntries(entry *CacheEntry) (*FileCacheEntry, []
 		data.Flushing.Store(true)
 	}
 	return entry.FileEntry, dirtyData
-}
-
-// clean is true if the block was clean (nothing to write)
-// returns (clean, error)
-func (s *BlockStore) flushEntry(ctx context.Context, entry *CacheEntry) error {
-	fileEntry, dirtyData := s.getDirtyDataEntries(entry)
-	if fileEntry == nil && len(dirtyData) == 0 {
-		return nil
-	}
-	err := dbWriteCacheEntry(ctx, fileEntry, dirtyData)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (entry *CacheEntry) isDataBlockPinned(partIdx int) bool {

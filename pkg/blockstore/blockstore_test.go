@@ -39,6 +39,9 @@ func cleanupDb(t *testing.T) {
 	if warningCount.Load() > 0 {
 		t.Errorf("warning count: %d", warningCount.Load())
 	}
+	if flushErrorCount.Load() > 0 {
+		t.Errorf("flush error count: %d", flushErrorCount.Load())
+	}
 }
 
 func TestCreate(t *testing.T) {
@@ -501,4 +504,36 @@ func TestComputePartMap(t *testing.T) {
 	testIntMapsEq(t, "map9", m, map[int]int{0: 100, 1: 10, 2: 100, 3: 100, 4: 100, 5: 100, 6: 100, 7: 100, 8: 100, 9: 100})
 	m = file.computePartMap(2005, 1105)
 	testIntMapsEq(t, "map9", m, map[int]int{0: 100, 1: 10, 2: 100, 3: 100, 4: 100, 5: 100, 6: 100, 7: 100, 8: 100, 9: 100})
+}
+
+func TestSimpleDBFlush(t *testing.T) {
+	initDb(t)
+	defer cleanupDb(t)
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	blockId := uuid.New().String()
+	fileName := "t1"
+	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	err = GBS.WriteFile(ctx, blockId, fileName, []byte("hello world!"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileData(t, ctx, blockId, fileName, "hello world!")
+	err = GBS.FlushCache(ctx)
+	if err != nil {
+		t.Fatalf("error flushing cache: %v", err)
+	}
+	if GBS.getCacheSize() != 0 {
+		t.Errorf("cache size mismatch")
+	}
+	checkFileData(t, ctx, blockId, fileName, "hello world!")
+	if GBS.getCacheSize() != 0 {
+		t.Errorf("cache size mismatch (after read)")
+	}
+	checkFileDataAt(t, ctx, blockId, fileName, 6, "world!")
+	checkFileSize(t, ctx, blockId, fileName, 12)
 }

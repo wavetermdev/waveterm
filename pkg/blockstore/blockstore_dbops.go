@@ -61,6 +61,11 @@ func dbGetFileParts(ctx context.Context, blockId string, name string, parts []in
 		rtn := make(map[int]*DataCacheEntry)
 		for _, d := range data {
 			d.Dirty = &atomic.Bool{}
+			if cap(d.Data) != int(partDataSize) {
+				newData := make([]byte, len(d.Data), partDataSize)
+				copy(newData, d.Data)
+				d.Data = newData
+			}
 			rtn[d.PartIdx] = d
 		}
 		return rtn, nil
@@ -95,16 +100,6 @@ func dbWriteCacheEntry(ctx context.Context, fileEntry *FileCacheEntry, dataEntri
 				continue
 			}
 			tx.Exec(dataPartQuery, fileEntry.File.BlockId, fileEntry.File.Name, dataEntry.PartIdx, dataEntry.Data)
-		}
-		if tx.Err == nil {
-			// clear dirty flags
-			fileEntry.Dirty.Store(false)
-			for _, dataEntry := range dataEntries {
-				if dataEntry != nil {
-					dataEntry.Dirty.Store(false)
-					dataEntry.Flushing.Store(false)
-				}
-			}
 		}
 		return nil
 	})

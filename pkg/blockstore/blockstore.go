@@ -20,7 +20,10 @@ const DefaultPartDataSize = 64 * 1024
 const DefaultFlushTime = 5 * time.Second
 const NoPartIdx = -1
 
+// for unit tests
 var warningCount = &atomic.Int32{}
+var flushErrorCount = &atomic.Int32{}
+
 var partDataSize int64 = DefaultPartDataSize // overridden in tests
 var stopFlush = &atomic.Bool{}
 
@@ -445,8 +448,6 @@ func (s *BlockStore) WriteAt(ctx context.Context, blockId string, name string, o
 // returns (offset, data, error)
 // we return the offset because the offset may have been adjusted if the size was too big (for circular files)
 func (s *BlockStore) ReadAt(ctx context.Context, blockId string, name string, offset int64, size int64) (int64, []byte, error) {
-	s.pinCacheEntry(blockId, name)
-	defer s.unpinCacheEntry(blockId, name)
 	file, err := s.Stat(ctx, blockId, name)
 	if err != nil {
 		return 0, nil, fmt.Errorf("error getting file: %v", err)
@@ -459,18 +460,20 @@ func (s *BlockStore) ReadAt(ctx context.Context, blockId string, name string, of
 			offset += sizeTooBig
 		}
 	}
+	partMap := file.computePartMap(offset, size)
 	var partsNeeded []int
-	lastPartOffset := (offset + size) % partDataSize
-	endOffsetOfLastPart := offset + size - lastPartOffset + partDataSize
-	for i := offset; i < endOffsetOfLastPart; i += partDataSize {
-		partsNeeded = append(partsNeeded, file.partIdxAtOffset(i))
+	for partIdx := range partMap {
+		partsNeeded = append(partsNeeded, partIdx)
 	}
 	dataEntries, err := dbGetFileParts(ctx, blockId, name, partsNeeded)
 	if err != nil {
 		return 0, nil, fmt.Errorf("error loading data parts: %v", err)
 	}
 	// wash the entries through the cache
-	err = s.withLockExists(blockId, name, func(entry *CacheEntry) error {
+	s.withLock(blockId, name, false, func(entry *CacheEntry) {
+		if entry == nil || entry.FileEntry == nil {
+			return
+		}
 		if offset+size > entry.FileEntry.File.Size {
 			// limit read to the actual size of the file
 			size = entry.FileEntry.File.Size - offset
@@ -481,11 +484,7 @@ func (s *BlockStore) ReadAt(ctx context.Context, blockId string, name string, of
 			}
 			dataEntries[partIdx] = entry.DataEntries[partIdx]
 		}
-		return nil
 	})
-	if err != nil {
-		return 0, nil, fmt.Errorf("error reconciling cache entries: %v", err)
-	}
 	// combine the entries into a single byte slice
 	// note that we only want part of the first and last part depending on offset and size
 	var rtn []byte
@@ -532,9 +531,47 @@ func (s *BlockStore) getDirtyCacheKeys() []cacheKey {
 	return dirtyCacheKeys
 }
 
-func (s *BlockStore) flushFile(ctx context.Context, blockId string, name string) error {
-	// todo
+func (s *BlockStore) flushFile(ctx context.Context, blockId string, name string) (rtnErr error) {
+	fileEntry, dataEntries := s.getDirtyDataEntriesForFlush(blockId, name)
+	if fileEntry == nil {
+		return nil
+	}
+	defer func() {
+		// clear flushing flags (always)
+		// clear dirty flags if no error
+		// no lock required, note that we unset dirty before flushing
+		if rtnErr == nil {
+			fileEntry.Dirty.Store(false)
+		}
+		fileEntry.Flushing.Store(false)
+		for _, dataEntry := range dataEntries {
+			if rtnErr == nil {
+				dataEntry.Dirty.Store(false)
+			}
+			dataEntry.Flushing.Store(false)
+		}
+	}()
+	rtnErr = dbWriteCacheEntry(ctx, fileEntry, dataEntries)
+	if rtnErr != nil {
+		rtnErr = fmt.Errorf("error writing cache entry: %v", rtnErr)
+		return rtnErr
+	}
 	return nil
+}
+
+func (s *BlockStore) incrementFlushErrors(blockId string, name string) int {
+	var rtn int
+	s.withLock(blockId, name, false, func(entry *CacheEntry) {
+		entry.FlushErrors++
+		rtn = entry.FlushErrors
+	})
+	return rtn
+}
+
+func (s *BlockStore) deleteCacheEntry(blockId string, name string) {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	delete(s.Cache, cacheKey{BlockId: blockId, Name: name})
 }
 
 func (s *BlockStore) FlushCache(ctx context.Context) error {
@@ -543,8 +580,19 @@ func (s *BlockStore) FlushCache(ctx context.Context) error {
 	for _, key := range dirtyCacheKeys {
 		err := s.flushFile(ctx, key.BlockId, key.Name)
 		if err != nil {
+			if ctx.Err() != nil {
+				// context error is transient
+				return fmt.Errorf("context error: %v", ctx.Err())
+			}
 			// if error is not transient, we should probably delete the offending entry :/
 			log.Printf("error flushing file %s/%s: %v", key.BlockId, key.Name, err)
+			flushErrorCount.Add(1)
+			totalErrors := s.incrementFlushErrors(key.BlockId, key.Name)
+			if totalErrors >= 3 {
+				s.deleteCacheEntry(key.BlockId, key.Name)
+				log.Printf("too many errors flushing file %s/%s, clear entry", key.BlockId, key.Name)
+
+			}
 			continue
 		}
 		s.cleanCacheEntry(key.BlockId, key.Name)
