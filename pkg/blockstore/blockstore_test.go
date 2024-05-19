@@ -6,6 +6,7 @@ package blockstore
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"testing"
 	"time"
@@ -77,9 +78,26 @@ func TestCreate(t *testing.T) {
 	if file.Opts.Circular || file.Opts.IJson || file.Opts.MaxSize != 0 {
 		t.Fatalf("opts not empty")
 	}
+	blockIds, err := GBS.GetAllBlockIds(ctx)
+	if err != nil {
+		t.Fatalf("error getting block ids: %v", err)
+	}
+	if len(blockIds) != 1 {
+		t.Fatalf("block id count mismatch")
+	}
+	if blockIds[0] != blockId {
+		t.Fatalf("block id mismatch")
+	}
 	err = GBS.DeleteFile(ctx, blockId, "testfile")
 	if err != nil {
 		t.Fatalf("error deleting file: %v", err)
+	}
+	blockIds, err = GBS.GetAllBlockIds(ctx)
+	if err != nil {
+		t.Fatalf("error getting block ids: %v", err)
+	}
+	if len(blockIds) != 0 {
+		t.Fatalf("block id count mismatch")
 	}
 }
 
@@ -270,6 +288,130 @@ func TestAppend(t *testing.T) {
 	// fmt.Print(GBS.dump())
 	checkFileSize(t, ctx, blockId, fileName, 11)
 	checkFileData(t, ctx, blockId, fileName, "hello world")
+}
+
+func TestWriteFile(t *testing.T) {
+	initDb(t)
+	defer cleanupDb(t)
+
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	blockId := uuid.New().String()
+	fileName := "t3"
+	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	err = GBS.WriteFile(ctx, blockId, fileName, []byte("hello world!"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileData(t, ctx, blockId, fileName, "hello world!")
+	err = GBS.WriteFile(ctx, blockId, fileName, []byte("goodbye world!"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileData(t, ctx, blockId, fileName, "goodbye world!")
+	err = GBS.WriteFile(ctx, blockId, fileName, []byte("hello"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileData(t, ctx, blockId, fileName, "hello")
+
+	// circular file
+	err = GBS.MakeFile(ctx, blockId, "c1", nil, FileOptsType{Circular: true, MaxSize: 50})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	err = GBS.WriteFile(ctx, blockId, "c1", []byte("123456789 123456789 123456789 123456789 123456789 apple"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileData(t, ctx, blockId, "c1", "6789 123456789 123456789 123456789 123456789 apple")
+	err = GBS.AppendData(ctx, blockId, "c1", []byte(" banana"))
+	if err != nil {
+		t.Fatalf("error appending data: %v", err)
+	}
+	checkFileData(t, ctx, blockId, "c1", "3456789 123456789 123456789 123456789 apple banana")
+}
+
+func TestCircularWrites(t *testing.T) {
+	initDb(t)
+	defer cleanupDb(t)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	blockId := uuid.New().String()
+	err := GBS.MakeFile(ctx, blockId, "c1", nil, FileOptsType{Circular: true, MaxSize: 50})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	err = GBS.WriteFile(ctx, blockId, "c1", []byte("123456789 123456789 123456789 123456789 123456789 "))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileData(t, ctx, blockId, "c1", "123456789 123456789 123456789 123456789 123456789 ")
+
+	err = GBS.AppendData(ctx, blockId, "c1", []byte("apple"))
+	if err != nil {
+		t.Fatalf("error appending data: %v", err)
+	}
+	checkFileData(t, ctx, blockId, "c1", "6789 123456789 123456789 123456789 123456789 apple")
+	err = GBS.WriteAt(ctx, blockId, "c1", 0, []byte("foo"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	// content should be unchanged because write is before the beginning of circular offset
+	checkFileData(t, ctx, blockId, "c1", "6789 123456789 123456789 123456789 123456789 apple")
+	err = GBS.WriteAt(ctx, blockId, "c1", 5, []byte("a"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileSize(t, ctx, blockId, "c1", 55)
+	checkFileData(t, ctx, blockId, "c1", "a789 123456789 123456789 123456789 123456789 apple")
+	err = GBS.AppendData(ctx, blockId, "c1", []byte(" banana"))
+	if err != nil {
+		t.Fatalf("error appending data: %v", err)
+	}
+	checkFileSize(t, ctx, blockId, "c1", 62)
+	checkFileData(t, ctx, blockId, "c1", "3456789 123456789 123456789 123456789 apple banana")
+	err = GBS.WriteAt(ctx, blockId, "c1", 20, []byte("foo"))
+	if err != nil {
+		t.Fatalf("error writing data: %v", err)
+	}
+	checkFileSize(t, ctx, blockId, "c1", 62)
+	checkFileData(t, ctx, blockId, "c1", "3456789 foo456789 123456789 123456789 apple banana")
+	offset, _, _ := GBS.ReadFile(ctx, blockId, "c1")
+	if offset != 12 {
+		t.Errorf("offset mismatch: expected 12, got %d", offset)
+	}
+	err = GBS.AppendData(ctx, blockId, "c1", []byte(" world"))
+	if err != nil {
+		t.Fatalf("error appending data: %v", err)
+	}
+	checkFileSize(t, ctx, blockId, "c1", 68)
+	offset, _, _ = GBS.ReadFile(ctx, blockId, "c1")
+	if offset != 18 {
+		t.Errorf("offset mismatch: expected 18, got %d", offset)
+	}
+	checkFileData(t, ctx, blockId, "c1", "9 foo456789 123456789 123456789 apple banana world")
+	err = GBS.AppendData(ctx, blockId, "c1", []byte(" 123456789 123456789 123456789 123456789 bar456789 123456789"))
+	if err != nil {
+		t.Fatalf("error appending data: %v", err)
+	}
+	checkFileSize(t, ctx, blockId, "c1", 128)
+	checkFileData(t, ctx, blockId, "c1", " 123456789 123456789 123456789 bar456789 123456789")
+	GBS.withLock(blockId, "c1", false, func(entry *CacheEntry) {
+		if entry == nil {
+			err = fmt.Errorf("entry not found")
+			return
+		}
+		if len(entry.DataEntries) != 1 {
+			err = fmt.Errorf("data entries mismatch: expected 1, got %d", len(entry.DataEntries))
+		}
+	})
+	if err != nil {
+		t.Fatalf("error checking data entries: %v", err)
+	}
 }
 
 func makeText(n int) string {

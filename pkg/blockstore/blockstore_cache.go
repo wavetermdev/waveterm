@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"sync/atomic"
 )
@@ -16,6 +17,14 @@ type cacheKey struct {
 	Name    string
 }
 
+// note about "Dirty" and "Flushing" fields:
+// - Dirty is set to true when the entry is modified
+// - Flushing is set to true when the entry is being flushed to disk
+// note these fields can *only* be set to true while holding the store lock
+// but the flusher  may set them to false without the lock (when the flusher no longer will read the entry fields)
+// the flusher *must* unset Dirty first, then Flushing
+// other code should test Flushing before Dirty
+// that means you *cannot* write a field in a cache entry if Flushing.Load() is true (you must make a copy)
 type DataCacheEntry struct {
 	Dirty    *atomic.Bool
 	Flushing *atomic.Bool
@@ -24,13 +33,15 @@ type DataCacheEntry struct {
 }
 
 type FileCacheEntry struct {
-	Dirty *atomic.Bool
-	File  BlockFile
+	Dirty    *atomic.Bool
+	Flushing *atomic.Bool
+	File     BlockFile
 }
 
 type WriteIntention struct {
-	Parts  map[int]bool
-	Append bool
+	Parts   map[int]int
+	Append  bool
+	Replace bool
 }
 
 // invariants:
@@ -43,10 +54,9 @@ type WriteIntention struct {
 type CacheEntry struct {
 	BlockId         string
 	Name            string
-	Version         int
 	PinCount        int
 	Deleted         bool
-	WriteIntentions map[string]*WriteIntention // map from intentionid -> WriteIntention
+	WriteIntentions map[int]WriteIntention // map from intentionid -> WriteIntention
 	FileEntry       *FileCacheEntry
 	DataEntries     []*DataCacheEntry
 }
@@ -54,7 +64,7 @@ type CacheEntry struct {
 //lint:ignore U1000 used for testing
 func (e *CacheEntry) dump() string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "CacheEntry{\nBlockId: %q, Name: %q, Version: %d, PinCount: %d, Deleted: %v, IW: %v\n", e.BlockId, e.Name, e.Version, e.PinCount, e.Deleted, e.WriteIntentions)
+	fmt.Fprintf(&buf, "CacheEntry{\nBlockId: %q, Name: %q, PinCount: %d, Deleted: %v, IW: %v\n", e.BlockId, e.Name, e.PinCount, e.Deleted, e.WriteIntentions)
 	if e.FileEntry != nil {
 		fmt.Fprintf(&buf, "FileEntry: %v\n", e.FileEntry.File)
 	}
@@ -140,7 +150,10 @@ func (dce *DataCacheEntry) writeToPart(offset int64, data []byte) (int64, *DataC
 	return toWrite, dce
 }
 
-func (entry *CacheEntry) writeAt(offset int64, data []byte) {
+func (entry *CacheEntry) writeAt(offset int64, data []byte, replace bool) {
+	if replace {
+		entry.DataEntries = nil
+	}
 	for len(data) > 0 {
 		partIdx := int(offset / partDataSize)
 		if entry.FileEntry.File.Opts.Circular {
@@ -157,8 +170,9 @@ func (entry *CacheEntry) writeAt(offset int64, data []byte) {
 }
 
 type BlockStore struct {
-	Lock  *sync.Mutex
-	Cache map[cacheKey]*CacheEntry
+	Lock            *sync.Mutex
+	Cache           map[cacheKey]*CacheEntry
+	NextIntentionId int
 }
 
 func makeCacheEntry(blockId string, name string) *CacheEntry {
@@ -166,7 +180,7 @@ func makeCacheEntry(blockId string, name string) *CacheEntry {
 		BlockId:         blockId,
 		Name:            name,
 		PinCount:        0,
-		WriteIntentions: make(map[string]*WriteIntention),
+		WriteIntentions: make(map[int]WriteIntention),
 		FileEntry:       nil,
 		DataEntries:     nil,
 	}
@@ -206,12 +220,36 @@ func (s *BlockStore) pinCacheEntry(blockId string, name string) {
 	entry.PinCount++
 }
 
+func (s *BlockStore) setWriteIntention(blockId string, name string, intention WriteIntention) int {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
+	if entry == nil {
+		return 0
+	}
+	intentionId := s.NextIntentionId
+	s.NextIntentionId++
+	entry.WriteIntentions[intentionId] = intention
+	return intentionId
+}
+
+func (s *BlockStore) clearWriteIntention(blockId string, name string, intentionId int) {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
+	if entry == nil {
+		log.Printf("warning: cannot find write intention to clear %q %q", blockId, name)
+		return
+	}
+	delete(entry.WriteIntentions, intentionId)
+}
+
 func (s *BlockStore) unpinCacheEntry(blockId string, name string) {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
 	if entry == nil {
-		// this is not good
+		log.Printf("warning: unpinning non-existent cache entry %q %q", blockId, name)
 		return
 	}
 	entry.PinCount--
@@ -236,6 +274,7 @@ func (s *BlockStore) tryDeleteCacheEntry(blockId string, name string) bool {
 }
 
 // getFileFromCache returns the file from the cache if it exists
+// makes a copy, so it can be used by the caller
 // return (file, cached)
 func (s *BlockStore) getFileFromCache(blockId string, name string) (*BlockFile, bool) {
 	s.Lock.Lock()
@@ -253,17 +292,20 @@ func (s *BlockStore) getFileFromCache(blockId string, name string) (*BlockFile, 
 	return entry.FileEntry.File.DeepCopy(), true
 }
 
-func (e *CacheEntry) copyOrCreateFileEntry(dbFile *BlockFile) *FileCacheEntry {
-	if e.FileEntry == nil {
-		return &FileCacheEntry{
-			Dirty: &atomic.Bool{},
-			File:  *dbFile,
+func (e *CacheEntry) modifyFileData(fn func(*BlockFile)) {
+	var fileEntry = e.FileEntry
+	if e.FileEntry.Flushing.Load() {
+		// must make a copy
+		fileEntry = &FileCacheEntry{
+			Dirty:    &atomic.Bool{},
+			Flushing: &atomic.Bool{},
+			File:     *e.FileEntry.File.DeepCopy(),
 		}
+		e.FileEntry = fileEntry
 	}
-	return &FileCacheEntry{
-		Dirty: &atomic.Bool{},
-		File:  *e.FileEntry.File.DeepCopy(),
-	}
+	// always set to dirty (we're modifying it)
+	fileEntry.Dirty.Store(true)
+	fn(&fileEntry.File)
 }
 
 // also sets Flushing to true

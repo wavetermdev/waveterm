@@ -23,8 +23,9 @@ var partDataSize int64 = DefaultPartDataSize // overridden in tests
 var stopFlush = &atomic.Bool{}
 
 var GBS *BlockStore = &BlockStore{
-	Lock:  &sync.Mutex{},
-	Cache: make(map[cacheKey]*CacheEntry),
+	Lock:            &sync.Mutex{},
+	Cache:           make(map[cacheKey]*CacheEntry),
+	NextIntentionId: 1,
 }
 
 type FileOptsType struct {
@@ -36,15 +37,19 @@ type FileOptsType struct {
 type FileMeta = map[string]any
 
 type BlockFile struct {
+	// these fields are static (not updated)
 	BlockId   string       `json:"blockid"`
 	Name      string       `json:"name"`
-	Size      int64        `json:"size"`
-	CreatedTs int64        `json:"createdts"`
-	ModTs     int64        `json:"modts"`
 	Opts      FileOptsType `json:"opts"`
-	Meta      FileMeta     `json:"meta"`
+	CreatedTs int64        `json:"createdts"`
+
+	//  these fields are mutable
+	Size  int64    `json:"size"`
+	ModTs int64    `json:"modts"`
+	Meta  FileMeta `json:"meta"` // only top-level keys can be updated (lower levels are immutable)
 }
 
+// this works because lower levels are immutable
 func copyMeta(meta FileMeta) FileMeta {
 	newMeta := make(FileMeta)
 	for k, v := range meta {
@@ -193,40 +198,28 @@ func (s *BlockStore) ListFiles(ctx context.Context, blockId string) ([]*BlockFil
 }
 
 func (s *BlockStore) WriteMeta(ctx context.Context, blockId string, name string, meta FileMeta, merge bool) error {
-	file, ok := s.getFileFromCache(blockId, name)
-	if !ok {
-		dbFile, err := dbGetBlockFile(ctx, blockId, name)
-		if err != nil {
-			return fmt.Errorf("error getting file: %v", err)
-		}
-		file = dbFile
+	s.pinCacheEntry(blockId, name)
+	defer s.unpinCacheEntry(blockId, name)
+	_, err := s.loadFileInfo(ctx, blockId, name)
+	if err != nil {
+		return fmt.Errorf("error loading file info: %v", err)
 	}
-	if file == nil {
-		return fmt.Errorf("file not found")
-	}
-	var rtnErr error
-	s.withLock(blockId, name, true, func(entry *CacheEntry) {
-		if entry.Deleted {
-			rtnErr = fmt.Errorf("file is deleted")
-			return
-		}
-		newFileEntry := entry.copyOrCreateFileEntry(file)
-		if merge {
-			for k, v := range meta {
-				if v == nil {
-					delete(newFileEntry.File.Meta, k)
-					continue
+	return s.withLockExists(blockId, name, func(entry *CacheEntry) error {
+		entry.modifyFileData(func(file *BlockFile) {
+			if merge {
+				for k, v := range meta {
+					if v == nil {
+						delete(file.Meta, k)
+						continue
+					}
+					file.Meta[k] = v
 				}
-				newFileEntry.File.Meta[k] = v
+			} else {
+				file.Meta = meta
 			}
-		} else {
-			newFileEntry.File.Meta = meta
-		}
-		entry.FileEntry = newFileEntry
-		entry.FileEntry.File.ModTs = time.Now().UnixMilli()
-		entry.Version++
+		})
+		return nil
 	})
-	return rtnErr
 }
 
 func (s *BlockStore) loadFileInfo(ctx context.Context, blockId string, name string) (*BlockFile, error) {
@@ -246,6 +239,7 @@ func (s *BlockStore) loadFileInfo(ctx context.Context, blockId string, name stri
 	}
 	var rtnErr error
 	rtnFile := dbFile
+	// cannot use withLockExists because we're setting entry.FileEntry!
 	s.withLock(blockId, name, true, func(entry *CacheEntry) {
 		if entry.Deleted {
 			rtnFile = nil
@@ -257,7 +251,11 @@ func (s *BlockStore) loadFileInfo(ctx context.Context, blockId string, name stri
 			rtnFile = entry.FileEntry.File.DeepCopy()
 			return
 		}
-		entry.FileEntry = entry.copyOrCreateFileEntry(dbFile)
+		entry.FileEntry = &FileCacheEntry{
+			Dirty:    &atomic.Bool{},
+			Flushing: &atomic.Bool{},
+			File:     *dbFile.DeepCopy(), // make a copy since File must be immutable
+		}
 		// returns dbFile, nil
 	})
 	return rtnFile, rtnErr
@@ -327,19 +325,20 @@ func (s *BlockStore) loadDataParts(ctx context.Context, blockId string, name str
 	})
 }
 
-func (s *BlockStore) writeAt_nolock(entry *CacheEntry, offset int64, data []byte) {
+func (entry *CacheEntry) writeAtToCache(offset int64, data []byte, replace bool) {
 	endWrite := offset + int64(len(data))
-	entry.writeAt(offset, data)
-	if endWrite > entry.FileEntry.File.Size {
-		entry.FileEntry.File.Size = endWrite
-	}
-	entry.FileEntry.File.ModTs = time.Now().UnixMilli()
-	entry.Version++
+	entry.writeAt(offset, data, replace)
+	entry.modifyFileData(func(file *BlockFile) {
+		if endWrite > file.Size || replace {
+			file.Size = endWrite
+		}
+		file.ModTs = time.Now().UnixMilli()
+	})
 }
 
 func (s *BlockStore) appendDataToCache(blockId string, name string, data []byte) error {
 	return s.withLockExists(blockId, name, func(entry *CacheEntry) error {
-		s.writeAt_nolock(entry, entry.FileEntry.File.Size, data)
+		entry.writeAtToCache(entry.FileEntry.File.Size, data, false)
 		return nil
 	})
 }
@@ -347,6 +346,8 @@ func (s *BlockStore) appendDataToCache(blockId string, name string, data []byte)
 func (s *BlockStore) AppendData(ctx context.Context, blockId string, name string, data []byte) error {
 	s.pinCacheEntry(blockId, name)
 	defer s.unpinCacheEntry(blockId, name)
+	intentionId := s.setWriteIntention(blockId, name, WriteIntention{Append: true})
+	defer s.clearWriteIntention(blockId, name, intentionId)
 	_, err := s.loadFileInfo(ctx, blockId, name)
 	if err != nil {
 		return fmt.Errorf("error loading file info: %v", err)
@@ -364,6 +365,16 @@ func (s *BlockStore) AppendData(ctx context.Context, blockId string, name string
 
 func (s *BlockStore) GetAllBlockIds(ctx context.Context) ([]string, error) {
 	return dbGetAllBlockIds(ctx)
+}
+
+func incompletePartsFromMap(partMap map[int]int) []int {
+	var incompleteParts []int
+	for partIdx, size := range partMap {
+		if size != int(partDataSize) {
+			incompleteParts = append(incompleteParts, partIdx)
+		}
+	}
+	return incompleteParts
 }
 
 // returns a map of partIdx to amount of data to write to that part
@@ -388,6 +399,21 @@ func (file *BlockFile) computePartMap(startOffset int64, size int64) map[int]int
 	return partMap
 }
 
+func (s *BlockStore) WriteFile(ctx context.Context, blockId string, name string, data []byte) error {
+	s.pinCacheEntry(blockId, name)
+	defer s.unpinCacheEntry(blockId, name)
+	intentionId := s.setWriteIntention(blockId, name, WriteIntention{Replace: true})
+	defer s.clearWriteIntention(blockId, name, intentionId)
+	_, err := s.loadFileInfo(ctx, blockId, name)
+	if err != nil {
+		return fmt.Errorf("error loading file info: %v", err)
+	}
+	return s.withLockExists(blockId, name, func(entry *CacheEntry) error {
+		entry.writeAtToCache(0, data, true)
+		return nil
+	})
+}
+
 func (s *BlockStore) WriteAt(ctx context.Context, blockId string, name string, offset int64, data []byte) error {
 	s.pinCacheEntry(blockId, name)
 	defer s.unpinCacheEntry(blockId, name)
@@ -395,16 +421,34 @@ func (s *BlockStore) WriteAt(ctx context.Context, blockId string, name string, o
 	if err != nil {
 		return fmt.Errorf("error loading file info: %v", err)
 	}
-	startWriteIdx := offset
-	endWriteIdx := offset + int64(len(data))
-	startPartIdx := file.partIdxAtOffset(startWriteIdx)
-	endPartIdx := file.partIdxAtOffset(endWriteIdx)
-	err = s.loadDataParts(ctx, blockId, name, []int{startPartIdx, endPartIdx})
+	if offset < 0 {
+		return fmt.Errorf("offset must be non-negative")
+	}
+	if offset > file.Size {
+		return fmt.Errorf("offset is past the end of the file")
+	}
+	if file.Opts.Circular {
+		startCirFileOffset := file.Size - file.Opts.MaxSize
+		if offset+int64(len(data)) < startCirFileOffset {
+			// write is before the start of the circular file
+			return nil
+		}
+		if offset < startCirFileOffset {
+			amtBeforeStart := startCirFileOffset - offset
+			offset += amtBeforeStart
+			data = data[amtBeforeStart:]
+		}
+	}
+	partMap := file.computePartMap(offset, int64(len(data)))
+	intentionId := s.setWriteIntention(blockId, name, WriteIntention{Parts: partMap})
+	defer s.clearWriteIntention(blockId, name, intentionId)
+	incompleteParts := incompletePartsFromMap(partMap)
+	err = s.loadDataParts(ctx, blockId, name, incompleteParts)
 	if err != nil {
 		return fmt.Errorf("error loading data parts: %v", err)
 	}
 	return s.withLockExists(blockId, name, func(entry *CacheEntry) error {
-		s.writeAt_nolock(entry, offset, data)
+		entry.writeAtToCache(offset, data, false)
 		return nil
 	})
 }
@@ -485,6 +529,25 @@ func (s *BlockStore) ReadFile(ctx context.Context, blockId string, name string) 
 		return 0, nil, fmt.Errorf("file not found")
 	}
 	return s.ReadAt(ctx, blockId, name, 0, file.Size)
+}
+
+func (s *BlockStore) FlushCache(ctx context.Context) error {
+	var dirtyCacheKeys []cacheKey
+	s.Lock.Lock()
+	for key, entry := range s.Cache {
+		if entry.FileEntry != nil && entry.FileEntry.Dirty.Load() {
+			dirtyCacheKeys = append(dirtyCacheKeys, key)
+			continue
+		}
+		for _, dataEntry := range entry.DataEntries {
+			if dataEntry != nil && dataEntry.Dirty.Load() {
+				dirtyCacheKeys = append(dirtyCacheKeys, key)
+				break
+			}
+		}
+	}
+	s.Lock.Unlock()
+	return nil
 }
 
 func minInt64(a, b int64) int64 {
