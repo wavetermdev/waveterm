@@ -31,6 +31,7 @@ var GBS *BlockStore = &BlockStore{
 	Lock:            &sync.Mutex{},
 	Cache:           make(map[cacheKey]*CacheEntry),
 	NextIntentionId: 1,
+	IsFlushing:      false,
 }
 
 type FileOptsType struct {
@@ -574,7 +575,31 @@ func (s *BlockStore) deleteCacheEntry(blockId string, name string) {
 	delete(s.Cache, cacheKey{BlockId: blockId, Name: name})
 }
 
+func (s *BlockStore) setIsFlushing(flushing bool) {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	s.IsFlushing = flushing
+}
+
+// returns old value of IsFlushing
+func (s *BlockStore) setUnlessFlushing() bool {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	if s.IsFlushing {
+		return true
+	}
+	s.IsFlushing = true
+	return false
+
+}
+
 func (s *BlockStore) FlushCache(ctx context.Context) error {
+	wasFlushing := s.setUnlessFlushing()
+	if wasFlushing {
+		return fmt.Errorf("flush already in progress")
+	}
+	defer s.setIsFlushing(false)
+
 	// get a copy of dirty keys so we can iterate without the lock
 	dirtyCacheKeys := s.getDirtyCacheKeys()
 	for _, key := range dirtyCacheKeys {

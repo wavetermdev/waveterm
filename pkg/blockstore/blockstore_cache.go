@@ -176,6 +176,7 @@ type BlockStore struct {
 	Lock            *sync.Mutex
 	Cache           map[cacheKey]*CacheEntry
 	NextIntentionId int
+	IsFlushing      bool
 }
 
 func makeCacheEntry(blockId string, name string) *CacheEntry {
