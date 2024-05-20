@@ -8,6 +8,7 @@ import { Markdown } from "@/element/markdown";
 import * as FileService from "@/bindings/pkg/service/fileservice/FileService";
 import * as util from "@/util/util";
 import { CenteredDiv } from "../element/quickelems";
+import { DirectoryTable } from "@/element/directorytable";
 
 import "./view.less";
 
@@ -56,13 +57,7 @@ function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
 function DirectoryPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<string>> }) {
     const contentText = jotai.useAtomValue(contentAtom);
     let content: FileInfo[] = JSON.parse(contentText);
-    return (
-        <div className="view-preview view-preview-directory">
-            {content.map((finfo) => (
-                <span>{finfo.path}</span>
-            ))}
-        </div>
-    );
+    return <DirectoryTable data={content} />;
 }
 
 function PreviewView({ blockId }: { blockId: string }) {
