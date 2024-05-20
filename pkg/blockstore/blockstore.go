@@ -10,7 +10,7 @@ package blockstore
 import (
 	"context"
 	"fmt"
-	"os"
+	"io/fs"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -100,7 +100,7 @@ func (s *BlockStore) MakeFile(ctx context.Context, blockId string, name string, 
 	}
 	return withLock(s, blockId, name, func(entry *CacheEntry) error {
 		if entry.File != nil {
-			return os.ErrExist
+			return fs.ErrExist
 		}
 		now := time.Now().UnixMilli()
 		file := &BlockFile{
@@ -138,7 +138,7 @@ func (s *BlockStore) DeleteBlock(ctx context.Context, blockId string) error {
 	return nil
 }
 
-// if file doesn't exsit, returns os.ErrNotExist
+// if file doesn't exsit, returns fs.ErrNotExist
 func (s *BlockStore) Stat(ctx context.Context, blockId string, name string) (*BlockFile, error) {
 	return withLockRtn(s, blockId, name, func(entry *CacheEntry) (*BlockFile, error) {
 		file, err := entry.loadFileForRead(ctx)
@@ -194,7 +194,8 @@ func (s *BlockStore) WriteFile(ctx context.Context, blockId string, name string,
 			return err
 		}
 		entry.writeAt(0, data, true)
-		return nil
+		// since WriteFile can *truncate* the file, we need to flush the file to the DB immediately
+		return entry.flushToDB(ctx, true)
 	})
 }
 
@@ -210,18 +211,6 @@ func (s *BlockStore) WriteAt(ctx context.Context, blockId string, name string, o
 		file := entry.File
 		if offset > file.Size {
 			return fmt.Errorf("offset is past the end of the file")
-		}
-		if file.Opts.Circular {
-			startCirFileOffset := file.Size - file.Opts.MaxSize
-			if offset+int64(len(data)) < startCirFileOffset {
-				// write is before the start of the circular file
-				return nil
-			}
-			if offset < startCirFileOffset {
-				amtBeforeStart := startCirFileOffset - offset
-				offset += amtBeforeStart
-				data = data[amtBeforeStart:]
-			}
 		}
 		partMap := file.computePartMap(offset, int64(len(data)))
 		incompleteParts := incompletePartsFromMap(partMap)
@@ -286,7 +275,7 @@ func (s *BlockStore) FlushCache(ctx context.Context) error {
 	dirtyCacheKeys := s.getDirtyCacheKeys()
 	for _, key := range dirtyCacheKeys {
 		err := withLock(s, key.BlockId, key.Name, func(entry *CacheEntry) error {
-			return entry.flushToDB(ctx)
+			return entry.flushToDB(ctx, false)
 		})
 		if ctx.Err() != nil {
 			// transient error (also must stop the loop)

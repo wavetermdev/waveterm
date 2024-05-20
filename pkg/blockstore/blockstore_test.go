@@ -6,7 +6,9 @@ package blockstore
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -55,17 +57,6 @@ func (s *BlockStore) clearCache() {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	s.Cache = make(map[cacheKey]*CacheEntry)
-}
-
-//lint:ignore U1000 used for testing
-func (e *CacheEntry) dump() string {
-	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "CacheEntry [BlockId: %q, Name: %q] PinCount: %d\n", e.BlockId, e.Name, e.PinCount)
-	fmt.Fprintf(&buf, "  FileEntry: %v\n", e.File)
-	for idx, dce := range e.DataEntries {
-		fmt.Fprintf(&buf, "  DataEntry[%d]: %q\n", idx, string(dce.Data))
-	}
-	return buf.String()
 }
 
 //lint:ignore U1000 used for testing
@@ -171,12 +162,9 @@ func TestDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error deleting file: %v", err)
 	}
-	file, err := GBS.Stat(ctx, blockId, "testfile")
-	if err != nil {
-		t.Fatalf("error stating file: %v", err)
-	}
-	if file != nil {
-		t.Fatalf("file should not be found")
+	_, err = GBS.Stat(ctx, blockId, "testfile")
+	if err == nil || errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("expected file not found error")
 	}
 
 	// create two files in same block, use DeleteBlock to delete

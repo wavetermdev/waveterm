@@ -4,9 +4,10 @@
 package blockstore
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"os"
+	"io/fs"
 	"sync"
 	"time"
 )
@@ -37,6 +38,17 @@ type CacheEntry struct {
 	File        *BlockFile
 	DataEntries map[int]*DataCacheEntry
 	FlushErrors int
+}
+
+//lint:ignore U1000 used for testing
+func (e *CacheEntry) dump() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "CacheEntry [BlockId: %q, Name: %q] PinCount: %d\n", e.BlockId, e.Name, e.PinCount)
+	fmt.Fprintf(&buf, "  FileEntry: %v\n", e.File)
+	for idx, dce := range e.DataEntries {
+		fmt.Fprintf(&buf, "  DataEntry[%d]: %q\n", idx, string(dce.Data))
+	}
+	return buf.String()
 }
 
 func makeDataCacheEntry(partIdx int) *DataCacheEntry {
@@ -108,7 +120,7 @@ func (entry *CacheEntry) loadFileForRead(ctx context.Context) (*BlockFile, error
 		return nil, fmt.Errorf("error getting file: %w", err)
 	}
 	if file == nil {
-		return nil, os.ErrNotExist
+		return nil, fs.ErrNotExist
 	}
 	return file, nil
 }
@@ -145,6 +157,28 @@ func (dce *DataCacheEntry) writeToPart(offset int64, data []byte) (int64, *DataC
 }
 
 func (entry *CacheEntry) writeAt(offset int64, data []byte, replace bool) {
+	if replace {
+		entry.File.Size = 0
+	}
+	if entry.File.Opts.Circular {
+		startCirFileOffset := entry.File.Size - entry.File.Opts.MaxSize
+		if offset+int64(len(data)) < startCirFileOffset {
+			// write is before the start of the circular file
+			return
+		}
+		if offset < startCirFileOffset {
+			// truncate data (from the front), update offset
+			truncateAmt := startCirFileOffset - offset
+			data = data[truncateAmt:]
+			offset += truncateAmt
+		}
+		if int64(len(data)) > entry.File.Opts.MaxSize {
+			// truncate data (from the front), update offset
+			truncateAmt := int64(len(data)) - entry.File.Opts.MaxSize
+			data = data[truncateAmt:]
+			offset += truncateAmt
+		}
+	}
 	endWriteOffset := offset + int64(len(data))
 	if replace {
 		entry.DataEntries = make(map[int]*DataCacheEntry)
@@ -189,10 +223,12 @@ func (entry *CacheEntry) readAt(ctx context.Context, offset int64, size int64, r
 			realDataOffset = file.Size - file.Opts.MaxSize
 		}
 		if offset < realDataOffset {
-			offset = realDataOffset
+			truncateAmt := realDataOffset - offset
+			offset += truncateAmt
+			size -= truncateAmt
 		}
 	}
-	partMap := entry.File.computePartMap(offset, size)
+	partMap := file.computePartMap(offset, size)
 	dataEntryMap, err := entry.loadDataPartsForRead(ctx, getPartIdxsFromMap(partMap))
 	if err != nil {
 		return 0, nil, err
@@ -287,11 +323,11 @@ func makeCacheEntry(blockId string, name string) *CacheEntry {
 	}
 }
 
-func (entry *CacheEntry) flushToDB(ctx context.Context) error {
+func (entry *CacheEntry) flushToDB(ctx context.Context, replace bool) error {
 	if entry.File == nil {
 		return nil
 	}
-	err := dbWriteCacheEntry(ctx, entry.File, entry.DataEntries)
+	err := dbWriteCacheEntry(ctx, entry.File, entry.DataEntries, replace)
 	if ctx.Err() != nil {
 		// transient error
 		return ctx.Err()

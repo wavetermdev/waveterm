@@ -82,7 +82,7 @@ func dbGetBlockFiles(ctx context.Context, blockId string) ([]*BlockFile, error) 
 	})
 }
 
-func dbWriteCacheEntry(ctx context.Context, file *BlockFile, dataEntries map[int]*DataCacheEntry) error {
+func dbWriteCacheEntry(ctx context.Context, file *BlockFile, dataEntries map[int]*DataCacheEntry, replace bool) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT blockid FROM db_block_file WHERE blockid = ? AND name = ?`
 		if !tx.Exists(query, file.BlockId, file.Name) {
@@ -92,6 +92,10 @@ func dbWriteCacheEntry(ctx context.Context, file *BlockFile, dataEntries map[int
 		// we don't update CreatedTs or Opts
 		query = `UPDATE db_block_file SET size = ?, modts = ?, meta = ? WHERE blockid = ? AND name = ?`
 		tx.Exec(query, file.Size, file.ModTs, dbutil.QuickJson(file.Meta), file.BlockId, file.Name)
+		if replace {
+			query = `DELETE FROM db_block_data WHERE blockid = ? AND name = ?`
+			tx.Exec(query, file.BlockId, file.Name)
+		}
 		dataPartQuery := `REPLACE INTO db_block_data (blockid, name, partidx, data) VALUES (?, ?, ?, ?)`
 		for partIdx, dataEntry := range dataEntries {
 			if partIdx != dataEntry.PartIdx {
