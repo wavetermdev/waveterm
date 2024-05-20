@@ -5,6 +5,7 @@ package fileservice
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -41,9 +42,9 @@ func (fs *FileService) StatFile(path string) (*FileInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot stat file %q: %w", path, err)
 	}
-	mimeType := utilfn.DetectMimeType(path)
+	mimeType := utilfn.DetectMimeType(cleanedPath)
 	return &FileInfo{
-		Path:     wavebase.ReplaceHomeDir(path),
+		Path:     cleanedPath,
 		Size:     finfo.Size(),
 		Mode:     finfo.Mode(),
 		ModTime:  finfo.ModTime().UnixMilli(),
@@ -62,6 +63,35 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 	}
 	if finfo.Size > MaxFileSize {
 		return nil, fmt.Errorf("file %q is too large to read, use /wave/stream-file", path)
+	}
+	if finfo.IsDir {
+		innerFilesEntries, err := os.ReadDir(finfo.Path)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse directory %s", finfo.Path)
+		}
+
+		var innerFilesInfo []FileInfo
+		for _, innerFileEntry := range innerFilesEntries {
+			innerFileInfoInt, _ := innerFileEntry.Info()
+			innerFileInfo := FileInfo{
+				Path:     innerFileInfoInt.Name(),
+				Size:     innerFileInfoInt.Size(),
+				Mode:     innerFileInfoInt.Mode(),
+				ModTime:  innerFileInfoInt.ModTime().UnixMilli(),
+				IsDir:    innerFileInfoInt.IsDir(),
+				MimeType: "",
+			}
+			innerFilesInfo = append(innerFilesInfo, innerFileInfo)
+		}
+
+		filesSerialized, err := json.Marshal(innerFilesInfo)
+		if err != nil {
+			return nil, fmt.Errorf("unable to serialize files %s", finfo.Path)
+		}
+		return &FullFile{
+			Info:   finfo,
+			Data64: base64.StdEncoding.EncodeToString(filesSerialized),
+		}, nil
 	}
 	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
 	barr, err := os.ReadFile(cleanedPath)

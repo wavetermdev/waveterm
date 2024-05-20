@@ -53,6 +53,18 @@ function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
     return <CenteredDiv>Preview Not Supported</CenteredDiv>;
 }
 
+function DirectoryPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<string>> }) {
+    const contentText = jotai.useAtomValue(contentAtom);
+    let content: FileInfo[] = JSON.parse(contentText);
+    return (
+        <div className="view-preview view-preview-directory">
+            {content.map((finfo) => (
+                <span>{finfo.path}</span>
+            ))}
+        </div>
+    );
+}
+
 function PreviewView({ blockId }: { blockId: string }) {
     const blockDataAtom: jotai.Atom<BlockData> = blockDataMap.get(blockId);
     const fileNameAtom = useBlockAtom(blockId, "preview:filename", () =>
@@ -117,6 +129,9 @@ function PreviewView({ blockId }: { blockId: string }) {
                 <pre>{jotai.useAtomValue(fileContentAtom)}</pre>
             </div>
         );
+    }
+    if (mimeType === "directory") {
+        return <DirectoryPreview contentAtom={fileContentAtom} />;
     }
     return (
         <div className="view-preview">
