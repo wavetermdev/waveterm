@@ -9,6 +9,7 @@ import (
 	"embed"
 	"log"
 	"net/http"
+	"runtime"
 	"strings"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockstore"
@@ -24,7 +25,7 @@ import (
 //go:embed dist
 var assets embed.FS
 
-//go:embed build/appicon.png
+//go:embed build/icons.icns
 var appIcon []byte
 
 func createAppMenu(app *application.App) *application.Menu {
@@ -91,6 +92,12 @@ func main() {
 		log.Printf("error ensuring wave home dir: %v\n", err)
 		return
 	}
+	waveLock, err := wavebase.AcquireWaveLock()
+	if err != nil {
+		log.Printf("error acquiring wave lock (another instance of Wave is likely running): %v\n", err)
+		return
+	}
+
 	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
 	err = blockstore.InitBlockstore()
 	if err != nil {
@@ -129,4 +136,5 @@ func main() {
 	if err != nil {
 		log.Printf("run error: %v\n", err)
 	}
+	runtime.KeepAlive(waveLock)
 }

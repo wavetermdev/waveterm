@@ -346,7 +346,8 @@ tasks:
         method: timestamp
         cmds:
             # Generates both .ico and .icns files
-            - wails3 generate icons -input appicon.png
+            # commented out for now
+            # - wails3 generate icons -input appicon.png
 
     install:frontend:deps:
         summary: Install frontend dependencies
