@@ -43,7 +43,8 @@ function CodeBlock(props: any): JSX.Element {
     };
 
     const handleCopy = async (e: any) => {
-        const textToCopy = getTextContent(props.children);
+        let textToCopy = getTextContent(props.children);
+        textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
         await navigator.clipboard.writeText(textToCopy);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000); // Reset copied state after 2 seconds
@@ -61,15 +62,6 @@ function CodeBlock(props: any): JSX.Element {
 
 @mobxReact.observer
 class Markdown2 extends React.Component<{ text: string; style?: any; className?: string }, {}> {
-    @boundMethod
-    handleClick(e: React.MouseEvent<HTMLElement>) {
-        let blockText = (e.target as HTMLElement).innerText;
-        if (blockText) {
-            blockText = blockText.replace(/\n$/, ""); // remove trailing newline
-            navigator.clipboard.writeText(blockText);
-        }
-    }
-
     render() {
         let { text, className } = this.props;
         let markdownComponents = {
