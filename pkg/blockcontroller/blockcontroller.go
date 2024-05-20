@@ -16,6 +16,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
+	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 const (
@@ -25,48 +26,11 @@ const (
 
 var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
-var blockDataMap = make(map[string]*BlockData)
-
-type BlockData struct {
-	Lock             *sync.Mutex    `json:"-"`
-	BlockId          string         `json:"blockid"`
-	BlockDef         *BlockDef      `json:"blockdef"`
-	Controller       string         `json:"controller"`
-	ControllerStatus string         `json:"controllerstatus"`
-	View             string         `json:"view"`
-	Meta             map[string]any `json:"meta,omitempty"`
-	RuntimeOpts      *RuntimeOpts   `json:"runtimeopts,omitempty"`
-}
-
-type FileDef struct {
-	FileType string         `json:"filetype,omitempty"`
-	Path     string         `json:"path,omitempty"`
-	Url      string         `json:"url,omitempty"`
-	Content  string         `json:"content,omitempty"`
-	Meta     map[string]any `json:"meta,omitempty"`
-}
-
-type BlockDef struct {
-	Controller string              `json:"controller"`
-	View       string              `json:"view,omitempty"`
-	Files      map[string]*FileDef `json:"files,omitempty"`
-	Meta       map[string]any      `json:"meta,omitempty"`
-}
-
-type WinSize struct {
-	Width  int `json:"width"`
-	Height int `json:"height"`
-}
-
-type RuntimeOpts struct {
-	TermSize shellexec.TermSize `json:"termsize,omitempty"`
-	WinSize  WinSize            `json:"winsize,omitempty"`
-}
 
 type BlockController struct {
 	Lock     *sync.Mutex
 	BlockId  string
-	BlockDef *BlockDef
+	BlockDef *wstore.BlockDef
 	InputCh  chan BlockCommand
 
 	ShellProc    *shellexec.ShellProc
@@ -86,9 +50,9 @@ func jsonDeepCopy(val map[string]any) (map[string]any, error) {
 	return rtn, nil
 }
 
-func CreateBlock(bdef *BlockDef, rtOpts *RuntimeOpts) (*BlockData, error) {
+func CreateBlock(bdef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (*wstore.Block, error) {
 	blockId := uuid.New().String()
-	blockData := &BlockData{
+	blockData := &wstore.Block{
 		Lock:        &sync.Mutex{},
 		BlockId:     blockId,
 		BlockDef:    bdef,
@@ -101,7 +65,7 @@ func CreateBlock(bdef *BlockDef, rtOpts *RuntimeOpts) (*BlockData, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error copying meta: %w", err)
 	}
-	setBlockData(blockData)
+	wstore.BlockMap.Set(blockId, blockData)
 	if blockData.Controller != "" {
 		StartBlockController(blockId, blockData)
 	}
@@ -115,25 +79,7 @@ func CloseBlock(blockId string) {
 	}
 	bc.Close()
 	close(bc.InputCh)
-	removeBlockData(blockId)
-}
-
-func GetBlockData(blockId string) *BlockData {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-	return blockDataMap[blockId]
-}
-
-func setBlockData(bd *BlockData) {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-	blockDataMap[bd.BlockId] = bd
-}
-
-func removeBlockData(blockId string) {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-	delete(blockDataMap, blockId)
+	wstore.BlockMap.Delete(blockId)
 }
 
 func (bc *BlockController) setShellProc(shellProc *shellexec.ShellProc) error {
@@ -231,7 +177,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 	return nil
 }
 
-func (bc *BlockController) Run(bdata *BlockData) {
+func (bc *BlockController) Run(bdata *wstore.Block) {
 	defer func() {
 		bdata.WithLock(func() {
 			// if the controller had an error status, don't change it
@@ -272,13 +218,7 @@ func (bc *BlockController) Run(bdata *BlockData) {
 	}
 }
 
-func (b *BlockData) WithLock(f func()) {
-	b.Lock.Lock()
-	defer b.Lock.Unlock()
-	f()
-}
-
-func StartBlockController(blockId string, bdata *BlockData) {
+func StartBlockController(blockId string, bdata *wstore.Block) {
 	if bdata.Controller != BlockController_Shell {
 		log.Printf("unknown controller %q\n", bdata.Controller)
 		bdata.WithLock(func() {
@@ -312,7 +252,7 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) {
 		log.Printf("MESSAGE: %s | %q\n", blockId, cmd.Message)
 	case *SetViewCommand:
 		log.Printf("SETVIEW: %s | %q\n", blockId, cmd.View)
-		block := GetBlockData(blockId)
+		block := wstore.BlockMap.Get(blockId)
 		if block != nil {
 			block.WithLock(func() {
 				block.View = cmd.View
@@ -320,7 +260,7 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) {
 		}
 	case *SetMetaCommand:
 		log.Printf("SETMETA: %s | %v\n", blockId, cmd.Meta)
-		block := GetBlockData(blockId)
+		block := wstore.BlockMap.Get(blockId)
 		if block != nil {
 			block.WithLock(func() {
 				for k, v := range cmd.Meta {
