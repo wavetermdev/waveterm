@@ -401,7 +401,6 @@ func TestCircularWrites(t *testing.T) {
 		t.Fatalf("error writing data: %v", err)
 	}
 	checkFileData(t, ctx, blockId, "c1", "123456789 123456789 123456789 123456789 123456789 ")
-
 	err = GBS.AppendData(ctx, blockId, "c1", []byte("apple"))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)

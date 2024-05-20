@@ -162,7 +162,7 @@ func (entry *CacheEntry) writeAt(offset int64, data []byte, replace bool) {
 	}
 	if entry.File.Opts.Circular {
 		startCirFileOffset := entry.File.Size - entry.File.Opts.MaxSize
-		if offset+int64(len(data)) < startCirFileOffset {
+		if offset+int64(len(data)) <= startCirFileOffset {
 			// write is before the start of the circular file
 			return
 		}

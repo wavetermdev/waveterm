@@ -218,7 +218,7 @@ func (s *BlockStore) WriteAt(ctx context.Context, blockId string, name string, o
 		if err != nil {
 			return err
 		}
-		entry.writeAt(offset, data, true)
+		entry.writeAt(offset, data, false)
 		return nil
 	})
 }
@@ -229,9 +229,10 @@ func (s *BlockStore) AppendData(ctx context.Context, blockId string, name string
 		if err != nil {
 			return err
 		}
-		lastPartIdx := entry.File.getLastIncompletePartNum()
-		if lastPartIdx != NoPartIdx {
-			err = entry.loadDataPartsIntoCache(ctx, []int{lastPartIdx})
+		partMap := entry.File.computePartMap(entry.File.Size, int64(len(data)))
+		incompleteParts := incompletePartsFromMap(partMap)
+		if len(incompleteParts) > 0 {
+			err = entry.loadDataPartsIntoCache(ctx, incompleteParts)
 			if err != nil {
 				return err
 			}
@@ -289,13 +290,6 @@ func (s *BlockStore) FlushCache(ctx context.Context) error {
 }
 
 ///////////////////////////////////
-
-func (f *BlockFile) getLastIncompletePartNum() int {
-	if f.Size%partDataSize == 0 {
-		return NoPartIdx
-	}
-	return f.partIdxAtOffset(f.Size)
-}
 
 func (f *BlockFile) partIdxAtOffset(offset int64) int {
 	partIdx := int(offset / partDataSize)
