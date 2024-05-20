@@ -6,7 +6,9 @@ package blockstore
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"sync"
 	"sync/atomic"
@@ -43,6 +45,32 @@ func cleanupDb(t *testing.T) {
 	if flushErrorCount.Load() > 0 {
 		t.Errorf("flush error count: %d", flushErrorCount.Load())
 	}
+}
+
+func (s *BlockStore) getCacheSize() int {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	return len(s.Cache)
+}
+
+func (s *BlockStore) clearCache() {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	s.Cache = make(map[cacheKey]*CacheEntry)
+}
+
+//lint:ignore U1000 used for testing
+func (s *BlockStore) dump() string {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("BlockStore %d entries\n", len(s.Cache)))
+	for _, v := range s.Cache {
+		entryStr := v.dump()
+		buf.WriteString(entryStr)
+		buf.WriteString("\n")
+	}
+	return buf.String()
 }
 
 func TestCreate(t *testing.T) {
@@ -134,12 +162,9 @@ func TestDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("error deleting file: %v", err)
 	}
-	file, err := GBS.Stat(ctx, blockId, "testfile")
-	if err != nil {
-		t.Fatalf("error stating file: %v", err)
-	}
-	if file != nil {
-		t.Fatalf("file should not be found")
+	_, err = GBS.Stat(ctx, blockId, "testfile")
+	if err == nil || errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("expected file not found error")
 	}
 
 	// create two files in same block, use DeleteBlock to delete
@@ -376,7 +401,6 @@ func TestCircularWrites(t *testing.T) {
 		t.Fatalf("error writing data: %v", err)
 	}
 	checkFileData(t, ctx, blockId, "c1", "123456789 123456789 123456789 123456789 123456789 ")
-
 	err = GBS.AppendData(ctx, blockId, "c1", []byte("apple"))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)
@@ -426,14 +450,14 @@ func TestCircularWrites(t *testing.T) {
 	}
 	checkFileSize(t, ctx, blockId, "c1", 128)
 	checkFileData(t, ctx, blockId, "c1", " 123456789 123456789 123456789 bar456789 123456789")
-	GBS.withLock(blockId, "c1", false, func(entry *CacheEntry) {
+	err = withLock(GBS, blockId, "c1", func(entry *CacheEntry) error {
 		if entry == nil {
-			err = fmt.Errorf("entry not found")
-			return
+			return fmt.Errorf("entry not found")
 		}
 		if len(entry.DataEntries) != 1 {
-			err = fmt.Errorf("data entries mismatch: expected 1, got %d", len(entry.DataEntries))
+			return fmt.Errorf("data entries mismatch: expected 1, got %d", len(entry.DataEntries))
 		}
+		return nil
 	})
 	if err != nil {
 		t.Fatalf("error checking data entries: %v", err)

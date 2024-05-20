@@ -3,7 +3,7 @@ package blockstore
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
+	"os"
 
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
@@ -54,14 +54,15 @@ func dbGetAllBlockIds(ctx context.Context) ([]string, error) {
 }
 
 func dbGetFileParts(ctx context.Context, blockId string, name string, parts []int) (map[int]*DataCacheEntry, error) {
+	if len(parts) == 0 {
+		return nil, nil
+	}
 	return WithTxRtn(ctx, func(tx *TxWrap) (map[int]*DataCacheEntry, error) {
 		var data []*DataCacheEntry
 		query := "SELECT partidx, data FROM db_block_data WHERE blockid = ? AND name = ? AND partidx IN (SELECT value FROM json_each(?))"
 		tx.Select(&data, query, blockId, name, dbutil.QuickJsonArr(parts))
 		rtn := make(map[int]*DataCacheEntry)
 		for _, d := range data {
-			d.Dirty = &atomic.Bool{}
-			d.Flushing = &atomic.Bool{}
 			if cap(d.Data) != int(partDataSize) {
 				newData := make([]byte, len(d.Data), partDataSize)
 				copy(newData, d.Data)
@@ -81,26 +82,26 @@ func dbGetBlockFiles(ctx context.Context, blockId string) ([]*BlockFile, error) 
 	})
 }
 
-func dbWriteCacheEntry(ctx context.Context, fileEntry *FileCacheEntry, dataEntries []*DataCacheEntry) error {
-	if fileEntry == nil {
-		return fmt.Errorf("fileEntry or fileEntry.File is nil")
-	}
+func dbWriteCacheEntry(ctx context.Context, file *BlockFile, dataEntries map[int]*DataCacheEntry, replace bool) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := `SELECT blockid FROM db_block_file WHERE blockid = ? AND name = ?`
-		if !tx.Exists(query, fileEntry.File.BlockId, fileEntry.File.Name) {
+		if !tx.Exists(query, file.BlockId, file.Name) {
 			// since deletion is synchronous this stops us from writing to a deleted file
-			return fmt.Errorf("file not found in db")
+			return os.ErrNotExist
 		}
-		if fileEntry.Dirty.Load() {
-			query := `UPDATE db_block_file SET size = ?, createdts = ?, modts = ?, opts = ?, meta = ? WHERE blockid = ? AND name = ?`
-			tx.Exec(query, fileEntry.File.Size, fileEntry.File.CreatedTs, fileEntry.File.ModTs, dbutil.QuickJson(fileEntry.File.Opts), dbutil.QuickJson(fileEntry.File.Meta), fileEntry.File.BlockId, fileEntry.File.Name)
+		// we don't update CreatedTs or Opts
+		query = `UPDATE db_block_file SET size = ?, modts = ?, meta = ? WHERE blockid = ? AND name = ?`
+		tx.Exec(query, file.Size, file.ModTs, dbutil.QuickJson(file.Meta), file.BlockId, file.Name)
+		if replace {
+			query = `DELETE FROM db_block_data WHERE blockid = ? AND name = ?`
+			tx.Exec(query, file.BlockId, file.Name)
 		}
 		dataPartQuery := `REPLACE INTO db_block_data (blockid, name, partidx, data) VALUES (?, ?, ?, ?)`
-		for _, dataEntry := range dataEntries {
-			if dataEntry == nil || !dataEntry.Dirty.Load() {
-				continue
+		for partIdx, dataEntry := range dataEntries {
+			if partIdx != dataEntry.PartIdx {
+				panic(fmt.Sprintf("partIdx:%d and dataEntry.PartIdx:%d do not match", partIdx, dataEntry.PartIdx))
 			}
-			tx.Exec(dataPartQuery, fileEntry.File.BlockId, fileEntry.File.Name, dataEntry.PartIdx, dataEntry.Data)
+			tx.Exec(dataPartQuery, file.BlockId, file.Name, dataEntry.PartIdx, dataEntry.Data)
 		}
 		return nil
 	})
