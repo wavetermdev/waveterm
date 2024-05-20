@@ -45,6 +45,43 @@ func cleanupDb(t *testing.T) {
 	}
 }
 
+func (s *BlockStore) getCacheSize() int {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	return len(s.Cache)
+}
+
+func (s *BlockStore) clearCache() {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	s.Cache = make(map[cacheKey]*CacheEntry)
+}
+
+//lint:ignore U1000 used for testing
+func (e *CacheEntry) dump() string {
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "CacheEntry [BlockId: %q, Name: %q] PinCount: %d\n", e.BlockId, e.Name, e.PinCount)
+	fmt.Fprintf(&buf, "  FileEntry: %v\n", e.File)
+	for idx, dce := range e.DataEntries {
+		fmt.Fprintf(&buf, "  DataEntry[%d]: %q\n", idx, string(dce.Data))
+	}
+	return buf.String()
+}
+
+//lint:ignore U1000 used for testing
+func (s *BlockStore) dump() string {
+	s.Lock.Lock()
+	defer s.Lock.Unlock()
+	var buf bytes.Buffer
+	buf.WriteString(fmt.Sprintf("BlockStore %d entries\n", len(s.Cache)))
+	for _, v := range s.Cache {
+		entryStr := v.dump()
+		buf.WriteString(entryStr)
+		buf.WriteString("\n")
+	}
+	return buf.String()
+}
+
 func TestCreate(t *testing.T) {
 	initDb(t)
 	defer cleanupDb(t)
@@ -426,14 +463,14 @@ func TestCircularWrites(t *testing.T) {
 	}
 	checkFileSize(t, ctx, blockId, "c1", 128)
 	checkFileData(t, ctx, blockId, "c1", " 123456789 123456789 123456789 bar456789 123456789")
-	GBS.withLock(blockId, "c1", false, func(entry *CacheEntry) {
+	err = withLock(GBS, blockId, "c1", func(entry *CacheEntry) error {
 		if entry == nil {
-			err = fmt.Errorf("entry not found")
-			return
+			return fmt.Errorf("entry not found")
 		}
 		if len(entry.DataEntries) != 1 {
-			err = fmt.Errorf("data entries mismatch: expected 1, got %d", len(entry.DataEntries))
+			return fmt.Errorf("data entries mismatch: expected 1, got %d", len(entry.DataEntries))
 		}
+		return nil
 	})
 	if err != nil {
 		t.Fatalf("error checking data entries: %v", err)
