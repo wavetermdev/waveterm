@@ -76,14 +76,26 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
             if (assistantresponse.error != null && assistantresponse.error !== "") {
                 innerHTML = this.renderError(assistantresponse.error);
             } else {
-                innerHTML = (
-                    <>
-                        <div className="chat-msg-header">
-                            <i className="fa-sharp fa-solid fa-sparkles"></i>
-                        </div>
-                        <Markdown2 text={assistantresponse.message} />
-                    </>
-                );
+                if (!assistantresponse.message) {
+                    console.log("ai response is empty...");
+                    innerHTML = (
+                        <>
+                            <div className="chat-msg-header">
+                                <i className="fa-sharp fa-solid fa-sparkles"></i>
+                            </div>
+                            <Markdown2 text={"..."} />
+                        </>
+                    );
+                } else {
+                    innerHTML = (
+                        <>
+                            <div className="chat-msg-header">
+                                <i className="fa-sharp fa-solid fa-sparkles"></i>
+                            </div>
+                            <Markdown2 text={assistantresponse.message} />
+                        </>
+                    );
+                }
             }
         }
 

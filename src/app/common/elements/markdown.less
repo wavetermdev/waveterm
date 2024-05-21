@@ -49,7 +49,7 @@
     pre {
         background-color: var(--markdown-bg-color);
         margin: 4px 10px 4px 10px;
-        padding: 0.7em 0.7em 0.5em 0.7em;
+        padding: 0.7em 0.7em 0.2em 0.7em;
         border-radius: 4px;
 
         code {
@@ -79,9 +79,26 @@
     .codeblock-actions {
         display: flex;
         justify-content: flex-end;
+        align-items: center;
+        color: var(--line-actions-inactive-color);
 
         .copy-button {
             outline: none;
+
+            i {
+                color: var(--line-actions-inactive-color);
+            }
+
+            i:hover {
+                color: var(--line-actions-active-color);
+            }
+        }
+
+        i {
+            margin-left: 2px;
+            &:hover {
+                color: var(--line-actions-active-color);
+            }
         }
     }
 

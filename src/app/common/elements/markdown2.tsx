@@ -55,6 +55,7 @@ function CodeBlock(props: any): JSX.Element {
             {props.children}
             <div className="codeblock-actions">
                 <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
+                <i className="fa-regular fa-square-terminal"></i>
             </div>
         </pre>
     );
