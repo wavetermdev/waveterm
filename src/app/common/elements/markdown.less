@@ -46,60 +46,52 @@
         padding: 2px 4px 2px 6px;
     }
 
-    pre {
+    pre.codeblock {
         background-color: var(--markdown-bg-color);
-        margin: 4px 10px 4px 10px;
-        padding: 0.7em 0.7em 0.2em 0.7em;
+        margin: 4px 10px;
+        padding: 0.4em 0.7em;
         border-radius: 4px;
+        position: relative;
 
         code {
-            background-color: transparent;
-            padding: 0;
-            line-height: normal;
+            // color: var(--app-text-color);
+            // font-family: var(--termfontfamily);
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: auto;
         }
-    }
 
-    pre.selected {
-        outline: 2px solid var(--markdown-outline-color);
+        .codeblock-actions {
+            display: none;
+            position: absolute;
+            top: 4px;
+            right: 7px;
+            align-items: center;
+
+            i {
+                color: var(--line-actions-inactive-color);
+                margin-left: 3px;
+                &:hover {
+                    color: var(--line-actions-active-color);
+                }
+            }
+        }
+
+        &:hover .codeblock-actions {
+            display: flex;
+        }
     }
 
     code {
         color: var(--app-text-color);
+        background-color: var(--markdown-bg-color);
         font-family: var(--termfontfamily);
         border-radius: 4px;
-        background-color: var(--markdown-bg-color);
-        padding: 0.15em 0.5em;
-        line-height: 1.5;
-        cursor: default;
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        overflow: auto;
     }
 
-    .codeblock-actions {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        color: var(--line-actions-inactive-color);
-
-        .copy-button {
-            outline: none;
-
-            i {
-                color: var(--line-actions-inactive-color);
-            }
-
-            i:hover {
-                color: var(--line-actions-active-color);
-            }
-        }
-
-        i {
-            margin-left: 2px;
-            &:hover {
-                color: var(--line-actions-active-color);
-            }
-        }
+    pre.selected {
+        outline: 2px solid var(--markdown-outline-color);
     }
 
     .title {

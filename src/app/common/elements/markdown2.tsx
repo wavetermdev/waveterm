@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CopyButton } from "@/elements";
 import { clsx } from "clsx";
+import * as mobx from "mobx";
 
 import "./markdown.less";
 import { boundMethod } from "autobind-decorator";
@@ -28,8 +29,8 @@ function Code(props: any): JSX.Element {
     return <code>{props.children}</code>;
 }
 
-function CodeBlock(props: any): JSX.Element {
-    const [, setCopied] = React.useState(false);
+const CodeBlock = mobxReact.observer((props: any): JSX.Element => {
+    const copied: OV<boolean> = mobx.observable.box(false, { name: "copied" });
 
     const getTextContent = (children: any) => {
         if (typeof children === "string") {
@@ -46,20 +47,21 @@ function CodeBlock(props: any): JSX.Element {
         let textToCopy = getTextContent(props.children);
         textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
         await navigator.clipboard.writeText(textToCopy);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000); // Reset copied state after 2 seconds
+        copied.set(true);
+        setTimeout(() => copied.set(false), 2000); // Reset copied state after 2 seconds
     };
 
     return (
-        <pre>
+        <pre className="codeblock">
             {props.children}
             <div className="codeblock-actions">
                 <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
                 <i className="fa-regular fa-square-terminal"></i>
+                {copied.get() && <span className="copied-indicator">Copied!</span>}
             </div>
         </pre>
     );
-}
+});
 
 @mobxReact.observer
 class Markdown2 extends React.Component<{ text: string; style?: any; className?: string }, {}> {
