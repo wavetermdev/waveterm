@@ -108,9 +108,9 @@ func main() {
 	app := application.New(application.Options{
 		Name:        "NextWave",
 		Description: "The Next Wave Terminal",
-		Bind: []any{
-			&fileservice.FileService{},
-			&blockservice.BlockService{},
+		Services: []application.Service{
+			application.NewService(&fileservice.FileService{}),
+			application.NewService(&blockservice.BlockService{}),
 		},
 		Icon: appIcon,
 		Assets: application.AssetOptions{

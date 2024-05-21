@@ -4,8 +4,10 @@
 package wstore
 
 import (
+	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/util/ds"
 )
@@ -14,15 +16,33 @@ var WorkspaceMap = ds.NewSyncMap[*Workspace]()
 var TabMap = ds.NewSyncMap[*Tab]()
 var BlockMap = ds.NewSyncMap[*Block]()
 
+type Client struct {
+	DefaultWorkspaceId string `json:"defaultworkspaceid"`
+}
+
 type Workspace struct {
-	WorkspaceId string   `json:"workspaceid"`
-	TabIds      []string `json:"tabids"`
+	Lock        *sync.Mutex `json:"-"`
+	WorkspaceId string      `json:"workspaceid"`
+	TabIds      []string    `json:"tabids"`
+}
+
+func (ws *Workspace) WithLock(f func()) {
+	ws.Lock.Lock()
+	defer ws.Lock.Unlock()
+	f()
 }
 
 type Tab struct {
-	TabId    string   `json:"tabid"`
-	Name     string   `json:"name"`
-	BlockIds []string `json:"blockids"`
+	Lock     *sync.Mutex `json:"-"`
+	TabId    string      `json:"tabid"`
+	Name     string      `json:"name"`
+	BlockIds []string    `json:"blockids"`
+}
+
+func (tab *Tab) WithLock(f func()) {
+	tab.Lock.Lock()
+	defer tab.Lock.Unlock()
+	f()
 }
 
 type FileDef struct {
@@ -65,4 +85,36 @@ func (b *Block) WithLock(f func()) {
 	b.Lock.Lock()
 	defer b.Lock.Unlock()
 	f()
+}
+
+func CreateTab(workspaceId string, name string) (*Tab, error) {
+	tab := &Tab{
+		Lock:     &sync.Mutex{},
+		TabId:    uuid.New().String(),
+		Name:     name,
+		BlockIds: []string{},
+	}
+	TabMap.Set(tab.TabId, tab)
+	ws := WorkspaceMap.Get(workspaceId)
+	if ws == nil {
+		return nil, fmt.Errorf("workspace not found: %q", workspaceId)
+	}
+	ws.WithLock(func() {
+		ws.TabIds = append(ws.TabIds, tab.TabId)
+	})
+	return tab, nil
+}
+
+func CreateWorkspace() (*Workspace, error) {
+	ws := &Workspace{
+		Lock:        &sync.Mutex{},
+		WorkspaceId: uuid.New().String(),
+		TabIds:      []string{},
+	}
+	WorkspaceMap.Set(ws.WorkspaceId, ws)
+	_, err := CreateTab(ws.WorkspaceId, "Tab 1")
+	if err != nil {
+		return nil, err
+	}
+	return ws, nil
 }

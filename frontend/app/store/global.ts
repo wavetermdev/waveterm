@@ -8,7 +8,7 @@ import * as rxjs from "rxjs";
 import type { WailsEvent } from "@wailsio/runtime/types/events";
 import { Events } from "@wailsio/runtime";
 import { produce } from "immer";
-import * as BlockService from "@/bindings/pkg/service/blockservice/BlockService";
+import { BlockService } from "@/bindings/blockservice";
 
 const globalStore = jotai.createStore();
 

@@ -7,7 +7,7 @@ import { Terminal } from "@xterm/xterm";
 import type { ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { Button } from "@/element/button";
-import * as BlockService from "@/bindings/pkg/service/blockservice/BlockService";
+import { BlockService } from "@/bindings/blockservice";
 import { getBlockSubject } from "@/store/global";
 import { base64ToArray } from "@/util/util";
 
