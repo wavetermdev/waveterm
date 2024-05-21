@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import React from "react";
-import { createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import { createColumnHelper, flexRender, getCoreRowModel, useReactTable, Table } from "@tanstack/react-table";
 
 import "./directorytable.less";
 
@@ -36,34 +36,73 @@ function DirectoryTable<T, U>({ data }: DirectoryTableProps) {
         getCoreRowModel: getCoreRowModel(),
     });
 
+    const columnSizeVars = React.useMemo(() => {
+        const headers = table.getFlatHeaders();
+        const colSizes: { [key: string]: number } = {};
+        for (let i = 0; i < headers.length; i++) {
+            const header = headers[i]!;
+            colSizes[`--header-${header.id}-size`] = header.getSize();
+            colSizes[`--col-${header.column.id}-size`] = header.column.getSize();
+        }
+        return colSizes;
+    }, [table.getState().columnSizingInfo]);
+
     return (
-        <table className="dir-table">
-            <thead className="dir-table-head">
+        <div className="dir-table" style={{ ...columnSizeVars }}>
+            <div className="dir-table-head">
                 {table.getHeaderGroups().map((headerGroup) => (
-                    <tr className="dir-table-head-row" key={headerGroup.id}>
+                    <div className="dir-table-head-row" key={headerGroup.id}>
                         {headerGroup.headers.map((header) => (
-                            <th className="dir-table-head-cell" key={header.id}>
+                            <div
+                                className="dir-table-head-cell"
+                                key={header.id}
+                                style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
+                            >
                                 {header.isPlaceholder
                                     ? null
                                     : flexRender(header.column.columnDef.header, header.getContext())}
-                            </th>
+                                <div
+                                    className="dir-table-head-resize"
+                                    onMouseDown={header.getResizeHandler()}
+                                    onTouchStart={header.getResizeHandler()}
+                                />
+                            </div>
                         ))}
-                    </tr>
+                    </div>
                 ))}
-            </thead>
-            <tbody className="dir-table-body">
-                {table.getRowModel().rows.map((row) => (
-                    <tr className="dir-table-body-row" key={row.id} tabIndex={0}>
-                        {row.getVisibleCells().map((cell) => (
-                            <td className="dir-table-body-cell" key={cell.id}>
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                        ))}
-                    </tr>
-                ))}
-            </tbody>
-        </table>
+            </div>
+            {table.getState().columnSizingInfo.isResizingColumn ? (
+                <MemoizedTableBody table={table} />
+            ) : (
+                <TableBody table={table} />
+            )}
+        </div>
     );
 }
+
+function TableBody({ table }: { table: Table<FileInfo> }) {
+    return (
+        <div className="dir-table-body">
+            {table.getRowModel().rows.map((row) => (
+                <div className="dir-table-body-row" key={row.id} tabIndex={0}>
+                    {row.getVisibleCells().map((cell) => (
+                        <div
+                            className="dir-table-body-cell"
+                            key={cell.id}
+                            style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
+                        >
+                            {cell.renderValue<any>()}
+                        </div>
+                    ))}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+const MemoizedTableBody = React.memo(
+    TableBody,
+    (prev, next) => prev.table.options.data == next.table.options.data
+) as typeof TableBody;
 
 export { DirectoryTable };

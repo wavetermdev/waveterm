@@ -1,17 +1,48 @@
 .dir-table {
+    overflow: auto;
+    width: 100%;
+    border: 2px solid var(--border-color);
+    border-radius: 3px;
     .dir-table-head {
         .dir-table-head-row {
+            display: flex;
+            border-bottom: 2px solid var(--border-color);
+            padding: 4px 0;
             .dir-table-head-cell {
+                position: relative;
+                padding: 2px 4px;
+                .dir-table-head-resize {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    height: 100%;
+                    cursor: col-resize;
+                    user-select: none;
+                    touch-action: none;
+                    width: 2px;
+                    background: linear-gradient(var(--border-color), var(--border-color)) no-repeat center/2px 100%;
+                }
+
+                &:last-child {
+                    .dir-table-head-resize {
+                        width: 0;
+                    }
+                }
             }
         }
     }
 
     .dir-table-body {
         .dir-table-body-row {
+            display: flex;
+            border-radius: 3px;
             &:focus {
-                background-color: var(--highlight-bg-color);
+                background-color: var(--accent-color);
             }
+
             .dir-table-body-cell {
+                overflow: hidden;
+                padding: 0.25rem;
             }
         }
     }
