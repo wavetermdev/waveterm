@@ -8,6 +8,7 @@ import { Markdown } from "@/element/markdown";
 import { FileService, FileInfo, FullFile } from "@/bindings/fileservice";
 import * as util from "@/util/util";
 import { CenteredDiv } from "../element/quickelems";
+import { DirectoryTable } from "@/element/directorytable";
 
 import "./view.less";
 
@@ -51,6 +52,12 @@ function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
         );
     }
     return <CenteredDiv>Preview Not Supported</CenteredDiv>;
+}
+
+function DirectoryPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<string>> }) {
+    const contentText = jotai.useAtomValue(contentAtom);
+    let content: FileInfo[] = JSON.parse(contentText);
+    return <DirectoryTable data={content} />;
 }
 
 function PreviewView({ blockId }: { blockId: string }) {
@@ -117,6 +124,9 @@ function PreviewView({ blockId }: { blockId: string }) {
                 <pre>{jotai.useAtomValue(fileContentAtom)}</pre>
             </div>
         );
+    }
+    if (mimeType === "directory") {
+        return <DirectoryPreview contentAtom={fileContentAtom} />;
     }
     return (
         <div className="view-preview">

@@ -634,6 +634,13 @@ func DetectMimeType(path string) string {
 	if mimeType := mime.TypeByExtension(ext); mimeType != "" {
 		return mimeType
 	}
+	stats, err := os.Stat(path)
+	if err != nil {
+		return ""
+	}
+	if stats.IsDir() {
+		return "directory"
+	}
 	fd, err := os.Open(path)
 	if err != nil {
 		return ""
