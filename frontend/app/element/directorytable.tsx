@@ -3,6 +3,7 @@
 
 import React from "react";
 import { createColumnHelper, flexRender, getCoreRowModel, useReactTable, Table } from "@tanstack/react-table";
+import { FileInfo } from "@/bindings/fileservice";
 
 import "./directorytable.less";
 
