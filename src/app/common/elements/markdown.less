@@ -54,12 +54,11 @@
         position: relative;
 
         code {
-            // color: var(--app-text-color);
-            // font-family: var(--termfontfamily);
             line-height: 1.5;
             white-space: pre-wrap;
             word-wrap: break-word;
             overflow: auto;
+            overflow: hidden;
         }
 
         .codeblock-actions {
@@ -74,6 +73,10 @@
                 margin-left: 3px;
                 &:hover {
                     color: var(--line-actions-active-color);
+                }
+
+                &.fa-check {
+                    color: var(--app-success-color);
                 }
             }
         }
