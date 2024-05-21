@@ -7,7 +7,7 @@ import { TabContent } from "@/app/tab/tab";
 import { clsx } from "clsx";
 import { atoms, addBlockIdToTab, blockDataMap } from "@/store/global";
 import { v4 as uuidv4 } from "uuid";
-import * as BlockService from "@/bindings/pkg/service/blockservice/BlockService";
+import { BlockService } from "@/bindings/blockservice";
 
 import "./workspace.less";
 

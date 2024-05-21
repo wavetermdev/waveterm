@@ -560,10 +560,10 @@
     "@types/babel__core" "^7.20.5"
     react-refresh "^0.14.0"
 
-"@wailsio/runtime@latest":
-  version "3.0.0-alpha.22"
-  resolved "https://registry.yarnpkg.com/@wailsio/runtime/-/runtime-3.0.0-alpha.22.tgz#40dfcd0cebf055f455438712fcfdb64a8292384b"
-  integrity sha512-72i0cq17cLlbjHZyD3XT8VPxcDIK2RLLYaBwcUYGWCQHSuZFPdR0ZR2ghSeZnTey8h30PBtYqQzWyOTvOYN5Jw==
+"@wailsio/runtime@^3.0.0-alpha.24":
+  version "3.0.0-alpha.24"
+  resolved "https://registry.yarnpkg.com/@wailsio/runtime/-/runtime-3.0.0-alpha.24.tgz#87d8465a08fbfc7e3131cd8f8832601fb2a2c99c"
+  integrity sha512-bd36Qj6CfIMPeUd+fhLpcb9O/XEUEOgLzelkHw45lk0OWHMRlTV5QYdAT3cBncvztH7xYijoN5v2+O3U/Jwreg==
   dependencies:
     nanoid "^5.0.7"
 

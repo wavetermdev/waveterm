@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package blockstore
 
 // setup for blockstore db
@@ -22,7 +25,7 @@ import (
 	dbfs "github.com/wavetermdev/thenextwave/db"
 )
 
-const BlockstoreDbName = "blockstore.db"
+const BlockstoreDBName = "blockstore.db"
 
 type TxWrap = txwrap.TxWrap
 
@@ -46,8 +49,8 @@ func InitBlockstore() error {
 }
 
 func GetDBName() string {
-	scHome := wavebase.GetWaveHomeDir()
-	return path.Join(scHome, BlockstoreDbName)
+	waveHome := wavebase.GetWaveHomeDir()
+	return path.Join(waveHome, BlockstoreDBName)
 }
 
 func MakeDB(ctx context.Context) (*sqlx.DB, error) {
@@ -60,7 +63,7 @@ func MakeDB(ctx context.Context) (*sqlx.DB, error) {
 	} else {
 		dbName := GetDBName()
 		log.Printf("[db] opening db %s\n", dbName)
-		rtn, err = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc&_journal_mode=WAL&_busy_timeout=5000", dbName))
+		rtn, err = sqlx.Open("sqlite3", fmt.Sprintf("file:%s?mode=rwc&_journal_mode=WAL&_busy_timeout=5000", dbName))
 	}
 	if err != nil {
 		return nil, fmt.Errorf("opening db: %w", err)
