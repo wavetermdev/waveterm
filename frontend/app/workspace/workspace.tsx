@@ -49,7 +49,7 @@ function Widgets() {
 
     async function createBlock(blockDef: BlockDef) {
         const rtOpts = { termsize: { rows: 25, cols: 80 } };
-        const rtnBlock: BlockData = await BlockService.CreateBlock(blockDef, rtOpts);
+        const rtnBlock: BlockData = (await BlockService.CreateBlock(blockDef, rtOpts)) as BlockData;
         const newBlockAtom = jotai.atom(rtnBlock);
         blockDataMap.set(rtnBlock.blockid, newBlockAtom);
         addBlockIdToTab(activeTabId, rtnBlock.blockid);
