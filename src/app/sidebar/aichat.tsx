@@ -76,14 +76,14 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
             if (assistantresponse.error != null && assistantresponse.error !== "") {
                 innerHTML = this.renderError(assistantresponse.error);
             } else {
-                if (!assistantresponse.message) {
+                if (!assistantresponse?.message) {
                     console.log("ai response is empty...");
                     innerHTML = (
                         <>
                             <div className="chat-msg-header">
                                 <i className="fa-sharp fa-solid fa-sparkles"></i>
                             </div>
-                            <TypingIndicator className="chat-msg-assistant" />
+                            <TypingIndicator />
                         </>
                     );
                 } else {
@@ -282,7 +282,10 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     updatePreTagOutline(clickedPre?) {
-        const pres = this.chatWindowRef.current.querySelectorAll("pre");
+        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+        if (pres == null) {
+            return;
+        }
         pres.forEach((preElement, idx) => {
             if (preElement === clickedPre) {
                 this.blockIndex = idx;
@@ -294,7 +297,10 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     removePreTagOutline() {
-        const pres = this.chatWindowRef.current.querySelectorAll("pre");
+        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+        if (pres == null) {
+            return;
+        }
         pres.forEach((preElement) => {
             preElement.style.outline = "none";
         });
@@ -326,7 +332,10 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     updateScrollTop() {
-        const pres = this.chatWindowRef.current.querySelectorAll("pre");
+        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+        if (pres == null) {
+            return;
+        }
         const block = pres[this.blockIndex];
         if (block == null) {
             return;
@@ -359,7 +368,10 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowUpPressed() {
-        const pres = this.chatWindowRef.current.querySelectorAll("pre");
+        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+        if (pres == null) {
+            return;
+        }
         if (this.blockIndex == null) {
             this.blockIndex = pres.length - 1;
         } else if (this.blockIndex > 0) {
@@ -371,7 +383,10 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowDownPressed() {
-        const pres = this.chatWindowRef.current.querySelectorAll("pre");
+        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+        if (pres == null) {
+            return;
+        }
         if (this.blockIndex == null) {
             return;
         }
