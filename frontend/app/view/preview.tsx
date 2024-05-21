@@ -5,7 +5,7 @@ import * as React from "react";
 import * as jotai from "jotai";
 import { atoms, blockDataMap, useBlockAtom } from "@/store/global";
 import { Markdown } from "@/element/markdown";
-import * as FileService from "@/bindings/pkg/service/fileservice/FileService";
+import { FileService, FileInfo, FullFile } from "@/bindings/fileservice";
 import * as util from "@/util/util";
 import { CenteredDiv } from "../element/quickelems";
 import { DirectoryTable } from "@/element/directorytable";

@@ -9,17 +9,18 @@ import (
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
+	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 type BlockService struct{}
 
 func (bs *BlockService) CreateBlock(bdefMap map[string]any, rtOptsMap map[string]any) (map[string]any, error) {
-	var bdef blockcontroller.BlockDef
+	var bdef wstore.BlockDef
 	err := utilfn.JsonMapToStruct(bdefMap, &bdef)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling BlockDef: %w", err)
 	}
-	var rtOpts blockcontroller.RuntimeOpts
+	var rtOpts wstore.RuntimeOpts
 	err = utilfn.JsonMapToStruct(rtOptsMap, &rtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling RuntimeOpts: %w", err)
@@ -40,7 +41,7 @@ func (bs *BlockService) CloseBlock(blockId string) {
 }
 
 func (bs *BlockService) GetBlockData(blockId string) (map[string]any, error) {
-	blockData := blockcontroller.GetBlockData(blockId)
+	blockData := wstore.BlockMap.Get(blockId)
 	if blockData == nil {
 		return nil, nil
 	}

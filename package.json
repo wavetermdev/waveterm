@@ -13,7 +13,7 @@
     "@types/react": "^18.3.2",
     "@types/uuid": "^9.0.8",
     "@vitejs/plugin-react": "^4.2.1",
-    "@wailsio/runtime": "latest",
+    "@wailsio/runtime": "^3.0.0-alpha.24",
     "less": "^4.2.0",
     "vite": "^5.0.0",
     "vite-tsconfig-paths": "^4.3.2"

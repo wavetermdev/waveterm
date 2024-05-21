@@ -7,7 +7,7 @@ import { TabContent } from "@/app/tab/tab";
 import { clsx } from "clsx";
 import { atoms, addBlockIdToTab, blockDataMap } from "@/store/global";
 import { v4 as uuidv4 } from "uuid";
-import * as BlockService from "@/bindings/pkg/service/blockservice/BlockService";
+import { BlockService } from "@/bindings/blockservice";
 
 import "./workspace.less";
 
@@ -49,7 +49,7 @@ function Widgets() {
 
     async function createBlock(blockDef: BlockDef) {
         const rtOpts = { termsize: { rows: 25, cols: 80 } };
-        const rtnBlock: BlockData = await BlockService.CreateBlock(blockDef, rtOpts);
+        const rtnBlock: BlockData = (await BlockService.CreateBlock(blockDef, rtOpts)) as BlockData;
         const newBlockAtom = jotai.atom(rtnBlock);
         blockDataMap.set(rtnBlock.blockid, newBlockAtom);
         addBlockIdToTab(activeTabId, rtnBlock.blockid);

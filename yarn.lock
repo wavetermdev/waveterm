@@ -572,9 +572,9 @@
     "@types/babel__core" "^7.20.5"
     react-refresh "^0.14.0"
 
-"@wailsio/runtime@latest":
+"@wailsio/runtime@^3.0.0-alpha.24":
   version "3.0.0-alpha.24"
-  resolved "https://registry.npmjs.org/@wailsio/runtime/-/runtime-3.0.0-alpha.24.tgz"
+  resolved "https://registry.yarnpkg.com/@wailsio/runtime/-/runtime-3.0.0-alpha.24.tgz#87d8465a08fbfc7e3131cd8f8832601fb2a2c99c"
   integrity sha512-bd36Qj6CfIMPeUd+fhLpcb9O/XEUEOgLzelkHw45lk0OWHMRlTV5QYdAT3cBncvztH7xYijoN5v2+O3U/Jwreg==
   dependencies:
     nanoid "^5.0.7"

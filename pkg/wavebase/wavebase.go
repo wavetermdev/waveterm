@@ -12,10 +12,13 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 const WaveVersion = "v0.1.0"
@@ -23,6 +26,7 @@ const DefaultWaveHome = "~/.w2"
 const WaveHomeVarName = "WAVETERM_HOME"
 const WaveDevVarName = "WAVETERM_DEV"
 const HomeVarName = "HOME"
+const WaveLockFile = "waveterm.lock"
 
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
@@ -136,4 +140,20 @@ func DetermineLang() string {
 		osLang = determineLang()
 	})
 	return osLang
+}
+
+func AcquireWaveLock() (*os.File, error) {
+	homeDir := GetWaveHomeDir()
+	lockFileName := filepath.Join(homeDir, WaveLockFile)
+	log.Printf("[base] acquiring lock on %s\n", lockFileName)
+	fd, err := os.OpenFile(lockFileName, os.O_RDWR|os.O_CREATE, 0600)
+	if err != nil {
+		return nil, err
+	}
+	err = unix.Flock(int(fd.Fd()), unix.LOCK_EX|unix.LOCK_NB)
+	if err != nil {
+		fd.Close()
+		return nil, err
+	}
+	return fd, nil
 }

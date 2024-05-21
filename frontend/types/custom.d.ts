@@ -33,21 +33,6 @@ declare global {
         files?: FileDef[];
         meta?: MetaDataType;
     };
-
-    type FileInfo = {
-        path: string;
-        notfound: boolean;
-        size: number;
-        mode: number;
-        modtime: number;
-        isdir: boolean;
-        mimetype: string;
-    };
-
-    type FullFile = {
-        info: FileInfo;
-        data64: string;
-    };
 }
 
 export {};
