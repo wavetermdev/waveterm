@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
 import { boundMethod } from "autobind-decorator";
 import { If, For } from "tsx-control-statements/components";
-import { Markdown2 } from "@/elements/markdown2";
+import { Markdown2, TypingIndicator } from "@/elements";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import tinycolor from "tinycolor2";
@@ -83,7 +83,7 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
                             <div className="chat-msg-header">
                                 <i className="fa-sharp fa-solid fa-sparkles"></i>
                             </div>
-                            <Markdown2 text={"..."} />
+                            <TypingIndicator className="chat-msg-assistant" />
                         </>
                     );
                 } else {

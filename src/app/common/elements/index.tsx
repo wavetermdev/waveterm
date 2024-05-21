@@ -20,3 +20,4 @@ export { TabIcon } from "./tabicon";
 export { DatePicker } from "./datepicker";
 export { TermStyleList } from "./termstyle";
 export { CopyButton } from "./copybutton";
+export { TypingIndicator } from "./typingindicator";
