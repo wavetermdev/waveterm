@@ -26,6 +26,10 @@ class ChatKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
             component.onEnterKeyPressed();
             return true;
         });
+        keybindManager.registerKeybinding("pane", "sidebarchat", "generic:deleteItem", (waveEvent) => {
+            component.onDeletePressed();
+            return true;
+        });
         keybindManager.registerKeybinding("pane", "sidebarchat", "generic:expandTextInput", (waveEvent) => {
             component.onExpandInputPressed();
             return true;
@@ -185,7 +189,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        if (GlobalModel.sidebarchatModel.getFocus("input")) {
+        if (GlobalModel.sidebarchatModel.getFocused == "input") {
             this.textAreaRef.current.focus();
         }
         if (GlobalModel.sidebarchatModel.hasCmdAndOutput()) {
@@ -368,6 +372,9 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowUpPressed() {
+        if (GlobalModel.sidebarchatModel.getFocused == "input") {
+            return true;
+        }
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
         if (pres == null) {
             return;
@@ -383,6 +390,9 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowDownPressed() {
+        if (GlobalModel.sidebarchatModel.getFocused == "input") {
+            return true;
+        }
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
         if (pres == null) {
             return;
@@ -398,6 +408,16 @@ class ChatSidebar extends React.Component<{}, {}> {
         return true;
     }
 
+    @mobx.action
+    onDeletePressed() {
+        if (GlobalModel.sidebarchatModel.getFocused != "input") {
+            return;
+        }
+        GlobalModel.sidebarchatModel.resetCmdAndOutput();
+        this.value.set("");
+        return true;
+    }
+
     formChatMessage(cmdAndOutput) {
         const { cmd, output, usedRows, isError } = cmdAndOutput;
         if (cmd == null || cmd === "") {
@@ -410,8 +430,8 @@ class ChatSidebar extends React.Component<{}, {}> {
         // Truncate the output if usedRows is over 100
         if (usedRows > 100) {
             const outputLines = escapedOutput.split("\n");
-            const leadingLines = outputLines.slice(0, 15).join("\n");
-            const trailingLines = outputLines.slice(-15).join("\n");
+            const leadingLines = outputLines.slice(0, 10).join("\n");
+            const trailingLines = outputLines.slice(-10).join("\n");
             escapedOutput = `${leadingLines}\n.\n.\n.\n${trailingLines}`;
         }
 
@@ -429,7 +449,8 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.getFocus();
+        console.log("GlobalModel.sidebarchatModel.hasFocus", GlobalModel.sidebarchatModel.hasFocus);
+        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus;
         const textAreaValue = this.value.get();
 
         return (

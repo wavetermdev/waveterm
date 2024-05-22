@@ -20,6 +20,8 @@ class SidebarChatModel {
             resetFocus: mobx.action,
             setCmdAndOutput: mobx.action,
             resetCmdAndOutput: mobx.action,
+            hasFocus: mobx.computed,
+            getFocused: mobx.computed,
         });
         this.sidebarChatFocus = {
             input: false,
@@ -39,11 +41,14 @@ class SidebarChatModel {
         this.sidebarChatFocus[section] = focus;
     }
 
-    getFocus(section?: "input" | "block"): boolean {
-        if (section == null) {
-            return this.sidebarChatFocus.input || this.sidebarChatFocus.block;
-        }
-        return this.sidebarChatFocus[section];
+    get hasFocus(): boolean {
+        return this.sidebarChatFocus.input || this.sidebarChatFocus.block;
+    }
+
+    get getFocused(): "input" | "block" | null {
+        if (this.sidebarChatFocus.input) return "input";
+        if (this.sidebarChatFocus.block) return "block";
+        return null;
     }
 
     resetFocus(): void {

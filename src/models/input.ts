@@ -148,7 +148,7 @@ class InputModel {
                 this.setAIChatFocus();
                 break;
             case null:
-                if (GlobalModel.sidebarchatModel.getFocus()) {
+                if (GlobalModel.sidebarchatModel.hasFocus) {
                     this.auxViewFocus.set(false);
                 } else {
                     const elem = document.getElementById("main-cmd-input");
@@ -464,7 +464,7 @@ class InputModel {
         }
         // (view == null) means standard cmdinput keybindings
         if (view == null) {
-            return !this.getAuxViewFocus();
+            return !this.getAuxViewFocus() && !GlobalModel.sidebarchatModel.hasFocus;
         } else {
             return this.getAuxViewFocus() && view == this.getActiveAuxView();
         }
