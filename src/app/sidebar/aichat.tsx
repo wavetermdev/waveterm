@@ -63,6 +63,7 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
         GlobalModel.sidebarchatModel.setCmdToExec(cmd);
         GlobalModel.sidebarchatModel.resetFocus();
         GlobalModel.inputModel.openAICmdInfo();
+        GlobalModel.inputModel.curLine = cmd;
     }
 
     renderError(err: string): any {
