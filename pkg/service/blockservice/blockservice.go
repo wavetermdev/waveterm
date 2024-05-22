@@ -16,7 +16,7 @@ import (
 
 type BlockService struct{}
 
-func (bs *BlockService) CreateBlock(bdefMap map[string]any, rtOptsMap map[string]any) (map[string]any, error) {
+func (bs *BlockService) CreateBlock(bdefMap map[string]any, rtOptsMap map[string]any) (*wstore.Block, error) {
 	var bdef wstore.BlockDef
 	err := utilfn.JsonMapToStruct(bdefMap, &bdef)
 	if err != nil {
@@ -31,33 +31,21 @@ func (bs *BlockService) CreateBlock(bdefMap map[string]any, rtOptsMap map[string
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
-	rtnMap, err := utilfn.StructToJsonMap(blockData)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling BlockData: %w", err)
-	}
-	return rtnMap, nil
+	return blockData, nil
 }
 
 func (bs *BlockService) CloseBlock(blockId string) {
 	blockcontroller.CloseBlock(blockId)
 }
 
-func (bs *BlockService) GetBlockData(blockId string) (map[string]any, error) {
+func (bs *BlockService) GetBlockData(blockId string) (*wstore.Block, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	blockData, err := wstore.BlockGet(ctx, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting block data: %w", err)
 	}
-	if blockData == nil {
-		return nil, nil
-	}
-	rtnMap, err := utilfn.StructToJsonMap(blockData)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling BlockData: %w", err)
-	}
-	return rtnMap, nil
-
+	return blockData, nil
 }
 
 func (bs *BlockService) SendCommand(blockId string, cmdMap map[string]any) error {

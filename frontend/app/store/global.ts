@@ -9,13 +9,14 @@ import type { WailsEvent } from "@wailsio/runtime/types/events";
 import { Events } from "@wailsio/runtime";
 import { produce } from "immer";
 import { BlockService } from "@/bindings/blockservice";
+import * as wstore from "@/gopkg/wstore";
 
 const globalStore = jotai.createStore();
 
 const tabId1 = uuidv4();
 
 const tabArr: TabData[] = [{ name: "Tab 1", tabid: tabId1, blockIds: [] }];
-const blockDataMap = new Map<string, jotai.Atom<BlockData>>();
+const blockDataMap = new Map<string, jotai.Atom<wstore.Block>>();
 const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
 
 const atoms = {
