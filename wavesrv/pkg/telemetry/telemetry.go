@@ -50,6 +50,7 @@ type ActivityUpdate struct {
 	Shutdown         int
 	FeAIChatOpen     int
 	FeHistoryOpen    int
+	FeAiCmdInfoOpen  int
 	BuildTime        string
 	Renderers        map[string]int
 }
@@ -216,6 +217,8 @@ func UpdateFeActivityWrap(feActivity *scpacket.FeActivityPacketType) {
 			update.FeAIChatOpen = val
 		} else if key == "history-open" {
 			update.FeHistoryOpen = val
+		} else if key == "aicmdinfo-open" {
+			update.FeAiCmdInfoOpen = val
 		} else {
 			log.Printf("unknown feactivity key: %s\n", key)
 		}
