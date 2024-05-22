@@ -61,6 +61,7 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
     handleExecuteCommand(cmd: string) {
         console.log("cmd", cmd);
         GlobalModel.sidebarchatModel.setCmdToExec(cmd);
+        GlobalModel.sidebarchatModel.resetFocus();
         GlobalModel.inputModel.setActiveAuxView(appconst.InputAuxView_AICmdInfo);
     }
 

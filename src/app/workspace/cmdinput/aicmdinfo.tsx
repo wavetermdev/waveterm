@@ -29,7 +29,7 @@ class AICmdInfo extends React.Component<{}, {}> {
                 title="Command from Wave AI"
                 className="cmd-to-execute"
                 onClose={this.handleClose}
-                iconClass="fa-sharp fa-solid fa-clock-rotate-left"
+                iconClass="fa-sharp fa-solid fa-sparkles"
                 scrollable={true}
             >
                 <pre>{cmd}</pre>

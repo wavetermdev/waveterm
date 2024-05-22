@@ -158,9 +158,13 @@ class InputModel {
                     this.setPhysicalInputFocused(true);
                 }
                 break;
-            default:
-                // nothing to do here
+            default: {
+                const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
+                if (elem != null) {
+                    elem.focus();
+                }
                 break;
+            }
         }
     }
 
