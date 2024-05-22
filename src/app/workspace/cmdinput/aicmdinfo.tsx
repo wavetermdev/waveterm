@@ -12,10 +12,6 @@ import { AuxiliaryCmdView } from "./auxview";
 
 @mobxReact.observer
 class AICmdInfo extends React.Component<{}, {}> {
-    lastClickHNum: string = null;
-    lastClickTs: number = 0;
-    containingText: mobx.IObservableValue<string> = mobx.observable.box("");
-
     @mobx.action.bound
     handleClose() {
         GlobalModel.inputModel.closeAuxView();
