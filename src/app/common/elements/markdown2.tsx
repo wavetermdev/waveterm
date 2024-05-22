@@ -8,9 +8,9 @@ import remarkGfm from "remark-gfm";
 import { CopyButton } from "@/elements";
 import { clsx } from "clsx";
 import * as mobx from "mobx";
+import { If } from "tsx-control-statements/components";
 
 import "./markdown.less";
-import { boundMethod } from "autobind-decorator";
 
 function Link(props: any): JSX.Element {
     let newUrl = "https://extern?" + encodeURIComponent(props.href);
@@ -29,42 +29,57 @@ function Code(props: any): JSX.Element {
     return <code>{props.children}</code>;
 }
 
-const CodeBlock = mobxReact.observer((props: any): JSX.Element => {
-    const copied: OV<boolean> = mobx.observable.box(false, { name: "copied" });
+const CodeBlock = mobxReact.observer(
+    (props: { children: React.ReactNode; onClickExecute?: (cmd: string) => void }): JSX.Element => {
+        const copied: OV<boolean> = mobx.observable.box(false, { name: "copied" });
 
-    const getTextContent = (children: any) => {
-        if (typeof children === "string") {
-            return children;
-        } else if (Array.isArray(children)) {
-            return children.map(getTextContent).join("");
-        } else if (children.props && children.props.children) {
-            return getTextContent(children.props.children);
-        }
-        return "";
-    };
+        const getTextContent = (children: any) => {
+            if (typeof children === "string") {
+                return children;
+            } else if (Array.isArray(children)) {
+                return children.map(getTextContent).join("");
+            } else if (children.props && children.props.children) {
+                return getTextContent(children.props.children);
+            }
+            return "";
+        };
 
-    const handleCopy = async (e: any) => {
-        let textToCopy = getTextContent(props.children);
-        textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
-        await navigator.clipboard.writeText(textToCopy);
-        copied.set(true);
-        setTimeout(() => copied.set(false), 2000); // Reset copied state after 2 seconds
-    };
+        const handleCopy = async (e: React.MouseEvent) => {
+            let textToCopy = getTextContent(props.children);
+            textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
+            await navigator.clipboard.writeText(textToCopy);
+            copied.set(true);
+            setTimeout(() => copied.set(false), 2000); // Reset copied state after 2 seconds
+        };
 
-    return (
-        <pre className="codeblock">
-            {props.children}
-            <div className="codeblock-actions">
-                <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
-                <i className="fa-regular fa-square-terminal"></i>
-                {copied.get() && <span className="copied-indicator">Copied!</span>}
-            </div>
-        </pre>
-    );
-});
+        const handleExecute = (e: React.MouseEvent) => {
+            let textToCopy = getTextContent(props.children);
+            textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
+            if (props.onClickExecute) {
+                props.onClickExecute(textToCopy);
+                return;
+            }
+        };
+
+        return (
+            <pre className="codeblock">
+                {props.children}
+                <div className="codeblock-actions">
+                    <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
+                    <If condition={props.onClickExecute}>
+                        <i className="fa-regular fa-square-terminal" onClick={handleExecute}></i>
+                    </If>
+                </div>
+            </pre>
+        );
+    }
+);
 
 @mobxReact.observer
-class Markdown2 extends React.Component<{ text: string; style?: any; className?: string }, {}> {
+class Markdown2 extends React.Component<
+    { text: string; style?: any; className?: string; onClickExecute?: (cmd: string) => void },
+    {}
+> {
     render() {
         let { text, className } = this.props;
         let markdownComponents = {
@@ -76,7 +91,7 @@ class Markdown2 extends React.Component<{ text: string; style?: any; className?:
             h5: (props) => <Header {...props} hnum={5} />,
             h6: (props) => <Header {...props} hnum={6} />,
             code: Code,
-            pre: CodeBlock,
+            pre: (props) => <CodeBlock {...props} onClickExecute={this.props.onClickExecute} />,
         };
 
         return (

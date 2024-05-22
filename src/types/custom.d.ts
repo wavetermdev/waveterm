@@ -15,7 +15,7 @@ declare global {
     type LineContainerStrs = "main" | "sidebar" | "history";
     type AppUpdateStatusType = "unavailable" | "ready";
     type NativeThemeSource = "system" | "light" | "dark";
-    type InputAuxViewType = null | "history" | "info" | "aichat";
+    type InputAuxViewType = null | "history" | "info" | "aichat" | "aicmdinfo";
 
     type OV<V> = mobx.IObservableValue<V>;
     type OArr<V> = mobx.IObservableArray<V>;

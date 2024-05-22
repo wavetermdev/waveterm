@@ -6,11 +6,12 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
 import { boundMethod } from "autobind-decorator";
-import { If, For } from "tsx-control-statements/components";
+import { For } from "tsx-control-statements/components";
 import { Markdown2, TypingIndicator } from "@/elements";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import tinycolor from "tinycolor2";
+import * as appconst from "@/app/appconst";
 
 import "./aichat.less";
 
@@ -57,6 +58,12 @@ class ChatKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
 
 @mobxReact.observer
 class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType; itemCount: number }, {}> {
+    handleExecuteCommand(cmd: string) {
+        console.log("cmd", cmd);
+        GlobalModel.sidebarchatModel.setCmdToExec(cmd);
+        GlobalModel.inputModel.setActiveAuxView(appconst.InputAuxView_AICmdInfo);
+    }
+
     renderError(err: string): any {
         return <div className="chat-msg-error">{err}</div>;
     }
@@ -96,7 +103,7 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
                             <div className="chat-msg-header">
                                 <i className="fa-sharp fa-solid fa-sparkles"></i>
                             </div>
-                            <Markdown2 text={assistantresponse.message} />
+                            <Markdown2 text={assistantresponse.message} onClickExecute={this.handleExecuteCommand} />
                         </>
                     );
                 }
@@ -189,7 +196,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        if (GlobalModel.sidebarchatModel.getFocused == "input") {
+        if (GlobalModel.sidebarchatModel.focused == "input") {
             this.textAreaRef.current.focus();
         }
         if (GlobalModel.sidebarchatModel.hasCmdAndOutput()) {
@@ -372,7 +379,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowUpPressed() {
-        if (GlobalModel.sidebarchatModel.getFocused == "input") {
+        if (GlobalModel.sidebarchatModel.focused == "input") {
             return true;
         }
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
@@ -390,7 +397,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowDownPressed() {
-        if (GlobalModel.sidebarchatModel.getFocused == "input") {
+        if (GlobalModel.sidebarchatModel.focused == "input") {
             return true;
         }
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
@@ -410,7 +417,7 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action
     onDeletePressed() {
-        if (GlobalModel.sidebarchatModel.getFocused != "input") {
+        if (GlobalModel.sidebarchatModel.focused != "input") {
             return;
         }
         GlobalModel.sidebarchatModel.resetCmdAndOutput();

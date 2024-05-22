@@ -10,6 +10,7 @@ class SidebarChatModel {
     globalModel: Model;
     sidebarChatFocus: SidebarChatFocus;
     cmdAndOutput: CmdAndOutput;
+    cmdFromChat: string;
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
@@ -20,8 +21,11 @@ class SidebarChatModel {
             resetFocus: mobx.action,
             setCmdAndOutput: mobx.action,
             resetCmdAndOutput: mobx.action,
+            setCmdToExec: mobx.action,
+            resetCmdToExec: mobx.action,
             hasFocus: mobx.computed,
-            getFocused: mobx.computed,
+            focused: mobx.computed,
+            cmdToExec: mobx.computed,
         });
         this.sidebarChatFocus = {
             input: false,
@@ -33,6 +37,7 @@ class SidebarChatModel {
             usedRows: 0,
             isError: false,
         };
+        this.cmdFromChat = "";
     }
 
     // block can be the chat-window in terms of focus
@@ -45,7 +50,7 @@ class SidebarChatModel {
         return this.sidebarChatFocus.input || this.sidebarChatFocus.block;
     }
 
-    get getFocused(): "input" | "block" | null {
+    get focused(): "input" | "block" | null {
         if (this.sidebarChatFocus.input) return "input";
         if (this.sidebarChatFocus.block) return "block";
         return null;
@@ -81,6 +86,18 @@ class SidebarChatModel {
 
     hasCmdAndOutput(): boolean {
         return this.cmdAndOutput.cmd.length > 0 || this.cmdAndOutput.output.length > 0;
+    }
+
+    setCmdToExec(cmd: string): void {
+        this.cmdFromChat = cmd;
+    }
+
+    resetCmdToExec(): void {
+        this.cmdFromChat = "";
+    }
+
+    get cmdToExec(): string {
+        return this.cmdFromChat;
     }
 }
 
