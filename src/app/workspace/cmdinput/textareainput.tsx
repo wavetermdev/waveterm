@@ -621,8 +621,6 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             inputModel.shouldRenderAuxViewKeybindings(null) ||
             inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_Info);
         const renderHistoryKeybindings = inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_History);
-        console.log("renderCmdInputKeybindings", renderCmdInputKeybindings);
-        console.log("renderHistoryKeybindings", renderHistoryKeybindings);
         return (
             <div
                 className="textareainput-div control is-expanded"
