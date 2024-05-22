@@ -4,8 +4,10 @@
 package blockservice
 
 import (
+	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
@@ -41,7 +43,12 @@ func (bs *BlockService) CloseBlock(blockId string) {
 }
 
 func (bs *BlockService) GetBlockData(blockId string) (map[string]any, error) {
-	blockData := wstore.BlockMap.Get(blockId)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	blockData, err := wstore.BlockGet(ctx, blockId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting block data: %w", err)
+	}
 	if blockData == nil {
 		return nil, nil
 	}

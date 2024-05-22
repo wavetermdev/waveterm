@@ -4,6 +4,7 @@
 package wstore
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -23,6 +24,7 @@ type Client struct {
 type Workspace struct {
 	Lock        *sync.Mutex `json:"-"`
 	WorkspaceId string      `json:"workspaceid"`
+	Name        string      `json:"name"`
 	TabIds      []string    `json:"tabids"`
 }
 
@@ -117,4 +119,34 @@ func CreateWorkspace() (*Workspace, error) {
 		return nil, err
 	}
 	return ws, nil
+}
+
+func EnsureWorkspace(ctx context.Context) error {
+	wsCount, err := WorkspaceCount(ctx)
+	if err != nil {
+		return fmt.Errorf("error getting workspace count: %w", err)
+	}
+	if wsCount > 0 {
+		return nil
+	}
+	ws := &Workspace{
+		Lock:        &sync.Mutex{},
+		WorkspaceId: uuid.New().String(),
+		Name:        "default",
+	}
+	err = WorkspaceInsert(ctx, ws)
+	if err != nil {
+		return fmt.Errorf("error inserting workspace: %w", err)
+	}
+	tab := &Tab{
+		Lock:     &sync.Mutex{},
+		TabId:    uuid.New().String(),
+		Name:     "Tab 1",
+		BlockIds: []string{},
+	}
+	err = TabInsert(ctx, tab, ws.WorkspaceId)
+	if err != nil {
+		return fmt.Errorf("error inserting tab: %w", err)
+	}
+	return nil
 }

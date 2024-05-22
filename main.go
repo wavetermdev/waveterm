@@ -17,6 +17,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/wstore"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -102,6 +103,11 @@ func main() {
 	err = blockstore.InitBlockstore()
 	if err != nil {
 		log.Printf("error initializing blockstore: %v\n", err)
+		return
+	}
+	err = wstore.InitWStore()
+	if err != nil {
+		log.Printf("error initializing wstore: %v\n", err)
 		return
 	}
 
