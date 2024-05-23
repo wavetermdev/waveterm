@@ -406,19 +406,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         return true;
     }
 
-    @mobx.action
-    onDeletePressed() {
-        if (GlobalModel.sidebarchatModel.focused != "input") {
-            return;
-        }
-        GlobalModel.sidebarchatModel.resetCmdAndOutput();
-        const currentValue = this.value.get();
-        if (currentValue.length > 0) {
-            this.value.set(currentValue.slice(0, -1));
-        }
-        return true;
-    }
-
     formChatMessage(cmdAndOutput) {
         const { cmd, output, usedRows, isError } = cmdAndOutput;
         if (cmd == null || cmd === "") {
