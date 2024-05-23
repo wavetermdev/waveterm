@@ -664,14 +664,6 @@ class InputModel {
         this.globalModel.sendActivity("aichat-open");
     }
 
-    @mobx.action
-    openAICmdInfo(): void {
-        this.setActiveAuxView(appconst.InputAuxView_AICmdInfo);
-        this.setAuxViewFocus(true);
-        this.giveFocus();
-        this.globalModel.sendActivity("aicmdinfo-open");
-    }
-
     clearAIAssistantChat(): void {
         const prtn = this.globalModel.submitChatInfoCommand("", "", true);
         prtn.then((rtn) => {

@@ -27,10 +27,6 @@ class ChatKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
             component.onEnterKeyPressed();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "sidebarchat", "generic:deleteItem", (waveEvent) => {
-            component.onDeletePressed();
-            return true;
-        });
         keybindManager.registerKeybinding("pane", "sidebarchat", "generic:expandTextInput", (waveEvent) => {
             component.onExpandInputPressed();
             return true;
@@ -59,10 +55,8 @@ class ChatKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
 @mobxReact.observer
 class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType; itemCount: number }, {}> {
     handleExecuteCommand(cmd: string) {
-        console.log("cmd", cmd);
         GlobalModel.sidebarchatModel.setCmdToExec(cmd);
         GlobalModel.sidebarchatModel.resetFocus();
-        GlobalModel.inputModel.openAICmdInfo();
         GlobalModel.inputModel.curLine = cmd;
     }
 
@@ -206,6 +200,7 @@ class ChatSidebar extends React.Component<{}, {}> {
             const newValue = this.formChatMessage(newCmdAndOutput);
             if (newValue !== this.value.get()) {
                 this.value.set(newValue);
+                GlobalModel.sidebarchatModel.resetCmdAndOutput();
             }
         }
         this.adjustTextAreaHeight();
@@ -381,9 +376,6 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowUpPressed() {
-        if (GlobalModel.sidebarchatModel.focused == "input") {
-            return true;
-        }
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
         if (pres == null) {
             return;
@@ -399,9 +391,6 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowDownPressed() {
-        if (GlobalModel.sidebarchatModel.focused == "input") {
-            return true;
-        }
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
         if (pres == null) {
             return;
@@ -423,7 +412,10 @@ class ChatSidebar extends React.Component<{}, {}> {
             return;
         }
         GlobalModel.sidebarchatModel.resetCmdAndOutput();
-        this.value.set("");
+        const currentValue = this.value.get();
+        if (currentValue.length > 0) {
+            this.value.set(currentValue.slice(0, -1));
+        }
         return true;
     }
 

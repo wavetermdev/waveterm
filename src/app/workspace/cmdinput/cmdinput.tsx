@@ -14,7 +14,6 @@ import { Button } from "@/elements";
 import { TextAreaInput } from "./textareainput";
 import { InfoMsg } from "./infomsg";
 import { HistoryInfo } from "./historyinfo";
-import { AICmdInfo } from "./aicmdinfo";
 import { Prompt } from "@/common/prompt/prompt";
 import { CenteredIcon, RotateIcon } from "@/common/icons/icons";
 import { AIChat } from "./aichat";
@@ -195,9 +194,6 @@ class CmdInput extends React.Component<{}, {}> {
                     <When condition={openView === appconst.InputAuxView_AIChat}>
                         <div className="cmd-input-grow-spacer"></div>
                         <AIChat />
-                    </When>
-                    <When condition={openView === appconst.InputAuxView_AICmdInfo}>
-                        <AICmdInfo />
                     </When>
                     <When condition={openView === appconst.InputAuxView_Info}>
                         <InfoMsg key="infomsg" />
