@@ -16,7 +16,7 @@ import "./aichat.less";
 
 const outline = "2px solid var(--markdown-outline-color)";
 
-class ChatKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
+class ChatKeyBindings extends React.Component<{ component: ChatSidebar }, {}> {
     componentDidMount(): void {
         const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
@@ -45,7 +45,7 @@ class ChatKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
     }
 }
 
-class ArrowUpDownKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
+class ArrowUpDownKeyBindings extends React.Component<{ component: ChatSidebar }, {}> {
     componentDidMount(): void {
         const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
@@ -227,12 +227,21 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (this.sidebarRef.current) {
             this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
         }
+        document.addEventListener("mousedown", this.handleClickOutside);
         this.requestChatUpdate();
     }
 
     componentWillUnmount() {
         if (this.sidebarRef.current) {
             this.sidebarRef.current.removeEventListener("click", this.handleSidebarClick);
+        }
+        document.removeEventListener("mousedown", this.handleClickOutside);
+    }
+
+    @mobx.action.bound
+    handleClickOutside(event) {
+        if (this.sidebarRef.current && !this.sidebarRef.current.contains(event.target)) {
+            this.onClickOutsideSidebar();
         }
     }
 
@@ -278,17 +287,16 @@ class ChatSidebar extends React.Component<{}, {}> {
         }).catch((_) => {});
     }
 
+    onClickOutsideSidebar() {
+        GlobalModel.sidebarchatModel.resetFocus();
+    }
+
     @mobx.action.bound
     onTextAreaFocused(e) {
         GlobalModel.sidebarchatModel.setFocus("input", true);
         this.bindArrowUpDownKeys.set(false);
         this.onTextAreaChange(e);
         this.updatePreTagOutline();
-    }
-
-    @mobx.action.bound
-    onTextAreaBlur(e) {
-        GlobalModel.sidebarchatModel.resetFocus();
     }
 
     onEnterKeyPressed() {
@@ -342,6 +350,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         }
 
         if (detection > 0) {
+            this.bindArrowUpDownKeys.set(true);
             GlobalModel.sidebarchatModel.setFocus("block", true);
         }
     }
@@ -383,7 +392,6 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowUpPressed() {
-        GlobalModel.sidebarchatModel.setFocus("block", true);
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
         if (pres == null) {
             return;
@@ -398,6 +406,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         return true;
     }
 
+    @mobx.action.bound
     onArrowDownPressed() {
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
         if (pres == null) {
@@ -411,21 +420,21 @@ class ChatSidebar extends React.Component<{}, {}> {
             this.updatePreTagOutline(pres[this.blockIndex]);
         } else {
             this.bindArrowUpDownKeys.set(false);
+            this.textAreaRef.current.focus();
             this.updatePreTagOutline();
         }
         this.updateScrollTop();
         return true;
     }
 
+    @mobx.action.bound
     formChatMessage(cmdAndOutput) {
         const { cmd, output, usedRows, isError } = cmdAndOutput;
         if (cmd == null || cmd === "") {
             return "";
         }
-
         // Escape backticks in the output
         let escapedOutput = output ? output.replace(/`/g, "\\`") : "";
-
         // Truncate the output if usedRows is over 100
         if (usedRows > 100) {
             const outputLines = escapedOutput.split("\n");
@@ -433,7 +442,6 @@ class ChatSidebar extends React.Component<{}, {}> {
             const trailingLines = outputLines.slice(-10).join("\n");
             escapedOutput = `${leadingLines}\n.\n.\n.\n${trailingLines}`;
         }
-
         let chatMessage = `I ran the command: \`${cmd}\` and got the following output:\n\n`;
         if (escapedOutput !== "") {
             chatMessage += `\`\`\`\n${escapedOutput}\n\`\`\``;
@@ -450,6 +458,8 @@ class ChatSidebar extends React.Component<{}, {}> {
     handleKeyDown(e) {
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
             if (this.bindArrowUpDownKeys.get()) {
+                GlobalModel.sidebarchatModel.setFocus("block", true);
+                this.textAreaRef.current.blur();
                 e.preventDefault();
             }
             const textarea = this.textAreaRef.current;
@@ -465,16 +475,16 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.focused === "block";
+        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus;
         const textAreaValue = this.value.get();
 
         return (
             <div ref={this.sidebarRef} className="sidebarchat">
                 <If condition={renderAIChatKeybindings}>
-                    <ChatKeybindings component={this} />
+                    <ChatKeyBindings component={this} />
                 </If>
                 <If condition={this.bindArrowUpDownKeys.get()}>
-                    <ArrowUpDownKeybindings component={this} />
+                    <ArrowUpDownKeyBindings component={this} />
                 </If>
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
@@ -488,11 +498,9 @@ class ChatSidebar extends React.Component<{}, {}> {
                         ref={this.textAreaRef}
                         autoComplete="off"
                         autoCorrect="off"
-                        autoFocus={true}
                         className="sidebarchat-input chat-textarea"
                         onKeyDown={this.handleKeyDown}
                         onMouseDown={this.onTextAreaFocused}
-                        onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}
                         style={{ fontSize: this.termFontSize }}
                         placeholder="Send a Message..."
