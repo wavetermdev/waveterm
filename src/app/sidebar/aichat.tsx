@@ -22,22 +22,22 @@ class ChatKeyBindings extends React.Component<{ component: ChatSidebar }, {}> {
         const keybindManager = GlobalModel.keybindManager;
         const inputModel = GlobalModel.inputModel;
 
-        keybindManager.registerKeybinding("pane", "sidebarchat", "generic:confirm", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "aichat", "generic:confirm", (waveEvent) => {
             component.onEnterKeyPressed();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "sidebarchat", "generic:expandTextInput", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "aichat", "generic:expandTextInput", (waveEvent) => {
             component.onExpandInputPressed();
             return true;
         });
-        keybindManager.registerKeybinding("pane", "sidebarchat", "sidebarchat:clearHistory", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "aichat", "aichat:clearHistory", (waveEvent) => {
             inputModel.clearAIAssistantChat();
             return true;
         });
     }
 
     componentWillUnmount(): void {
-        GlobalModel.keybindManager.unregisterDomain("sidebarchat");
+        GlobalModel.keybindManager.unregisterDomain("aichat");
     }
 
     render() {
@@ -50,16 +50,16 @@ class ArrowUpDownKeyBindings extends React.Component<{ component: ChatSidebar },
         const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
 
-        keybindManager.registerKeybinding("pane", "sbcarrowupdown", "generic:selectAbove", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "aicarrowupdown", "generic:selectAbove", (waveEvent) => {
             return component.onArrowUpPressed();
         });
-        keybindManager.registerKeybinding("pane", "sbcarrowupdown", "generic:selectBelow", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "aicsbcarrowupdown", "generic:selectBelow", (waveEvent) => {
             return component.onArrowDownPressed();
         });
     }
 
     componentWillUnmount(): void {
-        GlobalModel.keybindManager.unregisterDomain("sbcarrowupdown");
+        GlobalModel.keybindManager.unregisterDomain("aicsbcarrowupdown");
     }
 
     render() {
