@@ -280,7 +280,6 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onTextAreaFocused(e) {
-        console.log("text area focused");
         GlobalModel.sidebarchatModel.setFocus("input", true);
         this.bindArrowUpDownKeys.set(false);
         this.onTextAreaChange(e);
@@ -319,16 +318,6 @@ class ChatSidebar extends React.Component<{}, {}> {
             } else {
                 preElement.style.outline = "none";
             }
-        });
-    }
-
-    removePreTagOutline() {
-        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
-        if (pres == null) {
-            return;
-        }
-        pres.forEach((preElement) => {
-            preElement.style.outline = "none";
         });
     }
 
@@ -419,10 +408,11 @@ class ChatSidebar extends React.Component<{}, {}> {
         }
         if (this.blockIndex < pres.length - 1 && this.blockIndex >= 0) {
             this.blockIndex++;
+            this.updatePreTagOutline(pres[this.blockIndex]);
         } else {
             this.bindArrowUpDownKeys.set(false);
+            this.updatePreTagOutline();
         }
-        this.updatePreTagOutline(pres[this.blockIndex]);
         this.updateScrollTop();
         return true;
     }
@@ -465,7 +455,6 @@ class ChatSidebar extends React.Component<{}, {}> {
             const textarea = this.textAreaRef.current;
             const cursorPosition = textarea.selectionStart;
             const textBeforeCursor = textarea.value.slice(0, cursorPosition);
-            const textAfterCursor = textarea.value.slice(cursorPosition);
 
             // Check if the cursor is at the first line
             if (textBeforeCursor.indexOf("\n") === -1 && cursorPosition === 0 && e.key === "ArrowUp") {
