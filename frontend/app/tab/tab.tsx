@@ -16,7 +16,7 @@ const TabContent = ({ tabId }: { tabId: string }) => {
     }
     return (
         <div className="tabcontent">
-            {tabData.blockIds.map((blockId: string) => {
+            {tabData.blockids.map((blockId: string) => {
                 return (
                     <div key={blockId} className="block-container">
                         <Block tabId={tabId} blockId={blockId} />

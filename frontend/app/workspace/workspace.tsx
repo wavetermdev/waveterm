@@ -8,11 +8,15 @@ import { clsx } from "clsx";
 import { atoms, addBlockIdToTab, blockDataMap } from "@/store/global";
 import { v4 as uuidv4 } from "uuid";
 import { BlockService } from "@/bindings/blockservice";
+import { ClientService } from "@/bindings/clientservice";
+import { Workspace } from "@/gopkg/wstore";
 import * as wstore from "@/gopkg/wstore";
+import * as jotaiUtil from "jotai/utils";
 
 import "./workspace.less";
+import { CenteredLoadingDiv, CenteredDiv } from "../element/quickelems";
 
-function Tab({ tab }: { tab: TabData }) {
+function Tab({ tab }: { tab: wstore.Tab }) {
     const [activeTab, setActiveTab] = jotai.useAtom(atoms.activeTabId);
     return (
         <div className={clsx("tab", { active: activeTab === tab.tabid })} onClick={() => setActiveTab(tab.tabid)}>
@@ -25,11 +29,12 @@ function TabBar() {
     const [tabData, setTabData] = jotai.useAtom(atoms.tabsAtom);
     const [activeTab, setActiveTab] = jotai.useAtom(atoms.activeTabId);
     const tabs = jotai.useAtomValue(atoms.tabsAtom);
+    const client = jotai.useAtomValue(atoms.clientAtom);
 
     function handleAddTab() {
         const newTabId = uuidv4();
         const newTabName = "Tab " + (tabData.length + 1);
-        setTabData([...tabData, { name: newTabName, tabid: newTabId, blockIds: [] }]);
+        setTabData([...tabData, { name: newTabName, tabid: newTabId, blockids: [] }]);
         setActiveTab(newTabId);
     }
 
@@ -48,8 +53,8 @@ function TabBar() {
 function Widgets() {
     const activeTabId = jotai.useAtomValue(atoms.activeTabId);
 
-    async function createBlock(blockDef: BlockDef) {
-        const rtOpts = { termsize: { rows: 25, cols: 80 } };
+    async function createBlock(blockDef: wstore.BlockDef) {
+        const rtOpts: wstore.RuntimeOpts = new wstore.RuntimeOpts({ termsize: { rows: 25, cols: 80 } });
         const rtnBlock: wstore.Block = await BlockService.CreateBlock(blockDef, rtOpts);
         const newBlockAtom = jotai.atom(rtnBlock);
         blockDataMap.set(rtnBlock.blockid, newBlockAtom);
@@ -57,25 +62,25 @@ function Widgets() {
     }
 
     async function clickTerminal() {
-        const termBlockDef = {
+        const termBlockDef = new wstore.BlockDef({
             controller: "shell",
             view: "term",
-        };
+        });
         createBlock(termBlockDef);
     }
 
     async function clickPreview(fileName: string) {
-        const markdownDef = {
+        const markdownDef = new wstore.BlockDef({
             view: "preview",
             meta: { file: fileName },
-        };
+        });
         createBlock(markdownDef);
     }
 
     async function clickPlot() {
-        const plotDef = {
+        const plotDef = new wstore.BlockDef({
             view: "plot",
-        };
+        });
         createBlock(plotDef);
     }
 
@@ -106,17 +111,35 @@ function Widgets() {
     );
 }
 
-function Workspace() {
+function WorkspaceElem() {
+    const windowData = jotai.useAtomValue(atoms.windowData);
     const activeTabId = jotai.useAtomValue(atoms.activeTabId);
+    const workspaceId = windowData.workspaceid;
+    const wsAtom = React.useMemo(() => {
+        return jotaiUtil.loadable(
+            jotai.atom(async (get) => {
+                const ws = await ClientService.GetWorkspace(workspaceId);
+                return ws;
+            })
+        );
+    }, [workspaceId]);
+    const wsLoadable = jotai.useAtomValue(wsAtom);
+    if (wsLoadable.state === "loading") {
+        return <CenteredLoadingDiv />;
+    }
+    if (wsLoadable.state === "hasError") {
+        return <CenteredDiv>Error: {wsLoadable.error?.toString()}</CenteredDiv>;
+    }
+    const ws: Workspace = wsLoadable.data;
     return (
         <div className="workspace">
             <TabBar />
             <div className="workspace-tabcontent">
-                <TabContent key={activeTabId} tabId={activeTabId} />
+                <TabContent key={workspaceId} tabId={activeTabId} />
                 <Widgets />
             </div>
         </div>
     );
 }
 
-export { Workspace };
+export { WorkspaceElem as Workspace };

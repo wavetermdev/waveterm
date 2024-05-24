@@ -10,24 +10,23 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 type BlockService struct{}
 
-func (bs *BlockService) CreateBlock(bdefMap map[string]any, rtOptsMap map[string]any) (*wstore.Block, error) {
-	var bdef wstore.BlockDef
-	err := utilfn.JsonMapToStruct(bdefMap, &bdef)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling BlockDef: %w", err)
+const DefaultTimeout = 2 * time.Second
+
+func (bs *BlockService) CreateBlock(bdef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (*wstore.Block, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	if bdef == nil {
+		return nil, fmt.Errorf("block definition is nil")
 	}
-	var rtOpts wstore.RuntimeOpts
-	err = utilfn.JsonMapToStruct(rtOptsMap, &rtOpts)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling RuntimeOpts: %w", err)
+	if rtOpts == nil {
+		return nil, fmt.Errorf("runtime options is nil")
 	}
-	blockData, err := blockcontroller.CreateBlock(&bdef, &rtOpts)
+	blockData, err := blockcontroller.CreateBlock(ctx, bdef, rtOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
@@ -41,7 +40,7 @@ func (bs *BlockService) CloseBlock(blockId string) {
 func (bs *BlockService) GetBlockData(blockId string) (*wstore.Block, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	blockData, err := wstore.BlockGet(ctx, blockId)
+	blockData, err := wstore.DBGet[wstore.Block](ctx, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting block data: %w", err)
 	}

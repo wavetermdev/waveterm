@@ -15,14 +15,19 @@ const globalStore = jotai.createStore();
 
 const tabId1 = uuidv4();
 
-const tabArr: TabData[] = [{ name: "Tab 1", tabid: tabId1, blockIds: [] }];
+const tabArr: wstore.Tab[] = [new wstore.Tab({ name: "Tab 1", tabid: tabId1, blockids: [] })];
 const blockDataMap = new Map<string, jotai.Atom<wstore.Block>>();
 const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
 
 const atoms = {
     activeTabId: jotai.atom<string>(tabId1),
-    tabsAtom: jotai.atom<TabData[]>(tabArr),
+    tabsAtom: jotai.atom<wstore.Tab[]>(tabArr),
     blockDataMap: blockDataMap,
+    clientAtom: jotai.atom(null) as jotai.PrimitiveAtom<wstore.Client>,
+
+    // initialized in wave.ts (will not be null inside of application)
+    windowId: jotai.atom<string>(null) as jotai.PrimitiveAtom<string>,
+    windowData: jotai.atom<wstore.Window>(null) as jotai.PrimitiveAtom<wstore.Window>,
 };
 
 type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
@@ -65,7 +70,7 @@ function addBlockIdToTab(tabId: string, blockId: string) {
     let tabArr = globalStore.get(atoms.tabsAtom);
     const newTabArr = produce(tabArr, (draft) => {
         const tab = draft.find((tab) => tab.tabid == tabId);
-        tab.blockIds.push(blockId);
+        tab.blockids.push(blockId);
     });
     globalStore.set(atoms.tabsAtom, newTabArr);
 }
@@ -93,7 +98,7 @@ function removeBlockFromTab(tabId: string, blockId: string) {
     let tabArr = globalStore.get(atoms.tabsAtom);
     const newTabArr = produce(tabArr, (draft) => {
         const tab = draft.find((tab) => tab.tabid == tabId);
-        tab.blockIds = tab.blockIds.filter((id) => id !== blockId);
+        tab.blockids = tab.blockids.filter((id) => id !== blockId);
     });
     globalStore.set(atoms.tabsAtom, newTabArr);
     removeBlock(blockId);

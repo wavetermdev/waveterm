@@ -31,6 +31,7 @@ const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
             setDims({ width: newWidth, height: newHeight });
         }
     }, [blockRef.current]);
+
     let blockElem: JSX.Element = null;
     const blockAtom = blockDataMap.get(blockId);
     const blockData = jotai.useAtomValue(blockAtom);

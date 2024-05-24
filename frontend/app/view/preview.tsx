@@ -9,6 +9,7 @@ import { FileService, FileInfo, FullFile } from "@/bindings/fileservice";
 import * as util from "@/util/util";
 import { CenteredDiv } from "../element/quickelems";
 import { DirectoryTable } from "@/element/directorytable";
+import * as wstore from "@/gopkg/wstore";
 
 import "./view.less";
 
@@ -61,7 +62,7 @@ function DirectoryPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<str
 }
 
 function PreviewView({ blockId }: { blockId: string }) {
-    const blockDataAtom: jotai.Atom<BlockData> = blockDataMap.get(blockId);
+    const blockDataAtom: jotai.Atom<wstore.Block> = blockDataMap.get(blockId);
     const fileNameAtom = useBlockAtom(blockId, "preview:filename", () =>
         jotai.atom<string>((get) => {
             return get(blockDataAtom)?.meta?.file;

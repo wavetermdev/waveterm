@@ -3,6 +3,11 @@ CREATE TABLE db_client (
     data json NOT NULL
 );
 
+CREATE TABLE db_window (
+    windowid varchar(36) PRIMARY KEY,
+    data json NOT NULL
+);
+
 CREATE TABLE db_workspace (
     workspaceid varchar(36) PRIMARY KEY,
     data json NOT NULL

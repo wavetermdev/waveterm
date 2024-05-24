@@ -19,6 +19,16 @@ const App = () => {
 };
 
 const AppInner = () => {
+    const client = jotai.useAtomValue(atoms.clientAtom);
+    const windowData = jotai.useAtomValue(atoms.windowData);
+    if (client == null || windowData == null) {
+        return (
+            <div className="mainapp">
+                <div>invalid configuration, client or window was not loaded</div>
+            </div>
+        );
+    }
+
     return (
         <div className="mainapp">
             <div className="titlebar"></div>
