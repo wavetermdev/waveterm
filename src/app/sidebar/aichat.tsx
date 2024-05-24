@@ -11,15 +11,14 @@ import { Markdown2, TypingIndicator } from "@/elements";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import tinycolor from "tinycolor2";
-import { getLinePos, getVisibleLinePos, setCursorToLine } from "@/util/inpututil";
 
 import "./aichat.less";
 
 const outline = "2px solid var(--markdown-outline-color)";
 
-class ChatKeybindings extends React.Component<{ component: ChatSidebar; bindArrowUpDownKeys: boolean }, {}> {
+class ChatKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
     componentDidMount(): void {
-        const { component, bindArrowUpDownKeys } = this.props;
+        const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
         const inputModel = GlobalModel.inputModel;
 
@@ -35,15 +34,6 @@ class ChatKeybindings extends React.Component<{ component: ChatSidebar; bindArro
             inputModel.clearAIAssistantChat();
             return true;
         });
-        // console.log("focused", GlobalModel.sidebarchatModel.focused);
-        // // if (bindArrowUpDownKeys) {
-        // keybindManager.registerKeybinding("pane", "sidebarchat", "generic:selectAbove", (waveEvent) => {
-        //     return component.onArrowUpPressed();
-        // });
-        // keybindManager.registerKeybinding("pane", "sidebarchat", "generic:selectBelow", (waveEvent) => {
-        //     return component.onArrowDownPressed();
-        // });
-        // // }
     }
 
     componentWillUnmount(): void {
@@ -60,19 +50,16 @@ class ArrowUpDownKeybindings extends React.Component<{ component: ChatSidebar },
         const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
 
-        console.log("focused", GlobalModel.sidebarchatModel.focused);
-        // if (bindArrowUpDownKeys) {
-        keybindManager.registerKeybinding("pane", "sidebarchat", "generic:selectAbove", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "sbcarrowupdown", "generic:selectAbove", (waveEvent) => {
             return component.onArrowUpPressed();
         });
-        keybindManager.registerKeybinding("pane", "sidebarchat", "generic:selectBelow", (waveEvent) => {
+        keybindManager.registerKeybinding("pane", "sbcarrowupdown", "generic:selectBelow", (waveEvent) => {
             return component.onArrowDownPressed();
         });
-        // }
     }
 
     componentWillUnmount(): void {
-        GlobalModel.keybindManager.unregisterDomain("sidebarchat");
+        GlobalModel.keybindManager.unregisterDomain("sbcarrowupdown");
     }
 
     render() {
@@ -293,7 +280,9 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onTextAreaFocused(e) {
+        console.log("text area focused");
         GlobalModel.sidebarchatModel.setFocus("input", true);
+        this.bindArrowUpDownKeys.set(false);
         this.onTextAreaChange(e);
         this.updatePreTagOutline();
     }
@@ -428,7 +417,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (this.blockIndex == null) {
             return;
         }
-        if (this.blockIndex < pres.length - 1) {
+        if (this.blockIndex < pres.length - 1 && this.blockIndex >= 0) {
             this.blockIndex++;
         } else {
             this.bindArrowUpDownKeys.set(false);
@@ -469,16 +458,17 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     handleKeyDown(e) {
-        if (e.key === "ArrowUp") {
+        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
             if (this.bindArrowUpDownKeys.get()) {
                 e.preventDefault();
             }
-            const cursorPosition = this.textAreaRef.current.selectionStart;
-            const textBeforeCursor = this.textAreaRef.current.value.slice(0, cursorPosition);
+            const textarea = this.textAreaRef.current;
+            const cursorPosition = textarea.selectionStart;
+            const textBeforeCursor = textarea.value.slice(0, cursorPosition);
+            const textAfterCursor = textarea.value.slice(cursorPosition);
 
             // Check if the cursor is at the first line
-            if (textBeforeCursor.indexOf("\n") === -1 && cursorPosition === 0) {
-                console.log("Arrow Up is exhausted. You are at the first line.");
+            if (textBeforeCursor.indexOf("\n") === -1 && cursorPosition === 0 && e.key === "ArrowUp") {
                 this.bindArrowUpDownKeys.set(true);
             }
         }
@@ -486,15 +476,13 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        console.log("GlobalModel.sidebarchatModel.hasFocus", GlobalModel.sidebarchatModel.hasFocus);
-        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus;
+        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.focused === "block";
         const textAreaValue = this.value.get();
-        console.log("this.bindArrowUpDownKeys.get()", this.bindArrowUpDownKeys.get());
 
         return (
             <div ref={this.sidebarRef} className="sidebarchat">
                 <If condition={renderAIChatKeybindings}>
-                    <ChatKeybindings component={this} bindArrowUpDownKeys={this.bindArrowUpDownKeys.get()} />
+                    <ChatKeybindings component={this} />
                 </If>
                 <If condition={this.bindArrowUpDownKeys.get()}>
                     <ArrowUpDownKeybindings component={this} />
@@ -514,7 +502,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                         autoFocus={true}
                         className="sidebarchat-input chat-textarea"
                         onKeyDown={this.handleKeyDown}
-                        onFocus={this.onTextAreaFocused}
+                        onMouseDown={this.onTextAreaFocused}
                         onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}
                         style={{ fontSize: this.termFontSize }}

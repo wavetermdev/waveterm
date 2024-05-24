@@ -5,7 +5,6 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import * as util from "@/util/util";
-import { getLinePos } from "@/util/inpututil";
 import { If } from "tsx-control-statements/components";
 import { boundMethod } from "autobind-decorator";
 import { clsx } from "clsx";
@@ -370,6 +369,12 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         this.updateSP();
     }
 
+    getLinePos(elem: any): { numLines: number; linePos: number } {
+        const numLines = elem.value.split("\n").length;
+        const linePos = elem.value.substr(0, elem.selectionStart).split("\n").length;
+        return { numLines, linePos };
+    }
+
     arrowUpPressed(): boolean {
         console.log("arrowUpPressed");
         const inputModel = GlobalModel.inputModel;
@@ -382,7 +387,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         if (currentRef == null) {
             return true;
         }
-        const linePos = getLinePos(currentRef);
+        const linePos = this.getLinePos(currentRef);
         const lastHist = this.lastHistoryUpDown;
         if (!lastHist && linePos.linePos > 1) {
             // regular arrow
@@ -402,7 +407,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         if (currentRef == null) {
             return true;
         }
-        const linePos = getLinePos(currentRef);
+        const linePos = this.getLinePos(currentRef);
         const lastHist = this.lastHistoryUpDown;
         if (!lastHist && linePos.linePos < linePos.numLines) {
             // regular arrow

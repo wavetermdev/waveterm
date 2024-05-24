@@ -43,6 +43,7 @@ class SidebarChatModel {
     // block can be the chat-window in terms of focus
     setFocus(section: "input" | "block", focus: boolean): void {
         document.querySelector(".sidebarchat .sidebarchat-input");
+        this.resetFocus();
         this.sidebarChatFocus[section] = focus;
     }
 
