@@ -6,20 +6,20 @@ import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
 import { boundMethod } from "autobind-decorator";
-import { For } from "tsx-control-statements/components";
+import { For, If } from "tsx-control-statements/components";
 import { Markdown2, TypingIndicator } from "@/elements";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import tinycolor from "tinycolor2";
-import * as appconst from "@/app/appconst";
+import { getLinePos, getVisibleLinePos, setCursorToLine } from "@/util/inpututil";
 
 import "./aichat.less";
 
 const outline = "2px solid var(--markdown-outline-color)";
 
-class ChatKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
+class ChatKeybindings extends React.Component<{ component: ChatSidebar; bindArrowUpDownKeys: boolean }, {}> {
     componentDidMount(): void {
-        const component = this.props.component;
+        const { component, bindArrowUpDownKeys } = this.props;
         const keybindManager = GlobalModel.keybindManager;
         const inputModel = GlobalModel.inputModel;
 
@@ -35,12 +35,40 @@ class ChatKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
             inputModel.clearAIAssistantChat();
             return true;
         });
+        // console.log("focused", GlobalModel.sidebarchatModel.focused);
+        // // if (bindArrowUpDownKeys) {
+        // keybindManager.registerKeybinding("pane", "sidebarchat", "generic:selectAbove", (waveEvent) => {
+        //     return component.onArrowUpPressed();
+        // });
+        // keybindManager.registerKeybinding("pane", "sidebarchat", "generic:selectBelow", (waveEvent) => {
+        //     return component.onArrowDownPressed();
+        // });
+        // // }
+    }
+
+    componentWillUnmount(): void {
+        GlobalModel.keybindManager.unregisterDomain("sidebarchat");
+    }
+
+    render() {
+        return null;
+    }
+}
+
+class ArrowUpDownKeybindings extends React.Component<{ component: ChatSidebar }, {}> {
+    componentDidMount(): void {
+        const { component } = this.props;
+        const keybindManager = GlobalModel.keybindManager;
+
+        console.log("focused", GlobalModel.sidebarchatModel.focused);
+        // if (bindArrowUpDownKeys) {
         keybindManager.registerKeybinding("pane", "sidebarchat", "generic:selectAbove", (waveEvent) => {
             return component.onArrowUpPressed();
         });
         keybindManager.registerKeybinding("pane", "sidebarchat", "generic:selectBelow", (waveEvent) => {
             return component.onArrowDownPressed();
         });
+        // }
     }
 
     componentWillUnmount(): void {
@@ -181,7 +209,8 @@ class ChatSidebar extends React.Component<{}, {}> {
     sidebarRef: React.RefObject<HTMLDivElement> = React.createRef<HTMLDivElement>();
     textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef<HTMLTextAreaElement>();
     chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef<HTMLDivElement>();
-    value: OV<string> = mobx.observable.box("", { deep: false, name: "chat-input" });
+    bindArrowUpDownKeys: OV<boolean> = mobx.observable.box(false, { name: "bindArrowUpDownKeys" });
+    value: OV<string> = mobx.observable.box("", { deep: false, name: "value" });
     osInstance: OverlayScrollbars;
     termFontSize: number = 14;
     blockIndex: number;
@@ -376,6 +405,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     onArrowUpPressed() {
+        GlobalModel.sidebarchatModel.setFocus("block", true);
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
         if (pres == null) {
             return;
@@ -400,6 +430,8 @@ class ChatSidebar extends React.Component<{}, {}> {
         }
         if (this.blockIndex < pres.length - 1) {
             this.blockIndex++;
+        } else {
+            this.bindArrowUpDownKeys.set(false);
         }
         this.updatePreTagOutline(pres[this.blockIndex]);
         this.updateScrollTop();
@@ -435,15 +467,38 @@ class ChatSidebar extends React.Component<{}, {}> {
         return chatMessage;
     }
 
+    @mobx.action.bound
+    handleKeyDown(e) {
+        if (e.key === "ArrowUp") {
+            if (this.bindArrowUpDownKeys.get()) {
+                e.preventDefault();
+            }
+            const cursorPosition = this.textAreaRef.current.selectionStart;
+            const textBeforeCursor = this.textAreaRef.current.value.slice(0, cursorPosition);
+
+            // Check if the cursor is at the first line
+            if (textBeforeCursor.indexOf("\n") === -1 && cursorPosition === 0) {
+                console.log("Arrow Up is exhausted. You are at the first line.");
+                this.bindArrowUpDownKeys.set(true);
+            }
+        }
+    }
+
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         console.log("GlobalModel.sidebarchatModel.hasFocus", GlobalModel.sidebarchatModel.hasFocus);
         const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus;
         const textAreaValue = this.value.get();
+        console.log("this.bindArrowUpDownKeys.get()", this.bindArrowUpDownKeys.get());
 
         return (
             <div ref={this.sidebarRef} className="sidebarchat">
-                {renderAIChatKeybindings && <ChatKeybindings component={this} />}
+                <If condition={renderAIChatKeybindings}>
+                    <ChatKeybindings component={this} bindArrowUpDownKeys={this.bindArrowUpDownKeys.get()} />
+                </If>
+                <If condition={this.bindArrowUpDownKeys.get()}>
+                    <ArrowUpDownKeybindings component={this} />
+                </If>
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
                 </div>
@@ -458,6 +513,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                         autoCorrect="off"
                         autoFocus={true}
                         className="sidebarchat-input chat-textarea"
+                        onKeyDown={this.handleKeyDown}
                         onFocus={this.onTextAreaFocused}
                         onBlur={this.onTextAreaBlur}
                         onChange={this.onTextAreaChange}
