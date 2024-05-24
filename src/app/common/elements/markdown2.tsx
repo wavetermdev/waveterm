@@ -77,11 +77,16 @@ const CodeBlock = mobxReact.observer(
 
 @mobxReact.observer
 class Markdown2 extends React.Component<
-    { text: string; style?: any; className?: string; onClickExecute?: (cmd: string) => void },
+    {
+        text: string;
+        style?: any;
+        className?: string;
+        onClickExecute?: (cmd: string) => void;
+    },
     {}
 > {
     render() {
-        let { text, className } = this.props;
+        let { text, className, onClickExecute } = this.props;
         let markdownComponents = {
             a: Link,
             h1: (props) => <Header {...props} hnum={1} />,
@@ -91,7 +96,7 @@ class Markdown2 extends React.Component<
             h5: (props) => <Header {...props} hnum={5} />,
             h6: (props) => <Header {...props} hnum={6} />,
             code: Code,
-            pre: (props) => <CodeBlock {...props} onClickExecute={this.props.onClickExecute} />,
+            pre: (props) => <CodeBlock {...props} onClickExecute={onClickExecute} />,
         };
 
         return (
