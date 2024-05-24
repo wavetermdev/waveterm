@@ -81,18 +81,6 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @mobx.action.bound
-    clickAIAction(e: any): void {
-        e.preventDefault();
-        e.stopPropagation();
-        const inputModel = GlobalModel.inputModel;
-        if (inputModel.getActiveAuxView() === appconst.InputAuxView_AIChat) {
-            inputModel.closeAuxView();
-        } else {
-            inputModel.openAIAssistantChat();
-        }
-    }
-
-    @mobx.action.bound
     clickHistoryAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -249,14 +237,6 @@ class CmdInput extends React.Component<{}, {}> {
                                 </CenteredIcon>
                             </div>
                         </If>
-                        <div
-                            key="ai"
-                            title="Wave AI (Ctrl-Space)"
-                            className="cmdinput-icon"
-                            onClick={this.clickAIAction}
-                        >
-                            <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
-                        </div>
                         <div
                             key="history"
                             title="Tab History (Ctrl-R)"
