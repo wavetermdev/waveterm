@@ -67,6 +67,8 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
     }
 
     render() {
+        const isCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
+        const mode = this.mode.get();
         return (
             <ResizableSidebar
                 model={GlobalModel.rightSidebarModel}
@@ -111,10 +113,10 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                         {/* <If condition={this.mode.get() == "keybind"}>
                             <KeybindDevPane></KeybindDevPane>
                         </If> */}
-                        <If condition={this.mode.get() == "wavebook"}>
+                        <If condition={mode == "wavebook"}>
                             <WaveBookDisplay></WaveBookDisplay>
                         </If>
-                        <If condition={this.mode.get() == "aichat"}>
+                        <If condition={mode == "aichat" && !isCollapsed}>
                             <ChatSidebar />
                         </If>
                     </React.Fragment>

@@ -16,7 +16,7 @@ import "./aichat.less";
 
 const outline = "2px solid var(--markdown-outline-color)";
 
-class ChatKeyBindings extends React.Component<{ component: ChatSidebar }, {}> {
+class ChatKeyBindings extends React.Component<{ component: ChatSidebar; bindArrowUpDownKeys: boolean }, {}> {
     componentDidMount(): void {
         const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
@@ -36,30 +36,24 @@ class ChatKeyBindings extends React.Component<{ component: ChatSidebar }, {}> {
         });
     }
 
+    componentDidUpdate(): void {
+        const { component, bindArrowUpDownKeys } = this.props;
+        const keybindManager = GlobalModel.keybindManager;
+        if (bindArrowUpDownKeys) {
+            keybindManager.registerKeybinding("pane", "aichat:arrowupdown", "generic:selectAbove", (waveEvent) => {
+                return component.onArrowUpPressed();
+            });
+            keybindManager.registerKeybinding("pane", "aichat:arrowupdown", "generic:selectBelow", (waveEvent) => {
+                return component.onArrowDownPressed();
+            });
+        } else {
+            GlobalModel.keybindManager.unregisterDomain("aichat:arrowupdown");
+        }
+    }
+
     componentWillUnmount(): void {
         GlobalModel.keybindManager.unregisterDomain("aichat");
-    }
-
-    render() {
-        return null;
-    }
-}
-
-class ArrowUpDownKeyBindings extends React.Component<{ component: ChatSidebar }, {}> {
-    componentDidMount(): void {
-        const { component } = this.props;
-        const keybindManager = GlobalModel.keybindManager;
-
-        keybindManager.registerKeybinding("pane", "aicarrowupdown", "generic:selectAbove", (waveEvent) => {
-            return component.onArrowUpPressed();
-        });
-        keybindManager.registerKeybinding("pane", "aicsbcarrowupdown", "generic:selectBelow", (waveEvent) => {
-            return component.onArrowDownPressed();
-        });
-    }
-
-    componentWillUnmount(): void {
-        GlobalModel.keybindManager.unregisterDomain("aicsbcarrowupdown");
+        GlobalModel.keybindManager.unregisterDomain("aichat:arrowupdown");
     }
 
     render() {
@@ -224,6 +218,7 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     componentDidMount() {
         GlobalModel.sidebarchatModel.setFocus("input", true);
+        this.textAreaRef.current.focus();
         if (this.sidebarRef.current) {
             this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
         }
@@ -263,7 +258,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (this.textAreaRef.current == null) {
             return;
         }
-
         // Adjust the height of the textarea to fit the text
         const textAreaMaxLines = 100;
         const textAreaLineHeight = this.termFontSize * 1.5;
@@ -295,6 +289,8 @@ class ChatSidebar extends React.Component<{}, {}> {
     onTextAreaFocused(e) {
         GlobalModel.sidebarchatModel.setFocus("input", true);
         this.bindArrowUpDownKeys.set(false);
+        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+        this.blockIndex = pres.length - 1;
         this.onTextAreaChange(e);
         this.updatePreTagOutline();
     }
@@ -415,7 +411,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (this.blockIndex == null) {
             return;
         }
-        if (this.blockIndex < pres.length - 1 && this.blockIndex >= 0) {
+        if (this.blockIndex < pres.length && this.blockIndex >= 0) {
             this.blockIndex++;
             this.updatePreTagOutline(pres[this.blockIndex]);
         } else {
@@ -460,8 +456,8 @@ class ChatSidebar extends React.Component<{}, {}> {
             if (this.bindArrowUpDownKeys.get()) {
                 GlobalModel.sidebarchatModel.setFocus("block", true);
                 this.textAreaRef.current.blur();
-                e.preventDefault();
             }
+
             const textarea = this.textAreaRef.current;
             const cursorPosition = textarea.selectionStart;
             const textBeforeCursor = textarea.value.slice(0, cursorPosition);
@@ -477,14 +473,12 @@ class ChatSidebar extends React.Component<{}, {}> {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus;
         const textAreaValue = this.value.get();
+        const bindArrowUpDownKeys = this.bindArrowUpDownKeys.get();
 
         return (
             <div ref={this.sidebarRef} className="sidebarchat">
                 <If condition={renderAIChatKeybindings}>
-                    <ChatKeyBindings component={this} />
-                </If>
-                <If condition={this.bindArrowUpDownKeys.get()}>
-                    <ArrowUpDownKeyBindings component={this} />
+                    <ChatKeyBindings component={this} bindArrowUpDownKeys={bindArrowUpDownKeys} />
                 </If>
                 <div className="titlebar">
                     <div className="title-string">Wave AI</div>
