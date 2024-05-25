@@ -331,7 +331,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         let detection = 0;
         const target = event.target as HTMLElement;
 
-        if (target.closest(".copy-button")) {
+        if (target.closest(".copy-button") || target.closest(".fa-square-terminal")) {
             return;
         }
 
