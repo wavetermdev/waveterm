@@ -60,15 +60,24 @@ class KeybindDevPane extends React.Component<{}, {}> {
 class RightSideBar extends React.Component<RightSideBarProps, {}> {
     mode: OV<string> = mobx.observable.box("aichat", { name: "RightSideBar-mode" });
 
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
+    @mobx.action
     setMode(mode: string) {
-        mobx.action(() => {
-            this.mode.set(mode);
-        })();
+        if (mode == this.mode.get()) {
+            return;
+        }
+        this.mode.set(mode);
     }
 
     render() {
         const isCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
         const mode = this.mode.get();
+        console.log("isCollapsed", isCollapsed);
+        console.log("mode", mode);
         return (
             <ResizableSidebar
                 model={GlobalModel.rightSidebarModel}
@@ -84,7 +93,7 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                                 <div
                                     className="icon-container"
                                     title="Show Keybinding Debugger"
-                                    onClick={() => this.setMode("ai")}
+                                    onClick={() => this.setMode("aichat")}
                                 >
                                     <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
                                 </div>
@@ -110,9 +119,9 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                                 <i className="fa-sharp fa-regular fa-xmark"></i>
                             </Button>
                         </div>
-                        {/* <If condition={this.mode.get() == "keybind"}>
+                        <If condition={this.mode.get() == "keybind"}>
                             <KeybindDevPane></KeybindDevPane>
-                        </If> */}
+                        </If>
                         <If condition={mode == "wavebook"}>
                             <WaveBookDisplay></WaveBookDisplay>
                         </If>
