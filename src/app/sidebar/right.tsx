@@ -76,8 +76,6 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
     render() {
         const isCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
         const mode = this.mode.get();
-        console.log("isCollapsed", isCollapsed);
-        console.log("mode", mode);
         return (
             <ResizableSidebar
                 model={GlobalModel.rightSidebarModel}
