@@ -1,5 +1,10 @@
 {
     "editor.formatOnSave": true,
+	"editor.detectIndentation": false,
+	"editor.formatOnPaste": true,
+	"editor.tabSize": 4,
+	"editor.insertSpaces": false,
+	"prettier.useEditorConfig": true,
     "[javascript]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
@@ -19,6 +24,9 @@
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     }
 }
