@@ -481,9 +481,6 @@ class ChatSidebar extends React.Component<{}, {}> {
                 <If condition={renderAIChatKeybindings}>
                     <ChatKeyBindings component={this} bindArrowUpDownKeys={bindArrowUpDownKeys} />
                 </If>
-                <div className="titlebar">
-                    <div className="title-string">Wave AI</div>
-                </div>
                 {chatMessageItems.length > 0 && (
                     <ChatWindow chatWindowRef={this.chatWindowRef} onRendered={this.onChatWindowRendered} />
                 )}

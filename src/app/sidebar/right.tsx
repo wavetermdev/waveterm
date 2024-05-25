@@ -93,7 +93,7 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                                     title="Show Keybinding Debugger"
                                     onClick={() => this.setMode("aichat")}
                                 >
-                                    <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
+                                    <i className="fa-sharp fa-regular fa-sparkles fa-fw" /> Wave AI
                                 </div>
                                 <div className="flex-spacer" />
                                 <If condition={GlobalModel.isDev}>
@@ -104,14 +104,14 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                                     >
                                         <i className="fa-fw fa-sharp fa-keyboard fa-solid" />
                                     </div>
+                                    <div
+                                        className="icon-container"
+                                        title="Show Keybinding Debugger"
+                                        onClick={() => this.setMode("wavebook")}
+                                    >
+                                        <i className="fa-sharp fa-solid fa-book-sparkles"></i>
+                                    </div>
                                 </If>
-                                <div
-                                    className="icon-container"
-                                    title="Show Keybinding Debugger"
-                                    onClick={() => this.setMode("wavebook")}
-                                >
-                                    <i className="fa-sharp fa-solid fa-book-sparkles"></i>
-                                </div>
                             </div>
                             <Button className="secondary ghost" onClick={toggleCollapse}>
                                 <i className="fa-sharp fa-regular fa-xmark"></i>
