@@ -4,26 +4,6 @@
     overflow: hidden;
     height: 100%;
 
-    .titlebar {
-        background-color: var(--app-panel-bg-color);
-        color: var(--term-blue);
-        padding: 6px 15px;
-        display: flex;
-        flex: 0 0 auto;
-        flex-direction: row;
-        width: 100%;
-        border-bottom: 1px solid var(--app-border-color);
-        font: var(--base-font);
-        user-select: none;
-        cursor: default;
-        line-height: 18px;
-        overflow: hidden;
-
-        .title-string {
-            font-weight: bold;
-        }
-    }
-
     > .scrollable {
         flex-flow: column nowrap;
         flex: 1;
@@ -74,6 +54,10 @@
             color: var(--cmdinput-text-error);
             font-family: var(--markdown-font);
             font-size: 14px;
+        }
+
+        .typing-indicator {
+            margin-top: 4px;
         }
     }
 

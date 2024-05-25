@@ -94,13 +94,12 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
                 innerHTML = this.renderError(assistantresponse.error);
             } else {
                 if (!assistantresponse?.message) {
-                    console.log("ai response is empty...");
                     innerHTML = (
                         <>
                             <div className="chat-msg-header">
                                 <i className="fa-sharp fa-solid fa-sparkles"></i>
                             </div>
-                            <TypingIndicator />
+                            <TypingIndicator className="typing-indicator" />
                         </>
                     );
                 } else {
