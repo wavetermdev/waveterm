@@ -341,6 +341,7 @@ function createWindow(clientData: ClientDataType | null): Electron.BrowserWindow
             preload: path.join(getElectronAppBasePath(), DistDir, "preload.js"),
         },
         show: false,
+        autoHideMenuBar: true,
     });
     win.once("ready-to-show", () => {
         win.show();
