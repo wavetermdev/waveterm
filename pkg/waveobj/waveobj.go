@@ -15,78 +15,123 @@ import (
 )
 
 const (
-	OTypeKeyName = "otype"
-	OIDKeyName   = "oid"
+	OTypeKeyName   = "otype"
+	OIDKeyName     = "oid"
+	VersionKeyName = "version"
+
+	OIDGoFieldName     = "OID"
+	VersionGoFieldName = "Version"
 )
 
-type waveObjDesc struct {
-	RType    reflect.Type
-	OIDField reflect.StructField
-}
-
-var globalLock = &sync.Mutex{}
-var waveObjMap = make(map[string]*waveObjDesc)
-var waveObj WaveObj
-var waveObjRType = reflect.TypeOf(&waveObj).Elem()
-
-func RegisterType(w WaveObj) {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-	oidType := w.GetOType()
-	if waveObjMap[oidType] != nil {
-		panic(fmt.Sprintf("duplicate WaveObj registration: %T", w))
-	}
-	rtype := reflect.TypeOf(w)
-	field := findOIDField(rtype)
-	if field == nil {
-		panic(fmt.Sprintf("cannot register WaveObj without OID field -- mark with tag `waveobj:\"oid\"`"))
-	}
-	waveObjMap[oidType] = &waveObjDesc{
-		RType:    rtype,
-		OIDField: *field,
-	}
-}
-
-func findOIDField(rtype reflect.Type) *reflect.StructField {
-	for idx := 0; idx < rtype.NumField(); idx++ {
-		field := rtype.Field(idx)
-		if field.PkgPath != "" {
-			// private
-			continue
-		}
-		waveObjTag := field.Tag.Get("waveobj")
-		if waveObjTag == "oid" {
-			if field.Type.Kind() != reflect.String {
-				panic(fmt.Sprintf("in %v marked oid field is not type 'string'", rtype))
-			}
-			return &field
-		}
-	}
-	return nil
-}
-
-func getObjDescForOIDType(oidType string) *waveObjDesc {
-	globalLock.Lock()
-	defer globalLock.Unlock()
-	return waveObjMap[oidType]
-}
-
 type WaveObj interface {
-	GetOType() string
+	GetOType() string // should not depend on object state (should work with nil value)
+}
+
+type waveObjDesc struct {
+	RType        reflect.Type
+	OIDField     reflect.StructField
+	VersionField reflect.StructField
+}
+
+var waveObjMap = sync.Map{}
+var waveObjRType = reflect.TypeOf((*WaveObj)(nil)).Elem()
+
+func RegisterType[T WaveObj]() {
+	var waveObj T
+	otype := waveObj.GetOType()
+	if otype == "" {
+		panic(fmt.Sprintf("otype is empty for %T", waveObj))
+	}
+	rtype := reflect.TypeOf(waveObj)
+	if rtype.Kind() != reflect.Ptr {
+		panic(fmt.Sprintf("wave object must be a pointer for %T", waveObj))
+	}
+	oidField, found := rtype.Elem().FieldByName(OIDGoFieldName)
+	if !found {
+		panic(fmt.Sprintf("missing OID field for %T", waveObj))
+	}
+	if oidField.Type.Kind() != reflect.String {
+		panic(fmt.Sprintf("OID field must be string for %T", waveObj))
+	}
+	if oidField.Tag.Get("json") != OIDKeyName {
+		panic(fmt.Sprintf("OID field json tag must be %q for %T", OIDKeyName, waveObj))
+	}
+	versionField, found := rtype.Elem().FieldByName(VersionGoFieldName)
+	if !found {
+		panic(fmt.Sprintf("missing Version field for %T", waveObj))
+	}
+	if versionField.Type.Kind() != reflect.Int {
+		panic(fmt.Sprintf("Version field must be int for %T", waveObj))
+	}
+	if versionField.Tag.Get("json") != VersionKeyName {
+		panic(fmt.Sprintf("Version field json tag must be %q for %T", VersionKeyName, waveObj))
+	}
+	_, found = waveObjMap.Load(otype)
+	if found {
+		panic(fmt.Sprintf("otype %q already registered", otype))
+	}
+	waveObjMap.Store(otype, &waveObjDesc{
+		RType:        rtype,
+		OIDField:     oidField,
+		VersionField: versionField,
+	})
+}
+
+func getWaveObjDesc(otype string) *waveObjDesc {
+	desc, _ := waveObjMap.Load(otype)
+	if desc == nil {
+		return nil
+	}
+	return desc.(*waveObjDesc)
+}
+
+func GetOID(waveObj WaveObj) string {
+	desc := getWaveObjDesc(waveObj.GetOType())
+	if desc == nil {
+		return ""
+	}
+	return reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.OIDField.Index).String()
+}
+
+func SetOID(waveObj WaveObj, oid string) {
+	desc := getWaveObjDesc(waveObj.GetOType())
+	if desc == nil {
+		return
+	}
+	reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.OIDField.Index).SetString(oid)
+}
+
+func GetVersion(waveObj WaveObj) int {
+	desc := getWaveObjDesc(waveObj.GetOType())
+	if desc == nil {
+		return 0
+	}
+	return int(reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.VersionField.Index).Int())
+}
+
+func SetVersion(waveObj WaveObj, version int) {
+	desc := getWaveObjDesc(waveObj.GetOType())
+	if desc == nil {
+		return
+	}
+	reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.VersionField.Index).SetInt(int64(version))
 }
 
 func ToJson(w WaveObj) ([]byte, error) {
 	m := make(map[string]any)
-	err := mapstructure.Decode(w, &m)
+	dconfig := &mapstructure.DecoderConfig{
+		Result:  &m,
+		TagName: "json",
+	}
+	decoder, err := mapstructure.NewDecoder(dconfig)
 	if err != nil {
 		return nil, err
 	}
-	desc := getObjDescForOIDType(w.GetOType())
-	if desc == nil {
-		return nil, fmt.Errorf("otype %q (%T) not registered", w.GetOType(), w)
+	err = decoder.Decode(w)
+	if err != nil {
+		return nil, err
 	}
 	m[OTypeKeyName] = w.GetOType()
-	m[OIDKeyName] = reflect.ValueOf(w).FieldByIndex(desc.OIDField.Index).String()
 	return json.Marshal(m)
 }
 
@@ -100,23 +145,24 @@ func FromJson(data []byte) (WaveObj, error) {
 	if !ok {
 		return nil, fmt.Errorf("missing otype")
 	}
-	oid, ok := m[OIDKeyName].(string)
-	if !ok {
-		return nil, fmt.Errorf("missing oid")
-	}
-	desc := getObjDescForOIDType(otype)
+	desc := getWaveObjDesc(otype)
 	if desc == nil {
-		return nil, fmt.Errorf("unknown oid type: %s", otype)
+		return nil, fmt.Errorf("unknown otype: %s", otype)
 	}
-	objVal := reflect.New(desc.RType)
-	oidField := objVal.FieldByIndex(desc.OIDField.Index)
-	oidField.SetString(oid)
-	obj := objVal.Interface().(WaveObj)
-	err = mapstructure.Decode(m, obj)
+	wobj := reflect.Zero(desc.RType).Interface().(WaveObj)
+	dconfig := &mapstructure.DecoderConfig{
+		Result:  &wobj,
+		TagName: "json",
+	}
+	decoder, err := mapstructure.NewDecoder(dconfig)
 	if err != nil {
 		return nil, err
 	}
-	return obj, nil
+	err = decoder.Decode(m)
+	if err != nil {
+		return nil, err
+	}
+	return wobj, nil
 }
 
 func FromJsonGen[T WaveObj](data []byte) (T, error) {
@@ -204,9 +250,12 @@ func generateTSTypeInternal(rtype reflect.Type) (string, []reflect.Type) {
 	var buf bytes.Buffer
 	waveObjType := reflect.TypeOf((*WaveObj)(nil)).Elem()
 	buf.WriteString(fmt.Sprintf("type %s = {\n", rtype.Name()))
+	var isWaveObj bool
 	if rtype.Implements(waveObjType) || reflect.PointerTo(rtype).Implements(waveObjType) {
+		isWaveObj = true
 		buf.WriteString(fmt.Sprintf("  %s: string;\n", OTypeKeyName))
 		buf.WriteString(fmt.Sprintf("  %s: string;\n", OIDKeyName))
+		buf.WriteString(fmt.Sprintf("  %s: number;\n", VersionKeyName))
 	}
 	var subTypes []reflect.Type
 	for i := 0; i < rtype.NumField(); i++ {
@@ -216,6 +265,9 @@ func generateTSTypeInternal(rtype reflect.Type) (string, []reflect.Type) {
 		}
 		fieldName := getTSFieldName(field)
 		if fieldName == "" {
+			continue
+		}
+		if isWaveObj && (fieldName == OTypeKeyName || fieldName == OIDKeyName || fieldName == VersionKeyName) {
 			continue
 		}
 		optMarker := ""

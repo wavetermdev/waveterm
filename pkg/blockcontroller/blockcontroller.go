@@ -64,7 +64,7 @@ func jsonDeepCopy(val map[string]any) (map[string]any, error) {
 func CreateBlock(ctx context.Context, bdef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (*wstore.Block, error) {
 	blockId := uuid.New().String()
 	blockData := &wstore.Block{
-		BlockId:     blockId,
+		OID:         blockId,
 		BlockDef:    bdef,
 		Controller:  bdef.Controller,
 		View:        bdef.View,
@@ -266,19 +266,19 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
 		return nil
 	case *SetViewCommand:
 		log.Printf("SETVIEW: %s | %q\n", blockId, cmd.View)
-		block, err := wstore.DBGet[wstore.Block](ctx, blockId)
+		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
 		if err != nil {
 			return fmt.Errorf("error getting block: %w", err)
 		}
 		block.View = cmd.View
-		err = wstore.DBUpdate[wstore.Block](ctx, block)
+		err = wstore.DBUpdate(ctx, block)
 		if err != nil {
 			return fmt.Errorf("error updating block: %w", err)
 		}
 		return nil
 	case *SetMetaCommand:
 		log.Printf("SETMETA: %s | %v\n", blockId, cmd.Meta)
-		block, err := wstore.DBGet[wstore.Block](ctx, blockId)
+		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
 		if err != nil {
 			return fmt.Errorf("error getting block: %w", err)
 		}

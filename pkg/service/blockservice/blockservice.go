@@ -40,7 +40,7 @@ func (bs *BlockService) CloseBlock(blockId string) {
 func (bs *BlockService) GetBlockData(blockId string) (*wstore.Block, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	blockData, err := wstore.DBGet[wstore.Block](ctx, blockId)
+	blockData, err := wstore.DBGet[*wstore.Block](ctx, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error getting block data: %w", err)
 	}

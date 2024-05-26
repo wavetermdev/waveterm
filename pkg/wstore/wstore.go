@@ -6,31 +6,41 @@ package wstore
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/util/ds"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
 var WorkspaceMap = ds.NewSyncMap[*Workspace]()
 var TabMap = ds.NewSyncMap[*Tab]()
 var BlockMap = ds.NewSyncMap[*Block]()
 
+func init() {
+	waveobj.RegisterType[*Client]()
+	waveobj.RegisterType[*Window]()
+	waveobj.RegisterType[*Workspace]()
+	waveobj.RegisterType[*Tab]()
+	waveobj.RegisterType[*Block]()
+}
+
 type Client struct {
-	ClientId     string `json:"clientid"`
+	OID          string `json:"oid"`
+	Version      int    `json:"version"`
 	MainWindowId string `json:"mainwindowid"`
 }
 
-func (c Client) GetId() string {
-	return c.ClientId
+func (*Client) GetOType() string {
+	return "client"
 }
 
 // stores the ui-context of the window
 // workspaceid, active tab, active block within each tab, window size, etc.
 type Window struct {
-	WindowId       string            `json:"windowid"`
+	OID            string            `json:"oid"`
+	Version        int               `json:"version"`
 	WorkspaceId    string            `json:"workspaceid"`
 	ActiveTabId    string            `json:"activetabid"`
 	ActiveBlockMap map[string]string `json:"activeblockmap"` // map from tabid to blockid
@@ -39,42 +49,30 @@ type Window struct {
 	LastFocusTs    int64             `json:"lastfocusts"`
 }
 
-func (w Window) GetId() string {
-	return w.WindowId
+func (*Window) GetOType() string {
+	return "window"
 }
 
 type Workspace struct {
-	Lock        *sync.Mutex `json:"-"`
-	WorkspaceId string      `json:"workspaceid"`
-	Name        string      `json:"name"`
-	TabIds      []string    `json:"tabids"`
+	OID     string   `json:"oid"`
+	Version int      `json:"version"`
+	Name    string   `json:"name"`
+	TabIds  []string `json:"tabids"`
 }
 
-func (ws Workspace) GetId() string {
-	return ws.WorkspaceId
-}
-
-func (ws *Workspace) WithLock(f func()) {
-	ws.Lock.Lock()
-	defer ws.Lock.Unlock()
-	f()
+func (*Workspace) GetOType() string {
+	return "workspace"
 }
 
 type Tab struct {
-	Lock     *sync.Mutex `json:"-"`
-	TabId    string      `json:"tabid"`
-	Name     string      `json:"name"`
-	BlockIds []string    `json:"blockids"`
+	OID      string   `json:"oid"`
+	Version  int      `json:"version"`
+	Name     string   `json:"name"`
+	BlockIds []string `json:"blockids"`
 }
 
-func (tab Tab) GetId() string {
-	return tab.TabId
-}
-
-func (tab *Tab) WithLock(f func()) {
-	tab.Lock.Lock()
-	defer tab.Lock.Unlock()
-	f()
+func (*Tab) GetOType() string {
+	return "tab"
 }
 
 type FileDef struct {
@@ -108,7 +106,8 @@ type WinSize struct {
 }
 
 type Block struct {
-	BlockId     string         `json:"blockid"`
+	OID         string         `json:"oid"`
+	Version     int            `json:"version"`
 	BlockDef    *BlockDef      `json:"blockdef"`
 	Controller  string         `json:"controller"`
 	View        string         `json:"view"`
@@ -116,45 +115,32 @@ type Block struct {
 	RuntimeOpts *RuntimeOpts   `json:"runtimeopts,omitempty"`
 }
 
-func (b *Block) GetOType() string {
+func (*Block) GetOType() string {
 	return "block"
-}
-
-func (b Block) GetId() string {
-	return b.BlockId
-}
-
-// TODO remove
-func (b *Block) WithLock(f func()) {
-	f()
 }
 
 func CreateTab(workspaceId string, name string) (*Tab, error) {
 	tab := &Tab{
-		Lock:     &sync.Mutex{},
-		TabId:    uuid.New().String(),
+		OID:      uuid.New().String(),
 		Name:     name,
 		BlockIds: []string{},
 	}
-	TabMap.Set(tab.TabId, tab)
+	TabMap.Set(tab.OID, tab)
 	ws := WorkspaceMap.Get(workspaceId)
 	if ws == nil {
 		return nil, fmt.Errorf("workspace not found: %q", workspaceId)
 	}
-	ws.WithLock(func() {
-		ws.TabIds = append(ws.TabIds, tab.TabId)
-	})
+	ws.TabIds = append(ws.TabIds, tab.OID)
 	return tab, nil
 }
 
 func CreateWorkspace() (*Workspace, error) {
 	ws := &Workspace{
-		Lock:        &sync.Mutex{},
-		WorkspaceId: uuid.New().String(),
-		TabIds:      []string{},
+		OID:    uuid.New().String(),
+		TabIds: []string{},
 	}
-	WorkspaceMap.Set(ws.WorkspaceId, ws)
-	_, err := CreateTab(ws.WorkspaceId, "Tab 1")
+	WorkspaceMap.Set(ws.OID, ws)
+	_, err := CreateTab(ws.OID, "Tab 1")
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +150,7 @@ func CreateWorkspace() (*Workspace, error) {
 func EnsureInitialData() error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	clientCount, err := DBGetCount[Client](ctx)
+	clientCount, err := DBGetCount[*Client](ctx)
 	if err != nil {
 		return fmt.Errorf("error getting client count: %w", err)
 	}
@@ -175,7 +161,7 @@ func EnsureInitialData() error {
 	workspaceId := uuid.New().String()
 	tabId := uuid.New().String()
 	client := &Client{
-		ClientId:     uuid.New().String(),
+		OID:          uuid.New().String(),
 		MainWindowId: windowId,
 	}
 	err = DBInsert(ctx, client)
@@ -183,7 +169,7 @@ func EnsureInitialData() error {
 		return fmt.Errorf("error inserting client: %w", err)
 	}
 	window := &Window{
-		WindowId:       windowId,
+		OID:            windowId,
 		WorkspaceId:    workspaceId,
 		ActiveTabId:    tabId,
 		ActiveBlockMap: make(map[string]string),
@@ -201,16 +187,16 @@ func EnsureInitialData() error {
 		return fmt.Errorf("error inserting window: %w", err)
 	}
 	ws := &Workspace{
-		WorkspaceId: workspaceId,
-		Name:        "default",
-		TabIds:      []string{tabId},
+		OID:    workspaceId,
+		Name:   "default",
+		TabIds: []string{tabId},
 	}
 	err = DBInsert(ctx, ws)
 	if err != nil {
 		return fmt.Errorf("error inserting workspace: %w", err)
 	}
 	tab := &Tab{
-		TabId:    uuid.New().String(),
+		OID:      uuid.New().String(),
 		Name:     "Tab 1",
 		BlockIds: []string{},
 	}

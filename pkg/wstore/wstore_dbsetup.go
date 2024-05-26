@@ -5,7 +5,6 @@ package wstore
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"path"
@@ -62,25 +61,4 @@ func WithTx(ctx context.Context, fn func(tx *TxWrap) error) error {
 
 func WithTxRtn[RT any](ctx context.Context, fn func(tx *TxWrap) (RT, error)) (RT, error) {
 	return txwrap.WithTxRtn(ctx, globalDB, fn)
-}
-
-func TxJson(tx *TxWrap, v any) string {
-	barr, err := json.Marshal(v)
-	if err != nil {
-		tx.SetErr(fmt.Errorf("json marshal (%T): %w", v, err))
-		return ""
-	}
-	return string(barr)
-}
-
-func TxReadJson[T any](tx *TxWrap, jsonData string) *T {
-	if jsonData == "" {
-		return nil
-	}
-	var v T
-	err := json.Unmarshal([]byte(jsonData), &v)
-	if err != nil {
-		tx.SetErr(fmt.Errorf("json unmarshal (%T): %w", v, err))
-	}
-	return &v
 }

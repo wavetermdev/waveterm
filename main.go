@@ -60,7 +60,7 @@ func createWindow(windowData *wstore.Window, app *application.App) {
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
 		BackgroundColour: application.NewRGB(0, 0, 0),
-		URL:              "/public/index.html?windowid=" + windowData.WindowId,
+		URL:              "/public/index.html?windowid=" + windowData.OID,
 		X:                windowData.Pos.X,
 		Y:                windowData.Pos.Y,
 		Width:            windowData.WinSize.Width,
@@ -146,12 +146,12 @@ func main() {
 
 	setupCtx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	client, err := wstore.DBGetSingleton[wstore.Client](setupCtx)
+	client, err := wstore.DBGetSingleton[*wstore.Client](setupCtx)
 	if err != nil {
 		log.Printf("error getting client data: %v\n", err)
 		return
 	}
-	mainWindow, err := wstore.DBGet[wstore.Window](setupCtx, client.MainWindowId)
+	mainWindow, err := wstore.DBGet[*wstore.Window](setupCtx, client.MainWindowId)
 	if err != nil {
 		log.Printf("error getting main window: %v\n", err)
 		return
