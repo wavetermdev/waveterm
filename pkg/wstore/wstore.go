@@ -116,6 +116,10 @@ type Block struct {
 	RuntimeOpts *RuntimeOpts   `json:"runtimeopts,omitempty"`
 }
 
+func (b *Block) GetOType() string {
+	return "block"
+}
+
 func (b Block) GetId() string {
 	return b.BlockId
 }
