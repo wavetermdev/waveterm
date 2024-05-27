@@ -1,15 +1,18 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as React from "react";
 import * as jotai from "jotai";
-import { atomFamily } from "jotai/utils";
+import * as jotaiUtils from "jotai/utils";
 import { v4 as uuidv4 } from "uuid";
 import * as rxjs from "rxjs";
 import type { WailsEvent } from "@wailsio/runtime/types/events";
 import { Events } from "@wailsio/runtime";
 import { produce } from "immer";
 import { BlockService } from "@/bindings/blockservice";
+import { ObjectService } from "@/bindings/objectservice";
 import * as wstore from "@/gopkg/wstore";
+import { Call as $Call } from "@wailsio/runtime";
 
 const globalStore = jotai.createStore();
 
@@ -105,4 +108,93 @@ function removeBlockFromTab(tabId: string, blockId: string) {
     BlockService.CloseBlock(blockId);
 }
 
-export { globalStore, atoms, getBlockSubject, addBlockIdToTab, blockDataMap, useBlockAtom, removeBlockFromTab };
+function GetObject(oref: string): Promise<any> {
+    let prtn = $Call.ByName(
+        "github.com/wavetermdev/thenextwave/pkg/service/objectservice.ObjectService.GetObject",
+        oref
+    );
+    return prtn;
+}
+
+type WaveObjectHookData = {
+    oref: string;
+};
+
+type WaveObjectValue<T> = {
+    pendingPromise: Promise<any>;
+    value: T;
+    loading: boolean;
+};
+
+const waveObjectValueCache = new Map<string, WaveObjectValue<any>>();
+let waveObjectAtomCache = new WeakMap<WaveObjectHookData, jotai.Atom<any>>();
+
+function clearWaveObjectCache() {
+    waveObjectValueCache.clear();
+    waveObjectAtomCache = new WeakMap<WaveObjectHookData, jotai.Atom<any>>();
+}
+
+function createWaveObjectAtom<T>(oref: string): jotai.Atom<[T, boolean]> {
+    let cacheVal: WaveObjectValue<T> = waveObjectValueCache.get(oref);
+    if (cacheVal == null) {
+        cacheVal = { pendingPromise: null, value: null, loading: true };
+        cacheVal.pendingPromise = GetObject(oref).then((val) => {
+            cacheVal.value = val;
+            cacheVal.loading = false;
+            cacheVal.pendingPromise = null;
+        });
+        waveObjectValueCache.set(oref, cacheVal);
+    }
+    return jotai.atom(
+        (get) => {
+            return [cacheVal.value, cacheVal.loading];
+        },
+        (get, set, newVal: T) => {
+            cacheVal.value = newVal;
+        }
+    );
+}
+
+function useWaveObjectValue<T>(oref: string): [T, boolean] {
+    const objRef = React.useRef<WaveObjectHookData>(null);
+    if (objRef.current == null) {
+        objRef.current = { oref: oref };
+    }
+    const objHookData = objRef.current;
+    let objAtom = waveObjectAtomCache.get(objHookData);
+    if (objAtom == null) {
+        objAtom = createWaveObjectAtom(oref);
+        waveObjectAtomCache.set(objHookData, objAtom);
+    }
+    const atomVal = jotai.useAtomValue(objAtom);
+    return [atomVal[0], atomVal[1]];
+}
+
+function useWaveObject<T>(oref: string): [T, boolean, (T) => void] {
+    const objRef = React.useRef<WaveObjectHookData>(null);
+    if (objRef.current == null) {
+        objRef.current = { oref: oref };
+    }
+    const objHookData = objRef.current;
+    let objAtom = waveObjectAtomCache.get(objHookData);
+    if (objAtom == null) {
+        objAtom = createWaveObjectAtom(oref);
+        waveObjectAtomCache.set(objHookData, objAtom);
+    }
+    const [atomVal, setAtomVal] = jotai.useAtom(objAtom);
+    return [atomVal[0], atomVal[1], setAtomVal];
+}
+
+export {
+    globalStore,
+    atoms,
+    getBlockSubject,
+    addBlockIdToTab,
+    blockDataMap,
+    useBlockAtom,
+    removeBlockFromTab,
+    GetObject,
+    useWaveObject,
+    useWaveObjectValue,
+    clearWaveObjectCache,
+};

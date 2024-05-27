@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/clientservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
+	"github.com/wavetermdev/thenextwave/pkg/service/objectservice"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 
@@ -131,6 +132,7 @@ func main() {
 			application.NewService(&fileservice.FileService{}),
 			application.NewService(&blockservice.BlockService{}),
 			application.NewService(&clientservice.ClientService{}),
+			application.NewService(&objectservice.ObjectService{}),
 		},
 		Icon: appIcon,
 		Assets: application.AssetOptions{

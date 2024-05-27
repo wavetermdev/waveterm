@@ -6,6 +6,7 @@ package wstore
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,11 +20,9 @@ var TabMap = ds.NewSyncMap[*Tab]()
 var BlockMap = ds.NewSyncMap[*Block]()
 
 func init() {
-	waveobj.RegisterType[*Client]()
-	waveobj.RegisterType[*Window]()
-	waveobj.RegisterType[*Workspace]()
-	waveobj.RegisterType[*Tab]()
-	waveobj.RegisterType[*Block]()
+	for _, rtype := range AllWaveObjTypes() {
+		waveobj.RegisterType(rtype)
+	}
 }
 
 type Client struct {
@@ -34,6 +33,16 @@ type Client struct {
 
 func (*Client) GetOType() string {
 	return "client"
+}
+
+func AllWaveObjTypes() []reflect.Type {
+	return []reflect.Type{
+		reflect.TypeOf(&Client{}),
+		reflect.TypeOf(&Window{}),
+		reflect.TypeOf(&Workspace{}),
+		reflect.TypeOf(&Tab{}),
+		reflect.TypeOf(&Block{}),
+	}
 }
 
 // stores the ui-context of the window
@@ -145,6 +154,10 @@ func CreateWorkspace() (*Workspace, error) {
 		return nil, err
 	}
 	return ws, nil
+}
+
+func GetObject(otype string, oid string) (waveobj.WaveObj, error) {
+	return nil, nil
 }
 
 func EnsureInitialData() error {
