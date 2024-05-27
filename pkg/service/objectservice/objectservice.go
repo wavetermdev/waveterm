@@ -5,6 +5,7 @@ package objectservice
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -60,21 +61,18 @@ func updatesRtn(ctx context.Context, rtnVal map[string]any) (any, error) {
 	if len(updates) == 0 {
 		return nil, nil
 	}
-	var rtn []any
-	for _, obj := range updates {
-		if obj == nil {
-			continue
-		}
-		jmap, err := waveobj.ToJsonMap(obj)
-		if err != nil {
-			return nil, fmt.Errorf("error converting object to JSON: %w", err)
-		}
-		rtn = append(rtn, jmap)
+	updateArr := make([]wstore.WaveObjUpdate, 0, len(updates))
+	for _, update := range updates {
+		updateArr = append(updateArr, update)
+	}
+	jval, err := json.Marshal(updateArr)
+	if err != nil {
+		return nil, fmt.Errorf("error converting updates to JSON: %w", err)
 	}
 	if rtnVal == nil {
 		rtnVal = make(map[string]any)
 	}
-	rtnVal["updates"] = rtn
+	rtnVal["updates"] = json.RawMessage(jval)
 	return rtnVal, nil
 }
 

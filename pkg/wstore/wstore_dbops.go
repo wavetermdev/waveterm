@@ -159,15 +159,12 @@ func DBDelete(ctx context.Context, otype string, id string) error {
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("DELETE FROM %s WHERE oid = ?", table)
 		tx.Exec(query, id)
-		ContextAddUpdate(ctx, &waveobj.WaveObjTombstone{OType: otype, OID: id})
+		ContextAddUpdate(ctx, WaveObjUpdate{UpdateType: UpdateType_Delete, OType: otype, OID: id})
 		return nil
 	})
 }
 
 func DBUpdate(ctx context.Context, val waveobj.WaveObj) error {
-	if waveobj.IsTombstone(val) {
-		return fmt.Errorf("cannot update deleted object")
-	}
 	oid := waveobj.GetOID(val)
 	if oid == "" {
 		return fmt.Errorf("cannot update %T value with empty id", val)
@@ -181,15 +178,12 @@ func DBUpdate(ctx context.Context, val waveobj.WaveObj) error {
 		query := fmt.Sprintf("UPDATE %s SET data = ?, version = version+1 WHERE oid = ? RETURNING version", table)
 		newVersion := tx.GetInt(query, jsonData, oid)
 		waveobj.SetVersion(val, newVersion)
-		ContextAddUpdate(ctx, val)
+		ContextAddUpdate(ctx, WaveObjUpdate{UpdateType: UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
 		return nil
 	})
 }
 
 func DBInsert(ctx context.Context, val waveobj.WaveObj) error {
-	if waveobj.IsTombstone(val) {
-		return fmt.Errorf("cannot insert deleted object")
-	}
 	oid := waveobj.GetOID(val)
 	if oid == "" {
 		return fmt.Errorf("cannot insert %T value with empty id", val)
@@ -203,7 +197,7 @@ func DBInsert(ctx context.Context, val waveobj.WaveObj) error {
 		waveobj.SetVersion(val, 1)
 		query := fmt.Sprintf("INSERT INTO %s (oid, version, data) VALUES (?, ?, ?)", table)
 		tx.Exec(query, oid, 1, jsonData)
-		ContextAddUpdate(ctx, val)
+		ContextAddUpdate(ctx, WaveObjUpdate{UpdateType: UpdateType_Update, OType: val.GetOType(), OID: oid, Obj: val})
 		return nil
 	})
 }

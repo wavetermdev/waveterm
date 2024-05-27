@@ -11,10 +11,20 @@ declare global {
         oid: string;
     };
 
-    type Block = {
+    type WaveObj = {
         otype: string;
         oid: string;
         version: number;
+    };
+
+    type WaveObjUpdate = {
+        updatetype: "update" | "delete";
+        otype: string;
+        oid: string;
+        obj?: WaveObj;
+    };
+
+    type Block = WaveObj & {
         blockdef: BlockDef;
         controller: string;
         view: string;
@@ -78,13 +88,6 @@ declare global {
     type RuntimeOpts = {
         termsize?: TermSize;
         winsize?: WinSize;
-    };
-
-    type WaveObj = {
-        otype: string;
-        oid: string;
-        version: number;
-        deleted?: boolean;
     };
 
     type WaveWindow = {

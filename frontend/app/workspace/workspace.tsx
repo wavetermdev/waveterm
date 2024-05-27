@@ -24,7 +24,7 @@ function Tab({ tabId }: { tabId: string }) {
         if (tabId == null) {
             return;
         }
-        // TODO
+        WOS.SetActiveTab(tabId);
     }
     return (
         <div

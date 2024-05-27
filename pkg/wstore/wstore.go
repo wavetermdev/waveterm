@@ -6,6 +6,7 @@ package wstore
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"reflect"
@@ -25,7 +26,7 @@ func init() {
 }
 
 type contextUpdatesType struct {
-	UpdatesStack []map[waveobj.ORef]waveobj.WaveObj
+	UpdatesStack []map[waveobj.ORef]WaveObjUpdate
 }
 
 func dumpUpdateStack(updates *contextUpdatesType) {
@@ -47,11 +48,11 @@ func ContextWithUpdates(ctx context.Context) context.Context {
 		return ctx
 	}
 	return context.WithValue(ctx, waveObjUpdateKey, &contextUpdatesType{
-		UpdatesStack: []map[waveobj.ORef]waveobj.WaveObj{make(map[waveobj.ORef]waveobj.WaveObj)},
+		UpdatesStack: []map[waveobj.ORef]WaveObjUpdate{make(map[waveobj.ORef]WaveObjUpdate)},
 	})
 }
 
-func ContextGetUpdates(ctx context.Context) map[waveobj.ORef]waveobj.WaveObj {
+func ContextGetUpdates(ctx context.Context) map[waveobj.ORef]WaveObjUpdate {
 	updatesVal := ctx.Value(waveObjUpdateKey)
 	if updatesVal == nil {
 		return nil
@@ -60,7 +61,7 @@ func ContextGetUpdates(ctx context.Context) map[waveobj.ORef]waveobj.WaveObj {
 	if len(updates.UpdatesStack) == 1 {
 		return updates.UpdatesStack[0]
 	}
-	rtn := make(map[waveobj.ORef]waveobj.WaveObj)
+	rtn := make(map[waveobj.ORef]WaveObjUpdate)
 	for _, update := range updates.UpdatesStack {
 		for k, v := range update {
 			rtn[k] = v
@@ -69,7 +70,7 @@ func ContextGetUpdates(ctx context.Context) map[waveobj.ORef]waveobj.WaveObj {
 	return rtn
 }
 
-func ContextGetUpdate(ctx context.Context, oref waveobj.ORef) waveobj.WaveObj {
+func ContextGetUpdate(ctx context.Context, oref waveobj.ORef) *WaveObjUpdate {
 	updatesVal := ctx.Value(waveObjUpdateKey)
 	if updatesVal == nil {
 		return nil
@@ -77,23 +78,23 @@ func ContextGetUpdate(ctx context.Context, oref waveobj.ORef) waveobj.WaveObj {
 	updates := updatesVal.(*contextUpdatesType)
 	for idx := len(updates.UpdatesStack) - 1; idx >= 0; idx-- {
 		if obj, ok := updates.UpdatesStack[idx][oref]; ok {
-			return obj
+			return &obj
 		}
 	}
 	return nil
 }
 
-func ContextAddUpdate(ctx context.Context, obj waveobj.WaveObj) {
+func ContextAddUpdate(ctx context.Context, update WaveObjUpdate) {
 	updatesVal := ctx.Value(waveObjUpdateKey)
 	if updatesVal == nil {
 		return
 	}
 	updates := updatesVal.(*contextUpdatesType)
 	oref := waveobj.ORef{
-		OType: obj.GetOType(),
-		OID:   waveobj.GetOID(obj),
+		OType: update.OType,
+		OID:   update.OID,
 	}
-	updates.UpdatesStack[len(updates.UpdatesStack)-1][oref] = obj
+	updates.UpdatesStack[len(updates.UpdatesStack)-1][oref] = update
 }
 
 func ContextUpdatesBeginTx(ctx context.Context) context.Context {
@@ -102,7 +103,7 @@ func ContextUpdatesBeginTx(ctx context.Context) context.Context {
 		return ctx
 	}
 	updates := updatesVal.(*contextUpdatesType)
-	updates.UpdatesStack = append(updates.UpdatesStack, make(map[waveobj.ORef]waveobj.WaveObj))
+	updates.UpdatesStack = append(updates.UpdatesStack, make(map[waveobj.ORef]WaveObjUpdate))
 	return ctx
 }
 
@@ -134,6 +135,36 @@ func ContextUpdatesRollbackTx(ctx context.Context) {
 		panic(fmt.Errorf("no updates transaction to rollback"))
 	}
 	updates.UpdatesStack = updates.UpdatesStack[:len(updates.UpdatesStack)-1]
+}
+
+type WaveObjTombstone struct {
+	OType string `json:"otype"`
+	OID   string `json:"oid"`
+}
+
+const (
+	UpdateType_Update = "update"
+	UpdateType_Delete = "delete"
+)
+
+type WaveObjUpdate struct {
+	UpdateType string          `json:"updatetype"`
+	OType      string          `json:"otype"`
+	OID        string          `json:"oid"`
+	Obj        waveobj.WaveObj `json:"obj,omitempty"`
+}
+
+func (update WaveObjUpdate) MarshalJSON() ([]byte, error) {
+	rtn := make(map[string]any)
+	rtn["updatetype"] = update.UpdateType
+	rtn["otype"] = update.OType
+	rtn["oid"] = update.OID
+	var err error
+	rtn["obj"], err = waveobj.ToJsonMap(update.Obj)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(rtn)
 }
 
 type UIContext struct {

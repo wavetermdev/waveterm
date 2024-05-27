@@ -41,10 +41,7 @@ function isValidWaveObj(val: WaveObj): boolean {
     if (val == null) {
         return false;
     }
-    if (isBlank(val.otype) || isBlank(val.oid)) {
-        return false;
-    }
-    if (!val.deleted && isBlankNum(val.version)) {
+    if (isBlank(val.otype) || isBlank(val.oid) || isBlankNum(val.version)) {
         return false;
     }
     return true;
@@ -151,34 +148,34 @@ function useWaveObject<T>(oref: string): [T, boolean, (T) => void] {
     return [atomVal.value, atomVal.loading, simpleSet];
 }
 
-function updateWaveObject(val: WaveObj) {
-    if (val == null) {
+function updateWaveObject(update: WaveObjUpdate) {
+    if (update == null) {
         return;
     }
-    if (!isValidWaveObj(val)) {
-        console.log("invalid wave object", val);
-        return;
-    }
-    let oref = makeORef(val.otype, val.oid);
+    let oref = makeORef(update.otype, update.oid);
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
         wov = createWaveValueObject(oref, false);
         waveObjectValueCache.set(oref, wov);
     }
-    if (val.deleted) {
+    if (update.updatetype == "delete") {
         globalStore.set(wov.dataAtom, { value: null, loading: false });
     } else {
-        let curValue: WaveObjectDataItemType<WaveObj> = globalStore.get(wov.dataAtom);
-        if (curValue.value != null && curValue.value.version >= val.version) {
+        if (!isValidWaveObj(update.obj)) {
+            console.log("invalid wave object update", update);
             return;
         }
-        globalStore.set(wov.dataAtom, { value: val, loading: false });
+        let curValue: WaveObjectDataItemType<WaveObj> = globalStore.get(wov.dataAtom);
+        if (curValue.value != null && curValue.value.version >= update.obj.version) {
+            return;
+        }
+        globalStore.set(wov.dataAtom, { value: update.obj, loading: false });
     }
     wov.holdTime = Date.now() + defaultHoldTime;
     return;
 }
 
-function updateWaveObjects(vals: WaveObj[]) {
+function updateWaveObjects(vals: WaveObjUpdate[]) {
     for (let val of vals) {
         updateWaveObject(val);
     }
@@ -194,7 +191,7 @@ function cleanWaveObjectCache() {
 }
 
 Events.On("waveobj:update", (event: any) => {
-    const data: WaveObj[] = event?.data;
+    const data: WaveObjUpdate[] = event?.data;
     if (data == null) {
         return;
     }
@@ -217,6 +214,7 @@ function wrapObjectServiceCall<T>(fnName: string, ...args: any[]): Promise<T> {
     );
     prtn = prtn.then((val) => {
         if (val.updates) {
+            console.log(val.updates);
             updateWaveObjects(val.updates);
         }
         return val;
@@ -226,6 +224,10 @@ function wrapObjectServiceCall<T>(fnName: string, ...args: any[]): Promise<T> {
 
 function AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<{ tabId: string }> {
     return wrapObjectServiceCall("AddTabToWorkspace", tabName, activateTab);
+}
+
+function SetActiveTab(tabId: string): Promise<void> {
+    return wrapObjectServiceCall("SetActiveTab", tabId);
 }
 
 function getStaticObjectValue<T>(oref: string, getFn: jotai.Getter): T {
@@ -248,4 +250,5 @@ export {
     cleanWaveObjectCache,
     getStaticObjectValue,
     AddTabToWorkspace,
+    SetActiveTab,
 };
