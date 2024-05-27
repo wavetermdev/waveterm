@@ -20,3 +20,8 @@ bin/
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+
+*storybook.log
+
+test-results.xml

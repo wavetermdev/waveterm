@@ -357,7 +357,7 @@ tasks:
         generates:
             - node_modules/*
         preconditions:
-            - sh: yarn version
+            - sh: yarn --version
               msg: "Looks like yarn isn't installed."
         cmds:
             - yarn
@@ -418,7 +418,7 @@ tasks:
         deps:
             - task: install:frontend:deps
         cmds:
-            - yarn dev -- --port {{.VITE_PORT}} --strictPort
+            - yarn dev --port {{.VITE_PORT}} --strictPort
 
     dev:
         summary: Runs the application in development mode
