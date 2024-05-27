@@ -178,6 +178,7 @@ function updateWaveObject(update: WaveObjUpdate) {
         waveObjectValueCache.set(oref, wov);
     }
     if (update.updatetype == "delete") {
+        console.log("WaveObj deleted", oref);
         globalStore.set(wov.dataAtom, { value: null, loading: false });
     } else {
         if (!isValidWaveObj(update.obj)) {
@@ -188,6 +189,7 @@ function updateWaveObject(update: WaveObjUpdate) {
         if (curValue.value != null && curValue.value.version >= update.obj.version) {
             return;
         }
+        console.log("WaveObj updated", oref);
         globalStore.set(wov.dataAtom, { value: update.obj, loading: false });
     }
     wov.holdTime = Date.now() + defaultHoldTime;
@@ -226,12 +228,14 @@ Events.On("waveobj:update", (event: any) => {
 
 function wrapObjectServiceCall<T>(fnName: string, ...args: any[]): Promise<T> {
     const uiContext = globalStore.get(atoms.uiContext);
+    const startTs = Date.now();
     let prtn = $Call.ByName(
         "github.com/wavetermdev/thenextwave/pkg/service/objectservice.ObjectService." + fnName,
         uiContext,
         ...args
     );
     prtn = prtn.then((val) => {
+        console.log("Call", fnName, Date.now() - startTs + "ms");
         if (val.updates) {
             updateWaveObjects(val.updates);
         }
@@ -249,16 +253,24 @@ function getStaticObjectValue<T>(oref: string, getFn: jotai.Getter): T {
     return atomVal.value;
 }
 
-function AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<{ tabId: string }> {
+export function AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<{ tabId: string }> {
     return wrapObjectServiceCall("AddTabToWorkspace", tabName, activateTab);
 }
 
-function SetActiveTab(tabId: string): Promise<void> {
+export function SetActiveTab(tabId: string): Promise<void> {
     return wrapObjectServiceCall("SetActiveTab", tabId);
 }
 
-function CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<{ blockId: string }> {
+export function CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<{ blockId: string }> {
     return wrapObjectServiceCall("CreateBlock", blockDef, rtOpts);
+}
+
+export function DeleteBlock(blockId: string): Promise<void> {
+    return wrapObjectServiceCall("DeleteBlock", blockId);
+}
+
+export function CloseTab(tabId: string): Promise<void> {
+    return wrapObjectServiceCall("CloseTab", tabId);
 }
 
 export {
@@ -272,7 +284,4 @@ export {
     updateWaveObjects,
     cleanWaveObjectCache,
     getStaticObjectValue,
-    AddTabToWorkspace,
-    SetActiveTab,
-    CreateBlock,
 };

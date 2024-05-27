@@ -159,10 +159,12 @@ func (update WaveObjUpdate) MarshalJSON() ([]byte, error) {
 	rtn["updatetype"] = update.UpdateType
 	rtn["otype"] = update.OType
 	rtn["oid"] = update.OID
-	var err error
-	rtn["obj"], err = waveobj.ToJsonMap(update.Obj)
-	if err != nil {
-		return nil, err
+	if update.Obj != nil {
+		var err error
+		rtn["obj"], err = waveobj.ToJsonMap(update.Obj)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return json.Marshal(rtn)
 }
@@ -308,9 +310,11 @@ func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
 		if window == nil {
 			return fmt.Errorf("window not found: %q", windowId)
 		}
-		tab, _ := DBGet[*Tab](tx.Context(), tabId)
-		if tab == nil {
-			return fmt.Errorf("tab not found: %q", tabId)
+		if tabId != "" {
+			tab, _ := DBGet[*Tab](tx.Context(), tabId)
+			if tab == nil {
+				return fmt.Errorf("tab not found: %q", tabId)
+			}
 		}
 		window.ActiveTabId = tabId
 		DBUpdate(tx.Context(), window)
@@ -337,6 +341,57 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *BlockDef, rtOpts *
 		tab.BlockIds = append(tab.BlockIds, blockId)
 		DBUpdate(tx.Context(), tab)
 		return blockData, nil
+	})
+}
+
+func findStringInSlice(slice []string, val string) int {
+	for idx, v := range slice {
+		if v == val {
+			return idx
+		}
+	}
+	return -1
+}
+
+func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		tab, _ := DBGet[*Tab](tx.Context(), tabId)
+		if tab == nil {
+			return fmt.Errorf("tab not found: %q", tabId)
+		}
+		blockIdx := findStringInSlice(tab.BlockIds, blockId)
+		if blockIdx == -1 {
+			return nil
+		}
+		tab.BlockIds = append(tab.BlockIds[:blockIdx], tab.BlockIds[blockIdx+1:]...)
+		DBUpdate(tx.Context(), tab)
+		DBDelete(tx.Context(), "block", blockId)
+		return nil
+	})
+
+}
+
+func CloseTab(ctx context.Context, workspaceId string, tabId string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		ws, _ := DBGet[*Workspace](tx.Context(), workspaceId)
+		if ws == nil {
+			return fmt.Errorf("workspace not found: %q", workspaceId)
+		}
+		tab, _ := DBGet[*Tab](tx.Context(), tabId)
+		if tab == nil {
+			return fmt.Errorf("tab not found: %q", tabId)
+		}
+		tabIdx := findStringInSlice(ws.TabIds, tabId)
+		if tabIdx == -1 {
+			return nil
+		}
+		ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
+		DBUpdate(tx.Context(), ws)
+		DBDelete(tx.Context(), "tab", tabId)
+		for _, blockId := range tab.BlockIds {
+			DBDelete(tx.Context(), "block", blockId)
+		}
+		return nil
 	})
 }
 

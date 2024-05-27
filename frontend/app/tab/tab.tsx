@@ -8,7 +8,7 @@ import { atoms } from "@/store/global";
 import * as WOS from "@/store/wos";
 
 import "./tab.less";
-import { CenteredLoadingDiv } from "../element/quickelems";
+import { CenteredDiv, CenteredLoadingDiv } from "../element/quickelems";
 
 const TabContent = ({ tabId }: { tabId: string }) => {
     const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
@@ -16,7 +16,11 @@ const TabContent = ({ tabId }: { tabId: string }) => {
         return <CenteredLoadingDiv />;
     }
     if (!tabData) {
-        return <div className="tabcontent">Tab not found</div>;
+        return (
+            <div className="tabcontent">
+                <CenteredDiv>Tab Not Found</CenteredDiv>
+            </div>
+        );
     }
     return (
         <div className="tabcontent">

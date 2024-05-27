@@ -34,7 +34,7 @@ Now to run the dev version of the app:
 wails3 dev
 ```
 
-You should see a very poorly laid out app :)
+You should see the app!
 
 Now to build a MacOS application:
 

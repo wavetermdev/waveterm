@@ -16,7 +16,7 @@ const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
     const [dims, setDims] = React.useState({ width: 0, height: 0 });
 
     function handleClose() {
-        // TODO
+        WOS.DeleteBlock(blockId);
     }
 
     React.useEffect(() => {

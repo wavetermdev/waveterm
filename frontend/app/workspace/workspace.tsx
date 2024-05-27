@@ -14,17 +14,22 @@ import "./workspace.less";
 function Tab({ tabId }: { tabId: string }) {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
     const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
-    function setActiveTab(tabId: string) {
-        if (tabId == null) {
-            return;
-        }
+    function setActiveTab() {
         WOS.SetActiveTab(tabId);
+    }
+    function handleCloseTab() {
+        WOS.CloseTab(tabId);
     }
     return (
         <div
             className={clsx("tab", { active: tabData != null && windowData.activetabid === tabData.oid })}
-            onClick={() => setActiveTab(tabData?.oid)}
+            onClick={() => setActiveTab()}
         >
+            <div className="tab-close" onClick={() => handleCloseTab()}>
+                <div>
+                    <i className="fa fa-solid fa-xmark" />
+                </div>
+            </div>
             {tabData?.name ?? "..."}
         </div>
     );
@@ -115,8 +120,14 @@ function WorkspaceElem() {
         <div className="workspace">
             <TabBar workspace={ws} />
             <div className="workspace-tabcontent">
-                <TabContent key={windowData.workspaceid} tabId={activeTabId} />
-                <Widgets />
+                {activeTabId == "" ? (
+                    <CenteredDiv>No Active Tab</CenteredDiv>
+                ) : (
+                    <>
+                        <TabContent key={windowData.workspaceid} tabId={activeTabId} />
+                        <Widgets />
+                    </>
+                )}
             </div>
         </div>
     );
