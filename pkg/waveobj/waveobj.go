@@ -124,7 +124,7 @@ func SetVersion(waveObj WaveObj, version int) {
 	reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.VersionField.Index).SetInt(int64(version))
 }
 
-func ToJson(w WaveObj) ([]byte, error) {
+func ToJsonMap(w WaveObj) (map[string]any, error) {
 	m := make(map[string]any)
 	dconfig := &mapstructure.DecoderConfig{
 		Result:  &m,
@@ -139,6 +139,16 @@ func ToJson(w WaveObj) ([]byte, error) {
 		return nil, err
 	}
 	m[OTypeKeyName] = w.GetOType()
+	m[OIDKeyName] = GetOID(w)
+	m[VersionKeyName] = GetVersion(w)
+	return m, nil
+}
+
+func ToJson(w WaveObj) ([]byte, error) {
+	m, err := ToJsonMap(w)
+	if err != nil {
+		return nil, err
+	}
 	return json.Marshal(m)
 }
 
@@ -253,10 +263,18 @@ func typeToTSType(t reflect.Type) (string, []reflect.Type) {
 	}
 }
 
+var tsRenameMap = map[string]string{
+	"Window": "WaveWindow",
+}
+
 func generateTSTypeInternal(rtype reflect.Type) (string, []reflect.Type) {
 	var buf bytes.Buffer
 	waveObjType := reflect.TypeOf((*WaveObj)(nil)).Elem()
-	buf.WriteString(fmt.Sprintf("type %s = {\n", rtype.Name()))
+	tsTypeName := rtype.Name()
+	if tsRename, ok := tsRenameMap[tsTypeName]; ok {
+		tsTypeName = tsRename
+	}
+	buf.WriteString(fmt.Sprintf("type %s = {\n", tsTypeName))
 	var isWaveObj bool
 	if rtype.Implements(waveObjType) || reflect.PointerTo(rtype).Implements(waveObjType) {
 		isWaveObj = true

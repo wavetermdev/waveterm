@@ -5,32 +5,40 @@ import * as React from "react";
 import * as jotai from "jotai";
 import { TabContent } from "@/app/tab/tab";
 import { clsx } from "clsx";
-import { atoms, addBlockIdToTab, blockDataMap } from "@/store/global";
+import { atoms, blockDataMap } from "@/store/global";
 import { v4 as uuidv4 } from "uuid";
 import { BlockService } from "@/bindings/blockservice";
 import { ClientService } from "@/bindings/clientservice";
 import { Workspace } from "@/gopkg/wstore";
 import * as wstore from "@/gopkg/wstore";
 import * as jotaiUtil from "jotai/utils";
+import * as gdata from "@/store/global";
 
 import "./workspace.less";
 import { CenteredLoadingDiv, CenteredDiv } from "../element/quickelems";
 
-function Tab({ tab }: { tab: wstore.Tab }) {
-    const [activeTab, setActiveTab] = jotai.useAtom(atoms.activeTabId);
+function Tab({ tabId }: { tabId: string }) {
+    const windowData = jotai.useAtomValue(atoms.windowData);
+    const [tabData, tabLoading] = gdata.useWaveObjectValue<Tab>(gdata.makeORef("tab", tabId));
+
+    function setActiveTab(tabId: string) {
+        if (tabId == null) {
+            return;
+        }
+        // TODO
+    }
+
     return (
-        <div className={clsx("tab", { active: activeTab === tab.tabid })} onClick={() => setActiveTab(tab.tabid)}>
-            {tab.name}
+        <div
+            className={clsx("tab", { active: tabData != null && windowData.activetabid === tabData.oid })}
+            onClick={() => setActiveTab(tabData?.oid)}
+        >
+            {tabData?.name ?? "..."}
         </div>
     );
 }
 
-function TabBar() {
-    const [tabData, setTabData] = jotai.useAtom(atoms.tabsAtom);
-    const [activeTab, setActiveTab] = jotai.useAtom(atoms.activeTabId);
-    const tabs = jotai.useAtomValue(atoms.tabsAtom);
-    const client = jotai.useAtomValue(atoms.clientAtom);
-
+function TabBar({ workspace, waveWindow }: { workspace: Workspace; waveWindow: WaveWindow }) {
     function handleAddTab() {
         const newTabId = uuidv4();
         const newTabName = "Tab " + (tabData.length + 1);
@@ -38,10 +46,11 @@ function TabBar() {
         setActiveTab(newTabId);
     }
 
+    const tabIds = workspace?.tabids ?? [];
     return (
         <div className="tab-bar">
-            {tabs.map((tab, idx) => {
-                return <Tab key={idx} tab={tab} />;
+            {tabIds.map((tabid, idx) => {
+                return <Tab key={idx} tabId={tabid} />;
             })}
             <div className="tab-add" onClick={() => handleAddTab()}>
                 <i className="fa fa-solid fa-plus fa-fw" />
@@ -51,7 +60,8 @@ function TabBar() {
 }
 
 function Widgets() {
-    const activeTabId = jotai.useAtomValue(atoms.activeTabId);
+    const windowData = jotai.useAtomValue(atoms.windowData);
+    const activeTabId = windowData.activetabid;
 
     async function createBlock(blockDef: wstore.BlockDef) {
         const rtOpts: wstore.RuntimeOpts = new wstore.RuntimeOpts({ termsize: { rows: 25, cols: 80 } });
@@ -113,27 +123,15 @@ function Widgets() {
 
 function WorkspaceElem() {
     const windowData = jotai.useAtomValue(atoms.windowData);
-    const activeTabId = jotai.useAtomValue(atoms.activeTabId);
-    const workspaceId = windowData.workspaceid;
-    const wsAtom = React.useMemo(() => {
-        return jotaiUtil.loadable(
-            jotai.atom(async (get) => {
-                const ws = await ClientService.GetWorkspace(workspaceId);
-                return ws;
-            })
-        );
-    }, [workspaceId]);
-    const wsLoadable = jotai.useAtomValue(wsAtom);
-    if (wsLoadable.state === "loading") {
+    const workspaceId = windowData?.workspaceid;
+    const activeTabId = windowData?.activetabid;
+    const [ws, wsLoading] = gdata.useWaveObjectValue<Workspace>(gdata.makeORef("workspace", workspaceId));
+    if (wsLoading) {
         return <CenteredLoadingDiv />;
     }
-    if (wsLoadable.state === "hasError") {
-        return <CenteredDiv>Error: {wsLoadable.error?.toString()}</CenteredDiv>;
-    }
-    const ws: Workspace = wsLoadable.data;
     return (
         <div className="workspace">
-            <TabBar />
+            <TabBar workspace={ws} waveWindow={windowData} />
             <div className="workspace-tabcontent">
                 <TabContent key={workspaceId} tabId={activeTabId} />
                 <Widgets />

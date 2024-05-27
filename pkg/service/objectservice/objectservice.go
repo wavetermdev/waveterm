@@ -25,6 +25,16 @@ func parseORef(oref string) (*waveobj.ORef, error) {
 	return &waveobj.ORef{OType: fields[0], OID: fields[1]}, nil
 }
 
+func (svc *ObjectService) GetClientObject() (any, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	client, err := wstore.DBGetSingleton[*wstore.Client](ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting client: %w", err)
+	}
+	return waveobj.ToJsonMap(client)
+}
+
 func (svc *ObjectService) GetObject(orefStr string) (any, error) {
 	oref, err := parseORef(orefStr)
 	if err != nil {
@@ -36,7 +46,7 @@ func (svc *ObjectService) GetObject(orefStr string) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting object: %w", err)
 	}
-	return obj, nil
+	return waveobj.ToJsonMap(obj)
 }
 
 func (svc *ObjectService) GetObjects(orefStrArr []string) (any, error) {

@@ -5,12 +5,16 @@ import * as React from "react";
 import * as jotai from "jotai";
 import { Block } from "@/app/block/block";
 import { atoms } from "@/store/global";
+import * as gdata from "@/store/global";
 
 import "./tab.less";
+import { CenteredLoadingDiv } from "../element/quickelems";
 
 const TabContent = ({ tabId }: { tabId: string }) => {
-    const tabs = jotai.useAtomValue(atoms.tabsAtom);
-    const tabData = tabs.find((tab) => tab.tabid === tabId);
+    const [tabData, tabLoading] = gdata.useWaveObjectValue<Tab>(gdata.makeORef("tab", tabId));
+    if (tabLoading) {
+        return <CenteredLoadingDiv />;
+    }
     if (!tabData) {
         return <div className="tabcontent">Tab not found</div>;
     }

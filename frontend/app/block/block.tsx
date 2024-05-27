@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import * as jotai from "jotai";
-import { atoms, blockDataMap, removeBlockFromTab } from "@/store/global";
+import { atoms, blockDataMap } from "@/store/global";
 
 import { TerminalView } from "@/app/view/term";
 import { PreviewView } from "@/app/view/preview";
@@ -17,7 +17,7 @@ const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
     const [dims, setDims] = React.useState({ width: 0, height: 0 });
 
     function handleClose() {
-        removeBlockFromTab(tabId, blockId);
+        // TODO
     }
 
     React.useEffect(() => {

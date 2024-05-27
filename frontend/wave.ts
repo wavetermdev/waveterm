@@ -7,7 +7,7 @@ import { App } from "./app/app";
 import { loadFonts } from "./util/fontutil";
 import { ClientService } from "@/bindings/clientservice";
 import { Client } from "@/gopkg/wstore";
-import { globalStore, atoms } from "@/store/global";
+import { globalStore, atoms, GetClientObject, GetObject, makeORef } from "@/store/global";
 import * as wailsRuntime from "@wailsio/runtime";
 import * as wstore from "@/gopkg/wstore";
 import { immerable } from "immer";
@@ -30,9 +30,9 @@ wstore.WinSize.prototype[immerable] = true;
 loadFonts();
 
 document.addEventListener("DOMContentLoaded", async () => {
-    const client = await ClientService.GetClientData();
+    const client = await GetClientObject();
     globalStore.set(atoms.clientAtom, client);
-    const window = await ClientService.GetWindow(windowId);
+    const window = await GetObject<WaveWindow>(makeORef("window", windowId));
     globalStore.set(atoms.windowData, window);
     let reactElem = React.createElement(App, null, null);
     let elem = document.getElementById("main");

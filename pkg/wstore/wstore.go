@@ -209,8 +209,8 @@ func EnsureInitialData() error {
 		return fmt.Errorf("error inserting workspace: %w", err)
 	}
 	tab := &Tab{
-		OID:      uuid.New().String(),
-		Name:     "Tab 1",
+		OID:      tabId,
+		Name:     "Tab-1",
 		BlockIds: []string{},
 	}
 	err = DBInsert(ctx, tab)

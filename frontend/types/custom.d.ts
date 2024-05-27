@@ -81,7 +81,7 @@ declare global {
         oid: string;
     };
 
-    type Window = {
+    type WaveWindow = {
         otype: string;
         oid: string;
         version: number;
