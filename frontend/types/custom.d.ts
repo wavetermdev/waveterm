@@ -4,6 +4,7 @@
 declare global {
     type UIContext = {
         windowid: string;
+        activetabid: string;
     };
 
     type ORef = {
@@ -33,7 +34,7 @@ declare global {
     };
 
     type BlockDef = {
-        controller: string;
+        controller?: string;
         view?: string;
         files?: { [key: string]: FileDef };
         meta?: { [key: string]: any };

@@ -4,13 +4,9 @@
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
 import { Events } from "@wailsio/runtime";
-import { produce } from "immer";
-import { BlockService } from "@/bindings/blockservice";
-import * as wstore from "@/gopkg/wstore";
 import * as WOS from "./wos";
 
 const globalStore = jotai.createStore();
-const blockDataMap = new Map<string, jotai.Atom<wstore.Block>>();
 const urlParams = new URLSearchParams(window.location.search);
 const globalWindowId = urlParams.get("windowid");
 const globalClientId = urlParams.get("clientid");
@@ -19,8 +15,10 @@ const clientIdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string>;
 globalStore.set(windowIdAtom, globalWindowId);
 globalStore.set(clientIdAtom, globalClientId);
 const uiContextAtom = jotai.atom((get) => {
+    const windowData = get(windowDataAtom);
     const uiContext: UIContext = {
         windowid: get(atoms.windowId),
+        activetabid: windowData.activetabid,
     };
     return uiContext;
 }) as jotai.Atom<UIContext>;
@@ -54,7 +52,6 @@ const atoms = {
     client: clientAtom,
     waveWindow: windowDataAtom,
     workspace: workspaceAtom,
-    blockDataMap: blockDataMap,
 };
 
 type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
@@ -93,6 +90,8 @@ Events.On("block:ptydata", (event: any) => {
     subject.next(data);
 });
 
+const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
+
 function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom<T>): jotai.Atom<T> {
     let blockCache = blockAtomCache.get(blockId);
     if (blockCache == null) {
@@ -103,8 +102,9 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
     if (atom == null) {
         atom = makeFn();
         blockCache.set(name, atom);
+        console.log("New BlockAtom", blockId, name);
     }
     return atom as jotai.Atom<T>;
 }
 
-export { globalStore, atoms, getBlockSubject, blockDataMap, useBlockAtom, WOS };
+export { globalStore, atoms, getBlockSubject, useBlockAtom, WOS };

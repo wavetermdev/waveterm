@@ -72,7 +72,7 @@ func createWindow(windowData *wstore.Window, app *application.App) {
 		Width:            windowData.WinSize.Width,
 		Height:           windowData.WinSize.Height,
 	})
-	eventbus.RegisterWailsWindow(window)
+	eventbus.RegisterWailsWindow(window, windowData.OID)
 	window.On(events.Common.WindowClosing, func(event *application.WindowEvent) {
 		eventbus.UnregisterWailsWindow(window.ID())
 	})

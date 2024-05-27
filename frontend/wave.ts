@@ -18,20 +18,12 @@ const urlParams = new URLSearchParams(window.location.search);
 const windowId = urlParams.get("windowid");
 const clientId = urlParams.get("clientid");
 
-wstore.Block.prototype[immerable] = true;
-wstore.Tab.prototype[immerable] = true;
-wstore.Client.prototype[immerable] = true;
-wstore.Window.prototype[immerable] = true;
-wstore.Workspace.prototype[immerable] = true;
-wstore.BlockDef.prototype[immerable] = true;
-wstore.RuntimeOpts.prototype[immerable] = true;
-wstore.FileDef.prototype[immerable] = true;
-wstore.Point.prototype[immerable] = true;
-wstore.WinSize.prototype[immerable] = true;
-
 loadFonts();
 
+console.log("Wave Starting");
+
 document.addEventListener("DOMContentLoaded", async () => {
+    console.log("DOMContentLoaded");
     // ensures client/window are loaded into the cache before rendering
     await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", clientId));
     const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", windowId));
@@ -40,6 +32,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let elem = document.getElementById("main");
     let root = createRoot(elem);
     document.fonts.ready.then(() => {
+        console.log("Wave First Render");
         root.render(reactElem);
     });
 });

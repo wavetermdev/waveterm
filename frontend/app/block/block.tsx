@@ -3,8 +3,7 @@
 
 import * as React from "react";
 import * as jotai from "jotai";
-import { atoms, blockDataMap } from "@/store/global";
-
+import * as WOS from "@/store/wos";
 import { TerminalView } from "@/app/view/term";
 import { PreviewView } from "@/app/view/preview";
 import { PlotView } from "@/app/view/plotview";
@@ -33,9 +32,10 @@ const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
     }, [blockRef.current]);
 
     let blockElem: JSX.Element = null;
-    const blockAtom = blockDataMap.get(blockId);
-    const blockData = jotai.useAtomValue(blockAtom);
-    if (blockData.view === "term") {
+    const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    if (blockDataLoading) {
+        blockElem = <CenteredDiv>Loading...</CenteredDiv>;
+    } else if (blockData.view === "term") {
         blockElem = <TerminalView blockId={blockId} />;
     } else if (blockData.view === "preview") {
         blockElem = <PreviewView blockId={blockId} />;

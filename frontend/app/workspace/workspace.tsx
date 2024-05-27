@@ -5,13 +5,7 @@ import * as React from "react";
 import * as jotai from "jotai";
 import { TabContent } from "@/app/tab/tab";
 import { clsx } from "clsx";
-import { atoms, blockDataMap } from "@/store/global";
-import { v4 as uuidv4 } from "uuid";
-import { BlockService } from "@/bindings/blockservice";
-import { ClientService } from "@/bindings/clientservice";
-import { Workspace } from "@/gopkg/wstore";
-import * as wstore from "@/gopkg/wstore";
-import * as jotaiUtil from "jotai/utils";
+import { atoms } from "@/store/global";
 import * as WOS from "@/store/wos";
 import { CenteredLoadingDiv, CenteredDiv } from "../element/quickelems";
 
@@ -36,7 +30,7 @@ function Tab({ tabId }: { tabId: string }) {
     );
 }
 
-function TabBar({ workspace, waveWindow }: { workspace: Workspace; waveWindow: WaveWindow }) {
+function TabBar({ workspace }: { workspace: Workspace }) {
     function handleAddTab() {
         const newTabName = `Tab-${workspace.tabids.length + 1}`;
         WOS.AddTabToWorkspace(newTabName, true);
@@ -58,34 +52,31 @@ function Widgets() {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
     const activeTabId = windowData.activetabid;
 
-    async function createBlock(blockDef: wstore.BlockDef) {
-        const rtOpts: wstore.RuntimeOpts = new wstore.RuntimeOpts({ termsize: { rows: 25, cols: 80 } });
-        const rtnBlock: wstore.Block = await BlockService.CreateBlock(blockDef, rtOpts);
-        const newBlockAtom = jotai.atom(rtnBlock);
-        blockDataMap.set(rtnBlock.blockid, newBlockAtom);
-        addBlockIdToTab(activeTabId, rtnBlock.blockid);
+    async function createBlock(blockDef: BlockDef) {
+        const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+        await WOS.CreateBlock(blockDef, rtOpts);
     }
 
     async function clickTerminal() {
-        const termBlockDef = new wstore.BlockDef({
+        const termBlockDef = {
             controller: "shell",
             view: "term",
-        });
+        };
         createBlock(termBlockDef);
     }
 
     async function clickPreview(fileName: string) {
-        const markdownDef = new wstore.BlockDef({
+        const markdownDef = {
             view: "preview",
             meta: { file: fileName },
-        });
+        };
         createBlock(markdownDef);
     }
 
     async function clickPlot() {
-        const plotDef = new wstore.BlockDef({
+        const plotDef: BlockDef = {
             view: "plot",
-        });
+        };
         createBlock(plotDef);
     }
 
@@ -122,7 +113,7 @@ function WorkspaceElem() {
     const ws = jotai.useAtomValue(atoms.workspace);
     return (
         <div className="workspace">
-            <TabBar workspace={ws} waveWindow={windowData} />
+            <TabBar workspace={ws} />
             <div className="workspace-tabcontent">
                 <TabContent key={windowData.workspaceid} tabId={activeTabId} />
                 <Widgets />

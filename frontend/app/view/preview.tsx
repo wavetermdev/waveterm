@@ -3,15 +3,16 @@
 
 import * as React from "react";
 import * as jotai from "jotai";
-import { atoms, blockDataMap, useBlockAtom } from "@/store/global";
+import { atoms, useBlockAtom } from "@/store/global";
 import { Markdown } from "@/element/markdown";
 import { FileService, FileInfo, FullFile } from "@/bindings/fileservice";
 import * as util from "@/util/util";
 import { CenteredDiv } from "../element/quickelems";
 import { DirectoryTable } from "@/element/directorytable";
-import * as wstore from "@/gopkg/wstore";
+import * as WOS from "@/store/wos";
 
 import "./view.less";
+import { first } from "rxjs";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 
@@ -62,10 +63,17 @@ function DirectoryPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<str
 }
 
 function PreviewView({ blockId }: { blockId: string }) {
-    const blockDataAtom: jotai.Atom<wstore.Block> = blockDataMap.get(blockId);
+    const blockData = WOS.useWaveObjectValueWithSuspense<Block>(WOS.makeORef("block", blockId));
+    if (blockData == null) {
+        return (
+            <div className="view-preview">
+                <CenteredDiv>Block Not Found</CenteredDiv>
+            </div>
+        );
+    }
     const fileNameAtom = useBlockAtom(blockId, "preview:filename", () =>
         jotai.atom<string>((get) => {
-            return get(blockDataAtom)?.meta?.file;
+            return blockData?.meta?.file;
         })
     );
     const statFileAtom = useBlockAtom(blockId, "preview:statfile", () =>

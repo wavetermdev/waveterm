@@ -94,7 +94,7 @@ function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boo
         }
         wov.pendingPromise = null;
         globalStore.set(wov.dataAtom, { value: val, loading: false });
-        console.log("GetObject resolved", oref, Date.now() - startTs + "ms");
+        console.log("WaveObj resolved", oref, Date.now() - startTs + "ms");
     });
     return wov;
 }
@@ -111,6 +111,25 @@ function loadAndPinWaveObject<T>(oref: string): Promise<T> {
         return Promise.resolve(dataValue.value);
     }
     return wov.pendingPromise;
+}
+
+function useWaveObjectValueWithSuspense<T>(oref: string): T {
+    let wov = waveObjectValueCache.get(oref);
+    if (wov == null) {
+        wov = createWaveValueObject(oref, true);
+        waveObjectValueCache.set(oref, wov);
+    }
+    React.useEffect(() => {
+        wov.refCount++;
+        return () => {
+            wov.refCount--;
+        };
+    }, [oref]);
+    const dataValue = jotai.useAtomValue(wov.dataAtom);
+    if (dataValue.loading) {
+        throw wov.pendingPromise;
+    }
+    return dataValue.value;
 }
 
 function useWaveObjectValue<T>(oref: string): [T, boolean] {
@@ -214,20 +233,11 @@ function wrapObjectServiceCall<T>(fnName: string, ...args: any[]): Promise<T> {
     );
     prtn = prtn.then((val) => {
         if (val.updates) {
-            console.log(val.updates);
             updateWaveObjects(val.updates);
         }
         return val;
     });
     return prtn;
-}
-
-function AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<{ tabId: string }> {
-    return wrapObjectServiceCall("AddTabToWorkspace", tabName, activateTab);
-}
-
-function SetActiveTab(tabId: string): Promise<void> {
-    return wrapObjectServiceCall("SetActiveTab", tabId);
 }
 
 function getStaticObjectValue<T>(oref: string, getFn: jotai.Getter): T {
@@ -239,10 +249,23 @@ function getStaticObjectValue<T>(oref: string, getFn: jotai.Getter): T {
     return atomVal.value;
 }
 
+function AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<{ tabId: string }> {
+    return wrapObjectServiceCall("AddTabToWorkspace", tabName, activateTab);
+}
+
+function SetActiveTab(tabId: string): Promise<void> {
+    return wrapObjectServiceCall("SetActiveTab", tabId);
+}
+
+function CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<{ blockId: string }> {
+    return wrapObjectServiceCall("CreateBlock", blockDef, rtOpts);
+}
+
 export {
     makeORef,
     useWaveObject,
     useWaveObjectValue,
+    useWaveObjectValueWithSuspense,
     loadAndPinWaveObject,
     clearWaveObjectCache,
     updateWaveObject,
@@ -251,4 +274,5 @@ export {
     getStaticObjectValue,
     AddTabToWorkspace,
     SetActiveTab,
+    CreateBlock,
 };

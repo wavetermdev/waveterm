@@ -168,7 +168,8 @@ func (update WaveObjUpdate) MarshalJSON() ([]byte, error) {
 }
 
 type UIContext struct {
-	WindowId string `json:"windowid"`
+	WindowId    string `json:"windowid"`
+	ActiveTabId string `json:"activetabid"`
 }
 
 type Client struct {
@@ -239,7 +240,7 @@ type FileDef struct {
 }
 
 type BlockDef struct {
-	Controller string              `json:"controller"`
+	Controller string              `json:"controller,omitempty"`
 	View       string              `json:"view,omitempty"`
 	Files      map[string]*FileDef `json:"files,omitempty"`
 	Meta       map[string]any      `json:"meta,omitempty"`
@@ -314,6 +315,28 @@ func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
 		window.ActiveTabId = tabId
 		DBUpdate(tx.Context(), window)
 		return nil
+	})
+}
+
+func CreateBlock(ctx context.Context, tabId string, blockDef *BlockDef, rtOpts *RuntimeOpts) (*Block, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*Block, error) {
+		tab, _ := DBGet[*Tab](tx.Context(), tabId)
+		if tab == nil {
+			return nil, fmt.Errorf("tab not found: %q", tabId)
+		}
+		blockId := uuid.New().String()
+		blockData := &Block{
+			OID:         blockId,
+			BlockDef:    blockDef,
+			Controller:  blockDef.Controller,
+			View:        blockDef.View,
+			RuntimeOpts: rtOpts,
+			Meta:        blockDef.Meta,
+		}
+		DBInsert(tx.Context(), blockData)
+		tab.BlockIds = append(tab.BlockIds, blockId)
+		DBUpdate(tx.Context(), tab)
+		return blockData, nil
 	})
 }
 

@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
@@ -59,41 +58,6 @@ func jsonDeepCopy(val map[string]any) (map[string]any, error) {
 		return nil, err
 	}
 	return rtn, nil
-}
-
-func CreateBlock(ctx context.Context, bdef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (*wstore.Block, error) {
-	// TODO
-	blockId := uuid.New().String()
-	blockData := &wstore.Block{
-		OID:         blockId,
-		BlockDef:    bdef,
-		Controller:  bdef.Controller,
-		View:        bdef.View,
-		RuntimeOpts: rtOpts,
-	}
-	var err error
-	blockData.Meta, err = jsonDeepCopy(bdef.Meta)
-	if err != nil {
-		return nil, fmt.Errorf("error copying meta: %w", err)
-	}
-	err = wstore.DBInsert(ctx, blockData)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting block: %w", err)
-	}
-	if blockData.Controller != "" {
-		StartBlockController(blockId, blockData)
-	}
-	return blockData, nil
-}
-
-func CloseBlock(blockId string) {
-	// TODO
-	bc := GetBlockController(blockId)
-	if bc == nil {
-		return
-	}
-	bc.Close()
-	close(bc.InputCh)
 }
 
 func (bc *BlockController) setShellProc(shellProc *shellexec.ShellProc) error {
@@ -232,15 +196,23 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 	}
 }
 
-func StartBlockController(blockId string, bdata *wstore.Block) {
-	if bdata.Controller != BlockController_Shell {
-		log.Printf("unknown controller %q\n", bdata.Controller)
-		return
+func StartBlockController(ctx context.Context, blockId string) error {
+	blockData, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+	if blockData.Controller == "" {
+		// nothing to start
+		return nil
+	}
+	if blockData.Controller != BlockController_Shell {
+		return fmt.Errorf("unknown controller %q", blockData.Controller)
 	}
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	if _, ok := blockControllerMap[blockId]; ok {
-		return
+		// already running
+		return nil
 	}
 	bc := &BlockController{
 		Lock:    &sync.Mutex{},
@@ -249,7 +221,17 @@ func StartBlockController(blockId string, bdata *wstore.Block) {
 		InputCh: make(chan BlockCommand),
 	}
 	blockControllerMap[blockId] = bc
-	go bc.Run(bdata)
+	go bc.Run(blockData)
+	return nil
+}
+
+func StopBlockController(blockId string) {
+	bc := GetBlockController(blockId)
+	if bc == nil {
+		return
+	}
+	bc.Close()
+	close(bc.InputCh)
 }
 
 func GetBlockController(blockId string) *BlockController {

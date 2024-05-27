@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -108,4 +109,26 @@ func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string)
 		return nil, fmt.Errorf("error setting active tab: %w", err)
 	}
 	return updatesRtn(ctx, nil)
+}
+
+func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (any, error) {
+	if uiContext.ActiveTabId == "" {
+		return nil, fmt.Errorf("no active tab")
+	}
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = wstore.ContextWithUpdates(ctx)
+	blockData, err := wstore.CreateBlock(ctx, uiContext.ActiveTabId, blockDef, rtOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error creating block: %w", err)
+	}
+	if blockData.Controller != "" {
+		err = blockcontroller.StartBlockController(ctx, blockData.OID)
+		if err != nil {
+			return nil, fmt.Errorf("error starting block controller: %w", err)
+		}
+	}
+	rtn := make(map[string]any)
+	rtn["blockid"] = blockData.OID
+	return updatesRtn(ctx, rtn)
 }
