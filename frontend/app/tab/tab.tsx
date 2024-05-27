@@ -5,21 +5,29 @@ import * as React from "react";
 import * as jotai from "jotai";
 import { Block } from "@/app/block/block";
 import { atoms } from "@/store/global";
+import * as WOS from "@/store/wos";
 
 import "./tab.less";
+import { CenteredDiv, CenteredLoadingDiv } from "../element/quickelems";
 
 const TabContent = ({ tabId }: { tabId: string }) => {
-    const tabs = jotai.useAtomValue(atoms.tabsAtom);
-    const tabData = tabs.find((tab) => tab.tabid === tabId);
+    const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
+    if (tabLoading) {
+        return <CenteredLoadingDiv />;
+    }
     if (!tabData) {
-        return <div className="tabcontent">Tab not found</div>;
+        return (
+            <div className="tabcontent">
+                <CenteredDiv>Tab Not Found</CenteredDiv>
+            </div>
+        );
     }
     return (
         <div className="tabcontent">
-            {tabData.blockIds.map((blockId: string) => {
+            {tabData.blockids.map((blockId: string) => {
                 return (
                     <div key={blockId} className="block-container">
-                        <Block tabId={tabId} blockId={blockId} />
+                        <Block key={blockId} tabId={tabId} blockId={blockId} />
                     </div>
                 );
             })}

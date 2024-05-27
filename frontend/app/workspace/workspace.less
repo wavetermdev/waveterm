@@ -55,8 +55,23 @@
         height: 100%;
         border-right: 1px solid var(--border-color);
         cursor: pointer;
+        position: relative;
+
         &.active {
             background-color: var(--highlight-bg-color);
+        }
+
+        &.active:hover .tab-close {
+            display: block;
+        }
+
+        .tab-close {
+            position: absolute;
+            display: none;
+            padding: 5px;
+            right: 2px;
+            top: 5px;
+            cursor: pointer;
         }
     }
 

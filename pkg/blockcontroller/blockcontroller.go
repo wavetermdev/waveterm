@@ -4,15 +4,16 @@
 package blockcontroller
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/creack/pty"
-	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
@@ -24,6 +25,8 @@ const (
 	BlockController_Cmd   = "cmd"
 )
 
+const DefaultTimeout = 2 * time.Second
+
 var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
 
@@ -32,9 +35,16 @@ type BlockController struct {
 	BlockId  string
 	BlockDef *wstore.BlockDef
 	InputCh  chan BlockCommand
+	Status   string
 
 	ShellProc    *shellexec.ShellProc
 	ShellInputCh chan *InputCommand
+}
+
+func (bc *BlockController) WithLock(f func()) {
+	bc.Lock.Lock()
+	defer bc.Lock.Unlock()
+	f()
 }
 
 func jsonDeepCopy(val map[string]any) (map[string]any, error) {
@@ -48,38 +58,6 @@ func jsonDeepCopy(val map[string]any) (map[string]any, error) {
 		return nil, err
 	}
 	return rtn, nil
-}
-
-func CreateBlock(bdef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (*wstore.Block, error) {
-	blockId := uuid.New().String()
-	blockData := &wstore.Block{
-		Lock:        &sync.Mutex{},
-		BlockId:     blockId,
-		BlockDef:    bdef,
-		Controller:  bdef.Controller,
-		View:        bdef.View,
-		RuntimeOpts: rtOpts,
-	}
-	var err error
-	blockData.Meta, err = jsonDeepCopy(bdef.Meta)
-	if err != nil {
-		return nil, fmt.Errorf("error copying meta: %w", err)
-	}
-	wstore.BlockMap.Set(blockId, blockData)
-	if blockData.Controller != "" {
-		StartBlockController(blockId, blockData)
-	}
-	return blockData, nil
-}
-
-func CloseBlock(blockId string) {
-	bc := GetBlockController(blockId)
-	if bc == nil {
-		return
-	}
-	bc.Close()
-	close(bc.InputCh)
-	wstore.BlockMap.Delete(blockId)
 }
 
 func (bc *BlockController) setShellProc(shellProc *shellexec.ShellProc) error {
@@ -179,10 +157,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 
 func (bc *BlockController) Run(bdata *wstore.Block) {
 	defer func() {
-		bdata.WithLock(func() {
+		bc.WithLock(func() {
 			// if the controller had an error status, don't change it
-			if bdata.ControllerStatus == "running" {
-				bdata.ControllerStatus = "done"
+			if bc.Status == "running" {
+				bc.Status = "done"
 			}
 		})
 		eventbus.SendEvent(application.WailsEvent{
@@ -193,8 +171,8 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 		defer globalLock.Unlock()
 		delete(blockControllerMap, bc.BlockId)
 	}()
-	bdata.WithLock(func() {
-		bdata.ControllerStatus = "running"
+	bc.WithLock(func() {
+		bc.Status = "running"
 	})
 
 	// only controller is "shell" for now
@@ -218,26 +196,42 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 	}
 }
 
-func StartBlockController(blockId string, bdata *wstore.Block) {
-	if bdata.Controller != BlockController_Shell {
-		log.Printf("unknown controller %q\n", bdata.Controller)
-		bdata.WithLock(func() {
-			bdata.ControllerStatus = "error"
-		})
-		return
+func StartBlockController(ctx context.Context, blockId string) error {
+	blockData, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+	if blockData.Controller == "" {
+		// nothing to start
+		return nil
+	}
+	if blockData.Controller != BlockController_Shell {
+		return fmt.Errorf("unknown controller %q", blockData.Controller)
 	}
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	if _, ok := blockControllerMap[blockId]; ok {
-		return
+		// already running
+		return nil
 	}
 	bc := &BlockController{
 		Lock:    &sync.Mutex{},
 		BlockId: blockId,
+		Status:  "init",
 		InputCh: make(chan BlockCommand),
 	}
 	blockControllerMap[blockId] = bc
-	go bc.Run(bdata)
+	go bc.Run(blockData)
+	return nil
+}
+
+func StopBlockController(blockId string) {
+	bc := GetBlockController(blockId)
+	if bc == nil {
+		return
+	}
+	bc.Close()
+	close(bc.InputCh)
 }
 
 func GetBlockController(blockId string) *BlockController {
@@ -246,31 +240,47 @@ func GetBlockController(blockId string) *BlockController {
 	return blockControllerMap[blockId]
 }
 
-func ProcessStaticCommand(blockId string, cmdGen BlockCommand) {
+func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
 	switch cmd := cmdGen.(type) {
 	case *MessageCommand:
 		log.Printf("MESSAGE: %s | %q\n", blockId, cmd.Message)
+		return nil
 	case *SetViewCommand:
 		log.Printf("SETVIEW: %s | %q\n", blockId, cmd.View)
-		block := wstore.BlockMap.Get(blockId)
-		if block != nil {
-			block.WithLock(func() {
-				block.View = cmd.View
-			})
+		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
+		if err != nil {
+			return fmt.Errorf("error getting block: %w", err)
 		}
+		block.View = cmd.View
+		err = wstore.DBUpdate(ctx, block)
+		if err != nil {
+			return fmt.Errorf("error updating block: %w", err)
+		}
+		return nil
 	case *SetMetaCommand:
 		log.Printf("SETMETA: %s | %v\n", blockId, cmd.Meta)
-		block := wstore.BlockMap.Get(blockId)
-		if block != nil {
-			block.WithLock(func() {
-				for k, v := range cmd.Meta {
-					if v == nil {
-						delete(block.Meta, k)
-						continue
-					}
-					block.Meta[k] = v
-				}
-			})
+		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
+		if err != nil {
+			return fmt.Errorf("error getting block: %w", err)
 		}
+		if block == nil {
+			return nil
+		}
+		for k, v := range cmd.Meta {
+			if v == nil {
+				delete(block.Meta, k)
+				continue
+			}
+			block.Meta[k] = v
+		}
+		err = wstore.DBUpdate(ctx, block)
+		if err != nil {
+			return fmt.Errorf("error updating block: %w", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unknown command type %T", cmdGen)
 	}
 }

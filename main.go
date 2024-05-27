@@ -6,17 +6,23 @@ package main
 // Note, main.go needs to be in the root of the project for the go:embed directive to work.
 
 import (
+	"context"
 	"embed"
+	"fmt"
 	"log"
 	"net/http"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockstore"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
+	"github.com/wavetermdev/thenextwave/pkg/service/clientservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
+	"github.com/wavetermdev/thenextwave/pkg/service/objectservice"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/wstore"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -32,10 +38,10 @@ func createAppMenu(app *application.App) *application.Menu {
 	menu := application.NewMenu()
 	menu.AddRole(application.AppMenu)
 	fileMenu := menu.AddSubmenu("File")
-	newWindow := fileMenu.Add("New Window")
-	newWindow.OnClick(func(appContext *application.Context) {
-		createWindow(app)
-	})
+	// newWindow := fileMenu.Add("New Window")
+	// newWindow.OnClick(func(appContext *application.Context) {
+	// 	createWindow(app)
+	// })
 	closeWindow := fileMenu.Add("Close Window")
 	closeWindow.OnClick(func(appContext *application.Context) {
 		app.CurrentWindow().Close()
@@ -47,7 +53,11 @@ func createAppMenu(app *application.App) *application.Menu {
 	return menu
 }
 
-func createWindow(app *application.App) {
+func createWindow(windowData *wstore.Window, app *application.App) {
+	client, err := wstore.DBGetSingleton[*wstore.Client](context.Background())
+	if err != nil {
+		panic(fmt.Errorf("error getting client data: %w", err))
+	}
 	window := app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
 		Title: "Wave Terminal",
 		Mac: application.MacWindow{
@@ -55,13 +65,18 @@ func createWindow(app *application.App) {
 			Backdrop:                application.MacBackdropTranslucent,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
-		BackgroundColour: application.NewRGB(27, 38, 54),
-		URL:              "/public/index.html",
+		BackgroundColour: application.NewRGB(0, 0, 0),
+		URL:              "/public/index.html?windowid=" + windowData.OID + "&clientid=" + client.OID,
+		X:                windowData.Pos.X,
+		Y:                windowData.Pos.Y,
+		Width:            windowData.WinSize.Width,
+		Height:           windowData.WinSize.Height,
 	})
-	eventbus.RegisterWailsWindow(window)
+	eventbus.RegisterWailsWindow(window, windowData.OID)
 	window.On(events.Common.WindowClosing, func(event *application.WindowEvent) {
 		eventbus.UnregisterWailsWindow(window.ID())
 	})
+	window.Show()
 }
 
 type waveAssetHandler struct {
@@ -104,6 +119,16 @@ func main() {
 		log.Printf("error initializing blockstore: %v\n", err)
 		return
 	}
+	err = wstore.InitWStore()
+	if err != nil {
+		log.Printf("error initializing wstore: %v\n", err)
+		return
+	}
+	err = wstore.EnsureInitialData()
+	if err != nil {
+		log.Printf("error ensuring initial data: %v\n", err)
+		return
+	}
 
 	app := application.New(application.Options{
 		Name:        "NextWave",
@@ -111,6 +136,8 @@ func main() {
 		Services: []application.Service{
 			application.NewService(&fileservice.FileService{}),
 			application.NewService(&blockservice.BlockService{}),
+			application.NewService(&clientservice.ClientService{}),
+			application.NewService(&objectservice.ObjectService{}),
 		},
 		Icon: appIcon,
 		Assets: application.AssetOptions{
@@ -124,7 +151,23 @@ func main() {
 	app.SetMenu(menu)
 	eventbus.RegisterWailsApp(app)
 
-	createWindow(app)
+	setupCtx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	client, err := wstore.DBGetSingleton[*wstore.Client](setupCtx)
+	if err != nil {
+		log.Printf("error getting client data: %v\n", err)
+		return
+	}
+	mainWindow, err := wstore.DBGet[*wstore.Window](setupCtx, client.MainWindowId)
+	if err != nil {
+		log.Printf("error getting main window: %v\n", err)
+		return
+	}
+	if mainWindow == nil {
+		log.Printf("no main window data\n")
+		return
+	}
+	createWindow(mainWindow, app)
 
 	eventbus.Start()
 	defer eventbus.Shutdown()

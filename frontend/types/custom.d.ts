@@ -2,21 +2,42 @@
 // SPDX-License-Identifier: Apache-2.0
 
 declare global {
-    type MetaDataType = Record<string, any>;
-
-    type TabData = {
-        name: string;
-        tabid: string;
-        blockIds: string[];
+    type UIContext = {
+        windowid: string;
+        activetabid: string;
     };
 
-    type BlockData = {
-        blockid: string;
+    type ORef = {
+        otype: string;
+        oid: string;
+    };
+
+    type WaveObj = {
+        otype: string;
+        oid: string;
+        version: number;
+    };
+
+    type WaveObjUpdate = {
+        updatetype: "update" | "delete";
+        otype: string;
+        oid: string;
+        obj?: WaveObj;
+    };
+
+    type Block = WaveObj & {
         blockdef: BlockDef;
         controller: string;
-        controllerstatus: string;
         view: string;
-        meta?: MetaDataType;
+        meta?: { [key: string]: any };
+        runtimeopts?: RuntimeOpts;
+    };
+
+    type BlockDef = {
+        controller?: string;
+        view?: string;
+        files?: { [key: string]: FileDef };
+        meta?: { [key: string]: any };
     };
 
     type FileDef = {
@@ -24,14 +45,62 @@ declare global {
         path?: string;
         url?: string;
         content?: string;
-        meta?: MetaDataType;
+        meta?: { [key: string]: any };
     };
 
-    type BlockDef = {
-        controller?: string;
-        view: string;
-        files?: FileDef[];
-        meta?: MetaDataType;
+    type TermSize = {
+        rows: number;
+        cols: number;
+    };
+
+    type Client = {
+        otype: string;
+        oid: string;
+        version: number;
+        mainwindowid: string;
+    };
+
+    type Tab = {
+        otype: string;
+        oid: string;
+        version: number;
+        name: string;
+        blockids: string[];
+    };
+
+    type Point = {
+        x: number;
+        y: number;
+    };
+
+    type WinSize = {
+        width: number;
+        height: number;
+    };
+
+    type Workspace = {
+        otype: string;
+        oid: string;
+        version: number;
+        name: string;
+        tabids: string[];
+    };
+
+    type RuntimeOpts = {
+        termsize?: TermSize;
+        winsize?: WinSize;
+    };
+
+    type WaveWindow = {
+        otype: string;
+        oid: string;
+        version: number;
+        workspaceid: string;
+        activetabid: string;
+        activeblockmap: { [key: string]: string };
+        pos: Point;
+        winsize: WinSize;
+        lastfocusts: number;
     };
 }
 

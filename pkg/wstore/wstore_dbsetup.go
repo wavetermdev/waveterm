@@ -12,7 +12,10 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/sawka/txwrap"
+	"github.com/wavetermdev/thenextwave/pkg/util/migrateutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+
+	dbfs "github.com/wavetermdev/thenextwave/db"
 )
 
 const WStoreDBName = "waveterm.db"
@@ -29,7 +32,7 @@ func InitWStore() error {
 	if err != nil {
 		return err
 	}
-	err = MigrateWStore()
+	err = migrateutil.Migrate("wstore", globalDB.DB, dbfs.WStoreMigrationFS, "migrations-wstore")
 	if err != nil {
 		return err
 	}
@@ -52,6 +55,26 @@ func MakeDB(ctx context.Context) (*sqlx.DB, error) {
 	return rtn, nil
 }
 
-func MigrateWStore() error {
-	return nil
+func WithTx(ctx context.Context, fn func(tx *TxWrap) error) (rtnErr error) {
+	ContextUpdatesBeginTx(ctx)
+	defer func() {
+		if rtnErr != nil {
+			ContextUpdatesRollbackTx(ctx)
+		} else {
+			ContextUpdatesCommitTx(ctx)
+		}
+	}()
+	return txwrap.WithTx(ctx, globalDB, fn)
+}
+
+func WithTxRtn[RT any](ctx context.Context, fn func(tx *TxWrap) (RT, error)) (rtnVal RT, rtnErr error) {
+	ContextUpdatesBeginTx(ctx)
+	defer func() {
+		if rtnErr != nil {
+			ContextUpdatesRollbackTx(ctx)
+		} else {
+			ContextUpdatesCommitTx(ctx)
+		}
+	}()
+	return txwrap.WithTxRtn(ctx, globalDB, fn)
 }

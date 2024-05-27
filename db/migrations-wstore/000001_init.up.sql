@@ -1,20 +1,29 @@
 CREATE TABLE db_client (
-    clientid varchar(36) PRIMARY KEY,  -- unnecessary, but useful to have a PK
+    oid varchar(36) PRIMARY KEY,
+    version int NOT NULL,
+    data json NOT NULL
+);
+
+CREATE TABLE db_window (
+    oid varchar(36) PRIMARY KEY,
+    version int NOT NULL,
     data json NOT NULL
 );
 
 CREATE TABLE db_workspace (
-    workspaceid varchar(36) PRIMARY KEY,
+    oid varchar(36) PRIMARY KEY,
+    version int NOT NULL,
     data json NOT NULL
 );
 
 CREATE TABLE db_tab (
-    tabid varchar(36) PRIMARY KEY,
+    oid varchar(36) PRIMARY KEY,
+    version int NOT NULL,
     data json NOT NULL
 );
 
 CREATE TABLE db_block (
-    blockid varchar(36) PRIMARY KEY,
-    tabid varchar(36) NOT NULL, -- the tab this block belongs to
+    oid varchar(36) PRIMARY KEY,
+    version int NOT NULL,
     data json NOT NULL
 );

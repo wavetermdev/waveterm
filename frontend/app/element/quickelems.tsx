@@ -3,6 +3,10 @@
 
 import "./quickelems.less";
 
+function CenteredLoadingDiv() {
+    return <CenteredDiv>loading...</CenteredDiv>;
+}
+
 function CenteredDiv({ children }: { children: React.ReactNode }) {
     return (
         <div className="centered-div">
@@ -11,4 +15,4 @@ function CenteredDiv({ children }: { children: React.ReactNode }) {
     );
 }
 
-export { CenteredDiv as CenteredDiv };
+export { CenteredDiv, CenteredLoadingDiv };

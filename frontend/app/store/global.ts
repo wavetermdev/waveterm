@@ -2,26 +2,56 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as jotai from "jotai";
-import { atomFamily } from "jotai/utils";
-import { v4 as uuidv4 } from "uuid";
 import * as rxjs from "rxjs";
-import type { WailsEvent } from "@wailsio/runtime/types/events";
 import { Events } from "@wailsio/runtime";
-import { produce } from "immer";
-import { BlockService } from "@/bindings/blockservice";
+import * as WOS from "./wos";
 
 const globalStore = jotai.createStore();
-
-const tabId1 = uuidv4();
-
-const tabArr: TabData[] = [{ name: "Tab 1", tabid: tabId1, blockIds: [] }];
-const blockDataMap = new Map<string, jotai.Atom<BlockData>>();
-const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
+const urlParams = new URLSearchParams(window.location.search);
+const globalWindowId = urlParams.get("windowid");
+const globalClientId = urlParams.get("clientid");
+const windowIdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+const clientIdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+globalStore.set(windowIdAtom, globalWindowId);
+globalStore.set(clientIdAtom, globalClientId);
+const uiContextAtom = jotai.atom((get) => {
+    const windowData = get(windowDataAtom);
+    const uiContext: UIContext = {
+        windowid: get(atoms.windowId),
+        activetabid: windowData.activetabid,
+    };
+    return uiContext;
+}) as jotai.Atom<UIContext>;
+const clientAtom: jotai.Atom<Client> = jotai.atom((get) => {
+    const clientId = get(clientIdAtom);
+    if (clientId == null) {
+        return null;
+    }
+    return WOS.getStaticObjectValue(WOS.makeORef("client", clientId), get);
+});
+const windowDataAtom: jotai.Atom<WaveWindow> = jotai.atom((get) => {
+    const windowId = get(windowIdAtom);
+    if (windowId == null) {
+        return null;
+    }
+    return WOS.getStaticObjectValue(WOS.makeORef("window", windowId), get);
+});
+const workspaceAtom: jotai.Atom<Workspace> = jotai.atom((get) => {
+    const windowData = get(windowDataAtom);
+    if (windowData == null) {
+        return null;
+    }
+    return WOS.getStaticObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
+});
 
 const atoms = {
-    activeTabId: jotai.atom<string>(tabId1),
-    tabsAtom: jotai.atom<TabData[]>(tabArr),
-    blockDataMap: blockDataMap,
+    // initialized in wave.ts (will not be null inside of application)
+    windowId: windowIdAtom,
+    clientId: clientIdAtom,
+    uiContext: uiContextAtom,
+    client: clientAtom,
+    waveWindow: windowDataAtom,
+    workspace: workspaceAtom,
 };
 
 type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
@@ -60,19 +90,7 @@ Events.On("block:ptydata", (event: any) => {
     subject.next(data);
 });
 
-function addBlockIdToTab(tabId: string, blockId: string) {
-    let tabArr = globalStore.get(atoms.tabsAtom);
-    const newTabArr = produce(tabArr, (draft) => {
-        const tab = draft.find((tab) => tab.tabid == tabId);
-        tab.blockIds.push(blockId);
-    });
-    globalStore.set(atoms.tabsAtom, newTabArr);
-}
-
-function removeBlock(blockId: string) {
-    blockDataMap.delete(blockId);
-    blockAtomCache.delete(blockId);
-}
+const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
 
 function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom<T>): jotai.Atom<T> {
     let blockCache = blockAtomCache.get(blockId);
@@ -84,19 +102,9 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
     if (atom == null) {
         atom = makeFn();
         blockCache.set(name, atom);
+        console.log("New BlockAtom", blockId, name);
     }
     return atom as jotai.Atom<T>;
 }
 
-function removeBlockFromTab(tabId: string, blockId: string) {
-    let tabArr = globalStore.get(atoms.tabsAtom);
-    const newTabArr = produce(tabArr, (draft) => {
-        const tab = draft.find((tab) => tab.tabid == tabId);
-        tab.blockIds = tab.blockIds.filter((id) => id !== blockId);
-    });
-    globalStore.set(atoms.tabsAtom, newTabArr);
-    removeBlock(blockId);
-    BlockService.CloseBlock(blockId);
-}
-
-export { globalStore, atoms, getBlockSubject, addBlockIdToTab, blockDataMap, useBlockAtom, removeBlockFromTab };
+export { globalStore, atoms, getBlockSubject, useBlockAtom, WOS };

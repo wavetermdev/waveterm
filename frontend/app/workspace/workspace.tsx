@@ -5,37 +5,46 @@ import * as React from "react";
 import * as jotai from "jotai";
 import { TabContent } from "@/app/tab/tab";
 import { clsx } from "clsx";
-import { atoms, addBlockIdToTab, blockDataMap } from "@/store/global";
-import { v4 as uuidv4 } from "uuid";
-import { BlockService } from "@/bindings/blockservice";
+import { atoms } from "@/store/global";
+import * as WOS from "@/store/wos";
+import { CenteredLoadingDiv, CenteredDiv } from "../element/quickelems";
 
 import "./workspace.less";
 
-function Tab({ tab }: { tab: TabData }) {
-    const [activeTab, setActiveTab] = jotai.useAtom(atoms.activeTabId);
+function Tab({ tabId }: { tabId: string }) {
+    const windowData = jotai.useAtomValue(atoms.waveWindow);
+    const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
+    function setActiveTab() {
+        WOS.SetActiveTab(tabId);
+    }
+    function handleCloseTab() {
+        WOS.CloseTab(tabId);
+    }
     return (
-        <div className={clsx("tab", { active: activeTab === tab.tabid })} onClick={() => setActiveTab(tab.tabid)}>
-            {tab.name}
+        <div
+            className={clsx("tab", { active: tabData != null && windowData.activetabid === tabData.oid })}
+            onClick={() => setActiveTab()}
+        >
+            <div className="tab-close" onClick={() => handleCloseTab()}>
+                <div>
+                    <i className="fa fa-solid fa-xmark" />
+                </div>
+            </div>
+            {tabData?.name ?? "..."}
         </div>
     );
 }
 
-function TabBar() {
-    const [tabData, setTabData] = jotai.useAtom(atoms.tabsAtom);
-    const [activeTab, setActiveTab] = jotai.useAtom(atoms.activeTabId);
-    const tabs = jotai.useAtomValue(atoms.tabsAtom);
-
+function TabBar({ workspace }: { workspace: Workspace }) {
     function handleAddTab() {
-        const newTabId = uuidv4();
-        const newTabName = "Tab " + (tabData.length + 1);
-        setTabData([...tabData, { name: newTabName, tabid: newTabId, blockIds: [] }]);
-        setActiveTab(newTabId);
+        const newTabName = `Tab-${workspace.tabids.length + 1}`;
+        WOS.AddTabToWorkspace(newTabName, true);
     }
-
+    const tabIds = workspace?.tabids ?? [];
     return (
         <div className="tab-bar">
-            {tabs.map((tab, idx) => {
-                return <Tab key={idx} tab={tab} />;
+            {tabIds.map((tabid, idx) => {
+                return <Tab key={idx} tabId={tabid} />;
             })}
             <div className="tab-add" onClick={() => handleAddTab()}>
                 <i className="fa fa-solid fa-plus fa-fw" />
@@ -45,14 +54,12 @@ function TabBar() {
 }
 
 function Widgets() {
-    const activeTabId = jotai.useAtomValue(atoms.activeTabId);
+    const windowData = jotai.useAtomValue(atoms.waveWindow);
+    const activeTabId = windowData.activetabid;
 
     async function createBlock(blockDef: BlockDef) {
-        const rtOpts = { termsize: { rows: 25, cols: 80 } };
-        const rtnBlock: BlockData = (await BlockService.CreateBlock(blockDef, rtOpts)) as BlockData;
-        const newBlockAtom = jotai.atom(rtnBlock);
-        blockDataMap.set(rtnBlock.blockid, newBlockAtom);
-        addBlockIdToTab(activeTabId, rtnBlock.blockid);
+        const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+        await WOS.CreateBlock(blockDef, rtOpts);
     }
 
     async function clickTerminal() {
@@ -72,7 +79,7 @@ function Widgets() {
     }
 
     async function clickPlot() {
-        const plotDef = {
+        const plotDef: BlockDef = {
             view: "plot",
         };
         createBlock(plotDef);
@@ -105,17 +112,25 @@ function Widgets() {
     );
 }
 
-function Workspace() {
-    const activeTabId = jotai.useAtomValue(atoms.activeTabId);
+function WorkspaceElem() {
+    const windowData = jotai.useAtomValue(atoms.waveWindow);
+    const activeTabId = windowData?.activetabid;
+    const ws = jotai.useAtomValue(atoms.workspace);
     return (
         <div className="workspace">
-            <TabBar />
+            <TabBar workspace={ws} />
             <div className="workspace-tabcontent">
-                <TabContent key={activeTabId} tabId={activeTabId} />
-                <Widgets />
+                {activeTabId == "" ? (
+                    <CenteredDiv>No Active Tab</CenteredDiv>
+                ) : (
+                    <>
+                        <TabContent key={windowData.workspaceid} tabId={activeTabId} />
+                        <Widgets />
+                    </>
+                )}
             </div>
         </div>
     );
 }
 
-export { Workspace };
+export { WorkspaceElem as Workspace };
