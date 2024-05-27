@@ -24,19 +24,22 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 5px;
+            padding: 11px;
             border-bottom: 1px solid var(--app-border-color);
         }
 
         .rsb-modes {
             display: flex;
             flex-direction: row;
-            padding: 5px 10px;
             gap: 5px;
 
             .icon-container {
-                padding: 2px;
+                padding: 4px;
                 cursor: pointer;
+
+                span {
+                    margin-left: 5px;
+                }
             }
 
             .icon-container:hover {
@@ -46,6 +49,10 @@
 
         &.collapsed {
             display: none;
+        }
+
+        .close {
+            padding: 10px;
         }
 
         .keybind-debug-pane {

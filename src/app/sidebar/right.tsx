@@ -12,14 +12,11 @@ import { GlobalModel } from "@/models";
 import { ResizableSidebar, Button } from "@/elements";
 import { WaveBookDisplay } from "./wavebook";
 import { ChatSidebar } from "./aichat";
+import { boundMethod } from "autobind-decorator";
 
 import "./right.less";
 
 dayjs.extend(localizedFormat);
-
-interface RightSideBarProps {
-    parentRef: React.RefObject<HTMLElement>;
-}
 
 @mobxReact.observer
 class KeybindDevPane extends React.Component<{}, {}> {
@@ -56,8 +53,54 @@ class KeybindDevPane extends React.Component<{}, {}> {
     }
 }
 
+class SidebarKeyBindings extends React.Component<{ component: ChatSidebar; bindArrowUpDownKeys: boolean }, {}> {
+    componentDidMount(): void {
+        const { component } = this.props;
+        const keybindManager = GlobalModel.keybindManager;
+        const inputModel = GlobalModel.inputModel;
+
+        keybindManager.registerKeybinding("pane", "rightsidebar", "generic:cancel", (waveEvent) => {
+            // component.onClose();
+            return true;
+        });
+        keybindManager.registerKeybinding("pane", "rightsidebar", "rightsidebar:open", (waveEvent) => {
+            // component.onOpen();
+            return true;
+        });
+    }
+
+    componentDidUpdate(): void {
+        const { component, bindArrowUpDownKeys } = this.props;
+        const keybindManager = GlobalModel.keybindManager;
+        if (bindArrowUpDownKeys) {
+            keybindManager.registerKeybinding("pane", "aichat:arrowupdown", "generic:selectAbove", (waveEvent) => {
+                return component.onArrowUpPressed();
+            });
+            keybindManager.registerKeybinding("pane", "aichat:arrowupdown", "generic:selectBelow", (waveEvent) => {
+                return component.onArrowDownPressed();
+            });
+        } else {
+            GlobalModel.keybindManager.unregisterDomain("aichat:arrowupdown");
+        }
+    }
+
+    componentWillUnmount(): void {
+        GlobalModel.keybindManager.unregisterDomain("aichat");
+        GlobalModel.keybindManager.unregisterDomain("aichat:arrowupdown");
+    }
+
+    render() {
+        return null;
+    }
+}
+
 @mobxReact.observer
-class RightSideBar extends React.Component<RightSideBarProps, {}> {
+class RightSideBar extends React.Component<
+    {
+        parentRef: React.RefObject<HTMLElement>;
+    },
+    {}
+> {
     mode: OV<string> = mobx.observable.box("aichat", { name: "RightSideBar-mode" });
 
     constructor(props) {
@@ -71,6 +114,11 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
             return;
         }
         this.mode.set(mode);
+    }
+
+    @boundMethod
+    onOpen() {
+        // GlobalModel.rightSidebarModel.;
     }
 
     render() {
@@ -93,7 +141,8 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                                     title="Show Keybinding Debugger"
                                     onClick={() => this.setMode("aichat")}
                                 >
-                                    <i className="fa-sharp fa-regular fa-sparkles fa-fw" /> Wave AI
+                                    <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
+                                    <span>Wave AI</span>
                                 </div>
                                 <div className="flex-spacer" />
                                 <If condition={GlobalModel.isDev}>
@@ -113,8 +162,8 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
                                     </div>
                                 </If>
                             </div>
-                            <Button className="secondary ghost" onClick={toggleCollapse}>
-                                <i className="fa-sharp fa-regular fa-xmark"></i>
+                            <Button className="secondary ghost close" onClick={toggleCollapse}>
+                                <i className="fa-sharp fa-solid fa-xmark-large" />
                             </Button>
                         </div>
                         <If condition={this.mode.get() == "keybind"}>
