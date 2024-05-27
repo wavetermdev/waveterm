@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"log"
 	"net/http"
 	"runtime"
@@ -53,6 +54,10 @@ func createAppMenu(app *application.App) *application.Menu {
 }
 
 func createWindow(windowData *wstore.Window, app *application.App) {
+	client, err := wstore.DBGetSingleton[*wstore.Client](context.Background())
+	if err != nil {
+		panic(fmt.Errorf("error getting client data: %w", err))
+	}
 	window := app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
 		Title: "Wave Terminal",
 		Mac: application.MacWindow{
@@ -61,7 +66,7 @@ func createWindow(windowData *wstore.Window, app *application.App) {
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
 		BackgroundColour: application.NewRGB(0, 0, 0),
-		URL:              "/public/index.html?windowid=" + windowData.OID,
+		URL:              "/public/index.html?windowid=" + windowData.OID + "&clientid=" + client.OID,
 		X:                windowData.Pos.X,
 		Y:                windowData.Pos.Y,
 		Width:            windowData.WinSize.Width,

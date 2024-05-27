@@ -4,25 +4,140 @@
 package wstore
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
-	"github.com/wavetermdev/thenextwave/pkg/util/ds"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
-var WorkspaceMap = ds.NewSyncMap[*Workspace]()
-var TabMap = ds.NewSyncMap[*Tab]()
-var BlockMap = ds.NewSyncMap[*Block]()
+var waveObjUpdateKey = struct{}{}
 
 func init() {
 	for _, rtype := range AllWaveObjTypes() {
 		waveobj.RegisterType(rtype)
 	}
+}
+
+type contextUpdatesType struct {
+	UpdatesStack []map[waveobj.ORef]waveobj.WaveObj
+}
+
+func dumpUpdateStack(updates *contextUpdatesType) {
+	log.Printf("dumpUpdateStack len:%d\n", len(updates.UpdatesStack))
+	for idx, update := range updates.UpdatesStack {
+		var buf bytes.Buffer
+		buf.WriteString(fmt.Sprintf("  [%d]:", idx))
+		for k := range update {
+			buf.WriteString(fmt.Sprintf(" %s:%s", k.OType, k.OID))
+		}
+		buf.WriteString("\n")
+		log.Print(buf.String())
+	}
+}
+
+func ContextWithUpdates(ctx context.Context) context.Context {
+	updatesVal := ctx.Value(waveObjUpdateKey)
+	if updatesVal != nil {
+		return ctx
+	}
+	return context.WithValue(ctx, waveObjUpdateKey, &contextUpdatesType{
+		UpdatesStack: []map[waveobj.ORef]waveobj.WaveObj{make(map[waveobj.ORef]waveobj.WaveObj)},
+	})
+}
+
+func ContextGetUpdates(ctx context.Context) map[waveobj.ORef]waveobj.WaveObj {
+	updatesVal := ctx.Value(waveObjUpdateKey)
+	if updatesVal == nil {
+		return nil
+	}
+	updates := updatesVal.(*contextUpdatesType)
+	if len(updates.UpdatesStack) == 1 {
+		return updates.UpdatesStack[0]
+	}
+	rtn := make(map[waveobj.ORef]waveobj.WaveObj)
+	for _, update := range updates.UpdatesStack {
+		for k, v := range update {
+			rtn[k] = v
+		}
+	}
+	return rtn
+}
+
+func ContextGetUpdate(ctx context.Context, oref waveobj.ORef) waveobj.WaveObj {
+	updatesVal := ctx.Value(waveObjUpdateKey)
+	if updatesVal == nil {
+		return nil
+	}
+	updates := updatesVal.(*contextUpdatesType)
+	for idx := len(updates.UpdatesStack) - 1; idx >= 0; idx-- {
+		if obj, ok := updates.UpdatesStack[idx][oref]; ok {
+			return obj
+		}
+	}
+	return nil
+}
+
+func ContextAddUpdate(ctx context.Context, obj waveobj.WaveObj) {
+	updatesVal := ctx.Value(waveObjUpdateKey)
+	if updatesVal == nil {
+		return
+	}
+	updates := updatesVal.(*contextUpdatesType)
+	oref := waveobj.ORef{
+		OType: obj.GetOType(),
+		OID:   waveobj.GetOID(obj),
+	}
+	updates.UpdatesStack[len(updates.UpdatesStack)-1][oref] = obj
+}
+
+func ContextUpdatesBeginTx(ctx context.Context) context.Context {
+	updatesVal := ctx.Value(waveObjUpdateKey)
+	if updatesVal == nil {
+		return ctx
+	}
+	updates := updatesVal.(*contextUpdatesType)
+	updates.UpdatesStack = append(updates.UpdatesStack, make(map[waveobj.ORef]waveobj.WaveObj))
+	return ctx
+}
+
+func ContextUpdatesCommitTx(ctx context.Context) {
+	updatesVal := ctx.Value(waveObjUpdateKey)
+	if updatesVal == nil {
+		return
+	}
+	updates := updatesVal.(*contextUpdatesType)
+	if len(updates.UpdatesStack) <= 1 {
+		panic(fmt.Errorf("no updates transaction to commit"))
+	}
+	// merge the last two updates
+	curUpdateMap := updates.UpdatesStack[len(updates.UpdatesStack)-1]
+	prevUpdateMap := updates.UpdatesStack[len(updates.UpdatesStack)-2]
+	for k, v := range curUpdateMap {
+		prevUpdateMap[k] = v
+	}
+	updates.UpdatesStack = updates.UpdatesStack[:len(updates.UpdatesStack)-1]
+}
+
+func ContextUpdatesRollbackTx(ctx context.Context) {
+	updatesVal := ctx.Value(waveObjUpdateKey)
+	if updatesVal == nil {
+		return
+	}
+	updates := updatesVal.(*contextUpdatesType)
+	if len(updates.UpdatesStack) <= 1 {
+		panic(fmt.Errorf("no updates transaction to rollback"))
+	}
+	updates.UpdatesStack = updates.UpdatesStack[:len(updates.UpdatesStack)-1]
+}
+
+type UIContext struct {
+	WindowId string `json:"windowid"`
 }
 
 type Client struct {
@@ -128,39 +243,51 @@ func (*Block) GetOType() string {
 	return "block"
 }
 
-func CreateTab(workspaceId string, name string) (*Tab, error) {
-	tab := &Tab{
-		OID:      uuid.New().String(),
-		Name:     name,
-		BlockIds: []string{},
-	}
-	TabMap.Set(tab.OID, tab)
-	ws := WorkspaceMap.Get(workspaceId)
-	if ws == nil {
-		return nil, fmt.Errorf("workspace not found: %q", workspaceId)
-	}
-	ws.TabIds = append(ws.TabIds, tab.OID)
-	return tab, nil
+func CreateTab(ctx context.Context, workspaceId string, name string) (*Tab, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*Tab, error) {
+		ws, _ := DBGet[*Workspace](tx.Context(), workspaceId)
+		if ws == nil {
+			return nil, fmt.Errorf("workspace not found: %q", workspaceId)
+		}
+		tab := &Tab{
+			OID:      uuid.New().String(),
+			Name:     name,
+			BlockIds: []string{},
+		}
+		ws.TabIds = append(ws.TabIds, tab.OID)
+		DBInsert(tx.Context(), tab)
+		DBUpdate(tx.Context(), ws)
+		return tab, nil
+	})
 }
 
-func CreateWorkspace() (*Workspace, error) {
+func CreateWorkspace(ctx context.Context) (*Workspace, error) {
 	ws := &Workspace{
 		OID:    uuid.New().String(),
 		TabIds: []string{},
 	}
-	WorkspaceMap.Set(ws.OID, ws)
-	_, err := CreateTab(ws.OID, "Tab 1")
-	if err != nil {
-		return nil, err
-	}
+	DBInsert(ctx, ws)
 	return ws, nil
 }
 
-func GetObject(otype string, oid string) (waveobj.WaveObj, error) {
-	return nil, nil
+func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		window, _ := DBGet[*Window](tx.Context(), windowId)
+		if window == nil {
+			return fmt.Errorf("window not found: %q", windowId)
+		}
+		tab, _ := DBGet[*Tab](tx.Context(), tabId)
+		if tab == nil {
+			return fmt.Errorf("tab not found: %q", tabId)
+		}
+		window.ActiveTabId = tabId
+		DBUpdate(tx.Context(), window)
+		return nil
+	})
 }
 
 func EnsureInitialData() error {
+	// does not need to run in a transaction since it is called on startup
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	clientCount, err := DBGetCount[*Client](ctx)

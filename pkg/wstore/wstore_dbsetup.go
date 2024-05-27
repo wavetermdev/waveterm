@@ -55,10 +55,26 @@ func MakeDB(ctx context.Context) (*sqlx.DB, error) {
 	return rtn, nil
 }
 
-func WithTx(ctx context.Context, fn func(tx *TxWrap) error) error {
+func WithTx(ctx context.Context, fn func(tx *TxWrap) error) (rtnErr error) {
+	ContextUpdatesBeginTx(ctx)
+	defer func() {
+		if rtnErr != nil {
+			ContextUpdatesRollbackTx(ctx)
+		} else {
+			ContextUpdatesCommitTx(ctx)
+		}
+	}()
 	return txwrap.WithTx(ctx, globalDB, fn)
 }
 
-func WithTxRtn[RT any](ctx context.Context, fn func(tx *TxWrap) (RT, error)) (RT, error) {
+func WithTxRtn[RT any](ctx context.Context, fn func(tx *TxWrap) (RT, error)) (rtnVal RT, rtnErr error) {
+	ContextUpdatesBeginTx(ctx)
+	defer func() {
+		if rtnErr != nil {
+			ContextUpdatesRollbackTx(ctx)
+		} else {
+			ContextUpdatesCommitTx(ctx)
+		}
+	}()
 	return txwrap.WithTxRtn(ctx, globalDB, fn)
 }

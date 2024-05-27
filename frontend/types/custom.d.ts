@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 declare global {
+    type UIContext = {
+        windowid: string;
+    };
+
     type ORef = {
         otype: string;
         oid: string;
@@ -79,6 +83,8 @@ declare global {
     type WaveObj = {
         otype: string;
         oid: string;
+        version: number;
+        deleted?: boolean;
     };
 
     type WaveWindow = {

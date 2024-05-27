@@ -12,22 +12,20 @@ import { ClientService } from "@/bindings/clientservice";
 import { Workspace } from "@/gopkg/wstore";
 import * as wstore from "@/gopkg/wstore";
 import * as jotaiUtil from "jotai/utils";
-import * as gdata from "@/store/global";
-
-import "./workspace.less";
+import * as WOS from "@/store/wos";
 import { CenteredLoadingDiv, CenteredDiv } from "../element/quickelems";
 
-function Tab({ tabId }: { tabId: string }) {
-    const windowData = jotai.useAtomValue(atoms.windowData);
-    const [tabData, tabLoading] = gdata.useWaveObjectValue<Tab>(gdata.makeORef("tab", tabId));
+import "./workspace.less";
 
+function Tab({ tabId }: { tabId: string }) {
+    const windowData = jotai.useAtomValue(atoms.waveWindow);
+    const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
     function setActiveTab(tabId: string) {
         if (tabId == null) {
             return;
         }
         // TODO
     }
-
     return (
         <div
             className={clsx("tab", { active: tabData != null && windowData.activetabid === tabData.oid })}
@@ -40,12 +38,9 @@ function Tab({ tabId }: { tabId: string }) {
 
 function TabBar({ workspace, waveWindow }: { workspace: Workspace; waveWindow: WaveWindow }) {
     function handleAddTab() {
-        const newTabId = uuidv4();
-        const newTabName = "Tab " + (tabData.length + 1);
-        setTabData([...tabData, { name: newTabName, tabid: newTabId, blockids: [] }]);
-        setActiveTab(newTabId);
+        const newTabName = `Tab-${workspace.tabids.length + 1}`;
+        WOS.AddTabToWorkspace(newTabName, true);
     }
-
     const tabIds = workspace?.tabids ?? [];
     return (
         <div className="tab-bar">
@@ -60,7 +55,7 @@ function TabBar({ workspace, waveWindow }: { workspace: Workspace; waveWindow: W
 }
 
 function Widgets() {
-    const windowData = jotai.useAtomValue(atoms.windowData);
+    const windowData = jotai.useAtomValue(atoms.waveWindow);
     const activeTabId = windowData.activetabid;
 
     async function createBlock(blockDef: wstore.BlockDef) {
@@ -122,18 +117,14 @@ function Widgets() {
 }
 
 function WorkspaceElem() {
-    const windowData = jotai.useAtomValue(atoms.windowData);
-    const workspaceId = windowData?.workspaceid;
+    const windowData = jotai.useAtomValue(atoms.waveWindow);
     const activeTabId = windowData?.activetabid;
-    const [ws, wsLoading] = gdata.useWaveObjectValue<Workspace>(gdata.makeORef("workspace", workspaceId));
-    if (wsLoading) {
-        return <CenteredLoadingDiv />;
-    }
+    const ws = jotai.useAtomValue(atoms.workspace);
     return (
         <div className="workspace">
             <TabBar workspace={ws} waveWindow={windowData} />
             <div className="workspace-tabcontent">
-                <TabContent key={workspaceId} tabId={activeTabId} />
+                <TabContent key={windowData.workspaceid} tabId={activeTabId} />
                 <Widgets />
             </div>
         </div>

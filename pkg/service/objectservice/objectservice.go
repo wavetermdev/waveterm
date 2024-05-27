@@ -25,16 +25,6 @@ func parseORef(oref string) (*waveobj.ORef, error) {
 	return &waveobj.ORef{OType: fields[0], OID: fields[1]}, nil
 }
 
-func (svc *ObjectService) GetClientObject() (any, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	client, err := wstore.DBGetSingleton[*wstore.Client](ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error getting client: %w", err)
-	}
-	return waveobj.ToJsonMap(client)
-}
-
 func (svc *ObjectService) GetObject(orefStr string) (any, error) {
 	oref, err := parseORef(orefStr)
 	if err != nil {
@@ -46,7 +36,8 @@ func (svc *ObjectService) GetObject(orefStr string) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting object: %w", err)
 	}
-	return waveobj.ToJsonMap(obj)
+	rtn, err := waveobj.ToJsonMap(obj)
+	return rtn, err
 }
 
 func (svc *ObjectService) GetObjects(orefStrArr []string) (any, error) {
@@ -62,4 +53,61 @@ func (svc *ObjectService) GetObjects(orefStrArr []string) (any, error) {
 		orefArr = append(orefArr, *orefObj)
 	}
 	return wstore.DBSelectORefs(ctx, orefArr)
+}
+
+func updatesRtn(ctx context.Context, rtnVal map[string]any) (any, error) {
+	updates := wstore.ContextGetUpdates(ctx)
+	if len(updates) == 0 {
+		return nil, nil
+	}
+	var rtn []any
+	for _, obj := range updates {
+		if obj == nil {
+			continue
+		}
+		jmap, err := waveobj.ToJsonMap(obj)
+		if err != nil {
+			return nil, fmt.Errorf("error converting object to JSON: %w", err)
+		}
+		rtn = append(rtn, jmap)
+	}
+	if rtnVal == nil {
+		rtnVal = make(map[string]any)
+	}
+	rtnVal["updates"] = rtn
+	return rtnVal, nil
+}
+
+func (svc *ObjectService) AddTabToWorkspace(uiContext wstore.UIContext, tabName string, activateTab bool) (any, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = wstore.ContextWithUpdates(ctx)
+	windowData, err := wstore.DBMustGet[*wstore.Window](ctx, uiContext.WindowId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting window: %w", err)
+	}
+	tab, err := wstore.CreateTab(ctx, windowData.WorkspaceId, tabName)
+	if err != nil {
+		return nil, fmt.Errorf("error creating tab: %w", err)
+	}
+	if activateTab {
+		err = wstore.SetActiveTab(ctx, uiContext.WindowId, tab.OID)
+		if err != nil {
+			return nil, fmt.Errorf("error setting active tab: %w", err)
+		}
+	}
+	rtn := make(map[string]any)
+	rtn["tabid"] = waveobj.GetOID(tab)
+	return updatesRtn(ctx, rtn)
+}
+
+func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string) (any, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = wstore.ContextWithUpdates(ctx)
+	err := wstore.SetActiveTab(ctx, uiContext.WindowId, tabId)
+	if err != nil {
+		return nil, fmt.Errorf("error setting active tab: %w", err)
+	}
+	return updatesRtn(ctx, nil)
 }

@@ -18,6 +18,7 @@ const (
 	OTypeKeyName   = "otype"
 	OIDKeyName     = "oid"
 	VersionKeyName = "version"
+	DeletedKeyName = "deleted"
 
 	OIDGoFieldName     = "OID"
 	VersionGoFieldName = "Version"
@@ -30,6 +31,15 @@ type ORef struct {
 
 type WaveObj interface {
 	GetOType() string // should not depend on object state (should work with nil value)
+}
+
+type WaveObjTombstone struct {
+	OType string `json:"otype"`
+	OID   string `json:"oid"`
+}
+
+func (w *WaveObjTombstone) GetOType() string {
+	return w.OType
 }
 
 type waveObjDesc struct {
@@ -93,6 +103,9 @@ func getWaveObjDesc(otype string) *waveObjDesc {
 }
 
 func GetOID(waveObj WaveObj) string {
+	if tomb, ok := waveObj.(*WaveObjTombstone); ok {
+		return tomb.OID
+	}
 	desc := getWaveObjDesc(waveObj.GetOType())
 	if desc == nil {
 		return ""
@@ -101,6 +114,10 @@ func GetOID(waveObj WaveObj) string {
 }
 
 func SetOID(waveObj WaveObj, oid string) {
+	if tomb, ok := waveObj.(*WaveObjTombstone); ok {
+		tomb.OID = oid
+		return
+	}
 	desc := getWaveObjDesc(waveObj.GetOType())
 	if desc == nil {
 		return
@@ -109,6 +126,9 @@ func SetOID(waveObj WaveObj, oid string) {
 }
 
 func GetVersion(waveObj WaveObj) int {
+	if _, ok := waveObj.(*WaveObjTombstone); ok {
+		return 0
+	}
 	desc := getWaveObjDesc(waveObj.GetOType())
 	if desc == nil {
 		return 0
@@ -117,6 +137,9 @@ func GetVersion(waveObj WaveObj) int {
 }
 
 func SetVersion(waveObj WaveObj, version int) {
+	if _, ok := waveObj.(*WaveObjTombstone); ok {
+		return
+	}
 	desc := getWaveObjDesc(waveObj.GetOType())
 	if desc == nil {
 		return
@@ -138,6 +161,10 @@ func ToJsonMap(w WaveObj) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	if _, ok := w.(*WaveObjTombstone); ok {
+		m[DeletedKeyName] = true
+		return m, nil
+	}
 	m[OTypeKeyName] = w.GetOType()
 	m[OIDKeyName] = GetOID(w)
 	m[VersionKeyName] = GetVersion(w)
@@ -152,11 +179,38 @@ func ToJson(w WaveObj) ([]byte, error) {
 	return json.Marshal(m)
 }
 
+func getMapBoolVal(m map[string]any, key string) bool {
+	val, ok := m[key].(bool)
+	if !ok {
+		return false
+	}
+	return val
+}
+
+func getMapStringVal(m map[string]any, key string) string {
+	val, ok := m[key].(string)
+	if !ok {
+		return ""
+	}
+	return val
+}
+
+func IsTombstone(w WaveObj) bool {
+	_, ok := w.(*WaveObjTombstone)
+	return ok
+}
+
 func FromJson(data []byte) (WaveObj, error) {
 	var m map[string]any
 	err := json.Unmarshal(data, &m)
 	if err != nil {
 		return nil, err
+	}
+	if getMapBoolVal(m, DeletedKeyName) {
+		return &WaveObjTombstone{
+			OType: getMapStringVal(m, OTypeKeyName),
+			OID:   getMapStringVal(m, OIDKeyName),
+		}, nil
 	}
 	otype, ok := m[OTypeKeyName].(string)
 	if !ok {
@@ -320,6 +374,7 @@ func GenerateWaveObjTSType() string {
 	buf.WriteString("type WaveObj = {\n")
 	buf.WriteString("  otype: string;\n")
 	buf.WriteString("  oid: string;\n")
+	buf.WriteString("  version: number;\n")
 	buf.WriteString("};\n")
 	return buf.String()
 }

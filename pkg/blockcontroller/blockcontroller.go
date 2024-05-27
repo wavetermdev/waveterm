@@ -62,6 +62,7 @@ func jsonDeepCopy(val map[string]any) (map[string]any, error) {
 }
 
 func CreateBlock(ctx context.Context, bdef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (*wstore.Block, error) {
+	// TODO
 	blockId := uuid.New().String()
 	blockData := &wstore.Block{
 		OID:         blockId,
@@ -86,13 +87,13 @@ func CreateBlock(ctx context.Context, bdef *wstore.BlockDef, rtOpts *wstore.Runt
 }
 
 func CloseBlock(blockId string) {
+	// TODO
 	bc := GetBlockController(blockId)
 	if bc == nil {
 		return
 	}
 	bc.Close()
 	close(bc.InputCh)
-	wstore.BlockMap.Delete(blockId)
 }
 
 func (bc *BlockController) setShellProc(shellProc *shellexec.ShellProc) error {

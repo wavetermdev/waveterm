@@ -1,53 +1,65 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as React from "react";
 import * as jotai from "jotai";
-import * as jotaiUtils from "jotai/utils";
-import { v4 as uuidv4 } from "uuid";
 import * as rxjs from "rxjs";
-import type { WailsEvent } from "@wailsio/runtime/types/events";
 import { Events } from "@wailsio/runtime";
 import { produce } from "immer";
 import { BlockService } from "@/bindings/blockservice";
-import { ObjectService } from "@/bindings/objectservice";
 import * as wstore from "@/gopkg/wstore";
-import { Call as $Call } from "@wailsio/runtime";
+import * as WOS from "./wos";
 
 const globalStore = jotai.createStore();
 const blockDataMap = new Map<string, jotai.Atom<wstore.Block>>();
+const urlParams = new URLSearchParams(window.location.search);
+const globalWindowId = urlParams.get("windowid");
+const globalClientId = urlParams.get("clientid");
+const windowIdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+const clientIdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string>;
+globalStore.set(windowIdAtom, globalWindowId);
+globalStore.set(clientIdAtom, globalClientId);
+const uiContextAtom = jotai.atom((get) => {
+    const uiContext: UIContext = {
+        windowid: get(atoms.windowId),
+    };
+    return uiContext;
+}) as jotai.Atom<UIContext>;
+const clientAtom: jotai.Atom<Client> = jotai.atom((get) => {
+    const clientId = get(clientIdAtom);
+    if (clientId == null) {
+        return null;
+    }
+    return WOS.getStaticObjectValue(WOS.makeORef("client", clientId), get);
+});
+const windowDataAtom: jotai.Atom<WaveWindow> = jotai.atom((get) => {
+    const windowId = get(windowIdAtom);
+    if (windowId == null) {
+        return null;
+    }
+    return WOS.getStaticObjectValue(WOS.makeORef("window", windowId), get);
+});
+const workspaceAtom: jotai.Atom<Workspace> = jotai.atom((get) => {
+    const windowData = get(windowDataAtom);
+    if (windowData == null) {
+        return null;
+    }
+    return WOS.getStaticObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
+});
 
 const atoms = {
-    blockDataMap: blockDataMap,
-    clientAtom: jotai.atom(null) as jotai.PrimitiveAtom<wstore.Client>,
-
     // initialized in wave.ts (will not be null inside of application)
-    windowId: jotai.atom<string>(null) as jotai.PrimitiveAtom<string>,
-    windowData: jotai.atom<WaveWindow>(null) as jotai.PrimitiveAtom<WaveWindow>,
+    windowId: windowIdAtom,
+    clientId: clientIdAtom,
+    uiContext: uiContextAtom,
+    client: clientAtom,
+    waveWindow: windowDataAtom,
+    workspace: workspaceAtom,
+    blockDataMap: blockDataMap,
 };
 
 type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
 const blockSubjects = new Map<string, SubjectWithRef<any>>();
-
-function isBlank(str: string): boolean {
-    return str == null || str == "";
-}
-
-function makeORef(otype: string, oid: string): string {
-    if (isBlank(otype) || isBlank(oid)) {
-        return null;
-    }
-    return `${otype}:${oid}`;
-}
-
-function splitORef(oref: string): [string, string] {
-    let parts = oref.split(":");
-    if (parts.length != 2) {
-        throw new Error("invalid oref");
-    }
-    return [parts[0], parts[1]];
-}
 
 function getBlockSubject(blockId: string): SubjectWithRef<any> {
     let subject = blockSubjects.get(blockId);
@@ -95,94 +107,4 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
     return atom as jotai.Atom<T>;
 }
 
-function GetObject<T>(oref: string): Promise<T> {
-    let prtn = $Call.ByName(
-        "github.com/wavetermdev/thenextwave/pkg/service/objectservice.ObjectService.GetObject",
-        oref
-    );
-    return prtn;
-}
-
-function GetClientObject(): Promise<Client> {
-    let prtn = $Call.ByName(
-        "github.com/wavetermdev/thenextwave/pkg/service/objectservice.ObjectService.GetClientObject"
-    );
-    return prtn;
-}
-
-type WaveObjectValue<T> = {
-    pendingPromise: Promise<any>;
-    dataAtom: jotai.PrimitiveAtom<{ value: T; loading: boolean }>;
-};
-
-const waveObjectValueCache = new Map<string, WaveObjectValue<any>>();
-
-function clearWaveObjectCache() {
-    waveObjectValueCache.clear();
-}
-
-function createWaveValueObject<T>(oref: string): WaveObjectValue<T> {
-    const wov = { pendingPromise: null, dataAtom: null };
-    wov.dataAtom = jotai.atom({ value: null, loading: true });
-    let startTs = Date.now();
-    let localPromise = GetObject<T>(oref);
-    wov.pendingPromise = localPromise;
-    localPromise.then((val) => {
-        if (wov.pendingPromise != localPromise) {
-            return;
-        }
-        const [otype, oid] = splitORef(oref);
-        if (val != null) {
-            if (val["otype"] != otype) {
-                throw new Error("GetObject returned wrong type");
-            }
-            if (val["oid"] != oid) {
-                throw new Error("GetObject returned wrong id");
-            }
-        }
-        wov.pendingPromise = null;
-        globalStore.set(wov.dataAtom, { value: val, loading: false });
-        console.log("GetObject resolved", oref, val, Date.now() - startTs + "ms");
-    });
-    return wov;
-}
-
-function useWaveObjectValue<T>(oref: string): [T, boolean] {
-    console.log("useWaveObjectValue", oref);
-    let wov = waveObjectValueCache.get(oref);
-    if (wov == null) {
-        console.log("creating new wov", oref);
-        wov = createWaveValueObject(oref);
-        waveObjectValueCache.set(oref, wov);
-    }
-    const atomVal = jotai.useAtomValue(wov.dataAtom);
-    return [atomVal.value, atomVal.loading];
-}
-
-function useWaveObject<T>(oref: string): [T, boolean, (T) => void] {
-    console.log("useWaveObject", oref);
-    let wov = waveObjectValueCache.get(oref);
-    if (wov == null) {
-        wov = createWaveValueObject(oref);
-        waveObjectValueCache.set(oref, wov);
-    }
-    const [atomVal, setAtomVal] = jotai.useAtom(wov.dataAtom);
-    const simpleSet = (val: T) => {
-        setAtomVal({ value: val, loading: false });
-    };
-    return [atomVal.value, atomVal.loading, simpleSet];
-}
-
-export {
-    globalStore,
-    makeORef,
-    atoms,
-    getBlockSubject,
-    blockDataMap,
-    useBlockAtom,
-    GetObject,
-    GetClientObject,
-    useWaveObject,
-    useWaveObjectValue,
-    clearWaveObjectCache,
-};
+export { globalStore, atoms, getBlockSubject, blockDataMap, useBlockAtom, WOS };

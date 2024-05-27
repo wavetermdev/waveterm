@@ -9,6 +9,7 @@ import { Workspace } from "@/app/workspace/workspace";
 import { globalStore, atoms } from "@/store/global";
 
 import "../../public/style.less";
+import { CenteredDiv } from "./element/quickelems";
 
 const App = () => {
     return (
@@ -19,16 +20,16 @@ const App = () => {
 };
 
 const AppInner = () => {
-    const client = jotai.useAtomValue(atoms.clientAtom);
-    const windowData = jotai.useAtomValue(atoms.windowData);
+    const client = jotai.useAtomValue(atoms.client);
+    const windowData = jotai.useAtomValue(atoms.waveWindow);
     if (client == null || windowData == null) {
         return (
             <div className="mainapp">
-                <div>invalid configuration, client or window was not loaded</div>
+                <div className="titlebar"></div>
+                <CenteredDiv>invalid configuration, client or window was not loaded</CenteredDiv>
             </div>
         );
     }
-
     return (
         <div className="mainapp">
             <div className="titlebar"></div>
