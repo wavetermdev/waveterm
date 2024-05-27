@@ -335,6 +335,6 @@
     },
     {
       "command": "rightsidebar:open",
-      "keys": ["Cmd:Space"]
+      "keys": ["Cmd:Shift:Space"]
     }
   ]

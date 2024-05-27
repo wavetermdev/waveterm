@@ -53,40 +53,29 @@ class KeybindDevPane extends React.Component<{}, {}> {
     }
 }
 
-class SidebarKeyBindings extends React.Component<{ component: ChatSidebar; bindArrowUpDownKeys: boolean }, {}> {
+class SidebarKeyBindings extends React.Component<{ component: RightSideBar; isOpen: boolean }, {}> {
     componentDidMount(): void {
         const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
-        const inputModel = GlobalModel.inputModel;
-
-        keybindManager.registerKeybinding("pane", "rightsidebar", "generic:cancel", (waveEvent) => {
-            // component.onClose();
-            return true;
-        });
         keybindManager.registerKeybinding("pane", "rightsidebar", "rightsidebar:open", (waveEvent) => {
-            // component.onOpen();
-            return true;
+            return component.onOpen();
         });
     }
 
     componentDidUpdate(): void {
-        const { component, bindArrowUpDownKeys } = this.props;
-        const keybindManager = GlobalModel.keybindManager;
-        if (bindArrowUpDownKeys) {
-            keybindManager.registerKeybinding("pane", "aichat:arrowupdown", "generic:selectAbove", (waveEvent) => {
-                return component.onArrowUpPressed();
-            });
-            keybindManager.registerKeybinding("pane", "aichat:arrowupdown", "generic:selectBelow", (waveEvent) => {
-                return component.onArrowDownPressed();
+        if (this.props.isOpen) {
+            const { component } = this.props;
+            const keybindManager = GlobalModel.keybindManager;
+            keybindManager.registerKeybinding("pane", "rightsidebar:close", "generic:cancel", (waveEvent) => {
+                return component.onClose();
             });
         } else {
-            GlobalModel.keybindManager.unregisterDomain("aichat:arrowupdown");
+            GlobalModel.keybindManager.unregisterDomain("rightsidebar:close");
         }
     }
 
     componentWillUnmount(): void {
-        GlobalModel.keybindManager.unregisterDomain("aichat");
-        GlobalModel.keybindManager.unregisterDomain("aichat:arrowupdown");
+        GlobalModel.keybindManager.unregisterDomain("rightsidebar");
     }
 
     render() {
@@ -118,7 +107,14 @@ class RightSideBar extends React.Component<
 
     @boundMethod
     onOpen() {
-        // GlobalModel.rightSidebarModel.;
+        GlobalModel.rightSidebarModel.setCollapsed(false);
+        return true;
+    }
+
+    @boundMethod
+    onClose() {
+        GlobalModel.rightSidebarModel.setCollapsed(true);
+        return true;
     }
 
     render() {
@@ -134,6 +130,7 @@ class RightSideBar extends React.Component<
             >
                 {(toggleCollapse) => (
                     <React.Fragment>
+                        <SidebarKeyBindings component={this} isOpen={!isCollapsed} />
                         <div className="header">
                             <div className="rsb-modes">
                                 <div
