@@ -3,3 +3,4 @@ bin
 .git
 frontend/dist
 frontend/node_modules
+*.min.*
