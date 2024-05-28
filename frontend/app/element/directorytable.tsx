@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import React from "react";
-import { createColumnHelper, flexRender, getCoreRowModel, useReactTable, Table } from "@tanstack/react-table";
 import { FileInfo } from "@/bindings/fileservice";
+import { Table, createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import React from "react";
 
 import "./directorytable.less";
 

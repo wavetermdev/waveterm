@@ -1,13 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as React from "react";
-import * as jotai from "jotai";
 import { TabContent } from "@/app/tab/tab";
-import { clsx } from "clsx";
 import { atoms } from "@/store/global";
 import * as WOS from "@/store/wos";
-import { CenteredLoadingDiv, CenteredDiv } from "../element/quickelems";
+import { clsx } from "clsx";
+import * as jotai from "jotai";
+import { CenteredDiv } from "../element/quickelems";
 
 import "./workspace.less";
 

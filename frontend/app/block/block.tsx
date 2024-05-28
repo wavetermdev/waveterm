@@ -1,13 +1,12 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as React from "react";
-import * as jotai from "jotai";
-import * as WOS from "@/store/wos";
-import { TerminalView } from "@/app/view/term";
-import { PreviewView } from "@/app/view/preview";
 import { PlotView } from "@/app/view/plotview";
+import { PreviewView } from "@/app/view/preview";
+import { TerminalView } from "@/app/view/term";
 import { CenteredDiv } from "@/element/quickelems";
+import * as WOS from "@/store/wos";
+import * as React from "react";
 
 import "./block.less";
 

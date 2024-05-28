@@ -1,17 +1,17 @@
 body {
-	height: 100vh;
-	padding: 0;
+    height: 100vh;
+    padding: 0;
 }
 
 #storybook-root {
-	height: 100%;
+    height: 100%;
 }
 
 .grid-item {
-	background-color: aquamarine;
-	border: 1px black solid;
+    background-color: aquamarine;
+    border: 1px black solid;
 
-	&.react-grid-placeholder {
-		background-color: orange;
-	}
+    &.react-grid-placeholder {
+        background-color: orange;
+    }
 }

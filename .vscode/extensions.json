@@ -1,9 +1,9 @@
 {
-	"recommendations": [
-		"esbenp.prettier-vscode",
-		"golang.go",
-		"dbaeumer.vscode-eslint",
-		"vitest.explorer",
-		"task.vscode-task"
-	]
+    "recommendations": [
+        "esbenp.prettier-vscode",
+        "golang.go",
+        "dbaeumer.vscode-eslint",
+        "vitest.explorer",
+        "task.vscode-task"
+    ]
 }

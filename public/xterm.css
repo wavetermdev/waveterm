@@ -79,7 +79,7 @@
 .xterm .composition-view {
     /* TODO: Composition position got messed up somewhere */
     background: #000;
-    color: #FFF;
+    color: #fff;
     display: none;
     position: absolute;
     white-space: nowrap;
@@ -153,12 +153,12 @@
 }
 
 .xterm .xterm-accessibility-tree:not(.debug) *::selection {
-  color: transparent;
+    color: transparent;
 }
 
 .xterm .xterm-accessibility-tree {
-  user-select: text;
-  white-space: pre;
+    user-select: text;
+    white-space: pre;
 }
 
 .xterm .live-region {
@@ -175,33 +175,53 @@
     opacity: 1 !important;
 }
 
-.xterm-underline-1 { text-decoration: underline; }
-.xterm-underline-2 { text-decoration: double underline; }
-.xterm-underline-3 { text-decoration: wavy underline; }
-.xterm-underline-4 { text-decoration: dotted underline; }
-.xterm-underline-5 { text-decoration: dashed underline; }
+.xterm-underline-1 {
+    text-decoration: underline;
+}
+.xterm-underline-2 {
+    text-decoration: double underline;
+}
+.xterm-underline-3 {
+    text-decoration: wavy underline;
+}
+.xterm-underline-4 {
+    text-decoration: dotted underline;
+}
+.xterm-underline-5 {
+    text-decoration: dashed underline;
+}
 
 .xterm-overline {
     text-decoration: overline;
 }
 
-.xterm-overline.xterm-underline-1 { text-decoration: overline underline; }
-.xterm-overline.xterm-underline-2 { text-decoration: overline double underline; }
-.xterm-overline.xterm-underline-3 { text-decoration: overline wavy underline; }
-.xterm-overline.xterm-underline-4 { text-decoration: overline dotted underline; }
-.xterm-overline.xterm-underline-5 { text-decoration: overline dashed underline; }
+.xterm-overline.xterm-underline-1 {
+    text-decoration: overline underline;
+}
+.xterm-overline.xterm-underline-2 {
+    text-decoration: overline double underline;
+}
+.xterm-overline.xterm-underline-3 {
+    text-decoration: overline wavy underline;
+}
+.xterm-overline.xterm-underline-4 {
+    text-decoration: overline dotted underline;
+}
+.xterm-overline.xterm-underline-5 {
+    text-decoration: overline dashed underline;
+}
 
 .xterm-strikethrough {
     text-decoration: line-through;
 }
 
 .xterm-screen .xterm-decoration-container .xterm-decoration {
-	z-index: 6;
-	position: absolute;
+    z-index: 6;
+    position: absolute;
 }
 
 .xterm-screen .xterm-decoration-container .xterm-decoration.xterm-decoration-top-layer {
-	z-index: 7;
+    z-index: 7;
 }
 
 .xterm-decoration-overview-ruler {
