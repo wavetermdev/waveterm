@@ -27,21 +27,21 @@ const clientAtom: jotai.Atom<Client> = jotai.atom((get) => {
     if (clientId == null) {
         return null;
     }
-    return WOS.getStaticObjectValue(WOS.makeORef("client", clientId), get);
+    return WOS.getObjectValue(WOS.makeORef("client", clientId), get);
 });
 const windowDataAtom: jotai.Atom<WaveWindow> = jotai.atom((get) => {
     const windowId = get(windowIdAtom);
     if (windowId == null) {
         return null;
     }
-    return WOS.getStaticObjectValue(WOS.makeORef("window", windowId), get);
+    return WOS.getObjectValue(WOS.makeORef("window", windowId), get);
 });
 const workspaceAtom: jotai.Atom<Workspace> = jotai.atom((get) => {
     const windowData = get(windowDataAtom);
     if (windowData == null) {
         return null;
     }
-    return WOS.getStaticObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
+    return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
 });
 
 const atoms = {

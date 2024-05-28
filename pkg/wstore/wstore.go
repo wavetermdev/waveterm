@@ -6,14 +6,11 @@ package wstore
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"reflect"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
@@ -137,146 +134,6 @@ func ContextUpdatesRollbackTx(ctx context.Context) {
 	updates.UpdatesStack = updates.UpdatesStack[:len(updates.UpdatesStack)-1]
 }
 
-type WaveObjTombstone struct {
-	OType string `json:"otype"`
-	OID   string `json:"oid"`
-}
-
-const (
-	UpdateType_Update = "update"
-	UpdateType_Delete = "delete"
-)
-
-type WaveObjUpdate struct {
-	UpdateType string          `json:"updatetype"`
-	OType      string          `json:"otype"`
-	OID        string          `json:"oid"`
-	Obj        waveobj.WaveObj `json:"obj,omitempty"`
-}
-
-func (update WaveObjUpdate) MarshalJSON() ([]byte, error) {
-	rtn := make(map[string]any)
-	rtn["updatetype"] = update.UpdateType
-	rtn["otype"] = update.OType
-	rtn["oid"] = update.OID
-	if update.Obj != nil {
-		var err error
-		rtn["obj"], err = waveobj.ToJsonMap(update.Obj)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return json.Marshal(rtn)
-}
-
-type UIContext struct {
-	WindowId    string `json:"windowid"`
-	ActiveTabId string `json:"activetabid"`
-}
-
-type Client struct {
-	OID          string `json:"oid"`
-	Version      int    `json:"version"`
-	MainWindowId string `json:"mainwindowid"`
-}
-
-func (*Client) GetOType() string {
-	return "client"
-}
-
-func AllWaveObjTypes() []reflect.Type {
-	return []reflect.Type{
-		reflect.TypeOf(&Client{}),
-		reflect.TypeOf(&Window{}),
-		reflect.TypeOf(&Workspace{}),
-		reflect.TypeOf(&Tab{}),
-		reflect.TypeOf(&Block{}),
-	}
-}
-
-// stores the ui-context of the window
-// workspaceid, active tab, active block within each tab, window size, etc.
-type Window struct {
-	OID            string            `json:"oid"`
-	Version        int               `json:"version"`
-	WorkspaceId    string            `json:"workspaceid"`
-	ActiveTabId    string            `json:"activetabid"`
-	ActiveBlockMap map[string]string `json:"activeblockmap"` // map from tabid to blockid
-	Pos            Point             `json:"pos"`
-	WinSize        WinSize           `json:"winsize"`
-	LastFocusTs    int64             `json:"lastfocusts"`
-}
-
-func (*Window) GetOType() string {
-	return "window"
-}
-
-type Workspace struct {
-	OID     string   `json:"oid"`
-	Version int      `json:"version"`
-	Name    string   `json:"name"`
-	TabIds  []string `json:"tabids"`
-}
-
-func (*Workspace) GetOType() string {
-	return "workspace"
-}
-
-type Tab struct {
-	OID      string   `json:"oid"`
-	Version  int      `json:"version"`
-	Name     string   `json:"name"`
-	BlockIds []string `json:"blockids"`
-}
-
-func (*Tab) GetOType() string {
-	return "tab"
-}
-
-type FileDef struct {
-	FileType string         `json:"filetype,omitempty"`
-	Path     string         `json:"path,omitempty"`
-	Url      string         `json:"url,omitempty"`
-	Content  string         `json:"content,omitempty"`
-	Meta     map[string]any `json:"meta,omitempty"`
-}
-
-type BlockDef struct {
-	Controller string              `json:"controller,omitempty"`
-	View       string              `json:"view,omitempty"`
-	Files      map[string]*FileDef `json:"files,omitempty"`
-	Meta       map[string]any      `json:"meta,omitempty"`
-}
-
-type RuntimeOpts struct {
-	TermSize shellexec.TermSize `json:"termsize,omitempty"`
-	WinSize  WinSize            `json:"winsize,omitempty"`
-}
-
-type Point struct {
-	X int `json:"x"`
-	Y int `json:"y"`
-}
-
-type WinSize struct {
-	Width  int `json:"width"`
-	Height int `json:"height"`
-}
-
-type Block struct {
-	OID         string         `json:"oid"`
-	Version     int            `json:"version"`
-	BlockDef    *BlockDef      `json:"blockdef"`
-	Controller  string         `json:"controller"`
-	View        string         `json:"view"`
-	Meta        map[string]any `json:"meta,omitempty"`
-	RuntimeOpts *RuntimeOpts   `json:"runtimeopts,omitempty"`
-}
-
-func (*Block) GetOType() string {
-	return "block"
-}
-
 func CreateTab(ctx context.Context, workspaceId string, name string) (*Tab, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*Tab, error) {
 		ws, _ := DBGet[*Workspace](tx.Context(), workspaceId)
@@ -395,20 +252,37 @@ func CloseTab(ctx context.Context, workspaceId string, tabId string) error {
 	})
 }
 
-func UpdateBlockMeta(ctx context.Context, blockId string, meta map[string]any) error {
+func UpdateMeta(ctx context.Context, oref waveobj.ORef, meta map[string]any) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
-		block, _ := DBGet[*Block](tx.Context(), blockId)
-		if block == nil {
-			return fmt.Errorf("block not found: %q", blockId)
+		obj, _ := DBGetORef(tx.Context(), oref)
+		if obj == nil {
+			return fmt.Errorf("object not found: %q", oref)
+		}
+		// obj.SetMeta(meta)
+		DBUpdate(tx.Context(), obj)
+		return nil
+	})
+}
+
+func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta map[string]any) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		obj, _ := DBGetORef(tx.Context(), oref)
+		if obj == nil {
+			return fmt.Errorf("object not found: %q", oref)
+		}
+		objMeta := waveobj.GetMeta(obj)
+		if objMeta == nil {
+			objMeta = make(map[string]any)
 		}
 		for k, v := range meta {
 			if v == nil {
-				delete(block.Meta, k)
+				delete(objMeta, k)
 				continue
 			}
-			block.Meta[k] = v
+			objMeta[k] = v
 		}
-		DBUpdate(tx.Context(), block)
+		waveobj.SetMeta(obj, objMeta)
+		DBUpdate(tx.Context(), obj)
 		return nil
 	})
 }

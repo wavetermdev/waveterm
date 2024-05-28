@@ -72,6 +72,14 @@ func DBGetSingletonByType(ctx context.Context, otype string) (waveobj.WaveObj, e
 	})
 }
 
+func DBExistsORef(ctx context.Context, oref waveobj.ORef) (bool, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (bool, error) {
+		table := tableNameFromOType(oref.OType)
+		query := fmt.Sprintf("SELECT oid FROM %s WHERE oid = ?", table)
+		return tx.Exists(query, oref.OID), nil
+	})
+}
+
 func DBGet[T waveobj.WaveObj](ctx context.Context, id string) (T, error) {
 	rtn, err := DBGetORef(ctx, waveobj.ORef{OType: getOTypeGen[T](), OID: id})
 	return genericCastWithErr[T](rtn, err)

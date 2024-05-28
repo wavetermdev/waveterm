@@ -4,11 +4,9 @@
 package waveobj
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 	"sync"
 
 	"github.com/mitchellh/mapstructure"
@@ -18,14 +16,20 @@ const (
 	OTypeKeyName   = "otype"
 	OIDKeyName     = "oid"
 	VersionKeyName = "version"
+	MetaKeyName    = "meta"
 
 	OIDGoFieldName     = "OID"
 	VersionGoFieldName = "Version"
+	MetaGoFieldName    = "Meta"
 )
 
 type ORef struct {
-	OType string `json:"otype"`
-	OID   string `json:"oid"`
+	OType string `json:"otype" mapstructure:"otype"`
+	OID   string `json:"oid" mapstructure:"oid"`
+}
+
+func (oref ORef) String() string {
+	return fmt.Sprintf("%s:%s", oref.OType, oref.OID)
 }
 
 type WaveObj interface {
@@ -36,6 +40,7 @@ type waveObjDesc struct {
 	RType        reflect.Type
 	OIDField     reflect.StructField
 	VersionField reflect.StructField
+	MetaField    reflect.StructField
 }
 
 var waveObjMap = sync.Map{}
@@ -73,6 +78,15 @@ func RegisterType(rtype reflect.Type) {
 	if versionField.Tag.Get("json") != VersionKeyName {
 		panic(fmt.Sprintf("Version field json tag must be %q for %v", VersionKeyName, rtype))
 	}
+	metaField, found := rtype.Elem().FieldByName(MetaGoFieldName)
+	if !found {
+		panic(fmt.Sprintf("missing Meta field for %v", rtype))
+	}
+	if metaField.Type.Kind() != reflect.Map ||
+		metaField.Type.Elem().Kind() != reflect.Interface ||
+		metaField.Type.Key().Kind() != reflect.String {
+		panic(fmt.Sprintf("Meta field must be map[string]any for %v", rtype))
+	}
 	_, found = waveObjMap.Load(otype)
 	if found {
 		panic(fmt.Sprintf("otype %q already registered", otype))
@@ -81,6 +95,7 @@ func RegisterType(rtype reflect.Type) {
 		RType:        rtype,
 		OIDField:     oidField,
 		VersionField: versionField,
+		MetaField:    metaField,
 	})
 }
 
@@ -124,6 +139,22 @@ func SetVersion(waveObj WaveObj, version int) {
 	reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.VersionField.Index).SetInt(int64(version))
 }
 
+func GetMeta(waveObj WaveObj) map[string]any {
+	desc := getWaveObjDesc(waveObj.GetOType())
+	if desc == nil {
+		return nil
+	}
+	return reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.MetaField.Index).Interface().(map[string]any)
+}
+
+func SetMeta(waveObj WaveObj, meta map[string]any) {
+	desc := getWaveObjDesc(waveObj.GetOType())
+	if desc == nil {
+		return
+	}
+	reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.MetaField.Index).Set(reflect.ValueOf(meta))
+}
+
 func ToJsonMap(w WaveObj) (map[string]any, error) {
 	m := make(map[string]any)
 	dconfig := &mapstructure.DecoderConfig{
@@ -158,6 +189,10 @@ func FromJson(data []byte) (WaveObj, error) {
 	if err != nil {
 		return nil, err
 	}
+	return FromJsonMap(m)
+}
+
+func FromJsonMap(m map[string]any) (WaveObj, error) {
 	otype, ok := m[OTypeKeyName].(string)
 	if !ok {
 		return nil, fmt.Errorf("missing otype")
@@ -182,6 +217,16 @@ func FromJson(data []byte) (WaveObj, error) {
 	return wobj, nil
 }
 
+func ORefFromMap(m map[string]any) (*ORef, error) {
+	oref := ORef{}
+	err := mapstructure.Decode(m, &oref)
+	if err != nil {
+		return nil, err
+	}
+	return &oref, nil
+
+}
+
 func FromJsonGen[T WaveObj](data []byte) (T, error) {
 	obj, err := FromJson(data)
 	if err != nil {
@@ -194,153 +239,4 @@ func FromJsonGen[T WaveObj](data []byte) (T, error) {
 		return zero, fmt.Errorf("type mismatch got %T, expected %T", obj, zero)
 	}
 	return rtn, nil
-}
-
-func getTSFieldName(field reflect.StructField) string {
-	jsonTag := field.Tag.Get("json")
-	if jsonTag != "" {
-		parts := strings.Split(jsonTag, ",")
-		namePart := parts[0]
-		if namePart != "" {
-			if namePart == "-" {
-				return ""
-			}
-			return namePart
-		}
-		// if namePart is empty, still uses default
-	}
-	return field.Name
-}
-
-func isFieldOmitEmpty(field reflect.StructField) bool {
-	jsonTag := field.Tag.Get("json")
-	if jsonTag != "" {
-		parts := strings.Split(jsonTag, ",")
-		if len(parts) > 1 {
-			for _, part := range parts[1:] {
-				if part == "omitempty" {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func typeToTSType(t reflect.Type) (string, []reflect.Type) {
-	switch t.Kind() {
-	case reflect.String:
-		return "string", nil
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		reflect.Float32, reflect.Float64:
-		return "number", nil
-	case reflect.Bool:
-		return "boolean", nil
-	case reflect.Slice, reflect.Array:
-		elemType, subTypes := typeToTSType(t.Elem())
-		if elemType == "" {
-			return "", nil
-		}
-		return fmt.Sprintf("%s[]", elemType), subTypes
-	case reflect.Map:
-		if t.Key().Kind() != reflect.String {
-			return "", nil
-		}
-		elemType, subTypes := typeToTSType(t.Elem())
-		if elemType == "" {
-			return "", nil
-		}
-		return fmt.Sprintf("{[key: string]: %s}", elemType), subTypes
-	case reflect.Struct:
-		return t.Name(), []reflect.Type{t}
-	case reflect.Ptr:
-		return typeToTSType(t.Elem())
-	case reflect.Interface:
-		return "any", nil
-	default:
-		return "", nil
-	}
-}
-
-var tsRenameMap = map[string]string{
-	"Window": "WaveWindow",
-}
-
-func generateTSTypeInternal(rtype reflect.Type) (string, []reflect.Type) {
-	var buf bytes.Buffer
-	waveObjType := reflect.TypeOf((*WaveObj)(nil)).Elem()
-	tsTypeName := rtype.Name()
-	if tsRename, ok := tsRenameMap[tsTypeName]; ok {
-		tsTypeName = tsRename
-	}
-	var isWaveObj bool
-	if rtype.Implements(waveObjType) || reflect.PointerTo(rtype).Implements(waveObjType) {
-		isWaveObj = true
-		buf.WriteString(fmt.Sprintf("type %s = WaveObj & {\n", tsTypeName))
-	} else {
-		buf.WriteString(fmt.Sprintf("type %s = {\n", tsTypeName))
-	}
-	var subTypes []reflect.Type
-	for i := 0; i < rtype.NumField(); i++ {
-		field := rtype.Field(i)
-		if field.PkgPath != "" {
-			continue
-		}
-		fieldName := getTSFieldName(field)
-		if fieldName == "" {
-			continue
-		}
-		if isWaveObj && (fieldName == OTypeKeyName || fieldName == OIDKeyName || fieldName == VersionKeyName) {
-			continue
-		}
-		optMarker := ""
-		if isFieldOmitEmpty(field) {
-			optMarker = "?"
-		}
-		tsTypeTag := field.Tag.Get("tstype")
-		if tsTypeTag != "" {
-			buf.WriteString(fmt.Sprintf("  %s%s: %s;\n", fieldName, optMarker, tsTypeTag))
-			continue
-		}
-		tsType, fieldSubTypes := typeToTSType(field.Type)
-		if tsType == "" {
-			continue
-		}
-		subTypes = append(subTypes, fieldSubTypes...)
-		buf.WriteString(fmt.Sprintf("  %s%s: %s;\n", fieldName, optMarker, tsType))
-	}
-	buf.WriteString("};\n")
-	return buf.String(), subTypes
-}
-
-func GenerateWaveObjTSType() string {
-	var buf bytes.Buffer
-	buf.WriteString("type WaveObj = {\n")
-	buf.WriteString("  otype: string;\n")
-	buf.WriteString("  oid: string;\n")
-	buf.WriteString("  version: number;\n")
-	buf.WriteString("};\n")
-	return buf.String()
-}
-
-func GenerateTSType(rtype reflect.Type, tsTypesMap map[reflect.Type]string) {
-	if rtype == nil {
-		return
-	}
-	if rtype.Kind() == reflect.Ptr {
-		rtype = rtype.Elem()
-	}
-	if _, ok := tsTypesMap[rtype]; ok {
-		return
-	}
-	if rtype == waveObjRType {
-		tsTypesMap[rtype] = GenerateWaveObjTSType()
-		return
-	}
-	tsType, subTypes := generateTSTypeInternal(rtype)
-	tsTypesMap[rtype] = tsType
-	for _, subType := range subTypes {
-		GenerateTSType(subType, tsTypesMap)
-	}
 }

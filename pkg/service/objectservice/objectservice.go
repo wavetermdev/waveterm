@@ -180,13 +180,47 @@ func (svc *ObjectService) CloseTab(uiContext wstore.UIContext, tabId string) (an
 	return updatesRtn(ctx, nil)
 }
 
-func (svc *ObjectService) UpdateBlockMeta(uiContext wstore.UIContext, blockId string, meta map[string]any) (any, error) {
+func (svc *ObjectService) UpdateObjectMeta(uiContext wstore.UIContext, orefStr string, meta map[string]any) (any, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
-	err := wstore.UpdateBlockMeta(ctx, blockId, meta)
+	oref, err := parseORef(orefStr)
 	if err != nil {
-		return nil, fmt.Errorf("error merging block meta: %w", err)
+		return nil, fmt.Errorf("error parsing object reference: %w", err)
+	}
+	err = wstore.UpdateObjectMeta(ctx, *oref, meta)
+	if err != nil {
+		return nil, fmt.Errorf("error updateing %q meta: %w", orefStr, err)
 	}
 	return updatesRtn(ctx, nil)
+}
+
+func (svc *ObjectService) UpdateObject(uiContext wstore.UIContext, objData map[string]any, returnUpdates bool) (any, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = wstore.ContextWithUpdates(ctx)
+
+	oref, err := waveobj.ORefFromMap(objData)
+	if err != nil {
+		return nil, fmt.Errorf("objData is not a valid object, requires otype and oid: %w", err)
+	}
+	found, err := wstore.DBExistsORef(ctx, *oref)
+	if err != nil {
+		return nil, fmt.Errorf("error getting object: %w", err)
+	}
+	if !found {
+		return nil, fmt.Errorf("object not found: %s", oref)
+	}
+	newObj, err := waveobj.FromJsonMap(objData)
+	if err != nil {
+		return nil, fmt.Errorf("error converting data to valid wave object: %w", err)
+	}
+	err = wstore.DBUpdate(ctx, newObj)
+	if err != nil {
+		return nil, fmt.Errorf("error updating object: %w", err)
+	}
+	if returnUpdates {
+		return updatesRtn(ctx, nil)
+	}
+	return nil, nil
 }

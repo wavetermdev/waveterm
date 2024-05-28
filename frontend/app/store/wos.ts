@@ -147,7 +147,7 @@ function useWaveObjectValue<T>(oref: string): [T, boolean] {
     return [atomVal.value, atomVal.loading];
 }
 
-function useWaveObject<T>(oref: string): [T, boolean, (T) => void] {
+function useWaveObject<T extends WaveObj>(oref: string): [T, boolean, (T) => void] {
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
         wov = createWaveValueObject(oref, true);
@@ -162,6 +162,7 @@ function useWaveObject<T>(oref: string): [T, boolean, (T) => void] {
     const [atomVal, setAtomVal] = jotai.useAtom(wov.dataAtom);
     const simpleSet = (val: T) => {
         setAtomVal({ value: val, loading: false });
+        UpdateObject(val, false);
     };
     return [atomVal.value, atomVal.loading, simpleSet];
 }
@@ -243,13 +244,37 @@ function wrapObjectServiceCall<T>(fnName: string, ...args: any[]): Promise<T> {
     return prtn;
 }
 
-function getStaticObjectValue<T>(oref: string, getFn: jotai.Getter): T {
+// gets the value of a WaveObject from the cache.
+// should provide getFn if it is available (e.g. inside of a jotai atom)
+// otherwise it will use the globalStore.get function
+function getObjectValue<T>(oref: string, getFn?: jotai.Getter): T {
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
         return null;
     }
+    if (getFn == null) {
+        getFn = globalStore.get;
+    }
     const atomVal = getFn(wov.dataAtom);
     return atomVal.value;
+}
+
+// sets the value of a WaveObject in the cache.
+// should provide setFn if it is available (e.g. inside of a jotai atom)
+// otherwise it will use the globalStore.set function
+function setObjectValue<T>(value: WaveObj, setFn?: jotai.Setter, pushToServer?: boolean) {
+    const oref = makeORef(value.otype, value.oid);
+    let wov = waveObjectValueCache.get(oref);
+    if (wov == null) {
+        return;
+    }
+    if (setFn == null) {
+        setFn = globalStore.set;
+    }
+    setFn(wov.dataAtom, { value: value, loading: false });
+    if (pushToServer) {
+        UpdateObject(value, false);
+    }
 }
 
 export function AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<{ tabId: string }> {
@@ -272,16 +297,21 @@ export function CloseTab(tabId: string): Promise<void> {
     return wrapObjectServiceCall("CloseTab", tabId);
 }
 
-export function UpdateBlockMeta(blockId: string, meta: MetadataType): Promise<void> {
-    return wrapObjectServiceCall("UpdateBlockMeta", blockId, meta);
+export function UpdateObjectMeta(blockId: string, meta: MetadataType): Promise<void> {
+    return wrapObjectServiceCall("UpdateObjectMeta", blockId, meta);
+}
+
+export function UpdateObject(waveObj: WaveObj, returnUpdates: boolean): Promise<WaveObjUpdate[]> {
+    return wrapObjectServiceCall("UpdateObject", waveObj, returnUpdates);
 }
 
 export {
     cleanWaveObjectCache,
     clearWaveObjectCache,
-    getStaticObjectValue,
+    getObjectValue,
     loadAndPinWaveObject,
     makeORef,
+    setObjectValue,
     updateWaveObject,
     updateWaveObjects,
     useWaveObject,
