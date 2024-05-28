@@ -272,6 +272,10 @@ export function CloseTab(tabId: string): Promise<void> {
     return wrapObjectServiceCall("CloseTab", tabId);
 }
 
+export function UpdateBlockMeta(blockId: string, meta: MetadataType): Promise<void> {
+    return wrapObjectServiceCall("UpdateBlockMeta", blockId, meta);
+}
+
 export {
     cleanWaveObjectCache,
     clearWaveObjectCache,

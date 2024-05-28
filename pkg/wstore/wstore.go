@@ -395,6 +395,24 @@ func CloseTab(ctx context.Context, workspaceId string, tabId string) error {
 	})
 }
 
+func UpdateBlockMeta(ctx context.Context, blockId string, meta map[string]any) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		block, _ := DBGet[*Block](tx.Context(), blockId)
+		if block == nil {
+			return fmt.Errorf("block not found: %q", blockId)
+		}
+		for k, v := range meta {
+			if v == nil {
+				delete(block.Meta, k)
+				continue
+			}
+			block.Meta[k] = v
+		}
+		DBUpdate(tx.Context(), block)
+		return nil
+	})
+}
+
 func EnsureInitialData() error {
 	// does not need to run in a transaction since it is called on startup
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)

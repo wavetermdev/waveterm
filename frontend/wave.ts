@@ -16,6 +16,8 @@ loadFonts();
 
 console.log("Wave Starting");
 
+(window as any).WOS = WOS;
+
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("DOMContentLoaded");
     // ensures client/window are loaded into the cache before rendering

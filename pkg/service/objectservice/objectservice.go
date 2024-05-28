@@ -179,3 +179,14 @@ func (svc *ObjectService) CloseTab(uiContext wstore.UIContext, tabId string) (an
 	}
 	return updatesRtn(ctx, nil)
 }
+
+func (svc *ObjectService) UpdateBlockMeta(uiContext wstore.UIContext, blockId string, meta map[string]any) (any, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = wstore.ContextWithUpdates(ctx)
+	err := wstore.UpdateBlockMeta(ctx, blockId, meta)
+	if err != nil {
+		return nil, fmt.Errorf("error merging block meta: %w", err)
+	}
+	return updatesRtn(ctx, nil)
+}

@@ -7,6 +7,8 @@ declare global {
         activetabid: string;
     };
 
+    type MetadataType = { [key: string]: any };
+
     type ORef = {
         otype: string;
         oid: string;
