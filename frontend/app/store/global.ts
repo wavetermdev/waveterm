@@ -90,6 +90,22 @@ Events.On("block:ptydata", (event: any) => {
     subject.next(data);
 });
 
+const blockCache = new Map<string, Map<string, any>>();
+
+function useBlockCache<T>(blockId: string, name: string, makeFn: () => T): T {
+    let blockMap = blockCache.get(blockId);
+    if (blockMap == null) {
+        blockMap = new Map<string, any>();
+        blockCache.set(blockId, blockMap);
+    }
+    let value = blockMap.get(name);
+    if (value == null) {
+        value = makeFn();
+        blockMap.set(name, value);
+    }
+    return value as T;
+}
+
 const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
 
 function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom<T>): jotai.Atom<T> {
@@ -107,4 +123,4 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
     return atom as jotai.Atom<T>;
 }
 
-export { WOS, atoms, getBlockSubject, globalStore, useBlockAtom };
+export { WOS, atoms, getBlockSubject, globalStore, useBlockAtom, useBlockCache };
