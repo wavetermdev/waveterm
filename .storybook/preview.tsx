@@ -7,21 +7,21 @@ import { HTML5Backend } from "react-dnd-html5-backend";
 import "./global.css";
 
 const preview: Preview = {
-	parameters: {
-		controls: {
-			matchers: {
-				color: /(background|color)$/i,
-				date: /Date$/i,
-			},
-		},
-	},
-	decorators: [
-		(Story) => (
-			<DndProvider backend={HTML5Backend}>
-				<Story />
-			</DndProvider>
-		),
-	],
+    parameters: {
+        controls: {
+            matchers: {
+                color: /(background|color)$/i,
+                date: /Date$/i,
+            },
+        },
+    },
+    decorators: [
+        (Story) => (
+            <DndProvider backend={HTML5Backend}>
+                <Story />
+            </DndProvider>
+        ),
+    ],
 };
 
 export default preview;

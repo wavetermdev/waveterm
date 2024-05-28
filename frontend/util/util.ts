@@ -22,4 +22,4 @@ function base64ToArray(b64: string): Uint8Array {
     return rtnArr;
 }
 
-export { base64ToString, stringToBase64, base64ToArray };
+export { base64ToArray, base64ToString, stringToBase64 };

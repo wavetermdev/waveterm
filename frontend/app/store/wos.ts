@@ -3,11 +3,10 @@
 
 // WaveObjectStore
 
-import * as React from "react";
+import { Call as $Call, Events } from "@wailsio/runtime";
 import * as jotai from "jotai";
-import { Events } from "@wailsio/runtime";
-import { Call as $Call } from "@wailsio/runtime";
-import { globalStore, atoms } from "./global";
+import * as React from "react";
+import { atoms, globalStore } from "./global";
 
 type WaveObjectDataItemType<T extends WaveObj> = {
     value: T;
@@ -274,14 +273,14 @@ export function CloseTab(tabId: string): Promise<void> {
 }
 
 export {
+    cleanWaveObjectCache,
+    clearWaveObjectCache,
+    getStaticObjectValue,
+    loadAndPinWaveObject,
     makeORef,
+    updateWaveObject,
+    updateWaveObjects,
     useWaveObject,
     useWaveObjectValue,
     useWaveObjectValueWithSuspense,
-    loadAndPinWaveObject,
-    clearWaveObjectCache,
-    updateWaveObject,
-    updateWaveObjects,
-    cleanWaveObjectCache,
-    getStaticObjectValue,
 };

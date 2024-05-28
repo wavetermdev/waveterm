@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Events } from "@wailsio/runtime";
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
-import { Events } from "@wailsio/runtime";
 import * as WOS from "./wos";
 
 const globalStore = jotai.createStore();
@@ -107,4 +107,4 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
     return atom as jotai.Atom<T>;
 }
 
-export { globalStore, atoms, getBlockSubject, useBlockAtom, WOS };
+export { WOS, atoms, getBlockSubject, globalStore, useBlockAtom };

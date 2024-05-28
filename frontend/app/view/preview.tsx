@@ -1,18 +1,16 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as React from "react";
-import * as jotai from "jotai";
-import { atoms, useBlockAtom } from "@/store/global";
-import { Markdown } from "@/element/markdown";
-import { FileService, FileInfo, FullFile } from "@/bindings/fileservice";
-import * as util from "@/util/util";
-import { CenteredDiv } from "../element/quickelems";
+import { FileInfo, FileService, FullFile } from "@/bindings/fileservice";
 import { DirectoryTable } from "@/element/directorytable";
+import { Markdown } from "@/element/markdown";
+import { useBlockAtom } from "@/store/global";
 import * as WOS from "@/store/wos";
+import * as util from "@/util/util";
+import * as jotai from "jotai";
+import { CenteredDiv } from "../element/quickelems";
 
 import "./view.less";
-import { first } from "rxjs";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 

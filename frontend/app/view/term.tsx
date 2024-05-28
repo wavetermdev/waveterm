@@ -1,15 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import * as React from "react";
-import * as jotai from "jotai";
-import { Terminal } from "@xterm/xterm";
-import type { ITheme } from "@xterm/xterm";
-import { FitAddon } from "@xterm/addon-fit";
-import { Button } from "@/element/button";
 import { BlockService } from "@/bindings/blockservice";
 import { getBlockSubject } from "@/store/global";
 import { base64ToArray } from "@/util/util";
+import { FitAddon } from "@xterm/addon-fit";
+import type { ITheme } from "@xterm/xterm";
+import { Terminal } from "@xterm/xterm";
+import * as React from "react";
 
 import "./view.less";
 import "/public/xterm.css";
