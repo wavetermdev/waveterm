@@ -47,7 +47,10 @@ class CodeBlockMarkdown extends React.Component<
         let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
         let inputModel = GlobalModel.inputModel;
         clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
-            inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
+            const sel = window.getSelection();
+            if (sel?.toString().length == 0) {
+                inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
+            }
         };
         let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
         return (

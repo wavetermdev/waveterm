@@ -22,8 +22,8 @@ jobs:
             - uses: dashcamio/testdriver@main
               id: testdriver
               with:
-                  version: v2.10.2
-                  prerun: |
+                version: v2.12.12
+                prerun: |
                       rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt
                       cd ~/actions-runner/_work/testdriver/testdriver/
                       brew install go
@@ -43,7 +43,7 @@ jobs:
                       scripthaus run electron 1>/dev/null 2>&1 &
                       echo "Electron Done"
                       exit
-                  prompt: |
+                prompt: |
                       1. wait 10 seconds
                       1. click "Get Started"
                       1. validate that overlapping text does not appear in the application
