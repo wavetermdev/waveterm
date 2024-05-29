@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -107,6 +108,19 @@ func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string)
 	err := wstore.SetActiveTab(ctx, uiContext.WindowId, tabId)
 	if err != nil {
 		return nil, fmt.Errorf("error setting active tab: %w", err)
+	}
+	// check all blocks in tab and start controllers (if necessary)
+	tab, err := wstore.DBMustGet[*wstore.Tab](ctx, tabId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting tab: %w", err)
+	}
+	for _, blockId := range tab.BlockIds {
+		blockErr := blockcontroller.StartBlockController(ctx, blockId)
+		if blockErr != nil {
+			// we don't want to fail the set active tab operation if a block controller fails to start
+			log.Printf("error starting block controller (blockid:%s): %w", blockId, blockErr)
+			continue
+		}
 	}
 	return updatesRtn(ctx, nil)
 }
