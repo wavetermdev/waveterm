@@ -118,7 +118,7 @@ func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string)
 		blockErr := blockcontroller.StartBlockController(ctx, blockId)
 		if blockErr != nil {
 			// we don't want to fail the set active tab operation if a block controller fails to start
-			log.Printf("error starting block controller (blockid:%s): %w", blockId, blockErr)
+			log.Printf("error starting block controller (blockid:%s): %v", blockId, blockErr)
 			continue
 		}
 	}
