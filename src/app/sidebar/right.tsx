@@ -57,21 +57,17 @@ class SidebarKeyBindings extends React.Component<{ component: RightSideBar; isOp
     componentDidMount(): void {
         const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
-        keybindManager.registerKeybinding("pane", "rightsidebar", "rightsidebar:open", (waveEvent) => {
-            return component.onOpen();
+        keybindManager.registerKeybinding("pane", "rightsidebar", "rightsidebar:toggle", (waveEvent) => {
+            if (this.props.isOpen) {
+                return component.onClose();
+            } else {
+                return component.onOpen();
+            }
         });
     }
 
     componentDidUpdate(): void {
-        if (this.props.isOpen) {
-            const { component } = this.props;
-            const keybindManager = GlobalModel.keybindManager;
-            keybindManager.registerKeybinding("pane", "rightsidebar:close", "generic:cancel", (waveEvent) => {
-                return component.onClose();
-            });
-        } else {
-            GlobalModel.keybindManager.unregisterDomain("rightsidebar:close");
-        }
+        // remove for now (needs to take into account right sidebar focus so it doesn't conflict with other ESC keybindings)
     }
 
     componentWillUnmount(): void {

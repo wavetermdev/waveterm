@@ -160,7 +160,7 @@ class App extends React.Component<{}, {}> {
                             </div>
                         </If>
                         <If condition={rightSidebarCollapsed && activeMainView == "session"}>
-                            <div className="right-sidebar-triggers" title="Open Wave AI">
+                            <div className="right-sidebar-triggers" title="Open Wave AI (Cmd-Shift-Space)">
                                 <Button
                                     className="secondary ghost right-sidebar-trigger"
                                     onClick={this.openRightSidebar}

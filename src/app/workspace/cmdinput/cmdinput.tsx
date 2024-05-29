@@ -250,7 +250,7 @@ class CmdInput extends React.Component<{}, {}> {
                         </If>
                         <div
                             key="aichat"
-                            title="Wave AI (Ctrl-Space)"
+                            title="Wave AI (Cmd-Shift-Space)"
                             className="cmdinput-icon"
                             onClick={this.clickAIChatAction}
                         >
