@@ -3,12 +3,15 @@
 
 import { FileInfo } from "@/bindings/fileservice";
 import { Table, createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import * as jotai from "jotai";
+import path from "path";
 import React from "react";
 
-import "./directorytable.less";
+import "./directorypreview.less";
 
 interface DirectoryTableProps {
     data: FileInfo[];
+    setFileName: (_: string) => void;
 }
 
 const columnHelper = createColumnHelper<FileInfo>();
@@ -28,7 +31,7 @@ const defaultColumns = [
     }),
 ];
 
-function DirectoryTable<T, U>({ data }: DirectoryTableProps) {
+function DirectoryTable<T, U>({ data, setFileName }: DirectoryTableProps) {
     const [columns] = React.useState<typeof defaultColumns>(() => [...defaultColumns]);
     const table = useReactTable({
         data,
@@ -73,26 +76,39 @@ function DirectoryTable<T, U>({ data }: DirectoryTableProps) {
                 ))}
             </div>
             {table.getState().columnSizingInfo.isResizingColumn ? (
-                <MemoizedTableBody table={table} />
+                <MemoizedTableBody table={table} setFileName={setFileName} />
             ) : (
-                <TableBody table={table} />
+                <TableBody table={table} setFileName={setFileName} />
             )}
         </div>
     );
 }
 
-function TableBody({ table }: { table: Table<FileInfo> }) {
+interface TableBodyProps {
+    table: Table<FileInfo>;
+    setFileName: (_: string) => void;
+}
+
+function TableBody({ table, setFileName }: TableBodyProps) {
     return (
         <div className="dir-table-body">
             {table.getRowModel().rows.map((row) => (
-                <div className="dir-table-body-row" key={row.id} tabIndex={0}>
+                <div
+                    className="dir-table-body-row"
+                    key={row.id}
+                    tabIndex={0}
+                    onDoubleClick={() => {
+                        const newFileName = row.getValue("path") as string;
+                        setFileName(newFileName);
+                    }}
+                >
                     {row.getVisibleCells().map((cell) => (
                         <div
                             className="dir-table-body-cell"
                             key={cell.id}
                             style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
                         >
-                            {cell.renderValue<any>()}
+                            {path.basename(cell.renderValue<any>())}
                         </div>
                     ))}
                 </div>
@@ -106,4 +122,16 @@ const MemoizedTableBody = React.memo(
     (prev, next) => prev.table.options.data == next.table.options.data
 ) as typeof TableBody;
 
-export { DirectoryTable };
+interface DirectoryPreviewProps {
+    contentAtom: jotai.Atom<Promise<string>>;
+    fileNameAtom: jotai.WritableAtom<string, [string], void>;
+}
+
+function DirectoryPreview({ contentAtom, fileNameAtom }: DirectoryPreviewProps) {
+    const contentText = jotai.useAtomValue(contentAtom);
+    let content: FileInfo[] = JSON.parse(contentText);
+    let [fileName, setFileName] = jotai.useAtom(fileNameAtom);
+    return <DirectoryTable data={content} setFileName={setFileName} />;
+}
+
+export { DirectoryPreview };
