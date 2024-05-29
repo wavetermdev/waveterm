@@ -131,6 +131,36 @@ function useWaveObjectValueWithSuspense<T>(oref: string): T {
     return dataValue.value;
 }
 
+function getWaveObjectAtom<T extends WaveObj>(oref: string): jotai.Atom<T> {
+    let wov = waveObjectValueCache.get(oref);
+    if (wov == null) {
+        wov = createWaveValueObject(oref, true);
+        waveObjectValueCache.set(oref, wov);
+    }
+    return jotai.atom((get) => {
+        let dataValue = get(wov.dataAtom);
+        if (dataValue.loading) {
+            return null;
+        }
+        return dataValue.value;
+    });
+}
+
+function getWaveObjectLoadingAtom<T extends WaveObj>(oref: string): jotai.Atom<boolean> {
+    let wov = waveObjectValueCache.get(oref);
+    if (wov == null) {
+        wov = createWaveValueObject(oref, true);
+        waveObjectValueCache.set(oref, wov);
+    }
+    return jotai.atom((get) => {
+        let dataValue = get(wov.dataAtom);
+        if (dataValue.loading) {
+            return null;
+        }
+        return dataValue.loading;
+    });
+}
+
 function useWaveObjectValue<T>(oref: string): [T, boolean] {
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
@@ -309,6 +339,8 @@ export {
     cleanWaveObjectCache,
     clearWaveObjectCache,
     getObjectValue,
+    getWaveObjectAtom,
+    getWaveObjectLoadingAtom,
     loadAndPinWaveObject,
     makeORef,
     setObjectValue,
