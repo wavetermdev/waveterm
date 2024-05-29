@@ -110,30 +110,43 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             return;
         }
         const inputObject = this.props.inputObject;
-        this.lastTab = false;
         const keybindManager = GlobalModel.keybindManager;
         const inputModel = GlobalModel.inputModel;
         keybindManager.registerKeybinding("pane", "cmdinput", "cmdinput:autocomplete", (waveEvent) => {
-            const lastTab = this.lastTab;
-            this.lastTab = true;
             this.curPress = "tab";
-            const curLine = inputModel.curLine;
-            if (lastTab) {
-                GlobalModel.submitCommand(
-                    "_compgen",
-                    null,
-                    [curLine],
-                    { comppos: String(curLine.length), compshow: "1", nohist: "1" },
-                    true
-                );
+            // For now, we want to preserve the old behavior if autocomplete is disabled
+            if (GlobalModel.autocompleteModel.isEnabled) {
+                if (this.lastTab) {
+                    const curLine = inputModel.curLine;
+                    if (curLine != "") {
+                        inputModel.setActiveAuxView(appconst.InputAuxView_Suggestions);
+                    }
+                } else {
+                    this.lastTab = true;
+                }
             } else {
-                GlobalModel.submitCommand(
-                    "_compgen",
-                    null,
-                    [curLine],
-                    { comppos: String(curLine.length), nohist: "1" },
-                    true
-                );
+                const lastTab = this.lastTab;
+                this.lastTab = true;
+                this.curPress = "tab";
+                const curLine = inputModel.curLine;
+                if (lastTab) {
+                    GlobalModel.submitCommand(
+                        "_compgen",
+                        null,
+                        [curLine],
+                        { comppos: String(curLine.length), compshow: "1", nohist: "1" },
+                        true
+                    );
+                } else {
+                    GlobalModel.submitCommand(
+                        "_compgen",
+                        null,
+                        [curLine],
+                        { comppos: String(curLine.length), nohist: "1" },
+                        true
+                    );
+                }
+                return true;
             }
             return true;
         });
@@ -204,6 +217,9 @@ class CmdInputKeybindings extends React.Component<{ inputObject: TextAreaInput }
             const rtn = inputObject.arrowDownPressed();
             return rtn;
         });
+        keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectRight", (waveEvent) => {
+            return inputObject.arrowRightPressed();
+        });
         keybindManager.registerKeybinding("pane", "cmdinput", "generic:selectPageAbove", (waveEvent) => {
             this.curPress = "historyupdown";
             inputObject.scrollPage(true);
@@ -255,7 +271,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         mobx.makeObservable(this);
     }
 
-    @mobx.action
+    @mobx.action.bound
     incVersion(): void {
         const v = this.version.get();
         this.version.set(v + 1);
@@ -417,6 +433,17 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         return true;
     }
 
+    @boundMethod
+    arrowRightPressed(): boolean {
+        // If the cursor is at the end of the line, apply the primary suggestion
+        const curSP = this.getCurSP();
+        if (curSP.pos < curSP.str.length) {
+            return false;
+        }
+        GlobalModel.autocompleteModel.applyPrimarySuggestion();
+        return true;
+    }
+
     scrollPage(up: boolean) {
         const inputModel = GlobalModel.inputModel;
         const infoScroll = inputModel.hasScrollingInfoMsg();
@@ -444,7 +471,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
         GlobalModel.inputModel.curLine = e.target.value;
     }
 
-    @mobx.action.bound
+    @boundMethod
     onSelect(e: any) {
         this.incVersion();
     }
@@ -621,6 +648,10 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
             inputModel.shouldRenderAuxViewKeybindings(null) ||
             inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_Info);
         const renderHistoryKeybindings = inputModel.shouldRenderAuxViewKeybindings(appconst.InputAuxView_History);
+
+        // Will be null if the feature is disabled
+        const primaryAutocompleteSuggestion = GlobalModel.autocompleteModel.getPrimarySuggestionCompletion();
+
         return (
             <div
                 className="textareainput-div control is-expanded"
@@ -628,14 +659,22 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
                 style={{ height: computedOuterHeight }}
             >
                 <If condition={renderCmdInputKeybindings}>
-                    <CmdInputKeybindings inputObject={this}></CmdInputKeybindings>
+                    <CmdInputKeybindings inputObject={this} />
                 </If>
                 <If condition={renderHistoryKeybindings}>
-                    <HistoryKeybindings></HistoryKeybindings>
+                    <HistoryKeybindings />
                 </If>
 
                 <If condition={!util.isBlank(shellType)}>
                     <div className="shelltag">{shellType}</div>
+                </If>
+                <If condition={primaryAutocompleteSuggestion}>
+                    <div
+                        className="textarea-ghost"
+                        style={{ height: computedInnerHeight, minHeight: computedInnerHeight, fontSize: termFontSize }}
+                    >
+                        {`${"\xa0".repeat(curLine.length)}${primaryAutocompleteSuggestion}`}
+                    </div>
                 </If>
                 <textarea
                     key="main"

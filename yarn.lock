@@ -2784,6 +2784,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@fig/autocomplete-generators@npm:^2.4.0":
+  version: 2.4.0
+  resolution: "@fig/autocomplete-generators@npm:2.4.0"
+  checksum: 10c0/34436e8ce20e9dfe703b3e1d41a5c8685d591e5c685849bf5d296a0667bd93127e11e8680204f3752a25ea667c5b27251a128b73737fea0f104ba378597cee88
+  languageName: node
+  linkType: hard
+
+"@fig/autocomplete-helpers@npm:^1.0.7":
+  version: 1.0.7
+  resolution: "@fig/autocomplete-helpers@npm:1.0.7"
+  dependencies:
+    semver: "npm:^7.3.5"
+    typescript: "npm:^4.6.3"
+  checksum: 10c0/2372399d34d5da849057afdfcbcd0423ee896a8d5e75cb3fc1c1f1e818db146b622c3685af107e601a432af3ed3428f22c5faf5e555871602b9d2b25a5d5041d
+  languageName: node
+  linkType: hard
+
 "@gar/promisify@npm:^1.1.3":
   version: 1.1.3
   resolution: "@gar/promisify@npm:1.1.3"
@@ -4121,6 +4138,26 @@ __metadata:
     webpack-dev-server:
       optional: true
   checksum: 10c0/36079d34971ff99a58b66b13f4184dcdd8617853c48cccdbc3f9ab7ea9e5d4fcf504e873c298ea7aa15e0b51ad2c4aee4d7a70bd7d9364e60f57b0eb93ca15fc
+  languageName: node
+  linkType: hard
+
+"@withfig/autocomplete-types@npm:^1.30.0":
+  version: 1.30.0
+  resolution: "@withfig/autocomplete-types@npm:1.30.0"
+  checksum: 10c0/8cb44c2de317fc7ab424254ba7c98addd05073009ec70de8168ae9b671874d0481138e862ffeb28132861520f532f0114a2b0aadbfa8219fec4ae8b9de21f30b
+  languageName: node
+  linkType: hard
+
+"@withfig/autocomplete@npm:^2.652.3":
+  version: 2.655.3
+  resolution: "@withfig/autocomplete@npm:2.655.3"
+  dependencies:
+    "@fig/autocomplete-generators": "npm:^2.4.0"
+    "@fig/autocomplete-helpers": "npm:^1.0.7"
+    semver: "npm:^7.6.0"
+    strip-json-comments: "npm:^5.0.1"
+    yaml: "npm:^2.4.1"
+  checksum: 10c0/d0c604f6b236b558d36e430086a36ad7ca2dbbea6373fc49214b543477cf74b019e3b57af4a9bf7f4fd024ac748a8c579a42b870160ac3b6ee41dfc99cdf5950
   languageName: node
   linkType: hard
 
@@ -10697,7 +10734,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"semver@npm:^7.3.2, semver@npm:^7.3.5, semver@npm:^7.3.8, semver@npm:^7.5.3, semver@npm:^7.5.4":
+"semver@npm:^7.3.2, semver@npm:^7.3.5, semver@npm:^7.3.8, semver@npm:^7.5.3, semver@npm:^7.5.4, semver@npm:^7.6.0":
   version: 7.6.0
   resolution: "semver@npm:7.6.0"
   dependencies:
@@ -11178,6 +11215,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"strip-json-comments@npm:^5.0.1":
+  version: 5.0.1
+  resolution: "strip-json-comments@npm:5.0.1"
+  checksum: 10c0/c9d9d55a0167c57aa688df3aa20628cf6f46f0344038f189eaa9d159978e80b2bfa6da541a40d83f7bde8a3554596259bf6b70578b2172356536a0e3fa5a0982
+  languageName: node
+  linkType: hard
+
 "style-loader@npm:4.0.0":
   version: 4.0.0
   resolution: "style-loader@npm:4.0.0"
@@ -11481,6 +11525,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"typescript@npm:^4.6.3":
+  version: 4.9.5
+  resolution: "typescript@npm:4.9.5"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 10c0/5f6cad2e728a8a063521328e612d7876e12f0d8a8390d3b3aaa452a6a65e24e9ac8ea22beb72a924fd96ea0a49ea63bb4e251fb922b12eedfb7f7a26475e5c56
+  languageName: node
+  linkType: hard
+
 "typescript@npm:^5.0.0":
   version: 5.4.5
   resolution: "typescript@npm:5.4.5"
@@ -11498,6 +11552,16 @@ __metadata:
     tsc: bin/tsc
     tsserver: bin/tsserver
   checksum: 10c0/e33cef99d82573624fc0f854a2980322714986bc35b9cb4d1ce736ed182aeab78e2cb32b385efa493b2a976ef52c53e20d6c6918312353a91850e2b76f1ea44f
+  languageName: node
+  linkType: hard
+
+"typescript@patch:typescript@npm%3A^4.6.3#optional!builtin<compat/typescript>":
+  version: 4.9.5
+  resolution: "typescript@patch:typescript@npm%3A4.9.5#optional!builtin<compat/typescript>::version=4.9.5&hash=289587"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 10c0/e3333f887c6829dfe0ab6c1dbe0dd1e3e2aeb56c66460cb85c5440c566f900c833d370ca34eb47558c0c69e78ced4bfe09b8f4f98b6de7afed9b84b8d1dd06a1
   languageName: node
   linkType: hard
 
@@ -11855,6 +11919,8 @@ __metadata:
     "@types/throttle-debounce": "npm:^5.0.1"
     "@types/uuid": "npm:^9.0.7"
     "@types/webpack-env": "npm:^1.18.3"
+    "@withfig/autocomplete": "npm:^2.652.3"
+    "@withfig/autocomplete-types": "npm:^1.30.0"
     autobind-decorator: "npm:^2.4.0"
     babel-loader: "npm:^9.1.3"
     babel-plugin-jsx-control-statements: "npm:^4.1.2"
@@ -12345,6 +12411,15 @@ __metadata:
   bin:
     yaml: bin.mjs
   checksum: 10c0/816057dbaea16a7dfb0b868ace930f143dece96bbb4c4fbb6f38aa389166f897240d9fa535dbfd6b1b0d9442416f4abcc698e63f82394d0c67b329aa6c2be576
+  languageName: node
+  linkType: hard
+
+"yaml@npm:^2.4.1":
+  version: 2.4.2
+  resolution: "yaml@npm:2.4.2"
+  bin:
+    yaml: bin.mjs
+  checksum: 10c0/280ddb2e43ffa7d91a95738e80c8f33e860749cdc25aa6d9e4d350a28e174fd7e494e4aa023108aaee41388e451e3dc1292261d8f022aabcf90df9c63d647549
   languageName: node
   linkType: hard
 

@@ -37,6 +37,7 @@ import { GlobalCommandRunner } from "./global";
 import { clearMonoFontCache, getMonoFontSize } from "@/util/textmeasure";
 import type { TermWrap } from "@/plugins/terminal/term";
 import * as util from "@/util/util";
+import { AutocompleteModel } from "./autocomplete";
 
 type SWLinePtr = {
     line: LineType;
@@ -113,6 +114,7 @@ class Model {
 
     keybindManager: KeybindManager;
     inputModel: InputModel;
+    autocompleteModel: AutocompleteModel;
     pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
@@ -162,6 +164,7 @@ class Model {
         this.initSystemKeybindings();
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
+        this.autocompleteModel = new AutocompleteModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
         this.historyViewModel = new HistoryViewModel(this);

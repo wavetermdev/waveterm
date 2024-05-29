@@ -252,6 +252,7 @@ type ClientOptsType struct {
 	GlobalShortcut        string            `json:"globalshortcut,omitempty"`
 	GlobalShortcutEnabled bool              `json:"globalshortcutenabled,omitempty"`
 	WebGL                 bool              `json:"webgl,omitempty"`
+	AutocompleteEnabled   bool              `json:"autocompleteenabled,omitempty"`
 }
 
 type FeOptsType struct {

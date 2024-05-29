@@ -173,6 +173,7 @@ func init() {
 	registerCmdFn("cr", CrCommand)
 	registerCmdFn("connect", CrCommand)
 	registerCmdFn("_compgen", CompGenCommand)
+	registerCmdFn("_compfiledir", CompFileDirCommand)
 	registerCmdFn("clear", ClearCommand)
 	registerCmdFn("reset", RemoteResetCommand)
 	registerCmdFn("reset:cwd", ResetCwdCommand)
@@ -298,6 +299,9 @@ func init() {
 	registerCmdFn("_debug:ri", DebugRemoteInstanceCommand)
 
 	registerCmdFn("sudo:clear", ClearSudoCache)
+
+	registerCmdFn("autocomplete:on", AutocompleteOnCommand)
+	registerCmdFn("autocomplete:off", AutocompleteOffCommand)
 }
 
 func getValidCommands() []string {
@@ -3310,6 +3314,40 @@ func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix str
 	return comps, hasMore, nil
 }
 
+func CompFileDirCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	ids, err := resolveUiIds(ctx, pk, 0) // best-effort
+	if err != nil {
+		return nil, fmt.Errorf("/_compfiledir error: %w", err)
+	}
+
+	comptype := pk.Kwargs["comptype"]
+
+	if comptype != comp.CGTypeFile && comptype != comp.CGTypeDir {
+		return nil, fmt.Errorf("/_compfiledir invalid comptype '%s'", comptype)
+	}
+
+	compCtx := comp.CompContext{}
+	if ids.Remote != nil {
+		rptr := ids.Remote.RemotePtr
+		compCtx.RemotePtr = &rptr
+		if pk.Kwargs["cwd"] != "" {
+			compCtx.Cwd = pk.Kwargs["cwd"]
+		} else if ids.Remote.FeState != nil {
+			compCtx.Cwd = ids.Remote.FeState["cwd"]
+		}
+	}
+
+	crtn, err := comp.DoSimpleComp(ctx, comptype, "", compCtx, nil)
+	if err != nil {
+		return nil, err
+	}
+	if crtn == nil {
+		return nil, nil
+	}
+	compStrs := crtn.GetCompDisplayStrs()
+	return makeInfoFromComps(crtn.CompType, compStrs, crtn.HasMore), nil
+}
+
 func CompGenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, 0) // best-effort
 	if err != nil {
@@ -6317,6 +6355,59 @@ func ReleaseCheckOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketTyp
 		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
 	}
 	update := sstore.InfoMsgUpdate("automatic release checking is now off")
+	update.AddUpdate(*clientData)
+	return update, nil
+}
+
+func setAutocompleteEnabled(ctx context.Context, clientData *sstore.ClientData, autocompleteEnabledValue bool) error {
+	clientOpts := clientData.ClientOpts
+	clientOpts.AutocompleteEnabled = autocompleteEnabledValue
+	err := sstore.SetClientOpts(ctx, clientOpts)
+	if err != nil {
+		return fmt.Errorf("error trying to update client autocomplete setting: %v", err)
+	}
+	log.Printf("client autocomplete setting updated to %v\n", autocompleteEnabledValue)
+	return nil
+}
+
+func AutocompleteOnCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if clientData.ClientOpts.AutocompleteEnabled {
+		return sstore.InfoMsgUpdate("autocomplete is already on"), nil
+	}
+	err = setAutocompleteEnabled(ctx, clientData, true)
+	if err != nil {
+		return nil, err
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("autocomplete is now on")
+	update.AddUpdate(*clientData)
+	return update, nil
+}
+
+func AutocompleteOffCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
+	clientData, err := sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve client data: %v", err)
+	}
+	if !clientData.ClientOpts.AutocompleteEnabled {
+		return sstore.InfoMsgUpdate("autocomplete is already off"), nil
+	}
+	err = setAutocompleteEnabled(ctx, clientData, false)
+	if err != nil {
+		return nil, err
+	}
+	clientData, err = sstore.EnsureClientData(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot retrieve updated client data: %v", err)
+	}
+	update := sstore.InfoMsgUpdate("autocomplete is now off")
 	update.AddUpdate(*clientData)
 	return update, nil
 }
