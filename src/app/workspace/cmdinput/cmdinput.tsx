@@ -94,6 +94,13 @@ class CmdInput extends React.Component<{}, {}> {
         }
     }
 
+    @mobx.action.bound
+    clickAIChatAction(e: any): void {
+        const rightSidebarModel = GlobalModel.rightSidebarModel;
+        const width = rightSidebarModel.getWidth(true);
+        rightSidebarModel.saveState(width, false);
+    }
+
     @boundMethod
     clickConnectRemote(remoteId: string): void {
         GlobalCommandRunner.connectRemote(remoteId);
@@ -241,6 +248,14 @@ class CmdInput extends React.Component<{}, {}> {
                                 </CenteredIcon>
                             </div>
                         </If>
+                        <div
+                            key="aichat"
+                            title="Wave AI (Ctrl-Space)"
+                            className="cmdinput-icon"
+                            onClick={this.clickAIChatAction}
+                        >
+                            <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
+                        </div>
                         <div
                             key="history"
                             title="Tab History (Ctrl-R)"

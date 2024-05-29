@@ -135,14 +135,12 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = (props) => {
      */
     React.useEffect(() => {
         if (runningCommands && !timeoutState) {
-            console.log("show spinner");
             setTimeoutState(
                 setTimeout(() => {
                     setSpinnerVisible(true);
                 }, 100)
             );
         } else if (!runningCommands) {
-            console.log("clear spinner");
             clearSpinnerTimeout();
         }
         return () => {

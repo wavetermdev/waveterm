@@ -159,13 +159,13 @@ class App extends React.Component<{}, {}> {
                                 </div>
                             </div>
                         </If>
-                        <If condition={GlobalModel.isDev && rightSidebarCollapsed && activeMainView == "session"}>
-                            <div className="right-sidebar-triggers">
+                        <If condition={rightSidebarCollapsed && activeMainView == "session"}>
+                            <div className="right-sidebar-triggers" title="Open Wave AI">
                                 <Button
                                     className="secondary ghost right-sidebar-trigger"
                                     onClick={this.openRightSidebar}
                                 >
-                                    <i className="fa-sharp fa-solid fa-sidebar-flip"></i>
+                                    <i className="fa-sharp fa-regular fa-sparkles"></i>
                                 </Button>
                             </div>
                         </If>

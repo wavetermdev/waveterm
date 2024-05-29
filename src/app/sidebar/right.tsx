@@ -150,13 +150,6 @@ class RightSideBar extends React.Component<
                                     >
                                         <i className="fa-fw fa-sharp fa-keyboard fa-solid" />
                                     </div>
-                                    <div
-                                        className="icon-container"
-                                        title="Show Keybinding Debugger"
-                                        onClick={() => this.setMode("wavebook")}
-                                    >
-                                        <i className="fa-sharp fa-solid fa-book-sparkles"></i>
-                                    </div>
                                 </If>
                             </div>
                             <Button className="secondary ghost close" onClick={toggleCollapse}>

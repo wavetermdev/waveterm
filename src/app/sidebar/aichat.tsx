@@ -430,7 +430,7 @@ class ChatSidebar extends React.Component<{}, {}> {
             return "";
         }
         // Escape backticks in the output
-        let escapedOutput = output ? output.replace(/`/g, "\\`") : "";
+        let escapedOutput = output ? output.replace(/```/g, "\\`\\`\\`") : "";
         // Truncate the output if usedRows is over 100
         if (usedRows > 100) {
             const outputLines = escapedOutput.split("\n");
