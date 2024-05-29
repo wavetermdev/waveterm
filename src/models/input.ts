@@ -134,30 +134,30 @@ class InputModel {
         }
     }
 
-    // Focuses the main input or the auxiliary view, depending on the active auxiliary view
     @mobx.action
     giveFocus(): void {
-        // Override active view to the main input if aux view does not have focus
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
         switch (activeAuxView) {
-            case appconst.InputAuxView_History: {
+            case appconst.InputAuxView_History:
                 const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
-                if (elem != null) {
+                if (elem) {
                     elem.focus();
                 }
                 break;
-            }
             case appconst.InputAuxView_AIChat:
                 this.setAIChatFocus();
                 break;
-            case null: {
-                const elem = document.getElementById("main-cmd-input");
-                if (elem != null) {
-                    elem.focus();
+            case null:
+                if (GlobalModel.sidebarchatModel.hasFocus) {
+                    this.auxViewFocus.set(false);
+                } else {
+                    const elem = document.getElementById("main-cmd-input");
+                    if (elem) {
+                        elem.focus();
+                    }
+                    this.setPhysicalInputFocused(true);
                 }
-                this.setPhysicalInputFocused(true);
                 break;
-            }
             default: {
                 const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
                 if (elem != null) {
@@ -468,7 +468,7 @@ class InputModel {
         }
         // (view == null) means standard cmdinput keybindings
         if (view == null) {
-            return !this.getAuxViewFocus();
+            return !this.getAuxViewFocus() && !GlobalModel.sidebarchatModel.hasFocus;
         } else {
             return this.getAuxViewFocus() && view == this.getActiveAuxView();
         }

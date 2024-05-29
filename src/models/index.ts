@@ -6,6 +6,7 @@ export { ClientSettingsViewModel } from "./clientsettingsview";
 export { Cmd } from "./cmd";
 export { ConnectionsViewModel } from "./connectionsview";
 export { InputModel } from "./input";
+export { SidebarChatModel } from "./sidebarchat";
 export { MainSidebarModel } from "./mainsidebar";
 export { RightSidebarModel } from "./rightsidebar";
 export { ModalsModel } from "./modals";

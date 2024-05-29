@@ -332,5 +332,9 @@
     {
       "command": "codeedit:togglePreview",
       "keys": ["Cmd:p"]
+    },
+    {
+      "command": "rightsidebar:open",
+      "keys": ["Cmd:Shift:Space"]
     }
   ]

@@ -21,6 +21,7 @@ import { KeybindManager, adaptFromReactOrNativeKeyEvent, setKeyUtilPlatform } fr
 import { Session } from "./session";
 import { ScreenLines } from "./screenlines";
 import { InputModel } from "./input";
+import { SidebarChatModel } from "./sidebarchat";
 import { PluginsModel } from "./plugins";
 import { BookmarksModel } from "./bookmarks";
 import { HistoryViewModel } from "./historyview";
@@ -115,6 +116,7 @@ class Model {
     keybindManager: KeybindManager;
     inputModel: InputModel;
     autocompleteModel: AutocompleteModel;
+    sidebarchatModel: SidebarChatModel;
     pluginsModel: PluginsModel;
     bookmarksModel: BookmarksModel;
     historyViewModel: HistoryViewModel;
@@ -165,6 +167,7 @@ class Model {
         this.initAppKeybindings();
         this.inputModel = new InputModel(this);
         this.autocompleteModel = new AutocompleteModel(this);
+        this.sidebarchatModel = new SidebarChatModel(this);
         this.pluginsModel = new PluginsModel(this);
         this.bookmarksModel = new BookmarksModel(this);
         this.historyViewModel = new HistoryViewModel(this);

@@ -3,11 +3,13 @@ import { Button } from "./button";
 import { boundMethod } from "autobind-decorator";
 import * as mobxReact from "mobx-react";
 import * as mobx from "mobx";
+import { clsx } from "clsx";
 
 import "./copybutton.less";
 
 type CopyButtonProps = {
     title: string;
+    className?: string;
     onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
@@ -34,10 +36,14 @@ class CopyButton extends React.Component<CopyButtonProps, {}> {
     }
 
     render() {
-        const { title, onClick } = this.props;
+        const { title, className } = this.props;
         const isCopied = this.isCopied.get();
         return (
-            <Button onClick={this.handleOnClick} className="copy-button secondary ghost" title={title}>
+            <Button
+                onClick={this.handleOnClick}
+                className={clsx("copy-button secondary ghost", className)}
+                title={title}
+            >
                 {isCopied ? (
                     <i className="fa-sharp fa-solid fa-check"></i>
                 ) : (

@@ -6,6 +6,7 @@ import * as mobx from "mobx";
 import * as mobxReact from "mobx-react";
 import { sprintf } from "sprintf-js";
 import { Markdown } from "@/elements";
+import { GlobalModel } from "@/models/global";
 
 import "./markdown.less";
 

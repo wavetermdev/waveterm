@@ -115,6 +115,24 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
     }
 
     @boundMethod
+    clickChat(e: any) {
+        e.stopPropagation();
+        const { line, screen } = this.props;
+        const termWrap = screen.getTermWrap(line.lineid);
+        const cmd = screen.getCmd(line);
+        if (termWrap && cmd) {
+            GlobalModel.sidebarchatModel.setCmdAndOutput(
+                screen.getCmd(line)?.getCmdStr(),
+                termWrap?.getOutput(false),
+                // multiply by 2 to get a rough estimate of the number of rows within the chatbox
+                screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, 300) * 2,
+                cmdShouldMarkError(cmd)
+            );
+            GlobalModel.sidebarchatModel.setFocus("input", true);
+        }
+    }
+
+    @boundMethod
     clickMinimize() {
         const { line } = this.props;
         const isMinimized = line.linestate["wave:min"];
@@ -154,10 +172,14 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
         const { line, screen } = this.props;
         const isMinimized = line.linestate["wave:min"];
         const containerType = screen.getContainerType();
+        // console.log("******************", screen.getTermWrap(line.lineid));
         return (
             <div className="line-actions">
                 <Choose>
                     <When condition={containerType == appconst.LineContainer_Main}>
+                        <div key="chat" title="Restart Command" className="line-icon" onClick={this.clickChat}>
+                            <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
+                        </div>
                         <div key="restart" title="Restart Command" className="line-icon" onClick={this.clickRestart}>
                             <i className="fa-sharp fa-regular fa-arrows-rotate fa-fw" />
                         </div>
@@ -514,7 +536,6 @@ class LineCmd extends React.Component<
         const lastHeight = this.lastHeight;
         this.lastHeight = curHeight;
         this.props.onHeightChange(line.linenum, curHeight, lastHeight);
-        // console.log("line height change: ", line.linenum, lastHeight, "=>", curHeight);
     }
 
     @boundMethod

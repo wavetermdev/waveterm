@@ -11,14 +11,12 @@ import localizedFormat from "dayjs/plugin/localizedFormat";
 import { GlobalModel } from "@/models";
 import { ResizableSidebar, Button } from "@/elements";
 import { WaveBookDisplay } from "./wavebook";
+import { ChatSidebar } from "./aichat";
+import { boundMethod } from "autobind-decorator";
 
 import "./right.less";
 
 dayjs.extend(localizedFormat);
-
-interface RightSideBarProps {
-    parentRef: React.RefObject<HTMLElement>;
-}
 
 @mobxReact.observer
 class KeybindDevPane extends React.Component<{}, {}> {
@@ -55,17 +53,73 @@ class KeybindDevPane extends React.Component<{}, {}> {
     }
 }
 
-@mobxReact.observer
-class RightSideBar extends React.Component<RightSideBarProps, {}> {
-    mode: OV<string> = mobx.observable.box(null, { name: "RightSideBar-mode" });
+class SidebarKeyBindings extends React.Component<{ component: RightSideBar; isOpen: boolean }, {}> {
+    componentDidMount(): void {
+        const { component } = this.props;
+        const keybindManager = GlobalModel.keybindManager;
+        keybindManager.registerKeybinding("pane", "rightsidebar", "rightsidebar:open", (waveEvent) => {
+            return component.onOpen();
+        });
+    }
 
-    setMode(mode: string) {
-        mobx.action(() => {
-            this.mode.set(mode);
-        })();
+    componentDidUpdate(): void {
+        if (this.props.isOpen) {
+            const { component } = this.props;
+            const keybindManager = GlobalModel.keybindManager;
+            keybindManager.registerKeybinding("pane", "rightsidebar:close", "generic:cancel", (waveEvent) => {
+                return component.onClose();
+            });
+        } else {
+            GlobalModel.keybindManager.unregisterDomain("rightsidebar:close");
+        }
+    }
+
+    componentWillUnmount(): void {
+        GlobalModel.keybindManager.unregisterDomain("rightsidebar");
     }
 
     render() {
+        return null;
+    }
+}
+
+@mobxReact.observer
+class RightSideBar extends React.Component<
+    {
+        parentRef: React.RefObject<HTMLElement>;
+    },
+    {}
+> {
+    mode: OV<string> = mobx.observable.box("aichat", { name: "RightSideBar-mode" });
+
+    constructor(props) {
+        super(props);
+        mobx.makeObservable(this);
+    }
+
+    @mobx.action
+    setMode(mode: string) {
+        if (mode == this.mode.get()) {
+            return;
+        }
+        this.mode.set(mode);
+    }
+
+    @boundMethod
+    onOpen() {
+        GlobalModel.rightSidebarModel.setCollapsed(false);
+        return true;
+    }
+
+    @boundMethod
+    onClose() {
+        GlobalModel.rightSidebarModel.setCollapsed(true);
+        return true;
+    }
+
+    render() {
+        const isCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
+        const mode = this.mode.get();
         return (
             <ResizableSidebar
                 model={GlobalModel.rightSidebarModel}
@@ -76,35 +130,40 @@ class RightSideBar extends React.Component<RightSideBarProps, {}> {
             >
                 {(toggleCollapse) => (
                     <React.Fragment>
+                        <SidebarKeyBindings component={this} isOpen={!isCollapsed} />
                         <div className="header">
-                            <Button className="secondary ghost" onClick={toggleCollapse}>
-                                <i className="fa-sharp fa-regular fa-xmark"></i>
-                            </Button>
-                        </div>
-                        <div className="rsb-modes">
-                            <div className="flex-spacer" />
-                            <If condition={GlobalModel.isDev}>
+                            <div className="rsb-modes">
                                 <div
                                     className="icon-container"
                                     title="Show Keybinding Debugger"
-                                    onClick={() => this.setMode("keybind")}
+                                    onClick={() => this.setMode("aichat")}
                                 >
-                                    <i className="fa-fw fa-sharp fa-keyboard fa-solid" />
+                                    <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
+                                    <span>Wave AI</span>
                                 </div>
-                            </If>
-                            <div
-                                className="icon-container"
-                                title="Show Keybinding Debugger"
-                                onClick={() => this.setMode("wavebook")}
-                            >
-                                <i className="fa-sharp fa-solid fa-book-sparkles"></i>
+                                <div className="flex-spacer" />
+                                <If condition={GlobalModel.isDev}>
+                                    <div
+                                        className="icon-container"
+                                        title="Show Keybinding Debugger"
+                                        onClick={() => this.setMode("keybind")}
+                                    >
+                                        <i className="fa-fw fa-sharp fa-keyboard fa-solid" />
+                                    </div>
+                                </If>
                             </div>
+                            <Button className="secondary ghost close" onClick={toggleCollapse}>
+                                <i className="fa-sharp fa-solid fa-xmark-large" />
+                            </Button>
                         </div>
                         <If condition={this.mode.get() == "keybind"}>
                             <KeybindDevPane></KeybindDevPane>
                         </If>
-                        <If condition={this.mode.get() == "wavebook"}>
+                        <If condition={mode == "wavebook"}>
                             <WaveBookDisplay></WaveBookDisplay>
+                        </If>
+                        <If condition={mode == "aichat" && !isCollapsed}>
+                            <ChatSidebar />
                         </If>
                     </React.Fragment>
                 )}

@@ -82,18 +82,6 @@ class CmdInput extends React.Component<{}, {}> {
     }
 
     @mobx.action.bound
-    clickAIAction(e: any): void {
-        e.preventDefault();
-        e.stopPropagation();
-        const inputModel = GlobalModel.inputModel;
-        if (inputModel.getActiveAuxView() === appconst.InputAuxView_AIChat) {
-            inputModel.closeAuxView();
-        } else {
-            inputModel.openAIAssistantChat();
-        }
-    }
-
-    @mobx.action.bound
     clickHistoryAction(e: any): void {
         e.preventDefault();
         e.stopPropagation();
@@ -104,6 +92,13 @@ class CmdInput extends React.Component<{}, {}> {
         } else {
             inputModel.openHistory();
         }
+    }
+
+    @mobx.action.bound
+    clickAIChatAction(e: any): void {
+        const rightSidebarModel = GlobalModel.rightSidebarModel;
+        const width = rightSidebarModel.getWidth(true);
+        rightSidebarModel.saveState(width, false);
     }
 
     @boundMethod
@@ -254,10 +249,10 @@ class CmdInput extends React.Component<{}, {}> {
                             </div>
                         </If>
                         <div
-                            key="ai"
+                            key="aichat"
                             title="Wave AI (Ctrl-Space)"
                             className="cmdinput-icon"
-                            onClick={this.clickAIAction}
+                            onClick={this.clickAIChatAction}
                         >
                             <i className="fa-sharp fa-regular fa-sparkles fa-fw" />
                         </div>

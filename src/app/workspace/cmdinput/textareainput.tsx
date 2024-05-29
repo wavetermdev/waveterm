@@ -392,6 +392,7 @@ class TextAreaInput extends React.Component<{ screen: Screen; onHeightChange: ()
     }
 
     arrowUpPressed(): boolean {
+        console.log("arrowUpPressed");
         const inputModel = GlobalModel.inputModel;
         if (!inputModel.isHistoryLoaded()) {
             this.lastHistoryUpDown = true;

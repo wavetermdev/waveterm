@@ -990,6 +990,13 @@ declare global {
         click?: () => void; // not required if role is set
         submenu?: ContextMenuItem[];
     };
+
+    type CmdAndOutput = {
+        cmd: string;
+        output: string;
+        usedRows: number;
+        isError: boolean;
+    };
 }
 
 export {};

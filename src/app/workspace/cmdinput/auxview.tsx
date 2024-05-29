@@ -10,7 +10,7 @@ import "./auxview.less";
 import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 interface AuxiliaryCmdViewProps {
-    title: string;
+    title?: string;
     className?: string;
     iconClass?: string;
     titleBarContents?: React.ReactElement[];

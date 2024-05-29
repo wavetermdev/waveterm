@@ -8,6 +8,7 @@ import { debounce } from "throttle-debounce";
 import { boundMethod } from "autobind-decorator";
 import { PacketDataBuffer } from "../core/ptydata";
 import { Markdown } from "@/elements";
+import { GlobalModel } from "@/models/global";
 
 import "./openai.less";
 
