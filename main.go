@@ -11,8 +11,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockstore"
@@ -101,6 +104,27 @@ func (wah waveAssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	wah.AssetHandler.ServeHTTP(w, r)
 }
 
+func doShutdown(reason string) {
+	log.Printf("shutting down: %s\n", reason)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	// TODO deal with flush in progress
+	blockstore.GBS.FlushCache(ctx)
+	time.Sleep(200 * time.Millisecond)
+	os.Exit(0)
+}
+
+func installShutdownSignalHandlers() {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		for sig := range sigCh {
+			doShutdown(fmt.Sprintf("got signal %v", sig))
+			break
+		}
+	}()
+}
+
 func main() {
 	err := wavebase.EnsureWaveHomeDir()
 	if err != nil {
@@ -129,6 +153,7 @@ func main() {
 		log.Printf("error ensuring initial data: %v\n", err)
 		return
 	}
+	installShutdownSignalHandlers()
 
 	app := application.New(application.Options{
 		Name:        "NextWave",
