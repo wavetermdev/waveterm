@@ -334,7 +334,7 @@
       "keys": ["Cmd:p"]
     },
     {
-      "command": "rightsidebar:open",
+      "command": "rightsidebar:toggle",
       "keys": ["Cmd:Shift:Space"]
     }
   ]

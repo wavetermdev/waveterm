@@ -88,7 +88,7 @@ const PacketEOFStr = "EOF"
 
 var TypeStrToFactory map[string]reflect.Type
 
-const OpenAICmdInfoChatGreetingMessage = "Hello, may I help you with this command?  \n(Ctrl-Space: open, ESC: close, Ctrl+L: clear chat buffer, Up/Down: select code blocks, Enter: to copy a selected code block to the command input)"
+const OpenAICmdInfoChatGreetingMessage = "Hello, how may I help you with this command?  \n(Cmd-Shift-Space: open/close, Ctrl+L: clear chat buffer, Up/Down: select code blocks, Enter: to copy a selected code block to the command input)"
 
 func init() {
 	TypeStrToFactory = make(map[string]reflect.Type)
