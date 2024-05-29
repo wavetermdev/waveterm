@@ -1,0 +1,25 @@
+.suggestions-view .auxview-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 1em;
+    .suggestion-item {
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+        cursor: pointer;
+        border-radius: 5px;
+
+        &:hover {
+            background-color: var(--table-tr-hover-bg-color);
+        }
+
+        &.is-selected {
+            font-weight: bold;
+            color: var(--app-text-primary-color);
+            background-color: var(--table-tr-selected-bg-color);
+            &:hover {
+                background-color: var(--table-tr-selected-hover-bg-color);
+            }
+        }
+    }
+}

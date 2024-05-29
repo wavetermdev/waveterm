@@ -11,10 +11,10 @@ import { Toggle, InlineSettingsTextEdit, SettingsError, Dropdown } from "@/commo
 import { commandRtnHandler, isBlank } from "@/util/util";
 import { getTermThemes } from "@/util/themeutil";
 import * as appconst from "@/app/appconst";
+import { MainView } from "@/common/elements/mainview";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 import "./clientsettings.less";
-import { MainView } from "../common/elements/mainview";
-import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 
 class ClientSettingsKeybindings extends React.Component<{}, {}> {
     componentDidMount() {
@@ -108,6 +108,19 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
         }
         commandRtnHandler(prtn, this.errorMessage);
         GlobalModel.getElectronApi().changeAutoUpdate(val);
+    }
+
+    @boundMethod
+    handleChangeAutocompleteEnabled(val: boolean): void {
+        const prtn: Promise<CommandRtnType> = GlobalCommandRunner.setAutocompleteEnabled(val);
+        commandRtnHandler(prtn, this.errorMessage);
+    }
+
+    @boundMethod
+    handleChangeAutocompleteDebuggingEnabled(val: boolean): void {
+        mobx.action(() => {
+            GlobalModel.autocompleteModel.loggingEnabled = val;
+        })();
     }
 
     getFontSizes(): DropdownItem[] {
@@ -444,6 +457,24 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                             <Toggle
                                 checked={curSudoPwClearOnSleep}
                                 onChange={this.handleChangeSudoPwClearOnSleepConfig}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Command Autocomplete</div>
+                        <div className="settings-input">
+                            <Toggle
+                                checked={cdata.clientopts.autocompleteenabled ?? false}
+                                onChange={this.handleChangeAutocompleteEnabled}
+                            />
+                        </div>
+                    </div>
+                    <div className="settings-field">
+                        <div className="settings-label">Command Autocomplete Debugging</div>
+                        <div className="settings-input">
+                            <Toggle
+                                checked={GlobalModel.autocompleteModel.loggingEnabled}
+                                onChange={this.handleChangeAutocompleteDebuggingEnabled}
                             />
                         </div>
                     </div>

@@ -73,8 +73,8 @@ class InputModel {
     lastCurLine: string = "";
 
     constructor(globalModel: Model) {
-        this.globalModel = globalModel;
         mobx.makeObservable(this);
+        this.globalModel = globalModel;
         mobx.action(() => {
             this.codeSelectSelectedIndex.set(-1);
             this.codeSelectBlockRefArray = [];
@@ -492,6 +492,7 @@ class InputModel {
                 this.scrollHistoryItemIntoView(hitem.historynum);
             }
         }
+        this.globalModel.autocompleteModel.clearSuggestions();
     }
 
     moveHistorySelection(amt: number): void {
@@ -777,9 +778,20 @@ class InputModel {
     set curLine(val: string) {
         this.lastCurLine = this.curLine;
         const hidx = this.historyIndex.get();
+        const runGetSuggestions = this.curLine != val;
         mobx.action(() => {
             if (this.modHistory.length <= hidx) {
                 this.modHistory.length = hidx + 1;
+            }
+            this.modHistory[hidx] = val;
+
+            // Whenever curLine changes, we should fetch the suggestions
+            if (val.trim() == "") {
+                this.globalModel.autocompleteModel.clearSuggestions();
+                return;
+            }
+            if (runGetSuggestions) {
+                this.globalModel.autocompleteModel.loadSuggestions();
             }
             this.modHistory[hidx] = val;
         })();
@@ -808,6 +820,7 @@ class InputModel {
         this.historyQueryOpts.set(getDefaultHistoryQueryOpts());
         this.historyAfterLoadIndex = 0;
         this.dropModHistory(true);
+        this.globalModel.autocompleteModel.clearSuggestions();
     }
 }
 
