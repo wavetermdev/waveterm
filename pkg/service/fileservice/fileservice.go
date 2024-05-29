@@ -73,8 +73,9 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 		var innerFilesInfo []FileInfo
 		for _, innerFileEntry := range innerFilesEntries {
 			innerFileInfoInt, _ := innerFileEntry.Info()
+			fullFilePath := filepath.Join(finfo.Path, innerFileInfoInt.Name())
 			innerFileInfo := FileInfo{
-				Path:     innerFileInfoInt.Name(),
+				Path:     fullFilePath,
 				Size:     innerFileInfoInt.Size(),
 				Mode:     innerFileInfoInt.Mode(),
 				ModTime:  innerFileInfoInt.ModTime().UnixMilli(),

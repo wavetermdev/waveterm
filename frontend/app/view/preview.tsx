@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { FileInfo, FileService, FullFile } from "@/bindings/fileservice";
-import { DirectoryTable } from "@/element/directorytable";
 import { Markdown } from "@/element/markdown";
-import { useBlockAtom } from "@/store/global";
+import { useBlockAtom, useBlockCache } from "@/store/global";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
 import * as jotai from "jotai";
 import { CenteredDiv } from "../element/quickelems";
+import { DirectoryPreview } from "./directorypreview";
 
 import "./view.less";
 
@@ -54,12 +54,6 @@ function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
     return <CenteredDiv>Preview Not Supported</CenteredDiv>;
 }
 
-function DirectoryPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<string>> }) {
-    const contentText = jotai.useAtomValue(contentAtom);
-    let content: FileInfo[] = JSON.parse(contentText);
-    return <DirectoryTable data={content} />;
-}
-
 function PreviewView({ blockId }: { blockId: string }) {
     const blockData = WOS.useWaveObjectValueWithSuspense<Block>(WOS.makeORef("block", blockId));
     if (blockData == null) {
@@ -69,11 +63,20 @@ function PreviewView({ blockId }: { blockId: string }) {
             </div>
         );
     }
-    const fileNameAtom = useBlockAtom(blockId, "preview:filename", () =>
-        jotai.atom<string>((get) => {
-            return blockData?.meta?.file;
-        })
+    const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+    const fileNameAtom: jotai.WritableAtom<string, [string], void> = useBlockCache(blockId, "preview:filename", () =>
+        jotai.atom<string, [string], void>(
+            (get) => {
+                return get(blockAtom)?.meta?.file;
+            },
+            (get, set, update) => {
+                const blockId = get(blockAtom)?.oid;
+                WOS.UpdateObjectMeta(`block:${blockId}`, { file: update });
+            }
+        )
     );
+    let name = jotai.useAtomValue(fileNameAtom);
+    console.log("file: ", name);
     const statFileAtom = useBlockAtom(blockId, "preview:statfile", () =>
         jotai.atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(fileNameAtom);
@@ -133,7 +136,7 @@ function PreviewView({ blockId }: { blockId: string }) {
         );
     }
     if (mimeType === "directory") {
-        return <DirectoryPreview contentAtom={fileContentAtom} />;
+        return <DirectoryPreview contentAtom={fileContentAtom} fileNameAtom={fileNameAtom} />;
     }
     return (
         <div className="view-preview">
