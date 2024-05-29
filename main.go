@@ -80,6 +80,18 @@ func createWindow(windowData *wstore.Window, app *application.App) {
 		eventbus.UnregisterWailsWindow(window.ID())
 	})
 	window.Show()
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		objectService := &objectservice.ObjectService{}
+		uiContext := wstore.UIContext{
+			WindowId:    windowData.OID,
+			ActiveTabId: windowData.ActiveTabId,
+		}
+		_, err := objectService.SetActiveTab(uiContext, windowData.ActiveTabId)
+		if err != nil {
+			log.Printf("error setting active tab for new window: %v\n", err)
+		}
+	}()
 }
 
 type waveAssetHandler struct {
