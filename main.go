@@ -8,6 +8,8 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
@@ -121,8 +123,14 @@ func serveBlockFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("error getting file info: %v", err), http.StatusInternalServerError)
 		return
 	}
+	jsonFileBArr, err := json.Marshal(file)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error serializing file info: %v", err), http.StatusInternalServerError)
+	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", file.Size))
+	w.Header().Set("X-BlockFileInfo", base64.StdEncoding.EncodeToString(jsonFileBArr))
+	w.Header().Set("Last-Modified", time.UnixMilli(file.ModTs).UTC().Format(http.TimeFormat))
 	for offset := file.DataStartIdx(); offset < file.Size; offset += blockstore.DefaultPartDataSize {
 		_, data, err := blockstore.GBS.ReadAt(r.Context(), blockId, name, offset, blockstore.DefaultPartDataSize)
 		if err != nil {
