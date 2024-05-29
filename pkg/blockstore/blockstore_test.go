@@ -565,7 +565,7 @@ func TestSimpleDBFlush(t *testing.T) {
 		t.Fatalf("error writing data: %v", err)
 	}
 	checkFileData(t, ctx, blockId, fileName, "hello world!")
-	err = GBS.FlushCache(ctx)
+	_, err = GBS.FlushCache(ctx)
 	if err != nil {
 		t.Fatalf("error flushing cache: %v", err)
 	}

@@ -11,6 +11,8 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"log"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -33,9 +35,9 @@ var GBS *BlockStore = &BlockStore{
 }
 
 type FileOptsType struct {
-	MaxSize  int64
-	Circular bool
-	IJson    bool
+	MaxSize  int64 `json:"maxsize,omitempty"`
+	Circular bool  `json:"circular,omitempty"`
+	IJson    bool  `json:"ijson,omitempty"`
 }
 
 type FileMeta = map[string]any
@@ -51,6 +53,24 @@ type BlockFile struct {
 	Size  int64    `json:"size"`
 	ModTs int64    `json:"modts"`
 	Meta  FileMeta `json:"meta"` // only top-level keys can be updated (lower levels are immutable)
+}
+
+// for regular files this is just Size
+// for circular files this is min(Size, MaxSize)
+func (f BlockFile) DataLength() int64 {
+	if f.Opts.Circular {
+		return minInt64(f.Size, f.Opts.MaxSize)
+	}
+	return f.Size
+}
+
+// for regular files this is just 0
+// for circular files this is the index of the first byte of data we have
+func (f BlockFile) DataStartIdx() int64 {
+	if f.Opts.Circular && f.Size > f.Opts.MaxSize {
+		return f.Size - f.Opts.MaxSize
+	}
+	return 0
 }
 
 // this works because lower levels are immutable
@@ -265,28 +285,40 @@ func (s *BlockStore) ReadFile(ctx context.Context, blockId string, name string) 
 	return
 }
 
-func (s *BlockStore) FlushCache(ctx context.Context) error {
+type FlushStats struct {
+	FlushDuration   time.Duration
+	NumDirtyEntries int
+	NumCommitted    int
+}
+
+func (s *BlockStore) FlushCache(ctx context.Context) (stats FlushStats, rtnErr error) {
 	wasFlushing := s.setUnlessFlushing()
 	if wasFlushing {
-		return fmt.Errorf("flush already in progress")
+		return stats, fmt.Errorf("flush already in progress")
 	}
 	defer s.setIsFlushing(false)
+	startTime := time.Now()
+	defer func() {
+		stats.FlushDuration = time.Since(startTime)
+	}()
 
 	// get a copy of dirty keys so we can iterate without the lock
 	dirtyCacheKeys := s.getDirtyCacheKeys()
+	stats.NumDirtyEntries = len(dirtyCacheKeys)
 	for _, key := range dirtyCacheKeys {
 		err := withLock(s, key.BlockId, key.Name, func(entry *CacheEntry) error {
 			return entry.flushToDB(ctx, false)
 		})
 		if ctx.Err() != nil {
 			// transient error (also must stop the loop)
-			return ctx.Err()
+			return stats, ctx.Err()
 		}
 		if err != nil {
-			return fmt.Errorf("error flushing cache entry[%v]: %v", key, err)
+			return stats, fmt.Errorf("error flushing cache entry[%v]: %v", key, err)
 		}
+		stats.NumCommitted++
 	}
-	return nil
+	return stats, nil
 }
 
 ///////////////////////////////////
@@ -367,7 +399,32 @@ func (s *BlockStore) setUnlessFlushing() bool {
 	}
 	s.IsFlushing = true
 	return false
+}
 
+func (s *BlockStore) runFlushWithNewContext() (FlushStats, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultFlushTime)
+	defer cancelFn()
+	return s.FlushCache(ctx)
+}
+
+func (s *BlockStore) runFlusher() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in blockstore flusher: %v\n", r)
+			debug.PrintStack()
+		}
+	}()
+	for {
+		stats, err := s.runFlushWithNewContext()
+		if err != nil || stats.NumDirtyEntries > 0 {
+			log.Printf("blockstore flush: %d/%d entries flushed, err:%v\n", stats.NumCommitted, stats.NumDirtyEntries, err)
+		}
+		if stopFlush.Load() {
+			log.Printf("blockstore flusher stopping\n")
+			return
+		}
+		time.Sleep(DefaultFlushTime)
+	}
 }
 
 func minInt64(a, b int64) int64 {

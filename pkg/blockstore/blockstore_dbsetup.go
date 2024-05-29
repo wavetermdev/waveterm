@@ -42,6 +42,9 @@ func InitBlockstore() error {
 	if err != nil {
 		return err
 	}
+	if !stopFlush.Load() {
+		go GBS.runFlusher()
+	}
 	log.Printf("blockstore initialized\n")
 	return nil
 }
