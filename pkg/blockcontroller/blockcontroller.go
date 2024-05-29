@@ -15,6 +15,7 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wavetermdev/thenextwave/pkg/blockstore"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
@@ -86,7 +87,35 @@ func (bc *BlockController) Close() {
 	}
 }
 
+const DefaultTermMaxFileSize = 256 * 1024
+
+func (bc *BlockController) handleShellProcData(data []byte, seqNum int) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	err := blockstore.GBS.AppendData(ctx, bc.BlockId, "main", data)
+	if err != nil {
+		return fmt.Errorf("error appending to blockfile: %w", err)
+	}
+	eventbus.SendEvent(application.WailsEvent{
+		Name: "block:ptydata",
+		Data: map[string]any{
+			"blockid":   bc.BlockId,
+			"blockfile": "main",
+			"ptydata":   base64.StdEncoding.EncodeToString(data),
+			"seqnum":    seqNum,
+		},
+	})
+	return nil
+}
+
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
+	// create a circular blockfile for the output
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	err := blockstore.GBS.MakeFile(ctx, bc.BlockId, "main", nil, blockstore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
+	if err != nil && err != blockstore.ErrAlreadyExists {
+		return fmt.Errorf("error creating blockfile: %w", err)
+	}
 	if bc.getShellProc() != nil {
 		return nil
 	}
@@ -114,15 +143,13 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 		for {
 			nr, err := bc.ShellProc.Pty.Read(buf)
 			seqNum++
-			eventbus.SendEvent(application.WailsEvent{
-				Name: "block:ptydata",
-				Data: map[string]any{
-					"blockid":   bc.BlockId,
-					"blockfile": "main",
-					"ptydata":   base64.StdEncoding.EncodeToString(buf[:nr]),
-					"seqnum":    seqNum,
-				},
-			})
+			if nr > 0 {
+				handleDataErr := bc.handleShellProcData(buf[:nr], seqNum)
+				if handleDataErr != nil {
+					log.Printf("error handling shell data: %v\n", handleDataErr)
+					break
+				}
+			}
 			if err == io.EOF {
 				break
 			}

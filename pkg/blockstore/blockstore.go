@@ -35,9 +35,9 @@ var GBS *BlockStore = &BlockStore{
 }
 
 type FileOptsType struct {
-	MaxSize  int64
-	Circular bool
-	IJson    bool
+	MaxSize  int64 `json:"maxsize,omitempty"`
+	Circular bool  `json:"circular,omitempty"`
+	IJson    bool  `json:"ijson,omitempty"`
 }
 
 type FileMeta = map[string]any
@@ -53,6 +53,24 @@ type BlockFile struct {
 	Size  int64    `json:"size"`
 	ModTs int64    `json:"modts"`
 	Meta  FileMeta `json:"meta"` // only top-level keys can be updated (lower levels are immutable)
+}
+
+// for regular files this is just Size
+// for circular files this is min(Size, MaxSize)
+func (f BlockFile) DataLength() int64 {
+	if f.Opts.Circular {
+		return minInt64(f.Size, f.Opts.MaxSize)
+	}
+	return f.Size
+}
+
+// for regular files this is just 0
+// for circular files this is the index of the first byte of data we have
+func (f BlockFile) DataStartIdx() int64 {
+	if f.Opts.Circular && f.Size > f.Opts.MaxSize {
+		return f.Size - f.Opts.MaxSize
+	}
+	return 0
 }
 
 // this works because lower levels are immutable

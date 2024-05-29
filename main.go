@@ -9,6 +9,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/wavetermdev/thenextwave/pkg/blockstore"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
@@ -98,11 +100,54 @@ type waveAssetHandler struct {
 	AssetHandler http.Handler
 }
 
+func serveBlockFile(w http.ResponseWriter, r *http.Request) {
+	blockId := r.URL.Query().Get("blockid")
+	name := r.URL.Query().Get("name")
+	if _, err := uuid.Parse(blockId); err != nil {
+		http.Error(w, fmt.Sprintf("invalid blockid: %v", err), http.StatusBadRequest)
+		return
+	}
+	if name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+
+	}
+	file, err := blockstore.GBS.Stat(r.Context(), blockId, name)
+	if err == fs.ErrNotExist {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error getting file info: %v", err), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", file.Size))
+	for offset := file.DataStartIdx(); offset < file.Size; offset += blockstore.DefaultPartDataSize {
+		_, data, err := blockstore.GBS.ReadAt(r.Context(), blockId, name, offset, blockstore.DefaultPartDataSize)
+		if err != nil {
+			if offset == 0 {
+				http.Error(w, fmt.Sprintf("error reading file: %v", err), http.StatusInternalServerError)
+			} else {
+				// nothing to do, the headers have already been sent
+				log.Printf("error reading file %s/%s @ %d: %v\n", blockId, name, offset, err)
+			}
+			return
+		}
+		w.Write(data)
+	}
+}
+
 func serveWaveUrls(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-cache")
 	if r.URL.Path == "/wave/stream-file" {
 		fileName := r.URL.Query().Get("path")
 		fileName = wavebase.ExpandHomeDir(fileName)
 		http.ServeFile(w, r, fileName)
+		return
+	}
+	if r.URL.Path == "/wave/blockfile" {
+		serveBlockFile(w, r)
 		return
 	}
 	http.NotFound(w, r)

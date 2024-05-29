@@ -11,10 +11,16 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
 
+var ErrAlreadyExists = fmt.Errorf("file already exists")
+
 func dbInsertFile(ctx context.Context, file *BlockFile) error {
 	// will fail if file already exists
 	return WithTx(ctx, func(tx *TxWrap) error {
-		query := "INSERT INTO db_block_file (blockid, name, size, createdts, modts, opts, meta) VALUES (?, ?, ?, ?, ?, ?, ?)"
+		query := "SELECT blockid FROM db_block_file WHERE blockid = ? AND name = ?"
+		if tx.Exists(query, file.BlockId, file.Name) {
+			return ErrAlreadyExists
+		}
+		query = "INSERT INTO db_block_file (blockid, name, size, createdts, modts, opts, meta) VALUES (?, ?, ?, ?, ?, ?, ?)"
 		tx.Exec(query, file.BlockId, file.Name, file.Size, file.CreatedTs, file.ModTs, dbutil.QuickJson(file.Opts), dbutil.QuickJson(file.Meta))
 		return nil
 	})
