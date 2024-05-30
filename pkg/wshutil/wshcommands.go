@@ -9,6 +9,7 @@ const (
 	CommandSetView         = "setview"
 	CommandSetMeta         = "setmeta"
 	CommandBlockFileAppend = "blockfile:append"
+	CommandStreamFile      = "streamfile"
 )
 
 var CommandToTypeMap = map[string]reflect.Type{
@@ -23,6 +24,8 @@ type Command interface {
 // for unmarshalling
 type baseCommand struct {
 	Command string `json:"command"`
+	RpcID   string `json:"rpcid"`
+	RpcType string `json:"rpctype"`
 }
 
 type SetViewCommand struct {
@@ -51,4 +54,13 @@ type BlockFileAppendCommand struct {
 
 func (bfac *BlockFileAppendCommand) GetCommand() string {
 	return CommandBlockFileAppend
+}
+
+type StreamFileCommand struct {
+	Command  string `json:"command"`
+	FileName string `json:"filename"`
+}
+
+func (c *StreamFileCommand) GetCommand() string {
+	return CommandStreamFile
 }
