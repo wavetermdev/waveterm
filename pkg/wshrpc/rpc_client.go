@@ -28,10 +28,10 @@ type RpcClient struct {
 }
 
 type RpcInfo struct {
-	CloseSync          *sync.Once
-	RpcId              string
-	ReqPacketsInFlight map[int64]bool // seqnum -> bool
-	RespCh             chan *RpcPacket
+	CloseSync       *sync.Once
+	RpcId           string
+	PacketsInFlight map[int64]bool  // seqnum -> bool (for clients this is for requests, for servers it is for responses)
+	PkCh            chan *RpcPacket // for clients this is for responses, for servers it is for requests
 }
 
 func MakeRpcClient(sendCh chan *RpcPacket, recvCh chan *RpcPacket) *RpcClient {
@@ -88,7 +88,7 @@ func (c *RpcClient) handleResp(pk *RpcPacket) {
 		return
 	}
 	select {
-	case rpcInfo.RespCh <- pk:
+	case rpcInfo.PkCh <- pk:
 	default:
 		log.Printf("RpcClient.handleResp() respCh full, dropping packet")
 	}
@@ -131,7 +131,7 @@ func (c *RpcClient) waitForReq(ctx context.Context, req *RpcPacket) (*RpcInfo, e
 			continue
 		}
 		if rpcInfo, ok := c.RpcReqs[req.RpcId]; ok {
-			if len(rpcInfo.ReqPacketsInFlight) >= MaxUnackedPerRpc {
+			if len(rpcInfo.PacketsInFlight) >= MaxUnackedPerRpc {
 				c.CVar.Wait()
 				continue
 			}
@@ -147,12 +147,12 @@ func (c *RpcClient) waitForReq(ctx context.Context, req *RpcPacket) (*RpcInfo, e
 	rpcInfo := c.RpcReqs[req.RpcId]
 	if rpcInfo == nil {
 		rpcInfo = &RpcInfo{
-			CloseSync:          &sync.Once{},
-			RpcId:              req.RpcId,
-			ReqPacketsInFlight: make(map[int64]bool),
-			RespCh:             make(chan *RpcPacket, MaxUnackedPerRpc),
+			CloseSync:       &sync.Once{},
+			RpcId:           req.RpcId,
+			PacketsInFlight: make(map[int64]bool),
+			PkCh:            make(chan *RpcPacket, MaxUnackedPerRpc),
 		}
-		rpcInfo.ReqPacketsInFlight[req.SeqNum] = true
+		rpcInfo.PacketsInFlight[req.SeqNum] = true
 		c.RpcReqs[req.RpcId] = rpcInfo
 	}
 	return rpcInfo, nil
@@ -171,7 +171,7 @@ func (c *RpcClient) handleAcks(acks []int64) {
 		}
 		rpcInfo := c.RpcReqs[rpcId]
 		if rpcInfo != nil {
-			delete(rpcInfo.ReqPacketsInFlight, ack)
+			delete(rpcInfo.PacketsInFlight, ack)
 		}
 		delete(c.ReqPacketsInFlight, ack)
 	}
@@ -188,12 +188,12 @@ func (c *RpcClient) removeReqInfo(rpcId string, clearSend bool) {
 			// unblock the recv loop if it happens to be waiting
 			// because the delete has already happens, it will not be able to send again on the channel
 			select {
-			case <-rpcInfo.RespCh:
+			case <-rpcInfo.PkCh:
 			default:
 			}
 		}
 		rpcInfo.CloseSync.Do(func() {
-			close(rpcInfo.RespCh)
+			close(rpcInfo.PkCh)
 		})
 	}
 }
@@ -225,7 +225,7 @@ func (c *RpcClient) SimpleReq(ctx context.Context, command string, data any) (an
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case rtnPacket = <-rpcInfo.RespCh:
+	case rtnPacket = <-rpcInfo.PkCh:
 		// fallthrough
 	}
 	if rtnPacket.Error != "" {
@@ -256,7 +256,7 @@ func (c *RpcClient) StreamReq(ctx context.Context, command string, data any, res
 	if err != nil {
 		return nil, err
 	}
-	return rpcInfo.RespCh, nil
+	return rpcInfo.PkCh, nil
 }
 
 func (c *RpcClient) EndStreamReq(rpcId string) {
