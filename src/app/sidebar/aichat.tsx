@@ -282,6 +282,8 @@ class ChatSidebar extends React.Component<{}, {}> {
         GlobalModel.sidebarchatModel.setFocus("input", true);
         this.onTextAreaChange(e);
         this.updatePreTagOutline();
+        // Reset blockIndex to null
+        this.blockIndex = null;
     }
 
     @mobx.action.bound
@@ -433,13 +435,16 @@ class ChatSidebar extends React.Component<{}, {}> {
         const textBeforeCursor = textarea.value.slice(0, cursorPosition);
         const textAfterCursor = textarea.value.slice(cursorPosition);
 
-        console.log("GlobalModel.sidebarchatModel.focused", GlobalModel.sidebarchatModel.focused);
         // Check if the cursor is at the first line for ArrowUp
         if (
-            (textBeforeCursor.indexOf("\n") === -1 && cursorPosition === 0 && key === "ArrowUp") ||
+            (textBeforeCursor.indexOf("\n") == -1 && cursorPosition == 0 && key == "ArrowUp") ||
             GlobalModel.sidebarchatModel.focused == "block"
         ) {
             GlobalModel.sidebarchatModel.setFocus("block", true);
+            console.log("GlobalModel.sidebarchatModel.focused", GlobalModel.sidebarchatModel.focused);
+            console.log(`textBeforeCursor.indexOf("\n") === -1`, textBeforeCursor.indexOf("\n") === -1);
+            console.log("cursorPosition === 0", cursorPosition === 0);
+            console.log("key === ArrowUp", key === "ArrowUp");
             return true;
         }
 
@@ -500,6 +505,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                         className="sidebarchat-input chat-textarea"
                         onBlur={this.onTextAreaBlur}
                         onFocus={this.onTextAreaFocused}
+                        onMouseDown={this.onTextAreaFocused} // When the user clicks on the textarea
                         onChange={this.onTextAreaChange}
                         style={{ fontSize: this.termFontSize }}
                         placeholder="Send a Message..."
