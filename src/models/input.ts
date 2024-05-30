@@ -139,6 +139,7 @@ class InputModel {
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
         switch (activeAuxView) {
             case appconst.InputAuxView_History:
+                console.log("focus history");
                 const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
                 if (elem) {
                     elem.focus();
@@ -149,9 +150,12 @@ class InputModel {
                 break;
             case null:
                 if (GlobalModel.sidebarchatModel.hasFocus) {
+                    console.log("focus sidebarchat");
                     this.auxViewFocus.set(false);
                 } else {
+                    console.log("focus main");
                     const elem = document.getElementById("main-cmd-input");
+                    console.log("elem", elem);
                     if (elem) {
                         elem.focus();
                     }
@@ -159,6 +163,7 @@ class InputModel {
                 }
                 break;
             default: {
+                console.log("focus auxview");
                 const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
                 if (elem != null) {
                     elem.focus();

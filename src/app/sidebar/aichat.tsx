@@ -191,9 +191,9 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        // if (GlobalModel.sidebarchatModel.focused == "input") {
-        // this.textAreaRef.current.focus();
-        // }
+        if (GlobalModel.sidebarchatModel.focused == "input") {
+            this.textAreaRef.current.focus();
+        }
         if (GlobalModel.sidebarchatModel.hasCmdAndOutput()) {
             const newCmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
             const newValue = this.formChatMessage(newCmdAndOutput);
@@ -206,8 +206,10 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
-        // GlobalModel.sidebarchatModel.setFocus("input", true);
-        // this.textAreaRef.current.focus();
+        console.log("GlobalModel.sidebarchatModel.focused", GlobalModel.sidebarchatModel.focused);
+        if (GlobalModel.sidebarchatModel.focused == "input") {
+            this.textAreaRef.current.focus();
+        }
         if (this.sidebarRef.current) {
             this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
         }
@@ -218,6 +220,8 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (this.sidebarRef.current) {
             this.sidebarRef.current.removeEventListener("click", this.handleSidebarClick);
         }
+        GlobalModel.sidebarchatModel.resetFocus();
+        // GlobalModel.inputModel.giveFocus();
     }
 
     requestChatUpdate() {
@@ -267,16 +271,20 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onTextAreaBlur(e: any) {
-        //GlobalModel.inputModel.setAuxViewFocus(false);
+        console.log("blur event: ", e);
+        GlobalModel.sidebarchatModel.resetFocus();
+        GlobalModel.inputModel.giveFocus();
     }
 
     @mobx.action.bound
     onTextAreaFocused(e) {
+        console.log("focus event: ", e);
         GlobalModel.sidebarchatModel.setFocus("input", true);
         this.onTextAreaChange(e);
         this.updatePreTagOutline();
     }
 
+    @mobx.action.bound
     onEnterKeyPressed() {
         const messageStr = this.value.get();
         this.submitChatMessage(messageStr);
@@ -284,6 +292,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         GlobalModel.sidebarchatModel.resetCmdAndOutput();
     }
 
+    @mobx.action.bound
     onExpandInputPressed() {
         const currentRef = this.textAreaRef.current;
         if (currentRef == null) {
@@ -331,6 +340,7 @@ class ChatSidebar extends React.Component<{}, {}> {
             GlobalModel.sidebarchatModel.setFocus("block", true);
             this.textAreaRef.current.focus();
         }
+        console.log("handleSidebarClick", detection);
     }
 
     updateScrollTop() {
@@ -369,6 +379,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         this.osInstance = osInstance;
     }
 
+    @mobx.action.bound
     onArrowUpPressed() {
         // let bind = this.handleTextAreaKeyDown("ArrowUp");
         if (this.handleTextAreaKeyDown("ArrowUp")) {
@@ -393,11 +404,6 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onArrowDownPressed() {
-        // let bind = false;
-        // if (GlobalModel.sidebarchatModel.focused == "input") {
-        //     console.log("onArrowDownPressed got here");
-        //     bind = this.handleTextAreaKeyDown("ArrowDown");
-        // }
         if (this.handleTextAreaKeyDown("ArrowDown")) {
             const pres = this.chatWindowRef.current?.querySelectorAll("pre");
             if (pres == null) {
@@ -491,10 +497,9 @@ class ChatSidebar extends React.Component<{}, {}> {
                         ref={this.textAreaRef}
                         autoComplete="off"
                         autoCorrect="off"
-                        autoFocus={true}
                         className="sidebarchat-input chat-textarea"
                         onBlur={this.onTextAreaBlur}
-                        onMouseDown={this.onTextAreaFocused}
+                        onFocus={this.onTextAreaFocused}
                         onChange={this.onTextAreaChange}
                         style={{ fontSize: this.termFontSize }}
                         placeholder="Send a Message..."
