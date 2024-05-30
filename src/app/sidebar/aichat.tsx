@@ -192,6 +192,7 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     componentDidUpdate() {
         if (GlobalModel.sidebarchatModel.focused == "input") {
+            console.log("update triggered");
             this.textAreaRef.current.focus();
         }
         if (GlobalModel.sidebarchatModel.hasCmdAndOutput()) {
@@ -212,6 +213,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         }
         if (this.sidebarRef.current) {
             this.sidebarRef.current.addEventListener("mousedown", this.handleSidebarMouseDown);
+            this.sidebarRef.current.addEventListener("mouseup", this.handleSidebarMouseUp);
         }
         this.requestChatUpdate();
     }
@@ -219,6 +221,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     componentWillUnmount() {
         if (this.sidebarRef.current) {
             this.sidebarRef.current.removeEventListener("mousedown", this.handleSidebarMouseDown);
+            this.sidebarRef.current.removeEventListener("mouseup", this.handleSidebarMouseUp);
         }
         GlobalModel.sidebarchatModel.resetFocus();
         // GlobalModel.inputModel.giveFocus();
@@ -330,17 +333,25 @@ class ChatSidebar extends React.Component<{}, {}> {
             return;
         }
 
-        GlobalModel.sidebarchatModel.setFocus("block", true);
-
         const pre = target.closest("pre");
         if (pre) {
             console.log("pre clicked");
             this.updatePreTagOutline(pre);
-            return; // Do not focus the textarea
+            this.textAreaRef.current.blur();
+            GlobalModel.sidebarchatModel.setFocus("block", true);
+        } else {
+            GlobalModel.sidebarchatModel.setFocus("block", true);
+            const chatWindow = target.closest(".chat-window");
+            if (chatWindow) {
+                this.textAreaRef.current.focus();
+            }
         }
+    }
 
-        const chatWindow = target.closest(".chat-window");
-        if (chatWindow) {
+    @mobx.action.bound
+    handleSidebarMouseUp(event) {
+        const pre = event.target.closest("pre");
+        if (!pre) {
             this.textAreaRef.current.focus();
         }
     }
@@ -419,7 +430,9 @@ class ChatSidebar extends React.Component<{}, {}> {
                 console.log("onArrowDownPressed:this.blockIndex", this.blockIndex);
                 this.updatePreTagOutline(pres[this.blockIndex]);
             } else {
+                console.log("onArrowDownPressed:resetFocus*********************");
                 GlobalModel.sidebarchatModel.setFocus("input", true);
+                this.textAreaRef.current.focus();
                 this.updatePreTagOutline();
             }
             this.updateScrollTop();
