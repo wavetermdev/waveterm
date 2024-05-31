@@ -269,7 +269,7 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onTextAreaFocused(e) {
-        GlobalModel.sidebarchatModel.setFocus("input", true);
+        GlobalModel.sidebarchatModel.setFocus(true);
         this.onTextAreaChange(e);
     }
 
@@ -407,7 +407,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                 this.blockIndex++;
                 this.updatePreTagOutline(pres[this.blockIndex]);
             } else {
-                GlobalModel.sidebarchatModel.setFocus("input", true);
+                GlobalModel.sidebarchatModel.setFocus(true);
                 this.textAreaRef.current.focus();
                 this.updatePreTagOutline();
                 this.blockIndex = null;
@@ -432,7 +432,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         ) {
             return true;
         }
-        GlobalModel.sidebarchatModel.setFocus("input", true);
+        GlobalModel.sidebarchatModel.setFocus(true);
         return false;
     }
 

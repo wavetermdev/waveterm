@@ -1,21 +1,16 @@
 import * as mobx from "mobx";
 import { Model } from "./model";
 
-type SidebarChatFocus = {
-    input: boolean;
-    block: boolean;
-};
-
 class SidebarChatModel {
     globalModel: Model;
-    sidebarChatFocus: SidebarChatFocus;
+    sidebarChatFocused: boolean;
     cmdAndOutput: CmdAndOutput;
     cmdFromChat: string;
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
         mobx.makeObservable(this, {
-            sidebarChatFocus: mobx.observable,
+            sidebarChatFocused: mobx.observable,
             cmdAndOutput: mobx.observable,
             setFocus: mobx.action,
             resetFocus: mobx.action,
@@ -24,13 +19,9 @@ class SidebarChatModel {
             setCmdToExec: mobx.action,
             resetCmdToExec: mobx.action,
             hasFocus: mobx.computed,
-            focused: mobx.computed,
             cmdToExec: mobx.computed,
         });
-        this.sidebarChatFocus = {
-            input: false,
-            block: false,
-        };
+        this.sidebarChatFocused = false;
         this.cmdAndOutput = {
             cmd: "",
             output: "",
@@ -41,25 +32,17 @@ class SidebarChatModel {
     }
 
     // block can be the chat-window in terms of focus
-    setFocus(section: "input" | "block", focus: boolean): void {
-        document.querySelector(".sidebarchat .sidebarchat-input");
+    setFocus(focus: boolean): void {
         this.resetFocus();
-        this.sidebarChatFocus[section] = focus;
+        this.sidebarChatFocused = focus;
     }
 
     get hasFocus(): boolean {
-        return this.sidebarChatFocus.input || this.sidebarChatFocus.block;
-    }
-
-    get focused(): "input" | "block" | null {
-        if (this.sidebarChatFocus.input) return "input";
-        if (this.sidebarChatFocus.block) return "block";
-        return null;
+        return this.sidebarChatFocused;
     }
 
     resetFocus(): void {
-        this.sidebarChatFocus.input = false;
-        this.sidebarChatFocus.block = false;
+        this.sidebarChatFocused = false;
     }
 
     setCmdAndOutput(cmd: string, output: string, usedRows: number, isError: boolean): void {
