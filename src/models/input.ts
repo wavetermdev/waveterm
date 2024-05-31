@@ -292,8 +292,8 @@ class InputModel {
     }
 
     @mobx.action
-    openChatSidebar(): void {
-        GlobalModel.sidebarchatModel.setFocus("input", true);
+    setChatSidebarFocus(focus = true): void {
+        GlobalModel.sidebarchatModel.setFocus(focus);
         this.giveFocus();
     }
 

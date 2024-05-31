@@ -738,10 +738,12 @@ class Model {
                 setTimeout(() => {
                     // allows for the session view to load
                     this.inputModel.setAuxViewFocus(false);
+                    this.inputModel.setChatSidebarFocus(false);
                 }, 100);
             })();
         } else {
             this.inputModel.setAuxViewFocus(false);
+            this.inputModel.setChatSidebarFocus(false);
         }
     }
 

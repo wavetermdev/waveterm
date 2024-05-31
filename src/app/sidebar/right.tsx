@@ -112,7 +112,7 @@ class RightSideBar extends React.Component<
         if (this.mode.get() == "aichat") {
             if (isCollapsed) {
                 this.timeoutId = setTimeout(() => {
-                    GlobalModel.inputModel.openChatSidebar();
+                    GlobalModel.inputModel.setChatSidebarFocus();
                 }, 100);
             }
         }
