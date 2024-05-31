@@ -292,6 +292,12 @@ class InputModel {
     }
 
     @mobx.action
+    openChatSidebar(): void {
+        GlobalModel.sidebarchatModel.setFocus("input", true);
+        this.giveFocus();
+    }
+
+    @mobx.action
     updateCmdLine(cmdLine: StrWithPos): void {
         this.curLine = cmdLine.str;
         if (cmdLine.pos != appconst.NoStrPos) {

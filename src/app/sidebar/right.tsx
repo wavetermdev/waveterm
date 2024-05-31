@@ -83,10 +83,18 @@ class RightSideBar extends React.Component<
     {}
 > {
     mode: OV<string> = mobx.observable.box("aichat", { name: "RightSideBar-mode" });
+    timeoutId: NodeJS.Timeout = null;
 
     constructor(props) {
         super(props);
         mobx.makeObservable(this);
+    }
+
+    componentWillUnmount() {
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = null;
+        }
     }
 
     @mobx.action.bound
@@ -99,12 +107,15 @@ class RightSideBar extends React.Component<
 
     @mobx.action.bound
     toggleCollapse() {
-        console.log("toggleCollapse");
         const isCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
-        if (this.mode.get() == "aichat") {
-            GlobalModel.sidebarchatModel.setFocus("input", !!isCollapsed);
-        }
         GlobalModel.rightSidebarModel.setCollapsed(!isCollapsed);
+        if (this.mode.get() == "aichat") {
+            if (isCollapsed) {
+                this.timeoutId = setTimeout(() => {
+                    GlobalModel.inputModel.openChatSidebar();
+                }, 100);
+            }
+        }
         return true;
     }
 

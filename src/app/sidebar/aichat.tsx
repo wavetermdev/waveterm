@@ -214,7 +214,6 @@ class ChatSidebar extends React.Component<{}, {}> {
             this.sidebarRef.current.removeEventListener("click", this.handleSidebarClick);
         }
         GlobalModel.sidebarchatModel.resetFocus();
-        // GlobalModel.inputModel.giveFocus();
     }
 
     requestChatUpdate() {
