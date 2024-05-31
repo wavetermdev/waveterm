@@ -152,6 +152,10 @@ class InputModel {
                 if (GlobalModel.sidebarchatModel.hasFocus) {
                     console.log("focus sidebarchat");
                     this.auxViewFocus.set(false);
+                    const elem: HTMLElement = document.querySelector(".sidebarchat-input");
+                    if (elem != null) {
+                        elem.focus();
+                    }
                 } else {
                     console.log("focus main");
                     const elem = document.getElementById("main-cmd-input");

@@ -191,10 +191,6 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        if (GlobalModel.sidebarchatModel.focused == "input") {
-            console.log("update triggered");
-            this.textAreaRef.current.focus();
-        }
         if (GlobalModel.sidebarchatModel.hasCmdAndOutput()) {
             const newCmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
             const newValue = this.formChatMessage(newCmdAndOutput);
@@ -207,10 +203,6 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
-        console.log("GlobalModel.sidebarchatModel.focused", GlobalModel.sidebarchatModel.focused);
-        if (GlobalModel.sidebarchatModel.focused == "input") {
-            this.textAreaRef.current.focus();
-        }
         if (this.sidebarRef.current) {
             this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
         }
@@ -272,21 +264,14 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onTextAreaBlur(e: any) {
-        console.log("blur event: ", e);
-        console.log("GlobalModel.sidebarchatModel.hasFocus", GlobalModel.sidebarchatModel.hasFocus);
-        // Only reset focus and give back it back to main input when neither textarea nor chat window has focus
-        // if (!GlobalModel.sidebarchatModel.hasFocus) {
         GlobalModel.sidebarchatModel.resetFocus();
         GlobalModel.inputModel.giveFocus();
-        // }
     }
 
     @mobx.action.bound
     onTextAreaFocused(e) {
-        console.log("focus event: ", e);
         GlobalModel.sidebarchatModel.setFocus("input", true);
         this.onTextAreaChange(e);
-        // this.updatePreTagOutline();
     }
 
     @mobx.action.bound
@@ -328,31 +313,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         });
     }
 
-    // @mobx.action.bound
-    // handleSidebarClick(event) {
-    //     const target = event.target as HTMLElement;
-
-    //     if (target.closest(".copy-button") || target.closest(".fa-square-terminal")) {
-    //         return;
-    //     }
-
-    //     const pre = target.closest("pre");
-    //     if (pre) {
-    //         console.log("pre clicked");
-    //         this.updatePreTagOutline(pre);
-    //         // this.textAreaRef.current.blur();
-    //         // GlobalModel.sidebarchatModel.setFocus("block", true);
-    //     }
-    //     // else {
-    //     //     GlobalModel.sidebarchatModel.setFocus("block", true);
-    //     //     const chatWindow = target.closest(".chat-window");
-    //     //     if (chatWindow) {
-    //     //         this.textAreaRef.current.focus();
-    //     //     }
-    //     // }
-    //     this.textAreaRef.current.focus();
-    // }
-
     @mobx.action.bound
     handleSidebarClick(event) {
         const target = event.target as HTMLElement;
@@ -375,20 +335,8 @@ class ChatSidebar extends React.Component<{}, {}> {
                     }
                 });
             }
-
-            // Optionally blur the textarea or set focus to block
-            // this.textAreaRef.current.blur();
-            // GlobalModel.sidebarchatModel.setFocus("block", true);
         }
-        // else {
-        // Optionally handle clicks outside pre tags
-        // GlobalModel.sidebarchatModel.setFocus("block", true);
-        // const chatWindow = target.closest(".chat-window");
-        // if (chatWindow) {
-        //     this.textAreaRef.current.focus();
-        // }
         this.textAreaRef.current.focus();
-        // }
     }
 
     updateScrollTop() {
@@ -429,7 +377,6 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onArrowUpPressed() {
-        // let bind = this.handleTextAreaKeyDown("ArrowUp");
         if (this.handleTextAreaKeyDown("ArrowUp")) {
             const pres = this.chatWindowRef.current?.querySelectorAll("pre");
             if (pres == null) {
@@ -437,12 +384,9 @@ class ChatSidebar extends React.Component<{}, {}> {
             }
             if (this.blockIndex == null) {
                 this.blockIndex = pres.length - 1;
-                console.log("this.blockIndex 1", this.blockIndex);
             } else if (this.blockIndex > 0) {
                 this.blockIndex--;
-                console.log("this.blockIndex 2", this.blockIndex);
             }
-            console.log("onArrowUpPressed:this.blockIndex", this.blockIndex);
             this.updatePreTagOutline(pres[this.blockIndex]);
             this.updateScrollTop();
             return true;
@@ -462,10 +406,8 @@ class ChatSidebar extends React.Component<{}, {}> {
             }
             if (this.blockIndex < pres.length - 1 && this.blockIndex >= 0) {
                 this.blockIndex++;
-                console.log("onArrowDownPressed:this.blockIndex", this.blockIndex);
                 this.updatePreTagOutline(pres[this.blockIndex]);
             } else {
-                console.log("onArrowDownPressed:resetFocus*********************");
                 GlobalModel.sidebarchatModel.setFocus("input", true);
                 this.textAreaRef.current.focus();
                 this.updatePreTagOutline();
@@ -489,20 +431,8 @@ class ChatSidebar extends React.Component<{}, {}> {
             (textBeforeCursor.indexOf("\n") == -1 && cursorPosition == 0 && key == "ArrowUp") ||
             this.blockIndex != null
         ) {
-            console.log("this.blockIndex", this.blockIndex);
-            GlobalModel.sidebarchatModel.setFocus("block", true);
-            console.log("GlobalModel.sidebarchatModel.focused", GlobalModel.sidebarchatModel.focused);
-            console.log(`textBeforeCursor.indexOf("\n") === -1`, textBeforeCursor.indexOf("\n") === -1);
-            console.log("cursorPosition === 0", cursorPosition === 0);
-            console.log("key === ArrowUp", key === "ArrowUp");
             return true;
         }
-
-        console.log("got here=====================");
-        // // Check if the cursor is at the last line for ArrowDown
-        // if (textAfterCursor.indexOf("\n") === -1 && cursorPosition === textarea.value.length && key === "ArrowDown") {
-        //     return true;
-        // }
         GlobalModel.sidebarchatModel.setFocus("input", true);
         return false;
     }

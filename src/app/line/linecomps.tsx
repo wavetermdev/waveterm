@@ -129,6 +129,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
                 cmdShouldMarkError(cmd)
             );
             GlobalModel.sidebarchatModel.setFocus("input", true);
+            GlobalModel.inputModel.giveFocus();
         }
     }
 
