@@ -181,6 +181,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef<HTMLTextAreaElement>();
     chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef<HTMLDivElement>();
     value: OV<string> = mobx.observable.box("", { deep: false, name: "value" });
+    chatWindowClicked: OV<boolean> = mobx.observable.box(false, { name: "chatWindowClicked" });
     osInstance: OverlayScrollbars;
     termFontSize: number = 14;
     blockIndex: number;
@@ -203,15 +204,15 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     componentDidMount() {
-        if (this.sidebarRef.current) {
-            this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
+        if (this.chatWindowRef.current) {
+            this.chatWindowRef.current.addEventListener("click", this.handleChatWindowClick);
         }
         this.requestChatUpdate();
     }
 
     componentWillUnmount() {
-        if (this.sidebarRef.current) {
-            this.sidebarRef.current.removeEventListener("click", this.handleSidebarClick);
+        if (this.chatWindowRef.current) {
+            this.chatWindowRef.current.removeEventListener("click", this.handleChatWindowClick);
         }
         GlobalModel.sidebarchatModel.resetFocus();
     }
@@ -263,14 +264,20 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onTextAreaBlur(e: any) {
-        GlobalModel.sidebarchatModel.resetFocus();
-        GlobalModel.inputModel.giveFocus();
+        console.log("onTextAreaBlur", this.chatWindowClicked.get());
+        if (this.chatWindowClicked.get()) {
+            GlobalModel.inputModel.setChatSidebarFocus();
+        } else {
+            GlobalModel.sidebarchatModel.resetFocus();
+            GlobalModel.inputModel.giveFocus();
+        }
     }
 
     @mobx.action.bound
-    onTextAreaFocused(e) {
-        GlobalModel.sidebarchatModel.setFocus(true);
-        this.onTextAreaChange(e);
+    onTextAreaFocus() {
+        console.log("onTextAreaFocus");
+        GlobalModel.inputModel.setChatSidebarFocus();
+        return true;
     }
 
     @mobx.action.bound
@@ -313,7 +320,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     @mobx.action.bound
-    handleSidebarClick(event) {
+    handleChatWindowClick(event) {
         const target = event.target as HTMLElement;
 
         if (target.closest(".copy-button") || target.closest(".fa-square-terminal")) {
@@ -322,8 +329,6 @@ class ChatSidebar extends React.Component<{}, {}> {
 
         const pre = target.closest("pre");
         if (pre) {
-            console.log("pre clicked");
-
             const pres = this.chatWindowRef.current?.querySelectorAll("pre");
             if (pres) {
                 pres.forEach((preElement, idx) => {
@@ -335,7 +340,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                 });
             }
         }
-        this.textAreaRef.current.focus();
+        this.chatWindowClicked.set(true);
     }
 
     updateScrollTop() {
@@ -423,7 +428,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         const textarea = this.textAreaRef.current;
         const cursorPosition = textarea.selectionStart;
         const textBeforeCursor = textarea.value.slice(0, cursorPosition);
-        const textAfterCursor = textarea.value.slice(cursorPosition);
 
         // Check if the cursor is at the first line for ArrowUp
         if (
@@ -484,7 +488,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                         autoCorrect="off"
                         className="sidebarchat-input chat-textarea"
                         onBlur={this.onTextAreaBlur}
-                        onFocus={this.onTextAreaFocused}
+                        onFocus={this.onTextAreaFocus}
                         onMouseDown={this.onTextAreaMouseDown} // When the user clicks on the textarea
                         onChange={this.onTextAreaChange}
                         style={{ fontSize: this.termFontSize }}
