@@ -404,7 +404,6 @@ class ChatSidebar extends React.Component<{}, {}> {
                 GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(blockIndex);
             }
             blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
-            console.log("blockIndex", blockIndex);
             this.updatePreTagOutline(pres[blockIndex]);
             this.updateScrollTop();
             return true;
