@@ -3,85 +3,76 @@ import { Model } from "./model";
 
 class SidebarChatModel {
     globalModel: Model;
-    sidebarChatFocused: boolean;
-    cmdAndOutput: CmdAndOutput;
-    cmdFromChat: string;
+    sidebarChatFocused: OV<boolean> = mobx.observable.box(false, { name: "SidebarChatModel-sidebarChatFocused" });
+    cmdAndOutput: OV<{ cmd: string; output: string; usedRows: number; isError: boolean }> = mobx.observable.box(
+        { cmd: "", output: "", usedRows: 0, isError: false },
+        { name: "SidebarChatModel-cmdAndOutput" }
+    );
+    cmdFromChat: OV<string> = mobx.observable.box("", { name: "SidebarChatModel-cmdFromChat" });
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
-        mobx.makeObservable(this, {
-            sidebarChatFocused: mobx.observable,
-            cmdAndOutput: mobx.observable,
-            setFocus: mobx.action,
-            resetFocus: mobx.action,
-            setCmdAndOutput: mobx.action,
-            resetCmdAndOutput: mobx.action,
-            setCmdToExec: mobx.action,
-            resetCmdToExec: mobx.action,
-            hasFocus: mobx.computed,
-            cmdToExec: mobx.computed,
+        mobx.makeObservable(this);
+    }
+
+    // block can be the chat-window in terms of focus
+    @mobx.action
+    setFocus(focus: boolean): void {
+        this.resetFocus();
+        this.sidebarChatFocused.set(focus);
+    }
+
+    hasFocus(): boolean {
+        return this.sidebarChatFocused.get();
+    }
+
+    @mobx.action
+    resetFocus(): void {
+        this.sidebarChatFocused.set(false);
+    }
+
+    @mobx.action
+    setCmdAndOutput(cmd: string, output: string, usedRows: number, isError: boolean): void {
+        console.log("cmd", cmd);
+        this.cmdAndOutput.set({
+            cmd: cmd,
+            output: output,
+            usedRows: usedRows,
+            isError: isError,
         });
-        this.sidebarChatFocused = false;
-        this.cmdAndOutput = {
+    }
+
+    getCmdAndOutput(): { cmd: string; output: string; usedRows: number; isError: boolean } {
+        return this.cmdAndOutput.get();
+    }
+
+    @mobx.action
+    resetCmdAndOutput(): void {
+        this.cmdAndOutput.set({
             cmd: "",
             output: "",
             usedRows: 0,
             isError: false,
-        };
-        this.cmdFromChat = "";
-    }
-
-    // block can be the chat-window in terms of focus
-    setFocus(focus: boolean): void {
-        this.resetFocus();
-        this.sidebarChatFocused = focus;
-    }
-
-    get hasFocus(): boolean {
-        return this.sidebarChatFocused;
-    }
-
-    resetFocus(): void {
-        this.sidebarChatFocused = false;
-    }
-
-    setCmdAndOutput(cmd: string, output: string, usedRows: number, isError: boolean): void {
-        this.cmdAndOutput.cmd = cmd;
-        this.cmdAndOutput.output = output;
-        this.cmdAndOutput.usedRows = usedRows;
-        this.cmdAndOutput.isError = isError;
-    }
-
-    getCmdAndOutput(): CmdAndOutput {
-        return {
-            cmd: this.cmdAndOutput.cmd,
-            output: this.cmdAndOutput.output,
-            usedRows: this.cmdAndOutput.usedRows,
-            isError: this.cmdAndOutput.isError,
-        };
-    }
-
-    resetCmdAndOutput(): void {
-        this.cmdAndOutput.cmd = "";
-        this.cmdAndOutput.output = "";
-        this.cmdAndOutput.usedRows = 0;
-        this.cmdAndOutput.isError = false;
+        });
     }
 
     hasCmdAndOutput(): boolean {
-        return this.cmdAndOutput.cmd.length > 0 || this.cmdAndOutput.output.length > 0;
+        const { cmd, output } = this.cmdAndOutput.get();
+        return cmd.length > 0 || output.length > 0;
     }
 
+    @mobx.action
     setCmdToExec(cmd: string): void {
-        this.cmdFromChat = cmd;
+        this.cmdFromChat.set(cmd);
     }
 
+    @mobx.action
     resetCmdToExec(): void {
-        this.cmdFromChat = "";
+        this.cmdFromChat.set("");
     }
 
-    get cmdToExec(): string {
-        return this.cmdFromChat;
+    getCmdToExec(): string {
+        return this.cmdFromChat.get();
     }
 }
 

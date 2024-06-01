@@ -181,10 +181,10 @@ class ChatSidebar extends React.Component<{}, {}> {
     textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef<HTMLTextAreaElement>();
     chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef<HTMLDivElement>();
     value: OV<string> = mobx.observable.box("", { deep: false, name: "value" });
-    chatWindowClicked: OV<boolean> = mobx.observable.box(false, { name: "chatWindowClicked" });
     osInstance: OverlayScrollbars;
     termFontSize: number = 14;
     blockIndex: number;
+    disposeReaction: () => void;
 
     constructor(props) {
         super(props);
@@ -192,29 +192,46 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        if (GlobalModel.sidebarchatModel.hasCmdAndOutput()) {
-            const newCmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
-            const newValue = this.formChatMessage(newCmdAndOutput);
-            if (newValue !== this.value.get()) {
-                this.value.set(newValue);
-                GlobalModel.sidebarchatModel.resetCmdAndOutput();
-            }
-        }
         this.adjustTextAreaHeight();
     }
 
     componentDidMount() {
-        if (this.chatWindowRef.current) {
-            this.chatWindowRef.current.addEventListener("click", this.handleChatWindowClick);
+        this.disposeReaction = mobx.reaction(
+            () => GlobalModel.sidebarchatModel.hasCmdAndOutput(),
+            (hasCmdAndOutput) => {
+                if (hasCmdAndOutput) {
+                    const newCmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
+                    const newValue = this.formChatMessage(newCmdAndOutput);
+                    this.value.set(newValue);
+                    GlobalModel.sidebarchatModel.resetCmdAndOutput();
+                }
+            }
+        );
+        if (this.sidebarRef.current) {
+            this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
         }
+        document.addEventListener("click", this.handleClickOutside);
         this.requestChatUpdate();
     }
 
     componentWillUnmount() {
-        if (this.chatWindowRef.current) {
-            this.chatWindowRef.current.removeEventListener("click", this.handleChatWindowClick);
+        if (this.sidebarRef.current) {
+            this.sidebarRef.current.removeEventListener("click", this.handleSidebarClick);
         }
+        document.removeEventListener("click", this.handleClickOutside);
         GlobalModel.sidebarchatModel.resetFocus();
+        if (this.disposeReaction) {
+            this.disposeReaction();
+        }
+    }
+
+    @mobx.action.bound
+    handleClickOutside(e: MouseEvent) {
+        const sidebar = this.sidebarRef.current;
+        if (sidebar && !sidebar.contains(e.target as Node)) {
+            GlobalModel.sidebarchatModel.resetFocus();
+            GlobalModel.inputModel.giveFocus();
+        }
     }
 
     requestChatUpdate() {
@@ -258,24 +275,8 @@ class ChatSidebar extends React.Component<{}, {}> {
         }).catch((_) => {});
     }
 
-    onClickOutsideSidebar() {
-        GlobalModel.sidebarchatModel.resetFocus();
-    }
-
-    @mobx.action.bound
-    onTextAreaBlur(e: any) {
-        console.log("onTextAreaBlur", this.chatWindowClicked.get());
-        if (this.chatWindowClicked.get()) {
-            GlobalModel.inputModel.setChatSidebarFocus();
-        } else {
-            GlobalModel.sidebarchatModel.resetFocus();
-            GlobalModel.inputModel.giveFocus();
-        }
-    }
-
     @mobx.action.bound
     onTextAreaFocus() {
-        console.log("onTextAreaFocus");
         GlobalModel.inputModel.setChatSidebarFocus();
         return true;
     }
@@ -320,10 +321,13 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     @mobx.action.bound
-    handleChatWindowClick(event) {
+    handleSidebarClick(event) {
         const target = event.target as HTMLElement;
-
-        if (target.closest(".copy-button") || target.closest(".fa-square-terminal")) {
+        if (
+            target.closest(".copy-button") ||
+            target.closest(".fa-square-terminal") ||
+            target.closest(".chat-textarea")
+        ) {
             return;
         }
 
@@ -340,7 +344,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                 });
             }
         }
-        this.chatWindowClicked.set(true);
+        GlobalModel.inputModel.setChatSidebarFocus();
     }
 
     updateScrollTop() {
@@ -469,7 +473,7 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus;
+        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus();
         const textAreaValue = this.value.get();
 
         return (
@@ -487,7 +491,6 @@ class ChatSidebar extends React.Component<{}, {}> {
                         autoComplete="off"
                         autoCorrect="off"
                         className="sidebarchat-input chat-textarea"
-                        onBlur={this.onTextAreaBlur}
                         onFocus={this.onTextAreaFocus}
                         onMouseDown={this.onTextAreaMouseDown} // When the user clicks on the textarea
                         onChange={this.onTextAreaChange}
