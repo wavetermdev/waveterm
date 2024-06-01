@@ -197,13 +197,20 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     componentDidMount() {
         this.disposeReaction = mobx.reaction(
-            () => GlobalModel.sidebarchatModel.hasCmdAndOutput(),
-            (hasCmdAndOutput) => {
+            () => [
+                GlobalModel.sidebarchatModel.hasCmdAndOutput(),
+                GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex(),
+            ],
+            ([hasCmdAndOutput, selectedCodeBlockIndex]) => {
                 if (hasCmdAndOutput) {
                     const newCmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
                     const newValue = this.formChatMessage(newCmdAndOutput);
                     this.value.set(newValue);
                     GlobalModel.sidebarchatModel.resetCmdAndOutput();
+                }
+
+                if (selectedCodeBlockIndex == null) {
+                    this.updatePreTagOutline();
                 }
             }
         );
@@ -285,7 +292,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     onTextAreaMouseDown(e) {
         this.updatePreTagOutline();
         // Reset blockIndex to null
-        this.blockIndex = null;
+        GlobalModel.sidebarchatModel.resetSelectedCodeBlockIndex();
     }
 
     @mobx.action.bound
@@ -312,7 +319,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         }
         pres.forEach((preElement, idx) => {
             if (preElement === clickedPre) {
-                this.blockIndex = idx;
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(idx);
                 preElement.style.outline = outline;
             } else {
                 preElement.style.outline = "none";
@@ -337,8 +344,7 @@ class ChatSidebar extends React.Component<{}, {}> {
             if (pres) {
                 pres.forEach((preElement, idx) => {
                     if (preElement === pre) {
-                        this.blockIndex = idx;
-                        console.log("Clicked pre index:", idx);
+                        GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(idx);
                         this.updatePreTagOutline(pre);
                     }
                 });
@@ -352,7 +358,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (pres == null) {
             return;
         }
-        const block = pres[this.blockIndex];
+        const block = pres[GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex()];
         if (block == null) {
             return;
         }
@@ -387,15 +393,19 @@ class ChatSidebar extends React.Component<{}, {}> {
     onArrowUpPressed() {
         if (this.handleTextAreaKeyDown("ArrowUp")) {
             const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+            let blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
             if (pres == null) {
                 return false;
             }
-            if (this.blockIndex == null) {
-                this.blockIndex = pres.length - 1;
-            } else if (this.blockIndex > 0) {
-                this.blockIndex--;
+            if (blockIndex == null) {
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(pres.length - 1);
+            } else if (blockIndex > 0) {
+                blockIndex--;
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(blockIndex);
             }
-            this.updatePreTagOutline(pres[this.blockIndex]);
+            blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
+            console.log("blockIndex", blockIndex);
+            this.updatePreTagOutline(pres[blockIndex]);
             this.updateScrollTop();
             return true;
         }
@@ -406,20 +416,21 @@ class ChatSidebar extends React.Component<{}, {}> {
     onArrowDownPressed() {
         if (this.handleTextAreaKeyDown("ArrowDown")) {
             const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+            let blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
             if (pres == null) {
                 return false;
             }
-            if (this.blockIndex == null) {
+            if (blockIndex == null) {
                 return false;
             }
-            if (this.blockIndex < pres.length - 1 && this.blockIndex >= 0) {
-                this.blockIndex++;
-                this.updatePreTagOutline(pres[this.blockIndex]);
+            if (blockIndex < pres.length - 1 && blockIndex >= 0) {
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(blockIndex++);
+                this.updatePreTagOutline(pres[blockIndex]);
             } else {
                 GlobalModel.sidebarchatModel.setFocus(true);
                 this.textAreaRef.current.focus();
                 this.updatePreTagOutline();
-                this.blockIndex = null;
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(null);
             }
             this.updateScrollTop();
             return true;
@@ -432,12 +443,10 @@ class ChatSidebar extends React.Component<{}, {}> {
         const textarea = this.textAreaRef.current;
         const cursorPosition = textarea.selectionStart;
         const textBeforeCursor = textarea.value.slice(0, cursorPosition);
+        const blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
 
         // Check if the cursor is at the first line for ArrowUp
-        if (
-            (textBeforeCursor.indexOf("\n") == -1 && cursorPosition == 0 && key == "ArrowUp") ||
-            this.blockIndex != null
-        ) {
+        if ((textBeforeCursor.indexOf("\n") == -1 && cursorPosition == 0 && key == "ArrowUp") || blockIndex != null) {
             return true;
         }
         GlobalModel.sidebarchatModel.setFocus(true);

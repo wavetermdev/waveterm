@@ -129,6 +129,7 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
                 cmdShouldMarkError(cmd)
             );
             GlobalModel.inputModel.setChatSidebarFocus();
+            GlobalModel.sidebarchatModel.resetSelectedCodeBlockIndex();
         }
     }
 

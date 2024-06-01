@@ -9,6 +9,7 @@ class SidebarChatModel {
         { name: "SidebarChatModel-cmdAndOutput" }
     );
     cmdFromChat: OV<string> = mobx.observable.box("", { name: "SidebarChatModel-cmdFromChat" });
+    selectedCodeBlockIndex: OV<number> = mobx.observable.box(null, { name: "SidebarChatModel-codeBlockIndex" });
 
     constructor(globalModel: Model) {
         this.globalModel = globalModel;
@@ -73,6 +74,18 @@ class SidebarChatModel {
 
     getCmdToExec(): string {
         return this.cmdFromChat.get();
+    }
+
+    getSelectedCodeBlockIndex(): number {
+        return this.selectedCodeBlockIndex.get();
+    }
+
+    setSelectedCodeBlockIndex(index: number): void {
+        this.selectedCodeBlockIndex.set(index);
+    }
+
+    resetSelectedCodeBlockIndex(): void {
+        this.selectedCodeBlockIndex.set(null);
     }
 }
 
