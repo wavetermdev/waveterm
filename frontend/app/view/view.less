@@ -78,3 +78,27 @@
         align-items: start;
     }
 }
+
+.full-preview {
+    display: flex;
+    flex-direction: column;
+}
+
+.view-nav {
+    display: flex;
+    gap: 0.5rem;
+
+    .view-nav-item {
+        background-color: var(--panel-bg-color);
+        border-radius: 3px;
+        padding: 0.2rem;
+
+        &:hover {
+            background-color: var(--highlight-bg-color);
+        }
+
+        &:active {
+            background-color: var(--accent-color);
+        }
+    }
+}

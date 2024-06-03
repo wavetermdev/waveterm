@@ -14,6 +14,39 @@ import "./view.less";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 
+function DirNav({ cwdAtom }: { cwdAtom: jotai.WritableAtom<string, [string], void> }) {
+    const [cwd, setCwd] = jotai.useAtom(cwdAtom);
+    let splitNav = [cwd];
+    let remaining = cwd;
+
+    let idx = remaining.lastIndexOf("/");
+    while (idx !== -1) {
+        remaining = remaining.substring(0, idx);
+        splitNav.unshift(remaining);
+
+        idx = remaining.lastIndexOf("/");
+    }
+    if (splitNav.length === 0) {
+        splitNav = [cwd];
+    }
+    return (
+        <div className="view-nav">
+            {splitNav.map((item) => {
+                let splitPath = item.split("/");
+                if (splitPath.length === 0) {
+                    splitPath = [item];
+                }
+                const baseName = splitPath[splitPath.length - 1];
+                return (
+                    <span className="view-nav-item" key={`nav-item-${item}`} onClick={() => setCwd(item)}>
+                        {baseName}
+                    </span>
+                );
+            })}
+        </div>
+    );
+}
+
 function MarkdownPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<string>> }) {
     const readmeText = jotai.useAtomValue(contentAtom);
     return (
@@ -119,31 +152,35 @@ function PreviewView({ blockId }: { blockId: string }) {
     const fileContent = jotai.useAtomValue(fileContentAtom);
 
     // handle streaming files here
+    let specializedView: React.ReactNode;
     if (mimeType.startsWith("video/") || mimeType.startsWith("audio/") || mimeType.startsWith("image/")) {
-        return <StreamingPreview fileInfo={fileInfo} />;
-    }
-    if (fileInfo == null) {
-        return <CenteredDiv>File Not Found</CenteredDiv>;
-    }
-    if (fileInfo.size > MaxFileSize) {
-        return <CenteredDiv>File Too Large to Preview</CenteredDiv>;
-    }
-    if (mimeType === "text/markdown") {
-        return <MarkdownPreview contentAtom={fileContentAtom} />;
-    }
-    if (mimeType.startsWith("text/")) {
-        return (
+        specializedView = <StreamingPreview fileInfo={fileInfo} />;
+    } else if (fileInfo == null) {
+        specializedView = <CenteredDiv>File Not Found</CenteredDiv>;
+    } else if (fileInfo.size > MaxFileSize) {
+        specializedView = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
+    } else if (mimeType === "text/markdown") {
+        specializedView = <MarkdownPreview contentAtom={fileContentAtom} />;
+    } else if (mimeType.startsWith("text/")) {
+        specializedView = (
             <div className="view-preview view-preview-text">
                 <pre>{fileContent}</pre>
             </div>
         );
+    } else if (mimeType === "directory") {
+        specializedView = <DirectoryPreview contentAtom={fileContentAtom} fileNameAtom={fileNameAtom} />;
+    } else {
+        specializedView = (
+            <div className="view-preview">
+                <div>Preview ({mimeType})</div>
+            </div>
+        );
     }
-    if (mimeType === "directory") {
-        return <DirectoryPreview contentAtom={fileContentAtom} fileNameAtom={fileNameAtom} />;
-    }
+
     return (
-        <div className="view-preview">
-            <div>Preview ({mimeType})</div>
+        <div className="full-preview">
+            <DirNav cwdAtom={fileNameAtom} />
+            {specializedView}
         </div>
     );
 }
