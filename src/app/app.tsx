@@ -81,7 +81,6 @@ class App extends React.Component<{}, {}> {
 
     @boundMethod
     openRightSidebar() {
-        console.log("openRightSidebar");
         GlobalModel.rightSidebarModel.setCollapsed(false);
         this.chatFocusTimeoutId = setTimeout(() => {
             GlobalModel.inputModel.setChatSidebarFocus();

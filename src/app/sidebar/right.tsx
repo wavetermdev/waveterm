@@ -107,7 +107,6 @@ class RightSideBar extends React.Component<
 
     @mobx.action.bound
     toggleCollapse() {
-        console.log("toggleCollapse");
         const isCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
         GlobalModel.rightSidebarModel.setCollapsed(!isCollapsed);
         if (this.mode.get() == "aichat") {
