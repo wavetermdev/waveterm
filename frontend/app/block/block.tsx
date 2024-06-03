@@ -1,9 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { CodeEditView } from "@/app/view/codeedit";
 import { PlotView } from "@/app/view/plotview";
 import { PreviewView } from "@/app/view/preview";
 import { TerminalView } from "@/app/view/term";
+import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import * as WOS from "@/store/wos";
 import * as React from "react";
@@ -32,6 +34,7 @@ const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
 
     let blockElem: JSX.Element = null;
     const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    console.log("blockData: ", blockData);
     if (blockDataLoading) {
         blockElem = <CenteredDiv>Loading...</CenteredDiv>;
     } else if (blockData.view === "term") {
@@ -40,6 +43,8 @@ const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
         blockElem = <PreviewView blockId={blockId} />;
     } else if (blockData.view === "plot") {
         blockElem = <PlotView />;
+    } else if (blockData.view === "codeedit") {
+        blockElem = <CodeEditView />;
     }
     return (
         <div className="block" ref={blockRef}>
@@ -53,7 +58,9 @@ const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
                 </div>
             </div>
             <div key="content" className="block-content">
-                <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{blockElem}</React.Suspense>
+                <ErrorBoundary>
+                    <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{blockElem}</React.Suspense>
+                </ErrorBoundary>
             </div>
         </div>
     );

@@ -1913,6 +1913,30 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@monaco-editor/loader@npm:^1.4.0":
+  version: 1.4.0
+  resolution: "@monaco-editor/loader@npm:1.4.0"
+  dependencies:
+    state-local: "npm:^1.0.6"
+  peerDependencies:
+    monaco-editor: ">= 0.21.0 < 1"
+  checksum: 10c0/68938350adf2f42363a801d87f5d00c87d397d4cba7041141af10a9216bd35c85209b4723a26d56cb32e68eef61471deda2a450f8892891118fbdce7fa1d987d
+  languageName: node
+  linkType: hard
+
+"@monaco-editor/react@npm:^4.6.0":
+  version: 4.6.0
+  resolution: "@monaco-editor/react@npm:4.6.0"
+  dependencies:
+    "@monaco-editor/loader": "npm:^1.4.0"
+  peerDependencies:
+    monaco-editor: ">= 0.25.0 < 1"
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0
+    react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0
+  checksum: 10c0/231e9a9b66a530db326f6732de0ebffcce6b79dcfaf4948923d78b9a3d5e2a04b7a06e1f85bbbca45a5ae15c107a124e4c5c46cabadc20a498fb5f2d05f7f379
+  languageName: node
+  linkType: hard
+
 "@ndelangen/get-tarball@npm:^3.0.7":
   version: 3.0.9
   resolution: "@ndelangen/get-tarball@npm:3.0.9"
@@ -4650,7 +4674,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chokidar@npm:^3.6.0":
+"chokidar@npm:^3.5.3, chokidar@npm:^3.6.0":
   version: 3.6.0
   resolution: "chokidar@npm:3.6.0"
   dependencies:
@@ -6161,7 +6185,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-glob@npm:^3.2.9, fast-glob@npm:^3.3.2":
+"fast-glob@npm:^3.2.11, fast-glob@npm:^3.2.9, fast-glob@npm:^3.3.2":
   version: 3.3.2
   resolution: "fast-glob@npm:3.3.2"
   dependencies:
@@ -6998,13 +7022,6 @@ __metadata:
   version: 2.0.4
   resolution: "inherits@npm:2.0.4"
   checksum: 10c0/4e531f648b29039fb7426fb94075e6545faa1eb9fe83c29f0b6d9e7263aceb4289d2d4557db0d428188eeb449cc7c5e77b0a0b2c4e248ff2a65933a0dee49ef2
-  languageName: node
-  linkType: hard
-
-"inherits@npm:2.0.3":
-  version: 2.0.3
-  resolution: "inherits@npm:2.0.3"
-  checksum: 10c0/6e56402373149ea076a434072671f9982f5fad030c7662be0332122fe6c0fa490acb3cc1010d90b6eff8d640b1167d77674add52dfd1bb85d545cf29e80e73e7
   languageName: node
   linkType: hard
 
@@ -8816,6 +8833,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"monaco-editor@npm:^0.49.0":
+  version: 0.49.0
+  resolution: "monaco-editor@npm:0.49.0"
+  checksum: 10c0/c62d19e65f8ad441d0b29d8f43181c730bd373854ff0f9331c42ed1b97b729ab099e6f961c2e377acddda6923b8030e0453ae87edd3f7db3ace75c91f44431cd
+  languageName: node
+  linkType: hard
+
 "ms@npm:2.0.0":
   version: 2.0.0
   resolution: "ms@npm:2.0.0"
@@ -9344,16 +9368,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"path@npm:^0.12.7":
-  version: 0.12.7
-  resolution: "path@npm:0.12.7"
-  dependencies:
-    process: "npm:^0.11.1"
-    util: "npm:^0.10.3"
-  checksum: 10c0/f795ce5438a988a590c7b6dfd450ec9baa1c391a8be4c2dea48baa6e0f5b199e56cd83b8c9ebf3991b81bea58236d2c32bdafe2c17a2e70c3a2e4c69891ade59
-  languageName: node
-  linkType: hard
-
 "pathe@npm:^1.1.1, pathe@npm:^1.1.2":
   version: 1.1.2
   resolution: "pathe@npm:1.1.2"
@@ -9568,7 +9582,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"process@npm:^0.11.1, process@npm:^0.11.10":
+"process@npm:^0.11.10":
   version: 0.11.10
   resolution: "process@npm:0.11.10"
   checksum: 10c0/40c3ce4b7e6d4b8c3355479df77aeed46f81b279818ccdc500124e6a5ab882c0cc81ff7ea16384873a95a74c4570b01b120f287abbdd4c877931460eca6084b3
@@ -10643,6 +10657,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"state-local@npm:^1.0.6":
+  version: 1.0.7
+  resolution: "state-local@npm:1.0.7"
+  checksum: 10c0/8dc7daeac71844452fafb514a6d6b6f40d7e2b33df398309ea1c7b3948d6110c57f112b7196500a10c54fdde40291488c52c875575670fb5c819602deca48bd9
+  languageName: node
+  linkType: hard
+
 "statuses@npm:2.0.1":
   version: 2.0.1
   resolution: "statuses@npm:2.0.1"
@@ -10950,6 +10971,8 @@ __metadata:
   dependencies:
     "@chromatic-com/storybook": "npm:^1.3.3"
     "@eslint/js": "npm:^9.2.0"
+    "@monaco-editor/loader": "npm:^1.4.0"
+    "@monaco-editor/react": "npm:^4.6.0"
     "@observablehq/plot": "npm:^0.6.14"
     "@storybook/addon-essentials": "npm:^8.0.10"
     "@storybook/addon-interactions": "npm:^8.0.10"
@@ -10974,7 +10997,7 @@ __metadata:
     immer: "npm:^10.1.1"
     jotai: "npm:^2.8.0"
     less: "npm:^4.2.0"
-    path: "npm:^0.12.7"
+    monaco-editor: "npm:^0.49.0"
     prettier: "npm:^3.2.5"
     prettier-plugin-jsdoc: "npm:^1.3.0"
     prettier-plugin-organize-imports: "npm:^3.2.4"
@@ -10990,6 +11013,7 @@ __metadata:
     typescript-eslint: "npm:^7.8.0"
     uuid: "npm:^9.0.1"
     vite: "npm:^5.0.0"
+    vite-plugin-static-copy: "npm:^1.0.5"
     vite-tsconfig-paths: "npm:^4.3.2"
     vitest: "npm:^1.6.0"
   languageName: unknown
@@ -11529,15 +11553,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"util@npm:^0.10.3":
-  version: 0.10.4
-  resolution: "util@npm:0.10.4"
-  dependencies:
-    inherits: "npm:2.0.3"
-  checksum: 10c0/d29f6893e406b63b088ce9924da03201df89b31490d4d011f1c07a386ea4b3dbe907464c274023c237da470258e1805d806c7e4009a5974cd6b1d474b675852a
-  languageName: node
-  linkType: hard
-
 "util@npm:^0.12.4, util@npm:^0.12.5":
   version: 0.12.5
   resolution: "util@npm:0.12.5"
@@ -11624,6 +11639,20 @@ __metadata:
   bin:
     vite-node: vite-node.mjs
   checksum: 10c0/0807e6501ac7763e0efa2b4bd484ce99fb207e92c98624c9f8999d1f6727ac026e457994260fa7fdb7060d87546d197081e46a705d05b0136a38b6f03715cbc2
+  languageName: node
+  linkType: hard
+
+"vite-plugin-static-copy@npm:^1.0.5":
+  version: 1.0.5
+  resolution: "vite-plugin-static-copy@npm:1.0.5"
+  dependencies:
+    chokidar: "npm:^3.5.3"
+    fast-glob: "npm:^3.2.11"
+    fs-extra: "npm:^11.1.0"
+    picocolors: "npm:^1.0.0"
+  peerDependencies:
+    vite: ^5.0.0
+  checksum: 10c0/b11c6a0bd31b8592af4099f75122b2073738659d1d06c6aeedd47d15b84758a57c17d56b6e79cefa3b7871c8f51980b423a9d524bbceb4b17363d4363e78a63b
   languageName: node
   linkType: hard
 

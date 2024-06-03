@@ -84,6 +84,13 @@ function Widgets() {
         createBlock(plotDef);
     }
 
+    async function clickEdit() {
+        const editDef: BlockDef = {
+            view: "codeedit",
+        };
+        createBlock(editDef);
+    }
+
     return (
         <div className="workspace-widgets">
             <div className="widget" onClick={() => clickTerminal()}>
@@ -103,6 +110,9 @@ function Widgets() {
             </div>
             <div className="widget" onClick={() => clickPlot()}>
                 <i className="fa fa-solid fa-chart-simple fa-fw" />
+            </div>
+            <div className="widget" onClick={() => clickEdit()}>
+                <i className="fa-sharp fa-solid fa-pen-to-square"></i>
             </div>
             <div className="widget no-hover">
                 <i className="fa fa-solid fa-plus fa-fw" />

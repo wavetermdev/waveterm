@@ -4,7 +4,6 @@
 import { FileInfo } from "@/bindings/fileservice";
 import { Table, createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import * as jotai from "jotai";
-import path from "path";
 import React from "react";
 
 import "./directorypreview.less";
@@ -108,7 +107,7 @@ function TableBody({ table, setFileName }: TableBodyProps) {
                             key={cell.id}
                             style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
                         >
-                            {path.basename(cell.renderValue<any>())}
+                            {cell.renderValue<any>()}
                         </div>
                     ))}
                 </div>
