@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package blockstore
+package filestore
 
-// the blockstore package implements a write cache for block files
+// the blockstore package implements a write cache for wave files
 // it is not a read cache (reads still go to the DB -- unless items are in the cache)
 // but all writes only go to the cache, and then the cache is periodically flushed to the DB
 
@@ -29,7 +29,7 @@ var flushErrorCount = &atomic.Int32{}
 var partDataSize int64 = DefaultPartDataSize // overridden in tests
 var stopFlush = &atomic.Bool{}
 
-var GBS *BlockStore = &BlockStore{
+var WFS *FileStore = &FileStore{
 	Lock:  &sync.Mutex{},
 	Cache: make(map[cacheKey]*CacheEntry),
 }
@@ -42,9 +42,9 @@ type FileOptsType struct {
 
 type FileMeta = map[string]any
 
-type BlockFile struct {
+type WaveFile struct {
 	// these fields are static (not updated)
-	BlockId   string       `json:"blockid"`
+	ZoneId    string       `json:"zoneid"`
 	Name      string       `json:"name"`
 	Opts      FileOptsType `json:"opts"`
 	CreatedTs int64        `json:"createdts"`
@@ -57,7 +57,7 @@ type BlockFile struct {
 
 // for regular files this is just Size
 // for circular files this is min(Size, MaxSize)
-func (f BlockFile) DataLength() int64 {
+func (f WaveFile) DataLength() int64 {
 	if f.Opts.Circular {
 		return minInt64(f.Size, f.Opts.MaxSize)
 	}
@@ -66,7 +66,7 @@ func (f BlockFile) DataLength() int64 {
 
 // for regular files this is just 0
 // for circular files this is the index of the first byte of data we have
-func (f BlockFile) DataStartIdx() int64 {
+func (f WaveFile) DataStartIdx() int64 {
 	if f.Opts.Circular && f.Size > f.Opts.MaxSize {
 		return f.Size - f.Opts.MaxSize
 	}
@@ -82,7 +82,7 @@ func copyMeta(meta FileMeta) FileMeta {
 	return newMeta
 }
 
-func (f *BlockFile) DeepCopy() *BlockFile {
+func (f *WaveFile) DeepCopy() *WaveFile {
 	if f == nil {
 		return nil
 	}
@@ -91,19 +91,19 @@ func (f *BlockFile) DeepCopy() *BlockFile {
 	return &newFile
 }
 
-func (BlockFile) UseDBMap() {}
+func (WaveFile) UseDBMap() {}
 
-type BlockData struct {
-	BlockId string `json:"blockid"`
+type FileData struct {
+	ZoneId  string `json:"zoneid"`
 	Name    string `json:"name"`
 	PartIdx int    `json:"partidx"`
 	Data    []byte `json:"data"`
 }
 
-func (BlockData) UseDBMap() {}
+func (FileData) UseDBMap() {}
 
 // synchronous (does not interact with the cache)
-func (s *BlockStore) MakeFile(ctx context.Context, blockId string, name string, meta FileMeta, opts FileOptsType) error {
+func (s *FileStore) MakeFile(ctx context.Context, zoneId string, name string, meta FileMeta, opts FileOptsType) error {
 	if opts.MaxSize < 0 {
 		return fmt.Errorf("max size must be non-negative")
 	}
@@ -118,13 +118,13 @@ func (s *BlockStore) MakeFile(ctx context.Context, blockId string, name string, 
 			opts.MaxSize = (opts.MaxSize/partDataSize + 1) * partDataSize
 		}
 	}
-	return withLock(s, blockId, name, func(entry *CacheEntry) error {
+	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		if entry.File != nil {
 			return fs.ErrExist
 		}
 		now := time.Now().UnixMilli()
-		file := &BlockFile{
-			BlockId:   blockId,
+		file := &WaveFile{
+			ZoneId:    zoneId,
 			Name:      name,
 			Size:      0,
 			CreatedTs: now,
@@ -136,9 +136,9 @@ func (s *BlockStore) MakeFile(ctx context.Context, blockId string, name string, 
 	})
 }
 
-func (s *BlockStore) DeleteFile(ctx context.Context, blockId string, name string) error {
-	return withLock(s, blockId, name, func(entry *CacheEntry) error {
-		err := dbDeleteFile(ctx, blockId, name)
+func (s *FileStore) DeleteFile(ctx context.Context, zoneId string, name string) error {
+	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
+		err := dbDeleteFile(ctx, zoneId, name)
 		if err != nil {
 			return fmt.Errorf("error deleting file: %v", err)
 		}
@@ -147,20 +147,20 @@ func (s *BlockStore) DeleteFile(ctx context.Context, blockId string, name string
 	})
 }
 
-func (s *BlockStore) DeleteBlock(ctx context.Context, blockId string) error {
-	fileNames, err := dbGetBlockFileNames(ctx, blockId)
+func (s *FileStore) DeleteZone(ctx context.Context, zoneId string) error {
+	fileNames, err := dbGetZoneFileNames(ctx, zoneId)
 	if err != nil {
-		return fmt.Errorf("error getting block files: %v", err)
+		return fmt.Errorf("error getting zone files: %v", err)
 	}
 	for _, name := range fileNames {
-		s.DeleteFile(ctx, blockId, name)
+		s.DeleteFile(ctx, zoneId, name)
 	}
 	return nil
 }
 
 // if file doesn't exsit, returns fs.ErrNotExist
-func (s *BlockStore) Stat(ctx context.Context, blockId string, name string) (*BlockFile, error) {
-	return withLockRtn(s, blockId, name, func(entry *CacheEntry) (*BlockFile, error) {
+func (s *FileStore) Stat(ctx context.Context, zoneId string, name string) (*WaveFile, error) {
+	return withLockRtn(s, zoneId, name, func(entry *CacheEntry) (*WaveFile, error) {
 		file, err := entry.loadFileForRead(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting file: %v", err)
@@ -169,13 +169,13 @@ func (s *BlockStore) Stat(ctx context.Context, blockId string, name string) (*Bl
 	})
 }
 
-func (s *BlockStore) ListFiles(ctx context.Context, blockId string) ([]*BlockFile, error) {
-	files, err := dbGetBlockFiles(ctx, blockId)
+func (s *FileStore) ListFiles(ctx context.Context, zoneId string) ([]*WaveFile, error) {
+	files, err := dbGetZoneFiles(ctx, zoneId)
 	if err != nil {
-		return nil, fmt.Errorf("error getting block files: %v", err)
+		return nil, fmt.Errorf("error getting zone files: %v", err)
 	}
 	for idx, file := range files {
-		withLock(s, file.BlockId, file.Name, func(entry *CacheEntry) error {
+		withLock(s, file.ZoneId, file.Name, func(entry *CacheEntry) error {
 			if entry.File != nil {
 				files[idx] = entry.File.DeepCopy()
 			}
@@ -185,8 +185,8 @@ func (s *BlockStore) ListFiles(ctx context.Context, blockId string) ([]*BlockFil
 	return files, nil
 }
 
-func (s *BlockStore) WriteMeta(ctx context.Context, blockId string, name string, meta FileMeta, merge bool) error {
-	return withLock(s, blockId, name, func(entry *CacheEntry) error {
+func (s *FileStore) WriteMeta(ctx context.Context, zoneId string, name string, meta FileMeta, merge bool) error {
+	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		err := entry.loadFileIntoCache(ctx)
 		if err != nil {
 			return err
@@ -207,8 +207,8 @@ func (s *BlockStore) WriteMeta(ctx context.Context, blockId string, name string,
 	})
 }
 
-func (s *BlockStore) WriteFile(ctx context.Context, blockId string, name string, data []byte) error {
-	return withLock(s, blockId, name, func(entry *CacheEntry) error {
+func (s *FileStore) WriteFile(ctx context.Context, zoneId string, name string, data []byte) error {
+	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		err := entry.loadFileIntoCache(ctx)
 		if err != nil {
 			return err
@@ -219,11 +219,11 @@ func (s *BlockStore) WriteFile(ctx context.Context, blockId string, name string,
 	})
 }
 
-func (s *BlockStore) WriteAt(ctx context.Context, blockId string, name string, offset int64, data []byte) error {
+func (s *FileStore) WriteAt(ctx context.Context, zoneId string, name string, offset int64, data []byte) error {
 	if offset < 0 {
 		return fmt.Errorf("offset must be non-negative")
 	}
-	return withLock(s, blockId, name, func(entry *CacheEntry) error {
+	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		err := entry.loadFileIntoCache(ctx)
 		if err != nil {
 			return err
@@ -243,8 +243,8 @@ func (s *BlockStore) WriteAt(ctx context.Context, blockId string, name string, o
 	})
 }
 
-func (s *BlockStore) AppendData(ctx context.Context, blockId string, name string, data []byte) error {
-	return withLock(s, blockId, name, func(entry *CacheEntry) error {
+func (s *FileStore) AppendData(ctx context.Context, zoneId string, name string, data []byte) error {
+	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		err := entry.loadFileIntoCache(ctx)
 		if err != nil {
 			return err
@@ -262,14 +262,14 @@ func (s *BlockStore) AppendData(ctx context.Context, blockId string, name string
 	})
 }
 
-func (s *BlockStore) GetAllBlockIds(ctx context.Context) ([]string, error) {
-	return dbGetAllBlockIds(ctx)
+func (s *FileStore) GetAllZoneIds(ctx context.Context) ([]string, error) {
+	return dbGetAllZoneIds(ctx)
 }
 
 // returns (offset, data, error)
 // we return the offset because the offset may have been adjusted if the size was too big (for circular files)
-func (s *BlockStore) ReadAt(ctx context.Context, blockId string, name string, offset int64, size int64) (rtnOffset int64, rtnData []byte, rtnErr error) {
-	withLock(s, blockId, name, func(entry *CacheEntry) error {
+func (s *FileStore) ReadAt(ctx context.Context, zoneId string, name string, offset int64, size int64) (rtnOffset int64, rtnData []byte, rtnErr error) {
+	withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		rtnOffset, rtnData, rtnErr = entry.readAt(ctx, offset, size, false)
 		return nil
 	})
@@ -277,8 +277,8 @@ func (s *BlockStore) ReadAt(ctx context.Context, blockId string, name string, of
 }
 
 // returns (offset, data, error)
-func (s *BlockStore) ReadFile(ctx context.Context, blockId string, name string) (rtnOffset int64, rtnData []byte, rtnErr error) {
-	withLock(s, blockId, name, func(entry *CacheEntry) error {
+func (s *FileStore) ReadFile(ctx context.Context, zoneId string, name string) (rtnOffset int64, rtnData []byte, rtnErr error) {
+	withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		rtnOffset, rtnData, rtnErr = entry.readAt(ctx, 0, 0, true)
 		return nil
 	})
@@ -291,7 +291,7 @@ type FlushStats struct {
 	NumCommitted    int
 }
 
-func (s *BlockStore) FlushCache(ctx context.Context) (stats FlushStats, rtnErr error) {
+func (s *FileStore) FlushCache(ctx context.Context) (stats FlushStats, rtnErr error) {
 	wasFlushing := s.setUnlessFlushing()
 	if wasFlushing {
 		return stats, fmt.Errorf("flush already in progress")
@@ -306,7 +306,7 @@ func (s *BlockStore) FlushCache(ctx context.Context) (stats FlushStats, rtnErr e
 	dirtyCacheKeys := s.getDirtyCacheKeys()
 	stats.NumDirtyEntries = len(dirtyCacheKeys)
 	for _, key := range dirtyCacheKeys {
-		err := withLock(s, key.BlockId, key.Name, func(entry *CacheEntry) error {
+		err := withLock(s, key.ZoneId, key.Name, func(entry *CacheEntry) error {
 			return entry.flushToDB(ctx, false)
 		})
 		if ctx.Err() != nil {
@@ -323,7 +323,7 @@ func (s *BlockStore) FlushCache(ctx context.Context) (stats FlushStats, rtnErr e
 
 ///////////////////////////////////
 
-func (f *BlockFile) partIdxAtOffset(offset int64) int {
+func (f *WaveFile) partIdxAtOffset(offset int64) int {
 	partIdx := int(offset / partDataSize)
 	if f.Opts.Circular {
 		maxPart := int(f.Opts.MaxSize / partDataSize)
@@ -351,11 +351,11 @@ func getPartIdxsFromMap(partMap map[int]int) []int {
 }
 
 // returns a map of partIdx to amount of data to write to that part
-func (file *BlockFile) computePartMap(startOffset int64, size int64) map[int]int {
+func (file *WaveFile) computePartMap(startOffset int64, size int64) map[int]int {
 	partMap := make(map[int]int)
 	endOffset := startOffset + size
-	startBlockOffset := startOffset - (startOffset % partDataSize)
-	for testOffset := startBlockOffset; testOffset < endOffset; testOffset += partDataSize {
+	startFileOffset := startOffset - (startOffset % partDataSize)
+	for testOffset := startFileOffset; testOffset < endOffset; testOffset += partDataSize {
 		partIdx := file.partIdxAtOffset(testOffset)
 		partStartOffset := testOffset
 		partEndOffset := testOffset + partDataSize
@@ -372,7 +372,7 @@ func (file *BlockFile) computePartMap(startOffset int64, size int64) map[int]int
 	return partMap
 }
 
-func (s *BlockStore) getDirtyCacheKeys() []cacheKey {
+func (s *FileStore) getDirtyCacheKeys() []cacheKey {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	var dirtyCacheKeys []cacheKey
@@ -384,14 +384,14 @@ func (s *BlockStore) getDirtyCacheKeys() []cacheKey {
 	return dirtyCacheKeys
 }
 
-func (s *BlockStore) setIsFlushing(flushing bool) {
+func (s *FileStore) setIsFlushing(flushing bool) {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	s.IsFlushing = flushing
 }
 
 // returns old value of IsFlushing
-func (s *BlockStore) setUnlessFlushing() bool {
+func (s *FileStore) setUnlessFlushing() bool {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	if s.IsFlushing {
@@ -401,26 +401,26 @@ func (s *BlockStore) setUnlessFlushing() bool {
 	return false
 }
 
-func (s *BlockStore) runFlushWithNewContext() (FlushStats, error) {
+func (s *FileStore) runFlushWithNewContext() (FlushStats, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultFlushTime)
 	defer cancelFn()
 	return s.FlushCache(ctx)
 }
 
-func (s *BlockStore) runFlusher() {
+func (s *FileStore) runFlusher() {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("panic in blockstore flusher: %v\n", r)
+			log.Printf("panic in filestore flusher: %v\n", r)
 			debug.PrintStack()
 		}
 	}()
 	for {
 		stats, err := s.runFlushWithNewContext()
 		if err != nil || stats.NumDirtyEntries > 0 {
-			log.Printf("blockstore flush: %d/%d entries flushed, err:%v\n", stats.NumCommitted, stats.NumDirtyEntries, err)
+			log.Printf("filestore flush: %d/%d entries flushed, err:%v\n", stats.NumCommitted, stats.NumDirtyEntries, err)
 		}
 		if stopFlush.Load() {
-			log.Printf("blockstore flusher stopping\n")
+			log.Printf("filestore flusher stopping\n")
 			return
 		}
 		time.Sleep(DefaultFlushTime)

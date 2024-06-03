@@ -4,17 +4,21 @@
 package fileservice
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
+	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 )
 
 const MaxFileSize = 10 * 1024 * 1024 // 10M
+const DefaultTimeout = 2 * time.Second
 
 type FileService struct{}
 
@@ -103,4 +107,14 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 		Info:   finfo,
 		Data64: base64.StdEncoding.EncodeToString(barr),
 	}, nil
+}
+
+func (fs *FileService) GetWaveFile(id string, path string) (any, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	file, err := filestore.WFS.Stat(ctx, id, path)
+	if err != nil {
+		return nil, fmt.Errorf("error getting file: %w", err)
+	}
+	return file, nil
 }

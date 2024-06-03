@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package blockstore
+package filestore
 
 import (
 	"bytes"
@@ -13,11 +13,11 @@ import (
 )
 
 type cacheKey struct {
-	BlockId string
-	Name    string
+	ZoneId string
+	Name   string
 }
 
-type BlockStore struct {
+type FileStore struct {
 	Lock       *sync.Mutex
 	Cache      map[cacheKey]*CacheEntry
 	IsFlushing bool
@@ -25,17 +25,17 @@ type BlockStore struct {
 
 type DataCacheEntry struct {
 	PartIdx int
-	Data    []byte // capacity is always BlockDataPartSize
+	Data    []byte // capacity is always ZoneDataPartSize
 }
 
 // if File or DataEntries are not nil then they are dirty (need to be flushed to disk)
 type CacheEntry struct {
-	PinCount int // this is synchronzed with the BlockStore lock (not the entry lock)
+	PinCount int // this is synchronzed with the FileStore lock (not the entry lock)
 
 	Lock        *sync.Mutex
-	BlockId     string
+	ZoneId      string
 	Name        string
-	File        *BlockFile
+	File        *WaveFile
 	DataEntries map[int]*DataCacheEntry
 	FlushErrors int
 }
@@ -43,7 +43,7 @@ type CacheEntry struct {
 //lint:ignore U1000 used for testing
 func (e *CacheEntry) dump() string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "CacheEntry [BlockId: %q, Name: %q] PinCount: %d\n", e.BlockId, e.Name, e.PinCount)
+	fmt.Fprintf(&buf, "CacheEntry [ZoneId: %q, Name: %q] PinCount: %d\n", e.ZoneId, e.Name, e.PinCount)
 	fmt.Fprintf(&buf, "  FileEntry: %v\n", e.File)
 	for idx, dce := range e.DataEntries {
 		fmt.Fprintf(&buf, "  DataEntry[%d]: %q\n", idx, string(dce.Data))
@@ -59,28 +59,28 @@ func makeDataCacheEntry(partIdx int) *DataCacheEntry {
 }
 
 // will create new entries
-func (s *BlockStore) getEntryAndPin(blockId string, name string) *CacheEntry {
+func (s *FileStore) getEntryAndPin(zoneId string, name string) *CacheEntry {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
-	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
+	entry := s.Cache[cacheKey{ZoneId: zoneId, Name: name}]
 	if entry == nil {
-		entry = makeCacheEntry(blockId, name)
-		s.Cache[cacheKey{BlockId: blockId, Name: name}] = entry
+		entry = makeCacheEntry(zoneId, name)
+		s.Cache[cacheKey{ZoneId: zoneId, Name: name}] = entry
 	}
 	entry.PinCount++
 	return entry
 }
 
-func (s *BlockStore) unpinEntryAndTryDelete(blockId string, name string) {
+func (s *FileStore) unpinEntryAndTryDelete(zoneId string, name string) {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
-	entry := s.Cache[cacheKey{BlockId: blockId, Name: name}]
+	entry := s.Cache[cacheKey{ZoneId: zoneId, Name: name}]
 	if entry == nil {
 		return
 	}
 	entry.PinCount--
 	if entry.PinCount <= 0 && entry.File == nil {
-		delete(s.Cache, cacheKey{BlockId: blockId, Name: name})
+		delete(s.Cache, cacheKey{ZoneId: zoneId, Name: name})
 	}
 }
 
@@ -111,11 +111,11 @@ func (entry *CacheEntry) loadFileIntoCache(ctx context.Context) error {
 }
 
 // does not populate the cache entry, returns err if file does not exist
-func (entry *CacheEntry) loadFileForRead(ctx context.Context) (*BlockFile, error) {
+func (entry *CacheEntry) loadFileForRead(ctx context.Context) (*WaveFile, error) {
 	if entry.File != nil {
 		return entry.File, nil
 	}
-	file, err := dbGetBlockFile(ctx, entry.BlockId, entry.Name)
+	file, err := dbGetZoneFile(ctx, entry.ZoneId, entry.Name)
 	if err != nil {
 		return nil, fmt.Errorf("error getting file: %w", err)
 	}
@@ -125,17 +125,17 @@ func (entry *CacheEntry) loadFileForRead(ctx context.Context) (*BlockFile, error
 	return file, nil
 }
 
-func withLock(s *BlockStore, blockId string, name string, fn func(*CacheEntry) error) error {
-	entry := s.getEntryAndPin(blockId, name)
-	defer s.unpinEntryAndTryDelete(blockId, name)
+func withLock(s *FileStore, zoneId string, name string, fn func(*CacheEntry) error) error {
+	entry := s.getEntryAndPin(zoneId, name)
+	defer s.unpinEntryAndTryDelete(zoneId, name)
 	entry.Lock.Lock()
 	defer entry.Lock.Unlock()
 	return fn(entry)
 }
 
-func withLockRtn[T any](s *BlockStore, blockId string, name string, fn func(*CacheEntry) (T, error)) (T, error) {
+func withLockRtn[T any](s *FileStore, zoneId string, name string, fn func(*CacheEntry) (T, error)) (T, error) {
 	var rtnVal T
-	rtnErr := withLock(s, blockId, name, func(entry *CacheEntry) error {
+	rtnErr := withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		var err error
 		rtnVal, err = fn(entry)
 		return err
@@ -273,7 +273,7 @@ func (entry *CacheEntry) loadDataPartsIntoCache(ctx context.Context, parts []int
 		// parts are already loaded
 		return nil
 	}
-	dbDataParts, err := dbGetFileParts(ctx, entry.BlockId, entry.Name, parts)
+	dbDataParts, err := dbGetFileParts(ctx, entry.ZoneId, entry.Name, parts)
 	if err != nil {
 		return fmt.Errorf("error getting data parts: %w", err)
 	}
@@ -291,7 +291,7 @@ func (entry *CacheEntry) loadDataPartsForRead(ctx context.Context, parts []int) 
 	var dbDataParts map[int]*DataCacheEntry
 	if len(dbParts) > 0 {
 		var err error
-		dbDataParts, err = dbGetFileParts(ctx, entry.BlockId, entry.Name, dbParts)
+		dbDataParts, err = dbGetFileParts(ctx, entry.ZoneId, entry.Name, dbParts)
 		if err != nil {
 			return nil, fmt.Errorf("error getting data parts: %w", err)
 		}
@@ -311,10 +311,10 @@ func (entry *CacheEntry) loadDataPartsForRead(ctx context.Context, parts []int) 
 	return rtn, nil
 }
 
-func makeCacheEntry(blockId string, name string) *CacheEntry {
+func makeCacheEntry(zoneId string, name string) *CacheEntry {
 	return &CacheEntry{
 		Lock:        &sync.Mutex{},
-		BlockId:     blockId,
+		ZoneId:      zoneId,
 		Name:        name,
 		PinCount:    0,
 		File:        nil,

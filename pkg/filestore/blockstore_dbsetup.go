@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package blockstore
+package filestore
 
-// setup for blockstore db
+// setup for filestore db
 // includes migration support and txwrap setup
 
 import (
@@ -23,14 +23,14 @@ import (
 	dbfs "github.com/wavetermdev/thenextwave/db"
 )
 
-const BlockstoreDBName = "blockstore.db"
+const FilestoreDBName = "filestore.db"
 
 type TxWrap = txwrap.TxWrap
 
 var globalDB *sqlx.DB
 var useTestingDb bool // just for testing (forces GetDB() to return an in-memory db)
 
-func InitBlockstore() error {
+func InitFilestore() error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	var err error
@@ -38,20 +38,20 @@ func InitBlockstore() error {
 	if err != nil {
 		return err
 	}
-	err = migrateutil.Migrate("blockstore", globalDB.DB, dbfs.BlockstoreMigrationFS, "migrations-blockstore")
+	err = migrateutil.Migrate("filestore", globalDB.DB, dbfs.FilestoreMigrationFS, "migrations-filestore")
 	if err != nil {
 		return err
 	}
 	if !stopFlush.Load() {
-		go GBS.runFlusher()
+		go WFS.runFlusher()
 	}
-	log.Printf("blockstore initialized\n")
+	log.Printf("filestore initialized\n")
 	return nil
 }
 
 func GetDBName() string {
 	waveHome := wavebase.GetWaveHomeDir()
-	return path.Join(waveHome, BlockstoreDBName)
+	return path.Join(waveHome, FilestoreDBName)
 }
 
 func MakeDB(ctx context.Context) (*sqlx.DB, error) {

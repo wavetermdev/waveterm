@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-package blockstore
+package filestore
 
 import (
 	"bytes"
@@ -24,9 +24,9 @@ func initDb(t *testing.T) {
 	partDataSize = 50
 	warningCount = &atomic.Int32{}
 	stopFlush.Store(true)
-	err := InitBlockstore()
+	err := InitFilestore()
 	if err != nil {
-		t.Fatalf("error initializing blockstore: %v", err)
+		t.Fatalf("error initializing filestore: %v", err)
 	}
 }
 
@@ -38,7 +38,7 @@ func cleanupDb(t *testing.T) {
 	}
 	useTestingDb = false
 	partDataSize = DefaultPartDataSize
-	GBS.clearCache()
+	WFS.clearCache()
 	if warningCount.Load() > 0 {
 		t.Errorf("warning count: %d", warningCount.Load())
 	}
@@ -47,24 +47,24 @@ func cleanupDb(t *testing.T) {
 	}
 }
 
-func (s *BlockStore) getCacheSize() int {
+func (s *FileStore) getCacheSize() int {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	return len(s.Cache)
 }
 
-func (s *BlockStore) clearCache() {
+func (s *FileStore) clearCache() {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	s.Cache = make(map[cacheKey]*CacheEntry)
 }
 
 //lint:ignore U1000 used for testing
-func (s *BlockStore) dump() string {
+func (s *FileStore) dump() string {
 	s.Lock.Lock()
 	defer s.Lock.Unlock()
 	var buf bytes.Buffer
-	buf.WriteString(fmt.Sprintf("BlockStore %d entries\n", len(s.Cache)))
+	buf.WriteString(fmt.Sprintf("FileStore %d entries\n", len(s.Cache)))
 	for _, v := range s.Cache {
 		entryStr := v.dump()
 		buf.WriteString(entryStr)
@@ -79,20 +79,20 @@ func TestCreate(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	blockId := uuid.New().String()
-	err := GBS.MakeFile(ctx, blockId, "testfile", nil, FileOptsType{})
+	zoneId := uuid.New().String()
+	err := WFS.MakeFile(ctx, zoneId, "testfile", nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	file, err := GBS.Stat(ctx, blockId, "testfile")
+	file, err := WFS.Stat(ctx, zoneId, "testfile")
 	if err != nil {
 		t.Fatalf("error stating file: %v", err)
 	}
 	if file == nil {
 		t.Fatalf("file not found")
 	}
-	if file.BlockId != blockId {
-		t.Fatalf("block id mismatch")
+	if file.ZoneId != zoneId {
+		t.Fatalf("zone id mismatch")
 	}
 	if file.Name != "testfile" {
 		t.Fatalf("name mismatch")
@@ -115,30 +115,30 @@ func TestCreate(t *testing.T) {
 	if file.Opts.Circular || file.Opts.IJson || file.Opts.MaxSize != 0 {
 		t.Fatalf("opts not empty")
 	}
-	blockIds, err := GBS.GetAllBlockIds(ctx)
+	zoneIds, err := WFS.GetAllZoneIds(ctx)
 	if err != nil {
-		t.Fatalf("error getting block ids: %v", err)
+		t.Fatalf("error getting zone ids: %v", err)
 	}
-	if len(blockIds) != 1 {
-		t.Fatalf("block id count mismatch")
+	if len(zoneIds) != 1 {
+		t.Fatalf("zone id count mismatch")
 	}
-	if blockIds[0] != blockId {
-		t.Fatalf("block id mismatch")
+	if zoneIds[0] != zoneId {
+		t.Fatalf("zone id mismatch")
 	}
-	err = GBS.DeleteFile(ctx, blockId, "testfile")
+	err = WFS.DeleteFile(ctx, zoneId, "testfile")
 	if err != nil {
 		t.Fatalf("error deleting file: %v", err)
 	}
-	blockIds, err = GBS.GetAllBlockIds(ctx)
+	zoneIds, err = WFS.GetAllZoneIds(ctx)
 	if err != nil {
-		t.Fatalf("error getting block ids: %v", err)
+		t.Fatalf("error getting zone ids: %v", err)
 	}
-	if len(blockIds) != 0 {
-		t.Fatalf("block id count mismatch")
+	if len(zoneIds) != 0 {
+		t.Fatalf("zone id count mismatch")
 	}
 }
 
-func containsFile(arr []*BlockFile, name string) bool {
+func containsFile(arr []*WaveFile, name string) bool {
 	for _, f := range arr {
 		if f.Name == name {
 			return true
@@ -153,30 +153,30 @@ func TestDelete(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	blockId := uuid.New().String()
-	err := GBS.MakeFile(ctx, blockId, "testfile", nil, FileOptsType{})
+	zoneId := uuid.New().String()
+	err := WFS.MakeFile(ctx, zoneId, "testfile", nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	err = GBS.DeleteFile(ctx, blockId, "testfile")
+	err = WFS.DeleteFile(ctx, zoneId, "testfile")
 	if err != nil {
 		t.Fatalf("error deleting file: %v", err)
 	}
-	_, err = GBS.Stat(ctx, blockId, "testfile")
+	_, err = WFS.Stat(ctx, zoneId, "testfile")
 	if err == nil || errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("expected file not found error")
 	}
 
-	// create two files in same block, use DeleteBlock to delete
-	err = GBS.MakeFile(ctx, blockId, "testfile1", nil, FileOptsType{})
+	// create two files in same zone, use DeleteZone to delete
+	err = WFS.MakeFile(ctx, zoneId, "testfile1", nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	err = GBS.MakeFile(ctx, blockId, "testfile2", nil, FileOptsType{})
+	err = WFS.MakeFile(ctx, zoneId, "testfile2", nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	files, err := GBS.ListFiles(ctx, blockId)
+	files, err := WFS.ListFiles(ctx, zoneId)
 	if err != nil {
 		t.Fatalf("error listing files: %v", err)
 	}
@@ -186,11 +186,11 @@ func TestDelete(t *testing.T) {
 	if !containsFile(files, "testfile1") || !containsFile(files, "testfile2") {
 		t.Fatalf("file names mismatch")
 	}
-	err = GBS.DeleteBlock(ctx, blockId)
+	err = WFS.DeleteZone(ctx, zoneId)
 	if err != nil {
-		t.Fatalf("error deleting block: %v", err)
+		t.Fatalf("error deleting zone: %v", err)
 	}
-	files, err = GBS.ListFiles(ctx, blockId)
+	files, err = WFS.ListFiles(ctx, zoneId)
 	if err != nil {
 		t.Fatalf("error listing files: %v", err)
 	}
@@ -216,19 +216,19 @@ func TestSetMeta(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	blockId := uuid.New().String()
-	err := GBS.MakeFile(ctx, blockId, "testfile", nil, FileOptsType{})
+	zoneId := uuid.New().String()
+	err := WFS.MakeFile(ctx, zoneId, "testfile", nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	if GBS.getCacheSize() != 0 {
+	if WFS.getCacheSize() != 0 {
 		t.Errorf("cache size mismatch -- should have 0 entries after create")
 	}
-	err = GBS.WriteMeta(ctx, blockId, "testfile", map[string]any{"a": 5, "b": "hello", "q": 8}, false)
+	err = WFS.WriteMeta(ctx, zoneId, "testfile", map[string]any{"a": 5, "b": "hello", "q": 8}, false)
 	if err != nil {
 		t.Fatalf("error setting meta: %v", err)
 	}
-	file, err := GBS.Stat(ctx, blockId, "testfile")
+	file, err := WFS.Stat(ctx, zoneId, "testfile")
 	if err != nil {
 		t.Fatalf("error stating file: %v", err)
 	}
@@ -236,14 +236,14 @@ func TestSetMeta(t *testing.T) {
 		t.Fatalf("file not found")
 	}
 	checkMapsEqual(t, map[string]any{"a": 5, "b": "hello", "q": 8}, file.Meta, "meta")
-	if GBS.getCacheSize() != 1 {
+	if WFS.getCacheSize() != 1 {
 		t.Errorf("cache size mismatch")
 	}
-	err = GBS.WriteMeta(ctx, blockId, "testfile", map[string]any{"a": 6, "c": "world", "d": 7, "q": nil}, true)
+	err = WFS.WriteMeta(ctx, zoneId, "testfile", map[string]any{"a": 6, "c": "world", "d": 7, "q": nil}, true)
 	if err != nil {
 		t.Fatalf("error setting meta: %v", err)
 	}
-	file, err = GBS.Stat(ctx, blockId, "testfile")
+	file, err = WFS.Stat(ctx, zoneId, "testfile")
 	if err != nil {
 		t.Fatalf("error stating file: %v", err)
 	}
@@ -252,15 +252,15 @@ func TestSetMeta(t *testing.T) {
 	}
 	checkMapsEqual(t, map[string]any{"a": 6, "b": "hello", "c": "world", "d": 7}, file.Meta, "meta")
 
-	err = GBS.WriteMeta(ctx, blockId, "testfile-notexist", map[string]any{"a": 6}, true)
+	err = WFS.WriteMeta(ctx, zoneId, "testfile-notexist", map[string]any{"a": 6}, true)
 	if err == nil {
 		t.Fatalf("expected error setting meta")
 	}
 	err = nil
 }
 
-func checkFileSize(t *testing.T, ctx context.Context, blockId string, name string, size int64) {
-	file, err := GBS.Stat(ctx, blockId, name)
+func checkFileSize(t *testing.T, ctx context.Context, zoneId string, name string, size int64) {
+	file, err := WFS.Stat(ctx, zoneId, name)
 	if err != nil {
 		t.Errorf("error stating file %q: %v", name, err)
 		return
@@ -274,8 +274,8 @@ func checkFileSize(t *testing.T, ctx context.Context, blockId string, name strin
 	}
 }
 
-func checkFileData(t *testing.T, ctx context.Context, blockId string, name string, data string) {
-	_, rdata, err := GBS.ReadFile(ctx, blockId, name)
+func checkFileData(t *testing.T, ctx context.Context, zoneId string, name string, data string) {
+	_, rdata, err := WFS.ReadFile(ctx, zoneId, name)
 	if err != nil {
 		t.Errorf("error reading data for file %q: %v", name, err)
 		return
@@ -285,8 +285,8 @@ func checkFileData(t *testing.T, ctx context.Context, blockId string, name strin
 	}
 }
 
-func checkFileByteCount(t *testing.T, ctx context.Context, blockId string, name string, val byte, expected int) {
-	_, rdata, err := GBS.ReadFile(ctx, blockId, name)
+func checkFileByteCount(t *testing.T, ctx context.Context, zoneId string, name string, val byte, expected int) {
+	_, rdata, err := WFS.ReadFile(ctx, zoneId, name)
 	if err != nil {
 		t.Errorf("error reading data for file %q: %v", name, err)
 		return
@@ -302,8 +302,8 @@ func checkFileByteCount(t *testing.T, ctx context.Context, blockId string, name 
 	}
 }
 
-func checkFileDataAt(t *testing.T, ctx context.Context, blockId string, name string, offset int64, data string) {
-	_, rdata, err := GBS.ReadAt(ctx, blockId, name, offset, int64(len(data)))
+func checkFileDataAt(t *testing.T, ctx context.Context, zoneId string, name string, offset int64, data string) {
+	_, rdata, err := WFS.ReadAt(ctx, zoneId, name, offset, int64(len(data)))
 	if err != nil {
 		t.Errorf("error reading data for file %q: %v", name, err)
 		return
@@ -319,26 +319,26 @@ func TestAppend(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	blockId := uuid.New().String()
+	zoneId := uuid.New().String()
 	fileName := "t2"
-	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	err = GBS.AppendData(ctx, blockId, fileName, []byte("hello"))
+	err = WFS.AppendData(ctx, zoneId, fileName, []byte("hello"))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)
 	}
 	// fmt.Print(GBS.dump())
-	checkFileSize(t, ctx, blockId, fileName, 5)
-	checkFileData(t, ctx, blockId, fileName, "hello")
-	err = GBS.AppendData(ctx, blockId, fileName, []byte(" world"))
+	checkFileSize(t, ctx, zoneId, fileName, 5)
+	checkFileData(t, ctx, zoneId, fileName, "hello")
+	err = WFS.AppendData(ctx, zoneId, fileName, []byte(" world"))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)
 	}
 	// fmt.Print(GBS.dump())
-	checkFileSize(t, ctx, blockId, fileName, 11)
-	checkFileData(t, ctx, blockId, fileName, "hello world")
+	checkFileSize(t, ctx, zoneId, fileName, 11)
+	checkFileData(t, ctx, zoneId, fileName, "hello world")
 }
 
 func TestWriteFile(t *testing.T) {
@@ -347,43 +347,43 @@ func TestWriteFile(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	blockId := uuid.New().String()
+	zoneId := uuid.New().String()
 	fileName := "t3"
-	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	err = GBS.WriteFile(ctx, blockId, fileName, []byte("hello world!"))
+	err = WFS.WriteFile(ctx, zoneId, fileName, []byte("hello world!"))
 	if err != nil {
 		t.Fatalf("error writing data: %v", err)
 	}
-	checkFileData(t, ctx, blockId, fileName, "hello world!")
-	err = GBS.WriteFile(ctx, blockId, fileName, []byte("goodbye world!"))
+	checkFileData(t, ctx, zoneId, fileName, "hello world!")
+	err = WFS.WriteFile(ctx, zoneId, fileName, []byte("goodbye world!"))
 	if err != nil {
 		t.Fatalf("error writing data: %v", err)
 	}
-	checkFileData(t, ctx, blockId, fileName, "goodbye world!")
-	err = GBS.WriteFile(ctx, blockId, fileName, []byte("hello"))
+	checkFileData(t, ctx, zoneId, fileName, "goodbye world!")
+	err = WFS.WriteFile(ctx, zoneId, fileName, []byte("hello"))
 	if err != nil {
 		t.Fatalf("error writing data: %v", err)
 	}
-	checkFileData(t, ctx, blockId, fileName, "hello")
+	checkFileData(t, ctx, zoneId, fileName, "hello")
 
 	// circular file
-	err = GBS.MakeFile(ctx, blockId, "c1", nil, FileOptsType{Circular: true, MaxSize: 50})
+	err = WFS.MakeFile(ctx, zoneId, "c1", nil, FileOptsType{Circular: true, MaxSize: 50})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	err = GBS.WriteFile(ctx, blockId, "c1", []byte("123456789 123456789 123456789 123456789 123456789 apple"))
+	err = WFS.WriteFile(ctx, zoneId, "c1", []byte("123456789 123456789 123456789 123456789 123456789 apple"))
 	if err != nil {
 		t.Fatalf("error writing data: %v", err)
 	}
-	checkFileData(t, ctx, blockId, "c1", "6789 123456789 123456789 123456789 123456789 apple")
-	err = GBS.AppendData(ctx, blockId, "c1", []byte(" banana"))
+	checkFileData(t, ctx, zoneId, "c1", "6789 123456789 123456789 123456789 123456789 apple")
+	err = WFS.AppendData(ctx, zoneId, "c1", []byte(" banana"))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)
 	}
-	checkFileData(t, ctx, blockId, "c1", "3456789 123456789 123456789 123456789 apple banana")
+	checkFileData(t, ctx, zoneId, "c1", "3456789 123456789 123456789 123456789 apple banana")
 }
 
 func TestCircularWrites(t *testing.T) {
@@ -391,66 +391,66 @@ func TestCircularWrites(t *testing.T) {
 	defer cleanupDb(t)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	blockId := uuid.New().String()
-	err := GBS.MakeFile(ctx, blockId, "c1", nil, FileOptsType{Circular: true, MaxSize: 50})
+	zoneId := uuid.New().String()
+	err := WFS.MakeFile(ctx, zoneId, "c1", nil, FileOptsType{Circular: true, MaxSize: 50})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	err = GBS.WriteFile(ctx, blockId, "c1", []byte("123456789 123456789 123456789 123456789 123456789 "))
+	err = WFS.WriteFile(ctx, zoneId, "c1", []byte("123456789 123456789 123456789 123456789 123456789 "))
 	if err != nil {
 		t.Fatalf("error writing data: %v", err)
 	}
-	checkFileData(t, ctx, blockId, "c1", "123456789 123456789 123456789 123456789 123456789 ")
-	err = GBS.AppendData(ctx, blockId, "c1", []byte("apple"))
+	checkFileData(t, ctx, zoneId, "c1", "123456789 123456789 123456789 123456789 123456789 ")
+	err = WFS.AppendData(ctx, zoneId, "c1", []byte("apple"))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)
 	}
-	checkFileData(t, ctx, blockId, "c1", "6789 123456789 123456789 123456789 123456789 apple")
-	err = GBS.WriteAt(ctx, blockId, "c1", 0, []byte("foo"))
+	checkFileData(t, ctx, zoneId, "c1", "6789 123456789 123456789 123456789 123456789 apple")
+	err = WFS.WriteAt(ctx, zoneId, "c1", 0, []byte("foo"))
 	if err != nil {
 		t.Fatalf("error writing data: %v", err)
 	}
 	// content should be unchanged because write is before the beginning of circular offset
-	checkFileData(t, ctx, blockId, "c1", "6789 123456789 123456789 123456789 123456789 apple")
-	err = GBS.WriteAt(ctx, blockId, "c1", 5, []byte("a"))
+	checkFileData(t, ctx, zoneId, "c1", "6789 123456789 123456789 123456789 123456789 apple")
+	err = WFS.WriteAt(ctx, zoneId, "c1", 5, []byte("a"))
 	if err != nil {
 		t.Fatalf("error writing data: %v", err)
 	}
-	checkFileSize(t, ctx, blockId, "c1", 55)
-	checkFileData(t, ctx, blockId, "c1", "a789 123456789 123456789 123456789 123456789 apple")
-	err = GBS.AppendData(ctx, blockId, "c1", []byte(" banana"))
+	checkFileSize(t, ctx, zoneId, "c1", 55)
+	checkFileData(t, ctx, zoneId, "c1", "a789 123456789 123456789 123456789 123456789 apple")
+	err = WFS.AppendData(ctx, zoneId, "c1", []byte(" banana"))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)
 	}
-	checkFileSize(t, ctx, blockId, "c1", 62)
-	checkFileData(t, ctx, blockId, "c1", "3456789 123456789 123456789 123456789 apple banana")
-	err = GBS.WriteAt(ctx, blockId, "c1", 20, []byte("foo"))
+	checkFileSize(t, ctx, zoneId, "c1", 62)
+	checkFileData(t, ctx, zoneId, "c1", "3456789 123456789 123456789 123456789 apple banana")
+	err = WFS.WriteAt(ctx, zoneId, "c1", 20, []byte("foo"))
 	if err != nil {
 		t.Fatalf("error writing data: %v", err)
 	}
-	checkFileSize(t, ctx, blockId, "c1", 62)
-	checkFileData(t, ctx, blockId, "c1", "3456789 foo456789 123456789 123456789 apple banana")
-	offset, _, _ := GBS.ReadFile(ctx, blockId, "c1")
+	checkFileSize(t, ctx, zoneId, "c1", 62)
+	checkFileData(t, ctx, zoneId, "c1", "3456789 foo456789 123456789 123456789 apple banana")
+	offset, _, _ := WFS.ReadFile(ctx, zoneId, "c1")
 	if offset != 12 {
 		t.Errorf("offset mismatch: expected 12, got %d", offset)
 	}
-	err = GBS.AppendData(ctx, blockId, "c1", []byte(" world"))
+	err = WFS.AppendData(ctx, zoneId, "c1", []byte(" world"))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)
 	}
-	checkFileSize(t, ctx, blockId, "c1", 68)
-	offset, _, _ = GBS.ReadFile(ctx, blockId, "c1")
+	checkFileSize(t, ctx, zoneId, "c1", 68)
+	offset, _, _ = WFS.ReadFile(ctx, zoneId, "c1")
 	if offset != 18 {
 		t.Errorf("offset mismatch: expected 18, got %d", offset)
 	}
-	checkFileData(t, ctx, blockId, "c1", "9 foo456789 123456789 123456789 apple banana world")
-	err = GBS.AppendData(ctx, blockId, "c1", []byte(" 123456789 123456789 123456789 123456789 bar456789 123456789"))
+	checkFileData(t, ctx, zoneId, "c1", "9 foo456789 123456789 123456789 apple banana world")
+	err = WFS.AppendData(ctx, zoneId, "c1", []byte(" 123456789 123456789 123456789 123456789 bar456789 123456789"))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)
 	}
-	checkFileSize(t, ctx, blockId, "c1", 128)
-	checkFileData(t, ctx, blockId, "c1", " 123456789 123456789 123456789 bar456789 123456789")
-	err = withLock(GBS, blockId, "c1", func(entry *CacheEntry) error {
+	checkFileSize(t, ctx, zoneId, "c1", 128)
+	checkFileData(t, ctx, zoneId, "c1", " 123456789 123456789 123456789 bar456789 123456789")
+	err = withLock(WFS, zoneId, "c1", func(entry *CacheEntry) error {
 		if entry == nil {
 			return fmt.Errorf("entry not found")
 		}
@@ -478,30 +478,30 @@ func TestMultiPart(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	blockId := uuid.New().String()
+	zoneId := uuid.New().String()
 	fileName := "m2"
 	data := makeText(80)
-	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	err = GBS.AppendData(ctx, blockId, fileName, []byte(data))
+	err = WFS.AppendData(ctx, zoneId, fileName, []byte(data))
 	if err != nil {
 		t.Fatalf("error appending data: %v", err)
 	}
-	checkFileSize(t, ctx, blockId, fileName, 80)
-	checkFileData(t, ctx, blockId, fileName, data)
-	_, barr, err := GBS.ReadAt(ctx, blockId, fileName, 42, 10)
+	checkFileSize(t, ctx, zoneId, fileName, 80)
+	checkFileData(t, ctx, zoneId, fileName, data)
+	_, barr, err := WFS.ReadAt(ctx, zoneId, fileName, 42, 10)
 	if err != nil {
 		t.Fatalf("error reading data: %v", err)
 	}
 	if string(barr) != data[42:52] {
 		t.Errorf("data mismatch: expected %q, got %q", data[42:52], string(barr))
 	}
-	GBS.WriteAt(ctx, blockId, fileName, 49, []byte("world"))
-	checkFileSize(t, ctx, blockId, fileName, 80)
-	checkFileDataAt(t, ctx, blockId, fileName, 49, "world")
-	checkFileDataAt(t, ctx, blockId, fileName, 48, "8world4")
+	WFS.WriteAt(ctx, zoneId, fileName, 49, []byte("world"))
+	checkFileSize(t, ctx, zoneId, fileName, 80)
+	checkFileDataAt(t, ctx, zoneId, fileName, 49, "world")
+	checkFileDataAt(t, ctx, zoneId, fileName, 48, "8world4")
 }
 
 func testIntMapsEq(t *testing.T, msg string, m map[int]int, expected map[int]int) {
@@ -521,7 +521,7 @@ func TestComputePartMap(t *testing.T) {
 	defer func() {
 		partDataSize = DefaultPartDataSize
 	}()
-	file := &BlockFile{}
+	file := &WaveFile{}
 	m := file.computePartMap(0, 250)
 	testIntMapsEq(t, "map1", m, map[int]int{0: 100, 1: 100, 2: 50})
 	m = file.computePartMap(110, 40)
@@ -535,7 +535,7 @@ func TestComputePartMap(t *testing.T) {
 	testIntMapsEq(t, "map5", m, map[int]int{8: 80, 9: 100, 10: 100, 11: 60})
 
 	// now test circular
-	file = &BlockFile{Opts: FileOptsType{Circular: true, MaxSize: 1000}}
+	file = &WaveFile{Opts: FileOptsType{Circular: true, MaxSize: 1000}}
 	m = file.computePartMap(10, 250)
 	testIntMapsEq(t, "map6", m, map[int]int{0: 90, 1: 100, 2: 60})
 	m = file.computePartMap(990, 40)
@@ -554,31 +554,31 @@ func TestSimpleDBFlush(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	blockId := uuid.New().String()
+	zoneId := uuid.New().String()
 	fileName := "t1"
-	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
-	err = GBS.WriteFile(ctx, blockId, fileName, []byte("hello world!"))
+	err = WFS.WriteFile(ctx, zoneId, fileName, []byte("hello world!"))
 	if err != nil {
 		t.Fatalf("error writing data: %v", err)
 	}
-	checkFileData(t, ctx, blockId, fileName, "hello world!")
-	_, err = GBS.FlushCache(ctx)
+	checkFileData(t, ctx, zoneId, fileName, "hello world!")
+	_, err = WFS.FlushCache(ctx)
 	if err != nil {
 		t.Fatalf("error flushing cache: %v", err)
 	}
-	if GBS.getCacheSize() != 0 {
+	if WFS.getCacheSize() != 0 {
 		t.Errorf("cache size mismatch")
 	}
-	checkFileData(t, ctx, blockId, fileName, "hello world!")
-	if GBS.getCacheSize() != 0 {
+	checkFileData(t, ctx, zoneId, fileName, "hello world!")
+	if WFS.getCacheSize() != 0 {
 		t.Errorf("cache size mismatch (after read)")
 	}
-	checkFileDataAt(t, ctx, blockId, fileName, 6, "world!")
-	checkFileSize(t, ctx, blockId, fileName, 12)
-	checkFileByteCount(t, ctx, blockId, fileName, 'l', 3)
+	checkFileDataAt(t, ctx, zoneId, fileName, 6, "world!")
+	checkFileSize(t, ctx, zoneId, fileName, 12)
+	checkFileByteCount(t, ctx, zoneId, fileName, 'l', 3)
 }
 
 func TestConcurrentAppend(t *testing.T) {
@@ -586,9 +586,9 @@ func TestConcurrentAppend(t *testing.T) {
 	defer cleanupDb(t)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	blockId := uuid.New().String()
+	zoneId := uuid.New().String()
 	fileName := "t1"
-	err := GBS.MakeFile(ctx, blockId, fileName, nil, FileOptsType{})
+	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
 	}
@@ -600,23 +600,23 @@ func TestConcurrentAppend(t *testing.T) {
 			const hexChars = "0123456789abcdef"
 			ch := hexChars[n]
 			for j := 0; j < 100; j++ {
-				err := GBS.AppendData(ctx, blockId, fileName, []byte{ch})
+				err := WFS.AppendData(ctx, zoneId, fileName, []byte{ch})
 				if err != nil {
 					t.Errorf("error appending data (%d): %v", n, err)
 				}
 				if j == 50 {
 					// ignore error here (concurrent flushing)
-					GBS.FlushCache(ctx)
+					WFS.FlushCache(ctx)
 				}
 			}
 		}(i)
 	}
 	wg.Wait()
-	checkFileSize(t, ctx, blockId, fileName, 1600)
-	checkFileByteCount(t, ctx, blockId, fileName, 'a', 100)
-	checkFileByteCount(t, ctx, blockId, fileName, 'e', 100)
-	GBS.FlushCache(ctx)
-	checkFileSize(t, ctx, blockId, fileName, 1600)
-	checkFileByteCount(t, ctx, blockId, fileName, 'a', 100)
-	checkFileByteCount(t, ctx, blockId, fileName, 'e', 100)
+	checkFileSize(t, ctx, zoneId, fileName, 1600)
+	checkFileByteCount(t, ctx, zoneId, fileName, 'a', 100)
+	checkFileByteCount(t, ctx, zoneId, fileName, 'e', 100)
+	WFS.FlushCache(ctx)
+	checkFileSize(t, ctx, zoneId, fileName, 1600)
+	checkFileByteCount(t, ctx, zoneId, fileName, 'a', 100)
+	checkFileByteCount(t, ctx, zoneId, fileName, 'e', 100)
 }

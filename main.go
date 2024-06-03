@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/thenextwave/pkg/blockstore"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
+	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/clientservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
@@ -114,7 +114,7 @@ func serveBlockFile(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	file, err := blockstore.GBS.Stat(r.Context(), blockId, name)
+	file, err := filestore.WFS.Stat(r.Context(), blockId, name)
 	if err == fs.ErrNotExist {
 		http.NotFound(w, r)
 		return
@@ -131,8 +131,8 @@ func serveBlockFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", file.Size))
 	w.Header().Set("X-BlockFileInfo", base64.StdEncoding.EncodeToString(jsonFileBArr))
 	w.Header().Set("Last-Modified", time.UnixMilli(file.ModTs).UTC().Format(http.TimeFormat))
-	for offset := file.DataStartIdx(); offset < file.Size; offset += blockstore.DefaultPartDataSize {
-		_, data, err := blockstore.GBS.ReadAt(r.Context(), blockId, name, offset, blockstore.DefaultPartDataSize)
+	for offset := file.DataStartIdx(); offset < file.Size; offset += filestore.DefaultPartDataSize {
+		_, data, err := filestore.WFS.ReadAt(r.Context(), blockId, name, offset, filestore.DefaultPartDataSize)
 		if err != nil {
 			if offset == 0 {
 				http.Error(w, fmt.Sprintf("error reading file: %v", err), http.StatusInternalServerError)
@@ -174,7 +174,7 @@ func doShutdown(reason string) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	// TODO deal with flush in progress
-	blockstore.GBS.FlushCache(ctx)
+	filestore.WFS.FlushCache(ctx)
 	time.Sleep(200 * time.Millisecond)
 	os.Exit(0)
 }
@@ -203,9 +203,9 @@ func main() {
 	}
 
 	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
-	err = blockstore.InitBlockstore()
+	err = filestore.InitFilestore()
 	if err != nil {
-		log.Printf("error initializing blockstore: %v\n", err)
+		log.Printf("error initializing filestore: %v\n", err)
 		return
 	}
 	err = wstore.InitWStore()
