@@ -114,19 +114,19 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         if (!termRef.current) {
             return;
         }
-        // load data from blockfile
+        // load data from filestore
         const startTs = Date.now();
         let loadedBytes = 0;
         const localTerm = termRef.current; // avoids devmode double effect running issue (terminal gets created twice)
         const usp = new URLSearchParams();
-        usp.set("blockid", blockId);
+        usp.set("zoneid", blockId);
         usp.set("name", "main");
-        fetch("/wave/blockfile?" + usp.toString())
+        fetch("/wave/file?" + usp.toString())
             .then((resp) => {
                 if (resp.ok) {
                     return resp.arrayBuffer();
                 }
-                console.log("error loading blockfile", resp.status, resp.statusText);
+                console.log("error loading file", resp.status, resp.statusText);
             })
             .then((data: ArrayBuffer) => {
                 const uint8View = new Uint8Array(data);
@@ -139,7 +139,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
                 });
                 initialLoadRef.current.loaded = true;
                 initialLoadRef.current.heldData = [];
-                console.log(`terminal loaded blockfile ${loadedBytes} bytes, ${Date.now() - startTs}ms`);
+                console.log(`terminal loaded file ${loadedBytes} bytes, ${Date.now() - startTs}ms`);
             });
     }, [termRef.current]);
 
