@@ -10,6 +10,7 @@ import "./directorypreview.less";
 
 interface DirectoryTableProps {
     data: FileInfo[];
+    cwd: string;
     setFileName: (_: string) => void;
 }
 
@@ -26,11 +27,11 @@ const defaultColumns = [
     }),
     columnHelper.accessor("mimetype", {
         cell: (info) => info.getValue(),
-        header: () => <span>Mimetype</span>,
+        header: () => <span>Type</span>,
     }),
 ];
 
-function DirectoryTable<T, U>({ data, setFileName }: DirectoryTableProps) {
+function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
     const [columns] = React.useState<typeof defaultColumns>(() => [...defaultColumns]);
     const table = useReactTable({
         data,
@@ -75,9 +76,9 @@ function DirectoryTable<T, U>({ data, setFileName }: DirectoryTableProps) {
                 ))}
             </div>
             {table.getState().columnSizingInfo.isResizingColumn ? (
-                <MemoizedTableBody table={table} setFileName={setFileName} />
+                <MemoizedTableBody table={table} cwd={cwd} setFileName={setFileName} />
             ) : (
-                <TableBody table={table} setFileName={setFileName} />
+                <TableBody table={table} cwd={cwd} setFileName={setFileName} />
             )}
         </div>
     );
@@ -85,10 +86,11 @@ function DirectoryTable<T, U>({ data, setFileName }: DirectoryTableProps) {
 
 interface TableBodyProps {
     table: Table<FileInfo>;
+    cwd: string;
     setFileName: (_: string) => void;
 }
 
-function TableBody({ table, setFileName }: TableBodyProps) {
+function TableBody({ table, cwd, setFileName }: TableBodyProps) {
     return (
         <div className="dir-table-body">
             {table.getRowModel().rows.map((row) => (
@@ -98,18 +100,21 @@ function TableBody({ table, setFileName }: TableBodyProps) {
                     tabIndex={0}
                     onDoubleClick={() => {
                         const newFileName = row.getValue("path") as string;
-                        setFileName(newFileName);
+                        const fullPath = cwd.concat("/", newFileName);
+                        setFileName(fullPath);
                     }}
                 >
-                    {row.getVisibleCells().map((cell) => (
-                        <div
-                            className="dir-table-body-cell"
-                            key={cell.id}
-                            style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
-                        >
-                            {cell.renderValue<any>()}
-                        </div>
-                    ))}
+                    {row.getVisibleCells().map((cell) => {
+                        return (
+                            <div
+                                className="dir-table-body-cell"
+                                key={cell.id}
+                                style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
+                            >
+                                {cell.renderValue<string>()}
+                            </div>
+                        );
+                    })}
                 </div>
             ))}
         </div>
@@ -130,7 +135,7 @@ function DirectoryPreview({ contentAtom, fileNameAtom }: DirectoryPreviewProps) 
     const contentText = jotai.useAtomValue(contentAtom);
     let content: FileInfo[] = JSON.parse(contentText);
     let [fileName, setFileName] = jotai.useAtom(fileNameAtom);
-    return <DirectoryTable data={content} setFileName={setFileName} />;
+    return <DirectoryTable data={content} cwd={fileName} setFileName={setFileName} />;
 }
 
 export { DirectoryPreview };

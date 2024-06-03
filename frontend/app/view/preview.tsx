@@ -55,6 +55,7 @@ function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
 }
 
 function PreviewView({ blockId }: { blockId: string }) {
+    /*
     const blockData = WOS.useWaveObjectValueWithSuspense<Block>(WOS.makeORef("block", blockId));
     if (blockData == null) {
         return (
@@ -63,6 +64,7 @@ function PreviewView({ blockId }: { blockId: string }) {
             </div>
         );
     }
+	*/
     const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
     const fileNameAtom: jotai.WritableAtom<string, [string], void> = useBlockCache(blockId, "preview:filename", () =>
         jotai.atom<string, [string], void>(
@@ -114,6 +116,7 @@ function PreviewView({ blockId }: { blockId: string }) {
         mimeType = "";
     }
     const fileInfo = jotai.useAtomValue(statFileAtom);
+    const fileContent = jotai.useAtomValue(fileContentAtom);
 
     // handle streaming files here
     if (mimeType.startsWith("video/") || mimeType.startsWith("audio/") || mimeType.startsWith("image/")) {
@@ -131,7 +134,7 @@ function PreviewView({ blockId }: { blockId: string }) {
     if (mimeType.startsWith("text/")) {
         return (
             <div className="view-preview view-preview-text">
-                <pre>{jotai.useAtomValue(fileContentAtom)}</pre>
+                <pre>{fileContent}</pre>
             </div>
         );
     }
