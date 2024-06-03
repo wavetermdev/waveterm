@@ -107,6 +107,7 @@ class RightSideBar extends React.Component<
 
     @mobx.action.bound
     toggleCollapse() {
+        console.log("toggleCollapse");
         const isCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
         GlobalModel.rightSidebarModel.setCollapsed(!isCollapsed);
         if (this.mode.get() == "aichat") {
@@ -114,6 +115,8 @@ class RightSideBar extends React.Component<
                 this.timeoutId = setTimeout(() => {
                     GlobalModel.inputModel.setChatSidebarFocus();
                 }, 100);
+            } else {
+                GlobalModel.inputModel.setChatSidebarFocus(false);
             }
         }
         return true;
