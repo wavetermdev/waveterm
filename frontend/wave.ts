@@ -20,7 +20,7 @@ console.log("Wave Starting");
 
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("DOMContentLoaded");
-    // ensures client/window are loaded into the cache before rendering
+    // ensures client/window/workspace are loaded into the cache before rendering
     await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", clientId));
     const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", windowId));
     await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));

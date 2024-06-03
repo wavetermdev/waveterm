@@ -5,8 +5,8 @@ package db
 
 import "embed"
 
-//go:embed migrations-blockstore/*.sql
-var BlockstoreMigrationFS embed.FS
+//go:embed migrations-filestore/*.sql
+var FilestoreMigrationFS embed.FS
 
 //go:embed migrations-wstore/*.sql
 var WStoreMigrationFS embed.FS

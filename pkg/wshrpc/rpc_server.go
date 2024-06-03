@@ -14,7 +14,7 @@ import (
 )
 
 type SimpleCommandHandlerFn func(context.Context, *RpcServer, string, any) (any, error)
-type StreamCommandHandlerFn func(context.Context, *RpcServer, string, any) error
+type StreamCommandHandlerFn func(context.Context, *RpcServer, *RpcPacket) error
 
 type RpcServer struct {
 	CVar                  *sync.Cond
@@ -33,27 +33,54 @@ func MakeRpcServer(sendCh chan *RpcPacket, recvCh chan *RpcPacket) *RpcServer {
 		panic(fmt.Errorf("sendCh buffer size must be at least MaxInFlightPackets(%d)", MaxInFlightPackets))
 	}
 	rtn := &RpcServer{
-		CVar:                sync.NewCond(&sync.Mutex{}),
-		NextSeqNum:          &atomic.Int64{},
-		RespPacketsInFlight: make(map[int64]string),
-		AckList:             nil,
-		RpcReqs:             make(map[string]*RpcInfo),
-		SendCh:              sendCh,
-		RecvCh:              recvCh,
+		CVar:                  sync.NewCond(&sync.Mutex{}),
+		NextSeqNum:            &atomic.Int64{},
+		RespPacketsInFlight:   make(map[int64]string),
+		AckList:               nil,
+		RpcReqs:               make(map[string]*RpcInfo),
+		SendCh:                sendCh,
+		RecvCh:                recvCh,
+		SimpleCommandHandlers: make(map[string]SimpleCommandHandlerFn),
+		StreamCommandHandlers: make(map[string]StreamCommandHandlerFn),
 	}
 	go rtn.runRecvLoop()
 	return rtn
 }
 
+func (s *RpcServer) shouldUseStreamHandler(command string) bool {
+	s.CVar.L.Lock()
+	defer s.CVar.L.Unlock()
+	_, ok := s.StreamCommandHandlers[command]
+	return ok
+}
+
+func (s *RpcServer) getStreamHandler(command string) StreamCommandHandlerFn {
+	s.CVar.L.Lock()
+	defer s.CVar.L.Unlock()
+	return s.StreamCommandHandlers[command]
+}
+
+func (s *RpcServer) getSimpleHandler(command string) SimpleCommandHandlerFn {
+	s.CVar.L.Lock()
+	defer s.CVar.L.Unlock()
+	return s.SimpleCommandHandlers[command]
+}
+
 func (s *RpcServer) RegisterSimpleCommandHandler(command string, handler SimpleCommandHandlerFn) {
 	s.CVar.L.Lock()
 	defer s.CVar.L.Unlock()
+	if s.StreamCommandHandlers[command] != nil {
+		panic(fmt.Errorf("command %q already registered as a stream handler", command))
+	}
 	s.SimpleCommandHandlers[command] = handler
 }
 
 func (s *RpcServer) RegisterStreamCommandHandler(command string, handler StreamCommandHandlerFn) {
 	s.CVar.L.Lock()
 	defer s.CVar.L.Unlock()
+	if s.SimpleCommandHandlers[command] != nil {
+		panic(fmt.Errorf("command %q already registered as a simple handler", command))
+	}
 	s.StreamCommandHandlers[command] = handler
 }
 
@@ -67,10 +94,10 @@ func (s *RpcServer) runRecvLoop() {
 	for pk := range s.RecvCh {
 		s.handleAcks(pk.Acks)
 		if pk.RpcType == RpcType_Req {
-			if pk.ReqDone {
-				s.handleSimpleReq(pk)
-			} else {
+			if s.shouldUseStreamHandler(pk.Command) {
 				s.handleStreamReq(pk)
+			} else {
+				s.handleSimpleReq(pk)
 			}
 			continue
 		}
@@ -163,8 +190,9 @@ func (s *RpcServer) handleAcks(acks []int64) {
 
 func (s *RpcServer) handleSimpleReq(pk *RpcPacket) {
 	s.ackResp(pk.SeqNum)
-	handler, ok := s.SimpleCommandHandlers[pk.Command]
-	if !ok {
+	handler := s.getSimpleHandler(pk.Command)
+	if handler == nil {
+		s.sendErrorResp(pk, fmt.Errorf("unknown command: %s", pk.Command))
 		log.Printf("RpcServer.handleReq() unknown command: %s", pk.Command)
 		return
 	}
@@ -201,11 +229,35 @@ func (s *RpcServer) grabAcks_nolock() []int64 {
 	return acks
 }
 
+func (s *RpcServer) sendErrorResp(pk *RpcPacket, err error) {
+	respPk := &RpcPacket{
+		Command:  pk.Command,
+		RpcId:    pk.RpcId,
+		RpcType:  RpcType_Resp,
+		SeqNum:   s.NextSeqNum.Add(1),
+		RespDone: true,
+		Error:    err.Error(),
+	}
+	s.waitForSend(context.Background(), respPk)
+}
+
+func (s *RpcServer) makeRespPk(pk *RpcPacket, data any, done bool) *RpcPacket {
+	return &RpcPacket{
+		Command:  pk.Command,
+		RpcId:    pk.RpcId,
+		RpcType:  RpcType_Resp,
+		SeqNum:   s.NextSeqNum.Add(1),
+		RespDone: done,
+		Data:     data,
+	}
+}
+
 func (s *RpcServer) handleStreamReq(pk *RpcPacket) {
 	s.ackResp(pk.SeqNum)
-	handler, ok := s.StreamCommandHandlers[pk.Command]
-	if !ok {
+	handler := s.getStreamHandler(pk.Command)
+	if handler == nil {
 		s.ackResp(pk.SeqNum)
+		s.sendErrorResp(pk, fmt.Errorf("unknown command: %s", pk.Command))
 		log.Printf("RpcServer.handleStreamReq() unknown command: %s", pk.Command)
 		return
 	}
@@ -229,7 +281,7 @@ func (s *RpcServer) handleStreamReq(pk *RpcPacket) {
 		}()
 		ctx, cancelFn := makeContextFromTimeout(pk.Timeout)
 		defer cancelFn()
-		err := handler(ctx, s, pk.Command, pk.Data)
+		err := handler(ctx, s, pk)
 		if err != nil {
 			respPk := &RpcPacket{
 				Command:  pk.Command,

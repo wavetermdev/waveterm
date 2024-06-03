@@ -16,8 +16,8 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wavetermdev/thenextwave/pkg/blockstore"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
+	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -93,7 +93,7 @@ const DefaultTermMaxFileSize = 256 * 1024
 func (bc *BlockController) handleShellProcData(data []byte, seqNum int) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	err := blockstore.GBS.AppendData(ctx, bc.BlockId, "main", data)
+	err := filestore.WFS.AppendData(ctx, bc.BlockId, "main", data)
 	if err != nil {
 		return fmt.Errorf("error appending to blockfile: %w", err)
 	}
@@ -118,7 +118,7 @@ func (bc *BlockController) resetTerminalState() {
 	buf.WriteString("\x1b[?25h")   // show cursor
 	buf.WriteString("\x1b[?1000l") // disable mouse tracking
 	buf.WriteString("\r\n\r\n(restored terminal state)\r\n\r\n")
-	err := blockstore.GBS.AppendData(ctx, bc.BlockId, "main", buf.Bytes())
+	err := filestore.WFS.AppendData(ctx, bc.BlockId, "main", buf.Bytes())
 	if err != nil {
 		log.Printf("error appending to blockfile (terminal reset): %v\n", err)
 	}
@@ -128,11 +128,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
-	err := blockstore.GBS.MakeFile(ctx, bc.BlockId, "main", nil, blockstore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
-	if err != nil && err != blockstore.ErrAlreadyExists {
+	err := filestore.WFS.MakeFile(ctx, bc.BlockId, "main", nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
+	if err != nil && err != filestore.ErrAlreadyExists {
 		return fmt.Errorf("error creating blockfile: %w", err)
 	}
-	if err == blockstore.ErrAlreadyExists {
+	if err == filestore.ErrAlreadyExists {
 		// reset the terminal state
 		bc.resetTerminalState()
 	}

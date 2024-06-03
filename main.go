@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/thenextwave/pkg/blockstore"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
+	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/clientservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
@@ -72,7 +72,7 @@ func createWindow(windowData *wstore.Window, app *application.App) {
 			Backdrop:                application.MacBackdropTranslucent,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
-		BackgroundColour: application.NewRGB(0, 0, 0),
+		BackgroundColour: application.NewRGBA(0, 0, 0, 255),
 		URL:              "/public/index.html?windowid=" + windowData.OID + "&clientid=" + client.OID,
 		X:                windowData.Pos.X,
 		Y:                windowData.Pos.Y,
@@ -102,11 +102,11 @@ type waveAssetHandler struct {
 	AssetHandler http.Handler
 }
 
-func serveBlockFile(w http.ResponseWriter, r *http.Request) {
-	blockId := r.URL.Query().Get("blockid")
+func serveWaveFile(w http.ResponseWriter, r *http.Request) {
+	zoneId := r.URL.Query().Get("zoneid")
 	name := r.URL.Query().Get("name")
-	if _, err := uuid.Parse(blockId); err != nil {
-		http.Error(w, fmt.Sprintf("invalid blockid: %v", err), http.StatusBadRequest)
+	if _, err := uuid.Parse(zoneId); err != nil {
+		http.Error(w, fmt.Sprintf("invalid zoneid: %v", err), http.StatusBadRequest)
 		return
 	}
 	if name == "" {
@@ -114,7 +114,7 @@ func serveBlockFile(w http.ResponseWriter, r *http.Request) {
 		return
 
 	}
-	file, err := blockstore.GBS.Stat(r.Context(), blockId, name)
+	file, err := filestore.WFS.Stat(r.Context(), zoneId, name)
 	if err == fs.ErrNotExist {
 		http.NotFound(w, r)
 		return
@@ -129,16 +129,16 @@ func serveBlockFile(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", file.Size))
-	w.Header().Set("X-BlockFileInfo", base64.StdEncoding.EncodeToString(jsonFileBArr))
+	w.Header().Set("X-ZoneFileInfo", base64.StdEncoding.EncodeToString(jsonFileBArr))
 	w.Header().Set("Last-Modified", time.UnixMilli(file.ModTs).UTC().Format(http.TimeFormat))
-	for offset := file.DataStartIdx(); offset < file.Size; offset += blockstore.DefaultPartDataSize {
-		_, data, err := blockstore.GBS.ReadAt(r.Context(), blockId, name, offset, blockstore.DefaultPartDataSize)
+	for offset := file.DataStartIdx(); offset < file.Size; offset += filestore.DefaultPartDataSize {
+		_, data, err := filestore.WFS.ReadAt(r.Context(), zoneId, name, offset, filestore.DefaultPartDataSize)
 		if err != nil {
 			if offset == 0 {
 				http.Error(w, fmt.Sprintf("error reading file: %v", err), http.StatusInternalServerError)
 			} else {
 				// nothing to do, the headers have already been sent
-				log.Printf("error reading file %s/%s @ %d: %v\n", blockId, name, offset, err)
+				log.Printf("error reading file %s/%s @ %d: %v\n", zoneId, name, offset, err)
 			}
 			return
 		}
@@ -154,8 +154,8 @@ func serveWaveUrls(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, fileName)
 		return
 	}
-	if r.URL.Path == "/wave/blockfile" {
-		serveBlockFile(w, r)
+	if r.URL.Path == "/wave/file" {
+		serveWaveFile(w, r)
 		return
 	}
 	http.NotFound(w, r)
@@ -174,7 +174,7 @@ func doShutdown(reason string) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
 	// TODO deal with flush in progress
-	blockstore.GBS.FlushCache(ctx)
+	filestore.WFS.FlushCache(ctx)
 	time.Sleep(200 * time.Millisecond)
 	os.Exit(0)
 }
@@ -203,9 +203,9 @@ func main() {
 	}
 
 	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
-	err = blockstore.InitBlockstore()
+	err = filestore.InitFilestore()
 	if err != nil {
-		log.Printf("error initializing blockstore: %v\n", err)
+		log.Printf("error initializing filestore: %v\n", err)
 		return
 	}
 	err = wstore.InitWStore()
