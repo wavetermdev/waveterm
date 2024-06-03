@@ -8,8 +8,6 @@ import (
 	"os"
 )
 
-const WaveOSC = "23198"
-
 func main() {
 	barr, err := os.ReadFile("/Users/mike/Downloads/2.png")
 	if err != nil {
