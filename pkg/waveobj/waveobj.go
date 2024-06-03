@@ -156,6 +156,9 @@ func SetMeta(waveObj WaveObj, meta map[string]any) {
 }
 
 func ToJsonMap(w WaveObj) (map[string]any, error) {
+	if w == nil {
+		return nil, nil
+	}
 	m := make(map[string]any)
 	dconfig := &mapstructure.DecoderConfig{
 		Result:  &m,

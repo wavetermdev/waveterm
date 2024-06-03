@@ -103,7 +103,10 @@ func DBGetORef(ctx context.Context, oref waveobj.ORef) (waveobj.WaveObj, error) 
 		table := tableNameFromOType(oref.OType)
 		query := fmt.Sprintf("SELECT oid, version, data FROM %s WHERE oid = ?", table)
 		var row idDataType
-		tx.Get(&row, query, oref.OID)
+		found := tx.Get(&row, query, oref.OID)
+		if !found {
+			return nil, nil
+		}
 		rtn, err := waveobj.FromJson(row.Data)
 		if err != nil {
 			return rtn, err
