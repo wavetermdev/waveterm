@@ -26,6 +26,13 @@ function MarkdownPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<stri
 function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
     const filePath = fileInfo.path;
     const streamingUrl = "/wave/stream-file?path=" + encodeURIComponent(filePath);
+    if (fileInfo.mimetype == "application/pdf") {
+        return (
+            <div className="view-preview view-preview-pdf">
+                <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
+            </div>
+        );
+    }
     if (fileInfo.mimetype.startsWith("video/")) {
         return (
             <div className="view-preview view-preview-video">
@@ -116,7 +123,12 @@ function PreviewView({ blockId }: { blockId: string }) {
     const fileInfo = jotai.useAtomValue(statFileAtom);
 
     // handle streaming files here
-    if (mimeType.startsWith("video/") || mimeType.startsWith("audio/") || mimeType.startsWith("image/")) {
+    if (
+        mimeType == "application/pdf" ||
+        mimeType.startsWith("video/") ||
+        mimeType.startsWith("audio/") ||
+        mimeType.startsWith("image/")
+    ) {
         return <StreamingPreview fileInfo={fileInfo} />;
     }
     if (fileInfo == null) {
