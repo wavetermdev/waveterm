@@ -143,15 +143,15 @@ func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wsto
 		}
 	}
 	rtn := make(map[string]any)
-	rtn["blockid"] = blockData.OID
+	rtn["blockId"] = blockData.OID
 	return updatesRtn(ctx, rtn)
 }
 
-func (svc *ObjectService) DeleteBlock(uiContext wstore.UIContext, blockId string) (any, error) {
+func (svc *ObjectService) DeleteBlock(uiContext wstore.UIContext, blockId string, newLayout any) (any, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
-	err := wstore.DeleteBlock(ctx, uiContext.ActiveTabId, blockId)
+	err := wstore.DeleteBlock(ctx, uiContext.ActiveTabId, blockId, newLayout)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting block: %w", err)
 	}

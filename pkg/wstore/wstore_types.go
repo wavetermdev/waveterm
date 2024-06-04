@@ -88,6 +88,7 @@ type Tab struct {
 	OID      string         `json:"oid"`
 	Version  int            `json:"version"`
 	Name     string         `json:"name"`
+	Layout   any            `json:"layout,omitempty"`
 	BlockIds []string       `json:"blockids"`
 	Meta     map[string]any `json:"meta"`
 }

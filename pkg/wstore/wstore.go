@@ -210,7 +210,7 @@ func findStringInSlice(slice []string, val string) int {
 	return -1
 }
 
-func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
+func DeleteBlock(ctx context.Context, tabId string, blockId string, newLayout any) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		tab, _ := DBGet[*Tab](tx.Context(), tabId)
 		if tab == nil {
@@ -221,11 +221,13 @@ func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 			return nil
 		}
 		tab.BlockIds = append(tab.BlockIds[:blockIdx], tab.BlockIds[blockIdx+1:]...)
+		if newLayout != nil {
+			tab.Layout = newLayout
+		}
 		DBUpdate(tx.Context(), tab)
 		DBDelete(tx.Context(), "block", blockId)
 		return nil
 	})
-
 }
 
 func CloseTab(ctx context.Context, workspaceId string, tabId string) error {

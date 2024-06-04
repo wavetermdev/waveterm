@@ -8,6 +8,13 @@ import { clsx } from "clsx";
 import * as jotai from "jotai";
 import { CenteredDiv } from "../element/quickelems";
 
+import { LayoutTreeActionType, LayoutTreeInsertNodeAction, newLayoutNode } from "@/faraday/index";
+import {
+    deleteLayoutStateAtomForTab,
+    getLayoutStateAtomForTab,
+    useLayoutTreeStateReducerAtom,
+} from "@/faraday/lib/layoutAtom";
+import { useCallback, useMemo } from "react";
 import "./workspace.less";
 
 function Tab({ tabId }: { tabId: string }) {
@@ -18,6 +25,7 @@ function Tab({ tabId }: { tabId: string }) {
     }
     function handleCloseTab() {
         WOS.CloseTab(tabId);
+        deleteLayoutStateAtomForTab(tabId);
     }
     return (
         <div
@@ -54,11 +62,28 @@ function TabBar({ workspace }: { workspace: Workspace }) {
 
 function Widgets() {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
-    const activeTabId = windowData.activetabid;
+    const activeTabAtom = useMemo(() => {
+        return WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", windowData.activetabid));
+    }, [windowData.activetabid]);
+    const [, dispatchLayoutStateAction] = useLayoutTreeStateReducerAtom(
+        getLayoutStateAtomForTab(windowData.activetabid, activeTabAtom)
+    );
+
+    const addBlockToTab = useCallback(
+        (blockId: string) => {
+            const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
+                type: LayoutTreeActionType.InsertNode,
+                node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, { blockId }),
+            };
+            dispatchLayoutStateAction(insertNodeAction);
+        },
+        [activeTabAtom]
+    );
 
     async function createBlock(blockDef: BlockDef) {
         const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
-        await WOS.CreateBlock(blockDef, rtOpts);
+        const { blockId } = await WOS.CreateBlock(blockDef, rtOpts);
+        addBlockToTab(blockId);
     }
 
     async function clickTerminal() {

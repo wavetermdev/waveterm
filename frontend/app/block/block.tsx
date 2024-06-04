@@ -12,28 +12,17 @@ import * as React from "react";
 
 import "./block.less";
 
-const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
+interface BlockProps {
+    blockId: string;
+    onClose: () => void;
+}
+
+const Block = ({ blockId, onClose }: BlockProps) => {
     const blockRef = React.useRef<HTMLDivElement>(null);
-    const [dims, setDims] = React.useState({ width: 0, height: 0 });
-
-    function handleClose() {
-        WOS.DeleteBlock(blockId);
-    }
-
-    React.useEffect(() => {
-        if (!blockRef.current) {
-            return;
-        }
-        const rect = blockRef.current.getBoundingClientRect();
-        const newWidth = Math.floor(rect.width);
-        const newHeight = Math.floor(rect.height);
-        if (newWidth !== dims.width || newHeight !== dims.height) {
-            setDims({ width: newWidth, height: newHeight });
-        }
-    }, [blockRef.current]);
 
     let blockElem: JSX.Element = null;
     const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    if (!blockId || !blockData) return null;
     console.log("blockData: ", blockData);
     if (blockDataLoading) {
         blockElem = <CenteredDiv>Loading...</CenteredDiv>;
@@ -49,11 +38,9 @@ const Block = ({ tabId, blockId }: { tabId: string; blockId: string }) => {
     return (
         <div className="block" ref={blockRef}>
             <div key="header" className="block-header">
-                <div className="block-header-text text-fixed">
-                    Block [{blockId.substring(0, 8)}] {dims.width}x{dims.height}
-                </div>
+                <div className="block-header-text text-fixed">Block [{blockId.substring(0, 8)}]</div>
                 <div className="flex-spacer" />
-                <div className="close-button" onClick={() => handleClose()}>
+                <div className="close-button" onClick={onClose}>
                     <i className="fa fa-solid fa-xmark-large" />
                 </div>
             </div>

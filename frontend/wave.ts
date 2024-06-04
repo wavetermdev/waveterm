@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Client } from "@/gopkg/wstore";
+import { globalStore } from "@/store/global";
 import * as WOS from "@/store/wos";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
@@ -17,6 +18,7 @@ loadFonts();
 console.log("Wave Starting");
 
 (window as any).WOS = WOS;
+(window as any).globalStore = globalStore;
 
 function matchViewportSize() {
     document.body.style.width = window.visualViewport.width + "px";

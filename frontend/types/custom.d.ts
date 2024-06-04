@@ -1,6 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { LayoutNode } from "../faraday";
+
 declare global {
     type UIContext = {
         windowid: string;
@@ -14,11 +16,11 @@ declare global {
         oid: string;
     };
 
-    type WaveObj = {
+    interface WaveObj {
         otype: string;
         oid: string;
         version: number;
-    };
+    }
 
     type WaveObjUpdate = {
         updatetype: "update" | "delete";
@@ -68,6 +70,7 @@ declare global {
         version: number;
         name: string;
         blockids: string[];
+        layout: LayoutNode<TabLayoutData>;
     };
 
     type Point = {
@@ -103,6 +106,10 @@ declare global {
         pos: Point;
         winsize: WinSize;
         lastfocusts: number;
+    };
+
+    type TabLayoutData = {
+        blockId: string;
     };
 }
 

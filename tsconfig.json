@@ -17,10 +17,11 @@
         "paths": {
             "@/app/*": ["frontend/app/*"],
             "@/util/*": ["frontend/util/*"],
+            "@/faraday/*": ["frontend/faraday/*"],
             "@/store/*": ["frontend/app/store/*"],
             "@/element/*": ["frontend/app/element/*"],
             "@/bindings/*": ["frontend/bindings/github.com/wavetermdev/thenextwave/pkg/service/*"],
-            "@/gopkg/*": ["frontend/bindings/github.com/wavetermdev/thenextwave/pkg/*"]
+            "@/gopkg/*": ["frontend/bindings/github.com/wavetermdev/thenextwave/pkg/*"],
         }
     }
 }

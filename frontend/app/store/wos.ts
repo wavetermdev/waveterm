@@ -3,6 +3,7 @@
 
 // WaveObjectStore
 
+import { LayoutNode } from "@/faraday/index";
 import { Call as $Call, Events } from "@wailsio/runtime";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -131,19 +132,21 @@ function useWaveObjectValueWithSuspense<T>(oref: string): T {
     return dataValue.value;
 }
 
-function getWaveObjectAtom<T extends WaveObj>(oref: string): jotai.Atom<T> {
+function getWaveObjectAtom<T extends WaveObj>(oref: string): jotai.WritableAtom<T, [value: T], void> {
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
         wov = createWaveValueObject(oref, true);
         waveObjectValueCache.set(oref, wov);
     }
-    return jotai.atom((get) => {
-        let dataValue = get(wov.dataAtom);
-        if (dataValue.loading) {
-            return null;
+    return jotai.atom(
+        (get) => {
+            let dataValue = get(wov.dataAtom);
+            return dataValue.value;
+        },
+        (_get, set, value: T) => {
+            setObjectValue(value, set, true);
         }
-        return dataValue.value;
-    });
+    );
 }
 
 function getWaveObjectLoadingAtom<T extends WaveObj>(oref: string): jotai.Atom<boolean> {
@@ -177,7 +180,7 @@ function useWaveObjectValue<T>(oref: string): [T, boolean] {
     return [atomVal.value, atomVal.loading];
 }
 
-function useWaveObject<T extends WaveObj>(oref: string): [T, boolean, (T) => void] {
+function useWaveObject<T extends WaveObj>(oref: string): [T, boolean, (val: T) => void] {
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
         wov = createWaveValueObject(oref, true);
@@ -278,11 +281,13 @@ function wrapObjectServiceCall<T>(fnName: string, ...args: any[]): Promise<T> {
 // should provide getFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.get function
 function getObjectValue<T>(oref: string, getFn?: jotai.Getter): T {
+    console.log("getObjectValue", oref);
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
         return null;
     }
     if (getFn == null) {
+        console.log("getObjectValue", "getFn is null, using globalStore.get");
         getFn = globalStore.get;
     }
     const atomVal = getFn(wov.dataAtom);
@@ -299,8 +304,10 @@ function setObjectValue<T>(value: WaveObj, setFn?: jotai.Setter, pushToServer?: 
         return;
     }
     if (setFn == null) {
+        console.log("setter null");
         setFn = globalStore.set;
     }
+    console.log("Setting", oref, "to", value);
     setFn(wov.dataAtom, { value: value, loading: false });
     if (pushToServer) {
         UpdateObject(value, false);
@@ -319,8 +326,8 @@ export function CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<{ 
     return wrapObjectServiceCall("CreateBlock", blockDef, rtOpts);
 }
 
-export function DeleteBlock(blockId: string): Promise<void> {
-    return wrapObjectServiceCall("DeleteBlock", blockId);
+export function DeleteBlock(blockId: string, newLayout?: LayoutNode<any>): Promise<void> {
+    return wrapObjectServiceCall("DeleteBlock", blockId, newLayout);
 }
 
 export function CloseTab(tabId: string): Promise<void> {
@@ -349,4 +356,5 @@ export {
     useWaveObject,
     useWaveObjectValue,
     useWaveObjectValueWithSuspense,
+    waveObjectValueCache,
 };
