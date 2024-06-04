@@ -15,6 +15,25 @@ body {
     overflow: hidden;
 }
 
+*::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-background-color) !important;
+}
+
+*::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-color) !important;
+    border-radius: 4px;
+    margin: 0 1px 0 1px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover-color) !important;
+}
+
 .flex-spacer {
     flex-grow: 1;
 }
