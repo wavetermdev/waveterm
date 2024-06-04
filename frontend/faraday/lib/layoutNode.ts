@@ -23,7 +23,7 @@ export function newLayoutNode<T>(
 ): LayoutNode<T> {
     const newNode: LayoutNode<T> = {
         id: crypto.randomUUID(),
-        flexDirection: flexDirection ?? FlexDirection.Column,
+        flexDirection: flexDirection ?? FlexDirection.Row,
         size,
         children,
         data,
