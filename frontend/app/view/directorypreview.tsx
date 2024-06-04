@@ -3,6 +3,7 @@
 
 import { FileInfo } from "@/bindings/fileservice";
 import { Table, createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import clsx from "clsx";
 import * as jotai from "jotai";
 import React from "react";
 
@@ -107,7 +108,7 @@ function TableBody({ table, cwd, setFileName }: TableBodyProps) {
                     {row.getVisibleCells().map((cell) => {
                         return (
                             <div
-                                className="dir-table-body-cell"
+                                className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
                                 key={cell.id}
                                 style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
                             >

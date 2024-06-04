@@ -1,16 +1,18 @@
 .dir-table {
     overflow: auto;
     width: 100%;
-    border: 2px solid var(--border-color);
     border-radius: 3px;
     .dir-table-head {
         .dir-table-head-row {
             display: flex;
             border-bottom: 2px solid var(--border-color);
             padding: 4px 0;
+            background-color: var(--panel-bg-color);
+
             .dir-table-head-cell {
                 position: relative;
                 padding: 2px 4px;
+                font-weight: bold;
                 .dir-table-head-resize {
                     position: absolute;
                     top: 0;
@@ -36,14 +38,24 @@
         .dir-table-body-row {
             display: flex;
             border-radius: 3px;
+
             &:focus {
                 background-color: var(--accent-color);
+            }
+
+            &:hover:not(:focus) {
+                background-color: var(--highlight-bg-color);
             }
 
             .dir-table-body-cell {
                 overflow: hidden;
                 white-space: nowrap;
                 padding: 0.25rem;
+                cursor: default;
+
+                &.col-size {
+                    text-align: right;
+                }
             }
         }
     }

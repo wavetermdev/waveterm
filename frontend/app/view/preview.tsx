@@ -6,6 +6,7 @@ import { Markdown } from "@/element/markdown";
 import { useBlockAtom, useBlockCache } from "@/store/global";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
+import clsx from "clsx";
 import * as jotai from "jotai";
 import { CenteredDiv } from "../element/quickelems";
 import { DirectoryPreview } from "./directorypreview";
@@ -31,18 +32,27 @@ function DirNav({ cwdAtom }: { cwdAtom: jotai.WritableAtom<string, [string], voi
     }
     return (
         <div className="view-nav">
-            {splitNav.map((item) => {
+            {splitNav.map((item, idx) => {
                 let splitPath = item.split("/");
                 if (splitPath.length === 0) {
                     splitPath = [item];
                 }
-                const baseName = splitPath[splitPath.length - 1];
+                const isLast = idx == splitNav.length - 1;
+                let baseName = splitPath[splitPath.length - 1];
+                if (!isLast) {
+                    baseName += "/";
+                }
                 return (
-                    <span className="view-nav-item" key={`nav-item-${item}`} onClick={() => setCwd(item)}>
+                    <div
+                        className={clsx("view-nav-item", isLast ? "current-file" : "clickable")}
+                        key={`nav-item-${item}`}
+                        onClick={isLast ? null : () => setCwd(item)}
+                    >
                         {baseName}
-                    </span>
+                    </div>
                 );
             })}
+            <div className="flex-spacer"></div>
         </div>
     );
 }
@@ -95,16 +105,6 @@ function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
 }
 
 function PreviewView({ blockId }: { blockId: string }) {
-    /*
-    const blockData = WOS.useWaveObjectValueWithSuspense<Block>(WOS.makeORef("block", blockId));
-    if (blockData == null) {
-        return (
-            <div className="view-preview">
-                <CenteredDiv>Block Not Found</CenteredDiv>
-            </div>
-        );
-    }
-	*/
     const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
     const fileNameAtom: jotai.WritableAtom<string, [string], void> = useBlockCache(blockId, "preview:filename", () =>
         jotai.atom<string, [string], void>(
