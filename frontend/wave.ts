@@ -18,6 +18,13 @@ console.log("Wave Starting");
 
 (window as any).WOS = WOS;
 
+function matchViewportSize() {
+    document.body.style.width = window.visualViewport.width + "px";
+    document.body.style.height = window.visualViewport.height + "px";
+}
+
+matchViewportSize();
+
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("DOMContentLoaded");
     // ensures client/window/workspace are loaded into the cache before rendering
@@ -31,4 +38,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log("Wave First Render");
         root.render(reactElem);
     });
+    const viewport = window.visualViewport;
+    viewport.addEventListener("resize", matchViewportSize);
 });
