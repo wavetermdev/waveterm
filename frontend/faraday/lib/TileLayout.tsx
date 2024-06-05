@@ -41,7 +41,6 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
         (id: string, ref: RefObject<HTMLDivElement>) => {
             setNodeRefs((prev) => {
                 prev.set(id, ref);
-                console.log("setRef", id, ref, prev);
                 return prev;
             });
         },
@@ -53,7 +52,6 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
             if (nodeRefs.has(id)) {
                 setNodeRefs((prev) => {
                     prev.delete(id);
-                    console.log("deleteRef", id, prev);
                     return prev;
                 });
             } else {
@@ -239,7 +237,6 @@ const TileNode = <T,>({ layoutNode, renderContent, transform, onLeafClose }: Til
 
     // Register the tile item as a draggable component
     useEffect(() => {
-        console.log("set drag", layoutNode);
         drag(tileNodeRef);
         dragPreview(tileNodeRef);
     }, [tileNodeRef]);

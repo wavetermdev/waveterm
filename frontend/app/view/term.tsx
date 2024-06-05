@@ -8,6 +8,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import type { ITheme } from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
 import * as React from "react";
+import { debounce } from "throttle-debounce";
 
 import "./view.less";
 import "/public/xterm.css";
@@ -38,6 +39,16 @@ function getThemeFromCSSVars(el: Element): ITheme {
     theme.cursor = elemStyle.getPropertyValue("--term-selection-background");
     theme.cursorAccent = elemStyle.getPropertyValue("--term-cursor-accent");
     return theme;
+}
+
+function handleResize(fitAddon: FitAddon, blockId: string, term: Terminal) {
+    const oldRows = term.rows;
+    const oldCols = term.cols;
+    fitAddon.fit();
+    if (oldRows !== term.rows || oldCols !== term.cols) {
+        const resizeCommand = { command: "controller:input", termsize: { rows: term.rows, cols: term.cols } };
+        BlockService.SendCommand(blockId, resizeCommand);
+    }
 }
 
 type InitialLoadDataType = {
@@ -78,16 +89,9 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             BlockService.SendCommand(blockId, inputCmd);
         });
         // resize observer
+        const handleResize_debounced = debounce(50, handleResize);
         const rszObs = new ResizeObserver(() => {
-            const oldRows = term.rows;
-            const oldCols = term.cols;
-            fitAddon.fit();
-            if (oldRows !== term.rows || oldCols !== term.cols) {
-                BlockService.SendCommand(blockId, {
-                    command: "controller:input",
-                    termsize: { rows: term.rows, cols: term.cols },
-                });
-            }
+            handleResize_debounced(fitAddon, blockId, term);
         });
         rszObs.observe(connectElemRef.current);
 
@@ -108,7 +112,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             rszObs.disconnect();
             blockSubject.release();
         };
-    }, [connectElemRef.current]);
+    }, []);
 
     React.useEffect(() => {
         if (!termRef.current) {
@@ -141,7 +145,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
                 initialLoadRef.current.heldData = [];
                 console.log(`terminal loaded file ${loadedBytes} bytes, ${Date.now() - startTs}ms`);
             });
-    }, [termRef.current]);
+    }, []);
 
     return (
         <div className="view-term">

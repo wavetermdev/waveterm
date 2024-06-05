@@ -23,7 +23,6 @@ const Block = ({ blockId, onClose }: BlockProps) => {
     let blockElem: JSX.Element = null;
     const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     if (!blockId || !blockData) return null;
-    console.log("blockData: ", blockData);
     if (blockDataLoading) {
         blockElem = <CenteredDiv>Loading...</CenteredDiv>;
     } else if (blockData.view === "term") {
@@ -38,7 +37,9 @@ const Block = ({ blockId, onClose }: BlockProps) => {
     return (
         <div className="block" ref={blockRef}>
             <div key="header" className="block-header">
-                <div className="block-header-text text-fixed">Block [{blockId.substring(0, 8)}]</div>
+                <div className="block-header-text text-fixed">
+                    Block [{blockId.substring(0, 8)}] {blockData.view}
+                </div>
                 <div className="flex-spacer" />
                 <div className="close-button" onClick={onClose}>
                     <i className="fa fa-solid fa-xmark-large" />

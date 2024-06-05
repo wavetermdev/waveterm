@@ -3728,6 +3728,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/throttle-debounce@npm:^5":
+  version: 5.0.2
+  resolution: "@types/throttle-debounce@npm:5.0.2"
+  checksum: 10c0/526084a7b83edd5c008f193a80c1f6851421d44921e874032d63a598047e17c1a5c97fe99a9dbf806e3d0b49a40d8c4171541a32ea1911d45b5216ddf129d51a
+  languageName: node
+  linkType: hard
+
 "@types/unist@npm:*, @types/unist@npm:^3.0.0":
   version: 3.0.2
   resolution: "@types/unist@npm:3.0.2"
@@ -11069,6 +11076,7 @@ __metadata:
     "@tanstack/react-table": "npm:^8.17.3"
     "@types/node": "npm:^20.12.12"
     "@types/react": "npm:^18.3.2"
+    "@types/throttle-debounce": "npm:^5"
     "@types/uuid": "npm:^9.0.8"
     "@vitejs/plugin-react": "npm:^4.3.0"
     "@vitest/coverage-istanbul": "npm:^1.6.0"
@@ -11094,6 +11102,7 @@ __metadata:
     remark-gfm: "npm:^4.0.0"
     rxjs: "npm:^7.8.1"
     storybook: "npm:^8.1.4"
+    throttle-debounce: "npm:^5.0.0"
     ts-node: "npm:^10.9.2"
     tslib: "npm:^2.6.2"
     typescript: "npm:^5.4.5"
@@ -11105,6 +11114,13 @@ __metadata:
     vitest: "npm:^1.6.0"
   languageName: unknown
   linkType: soft
+
+"throttle-debounce@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "throttle-debounce@npm:5.0.0"
+  checksum: 10c0/666d5b73bfa7340c5186b244416ce965cd276e4bc91a12453ff6eddcc62f02a19c6f532305601d90c809dd5acbd45dd6eea5eb43e0a879a0b3d66d0886a4d8d2
+  languageName: node
+  linkType: hard
 
 "through2@npm:^2.0.3":
   version: 2.0.5
