@@ -19,9 +19,9 @@ const TabContent = ({ tabId }: { tabId: string }) => {
     const layoutStateAtom = useMemo(() => getLayoutStateAtomForTab(tabId, tabAtom), [tabAtom, tabId]);
     const tabData = useAtomValue(tabAtom);
 
-    const renderBlock = useCallback((tabData: TabLayoutData, onClose: () => void) => {
+    const renderBlock = useCallback((tabData: TabLayoutData, ready: boolean, onClose: () => void) => {
         // console.log("renderBlock", tabData);
-        if (!tabData.blockId) {
+        if (!tabData.blockId || !ready) {
             return null;
         }
         return <Block blockId={tabData.blockId} onClose={onClose} />;

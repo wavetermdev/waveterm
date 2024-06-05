@@ -130,4 +130,4 @@ export type WritableLayoutNodeAtom<T> = WritableAtom<LayoutNode<T>, [value: Layo
  */
 export type WritableLayoutTreeStateAtom<T> = WritableAtom<LayoutTreeState<T>, [value: LayoutTreeState<T>], void>;
 
-export type ContentRenderer<T> = (data: T, onClose?: () => void) => React.ReactNode;
+export type ContentRenderer<T> = (data: T, ready: boolean, onClose?: () => void) => React.ReactNode;

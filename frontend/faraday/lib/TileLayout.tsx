@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import clsx from "clsx";
-import { CSSProperties, RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { CSSProperties, RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDragLayer, useDrop } from "react-dnd";
 
 import { useLayoutTreeStateReducerAtom } from "./layoutAtom.js";
@@ -183,6 +183,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
                                 renderContent={renderContent}
                                 transform={layoutLeafTransforms[leaf.id]}
                                 onLeafClose={onLeafClose}
+                                ready={animate}
                             />
                         );
                     })}
@@ -209,12 +210,13 @@ interface TileNodeProps<T> {
     layoutNode: LayoutNode<T>;
     renderContent: ContentRenderer<T>;
     onLeafClose: (node: LayoutNode<T>) => void;
+    ready: boolean;
     transform: CSSProperties;
 }
 
 const dragItemType = "TILE_ITEM";
 
-const TileNode = <T,>({ layoutNode, renderContent, transform, onLeafClose }: TileNodeProps<T>) => {
+const TileNode = <T,>({ layoutNode, renderContent, transform, onLeafClose, ready }: TileNodeProps<T>) => {
     const tileNodeRef = useRef<HTMLDivElement>(null);
 
     const [{ isDragging, dragItem }, drag, dragPreview] = useDrag(
@@ -245,6 +247,16 @@ const TileNode = <T,>({ layoutNode, renderContent, transform, onLeafClose }: Til
         onLeafClose(layoutNode);
     }, [layoutNode, onLeafClose]);
 
+    const leafContent = useMemo(() => {
+        return (
+            layoutNode.data && (
+                <div key="leaf" className="tile-leaf">
+                    {renderContent(layoutNode.data, ready, onClose)}
+                </div>
+            )
+        );
+    }, [, layoutNode.data, ready, onClose]);
+
     return (
         <div
             className="tile-node"
@@ -256,11 +268,7 @@ const TileNode = <T,>({ layoutNode, renderContent, transform, onLeafClose }: Til
                 ...transform,
             }}
         >
-            {layoutNode.data && (
-                <div key="leaf" className="tile-leaf">
-                    {renderContent(layoutNode.data, onClose)}
-                </div>
-            )}
+            {leafContent}
         </div>
     );
 };
