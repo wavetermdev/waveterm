@@ -34,7 +34,7 @@ type FileInfo struct {
 
 type FullFile struct {
 	Info   *FileInfo `json:"info"`
-	Data64 string    `json:"data64,omitempty"` // base64 encoded
+	Data64 string    `json:"data64"` // base64 encoded
 }
 
 func (fs *FileService) StatFile(path string) (*FileInfo, error) {

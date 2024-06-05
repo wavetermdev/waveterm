@@ -57,7 +57,12 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
     return opts;
 }
 
-export function CodeEdit() {
+interface CodeEditProps {
+    readonly: boolean;
+    text: string;
+}
+
+export function CodeEdit({ readonly, text }: CodeEditProps) {
     const divRef = React.useRef<HTMLDivElement>(null);
     const monacoRef = React.useRef<MonacoTypes.editor.IStandaloneCodeEditor | null>(null);
     const theme = "wave-theme-dark";
@@ -83,8 +88,8 @@ export function CodeEdit() {
         // TODO
     }
 
-    const text = "Hello, world!";
     const editorOpts = defaultEditorOptions();
+    editorOpts.readOnly = readonly;
 
     return (
         <div className="codeedit" ref={divRef}>
@@ -103,10 +108,15 @@ export function CodeEdit() {
     );
 }
 
-export function CodeEditView() {
+interface CodeEditViewProps {
+    readonly?: boolean;
+    text: string;
+}
+
+export function CodeEditView({ readonly = false, text }: CodeEditViewProps) {
     return (
         <div className="view-codeedit">
-            <CodeEdit />
+            <CodeEdit readonly={readonly} text={text} />
         </div>
     );
 }

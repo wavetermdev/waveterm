@@ -618,12 +618,6 @@ func CopyToChannel(outputCh chan<- []byte, reader io.Reader) error {
 	}
 }
 
-// TODO more
-var StaticMimeTypeMap = map[string]string{
-	".md":   "text/markdown",
-	".json": "application/json",
-}
-
 // on error just returns ""
 // does not return "application/octet-stream" as this is considered a detection failure
 func DetectMimeType(path string) string {
