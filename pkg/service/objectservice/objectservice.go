@@ -147,11 +147,11 @@ func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wsto
 	return updatesRtn(ctx, rtn)
 }
 
-func (svc *ObjectService) DeleteBlock(uiContext wstore.UIContext, blockId string, newLayout any) (any, error) {
+func (svc *ObjectService) DeleteBlock(uiContext wstore.UIContext, blockId string) (any, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
-	err := wstore.DeleteBlock(ctx, uiContext.ActiveTabId, blockId, newLayout)
+	err := wstore.DeleteBlock(ctx, uiContext.ActiveTabId, blockId)
 	if err != nil {
 		return nil, fmt.Errorf("error deleting block: %w", err)
 	}

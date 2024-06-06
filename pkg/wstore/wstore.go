@@ -140,13 +140,19 @@ func CreateTab(ctx context.Context, workspaceId string, name string) (*Tab, erro
 		if ws == nil {
 			return nil, fmt.Errorf("workspace not found: %q", workspaceId)
 		}
+		layoutNodeId := uuid.NewString()
 		tab := &Tab{
-			OID:      uuid.New().String(),
-			Name:     name,
-			BlockIds: []string{},
+			OID:        uuid.NewString(),
+			Name:       name,
+			BlockIds:   []string{},
+			LayoutNode: layoutNodeId,
+		}
+		layoutNode := &LayoutNode{
+			OID: layoutNodeId,
 		}
 		ws.TabIds = append(ws.TabIds, tab.OID)
 		DBInsert(tx.Context(), tab)
+		DBInsert(tx.Context(), layoutNode)
 		DBUpdate(tx.Context(), ws)
 		return tab, nil
 	})
@@ -154,7 +160,7 @@ func CreateTab(ctx context.Context, workspaceId string, name string) (*Tab, erro
 
 func CreateWorkspace(ctx context.Context) (*Workspace, error) {
 	ws := &Workspace{
-		OID:    uuid.New().String(),
+		OID:    uuid.NewString(),
 		TabIds: []string{},
 	}
 	DBInsert(ctx, ws)
@@ -185,7 +191,7 @@ func CreateBlock(ctx context.Context, tabId string, blockDef *BlockDef, rtOpts *
 		if tab == nil {
 			return nil, fmt.Errorf("tab not found: %q", tabId)
 		}
-		blockId := uuid.New().String()
+		blockId := uuid.NewString()
 		blockData := &Block{
 			OID:         blockId,
 			BlockDef:    blockDef,
@@ -210,7 +216,7 @@ func findStringInSlice(slice []string, val string) int {
 	return -1
 }
 
-func DeleteBlock(ctx context.Context, tabId string, blockId string, newLayout any) error {
+func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		tab, _ := DBGet[*Tab](tx.Context(), tabId)
 		if tab == nil {
@@ -221,11 +227,8 @@ func DeleteBlock(ctx context.Context, tabId string, blockId string, newLayout an
 			return nil
 		}
 		tab.BlockIds = append(tab.BlockIds[:blockIdx], tab.BlockIds[blockIdx+1:]...)
-		if newLayout != nil {
-			tab.Layout = newLayout
-		}
 		DBUpdate(tx.Context(), tab)
-		DBDelete(tx.Context(), "block", blockId)
+		DBDelete(tx.Context(), OType_Block, blockId)
 		return nil
 	})
 }
@@ -246,9 +249,10 @@ func CloseTab(ctx context.Context, workspaceId string, tabId string) error {
 		}
 		ws.TabIds = append(ws.TabIds[:tabIdx], ws.TabIds[tabIdx+1:]...)
 		DBUpdate(tx.Context(), ws)
-		DBDelete(tx.Context(), "tab", tabId)
+		DBDelete(tx.Context(), OType_Tab, tabId)
+		DBDelete(tx.Context(), OType_LayoutNode, tab.LayoutNode)
 		for _, blockId := range tab.BlockIds {
-			DBDelete(tx.Context(), "block", blockId)
+			DBDelete(tx.Context(), OType_Block, blockId)
 		}
 		return nil
 	})
@@ -300,11 +304,12 @@ func EnsureInitialData() error {
 	if clientCount > 0 {
 		return nil
 	}
-	windowId := uuid.New().String()
-	workspaceId := uuid.New().String()
-	tabId := uuid.New().String()
+	windowId := uuid.NewString()
+	workspaceId := uuid.NewString()
+	tabId := uuid.NewString()
+	layoutNodeId := uuid.NewString()
 	client := &Client{
-		OID:          uuid.New().String(),
+		OID:          uuid.NewString(),
 		MainWindowId: windowId,
 	}
 	err = DBInsert(ctx, client)
@@ -339,13 +344,22 @@ func EnsureInitialData() error {
 		return fmt.Errorf("error inserting workspace: %w", err)
 	}
 	tab := &Tab{
-		OID:      tabId,
-		Name:     "Tab-1",
-		BlockIds: []string{},
+		OID:        tabId,
+		Name:       "Tab-1",
+		BlockIds:   []string{},
+		LayoutNode: layoutNodeId,
 	}
 	err = DBInsert(ctx, tab)
 	if err != nil {
 		return fmt.Errorf("error inserting tab: %w", err)
+	}
+
+	layoutNode := &LayoutNode{
+		OID: layoutNodeId,
+	}
+	err = DBInsert(ctx, layoutNode)
+	if err != nil {
+		return fmt.Errorf("error inserting layout node: %w", err)
 	}
 	return nil
 }

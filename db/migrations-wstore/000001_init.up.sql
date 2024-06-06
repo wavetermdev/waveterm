@@ -27,3 +27,4 @@ CREATE TABLE db_block (
     version int NOT NULL,
     data json NOT NULL
 );
+

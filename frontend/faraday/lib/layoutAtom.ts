@@ -1,11 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { PrimitiveAtom, WritableAtom, atom, useAtom } from "jotai";
+import { WOS } from "@/app/store/global.js";
+import { Atom, Getter, PrimitiveAtom, WritableAtom, atom, useAtom } from "jotai";
 import { useCallback } from "react";
 import { layoutTreeStateReducer, newLayoutTreeState } from "./layoutState.js";
 import {
     LayoutNode,
+    LayoutNodeWaveObj,
     LayoutTreeAction,
     LayoutTreeState,
     WritableLayoutNodeAtom,
@@ -29,27 +31,16 @@ export function newLayoutTreeStateAtom<T>(rootNode: LayoutNode<T>): PrimitiveAto
  * @returns The derived WritableLayoutTreeStateAtom.
  */
 export function withLayoutTreeState<T>(layoutNodeAtom: WritableLayoutNodeAtom<T>): WritableLayoutTreeStateAtom<T> {
-    return atom(
-        (get) => newLayoutTreeState(get(layoutNodeAtom)),
-        (_get, set, value) => set(layoutNodeAtom, value.rootNode)
-    );
-}
-
-export function withLayoutStateFromTab(
-    tabAtom: WritableAtom<Tab, [value: Tab], void>
-): WritableLayoutTreeStateAtom<TabLayoutData> {
+    const pendingActionAtom = atom<LayoutTreeAction>(null) as PrimitiveAtom<LayoutTreeAction>;
     return atom(
         (get) => {
-            const tabData = get(tabAtom);
-            console.log("get layout state from tab", tabData);
-            return newLayoutTreeState(tabData?.layout);
+            const layoutState = newLayoutTreeState(get(layoutNodeAtom));
+            layoutState.pendingAction = get(pendingActionAtom);
+            return layoutState;
         },
-        (get, set, value) => {
-            const tabValue = get(tabAtom);
-            const newTabValue = { ...tabValue };
-            newTabValue.layout = value.rootNode;
-            console.log("set tab", tabValue, value);
-            set(tabAtom, newTabValue);
+        (_get, set, value) => {
+            set(pendingActionAtom, value.pendingAction);
+            set(layoutNodeAtom, value.rootNode);
         }
     );
 }
@@ -72,6 +63,38 @@ export function useLayoutTreeStateReducerAtom<T>(
 
 const tabLayoutAtomCache = new Map<string, WritableLayoutTreeStateAtom<TabLayoutData>>();
 
+function getLayoutNodeWaveObjAtomFromTab<T>(
+    tabAtom: Atom<Tab>,
+    get: Getter
+): WritableAtom<LayoutNodeWaveObj<T>, [value: LayoutNodeWaveObj<T>], void> {
+    const tabValue = get(tabAtom);
+    console.log("getLayoutNodeWaveObjAtomFromTab tabValue", tabValue);
+    if (!tabValue) return;
+    const layoutNodeOref = WOS.makeORef("layout", tabValue.layoutNode);
+    console.log("getLayoutNodeWaveObjAtomFromTab oref", layoutNodeOref);
+    return WOS.getWaveObjectAtom<LayoutNodeWaveObj<T>>(layoutNodeOref);
+}
+
+export function withLayoutNodeAtomFromTab<T>(tabAtom: Atom<Tab>): WritableLayoutNodeAtom<T> {
+    return atom(
+        (get) => {
+            console.log("get withLayoutNodeAtomFromTab", tabAtom);
+            const atom = getLayoutNodeWaveObjAtomFromTab<T>(tabAtom, get);
+            if (!atom) return null;
+            const retVal = get(atom)?.node;
+            console.log("get withLayoutNodeAtomFromTab end", retVal);
+            return get(atom)?.node;
+        },
+        (get, set, value) => {
+            console.log("set withLayoutNodeAtomFromTab", value);
+            const waveObjAtom = getLayoutNodeWaveObjAtomFromTab<T>(tabAtom, get);
+            if (!waveObjAtom) return;
+            const newWaveObjAtom = { ...get(waveObjAtom), node: value };
+            set(waveObjAtom, newWaveObjAtom);
+        }
+    );
+}
+
 export function getLayoutStateAtomForTab(
     tabId: string,
     tabAtom: WritableAtom<Tab, [value: Tab], void>
@@ -82,7 +105,7 @@ export function getLayoutStateAtomForTab(
         return atom;
     }
     console.log("Creating new atom for tab", tabId);
-    atom = withLayoutStateFromTab(tabAtom);
+    atom = withLayoutTreeState(withLayoutNodeAtomFromTab<TabLayoutData>(tabAtom));
     tabLayoutAtomCache.set(tabId, atom);
     return atom;
 }

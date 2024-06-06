@@ -27,13 +27,10 @@ const TabContent = ({ tabId }: { tabId: string }) => {
         return <Block blockId={tabData.blockId} onClose={onClose} />;
     }, []);
 
-    const onNodeDelete = useCallback(
-        (data: TabLayoutData) => {
-            console.log("onNodeDelete", data, tabData);
-            WOS.DeleteBlock(data.blockId, tabData.layout);
-        },
-        [tabData]
-    );
+    const onNodeDelete = useCallback((data: TabLayoutData) => {
+        console.log("onNodeDelete", data);
+        return WOS.DeleteBlock(data.blockId);
+    }, []);
 
     if (tabLoading) {
         return <CenteredLoadingDiv />;

@@ -22,7 +22,7 @@ import { setTransform as createTransform, debounce, determineDropDirection } fro
 export interface TileLayoutProps<T> {
     layoutTreeStateAtom: WritableLayoutTreeStateAtom<T>;
     renderContent: ContentRenderer<T>;
-    onNodeDelete?: (data: T) => void;
+    onNodeDelete?: (data: T) => Promise<void>;
     className?: string;
 }
 
@@ -120,7 +120,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
                 );
             }
         }, 30),
-        [activeDrag, overlayContainerRef, displayContainerRef, layoutTreeState, nodeRefs]
+        [activeDrag, overlayContainerRef, displayContainerRef, layoutTreeState.leafs, nodeRefs]
     );
 
     // Update the transforms whenever we drag something and whenever the layout updates.
@@ -133,6 +133,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
     // reattach the new callback.
     const [prevUpdateTransforms, setPrevUpdateTransforms] = useState<() => void>(undefined);
     useEffect(() => {
+        console.log("replace resize listener");
         if (prevUpdateTransforms) window.removeEventListener("resize", prevUpdateTransforms);
         window.addEventListener("resize", updateTransforms);
         setPrevUpdateTransforms(updateTransforms);
@@ -156,7 +157,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
     }, []);
 
     const onLeafClose = useCallback(
-        (node: LayoutNode<T>) => {
+        async (node: LayoutNode<T>) => {
             console.log("onLeafClose", node);
             const deleteAction: LayoutTreeDeleteNodeAction = {
                 type: LayoutTreeActionType.DeleteNode,
@@ -165,7 +166,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
             console.log("calling dispatch", deleteAction);
             dispatch(deleteAction);
             console.log("calling onNodeDelete", node);
-            onNodeDelete?.(node.data);
+            await onNodeDelete?.(node.data);
             console.log("node deleted");
         },
         [onNodeDelete, dispatch]

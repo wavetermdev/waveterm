@@ -79,7 +79,7 @@ func TestCreate(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	zoneId := uuid.New().String()
+	zoneId := uuid.NewString()
 	err := WFS.MakeFile(ctx, zoneId, "testfile", nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
@@ -153,7 +153,7 @@ func TestDelete(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	zoneId := uuid.New().String()
+	zoneId := uuid.NewString()
 	err := WFS.MakeFile(ctx, zoneId, "testfile", nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
@@ -216,7 +216,7 @@ func TestSetMeta(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	zoneId := uuid.New().String()
+	zoneId := uuid.NewString()
 	err := WFS.MakeFile(ctx, zoneId, "testfile", nil, FileOptsType{})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
@@ -319,7 +319,7 @@ func TestAppend(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	zoneId := uuid.New().String()
+	zoneId := uuid.NewString()
 	fileName := "t2"
 	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
 	if err != nil {
@@ -347,7 +347,7 @@ func TestWriteFile(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	zoneId := uuid.New().String()
+	zoneId := uuid.NewString()
 	fileName := "t3"
 	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
 	if err != nil {
@@ -391,7 +391,7 @@ func TestCircularWrites(t *testing.T) {
 	defer cleanupDb(t)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	zoneId := uuid.New().String()
+	zoneId := uuid.NewString()
 	err := WFS.MakeFile(ctx, zoneId, "c1", nil, FileOptsType{Circular: true, MaxSize: 50})
 	if err != nil {
 		t.Fatalf("error creating file: %v", err)
@@ -478,7 +478,7 @@ func TestMultiPart(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	zoneId := uuid.New().String()
+	zoneId := uuid.NewString()
 	fileName := "m2"
 	data := makeText(80)
 	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
@@ -554,7 +554,7 @@ func TestSimpleDBFlush(t *testing.T) {
 
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	zoneId := uuid.New().String()
+	zoneId := uuid.NewString()
 	fileName := "t1"
 	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
 	if err != nil {
@@ -586,7 +586,7 @@ func TestConcurrentAppend(t *testing.T) {
 	defer cleanupDb(t)
 	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFn()
-	zoneId := uuid.New().String()
+	zoneId := uuid.NewString()
 	fileName := "t1"
 	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{})
 	if err != nil {

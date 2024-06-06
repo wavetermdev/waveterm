@@ -131,3 +131,7 @@ export type WritableLayoutNodeAtom<T> = WritableAtom<LayoutNode<T>, [value: Layo
 export type WritableLayoutTreeStateAtom<T> = WritableAtom<LayoutTreeState<T>, [value: LayoutTreeState<T>], void>;
 
 export type ContentRenderer<T> = (data: T, ready: boolean, onClose?: () => void) => React.ReactNode;
+
+export interface LayoutNodeWaveObj<T> extends WaveObj {
+    node: LayoutNode<T>;
+}

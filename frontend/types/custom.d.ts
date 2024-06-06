@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { LayoutNode } from "../faraday";
-
 declare global {
     type UIContext = {
         windowid: string;
@@ -70,7 +68,7 @@ declare global {
         version: number;
         name: string;
         blockids: string[];
-        layout: LayoutNode<TabLayoutData>;
+        layoutNode: string;
     };
 
     type Point = {

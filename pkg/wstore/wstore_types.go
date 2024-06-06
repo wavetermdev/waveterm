@@ -21,6 +21,15 @@ const (
 	UpdateType_Delete = "delete"
 )
 
+const (
+	OType_Client     = "client"
+	OType_Window     = "window"
+	OType_Workspace  = "workspace"
+	OType_Tab        = "tab"
+	OType_LayoutNode = "layout"
+	OType_Block      = "block"
+)
+
 type WaveObjUpdate struct {
 	UpdateType string          `json:"updatetype"`
 	OType      string          `json:"otype"`
@@ -51,7 +60,7 @@ type Client struct {
 }
 
 func (*Client) GetOType() string {
-	return "client"
+	return OType_Client
 }
 
 // stores the ui-context of the window
@@ -69,7 +78,7 @@ type Window struct {
 }
 
 func (*Window) GetOType() string {
-	return "window"
+	return OType_Window
 }
 
 type Workspace struct {
@@ -81,20 +90,31 @@ type Workspace struct {
 }
 
 func (*Workspace) GetOType() string {
-	return "workspace"
+	return OType_Workspace
 }
 
 type Tab struct {
-	OID      string         `json:"oid"`
-	Version  int            `json:"version"`
-	Name     string         `json:"name"`
-	Layout   any            `json:"layout,omitempty"`
-	BlockIds []string       `json:"blockids"`
-	Meta     map[string]any `json:"meta"`
+	OID        string         `json:"oid"`
+	Version    int            `json:"version"`
+	Name       string         `json:"name"`
+	LayoutNode string         `json:"layoutNode"`
+	BlockIds   []string       `json:"blockids"`
+	Meta       map[string]any `json:"meta"`
 }
 
 func (*Tab) GetOType() string {
-	return "tab"
+	return OType_Tab
+}
+
+type LayoutNode struct {
+	OID     string         `json:"oid"`
+	Version int            `json:"version"`
+	Node    any            `json:"node,omitempty"`
+	Meta    map[string]any `json:"meta,omitempty"`
+}
+
+func (*LayoutNode) GetOType() string {
+	return OType_LayoutNode
 }
 
 type FileDef struct {
@@ -138,7 +158,7 @@ type Block struct {
 }
 
 func (*Block) GetOType() string {
-	return "block"
+	return OType_Block
 }
 
 func AllWaveObjTypes() []reflect.Type {
@@ -148,5 +168,6 @@ func AllWaveObjTypes() []reflect.Type {
 		reflect.TypeOf(&Workspace{}),
 		reflect.TypeOf(&Tab{}),
 		reflect.TypeOf(&Block{}),
+		reflect.TypeOf(&LayoutNode{}),
 	}
 }

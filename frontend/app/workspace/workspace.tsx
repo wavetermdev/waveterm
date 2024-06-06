@@ -77,7 +77,7 @@ function Widgets() {
             };
             dispatchLayoutStateAction(insertNodeAction);
         },
-        [activeTabAtom]
+        [activeTabAtom, dispatchLayoutStateAction]
     );
 
     async function createBlock(blockDef: BlockDef) {

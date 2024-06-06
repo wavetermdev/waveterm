@@ -199,7 +199,7 @@ func (c *RpcClient) removeReqInfo(rpcId string, clearSend bool) {
 }
 
 func (c *RpcClient) SimpleReq(ctx context.Context, command string, data any) (any, error) {
-	rpcId := uuid.New().String()
+	rpcId := uuid.NewString()
 	seqNum := c.NextSeqNum.Add(1)
 	var timeoutInfo *TimeoutInfo
 	deadline, ok := ctx.Deadline()
@@ -235,7 +235,7 @@ func (c *RpcClient) SimpleReq(ctx context.Context, command string, data any) (an
 }
 
 func (c *RpcClient) StreamReq(ctx context.Context, command string, data any, respTimeout time.Duration) (chan *RpcPacket, error) {
-	rpcId := uuid.New().String()
+	rpcId := uuid.NewString()
 	seqNum := c.NextSeqNum.Add(1)
 	var timeoutInfo *TimeoutInfo = &TimeoutInfo{RespPacketTimeout: respTimeout.Milliseconds()}
 	deadline, ok := ctx.Deadline()

@@ -3,7 +3,6 @@
 
 // WaveObjectStore
 
-import { LayoutNode } from "@/faraday/index";
 import { Call as $Call, Events } from "@wailsio/runtime";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -297,7 +296,7 @@ function getObjectValue<T>(oref: string, getFn?: jotai.Getter): T {
 // sets the value of a WaveObject in the cache.
 // should provide setFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.set function
-function setObjectValue<T>(value: WaveObj, setFn?: jotai.Setter, pushToServer?: boolean) {
+function setObjectValue<T extends WaveObj>(value: T, setFn?: jotai.Setter, pushToServer?: boolean) {
     const oref = makeORef(value.otype, value.oid);
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
@@ -309,7 +308,9 @@ function setObjectValue<T>(value: WaveObj, setFn?: jotai.Setter, pushToServer?: 
     }
     console.log("Setting", oref, "to", value);
     setFn(wov.dataAtom, { value: value, loading: false });
+    console.log("Setting", oref, "to", value, "done");
     if (pushToServer) {
+        console.log("pushToServer", oref, value);
         UpdateObject(value, false);
     }
 }
@@ -326,8 +327,8 @@ export function CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<{ 
     return wrapObjectServiceCall("CreateBlock", blockDef, rtOpts);
 }
 
-export function DeleteBlock(blockId: string, newLayout?: LayoutNode<any>): Promise<void> {
-    return wrapObjectServiceCall("DeleteBlock", blockId, newLayout);
+export function DeleteBlock(blockId: string): Promise<void> {
+    return wrapObjectServiceCall("DeleteBlock", blockId);
 }
 
 export function CloseTab(tabId: string): Promise<void> {
@@ -339,9 +340,9 @@ export function UpdateObjectMeta(blockId: string, meta: MetadataType): Promise<v
 }
 
 export function UpdateObject(waveObj: WaveObj, returnUpdates: boolean): Promise<WaveObjUpdate[]> {
+    console.log("UpdateObject", waveObj, returnUpdates);
     return wrapObjectServiceCall("UpdateObject", waveObj, returnUpdates);
 }
-
 export {
     cleanWaveObjectCache,
     clearWaveObjectCache,
