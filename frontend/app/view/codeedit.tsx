@@ -58,11 +58,13 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
 }
 
 interface CodeEditProps {
-    readonly: boolean;
+    readonly?: boolean;
     text: string;
+    language?: string;
+    filename: string;
 }
 
-export function CodeEdit({ readonly, text }: CodeEditProps) {
+export function CodeEdit({ readonly = false, text, language, filename }: CodeEditProps) {
     const divRef = React.useRef<HTMLDivElement>(null);
     const monacoRef = React.useRef<MonacoTypes.editor.IStandaloneCodeEditor | null>(null);
     const theme = "wave-theme-dark";
@@ -81,7 +83,7 @@ export function CodeEdit({ readonly, text }: CodeEditProps) {
     function handleEditorMount(editor: MonacoTypes.editor.IStandaloneCodeEditor) {
         monacoRef.current = editor;
         const monacoModel = editor.getModel();
-        monaco.editor.setModelLanguage(monacoModel, "text/markdown");
+        //monaco.editor.setModelLanguage(monacoModel, "text/markdown");
     }
 
     function handleEditorChange(newText: string, ev: MonacoTypes.editor.IModelContentChangedEvent) {
@@ -97,11 +99,12 @@ export function CodeEdit({ readonly, text }: CodeEditProps) {
                 <Editor
                     theme={theme}
                     height={divDims.height}
-                    defaultLanguage={"text/markdown"}
                     value={text}
                     onMount={handleEditorMount}
                     options={editorOpts}
                     onChange={handleEditorChange}
+                    path={filename}
+                    language={language}
                 />
             ) : null}
         </div>
@@ -111,12 +114,14 @@ export function CodeEdit({ readonly, text }: CodeEditProps) {
 interface CodeEditViewProps {
     readonly?: boolean;
     text: string;
+    language?: string;
+    filename?: string;
 }
 
-export function CodeEditView({ readonly = false, text }: CodeEditViewProps) {
+export function CodeEditView({ readonly, text, language, filename }: CodeEditViewProps) {
     return (
         <div className="view-codeedit">
-            <CodeEdit readonly={readonly} text={text} />
+            <CodeEdit readonly={readonly} text={text} language={language} filename={filename} />
         </div>
     );
 }

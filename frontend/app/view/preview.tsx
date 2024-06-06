@@ -118,8 +118,6 @@ function PreviewView({ blockId }: { blockId: string }) {
             }
         )
     );
-    let name = jotai.useAtomValue(fileNameAtom);
-    console.log("file: ", name);
     const statFileAtom = useBlockAtom(blockId, "preview:statfile", () =>
         jotai.atom<Promise<FileInfo>>(async (get) => {
             const fileName = get(fileNameAtom);
@@ -156,6 +154,7 @@ function PreviewView({ blockId }: { blockId: string }) {
     if (mimeType == null) {
         mimeType = "";
     }
+    let fileName = jotai.useAtomValue(fileNameAtom);
     const fileInfo = jotai.useAtomValue(statFileAtom);
     const fileContent = jotai.useAtomValue(fileContentAtom);
 
@@ -174,17 +173,12 @@ function PreviewView({ blockId }: { blockId: string }) {
         specializedView = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
     } else if (mimeType === "text/markdown") {
         specializedView = <MarkdownPreview contentAtom={fileContentAtom} />;
-    } else if (mimeType.startsWith("text/")) {
-        specializedView = (
-            <div className="view-preview view-preview-text">
-                <pre>{fileContent}</pre>
-            </div>
-        );
     } else if (
-        mimeType.startsWith("application") &&
-        (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml"))
+        mimeType.startsWith("text/") ||
+        (mimeType.startsWith("application/") &&
+            (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
     ) {
-        specializedView = <CodeEditView readonly={true} text={fileContent} />;
+        specializedView = specializedView = <CodeEditView readonly={true} text={fileContent} filename={fileName} />;
     } else if (mimeType === "directory") {
         specializedView = <DirectoryPreview contentAtom={fileContentAtom} fileNameAtom={fileNameAtom} />;
     } else {
