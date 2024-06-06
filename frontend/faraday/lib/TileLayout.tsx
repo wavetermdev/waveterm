@@ -131,16 +131,19 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
     // Update the transforms on first render and again whenever the window resizes. I had to do a slightly hacky thing
     // because I noticed that the window handler wasn't updating when the callback changed so I remove it each time and
     // reattach the new callback.
-    const [prevUpdateTransforms, setPrevUpdateTransforms] = useState<() => void>(undefined);
+    const [resizeObserver, setResizeObserver] = useState<ResizeObserver>(undefined);
     useEffect(() => {
-        console.log("replace resize listener");
-        if (prevUpdateTransforms) window.removeEventListener("resize", prevUpdateTransforms);
-        window.addEventListener("resize", updateTransforms);
-        setPrevUpdateTransforms(updateTransforms);
-        return () => {
-            window.removeEventListener("resize", updateTransforms);
-        };
-    }, [updateTransforms]);
+        if (overlayContainerRef.current) {
+            console.log("replace resize listener");
+            if (resizeObserver) resizeObserver.disconnect();
+            const newResizeObserver = new ResizeObserver(updateTransforms);
+            newResizeObserver.observe(overlayContainerRef.current);
+            setResizeObserver(newResizeObserver);
+            return () => {
+                resizeObserver.disconnect();
+            };
+        }
+    }, [updateTransforms, overlayContainerRef]);
 
     // Ensure that we don't see any jostling in the layout when we're rendering it the first time.
     // `animate` will be disabled until after the transforms have all applied the first time.
