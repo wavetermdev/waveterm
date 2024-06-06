@@ -140,7 +140,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
             newResizeObserver.observe(overlayContainerRef.current);
             setResizeObserver(newResizeObserver);
             return () => {
-                resizeObserver.disconnect();
+                newResizeObserver.disconnect();
             };
         }
     }, [updateTransforms, overlayContainerRef]);
