@@ -66,90 +66,84 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     const [term, setTerm] = React.useState<Terminal>(null);
 
     React.useEffect(() => {
-        if (connectElemRef.current && !term) {
-            console.log("terminal created");
-            const newTerm = new Terminal({
-                theme: getThemeFromCSSVars(connectElemRef.current),
-                fontSize: 12,
-                fontFamily: "Hack",
-                drawBoldTextInBrightColors: false,
-                fontWeight: "normal",
-                fontWeightBold: "bold",
-            });
-            termRef.current = newTerm;
-            const newFitAddon = new FitAddon();
-            newTerm.loadAddon(newFitAddon);
-            newTerm.open(connectElemRef.current);
-            newFitAddon.fit();
-            BlockService.SendCommand(blockId, {
-                command: "controller:input",
-                termsize: { rows: newTerm.rows, cols: newTerm.cols },
-            });
-            newTerm.onData((data) => {
-                const b64data = btoa(data);
-                const inputCmd = { command: "controller:input", blockid: blockId, inputdata64: b64data };
-                BlockService.SendCommand(blockId, inputCmd);
-            });
+        console.log("terminal created");
+        const newTerm = new Terminal({
+            theme: getThemeFromCSSVars(connectElemRef.current),
+            fontSize: 12,
+            fontFamily: "Hack",
+            drawBoldTextInBrightColors: false,
+            fontWeight: "normal",
+            fontWeightBold: "bold",
+        });
+        termRef.current = newTerm;
+        const newFitAddon = new FitAddon();
+        newTerm.loadAddon(newFitAddon);
+        newTerm.open(connectElemRef.current);
+        newFitAddon.fit();
+        BlockService.SendCommand(blockId, {
+            command: "controller:input",
+            termsize: { rows: newTerm.rows, cols: newTerm.cols },
+        });
+        newTerm.onData((data) => {
+            const b64data = btoa(data);
+            const inputCmd = { command: "controller:input", blockid: blockId, inputdata64: b64data };
+            BlockService.SendCommand(blockId, inputCmd);
+        });
 
-            // block subject
-            const blockSubject = getBlockSubject(blockId);
-            blockSubject.subscribe((data) => {
-                // base64 decode
-                const decodedData = base64ToArray(data.ptydata);
-                if (initialLoadRef.current.loaded) {
-                    newTerm.write(decodedData);
-                } else {
-                    initialLoadRef.current.heldData.push(decodedData);
+        // block subject
+        const blockSubject = getBlockSubject(blockId);
+        blockSubject.subscribe((data) => {
+            // base64 decode
+            const decodedData = base64ToArray(data.ptydata);
+            if (initialLoadRef.current.loaded) {
+                newTerm.write(decodedData);
+            } else {
+                initialLoadRef.current.heldData.push(decodedData);
+            }
+        });
+
+        setTerm(newTerm);
+        setFitAddon(newFitAddon);
+
+        // load data from filestore
+        const startTs = Date.now();
+        let loadedBytes = 0;
+        const localTerm = termRef.current; // avoids devmode double effect running issue (terminal gets created twice)
+        const usp = new URLSearchParams();
+        usp.set("zoneid", blockId);
+        usp.set("name", "main");
+        fetch("/wave/file?" + usp.toString())
+            .then((resp) => {
+                if (resp.ok) {
+                    return resp.arrayBuffer();
                 }
+                console.log("error loading file", resp.status, resp.statusText);
+            })
+            .then((data: ArrayBuffer) => {
+                const uint8View = new Uint8Array(data);
+                localTerm.write(uint8View);
+                loadedBytes = uint8View.byteLength;
+            })
+            .finally(() => {
+                initialLoadRef.current.heldData.forEach((data) => {
+                    localTerm.write(data);
+                });
+                initialLoadRef.current.loaded = true;
+                initialLoadRef.current.heldData = [];
+                console.log(`terminal loaded file ${loadedBytes} bytes, ${Date.now() - startTs}ms`);
             });
 
-            setTerm(newTerm);
-            setFitAddon(newFitAddon);
-
-            return () => {
-                newTerm.dispose();
-                blockSubject.release();
-            };
-        }
-    }, [connectElemRef]);
+        return () => {
+            newTerm.dispose();
+            blockSubject.release();
+        };
+    }, []);
 
     const handleResizeCallback = React.useCallback(() => {
         debounce(50, () => handleResize(fitAddon, blockId, term));
     }, [fitAddon, term]);
 
     useResizeObserver(connectElemRef, handleResizeCallback);
-
-    React.useEffect(() => {
-        if (termRef.current) {
-            // load data from filestore
-            const startTs = Date.now();
-            let loadedBytes = 0;
-            const localTerm = termRef.current; // avoids devmode double effect running issue (terminal gets created twice)
-            const usp = new URLSearchParams();
-            usp.set("zoneid", blockId);
-            usp.set("name", "main");
-            fetch("/wave/file?" + usp.toString())
-                .then((resp) => {
-                    if (resp.ok) {
-                        return resp.arrayBuffer();
-                    }
-                    console.log("error loading file", resp.status, resp.statusText);
-                })
-                .then((data: ArrayBuffer) => {
-                    const uint8View = new Uint8Array(data);
-                    localTerm.write(uint8View);
-                    loadedBytes = uint8View.byteLength;
-                })
-                .finally(() => {
-                    initialLoadRef.current.heldData.forEach((data) => {
-                        localTerm.write(data);
-                    });
-                    initialLoadRef.current.loaded = true;
-                    initialLoadRef.current.heldData = [];
-                    console.log(`terminal loaded file ${loadedBytes} bytes, ${Date.now() - startTs}ms`);
-                });
-        }
-    }, [termRef]);
 
     return (
         <div className="view-term">
