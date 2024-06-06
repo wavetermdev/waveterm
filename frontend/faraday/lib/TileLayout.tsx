@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { CSSProperties, RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useDrag, useDragLayer, useDrop } from "react-dnd";
 
+import useResizeObserver from "@react-hook/resize-observer";
 import { useLayoutTreeStateReducerAtom } from "./layoutAtom.js";
 import {
     ContentRenderer,
@@ -126,24 +127,9 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
     // Update the transforms whenever we drag something and whenever the layout updates.
     useLayoutEffect(() => {
         updateTransforms();
-    }, [activeDrag, layoutTreeState]);
+    }, [activeDrag, layoutTreeState, updateTransforms]);
 
-    // Update the transforms on first render and again whenever the window resizes. I had to do a slightly hacky thing
-    // because I noticed that the window handler wasn't updating when the callback changed so I remove it each time and
-    // reattach the new callback.
-    const [resizeObserver, setResizeObserver] = useState<ResizeObserver>(undefined);
-    useEffect(() => {
-        if (overlayContainerRef.current) {
-            console.log("replace resize listener");
-            if (resizeObserver) resizeObserver.disconnect();
-            const newResizeObserver = new ResizeObserver(updateTransforms);
-            newResizeObserver.observe(overlayContainerRef.current);
-            setResizeObserver(newResizeObserver);
-            return () => {
-                newResizeObserver.disconnect();
-            };
-        }
-    }, [updateTransforms, overlayContainerRef]);
+    useResizeObserver(overlayContainerRef, () => updateTransforms());
 
     // Ensure that we don't see any jostling in the layout when we're rendering it the first time.
     // `animate` will be disabled until after the transforms have all applied the first time.

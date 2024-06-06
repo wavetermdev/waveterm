@@ -8,8 +8,9 @@ import { FitAddon } from "@xterm/addon-fit";
 import type { ITheme } from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
 import * as React from "react";
-import { debounce } from "throttle-debounce";
 
+import useResizeObserver from "@react-hook/resize-observer";
+import { debounce } from "throttle-debounce";
 import "./view.less";
 import "/public/xterm.css";
 
@@ -61,91 +62,94 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     const termRef = React.useRef<Terminal>(null);
     const initialLoadRef = React.useRef<InitialLoadDataType>({ loaded: false, heldData: [] });
 
-    React.useEffect(() => {
-        if (!connectElemRef.current) {
-            return;
-        }
-        console.log("terminal created");
-        const term = new Terminal({
-            theme: getThemeFromCSSVars(connectElemRef.current),
-            fontSize: 12,
-            fontFamily: "Hack",
-            drawBoldTextInBrightColors: false,
-            fontWeight: "normal",
-            fontWeightBold: "bold",
-        });
-        termRef.current = term;
-        const fitAddon = new FitAddon();
-        term.loadAddon(fitAddon);
-        term.open(connectElemRef.current);
-        fitAddon.fit();
-        BlockService.SendCommand(blockId, {
-            command: "controller:input",
-            termsize: { rows: term.rows, cols: term.cols },
-        });
-        term.onData((data) => {
-            const b64data = btoa(data);
-            const inputCmd = { command: "controller:input", blockid: blockId, inputdata64: b64data };
-            BlockService.SendCommand(blockId, inputCmd);
-        });
-        // resize observer
-        const handleResize_debounced = debounce(50, handleResize);
-        const rszObs = new ResizeObserver(() => {
-            handleResize_debounced(fitAddon, blockId, term);
-        });
-        rszObs.observe(connectElemRef.current);
-
-        // block subject
-        const blockSubject = getBlockSubject(blockId);
-        blockSubject.subscribe((data) => {
-            // base64 decode
-            const decodedData = base64ToArray(data.ptydata);
-            if (initialLoadRef.current.loaded) {
-                term.write(decodedData);
-            } else {
-                initialLoadRef.current.heldData.push(decodedData);
-            }
-        });
-
-        return () => {
-            term.dispose();
-            rszObs.disconnect();
-            blockSubject.release();
-        };
-    }, []);
+    const [fitAddon, setFitAddon] = React.useState<FitAddon>(null);
+    const [term, setTerm] = React.useState<Terminal>(null);
 
     React.useEffect(() => {
-        if (!termRef.current) {
-            return;
-        }
-        // load data from filestore
-        const startTs = Date.now();
-        let loadedBytes = 0;
-        const localTerm = termRef.current; // avoids devmode double effect running issue (terminal gets created twice)
-        const usp = new URLSearchParams();
-        usp.set("zoneid", blockId);
-        usp.set("name", "main");
-        fetch("/wave/file?" + usp.toString())
-            .then((resp) => {
-                if (resp.ok) {
-                    return resp.arrayBuffer();
-                }
-                console.log("error loading file", resp.status, resp.statusText);
-            })
-            .then((data: ArrayBuffer) => {
-                const uint8View = new Uint8Array(data);
-                localTerm.write(uint8View);
-                loadedBytes = uint8View.byteLength;
-            })
-            .finally(() => {
-                initialLoadRef.current.heldData.forEach((data) => {
-                    localTerm.write(data);
-                });
-                initialLoadRef.current.loaded = true;
-                initialLoadRef.current.heldData = [];
-                console.log(`terminal loaded file ${loadedBytes} bytes, ${Date.now() - startTs}ms`);
+        if (connectElemRef.current && !term) {
+            console.log("terminal created");
+            const newTerm = new Terminal({
+                theme: getThemeFromCSSVars(connectElemRef.current),
+                fontSize: 12,
+                fontFamily: "Hack",
+                drawBoldTextInBrightColors: false,
+                fontWeight: "normal",
+                fontWeightBold: "bold",
             });
-    }, []);
+            termRef.current = newTerm;
+            const newFitAddon = new FitAddon();
+            newTerm.loadAddon(newFitAddon);
+            newTerm.open(connectElemRef.current);
+            newFitAddon.fit();
+            BlockService.SendCommand(blockId, {
+                command: "controller:input",
+                termsize: { rows: newTerm.rows, cols: newTerm.cols },
+            });
+            newTerm.onData((data) => {
+                const b64data = btoa(data);
+                const inputCmd = { command: "controller:input", blockid: blockId, inputdata64: b64data };
+                BlockService.SendCommand(blockId, inputCmd);
+            });
+
+            // block subject
+            const blockSubject = getBlockSubject(blockId);
+            blockSubject.subscribe((data) => {
+                // base64 decode
+                const decodedData = base64ToArray(data.ptydata);
+                if (initialLoadRef.current.loaded) {
+                    newTerm.write(decodedData);
+                } else {
+                    initialLoadRef.current.heldData.push(decodedData);
+                }
+            });
+
+            setTerm(newTerm);
+            setFitAddon(newFitAddon);
+
+            return () => {
+                newTerm.dispose();
+                blockSubject.release();
+            };
+        }
+    }, [connectElemRef]);
+
+    const handleResizeCallback = React.useCallback(() => {
+        debounce(50, () => handleResize(fitAddon, blockId, term));
+    }, [fitAddon, term]);
+
+    useResizeObserver(connectElemRef, handleResizeCallback);
+
+    React.useEffect(() => {
+        if (termRef.current) {
+            // load data from filestore
+            const startTs = Date.now();
+            let loadedBytes = 0;
+            const localTerm = termRef.current; // avoids devmode double effect running issue (terminal gets created twice)
+            const usp = new URLSearchParams();
+            usp.set("zoneid", blockId);
+            usp.set("name", "main");
+            fetch("/wave/file?" + usp.toString())
+                .then((resp) => {
+                    if (resp.ok) {
+                        return resp.arrayBuffer();
+                    }
+                    console.log("error loading file", resp.status, resp.statusText);
+                })
+                .then((data: ArrayBuffer) => {
+                    const uint8View = new Uint8Array(data);
+                    localTerm.write(uint8View);
+                    loadedBytes = uint8View.byteLength;
+                })
+                .finally(() => {
+                    initialLoadRef.current.heldData.forEach((data) => {
+                        localTerm.write(data);
+                    });
+                    initialLoadRef.current.loaded = true;
+                    initialLoadRef.current.heldData = [];
+                    console.log(`terminal loaded file ${loadedBytes} bytes, ${Date.now() - startTs}ms`);
+                });
+        }
+    }, [termRef]);
 
     return (
         <div className="view-term">
