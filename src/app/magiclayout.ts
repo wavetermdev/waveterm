@@ -26,7 +26,7 @@ let MagicLayout = {
     RightSidebarMaxWidth: 700,
     RightSidebarSnapThreshold: 90,
     RightSidebarDragResistance: 50,
-    RightSidebarDefaultWidth: 240,
+    RightSidebarDefaultWidth: 400,
 };
 
 let m = MagicLayout;
