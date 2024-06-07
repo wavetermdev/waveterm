@@ -53,16 +53,12 @@ class KeybindDevPane extends React.Component<{}, {}> {
     }
 }
 
-class SidebarKeyBindings extends React.Component<{ component: RightSideBar; isOpen: boolean }, {}> {
+class SidebarKeyBindings extends React.Component<{ component: RightSideBar }, {}> {
     componentDidMount(): void {
         const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
         keybindManager.registerKeybinding("pane", "rightsidebar", "rightsidebar:toggle", (waveEvent) => {
-            if (this.props.isOpen) {
-                return component.onClose();
-            } else {
-                return component.onOpen();
-            }
+            return component.toggleCollapse();
         });
     }
 
@@ -87,13 +83,21 @@ class RightSideBar extends React.Component<
     {}
 > {
     mode: OV<string> = mobx.observable.box("aichat", { name: "RightSideBar-mode" });
+    timeoutId: NodeJS.Timeout = null;
 
     constructor(props) {
         super(props);
         mobx.makeObservable(this);
     }
 
-    @mobx.action
+    componentWillUnmount() {
+        if (this.timeoutId) {
+            clearTimeout(this.timeoutId);
+            this.timeoutId = null;
+        }
+    }
+
+    @mobx.action.bound
     setMode(mode: string) {
         if (mode == this.mode.get()) {
             return;
@@ -101,15 +105,19 @@ class RightSideBar extends React.Component<
         this.mode.set(mode);
     }
 
-    @boundMethod
-    onOpen() {
-        GlobalModel.rightSidebarModel.setCollapsed(false);
-        return true;
-    }
-
-    @boundMethod
-    onClose() {
-        GlobalModel.rightSidebarModel.setCollapsed(true);
+    @mobx.action.bound
+    toggleCollapse() {
+        const isCollapsed = GlobalModel.rightSidebarModel.getCollapsed();
+        GlobalModel.rightSidebarModel.setCollapsed(!isCollapsed);
+        if (this.mode.get() == "aichat") {
+            if (isCollapsed) {
+                this.timeoutId = setTimeout(() => {
+                    GlobalModel.inputModel.setChatSidebarFocus();
+                }, 100);
+            } else {
+                GlobalModel.inputModel.setChatSidebarFocus(false);
+            }
+        }
         return true;
     }
 
@@ -124,9 +132,9 @@ class RightSideBar extends React.Component<
                 enableSnap={true}
                 parentRef={this.props.parentRef}
             >
-                {(toggleCollapse) => (
+                {() => (
                     <React.Fragment>
-                        <SidebarKeyBindings component={this} isOpen={!isCollapsed} />
+                        <SidebarKeyBindings component={this} />
                         <div className="header">
                             <div className="rsb-modes">
                                 <div
@@ -148,7 +156,7 @@ class RightSideBar extends React.Component<
                                     </div>
                                 </If>
                             </div>
-                            <Button className="secondary ghost close" onClick={toggleCollapse}>
+                            <Button className="secondary ghost close" onClick={this.toggleCollapse}>
                                 <i className="fa-sharp fa-solid fa-xmark-large" />
                             </Button>
                         </div>

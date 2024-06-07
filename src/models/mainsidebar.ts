@@ -82,6 +82,11 @@ class MainSidebarModel {
         return collapsed;
     }
 
+    setCollapsed(collapsed: boolean): void {
+        const width = this.getWidth(true);
+        this.saveState(width, collapsed);
+    }
+
     saveState(width: number, collapsed: boolean): void {
         GlobalCommandRunner.clientSetMainSidebar(width, collapsed).finally(() => {
             mobx.action(() => {

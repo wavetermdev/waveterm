@@ -31,10 +31,18 @@ class App extends React.Component<{}, {}> {
     dcWait: OV<boolean> = mobx.observable.box(false, { name: "dcWait" });
     mainContentRef: React.RefObject<HTMLDivElement> = React.createRef();
     termThemesLoaded: OV<boolean> = mobx.observable.box(false, { name: "termThemesLoaded" });
+    chatFocusTimeoutId: NodeJS.Timeout = null;
 
     constructor(props: {}) {
         super(props);
         if (GlobalModel.isDev) document.body.classList.add("is-dev");
+    }
+
+    componentWillUnmount() {
+        if (this.chatFocusTimeoutId) {
+            clearTimeout(this.chatFocusTimeoutId);
+            this.chatFocusTimeoutId = null;
+        }
     }
 
     @boundMethod
@@ -68,16 +76,15 @@ class App extends React.Component<{}, {}> {
 
     @boundMethod
     openMainSidebar() {
-        const mainSidebarModel = GlobalModel.mainSidebarModel;
-        const width = mainSidebarModel.getWidth(true);
-        mainSidebarModel.saveState(width, false);
+        GlobalModel.mainSidebarModel.setCollapsed(false);
     }
 
     @boundMethod
     openRightSidebar() {
-        const rightSidebarModel = GlobalModel.rightSidebarModel;
-        const width = rightSidebarModel.getWidth(true);
-        rightSidebarModel.saveState(width, false);
+        GlobalModel.rightSidebarModel.setCollapsed(false);
+        this.chatFocusTimeoutId = setTimeout(() => {
+            GlobalModel.inputModel.setChatSidebarFocus();
+        }, 100);
     }
 
     @boundMethod

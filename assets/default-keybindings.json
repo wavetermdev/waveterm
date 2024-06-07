@@ -314,6 +314,10 @@
       "keys": ["Ctrl:l"]
     },
     {
+      "command": "aichat:setCmdInputValue",
+      "keys": ["Ctrl:Shift:e"]
+    },
+    {
       "command": "terminal:copy",
       "keys": ["Ctrl:Shift:c"]
     },

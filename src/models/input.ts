@@ -139,6 +139,7 @@ class InputModel {
         const activeAuxView = this.getAuxViewFocus() ? this.getActiveAuxView() : null;
         switch (activeAuxView) {
             case appconst.InputAuxView_History:
+                console.log("focus history");
                 const elem: HTMLElement = document.querySelector(".cmd-input input.history-input");
                 if (elem) {
                     elem.focus();
@@ -148,8 +149,12 @@ class InputModel {
                 this.setAIChatFocus();
                 break;
             case null:
-                if (GlobalModel.sidebarchatModel.hasFocus) {
+                if (GlobalModel.sidebarchatModel.hasFocus()) {
                     this.auxViewFocus.set(false);
+                    const elem: HTMLElement = document.querySelector(".sidebarchat-input");
+                    if (elem != null) {
+                        elem.focus();
+                    }
                 } else {
                     const elem = document.getElementById("main-cmd-input");
                     if (elem) {
@@ -159,6 +164,7 @@ class InputModel {
                 }
                 break;
             default: {
+                console.log("focus auxview");
                 const elem: HTMLElement = document.querySelector(".cmd-input .auxview");
                 if (elem != null) {
                     elem.focus();
@@ -280,6 +286,12 @@ class InputModel {
             this.setActiveAuxView(appconst.InputAuxView_History);
             this.globalModel.sendActivity("history-open");
         }
+    }
+
+    @mobx.action
+    setChatSidebarFocus(focus = true): void {
+        GlobalModel.sidebarchatModel.setFocus(focus);
+        this.giveFocus();
     }
 
     @mobx.action
@@ -468,7 +480,7 @@ class InputModel {
         }
         // (view == null) means standard cmdinput keybindings
         if (view == null) {
-            return !this.getAuxViewFocus() && !GlobalModel.sidebarchatModel.hasFocus;
+            return !this.getAuxViewFocus() && !GlobalModel.sidebarchatModel.hasFocus();
         } else {
             return this.getAuxViewFocus() && view == this.getActiveAuxView();
         }

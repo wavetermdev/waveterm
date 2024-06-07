@@ -20,6 +20,11 @@
             .filler {
                 flex: 1 1 auto;
             }
+
+            > * {
+                cursor: default;
+                user-select: none;
+            }
         }
 
         .chat-msg {
@@ -78,6 +83,7 @@
             font-family: var(--termfontfamily);
             font-weight: normal;
             line-height: var(--termlineheight);
+            height: 21px;
         }
     }
 }

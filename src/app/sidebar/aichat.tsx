@@ -16,7 +16,7 @@ import "./aichat.less";
 
 const outline = "2px solid var(--markdown-outline-color)";
 
-class ChatKeyBindings extends React.Component<{ component: ChatSidebar; bindArrowUpDownKeys: boolean }, {}> {
+class ChatKeyBindings extends React.Component<{ component: ChatSidebar }, {}> {
     componentDidMount(): void {
         const { component } = this.props;
         const keybindManager = GlobalModel.keybindManager;
@@ -34,26 +34,19 @@ class ChatKeyBindings extends React.Component<{ component: ChatSidebar; bindArro
             inputModel.clearAIAssistantChat();
             return true;
         });
-    }
-
-    componentDidUpdate(): void {
-        const { component, bindArrowUpDownKeys } = this.props;
-        const keybindManager = GlobalModel.keybindManager;
-        if (bindArrowUpDownKeys) {
-            keybindManager.registerKeybinding("pane", "aichat:arrowupdown", "generic:selectAbove", (waveEvent) => {
-                return component.onArrowUpPressed();
-            });
-            keybindManager.registerKeybinding("pane", "aichat:arrowupdown", "generic:selectBelow", (waveEvent) => {
-                return component.onArrowDownPressed();
-            });
-        } else {
-            GlobalModel.keybindManager.unregisterDomain("aichat:arrowupdown");
-        }
+        keybindManager.registerKeybinding("pane", "aichat", "generic:selectAbove", (waveEvent) => {
+            return component.onArrowUpPressed();
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "generic:selectBelow", (waveEvent) => {
+            return component.onArrowDownPressed();
+        });
+        keybindManager.registerKeybinding("pane", "aichat", "aichat:setCmdInputValue", (waveEvent) => {
+            return component.onSetCmdInputValue();
+        });
     }
 
     componentWillUnmount(): void {
         GlobalModel.keybindManager.unregisterDomain("aichat");
-        GlobalModel.keybindManager.unregisterDomain("aichat:arrowupdown");
     }
 
     render() {
@@ -62,20 +55,16 @@ class ChatKeyBindings extends React.Component<{ component: ChatSidebar; bindArro
 }
 
 @mobxReact.observer
-class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType; itemCount: number }, {}> {
-    handleExecuteCommand(cmd: string) {
-        GlobalModel.sidebarchatModel.setCmdToExec(cmd);
-        GlobalModel.sidebarchatModel.resetFocus();
-        GlobalModel.inputModel.curLine = cmd;
-        GlobalModel.inputModel.giveFocus();
-    }
-
+class ChatItem extends React.Component<
+    { chatItem: OpenAICmdInfoChatMessageType; itemCount: number; onSetCmdInputValue: (cmd: string) => void },
+    {}
+> {
     renderError(err: string): any {
         return <div className="chat-msg-error">{err}</div>;
     }
 
     render() {
-        const { chatItem, itemCount } = this.props;
+        const { chatItem, itemCount, onSetCmdInputValue } = this.props;
         const { isassistantresponse, assistantresponse } = chatItem;
         const curKey = "chatmsg-" + itemCount;
         const senderClassName = isassistantresponse ? "chat-msg-assistant" : "chat-msg-user";
@@ -108,7 +97,7 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
                             <div className="chat-msg-header">
                                 <i className="fa-sharp fa-solid fa-sparkles"></i>
                             </div>
-                            <Markdown2 text={assistantresponse.message} onClickExecute={this.handleExecuteCommand} />
+                            <Markdown2 text={assistantresponse.message} onClickExecute={onSetCmdInputValue} />
                         </>
                     );
                 }
@@ -130,7 +119,14 @@ class ChatItem extends React.Component<{ chatItem: OpenAICmdInfoChatMessageType;
 }
 
 @mobxReact.observer
-class ChatWindow extends React.Component<{ chatWindowRef; onRendered }, {}> {
+class ChatWindow extends React.Component<
+    {
+        chatWindowRef: React.RefObject<HTMLDivElement>;
+        onRendered: (osInstance: OverlayScrollbars) => void;
+        onSetCmdInputValue: (cmd: string) => void;
+    },
+    {}
+> {
     itemCount: number = 0;
     containerRef: React.RefObject<OverlayScrollbarsComponentRef> = React.createRef();
     osInstance: OverlayScrollbars = null;
@@ -164,6 +160,7 @@ class ChatWindow extends React.Component<{ chatWindowRef; onRendered }, {}> {
     }
 
     render() {
+        const { onSetCmdInputValue } = this.props;
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const chitem: OpenAICmdInfoChatMessageType = null;
         let idx;
@@ -177,7 +174,12 @@ class ChatWindow extends React.Component<{ chatWindowRef; onRendered }, {}> {
                 <div ref={this.props.chatWindowRef} className="chat-window">
                     <div className="filler"></div>
                     <For each="chitem" index="idx" of={chatMessageItems}>
-                        <ChatItem key={idx} chatItem={chitem} itemCount={idx + 1} />
+                        <ChatItem
+                            key={idx}
+                            chatItem={chitem}
+                            itemCount={idx + 1}
+                            onSetCmdInputValue={onSetCmdInputValue}
+                        />
                     </For>
                 </div>
             </OverlayScrollbarsComponent>
@@ -190,11 +192,11 @@ class ChatSidebar extends React.Component<{}, {}> {
     sidebarRef: React.RefObject<HTMLDivElement> = React.createRef<HTMLDivElement>();
     textAreaRef: React.RefObject<HTMLTextAreaElement> = React.createRef<HTMLTextAreaElement>();
     chatWindowRef: React.RefObject<HTMLDivElement> = React.createRef<HTMLDivElement>();
-    bindArrowUpDownKeys: OV<boolean> = mobx.observable.box(false, { name: "bindArrowUpDownKeys" });
     value: OV<string> = mobx.observable.box("", { deep: false, name: "value" });
     osInstance: OverlayScrollbars;
     termFontSize: number = 14;
     blockIndex: number;
+    disposeReaction: () => void;
 
     constructor(props) {
         super(props);
@@ -202,27 +204,32 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     componentDidUpdate() {
-        if (GlobalModel.sidebarchatModel.focused == "input") {
-            this.textAreaRef.current.focus();
-        }
-        if (GlobalModel.sidebarchatModel.hasCmdAndOutput()) {
-            const newCmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
-            const newValue = this.formChatMessage(newCmdAndOutput);
-            if (newValue !== this.value.get()) {
-                this.value.set(newValue);
-                GlobalModel.sidebarchatModel.resetCmdAndOutput();
-            }
-        }
         this.adjustTextAreaHeight();
     }
 
     componentDidMount() {
-        GlobalModel.sidebarchatModel.setFocus("input", true);
-        this.textAreaRef.current.focus();
+        this.disposeReaction = mobx.reaction(
+            () => [
+                GlobalModel.sidebarchatModel.hasCmdAndOutput(),
+                GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex(),
+            ],
+            ([hasCmdAndOutput, selectedCodeBlockIndex]) => {
+                if (hasCmdAndOutput) {
+                    const newCmdAndOutput = GlobalModel.sidebarchatModel.getCmdAndOutput();
+                    const newValue = this.formChatMessage(newCmdAndOutput);
+                    this.value.set(newValue);
+                    GlobalModel.sidebarchatModel.resetCmdAndOutput();
+                }
+
+                if (selectedCodeBlockIndex == null) {
+                    this.updatePreTagOutline();
+                }
+            }
+        );
         if (this.sidebarRef.current) {
             this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
         }
-        document.addEventListener("mousedown", this.handleClickOutside);
+        document.addEventListener("click", this.handleClickOutside);
         this.requestChatUpdate();
     }
 
@@ -230,13 +237,19 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (this.sidebarRef.current) {
             this.sidebarRef.current.removeEventListener("click", this.handleSidebarClick);
         }
-        document.removeEventListener("mousedown", this.handleClickOutside);
+        document.removeEventListener("click", this.handleClickOutside);
+        GlobalModel.sidebarchatModel.resetFocus();
+        if (this.disposeReaction) {
+            this.disposeReaction();
+        }
     }
 
     @mobx.action.bound
-    handleClickOutside(event) {
-        if (this.sidebarRef.current && !this.sidebarRef.current.contains(event.target)) {
-            this.onClickOutsideSidebar();
+    handleClickOutside(e: MouseEvent) {
+        const sidebar = this.sidebarRef.current;
+        if (sidebar && !sidebar.contains(e.target as Node)) {
+            GlobalModel.sidebarchatModel.resetFocus();
+            GlobalModel.inputModel.giveFocus();
         }
     }
 
@@ -281,20 +294,20 @@ class ChatSidebar extends React.Component<{}, {}> {
         }).catch((_) => {});
     }
 
-    onClickOutsideSidebar() {
-        GlobalModel.sidebarchatModel.resetFocus();
+    @mobx.action.bound
+    onTextAreaFocus() {
+        GlobalModel.inputModel.setChatSidebarFocus();
+        return true;
     }
 
     @mobx.action.bound
-    onTextAreaFocused(e) {
-        GlobalModel.sidebarchatModel.setFocus("input", true);
-        this.bindArrowUpDownKeys.set(false);
-        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
-        this.blockIndex = pres.length - 1;
-        this.onTextAreaChange(e);
+    onTextAreaMouseDown(e) {
         this.updatePreTagOutline();
+        // Reset blockIndex to null
+        GlobalModel.sidebarchatModel.resetSelectedCodeBlockIndex();
     }
 
+    @mobx.action.bound
     onEnterKeyPressed() {
         const messageStr = this.value.get();
         this.submitChatMessage(messageStr);
@@ -302,6 +315,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         GlobalModel.sidebarchatModel.resetCmdAndOutput();
     }
 
+    @mobx.action.bound
     onExpandInputPressed() {
         const currentRef = this.textAreaRef.current;
         if (currentRef == null) {
@@ -317,7 +331,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         }
         pres.forEach((preElement, idx) => {
             if (preElement === clickedPre) {
-                this.blockIndex = idx;
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(idx);
                 preElement.style.outline = outline;
             } else {
                 preElement.style.outline = "none";
@@ -327,28 +341,28 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     handleSidebarClick(event) {
-        let detection = 0;
         const target = event.target as HTMLElement;
-
-        if (target.closest(".copy-button") || target.closest(".fa-square-terminal")) {
+        if (
+            target.closest(".copy-button") ||
+            target.closest(".fa-square-terminal") ||
+            target.closest(".chat-textarea")
+        ) {
             return;
-        }
-
-        const chatWindow = target.closest(".chat-window");
-        if (chatWindow) {
-            detection++;
         }
 
         const pre = target.closest("pre");
         if (pre) {
-            detection++;
-            this.updatePreTagOutline(pre);
+            const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+            if (pres) {
+                pres.forEach((preElement, idx) => {
+                    if (preElement === pre) {
+                        GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(idx);
+                        this.updatePreTagOutline(pre);
+                    }
+                });
+            }
         }
-
-        if (detection > 0) {
-            this.bindArrowUpDownKeys.set(true);
-            GlobalModel.sidebarchatModel.setFocus("block", true);
-        }
+        GlobalModel.inputModel.setChatSidebarFocus();
     }
 
     updateScrollTop() {
@@ -356,7 +370,7 @@ class ChatSidebar extends React.Component<{}, {}> {
         if (pres == null) {
             return;
         }
-        const block = pres[this.blockIndex];
+        const block = pres[GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex()];
         if (block == null) {
             return;
         }
@@ -387,40 +401,98 @@ class ChatSidebar extends React.Component<{}, {}> {
         this.osInstance = osInstance;
     }
 
+    @mobx.action.bound
     onArrowUpPressed() {
-        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
-        if (pres == null) {
-            return;
+        if (this.onTextAreaKeyDown("ArrowUp")) {
+            const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+            let blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
+            if (pres == null) {
+                return false;
+            }
+            if (blockIndex == null) {
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(pres.length - 1);
+            } else if (blockIndex > 0) {
+                blockIndex--;
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(blockIndex);
+            }
+            blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
+            this.updatePreTagOutline(pres[blockIndex]);
+            this.updateScrollTop();
+            return true;
         }
-        if (this.blockIndex == null) {
-            this.blockIndex = pres.length - 1;
-        } else if (this.blockIndex > 0) {
-            this.blockIndex--;
-        }
-        this.updatePreTagOutline(pres[this.blockIndex]);
-        this.updateScrollTop();
-        return true;
+        return false;
     }
 
     @mobx.action.bound
     onArrowDownPressed() {
-        const pres = this.chatWindowRef.current?.querySelectorAll("pre");
-        if (pres == null) {
-            return;
+        if (this.onTextAreaKeyDown("ArrowDown")) {
+            const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+            let blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
+            if (pres == null) {
+                return false;
+            }
+            if (blockIndex == null) {
+                return false;
+            }
+            if (blockIndex < pres.length - 1 && blockIndex >= 0) {
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(blockIndex++);
+                this.updatePreTagOutline(pres[blockIndex]);
+            } else {
+                GlobalModel.sidebarchatModel.setFocus(true);
+                this.textAreaRef.current.focus();
+                this.updatePreTagOutline();
+                GlobalModel.sidebarchatModel.setSelectedCodeBlockIndex(null);
+            }
+            this.updateScrollTop();
+            return true;
         }
-        if (this.blockIndex == null) {
-            return;
+        return false;
+    }
+
+    @mobx.action.bound
+    onTextAreaKeyDown(key: "ArrowUp" | "ArrowDown") {
+        const textarea = this.textAreaRef.current;
+        const cursorPosition = textarea.selectionStart;
+        const textBeforeCursor = textarea.value.slice(0, cursorPosition);
+        const blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
+
+        // Check if the cursor is at the first line for ArrowUp
+        if ((textBeforeCursor.indexOf("\n") == -1 && cursorPosition == 0 && key == "ArrowUp") || blockIndex != null) {
+            return true;
         }
-        if (this.blockIndex < pres.length && this.blockIndex >= 0) {
-            this.blockIndex++;
-            this.updatePreTagOutline(pres[this.blockIndex]);
+        GlobalModel.sidebarchatModel.setFocus(true);
+        return false;
+    }
+
+    @mobx.action.bound
+    onSetCmdInputValue(cmd?: string) {
+        console.log("got here");
+        if (cmd) {
+            this.setCmdInputValue(cmd);
         } else {
-            this.bindArrowUpDownKeys.set(false);
-            this.textAreaRef.current.focus();
-            this.updatePreTagOutline();
+            const pres = this.chatWindowRef.current?.querySelectorAll("pre");
+            if (pres) {
+                const selectedIdx = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
+                pres.forEach((preElement, idx) => {
+                    if (selectedIdx === idx) {
+                        const codeElement = preElement.querySelector("code");
+                        if (codeElement) {
+                            const command = codeElement.textContent.replace(/\n$/, "");
+                            this.setCmdInputValue(command);
+                        }
+                    }
+                });
+            }
         }
-        this.updateScrollTop();
         return true;
+    }
+
+    @mobx.action.bound
+    setCmdInputValue(cmd: string) {
+        GlobalModel.sidebarchatModel.setCmdToExec(cmd);
+        GlobalModel.sidebarchatModel.resetFocus();
+        GlobalModel.inputModel.curLine = cmd;
+        GlobalModel.inputModel.giveFocus();
     }
 
     @mobx.action.bound
@@ -430,7 +502,7 @@ class ChatSidebar extends React.Component<{}, {}> {
             return "";
         }
         // Escape backticks in the output
-        let escapedOutput = output ? output.replace(/```/g, "\\`\\`\\`") : "";
+        let escapedOutput = output ? output.replace(/`/g, "\\`") : "";
         // Truncate the output if usedRows is over 100
         if (usedRows > 100) {
             const outputLines = escapedOutput.split("\n");
@@ -450,38 +522,22 @@ class ChatSidebar extends React.Component<{}, {}> {
         return chatMessage;
     }
 
-    @mobx.action.bound
-    handleKeyDown(e) {
-        if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-            if (this.bindArrowUpDownKeys.get()) {
-                GlobalModel.sidebarchatModel.setFocus("block", true);
-                this.textAreaRef.current.blur();
-            }
-
-            const textarea = this.textAreaRef.current;
-            const cursorPosition = textarea.selectionStart;
-            const textBeforeCursor = textarea.value.slice(0, cursorPosition);
-
-            // Check if the cursor is at the first line
-            if (textBeforeCursor.indexOf("\n") === -1 && cursorPosition === 0 && e.key === "ArrowUp") {
-                this.bindArrowUpDownKeys.set(true);
-            }
-        }
-    }
-
     render() {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
-        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus;
+        const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus();
         const textAreaValue = this.value.get();
-        const bindArrowUpDownKeys = this.bindArrowUpDownKeys.get();
 
         return (
             <div ref={this.sidebarRef} className="sidebarchat">
                 <If condition={renderAIChatKeybindings}>
-                    <ChatKeyBindings component={this} bindArrowUpDownKeys={bindArrowUpDownKeys} />
+                    <ChatKeyBindings component={this} />
                 </If>
                 {chatMessageItems.length > 0 && (
-                    <ChatWindow chatWindowRef={this.chatWindowRef} onRendered={this.onChatWindowRendered} />
+                    <ChatWindow
+                        chatWindowRef={this.chatWindowRef}
+                        onRendered={this.onChatWindowRendered}
+                        onSetCmdInputValue={this.onSetCmdInputValue}
+                    />
                 )}
                 <div className="sidebarchat-input-wrapper">
                     <textarea
@@ -490,8 +546,8 @@ class ChatSidebar extends React.Component<{}, {}> {
                         autoComplete="off"
                         autoCorrect="off"
                         className="sidebarchat-input chat-textarea"
-                        onKeyDown={this.handleKeyDown}
-                        onMouseDown={this.onTextAreaFocused}
+                        onFocus={this.onTextAreaFocus}
+                        onMouseDown={this.onTextAreaMouseDown} // When the user clicks on the textarea
                         onChange={this.onTextAreaChange}
                         style={{ fontSize: this.termFontSize }}
                         placeholder="Send a Message..."

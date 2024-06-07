@@ -128,7 +128,8 @@ class LineActions extends React.Component<{ screen: LineContainerType; line: Lin
                 screen.getUsedRows(lineutil.getRendererContext(line), line, cmd, 300) * 2,
                 cmdShouldMarkError(cmd)
             );
-            GlobalModel.sidebarchatModel.setFocus("input", true);
+            GlobalModel.inputModel.setChatSidebarFocus();
+            GlobalModel.sidebarchatModel.resetSelectedCodeBlockIndex();
         }
     }
 
