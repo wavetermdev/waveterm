@@ -223,29 +223,18 @@ class ChatSidebar extends React.Component<{}, {}> {
             }
         );
         if (this.sidebarRef.current) {
-            this.sidebarRef.current.addEventListener("click", this.handleSidebarClick);
+            this.sidebarRef.current.addEventListener("click", this.onSidebarClick);
         }
-        document.addEventListener("click", this.handleClickOutside);
         this.requestChatUpdate();
     }
 
     componentWillUnmount() {
         if (this.sidebarRef.current) {
-            this.sidebarRef.current.removeEventListener("click", this.handleSidebarClick);
+            this.sidebarRef.current.removeEventListener("click", this.onSidebarClick);
         }
-        document.removeEventListener("click", this.handleClickOutside);
         GlobalModel.sidebarchatModel.resetFocus();
         if (this.disposeReaction) {
             this.disposeReaction();
-        }
-    }
-
-    @mobx.action.bound
-    handleClickOutside(e: MouseEvent) {
-        const sidebar = this.sidebarRef.current;
-        if (sidebar && !sidebar.contains(e.target as Node)) {
-            GlobalModel.sidebarchatModel.resetFocus();
-            GlobalModel.inputModel.giveFocus();
         }
     }
 
@@ -326,6 +315,11 @@ class ChatSidebar extends React.Component<{}, {}> {
         currentRef.setRangeText("\n", currentRef.selectionStart, currentRef.selectionEnd, "end");
     }
 
+    @mobx.action.bound
+    onBlur() {
+        GlobalModel.sidebarchatModel.resetFocus();
+    }
+
     updatePreTagOutline(clickedPre?) {
         const pres = this.chatWindowRef.current?.querySelectorAll("pre");
         if (pres == null) {
@@ -342,7 +336,7 @@ class ChatSidebar extends React.Component<{}, {}> {
     }
 
     @mobx.action.bound
-    handleSidebarClick(event) {
+    onSidebarClick(event) {
         const target = event.target as HTMLElement;
         if (
             target.closest(".copy-button") ||
@@ -547,6 +541,7 @@ class ChatSidebar extends React.Component<{}, {}> {
                         autoComplete="off"
                         autoCorrect="off"
                         className="sidebarchat-input chat-textarea"
+                        onBlur={this.onBlur}
                         onFocus={this.onTextAreaFocus}
                         onMouseDown={this.onTextAreaMouseDown} // When the user clicks on the textarea
                         onChange={this.onTextAreaChange}
