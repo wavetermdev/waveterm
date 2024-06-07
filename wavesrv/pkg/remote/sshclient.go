@@ -66,7 +66,7 @@ func createDummySigner() ([]ssh.Signer, error) {
 // they were successes. An error in this function prevents any other
 // keys from being attempted. But if there's an error because of a dummy
 // file, the library can still try again with a new key.
-func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, passphrase string) func() ([]ssh.Signer, error) {
+func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, passphrase string, authSockSignersExt []ssh.Signer) func() ([]ssh.Signer, error) {
 	var identityFiles []string
 	existingKeys := make(map[string][]byte)
 
@@ -84,15 +84,8 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 	// require pointer to modify list in closure
 	identityFilesPtr := &identityFiles
 
-	sshAuthSock := os.Getenv("SSH_AUTH_SOCK")
-	conn, err := net.Dial("unix", sshAuthSock)
 	var authSockSigners []ssh.Signer
-	if err != nil {
-		log.Printf("Failed to open SSH_AUTH_SOCK: %v", err)
-	} else {
-		agentClient := agent.NewClient(conn)
-		authSockSigners, _ = agentClient.Signers()
-	}
+	authSockSigners = append(authSockSigners, authSockSignersExt...)
 	authSockSignersPtr := &authSockSigners
 
 	return func() ([]ssh.Signer, error) {
@@ -546,7 +539,7 @@ func DialContext(ctx context.Context, network string, addr string, config *ssh.C
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
-func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDisplayName string) (*ssh.Client, error) {
+func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDisplayName string, sshAuthSock string) (*ssh.Client, error) {
 	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
 	if err != nil {
 		return nil, err
@@ -557,7 +550,16 @@ func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDispla
 		return nil, err
 	}
 
-	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, opts.SSHPassword))
+	conn, err := net.Dial("unix", sshAuthSock)
+	var authSockSigners []ssh.Signer
+	if err != nil {
+		log.Printf("Failed to open SSH_AUTH_SOCK: %v", err)
+	} else {
+		agentClient := agent.NewClient(conn)
+		authSockSigners, _ = agentClient.Signers()
+	}
+
+	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, opts.SSHPassword, authSockSigners))
 	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(connCtx, opts.SSHPassword, remoteDisplayName))
 	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(connCtx, opts.SSHPassword, remoteDisplayName))
 
@@ -572,7 +574,7 @@ func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDispla
 
 	// exclude gssapi-with-mic and hostbased until implemented
 	authMethodMap := map[string]ssh.AuthMethod{
-		"publickey":            ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)),
+		"publickey":            ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)+len(authSockSigners)),
 		"keyboard-interactive": ssh.RetryableAuthMethod(keyboardInteractive, attemptsAllowed),
 		"password":             ssh.RetryableAuthMethod(passwordCallback, attemptsAllowed),
 	}
