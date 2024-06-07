@@ -8,7 +8,7 @@
         "build": "vite build --minify false --mode development",
         "build:prod": "vite build --mode production",
         "preview": "vite preview",
-        "storybook": "storybook dev -p 6006",
+        "storybook": "storybook dev -p 6006 --no-open",
         "build-storybook": "storybook build",
         "coverage": "vitest run --coverage",
         "test": "vitest"
