@@ -32,15 +32,17 @@ export function newLayoutTreeStateAtom<T>(rootNode: LayoutNode<T>): PrimitiveAto
  */
 export function withLayoutTreeState<T>(layoutNodeAtom: WritableLayoutNodeAtom<T>): WritableLayoutTreeStateAtom<T> {
     const pendingActionAtom = atom<LayoutTreeAction>(null) as PrimitiveAtom<LayoutTreeAction>;
+    const generationAtom = atom(0) as PrimitiveAtom<number>;
     return atom(
         (get) => {
             const layoutState = newLayoutTreeState(get(layoutNodeAtom));
             layoutState.pendingAction = get(pendingActionAtom);
+            layoutState.generation = get(generationAtom);
             return layoutState;
         },
-        (_get, set, value) => {
+        (get, set, value) => {
             set(pendingActionAtom, value.pendingAction);
-            set(layoutNodeAtom, value.rootNode);
+            if (get(generationAtom) !== value.generation) set(layoutNodeAtom, value.rootNode);
         }
     );
 }

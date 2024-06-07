@@ -36,6 +36,7 @@ export function newLayoutTreeState<T>(rootNode: LayoutNode<T>): LayoutTreeState<
         rootNode: balancedRootNode,
         leafs,
         pendingAction: undefined,
+        generation: 0,
     };
 }
 
@@ -77,12 +78,15 @@ function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, act
             break;
         case LayoutTreeActionType.Move:
             moveNode(layoutTreeState, action as LayoutTreeMoveNodeAction<T>);
+            layoutTreeState.generation++;
             break;
         case LayoutTreeActionType.InsertNode:
             insertNode(layoutTreeState, action as LayoutTreeInsertNodeAction<T>);
+            layoutTreeState.generation++;
             break;
         case LayoutTreeActionType.DeleteNode:
             deleteNode(layoutTreeState, action as LayoutTreeDeleteNodeAction);
+            layoutTreeState.generation++;
             break;
         default: {
             console.error("Invalid reducer action", layoutTreeState, action);

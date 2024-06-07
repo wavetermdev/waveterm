@@ -106,6 +106,7 @@ export type LayoutTreeState<T> = {
     rootNode: LayoutNode<T>;
     leafs: LayoutNode<T>[];
     pendingAction: LayoutTreeAction;
+    generation: number;
 };
 
 /**
