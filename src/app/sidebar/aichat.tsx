@@ -40,9 +40,6 @@ class ChatKeyBindings extends React.Component<{ component: ChatSidebar }, {}> {
         keybindManager.registerKeybinding("pane", "aichat", "generic:selectBelow", (waveEvent) => {
             return component.onArrowDownPressed();
         });
-        keybindManager.registerKeybinding("pane", "aichat", "aichat:setCmdInputValue", (waveEvent) => {
-            return component.onSetCmdInputValue();
-        });
     }
 
     componentWillUnmount(): void {
@@ -195,7 +192,6 @@ class ChatSidebar extends React.Component<{}, {}> {
     value: OV<string> = mobx.observable.box("", { deep: false, name: "value" });
     osInstance: OverlayScrollbars;
     termFontSize: number = 14;
-    blockIndex: number;
     disposeReaction: () => void;
 
     constructor(props) {
@@ -309,10 +305,16 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onEnterKeyPressed() {
+        const blockIndex = GlobalModel.sidebarchatModel.getSelectedCodeBlockIndex();
+        if (blockIndex != null) {
+            this.onSetCmdInputValue();
+            return true;
+        }
         const messageStr = this.value.get();
         this.submitChatMessage(messageStr);
         this.value.set("");
         GlobalModel.sidebarchatModel.resetCmdAndOutput();
+        return true;
     }
 
     @mobx.action.bound
@@ -526,7 +528,6 @@ class ChatSidebar extends React.Component<{}, {}> {
         const chatMessageItems = GlobalModel.inputModel.AICmdInfoChatItems.slice();
         const renderAIChatKeybindings = GlobalModel.sidebarchatModel.hasFocus();
         const textAreaValue = this.value.get();
-
         return (
             <div ref={this.sidebarRef} className="sidebarchat">
                 <If condition={renderAIChatKeybindings}>
