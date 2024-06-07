@@ -131,6 +131,10 @@ func serveWaveFile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", file.Size))
 	w.Header().Set("X-ZoneFileInfo", base64.StdEncoding.EncodeToString(jsonFileBArr))
 	w.Header().Set("Last-Modified", time.UnixMilli(file.ModTs).UTC().Format(http.TimeFormat))
+	if file.Size == 0 {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	for offset := file.DataStartIdx(); offset < file.Size; offset += filestore.DefaultPartDataSize {
 		_, data, err := filestore.WFS.ReadAt(r.Context(), zoneId, name, offset, filestore.DefaultPartDataSize)
 		if err != nil {
