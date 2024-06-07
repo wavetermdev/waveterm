@@ -42,7 +42,10 @@ export function withLayoutTreeState<T>(layoutNodeAtom: WritableLayoutNodeAtom<T>
         },
         (get, set, value) => {
             set(pendingActionAtom, value.pendingAction);
-            if (get(generationAtom) !== value.generation) set(layoutNodeAtom, value.rootNode);
+            if (get(generationAtom) !== value.generation) {
+                set(generationAtom, value.generation);
+                set(layoutNodeAtom, value.rootNode);
+            }
         }
     );
 }
