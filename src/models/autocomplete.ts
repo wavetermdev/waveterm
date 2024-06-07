@@ -187,9 +187,7 @@ export class AutocompleteModel {
      * @see getPrimarySuggestionIndex
      */
     getPrimarySuggestionCompletion(): string {
-        if (!this.isEnabled) {
-            return null;
-        }
+        if (!this.isEnabled || !this.globalModel.inputModel.curLine) return null;
         const suggestionIndex = this.getPrimarySuggestionIndex();
         const retVal = this.getSuggestionCompletion(suggestionIndex);
         if (retVal) {
