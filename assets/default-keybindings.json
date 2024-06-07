@@ -286,10 +286,6 @@
       "commandStr": ["/history"]
     },
     {
-      "command": "cmdinput:openAIChat",
-      "keys": ["Ctrl:Space"]
-    },
-    {
       "command": "history:closeHistory",
       "keys": ["Ctrl:g", "Ctrl:c"]
     },
