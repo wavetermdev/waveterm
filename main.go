@@ -60,11 +60,32 @@ func createAppMenu(app *application.App) *application.Menu {
 	return menu
 }
 
+func storeWindowSizeAndPos(windowId string, window *application.WebviewWindow) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	windowData, err := wstore.DBGet[*wstore.Window](ctx, windowId)
+	if err != nil {
+		log.Printf("error getting window data: %v\n", err)
+		return
+	}
+	winWidth, winHeight := window.Size()
+	windowData.WinSize.Width = winWidth
+	windowData.WinSize.Height = winHeight
+	x, y := window.AbsolutePosition()
+	windowData.Pos.X = x
+	windowData.Pos.Y = y
+	err = wstore.DBUpdate(ctx, windowData)
+	if err != nil {
+		log.Printf("error updating window size: %v\n", err)
+	}
+}
+
 func createWindow(windowData *wstore.Window, app *application.App) {
 	client, err := wstore.DBGetSingleton[*wstore.Client](context.Background())
 	if err != nil {
 		panic(fmt.Errorf("error getting client data: %w", err))
 	}
+	// TODO: x/y pos is not getting restored correctly.  window seems to ignore the x/y values on startup
 	window := app.NewWebviewWindowWithOptions(application.WebviewWindowOptions{
 		Title: "Wave Terminal",
 		Mac: application.MacWindow{
@@ -72,16 +93,23 @@ func createWindow(windowData *wstore.Window, app *application.App) {
 			Backdrop:                application.MacBackdropTranslucent,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
-		BackgroundColour: application.NewRGBA(0, 0, 0, 255),
-		URL:              "/public/index.html?windowid=" + windowData.OID + "&clientid=" + client.OID,
-		X:                windowData.Pos.X,
-		Y:                windowData.Pos.Y,
-		Width:            windowData.WinSize.Width,
-		Height:           windowData.WinSize.Height,
+		BackgroundColour:   application.NewRGBA(0, 0, 0, 255),
+		URL:                "/public/index.html?windowid=" + windowData.OID + "&clientid=" + client.OID,
+		X:                  windowData.Pos.X,
+		Y:                  windowData.Pos.Y,
+		Width:              windowData.WinSize.Width,
+		Height:             windowData.WinSize.Height,
+		ZoomControlEnabled: true,
 	})
 	eventbus.RegisterWailsWindow(window, windowData.OID)
 	window.On(events.Common.WindowClosing, func(event *application.WindowEvent) {
 		eventbus.UnregisterWailsWindow(window.ID())
+	})
+	window.On(events.Mac.WindowDidResize, func(event *application.WindowEvent) {
+		storeWindowSizeAndPos(windowData.OID, window)
+	})
+	window.On(events.Mac.WindowDidMove, func(event *application.WindowEvent) {
+		storeWindowSizeAndPos(windowData.OID, window)
 	})
 	window.Show()
 	go func() {
