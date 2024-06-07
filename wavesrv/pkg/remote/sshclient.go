@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
@@ -83,7 +84,26 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 	// require pointer to modify list in closure
 	identityFilesPtr := &identityFiles
 
+	sshAuthSock := os.Getenv("SSH_AUTH_SOCK")
+	conn, err := net.Dial("unix", sshAuthSock)
+	var authSockSigners []ssh.Signer
+	if err != nil {
+		log.Printf("Failed to open SSH_AUTH_SOCK: %v", err)
+	} else {
+		agentClient := agent.NewClient(conn)
+		authSockSigners, _ = agentClient.Signers()
+	}
+	authSockSignersPtr := &authSockSigners
+
 	return func() ([]ssh.Signer, error) {
+		// try auth sock
+		if len(*authSockSignersPtr) != 0 {
+			authSockSigner := (*authSockSignersPtr)[0]
+			*authSockSignersPtr = (*authSockSignersPtr)[1:]
+			return []ssh.Signer{authSockSigner}, nil
+		}
+
+		// try manual identity files
 		if len(*identityFilesPtr) == 0 {
 			return nil, fmt.Errorf("no identity files remaining")
 		}
