@@ -317,7 +317,6 @@ class ChatSidebar extends React.Component<{}, {}> {
 
     @mobx.action.bound
     onBlur() {
-        console.log("onBlur");
         GlobalModel.sidebarchatModel.resetFocus();
     }
 
@@ -347,7 +346,6 @@ class ChatSidebar extends React.Component<{}, {}> {
             return;
         }
 
-        console.log("onSidebarClick");
         const pre = target.closest("pre");
         if (pre) {
             const pres = this.chatWindowRef.current?.querySelectorAll("pre");
