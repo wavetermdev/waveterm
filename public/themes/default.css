@@ -170,6 +170,7 @@
     --cmdinput-button-bg-color: var(--tab-green);
     --cmdinput-disabled-bg-color: var(--app-text-bg-disabled-color);
     --cmdinput-history-bg-color: var(--app-bg-color);
+    --cmdinput-ghost-text-color: rgb(145, 150, 144);
 
     /* screen view color */
     --screen-view-text-caption-color: rgb(139, 145, 138);

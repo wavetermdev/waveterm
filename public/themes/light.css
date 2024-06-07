@@ -50,6 +50,7 @@
     --modal-header-bottom-border-color: rgba(0, 0, 0, 0.3);
 
     /* cmd input */
+    --cmdinput-ghost-text-color: rgb(116, 116, 116);
 
     /* scroll colors */
     --scrollbar-background-color: var(--app-bg-color);
