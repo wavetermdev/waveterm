@@ -24,8 +24,6 @@
 
     .overlay-container {
         z-index: 2;
-        background-color: coral;
-        opacity: 0.5;
     }
 
     .tile-node,
@@ -47,7 +45,8 @@
     }
 
     &.animate {
-        .tile-node {
+        .tile-node,
+        .placeholder {
             transition-duration: 0.15s;
             transition-timing-function: ease-in;
             transition-property: transform, width, height;
@@ -66,28 +65,15 @@
         flex: 1 1 auto;
         max-height: 100%;
         max-width: 100%;
-        /* margin: 5px; */
     }
 
     .tile-leaf {
         border: 1px solid black;
     }
 
-    .overlay-leaf {
-        border: 10px solid red;
-    }
-
-    // .tile-leaf {
-    // 	border: 1px solid black;
-    // }
-
-    // .overlay-leaf {
-    // 	margin: 1px;
-    // }
-
     .placeholder {
-        display: flex;
-        flex: 1 1 auto;
         background-color: aqua;
+        opacity: 0.5;
+        border-radius: 5px;
     }
 }

@@ -2,11 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import clsx from "clsx";
-import { CSSProperties, RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+    CSSProperties,
+    ReactNode,
+    RefObject,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import { useDrag, useDragLayer, useDrop } from "react-dnd";
 
 import useResizeObserver from "@react-hook/resize-observer";
 import { useLayoutTreeStateReducerAtom } from "./layoutAtom.js";
+import { findNode } from "./layoutNode.js";
 import {
     ContentRenderer,
     LayoutNode,
@@ -14,11 +25,12 @@ import {
     LayoutTreeActionType,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
+    LayoutTreeMoveNodeAction,
     LayoutTreeState,
     WritableLayoutTreeStateAtom,
 } from "./model.js";
 import "./tilelayout.less";
-import { setTransform as createTransform, debounce, determineDropDirection } from "./utils.js";
+import { FlexDirection, setTransform as createTransform, debounce, determineDropDirection } from "./utils.js";
 
 export interface TileLayoutProps<T> {
     layoutTreeStateAtom: WritableLayoutTreeStateAtom<T>;
@@ -178,6 +190,13 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
                         );
                     })}
             </div>
+            <Placeholder
+                key="placeholder"
+                layoutTreeState={layoutTreeState}
+                overlayContainerRef={overlayContainerRef}
+                nodeRefs={nodeRefs}
+                style={{ top: 10000, ...overlayTransform }}
+            />
             <div
                 key="overlay"
                 ref={overlayContainerRef}
@@ -359,6 +378,90 @@ const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, delete
             }}
         >
             {generateChildren()}
+        </div>
+    );
+};
+
+interface PlaceholderProps<T> {
+    layoutTreeState: LayoutTreeState<T>;
+    overlayContainerRef: React.RefObject<HTMLElement>;
+    nodeRefs: Map<string, React.RefObject<HTMLElement>>;
+    style: React.CSSProperties;
+}
+
+const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style }: PlaceholderProps<T>) => {
+    const [placeholderOverlay, setPlaceholderOverlay] = useState<ReactNode>(null);
+
+    useEffect(() => {
+        let newPlaceholderOverlay: ReactNode;
+        if (layoutTreeState?.pendingAction?.type === LayoutTreeActionType.Move && overlayContainerRef?.current) {
+            const action = layoutTreeState.pendingAction as LayoutTreeMoveNodeAction<T>;
+            let parentId: string;
+            if (action.insertAtRoot) {
+                parentId = layoutTreeState.rootNode.id;
+            } else {
+                parentId = action.parentId;
+            }
+
+            const parentNode = findNode(layoutTreeState.rootNode, parentId);
+            if (action.index !== undefined && parentNode) {
+                const targetIndex = Math.min(
+                    parentNode.children ? parentNode.children.length - 1 : 0,
+                    Math.max(0, action.index - 1)
+                );
+                let targetNode = parentNode?.children?.at(targetIndex);
+                let targetRef: React.RefObject<HTMLElement>;
+                if (targetNode) {
+                    targetRef = nodeRefs.get(targetNode.id);
+                } else {
+                    targetRef = nodeRefs.get(parentNode.id);
+                    targetNode = parentNode;
+                }
+                if (targetRef?.current) {
+                    const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
+                    const targetBoundingRect = targetRef.current.getBoundingClientRect();
+
+                    let placeholderTransform: CSSProperties;
+                    const placeholderHeight =
+                        parentNode.flexDirection === FlexDirection.Column
+                            ? targetBoundingRect.height / 2
+                            : targetBoundingRect.height;
+                    const placeholderWidth =
+                        parentNode.flexDirection === FlexDirection.Row
+                            ? targetBoundingRect.width / 2
+                            : targetBoundingRect.width;
+                    if (action.index > targetIndex) {
+                        placeholderTransform = createTransform({
+                            top:
+                                targetBoundingRect.top +
+                                (parentNode.flexDirection === FlexDirection.Column && targetBoundingRect.height / 2) -
+                                overlayBoundingRect.top,
+                            left:
+                                targetBoundingRect.left +
+                                (parentNode.flexDirection === FlexDirection.Row && targetBoundingRect.width / 2) -
+                                overlayBoundingRect.left,
+                            width: placeholderWidth,
+                            height: placeholderHeight,
+                        });
+                    } else {
+                        placeholderTransform = createTransform({
+                            top: targetBoundingRect.top - overlayBoundingRect.top,
+                            left: targetBoundingRect.left - overlayBoundingRect.left,
+                            width: placeholderWidth,
+                            height: placeholderHeight,
+                        });
+                    }
+
+                    newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
+                }
+            }
+        }
+        setPlaceholderOverlay(newPlaceholderOverlay);
+    }, [layoutTreeState, nodeRefs, overlayContainerRef]);
+
+    return (
+        <div className="placeholder-container" style={style}>
+            {placeholderOverlay}
         </div>
     );
 };
