@@ -45,6 +45,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
 
     const [layoutTreeState, dispatch] = useLayoutTreeStateReducerAtom(layoutTreeStateAtom);
     const [nodeRefs, setNodeRefs] = useState<Map<string, RefObject<HTMLDivElement>>>(new Map());
+    const [nodeRefsGen, setNodeRefsGen] = useState<number>(0);
 
     useEffect(() => {
         console.log("layoutTreeState changed", layoutTreeState);
@@ -56,6 +57,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
                 prev.set(id, ref);
                 return prev;
             });
+            setNodeRefsGen((prev) => prev + 1);
         },
         [setNodeRefs]
     );
@@ -67,6 +69,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
                     prev.delete(id);
                     return prev;
                 });
+                setNodeRefsGen((prev) => prev + 1);
             } else {
                 console.log("deleteRef id not found", id);
             }
@@ -133,13 +136,13 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
                 );
             }
         }, 30),
-        [activeDrag, overlayContainerRef, displayContainerRef, layoutTreeState.leafs, nodeRefs]
+        [activeDrag, overlayContainerRef, displayContainerRef, layoutTreeState.leafs, nodeRefsGen]
     );
 
     // Update the transforms whenever we drag something and whenever the layout updates.
     useLayoutEffect(() => {
         updateTransforms();
-    }, [activeDrag, layoutTreeState, updateTransforms]);
+    }, [updateTransforms]);
 
     useResizeObserver(overlayContainerRef, () => updateTransforms());
 
