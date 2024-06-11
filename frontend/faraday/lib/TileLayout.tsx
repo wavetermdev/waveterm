@@ -275,7 +275,6 @@ const TileNode = <T,>({
     // No-op if not provided, meaning React-DnD will attempt to generate a preview from the DOM, which is very slow.
     const preview = useMemo(() => {
         const previewElement = renderPreview?.(layoutNode.data);
-        console.log("preview", previewElement);
         return (
             <div className="tile-preview-container">
                 <div className="tile-preview" ref={previewRef}>
@@ -289,10 +288,8 @@ const TileNode = <T,>({
     // I found a hacky workaround of just adding a timeout so the capture doesn't happen until after the first paint.
     useEffect(
         debounce(() => {
-            console.log("dragPreview effect");
             if (previewRef.current) {
                 toPng(previewRef.current).then((url) => {
-                    console.log("got preview url", url);
                     const img = new Image();
                     img.src = url;
                     dragPreview(img);
