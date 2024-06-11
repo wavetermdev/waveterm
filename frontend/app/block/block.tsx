@@ -18,7 +18,7 @@ interface BlockProps {
 }
 
 const BlockHeader = ({ blockId, onClose }: BlockProps) => {
-    const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
 
     return (
         <div key="header" className="block-header">

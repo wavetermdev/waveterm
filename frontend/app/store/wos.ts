@@ -21,7 +21,7 @@ type WaveObjectValue<T extends WaveObj> = {
 };
 
 function splitORef(oref: string): [string, string] {
-    let parts = oref.split(":");
+    const parts = oref.split(":");
     if (parts.length != 2) {
         throw new Error("invalid oref");
     }
@@ -54,11 +54,7 @@ function makeORef(otype: string, oid: string): string {
 }
 
 function GetObject<T>(oref: string): Promise<T> {
-    let prtn = $Call.ByName(
-        "github.com/wavetermdev/thenextwave/pkg/service/objectservice.ObjectService.GetObject",
-        oref
-    );
-    return prtn;
+    return $Call.ByName("github.com/wavetermdev/thenextwave/pkg/service/objectservice.ObjectService.GetObject", oref);
 }
 
 const waveObjectValueCache = new Map<string, WaveObjectValue<any>>();
@@ -75,8 +71,8 @@ function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boo
     if (!shouldFetch) {
         return wov;
     }
-    let startTs = Date.now();
-    let localPromise = GetObject<T>(oref);
+    const startTs = Date.now();
+    const localPromise = GetObject<T>(oref);
     wov.pendingPromise = localPromise;
     localPromise.then((val) => {
         if (wov.pendingPromise != localPromise) {
@@ -138,24 +134,21 @@ function getWaveObjectAtom<T extends WaveObj>(oref: string): jotai.WritableAtom<
         waveObjectValueCache.set(oref, wov);
     }
     return jotai.atom(
-        (get) => {
-            let dataValue = get(wov.dataAtom);
-            return dataValue.value;
-        },
+        (get) => get(wov.dataAtom).value,
         (_get, set, value: T) => {
             setObjectValue(value, set, true);
         }
     );
 }
 
-function getWaveObjectLoadingAtom<T extends WaveObj>(oref: string): jotai.Atom<boolean> {
+function getWaveObjectLoadingAtom(oref: string): jotai.Atom<boolean> {
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
         wov = createWaveValueObject(oref, true);
         waveObjectValueCache.set(oref, wov);
     }
     return jotai.atom((get) => {
-        let dataValue = get(wov.dataAtom);
+        const dataValue = get(wov.dataAtom);
         if (dataValue.loading) {
             return null;
         }
@@ -203,7 +196,7 @@ function updateWaveObject(update: WaveObjUpdate) {
     if (update == null) {
         return;
     }
-    let oref = makeORef(update.otype, update.oid);
+    const oref = makeORef(update.otype, update.oid);
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
         wov = createWaveValueObject(oref, false);
@@ -217,7 +210,7 @@ function updateWaveObject(update: WaveObjUpdate) {
             console.log("invalid wave object update", update);
             return;
         }
-        let curValue: WaveObjectDataItemType<WaveObj> = globalStore.get(wov.dataAtom);
+        const curValue: WaveObjectDataItemType<WaveObj> = globalStore.get(wov.dataAtom);
         if (curValue.value != null && curValue.value.version >= update.obj.version) {
             return;
         }
@@ -229,14 +222,14 @@ function updateWaveObject(update: WaveObjUpdate) {
 }
 
 function updateWaveObjects(vals: WaveObjUpdate[]) {
-    for (let val of vals) {
+    for (const val of vals) {
         updateWaveObject(val);
     }
 }
 
 function cleanWaveObjectCache() {
-    let now = Date.now();
-    for (let [oref, wov] of waveObjectValueCache) {
+    const now = Date.now();
+    for (const [oref, wov] of waveObjectValueCache) {
         if (wov.refCount == 0 && wov.holdTime < now) {
             waveObjectValueCache.delete(oref);
         }
@@ -280,11 +273,11 @@ function wrapObjectServiceCall<T>(fnName: string, ...args: any[]): Promise<T> {
 // should provide getFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.get function
 function getObjectValue<T>(oref: string, getFn?: jotai.Getter): T {
-    let wov = waveObjectValueCache.get(oref);
-    if (wov == null) {
+    const wov = waveObjectValueCache.get(oref);
+    if (wov === undefined) {
         return null;
     }
-    if (getFn == null) {
+    if (getFn === undefined) {
         getFn = globalStore.get;
     }
     const atomVal = getFn(wov.dataAtom);
@@ -296,11 +289,11 @@ function getObjectValue<T>(oref: string, getFn?: jotai.Getter): T {
 // otherwise it will use the globalStore.set function
 function setObjectValue<T extends WaveObj>(value: T, setFn?: jotai.Setter, pushToServer?: boolean) {
     const oref = makeORef(value.otype, value.oid);
-    let wov = waveObjectValueCache.get(oref);
-    if (wov == null) {
+    const wov = waveObjectValueCache.get(oref);
+    if (wov === undefined) {
         return;
     }
-    if (setFn == null) {
+    if (setFn === undefined) {
         setFn = globalStore.set;
     }
     setFn(wov.dataAtom, { value: value, loading: false });

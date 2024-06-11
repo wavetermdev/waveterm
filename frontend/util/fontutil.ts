@@ -61,11 +61,11 @@ function loadFiraCodeFont() {
         return;
     }
     isFiraCodeLoaded = true;
-    let firaCodeRegular = new FontFace("Fira Code", "url('/fonts/firacode-regular.woff2')", {
+    const firaCodeRegular = new FontFace("Fira Code", "url('/fonts/firacode-regular.woff2')", {
         style: "normal",
         weight: "400",
     });
-    let firaCodeBold = new FontFace("Fira Code", "url('/fonts/firacode-bold.woff2')", {
+    const firaCodeBold = new FontFace("Fira Code", "url('/fonts/firacode-bold.woff2')", {
         style: "normal",
         weight: "700",
     });
@@ -80,19 +80,19 @@ function loadHackFont() {
         return;
     }
     isHackFontLoaded = true;
-    let hackRegular = new FontFace("Hack", "url('/fonts/hack-regular.woff2')", {
+    const hackRegular = new FontFace("Hack", "url('/fonts/hack-regular.woff2')", {
         style: "normal",
         weight: "400",
     });
-    let hackBold = new FontFace("Hack", "url('/fonts/hack-bold.woff2')", {
+    const hackBold = new FontFace("Hack", "url('/fonts/hack-bold.woff2')", {
         style: "normal",
         weight: "700",
     });
-    let hackItalic = new FontFace("Hack", "url('/fonts/hack-italic.woff2')", {
+    const hackItalic = new FontFace("Hack", "url('/fonts/hack-italic.woff2')", {
         style: "italic",
         weight: "400",
     });
-    let hackBoldItalic = new FontFace("Hack", "url('/fonts/hack-bolditalic.woff2')", {
+    const hackBoldItalic = new FontFace("Hack", "url('/fonts/hack-bolditalic.woff2')", {
         style: "italic",
         weight: "700",
     });
@@ -111,7 +111,7 @@ function loadBaseFonts() {
         return;
     }
     isBaseFontsLoaded = true;
-    let mmFont = new FontFace("Martian Mono", "url(/fonts/MartianMono-VariableFont_wdth,wght.ttf)", {
+    const mmFont = new FontFace("Martian Mono", "url(/fonts/MartianMono-VariableFont_wdth,wght.ttf)", {
         style: "normal",
         weight: "normal",
     });

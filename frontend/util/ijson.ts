@@ -13,7 +13,7 @@ function formatPath(path: PathType): string {
         return "$";
     }
     let pathStr = "$";
-    for (let pathPart of path) {
+    for (const pathPart of path) {
         if (typeof pathPart === "string") {
             if (simplePathStrRe.test(pathPart)) {
                 pathStr += "." + pathPart;
@@ -39,7 +39,7 @@ function isObject(obj: any): boolean {
 
 function getPath(obj: any, path: PathType): any {
     let cur = obj;
-    for (let pathPart of path) {
+    for (const pathPart of path) {
         if (cur == null) {
             return null;
         }
@@ -86,7 +86,7 @@ function checkPath(path: PathType): boolean {
     if (!isArray(path)) {
         return false;
     }
-    for (let pathPart of path) {
+    for (const pathPart of path) {
         if (typeof pathPart !== "string" && typeof pathPart !== "number") {
             return false;
         }
@@ -118,7 +118,7 @@ function isEmpty(obj: any): boolean {
         return obj.length == 0;
     }
     if (isObject(obj)) {
-        for (let key in obj) {
+        for (const _ in obj) {
             return false;
         }
         return true;

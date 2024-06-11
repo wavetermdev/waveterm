@@ -33,9 +33,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", clientId));
     const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", windowId));
     await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
-    let reactElem = React.createElement(App, null, null);
-    let elem = document.getElementById("main");
-    let root = createRoot(elem);
+    const reactElem = React.createElement(App, null, null);
+    const elem = document.getElementById("main");
+    const root = createRoot(elem);
     document.fonts.ready.then(() => {
         console.log("Wave First Render");
         root.render(reactElem);
