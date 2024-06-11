@@ -268,6 +268,13 @@ const TileNode = <T,>({
     useEffect(() => {
         if (isDragging) {
             console.log("drag start", layoutNode.id, layoutNode, dragItem);
+            if (previewRef.current) {
+                toPng(previewRef.current).then((url) => {
+                    const img = new Image();
+                    img.src = url;
+                    img.onload = () => dragPreview(img);
+                });
+            }
         }
     }, [isDragging]);
 
@@ -284,20 +291,20 @@ const TileNode = <T,>({
         );
     }, []);
 
-    // Once the preview div is mounted, grab it and render a PNG, then register it with the DnD system. I noticed that if I call this immediately, it occasionally captures an empty HTMLElement.
-    // I found a hacky workaround of just adding a timeout so the capture doesn't happen until after the first paint.
-    useEffect(
-        debounce(() => {
-            if (previewRef.current) {
-                toPng(previewRef.current).then((url) => {
-                    const img = new Image();
-                    img.src = url;
-                    dragPreview(img);
-                });
-            }
-        }, 50),
-        [previewRef]
-    );
+    const [previewImageSet, setPreviewImageSet] = useState<boolean>(false);
+
+    // When a user first mouses over a node, generate a preview image and set it as the drag preview.
+    const generatePreviewImage = useCallback(() => {
+        console.log("generatePreviewImage", layoutNode.id);
+        if (!previewImageSet && previewRef.current) {
+            toPng(previewRef.current).then((url) => {
+                const img = new Image();
+                img.src = url;
+                img.onload = () => dragPreview(img);
+                setPreviewImageSet(true);
+            });
+        }
+    }, [previewRef, previewImageSet, dragPreview]);
 
     // Register the tile item as a draggable component
     useEffect(() => {
@@ -328,6 +335,7 @@ const TileNode = <T,>({
                 flexBasis: layoutNode.size,
                 ...transform,
             }}
+            onPointerEnter={generatePreviewImage}
         >
             {leafContent}
             {preview}
