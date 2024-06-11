@@ -23,7 +23,7 @@ const BlockHeader = ({ blockId, onClose }: BlockProps) => {
     return (
         <div key="header" className="block-header">
             <div className="block-header-text text-fixed">
-                Block [{blockId.substring(0, 8)}] {blockData.view}
+                Block [{blockId.substring(0, 8)}] {blockData?.view}
             </div>
             {onClose && (
                 <div className="close-button" onClick={onClose}>
