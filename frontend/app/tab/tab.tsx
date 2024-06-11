@@ -13,7 +13,7 @@ import "./tab.less";
 
 const TabContent = ({ tabId }: { tabId: string }) => {
     const oref = useMemo(() => WOS.makeORef("tab", tabId), [tabId]);
-    const loadingAtom = useMemo(() => WOS.getWaveObjectLoadingAtom<Tab>(oref), [oref]);
+    const loadingAtom = useMemo(() => WOS.getWaveObjectLoadingAtom(oref), [oref]);
     const tabLoading = useAtomValue(loadingAtom);
     const tabAtom = useMemo(() => WOS.getWaveObjectAtom<Tab>(oref), [oref]);
     const layoutStateAtom = useMemo(() => getLayoutStateAtomForTab(tabId, tabAtom), [tabAtom, tabId]);
