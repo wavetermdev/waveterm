@@ -6,6 +6,7 @@ import {
     CSSProperties,
     ReactNode,
     RefObject,
+    Suspense,
     useCallback,
     useEffect,
     useLayoutEffect,
@@ -16,6 +17,7 @@ import {
 import { useDrag, useDragLayer, useDrop } from "react-dnd";
 
 import useResizeObserver from "@react-hook/resize-observer";
+import { toPng } from "html-to-image";
 import { useLayoutTreeStateReducerAtom } from "./layoutAtom.js";
 import { findNode } from "./layoutNode.js";
 import {
@@ -27,6 +29,7 @@ import {
     LayoutTreeDeleteNodeAction,
     LayoutTreeMoveNodeAction,
     LayoutTreeState,
+    PreviewRenderer,
     WritableLayoutTreeStateAtom,
 } from "./model.js";
 import "./tilelayout.less";
@@ -35,11 +38,18 @@ import { FlexDirection, setTransform as createTransform, debounce, determineDrop
 export interface TileLayoutProps<T> {
     layoutTreeStateAtom: WritableLayoutTreeStateAtom<T>;
     renderContent: ContentRenderer<T>;
+    renderPreview?: PreviewRenderer<T>;
     onNodeDelete?: (data: T) => Promise<void>;
     className?: string;
 }
 
-export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, onNodeDelete }: TileLayoutProps<T>) => {
+export const TileLayout = <T,>({
+    layoutTreeStateAtom,
+    className,
+    renderContent,
+    renderPreview,
+    onNodeDelete,
+}: TileLayoutProps<T>) => {
     const overlayContainerRef = useRef<HTMLDivElement>(null);
     const displayContainerRef = useRef<HTMLDivElement>(null);
 
@@ -54,6 +64,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
     const setRef = useCallback(
         (id: string, ref: RefObject<HTMLDivElement>) => {
             setNodeRefs((prev) => {
+                // console.log("setRef", id, ref);
                 prev.set(id, ref);
                 return prev;
             });
@@ -64,6 +75,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
 
     const deleteRef = useCallback(
         (id: string) => {
+            // console.log("deleteRef", id);
             if (nodeRefs.has(id)) {
                 setNodeRefs((prev) => {
                     prev.delete(id);
@@ -105,6 +117,7 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
 
                 for (const leaf of layoutTreeState.leafs) {
                     const leafRef = nodeRefs.get(leaf.id);
+                    // console.log("current leafRef", leafRef.current);
                     if (leafRef?.current) {
                         const leafBounding = leafRef.current.getBoundingClientRect();
                         const transform = createTransform({
@@ -148,16 +161,11 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
 
     // Ensure that we don't see any jostling in the layout when we're rendering it the first time.
     // `animate` will be disabled until after the transforms have all applied the first time.
-    // `overlayVisible` will be disabled until after the overlay has been pushed out of view.
     const [animate, setAnimate] = useState(false);
-    const [overlayVisible, setOverlayVisible] = useState(false);
     useEffect(() => {
         setTimeout(() => {
             setAnimate(true);
         }, 50);
-        setTimeout(() => {
-            setOverlayVisible(true);
-        }, 30);
     }, []);
 
     const onLeafClose = useCallback(
@@ -177,50 +185,54 @@ export const TileLayout = <T,>({ layoutTreeStateAtom, className, renderContent, 
     );
 
     return (
-        <div className={clsx("tile-layout", className, { animate, overlayVisible })}>
-            <div key="display" ref={displayContainerRef} className="display-container">
-                {layoutLeafTransforms &&
-                    layoutTreeState.leafs.map((leaf) => {
-                        return (
-                            <TileNode
-                                key={leaf.id}
-                                layoutNode={leaf}
-                                renderContent={renderContent}
-                                transform={layoutLeafTransforms[leaf.id]}
-                                onLeafClose={onLeafClose}
-                                ready={animate}
-                            />
-                        );
-                    })}
-            </div>
-            <Placeholder
-                key="placeholder"
-                layoutTreeState={layoutTreeState}
-                overlayContainerRef={overlayContainerRef}
-                nodeRefs={nodeRefs}
-                style={{ top: 10000, ...overlayTransform }}
-            />
-            <div
-                key="overlay"
-                ref={overlayContainerRef}
-                className="overlay-container"
-                style={{ top: 10000, ...overlayTransform }}
-            >
-                <OverlayNode
-                    layoutNode={layoutTreeState.rootNode}
+        <Suspense>
+            <div className={clsx("tile-layout", className, { animate })}>
+                <div key="display" ref={displayContainerRef} className="display-container">
+                    {layoutLeafTransforms &&
+                        layoutTreeState.leafs.map((leaf) => {
+                            return (
+                                <TileNode
+                                    key={leaf.id}
+                                    layoutNode={leaf}
+                                    renderContent={renderContent}
+                                    renderPreview={renderPreview}
+                                    transform={layoutLeafTransforms[leaf.id]}
+                                    onLeafClose={onLeafClose}
+                                    ready={animate}
+                                />
+                            );
+                        })}
+                </div>
+                <Placeholder
+                    key="placeholder"
                     layoutTreeState={layoutTreeState}
-                    dispatch={dispatch}
-                    setRef={setRef}
-                    deleteRef={deleteRef}
+                    overlayContainerRef={overlayContainerRef}
+                    nodeRefs={nodeRefs}
+                    style={{ top: 10000, ...overlayTransform }}
                 />
+                <div
+                    key="overlay"
+                    ref={overlayContainerRef}
+                    className="overlay-container"
+                    style={{ top: 10000, ...overlayTransform }}
+                >
+                    <OverlayNode
+                        layoutNode={layoutTreeState.rootNode}
+                        layoutTreeState={layoutTreeState}
+                        dispatch={dispatch}
+                        setRef={setRef}
+                        deleteRef={deleteRef}
+                    />
+                </div>
             </div>
-        </div>
+        </Suspense>
     );
 };
 
 interface TileNodeProps<T> {
     layoutNode: LayoutNode<T>;
     renderContent: ContentRenderer<T>;
+    renderPreview?: PreviewRenderer<T>;
     onLeafClose: (node: LayoutNode<T>) => void;
     ready: boolean;
     transform: CSSProperties;
@@ -228,9 +240,18 @@ interface TileNodeProps<T> {
 
 const dragItemType = "TILE_ITEM";
 
-const TileNode = <T,>({ layoutNode, renderContent, transform, onLeafClose, ready }: TileNodeProps<T>) => {
+const TileNode = <T,>({
+    layoutNode,
+    renderContent,
+    renderPreview,
+    transform,
+    onLeafClose,
+    ready,
+}: TileNodeProps<T>) => {
     const tileNodeRef = useRef<HTMLDivElement>(null);
+    const previewRef = useRef<HTMLDivElement>(null);
 
+    // Register the node as a draggable item.
     const [{ isDragging, dragItem }, drag, dragPreview] = useDrag(
         () => ({
             type: dragItemType,
@@ -243,16 +264,47 @@ const TileNode = <T,>({ layoutNode, renderContent, transform, onLeafClose, ready
         [layoutNode]
     );
 
+    // TODO: remove debug effect
     useEffect(() => {
         if (isDragging) {
             console.log("drag start", layoutNode.id, layoutNode, dragItem);
         }
     }, [isDragging]);
 
+    // Generate a preview div using the provided renderPreview function. This will be placed in the DOM so we can render an image from it, but it is pushed out of view so the user will not see it.
+    // No-op if not provided, meaning React-DnD will attempt to generate a preview from the DOM, which is very slow.
+    const preview = useMemo(() => {
+        const previewElement = renderPreview?.(layoutNode.data);
+        console.log("preview", previewElement);
+        return (
+            <div className="tile-preview-container">
+                <div className="tile-preview" ref={previewRef}>
+                    {previewElement}
+                </div>
+            </div>
+        );
+    }, []);
+
+    // Once the preview div is mounted, grab it and render a PNG, then register it with the DnD system. I noticed that if I call this immediately, it occasionally captures an empty HTMLElement.
+    // I found a hacky workaround of just adding a timeout so the capture doesn't happen until after the first paint.
+    useEffect(
+        debounce(() => {
+            console.log("dragPreview effect");
+            if (previewRef.current) {
+                toPng(previewRef.current).then((url) => {
+                    console.log("got preview url", url);
+                    const img = new Image();
+                    img.src = url;
+                    dragPreview(img);
+                });
+            }
+        }, 50),
+        [previewRef]
+    );
+
     // Register the tile item as a draggable component
     useEffect(() => {
         drag(tileNodeRef);
-        dragPreview(tileNodeRef);
     }, [tileNodeRef]);
 
     const onClose = useCallback(() => {
@@ -267,11 +319,11 @@ const TileNode = <T,>({ layoutNode, renderContent, transform, onLeafClose, ready
                 </div>
             )
         );
-    }, [, layoutNode.data, ready, onClose]);
+    }, [layoutNode.data, ready, onClose]);
 
     return (
         <div
-            className="tile-node"
+            className={clsx("tile-node", { dragging: isDragging })}
             ref={tileNodeRef}
             id={layoutNode.id}
             style={{
@@ -281,6 +333,7 @@ const TileNode = <T,>({ layoutNode, renderContent, transform, onLeafClose, ready
             }}
         >
             {leafContent}
+            {preview}
         </div>
     );
 };
@@ -424,7 +477,7 @@ const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style
                     const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
                     const targetBoundingRect = targetRef.current.getBoundingClientRect();
 
-                    let placeholderTransform: CSSProperties;
+                    // Placeholder should be either half the height or half the width of the targetNode, depending on the flex direction of the targetNode's parent.
                     const placeholderHeight =
                         parentNode.flexDirection === FlexDirection.Column
                             ? targetBoundingRect.height / 2
@@ -433,27 +486,32 @@ const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style
                         parentNode.flexDirection === FlexDirection.Row
                             ? targetBoundingRect.width / 2
                             : targetBoundingRect.width;
+
+                    // Default to placing the placeholder in the first half of the target node.
+                    let placeholderTop = targetBoundingRect.top - overlayBoundingRect.top;
+                    let placeholderLeft = targetBoundingRect.left - overlayBoundingRect.left;
                     if (action.index > targetIndex) {
-                        placeholderTransform = createTransform({
-                            top:
-                                targetBoundingRect.top +
-                                (parentNode.flexDirection === FlexDirection.Column && targetBoundingRect.height / 2) -
-                                overlayBoundingRect.top,
-                            left:
-                                targetBoundingRect.left +
-                                (parentNode.flexDirection === FlexDirection.Row && targetBoundingRect.width / 2) -
-                                overlayBoundingRect.left,
-                            width: placeholderWidth,
-                            height: placeholderHeight,
-                        });
-                    } else {
-                        placeholderTransform = createTransform({
-                            top: targetBoundingRect.top - overlayBoundingRect.top,
-                            left: targetBoundingRect.left - overlayBoundingRect.left,
-                            width: placeholderWidth,
-                            height: placeholderHeight,
-                        });
+                        if (action.index >= (parentNode.children?.length ?? 1)) {
+                            // If there are no more nodes after the specified index, place the placeholder in the second half of the target node (either right or bottom).
+                            placeholderTop +=
+                                parentNode.flexDirection === FlexDirection.Column && targetBoundingRect.height / 2;
+                            placeholderLeft +=
+                                parentNode.flexDirection === FlexDirection.Row && targetBoundingRect.width / 2;
+                        } else {
+                            // Otherwise, place the placeholder between the target node (the one after which it will be inserted) and the next node
+                            placeholderTop +=
+                                parentNode.flexDirection === FlexDirection.Column &&
+                                (3 * targetBoundingRect.height) / 4;
+                            placeholderLeft +=
+                                parentNode.flexDirection === FlexDirection.Row && (3 * targetBoundingRect.width) / 4;
+                        }
                     }
+                    const placeholderTransform = createTransform({
+                        top: placeholderTop,
+                        left: placeholderLeft,
+                        width: placeholderWidth,
+                        height: placeholderHeight,
+                    });
 
                     newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
                 }

@@ -63,11 +63,12 @@ function TabBar({ workspace }: { workspace: Workspace }) {
 function Widgets() {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
     const activeTabAtom = useMemo(() => {
-        return WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", windowData.activetabid));
+        return getLayoutStateAtomForTab(
+            windowData.activetabid,
+            WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", windowData.activetabid))
+        );
     }, [windowData.activetabid]);
-    const [, dispatchLayoutStateAction] = useLayoutTreeStateReducerAtom(
-        getLayoutStateAtomForTab(windowData.activetabid, activeTabAtom)
-    );
+    const [, dispatchLayoutStateAction] = useLayoutTreeStateReducerAtom(activeTabAtom);
 
     const addBlockToTab = useCallback(
         (blockId: string) => {

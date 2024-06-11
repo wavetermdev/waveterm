@@ -280,13 +280,11 @@ function wrapObjectServiceCall<T>(fnName: string, ...args: any[]): Promise<T> {
 // should provide getFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.get function
 function getObjectValue<T>(oref: string, getFn?: jotai.Getter): T {
-    console.log("getObjectValue", oref);
     let wov = waveObjectValueCache.get(oref);
     if (wov == null) {
         return null;
     }
     if (getFn == null) {
-        console.log("getObjectValue", "getFn is null, using globalStore.get");
         getFn = globalStore.get;
     }
     const atomVal = getFn(wov.dataAtom);
@@ -303,14 +301,10 @@ function setObjectValue<T extends WaveObj>(value: T, setFn?: jotai.Setter, pushT
         return;
     }
     if (setFn == null) {
-        console.log("setter null");
         setFn = globalStore.set;
     }
-    console.log("Setting", oref, "to", value);
     setFn(wov.dataAtom, { value: value, loading: false });
-    console.log("Setting", oref, "to", value, "done");
     if (pushToServer) {
-        console.log("pushToServer", oref, value);
         UpdateObject(value, false);
     }
 }
@@ -340,7 +334,6 @@ export function UpdateObjectMeta(blockId: string, meta: MetadataType): Promise<v
 }
 
 export function UpdateObject(waveObj: WaveObj, returnUpdates: boolean): Promise<WaveObjUpdate[]> {
-    console.log("UpdateObject", waveObj, returnUpdates);
     return wrapObjectServiceCall("UpdateObject", waveObj, returnUpdates);
 }
 export {

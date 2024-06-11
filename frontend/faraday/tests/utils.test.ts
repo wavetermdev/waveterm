@@ -14,16 +14,32 @@ test("determineDropDirection", () => {
     const dimensions: Dimensions = {
         top: 0,
         left: 0,
-        height: 3,
-        width: 3,
+        height: 5,
+        width: 5,
     };
 
     assert.equal(
         determineDropDirection(dimensions, {
-            x: 1.5,
-            y: 0.5,
+            x: 2.5,
+            y: 1.5,
         }),
         DropDirection.Top
+    );
+
+    assert.equal(
+        determineDropDirection(dimensions, {
+            x: 2.5,
+            y: 3.5,
+        }),
+        DropDirection.Bottom
+    );
+
+    assert.equal(
+        determineDropDirection(dimensions, {
+            x: 3.5,
+            y: 2.5,
+        }),
+        DropDirection.Right
     );
 
     assert.equal(
@@ -31,24 +47,49 @@ test("determineDropDirection", () => {
             x: 1.5,
             y: 2.5,
         }),
-        DropDirection.Bottom
+        DropDirection.Left
     );
 
     assert.equal(
         determineDropDirection(dimensions, {
             x: 2.5,
-            y: 1.5,
+            y: 0.5,
         }),
-        DropDirection.Right
+        DropDirection.OuterTop
+    );
+
+    assert.equal(
+        determineDropDirection(dimensions, {
+            x: 4.5,
+            y: 2.5,
+        }),
+        DropDirection.OuterRight
+    );
+
+    assert.equal(
+        determineDropDirection(dimensions, {
+            x: 2.5,
+            y: 4.5,
+        }),
+        DropDirection.OuterBottom
     );
 
     assert.equal(
         determineDropDirection(dimensions, {
             x: 0.5,
-            y: 1.5,
+            y: 2.5,
         }),
-        DropDirection.Left
+        DropDirection.OuterLeft
     );
+
+    // TODO: uncomment once center direction is supported
+    // assert.equal(
+    //     determineDropDirection(dimensions, {
+    //         x: 2.5,
+    //         y: 2.5,
+    //     }),
+    //     DropDirection.Center
+    // );
 
     assert.equal(
         determineDropDirection(dimensions, {

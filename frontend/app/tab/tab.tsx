@@ -1,7 +1,7 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Block } from "@/app/block/block";
+import { Block, BlockHeader } from "@/app/block/block";
 import * as WOS from "@/store/wos";
 
 import { TileLayout } from "@/faraday/index";
@@ -27,6 +27,11 @@ const TabContent = ({ tabId }: { tabId: string }) => {
         return <Block blockId={tabData.blockId} onClose={onClose} />;
     }, []);
 
+    const renderPreview = useCallback((tabData: TabLayoutData) => {
+        console.log("renderPreview", tabData);
+        return <BlockHeader blockId={tabData.blockId} />;
+    }, []);
+
     const onNodeDelete = useCallback((data: TabLayoutData) => {
         console.log("onNodeDelete", data);
         return WOS.DeleteBlock(data.blockId);
@@ -49,6 +54,7 @@ const TabContent = ({ tabId }: { tabId: string }) => {
             <TileLayout
                 key={tabId}
                 renderContent={renderBlock}
+                renderPreview={renderPreview}
                 layoutTreeStateAtom={layoutStateAtom}
                 onNodeDelete={onNodeDelete}
             />

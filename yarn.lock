@@ -6961,6 +6961,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"html-to-image@npm:^1.11.11":
+  version: 1.11.11
+  resolution: "html-to-image@npm:1.11.11"
+  checksum: 10c0/0b6349221ad253dfca01d165c589d44341e942faf0273aab28c8b7d86ff2922d3e8e6390f57bf5ddaf6bac9a3b590a8cdaa77d52a363354796dd0e0e05eb35d2
+  languageName: node
+  linkType: hard
+
 "html-url-attributes@npm:^3.0.0":
   version: 3.0.0
   resolution: "html-url-attributes@npm:3.0.0"
@@ -11126,6 +11133,7 @@ __metadata:
     clsx: "npm:^2.1.1"
     eslint: "npm:^9.2.0"
     eslint-config-prettier: "npm:^9.1.0"
+    html-to-image: "npm:^1.11.11"
     immer: "npm:^10.1.1"
     jotai: "npm:^2.8.0"
     less: "npm:^4.2.0"

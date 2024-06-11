@@ -41,7 +41,14 @@
     }
 
     .tile-node {
-        visibility: hidden;
+        &.dragging {
+            filter: blur(8px);
+        }
+
+        .tile-preview-container {
+            position: absolute;
+            top: 10000px;
+        }
     }
 
     &.animate {
@@ -50,12 +57,6 @@
             transition-duration: 0.15s;
             transition-timing-function: ease-in;
             transition-property: transform, width, height;
-        }
-    }
-
-    &.overlayVisible {
-        .tile-node {
-            visibility: unset;
         }
     }
 

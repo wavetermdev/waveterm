@@ -14,8 +14,25 @@ import "./block.less";
 
 interface BlockProps {
     blockId: string;
-    onClose: () => void;
+    onClose?: () => void;
 }
+
+const BlockHeader = ({ blockId, onClose }: BlockProps) => {
+    const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+
+    return (
+        <div key="header" className="block-header">
+            <div className="block-header-text text-fixed">
+                Block [{blockId.substring(0, 8)}] {blockData.view}
+            </div>
+            {onClose && (
+                <div className="close-button" onClick={onClose}>
+                    <i className="fa fa-solid fa-xmark-large" />
+                </div>
+            )}
+        </div>
+    );
+};
 
 const Block = ({ blockId, onClose }: BlockProps) => {
     const blockRef = React.useRef<HTMLDivElement>(null);
@@ -36,15 +53,7 @@ const Block = ({ blockId, onClose }: BlockProps) => {
     }
     return (
         <div className="block" ref={blockRef}>
-            <div key="header" className="block-header">
-                <div className="block-header-text text-fixed">
-                    Block [{blockId.substring(0, 8)}] {blockData.view}
-                </div>
-                <div className="flex-spacer" />
-                <div className="close-button" onClick={onClose}>
-                    <i className="fa fa-solid fa-xmark-large" />
-                </div>
-            </div>
+            <BlockHeader blockId={blockId} onClose={onClose} />
             <div key="content" className="block-content">
                 <ErrorBoundary>
                     <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{blockElem}</React.Suspense>
@@ -54,4 +63,4 @@ const Block = ({ blockId, onClose }: BlockProps) => {
     );
 };
 
-export { Block };
+export { Block, BlockHeader };

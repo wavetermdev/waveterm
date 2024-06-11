@@ -116,10 +116,27 @@ function computeMoveNode<T>(
 
     let newOperation: MoveOperation<T>;
     const parent = lazy(() => findParent(rootNode, node.id));
+    const grandparent = lazy(() => findParent(rootNode, parent().id));
     const indexInParent = lazy(() => parent()?.children.findIndex((child) => node.id === child.id));
+    const indexInGrandparent = lazy(() => grandparent()?.children.findIndex((child) => parent().id === child.id));
     const isRoot = rootNode.id === node.id;
 
     switch (direction) {
+        case DropDirection.OuterTop:
+            if (node.flexDirection === FlexDirection.Column) {
+                console.log("outer top column");
+                const grandparentNode = grandparent();
+                if (grandparentNode) {
+                    console.log("has grandparent", grandparentNode);
+                    const index = indexInGrandparent();
+                    newOperation = {
+                        parentId: grandparentNode.id,
+                        node: nodeToMove,
+                        index,
+                    };
+                    break;
+                }
+            }
         case DropDirection.Top:
             if (node.flexDirection === FlexDirection.Column) {
                 newOperation = { parentId: node.id, index: 0, node: nodeToMove };
@@ -140,6 +157,21 @@ function computeMoveNode<T>(
                     };
             }
             break;
+        case DropDirection.OuterBottom:
+            if (node.flexDirection === FlexDirection.Column) {
+                console.log("outer bottom column");
+                const grandparentNode = grandparent();
+                if (grandparentNode) {
+                    console.log("has grandparent", grandparentNode);
+                    const index = indexInGrandparent() + 1;
+                    newOperation = {
+                        parentId: grandparentNode.id,
+                        node: nodeToMove,
+                        index,
+                    };
+                    break;
+                }
+            }
         case DropDirection.Bottom:
             if (node.flexDirection === FlexDirection.Column) {
                 newOperation = { parentId: node.id, index: 1, node: nodeToMove };
@@ -160,6 +192,21 @@ function computeMoveNode<T>(
                     };
             }
             break;
+        case DropDirection.OuterLeft:
+            if (node.flexDirection === FlexDirection.Row) {
+                console.log("outer left row");
+                const grandparentNode = grandparent();
+                if (grandparentNode) {
+                    console.log("has grandparent", grandparentNode);
+                    const index = indexInGrandparent();
+                    newOperation = {
+                        parentId: grandparentNode.id,
+                        node: nodeToMove,
+                        index,
+                    };
+                    break;
+                }
+            }
         case DropDirection.Left:
             if (node.flexDirection === FlexDirection.Row) {
                 newOperation = { parentId: node.id, index: 0, node: nodeToMove };
@@ -173,6 +220,21 @@ function computeMoveNode<T>(
                     };
             }
             break;
+        case DropDirection.OuterRight:
+            if (node.flexDirection === FlexDirection.Row) {
+                console.log("outer right row");
+                const grandparentNode = grandparent();
+                if (grandparentNode) {
+                    console.log("has grandparent", grandparentNode);
+                    const index = indexInGrandparent() + 1;
+                    newOperation = {
+                        parentId: grandparentNode.id,
+                        node: nodeToMove,
+                        index,
+                    };
+                    break;
+                }
+            }
         case DropDirection.Right:
             if (node.flexDirection === FlexDirection.Row) {
                 newOperation = { parentId: node.id, index: 1, node: nodeToMove };
@@ -186,8 +248,12 @@ function computeMoveNode<T>(
                     };
             }
             break;
+        case DropDirection.Center:
+            // TODO: handle center drop
+            console.log("center drop");
+            break;
         default:
-            throw new Error("Invalid direction");
+            throw new Error(`Invalid direction: ${direction}`);
     }
 
     if (newOperation) layoutTreeState.pendingAction = { type: LayoutTreeActionType.Move, ...newOperation };
@@ -217,7 +283,9 @@ function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMove
     }
 
     if (!parent && action.insertAtRoot) {
-        addIntermediateNode(rootNode);
+        if (!rootNode.children) {
+            addIntermediateNode(rootNode);
+        }
         addChildAt(rootNode, action.index, node);
     } else if (parent) {
         addChildAt(parent, action.index, node);

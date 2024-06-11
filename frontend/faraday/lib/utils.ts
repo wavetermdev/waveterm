@@ -16,6 +16,11 @@ export enum DropDirection {
     Right = 1,
     Bottom = 2,
     Left = 3,
+    OuterTop = 4,
+    OuterRight = 5,
+    OuterBottom = 6,
+    OuterLeft = 7,
+    Center = 8,
 }
 
 export enum FlexDirection {
@@ -38,6 +43,15 @@ export function determineDropDirection(dimensions?: Dimensions, offset?: XYCoord
     // Lies outside of the box
     if (y < 0 || y > height || x < 0 || x > width) return undefined;
 
+    // TODO: uncomment once center drop is supported
+    // // Determines if a drop point falls within the center fifth of the box, meaning we should return Center.
+    // const centerX1 = (2 * width) / 5;
+    // const centerX2 = (3 * width) / 5;
+    // const centerY1 = (2 * height) / 5;
+    // const centerY2 = (3 * width) / 5;
+
+    // if (x > centerX1 && x < centerX2 && y > centerY1 && y < centerY2) return DropDirection.Center;
+
     const diagonal1 = y * width - x * height;
     const diagonal2 = y * width + x * height - height * width;
 
@@ -53,6 +67,16 @@ export function determineDropDirection(dimensions?: Dimensions, offset?: XYCoord
     if (diagonal1 > 0) {
         code += 2;
         code = 5 - code;
+    }
+
+    // Determines whether a drop is close to an edge of the box, meaning drop direction should be OuterX, instead of X
+    const xOuter1 = width / 5;
+    const xOuter2 = width - width / 5;
+    const yOuter1 = height / 5;
+    const yOuter2 = height - height / 5;
+
+    if (y < yOuter1 || y > yOuter2 || x < xOuter1 || x > xOuter2) {
+        code += 4;
     }
 
     return code;

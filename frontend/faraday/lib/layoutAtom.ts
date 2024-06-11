@@ -73,29 +73,34 @@ function getLayoutNodeWaveObjAtomFromTab<T>(
     get: Getter
 ): WritableAtom<LayoutNodeWaveObj<T>, [value: LayoutNodeWaveObj<T>], void> {
     const tabValue = get(tabAtom);
-    console.log("getLayoutNodeWaveObjAtomFromTab tabValue", tabValue);
+    // console.log("getLayoutNodeWaveObjAtomFromTab tabValue", tabValue);
     if (!tabValue) return;
     const layoutNodeOref = WOS.makeORef("layout", tabValue.layoutNode);
-    console.log("getLayoutNodeWaveObjAtomFromTab oref", layoutNodeOref);
+    // console.log("getLayoutNodeWaveObjAtomFromTab oref", layoutNodeOref);
     return WOS.getWaveObjectAtom<LayoutNodeWaveObj<T>>(layoutNodeOref);
 }
 
-export function withLayoutNodeAtomFromTab<T>(tabAtom: Atom<Tab>): WritableLayoutNodeAtom<T> {
+export function withLayoutStateAtomFromTab<T>(tabAtom: Atom<Tab>): WritableLayoutTreeStateAtom<T> {
+    const pendingActionAtom = atom<LayoutTreeAction>(null) as PrimitiveAtom<LayoutTreeAction>;
+    const generationAtom = atom(0) as PrimitiveAtom<number>;
     return atom(
         (get) => {
-            console.log("get withLayoutNodeAtomFromTab", tabAtom);
-            const atom = getLayoutNodeWaveObjAtomFromTab<T>(tabAtom, get);
-            if (!atom) return null;
-            const retVal = get(atom)?.node;
-            console.log("get withLayoutNodeAtomFromTab end", retVal);
-            return get(atom)?.node;
+            const waveObjAtom = getLayoutNodeWaveObjAtomFromTab<T>(tabAtom, get);
+            if (!waveObjAtom) return null;
+            const layoutState = newLayoutTreeState(get(waveObjAtom)?.node);
+            layoutState.pendingAction = get(pendingActionAtom);
+            layoutState.generation = get(generationAtom);
+            return layoutState;
         },
         (get, set, value) => {
-            console.log("set withLayoutNodeAtomFromTab", value);
-            const waveObjAtom = getLayoutNodeWaveObjAtomFromTab<T>(tabAtom, get);
-            if (!waveObjAtom) return;
-            const newWaveObjAtom = { ...get(waveObjAtom), node: value };
-            set(waveObjAtom, newWaveObjAtom);
+            set(pendingActionAtom, value.pendingAction);
+            if (get(generationAtom) !== value.generation) {
+                const waveObjAtom = getLayoutNodeWaveObjAtomFromTab<T>(tabAtom, get);
+                if (!waveObjAtom) return;
+                const newWaveObj = { ...get(waveObjAtom), node: value.rootNode };
+                set(generationAtom, value.generation);
+                set(waveObjAtom, newWaveObj);
+            }
         }
     );
 }
@@ -106,11 +111,11 @@ export function getLayoutStateAtomForTab(
 ): WritableLayoutTreeStateAtom<TabLayoutData> {
     let atom = tabLayoutAtomCache.get(tabId);
     if (atom) {
-        console.log("Reusing atom for tab", tabId);
+        // console.log("Reusing atom for tab", tabId);
         return atom;
     }
-    console.log("Creating new atom for tab", tabId);
-    atom = withLayoutTreeState(withLayoutNodeAtomFromTab<TabLayoutData>(tabAtom));
+    // console.log("Creating new atom for tab", tabId);
+    atom = withLayoutStateAtomFromTab<TabLayoutData>(tabAtom);
     tabLayoutAtomCache.set(tabId, atom);
     return atom;
 }
