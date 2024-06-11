@@ -277,11 +277,6 @@ function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMove
 
     console.log(node, parent, oldParent);
 
-    // Remove nodeToInsert from its old parent
-    if (oldParent) {
-        removeChild(oldParent, node);
-    }
-
     if (!parent && action.insertAtRoot) {
         if (!rootNode.children) {
             addIntermediateNode(rootNode);
@@ -292,6 +287,12 @@ function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMove
     } else {
         throw new Error("Invalid InsertOperation");
     }
+
+    // Remove nodeToInsert from its old parent
+    if (oldParent) {
+        removeChild(oldParent, node);
+    }
+
     const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
     layoutTreeState.rootNode = newRootNode;
     layoutTreeState.leafs = leafs;
