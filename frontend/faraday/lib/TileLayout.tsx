@@ -33,7 +33,13 @@ import {
     WritableLayoutTreeStateAtom,
 } from "./model.js";
 import "./tilelayout.less";
-import { FlexDirection, setTransform as createTransform, debounce, determineDropDirection } from "./utils.js";
+import {
+    Dimensions,
+    FlexDirection,
+    setTransform as createTransform,
+    debounce,
+    determineDropDirection,
+} from "./utils.js";
 
 export interface TileLayoutProps<T> {
     layoutTreeStateAtom: WritableLayoutTreeStateAtom<T>;
@@ -276,20 +282,22 @@ const TileNode = <T,>({
         );
     }, []);
 
-    // Ensure we only generate the preview image once
-    const [previewImageSet, setPreviewImageSet] = useState<boolean>(false);
+    // Cache the preview image after we generate it
+    const [previewImage, setPreviewImage] = useState<HTMLImageElement>();
 
     // When a user first mouses over a node, generate a preview image and set it as the drag preview.
     const generatePreviewImage = useCallback(() => {
-        if (!previewImageSet && previewRef.current) {
+        if (previewImage) {
+            dragPreview(previewImage);
+        } else if (previewRef.current) {
             toPng(previewRef.current).then((url) => {
                 const img = new Image();
                 img.src = url;
                 img.onload = () => dragPreview(img);
-                setPreviewImageSet(true);
+                setPreviewImage(img);
             });
         }
-    }, [previewRef, previewImageSet, dragPreview]);
+    }, [previewRef, previewImage, dragPreview]);
 
     // Register the tile item as a draggable component
     useEffect(() => {
@@ -468,40 +476,37 @@ const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style
                     const targetBoundingRect = targetRef.current.getBoundingClientRect();
 
                     // Placeholder should be either half the height or half the width of the targetNode, depending on the flex direction of the targetNode's parent.
-                    const placeholderHeight =
-                        parentNode.flexDirection === FlexDirection.Column
-                            ? targetBoundingRect.height / 2
-                            : targetBoundingRect.height;
-                    const placeholderWidth =
-                        parentNode.flexDirection === FlexDirection.Row
-                            ? targetBoundingRect.width / 2
-                            : targetBoundingRect.width;
-
                     // Default to placing the placeholder in the first half of the target node.
-                    let placeholderTop = targetBoundingRect.top - overlayBoundingRect.top;
-                    let placeholderLeft = targetBoundingRect.left - overlayBoundingRect.left;
+                    const placeholderDimensions: Dimensions = {
+                        height:
+                            parentNode.flexDirection === FlexDirection.Column
+                                ? targetBoundingRect.height / 2
+                                : targetBoundingRect.height,
+                        width:
+                            parentNode.flexDirection === FlexDirection.Row
+                                ? targetBoundingRect.width / 2
+                                : targetBoundingRect.width,
+                        top: targetBoundingRect.top - overlayBoundingRect.top,
+                        left: targetBoundingRect.left - overlayBoundingRect.left,
+                    };
+
                     if (action.index > targetIndex) {
                         if (action.index >= (parentNode.children?.length ?? 1)) {
                             // If there are no more nodes after the specified index, place the placeholder in the second half of the target node (either right or bottom).
-                            placeholderTop +=
+                            placeholderDimensions.top +=
                                 parentNode.flexDirection === FlexDirection.Column && targetBoundingRect.height / 2;
-                            placeholderLeft +=
+                            placeholderDimensions.left +=
                                 parentNode.flexDirection === FlexDirection.Row && targetBoundingRect.width / 2;
                         } else {
                             // Otherwise, place the placeholder between the target node (the one after which it will be inserted) and the next node
-                            placeholderTop +=
+                            placeholderDimensions.top +=
                                 parentNode.flexDirection === FlexDirection.Column &&
                                 (3 * targetBoundingRect.height) / 4;
-                            placeholderLeft +=
+                            placeholderDimensions.left +=
                                 parentNode.flexDirection === FlexDirection.Row && (3 * targetBoundingRect.width) / 4;
                         }
                     }
-                    const placeholderTransform = createTransform({
-                        top: placeholderTop,
-                        left: placeholderLeft,
-                        width: placeholderWidth,
-                        height: placeholderHeight,
-                    });
+                    const placeholderTransform = createTransform(placeholderDimensions);
 
                     newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
                 }
