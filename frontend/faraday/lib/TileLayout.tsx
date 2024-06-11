@@ -252,31 +252,16 @@ const TileNode = <T,>({
     const previewRef = useRef<HTMLDivElement>(null);
 
     // Register the node as a draggable item.
-    const [{ isDragging, dragItem }, drag, dragPreview] = useDrag(
+    const [{ isDragging }, drag, dragPreview] = useDrag(
         () => ({
             type: dragItemType,
             item: () => layoutNode,
             collect: (monitor) => ({
                 isDragging: monitor.isDragging(),
-                dragItem: monitor.getItem<LayoutNode<T>>(),
             }),
         }),
         [layoutNode]
     );
-
-    // TODO: remove debug effect
-    useEffect(() => {
-        if (isDragging) {
-            console.log("drag start", layoutNode.id, layoutNode, dragItem);
-            if (previewRef.current) {
-                toPng(previewRef.current).then((url) => {
-                    const img = new Image();
-                    img.src = url;
-                    img.onload = () => dragPreview(img);
-                });
-            }
-        }
-    }, [isDragging]);
 
     // Generate a preview div using the provided renderPreview function. This will be placed in the DOM so we can render an image from it, but it is pushed out of view so the user will not see it.
     // No-op if not provided, meaning React-DnD will attempt to generate a preview from the DOM, which is very slow.
@@ -291,11 +276,11 @@ const TileNode = <T,>({
         );
     }, []);
 
+    // Ensure we only generate the preview image once
     const [previewImageSet, setPreviewImageSet] = useState<boolean>(false);
 
     // When a user first mouses over a node, generate a preview image and set it as the drag preview.
     const generatePreviewImage = useCallback(() => {
-        console.log("generatePreviewImage", layoutNode.id);
         if (!previewImageSet && previewRef.current) {
             toPng(previewRef.current).then((url) => {
                 const img = new Image();
