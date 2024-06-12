@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
-	"github.com/wavetermdev/thenextwave/pkg/service/servicemeta"
+	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -29,8 +29,8 @@ func parseORef(oref string) (*waveobj.ORef, error) {
 	return &waveobj.ORef{OType: fields[0], OID: fields[1]}, nil
 }
 
-func (svc *ObjectService) GetObject_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (svc *ObjectService) GetObject_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		Desc:     "get wave object by oref",
 		ArgNames: []string{"oref"},
 	}
@@ -50,8 +50,8 @@ func (svc *ObjectService) GetObject(orefStr string) (waveobj.WaveObj, error) {
 	return obj, nil
 }
 
-func (svc *ObjectService) GetObjects_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (svc *ObjectService) GetObjects_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		ArgNames:   []string{"orefs"},
 		ReturnDesc: "objects",
 	}
@@ -92,8 +92,8 @@ func updatesRtn(ctx context.Context, rtnVal map[string]any) (any, error) {
 	return rtnVal, nil
 }
 
-func (svc *ObjectService) AddTabToWorkspace_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (svc *ObjectService) AddTabToWorkspace_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		ArgNames:   []string{"uiContext", "tabName", "activateTab"},
 		ReturnDesc: "tabId",
 	}
@@ -120,8 +120,8 @@ func (svc *ObjectService) AddTabToWorkspace(uiContext wstore.UIContext, tabName 
 	return tab.OID, wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) SetActiveTab_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (svc *ObjectService) SetActiveTab_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"uiContext", "tabId"},
 	}
 }
@@ -158,8 +158,8 @@ func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string)
 	return updates, nil
 }
 
-func (svc *ObjectService) CreateBlock_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (svc *ObjectService) CreateBlock_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		ArgNames:   []string{"uiContext", "blockDef", "rtOpts"},
 		ReturnDesc: "blockId",
 	}
@@ -185,8 +185,8 @@ func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wsto
 	return blockData.OID, wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) DeleteBlock_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (svc *ObjectService) DeleteBlock_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"uiContext", "blockId"},
 	}
 }
@@ -203,8 +203,8 @@ func (svc *ObjectService) DeleteBlock(uiContext wstore.UIContext, blockId string
 	return wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) CloseTab_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (svc *ObjectService) CloseTab_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"uiContext", "tabId"},
 	}
 }
@@ -244,8 +244,8 @@ func (svc *ObjectService) CloseTab(uiContext wstore.UIContext, tabId string) (ws
 	return wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) UpdateObjectMeta_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (svc *ObjectService) UpdateObjectMeta_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"uiContext", "oref", "meta"},
 	}
 }
@@ -265,8 +265,8 @@ func (svc *ObjectService) UpdateObjectMeta(uiContext wstore.UIContext, orefStr s
 	return wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) UpdateObject_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (svc *ObjectService) UpdateObject_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"uiContext", "waveObj", "returnUpdates"},
 	}
 }

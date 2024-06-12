@@ -9,6 +9,7 @@ import (
 	"reflect"
 
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
+	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 )
 
 const CommandKey = "command"
@@ -21,14 +22,31 @@ const (
 )
 
 var CommandToTypeMap = map[string]reflect.Type{
-	BlockCommand_Message: reflect.TypeOf(MessageCommand{}),
-	BlockCommand_Input:   reflect.TypeOf(InputCommand{}),
-	BlockCommand_SetView: reflect.TypeOf(SetViewCommand{}),
-	BlockCommand_SetMeta: reflect.TypeOf(SetMetaCommand{}),
+	BlockCommand_Message: reflect.TypeOf(BlockMessageCommand{}),
+	BlockCommand_Input:   reflect.TypeOf(BlockInputCommand{}),
+	BlockCommand_SetView: reflect.TypeOf(BlockSetViewCommand{}),
+	BlockCommand_SetMeta: reflect.TypeOf(BlockSetMetaCommand{}),
+}
+
+func CommandTypeUnionMeta() tsgenmeta.TypeUnionMeta {
+	return tsgenmeta.TypeUnionMeta{
+		BaseType:      reflect.TypeOf((*BlockCommand)(nil)).Elem(),
+		TypeFieldName: "command",
+		Types: []reflect.Type{
+			reflect.TypeOf(BlockMessageCommand{}),
+			reflect.TypeOf(BlockInputCommand{}),
+			reflect.TypeOf(BlockSetViewCommand{}),
+			reflect.TypeOf(BlockSetMetaCommand{}),
+		},
+	}
 }
 
 type BlockCommand interface {
 	GetCommand() string
+}
+
+type BlockCommandWrapper struct {
+	BlockCommand
 }
 
 func ParseCmdMap(cmdMap map[string]any) (BlockCommand, error) {
@@ -52,40 +70,40 @@ func ParseCmdMap(cmdMap map[string]any) (BlockCommand, error) {
 	return cmd.(BlockCommand), nil
 }
 
-type MessageCommand struct {
-	Command string `json:"command"`
+type BlockMessageCommand struct {
+	Command string `json:"command" tstype:"\"message\""`
 	Message string `json:"message"`
 }
 
-func (mc *MessageCommand) GetCommand() string {
+func (mc *BlockMessageCommand) GetCommand() string {
 	return BlockCommand_Message
 }
 
-type InputCommand struct {
-	Command     string              `json:"command"`
-	InputData64 string              `json:"inputdata64"`
+type BlockInputCommand struct {
+	Command     string              `json:"command" tstype:"\"controller:input\""`
+	InputData64 string              `json:"inputdata64,omitempty"`
 	SigName     string              `json:"signame,omitempty"`
 	TermSize    *shellexec.TermSize `json:"termsize,omitempty"`
 }
 
-func (ic *InputCommand) GetCommand() string {
+func (ic *BlockInputCommand) GetCommand() string {
 	return BlockCommand_Input
 }
 
-type SetViewCommand struct {
-	Command string `json:"command"`
+type BlockSetViewCommand struct {
+	Command string `json:"command" tstype:"\"setview\""`
 	View    string `json:"view"`
 }
 
-func (svc *SetViewCommand) GetCommand() string {
+func (svc *BlockSetViewCommand) GetCommand() string {
 	return BlockCommand_SetView
 }
 
-type SetMetaCommand struct {
-	Command string         `json:"command"`
+type BlockSetMetaCommand struct {
+	Command string         `json:"command" tstype:"\"setmeta\""`
 	Meta    map[string]any `json:"meta"`
 }
 
-func (smc *SetMetaCommand) GetCommand() string {
+func (smc *BlockSetMetaCommand) GetCommand() string {
 	return BlockCommand_SetMeta
 }

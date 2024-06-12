@@ -8,7 +8,7 @@ import * as WOS from "./wos";
 // blockservice.BlockService (block)
 class BlockServiceType {
     // send command to block
-    SendCommand(blockid: string, command: MetaType): Promise<void> {
+    SendCommand(blockid: string, cmd: BlockCommand): Promise<void> {
         return WOS.callBackendService("block", "SendCommand", Array.from(arguments))
     }
 }

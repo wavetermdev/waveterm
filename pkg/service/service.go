@@ -9,11 +9,12 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/clientservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/objectservice"
-	"github.com/wavetermdev/thenextwave/pkg/service/servicemeta"
+	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -31,9 +32,10 @@ var updatesRType = reflect.TypeOf(([]wstore.WaveObjUpdate{}))
 var waveObjRType = reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 var waveObjSliceRType = reflect.TypeOf([]waveobj.WaveObj{})
 var waveObjMapRType = reflect.TypeOf(map[string]waveobj.WaveObj{})
-var methodMetaRType = reflect.TypeOf(servicemeta.MethodMeta{})
+var methodMetaRType = reflect.TypeOf(tsgenmeta.MethodMeta{})
 var waveObjUpdateRType = reflect.TypeOf(wstore.WaveObjUpdate{})
 var uiContextRType = reflect.TypeOf((*wstore.UIContext)(nil)).Elem()
+var blockCommandRType = reflect.TypeOf((*blockcontroller.BlockCommand)(nil)).Elem()
 
 type WebCallType struct {
 	Service   string            `json:"service"`
@@ -89,12 +91,25 @@ func convertComplex(argType reflect.Type, jsonArg any) (any, error) {
 }
 
 func isSpecialWaveArgType(argType reflect.Type) bool {
-	return argType == waveObjRType || argType == waveObjSliceRType || argType == waveObjMapRType
+	return argType == waveObjRType || argType == waveObjSliceRType || argType == waveObjMapRType || argType == blockCommandRType
+}
+
+func convertBlockCommand(argType reflect.Type, jsonArg any) (any, error) {
+	if _, ok := jsonArg.(map[string]any); !ok {
+		return nil, fmt.Errorf("cannot convert %T to %s", jsonArg, argType)
+	}
+	cmd, err := blockcontroller.ParseCmdMap(jsonArg.(map[string]any))
+	if err != nil {
+		return nil, fmt.Errorf("error parsing command map: %w", err)
+	}
+	return cmd, nil
 }
 
 func convertSpecial(argType reflect.Type, jsonArg any) (any, error) {
 	jsonType := reflect.TypeOf(jsonArg)
-	if argType == waveObjRType {
+	if argType == blockCommandRType {
+		return convertBlockCommand(argType, jsonArg)
+	} else if argType == waveObjRType {
 		if jsonType.Kind() != reflect.Map {
 			return nil, fmt.Errorf("cannot convert %T to %s", jsonArg, argType)
 		}

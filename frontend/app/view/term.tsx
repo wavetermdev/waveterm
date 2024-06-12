@@ -49,7 +49,10 @@ function handleResize(fitAddon: FitAddon, blockId: string, term: Terminal) {
     const oldCols = term.cols;
     fitAddon.fit();
     if (oldRows !== term.rows || oldCols !== term.cols) {
-        const resizeCommand = { command: "controller:input", termsize: { rows: term.rows, cols: term.cols } };
+        const resizeCommand: BlockInputCommand = {
+            command: "controller:input",
+            termsize: { rows: term.rows, cols: term.cols },
+        };
         services.BlockService.SendCommand(blockId, resizeCommand);
     }
 }
@@ -78,17 +81,13 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         newTerm.loadAddon(newFitAddon);
         newTerm.open(connectElemRef.current);
         newFitAddon.fit();
-        // BlockService.SendCommand(blockId, {
-        //     command: "controller:input",
-        //     termsize: { rows: newTerm.rows, cols: newTerm.cols },
-        // });
         services.BlockService.SendCommand(blockId, {
             command: "controller:input",
             termsize: { rows: newTerm.rows, cols: newTerm.cols },
         });
         newTerm.onData((data) => {
             const b64data = btoa(data);
-            const inputCmd = { command: "controller:input", blockid: blockId, inputdata64: b64data };
+            const inputCmd: BlockInputCommand = { command: "controller:input", inputdata64: b64data };
             services.BlockService.SendCommand(blockId, inputCmd);
         });
 

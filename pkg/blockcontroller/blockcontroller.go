@@ -40,7 +40,7 @@ type BlockController struct {
 	Status   string
 
 	ShellProc    *shellexec.ShellProc
-	ShellInputCh chan *InputCommand
+	ShellInputCh chan *BlockInputCommand
 }
 
 func (bc *BlockController) WithLock(f func()) {
@@ -149,7 +149,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 		bc.ShellProc.Close()
 		return err
 	}
-	shellInputCh := make(chan *InputCommand)
+	shellInputCh := make(chan *BlockInputCommand)
 	bc.ShellInputCh = shellInputCh
 	go func() {
 		defer func() {
@@ -234,7 +234,7 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 
 	for genCmd := range bc.InputCh {
 		switch cmd := genCmd.(type) {
-		case *InputCommand:
+		case *BlockInputCommand:
 			fmt.Printf("INPUT: %s | %q\n", bc.BlockId, cmd.InputData64)
 			if bc.ShellInputCh != nil {
 				bc.ShellInputCh <- cmd
@@ -293,10 +293,10 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	switch cmd := cmdGen.(type) {
-	case *MessageCommand:
+	case *BlockMessageCommand:
 		log.Printf("MESSAGE: %s | %q\n", blockId, cmd.Message)
 		return nil
-	case *SetViewCommand:
+	case *BlockSetViewCommand:
 		log.Printf("SETVIEW: %s | %q\n", blockId, cmd.View)
 		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
 		if err != nil {
@@ -308,7 +308,7 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
 			return fmt.Errorf("error updating block: %w", err)
 		}
 		return nil
-	case *SetMetaCommand:
+	case *BlockSetMetaCommand:
 		log.Printf("SETMETA: %s | %v\n", blockId, cmd.Meta)
 		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
 		if err != nil {

@@ -14,14 +14,13 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 )
 
-func generateTypesFile() error {
+func generateTypesFile(tsTypesMap map[reflect.Type]string) error {
 	fd, err := os.Create("frontend/types/gotypes.d.ts")
 	if err != nil {
 		return err
 	}
 	defer fd.Close()
 	fmt.Fprintf(os.Stderr, "generating types file to %s\n", fd.Name())
-	tsTypesMap := make(map[reflect.Type]string)
 	tsgen.GenerateWaveObjTypes(tsTypesMap)
 	err = tsgen.GenerateServiceTypes(tsTypesMap)
 	if err != nil {
@@ -37,8 +36,8 @@ func generateTypesFile() error {
 		keys = append(keys, key)
 	}
 	sort.Slice(keys, func(i, j int) bool {
-		iname, _ := tsgen.TypeToTSType(keys[i])
-		jname, _ := tsgen.TypeToTSType(keys[j])
+		iname, _ := tsgen.TypeToTSType(keys[i], tsTypesMap)
+		jname, _ := tsgen.TypeToTSType(keys[j], tsTypesMap)
 		return iname < jname
 	})
 	for _, key := range keys {
@@ -51,7 +50,7 @@ func generateTypesFile() error {
 	return nil
 }
 
-func generateServicesFile() error {
+func generateServicesFile(tsTypesMap map[reflect.Type]string) error {
 	fd, err := os.Create("frontend/app/store/services.ts")
 	if err != nil {
 		return err
@@ -65,7 +64,7 @@ func generateServicesFile() error {
 	orderedKeys := utilfn.GetOrderedMapKeys(service.ServiceMap)
 	for _, serviceName := range orderedKeys {
 		serviceObj := service.ServiceMap[serviceName]
-		svcStr := tsgen.GenerateServiceClass(serviceName, serviceObj)
+		svcStr := tsgen.GenerateServiceClass(serviceName, serviceObj, tsTypesMap)
 		fmt.Fprint(fd, svcStr)
 		fmt.Fprint(fd, "\n")
 	}
@@ -78,12 +77,13 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error validating service map: %v\n", err)
 		os.Exit(1)
 	}
-	err = generateTypesFile()
+	tsTypesMap := make(map[reflect.Type]string)
+	err = generateTypesFile(tsTypesMap)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating types file: %v\n", err)
 		os.Exit(1)
 	}
-	err = generateServicesFile()
+	err = generateServicesFile(tsTypesMap)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error generating services file: %v\n", err)
 		os.Exit(1)

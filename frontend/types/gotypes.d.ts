@@ -14,12 +14,42 @@ declare global {
         meta: MetaType;
     };
 
+    type BlockCommand = {
+        command: string;
+    } & ( BlockMessageCommand | BlockInputCommand | BlockSetViewCommand | BlockSetMetaCommand );
+
     // wstore.BlockDef
     type BlockDef = {
         controller?: string;
         view?: string;
         files?: {[key: string]: FileDef};
         meta?: MetaType;
+    };
+
+    // blockcontroller.BlockInputCommand
+    type BlockInputCommand = {
+        command: "controller:input";
+        inputdata64?: string;
+        signame?: string;
+        termsize?: TermSize;
+    };
+
+    // blockcontroller.BlockMessageCommand
+    type BlockMessageCommand = {
+        command: "message";
+        message: string;
+    };
+
+    // blockcontroller.BlockSetMetaCommand
+    type BlockSetMetaCommand = {
+        command: "setmeta";
+        meta: MetaType;
+    };
+
+    // blockcontroller.BlockSetViewCommand
+    type BlockSetViewCommand = {
+        command: "setview";
+        view: string;
     };
 
     // wstore.Client
@@ -62,7 +92,7 @@ declare global {
 
     type MetaType = {[key: string]: any}
 
-    // servicemeta.MethodMeta
+    // tsgenmeta.MethodMeta
     type MethodMeta = {
         Desc: string;
         ArgNames: string[];

@@ -10,9 +10,10 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/service"
-	"github.com/wavetermdev/thenextwave/pkg/service/servicemeta"
+	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -69,7 +70,7 @@ func isFieldOmitEmpty(field reflect.StructField) bool {
 	return false
 }
 
-func TypeToTSType(t reflect.Type) (string, []reflect.Type) {
+func TypeToTSType(t reflect.Type, tsTypesMap map[reflect.Type]string) (string, []reflect.Type) {
 	switch t.Kind() {
 	case reflect.String:
 		return "string", nil
@@ -80,7 +81,7 @@ func TypeToTSType(t reflect.Type) (string, []reflect.Type) {
 	case reflect.Bool:
 		return "boolean", nil
 	case reflect.Slice, reflect.Array:
-		elemType, subTypes := TypeToTSType(t.Elem())
+		elemType, subTypes := TypeToTSType(t.Elem(), tsTypesMap)
 		if elemType == "" {
 			return "", nil
 		}
@@ -92,7 +93,7 @@ func TypeToTSType(t reflect.Type) (string, []reflect.Type) {
 		if t == metaRType {
 			return "MetaType", nil
 		}
-		elemType, subTypes := TypeToTSType(t.Elem())
+		elemType, subTypes := TypeToTSType(t.Elem(), tsTypesMap)
 		if elemType == "" {
 			return "", nil
 		}
@@ -100,10 +101,10 @@ func TypeToTSType(t reflect.Type) (string, []reflect.Type) {
 	case reflect.Struct:
 		return t.Name(), []reflect.Type{t}
 	case reflect.Ptr:
-		return TypeToTSType(t.Elem())
+		return TypeToTSType(t.Elem(), tsTypesMap)
 	case reflect.Interface:
-		if t == waveObjRType {
-			return "WaveObj", nil
+		if _, ok := tsTypesMap[t]; ok {
+			return t.Name(), nil
 		}
 		return "any", nil
 	default:
@@ -115,7 +116,7 @@ var tsRenameMap = map[string]string{
 	"Window": "WaveWindow",
 }
 
-func generateTSTypeInternal(rtype reflect.Type) (string, []reflect.Type) {
+func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]string) (string, []reflect.Type) {
 	var buf bytes.Buffer
 	waveObjType := reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem()
 	tsTypeName := rtype.Name()
@@ -149,10 +150,10 @@ func generateTSTypeInternal(rtype reflect.Type) (string, []reflect.Type) {
 		}
 		tsTypeTag := field.Tag.Get("tstype")
 		if tsTypeTag != "" {
-			buf.WriteString(fmt.Sprintf("  %s%s: %s;\n", fieldName, optMarker, tsTypeTag))
+			buf.WriteString(fmt.Sprintf("    %s%s: %s;\n", fieldName, optMarker, tsTypeTag))
 			continue
 		}
-		tsType, fieldSubTypes := TypeToTSType(field.Type)
+		tsType, fieldSubTypes := TypeToTSType(field.Type, tsTypesMap)
 		if tsType == "" {
 			continue
 		}
@@ -179,7 +180,32 @@ func GenerateWaveObjTSType() string {
 
 func GenerateMetaType() string {
 	return "type MetaType = {[key: string]: any}\n"
+}
 
+func GenerateTSTypeUnion(unionMeta tsgenmeta.TypeUnionMeta, tsTypeMap map[reflect.Type]string) {
+	rtn := generateTSTypeUnionInternal(unionMeta)
+	tsTypeMap[unionMeta.BaseType] = rtn
+	for _, rtype := range unionMeta.Types {
+		GenerateTSType(rtype, tsTypeMap)
+	}
+}
+
+func generateTSTypeUnionInternal(unionMeta tsgenmeta.TypeUnionMeta) string {
+	var buf bytes.Buffer
+	if unionMeta.Desc != "" {
+		buf.WriteString(fmt.Sprintf("// %s\n", unionMeta.Desc))
+	}
+	buf.WriteString(fmt.Sprintf("type %s = {\n", unionMeta.BaseType.Name()))
+	buf.WriteString(fmt.Sprintf("    %s: string;\n", unionMeta.TypeFieldName))
+	buf.WriteString("} & ( ")
+	for idx, rtype := range unionMeta.Types {
+		if idx > 0 {
+			buf.WriteString(" | ")
+		}
+		buf.WriteString(rtype.Name())
+	}
+	buf.WriteString(" );\n")
+	return buf.String()
 }
 
 func GenerateTSType(rtype reflect.Type, tsTypesMap map[reflect.Type]string) {
@@ -212,7 +238,7 @@ func GenerateTSType(rtype reflect.Type, tsTypesMap map[reflect.Type]string) {
 	if rtype.Kind() != reflect.Struct {
 		return
 	}
-	tsType, subTypes := generateTSTypeInternal(rtype)
+	tsType, subTypes := generateTSTypeInternal(rtype, tsTypesMap)
 	tsTypesMap[rtype] = tsType
 	for _, subType := range subTypes {
 		GenerateTSType(subType, tsTypesMap)
@@ -229,7 +255,7 @@ func hasUpdatesReturn(method reflect.Method) bool {
 	return false
 }
 
-func GenerateMethodSignature(serviceName string, method reflect.Method, meta servicemeta.MethodMeta, isFirst bool) string {
+func GenerateMethodSignature(serviceName string, method reflect.Method, meta tsgenmeta.MethodMeta, isFirst bool, tsTypesMap map[reflect.Type]string) string {
 	var sb strings.Builder
 	mayReturnUpdates := hasUpdatesReturn(method)
 	if (meta.Desc != "" || meta.ReturnDesc != "" || mayReturnUpdates) && !isFirst {
@@ -260,7 +286,7 @@ func GenerateMethodSignature(serviceName string, method reflect.Method, meta ser
 		if inType == contextRType || inType == uiContextRType {
 			continue
 		}
-		tsTypeName, _ := TypeToTSType(inType)
+		tsTypeName, _ := TypeToTSType(inType, tsTypesMap)
 		var argName string
 		if idx-1 < len(meta.ArgNames) {
 			argName = meta.ArgNames[idx-1] // subtract 1 for receiver
@@ -280,7 +306,7 @@ func GenerateMethodSignature(serviceName string, method reflect.Method, meta ser
 		if outType == updatesRtnRType {
 			continue
 		}
-		tsTypeName, _ := TypeToTSType(outType)
+		tsTypeName, _ := TypeToTSType(outType, tsTypesMap)
 		sb.WriteString(fmt.Sprintf("Promise<%s>", tsTypeName))
 		wroteRtn = true
 	}
@@ -291,11 +317,11 @@ func GenerateMethodSignature(serviceName string, method reflect.Method, meta ser
 	return sb.String()
 }
 
-func GenerateMethodBody(serviceName string, method reflect.Method, meta servicemeta.MethodMeta) string {
+func GenerateMethodBody(serviceName string, method reflect.Method, meta tsgenmeta.MethodMeta) string {
 	return fmt.Sprintf("        return WOS.callBackendService(%q, %q, Array.from(arguments))\n", serviceName, method.Name)
 }
 
-func GenerateServiceClass(serviceName string, serviceObj any) string {
+func GenerateServiceClass(serviceName string, serviceObj any, tsTypesMap map[reflect.Type]string) string {
 	serviceType := reflect.TypeOf(serviceObj)
 	var sb strings.Builder
 	tsServiceName := serviceType.Elem().Name()
@@ -309,14 +335,14 @@ func GenerateServiceClass(serviceName string, serviceObj any) string {
 		if strings.HasSuffix(method.Name, "_Meta") {
 			continue
 		}
-		var meta servicemeta.MethodMeta
+		var meta tsgenmeta.MethodMeta
 		metaMethod, found := serviceType.MethodByName(method.Name + "_Meta")
 		if found {
 			serviceObjVal := reflect.ValueOf(serviceObj)
 			metaVal := metaMethod.Func.Call([]reflect.Value{serviceObjVal})
-			meta = metaVal[0].Interface().(servicemeta.MethodMeta)
+			meta = metaVal[0].Interface().(tsgenmeta.MethodMeta)
 		}
-		sb.WriteString(GenerateMethodSignature(serviceName, method, meta, isFirst))
+		sb.WriteString(GenerateMethodSignature(serviceName, method, meta, isFirst, tsTypesMap))
 		sb.WriteString(GenerateMethodBody(serviceName, method, meta))
 		sb.WriteString("    }\n")
 		isFirst = false
@@ -327,6 +353,7 @@ func GenerateServiceClass(serviceName string, serviceObj any) string {
 }
 
 func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {
+	GenerateTSTypeUnion(blockcontroller.CommandTypeUnionMeta(), tsTypesMap)
 	GenerateTSType(reflect.TypeOf(waveobj.ORef{}), tsTypesMap)
 	GenerateTSType(reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem(), tsTypesMap)
 	GenerateTSType(reflect.TypeOf(map[string]any{}), tsTypesMap)

@@ -9,25 +9,21 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
-	"github.com/wavetermdev/thenextwave/pkg/service/servicemeta"
+	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 )
 
 type BlockService struct{}
 
 const DefaultTimeout = 2 * time.Second
 
-func (bs *BlockService) SendCommand_Meta() servicemeta.MethodMeta {
-	return servicemeta.MethodMeta{
+func (bs *BlockService) SendCommand_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
 		Desc:     "send command to block",
-		ArgNames: []string{"blockid", "command"},
+		ArgNames: []string{"blockid", "cmd"},
 	}
 }
 
-func (bs *BlockService) SendCommand(blockId string, cmdMap map[string]any) error {
-	cmd, err := blockcontroller.ParseCmdMap(cmdMap)
-	if err != nil {
-		return fmt.Errorf("error parsing command map: %w", err)
-	}
+func (bs *BlockService) SendCommand(blockId string, cmd blockcontroller.BlockCommand) error {
 	if strings.HasPrefix(cmd.GetCommand(), "controller:") {
 		bc := blockcontroller.GetBlockController(blockId)
 		if bc == nil {
