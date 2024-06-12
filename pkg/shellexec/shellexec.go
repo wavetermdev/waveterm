@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"reflect"
 	"syscall"
 
 	"github.com/creack/pty"
@@ -32,6 +33,18 @@ func (sp *ShellProc) Close() {
 		sp.Cmd.Process.Wait()
 		sp.Pty.Close()
 	}()
+}
+
+func setBoolConditionally(rval reflect.Value, field string, value bool) {
+	if rval.Elem().FieldByName(field).IsValid() {
+		rval.Elem().FieldByName(field).SetBool(value)
+	}
+}
+
+func setSysProcAttrs(cmd *exec.Cmd) {
+	rval := reflect.ValueOf(cmd.SysProcAttr)
+	setBoolConditionally(rval, "Setsid", true)
+	setBoolConditionally(rval, "Setctty", true)
 }
 
 func StartShellProc(termSize TermSize) (*ShellProc, error) {
@@ -60,8 +73,7 @@ func StartShellProc(termSize TermSize) (*ShellProc, error) {
 	ecmd.Stdout = cmdTty
 	ecmd.Stderr = cmdTty
 	ecmd.SysProcAttr = &syscall.SysProcAttr{}
-	ecmd.SysProcAttr.Setsid = true
-	ecmd.SysProcAttr.Setctty = true
+	setSysProcAttrs(ecmd)
 	err = ecmd.Start()
 	cmdTty.Close()
 	if err != nil {
@@ -90,8 +102,7 @@ func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize TermSize) ([]byte, error) {
 	ecmd.Stdout = cmdTty
 	ecmd.Stderr = cmdTty
 	ecmd.SysProcAttr = &syscall.SysProcAttr{}
-	ecmd.SysProcAttr.Setsid = true
-	ecmd.SysProcAttr.Setctty = true
+	setSysProcAttrs(ecmd)
 	err = ecmd.Start()
 	cmdTty.Close()
 	if err != nil {
