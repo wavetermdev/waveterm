@@ -32,6 +32,13 @@ func (oref ORef) String() string {
 	return fmt.Sprintf("%s:%s", oref.OType, oref.OID)
 }
 
+func MakeORef(otype string, oid string) ORef {
+	return ORef{
+		OType: otype,
+		OID:   oid,
+	}
+}
+
 type WaveObj interface {
 	GetOType() string // should not depend on object state (should work with nil value)
 }
@@ -155,6 +162,18 @@ func SetMeta(waveObj WaveObj, meta map[string]any) {
 	reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.MetaField.Index).Set(reflect.ValueOf(meta))
 }
 
+func DoMapStucture(out any, input any) error {
+	dconfig := &mapstructure.DecoderConfig{
+		Result:  out,
+		TagName: "json",
+	}
+	decoder, err := mapstructure.NewDecoder(dconfig)
+	if err != nil {
+		return err
+	}
+	return decoder.Decode(input)
+}
+
 func ToJsonMap(w WaveObj) (map[string]any, error) {
 	if w == nil {
 		return nil, nil
@@ -227,7 +246,13 @@ func ORefFromMap(m map[string]any) (*ORef, error) {
 		return nil, err
 	}
 	return &oref, nil
+}
 
+func ORefFromWaveObj(w WaveObj) *ORef {
+	return &ORef{
+		OType: w.GetOType(),
+		OID:   GetOID(w),
+	}
 }
 
 func FromJsonGen[T WaveObj](data []byte) (T, error) {

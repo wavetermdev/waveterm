@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -97,8 +97,9 @@ func (bc *BlockController) handleShellProcData(data []byte, seqNum int) error {
 	if err != nil {
 		return fmt.Errorf("error appending to blockfile: %w", err)
 	}
-	eventbus.SendEvent(application.WailsEvent{
-		Name: "block:ptydata",
+	eventbus.SendEvent(eventbus.WSEventType{
+		EventType: "block:ptydata",
+		ORef:      waveobj.MakeORef(wstore.OType_Block, bc.BlockId).String(),
 		Data: map[string]any{
 			"blockid":   bc.BlockId,
 			"blockfile": "main",
@@ -210,9 +211,10 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 				bc.Status = "done"
 			}
 		})
-		eventbus.SendEvent(application.WailsEvent{
-			Name: "block:done",
-			Data: nil,
+		eventbus.SendEvent(eventbus.WSEventType{
+			EventType: "block:done",
+			ORef:      waveobj.MakeORef(wstore.OType_Block, bc.BlockId).String(),
+			Data:      nil,
 		})
 		globalLock.Lock()
 		defer globalLock.Unlock()

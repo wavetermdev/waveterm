@@ -9,7 +9,7 @@ import {
     findNode,
     findParent,
     removeChild,
-} from "./layoutNode.js";
+} from "./layoutNode";
 import {
     LayoutNode,
     LayoutTreeAction,
@@ -20,14 +20,14 @@ import {
     LayoutTreeMoveNodeAction,
     LayoutTreeState,
     MoveOperation,
-} from "./model.js";
-import { DropDirection, FlexDirection, lazy } from "./utils.js";
+} from "./model";
+import { DropDirection, FlexDirection, lazy } from "./utils";
 
 /**
  * Initializes a layout tree state.
  * @param rootNode The root node for the tree.
  * @returns The state of the tree.
- *
+ *t
  * @template T The type of data associated with the nodes of the tree.
  */
 export function newLayoutTreeState<T>(rootNode: LayoutNode<T>): LayoutTreeState<T> {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
+	"github.com/wavetermdev/thenextwave/pkg/service/servicemeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -28,7 +29,14 @@ func parseORef(oref string) (*waveobj.ORef, error) {
 	return &waveobj.ORef{OType: fields[0], OID: fields[1]}, nil
 }
 
-func (svc *ObjectService) GetObject(orefStr string) (any, error) {
+func (svc *ObjectService) GetObject_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		Desc:     "get wave object by oref",
+		ArgNames: []string{"oref"},
+	}
+}
+
+func (svc *ObjectService) GetObject(orefStr string) (waveobj.WaveObj, error) {
 	oref, err := parseORef(orefStr)
 	if err != nil {
 		return nil, err
@@ -39,11 +47,17 @@ func (svc *ObjectService) GetObject(orefStr string) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error getting object: %w", err)
 	}
-	rtn, err := waveobj.ToJsonMap(obj)
-	return rtn, err
+	return obj, nil
 }
 
-func (svc *ObjectService) GetObjects(orefStrArr []string) (any, error) {
+func (svc *ObjectService) GetObjects_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		ArgNames:   []string{"orefs"},
+		ReturnDesc: "objects",
+	}
+}
+
+func (svc *ObjectService) GetObjects(orefStrArr []string) ([]waveobj.WaveObj, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 
@@ -78,30 +92,41 @@ func updatesRtn(ctx context.Context, rtnVal map[string]any) (any, error) {
 	return rtnVal, nil
 }
 
-func (svc *ObjectService) AddTabToWorkspace(uiContext wstore.UIContext, tabName string, activateTab bool) (any, error) {
+func (svc *ObjectService) AddTabToWorkspace_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		ArgNames:   []string{"uiContext", "tabName", "activateTab"},
+		ReturnDesc: "tabId",
+	}
+}
+
+func (svc *ObjectService) AddTabToWorkspace(uiContext wstore.UIContext, tabName string, activateTab bool) (string, wstore.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
 	windowData, err := wstore.DBMustGet[*wstore.Window](ctx, uiContext.WindowId)
 	if err != nil {
-		return nil, fmt.Errorf("error getting window: %w", err)
+		return "", nil, fmt.Errorf("error getting window: %w", err)
 	}
 	tab, err := wstore.CreateTab(ctx, windowData.WorkspaceId, tabName)
 	if err != nil {
-		return nil, fmt.Errorf("error creating tab: %w", err)
+		return "", nil, fmt.Errorf("error creating tab: %w", err)
 	}
 	if activateTab {
 		err = wstore.SetActiveTab(ctx, uiContext.WindowId, tab.OID)
 		if err != nil {
-			return nil, fmt.Errorf("error setting active tab: %w", err)
+			return "", nil, fmt.Errorf("error setting active tab: %w", err)
 		}
 	}
-	rtn := make(map[string]any)
-	rtn["tabid"] = waveobj.GetOID(tab)
-	return updatesRtn(ctx, rtn)
+	return tab.OID, wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string) (any, error) {
+func (svc *ObjectService) SetActiveTab_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		ArgNames: []string{"uiContext", "tabId"},
+	}
+}
+
+func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string) (wstore.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
@@ -122,32 +147,51 @@ func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string)
 			continue
 		}
 	}
-	return updatesRtn(ctx, nil)
+	blockORefs := tab.GetBlockORefs()
+	blocks, err := wstore.DBSelectORefs(ctx, blockORefs)
+	if err != nil {
+		return nil, fmt.Errorf("error getting tab blocks: %w", err)
+	}
+	updates := wstore.ContextGetUpdatesRtn(ctx)
+	updates = append(updates, wstore.MakeUpdate(tab))
+	updates = append(updates, wstore.MakeUpdates(blocks)...)
+	return updates, nil
 }
 
-func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (any, error) {
+func (svc *ObjectService) CreateBlock_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		ArgNames:   []string{"uiContext", "blockDef", "rtOpts"},
+		ReturnDesc: "blockId",
+	}
+}
+
+func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wstore.BlockDef, rtOpts *wstore.RuntimeOpts) (string, wstore.UpdatesRtnType, error) {
 	if uiContext.ActiveTabId == "" {
-		return nil, fmt.Errorf("no active tab")
+		return "", nil, fmt.Errorf("no active tab")
 	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
 	blockData, err := wstore.CreateBlock(ctx, uiContext.ActiveTabId, blockDef, rtOpts)
 	if err != nil {
-		return nil, fmt.Errorf("error creating block: %w", err)
+		return "", nil, fmt.Errorf("error creating block: %w", err)
 	}
 	if blockData.Controller != "" {
 		err = blockcontroller.StartBlockController(ctx, blockData.OID)
 		if err != nil {
-			return nil, fmt.Errorf("error starting block controller: %w", err)
+			return "", nil, fmt.Errorf("error starting block controller: %w", err)
 		}
 	}
-	rtn := make(map[string]any)
-	rtn["blockId"] = blockData.OID
-	return updatesRtn(ctx, rtn)
+	return blockData.OID, wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) DeleteBlock(uiContext wstore.UIContext, blockId string) (any, error) {
+func (svc *ObjectService) DeleteBlock_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		ArgNames: []string{"uiContext", "blockId"},
+	}
+}
+
+func (svc *ObjectService) DeleteBlock(uiContext wstore.UIContext, blockId string) (wstore.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
@@ -156,10 +200,16 @@ func (svc *ObjectService) DeleteBlock(uiContext wstore.UIContext, blockId string
 		return nil, fmt.Errorf("error deleting block: %w", err)
 	}
 	blockcontroller.StopBlockController(blockId)
-	return updatesRtn(ctx, nil)
+	return wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) CloseTab(uiContext wstore.UIContext, tabId string) (any, error) {
+func (svc *ObjectService) CloseTab_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		ArgNames: []string{"uiContext", "tabId"},
+	}
+}
+
+func (svc *ObjectService) CloseTab(uiContext wstore.UIContext, tabId string) (wstore.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
@@ -191,10 +241,16 @@ func (svc *ObjectService) CloseTab(uiContext wstore.UIContext, tabId string) (an
 		}
 		wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
 	}
-	return updatesRtn(ctx, nil)
+	return wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) UpdateObjectMeta(uiContext wstore.UIContext, orefStr string, meta map[string]any) (any, error) {
+func (svc *ObjectService) UpdateObjectMeta_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		ArgNames: []string{"uiContext", "oref", "meta"},
+	}
+}
+
+func (svc *ObjectService) UpdateObjectMeta(uiContext wstore.UIContext, orefStr string, meta map[string]any) (wstore.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
@@ -206,18 +262,23 @@ func (svc *ObjectService) UpdateObjectMeta(uiContext wstore.UIContext, orefStr s
 	if err != nil {
 		return nil, fmt.Errorf("error updateing %q meta: %w", orefStr, err)
 	}
-	return updatesRtn(ctx, nil)
+	return wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
-func (svc *ObjectService) UpdateObject(uiContext wstore.UIContext, objData map[string]any, returnUpdates bool) (any, error) {
+func (svc *ObjectService) UpdateObject_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		ArgNames: []string{"uiContext", "waveObj", "returnUpdates"},
+	}
+}
+
+func (svc *ObjectService) UpdateObject(uiContext wstore.UIContext, waveObj waveobj.WaveObj, returnUpdates bool) (wstore.UpdatesRtnType, error) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	ctx = wstore.ContextWithUpdates(ctx)
-
-	oref, err := waveobj.ORefFromMap(objData)
-	if err != nil {
-		return nil, fmt.Errorf("objData is not a valid object, requires otype and oid: %w", err)
+	if waveObj == nil {
+		return nil, fmt.Errorf("update wavobj is nil")
 	}
+	oref := waveobj.ORefFromWaveObj(waveObj)
 	found, err := wstore.DBExistsORef(ctx, *oref)
 	if err != nil {
 		return nil, fmt.Errorf("error getting object: %w", err)
@@ -225,16 +286,12 @@ func (svc *ObjectService) UpdateObject(uiContext wstore.UIContext, objData map[s
 	if !found {
 		return nil, fmt.Errorf("object not found: %s", oref)
 	}
-	newObj, err := waveobj.FromJsonMap(objData)
-	if err != nil {
-		return nil, fmt.Errorf("error converting data to valid wave object: %w", err)
-	}
-	err = wstore.DBUpdate(ctx, newObj)
+	err = wstore.DBUpdate(ctx, waveObj)
 	if err != nil {
 		return nil, fmt.Errorf("error updating object: %w", err)
 	}
 	if returnUpdates {
-		return updatesRtn(ctx, nil)
+		return wstore.ContextGetUpdatesRtn(ctx), nil
 	}
 	return nil, nil
 }

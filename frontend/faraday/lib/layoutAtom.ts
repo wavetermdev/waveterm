@@ -1,10 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WOS } from "@/app/store/global.js";
+import { WOS } from "@/app/store/global";
 import { Atom, Getter, PrimitiveAtom, WritableAtom, atom, useAtom } from "jotai";
 import { useCallback } from "react";
-import { layoutTreeStateReducer, newLayoutTreeState } from "./layoutState.js";
+import { layoutTreeStateReducer, newLayoutTreeState } from "./layoutState";
 import {
     LayoutNode,
     LayoutNodeWaveObj,

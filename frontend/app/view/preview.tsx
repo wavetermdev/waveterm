@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { FileInfo, FileService, FullFile } from "@/bindings/fileservice";
 import { Markdown } from "@/element/markdown";
-import { useBlockAtom, useBlockCache } from "@/store/global";
+import { getBackendHostPort, useBlockAtom, useBlockCache } from "@/store/global";
+import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
 import clsx from "clsx";
@@ -69,7 +69,7 @@ function MarkdownPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<stri
 
 function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
     const filePath = fileInfo.path;
-    const streamingUrl = "/wave/stream-file?path=" + encodeURIComponent(filePath);
+    const streamingUrl = getBackendHostPort() + "/wave/stream-file?path=" + encodeURIComponent(filePath);
     if (fileInfo.mimetype == "application/pdf") {
         return (
             <div className="view-preview view-preview-pdf">
@@ -114,7 +114,7 @@ function PreviewView({ blockId }: { blockId: string }) {
             },
             (get, set, update) => {
                 const blockId = get(blockAtom)?.oid;
-                WOS.UpdateObjectMeta(`block:${blockId}`, { file: update });
+                services.ObjectService.UpdateObjectMeta(`block:${blockId}`, { file: update });
             }
         )
     );
@@ -124,7 +124,8 @@ function PreviewView({ blockId }: { blockId: string }) {
             if (fileName == null) {
                 return null;
             }
-            const statFile = await FileService.StatFile(fileName);
+            // const statFile = await FileService.StatFile(fileName);
+            const statFile = await services.FileService.StatFile(fileName);
             return statFile;
         })
     );
@@ -134,7 +135,8 @@ function PreviewView({ blockId }: { blockId: string }) {
             if (fileName == null) {
                 return null;
             }
-            const file = await FileService.ReadFile(fileName);
+            // const file = await FileService.ReadFile(fileName);
+            const file = await services.FileService.ReadFile(fileName);
             return file;
         })
     );

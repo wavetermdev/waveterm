@@ -3,10 +3,13 @@
 
 // WaveObjectStore
 
-import { Call as $Call, Events } from "@wailsio/runtime";
+// import { Call as $Call, Events } from "@wailsio/runtime";
 import * as jotai from "jotai";
 import * as React from "react";
-import { atoms, globalStore } from "./global";
+import { atoms, getBackendHostPort, globalStore } from "./global";
+import * as services from "./services";
+
+const IsElectron = true;
 
 type WaveObjectDataItemType<T extends WaveObj> = {
     value: T;
@@ -54,7 +57,51 @@ function makeORef(otype: string, oid: string): string {
 }
 
 function GetObject<T>(oref: string): Promise<T> {
-    return $Call.ByName("github.com/wavetermdev/thenextwave/pkg/service/objectservice.ObjectService.GetObject", oref);
+    return callBackendService("object", "GetObject", [oref], true);
+}
+
+function callBackendService(service: string, method: string, args: any[], noUIContext?: boolean): Promise<any> {
+    const startTs = Date.now();
+    let uiContext: UIContext = null;
+    if (!noUIContext) {
+        uiContext = globalStore.get(atoms.uiContext);
+    }
+    let waveCall: WebCallType = {
+        service: service,
+        method: method,
+        args: args,
+        uicontext: uiContext,
+    };
+    // usp is just for debugging (easier to filter URLs)
+    let methodName = service + "." + method;
+    let usp = new URLSearchParams();
+    usp.set("service", service);
+    usp.set("method", method);
+    let fetchPromise = fetch(getBackendHostPort() + "/wave/service?" + usp.toString(), {
+        method: "POST",
+        body: JSON.stringify(waveCall),
+    });
+    let prtn = fetchPromise
+        .then((resp) => {
+            if (!resp.ok) {
+                throw new Error(`call ${methodName} failed: ${resp.status} ${resp.statusText}`);
+            }
+            return resp.json();
+        })
+        .then((respData: WebReturnType) => {
+            if (respData == null) {
+                return null;
+            }
+            if (respData.updates != null) {
+                updateWaveObjects(respData.updates);
+            }
+            if (respData.error != null) {
+                throw new Error(`call ${methodName} error: ${respData.error}`);
+            }
+            console.log("Call", methodName, Date.now() - startTs + "ms");
+            return respData.data;
+        });
+    return prtn;
 }
 
 const waveObjectValueCache = new Map<string, WaveObjectValue<any>>();
@@ -75,6 +122,7 @@ function createWaveValueObject<T extends WaveObj>(oref: string, shouldFetch: boo
     const localPromise = GetObject<T>(oref);
     wov.pendingPromise = localPromise;
     localPromise.then((val) => {
+        console.log("GetObject resolved", oref, val);
         if (wov.pendingPromise != localPromise) {
             return;
         }
@@ -187,7 +235,7 @@ function useWaveObject<T extends WaveObj>(oref: string): [T, boolean, (val: T) =
     const [atomVal, setAtomVal] = jotai.useAtom(wov.dataAtom);
     const simpleSet = (val: T) => {
         setAtomVal({ value: val, loading: false });
-        UpdateObject(val, false);
+        services.ObjectService.UpdateObject(val, false);
     };
     return [atomVal.value, atomVal.loading, simpleSet];
 }
@@ -236,48 +284,32 @@ function cleanWaveObjectCache() {
     }
 }
 
-Events.On("waveobj:update", (event: any) => {
-    const data: WaveObjUpdate[] = event?.data;
-    if (data == null) {
-        return;
-    }
-    if (!Array.isArray(data)) {
-        console.log("invalid waveobj:update, not an array", data);
-        return;
-    }
-    if (data.length == 0) {
-        return;
-    }
-    updateWaveObjects(data);
-});
-
-function wrapObjectServiceCall<T>(fnName: string, ...args: any[]): Promise<T> {
-    const uiContext = globalStore.get(atoms.uiContext);
-    const startTs = Date.now();
-    let prtn = $Call.ByName(
-        "github.com/wavetermdev/thenextwave/pkg/service/objectservice.ObjectService." + fnName,
-        uiContext,
-        ...args
-    );
-    prtn = prtn.then((val) => {
-        console.log("Call", fnName, Date.now() - startTs + "ms");
-        if (val.updates) {
-            updateWaveObjects(val.updates);
-        }
-        return val;
-    });
-    return prtn;
-}
+// Events.On("waveobj:update", (event: any) => {
+//     const data: WaveObjUpdate[] = event?.data;
+//     if (data == null) {
+//         return;
+//     }
+//     if (!Array.isArray(data)) {
+//         console.log("invalid waveobj:update, not an array", data);
+//         return;
+//     }
+//     if (data.length == 0) {
+//         return;
+//     }
+//     updateWaveObjects(data);
+// });
 
 // gets the value of a WaveObject from the cache.
 // should provide getFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.get function
 function getObjectValue<T>(oref: string, getFn?: jotai.Getter): T {
-    const wov = waveObjectValueCache.get(oref);
-    if (wov === undefined) {
-        return null;
+    let wov = waveObjectValueCache.get(oref);
+    if (wov == null) {
+        console.log("wov is null, creating new wov", oref);
+        wov = createWaveValueObject(oref, true);
+        waveObjectValueCache.set(oref, wov);
     }
-    if (getFn === undefined) {
+    if (getFn == null) {
         getFn = globalStore.get;
     }
     const atomVal = getFn(wov.dataAtom);
@@ -298,38 +330,12 @@ function setObjectValue<T extends WaveObj>(value: T, setFn?: jotai.Setter, pushT
     }
     setFn(wov.dataAtom, { value: value, loading: false });
     if (pushToServer) {
-        UpdateObject(value, false);
+        services.ObjectService.UpdateObject(value, false);
     }
 }
 
-export function AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<{ tabId: string }> {
-    return wrapObjectServiceCall("AddTabToWorkspace", tabName, activateTab);
-}
-
-export function SetActiveTab(tabId: string): Promise<void> {
-    return wrapObjectServiceCall("SetActiveTab", tabId);
-}
-
-export function CreateBlock(blockDef: BlockDef, rtOpts: RuntimeOpts): Promise<{ blockId: string }> {
-    return wrapObjectServiceCall("CreateBlock", blockDef, rtOpts);
-}
-
-export function DeleteBlock(blockId: string): Promise<void> {
-    return wrapObjectServiceCall("DeleteBlock", blockId);
-}
-
-export function CloseTab(tabId: string): Promise<void> {
-    return wrapObjectServiceCall("CloseTab", tabId);
-}
-
-export function UpdateObjectMeta(blockId: string, meta: MetadataType): Promise<void> {
-    return wrapObjectServiceCall("UpdateObjectMeta", blockId, meta);
-}
-
-export function UpdateObject(waveObj: WaveObj, returnUpdates: boolean): Promise<WaveObjUpdate[]> {
-    return wrapObjectServiceCall("UpdateObject", waveObj, returnUpdates);
-}
 export {
+    callBackendService,
     cleanWaveObjectCache,
     clearWaveObjectCache,
     getObjectValue,

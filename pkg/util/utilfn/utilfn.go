@@ -710,3 +710,29 @@ func StructToJsonMap(v interface{}) (map[string]any, error) {
 	}
 	return m, nil
 }
+
+func IndentString(indent string, str string) string {
+	splitArr := strings.Split(str, "\n")
+	var rtn strings.Builder
+	for _, line := range splitArr {
+		if line == "" {
+			rtn.WriteByte('\n')
+			continue
+		}
+		rtn.WriteString(indent)
+		rtn.WriteString(line)
+		rtn.WriteByte('\n')
+	}
+	return rtn.String()
+}
+
+func PrintIndentedStr(indent string, str string) {
+	splitArr := strings.Split(str, "\n")
+	for _, line := range splitArr {
+		if line == "" {
+			fmt.Printf("\n")
+			continue
+		}
+		fmt.Printf("%s%s\n", indent, line)
+	}
+}

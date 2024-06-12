@@ -9,11 +9,19 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
+	"github.com/wavetermdev/thenextwave/pkg/service/servicemeta"
 )
 
 type BlockService struct{}
 
 const DefaultTimeout = 2 * time.Second
+
+func (bs *BlockService) SendCommand_Meta() servicemeta.MethodMeta {
+	return servicemeta.MethodMeta{
+		Desc:     "send command to block",
+		ArgNames: []string{"blockid", "command"},
+	}
+}
 
 func (bs *BlockService) SendCommand(blockId string, cmdMap map[string]any) error {
 	cmd, err := blockcontroller.ParseCmdMap(cmdMap)

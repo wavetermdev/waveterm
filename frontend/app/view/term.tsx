@@ -1,15 +1,14 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { BlockService } from "@/bindings/blockservice";
-import { getBlockSubject } from "@/store/global";
+import { getBackendHostPort, getORefSubject, WOS } from "@/store/global";
+import * as services from "@/store/services";
 import { base64ToArray } from "@/util/util";
 import { FitAddon } from "@xterm/addon-fit";
 import type { ITheme } from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
 import * as React from "react";
 
-import useResizeObserver from "@react-hook/resize-observer";
 import { debounce } from "throttle-debounce";
 import "./view.less";
 import "/public/xterm.css";
@@ -43,12 +42,15 @@ function getThemeFromCSSVars(el: Element): ITheme {
 }
 
 function handleResize(fitAddon: FitAddon, blockId: string, term: Terminal) {
+    if (term == null) {
+        return;
+    }
     const oldRows = term.rows;
     const oldCols = term.cols;
     fitAddon.fit();
     if (oldRows !== term.rows || oldCols !== term.cols) {
         const resizeCommand = { command: "controller:input", termsize: { rows: term.rows, cols: term.cols } };
-        BlockService.SendCommand(blockId, resizeCommand);
+        services.BlockService.SendCommand(blockId, resizeCommand);
     }
 }
 
@@ -61,10 +63,6 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<Terminal>(null);
     const initialLoadRef = React.useRef<InitialLoadDataType>({ loaded: false, heldData: [] });
-
-    const [fitAddon, setFitAddon] = React.useState<FitAddon>(null);
-    const [term, setTerm] = React.useState<Terminal>(null);
-
     React.useEffect(() => {
         console.log("terminal created");
         const newTerm = new Terminal({
@@ -80,18 +78,22 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         newTerm.loadAddon(newFitAddon);
         newTerm.open(connectElemRef.current);
         newFitAddon.fit();
-        BlockService.SendCommand(blockId, {
+        // BlockService.SendCommand(blockId, {
+        //     command: "controller:input",
+        //     termsize: { rows: newTerm.rows, cols: newTerm.cols },
+        // });
+        services.BlockService.SendCommand(blockId, {
             command: "controller:input",
             termsize: { rows: newTerm.rows, cols: newTerm.cols },
         });
         newTerm.onData((data) => {
             const b64data = btoa(data);
             const inputCmd = { command: "controller:input", blockid: blockId, inputdata64: b64data };
-            BlockService.SendCommand(blockId, inputCmd);
+            services.BlockService.SendCommand(blockId, inputCmd);
         });
 
         // block subject
-        const blockSubject = getBlockSubject(blockId);
+        const blockSubject = getORefSubject(WOS.makeORef("block", blockId));
         blockSubject.subscribe((data) => {
             // base64 decode
             const decodedData = base64ToArray(data.ptydata);
@@ -101,10 +103,6 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
                 initialLoadRef.current.heldData.push(decodedData);
             }
         });
-
-        setTerm(newTerm);
-        setFitAddon(newFitAddon);
-
         // load data from filestore
         const startTs = Date.now();
         let loadedBytes = 0;
@@ -112,7 +110,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         const usp = new URLSearchParams();
         usp.set("zoneid", blockId);
         usp.set("name", "main");
-        fetch("/wave/file?" + usp.toString())
+        fetch(getBackendHostPort() + "/wave/file?" + usp.toString())
             .then((resp) => {
                 if (resp.ok) {
                     return resp.arrayBuffer();
@@ -133,17 +131,19 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
                 console.log(`terminal loaded file ${loadedBytes} bytes, ${Date.now() - startTs}ms`);
             });
 
+        const resize_debounced = debounce(50, () => {
+            handleResize(newFitAddon, blockId, newTerm);
+        });
+        const rszObs = new ResizeObserver(() => {
+            resize_debounced();
+        });
+        rszObs.observe(connectElemRef.current);
+
         return () => {
             newTerm.dispose();
             blockSubject.release();
         };
     }, []);
-
-    const handleResizeCallback = React.useCallback(() => {
-        debounce(50, () => handleResize(fitAddon, blockId, term));
-    }, [fitAddon, term]);
-
-    useResizeObserver(connectElemRef, handleResizeCallback);
 
     return (
         <div className="view-term">

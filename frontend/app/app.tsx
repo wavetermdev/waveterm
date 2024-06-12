@@ -8,7 +8,7 @@ import { Provider } from "jotai";
 
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import "../../public/style.less";
+import "./app.less";
 import { CenteredDiv } from "./element/quickelems";
 
 const App = () => {

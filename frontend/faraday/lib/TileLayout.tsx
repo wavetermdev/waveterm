@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import clsx from "clsx";
-import {
+import React, {
     CSSProperties,
     ReactNode,
     RefObject,
@@ -18,8 +18,8 @@ import { useDrag, useDragLayer, useDrop } from "react-dnd";
 
 import useResizeObserver from "@react-hook/resize-observer";
 import { toPng } from "html-to-image";
-import { useLayoutTreeStateReducerAtom } from "./layoutAtom.js";
-import { findNode } from "./layoutNode.js";
+import { useLayoutTreeStateReducerAtom } from "./layoutAtom";
+import { findNode } from "./layoutNode";
 import {
     ContentRenderer,
     LayoutNode,
@@ -31,15 +31,9 @@ import {
     LayoutTreeState,
     PreviewRenderer,
     WritableLayoutTreeStateAtom,
-} from "./model.js";
+} from "./model";
 import "./tilelayout.less";
-import {
-    Dimensions,
-    FlexDirection,
-    setTransform as createTransform,
-    debounce,
-    determineDropDirection,
-} from "./utils.js";
+import { Dimensions, FlexDirection, setTransform as createTransform, debounce, determineDropDirection } from "./utils";
 
 export interface TileLayoutProps<T> {
     layoutTreeStateAtom: WritableLayoutTreeStateAtom<T>;

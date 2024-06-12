@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
 
 var ErrNotFound = fmt.Errorf("not found")
@@ -121,7 +122,7 @@ func dbSelectOIDs(ctx context.Context, otype string, oids []string) ([]waveobj.W
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("SELECT oid, version, data FROM %s WHERE oid IN (SELECT value FROM json_each(?))", table)
 		var rows []idDataType
-		tx.Select(&rows, query, oids)
+		tx.Select(&rows, query, dbutil.QuickJson(oids))
 		rtn := make([]waveobj.WaveObj, 0, len(rows))
 		for _, row := range rows {
 			waveObj, err := waveobj.FromJson(row.Data)

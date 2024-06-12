@@ -1,6 +1,7 @@
 .task
 frontend/dist
 dist/
+dist-dev/
 frontend/node_modules
 node_modules/
 frontend/bindings
@@ -11,6 +12,7 @@ bin/
 *.exe
 .DS_Store
 *~
+out/
 
 # Yarn Modern
 .pnp.*

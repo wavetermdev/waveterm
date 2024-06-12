@@ -5,6 +5,7 @@ package wstore
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
 
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
@@ -50,6 +51,65 @@ func (update WaveObjUpdate) MarshalJSON() ([]byte, error) {
 		}
 	}
 	return json.Marshal(rtn)
+}
+
+func MakeUpdate(obj waveobj.WaveObj) WaveObjUpdate {
+	return WaveObjUpdate{
+		UpdateType: UpdateType_Update,
+		OType:      obj.GetOType(),
+		OID:        waveobj.GetOID(obj),
+		Obj:        obj,
+	}
+}
+
+func MakeUpdates(objs []waveobj.WaveObj) []WaveObjUpdate {
+	rtn := make([]WaveObjUpdate, 0, len(objs))
+	for _, obj := range objs {
+		rtn = append(rtn, MakeUpdate(obj))
+	}
+	return rtn
+}
+
+func (update *WaveObjUpdate) UnmarshalJSON(data []byte) error {
+	var objMap map[string]any
+	err := json.Unmarshal(data, &objMap)
+	if err != nil {
+		return err
+	}
+	var ok1, ok2, ok3 bool
+	if _, found := objMap["updatetype"]; !found {
+		return fmt.Errorf("missing updatetype (in WaveObjUpdate)")
+	}
+	update.UpdateType, ok1 = objMap["updatetype"].(string)
+	if !ok1 {
+		return fmt.Errorf("in WaveObjUpdate bad updatetype type %T", objMap["updatetype"])
+	}
+	if _, found := objMap["otype"]; !found {
+		return fmt.Errorf("missing otype (in WaveObjUpdate)")
+	}
+	update.OType, ok2 = objMap["otype"].(string)
+	if !ok2 {
+		return fmt.Errorf("in WaveObjUpdate bad otype type %T", objMap["otype"])
+	}
+	if _, found := objMap["oid"]; !found {
+		return fmt.Errorf("missing oid (in WaveObjUpdate)")
+	}
+	update.OID, ok3 = objMap["oid"].(string)
+	if !ok3 {
+		return fmt.Errorf("in WaveObjUpdate bad oid type %T", objMap["oid"])
+	}
+	if _, found := objMap["obj"]; found {
+		objMap, ok := objMap["obj"].(map[string]any)
+		if !ok {
+			return fmt.Errorf("in WaveObjUpdate bad obj type %T", objMap["obj"])
+		}
+		waveObj, err := waveobj.FromJsonMap(objMap)
+		if err != nil {
+			return fmt.Errorf("in WaveObjUpdate error decoding obj: %w", err)
+		}
+		update.Obj = waveObj
+	}
+	return nil
 }
 
 type Client struct {
@@ -104,6 +164,14 @@ type Tab struct {
 
 func (*Tab) GetOType() string {
 	return OType_Tab
+}
+
+func (t *Tab) GetBlockORefs() []waveobj.ORef {
+	rtn := make([]waveobj.ORef, 0, len(t.BlockIds))
+	for _, blockId := range t.BlockIds {
+		rtn = append(rtn, waveobj.ORef{OType: OType_Block, OID: blockId})
+	}
+	return rtn
 }
 
 type LayoutNode struct {

@@ -1,9 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { TileLayout } from "./lib/TileLayout.jsx";
-import { newLayoutTreeStateAtom, useLayoutTreeStateReducerAtom, withLayoutTreeState } from "./lib/layoutAtom.js";
-import { newLayoutNode } from "./lib/layoutNode.js";
+import { TileLayout } from "./lib/TileLayout";
+import { newLayoutTreeStateAtom, useLayoutTreeStateReducerAtom, withLayoutTreeState } from "./lib/layoutAtom";
+import { newLayoutNode } from "./lib/layoutNode";
 import type {
     LayoutNode,
     LayoutTreeCommitPendingAction,
@@ -14,8 +14,8 @@ import type {
     LayoutTreeState,
     WritableLayoutNodeAtom,
     WritableLayoutTreeStateAtom,
-} from "./lib/model.js";
-import { LayoutTreeActionType } from "./lib/model.js";
+} from "./lib/model";
+import { LayoutTreeActionType } from "./lib/model";
 
 export {
     LayoutTreeActionType,

@@ -1,5 +1,5 @@
 {
-    "include": ["frontend/**/*"],
+    "include": ["frontend/**/*", "emain/**/*"],
     "compilerOptions": {
         "target": "es6",
         "module": "commonjs",

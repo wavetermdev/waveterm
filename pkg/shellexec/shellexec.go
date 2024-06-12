@@ -38,6 +38,7 @@ func StartShellProc(termSize TermSize) (*ShellProc, error) {
 	shellPath := shellutil.DetectLocalShellPath()
 	ecmd := exec.Command(shellPath, "-i", "-l")
 	ecmd.Env = os.Environ()
+	ecmd.Dir = wavebase.GetHomeDir()
 	envToAdd := shellutil.WaveshellEnvVars(shellutil.DefaultTermType)
 	if os.Getenv("LANG") == "" {
 		envToAdd["LANG"] = wavebase.DetermineLang()

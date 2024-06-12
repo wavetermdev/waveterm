@@ -3,6 +3,7 @@
 
 import { TabContent } from "@/app/tab/tab";
 import { atoms } from "@/store/global";
+import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
 import * as jotai from "jotai";
@@ -21,10 +22,10 @@ function Tab({ tabId }: { tabId: string }) {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
     const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
     function setActiveTab() {
-        WOS.SetActiveTab(tabId);
+        services.ObjectService.SetActiveTab(tabId);
     }
     function handleCloseTab() {
-        WOS.CloseTab(tabId);
+        services.ObjectService.CloseTab(tabId);
         deleteLayoutStateAtomForTab(tabId);
     }
     return (
@@ -45,7 +46,7 @@ function Tab({ tabId }: { tabId: string }) {
 function TabBar({ workspace }: { workspace: Workspace }) {
     function handleAddTab() {
         const newTabName = `Tab-${workspace.tabids.length + 1}`;
-        WOS.AddTabToWorkspace(newTabName, true);
+        services.ObjectService.AddTabToWorkspace(newTabName, true);
     }
     const tabIds = workspace?.tabids ?? [];
     return (
@@ -83,7 +84,7 @@ function Widgets() {
 
     async function createBlock(blockDef: BlockDef) {
         const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
-        const { blockId } = await WOS.CreateBlock(blockDef, rtOpts);
+        const blockId = await services.ObjectService.CreateBlock(blockDef, rtOpts);
         addBlockToTab(blockId);
     }
 
@@ -122,13 +123,13 @@ function Widgets() {
             <div className="widget" onClick={() => clickTerminal()}>
                 <i className="fa fa-solid fa-square-terminal fa-fw" />
             </div>
-            <div className="widget" onClick={() => clickPreview("README.md")}>
+            <div className="widget" onClick={() => clickPreview("~/work/wails/thenextwave/README.md")}>
                 <i className="fa fa-solid fa-files fa-fw" />
             </div>
-            <div className="widget" onClick={() => clickPreview("go.mod")}>
+            <div className="widget" onClick={() => clickPreview("~/work/wails/thenextwave/go.mod")}>
                 <i className="fa fa-solid fa-files fa-fw" />
             </div>
-            <div className="widget" onClick={() => clickPreview("build/appicon.png")}>
+            <div className="widget" onClick={() => clickPreview("~/work/wails/thenextwave/build/appicon.png")}>
                 <i className="fa fa-solid fa-files fa-fw" />
             </div>
             <div className="widget" onClick={() => clickPreview("~")}>

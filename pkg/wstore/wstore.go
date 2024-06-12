@@ -16,6 +16,8 @@ import (
 
 var waveObjUpdateKey = struct{}{}
 
+type UpdatesRtnType = []WaveObjUpdate
+
 func init() {
 	for _, rtype := range AllWaveObjTypes() {
 		waveobj.RegisterType(rtype)
@@ -63,6 +65,18 @@ func ContextGetUpdates(ctx context.Context) map[waveobj.ORef]WaveObjUpdate {
 		for k, v := range update {
 			rtn[k] = v
 		}
+	}
+	return rtn
+}
+
+func ContextGetUpdatesRtn(ctx context.Context) UpdatesRtnType {
+	updatesMap := ContextGetUpdates(ctx)
+	if updatesMap == nil {
+		return nil
+	}
+	rtn := make(UpdatesRtnType, 0, len(updatesMap))
+	for _, v := range updatesMap {
+		rtn = append(rtn, v)
 	}
 	return rtn
 }

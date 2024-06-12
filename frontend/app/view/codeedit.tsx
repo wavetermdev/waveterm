@@ -15,7 +15,7 @@ declare var monaco: Monaco;
 let monacoLoadedAtom = jotai.atom(false);
 
 function loadMonaco() {
-    loader.config({ paths: { vs: "./monaco" } });
+    loader.config({ paths: { vs: "./dist-dev/monaco" } });
     loader
         .init()
         .then(() => {

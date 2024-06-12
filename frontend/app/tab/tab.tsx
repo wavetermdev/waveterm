@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block, BlockHeader } from "@/app/block/block";
+import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 
+import { CenteredDiv, CenteredLoadingDiv } from "@/element/quickelems";
 import { TileLayout } from "@/faraday/index";
 import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
-import { CenteredDiv, CenteredLoadingDiv } from "../element/quickelems";
 import "./tab.less";
 
 const TabContent = ({ tabId }: { tabId: string }) => {
@@ -34,7 +35,7 @@ const TabContent = ({ tabId }: { tabId: string }) => {
 
     const onNodeDelete = useCallback((data: TabLayoutData) => {
         console.log("onNodeDelete", data);
-        return WOS.DeleteBlock(data.blockId);
+        return services.ObjectService.DeleteBlock(data.blockId);
     }, []);
 
     if (tabLoading) {
