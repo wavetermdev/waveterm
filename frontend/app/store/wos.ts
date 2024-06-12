@@ -3,7 +3,6 @@
 
 // WaveObjectStore
 
-// import { Call as $Call, Events } from "@wailsio/runtime";
 import * as jotai from "jotai";
 import * as React from "react";
 import { atoms, getBackendHostPort, globalStore } from "./global";

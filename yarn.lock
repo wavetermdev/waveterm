@@ -5629,15 +5629,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@wailsio/runtime@npm:^3.0.0-alpha.24":
-  version: 3.0.0-alpha.24
-  resolution: "@wailsio/runtime@npm:3.0.0-alpha.24"
-  dependencies:
-    nanoid: "npm:^5.0.7"
-  checksum: 10c0/e43a5dd176d918ff3742cb1ef1bdd7f54eadf392ba02042bb7e9cc0c5482b54c9415ca427887687cff24cf3cdcae7a180df350d2d6883976178e0e101f7e60be
-  languageName: node
-  linkType: hard
-
 "@webassemblyjs/ast@npm:1.12.1, @webassemblyjs/ast@npm:^1.12.1":
   version: 1.12.1
   resolution: "@webassemblyjs/ast@npm:1.12.1"
@@ -11417,15 +11408,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nanoid@npm:^5.0.7":
-  version: 5.0.7
-  resolution: "nanoid@npm:5.0.7"
-  bin:
-    nanoid: bin/nanoid.js
-  checksum: 10c0/a3fb1c157e3e35378f44e5a7130c70f80c9037f66c9a37285e5e3d8298e8405fcb2399baaa420980b0fe5fd9c2e4186a6a31c3526f21de03cf34c1b459871401
-  languageName: node
-  linkType: hard
-
 "natural-compare@npm:^1.4.0":
   version: 1.4.0
   resolution: "natural-compare@npm:1.4.0"
@@ -13905,7 +13887,6 @@ __metadata:
     "@types/uuid": "npm:^9.0.8"
     "@vitejs/plugin-react": "npm:^4.3.0"
     "@vitest/coverage-istanbul": "npm:^1.6.0"
-    "@wailsio/runtime": "npm:^3.0.0-alpha.24"
     "@xterm/addon-fit": "npm:^0.10.0"
     "@xterm/xterm": "npm:^5.5.0"
     babel-loader: "npm:^9.1.3"
