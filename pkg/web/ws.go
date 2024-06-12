@@ -15,7 +15,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
+	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
+	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
 )
 
 const wsReadWaitTimeout = 15 * time.Second
@@ -70,7 +73,42 @@ func getStringFromMap(jmsg map[string]any, key string) string {
 	return ""
 }
 
+func processWSCommand(jmsg map[string]any, outputCh chan any) {
+	var rtnErr error
+	defer func() {
+		r := recover()
+		if r != nil {
+			rtnErr = fmt.Errorf("panic: %v", r)
+			log.Printf("panic in processMessage: %v\n", r)
+			debug.PrintStack()
+		}
+		if rtnErr == nil {
+			return
+		}
+		rtn := map[string]any{"type": "error", "error": rtnErr.Error()}
+		outputCh <- rtn
+	}()
+	wsCommand, err := webcmd.ParseWSCommandMap(jmsg)
+	if err != nil {
+		rtnErr = fmt.Errorf("cannot parse wscommand: %v", err)
+		return
+	}
+	switch cmd := wsCommand.(type) {
+	case *webcmd.SetBlockTermSizeWSCommand:
+		blockCmd := &blockcontroller.BlockInputCommand{
+			Command:  blockcontroller.BlockCommand_Input,
+			TermSize: &cmd.TermSize,
+		}
+		blockservice.BlockServiceInstance.SendCommand(cmd.BlockId, blockCmd)
+	}
+}
+
 func processMessage(jmsg map[string]any, outputCh chan any) {
+	wsCommand := getStringFromMap(jmsg, "wscommand")
+	if wsCommand != "" {
+		processWSCommand(jmsg, outputCh)
+		return
+	}
 	msgType := getMessageType(jmsg)
 	if msgType != "rpc" {
 		return

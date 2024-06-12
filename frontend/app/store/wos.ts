@@ -283,21 +283,6 @@ function cleanWaveObjectCache() {
     }
 }
 
-// Events.On("waveobj:update", (event: any) => {
-//     const data: WaveObjUpdate[] = event?.data;
-//     if (data == null) {
-//         return;
-//     }
-//     if (!Array.isArray(data)) {
-//         console.log("invalid waveobj:update, not an array", data);
-//         return;
-//     }
-//     if (data.length == 0) {
-//         return;
-//     }
-//     updateWaveObjects(data);
-// });
-
 // gets the value of a WaveObject from the cache.
 // should provide getFn if it is available (e.g. inside of a jotai atom)
 // otherwise it will use the globalStore.get function

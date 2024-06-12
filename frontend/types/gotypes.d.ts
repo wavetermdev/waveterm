@@ -16,7 +16,7 @@ declare global {
 
     type BlockCommand = {
         command: string;
-    } & ( BlockMessageCommand | BlockInputCommand | BlockSetViewCommand | BlockSetMetaCommand );
+    } & ( BlockInputCommand | BlockSetViewCommand | BlockSetMetaCommand );
 
     // wstore.BlockDef
     type BlockDef = {
@@ -32,12 +32,6 @@ declare global {
         inputdata64?: string;
         signame?: string;
         termsize?: TermSize;
-    };
-
-    // blockcontroller.BlockMessageCommand
-    type BlockMessageCommand = {
-        command: "message";
-        message: string;
     };
 
     // blockcontroller.BlockSetMetaCommand
@@ -117,6 +111,13 @@ declare global {
         winsize?: WinSize;
     };
 
+    // webcmd.SetBlockTermSizeWSCommand
+    type SetBlockTermSizeWSCommand = {
+        wscommand: "setblocktermsize";
+        blockid: string;
+        termsize: TermSize;
+    };
+
     // wstore.Tab
     type Tab = WaveObj & {
         name: string;
@@ -136,6 +137,10 @@ declare global {
         windowid: string;
         activetabid: string;
     };
+
+    type WSCommandType = {
+        wscommand: string;
+    } & ( SetBlockTermSizeWSCommand );
 
     // eventbus.WSEventType
     type WSEventType = {

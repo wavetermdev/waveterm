@@ -16,6 +16,8 @@ type BlockService struct{}
 
 const DefaultTimeout = 2 * time.Second
 
+var BlockServiceInstance = &BlockService{}
+
 func (bs *BlockService) SendCommand_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		Desc:     "send command to block",

@@ -293,9 +293,6 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	switch cmd := cmdGen.(type) {
-	case *BlockMessageCommand:
-		log.Printf("MESSAGE: %s | %q\n", blockId, cmd.Message)
-		return nil
 	case *BlockSetViewCommand:
 		log.Printf("SETVIEW: %s | %q\n", blockId, cmd.View)
 		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)

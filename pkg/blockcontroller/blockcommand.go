@@ -22,7 +22,6 @@ const (
 )
 
 var CommandToTypeMap = map[string]reflect.Type{
-	BlockCommand_Message: reflect.TypeOf(BlockMessageCommand{}),
 	BlockCommand_Input:   reflect.TypeOf(BlockInputCommand{}),
 	BlockCommand_SetView: reflect.TypeOf(BlockSetViewCommand{}),
 	BlockCommand_SetMeta: reflect.TypeOf(BlockSetMetaCommand{}),
@@ -33,7 +32,6 @@ func CommandTypeUnionMeta() tsgenmeta.TypeUnionMeta {
 		BaseType:      reflect.TypeOf((*BlockCommand)(nil)).Elem(),
 		TypeFieldName: "command",
 		Types: []reflect.Type{
-			reflect.TypeOf(BlockMessageCommand{}),
 			reflect.TypeOf(BlockInputCommand{}),
 			reflect.TypeOf(BlockSetViewCommand{}),
 			reflect.TypeOf(BlockSetMetaCommand{}),
@@ -68,15 +66,6 @@ func ParseCmdMap(cmdMap map[string]any) (BlockCommand, error) {
 		return nil, fmt.Errorf("error unmarshalling command: %w", err)
 	}
 	return cmd.(BlockCommand), nil
-}
-
-type BlockMessageCommand struct {
-	Command string `json:"command" tstype:"\"message\""`
-	Message string `json:"message"`
-}
-
-func (mc *BlockMessageCommand) GetCommand() string {
-	return BlockCommand_Message
 }
 
 type BlockInputCommand struct {

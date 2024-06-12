@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -354,6 +355,7 @@ func GenerateServiceClass(serviceName string, serviceObj any, tsTypesMap map[ref
 
 func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {
 	GenerateTSTypeUnion(blockcontroller.CommandTypeUnionMeta(), tsTypesMap)
+	GenerateTSTypeUnion(webcmd.WSCommandTypeUnionMeta(), tsTypesMap)
 	GenerateTSType(reflect.TypeOf(waveobj.ORef{}), tsTypesMap)
 	GenerateTSType(reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem(), tsTypesMap)
 	GenerateTSType(reflect.TypeOf(map[string]any{}), tsTypesMap)

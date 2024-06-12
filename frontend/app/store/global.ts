@@ -157,4 +157,19 @@ function initWS() {
     globalWS.connectNow("initWS");
 }
 
-export { WOS, atoms, getBackendHostPort, getORefSubject, globalStore, globalWS, initWS, useBlockAtom, useBlockCache };
+function sendWSCommand(command: WSCommandType) {
+    globalWS.pushMessage(command);
+}
+
+export {
+    WOS,
+    atoms,
+    getBackendHostPort,
+    getORefSubject,
+    globalStore,
+    globalWS,
+    initWS,
+    sendWSCommand,
+    useBlockAtom,
+    useBlockCache,
+};

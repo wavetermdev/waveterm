@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getBackendHostPort, getORefSubject, WOS } from "@/store/global";
+import { WOS, getBackendHostPort, getORefSubject, sendWSCommand } from "@/store/global";
 import * as services from "@/store/services";
 import { base64ToArray } from "@/util/util";
 import { FitAddon } from "@xterm/addon-fit";
@@ -49,11 +49,12 @@ function handleResize(fitAddon: FitAddon, blockId: string, term: Terminal) {
     const oldCols = term.cols;
     fitAddon.fit();
     if (oldRows !== term.rows || oldCols !== term.cols) {
-        const resizeCommand: BlockInputCommand = {
-            command: "controller:input",
+        const wsCommand: SetBlockTermSizeWSCommand = {
+            wscommand: "setblocktermsize",
+            blockid: blockId,
             termsize: { rows: term.rows, cols: term.cols },
         };
-        services.BlockService.SendCommand(blockId, resizeCommand);
+        sendWSCommand(wsCommand);
     }
 }
 
@@ -81,8 +82,13 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         newTerm.loadAddon(newFitAddon);
         newTerm.open(connectElemRef.current);
         newFitAddon.fit();
-        services.BlockService.SendCommand(blockId, {
-            command: "controller:input",
+        // services.BlockService.SendCommand(blockId, {
+        //     command: "controller:input",
+        //     termsize: { rows: newTerm.rows, cols: newTerm.cols },
+        // });
+        sendWSCommand({
+            wscommand: "setblocktermsize",
+            blockid: blockId,
             termsize: { rows: newTerm.rows, cols: newTerm.cols },
         });
         newTerm.onData((data) => {
