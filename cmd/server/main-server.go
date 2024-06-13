@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"runtime"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -23,14 +24,18 @@ import (
 
 const ReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID"
 
+var shutdownOnce sync.Once
+
 func doShutdown(reason string) {
-	log.Printf("shutting down: %s\n", reason)
-	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelFn()
-	// TODO deal with flush in progress
-	filestore.WFS.FlushCache(ctx)
-	time.Sleep(200 * time.Millisecond)
-	os.Exit(0)
+	shutdownOnce.Do(func() {
+		log.Printf("shutting down: %s\n", reason)
+		ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelFn()
+		// TODO deal with flush in progress
+		filestore.WFS.FlushCache(ctx)
+		time.Sleep(200 * time.Millisecond)
+		os.Exit(0)
+	})
 }
 
 func installShutdownSignalHandlers() {
@@ -42,6 +47,18 @@ func installShutdownSignalHandlers() {
 			break
 		}
 	}()
+}
+
+// watch stdin, kill server if stdin is closed
+func stdinReadWatch() {
+	buf := make([]byte, 1024)
+	for {
+		_, err := os.Stdin.Read(buf)
+		if err != nil {
+			doShutdown(fmt.Sprintf("stdin closed/error (%v)", err))
+			break
+		}
+	}
 }
 
 func main() {
@@ -78,6 +95,7 @@ func main() {
 		return
 	}
 	installShutdownSignalHandlers()
+	go stdinReadWatch()
 
 	go web.RunWebSocketServer()
 	go func() {
