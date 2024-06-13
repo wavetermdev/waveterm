@@ -4,25 +4,25 @@ Prereqs:
 
 You'll need to install "task" (which we're using as a build/run system):
 
-```
+```sh
 brew install go-task
 ```
 
 On first checkout:
 
-```
+```sh
 yarn
 go mod tidy
 ```
 
-To run the app, you'll first need to run the webpack watcher:
+Then, run the following command to start the app using the Vite dev server (this will enable Hot Module Reloading):
 
-```
-task webpack
+```sh
+task electron:dev
 ```
 
-Then, in a separate terminal, this command will run the electron app:
+To run the app without the dev server, run the following instead:
 
-```
-task electron
+```sh
+task electron:start
 ```

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
@@ -199,15 +200,18 @@ func RunWebServer() {
 	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
 	serverAddr := MainServerAddr
+	var allowedOrigins handlers.CORSOption
 	if wavebase.IsDevMode() {
+		log.Println("isDevMode")
 		serverAddr = MainServerDevAddr
+		allowedOrigins = handlers.AllowedOrigins([]string{"*"})
 	}
 	server := &http.Server{
 		Addr:           serverAddr,
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
-		Handler:        http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout"),
+		Handler:        handlers.CORS(allowedOrigins)(http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")),
 	}
 	log.Printf("Running main server on %s\n", serverAddr)
 	err := server.ListenAndServe()

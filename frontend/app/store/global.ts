@@ -182,9 +182,14 @@ waveobjUpdateSubject.subscribe((msg: WSEventType) => {
     WOS.updateWaveObject(update);
 });
 
+function getApi(): ElectronApi {
+    return (window as any).api;
+}
+
 export {
     WOS,
     atoms,
+    getApi,
     getBackendHostPort,
     getEventORefSubject,
     getEventSubject,

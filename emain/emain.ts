@@ -9,7 +9,8 @@ import { debounce } from "throttle-debounce";
 import * as services from "../frontend/app/store/services";
 
 const electronApp = electron.app;
-const isDev = true;
+const isDev = process.env.WAVETERM_DEV;
+const isDevServer = !electronApp.isPackaged && process.env.ELECTRON_RENDERER_URL;
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
@@ -17,7 +18,6 @@ const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
 const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8190";
 const ProdServerEndpoint = "http://127.0.0.1:1719";
-const DistDir = "dist-dev";
 
 let waveSrvReadyResolve = (value: boolean) => {};
 let waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
@@ -88,7 +88,7 @@ function runWaveSrv(): Promise<boolean> {
         electronApp.quit();
     });
     proc.on("spawn", (e) => {
-        console.log("spawnned wavesrv");
+        console.log("spawned wavesrv");
         waveSrvProc = proc;
         pResolve(true);
     });
@@ -170,7 +170,7 @@ function createWindow(client: Client, waveWindow: WaveWindow): Electron.BrowserW
                 ? path.join(getElectronAppBasePath(), "public/logos/wave-logo-dark.png")
                 : undefined,
         webPreferences: {
-            preload: path.join(getElectronAppBasePath(), DistDir, "preload.js"),
+            preload: path.join(getElectronAppBasePath(), "preload", "index.cjs"),
         },
         show: false,
         autoHideMenuBar: true,
@@ -184,7 +184,14 @@ function createWindow(client: Client, waveWindow: WaveWindow): Electron.BrowserW
     usp.set("clientid", client.oid);
     usp.set("windowid", waveWindow.oid);
     const indexHtml = "index.html";
-    win.loadFile(path.join(getElectronAppBasePath(), "public", indexHtml), { search: usp.toString() });
+    if (isDevServer) {
+        console.log("running as dev server");
+        win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html?${usp.toString()}`);
+    } else {
+        console.log("running as file");
+        win.loadFile(path.join(getElectronAppBasePath(), "frontend", indexHtml), { search: usp.toString() });
+    }
+
     win.webContents.on("will-navigate", shNavHandler);
     win.webContents.on("will-frame-navigate", shFrameNavHandler);
     win.on(
@@ -209,7 +216,16 @@ function createWindow(client: Client, waveWindow: WaveWindow): Electron.BrowserW
     return win;
 }
 
+electron.ipcMain.on("isDev", () => {
+    return isDev;
+});
+
+electron.ipcMain.on("isDevServer", () => {
+    return isDevServer;
+});
+
 process.on("SIGUSR1", function () {
+    ``;
     waveSrvReadyResolve(true);
 });
 

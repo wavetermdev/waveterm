@@ -1,8 +1,8 @@
-import { defineConfig, mergeConfig } from "vitest/config";
-import viteConfig from "./vite.config";
+import { UserConfig, defineConfig, mergeConfig } from "vitest/config";
+import electronViteConfig from "./electron.vite.config";
 
 export default mergeConfig(
-    viteConfig,
+    electronViteConfig.renderer as UserConfig,
     defineConfig({
         test: {
             reporters: ["verbose", "junit"],

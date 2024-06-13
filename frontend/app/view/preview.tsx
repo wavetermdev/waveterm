@@ -9,7 +9,7 @@ import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import { CenteredDiv } from "../element/quickelems";
-import { CodeEditView } from "./codeedit";
+import { CodeEdit } from "./codeedit";
 import { DirectoryPreview } from "./directorypreview";
 
 import "./view.less";
@@ -185,7 +185,7 @@ function PreviewView({ blockId }: { blockId: string }) {
         (mimeType.startsWith("application/") &&
             (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
     ) {
-        specializedView = specializedView = <CodeEditView readonly={true} text={fileContent} filename={fileName} />;
+        specializedView = specializedView = <CodeEdit readonly={true} text={fileContent} filename={fileName} />;
     } else if (mimeType === "directory") {
         specializedView = <DirectoryPreview contentAtom={fileContentAtom} fileNameAtom={fileNameAtom} />;
     } else {

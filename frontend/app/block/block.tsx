@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { CodeEditView } from "@/app/view/codeedit";
+import { CodeEdit } from "@/app/view/codeedit";
 import { PlotView } from "@/app/view/plotview";
 import { PreviewView } from "@/app/view/preview";
 import { TerminalView } from "@/app/view/term";
@@ -49,7 +49,7 @@ const Block = ({ blockId, onClose }: BlockProps) => {
     } else if (blockData.view === "plot") {
         blockElem = <PlotView />;
     } else if (blockData.view === "codeedit") {
-        blockElem = <CodeEditView text={null} />;
+        blockElem = <CodeEdit text={null} />;
     }
     return (
         <div className="block" ref={blockRef}>

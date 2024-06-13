@@ -15,7 +15,7 @@ declare var monaco: Monaco;
 let monacoLoadedAtom = jotai.atom(false);
 
 function loadMonaco() {
-    loader.config({ paths: { vs: "./dist-dev/monaco" } });
+    loader.config({ paths: { vs: "monaco" } });
     loader
         .init()
         .then(() => {
@@ -94,34 +94,21 @@ export function CodeEdit({ readonly = false, text, language, filename }: CodeEdi
     editorOpts.readOnly = readonly;
 
     return (
-        <div className="codeedit" ref={divRef}>
-            {divDims != null && monacoLoaded ? (
-                <Editor
-                    theme={theme}
-                    height={divDims.height}
-                    value={text}
-                    onMount={handleEditorMount}
-                    options={editorOpts}
-                    onChange={handleEditorChange}
-                    path={filename}
-                    language={language}
-                />
-            ) : null}
-        </div>
-    );
-}
-
-interface CodeEditViewProps {
-    readonly?: boolean;
-    text: string;
-    language?: string;
-    filename?: string;
-}
-
-export function CodeEditView({ readonly, text, language, filename }: CodeEditViewProps) {
-    return (
         <div className="view-codeedit">
-            <CodeEdit readonly={readonly} text={text} language={language} filename={filename} />
+            <div className="codeedit" ref={divRef}>
+                {divDims != null && monacoLoaded ? (
+                    <Editor
+                        theme={theme}
+                        height={divDims.height}
+                        value={text}
+                        onMount={handleEditorMount}
+                        options={editorOpts}
+                        onChange={handleEditorChange}
+                        path={filename}
+                        language={language}
+                    />
+                ) : null}
+            </div>
         </div>
     );
 }

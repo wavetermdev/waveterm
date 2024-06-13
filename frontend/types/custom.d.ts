@@ -5,6 +5,11 @@ declare global {
     type TabLayoutData = {
         blockId: string;
     };
+
+    type ElectronApi = {
+        isDev: () => boolean;
+        isDevServer: () => boolean;
+    };
 }
 
 export {};

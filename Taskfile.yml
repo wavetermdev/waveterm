@@ -1,10 +1,12 @@
+# Copyright 2024, Command Line Inc.
+# SPDX-License-Identifier: Apache-2.0
+
 version: "3"
 
 vars:
     APP_NAME: "NextWave"
     BIN_DIR: "bin"
     VERSION: "0.1.0"
-
 
 tasks:
     generate:
@@ -15,24 +17,26 @@ tasks:
             - "pkg/service/**/*.go"
             - "pkg/wstore/*.go"
 
-    webpack:
+    electron:dev:
         cmds:
-            - yarn run webpack --watch --env dev
+            - WAVETERM_DEV=1 yarn dev
+        deps:
+            - build:server
 
-    electron:
+    electron:start:
         cmds:
-            - WAVETERM_DEV=1 yarn run electron dist-dev/emain.js
+            - WAVETERM_DEV=1 yarn start
         deps:
             - build:server
 
     build:server:
         cmds:
-            - go build -o bin/wavesrv cmd/server/main-server.go
+            - go build -o dist/bin/wavesrv cmd/server/main-server.go
         sources:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
         generates:
-            - bin/wavesrv
+            - dist/bin/wavesrv
         deps:
             - go:mod:tidy
 
@@ -45,5 +49,3 @@ tasks:
             - go.mod
         cmds:
             - go mod tidy
-
-

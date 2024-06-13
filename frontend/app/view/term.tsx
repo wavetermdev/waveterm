@@ -10,9 +10,9 @@ import { Terminal } from "@xterm/xterm";
 import clsx from "clsx";
 import * as React from "react";
 
+import "public/xterm.css";
 import { debounce } from "throttle-debounce";
 import "./view.less";
-import "/public/xterm.css";
 
 function getThemeFromCSSVars(el: Element): ITheme {
     const theme: ITheme = {};
