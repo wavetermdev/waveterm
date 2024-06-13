@@ -64,10 +64,11 @@ const atoms = {
 
 type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
-const orefSubjects = new Map<string, SubjectWithRef<any>>();
+// key is "eventType" or "eventType|oref"
+const eventSubjects = new Map<string, SubjectWithRef<WSEventType>>();
 
-function getORefSubject(oref: string): SubjectWithRef<any> {
-    let subject = orefSubjects.get(oref);
+function getSubjectInternal(subjectKey: string): SubjectWithRef<WSEventType> {
+    let subject = eventSubjects.get(subjectKey);
     if (subject == null) {
         subject = new rxjs.Subject<any>() as any;
         subject.refCount = 0;
@@ -75,13 +76,21 @@ function getORefSubject(oref: string): SubjectWithRef<any> {
             subject.refCount--;
             if (subject.refCount === 0) {
                 subject.complete();
-                orefSubjects.delete(oref);
+                eventSubjects.delete(subjectKey);
             }
         };
-        orefSubjects.set(oref, subject);
+        eventSubjects.set(subjectKey, subject);
     }
     subject.refCount++;
     return subject;
+}
+
+function getEventSubject(eventType: string): SubjectWithRef<WSEventType> {
+    return getSubjectInternal(eventType);
+}
+
+function getEventORefSubject(eventType: string, oref: string): SubjectWithRef<WSEventType> {
+    return getSubjectInternal(eventType + "|" + oref);
 }
 
 const blockCache = new Map<string, Map<string, any>>();
@@ -129,16 +138,20 @@ function getBackendWSHostPort(): string {
 let globalWS: WSControl = null;
 
 function handleWSEventMessage(msg: WSEventType) {
-    if (msg.oref == null) {
+    if (msg.eventtype == null) {
         console.log("unsupported event", msg);
         return;
     }
+    // we send to two subjects just eventType and eventType|oref
     // we don't use getORefSubject here because we don't want to create a new subject
-    const subject = orefSubjects.get(msg.oref);
-    if (subject == null) {
-        return;
+    const eventSubject = eventSubjects.get(msg.eventtype);
+    if (eventSubject != null) {
+        eventSubject.next(msg);
     }
-    subject.next(msg.data);
+    const eventOrefSubject = eventSubjects.get(msg.eventtype + "|" + msg.oref);
+    if (eventOrefSubject != null) {
+        eventOrefSubject.next(msg);
+    }
 }
 
 function handleWSMessage(msg: any) {
@@ -161,11 +174,20 @@ function sendWSCommand(command: WSCommandType) {
     globalWS.pushMessage(command);
 }
 
+// more code that could be moved into an init
+// here we want to set up a "waveobj:update" handler
+const waveobjUpdateSubject = getEventSubject("waveobj:update");
+waveobjUpdateSubject.subscribe((msg: WSEventType) => {
+    const update: WaveObjUpdate = msg.data;
+    WOS.updateWaveObject(update);
+});
+
 export {
     WOS,
     atoms,
     getBackendHostPort,
-    getORefSubject,
+    getEventORefSubject,
+    getEventSubject,
     globalStore,
     globalWS,
     initWS,

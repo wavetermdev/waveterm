@@ -3,7 +3,17 @@
 
 import base64 from "base64-js";
 
+function isBlank(str: string): boolean {
+    return str == null || str == "";
+}
+
 function base64ToString(b64: string): string {
+    if (b64 == null) {
+        return null;
+    }
+    if (b64 == "") {
+        return "";
+    }
     const stringBytes = base64.toByteArray(b64);
     return new TextDecoder().decode(stringBytes);
 }
@@ -22,4 +32,4 @@ function base64ToArray(b64: string): Uint8Array {
     return rtnArr;
 }
 
-export { base64ToArray, base64ToString, stringToBase64 };
+export { base64ToArray, base64ToString, isBlank, stringToBase64 };

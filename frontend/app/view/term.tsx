@@ -1,12 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WOS, getBackendHostPort, getORefSubject, sendWSCommand } from "@/store/global";
+import { WOS, getBackendHostPort, getEventORefSubject, sendWSCommand } from "@/store/global";
 import * as services from "@/store/services";
 import { base64ToArray } from "@/util/util";
 import { FitAddon } from "@xterm/addon-fit";
 import type { ITheme } from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
+import clsx from "clsx";
 import * as React from "react";
 
 import { debounce } from "throttle-debounce";
@@ -67,6 +68,8 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<Terminal>(null);
     const initialLoadRef = React.useRef<InitialLoadDataType>({ loaded: false, heldData: [] });
+    const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     React.useEffect(() => {
         console.log("terminal created");
         const newTerm = new Terminal({
@@ -82,10 +85,6 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         newTerm.loadAddon(newFitAddon);
         newTerm.open(connectElemRef.current);
         newFitAddon.fit();
-        // services.BlockService.SendCommand(blockId, {
-        //     command: "controller:input",
-        //     termsize: { rows: newTerm.rows, cols: newTerm.cols },
-        // });
         sendWSCommand({
             wscommand: "setblocktermsize",
             blockid: blockId,
@@ -98,9 +97,10 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         });
 
         // block subject
-        const blockSubject = getORefSubject(WOS.makeORef("block", blockId));
-        blockSubject.subscribe((data) => {
+        const blockSubject = getEventORefSubject("block:ptydata", WOS.makeORef("block", blockId));
+        blockSubject.subscribe((msg: WSEventType) => {
             // base64 decode
+            const data = msg.data;
             const decodedData = base64ToArray(data.ptydata);
             if (initialLoadRef.current.loaded) {
                 newTerm.write(decodedData);
@@ -150,9 +150,39 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         };
     }, []);
 
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.code === "Escape" && event.metaKey) {
+            // reset term:mode
+            const metaCmd: BlockSetMetaCommand = { command: "setmeta", meta: { "term:mode": null } };
+            services.BlockService.SendCommand(blockId, metaCmd);
+            return false;
+        }
+        return true;
+    };
+
+    let termMode = blockData?.meta?.["term:mode"] ?? "term";
+    if (termMode != "term" && termMode != "html") {
+        termMode = "term";
+    }
     return (
-        <div className="view-term">
+        <div className={clsx("view-term", "term-mode-" + termMode)}>
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
+            <div
+                key="htmlElem"
+                className="term-htmlelem"
+                onClick={() => {
+                    if (htmlElemFocusRef.current != null) {
+                        htmlElemFocusRef.current.focus();
+                    }
+                }}
+            >
+                <div key="htmlElemFocus" className="term-htmlelem-focus">
+                    <input type="text" ref={htmlElemFocusRef} onKeyDown={handleKeyDown} />
+                </div>
+                <div key="htmlElemContent" className="term-htmlelem-content">
+                    HTML MODE
+                </div>
+            </div>
         </div>
     );
 };

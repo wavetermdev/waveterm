@@ -15,8 +15,10 @@ const WaveOSC = "23198"
 const WaveOSCPrefix = "\x1b]" + WaveOSC + ";"
 const HexChars = "0123456789ABCDEF"
 const BEL = 0x07
+const ST = 0x9c
+const ESC = 0x1b
 
-var waveOSCPrefixBytes = []byte(WaveOSCPrefix)
+var WaveOSCPrefixBytes = []byte(WaveOSCPrefix)
 
 // OSC escape types
 // OSC 23198 ; (JSON | base64-JSON) ST
@@ -50,14 +52,14 @@ func EncodeWaveOSCMessage(cmd Command) ([]byte, error) {
 		// If no control characters, directly construct the output
 		// \x1b] (2) + WaveOSC + ; (1) + message + \x07 (1)
 		output := make([]byte, len(WaveOSCPrefix)+len(barr)+1)
-		copy(output, waveOSCPrefixBytes)
+		copy(output, WaveOSCPrefixBytes)
 		copy(output[len(WaveOSCPrefix):], barr)
 		output[len(output)-1] = BEL
 		return output, nil
 	}
 
 	var buf bytes.Buffer
-	buf.Write(waveOSCPrefixBytes)
+	buf.Write(WaveOSCPrefixBytes)
 	escSeq := [6]byte{'\\', 'u', '0', '0', '0', '0'}
 	for _, b := range barr {
 		if b < 0x20 || b == 0x7f {

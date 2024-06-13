@@ -7,6 +7,12 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
+    border-left: 4px solid transparent;
+    padding-left: 4px;
+
+    &:focus-within {
+        border-left: 4px solid var(--accent-color);
+    }
 
     .term-header {
         display: flex;
@@ -24,6 +30,53 @@
         min-height: 0;
         overflow: hidden;
         line-height: 1;
+    }
+
+    .term-htmlelem {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        flex-grow: 1;
+        min-height: 0;
+        overflow: hidden;
+
+        .term-htmlelem-focus {
+            height: 0;
+            width: 0;
+            input {
+                width: 0;
+                height: 0;
+                opacity: 0;
+                pointer-events: none;
+            }
+        }
+
+        .term-htmlelem-content {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            flex-grow: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+    }
+
+    &.term-mode-term {
+        .term-connectelem {
+            display: flex;
+        }
+        .term-htmlelem {
+            display: none;
+        }
+    }
+
+    &.term-mode-html {
+        .term-connectelem {
+            display: none;
+        }
+        .term-htmlelem {
+            display: flex;
+        }
     }
 }
 

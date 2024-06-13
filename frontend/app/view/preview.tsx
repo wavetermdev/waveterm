@@ -18,6 +18,9 @@ const MaxFileSize = 1024 * 1024 * 10; // 10MB
 
 function DirNav({ cwdAtom }: { cwdAtom: jotai.WritableAtom<string, [string], void> }) {
     const [cwd, setCwd] = jotai.useAtom(cwdAtom);
+    if (cwd == null || cwd == "") {
+        return null;
+    }
     let splitNav = [cwd];
     let remaining = cwd;
 
@@ -170,7 +173,9 @@ function PreviewView({ blockId }: { blockId: string }) {
     ) {
         specializedView = <StreamingPreview fileInfo={fileInfo} />;
     } else if (fileInfo == null) {
-        specializedView = <CenteredDiv>File Not Found</CenteredDiv>;
+        specializedView = (
+            <CenteredDiv>File Not Found{util.isBlank(fileName) ? null : JSON.stringify(fileName)}</CenteredDiv>
+        );
     } else if (fileInfo.size > MaxFileSize) {
         specializedView = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
     } else if (mimeType === "text/markdown") {

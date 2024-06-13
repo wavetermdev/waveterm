@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -39,6 +40,7 @@ type BlockController struct {
 	InputCh  chan BlockCommand
 	Status   string
 
+	PtyBuffer    *PtyBuffer
 	ShellProc    *shellexec.ShellProc
 	ShellInputCh chan *BlockInputCommand
 }
@@ -90,7 +92,7 @@ func (bc *BlockController) Close() {
 
 const DefaultTermMaxFileSize = 256 * 1024
 
-func (bc *BlockController) handleShellProcData(data []byte, seqNum int) error {
+func (bc *BlockController) handleShellProcData(data []byte) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	err := filestore.WFS.AppendData(ctx, bc.BlockId, "main", data)
@@ -104,7 +106,6 @@ func (bc *BlockController) handleShellProcData(data []byte, seqNum int) error {
 			"blockid":   bc.BlockId,
 			"blockfile": "main",
 			"ptydata":   base64.StdEncoding.EncodeToString(data),
-			"seqnum":    seqNum,
 		},
 	})
 	return nil
@@ -159,15 +160,13 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 			bc.ShellProc = nil
 			bc.ShellInputCh = nil
 		}()
-		seqNum := 0
 		buf := make([]byte, 4096)
 		for {
 			nr, err := bc.ShellProc.Pty.Read(buf)
-			seqNum++
 			if nr > 0 {
-				handleDataErr := bc.handleShellProcData(buf[:nr], seqNum)
-				if handleDataErr != nil {
-					log.Printf("error handling shell data: %v\n", handleDataErr)
+				bc.PtyBuffer.AppendData(buf[:nr])
+				if bc.PtyBuffer.Err != nil {
+					log.Printf("error processing pty data: %v\n", bc.PtyBuffer.Err)
 					break
 				}
 			}
@@ -269,6 +268,15 @@ func StartBlockController(ctx context.Context, blockId string) error {
 		Status:  "init",
 		InputCh: make(chan BlockCommand),
 	}
+	ptyBuffer := MakePtyBuffer(bc.handleShellProcData, func(cmd BlockCommand) error {
+		if strings.HasPrefix(cmd.GetCommand(), "controller:") {
+			bc.InputCh <- cmd
+		} else {
+			ProcessStaticCommand(blockId, cmd)
+		}
+		return nil
+	})
+	bc.PtyBuffer = ptyBuffer
 	blockControllerMap[blockId] = bc
 	go bc.Run(blockData)
 	return nil
@@ -304,6 +312,21 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
 		if err != nil {
 			return fmt.Errorf("error updating block: %w", err)
 		}
+		// send a waveobj:update event
+		updatedBlock, err := wstore.DBGet[*wstore.Block](ctx, blockId)
+		if err != nil {
+			return fmt.Errorf("error getting block: %w", err)
+		}
+		eventbus.SendEvent(eventbus.WSEventType{
+			EventType: "waveobj:update",
+			ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
+			Data: wstore.WaveObjUpdate{
+				UpdateType: wstore.UpdateType_Update,
+				OType:      wstore.OType_Block,
+				OID:        blockId,
+				Obj:        updatedBlock,
+			},
+		})
 		return nil
 	case *BlockSetMetaCommand:
 		log.Printf("SETMETA: %s | %v\n", blockId, cmd.Meta)
@@ -313,6 +336,9 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
 		}
 		if block == nil {
 			return nil
+		}
+		if block.Meta == nil {
+			block.Meta = make(map[string]any)
 		}
 		for k, v := range cmd.Meta {
 			if v == nil {
@@ -325,6 +351,24 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
 		if err != nil {
 			return fmt.Errorf("error updating block: %w", err)
 		}
+		// send a waveobj:update event
+		updatedBlock, err := wstore.DBGet[*wstore.Block](ctx, blockId)
+		if err != nil {
+			return fmt.Errorf("error getting block: %w", err)
+		}
+		eventbus.SendEvent(eventbus.WSEventType{
+			EventType: "waveobj:update",
+			ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
+			Data: wstore.WaveObjUpdate{
+				UpdateType: wstore.UpdateType_Update,
+				OType:      wstore.OType_Block,
+				OID:        blockId,
+				Obj:        updatedBlock,
+			},
+		})
+		return nil
+	case *BlockMessageCommand:
+		log.Printf("MESSAGE: %s | %q\n", blockId, cmd.Message)
 		return nil
 	default:
 		return fmt.Errorf("unknown command type %T", cmdGen)
