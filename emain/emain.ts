@@ -251,7 +251,7 @@ process.on("SIGUSR1", function () {
         "window:" + clientData.mainwindowid
     )) as WaveWindow;
     await electronApp.whenReady();
-    await createWindow(clientData, windowData);
+    createWindow(clientData, windowData);
 
     electronApp.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
