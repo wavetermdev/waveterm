@@ -4,6 +4,7 @@
 import * as electron from "electron";
 import * as child_process from "node:child_process";
 import * as path from "path";
+import * as readline from "readline";
 import { debounce } from "throttle-debounce";
 import * as services from "../frontend/app/store/services";
 
@@ -59,13 +60,6 @@ function getWaveSrvPath(): string {
     return path.join(getGoAppBasePath(), "bin", "wavesrv");
 }
 
-function getWaveSrvCmd(): string {
-    const waveSrvPath = getWaveSrvPath();
-    const waveHome = getWaveHomeDir();
-    const logFile = path.join(waveHome, "wavesrv.log");
-    return `"${waveSrvPath}" >> "${logFile}" 2>&1`;
-}
-
 function getWaveSrvCwd(): string {
     return getWaveHomeDir();
 }
@@ -83,9 +77,9 @@ function runWaveSrv(): Promise<boolean> {
         envCopy[WaveDevVarName] = "1";
     }
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
-    const waveSrvCmd = getWaveSrvCmd();
+    const waveSrvCmd = getWaveSrvPath();
     console.log("trying to run local server", waveSrvCmd);
-    const proc = child_process.execFile("bash", ["-c", waveSrvCmd], {
+    const proc = child_process.spawn(getWaveSrvPath(), {
         cwd: getWaveSrvCwd(),
         env: envCopy,
     });
@@ -102,11 +96,19 @@ function runWaveSrv(): Promise<boolean> {
         console.log("error running wavesrv", e);
         pReject(e);
     });
-    proc.stdout.on("data", (_) => {
-        return;
+    const rlStdout = readline.createInterface({
+        input: proc.stdout,
+        terminal: false,
     });
-    proc.stderr.on("data", (_) => {
-        return;
+    rlStdout.on("line", (line) => {
+        console.log(line);
+    });
+    const rlStderr = readline.createInterface({
+        input: proc.stderr,
+        terminal: false,
+    });
+    rlStderr.on("line", (line) => {
+        console.log(line);
     });
     return rtnPromise;
 }

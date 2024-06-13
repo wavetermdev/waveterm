@@ -235,12 +235,12 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 	for genCmd := range bc.InputCh {
 		switch cmd := genCmd.(type) {
 		case *BlockInputCommand:
-			fmt.Printf("INPUT: %s | %q\n", bc.BlockId, cmd.InputData64)
+			log.Printf("INPUT: %s | %q\n", bc.BlockId, cmd.InputData64)
 			if bc.ShellInputCh != nil {
 				bc.ShellInputCh <- cmd
 			}
 		default:
-			fmt.Printf("unknown command type %T\n", cmd)
+			log.Printf("unknown command type %T\n", cmd)
 		}
 	}
 }

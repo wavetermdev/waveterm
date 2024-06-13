@@ -62,6 +62,9 @@ func stdinReadWatch() {
 }
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	log.SetPrefix("[wavesrv] ")
+
 	err := service.ValidateServiceMap()
 	if err != nil {
 		log.Printf("error validating service map: %v\n", err)
