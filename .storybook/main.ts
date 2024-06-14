@@ -1,4 +1,5 @@
 import type { StorybookConfig } from "@storybook/react-vite";
+import type { ElectronViteConfig } from "electron-vite";
 import type { UserConfig } from "vite";
 
 const config: StorybookConfig = {
@@ -34,7 +35,8 @@ const config: StorybookConfig = {
     async viteFinal(config) {
         const { mergeConfig } = await import("vite");
         const { tsImport } = await import("tsx/esm/api");
-        const electronViteConfig = (await tsImport("../electron.vite.config.ts", import.meta.url)).default;
+        const electronViteConfig = (await tsImport("../electron.vite.config.ts", import.meta.url))
+            .default as ElectronViteConfig;
         return mergeConfig(config, electronViteConfig.renderer as UserConfig);
     },
 };
