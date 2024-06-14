@@ -14,9 +14,23 @@ declare global {
         meta: MetaType;
     };
 
+    // wshutil.BlockAppendFileCommand
+    type BlockAppendFileCommand = {
+        command: "blockfile:append";
+        filename: string;
+        data: number[];
+    };
+
+    // wshutil.BlockAppendIJsonCommand
+    type BlockAppendIJsonCommand = {
+        command: "blockfile:appendijson";
+        filename: string;
+        data: MetaType;
+    };
+
     type BlockCommand = {
         command: string;
-    } & ( BlockInputCommand | BlockSetViewCommand | BlockSetMetaCommand );
+    } & ( BlockAppendIJsonCommand | BlockInputCommand | BlockSetViewCommand | BlockSetMetaCommand | BlockMessageCommand | BlockAppendFileCommand );
 
     // wstore.BlockDef
     type BlockDef = {
@@ -26,7 +40,7 @@ declare global {
         meta?: MetaType;
     };
 
-    // blockcontroller.BlockInputCommand
+    // wshutil.BlockInputCommand
     type BlockInputCommand = {
         command: "controller:input";
         inputdata64?: string;
@@ -34,13 +48,19 @@ declare global {
         termsize?: TermSize;
     };
 
-    // blockcontroller.BlockSetMetaCommand
+    // wshutil.BlockMessageCommand
+    type BlockMessageCommand = {
+        command: "message";
+        message: string;
+    };
+
+    // wshutil.BlockSetMetaCommand
     type BlockSetMetaCommand = {
         command: "setmeta";
         meta: MetaType;
     };
 
-    // blockcontroller.BlockSetViewCommand
+    // wshutil.BlockSetViewCommand
     type BlockSetViewCommand = {
         command: "setview";
         view: string;
@@ -149,6 +169,14 @@ declare global {
         data: any;
     };
 
+    // eventbus.WSFileEventData
+    type WSFileEventData = {
+        zoneid: string;
+        filename: string;
+        fileop: string;
+        data64: string;
+    };
+
     // waveobj.WaveObj
     type WaveObj = {
         otype: string;
@@ -190,6 +218,7 @@ declare global {
     type WaveWindow = WaveObj & {
         workspaceid: string;
         activetabid: string;
+        activeblockid?: string;
         activeblockmap: {[key: string]: string};
         pos: Point;
         winsize: WinSize;

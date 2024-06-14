@@ -17,6 +17,7 @@ require (
 	github.com/sawka/txwrap v0.2.0
 	github.com/wavetermdev/waveterm/wavesrv v0.0.0-20240508181017-d07068c09d94
 	golang.org/x/sys v0.20.0
+	golang.org/x/term v0.17.0
 )
 
 require (

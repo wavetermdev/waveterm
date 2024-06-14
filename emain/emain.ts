@@ -124,6 +124,11 @@ function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
 }
 
 function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
+    if (url.startsWith("http://localhost:5173/index.html")) {
+        // this is a dev-mode hot-reload, ignore it
+        console.log("allowing hot-reload of index.html");
+        return;
+    }
     event.preventDefault();
     if (url.startsWith("https://") || url.startsWith("http://") || url.startsWith("file://")) {
         console.log("open external, shNav", url);

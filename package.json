@@ -68,6 +68,7 @@
         "react-dnd": "^16.0.1",
         "react-dnd-html5-backend": "^16.0.1",
         "react-dom": "^18.3.1",
+        "react-frame-component": "^5.2.7",
         "react-markdown": "^9.0.1",
         "remark-gfm": "^4.0.0",
         "rxjs": "^7.8.1",

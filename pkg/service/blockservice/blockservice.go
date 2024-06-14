@@ -10,6 +10,7 @@ import (
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
 type BlockService struct{}
@@ -25,7 +26,7 @@ func (bs *BlockService) SendCommand_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (bs *BlockService) SendCommand(blockId string, cmd blockcontroller.BlockCommand) error {
+func (bs *BlockService) SendCommand(blockId string, cmd wshutil.BlockCommand) error {
 	if strings.HasPrefix(cmd.GetCommand(), "controller:") {
 		bc := blockcontroller.GetBlockController(blockId)
 		if bc == nil {

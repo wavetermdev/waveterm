@@ -10,12 +10,12 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -354,7 +354,7 @@ func GenerateServiceClass(serviceName string, serviceObj any, tsTypesMap map[ref
 }
 
 func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {
-	GenerateTSTypeUnion(blockcontroller.CommandTypeUnionMeta(), tsTypesMap)
+	GenerateTSTypeUnion(wshutil.CommandTypeUnionMeta(), tsTypesMap)
 	GenerateTSTypeUnion(webcmd.WSCommandTypeUnionMeta(), tsTypesMap)
 	GenerateTSType(reflect.TypeOf(waveobj.ORef{}), tsTypesMap)
 	GenerateTSType(reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem(), tsTypesMap)
@@ -363,6 +363,7 @@ func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {
 	GenerateTSType(reflect.TypeOf(service.WebReturnType{}), tsTypesMap)
 	GenerateTSType(reflect.TypeOf(wstore.UIContext{}), tsTypesMap)
 	GenerateTSType(reflect.TypeOf(eventbus.WSEventType{}), tsTypesMap)
+	GenerateTSType(reflect.TypeOf(eventbus.WSFileEventData{}), tsTypesMap)
 	for _, rtype := range wstore.AllWaveObjTypes() {
 		GenerateTSType(rtype, tsTypesMap)
 	}

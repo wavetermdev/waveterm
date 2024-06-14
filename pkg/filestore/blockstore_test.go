@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/thenextwave/pkg/ijson"
 )
 
 func initDb(t *testing.T) {
@@ -619,4 +621,130 @@ func TestConcurrentAppend(t *testing.T) {
 	checkFileSize(t, ctx, zoneId, fileName, 1600)
 	checkFileByteCount(t, ctx, zoneId, fileName, 'a', 100)
 	checkFileByteCount(t, ctx, zoneId, fileName, 'e', 100)
+}
+
+func jsonDeepEqual(d1 any, d2 any) bool {
+	if d1 == nil && d2 == nil {
+		return true
+	}
+	if d1 == nil || d2 == nil {
+		return false
+	}
+	t1 := reflect.TypeOf(d1)
+	t2 := reflect.TypeOf(d2)
+	if t1 != t2 {
+		return false
+	}
+	switch d1.(type) {
+	case float64:
+		return d1.(float64) == d2.(float64)
+	case string:
+		return d1.(string) == d2.(string)
+	case bool:
+		return d1.(bool) == d2.(bool)
+	case []any:
+		a1 := d1.([]any)
+		a2 := d2.([]any)
+		if len(a1) != len(a2) {
+			return false
+		}
+		for i := 0; i < len(a1); i++ {
+			if !jsonDeepEqual(a1[i], a2[i]) {
+				return false
+			}
+		}
+		return true
+	case map[string]any:
+		m1 := d1.(map[string]any)
+		m2 := d2.(map[string]any)
+		if len(m1) != len(m2) {
+			return false
+		}
+		for k, v := range m1 {
+			if !jsonDeepEqual(v, m2[k]) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
+}
+
+func TestIJson(t *testing.T) {
+	initDb(t)
+	defer cleanupDb(t)
+	ctx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFn()
+	zoneId := uuid.NewString()
+	fileName := "ij1"
+	err := WFS.MakeFile(ctx, zoneId, fileName, nil, FileOptsType{IJson: true})
+	if err != nil {
+		t.Fatalf("error creating file: %v", err)
+	}
+	rootSet := ijson.MakeSetCommand(nil, map[string]any{"tag": "div", "class": "root"})
+	err = WFS.AppendIJson(ctx, zoneId, fileName, rootSet)
+	if err != nil {
+		t.Fatalf("error appending ijson: %v", err)
+	}
+	_, fullData, err := WFS.ReadFile(ctx, zoneId, fileName)
+	if err != nil {
+		t.Fatalf("error reading file: %v", err)
+	}
+	cmds, err := ijson.ParseIJson(fullData)
+	if err != nil {
+		t.Fatalf("error parsing ijson: %v", err)
+	}
+	outData, err := ijson.ApplyCommands(nil, cmds, 0)
+	if err != nil {
+		t.Fatalf("error applying ijson: %v", err)
+	}
+	if !jsonDeepEqual(rootSet["data"], outData) {
+		t.Errorf("data mismatch: expected %v, got %v", rootSet["data"], outData)
+	}
+	childrenAppend := ijson.MakeAppendCommand(ijson.Path{"children"}, map[string]any{"tag": "div", "class": "child"})
+	err = WFS.AppendIJson(ctx, zoneId, fileName, childrenAppend)
+	if err != nil {
+		t.Fatalf("error appending ijson: %v", err)
+	}
+	_, fullData, err = WFS.ReadFile(ctx, zoneId, fileName)
+	if err != nil {
+		t.Fatalf("error reading file: %v", err)
+	}
+	cmds, err = ijson.ParseIJson(fullData)
+	if err != nil {
+		t.Fatalf("error parsing ijson: %v", err)
+	}
+	if len(cmds) != 2 {
+		t.Fatalf("command count mismatch: expected 2, got %d", len(cmds))
+	}
+	outData, err = ijson.ApplyCommands(nil, cmds, 0)
+	if err != nil {
+		t.Fatalf("error applying ijson: %v", err)
+	}
+	if !jsonDeepEqual(ijson.M{"tag": "div", "class": "root", "children": ijson.A{ijson.M{"tag": "div", "class": "child"}}}, outData) {
+		t.Errorf("data mismatch: expected %v, got %v", rootSet["data"], outData)
+	}
+	err = WFS.CompactIJson(ctx, zoneId, fileName)
+	if err != nil {
+		t.Fatalf("error compacting ijson: %v", err)
+	}
+	_, fullData, err = WFS.ReadFile(ctx, zoneId, fileName)
+	if err != nil {
+		t.Fatalf("error reading file: %v", err)
+	}
+	cmds, err = ijson.ParseIJson(fullData)
+	if err != nil {
+		t.Fatalf("error parsing ijson: %v", err)
+	}
+	if len(cmds) != 1 {
+		t.Fatalf("command count mismatch: expected 1, got %d", len(cmds))
+	}
+	outData, err = ijson.ApplyCommands(nil, cmds, 0)
+	if err != nil {
+		t.Fatalf("error applying ijson: %v", err)
+	}
+	if !jsonDeepEqual(ijson.M{"tag": "div", "class": "root", "children": ijson.A{ijson.M{"tag": "div", "class": "child"}}}, outData) {
+		t.Errorf("data mismatch: expected %v, got %v", rootSet["data"], outData)
+	}
 }

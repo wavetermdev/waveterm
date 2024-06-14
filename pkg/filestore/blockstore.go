@@ -16,6 +16,21 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/wavetermdev/thenextwave/pkg/ijson"
+)
+
+const (
+	// ijson meta keys
+	IJsonNumCommands      = "ijson:numcmds"
+	IJsonIncrementalBytes = "ijson:incbytes"
+)
+
+const (
+	IJsonHighCommands = 100
+	IJsonHighRatio    = 3
+	IJsonLowRatio     = 1
+	IJsonLowCommands  = 10
 )
 
 const DefaultPartDataSize = 64 * 1024
@@ -35,9 +50,10 @@ var WFS *FileStore = &FileStore{
 }
 
 type FileOptsType struct {
-	MaxSize  int64 `json:"maxsize,omitempty"`
-	Circular bool  `json:"circular,omitempty"`
-	IJson    bool  `json:"ijson,omitempty"`
+	MaxSize     int64 `json:"maxsize,omitempty"`
+	Circular    bool  `json:"circular,omitempty"`
+	IJson       bool  `json:"ijson,omitempty"`
+	IJsonBudget int   `json:"ijsonbudget,omitempty"`
 }
 
 type FileMeta = map[string]any
@@ -117,6 +133,12 @@ func (s *FileStore) MakeFile(ctx context.Context, zoneId string, name string, me
 		if opts.MaxSize%partDataSize != 0 {
 			opts.MaxSize = (opts.MaxSize/partDataSize + 1) * partDataSize
 		}
+	}
+	if opts.IJsonBudget > 0 && !opts.IJson {
+		return fmt.Errorf("ijson budget requires ijson")
+	}
+	if opts.IJsonBudget < 0 {
+		return fmt.Errorf("ijson budget must be non-negative")
 	}
 	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
 		if entry.File != nil {
@@ -258,6 +280,87 @@ func (s *FileStore) AppendData(ctx context.Context, zoneId string, name string, 
 			}
 		}
 		entry.writeAt(entry.File.Size, data, false)
+		return nil
+	})
+}
+
+func metaIncrement(file *WaveFile, key string, amount int) int {
+	if file.Meta == nil {
+		file.Meta = make(FileMeta)
+	}
+	val, ok := file.Meta[key].(int)
+	if !ok {
+		val = 0
+	}
+	newVal := val + amount
+	file.Meta[key] = newVal
+	return newVal
+}
+
+func (s *FileStore) compactIJson(ctx context.Context, entry *CacheEntry) error {
+	// we don't need to lock the entry because we have the lock on the filestore
+	_, fullData, err := entry.readAt(ctx, 0, 0, true)
+	if err != nil {
+		return err
+	}
+	newBytes, err := ijson.CompactIJson(fullData, entry.File.Opts.IJsonBudget)
+	if err != nil {
+		return err
+	}
+	entry.writeAt(0, newBytes, true)
+	return nil
+}
+
+func (s *FileStore) CompactIJson(ctx context.Context, zoneId string, name string) error {
+	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
+		err := entry.loadFileIntoCache(ctx)
+		if err != nil {
+			return err
+		}
+		if !entry.File.Opts.IJson {
+			return fmt.Errorf("file %s:%s is not an ijson file", zoneId, name)
+		}
+		return s.compactIJson(ctx, entry)
+	})
+}
+
+func (s *FileStore) AppendIJson(ctx context.Context, zoneId string, name string, command map[string]any) error {
+	data, err := ijson.ValidateAndMarshalCommand(command)
+	if err != nil {
+		return err
+	}
+	return withLock(s, zoneId, name, func(entry *CacheEntry) error {
+		err := entry.loadFileIntoCache(ctx)
+		if err != nil {
+			return err
+		}
+		if !entry.File.Opts.IJson {
+			return fmt.Errorf("file %s:%s is not an ijson file", zoneId, name)
+		}
+		partMap := entry.File.computePartMap(entry.File.Size, int64(len(data)))
+		incompleteParts := incompletePartsFromMap(partMap)
+		if len(incompleteParts) > 0 {
+			err = entry.loadDataPartsIntoCache(ctx, incompleteParts)
+			if err != nil {
+				return err
+			}
+		}
+		oldSize := entry.File.Size
+		entry.writeAt(entry.File.Size, data, false)
+		entry.writeAt(entry.File.Size, []byte("\n"), false)
+		if oldSize == 0 {
+			return nil
+		}
+		// check if we should compact
+		numCmds := metaIncrement(entry.File, IJsonNumCommands, 1)
+		numBytes := metaIncrement(entry.File, IJsonIncrementalBytes, len(data)+1)
+		incRatio := float64(numBytes) / float64(entry.File.Size)
+		if numCmds > IJsonHighCommands || incRatio >= IJsonHighRatio || (numCmds > IJsonLowCommands && incRatio >= IJsonLowRatio) {
+			err := s.compactIJson(ctx, entry)
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	})
 }

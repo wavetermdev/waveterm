@@ -49,7 +49,7 @@ const Block = ({ blockId, onClose }: BlockProps) => {
     } else if (blockData.view === "plot") {
         blockElem = <PlotView />;
     } else if (blockData.view === "codeedit") {
-        blockElem = <CodeEdit text={null} />;
+        blockElem = <CodeEdit text={null} filename={null} />;
     }
     return (
         <div className="block" ref={blockRef}>

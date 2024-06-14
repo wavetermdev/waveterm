@@ -66,6 +66,7 @@ type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => vo
 
 // key is "eventType" or "eventType|oref"
 const eventSubjects = new Map<string, SubjectWithRef<WSEventType>>();
+const fileSubjects = new Map<string, SubjectWithRef<WSFileEventData>>();
 
 function getSubjectInternal(subjectKey: string): SubjectWithRef<WSEventType> {
     let subject = eventSubjects.get(subjectKey);
@@ -91,6 +92,25 @@ function getEventSubject(eventType: string): SubjectWithRef<WSEventType> {
 
 function getEventORefSubject(eventType: string, oref: string): SubjectWithRef<WSEventType> {
     return getSubjectInternal(eventType + "|" + oref);
+}
+
+function getFileSubject(zoneId: string, fileName: string): SubjectWithRef<WSFileEventData> {
+    const subjectKey = zoneId + "|" + fileName;
+    let subject = fileSubjects.get(subjectKey);
+    if (subject == null) {
+        subject = new rxjs.Subject<any>() as any;
+        subject.refCount = 0;
+        subject.release = () => {
+            subject.refCount--;
+            if (subject.refCount === 0) {
+                subject.complete();
+                fileSubjects.delete(subjectKey);
+            }
+        };
+        fileSubjects.set(subjectKey, subject);
+    }
+    subject.refCount++;
+    return subject;
 }
 
 const blockCache = new Map<string, Map<string, any>>();
@@ -142,6 +162,15 @@ function handleWSEventMessage(msg: WSEventType) {
         console.log("unsupported event", msg);
         return;
     }
+    if (msg.eventtype == "blockfile") {
+        const fileData: WSFileEventData = msg.data;
+        const fileSubject = getFileSubject(fileData.zoneid, fileData.filename);
+        if (fileSubject != null) {
+            fileSubject.next(fileData);
+        }
+        return;
+    }
+
     // we send to two subjects just eventType and eventType|oref
     // we don't use getORefSubject here because we don't want to create a new subject
     const eventSubject = eventSubjects.get(msg.eventtype);
@@ -193,6 +222,7 @@ export {
     getBackendHostPort,
     getEventORefSubject,
     getEventSubject,
+    getFileSubject,
     globalStore,
     globalWS,
     initWS,

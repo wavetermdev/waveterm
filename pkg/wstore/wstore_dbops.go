@@ -6,7 +6,9 @@ package wstore
 import (
 	"context"
 	"fmt"
+	"log"
 
+	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
@@ -167,13 +169,21 @@ func DBSelectMap[T waveobj.WaveObj](ctx context.Context, ids []string) (map[stri
 }
 
 func DBDelete(ctx context.Context, otype string, id string) error {
-	return WithTx(ctx, func(tx *TxWrap) error {
+	err := WithTx(ctx, func(tx *TxWrap) error {
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("DELETE FROM %s WHERE oid = ?", table)
 		tx.Exec(query, id)
 		ContextAddUpdate(ctx, WaveObjUpdate{UpdateType: UpdateType_Delete, OType: otype, OID: id})
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	err = filestore.WFS.DeleteZone(ctx, id)
+	if err != nil {
+		log.Printf("error deleting filestore zone (after deleting block): %v", err)
+	}
+	return nil
 }
 
 func DBUpdate(ctx context.Context, val waveobj.WaveObj) error {

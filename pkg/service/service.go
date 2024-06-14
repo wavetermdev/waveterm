@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/clientservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
@@ -17,6 +16,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -36,7 +36,7 @@ var waveObjMapRType = reflect.TypeOf(map[string]waveobj.WaveObj{})
 var methodMetaRType = reflect.TypeOf(tsgenmeta.MethodMeta{})
 var waveObjUpdateRType = reflect.TypeOf(wstore.WaveObjUpdate{})
 var uiContextRType = reflect.TypeOf((*wstore.UIContext)(nil)).Elem()
-var blockCommandRType = reflect.TypeOf((*blockcontroller.BlockCommand)(nil)).Elem()
+var blockCommandRType = reflect.TypeOf((*wshutil.BlockCommand)(nil)).Elem()
 var wsCommandRType = reflect.TypeOf((*webcmd.WSCommandType)(nil)).Elem()
 
 type WebCallType struct {
@@ -100,7 +100,7 @@ func convertBlockCommand(argType reflect.Type, jsonArg any) (any, error) {
 	if _, ok := jsonArg.(map[string]any); !ok {
 		return nil, fmt.Errorf("cannot convert %T to %s", jsonArg, argType)
 	}
-	cmd, err := blockcontroller.ParseCmdMap(jsonArg.(map[string]any))
+	cmd, err := wshutil.ParseCmdMap(jsonArg.(map[string]any))
 	if err != nil {
 		return nil, fmt.Errorf("error parsing command map: %w", err)
 	}

@@ -25,7 +25,7 @@ var WaveOSCPrefixBytes = []byte(WaveOSCPrefix)
 // JSON = must escape all ASCII control characters ([\x00-\x1F\x7F])
 // we can tell the difference between JSON and base64-JSON by the first character: '{' or not
 
-func EncodeWaveOSCMessage(cmd Command) ([]byte, error) {
+func EncodeWaveOSCMessage(cmd BlockCommand) ([]byte, error) {
 	if cmd.GetCommand() == "" {
 		return nil, fmt.Errorf("Command field not set in struct")
 	}
@@ -74,7 +74,7 @@ func EncodeWaveOSCMessage(cmd Command) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func decodeWaveOSCMessage(data []byte) (Command, error) {
+func decodeWaveOSCMessage(data []byte) (BlockCommand, error) {
 	var baseCmd baseCommand
 	err := json.Unmarshal(data, &baseCmd)
 	if err != nil {
@@ -85,12 +85,12 @@ func decodeWaveOSCMessage(data []byte) (Command, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling json: %w", err)
 	}
-	return rtnCmd.(Command), nil
+	return rtnCmd.(BlockCommand), nil
 }
 
 // data does not contain the escape sequence, just the innards
 // this function implements the switch between JSON and base64-JSON
-func DecodeWaveOSCMessage(data []byte) (Command, error) {
+func DecodeWaveOSCMessage(data []byte) (BlockCommand, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("empty data")
 	}

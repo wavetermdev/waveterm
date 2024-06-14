@@ -19,12 +19,12 @@ const (
 type PtyBuffer struct {
 	Mode            string
 	EscSeqBuf       []byte
-	DataOutputFn    func([]byte) error
-	CommandOutputFn func(BlockCommand) error
+	DataOutputFn    func(string, []byte) error
+	CommandOutputFn func(wshutil.BlockCommand) error
 	Err             error
 }
 
-func MakePtyBuffer(dataOutputFn func([]byte) error, commandOutputFn func(BlockCommand) error) *PtyBuffer {
+func MakePtyBuffer(dataOutputFn func(string, []byte) error, commandOutputFn func(wshutil.BlockCommand) error) *PtyBuffer {
 	return &PtyBuffer{
 		Mode:            Mode_Normal,
 		DataOutputFn:    dataOutputFn,
@@ -45,7 +45,7 @@ func (b *PtyBuffer) processWaveEscSeq(escSeq []byte) {
 		b.setErr(fmt.Errorf("error unmarshalling Wave OSC sequence data: %w", err))
 		return
 	}
-	cmd, err := ParseCmdMap(jmsg)
+	cmd, err := wshutil.ParseCmdMap(jmsg)
 	if err != nil {
 		b.setErr(fmt.Errorf("error parsing Wave OSC command: %w", err))
 		return
@@ -111,7 +111,7 @@ func (b *PtyBuffer) AppendData(data []byte) {
 		outputBuf = append(outputBuf, ch)
 	}
 	if len(outputBuf) > 0 {
-		err := b.DataOutputFn(outputBuf)
+		err := b.DataOutputFn(BlockFile_Main, outputBuf)
 		if err != nil {
 			b.setErr(fmt.Errorf("error processing data output: %w", err))
 		}

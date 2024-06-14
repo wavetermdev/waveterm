@@ -3,64 +3,135 @@
 
 package wshutil
 
-import "reflect"
+import (
+	"encoding/json"
+	"fmt"
+	"reflect"
+
+	"github.com/wavetermdev/thenextwave/pkg/ijson"
+	"github.com/wavetermdev/thenextwave/pkg/shellexec"
+	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
+)
+
+const CommandKey = "command"
 
 const (
-	CommandSetView         = "setview"
-	CommandSetMeta         = "setmeta"
-	CommandBlockFileAppend = "blockfile:append"
-	CommandStreamFile      = "streamfile"
+	BlockCommand_Message         = "message"
+	BlockCommand_SetView         = "setview"
+	BlockCommand_SetMeta         = "setmeta"
+	BlockCommand_Input           = "controller:input"
+	BlockCommand_AppendBlockFile = "blockfile:append"
+	BlockCommand_AppendIJson     = "blockfile:appendijson"
 )
 
 var CommandToTypeMap = map[string]reflect.Type{
-	CommandSetView: reflect.TypeOf(SetViewCommand{}),
-	CommandSetMeta: reflect.TypeOf(SetMetaCommand{}),
+	BlockCommand_Input:           reflect.TypeOf(BlockInputCommand{}),
+	BlockCommand_SetView:         reflect.TypeOf(BlockSetViewCommand{}),
+	BlockCommand_SetMeta:         reflect.TypeOf(BlockSetMetaCommand{}),
+	BlockCommand_Message:         reflect.TypeOf(BlockMessageCommand{}),
+	BlockCommand_AppendBlockFile: reflect.TypeOf(BlockAppendFileCommand{}),
+	BlockCommand_AppendIJson:     reflect.TypeOf(BlockAppendIJsonCommand{}),
 }
 
-type Command interface {
+func CommandTypeUnionMeta() tsgenmeta.TypeUnionMeta {
+	var rtypes []reflect.Type
+	for _, rtype := range CommandToTypeMap {
+		rtypes = append(rtypes, rtype)
+	}
+	return tsgenmeta.TypeUnionMeta{
+		BaseType:      reflect.TypeOf((*BlockCommand)(nil)).Elem(),
+		TypeFieldName: "command",
+		Types:         rtypes,
+	}
+}
+
+type baseCommand struct {
+	Command string `json:"command"`
+}
+
+type BlockCommand interface {
 	GetCommand() string
 }
 
-// for unmarshalling
-type baseCommand struct {
-	Command string `json:"command"`
-	RpcID   string `json:"rpcid"`
-	RpcType string `json:"rpctype"`
+type BlockCommandWrapper struct {
+	BlockCommand
 }
 
-type SetViewCommand struct {
-	Command string `json:"command"`
+func ParseCmdMap(cmdMap map[string]any) (BlockCommand, error) {
+	cmdType, ok := cmdMap[CommandKey].(string)
+	if !ok {
+		return nil, fmt.Errorf("no %s field in command map", CommandKey)
+	}
+	mapJson, err := json.Marshal(cmdMap)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling command map: %w", err)
+	}
+	rtype := CommandToTypeMap[cmdType]
+	if rtype == nil {
+		return nil, fmt.Errorf("unknown command type %q", cmdType)
+	}
+	cmd := reflect.New(rtype).Interface()
+	err = json.Unmarshal(mapJson, cmd)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling command: %w", err)
+	}
+	return cmd.(BlockCommand), nil
+}
+
+type BlockInputCommand struct {
+	Command     string              `json:"command" tstype:"\"controller:input\""`
+	InputData64 string              `json:"inputdata64,omitempty"`
+	SigName     string              `json:"signame,omitempty"`
+	TermSize    *shellexec.TermSize `json:"termsize,omitempty"`
+}
+
+func (ic *BlockInputCommand) GetCommand() string {
+	return BlockCommand_Input
+}
+
+type BlockSetViewCommand struct {
+	Command string `json:"command" tstype:"\"setview\""`
 	View    string `json:"view"`
 }
 
-func (svc *SetViewCommand) GetCommand() string {
-	return CommandSetView
+func (svc *BlockSetViewCommand) GetCommand() string {
+	return BlockCommand_SetView
 }
 
-type SetMetaCommand struct {
-	Command string         `json:"command"`
+type BlockSetMetaCommand struct {
+	Command string         `json:"command" tstype:"\"setmeta\""`
 	Meta    map[string]any `json:"meta"`
 }
 
-func (smc *SetMetaCommand) GetCommand() string {
-	return CommandSetMeta
+func (smc *BlockSetMetaCommand) GetCommand() string {
+	return BlockCommand_SetMeta
 }
 
-type BlockFileAppendCommand struct {
-	Command  string `json:"command"`
+type BlockMessageCommand struct {
+	Command string `json:"command" tstype:"\"message\""`
+	Message string `json:"message"`
+}
+
+func (bmc *BlockMessageCommand) GetCommand() string {
+	return BlockCommand_Message
+}
+
+type BlockAppendFileCommand struct {
+	Command  string `json:"command" tstype:"\"blockfile:append\""`
 	FileName string `json:"filename"`
 	Data     []byte `json:"data"`
 }
 
-func (bfac *BlockFileAppendCommand) GetCommand() string {
-	return CommandBlockFileAppend
+func (bwc *BlockAppendFileCommand) GetCommand() string {
+	return BlockCommand_AppendBlockFile
 }
 
-type StreamFileCommand struct {
-	Command  string `json:"command"`
-	FileName string `json:"filename"`
+type BlockAppendIJsonCommand struct {
+	Command  string        `json:"command" tstype:"\"blockfile:appendijson\""`
+	FileName string        `json:"filename"`
+	Data     ijson.Command `json:"data"`
 }
 
-func (c *StreamFileCommand) GetCommand() string {
-	return CommandStreamFile
+func (bwc *BlockAppendIJsonCommand) GetCommand() string {
+	return BlockCommand_AppendIJson
 }

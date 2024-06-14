@@ -6,6 +6,7 @@ package ijson
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -22,10 +23,38 @@ const (
 	AppendCommandStr = "append"
 )
 
+type Command = map[string]any
+type Path = []any
+type M = map[string]any
+type A = []any
+
 // instead of defining structs for commands, we just define a command shape
 // set: type, path, value
 // del: type, path
 // arrayappend: type, path, value
+
+func MakeSetCommand(path Path, value any) Command {
+	return Command{
+		"type": SetCommandStr,
+		"path": path,
+		"data": value,
+	}
+}
+
+func MakeDelCommand(path Path) Command {
+	return Command{
+		"type": DelCommandStr,
+		"path": path,
+	}
+}
+
+func MakeAppendCommand(path Path, value any) Command {
+	return Command{
+		"type": AppendCommandStr,
+		"path": path,
+		"data": value,
+	}
+}
 
 type PathError struct {
 	Err string
@@ -35,11 +64,11 @@ func (e PathError) Error() string {
 	return "PathError: " + e.Err
 }
 
-func MakePathTypeError(path []any, index int) error {
+func MakePathTypeError(path Path, index int) error {
 	return PathError{fmt.Sprintf("invalid path element type:%T at index:%d (%s)", path[index], index, FormatPath(path))}
 }
 
-func MakePathError(errStr string, path []any, index int) error {
+func MakePathError(errStr string, path Path, index int) error {
 	return PathError{fmt.Sprintf("%s at index:%d (%s)", errStr, index, FormatPath(path))}
 }
 
@@ -51,7 +80,7 @@ func (e SetTypeError) Error() string {
 	return "SetTypeError: " + e.Err
 }
 
-func MakeSetTypeError(errStr string, path []any, index int) error {
+func MakeSetTypeError(errStr string, path Path, index int) error {
 	return SetTypeError{fmt.Sprintf("%s at index:%d (%s)", errStr, index, FormatPath(path))}
 }
 
@@ -63,13 +92,13 @@ func (e BudgetError) Error() string {
 	return "BudgetError: " + e.Err
 }
 
-func MakeBudgetError(errStr string, path []any, index int) error {
+func MakeBudgetError(errStr string, path Path, index int) error {
 	return BudgetError{fmt.Sprintf("%s at index:%d (%s)", errStr, index, FormatPath(path))}
 }
 
 var simplePathStrRe = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
-func FormatPath(path []any) string {
+func FormatPath(path Path) string {
 	if len(path) == 0 {
 		return "$"
 	}
@@ -99,7 +128,7 @@ func FormatPath(path []any) string {
 }
 
 type pathWithPos struct {
-	Path  []any
+	Path  Path
 	Index int
 }
 
@@ -152,12 +181,12 @@ type SetPathOpts struct {
 	CombineFn CombiningFunc
 }
 
-func SetPathNoErr(data any, path []any, value any, opts *SetPathOpts) any {
+func SetPathNoErr(data any, path Path, value any, opts *SetPathOpts) any {
 	ret, _ := SetPath(data, path, value, opts)
 	return ret
 }
 
-func SetPath(data any, path []any, value any, opts *SetPathOpts) (any, error) {
+func SetPath(data any, path Path, value any, opts *SetPathOpts) (any, error) {
 	if opts == nil {
 		opts = &SetPathOpts{}
 	}
@@ -464,7 +493,7 @@ func DeepEqual(v1 any, v2 any) bool {
 	}
 }
 
-func getCommandType(command map[string]any) string {
+func getCommandType(command Command) string {
 	typeVal, ok := command["type"]
 	if !ok {
 		return ""
@@ -476,7 +505,7 @@ func getCommandType(command map[string]any) string {
 	return typeStr
 }
 
-func getCommandPath(command map[string]any) []any {
+func getCommandPath(command Command) []any {
 	pathVal, ok := command["path"]
 	if !ok {
 		return nil
@@ -488,26 +517,119 @@ func getCommandPath(command map[string]any) []any {
 	return path
 }
 
-func ApplyCommand(data any, command any, budget int) (any, error) {
-	mapVal, ok := command.(map[string]any)
-	if !ok {
-		return nil, fmt.Errorf("ApplyCommand: expected map, but got %T", command)
+func ValidatePath(path any) error {
+	if path == nil {
+		// nil path is allowed (sets the root)
+		return nil
 	}
-	commandType := getCommandType(mapVal)
+	pathArr, ok := path.([]any)
+	if !ok {
+		return fmt.Errorf("path is not an array")
+	}
+	for idx, elem := range pathArr {
+		switch elem.(type) {
+		case string, int:
+			continue
+		default:
+			return fmt.Errorf("path element %d is not a string or int", idx)
+		}
+	}
+	return nil
+}
+
+func ValidateAndMarshalCommand(command Command) ([]byte, error) {
+	cmdType := getCommandType(command)
+	if cmdType != SetCommandStr && cmdType != DelCommandStr && cmdType != AppendCommandStr {
+		return nil, fmt.Errorf("unknown ijson command type %q", cmdType)
+	}
+	path := getCommandPath(command)
+	err := ValidatePath(path)
+	if err != nil {
+		return nil, err
+	}
+	barr, err := json.Marshal(command)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling ijson command to json: %w", err)
+	}
+	return barr, nil
+}
+
+func ApplyCommand(data any, command Command, budget int) (any, error) {
+	commandType := getCommandType(command)
 	if commandType == "" {
 		return nil, fmt.Errorf("ApplyCommand: missing type field")
 	}
 	switch commandType {
 	case SetCommandStr:
-		path := getCommandPath(mapVal)
-		return SetPath(data, path, mapVal["data"], &SetPathOpts{Budget: budget})
+		path := getCommandPath(command)
+		return SetPath(data, path, command["data"], &SetPathOpts{Budget: budget})
 	case DelCommandStr:
-		path := getCommandPath(mapVal)
+		path := getCommandPath(command)
 		return SetPath(data, path, nil, &SetPathOpts{Remove: true, Budget: budget})
 	case AppendCommandStr:
-		path := getCommandPath(mapVal)
-		return SetPath(data, path, mapVal["data"], &SetPathOpts{CombineFn: CombineFn_ArrayAppend, Budget: budget})
+		path := getCommandPath(command)
+		return SetPath(data, path, command["data"], &SetPathOpts{CombineFn: CombineFn_ArrayAppend, Budget: budget})
 	default:
 		return nil, fmt.Errorf("ApplyCommand: unknown command type %q", commandType)
 	}
+}
+
+func ApplyCommands(data any, commands []Command, budget int) (any, error) {
+	for _, command := range commands {
+		var err error
+		data, err = ApplyCommand(data, command, budget)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
+}
+
+func CompactIJson(fullData []byte, budget int) ([]byte, error) {
+	var newData any
+	for len(fullData) > 0 {
+		nlIdx := bytes.IndexByte(fullData, '\n')
+		var cmdData []byte
+		if nlIdx == -1 {
+			cmdData = fullData
+			fullData = nil
+		} else {
+			cmdData = fullData[:nlIdx]
+			fullData = fullData[nlIdx+1:]
+		}
+		var cmdMap Command
+		err := json.Unmarshal(cmdData, &cmdMap)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshalling ijson command: %w", err)
+		}
+		newData, err = ApplyCommand(newData, cmdMap, budget)
+		if err != nil {
+			return nil, fmt.Errorf("error applying ijson command: %w", err)
+		}
+	}
+	newRootCmd := MakeSetCommand(nil, newData)
+	return json.Marshal(newRootCmd)
+}
+
+// returns a list of commands
+func ParseIJson(fullData []byte) ([]Command, error) {
+	var commands []Command
+	for len(fullData) > 0 {
+		nlIdx := bytes.IndexByte(fullData, '\n')
+		var cmdData []byte
+		if nlIdx == -1 {
+			cmdData = fullData
+			fullData = nil
+		} else {
+			cmdData = fullData[:nlIdx]
+			fullData = fullData[nlIdx+1:]
+		}
+		var cmdMap Command
+		err := json.Unmarshal(cmdData, &cmdMap)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshalling ijson command: %w", err)
+		}
+		commands = append(commands, cmdMap)
+	}
+	return commands, nil
 }

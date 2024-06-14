@@ -20,6 +20,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -28,21 +29,27 @@ const (
 	BlockController_Cmd   = "cmd"
 )
 
+const (
+	BlockFile_Main = "main" // used for main pty output
+	BlockFile_Html = "html" // used for alt html layout
+)
+
 const DefaultTimeout = 2 * time.Second
 
 var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
 
 type BlockController struct {
-	Lock     *sync.Mutex
-	BlockId  string
-	BlockDef *wstore.BlockDef
-	InputCh  chan BlockCommand
-	Status   string
+	Lock            *sync.Mutex
+	BlockId         string
+	BlockDef        *wstore.BlockDef
+	InputCh         chan wshutil.BlockCommand
+	Status          string
+	CreatedHtmlFile bool
 
 	PtyBuffer    *PtyBuffer
 	ShellProc    *shellexec.ShellProc
-	ShellInputCh chan *BlockInputCommand
+	ShellInputCh chan *wshutil.BlockInputCommand
 }
 
 func (bc *BlockController) WithLock(f func()) {
@@ -91,21 +98,49 @@ func (bc *BlockController) Close() {
 }
 
 const DefaultTermMaxFileSize = 256 * 1024
+const DefaultHtmlMaxFileSize = 256 * 1024
 
-func (bc *BlockController) handleShellProcData(data []byte) error {
+func handleAppendBlockFile(blockId string, blockFile string, data []byte) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
-	err := filestore.WFS.AppendData(ctx, bc.BlockId, "main", data)
+	err := filestore.WFS.AppendData(ctx, blockId, blockFile, data)
 	if err != nil {
 		return fmt.Errorf("error appending to blockfile: %w", err)
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "block:ptydata",
-		ORef:      waveobj.MakeORef(wstore.OType_Block, bc.BlockId).String(),
-		Data: map[string]any{
-			"blockid":   bc.BlockId,
-			"blockfile": "main",
-			"ptydata":   base64.StdEncoding.EncodeToString(data),
+		EventType: "blockfile",
+		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
+		Data: &eventbus.WSFileEventData{
+			ZoneId:   blockId,
+			FileName: blockFile,
+			FileOp:   eventbus.FileOp_Append,
+			Data64:   base64.StdEncoding.EncodeToString(data),
+		},
+	})
+	return nil
+}
+
+func handleAppendIJsonFile(blockId string, blockFile string, cmd map[string]any, tryCreate bool) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	if blockFile == BlockFile_Html && tryCreate {
+		err := filestore.WFS.MakeFile(ctx, blockId, blockFile, nil, filestore.FileOptsType{MaxSize: DefaultHtmlMaxFileSize, IJson: true})
+		if err != nil && err != filestore.ErrAlreadyExists {
+			return fmt.Errorf("error creating blockfile[html]: %w", err)
+		}
+	}
+	err := filestore.WFS.AppendIJson(ctx, blockId, blockFile, cmd)
+	if err != nil {
+		return fmt.Errorf("error appending to blockfile(ijson): %w", err)
+	}
+	eventbus.SendEvent(eventbus.WSEventType{
+		EventType: "blockfile",
+		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
+		Data: &eventbus.WSFileEventData{
+			ZoneId:   blockId,
+			FileName: blockFile,
+			FileOp:   eventbus.FileOp_Append,
+			Data64:   base64.StdEncoding.EncodeToString([]byte("{}")),
 		},
 	})
 	return nil
@@ -150,7 +185,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 		bc.ShellProc.Close()
 		return err
 	}
-	shellInputCh := make(chan *BlockInputCommand)
+	shellInputCh := make(chan *wshutil.BlockInputCommand)
 	bc.ShellInputCh = shellInputCh
 	go func() {
 		defer func() {
@@ -233,7 +268,7 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 
 	for genCmd := range bc.InputCh {
 		switch cmd := genCmd.(type) {
-		case *BlockInputCommand:
+		case *wshutil.BlockInputCommand:
 			log.Printf("INPUT: %s | %q\n", bc.BlockId, cmd.InputData64)
 			if bc.ShellInputCh != nil {
 				bc.ShellInputCh <- cmd
@@ -266,9 +301,11 @@ func StartBlockController(ctx context.Context, blockId string) error {
 		Lock:    &sync.Mutex{},
 		BlockId: blockId,
 		Status:  "init",
-		InputCh: make(chan BlockCommand),
+		InputCh: make(chan wshutil.BlockCommand),
 	}
-	ptyBuffer := MakePtyBuffer(bc.handleShellProcData, func(cmd BlockCommand) error {
+	ptyBuffer := MakePtyBuffer(func(fileName string, data []byte) error {
+		return handleAppendBlockFile(blockId, fileName, data)
+	}, func(cmd wshutil.BlockCommand) error {
 		if strings.HasPrefix(cmd.GetCommand(), "controller:") {
 			bc.InputCh <- cmd
 		} else {
@@ -297,11 +334,11 @@ func GetBlockController(blockId string) *BlockController {
 	return blockControllerMap[blockId]
 }
 
-func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
+func ProcessStaticCommand(blockId string, cmdGen wshutil.BlockCommand) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	switch cmd := cmdGen.(type) {
-	case *BlockSetViewCommand:
+	case *wshutil.BlockSetViewCommand:
 		log.Printf("SETVIEW: %s | %q\n", blockId, cmd.View)
 		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
 		if err != nil {
@@ -328,7 +365,7 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
 			},
 		})
 		return nil
-	case *BlockSetMetaCommand:
+	case *wshutil.BlockSetMetaCommand:
 		log.Printf("SETMETA: %s | %v\n", blockId, cmd.Meta)
 		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
 		if err != nil {
@@ -367,9 +404,26 @@ func ProcessStaticCommand(blockId string, cmdGen BlockCommand) error {
 			},
 		})
 		return nil
-	case *BlockMessageCommand:
+	case *wshutil.BlockMessageCommand:
 		log.Printf("MESSAGE: %s | %q\n", blockId, cmd.Message)
 		return nil
+
+	case *wshutil.BlockAppendFileCommand:
+		log.Printf("APPENDFILE: %s | %q | len:%d\n", blockId, cmd.FileName, len(cmd.Data))
+		err := handleAppendBlockFile(blockId, cmd.FileName, cmd.Data)
+		if err != nil {
+			return fmt.Errorf("error appending blockfile: %w", err)
+		}
+		return nil
+
+	case *wshutil.BlockAppendIJsonCommand:
+		log.Printf("APPENDIJSON: %s | %q\n", blockId, cmd.FileName)
+		err := handleAppendIJsonFile(blockId, cmd.FileName, cmd.Data, true)
+		if err != nil {
+			return fmt.Errorf("error appending blockfile(ijson): %w", err)
+		}
+		return nil
+
 	default:
 		return fmt.Errorf("unknown command type %T", cmdGen)
 	}

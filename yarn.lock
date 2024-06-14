@@ -11015,6 +11015,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-frame-component@npm:^5.2.7":
+  version: 5.2.7
+  resolution: "react-frame-component@npm:5.2.7"
+  peerDependencies:
+    prop-types: ^15.5.9
+    react: ">= 16.3"
+    react-dom: ">= 16.3"
+  checksum: 10c0/e138602aa98557c021ae825f51468026c53b9939140c5961d5371b65ad07ff9a5adaf2cd4e4a8a77414a05ae0f95a842939c8e102aa576ef21ff096368b905a3
+  languageName: node
+  linkType: hard
+
 "react-is@npm:18.1.0":
   version: 18.1.0
   resolution: "react-is@npm:18.1.0"
@@ -12277,6 +12288,7 @@ __metadata:
     react-dnd: "npm:^16.0.1"
     react-dnd-html5-backend: "npm:^16.0.1"
     react-dom: "npm:^18.3.1"
+    react-frame-component: "npm:^5.2.7"
     react-markdown: "npm:^9.0.1"
     remark-gfm: "npm:^4.0.0"
     rxjs: "npm:^7.8.1"

@@ -130,6 +130,7 @@ type Window struct {
 	Version        int               `json:"version"`
 	WorkspaceId    string            `json:"workspaceid"`
 	ActiveTabId    string            `json:"activetabid"`
+	ActiveBlockId  string            `json:"activeblockid,omitempty"`
 	ActiveBlockMap map[string]string `json:"activeblockmap"` // map from tabid to blockid
 	Pos            Point             `json:"pos"`
 	WinSize        WinSize           `json:"winsize"`

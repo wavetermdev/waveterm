@@ -15,6 +15,17 @@ type WSEventType struct {
 	Data      any    `json:"data"`
 }
 
+const (
+	FileOp_Append = "append"
+)
+
+type WSFileEventData struct {
+	ZoneId   string `json:"zoneid"`
+	FileName string `json:"filename"`
+	FileOp   string `json:"fileop"`
+	Data64   string `json:"data64"`
+}
+
 type WindowWatchData struct {
 	WindowWSCh   chan any
 	WaveWindowId string

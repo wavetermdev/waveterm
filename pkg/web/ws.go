@@ -15,10 +15,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
 const wsReadWaitTimeout = 15 * time.Second
@@ -95,8 +95,8 @@ func processWSCommand(jmsg map[string]any, outputCh chan any) {
 	}
 	switch cmd := wsCommand.(type) {
 	case *webcmd.SetBlockTermSizeWSCommand:
-		blockCmd := &blockcontroller.BlockInputCommand{
-			Command:  blockcontroller.BlockCommand_Input,
+		blockCmd := &wshutil.BlockInputCommand{
+			Command:  wshutil.BlockCommand_Input,
 			TermSize: &cmd.TermSize,
 		}
 		blockservice.BlockServiceInstance.SendCommand(cmd.BlockId, blockCmd)
