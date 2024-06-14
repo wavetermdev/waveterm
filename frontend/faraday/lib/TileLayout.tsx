@@ -36,10 +36,26 @@ import "./tilelayout.less";
 import { Dimensions, FlexDirection, setTransform as createTransform, debounce, determineDropDirection } from "./utils";
 
 export interface TileLayoutProps<T> {
+    /**
+     * The atom containing the layout tree state.
+     */
     layoutTreeStateAtom: WritableLayoutTreeStateAtom<T>;
+    /**
+     * A callback that accepts the data from the leaf node and displays the leaf contents to the user.
+     */
     renderContent: ContentRenderer<T>;
+    /**
+     * A callback that accepts the data from the leaf node and returns a preview that can be shown when the user drags a node.
+     */
     renderPreview?: PreviewRenderer<T>;
+    /**
+     * A callback that is called when a node gets deleted from the LayoutTreeState.
+     * @param data The contents of the node that was deleted.
+     */
     onNodeDelete?: (data: T) => Promise<void>;
+    /**
+     * The class name to use for the top-level div of the tile layout.
+     */
     className?: string;
 }
 
@@ -191,7 +207,7 @@ export const TileLayout = <T,>({
                     {layoutLeafTransforms &&
                         layoutTreeState.leafs.map((leaf) => {
                             return (
-                                <TileNode
+                                <LeafNode
                                     key={leaf.id}
                                     layoutNode={leaf}
                                     renderContent={renderContent}
@@ -229,25 +245,47 @@ export const TileLayout = <T,>({
     );
 };
 
-interface TileNodeProps<T> {
+interface LeafNodeProps<T> {
+    /**
+     * The leaf node object, containing the data needed to display the leaf contents to the user.
+     */
     layoutNode: LayoutNode<T>;
+    /**
+     * A callback that accepts the data from the leaf node and displays the leaf contents to the user.
+     */
     renderContent: ContentRenderer<T>;
+    /**
+     * A callback that accepts the data from the leaf node and returns a preview that can be shown when the user drags a node.
+     */
     renderPreview?: PreviewRenderer<T>;
+    /**
+     * A callback that is called when a leaf node gets closed.
+     * @param node The node that is closed.
+     */
     onLeafClose: (node: LayoutNode<T>) => void;
+    /**
+     * Determines whether a leaf's contents should be displayed to the user.
+     */
     ready: boolean;
+    /**
+     * A series of CSS properties used to display a leaf node with the correct dimensions and position, as determined from its corresponding OverlayNode.
+     */
     transform: CSSProperties;
 }
 
 const dragItemType = "TILE_ITEM";
 
-const TileNode = <T,>({
+/**
+ * A div representing the leafs of the LayoutTreeState. The actual contents of the leafs are rendered inside these divs and displayed to the user.
+ */
+const LeafNode = <T,>({
     layoutNode,
     renderContent,
     renderPreview,
     transform,
     onLeafClose,
     ready,
-}: TileNodeProps<T>) => {
+}: LeafNodeProps<T>) => {
     const tileNodeRef = useRef<HTMLDivElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
 
@@ -331,13 +369,36 @@ const TileNode = <T,>({
 };
 
 interface OverlayNodeProps<T> {
+    /**
+     * The layout node object corresponding to the OverlayNode.
+     */
     layoutNode: LayoutNode<T>;
+    /**
+     * The layout tree state.
+     */
     layoutTreeState: LayoutTreeState<T>;
+    /**
+     * The reducer function for mutating the layout tree state.
+     * @param action The action to perform.
+     */
     dispatch: (action: LayoutTreeAction) => void;
+    /**
+     * A callback to update the RefObject mapping corresponding to the layout node. Used to inform the TileLayout of changes to the OverlayNode's position and size.
+     * @param id The id of the layout node being mounted.
+     * @param ref The reference to the mounted overlay node.
+     */
     setRef: (id: string, ref: RefObject<HTMLDivElement>) => void;
+    /**
+     * A callback to remove the RefObject mapping corresponding to the layout node when it gets unmounted.
+     * @param id The id of the layout node being unmounted.
+     */
     deleteRef: (id: string) => void;
 }
 
+/**
+ * An overlay representing the true flexbox layout of the LayoutTreeState. This holds the drop targets for moving around nodes and is used to calculate the
+ * dimensions of the corresponding TileNode for each LayoutTreeState leaf.
+ */
 const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, deleteRef }: OverlayNodeProps<T>) => {
     const overlayRef = useRef<HTMLDivElement>(null);
     const leafRef = useRef<HTMLDivElement>(null);
@@ -431,12 +492,27 @@ const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, delete
 };
 
 interface PlaceholderProps<T> {
+    /**
+     * The layout tree state.
+     */
     layoutTreeState: LayoutTreeState<T>;
+    /**
+     * A reference to the div containing the overlay nodes. Used to normalize the position of the target node as the overlay container is moved in and out of view.
+     */
     overlayContainerRef: React.RefObject<HTMLElement>;
+    /**
+     * The mapping of all layout nodes to their corresponding mounted overlay node.
+     */
     nodeRefs: Map<string, React.RefObject<HTMLElement>>;
+    /**
+     * Any styling to apply to the placeholder container div.
+     */
     style: React.CSSProperties;
 }
 
+/**
+ * An overlay to preview pending actions on the layout tree.
+ */
 const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style }: PlaceholderProps<T>) => {
     const [placeholderOverlay, setPlaceholderOverlay] = useState<ReactNode>(null);
 
