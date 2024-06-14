@@ -13,6 +13,9 @@ import (
 
 const WaveOSC = "23198"
 const WaveOSCPrefix = "\x1b]" + WaveOSC + ";"
+const WaveResponseOSC = "23199"
+const WaveResponseOSCPrefix = "\x1b]" + WaveResponseOSC + ";"
+
 const HexChars = "0123456789ABCDEF"
 const BEL = 0x07
 const ST = 0x9c
@@ -25,9 +28,12 @@ var WaveOSCPrefixBytes = []byte(WaveOSCPrefix)
 // JSON = must escape all ASCII control characters ([\x00-\x1F\x7F])
 // we can tell the difference between JSON and base64-JSON by the first character: '{' or not
 
+// for responses (terminal -> program), we'll use OSC 23199
+// same json format
+
 func EncodeWaveOSCMessage(cmd BlockCommand) ([]byte, error) {
 	if cmd.GetCommand() == "" {
-		return nil, fmt.Errorf("Command field not set in struct")
+		return nil, fmt.Errorf("command field not set in struct")
 	}
 	ctype, ok := CommandToTypeMap[cmd.GetCommand()]
 	if !ok {

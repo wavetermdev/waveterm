@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"reflect"
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
@@ -154,6 +155,28 @@ func DBSelectORefs(ctx context.Context, orefs []waveobj.ORef) ([]waveobj.WaveObj
 			rtn = append(rtn, rtnArr...)
 		}
 		return rtn, nil
+	})
+}
+
+func DBResolveEasyOID(ctx context.Context, oid string) (*waveobj.ORef, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (*waveobj.ORef, error) {
+		for _, rtype := range AllWaveObjTypes() {
+			otype := reflect.Zero(rtype).Interface().(waveobj.WaveObj).GetOType()
+			table := tableNameFromOType(otype)
+			var fullOID string
+			if len(oid) == 8 {
+				query := fmt.Sprintf("SELECT oid FROM %s WHERE oid LIKE ?", table)
+				fullOID = tx.GetString(query, oid+"%")
+			} else {
+				query := fmt.Sprintf("SELECT oid FROM %s WHERE oid = ?", table)
+				fullOID = tx.GetString(query, oid)
+			}
+			if fullOID != "" {
+				oref := waveobj.MakeORef(otype, fullOID)
+				return &oref, nil
+			}
+		}
+		return nil, ErrNotFound
 	})
 }
 

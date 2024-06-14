@@ -8,10 +8,14 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"regexp"
+	"strings"
 	"sync"
 	"syscall"
 
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"golang.org/x/term"
 )
@@ -76,6 +80,29 @@ func installShutdownSignalHandlers() {
 			break
 		}
 	}()
+}
+
+var oidRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
+
+func validateEasyORef(oref string) error {
+	if strings.Index(oref, ":") >= 0 {
+		_, err := waveobj.ParseORef(oref)
+		if err != nil {
+			return fmt.Errorf("invalid ORef: %v", err)
+		}
+		return nil
+	}
+	if len(oref) == 8 {
+		if !oidRe.MatchString(oref) {
+			return fmt.Errorf("invalid short OID format, must only use 0-9a-f: %q", oref)
+		}
+		return nil
+	}
+	_, err := uuid.Parse(oref)
+	if err != nil {
+		return fmt.Errorf("invalid OID (must be UUID): %v", err)
+	}
+	return nil
 }
 
 // Execute executes the root command.

@@ -46,10 +46,8 @@ type BlockController struct {
 	InputCh         chan wshutil.BlockCommand
 	Status          string
 	CreatedHtmlFile bool
-
-	PtyBuffer    *PtyBuffer
-	ShellProc    *shellexec.ShellProc
-	ShellInputCh chan *wshutil.BlockInputCommand
+	ShellProc       *shellexec.ShellProc
+	ShellInputCh    chan *wshutil.BlockInputCommand
 }
 
 func (bc *BlockController) WithLock(f func()) {
@@ -187,6 +185,17 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 	}
 	shellInputCh := make(chan *wshutil.BlockInputCommand)
 	bc.ShellInputCh = shellInputCh
+	commandCh := make(chan wshutil.BlockCommand, 32)
+	ptyBuffer := wshutil.MakePtyBuffer(bc.ShellProc.Pty, commandCh)
+	go func() {
+		for cmd := range commandCh {
+			if strings.HasPrefix(cmd.GetCommand(), "controller:") {
+				bc.InputCh <- cmd
+			} else {
+				ProcessStaticCommand(bc.BlockId, cmd)
+			}
+		}
+	}()
 	go func() {
 		defer func() {
 			// needs synchronization
@@ -197,12 +206,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 		}()
 		buf := make([]byte, 4096)
 		for {
-			nr, err := bc.ShellProc.Pty.Read(buf)
+			nr, err := ptyBuffer.Read(buf)
 			if nr > 0 {
-				bc.PtyBuffer.AppendData(buf[:nr])
-				if bc.PtyBuffer.Err != nil {
-					log.Printf("error processing pty data: %v\n", bc.PtyBuffer.Err)
-					break
+				err := handleAppendBlockFile(bc.BlockId, BlockFile_Main, buf[:nr])
+				if err != nil {
+					log.Printf("error appending to blockfile: %v\n", err)
 				}
 			}
 			if err == io.EOF {
@@ -303,17 +311,6 @@ func StartBlockController(ctx context.Context, blockId string) error {
 		Status:  "init",
 		InputCh: make(chan wshutil.BlockCommand),
 	}
-	ptyBuffer := MakePtyBuffer(func(fileName string, data []byte) error {
-		return handleAppendBlockFile(blockId, fileName, data)
-	}, func(cmd wshutil.BlockCommand) error {
-		if strings.HasPrefix(cmd.GetCommand(), "controller:") {
-			bc.InputCh <- cmd
-		} else {
-			ProcessStaticCommand(blockId, cmd)
-		}
-		return nil
-	})
-	bc.PtyBuffer = ptyBuffer
 	blockControllerMap[blockId] = bc
 	go bc.Run(blockData)
 	return nil

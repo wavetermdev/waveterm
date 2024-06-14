@@ -7,8 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"regexp"
+	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
 )
 
@@ -37,6 +40,25 @@ func MakeORef(otype string, oid string) ORef {
 		OType: otype,
 		OID:   oid,
 	}
+}
+
+var otypeRe = regexp.MustCompile(`^[a-z]+$`)
+
+func ParseORef(orefStr string) (ORef, error) {
+	fields := strings.Split(orefStr, ":")
+	if len(fields) != 2 {
+		return ORef{}, fmt.Errorf("invalid object reference: %q", orefStr)
+	}
+	otype := fields[0]
+	if !otypeRe.MatchString(otype) {
+		return ORef{}, fmt.Errorf("invalid object type: %q", otype)
+	}
+	oid := fields[1]
+	_, err := uuid.Parse(oid)
+	if err != nil {
+		return ORef{}, fmt.Errorf("invalid object id: %q", oid)
+	}
+	return ORef{OType: otype, OID: oid}, nil
 }
 
 type WaveObj interface {
