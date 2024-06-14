@@ -15,6 +15,7 @@ const preview: Preview = {
             },
         },
     },
+
     decorators: [
         (Story) => (
             <DndProvider backend={HTML5Backend}>
@@ -22,6 +23,8 @@ const preview: Preview = {
             </DndProvider>
         ),
     ],
+
+    tags: ["autodocs"]
 };
 
 export default preview;

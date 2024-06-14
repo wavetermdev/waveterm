@@ -32,7 +32,7 @@ const config: StorybookConfig = {
         reactDocgen: "react-docgen-typescript",
     },
 
-    async viteFinal(config) {
+    viteFinal(config) {
         return mergeConfig(config, electronViteConfig.renderer as UserConfig);
     },
 };
