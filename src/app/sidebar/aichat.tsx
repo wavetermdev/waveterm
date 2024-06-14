@@ -7,7 +7,7 @@ import * as mobx from "mobx";
 import { GlobalModel } from "@/models";
 import { boundMethod } from "autobind-decorator";
 import { For, If } from "tsx-control-statements/components";
-import { Markdown2, TypingIndicator } from "@/elements";
+import { Markdown, TypingIndicator } from "@/elements";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import tinycolor from "tinycolor2";
@@ -72,7 +72,7 @@ class ChatItem extends React.Component<
                 <div className="chat-msg-header">
                     <i className="fa-sharp fa-solid fa-user"></i>
                 </div>
-                <Markdown2 className="msg-text" text={chatItem.userquery} />
+                <Markdown className="msg-text" text={chatItem.userquery} />
             </>
         );
         if (isassistantresponse) {
@@ -94,7 +94,7 @@ class ChatItem extends React.Component<
                             <div className="chat-msg-header">
                                 <i className="fa-sharp fa-solid fa-sparkles"></i>
                             </div>
-                            <Markdown2 text={assistantresponse.message} onClickExecute={onSetCmdInputValue} />
+                            <Markdown text={assistantresponse.message} onClickExecute={onSetCmdInputValue} />
                         </>
                     );
                 }

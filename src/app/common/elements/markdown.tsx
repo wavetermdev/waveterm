@@ -5,14 +5,14 @@ import * as React from "react";
 import * as mobxReact from "mobx-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { CopyButton } from "@/elements";
 import { clsx } from "clsx";
-import { GlobalModel } from "@/models";
-import { v4 as uuidv4 } from "uuid";
+import * as mobx from "mobx";
+import { If } from "tsx-control-statements/components";
 
 import "./markdown.less";
-import { boundMethod } from "autobind-decorator";
 
-function LinkRenderer(props: any): any {
+function Link(props: any): JSX.Element {
     let newUrl = "https://extern?" + encodeURIComponent(props.href);
     return (
         <a href={newUrl} target="_blank" rel={"noopener"}>
@@ -21,99 +21,86 @@ function LinkRenderer(props: any): any {
     );
 }
 
-function HeaderRenderer(props: any, hnum: number): any {
+function Header(props: any, hnum: number): JSX.Element {
     return <div className={clsx("title", "is-" + hnum)}>{props.children}</div>;
 }
 
-function CodeRenderer(props: any): any {
+function Code(props: any): JSX.Element {
     return <code>{props.children}</code>;
 }
 
-@mobxReact.observer
-class CodeBlockMarkdown extends React.Component<
-    { children: React.ReactNode; codeSelectSelectedIndex?: number; uuid: string },
-    {}
-> {
-    blockIndex: number;
-    blockRef: React.RefObject<HTMLPreElement>;
+const CodeBlock = mobxReact.observer(
+    (props: { children: React.ReactNode; onClickExecute?: (cmd: string) => void }): JSX.Element => {
+        const copied: OV<boolean> = mobx.observable.box(false, { name: "copied" });
 
-    constructor(props) {
-        super(props);
-        this.blockRef = React.createRef();
-        this.blockIndex = GlobalModel.inputModel.addCodeBlockToCodeSelect(this.blockRef, this.props.uuid);
-    }
+        const getTextContent = (children: any) => {
+            if (typeof children === "string") {
+                return children;
+            } else if (Array.isArray(children)) {
+                return children.map(getTextContent).join("");
+            } else if (children.props && children.props.children) {
+                return getTextContent(children.props.children);
+            }
+            return "";
+        };
 
-    render() {
-        let clickHandler: (e: React.MouseEvent<HTMLElement>, blockIndex: number) => void;
-        let inputModel = GlobalModel.inputModel;
-        clickHandler = (e: React.MouseEvent<HTMLElement>, blockIndex: number) => {
-            const sel = window.getSelection();
-            if (sel?.toString().length == 0) {
-                inputModel.setCodeSelectSelectedCodeBlock(blockIndex);
+        const handleCopy = async (e: React.MouseEvent) => {
+            let textToCopy = getTextContent(props.children);
+            textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
+            await navigator.clipboard.writeText(textToCopy);
+            copied.set(true);
+            setTimeout(() => copied.set(false), 2000); // Reset copied state after 2 seconds
+        };
+
+        const handleExecute = (e: React.MouseEvent) => {
+            let textToCopy = getTextContent(props.children);
+            textToCopy = textToCopy.replace(/\n$/, ""); // remove trailing newline
+            if (props.onClickExecute) {
+                props.onClickExecute(textToCopy);
+                return;
             }
         };
-        let selected = this.blockIndex == this.props.codeSelectSelectedIndex;
+
         return (
-            <pre
-                ref={this.blockRef}
-                className={clsx({ selected: selected })}
-                onClick={(event) => clickHandler(event, this.blockIndex)}
-            >
-                {this.props.children}
+            <pre className="codeblock">
+                {props.children}
+                <div className="codeblock-actions">
+                    <CopyButton className="copy-button" onClick={handleCopy} title="Copy" />
+                    <If condition={props.onClickExecute}>
+                        <i className="fa-regular fa-square-terminal" onClick={handleExecute}></i>
+                    </If>
+                </div>
             </pre>
         );
     }
-}
+);
 
 @mobxReact.observer
 class Markdown extends React.Component<
-    { text: string; style?: any; extraClassName?: string; codeSelect?: boolean },
+    {
+        text: string;
+        style?: any;
+        className?: string;
+        onClickExecute?: (cmd: string) => void;
+    },
     {}
 > {
-    curUuid: string;
-
-    constructor(props) {
-        super(props);
-        this.curUuid = uuidv4();
-    }
-
-    @boundMethod
-    CodeBlockRenderer(props: any, codeSelect: boolean, codeSelectIndex: number, curUuid: string): any {
-        if (codeSelect) {
-            return (
-                <CodeBlockMarkdown codeSelectSelectedIndex={codeSelectIndex} uuid={curUuid}>
-                    {props.children}
-                </CodeBlockMarkdown>
-            );
-        } else {
-            const clickHandler = (e: React.MouseEvent<HTMLElement>) => {
-                let blockText = (e.target as HTMLElement).innerText;
-                if (blockText) {
-                    blockText = blockText.replace(/\n$/, ""); // remove trailing newline
-                    navigator.clipboard.writeText(blockText);
-                }
-            };
-            return <pre onClick={(event) => clickHandler(event)}>{props.children}</pre>;
-        }
-    }
-
     render() {
-        let text = this.props.text;
-        let codeSelect = this.props.codeSelect;
-        let curCodeSelectIndex = GlobalModel.inputModel.getCodeSelectSelectedIndex();
+        let { text, className, onClickExecute } = this.props;
         let markdownComponents = {
-            a: LinkRenderer,
-            h1: (props) => HeaderRenderer(props, 1),
-            h2: (props) => HeaderRenderer(props, 2),
-            h3: (props) => HeaderRenderer(props, 3),
-            h4: (props) => HeaderRenderer(props, 4),
-            h5: (props) => HeaderRenderer(props, 5),
-            h6: (props) => HeaderRenderer(props, 6),
-            code: (props) => CodeRenderer(props),
-            pre: (props) => this.CodeBlockRenderer(props, codeSelect, curCodeSelectIndex, this.curUuid),
+            a: Link,
+            h1: (props) => <Header {...props} hnum={1} />,
+            h2: (props) => <Header {...props} hnum={2} />,
+            h3: (props) => <Header {...props} hnum={3} />,
+            h4: (props) => <Header {...props} hnum={4} />,
+            h5: (props) => <Header {...props} hnum={5} />,
+            h6: (props) => <Header {...props} hnum={6} />,
+            code: Code,
+            pre: (props) => <CodeBlock {...props} onClickExecute={onClickExecute} />,
         };
+
         return (
-            <div className={clsx("markdown content", this.props.extraClassName)} style={this.props.style}>
+            <div className={clsx("markdown content", className)} style={this.props.style}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
                     {text}
                 </ReactMarkdown>
