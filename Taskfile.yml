@@ -6,7 +6,8 @@ version: "3"
 vars:
     APP_NAME: "NextWave"
     BIN_DIR: "bin"
-    VERSION: "0.1.0"
+    VERSION:
+        sh: node version.cjs
 
 tasks:
     generate:
