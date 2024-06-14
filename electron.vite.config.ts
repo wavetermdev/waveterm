@@ -3,7 +3,6 @@
 
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
-import { resolve } from "path";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -13,7 +12,7 @@ export default defineConfig({
         build: {
             rollupOptions: {
                 input: {
-                    index: resolve(__dirname, "emain/emain.ts"),
+                    index: "emain/emain.ts",
                 },
             },
             outDir: "dist/main",
@@ -26,7 +25,7 @@ export default defineConfig({
             sourcemap: true,
             rollupOptions: {
                 input: {
-                    index: resolve(__dirname, "emain/preload.ts"),
+                    index: "emain/preload.ts",
                 },
                 output: {
                     format: "cjs",
@@ -44,7 +43,7 @@ export default defineConfig({
             outDir: "dist/frontend",
             rollupOptions: {
                 input: {
-                    index: resolve(__dirname, "index.html"),
+                    index: "index.html",
                 },
             },
         },
