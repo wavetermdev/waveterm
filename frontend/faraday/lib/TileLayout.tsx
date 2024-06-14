@@ -207,7 +207,7 @@ export const TileLayout = <T,>({
                     {layoutLeafTransforms &&
                         layoutTreeState.leafs.map((leaf) => {
                             return (
-                                <LeafNode
+                                <DisplayNode
                                     key={leaf.id}
                                     layoutNode={leaf}
                                     renderContent={renderContent}
@@ -245,7 +245,7 @@ export const TileLayout = <T,>({
     );
 };
 
-interface LeafNodeProps<T> {
+interface DisplayNodeProps<T> {
     /**
      * The leaf node object, containing the data needed to display the leaf contents to the user.
      */
@@ -276,16 +276,16 @@ interface LeafNodeProps<T> {
 const dragItemType = "TILE_ITEM";
 
 /**
- * A div representing the leafs of the LayoutTreeState. The actual contents of the leafs are rendered inside these divs and displayed to the user.
+ * The draggable and displayable portion of a leaf node in a layout tree.
  */
-const LeafNode = <T,>({
+const DisplayNode = <T,>({
     layoutNode,
     renderContent,
     renderPreview,
     transform,
     onLeafClose,
     ready,
-}: LeafNodeProps<T>) => {
+}: DisplayNodeProps<T>) => {
     const tileNodeRef = useRef<HTMLDivElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
 
@@ -397,7 +397,7 @@ interface OverlayNodeProps<T> {
 
 /**
  * An overlay representing the true flexbox layout of the LayoutTreeState. This holds the drop targets for moving around nodes and is used to calculate the
- * dimensions of the corresponding TileNode for each LayoutTreeState leaf.
+ * dimensions of the corresponding DisplayNode for each LayoutTreeState leaf.
  */
 const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, deleteRef }: OverlayNodeProps<T>) => {
     const overlayRef = useRef<HTMLDivElement>(null);
