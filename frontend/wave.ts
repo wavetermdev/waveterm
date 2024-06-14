@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Client } from "@/gopkg/wstore";
 import { globalStore, globalWS, initWS } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
