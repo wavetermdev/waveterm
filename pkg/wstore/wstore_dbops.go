@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
@@ -179,10 +180,16 @@ func DBDelete(ctx context.Context, otype string, id string) error {
 	if err != nil {
 		return err
 	}
-	err = filestore.WFS.DeleteZone(ctx, id)
-	if err != nil {
-		log.Printf("error deleting filestore zone (after deleting block): %v", err)
-	}
+	go func() {
+		// we spawn a go routine here because we don't want to reuse the DB connection
+		// since DBDelete is called in a transaction from DeleteTab
+		deleteCtx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancelFn()
+		err := filestore.WFS.DeleteZone(deleteCtx, id)
+		if err != nil {
+			log.Printf("error deleting filestore zone (after deleting block): %v", err)
+		}
+	}()
 	return nil
 }
 
