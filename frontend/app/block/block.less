@@ -51,6 +51,7 @@
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
+    border-radius: 0 0 4px 4px;
 
     .block-header-icon {
         font-size: 20px;
@@ -64,9 +65,13 @@
 
     .close-button {
         font-size: 12px;
-        padding-right: 5px;
+        padding: 5px 5px 5px 5px;
+        margin-right: 5px;
+        border-radius: 4px;
+
         &:hover {
             cursor: pointer;
+            background-color: var(--highlight-bg-color);
         }
     }
 }
