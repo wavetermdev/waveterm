@@ -10,6 +10,7 @@
     height: 100%;
     overflow: hidden;
     min-height: 0;
+    position: relative;
 
     .block-content {
         display: flex;
@@ -18,6 +19,23 @@
         overflow: hidden;
         min-height: 0;
         padding: 5px;
+    }
+
+    .block-header-animation-wrap {
+        max-height: 0;
+        transition:
+            max-height 0.3s ease-out,
+            opacity 0.3s ease-out;
+        overflow: hidden;
+        position: absolute;
+        top: 0;
+        width: 100%;
+        height: 30px;
+        z-index: var(--zindex-header-hover);
+
+        &.is-showing {
+            max-height: 30px;
+        }
     }
 }
 
@@ -33,6 +51,11 @@
     user-select: none;
     -webkit-user-select: none;
     cursor: default;
+
+    .block-header-icon {
+        font-size: 20px;
+        padding: 0 5px;
+    }
 
     .block-header-text {
         padding: 0 5px;
