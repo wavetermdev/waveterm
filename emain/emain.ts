@@ -124,7 +124,7 @@ function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
 }
 
 function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
-    if (url.startsWith("http://localhost:5173/index.html")) {
+    if (url.startsWith("http://127.0.0.1:5173/index.html")) {
         // this is a dev-mode hot-reload, ignore it
         console.log("allowing hot-reload of index.html");
         return;
@@ -153,7 +153,10 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
         electron.shell.openExternal(url);
         return;
     }
-    if (event.frame.name == "pdfview" && url.startsWith("blob:file:///")) {
+    if (
+        event.frame.name == "pdfview" &&
+        (url.startsWith("blob:file:///") || url.startsWith(getBaseHostPort() + "/wave/stream-file?"))
+    ) {
         // allowed
         return;
     }

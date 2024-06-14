@@ -76,7 +76,7 @@ function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
     if (fileInfo.mimetype == "application/pdf") {
         return (
             <div className="view-preview view-preview-pdf">
-                <iframe src={streamingUrl} width="100%" height="100%" name="pdfview" />
+                <iframe src={streamingUrl} width="95%" height="95%" name="pdfview" />
             </div>
         );
     }

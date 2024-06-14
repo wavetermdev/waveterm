@@ -148,11 +148,11 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
 
 function getBackendHostPort(): string {
     // TODO deal with dev/production
-    return "http://localhost:8190";
+    return "http://127.0.0.1:8190";
 }
 
 function getBackendWSHostPort(): string {
-    return "ws://localhost:8191";
+    return "ws://127.0.0.1:8191";
 }
 
 let globalWS: WSControl = null;
