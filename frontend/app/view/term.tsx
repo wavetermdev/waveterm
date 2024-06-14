@@ -180,6 +180,19 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             blockid: blockId,
             termsize: { rows: newTerm.rows, cols: newTerm.cols },
         });
+        connectElemRef.current.addEventListener(
+            "keydown",
+            (ev) => {
+                if (ev.code == "Escape" && ev.metaKey) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    const metaCmd: BlockSetMetaCommand = { command: "setmeta", meta: { "term:mode": "html" } };
+                    services.BlockService.SendCommand(blockId, metaCmd);
+                    return false;
+                }
+            },
+            true
+        );
         newTerm.onData((data) => {
             const b64data = btoa(data);
             const inputCmd: BlockInputCommand = { command: "controller:input", inputdata64: b64data };
