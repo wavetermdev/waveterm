@@ -7,6 +7,8 @@ import * as path from "path";
 import * as readline from "readline";
 import { debounce } from "throttle-debounce";
 import * as services from "../frontend/app/store/services";
+import os from "os";
+import fs from "fs";
 
 const electronApp = electron.app;
 const isDev = process.env.WAVETERM_DEV;
@@ -23,6 +25,7 @@ let waveSrvReadyResolve = (value: boolean) => {};
 let waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
     waveSrvReadyResolve = resolve;
 });
+
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 electronApp.setName(isDev ? "NextWave (Dev)" : "NextWave");
 const unamePlatform = process.platform;
@@ -40,7 +43,7 @@ function getBaseHostPort(): string {
 
 // must match golang
 function getWaveHomeDir() {
-    return path.join(process.env.HOME, ".w2");
+    return path.join(os.homedir(), ".w2");
 }
 
 function getElectronAppBasePath(): string {
@@ -60,6 +63,11 @@ function getWaveSrvPath(): string {
     return path.join(getGoAppBasePath(), "bin", "wavesrv");
 }
 
+function getWaveSrvPathWin(): string {
+    const appPath = path.join(getGoAppBasePath(), "bin", "wavesrv.exe");
+	return `& "${appPath}"`
+}
+
 function getWaveSrvCwd(): string {
     return getWaveHomeDir();
 }
@@ -77,7 +85,12 @@ function runWaveSrv(): Promise<boolean> {
         envCopy[WaveDevVarName] = "1";
     }
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
-    const waveSrvCmd = getWaveSrvPath();
+	let waveSrvCmd: string;
+	if (process.platform === "win32") {
+		waveSrvCmd = getWaveSrvPathWin();
+	} else {
+    	waveSrvCmd = getWaveSrvPath();
+	}
     console.log("trying to run local server", waveSrvCmd);
     const proc = child_process.spawn(getWaveSrvPath(), {
         cwd: getWaveSrvCwd(),
@@ -108,6 +121,10 @@ function runWaveSrv(): Promise<boolean> {
         terminal: false,
     });
     rlStderr.on("line", (line) => {
+		if (line.includes("WAVESRV-ESTART")) {
+			waveSrvReadyResolve(true);
+			return;
+		}
         console.log(line);
     });
     return rtnPromise;
@@ -232,11 +249,6 @@ electron.ipcMain.on("isDevServer", () => {
     return isDevServer;
 });
 
-process.on("SIGUSR1", function () {
-    ``;
-    waveSrvReadyResolve(true);
-});
-
 (async () => {
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
@@ -245,16 +257,21 @@ process.on("SIGUSR1", function () {
         electronApp.quit();
         return;
     }
+	const waveHomeDir = getWaveHomeDir();
+	if (!fs.existsSync(waveHomeDir)) {
+		fs.mkdirSync(waveHomeDir);
+	}
     try {
         await runWaveSrv();
     } catch (e) {
         console.log(e.toString());
     }
-    console.log("waiting for wavesrv ready signal (SIGUSR1)");
     const ready = await waveSrvReady;
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
 
-    let clientData = await services.ClientService.GetClientData();
+    console.log("get client data");
+    let clientData = await services.ClientService.GetClientData().catch(e => console.log(e)) as Client;
+    console.log("client data ready");
     let windowData: WaveWindow = (await services.ObjectService.GetObject(
         "window:" + clientData.mainwindowid
     )) as WaveWindow;

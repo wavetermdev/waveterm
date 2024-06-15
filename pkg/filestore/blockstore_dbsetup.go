@@ -10,7 +10,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/util/migrateutil"
@@ -51,7 +51,7 @@ func InitFilestore() error {
 
 func GetDBName() string {
 	waveHome := wavebase.GetWaveHomeDir()
-	return path.Join(waveHome, FilestoreDBName)
+	return filepath.Join(waveHome, FilestoreDBName)
 }
 
 func MakeDB(ctx context.Context) (*sqlx.DB, error) {

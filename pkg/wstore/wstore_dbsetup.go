@@ -7,7 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -42,7 +42,7 @@ func InitWStore() error {
 
 func GetDBName() string {
 	waveHome := wavebase.GetWaveHomeDir()
-	return path.Join(waveHome, WStoreDBName)
+	return filepath.Join(waveHome, WStoreDBName)
 }
 
 func MakeDB(ctx context.Context) (*sqlx.DB, error) {

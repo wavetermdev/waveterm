@@ -5,6 +5,7 @@ go 1.22
 toolchain go1.22.1
 
 require (
+	github.com/alexflint/go-filemutex v1.3.0
 	github.com/creack/pty v1.1.18
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/google/uuid v1.4.0
@@ -17,7 +18,6 @@ require (
 	github.com/sawka/txwrap v0.2.0
 	github.com/spf13/cobra v1.8.0
 	github.com/wavetermdev/waveterm/wavesrv v0.0.0-20240508181017-d07068c09d94
-	golang.org/x/sys v0.20.0
 	golang.org/x/term v0.17.0
 )
 
@@ -29,4 +29,5 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/testify v1.8.4 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
 )

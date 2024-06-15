@@ -32,12 +32,12 @@ tasks:
 
     build:server:
         cmds:
-            - go build -o dist/bin/wavesrv cmd/server/main-server.go
+            - go build -o dist/bin/wavesrv{{exeExt}} cmd/server/main-server.go
         sources:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
         generates:
-            - dist/bin/wavesrv
+            - dist/bin/wavesrv{{exeExt}}
         deps:
             - go:mod:tidy
 

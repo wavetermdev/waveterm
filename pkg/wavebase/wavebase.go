@@ -11,21 +11,19 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
 
-	"golang.org/x/sys/unix"
+	"github.com/alexflint/go-filemutex"
 )
 
 const WaveVersion = "v0.1.0"
 const DefaultWaveHome = "~/.w2"
 const WaveHomeVarName = "WAVETERM_HOME"
 const WaveDevVarName = "WAVETERM_DEV"
-const HomeVarName = "HOME"
 const WaveLockFile = "waveterm.lock"
 
 var baseLock = &sync.Mutex{}
@@ -37,8 +35,8 @@ func IsDevMode() bool {
 }
 
 func GetHomeDir() string {
-	homeVar := os.Getenv(HomeVarName)
-	if homeVar == "" {
+	homeVar, err := os.UserHomeDir()
+	if err != nil {
 		return "/"
 	}
 	return homeVar
@@ -52,7 +50,7 @@ func ExpandHomeDir(pathStr string) string {
 	if pathStr == "~" {
 		return homeDir
 	}
-	return path.Join(homeDir, pathStr[2:])
+	return filepath.Join(homeDir, pathStr[2:])
 }
 
 func ReplaceHomeDir(pathStr string) string {
@@ -142,18 +140,16 @@ func DetermineLang() string {
 	return osLang
 }
 
-func AcquireWaveLock() (*os.File, error) {
+func AcquireWaveLock() (*filemutex.FileMutex, error) {
 	homeDir := GetWaveHomeDir()
 	lockFileName := filepath.Join(homeDir, WaveLockFile)
 	log.Printf("[base] acquiring lock on %s\n", lockFileName)
-	fd, err := os.OpenFile(lockFileName, os.O_RDWR|os.O_CREATE, 0600)
+	m, err := filemutex.New(lockFileName)
 	if err != nil {
 		return nil, err
 	}
-	err = unix.Flock(int(fd.Fd()), unix.LOCK_EX|unix.LOCK_NB)
-	if err != nil {
-		fd.Close()
-		return nil, err
-	}
-	return fd, nil
+
+	err = m.TryLock()
+	return m, err
+
 }

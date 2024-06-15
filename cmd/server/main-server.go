@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+
 	"runtime"
 	"strconv"
 	"sync"
@@ -80,6 +81,12 @@ func main() {
 		log.Printf("error acquiring wave lock (another instance of Wave is likely running): %v\n", err)
 		return
 	}
+	defer func() {
+		err = waveLock.Unlock()
+		if err != nil {
+			log.Printf("error releasing wave lock: %v\n", err)
+		}
+	}()
 
 	log.Printf("wave home dir: %s\n", wavebase.GetWaveHomeDir())
 	err = filestore.InitFilestore()
@@ -105,9 +112,9 @@ func main() {
 		time.Sleep(30 * time.Millisecond)
 		pidStr := os.Getenv(ReadySignalPidVarName)
 		if pidStr != "" {
-			pid, err := strconv.Atoi(pidStr)
+			_, err := strconv.Atoi(pidStr)
 			if err == nil {
-				syscall.Kill(pid, syscall.SIGUSR1)
+				log.Printf("WAVESRV-ESTART\n")
 			}
 		}
 	}()
