@@ -234,8 +234,19 @@ class Screen {
     }
 
     refocusLine(sdata: ScreenDataType, oldFocusType: string, oldSelectedLine: number): void {
+        if (this.globalModel.activeMainView.get() != "session") {
+            return;
+        }
         let isCmdFocus = sdata.focustype == "cmd";
         if (!isCmdFocus) {
+            return;
+        }
+        if (document.activeElement != null) {
+            if (document.activeElement.nodeName == "INPUT" || document.activeElement.nodeName == "TEXTAREA") {
+                return;
+            }
+        }
+        if (this.globalModel.modalsModel.hasOpenModals()) {
             return;
         }
         let curLineFocus = this.globalModel.getFocusedLine();
