@@ -9,7 +9,7 @@ import (
 
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 )
 
 const (
@@ -48,7 +48,7 @@ func ParseWSCommandMap(cmdMap map[string]any) (WSCommandType, error) {
 	switch cmdType {
 	case WSCommand_SetBlockTermSize:
 		var cmd SetBlockTermSizeWSCommand
-		err := waveobj.DoMapStucture(&cmd, cmdMap)
+		err := utilfn.DoMapStucture(&cmd, cmdMap)
 		if err != nil {
 			return nil, fmt.Errorf("error decoding SetBlockTermSizeWSCommand: %w", err)
 		}

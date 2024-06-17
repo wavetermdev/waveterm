@@ -30,7 +30,7 @@ declare global {
 
     type BlockCommand = {
         command: string;
-    } & ( BlockAppendIJsonCommand | BlockInputCommand | BlockSetViewCommand | BlockSetMetaCommand | BlockMessageCommand | BlockAppendFileCommand );
+    } & ( BlockSetMetaCommand | BlockGetMetaCommand | BlockMessageCommand | BlockAppendFileCommand | BlockAppendIJsonCommand | BlockInputCommand | BlockSetViewCommand );
 
     // wstore.BlockDef
     type BlockDef = {
@@ -38,6 +38,12 @@ declare global {
         view?: string;
         files?: {[key: string]: FileDef};
         meta?: MetaType;
+    };
+
+    // wshutil.BlockGetMetaCommand
+    type BlockGetMetaCommand = {
+        command: "getmeta";
+        oid: string;
     };
 
     // wshutil.BlockInputCommand
@@ -57,6 +63,7 @@ declare global {
     // wshutil.BlockSetMetaCommand
     type BlockSetMetaCommand = {
         command: "setmeta";
+        oid?: string;
         meta: MetaType;
     };
 

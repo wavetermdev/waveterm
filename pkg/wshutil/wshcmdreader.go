@@ -1,3 +1,6 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 package wshutil
 
 import (
@@ -5,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"sync"
 )
 
@@ -22,19 +26,25 @@ type PtyBuffer struct {
 	DataBuf     *bytes.Buffer
 	EscMode     string
 	EscSeqBuf   []byte
+	OSCPrefix   string
 	InputReader io.Reader
-	CommandCh   chan BlockCommand
+	MessageCh   chan RpcMessage
 	AtEOF       bool
 	Err         error
 }
 
-func MakePtyBuffer(input io.Reader, commandCh chan BlockCommand) *PtyBuffer {
+// closes messageCh when input is closed (or error)
+func MakePtyBuffer(oscPrefix string, input io.Reader, messageCh chan RpcMessage) *PtyBuffer {
+	if len(oscPrefix) != WaveOSCPrefixLen {
+		panic(fmt.Sprintf("invalid OSC prefix length: %d", len(oscPrefix)))
+	}
 	b := &PtyBuffer{
 		CVar:        sync.NewCond(&sync.Mutex{}),
 		DataBuf:     &bytes.Buffer{},
+		OSCPrefix:   oscPrefix,
 		EscMode:     Mode_Normal,
 		InputReader: input,
-		CommandCh:   commandCh,
+		MessageCh:   messageCh,
 	}
 	go b.run()
 	return b
@@ -57,22 +67,21 @@ func (b *PtyBuffer) setEOF() {
 }
 
 func (b *PtyBuffer) processWaveEscSeq(escSeq []byte) {
-	jmsg := make(map[string]any)
-	err := json.Unmarshal(escSeq, &jmsg)
+	var helper RpcMessageUnmarshalHelper
+	err := json.Unmarshal(escSeq, &helper)
 	if err != nil {
-		b.setErr(fmt.Errorf("error unmarshalling Wave OSC sequence data: %w", err))
+		log.Printf("error unmarshalling Wave OSC sequence data: %v\n", err)
 		return
 	}
-	cmd, err := ParseCmdMap(jmsg)
-	if err != nil {
-		b.setErr(fmt.Errorf("error parsing Wave OSC command: %w", err))
-		return
+	if helper.Req != nil {
+		b.MessageCh <- helper.Req
+	} else {
+		b.MessageCh <- helper.Res
 	}
-	b.CommandCh <- cmd
 }
 
 func (b *PtyBuffer) run() {
-	defer close(b.CommandCh)
+	defer close(b.MessageCh)
 	buf := make([]byte, 4096)
 	for {
 		n, err := b.InputReader.Read(buf)
@@ -101,7 +110,7 @@ func (b *PtyBuffer) processData(data []byte) {
 			} else if ch == BEL || ch == ST {
 				// terminates the escpae sequence (is a valid Wave OSC command)
 				b.EscMode = Mode_Normal
-				waveEscSeq := b.EscSeqBuf[len(WaveOSCPrefix):]
+				waveEscSeq := b.EscSeqBuf[WaveOSCPrefixLen:]
 				b.EscSeqBuf = nil
 				b.processWaveEscSeq(waveEscSeq)
 			} else {
@@ -115,21 +124,22 @@ func (b *PtyBuffer) processData(data []byte) {
 				b.EscMode = Mode_Normal
 				outputBuf = append(outputBuf, b.EscSeqBuf...)
 				outputBuf = append(outputBuf, ch)
-			} else {
-				if ch == WaveOSCPrefixBytes[len(b.EscSeqBuf)] {
-					// we're still building what could be a Wave OSC sequence
-					b.EscSeqBuf = append(b.EscSeqBuf, ch)
-				} else {
-					// this is not a Wave OSC sequence, just an escape sequence
-					b.EscMode = Mode_Normal
-					outputBuf = append(outputBuf, b.EscSeqBuf...)
-					outputBuf = append(outputBuf, ch)
-					continue
-				}
-				// check to see if we have a full Wave OSC prefix
-				if len(b.EscSeqBuf) == len(WaveOSCPrefixBytes) {
-					b.EscMode = Mode_WaveEsc
-				}
+				b.EscSeqBuf = nil
+				continue
+			}
+			if ch != b.OSCPrefix[len(b.EscSeqBuf)] {
+				// this is not a Wave OSC sequence, just an escape sequence
+				b.EscMode = Mode_Normal
+				outputBuf = append(outputBuf, b.EscSeqBuf...)
+				outputBuf = append(outputBuf, ch)
+				b.EscSeqBuf = nil
+				continue
+			}
+			// we're still building what could be a Wave OSC sequence
+			b.EscSeqBuf = append(b.EscSeqBuf, ch)
+			// check to see if we have a full Wave OSC prefix
+			if len(b.EscSeqBuf) == len(b.OSCPrefix) {
+				b.EscMode = Mode_WaveEsc
 			}
 			continue
 		}

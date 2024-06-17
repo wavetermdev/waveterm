@@ -4,8 +4,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
-	"os"
+	"log"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
@@ -33,10 +35,29 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 		fmt.Printf("%v\n", err)
 		return
 	}
+
+	setTermRawMode()
+	fullORef, err := resolveSimpleId(oref)
+	if err != nil {
+		fmt.Printf("error resolving oref: %v\r\n", err)
+		return
+	}
 	getMetaWshCmd := &wshutil.BlockGetMetaCommand{
 		Command: wshutil.BlockCommand_SetMeta,
-		OID:     oref,
+		ORef:    fullORef,
 	}
-	barr, _ := wshutil.EncodeWaveOSCMessage(getMetaWshCmd)
-	os.Stdout.Write(barr)
+	resp, err := RpcClient.SendRpcRequest(getMetaWshCmd, 2000)
+	if err != nil {
+		log.Printf("error getting metadata: %v\r\n", err)
+		return
+	}
+	outArr, err := json.MarshalIndent(resp, "", "  ")
+	if err != nil {
+		log.Printf("error formatting metadata: %v\r\n", err)
+		return
+	}
+	outStr := string(outArr)
+	outStr = strings.ReplaceAll(outStr, "\n", "\r\n")
+	fmt.Print(outStr)
+	fmt.Print("\r\n")
 }

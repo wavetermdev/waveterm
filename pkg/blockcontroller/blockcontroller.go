@@ -39,6 +39,12 @@ const DefaultTimeout = 2 * time.Second
 var globalLock = &sync.Mutex{}
 var blockControllerMap = make(map[string]*BlockController)
 
+type BlockInputUnion struct {
+	InputData []byte              `json:"inputdata,omitempty"`
+	SigName   string              `json:"signame,omitempty"`
+	TermSize  *shellexec.TermSize `json:"termsize,omitempty"`
+}
+
 type BlockController struct {
 	Lock            *sync.Mutex
 	BlockId         string
@@ -47,7 +53,7 @@ type BlockController struct {
 	Status          string
 	CreatedHtmlFile bool
 	ShellProc       *shellexec.ShellProc
-	ShellInputCh    chan *wshutil.BlockInputCommand
+	ShellInputCh    chan *BlockInputUnion
 }
 
 func (bc *BlockController) WithLock(f func()) {
@@ -159,6 +165,114 @@ func (bc *BlockController) resetTerminalState() {
 	}
 }
 
+func resolveSimpleId(ctx context.Context, simpleId string) (*waveobj.ORef, error) {
+	if strings.Contains(simpleId, ":") {
+		rtn, err := waveobj.ParseORef(simpleId)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing simple id: %w", err)
+		}
+		return &rtn, nil
+	}
+	return wstore.DBResolveEasyOID(ctx, simpleId)
+}
+
+func staticHandleGetMeta(ctx context.Context, cmd *wshutil.BlockGetMetaCommand) (map[string]any, error) {
+	oref, err := waveobj.ParseORef(cmd.ORef)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing oref: %w", err)
+	}
+	obj, err := wstore.DBGetORef(ctx, oref)
+	if err != nil {
+		return nil, fmt.Errorf("error getting object: %w", err)
+	}
+	if obj == nil {
+		return nil, fmt.Errorf("object not found: %s", oref)
+	}
+	return waveobj.GetMeta(obj), nil
+}
+
+func staticHandleSetMeta(ctx context.Context, cmd *wshutil.BlockSetMetaCommand, curBlockId string) (map[string]any, error) {
+	var oref *waveobj.ORef
+	if cmd.ORef != "" {
+		orefVal, err := waveobj.ParseORef(cmd.ORef)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing oref: %w", err)
+		}
+		oref = &orefVal
+	} else {
+		orefVal := waveobj.MakeORef(wstore.OType_Block, curBlockId)
+		oref = &orefVal
+	}
+	log.Printf("SETMETA: %s | %v\n", oref, cmd.Meta)
+	obj, err := wstore.DBGetORef(ctx, *oref)
+	if err != nil {
+		return nil, fmt.Errorf("error getting object: %w", err)
+	}
+	if obj == nil {
+		return nil, nil
+	}
+	meta := waveobj.GetMeta(obj)
+	if meta == nil {
+		meta = make(map[string]any)
+	}
+	for k, v := range cmd.Meta {
+		if v == nil {
+			delete(meta, k)
+			continue
+		}
+		meta[k] = v
+	}
+	waveobj.SetMeta(obj, meta)
+	err = wstore.DBUpdate(ctx, obj)
+	if err != nil {
+		return nil, fmt.Errorf("error updating block: %w", err)
+	}
+	// send a waveobj:update event
+	updatedBlock, err := wstore.DBGetORef(ctx, *oref)
+	if err != nil {
+		return nil, fmt.Errorf("error getting object (2): %w", err)
+	}
+	eventbus.SendEvent(eventbus.WSEventType{
+		EventType: "waveobj:update",
+		ORef:      oref.String(),
+		Data: wstore.WaveObjUpdate{
+			UpdateType: wstore.UpdateType_Update,
+			OType:      updatedBlock.GetOType(),
+			OID:        waveobj.GetOID(updatedBlock),
+			Obj:        updatedBlock,
+		},
+	})
+	return nil, nil
+}
+
+func staticHandleResolveIds(ctx context.Context, cmd *wshutil.ResolveIdsCommand) (map[string]any, error) {
+	rtn := make(map[string]any)
+	for _, simpleId := range cmd.Ids {
+		oref, err := resolveSimpleId(ctx, simpleId)
+		if err != nil || oref == nil {
+			continue
+		}
+		rtn[simpleId] = oref.String()
+	}
+	return rtn, nil
+}
+
+func (bc *BlockController) waveOSCMessageHandler(ctx context.Context, cmd wshutil.BlockCommand, respFn wshutil.ResponseFnType) (wshutil.ResponseDataType, error) {
+	if strings.HasPrefix(cmd.GetCommand(), "controller:") {
+		bc.InputCh <- cmd
+		return nil, nil
+	}
+	switch cmd.GetCommand() {
+	case wshutil.BlockCommand_GetMeta:
+		return staticHandleGetMeta(ctx, cmd.(*wshutil.BlockGetMetaCommand))
+	case wshutil.Command_ResolveIds:
+		return staticHandleResolveIds(ctx, cmd.(*wshutil.ResolveIdsCommand))
+	}
+
+	ProcessStaticCommand(bc.BlockId, cmd)
+	return nil, nil
+}
+
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
@@ -183,20 +297,13 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 		bc.ShellProc.Close()
 		return err
 	}
-	shellInputCh := make(chan *wshutil.BlockInputCommand)
+	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
-	commandCh := make(chan wshutil.BlockCommand, 32)
-	ptyBuffer := wshutil.MakePtyBuffer(bc.ShellProc.Pty, commandCh)
+	messageCh := make(chan wshutil.RpcMessage, 32)
+	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, bc.ShellProc.Pty, messageCh)
+	_, outputCh := wshutil.MakeWshRpc(wshutil.WaveServerOSC, messageCh, bc.waveOSCMessageHandler)
 	go func() {
-		for cmd := range commandCh {
-			if strings.HasPrefix(cmd.GetCommand(), "controller:") {
-				bc.InputCh <- cmd
-			} else {
-				ProcessStaticCommand(bc.BlockId, cmd)
-			}
-		}
-	}()
-	go func() {
+		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {
 			// needs synchronization
 			bc.ShellProc.Close()
@@ -223,15 +330,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 		}
 	}()
 	go func() {
+		// handles input from the shellInputCh, sent to pty
 		for ic := range shellInputCh {
-			if ic.InputData64 != "" {
-				inputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(ic.InputData64)))
-				nw, err := base64.StdEncoding.Decode(inputBuf, []byte(ic.InputData64))
-				if err != nil {
-					log.Printf("error decoding input data: %v\n", err)
-					continue
-				}
-				bc.ShellProc.Pty.Write(inputBuf[:nw])
+			if len(ic.InputData) > 0 {
+				bc.ShellProc.Pty.Write(ic.InputData)
 			}
 			if ic.TermSize != nil {
 				log.Printf("SETTERMSIZE: %dx%d\n", ic.TermSize.Rows, ic.TermSize.Cols)
@@ -240,6 +342,13 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 					log.Printf("error setting term size: %v\n", err)
 				}
 			}
+			// TODO signals
+		}
+	}()
+	go func() {
+		// handles outputCh -> shellInputCh
+		for out := range outputCh {
+			shellInputCh <- &BlockInputUnion{InputData: out}
 		}
 	}()
 	return nil
@@ -277,10 +386,24 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 	for genCmd := range bc.InputCh {
 		switch cmd := genCmd.(type) {
 		case *wshutil.BlockInputCommand:
-			log.Printf("INPUT: %s | %q\n", bc.BlockId, cmd.InputData64)
-			if bc.ShellInputCh != nil {
-				bc.ShellInputCh <- cmd
+			if bc.ShellInputCh == nil {
+				continue
 			}
+			inputUnion := &BlockInputUnion{
+				SigName:  cmd.SigName,
+				TermSize: cmd.TermSize,
+			}
+			if len(cmd.InputData64) > 0 {
+				inputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(cmd.InputData64)))
+				nw, err := base64.StdEncoding.Decode(inputBuf, []byte(cmd.InputData64))
+				if err != nil {
+					log.Printf("error decoding input data: %v\n", err)
+					continue
+				}
+				inputUnion.InputData = inputBuf[:nw]
+			}
+			log.Printf("INPUT: %s | %q\n", bc.BlockId, string(inputUnion.InputData))
+			bc.ShellInputCh <- inputUnion
 		default:
 			log.Printf("unknown command type %T\n", cmd)
 		}
@@ -363,44 +486,12 @@ func ProcessStaticCommand(blockId string, cmdGen wshutil.BlockCommand) error {
 		})
 		return nil
 	case *wshutil.BlockSetMetaCommand:
-		log.Printf("SETMETA: %s | %v\n", blockId, cmd.Meta)
-		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
+		_, err := staticHandleSetMeta(ctx, cmd, blockId)
 		if err != nil {
-			return fmt.Errorf("error getting block: %w", err)
+			return err
 		}
-		if block == nil {
-			return nil
-		}
-		if block.Meta == nil {
-			block.Meta = make(map[string]any)
-		}
-		for k, v := range cmd.Meta {
-			if v == nil {
-				delete(block.Meta, k)
-				continue
-			}
-			block.Meta[k] = v
-		}
-		err = wstore.DBUpdate(ctx, block)
-		if err != nil {
-			return fmt.Errorf("error updating block: %w", err)
-		}
-		// send a waveobj:update event
-		updatedBlock, err := wstore.DBGet[*wstore.Block](ctx, blockId)
-		if err != nil {
-			return fmt.Errorf("error getting block: %w", err)
-		}
-		eventbus.SendEvent(eventbus.WSEventType{
-			EventType: "waveobj:update",
-			ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
-			Data: wstore.WaveObjUpdate{
-				UpdateType: wstore.UpdateType_Update,
-				OType:      wstore.OType_Block,
-				OID:        blockId,
-				Obj:        updatedBlock,
-			},
-		})
 		return nil
+
 	case *wshutil.BlockMessageCommand:
 		log.Printf("MESSAGE: %s | %q\n", blockId, cmd.Message)
 		return nil

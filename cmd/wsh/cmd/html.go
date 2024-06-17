@@ -5,7 +5,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -14,12 +13,18 @@ func init() {
 	rootCmd.AddCommand(htmlCmd)
 }
 
+var htmlCmd = &cobra.Command{
+	Use:   "html",
+	Short: "Launch a demo html-mode terminal",
+	Run:   htmlRun,
+}
+
 func htmlRun(cmd *cobra.Command, args []string) {
 	defer doShutdown("normal exit", 0)
 	setTermHtmlMode()
 	for {
 		var buf [1]byte
-		_, err := os.Stdin.Read(buf[:])
+		_, err := WrappedStdin.Read(buf[:])
 		if err != nil {
 			doShutdown(fmt.Sprintf("stdin closed/error (%v)", err), 1)
 		}
@@ -32,10 +37,4 @@ func htmlRun(cmd *cobra.Command, args []string) {
 			break
 		}
 	}
-}
-
-var htmlCmd = &cobra.Command{
-	Use:   "html",
-	Short: "Launch a demo html-mode terminal",
-	Run:   htmlRun,
 }

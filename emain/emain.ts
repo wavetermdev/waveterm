@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as electron from "electron";
+import fs from "fs";
 import * as child_process from "node:child_process";
+import os from "os";
 import * as path from "path";
 import * as readline from "readline";
 import { debounce } from "throttle-debounce";
 import * as services from "../frontend/app/store/services";
-import os from "os";
-import fs from "fs";
 
 const electronApp = electron.app;
 const isDev = process.env.WAVETERM_DEV;
@@ -65,7 +65,7 @@ function getWaveSrvPath(): string {
 
 function getWaveSrvPathWin(): string {
     const appPath = path.join(getGoAppBasePath(), "bin", "wavesrv.exe");
-	return `& "${appPath}"`
+    return `& "${appPath}"`;
 }
 
 function getWaveSrvCwd(): string {
@@ -85,12 +85,12 @@ function runWaveSrv(): Promise<boolean> {
         envCopy[WaveDevVarName] = "1";
     }
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
-	let waveSrvCmd: string;
-	if (process.platform === "win32") {
-		waveSrvCmd = getWaveSrvPathWin();
-	} else {
-    	waveSrvCmd = getWaveSrvPath();
-	}
+    let waveSrvCmd: string;
+    if (process.platform === "win32") {
+        waveSrvCmd = getWaveSrvPathWin();
+    } else {
+        waveSrvCmd = getWaveSrvPath();
+    }
     console.log("trying to run local server", waveSrvCmd);
     const proc = child_process.spawn(getWaveSrvPath(), {
         cwd: getWaveSrvCwd(),
@@ -121,23 +121,29 @@ function runWaveSrv(): Promise<boolean> {
         terminal: false,
     });
     rlStderr.on("line", (line) => {
-		if (line.includes("WAVESRV-ESTART")) {
-			waveSrvReadyResolve(true);
-			return;
-		}
+        if (line.includes("WAVESRV-ESTART")) {
+            waveSrvReadyResolve(true);
+            return;
+        }
         console.log(line);
     });
     return rtnPromise;
 }
 
-function mainResizeHandler(_: any, win: Electron.BrowserWindow) {
+async function mainResizeHandler(_: any, windowId: string, win: Electron.BrowserWindow) {
     if (win == null || win.isDestroyed() || win.fullScreen) {
         return;
     }
     const bounds = win.getBounds();
-    const winSize = { width: bounds.width, height: bounds.height, top: bounds.y, left: bounds.x };
-    const url = new URL(getBaseHostPort() + "/api/set-winsize");
-    // TODO
+    try {
+        await services.WindowService.SetWindowPosAndSize(
+            windowId,
+            { x: bounds.x, y: bounds.y },
+            { width: bounds.width, height: bounds.height }
+        );
+    } catch (e) {
+        console.log("error resizing window", e);
+    }
 }
 
 function shNavHandler(event: Electron.Event<Electron.WebContentsWillNavigateEventParams>, url: string) {
@@ -182,12 +188,29 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
 }
 
 function createWindow(client: Client, waveWindow: WaveWindow): Electron.BrowserWindow {
+    const primaryDisplay = electron.screen.getPrimaryDisplay();
+    let winHeight = waveWindow.winsize.height;
+    let winWidth = waveWindow.winsize.width;
+    if (winHeight > primaryDisplay.workAreaSize.height) {
+        winHeight = primaryDisplay.workAreaSize.height;
+    }
+    if (winWidth > primaryDisplay.workAreaSize.width) {
+        winWidth = primaryDisplay.workAreaSize.width;
+    }
+    let winX = waveWindow.pos.x;
+    let winY = waveWindow.pos.y;
+    if (winX + winWidth > primaryDisplay.workAreaSize.width) {
+        winX = Math.floor((primaryDisplay.workAreaSize.width - winWidth) / 2);
+    }
+    if (winY + winHeight > primaryDisplay.workAreaSize.height) {
+        winY = Math.floor((primaryDisplay.workAreaSize.height - winHeight) / 2);
+    }
     const win = new electron.BrowserWindow({
-        x: 200,
-        y: 200,
+        x: winX,
+        y: winY,
         titleBarStyle: "hiddenInset",
-        width: waveWindow.winsize.width,
-        height: waveWindow.winsize.height,
+        width: winWidth,
+        height: winHeight,
         minWidth: 500,
         minHeight: 300,
         icon:
@@ -221,11 +244,11 @@ function createWindow(client: Client, waveWindow: WaveWindow): Electron.BrowserW
     win.webContents.on("will-frame-navigate", shFrameNavHandler);
     win.on(
         "resize",
-        debounce(400, (e) => mainResizeHandler(e, win))
+        debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
     win.on(
         "move",
-        debounce(400, (e) => mainResizeHandler(e, win))
+        debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
     win.webContents.on("zoom-changed", (e) => {
         win.webContents.send("zoom-changed");
@@ -257,10 +280,10 @@ electron.ipcMain.on("isDevServer", () => {
         electronApp.quit();
         return;
     }
-	const waveHomeDir = getWaveHomeDir();
-	if (!fs.existsSync(waveHomeDir)) {
-		fs.mkdirSync(waveHomeDir);
-	}
+    const waveHomeDir = getWaveHomeDir();
+    if (!fs.existsSync(waveHomeDir)) {
+        fs.mkdirSync(waveHomeDir);
+    }
     try {
         await runWaveSrv();
     } catch (e) {
@@ -270,7 +293,7 @@ electron.ipcMain.on("isDevServer", () => {
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
 
     console.log("get client data");
-    let clientData = await services.ClientService.GetClientData().catch(e => console.log(e)) as Client;
+    let clientData = (await services.ClientService.GetClientData().catch((e) => console.log(e))) as Client;
     console.log("client data ready");
     let windowData: WaveWindow = (await services.ObjectService.GetObject(
         "window:" + clientData.mainwindowid

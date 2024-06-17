@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -30,8 +32,11 @@ var (
 
 var shutdownOnce sync.Once
 var origTermState *term.State
+var madeRaw bool
 var usingHtmlMode bool
 var shutdownSignalHandlersInstalled bool
+var WrappedStdin io.Reader
+var RpcClient *wshutil.WshRpc
 
 func doShutdown(reason string, exitCode int) {
 	shutdownOnce.Do(func() {
@@ -42,8 +47,8 @@ func doShutdown(reason string, exitCode int) {
 				Command: wshutil.BlockCommand_SetMeta,
 				Meta:    map[string]any{"term:mode": nil},
 			}
-			barr, _ := wshutil.EncodeWaveOSCMessage(cmd)
-			os.Stdout.Write(barr)
+			RpcClient.SendCommand(cmd)
+			time.Sleep(10 * time.Millisecond)
 		}
 		if origTermState != nil {
 			term.Restore(int(os.Stdin.Fd()), origTermState)
@@ -51,20 +56,42 @@ func doShutdown(reason string, exitCode int) {
 	})
 }
 
-func setTermHtmlMode() {
-	installShutdownSignalHandlers()
+// returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
+func setupRpcClient(handlerFn wshutil.CommandHandlerFnType) {
+	log.Printf("setup rpc client\r\n")
+	messageCh := make(chan wshutil.RpcMessage)
+	ptyBuf := wshutil.MakePtyBuffer(wshutil.WaveServerOSCPrefix, os.Stdin, messageCh)
+	rpcClient, outputCh := wshutil.MakeWshRpc(wshutil.WaveOSC, messageCh, handlerFn)
+	go func() {
+		for barr := range outputCh {
+			os.Stdout.Write(barr)
+		}
+	}()
+	WrappedStdin = ptyBuf
+	RpcClient = rpcClient
+}
+
+func setTermRawMode() {
+	if madeRaw {
+		return
+	}
 	origState, err := term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error setting raw mode: %v\n", err)
 		return
 	}
 	origTermState = origState
+	madeRaw = true
+}
+
+func setTermHtmlMode() {
+	installShutdownSignalHandlers()
+	setTermRawMode()
 	cmd := &wshutil.BlockSetMetaCommand{
 		Command: wshutil.BlockCommand_SetMeta,
 		Meta:    map[string]any{"term:mode": "html"},
 	}
-	barr, _ := wshutil.EncodeWaveOSCMessage(cmd)
-	os.Stdout.Write(barr)
+	RpcClient.SendCommand(cmd)
 	usingHtmlMode = true
 }
 
@@ -85,7 +112,7 @@ func installShutdownSignalHandlers() {
 var oidRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
 
 func validateEasyORef(oref string) error {
-	if strings.Index(oref, ":") >= 0 {
+	if strings.Contains(oref, ":") {
 		_, err := waveobj.ParseORef(oref)
 		if err != nil {
 			return fmt.Errorf("invalid ORef: %v", err)
@@ -105,7 +132,31 @@ func validateEasyORef(oref string) error {
 	return nil
 }
 
+func isFullORef(orefStr string) bool {
+	_, err := waveobj.ParseORef(orefStr)
+	return err == nil
+}
+
+func resolveSimpleId(id string) (string, error) {
+	if isFullORef(id) {
+		return id, nil
+	}
+	resolveCmd := &wshutil.ResolveIdsCommand{
+		Command: wshutil.Command_ResolveIds,
+		Ids:     []string{id},
+	}
+	resp, err := RpcClient.SendRpcRequest(resolveCmd, 2000)
+	if err != nil {
+		return "", err
+	}
+	if resp[id] == nil {
+		return "", fmt.Errorf("id not found: %q", id)
+	}
+	return resp[id].(string), nil
+}
+
 // Execute executes the root command.
 func Execute() error {
+	setupRpcClient(nil)
 	return rootCmd.Execute()
 }

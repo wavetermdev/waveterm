@@ -184,18 +184,6 @@ func SetMeta(waveObj WaveObj, meta map[string]any) {
 	reflect.ValueOf(waveObj).Elem().FieldByIndex(desc.MetaField.Index).Set(reflect.ValueOf(meta))
 }
 
-func DoMapStucture(out any, input any) error {
-	dconfig := &mapstructure.DecoderConfig{
-		Result:  out,
-		TagName: "json",
-	}
-	decoder, err := mapstructure.NewDecoder(dconfig)
-	if err != nil {
-		return err
-	}
-	return decoder.Decode(input)
-}
-
 func ToJsonMap(w WaveObj) (map[string]any, error) {
 	if w == nil {
 		return nil, nil

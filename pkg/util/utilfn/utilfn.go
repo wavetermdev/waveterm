@@ -23,6 +23,8 @@ import (
 	"strings"
 	"syscall"
 	"unicode/utf8"
+
+	"github.com/mitchellh/mapstructure"
 )
 
 var HexDigits = []byte{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'}
@@ -724,4 +726,17 @@ func IndentString(indent string, str string) string {
 		rtn.WriteByte('\n')
 	}
 	return rtn.String()
+}
+
+// does a mapstructure using "json" tags
+func DoMapStucture(out any, input any) error {
+	dconfig := &mapstructure.DecoderConfig{
+		Result:  out,
+		TagName: "json",
+	}
+	decoder, err := mapstructure.NewDecoder(dconfig)
+	if err != nil {
+		return err
+	}
+	return decoder.Decode(input)
 }

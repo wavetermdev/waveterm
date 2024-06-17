@@ -11,17 +11,18 @@ import (
 	"reflect"
 )
 
+// these should both be 5 characters
 const WaveOSC = "23198"
+const WaveServerOSC = "23199"
+const WaveOSCPrefixLen = 5 + 3 // \x1b] + WaveOSC + ; + \x07
+
 const WaveOSCPrefix = "\x1b]" + WaveOSC + ";"
-const WaveResponseOSC = "23199"
-const WaveResponseOSCPrefix = "\x1b]" + WaveResponseOSC + ";"
+const WaveServerOSCPrefix = "\x1b]" + WaveServerOSC + ";"
 
 const HexChars = "0123456789ABCDEF"
 const BEL = 0x07
 const ST = 0x9c
 const ESC = 0x1b
-
-var WaveOSCPrefixBytes = []byte(WaveOSCPrefix)
 
 // OSC escape types
 // OSC 23198 ; (JSON | base64-JSON) ST
@@ -31,19 +32,37 @@ var WaveOSCPrefixBytes = []byte(WaveOSCPrefix)
 // for responses (terminal -> program), we'll use OSC 23199
 // same json format
 
-func EncodeWaveOSCMessage(cmd BlockCommand) ([]byte, error) {
-	if cmd.GetCommand() == "" {
-		return nil, fmt.Errorf("command field not set in struct")
+func copyOscPrefix(dst []byte, oscNum string) {
+	dst[0] = ESC
+	dst[1] = ']'
+	copy(dst[2:], oscNum)
+	dst[len(oscNum)+2] = ';'
+}
+
+func oscPrefixLen(oscNum string) int {
+	return 3 + len(oscNum)
+}
+
+func makeOscPrefix(oscNum string) []byte {
+	output := make([]byte, oscPrefixLen(oscNum))
+	copyOscPrefix(output, oscNum)
+	return output
+}
+
+func EncodeWaveReq(cmd BlockCommand) ([]byte, error) {
+	req := &RpcRequest{Command: cmd}
+	return EncodeWaveOSCMessage(req)
+}
+
+func EncodeWaveOSCMessage(msg RpcMessage) ([]byte, error) {
+	return EncodeWaveOSCMessageEx(WaveOSC, msg)
+}
+
+func EncodeWaveOSCMessageEx(oscNum string, msg RpcMessage) ([]byte, error) {
+	if msg == nil {
+		return nil, fmt.Errorf("nil message")
 	}
-	ctype, ok := CommandToTypeMap[cmd.GetCommand()]
-	if !ok {
-		return nil, fmt.Errorf("unknown command type %q", cmd.GetCommand())
-	}
-	cmdType := reflect.TypeOf(cmd)
-	if cmdType != ctype && (cmdType.Kind() == reflect.Pointer && cmdType.Elem() != ctype) {
-		return nil, fmt.Errorf("command type does not match %q", cmd.GetCommand())
-	}
-	barr, err := json.Marshal(cmd)
+	barr, err := json.Marshal(msg)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling message to json: %w", err)
 	}
@@ -57,15 +76,15 @@ func EncodeWaveOSCMessage(cmd BlockCommand) ([]byte, error) {
 	if !hasControlChars {
 		// If no control characters, directly construct the output
 		// \x1b] (2) + WaveOSC + ; (1) + message + \x07 (1)
-		output := make([]byte, len(WaveOSCPrefix)+len(barr)+1)
-		copy(output, WaveOSCPrefixBytes)
-		copy(output[len(WaveOSCPrefix):], barr)
+		output := make([]byte, oscPrefixLen(oscNum)+len(barr)+1)
+		copyOscPrefix(output, oscNum)
+		copy(output[oscPrefixLen(oscNum):], barr)
 		output[len(output)-1] = BEL
 		return output, nil
 	}
 
 	var buf bytes.Buffer
-	buf.Write(WaveOSCPrefixBytes)
+	buf.Write(makeOscPrefix(oscNum))
 	escSeq := [6]byte{'\\', 'u', '0', '0', '0', '0'}
 	for _, b := range barr {
 		if b < 0x20 || b == 0x7f {

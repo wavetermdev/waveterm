@@ -47,6 +47,9 @@ export default defineConfig({
                 },
             },
         },
+        server: {
+            open: false,
+        },
         plugins: [
             react({}),
             tsconfigPaths(),

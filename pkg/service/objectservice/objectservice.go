@@ -5,7 +5,6 @@ package objectservice
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -70,26 +69,6 @@ func (svc *ObjectService) GetObjects(orefStrArr []string) ([]waveobj.WaveObj, er
 		orefArr = append(orefArr, *orefObj)
 	}
 	return wstore.DBSelectORefs(ctx, orefArr)
-}
-
-func updatesRtn(ctx context.Context, rtnVal map[string]any) (any, error) {
-	updates := wstore.ContextGetUpdates(ctx)
-	if len(updates) == 0 {
-		return nil, nil
-	}
-	updateArr := make([]wstore.WaveObjUpdate, 0, len(updates))
-	for _, update := range updates {
-		updateArr = append(updateArr, update)
-	}
-	jval, err := json.Marshal(updateArr)
-	if err != nil {
-		return nil, fmt.Errorf("error converting updates to JSON: %w", err)
-	}
-	if rtnVal == nil {
-		rtnVal = make(map[string]any)
-	}
-	rtnVal["updates"] = json.RawMessage(jval)
-	return rtnVal, nil
 }
 
 func (svc *ObjectService) AddTabToWorkspace_Meta() tsgenmeta.MethodMeta {

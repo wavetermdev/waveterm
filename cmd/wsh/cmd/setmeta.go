@@ -6,7 +6,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -76,11 +75,21 @@ func setMetaRun(cmd *cobra.Command, args []string) {
 		fmt.Printf("%v\n", err)
 		return
 	}
+	setTermRawMode()
+	fullORef, err := resolveSimpleId(oref)
+	if err != nil {
+		fmt.Printf("error resolving oref: %v\n", err)
+		return
+	}
 	setMetaWshCmd := &wshutil.BlockSetMetaCommand{
 		Command: wshutil.BlockCommand_SetMeta,
-		OID:     oref,
+		ORef:    fullORef,
 		Meta:    meta,
 	}
-	barr, _ := wshutil.EncodeWaveOSCMessage(setMetaWshCmd)
-	os.Stdout.Write(barr)
+	_, err = RpcClient.SendRpcRequest(setMetaWshCmd, 2000)
+	if err != nil {
+		fmt.Printf("error setting metadata: %v\n", err)
+		return
+	}
+	fmt.Print("metadata set\r\n")
 }

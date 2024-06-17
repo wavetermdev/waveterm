@@ -23,6 +23,7 @@ const (
 	BlockCommand_Input           = "controller:input"
 	BlockCommand_AppendBlockFile = "blockfile:append"
 	BlockCommand_AppendIJson     = "blockfile:appendijson"
+	Command_ResolveIds           = "resolveids"
 )
 
 var CommandToTypeMap = map[string]reflect.Type{
@@ -33,6 +34,7 @@ var CommandToTypeMap = map[string]reflect.Type{
 	BlockCommand_Message:         reflect.TypeOf(BlockMessageCommand{}),
 	BlockCommand_AppendBlockFile: reflect.TypeOf(BlockAppendFileCommand{}),
 	BlockCommand_AppendIJson:     reflect.TypeOf(BlockAppendIJsonCommand{}),
+	Command_ResolveIds:           reflect.TypeOf(ResolveIdsCommand{}),
 }
 
 func CommandTypeUnionMeta() tsgenmeta.TypeUnionMeta {
@@ -91,6 +93,15 @@ func (ic *BlockInputCommand) GetCommand() string {
 	return BlockCommand_Input
 }
 
+type ResolveIdsCommand struct {
+	Command string   `json:"command" tstype:"\"resolveids\""`
+	Ids     []string `json:"ids"`
+}
+
+func (ric *ResolveIdsCommand) GetCommand() string {
+	return Command_ResolveIds
+}
+
 type BlockSetViewCommand struct {
 	Command string `json:"command" tstype:"\"setview\""`
 	View    string `json:"view"`
@@ -102,8 +113,7 @@ func (svc *BlockSetViewCommand) GetCommand() string {
 
 type BlockGetMetaCommand struct {
 	Command string `json:"command" tstype:"\"getmeta\""`
-	RpcId   string `json:"rpcid"`
-	OID     string `json:"oid"` // allows oref, 8-char oid, or full uuid
+	ORef    string `json:"oref"` // oref string
 }
 
 func (gmc *BlockGetMetaCommand) GetCommand() string {
@@ -112,7 +122,7 @@ func (gmc *BlockGetMetaCommand) GetCommand() string {
 
 type BlockSetMetaCommand struct {
 	Command string         `json:"command" tstype:"\"setmeta\""`
-	OID     string         `json:"oid"` // allows oref, 8-char oid, or full uuid
+	ORef    string         `json:"oref,omitempty"` // allows oref, 8-char oid, or full uuid (empty is current block)
 	Meta    map[string]any `json:"meta"`
 }
 

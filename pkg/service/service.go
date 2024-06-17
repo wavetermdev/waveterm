@@ -13,7 +13,9 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service/clientservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/objectservice"
+	"github.com/wavetermdev/thenextwave/pkg/service/windowservice"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
@@ -25,6 +27,7 @@ var ServiceMap = map[string]any{
 	"object": &objectservice.ObjectService{},
 	"file":   &fileservice.FileService{},
 	"client": &clientservice.ClientService{},
+	"window": &windowservice.WindowService{},
 }
 
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
@@ -85,7 +88,7 @@ func convertNumber(argType reflect.Type, jsonArg float64) (any, error) {
 
 func convertComplex(argType reflect.Type, jsonArg any) (any, error) {
 	nativeArgVal := reflect.New(argType)
-	err := waveobj.DoMapStucture(nativeArgVal.Interface(), jsonArg)
+	err := utilfn.DoMapStucture(nativeArgVal.Interface(), jsonArg)
 	if err != nil {
 		return nil, err
 	}

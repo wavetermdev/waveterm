@@ -98,3 +98,13 @@ class ObjectServiceType {
 
 export const ObjectService = new ObjectServiceType()
 
+// windowservice.WindowService (window)
+class WindowServiceType {
+    // @returns object updates
+    SetWindowPosAndSize(arg2: string, arg3: Point, arg4: WinSize): Promise<void> {
+        return WOS.callBackendService("window", "SetWindowPosAndSize", Array.from(arguments))
+    }
+}
+
+export const WindowService = new WindowServiceType()
+
