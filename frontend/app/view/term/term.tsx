@@ -23,7 +23,7 @@ import { IJsonView } from "./ijson";
 
 import "public/xterm.css";
 import { debounce } from "throttle-debounce";
-import "./view.less";
+import "./term.less";
 
 function getThemeFromCSSVars(el: Element): ITheme {
     const theme: ITheme = {};

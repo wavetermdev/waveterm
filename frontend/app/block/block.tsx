@@ -4,7 +4,7 @@
 import { CodeEdit } from "@/app/view/codeedit";
 import { PlotView } from "@/app/view/plotview";
 import { PreviewView } from "@/app/view/preview";
-import { TerminalView } from "@/app/view/term";
+import { TerminalView } from "@/app/view/term/term";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import * as WOS from "@/store/wos";
