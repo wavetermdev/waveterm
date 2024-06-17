@@ -82,14 +82,21 @@ test("determineDropDirection", () => {
         DropDirection.OuterLeft
     );
 
-    // TODO: uncomment once center direction is supported
-    // assert.equal(
-    //     determineDropDirection(dimensions, {
-    //         x: 2.5,
-    //         y: 2.5,
-    //     }),
-    //     DropDirection.Center
-    // );
+    assert.equal(
+        determineDropDirection(dimensions, {
+            x: 2.5,
+            y: 2.5,
+        }),
+        DropDirection.Center
+    );
+
+    assert.equal(
+        determineDropDirection(dimensions, {
+            x: 2.51,
+            y: 2.51,
+        }),
+        DropDirection.Center
+    );
 
     assert.equal(
         determineDropDirection(dimensions, {

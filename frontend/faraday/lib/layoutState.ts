@@ -19,6 +19,7 @@ import {
     LayoutTreeInsertNodeAction,
     LayoutTreeMoveNodeAction,
     LayoutTreeState,
+    LayoutTreeSwapNodeAction,
     MoveOperation,
 } from "./model";
 import { DropDirection, FlexDirection, lazy } from "./utils";
@@ -88,6 +89,10 @@ function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, act
             deleteNode(layoutTreeState, action as LayoutTreeDeleteNodeAction);
             layoutTreeState.generation++;
             break;
+        case LayoutTreeActionType.Swap:
+            swapNode(layoutTreeState, action as LayoutTreeSwapNodeAction<T>);
+            layoutTreeState.generation++;
+            break;
         default: {
             console.error("Invalid reducer action", layoutTreeState, action);
         }
@@ -114,7 +119,12 @@ function computeMoveNode<T>(
         return;
     }
 
-    let newOperation: MoveOperation<T>;
+    if (node.id === nodeToMove.id) {
+        console.warn("Cannot compute move node action since both nodes are equal");
+        return;
+    }
+
+    let newMoveOperation: MoveOperation<T>;
     const parent = lazy(() => findParent(rootNode, node.id));
     const grandparent = lazy(() => findParent(rootNode, parent().id));
     const indexInParent = lazy(() => parent()?.children.findIndex((child) => node.id === child.id));
@@ -129,7 +139,7 @@ function computeMoveNode<T>(
                 if (grandparentNode) {
                     console.log("has grandparent", grandparentNode);
                     const index = indexInGrandparent();
-                    newOperation = {
+                    newMoveOperation = {
                         parentId: grandparentNode.id,
                         node: nodeToMove,
                         index,
@@ -139,10 +149,10 @@ function computeMoveNode<T>(
             }
         case DropDirection.Top:
             if (node.flexDirection === FlexDirection.Column) {
-                newOperation = { parentId: node.id, index: 0, node: nodeToMove };
+                newMoveOperation = { parentId: node.id, index: 0, node: nodeToMove };
             } else {
                 if (isRoot)
-                    newOperation = {
+                    newMoveOperation = {
                         node: nodeToMove,
                         index: 0,
                         insertAtRoot: true,
@@ -150,7 +160,7 @@ function computeMoveNode<T>(
 
                 const parentNode = parent();
                 if (parentNode)
-                    newOperation = {
+                    newMoveOperation = {
                         parentId: parentNode.id,
                         index: indexInParent() ?? 0,
                         node: nodeToMove,
@@ -164,7 +174,7 @@ function computeMoveNode<T>(
                 if (grandparentNode) {
                     console.log("has grandparent", grandparentNode);
                     const index = indexInGrandparent() + 1;
-                    newOperation = {
+                    newMoveOperation = {
                         parentId: grandparentNode.id,
                         node: nodeToMove,
                         index,
@@ -174,10 +184,10 @@ function computeMoveNode<T>(
             }
         case DropDirection.Bottom:
             if (node.flexDirection === FlexDirection.Column) {
-                newOperation = { parentId: node.id, index: 1, node: nodeToMove };
+                newMoveOperation = { parentId: node.id, index: 1, node: nodeToMove };
             } else {
                 if (isRoot)
-                    newOperation = {
+                    newMoveOperation = {
                         node: nodeToMove,
                         index: 1,
                         insertAtRoot: true,
@@ -185,7 +195,7 @@ function computeMoveNode<T>(
 
                 const parentNode = parent();
                 if (parentNode)
-                    newOperation = {
+                    newMoveOperation = {
                         parentId: parentNode.id,
                         index: indexInParent() + 1,
                         node: nodeToMove,
@@ -199,7 +209,7 @@ function computeMoveNode<T>(
                 if (grandparentNode) {
                     console.log("has grandparent", grandparentNode);
                     const index = indexInGrandparent();
-                    newOperation = {
+                    newMoveOperation = {
                         parentId: grandparentNode.id,
                         node: nodeToMove,
                         index,
@@ -209,11 +219,11 @@ function computeMoveNode<T>(
             }
         case DropDirection.Left:
             if (node.flexDirection === FlexDirection.Row) {
-                newOperation = { parentId: node.id, index: 0, node: nodeToMove };
+                newMoveOperation = { parentId: node.id, index: 0, node: nodeToMove };
             } else {
                 const parentNode = parent();
                 if (parentNode)
-                    newOperation = {
+                    newMoveOperation = {
                         parentId: parentNode.id,
                         index: indexInParent(),
                         node: nodeToMove,
@@ -227,7 +237,7 @@ function computeMoveNode<T>(
                 if (grandparentNode) {
                     console.log("has grandparent", grandparentNode);
                     const index = indexInGrandparent() + 1;
-                    newOperation = {
+                    newMoveOperation = {
                         parentId: grandparentNode.id,
                         node: nodeToMove,
                         index,
@@ -237,11 +247,11 @@ function computeMoveNode<T>(
             }
         case DropDirection.Right:
             if (node.flexDirection === FlexDirection.Row) {
-                newOperation = { parentId: node.id, index: 1, node: nodeToMove };
+                newMoveOperation = { parentId: node.id, index: 1, node: nodeToMove };
             } else {
                 const parentNode = parent();
                 if (parentNode)
-                    newOperation = {
+                    newMoveOperation = {
                         parentId: parentNode.id,
                         index: indexInParent() + 1,
                         node: nodeToMove,
@@ -249,14 +259,28 @@ function computeMoveNode<T>(
             }
             break;
         case DropDirection.Center:
-            // TODO: handle center drop
-            console.log("center drop");
+            console.log("center drop", rootNode, node, nodeToMove);
+            if (node.id !== rootNode.id && nodeToMove.id !== rootNode.id) {
+                const swapAction: LayoutTreeSwapNodeAction<T> = {
+                    type: LayoutTreeActionType.Swap,
+                    node1: node,
+                    node2: nodeToMove,
+                };
+                console.log("swapAction", swapAction);
+                layoutTreeState.pendingAction = swapAction;
+            } else {
+                console.warn("cannot swap");
+            }
             break;
         default:
             throw new Error(`Invalid direction: ${direction}`);
     }
 
-    if (newOperation) layoutTreeState.pendingAction = { type: LayoutTreeActionType.Move, ...newOperation };
+    if (newMoveOperation)
+        layoutTreeState.pendingAction = {
+            type: LayoutTreeActionType.Move,
+            ...newMoveOperation,
+        } as LayoutTreeMoveNodeAction<T>;
 }
 
 function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMoveNodeAction<T>) {
@@ -271,11 +295,22 @@ function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMove
         return;
     }
 
-    let node = findNode(rootNode, action.node.id) ?? action.node;
-    let parent = findNode(rootNode, action.parentId);
-    let oldParent = findParent(rootNode, action.node.id);
+    const node = findNode(rootNode, action.node.id) ?? action.node;
+    const parent = findNode(rootNode, action.parentId);
+    const oldParent = findParent(rootNode, action.node.id);
 
     console.log(node, parent, oldParent);
+
+    let startingIndex = 0;
+
+    // If moving under the same parent, we need to make sure that we are removing the child from its old position, not its new one.
+    // If the new index is before the old index, we need to start our search for the node to delete after the new index position.
+    if (oldParent?.id === parent.id) {
+        const curIndexInParent = parent.children!.indexOf(node);
+        if (curIndexInParent >= action.index) {
+            startingIndex = action.index + 1;
+        }
+    }
 
     if (!parent && action.insertAtRoot) {
         if (!rootNode.children) {
@@ -290,7 +325,7 @@ function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMove
 
     // Remove nodeToInsert from its old parent
     if (oldParent) {
-        removeChild(oldParent, node);
+        removeChild(oldParent, node, startingIndex);
     }
 
     const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
@@ -312,6 +347,34 @@ function insertNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeIn
     }
     const insertLoc = findNextInsertLocation(layoutTreeState.rootNode, 5);
     addChildAt(insertLoc.node, insertLoc.index, action.node);
+    const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
+    layoutTreeState.rootNode = newRootNode;
+    layoutTreeState.leafs = leafs;
+}
+
+function swapNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeSwapNodeAction<T>) {
+    console.log("swapNode", layoutTreeState, action);
+    if (!action.node1 || !action.node2) {
+        console.error("invalid swapNode action, both node1 and node2 must be defined");
+        return;
+    }
+    if (action.node1.id === layoutTreeState.rootNode.id || action.node2.id === layoutTreeState.rootNode.id) {
+        console.error("invalid swapNode action, the root node cannot be swapped");
+        return;
+    }
+    if (action.node1.id === action.node2.id) {
+        console.error("invalid swapNode action, node1 and node2 are equal");
+        return;
+    }
+
+    const parentNode1 = findParent(layoutTreeState.rootNode, action.node1.id);
+    const parentNode2 = findParent(layoutTreeState.rootNode, action.node2.id);
+    const parentNode1Index = parentNode1.children!.findIndex((child) => child.id === action.node1.id);
+    const parentNode2Index = parentNode2.children!.findIndex((child) => child.id === action.node2.id);
+
+    parentNode1.children[parentNode1Index] = action.node2;
+    parentNode2.children[parentNode2Index] = action.node1;
+
     const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
     layoutTreeState.rootNode = newRootNode;
     layoutTreeState.leafs = leafs;

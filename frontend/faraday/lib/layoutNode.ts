@@ -99,12 +99,13 @@ export function addIntermediateNode<T>(node: LayoutNode<T>): LayoutNode<T> {
  * Attempts to remove the specified node from its parent.
  * @param parent The parent node.
  * @param childToRemove The node to remove.
+ * @param startingIndex The index in children to start the search from.
  * @template T The type of data associated with the node.
  * @returns The updated parent node, or undefined if the node was not found.
  */
-export function removeChild<T>(parent: LayoutNode<T>, childToRemove: LayoutNode<T>) {
+export function removeChild<T>(parent: LayoutNode<T>, childToRemove: LayoutNode<T>, startingIndex: number = 0) {
     if (!parent.children) return;
-    const idx = parent.children.indexOf(childToRemove);
+    const idx = parent.children.indexOf(childToRemove, startingIndex);
     if (idx === -1) return;
     parent.children?.splice(idx, 1);
 }

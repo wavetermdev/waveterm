@@ -29,6 +29,7 @@ import {
     LayoutTreeDeleteNodeAction,
     LayoutTreeMoveNodeAction,
     LayoutTreeState,
+    LayoutTreeSwapNodeAction,
     PreviewRenderer,
     WritableLayoutTreeStateAtom,
 } from "./model";
@@ -518,68 +519,98 @@ const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style
 
     useEffect(() => {
         let newPlaceholderOverlay: ReactNode;
-        if (layoutTreeState?.pendingAction?.type === LayoutTreeActionType.Move && overlayContainerRef?.current) {
-            const action = layoutTreeState.pendingAction as LayoutTreeMoveNodeAction<T>;
-            let parentId: string;
-            if (action.insertAtRoot) {
-                parentId = layoutTreeState.rootNode.id;
-            } else {
-                parentId = action.parentId;
-            }
+        if (overlayContainerRef?.current) {
+            switch (layoutTreeState?.pendingAction?.type) {
+                case LayoutTreeActionType.Move: {
+                    const action = layoutTreeState.pendingAction as LayoutTreeMoveNodeAction<T>;
+                    let parentId: string;
+                    if (action.insertAtRoot) {
+                        parentId = layoutTreeState.rootNode.id;
+                    } else {
+                        parentId = action.parentId;
+                    }
 
-            const parentNode = findNode(layoutTreeState.rootNode, parentId);
-            if (action.index !== undefined && parentNode) {
-                const targetIndex = Math.min(
-                    parentNode.children ? parentNode.children.length - 1 : 0,
-                    Math.max(0, action.index - 1)
-                );
-                let targetNode = parentNode?.children?.at(targetIndex);
-                let targetRef: React.RefObject<HTMLElement>;
-                if (targetNode) {
-                    targetRef = nodeRefs.get(targetNode.id);
-                } else {
-                    targetRef = nodeRefs.get(parentNode.id);
-                    targetNode = parentNode;
-                }
-                if (targetRef?.current) {
-                    const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
-                    const targetBoundingRect = targetRef.current.getBoundingClientRect();
-
-                    // Placeholder should be either half the height or half the width of the targetNode, depending on the flex direction of the targetNode's parent.
-                    // Default to placing the placeholder in the first half of the target node.
-                    const placeholderDimensions: Dimensions = {
-                        height:
-                            parentNode.flexDirection === FlexDirection.Column
-                                ? targetBoundingRect.height / 2
-                                : targetBoundingRect.height,
-                        width:
-                            parentNode.flexDirection === FlexDirection.Row
-                                ? targetBoundingRect.width / 2
-                                : targetBoundingRect.width,
-                        top: targetBoundingRect.top - overlayBoundingRect.top,
-                        left: targetBoundingRect.left - overlayBoundingRect.left,
-                    };
-
-                    if (action.index > targetIndex) {
-                        if (action.index >= (parentNode.children?.length ?? 1)) {
-                            // If there are no more nodes after the specified index, place the placeholder in the second half of the target node (either right or bottom).
-                            placeholderDimensions.top +=
-                                parentNode.flexDirection === FlexDirection.Column && targetBoundingRect.height / 2;
-                            placeholderDimensions.left +=
-                                parentNode.flexDirection === FlexDirection.Row && targetBoundingRect.width / 2;
+                    const parentNode = findNode(layoutTreeState.rootNode, parentId);
+                    if (action.index !== undefined && parentNode) {
+                        const targetIndex = Math.min(
+                            parentNode.children ? parentNode.children.length - 1 : 0,
+                            Math.max(0, action.index - 1)
+                        );
+                        let targetNode = parentNode?.children?.at(targetIndex);
+                        let targetRef: React.RefObject<HTMLElement>;
+                        if (targetNode) {
+                            targetRef = nodeRefs.get(targetNode.id);
                         } else {
-                            // Otherwise, place the placeholder between the target node (the one after which it will be inserted) and the next node
-                            placeholderDimensions.top +=
-                                parentNode.flexDirection === FlexDirection.Column &&
-                                (3 * targetBoundingRect.height) / 4;
-                            placeholderDimensions.left +=
-                                parentNode.flexDirection === FlexDirection.Row && (3 * targetBoundingRect.width) / 4;
+                            targetRef = nodeRefs.get(parentNode.id);
+                            targetNode = parentNode;
+                        }
+                        if (targetRef?.current) {
+                            const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
+                            const targetBoundingRect = targetRef.current.getBoundingClientRect();
+
+                            // Placeholder should be either half the height or half the width of the targetNode, depending on the flex direction of the targetNode's parent.
+                            // Default to placing the placeholder in the first half of the target node.
+                            const placeholderDimensions: Dimensions = {
+                                height:
+                                    parentNode.flexDirection === FlexDirection.Column
+                                        ? targetBoundingRect.height / 2
+                                        : targetBoundingRect.height,
+                                width:
+                                    parentNode.flexDirection === FlexDirection.Row
+                                        ? targetBoundingRect.width / 2
+                                        : targetBoundingRect.width,
+                                top: targetBoundingRect.top - overlayBoundingRect.top,
+                                left: targetBoundingRect.left - overlayBoundingRect.left,
+                            };
+
+                            if (action.index > targetIndex) {
+                                if (action.index >= (parentNode.children?.length ?? 1)) {
+                                    // If there are no more nodes after the specified index, place the placeholder in the second half of the target node (either right or bottom).
+                                    placeholderDimensions.top +=
+                                        parentNode.flexDirection === FlexDirection.Column &&
+                                        targetBoundingRect.height / 2;
+                                    placeholderDimensions.left +=
+                                        parentNode.flexDirection === FlexDirection.Row && targetBoundingRect.width / 2;
+                                } else {
+                                    // Otherwise, place the placeholder between the target node (the one after which it will be inserted) and the next node
+                                    placeholderDimensions.top +=
+                                        parentNode.flexDirection === FlexDirection.Column &&
+                                        (3 * targetBoundingRect.height) / 4;
+                                    placeholderDimensions.left +=
+                                        parentNode.flexDirection === FlexDirection.Row &&
+                                        (3 * targetBoundingRect.width) / 4;
+                                }
+                            }
+
+                            const placeholderTransform = createTransform(placeholderDimensions);
+                            newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
                         }
                     }
-                    const placeholderTransform = createTransform(placeholderDimensions);
-
-                    newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
+                    break;
                 }
+                case LayoutTreeActionType.Swap: {
+                    const action = layoutTreeState.pendingAction as LayoutTreeSwapNodeAction<T>;
+                    console.log("placeholder for swap", action);
+                    const targetNode = action.node1;
+                    const targetRef = nodeRefs.get(targetNode?.id);
+                    if (targetRef?.current) {
+                        const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
+                        const targetBoundingRect = targetRef.current.getBoundingClientRect();
+                        const placeholderDimensions: Dimensions = {
+                            top: targetBoundingRect.top - overlayBoundingRect.top,
+                            left: targetBoundingRect.left - overlayBoundingRect.left,
+                            height: targetBoundingRect.height,
+                            width: targetBoundingRect.width,
+                        };
+
+                        const placeholderTransform = createTransform(placeholderDimensions);
+                        newPlaceholderOverlay = <div className="placeholder" style={{ ...placeholderTransform }} />;
+                    }
+                    break;
+                }
+                default:
+                    // No-op
+                    break;
             }
         }
         setPlaceholderOverlay(newPlaceholderOverlay);

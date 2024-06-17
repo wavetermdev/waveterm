@@ -35,6 +35,7 @@ export type MoveOperation<T> = {
 export enum LayoutTreeActionType {
     ComputeMove = "computeMove",
     Move = "move",
+    Swap = "swap",
     CommitPendingAction = "commit",
     ResizeNode = "resize",
     InsertNode = "insert",
@@ -70,6 +71,13 @@ export interface LayoutTreeComputeMoveNodeAction<T> extends LayoutTreeAction {
  */
 export interface LayoutTreeMoveNodeAction<T> extends LayoutTreeAction, MoveOperation<T> {
     type: LayoutTreeActionType.Move;
+}
+
+export interface LayoutTreeSwapNodeAction<T> extends LayoutTreeAction {
+    type: LayoutTreeActionType.Swap;
+
+    node1: LayoutNode<T>;
+    node2: LayoutNode<T>;
 }
 
 /**

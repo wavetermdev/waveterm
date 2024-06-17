@@ -43,14 +43,13 @@ export function determineDropDirection(dimensions?: Dimensions, offset?: XYCoord
     // Lies outside of the box
     if (y < 0 || y > height || x < 0 || x > width) return undefined;
 
-    // TODO: uncomment once center drop is supported
-    // // Determines if a drop point falls within the center fifth of the box, meaning we should return Center.
-    // const centerX1 = (2 * width) / 5;
-    // const centerX2 = (3 * width) / 5;
-    // const centerY1 = (2 * height) / 5;
-    // const centerY2 = (3 * width) / 5;
+    // Determines if a drop point falls within the center fifth of the box, meaning we should return Center.
+    const centerX1 = (2 * width) / 5;
+    const centerX2 = (3 * width) / 5;
+    const centerY1 = (2 * height) / 5;
+    const centerY2 = (3 * height) / 5;
 
-    // if (x > centerX1 && x < centerX2 && y > centerY1 && y < centerY2) return DropDirection.Center;
+    if (x > centerX1 && x < centerX2 && y > centerY1 && y < centerY2) return DropDirection.Center;
 
     const diagonal1 = y * width - x * height;
     const diagonal2 = y * width + x * height - height * width;
