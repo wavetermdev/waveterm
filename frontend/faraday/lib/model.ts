@@ -73,10 +73,21 @@ export interface LayoutTreeMoveNodeAction<T> extends LayoutTreeAction, MoveOpera
     type: LayoutTreeActionType.Move;
 }
 
+/**
+ * Action for swapping two nodes within the layout tree.
+ *
+ * @template T The type of data associated with the nodes of the tree.
+ */
 export interface LayoutTreeSwapNodeAction<T> extends LayoutTreeAction {
     type: LayoutTreeActionType.Swap;
 
+    /**
+     * The node that node2 will replace.
+     */
     node1: LayoutNode<T>;
+    /**
+     * The node that node1 will replace.
+     */
     node2: LayoutNode<T>;
 }
 
