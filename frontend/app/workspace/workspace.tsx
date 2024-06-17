@@ -15,7 +15,7 @@ import {
     getLayoutStateAtomForTab,
     useLayoutTreeStateReducerAtom,
 } from "@/faraday/lib/layoutAtom";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import "./workspace.less";
 
 function Tab({ tabId }: { tabId: string }) {
@@ -71,16 +71,13 @@ function Widgets() {
     }, [windowData.activetabid]);
     const [, dispatchLayoutStateAction] = useLayoutTreeStateReducerAtom(activeTabAtom);
 
-    const addBlockToTab = useCallback(
-        (blockId: string) => {
-            const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
-                type: LayoutTreeActionType.InsertNode,
-                node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, { blockId }),
-            };
-            dispatchLayoutStateAction(insertNodeAction);
-        },
-        [activeTabAtom, dispatchLayoutStateAction]
-    );
+    function addBlockToTab(blockId: string) {
+        const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
+            type: LayoutTreeActionType.InsertNode,
+            node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, { blockId }),
+        };
+        dispatchLayoutStateAction(insertNodeAction);
+    }
 
     async function createBlock(blockDef: BlockDef) {
         const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
