@@ -1,0 +1,32 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.tab-bar-wrapper {
+    position: relative;
+    border-bottom: 1px solid var(--border-color);
+    -webkit-user-select: none;
+
+    .tab-bar {
+        position: relative; // Needed for absolute positioning of child tabs
+        min-height: 34px; // Adjust as necessary to fit the height of tabs
+        width: calc(100vw - 36px); // 36 is the width of add tab button
+        overflow: hidden;
+    }
+
+    .add-tab-btn {
+        width: 36px;
+        height: 34px;
+        cursor: pointer;
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%); // overridden in js
+        border-radius: 100%;
+        font-size: 14px;
+        text-align: center;
+        height: 32px;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}

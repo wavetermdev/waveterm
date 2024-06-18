@@ -99,6 +99,23 @@ func (svc *ObjectService) AddTabToWorkspace(uiContext wstore.UIContext, tabName 
 	return tab.OID, wstore.ContextGetUpdatesRtn(ctx), nil
 }
 
+func (svc *ObjectService) UpdateWorkspaceTabIds_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"uiContext", "workspaceId", "tabIds"},
+	}
+}
+
+func (svc *ObjectService) UpdateWorkspaceTabIds(uiContext wstore.UIContext, workspaceId string, tabIds []string) (wstore.UpdatesRtnType, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = wstore.ContextWithUpdates(ctx)
+	err := wstore.UpdateWorkspaceTabIds(ctx, workspaceId, tabIds)
+	if err != nil {
+		return nil, fmt.Errorf("error updating workspace tab ids: %w", err)
+	}
+	return wstore.ContextGetUpdatesRtn(ctx), nil
+}
+
 func (svc *ObjectService) SetActiveTab_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"uiContext", "tabId"},

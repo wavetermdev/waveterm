@@ -1,65 +1,18 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { TabContent } from "@/app/tab/tab";
+import { TabBar } from "@/app/tab/tabbar";
+import { TabContent } from "@/app/tab/tabcontent";
 import { atoms } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
-import { clsx } from "clsx";
 import * as jotai from "jotai";
 import { CenteredDiv } from "../element/quickelems";
 
 import { LayoutTreeActionType, LayoutTreeInsertNodeAction, newLayoutNode } from "@/faraday/index";
-import {
-    deleteLayoutStateAtomForTab,
-    getLayoutStateAtomForTab,
-    useLayoutTreeStateReducerAtom,
-} from "@/faraday/lib/layoutAtom";
+import { getLayoutStateAtomForTab, useLayoutTreeStateReducerAtom } from "@/faraday/lib/layoutAtom";
 import { useMemo } from "react";
 import "./workspace.less";
-
-function Tab({ tabId }: { tabId: string }) {
-    const windowData = jotai.useAtomValue(atoms.waveWindow);
-    const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", tabId));
-    function setActiveTab() {
-        services.ObjectService.SetActiveTab(tabId);
-    }
-    function handleCloseTab() {
-        services.ObjectService.CloseTab(tabId);
-        deleteLayoutStateAtomForTab(tabId);
-    }
-    return (
-        <div
-            className={clsx("tab", { active: tabData != null && windowData.activetabid === tabData.oid })}
-            onClick={() => setActiveTab()}
-        >
-            <div className="tab-close" onClick={() => handleCloseTab()}>
-                <div>
-                    <i className="fa fa-solid fa-xmark" />
-                </div>
-            </div>
-            {tabData?.name ?? "..."}
-        </div>
-    );
-}
-
-function TabBar({ workspace }: { workspace: Workspace }) {
-    function handleAddTab() {
-        const newTabName = `Tab-${workspace.tabids.length + 1}`;
-        services.ObjectService.AddTabToWorkspace(newTabName, true);
-    }
-    const tabIds = workspace?.tabids ?? [];
-    return (
-        <div className="tab-bar">
-            {tabIds.map((tabid, idx) => {
-                return <Tab key={idx} tabId={tabid} />;
-            })}
-            <div className="tab-add" onClick={() => handleAddTab()}>
-                <i className="fa fa-solid fa-plus fa-fw" />
-            </div>
-        </div>
-    );
-}
 
 function Widgets() {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
@@ -149,6 +102,7 @@ function WorkspaceElem() {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
     const activeTabId = windowData?.activetabid;
     const ws = jotai.useAtomValue(atoms.workspace);
+    console.log("ws", ws);
     return (
         <div className="workspace">
             <TabBar workspace={ws} />

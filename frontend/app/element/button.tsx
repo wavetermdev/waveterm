@@ -1,55 +1,28 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
-import { clsx } from "clsx";
-import * as React from "react";
-
+import clsx from "clsx";
+import React from "react";
 import "./button.less";
 
-interface ButtonProps {
-    children: React.ReactNode;
-    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
-    disabled?: boolean;
-    leftIcon?: React.ReactNode;
-    rightIcon?: React.ReactNode;
-    style?: React.CSSProperties;
-    autoFocus?: boolean;
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     className?: string;
-    termInline?: boolean;
-    title?: string;
 }
 
-class Button extends React.Component<ButtonProps> {
-    static defaultProps = {
-        style: {},
-        className: "primary",
-    };
+const Button: React.FC<ButtonProps> = ({ className = "primary", children, disabled, ...props }) => {
+    const hasIcon = React.Children.toArray(children).some(
+        (child) => React.isValidElement(child) && (child as React.ReactElement).type === "svg"
+    );
 
-    handleClick(e) {
-        if (this.props.onClick && !this.props.disabled) {
-            this.props.onClick(e);
-        }
-    }
-
-    render() {
-        const { leftIcon, rightIcon, children, disabled, style, autoFocus, termInline, className, title } = this.props;
-
-        return (
-            <button
-                className={clsx("wave-button", { disabled }, { "term-inline": termInline }, className)}
-                onClick={this.handleClick.bind(this)}
-                disabled={disabled}
-                style={style}
-                autoFocus={autoFocus}
-                title={title}
-            >
-                {leftIcon && <span className="icon-left">{leftIcon}</span>}
-                {children}
-                {rightIcon && <span className="icon-right">{rightIcon}</span>}
-            </button>
-        );
-    }
-}
+    return (
+        <button
+            className={clsx("button", className, {
+                disabled,
+                hasIcon,
+            })}
+            disabled={disabled}
+            {...props}
+        >
+            {children}
+        </button>
+    );
+};
 
 export { Button };
-export type { ButtonProps };

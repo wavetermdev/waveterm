@@ -1,33 +1,105 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-.tabcontent {
-    display: flex;
-    flex-direction: row;
-    flex-grow: 1;
-    min-height: 0;
-    width: 100%;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+.tab {
+    cursor: pointer;
+    width: 130px;
+    height: 100%;
+    position: absolute;
+    box-sizing: border-box;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--secondary-text-color);
+    white-space: nowrap;
+    border-top: 2px solid transparent;
+    background-color: rgba(0, 8, 3, 0);
 
-    .block-container {
-        display: flex;
-        flex-direction: row;
-        flex: 1 0 0;
-        height: 100%;
-        overflow: hidden;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
+    &.animate {
+        transition:
+            transform 0.3s ease,
+            background-color 0.3s ease-in-out;
     }
-}
 
-.drag-preview {
-    display: block;
-    width: 100px;
-    height: 20px;
-    border-radius: 2px;
-    background-color: aquamarine;
-    color: black;
-    text-align: center;
+    &.active {
+        border-top: 2px solid var(--tab-green);
+        background-color: var(--tab-green);
+    }
+
+    .name {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        -webkit-user-select: none;
+        z-index: 3;
+    }
+
+    .vertical-line {
+        display: inline;
+        width: 1px;
+        height: 50%;
+        position: absolute;
+        right: -1px;
+        top: 50%;
+        z-index: 1;
+        transform: translateY(-50%);
+        background-color: var(--border-color);
+    }
+
+    .close {
+        visibility: hidden;
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        top: 50%;
+        z-index: 3;
+        transform: translateY(-50%);
+        right: 5px;
+
+        &:hover {
+            border: 1px solid var(--border-color);
+            border-radius: 2px;
+        }
+
+        i {
+            color: var(--secondary-text-color);
+        }
+    }
+
+    &:hover .close {
+        visibility: visible;
+    }
+
+    &.active {
+        .vertical-line {
+            visibility: hidden;
+        }
+    }
+
+    &.active {
+        .mask {
+            position: absolute;
+            height: 100%;
+            width: 100%;
+            top: 0;
+            left: 0;
+            z-index: 2;
+            background-image: linear-gradient(
+                to top,
+                rgba(0, 0, 0, 0.9) 20%,
+                rgba(0, 0, 0, 0.8) 60%,
+                rgba(0, 0, 0, 0.7) 100%
+            );
+            pointer-events: none; /* Prevents the background from capturing mouse events */
+        }
+    }
+
+    &.isDragging:not(.active) {
+        background-color: rgba(0, 8, 3, 1);
+    }
 }

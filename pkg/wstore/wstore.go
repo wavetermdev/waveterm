@@ -181,6 +181,18 @@ func CreateWorkspace(ctx context.Context) (*Workspace, error) {
 	return ws, nil
 }
 
+func UpdateWorkspaceTabIds(ctx context.Context, workspaceId string, tabIds []string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		ws, _ := DBGet[*Workspace](tx.Context(), workspaceId)
+		if ws == nil {
+			return fmt.Errorf("workspace not found: %q", workspaceId)
+		}
+		ws.TabIds = tabIds
+		DBUpdate(tx.Context(), ws)
+		return nil
+	})
+}
+
 func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		window, _ := DBGet[*Window](tx.Context(), windowId)

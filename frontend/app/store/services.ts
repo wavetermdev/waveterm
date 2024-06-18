@@ -94,6 +94,11 @@ class ObjectServiceType {
     UpdateObjectMeta(oref: string, meta: MetaType): Promise<void> {
         return WOS.callBackendService("object", "UpdateObjectMeta", Array.from(arguments))
     }
+
+    // @returns object updates
+    UpdateWorkspaceTabIds(workspaceId: string, tabIds: string[]): Promise<void> {
+        return WOS.callBackendService("object", "UpdateWorkspaceTabIds", Array.from(arguments))
+    }
 }
 
 export const ObjectService = new ObjectServiceType()

@@ -1,8 +1,8 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
+/* Copyright 2024, Command Line Inc. */
+/* SPDX-License-Identifier: Apache-2.0 */
 
-.wave-button {
-    background: none;
+.button {
+    background: var(--accent-color);
     border: none;
     cursor: pointer;
     outline: inherit;
@@ -18,14 +18,16 @@
     -webkit-user-select: none;
 
     color: var(--main-text-color);
-    background: var(--accent-color);
+
     i {
         fill: var(--main-text-color);
     }
 
-    &.primary {
+    &.primary,
+    &.secondary {
         color: var(--main-text-color);
         background: var(--accent-color);
+
         i {
             fill: var(--main-text-color);
         }
@@ -35,7 +37,8 @@
         background: var(--error-color);
     }
 
-    &.primary.outlined {
+    &.primary.outlined,
+    &.primary.greyoutlined {
         background: none;
         border: 1px solid var(--accent-color);
 
@@ -45,11 +48,18 @@
     }
 
     &.primary.greyoutlined {
-        background: none;
-        border: 1px solid var(--secondary-text-color);
+        border-color: var(--secondary-text-color);
 
         i {
             fill: var(--secondary-text-color);
+        }
+    }
+
+    &.primary.outlined.danger {
+        border-color: var(--error-color);
+
+        i {
+            fill: var(--error-color);
         }
     }
 
@@ -57,17 +67,8 @@
     &.primary.greyoutlined {
         &.hover-danger:hover {
             color: var(--main-text-color);
-            border: 1px solid var(--error-color);
+            border-color: var(--error-color);
             background: var(--error-color);
-        }
-    }
-
-    &.primary.outlined.danger {
-        background: none;
-        border: 1px solid var(--error-color);
-
-        i {
-            fill: var(--error-color);
         }
     }
 
@@ -77,24 +78,20 @@
 
     &.primary.ghost {
         background: none;
+
         i {
             fill: var(--accent-color);
         }
     }
 
     &.primary.ghost.danger {
-        background: none;
         i {
             fill: var(--app-error-color);
         }
     }
 
     &.secondary {
-        color: var(--main-text-color);
         background: var(--highlight-bg-color);
-        i {
-            fill: var(--main-text-color);
-        }
     }
 
     &.secondary.outlined {
@@ -103,8 +100,7 @@
     }
 
     &.secondary.outlined.danger {
-        background: none;
-        border: 1px solid var(--error-color);
+        border-color: var(--error-color);
     }
 
     &.secondary.ghost {
