@@ -70,6 +70,9 @@ function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, act
         case LayoutTreeActionType.ComputeMove:
             computeMoveNode(layoutTreeState, action as LayoutTreeComputeMoveNodeAction<T>);
             break;
+        case LayoutTreeActionType.ClearPendingAction:
+            clearPendingAction(layoutTreeState);
+            break;
         case LayoutTreeActionType.CommitPendingAction:
             if (!layoutTreeState?.pendingAction) {
                 console.error("unable to commit pending action, does not exist");
@@ -129,6 +132,10 @@ function computeMoveNode<T>(
     const grandparent = lazy(() => findParent(rootNode, parent().id));
     const indexInParent = lazy(() => parent()?.children.findIndex((child) => node.id === child.id));
     const indexInGrandparent = lazy(() => grandparent()?.children.findIndex((child) => parent().id === child.id));
+    const nodeToMoveParent = lazy(() => findParent(rootNode, nodeToMove.id));
+    const nodeToMoveIndexInParent = lazy(() =>
+        nodeToMoveParent()?.children.findIndex((child) => nodeToMove.id === child.id)
+    );
     const isRoot = rootNode.id === node.id;
 
     switch (direction) {
@@ -268,6 +275,7 @@ function computeMoveNode<T>(
                 };
                 console.log("swapAction", swapAction);
                 layoutTreeState.pendingAction = swapAction;
+                return;
             } else {
                 console.warn("cannot swap");
             }
@@ -276,11 +284,19 @@ function computeMoveNode<T>(
             throw new Error(`Invalid direction: ${direction}`);
     }
 
-    if (newMoveOperation)
+    if (
+        newMoveOperation?.parentId !== nodeToMoveParent()?.id ||
+        (newMoveOperation.index !== nodeToMoveIndexInParent() &&
+            newMoveOperation.index !== nodeToMoveIndexInParent() + 1)
+    )
         layoutTreeState.pendingAction = {
             type: LayoutTreeActionType.Move,
             ...newMoveOperation,
         } as LayoutTreeMoveNodeAction<T>;
+}
+
+function clearPendingAction(layoutTreeState: LayoutTreeState<any>) {
+    layoutTreeState.pendingAction = undefined;
 }
 
 function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMoveNodeAction<T>) {
@@ -305,7 +321,7 @@ function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMove
 
     // If moving under the same parent, we need to make sure that we are removing the child from its old position, not its new one.
     // If the new index is before the old index, we need to start our search for the node to delete after the new index position.
-    if (oldParent?.id === parent.id) {
+    if (oldParent && parent && oldParent.id === parent.id) {
         const curIndexInParent = parent.children!.indexOf(node);
         if (curIndexInParent >= action.index) {
             startingIndex = action.index + 1;

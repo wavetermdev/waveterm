@@ -423,18 +423,24 @@ const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, delete
                 }
             },
             hover: (_, monitor) => {
-                if (monitor.isOver({ shallow: true }) && monitor.canDrop()) {
-                    const dragItem = monitor.getItem<LayoutNode<T>>();
-                    console.log("computing operation", layoutNode, dragItem, layoutTreeState.pendingAction);
-                    dispatch({
-                        type: LayoutTreeActionType.ComputeMove,
-                        node: layoutNode,
-                        nodeToMove: dragItem,
-                        direction: determineDropDirection(
-                            overlayRef.current?.getBoundingClientRect(),
-                            monitor.getClientOffset()
-                        ),
-                    } as LayoutTreeComputeMoveNodeAction<T>);
+                if (monitor.isOver({ shallow: true })) {
+                    if (monitor.canDrop()) {
+                        const dragItem = monitor.getItem<LayoutNode<T>>();
+                        console.log("computing operation", layoutNode, dragItem, layoutTreeState.pendingAction);
+                        dispatch({
+                            type: LayoutTreeActionType.ComputeMove,
+                            node: layoutNode,
+                            nodeToMove: dragItem,
+                            direction: determineDropDirection(
+                                overlayRef.current?.getBoundingClientRect(),
+                                monitor.getClientOffset()
+                            ),
+                        } as LayoutTreeComputeMoveNodeAction<T>);
+                    } else {
+                        dispatch({
+                            type: LayoutTreeActionType.ClearPendingAction,
+                        });
+                    }
                 }
             },
         }),

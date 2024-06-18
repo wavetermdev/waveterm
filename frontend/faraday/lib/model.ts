@@ -33,10 +33,11 @@ export type MoveOperation<T> = {
  * Types of actions that modify the layout tree.
  */
 export enum LayoutTreeActionType {
-    ComputeMove = "computeMove",
+    ComputeMove = "compute",
     Move = "move",
     Swap = "swap",
     CommitPendingAction = "commit",
+    ClearPendingAction = "clear",
     ResizeNode = "resize",
     InsertNode = "insert",
     DeleteNode = "delete",
@@ -114,6 +115,13 @@ export interface LayoutTreeInsertNodeAction<T> extends LayoutTreeAction {
 export interface LayoutTreeDeleteNodeAction extends LayoutTreeAction {
     type: LayoutTreeActionType.DeleteNode;
     nodeId: string;
+}
+
+/**
+ * Action for clearing the pendingAction field from the layout tree state.
+ */
+export interface LayoutTreeClearPendingAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.ClearPendingAction;
 }
 
 /**
