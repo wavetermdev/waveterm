@@ -4706,6 +4706,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@xterm/addon-serialize@npm:^0.13.0":
+  version: 0.13.0
+  resolution: "@xterm/addon-serialize@npm:0.13.0"
+  peerDependencies:
+    "@xterm/xterm": ^5.0.0
+  checksum: 10c0/090f502867250cdceca9abdbe37aebe0c01eb5d708a09c51d3e0e9bb5d4d3b0d4d67af1c4c8bde9b78f108a5e4150420180de69e6228aac76596fdbf6c4c59dc
+  languageName: node
+  linkType: hard
+
 "@xterm/xterm@npm:^5.5.0":
   version: 5.5.0
   resolution: "@xterm/xterm@npm:5.5.0"
@@ -6051,7 +6060,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"d3@npm:^7.9.0":
+"d3@npm:^7.6.1, d3@npm:^7.9.0":
   version: 7.9.0
   resolution: "d3@npm:7.9.0"
   dependencies:
@@ -11026,6 +11035,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-gauge-chart@npm:^0.5.1":
+  version: 0.5.1
+  resolution: "react-gauge-chart@npm:0.5.1"
+  dependencies:
+    d3: "npm:^7.6.1"
+  peerDependencies:
+    react: ^16.8.2 || ^17.0 || ^18.x
+    react-dom: ^16.8.2 || ^17.0 || ^18.x
+  checksum: 10c0/16d0142130ed56c8c5cd710d596499b44ccf654ea8973a4ed973ff8dca6b01e0d03b9885c34276cf678cd0f6bae1eee836d921a3bcbdbbf4a21eadd9f1686b90
+  languageName: node
+  linkType: hard
+
 "react-is@npm:18.1.0":
   version: 18.1.0
   resolution: "react-is@npm:18.1.0"
@@ -12268,6 +12289,7 @@ __metadata:
     "@vitejs/plugin-react": "npm:^4.3.0"
     "@vitest/coverage-istanbul": "npm:^1.6.0"
     "@xterm/addon-fit": "npm:^0.10.0"
+    "@xterm/addon-serialize": "npm:^0.13.0"
     "@xterm/xterm": "npm:^5.5.0"
     base64-js: "npm:^1.5.1"
     clsx: "npm:^2.1.1"
@@ -12289,6 +12311,7 @@ __metadata:
     react-dnd-html5-backend: "npm:^16.0.1"
     react-dom: "npm:^18.3.1"
     react-frame-component: "npm:^5.2.7"
+    react-gauge-chart: "npm:^0.5.1"
     react-markdown: "npm:^9.0.1"
     remark-gfm: "npm:^4.0.0"
     rxjs: "npm:^7.8.1"

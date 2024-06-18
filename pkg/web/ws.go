@@ -100,6 +100,12 @@ func processWSCommand(jmsg map[string]any, outputCh chan any) {
 			TermSize: &cmd.TermSize,
 		}
 		blockservice.BlockServiceInstance.SendCommand(cmd.BlockId, blockCmd)
+	case *webcmd.BlockInputWSCommand:
+		blockCmd := &wshutil.BlockInputCommand{
+			Command:     wshutil.BlockCommand_Input,
+			InputData64: cmd.InputData64,
+		}
+		blockservice.BlockServiceInstance.SendCommand(cmd.BlockId, blockCmd)
 	}
 }
 

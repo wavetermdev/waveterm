@@ -185,6 +185,9 @@ func (s *FileStore) Stat(ctx context.Context, zoneId string, name string) (*Wave
 	return withLockRtn(s, zoneId, name, func(entry *CacheEntry) (*WaveFile, error) {
 		file, err := entry.loadFileForRead(ctx)
 		if err != nil {
+			if err == fs.ErrNotExist {
+				return nil, err
+			}
 			return nil, fmt.Errorf("error getting file: %v", err)
 		}
 		return file.DeepCopy(), nil

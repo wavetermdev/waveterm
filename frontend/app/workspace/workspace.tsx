@@ -3,41 +3,13 @@
 
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
-import { atoms } from "@/store/global";
-import * as services from "@/store/services";
-import * as WOS from "@/store/wos";
+import { atoms, createBlock } from "@/store/global";
 import * as jotai from "jotai";
 import { CenteredDiv } from "../element/quickelems";
 
-import { LayoutTreeActionType, LayoutTreeInsertNodeAction, newLayoutNode } from "@/faraday/index";
-import { getLayoutStateAtomForTab, useLayoutTreeStateReducerAtom } from "@/faraday/lib/layoutAtom";
-import { useMemo } from "react";
 import "./workspace.less";
 
 function Widgets() {
-    const windowData = jotai.useAtomValue(atoms.waveWindow);
-    const activeTabAtom = useMemo(() => {
-        return getLayoutStateAtomForTab(
-            windowData.activetabid,
-            WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", windowData.activetabid))
-        );
-    }, [windowData.activetabid]);
-    const [, dispatchLayoutStateAction] = useLayoutTreeStateReducerAtom(activeTabAtom);
-
-    function addBlockToTab(blockId: string) {
-        const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
-            type: LayoutTreeActionType.InsertNode,
-            node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, { blockId }),
-        };
-        dispatchLayoutStateAction(insertNodeAction);
-    }
-
-    async function createBlock(blockDef: BlockDef) {
-        const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
-        const blockId = await services.ObjectService.CreateBlock(blockDef, rtOpts);
-        addBlockToTab(blockId);
-    }
-
     async function clickTerminal() {
         const termBlockDef = {
             controller: "shell",

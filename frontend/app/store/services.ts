@@ -7,6 +7,10 @@ import * as WOS from "./wos";
 
 // blockservice.BlockService (block)
 class BlockServiceType {
+    SaveTerminalState(arg2: string, arg3: string, arg4: string, arg5: number): Promise<void> {
+        return WOS.callBackendService("block", "SaveTerminalState", Array.from(arguments))
+    }
+
     // send command to block
     SendCommand(blockid: string, cmd: BlockCommand): Promise<void> {
         return WOS.callBackendService("block", "SendCommand", Array.from(arguments))

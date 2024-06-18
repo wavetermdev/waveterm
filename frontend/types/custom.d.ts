@@ -10,6 +10,8 @@ declare global {
         isDev: () => boolean;
         isDevServer: () => boolean;
     };
+
+    type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 }
 
 export {};

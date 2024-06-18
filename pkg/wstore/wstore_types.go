@@ -201,6 +201,24 @@ type BlockDef struct {
 	Meta       map[string]any      `json:"meta,omitempty"`
 }
 
+type StickerClickOptsType struct {
+	SendInput   string    `json:"sendinput,omitempty"`
+	CreateBlock *BlockDef `json:"createblock,omitempty"`
+}
+
+type StickerDisplayOptsType struct {
+	Icon    string `json:"icon"`
+	ImgSrc  string `json:"imgsrc"`
+	SvgBlob string `json:"svgblob,omitempty"`
+}
+
+type StickerType struct {
+	StickerType string                  `json:"stickertype"`
+	Style       map[string]any          `json:"style"`
+	ClickOpts   *StickerClickOptsType   `json:"clickopts,omitempty"`
+	Display     *StickerDisplayOptsType `json:"display"`
+}
+
 type RuntimeOpts struct {
 	TermSize shellexec.TermSize `json:"termsize,omitempty"`
 	WinSize  WinSize            `json:"winsize,omitempty"`
@@ -223,6 +241,7 @@ type Block struct {
 	Controller  string         `json:"controller"`
 	View        string         `json:"view"`
 	RuntimeOpts *RuntimeOpts   `json:"runtimeopts,omitempty"`
+	Stickers    []*StickerType `json:"stickers,omitempty"`
 	Meta        map[string]any `json:"meta"`
 }
 

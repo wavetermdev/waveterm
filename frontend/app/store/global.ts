@@ -1,8 +1,13 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { LayoutTreeActionType, LayoutTreeInsertNodeAction, newLayoutNode } from "@/faraday/index";
+import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
+import { layoutTreeStateReducer } from "@/faraday/lib/layoutState";
+
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
+import * as services from "./services";
 import * as WOS from "./wos";
 import { WSControl } from "./ws";
 
@@ -61,8 +66,6 @@ const atoms = {
     waveWindow: windowDataAtom,
     workspace: workspaceAtom,
 };
-
-type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
 // key is "eventType" or "eventType|oref"
 const eventSubjects = new Map<string, SubjectWithRef<WSEventType>>();
@@ -215,9 +218,58 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
+async function createBlock(blockDef: BlockDef) {
+    const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
+    const blockId = await services.ObjectService.CreateBlock(blockDef, rtOpts);
+    const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
+        type: LayoutTreeActionType.InsertNode,
+        node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, { blockId }),
+    };
+    const activeTabId = globalStore.get(atoms.uiContext).activetabid;
+    const layoutStateAtom = getLayoutStateAtomForTab(
+        activeTabId,
+        WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", activeTabId))
+    );
+    const curState = globalStore.get(layoutStateAtom);
+    globalStore.set(layoutStateAtom, layoutTreeStateReducer(curState, insertNodeAction));
+}
+
+// when file is not found, returns {data: null, fileInfo: null}
+async function fetchWaveFile(
+    zoneId: string,
+    fileName: string,
+    offset?: number
+): Promise<{ data: Uint8Array; fileInfo: WaveFile }> {
+    let usp = new URLSearchParams();
+    usp.set("zoneid", zoneId);
+    usp.set("name", fileName);
+    if (offset != null) {
+        usp.set("offset", offset.toString());
+    }
+    const resp = await fetch(getBackendHostPort() + "/wave/file?" + usp.toString());
+    if (!resp.ok) {
+        if (resp.status === 404) {
+            return { data: null, fileInfo: null };
+        }
+        throw new Error("error getting wave file: " + resp.statusText);
+    }
+    if (resp.status == 204) {
+        return { data: null, fileInfo: null };
+    }
+    let fileInfo64 = resp.headers.get("X-ZoneFileInfo");
+    if (fileInfo64 == null) {
+        throw new Error(`missing zone file info for ${zoneId}:${fileName}`);
+    }
+    let fileInfo = JSON.parse(atob(fileInfo64));
+    const data = await resp.arrayBuffer();
+    return { data: new Uint8Array(data), fileInfo };
+}
+
 export {
     WOS,
     atoms,
+    createBlock,
+    fetchWaveFile,
     getApi,
     getBackendHostPort,
     getEventORefSubject,

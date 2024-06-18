@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -102,6 +103,15 @@ func marshalReturnValue(data any, err error) []byte {
 func handleWaveFile(w http.ResponseWriter, r *http.Request) {
 	zoneId := r.URL.Query().Get("zoneid")
 	name := r.URL.Query().Get("name")
+	offsetStr := r.URL.Query().Get("offset")
+	var offset int64 = 0
+	if offsetStr != "" {
+		var err error
+		offset, err = strconv.ParseInt(offsetStr, 10, 64)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("invalid offset: %v", err), http.StatusBadRequest)
+		}
+	}
 	if _, err := uuid.Parse(zoneId); err != nil {
 		http.Error(w, fmt.Sprintf("invalid zoneid: %v", err), http.StatusBadRequest)
 		return
@@ -113,7 +123,7 @@ func handleWaveFile(w http.ResponseWriter, r *http.Request) {
 	}
 	file, err := filestore.WFS.Stat(r.Context(), zoneId, name)
 	if err == fs.ErrNotExist {
-		http.NotFound(w, r)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	if err != nil {
@@ -125,15 +135,19 @@ func handleWaveFile(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("error serializing file info: %v", err), http.StatusInternalServerError)
 	}
 	// can make more efficient by checking modtime + If-Modified-Since headers to allow caching
+	dataStartIdx := file.DataStartIdx()
+	if offset >= dataStartIdx {
+		dataStartIdx = offset
+	}
 	w.Header().Set(ContentTypeHeaderKey, ContentTypeBinary)
-	w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", file.Size))
+	w.Header().Set(ContentLengthHeaderKey, fmt.Sprintf("%d", file.Size-dataStartIdx))
 	w.Header().Set(WaveZoneFileInfoHeaderKey, base64.StdEncoding.EncodeToString(jsonFileBArr))
 	w.Header().Set(LastModifiedHeaderKey, time.UnixMilli(file.ModTs).UTC().Format(http.TimeFormat))
-	if file.Size == 0 {
+	if dataStartIdx >= file.Size {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
-	for offset := file.DataStartIdx(); offset < file.Size; offset += filestore.DefaultPartDataSize {
+	for offset := dataStartIdx; offset < file.Size; offset += filestore.DefaultPartDataSize {
 		_, data, err := filestore.WFS.ReadAt(r.Context(), zoneId, name, offset, filestore.DefaultPartDataSize)
 		if err != nil {
 			if offset == 0 {
@@ -177,6 +191,7 @@ func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 		if !opts.AllowCaching {
 			w.Header().Set(CacheControlHeaderKey, CacheControlHeaderNoCache)
 		}
+		w.Header().Set("Access-Control-Expose-Headers", "X-ZoneFileInfo")
 		// reqAuthKey := r.Header.Get("X-AuthKey")
 		// if reqAuthKey == "" {
 		// 	w.WriteHeader(http.StatusInternalServerError)

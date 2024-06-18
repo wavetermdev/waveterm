@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
+	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
@@ -364,6 +365,7 @@ func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {
 	GenerateTSType(reflect.TypeOf(wstore.UIContext{}), tsTypesMap)
 	GenerateTSType(reflect.TypeOf(eventbus.WSEventType{}), tsTypesMap)
 	GenerateTSType(reflect.TypeOf(eventbus.WSFileEventData{}), tsTypesMap)
+	GenerateTSType(reflect.TypeOf(filestore.WaveFile{}), tsTypesMap)
 	for _, rtype := range wstore.AllWaveObjTypes() {
 		GenerateTSType(rtype, tsTypesMap)
 	}

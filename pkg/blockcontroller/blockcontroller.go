@@ -402,7 +402,6 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 				}
 				inputUnion.InputData = inputBuf[:nw]
 			}
-			log.Printf("INPUT: %s | %q\n", bc.BlockId, string(inputUnion.InputData))
 			bc.ShellInputCh <- inputUnion
 		default:
 			log.Printf("unknown command type %T\n", cmd)

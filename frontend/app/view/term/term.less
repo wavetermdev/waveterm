@@ -9,6 +9,7 @@
     overflow: hidden;
     border-left: 4px solid transparent;
     padding-left: 4px;
+    position: relative;
 
     &:focus-within {
         border-left: 4px solid var(--accent-color);
@@ -82,6 +83,32 @@
             width: 100%;
             height: 100%;
             border: none;
+        }
+    }
+
+    .term-stickers {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: var(--zindex-termstickers);
+        pointer-events: none;
+
+        .term-sticker-image {
+            img {
+                object-fit: contain;
+                width: 100%;
+                height: 100%;
+            }
+        }
+
+        .term-sticker-svg {
+            svg {
+                object-fit: contain;
+                width: 100%;
+                height: 100%;
+            }
         }
     }
 }

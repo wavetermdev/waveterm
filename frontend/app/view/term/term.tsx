@@ -1,17 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import {
-    WOS,
-    atoms,
-    getBackendHostPort,
-    getFileSubject,
-    globalStore,
-    sendWSCommand,
-    useBlockAtom,
-} from "@/store/global";
+import { WOS, atoms, globalStore, sendWSCommand, useBlockAtom } from "@/store/global";
 import * as services from "@/store/services";
-import { base64ToArray } from "@/util/util";
 import { FitAddon } from "@xterm/addon-fit";
 import type { ITheme } from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
@@ -20,9 +11,10 @@ import { produce } from "immer";
 import * as jotai from "jotai";
 import * as React from "react";
 import { IJsonView } from "./ijson";
+import { TermStickers } from "./termsticker";
+import { TermWrap } from "./termwrap";
 
 import "public/xterm.css";
-import { debounce } from "throttle-debounce";
 import "./term.less";
 
 function getThemeFromCSSVars(el: Element): ITheme {
@@ -149,7 +141,7 @@ function setBlockFocus(blockId: string) {
 
 const TerminalView = ({ blockId }: { blockId: string }) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
-    const termRef = React.useRef<Terminal>(null);
+    const termRef = React.useRef<TermWrap>(null);
     const initialLoadRef = React.useRef<InitialLoadDataType>({ loaded: false, heldData: [] });
     const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
@@ -161,8 +153,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     });
     const isFocused = jotai.useAtomValue(isFocusedAtom);
     React.useEffect(() => {
-        console.log("terminal created");
-        const newTerm = new Terminal({
+        const termWrap = new TermWrap(blockId, connectElemRef.current, {
             theme: getThemeFromCSSVars(connectElemRef.current),
             fontSize: 12,
             fontFamily: "Hack",
@@ -170,93 +161,22 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             fontWeight: "normal",
             fontWeightBold: "bold",
         });
-        termRef.current = newTerm;
-        const newFitAddon = new FitAddon();
-        newTerm.loadAddon(newFitAddon);
-        newTerm.open(connectElemRef.current);
-        newFitAddon.fit();
-        sendWSCommand({
-            wscommand: "setblocktermsize",
-            blockid: blockId,
-            termsize: { rows: newTerm.rows, cols: newTerm.cols },
-        });
-        connectElemRef.current.addEventListener(
-            "keydown",
-            (ev) => {
-                if (ev.code == "Escape" && ev.metaKey) {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    const metaCmd: BlockSetMetaCommand = { command: "setmeta", meta: { "term:mode": "html" } };
-                    services.BlockService.SendCommand(blockId, metaCmd);
-                    return false;
-                }
-            },
-            true
-        );
-        newTerm.onData((data) => {
-            const b64data = btoa(data);
-            const inputCmd: BlockInputCommand = { command: "controller:input", inputdata64: b64data };
-            services.BlockService.SendCommand(blockId, inputCmd);
-        });
-        newTerm.textarea.addEventListener("focus", () => {
+        (window as any).term = termWrap;
+        termRef.current = termWrap;
+        termWrap.addFocusListener(() => {
             setBlockFocus(blockId);
         });
-        const mainFileSubject = getFileSubject(blockId, "main");
-        mainFileSubject.subscribe((msg: WSFileEventData) => {
-            if (msg.fileop != "append") {
-                console.log("bad fileop for terminal", msg);
-                return;
-            }
-            const decodedData = base64ToArray(msg.data64);
-            if (initialLoadRef.current.loaded) {
-                newTerm.write(decodedData);
-            } else {
-                initialLoadRef.current.heldData.push(decodedData);
-            }
-        });
-        // load data from filestore
-        const startTs = Date.now();
-        let loadedBytes = 0;
-        const localTerm = termRef.current; // avoids devmode double effect running issue (terminal gets created twice)
-        const usp = new URLSearchParams();
-        usp.set("zoneid", blockId);
-        usp.set("name", "main");
-        fetch(getBackendHostPort() + "/wave/file?" + usp.toString())
-            .then((resp) => {
-                if (resp.ok) {
-                    return resp.arrayBuffer();
-                }
-                console.log("error loading file", resp.status, resp.statusText);
-            })
-            .then((data: ArrayBuffer) => {
-                const uint8View = new Uint8Array(data);
-                localTerm.write(uint8View);
-                loadedBytes = uint8View.byteLength;
-            })
-            .finally(() => {
-                initialLoadRef.current.heldData.forEach((data) => {
-                    localTerm.write(data);
-                });
-                initialLoadRef.current.loaded = true;
-                initialLoadRef.current.heldData = [];
-                console.log(`terminal loaded file ${loadedBytes} bytes, ${Date.now() - startTs}ms`);
-            });
-
-        const resize_debounced = debounce(50, () => {
-            handleResize(newFitAddon, blockId, newTerm);
-        });
         const rszObs = new ResizeObserver(() => {
-            resize_debounced();
+            termWrap.handleResize_debounced();
         });
         rszObs.observe(connectElemRef.current);
-
+        termWrap.initTerminal();
         return () => {
-            newTerm.dispose();
-            mainFileSubject.release();
+            termWrap.dispose();
         };
     }, []);
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleHtmlKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         if (event.code === "Escape" && event.metaKey) {
             // reset term:mode
             const metaCmd: BlockSetMetaCommand = { command: "setmeta", meta: { "term:mode": null } };
@@ -280,15 +200,24 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
 
     React.useEffect(() => {
         if (isFocused && termMode == "term") {
-            termRef.current?.focus();
+            termRef.current?.terminal.focus();
         }
         if (isFocused && termMode == "html") {
             htmlElemFocusRef.current?.focus();
         }
     });
 
+    let stickerConfig = {
+        charWidth: 8,
+        charHeight: 16,
+        rows: termRef.current?.terminal.rows ?? 24,
+        cols: termRef.current?.terminal.cols ?? 80,
+        blockId: blockId,
+    };
+
     return (
         <div className={clsx("view-term", "term-mode-" + termMode, isFocused ? "is-focused" : null)}>
+            <TermStickers config={stickerConfig} />
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
             <div
                 key="htmlElem"
@@ -305,7 +234,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
                         type="text"
                         value={""}
                         ref={htmlElemFocusRef}
-                        onKeyDown={handleKeyDown}
+                        onKeyDown={handleHtmlKeyDown}
                         onChange={() => {}}
                     />
                 </div>

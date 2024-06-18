@@ -14,6 +14,7 @@ import (
 
 const (
 	WSCommand_SetBlockTermSize = "setblocktermsize"
+	WSCommand_BlockInput       = "blockinput"
 )
 
 type WSCommandType interface {
@@ -26,6 +27,7 @@ func WSCommandTypeUnionMeta() tsgenmeta.TypeUnionMeta {
 		TypeFieldName: "wscommand",
 		Types: []reflect.Type{
 			reflect.TypeOf(SetBlockTermSizeWSCommand{}),
+			reflect.TypeOf(BlockInputWSCommand{}),
 		},
 	}
 }
@@ -40,6 +42,16 @@ func (cmd *SetBlockTermSizeWSCommand) GetWSCommand() string {
 	return cmd.WSCommand
 }
 
+type BlockInputWSCommand struct {
+	WSCommand   string `json:"wscommand" tstype:"\"blockinput\""`
+	BlockId     string `json:"blockid"`
+	InputData64 string `json:"inputdata64"`
+}
+
+func (cmd *BlockInputWSCommand) GetWSCommand() string {
+	return cmd.WSCommand
+}
+
 func ParseWSCommandMap(cmdMap map[string]any) (WSCommandType, error) {
 	cmdType, ok := cmdMap["wscommand"].(string)
 	if !ok {
@@ -51,6 +63,13 @@ func ParseWSCommandMap(cmdMap map[string]any) (WSCommandType, error) {
 		err := utilfn.DoMapStucture(&cmd, cmdMap)
 		if err != nil {
 			return nil, fmt.Errorf("error decoding SetBlockTermSizeWSCommand: %w", err)
+		}
+		return &cmd, nil
+	case WSCommand_BlockInput:
+		var cmd BlockInputWSCommand
+		err := utilfn.DoMapStucture(&cmd, cmdMap)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding BlockInputWSCommand: %w", err)
 		}
 		return &cmd, nil
 	default:
