@@ -5,15 +5,13 @@ import { assert, test } from "vitest";
 import { newLayoutNode } from "../lib/layoutNode.js";
 import { layoutTreeStateReducer, newLayoutTreeState } from "../lib/layoutState.js";
 import { LayoutTreeActionType, LayoutTreeComputeMoveNodeAction, LayoutTreeMoveNodeAction } from "../lib/model.js";
-import { DropDirection, FlexDirection } from "../lib/utils.js";
+import { DropDirection } from "../lib/utils.js";
 import { TestData } from "./model.js";
 
 test("layoutTreeStateReducer - compute move", () => {
-    let treeState = newLayoutTreeState<TestData>(
-        newLayoutNode(FlexDirection.Row, undefined, undefined, { name: "root" })
-    );
+    let treeState = newLayoutTreeState<TestData>(newLayoutNode(undefined, undefined, undefined, { name: "root" }));
     assert(treeState.rootNode.data!.name === "root", "root should have no children and should have data");
-    let node1 = newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "node1" });
+    let node1 = newLayoutNode(undefined, undefined, undefined, { name: "node1" });
     treeState = layoutTreeStateReducer(treeState, {
         type: LayoutTreeActionType.ComputeMove,
         node: treeState.rootNode,
@@ -34,7 +32,7 @@ test("layoutTreeStateReducer - compute move", () => {
     );
     assert(treeState.rootNode.children![1].data!.name === "node1", "root's second child should be node1");
 
-    let node2 = newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "node2" });
+    let node2 = newLayoutNode(undefined, undefined, undefined, { name: "node2" });
     treeState = layoutTreeStateReducer(treeState, {
         type: LayoutTreeActionType.ComputeMove,
         node: node1,
@@ -54,4 +52,38 @@ test("layoutTreeStateReducer - compute move", () => {
         "root node should still have three children"
     );
     assert(treeState.rootNode.children![1].children!.length === 2, "root's second child should now have two children");
+});
+
+test("computeMove - noop action", () => {
+    let nodeToMove = newLayoutNode<TestData>(undefined, undefined, undefined, { name: "nodeToMove" });
+    let treeState = newLayoutTreeState<TestData>(
+        newLayoutNode(undefined, undefined, [
+            nodeToMove,
+            newLayoutNode<TestData>(undefined, undefined, undefined, { name: "otherNode" }),
+        ])
+    );
+    let moveAction: LayoutTreeComputeMoveNodeAction<TestData> = {
+        type: LayoutTreeActionType.ComputeMove,
+        node: treeState.rootNode,
+        nodeToMove,
+        direction: DropDirection.Left,
+    };
+    treeState = layoutTreeStateReducer(treeState, moveAction);
+    assert(
+        treeState.pendingAction === undefined,
+        "inserting a node to the left of itself should not produce a pendingAction"
+    );
+
+    moveAction = {
+        type: LayoutTreeActionType.ComputeMove,
+        node: treeState.rootNode,
+        nodeToMove,
+        direction: DropDirection.Right,
+    };
+
+    treeState = layoutTreeStateReducer(treeState, moveAction);
+    assert(
+        treeState.pendingAction === undefined,
+        "inserting a node to the right of itself should not produce a pendingAction"
+    );
 });
