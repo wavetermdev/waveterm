@@ -264,12 +264,12 @@ function createWindow(client: Client, waveWindow: WaveWindow): Electron.BrowserW
     return win;
 }
 
-electron.ipcMain.on("isDev", () => {
-    return isDev;
+electron.ipcMain.on("isDev", (event) => {
+    event.returnValue = isDev;
 });
 
-electron.ipcMain.on("isDevServer", () => {
-    return isDevServer;
+electron.ipcMain.on("isDevServer", (event) => {
+    event.returnValue = isDevServer;
 });
 
 (async () => {
