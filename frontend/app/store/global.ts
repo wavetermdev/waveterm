@@ -222,6 +222,9 @@ waveobjUpdateSubject.subscribe((msg: WSEventType) => {
     WOS.updateWaveObject(update);
 });
 
+/**
+ * Get the preload api.
+ */
 function getApi(): ElectronApi {
     return (window as any).api;
 }
