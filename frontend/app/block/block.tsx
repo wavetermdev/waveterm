@@ -7,9 +7,10 @@ import { PreviewView } from "@/app/view/preview";
 import { TerminalView } from "@/app/view/term/term";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
-import { atoms, useBlockAtom } from "@/store/global";
+import { atoms, globalStore, useBlockAtom } from "@/store/global";
 import * as WOS from "@/store/wos";
 import clsx from "clsx";
+import { produce } from "immer";
 import * as jotai from "jotai";
 import * as React from "react";
 
@@ -52,11 +53,13 @@ const hoverStateOn = "on";
 interface BlockFrameProps {
     blockId: string;
     onClose?: () => void;
+    onClick?: () => void;
     preview: boolean;
     children?: React.ReactNode;
+    blockRef?: React.RefObject<HTMLDivElement>;
 }
 
-const BlockFrame_Tech = ({ blockId, onClose, preview, children }: BlockFrameProps) => {
+const BlockFrame_Tech = ({ blockId, onClose, onClick, preview, blockRef, children }: BlockFrameProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
         return jotai.atom((get) => {
@@ -76,6 +79,8 @@ const BlockFrame_Tech = ({ blockId, onClose, preview, children }: BlockFrameProp
                 isFocused ? "block-focused" : null,
                 preview ? "block-preview" : null
             )}
+            onClick={onClick}
+            ref={blockRef}
         >
             <div className="block-frame-tech-header">{getBlockHeaderText(blockData)}</div>
             <div className="block-frame-tech-close" onClick={onClose}>
@@ -86,16 +91,19 @@ const BlockFrame_Tech = ({ blockId, onClose, preview, children }: BlockFrameProp
     );
 };
 
-const BlockFrame_Frameless = ({ blockId, onClose, preview, children }: BlockFrameProps) => {
-    const blockRef = React.useRef<HTMLDivElement>(null);
+const BlockFrame_Frameless = ({ blockId, onClose, onClick, preview, blockRef, children }: BlockFrameProps) => {
+    const localBlockRef = React.useRef<HTMLDivElement>(null);
     const [showHeader, setShowHeader] = React.useState(preview ? true : false);
     const hoverState = React.useRef(hoverStateOff);
+
+    // this forward the lcal ref to the blockRef
+    React.useImperativeHandle(blockRef, () => localBlockRef.current);
 
     React.useEffect(() => {
         if (preview) {
             return;
         }
-        const block = blockRef.current;
+        const block = localBlockRef.current;
         let hoverTimeout: NodeJS.Timeout = null;
         const handleMouseMove = (event) => {
             const rect = block.getBoundingClientRect();
@@ -132,7 +140,12 @@ const BlockFrame_Frameless = ({ blockId, onClose, preview, children }: BlockFram
         hoverState.current = hoverStateOff;
     };
     return (
-        <div className="block block-frame-frameless" ref={blockRef} onMouseLeave={mouseLeaveHandler}>
+        <div
+            className="block block-frame-frameless"
+            ref={localBlockRef}
+            onMouseLeave={mouseLeaveHandler}
+            onClick={onClick}
+        >
             <div
                 className={clsx("block-header-animation-wrap", showHeader ? "is-showing" : null)}
                 onMouseLeave={mouseLeaveHandler}
@@ -160,9 +173,36 @@ const BlockFrame = (props: BlockFrameProps) => {
     return <BlockFrame_Tech {...props} />;
 };
 
+function setBlockFocus(blockId: string) {
+    let winData = globalStore.get(atoms.waveWindow);
+    if (winData.activeblockid === blockId) {
+        return;
+    }
+    winData = produce(winData, (draft) => {
+        draft.activeblockid = blockId;
+    });
+    WOS.setObjectValue(winData, globalStore.set, true);
+}
+
 const Block = ({ blockId, onClose }: BlockProps) => {
     let blockElem: JSX.Element = null;
+    const focusElemRef = React.useRef<HTMLInputElement>(null);
+    const blockRef = React.useRef<HTMLDivElement>(null);
+    const [blockClicked, setBlockClicked] = React.useState(false);
     const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+
+    React.useLayoutEffect(() => {
+        if (!blockClicked) {
+            return;
+        }
+        setBlockClicked(false);
+        const focusWithin = blockRef.current?.contains(document.activeElement);
+        if (!focusWithin) {
+            focusElemRef.current?.focus();
+        }
+        setBlockFocus(blockId);
+    }, [blockClicked]);
+
     if (!blockId || !blockData) return null;
     if (blockDataLoading) {
         blockElem = <CenteredDiv>Loading...</CenteredDiv>;
@@ -176,7 +216,16 @@ const Block = ({ blockId, onClose }: BlockProps) => {
         blockElem = <CodeEdit text={null} filename={null} />;
     }
     return (
-        <BlockFrame blockId={blockId} onClose={onClose} preview={false}>
+        <BlockFrame
+            blockId={blockId}
+            onClose={onClose}
+            preview={false}
+            onClick={() => setBlockClicked(true)}
+            blockRef={blockRef}
+        >
+            <div key="focuselem" className="block-focuselem">
+                <input type="text" value="" ref={focusElemRef} onChange={() => {}} />
+            </div>
             <div key="content" className="block-content">
                 <ErrorBoundary>
                     <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{blockElem}</React.Suspense>
