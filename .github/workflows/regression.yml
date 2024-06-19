@@ -45,4 +45,4 @@ jobs:
             echo "Electron Done"
             exit       
           prompt: |
-            1. /run ~/actions-runner/_work/testdriver/testdriver/.testdriver/wave1.yml
+            1. /run /Users/ec2-user/actions-runner/_work/testdriver/testdriver/.testdriver/wave1.yml
