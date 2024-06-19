@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import clsx from "clsx";
+import { toPng } from "html-to-image";
 import React, {
     CSSProperties,
     ReactNode,
@@ -17,7 +18,6 @@ import React, {
 import { useDrag, useDragLayer, useDrop } from "react-dnd";
 
 import useResizeObserver from "@react-hook/resize-observer";
-import { toPng } from "html-to-image";
 import { useLayoutTreeStateReducerAtom } from "./layoutAtom";
 import { findNode } from "./layoutNode";
 import {
@@ -59,6 +59,9 @@ export interface TileLayoutProps<T> {
      */
     className?: string;
 }
+
+const DragPreviewWidth = 300;
+const DragPreviewHeight = 300;
 
 export const TileLayout = <T,>({
     layoutTreeStateAtom,
@@ -289,6 +292,7 @@ const DisplayNode = <T,>({
 }: DisplayNodeProps<T>) => {
     const tileNodeRef = useRef<HTMLDivElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
+    const hasImagePreviewSetRef = useRef(false);
 
     // Register the node as a draggable item.
     const [{ isDragging }, drag, dragPreview] = useDrag(
@@ -302,32 +306,32 @@ const DisplayNode = <T,>({
         [layoutNode]
     );
 
-    // Generate a preview div using the provided renderPreview function. This will be placed in the DOM so we can render an image from it, but it is pushed out of view so the user will not see it.
-    // No-op if not provided, meaning React-DnD will attempt to generate a preview from the DOM, which is very slow.
-    const preview = useMemo(() => {
-        const previewElement = renderPreview?.(layoutNode.data);
-        return (
-            <div className="tile-preview-container">
-                <div className="tile-preview" ref={previewRef}>
-                    {previewElement}
-                </div>
-            </div>
-        );
+    const previewElement = renderPreview?.(layoutNode.data);
+    const previewWidth = DragPreviewWidth;
+    const previewHeight = DragPreviewHeight;
+    const previewTransform = `scale(${1 / window.devicePixelRatio})`;
+    const [previewImage, setPreviewImage] = useState<HTMLImageElement>(null);
+    // we set the drag preview on load to be the HTML element
+    // later, on pointerenter, we generate a static png preview to use instead (for performance)
+    useEffect(() => {
+        if (!hasImagePreviewSetRef.current) {
+            dragPreview(previewRef.current);
+        }
     }, []);
-
-    // Cache the preview image after we generate it
-    const [previewImage, setPreviewImage] = useState<HTMLImageElement>();
-
-    // When a user first mouses over a node, generate a preview image and set it as the drag preview.
     const generatePreviewImage = useCallback(() => {
-        if (previewImage) {
-            dragPreview(previewImage);
+        let offsetX = (DragPreviewWidth * window.devicePixelRatio - DragPreviewWidth) / 2 + 10;
+        let offsetY = (DragPreviewHeight * window.devicePixelRatio - DragPreviewHeight) / 2 + 10;
+        if (previewImage != null) {
+            dragPreview(previewImage, { offsetY, offsetX });
         } else if (previewRef.current) {
             toPng(previewRef.current).then((url) => {
                 const img = new Image();
                 img.src = url;
-                img.onload = () => dragPreview(img);
-                setPreviewImage(img);
+                img.onload = () => {
+                    hasImagePreviewSetRef.current = true;
+                    setPreviewImage(img);
+                    dragPreview(img, { offsetY, offsetX });
+                };
             });
         }
     }, [previewRef, previewImage, dragPreview]);
@@ -364,7 +368,19 @@ const DisplayNode = <T,>({
             onPointerEnter={generatePreviewImage}
         >
             {leafContent}
-            {preview}
+            <div key="preview" className="tile-preview-container">
+                <div
+                    className="tile-preview"
+                    ref={previewRef}
+                    style={{
+                        width: previewWidth,
+                        height: previewHeight,
+                        transform: previewTransform,
+                    }}
+                >
+                    {previewElement}
+                </div>
+            </div>
         </div>
     );
 };

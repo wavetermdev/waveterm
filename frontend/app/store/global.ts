@@ -56,6 +56,13 @@ const workspaceAtom: jotai.Atom<Workspace> = jotai.atom((get) => {
     }
     return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
 });
+const tabAtom: jotai.Atom<Tab> = jotai.atom((get) => {
+    const windowData = get(windowDataAtom);
+    if (windowData == null) {
+        return null;
+    }
+    return WOS.getObjectValue(WOS.makeORef("tab", windowData.activetabid), get);
+});
 
 const atoms = {
     // initialized in wave.ts (will not be null inside of application)
@@ -65,6 +72,7 @@ const atoms = {
     client: clientAtom,
     waveWindow: windowDataAtom,
     workspace: workspaceAtom,
+    tabAtom: tabAtom,
 };
 
 // key is "eventType" or "eventType|oref"

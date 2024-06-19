@@ -1,7 +1,7 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Block, BlockHeader } from "@/app/block/block";
+import { Block, BlockFrame } from "@/app/block/block";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 
@@ -30,7 +30,7 @@ const TabContent = ({ tabId }: { tabId: string }) => {
 
     const renderPreview = useCallback((tabData: TabLayoutData) => {
         console.log("renderPreview", tabData);
-        return <BlockHeader blockId={tabData.blockId} />;
+        return <BlockFrame blockId={tabData.blockId} preview={true} />;
     }, []);
 
     const onNodeDelete = useCallback((data: TabLayoutData) => {

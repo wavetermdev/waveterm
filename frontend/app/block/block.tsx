@@ -7,8 +7,10 @@ import { PreviewView } from "@/app/view/preview";
 import { TerminalView } from "@/app/view/term/term";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
+import { atoms, useBlockAtom } from "@/store/global";
 import * as WOS from "@/store/wos";
 import clsx from "clsx";
+import * as jotai from "jotai";
 import * as React from "react";
 
 import "./block.less";
@@ -21,14 +23,19 @@ interface BlockProps {
     onClose?: () => void;
 }
 
-const BlockHeader = ({ blockId, onClose }: BlockProps) => {
+function getBlockHeaderText(blockData: Block): string {
+    if (!blockData) {
+        return "no block data";
+    }
+    return `${blockData?.view} [${blockData.oid.substring(0, 8)}]`;
+}
+
+const FramelessBlockHeader = ({ blockId, onClose }: BlockProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
 
     return (
         <div key="header" className="block-header">
-            <div className="block-header-text text-fixed">
-                Block [{blockId.substring(0, 8)}] {blockData?.view}
-            </div>
+            <div className="block-header-text text-fixed">{getBlockHeaderText(blockData)}</div>
             {onClose && (
                 <div className="close-button" onClick={onClose}>
                     <i className="fa fa-solid fa-xmark-large" />
@@ -42,12 +49,52 @@ const hoverStateOff = "off";
 const hoverStatePending = "pending";
 const hoverStateOn = "on";
 
-const Block = ({ blockId, onClose }: BlockProps) => {
+interface BlockFrameProps {
+    blockId: string;
+    onClose?: () => void;
+    preview: boolean;
+    children?: React.ReactNode;
+}
+
+const BlockFrame_Tech = ({ blockId, onClose, preview, children }: BlockFrameProps) => {
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
+        return jotai.atom((get) => {
+            const winData = get(atoms.waveWindow);
+            return winData.activeblockid === blockId;
+        });
+    });
+    let isFocused = jotai.useAtomValue(isFocusedAtom);
+    if (preview) {
+        isFocused = true;
+    }
+    return (
+        <div
+            className={clsx(
+                "block",
+                "block-frame-tech",
+                isFocused ? "block-focused" : null,
+                preview ? "block-preview" : null
+            )}
+        >
+            <div className="block-frame-tech-header">{getBlockHeaderText(blockData)}</div>
+            <div className="block-frame-tech-close" onClick={onClose}>
+                <i className="fa fa-solid fa-xmark fa-fw	" />
+            </div>
+            {preview ? <div className="block-frame-preview" /> : children}
+        </div>
+    );
+};
+
+const BlockFrame_Frameless = ({ blockId, onClose, preview, children }: BlockFrameProps) => {
     const blockRef = React.useRef<HTMLDivElement>(null);
+    const [showHeader, setShowHeader] = React.useState(preview ? true : false);
     const hoverState = React.useRef(hoverStateOff);
-    const [showHeader, setShowHeader] = React.useState(false);
 
     React.useEffect(() => {
+        if (preview) {
+            return;
+        }
         const block = blockRef.current;
         let hoverTimeout: NodeJS.Timeout = null;
         const handleMouseMove = (event) => {
@@ -77,7 +124,43 @@ const Block = ({ blockId, onClose }: BlockProps) => {
             block.removeEventListener("mousemove", handleMouseMove);
         };
     });
+    let mouseLeaveHandler = () => {
+        if (preview) {
+            return;
+        }
+        setShowHeader(false);
+        hoverState.current = hoverStateOff;
+    };
+    return (
+        <div className="block block-frame-frameless" ref={blockRef} onMouseLeave={mouseLeaveHandler}>
+            <div
+                className={clsx("block-header-animation-wrap", showHeader ? "is-showing" : null)}
+                onMouseLeave={mouseLeaveHandler}
+            >
+                <FramelessBlockHeader blockId={blockId} onClose={onClose} />
+            </div>
+            {preview ? <div className="block-frame-preview" /> : children}
+        </div>
+    );
+};
 
+const BlockFrame = (props: BlockFrameProps) => {
+    const blockId = props.blockId;
+    const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const tabData = jotai.useAtomValue(atoms.tabAtom);
+
+    if (!blockId || !blockData) {
+        return null;
+    }
+    // if 0 or 1 blocks, use frameless, otherwise use tech
+    const numBlocks = tabData?.blockids?.length ?? 0;
+    if (numBlocks <= 1) {
+        return <BlockFrame_Frameless {...props} />;
+    }
+    return <BlockFrame_Tech {...props} />;
+};
+
+const Block = ({ blockId, onClose }: BlockProps) => {
     let blockElem: JSX.Element = null;
     const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     if (!blockId || !blockData) return null;
@@ -93,30 +176,14 @@ const Block = ({ blockId, onClose }: BlockProps) => {
         blockElem = <CodeEdit text={null} filename={null} />;
     }
     return (
-        <div
-            className="block"
-            ref={blockRef}
-            onMouseLeave={() => {
-                setShowHeader(false);
-                hoverState.current = hoverStateOff;
-            }}
-        >
-            <div
-                className={clsx("block-header-animation-wrap", showHeader ? "is-showing" : null)}
-                onMouseLeave={() => {
-                    setShowHeader(false);
-                    hoverState.current = hoverStateOff;
-                }}
-            >
-                <BlockHeader blockId={blockId} onClose={onClose} />
-            </div>
+        <BlockFrame blockId={blockId} onClose={onClose} preview={false}>
             <div key="content" className="block-content">
                 <ErrorBoundary>
                     <React.Suspense fallback={<CenteredDiv>Loading...</CenteredDiv>}>{blockElem}</React.Suspense>
                 </ErrorBoundary>
             </div>
-        </div>
+        </BlockFrame>
     );
 };
 
-export { Block, BlockHeader };
+export { Block, BlockFrame };
