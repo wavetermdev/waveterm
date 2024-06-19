@@ -21,6 +21,8 @@ const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8190";
 const ProdServerEndpoint = "http://127.0.0.1:1719";
 
+type WaveBrowserWindow = Electron.BrowserWindow & { waveWindowId: string };
+
 let waveSrvReadyResolve = (value: boolean) => {};
 let waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
     waveSrvReadyResolve = resolve;
@@ -130,7 +132,7 @@ function runWaveSrv(): Promise<boolean> {
     return rtnPromise;
 }
 
-async function mainResizeHandler(_: any, windowId: string, win: Electron.BrowserWindow) {
+async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindow) {
     if (win == null || win.isDestroyed() || win.fullScreen) {
         return;
     }
@@ -187,7 +189,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function createWindow(client: Client, waveWindow: WaveWindow): Electron.BrowserWindow {
+function createWindow(client: Client, waveWindow: WaveWindow): WaveBrowserWindow {
     const primaryDisplay = electron.screen.getPrimaryDisplay();
     let winHeight = waveWindow.winsize.height;
     let winWidth = waveWindow.winsize.width;
@@ -205,7 +207,7 @@ function createWindow(client: Client, waveWindow: WaveWindow): Electron.BrowserW
     if (winY + winHeight > primaryDisplay.workAreaSize.height) {
         winY = Math.floor((primaryDisplay.workAreaSize.height - winHeight) / 2);
     }
-    const win = new electron.BrowserWindow({
+    const bwin = new electron.BrowserWindow({
         x: winX,
         y: winY,
         titleBarStyle: "hiddenInset",
@@ -224,6 +226,8 @@ function createWindow(client: Client, waveWindow: WaveWindow): Electron.BrowserW
         autoHideMenuBar: true,
         backgroundColor: "#000000",
     });
+    (bwin as any).waveWindowId = waveWindow.oid;
+    const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     win.once("ready-to-show", () => {
         win.show();
     });
@@ -282,6 +286,56 @@ electron.ipcMain.on("getCursorPoint", (event) => {
     };
     event.returnValue = retVal;
 });
+
+electron.ipcMain.on("openNewWindow", (event) => {});
+
+electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
+    if (opts == null) {
+        opts = {};
+    }
+    console.log("context-editmenu");
+    const menu = new electron.Menu();
+    if (!opts.onlyPaste) {
+        if (opts.showCut) {
+            const menuItem = new electron.MenuItem({ label: "Cut", role: "cut" });
+            menu.append(menuItem);
+        }
+        const menuItem = new electron.MenuItem({ label: "Copy", role: "copy" });
+        menu.append(menuItem);
+    }
+    const menuItem = new electron.MenuItem({ label: "Paste", role: "paste" });
+    menu.append(menuItem);
+    menu.popup({ x, y });
+});
+
+electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuItem[], { x, y }) => {
+    if (menuDefArr == null || menuDefArr.length == 0) {
+        return;
+    }
+    const menu = convertMenuDefArrToMenu(menuDefArr);
+    menu.popup({ x, y });
+    event.returnValue = true;
+});
+
+function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electron.Menu {
+    const menuItems: electron.MenuItem[] = [];
+    for (const menuDef of menuDefArr) {
+        const menuItemTemplate: electron.MenuItemConstructorOptions = {
+            role: menuDef.role as any,
+            label: menuDef.label,
+            type: menuDef.type,
+            click: (_, window) => {
+                window?.webContents.send("contextmenu-click", menuDef.id);
+            },
+        };
+        if (menuDef.submenu != null) {
+            menuItemTemplate.submenu = convertMenuDefArrToMenu(menuDef.submenu);
+        }
+        const menuItem = new electron.MenuItem(menuItemTemplate);
+        menuItems.push(menuItem);
+    }
+    return electron.Menu.buildFromTemplate(menuItems);
+}
 
 (async () => {
     const startTs = Date.now();
