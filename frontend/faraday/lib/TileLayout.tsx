@@ -123,7 +123,6 @@ export const TileLayout = <T,>({
     useEffect(
         debounce(100, () => {
             const cursorPoint = getApi().getCursorPoint();
-            console.log(cursorPoint);
             if (cursorPoint && displayContainerRef.current) {
                 const displayContainerRect = displayContainerRef.current.getBoundingClientRect();
                 const normalizedX = cursorPoint.x - displayContainerRect.x;
