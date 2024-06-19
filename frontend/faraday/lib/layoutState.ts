@@ -116,7 +116,7 @@ function computeMoveNode<T>(
 ) {
     const rootNode = layoutTreeState.rootNode;
     const { node, nodeToMove, direction } = computeInsertAction;
-    console.log("computeInsertOperation start", layoutTreeState.rootNode, node, nodeToMove, direction);
+    // console.log("computeInsertOperation start", layoutTreeState.rootNode, node, nodeToMove, direction);
     if (direction === undefined) {
         console.warn("No direction provided for insertItemInDirection");
         return;
@@ -141,10 +141,8 @@ function computeMoveNode<T>(
     switch (direction) {
         case DropDirection.OuterTop:
             if (node.flexDirection === FlexDirection.Column) {
-                console.log("outer top column");
                 const grandparentNode = grandparent();
                 if (grandparentNode) {
-                    console.log("has grandparent", grandparentNode);
                     const index = indexInGrandparent();
                     newMoveOperation = {
                         parentId: grandparentNode.id,
@@ -176,10 +174,8 @@ function computeMoveNode<T>(
             break;
         case DropDirection.OuterBottom:
             if (node.flexDirection === FlexDirection.Column) {
-                console.log("outer bottom column");
                 const grandparentNode = grandparent();
                 if (grandparentNode) {
-                    console.log("has grandparent", grandparentNode);
                     const index = indexInGrandparent() + 1;
                     newMoveOperation = {
                         parentId: grandparentNode.id,
@@ -211,10 +207,8 @@ function computeMoveNode<T>(
             break;
         case DropDirection.OuterLeft:
             if (node.flexDirection === FlexDirection.Row) {
-                console.log("outer left row");
                 const grandparentNode = grandparent();
                 if (grandparentNode) {
-                    console.log("has grandparent", grandparentNode);
                     const index = indexInGrandparent();
                     newMoveOperation = {
                         parentId: grandparentNode.id,
@@ -239,10 +233,8 @@ function computeMoveNode<T>(
             break;
         case DropDirection.OuterRight:
             if (node.flexDirection === FlexDirection.Row) {
-                console.log("outer right row");
                 const grandparentNode = grandparent();
                 if (grandparentNode) {
-                    console.log("has grandparent", grandparentNode);
                     const index = indexInGrandparent() + 1;
                     newMoveOperation = {
                         parentId: grandparentNode.id,
@@ -266,14 +258,14 @@ function computeMoveNode<T>(
             }
             break;
         case DropDirection.Center:
-            console.log("center drop", rootNode, node, nodeToMove);
+            // console.log("center drop", rootNode, node, nodeToMove);
             if (node.id !== rootNode.id && nodeToMove.id !== rootNode.id) {
                 const swapAction: LayoutTreeSwapNodeAction<T> = {
                     type: LayoutTreeActionType.Swap,
                     node1: node,
                     node2: nodeToMove,
                 };
-                console.log("swapAction", swapAction);
+                // console.log("swapAction", swapAction);
                 layoutTreeState.pendingAction = swapAction;
                 return;
             } else {
@@ -301,7 +293,7 @@ function clearPendingAction(layoutTreeState: LayoutTreeState<any>) {
 
 function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMoveNodeAction<T>) {
     const rootNode = layoutTreeState.rootNode;
-    console.log("moveNode", action, layoutTreeState.rootNode);
+    // console.log("moveNode", action, layoutTreeState.rootNode);
     if (!action) {
         console.error("no move node action provided");
         return;
@@ -397,7 +389,7 @@ function swapNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeSwap
 }
 
 function deleteNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeDeleteNodeAction) {
-    console.log("deleteNode", layoutTreeState, action);
+    // console.log("deleteNode", layoutTreeState, action);
     if (!action?.nodeId) {
         console.error("no delete node action provided");
         return;
@@ -415,7 +407,7 @@ function deleteNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeDe
     if (parent) {
         const node = parent.children.find((child) => child.id === action.nodeId);
         removeChild(parent, node);
-        console.log("node deleted", parent, node);
+        // console.log("node deleted", parent, node);
     } else {
         console.error("unable to delete node, not found in tree");
     }

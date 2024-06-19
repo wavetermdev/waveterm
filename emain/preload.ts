@@ -6,4 +6,5 @@ let { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("api", {
     isDev: () => ipcRenderer.sendSync("isDev"),
     isDevServer: () => ipcRenderer.sendSync("isDevServer"),
+    getCursorPoint: () => ipcRenderer.sendSync("getCursorPoint"),
 });

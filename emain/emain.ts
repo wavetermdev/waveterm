@@ -272,6 +272,17 @@ electron.ipcMain.on("isDevServer", (event) => {
     event.returnValue = isDevServer;
 });
 
+electron.ipcMain.on("getCursorPoint", (event) => {
+    const window = electron.BrowserWindow.fromWebContents(event.sender);
+    const screenPoint = electron.screen.getCursorScreenPoint();
+    const windowRect = window.getContentBounds();
+    const retVal: Point = {
+        x: screenPoint.x - windowRect.x,
+        y: screenPoint.y - windowRect.y,
+    };
+    event.returnValue = retVal;
+});
+
 (async () => {
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();

@@ -15,9 +15,11 @@ import React, {
     useRef,
     useState,
 } from "react";
-import { useDrag, useDragLayer, useDrop } from "react-dnd";
+import { DropTargetMonitor, useDrag, useDragLayer, useDrop } from "react-dnd";
 
+import { getApi } from "@/app/store/global";
 import useResizeObserver from "@react-hook/resize-observer";
+import { debounce, throttle } from "throttle-debounce";
 import { useLayoutTreeStateReducerAtom } from "./layoutAtom";
 import { findNode } from "./layoutNode";
 import {
@@ -34,7 +36,7 @@ import {
     WritableLayoutTreeStateAtom,
 } from "./model";
 import "./tilelayout.less";
-import { Dimensions, FlexDirection, setTransform as createTransform, debounce, determineDropDirection } from "./utils";
+import { Dimensions, FlexDirection, setTransform as createTransform, determineDropDirection } from "./utils";
 
 export interface TileLayoutProps<T> {
     /**
@@ -77,9 +79,9 @@ export const TileLayout = <T,>({
     const [nodeRefs, setNodeRefs] = useState<Map<string, RefObject<HTMLDivElement>>>(new Map());
     const [nodeRefsGen, setNodeRefsGen] = useState<number>(0);
 
-    useEffect(() => {
-        console.log("layoutTreeState changed", layoutTreeState);
-    }, [layoutTreeState]);
+    // useEffect(() => {
+    //     console.log("layoutTreeState changed", layoutTreeState);
+    // }, [layoutTreeState]);
 
     const setRef = useCallback(
         (id: string, ref: RefObject<HTMLDivElement>) => {
@@ -108,32 +110,57 @@ export const TileLayout = <T,>({
         },
         [nodeRefs, setNodeRefs]
     );
-
     const [overlayTransform, setOverlayTransform] = useState<CSSProperties>();
     const [layoutLeafTransforms, setLayoutLeafTransforms] = useState<Record<string, CSSProperties>>({});
 
-    const activeDrag = useDragLayer((monitor) => monitor.isDragging());
+    const { activeDrag, dragClientOffset } = useDragLayer((monitor) => ({
+        activeDrag: monitor.isDragging(),
+        dragClientOffset: monitor.getClientOffset(),
+    }));
+
+    // Effect to detect when the cursor leaves the TileLayout hit trap so we can remove any placeholders. This cannot be done using pointer capture
+    // because that conflicts with the DnD layer.
+    useEffect(
+        debounce(100, () => {
+            const cursorPoint = getApi().getCursorPoint();
+            console.log(cursorPoint);
+            if (cursorPoint && displayContainerRef.current) {
+                const displayContainerRect = displayContainerRef.current.getBoundingClientRect();
+                const normalizedX = cursorPoint.x - displayContainerRect.x;
+                const normalizedY = cursorPoint.y - displayContainerRect.y;
+                if (
+                    normalizedX <= 0 ||
+                    normalizedX >= displayContainerRect.width ||
+                    normalizedY <= 0 ||
+                    normalizedY >= displayContainerRect.height
+                ) {
+                    dispatch({ type: LayoutTreeActionType.ClearPendingAction });
+                }
+            }
+        }),
+        [dragClientOffset]
+    );
 
     /**
      * Callback to update the transforms on the displayed leafs and move the overlay over the display layer when dragging.
      */
     const updateTransforms = useCallback(
-        debounce(() => {
+        debounce(30, () => {
             if (overlayContainerRef.current && displayContainerRef.current) {
                 const displayBoundingRect = displayContainerRef.current.getBoundingClientRect();
-                console.log("displayBoundingRect", displayBoundingRect);
+                // console.log("displayBoundingRect", displayBoundingRect);
                 const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
 
                 const newLayoutLeafTransforms: Record<string, CSSProperties> = {};
 
-                console.log(
-                    "nodeRefs",
-                    nodeRefs,
-                    "layoutLeafs",
-                    layoutTreeState.leafs,
-                    "layoutTreeState",
-                    layoutTreeState
-                );
+                // console.log(
+                //     "nodeRefs",
+                //     nodeRefs,
+                //     "layoutLeafs",
+                //     layoutTreeState.leafs,
+                //     "layoutTreeState",
+                //     layoutTreeState
+                // );
 
                 for (const leaf of layoutTreeState.leafs) {
                     const leafRef = nodeRefs.get(leaf.id);
@@ -155,7 +182,7 @@ export const TileLayout = <T,>({
                 setLayoutLeafTransforms(newLayoutLeafTransforms);
 
                 const newOverlayOffset = displayBoundingRect.top + 2 * displayBoundingRect.height;
-                console.log("overlayOffset", newOverlayOffset);
+                // console.log("overlayOffset", newOverlayOffset);
                 setOverlayTransform(
                     createTransform(
                         {
@@ -168,7 +195,7 @@ export const TileLayout = <T,>({
                     )
                 );
             }
-        }, 30),
+        }),
         [activeDrag, overlayContainerRef, displayContainerRef, layoutTreeState.leafs, nodeRefsGen]
     );
 
@@ -178,6 +205,12 @@ export const TileLayout = <T,>({
     }, [updateTransforms]);
 
     useResizeObserver(overlayContainerRef, () => updateTransforms());
+
+    const onPointerLeave = useCallback(() => {
+        if (activeDrag) {
+            dispatch({ type: LayoutTreeActionType.ClearPendingAction });
+        }
+    }, [activeDrag, dispatch]);
 
     // Ensure that we don't see any jostling in the layout when we're rendering it the first time.
     // `animate` will be disabled until after the transforms have all applied the first time.
@@ -190,23 +223,23 @@ export const TileLayout = <T,>({
 
     const onLeafClose = useCallback(
         async (node: LayoutNode<T>) => {
-            console.log("onLeafClose", node);
+            // console.log("onLeafClose", node);
             const deleteAction: LayoutTreeDeleteNodeAction = {
                 type: LayoutTreeActionType.DeleteNode,
                 nodeId: node.id,
             };
-            console.log("calling dispatch", deleteAction);
+            // console.log("calling dispatch", deleteAction);
             dispatch(deleteAction);
-            console.log("calling onNodeDelete", node);
+            // console.log("calling onNodeDelete", node);
             await onNodeDelete?.(node.data);
-            console.log("node deleted");
+            // console.log("node deleted");
         },
         [onNodeDelete, dispatch]
     );
 
     return (
         <Suspense>
-            <div className={clsx("tile-layout", className, { animate })}>
+            <div className={clsx("tile-layout", className, { animate })} onPointerOut={onPointerLeave}>
                 <div key="display" ref={displayContainerRef} className="display-container">
                     {layoutLeafTransforms &&
                         layoutTreeState.leafs.map((leaf) => {
@@ -431,18 +464,18 @@ const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, delete
                 return false;
             },
             drop: (_, monitor) => {
-                console.log("drop start", layoutNode.id, layoutTreeState.pendingAction);
+                // console.log("drop start", layoutNode.id, layoutTreeState.pendingAction);
                 if (!monitor.didDrop() && layoutTreeState.pendingAction) {
                     dispatch({
                         type: LayoutTreeActionType.CommitPendingAction,
                     });
                 }
             },
-            hover: (_, monitor) => {
+            hover: throttle(30, (_, monitor: DropTargetMonitor<unknown, unknown>) => {
                 if (monitor.isOver({ shallow: true })) {
                     if (monitor.canDrop()) {
                         const dragItem = monitor.getItem<LayoutNode<T>>();
-                        console.log("computing operation", layoutNode, dragItem, layoutTreeState.pendingAction);
+                        // console.log("computing operation", layoutNode, dragItem, layoutTreeState.pendingAction);
                         dispatch({
                             type: LayoutTreeActionType.ComputeMove,
                             node: layoutNode,
@@ -458,7 +491,7 @@ const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, delete
                         });
                     }
                 }
-            },
+            }),
         }),
         [overlayRef.current, layoutNode, layoutTreeState, dispatch]
     );
@@ -612,7 +645,7 @@ const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style
                 }
                 case LayoutTreeActionType.Swap: {
                     const action = layoutTreeState.pendingAction as LayoutTreeSwapNodeAction<T>;
-                    console.log("placeholder for swap", action);
+                    // console.log("placeholder for swap", action);
                     const targetNode = action.node1;
                     const targetRef = nodeRefs.get(targetNode?.id);
                     if (targetRef?.current) {

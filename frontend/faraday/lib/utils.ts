@@ -33,7 +33,7 @@ export function reverseFlexDirection(flexDirection: FlexDirection): FlexDirectio
 }
 
 export function determineDropDirection(dimensions?: Dimensions, offset?: XYCoord | null): DropDirection | undefined {
-    console.log("determineDropDirection", dimensions, offset);
+    // console.log("determineDropDirection", dimensions, offset);
     if (!offset || !dimensions) return undefined;
     const { width, height, left, top } = dimensions;
     let { x, y } = offset;
