@@ -1,0 +1,17 @@
+steps:
+  - step:
+      - command: focus-application
+        name: Electron
+      - command: click-text
+        text: Settings
+  - step:
+      - command: click-text
+        text: 16px
+      - command: click-text
+        text: 13px
+      - command: click-text
+        text: Dark
+      - command: click-text
+        text: Light
+      - command: click-text
+        text: workspace-1
