@@ -4,7 +4,9 @@ steps:
         name: Electron
       - command: click-text
         text: Settings
-  - step:
+      - command: click-text
+        text: Get Started
+        anchor: I accept
       - command: click-text
         text: 16px
       - command: click-text
