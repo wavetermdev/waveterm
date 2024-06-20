@@ -7,6 +7,7 @@ import { PreviewView } from "@/app/view/preview";
 import { TerminalView } from "@/app/view/term/term";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
+import { ContextMenuModel } from "@/store/contextmenu";
 import { atoms, globalStore, useBlockAtom } from "@/store/global";
 import * as WOS from "@/store/wos";
 import clsx from "clsx";
@@ -87,6 +88,14 @@ const BlockFrame_Tech = ({
     if (preview) {
         isFocused = true;
     }
+    function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+        let menu: ContextMenuItem[] = [];
+        menu.push({
+            label: "Close",
+            click: onClose,
+        });
+        ContextMenuModel.showContextMenu(menu, e);
+    }
     return (
         <div
             className={clsx(
@@ -98,11 +107,11 @@ const BlockFrame_Tech = ({
             onClick={onClick}
             ref={blockRef}
         >
-            <div className="block-frame-tech-header" ref={dragHandleRef}>
+            <div className="block-frame-tech-header" ref={dragHandleRef} onContextMenu={handleContextMenu}>
                 {getBlockHeaderText(blockData)}
             </div>
-            <div className="block-frame-tech-close" onClick={onClose}>
-                <i className="fa fa-solid fa-xmark fa-fw	" />
+            <div className={clsx("block-frame-tech-close")} onClick={onClose}>
+                <i className="fa fa-solid fa-xmark fa-fw" />
             </div>
             {preview ? <div className="block-frame-preview" /> : children}
         </div>
