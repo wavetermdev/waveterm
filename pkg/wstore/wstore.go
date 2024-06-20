@@ -259,7 +259,7 @@ func DeleteBlock(ctx context.Context, tabId string, blockId string) error {
 	})
 }
 
-func CloseTab(ctx context.Context, workspaceId string, tabId string) error {
+func DeleteTab(ctx context.Context, workspaceId string, tabId string) error {
 	return WithTx(ctx, func(tx *TxWrap) error {
 		ws, _ := DBGet[*Workspace](tx.Context(), workspaceId)
 		if ws == nil {
@@ -319,29 +319,11 @@ func UpdateObjectMeta(ctx context.Context, oref waveobj.ORef, meta map[string]an
 	})
 }
 
-func EnsureInitialData() error {
-	// does not need to run in a transaction since it is called on startup
-	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancelFn()
-	clientCount, err := DBGetCount[*Client](ctx)
-	if err != nil {
-		return fmt.Errorf("error getting client count: %w", err)
-	}
-	if clientCount > 0 {
-		return nil
-	}
+func CreateWindow(ctx context.Context) (*Window, error) {
 	windowId := uuid.NewString()
 	workspaceId := uuid.NewString()
 	tabId := uuid.NewString()
 	layoutNodeId := uuid.NewString()
-	client := &Client{
-		OID:          uuid.NewString(),
-		MainWindowId: windowId,
-	}
-	err = DBInsert(ctx, client)
-	if err != nil {
-		return fmt.Errorf("error inserting client: %w", err)
-	}
 	window := &Window{
 		OID:            windowId,
 		WorkspaceId:    workspaceId,
@@ -356,28 +338,28 @@ func EnsureInitialData() error {
 			Height: 600,
 		},
 	}
-	err = DBInsert(ctx, window)
+	err := DBInsert(ctx, window)
 	if err != nil {
-		return fmt.Errorf("error inserting window: %w", err)
+		return nil, fmt.Errorf("error inserting window: %w", err)
 	}
 	ws := &Workspace{
 		OID:    workspaceId,
-		Name:   "default",
+		Name:   "w" + workspaceId[0:8],
 		TabIds: []string{tabId},
 	}
 	err = DBInsert(ctx, ws)
 	if err != nil {
-		return fmt.Errorf("error inserting workspace: %w", err)
+		return nil, fmt.Errorf("error inserting workspace: %w", err)
 	}
 	tab := &Tab{
 		OID:        tabId,
-		Name:       "Tab-1",
+		Name:       "T1",
 		BlockIds:   []string{},
 		LayoutNode: layoutNodeId,
 	}
 	err = DBInsert(ctx, tab)
 	if err != nil {
-		return fmt.Errorf("error inserting tab: %w", err)
+		return nil, fmt.Errorf("error inserting tab: %w", err)
 	}
 
 	layoutNode := &LayoutNode{
@@ -385,7 +367,62 @@ func EnsureInitialData() error {
 	}
 	err = DBInsert(ctx, layoutNode)
 	if err != nil {
-		return fmt.Errorf("error inserting layout node: %w", err)
+		return nil, fmt.Errorf("error inserting layout node: %w", err)
+	}
+	client, err := DBGetSingleton[*Client](ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting client: %w", err)
+	}
+	client.WindowIds = append(client.WindowIds, windowId)
+	err = DBUpdate(ctx, client)
+	if err != nil {
+		return nil, fmt.Errorf("error updating client: %w", err)
+	}
+	return DBMustGet[*Window](ctx, windowId)
+}
+
+func CreateClient(ctx context.Context) (*Client, error) {
+	client := &Client{
+		OID:       uuid.NewString(),
+		WindowIds: []string{},
+	}
+	err := DBInsert(ctx, client)
+	if err != nil {
+		return nil, fmt.Errorf("error inserting client: %w", err)
+	}
+	return client, nil
+}
+
+func EnsureInitialData() error {
+	// does not need to run in a transaction since it is called on startup
+	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelFn()
+	client, err := DBGetSingleton[*Client](ctx)
+	if err == ErrNotFound {
+		client, err = CreateClient(ctx)
+		if err != nil {
+			return fmt.Errorf("error creating client: %w", err)
+		}
+	}
+	if client.MainWindowId != "" {
+		// convert to windowIds
+		client.WindowIds = []string{client.MainWindowId}
+		client.MainWindowId = ""
+		err = DBUpdate(ctx, client)
+		if err != nil {
+			return fmt.Errorf("error updating client: %w", err)
+		}
+		client, err = DBGetSingleton[*Client](ctx)
+		if err != nil {
+			return fmt.Errorf("error getting client (after main window update): %w", err)
+		}
+	}
+	if len(client.WindowIds) > 0 {
+		return nil
+	}
+	_, err = CreateWindow(ctx)
+	if err != nil {
+		return fmt.Errorf("error creating window: %w", err)
 	}
 	return nil
 }

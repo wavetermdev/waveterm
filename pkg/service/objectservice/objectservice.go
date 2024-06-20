@@ -205,41 +205,6 @@ func (svc *ObjectService) CloseTab_Meta() tsgenmeta.MethodMeta {
 	}
 }
 
-func (svc *ObjectService) CloseTab(uiContext wstore.UIContext, tabId string) (wstore.UpdatesRtnType, error) {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	ctx = wstore.ContextWithUpdates(ctx)
-	window, err := wstore.DBMustGet[*wstore.Window](ctx, uiContext.WindowId)
-	if err != nil {
-		return nil, fmt.Errorf("error getting window: %w", err)
-	}
-	tab, err := wstore.DBMustGet[*wstore.Tab](ctx, tabId)
-	if err != nil {
-		return nil, fmt.Errorf("error getting tab: %w", err)
-	}
-	for _, blockId := range tab.BlockIds {
-		blockcontroller.StopBlockController(blockId)
-	}
-	err = wstore.CloseTab(ctx, window.WorkspaceId, tabId)
-	if err != nil {
-		return nil, fmt.Errorf("error closing tab: %w", err)
-	}
-	if window.ActiveTabId == tabId {
-		ws, err := wstore.DBMustGet[*wstore.Workspace](ctx, window.WorkspaceId)
-		if err != nil {
-			return nil, fmt.Errorf("error getting workspace: %w", err)
-		}
-		var newActiveTabId string
-		if len(ws.TabIds) > 0 {
-			newActiveTabId = ws.TabIds[0]
-		} else {
-			newActiveTabId = ""
-		}
-		wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
-	}
-	return wstore.ContextGetUpdatesRtn(ctx), nil
-}
-
 func (svc *ObjectService) UpdateObjectMeta_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		ArgNames: []string{"uiContext", "oref", "meta"},

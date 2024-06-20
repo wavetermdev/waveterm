@@ -67,7 +67,10 @@ func DBGetSingletonByType(ctx context.Context, otype string) (waveobj.WaveObj, e
 		table := tableNameFromOType(otype)
 		query := fmt.Sprintf("SELECT oid, version, data FROM %s LIMIT 1", table)
 		var row idDataType
-		tx.Get(&row, query)
+		found := tx.Get(&row, query)
+		if !found {
+			return nil, ErrNotFound
+		}
 		rtn, err := waveobj.FromJson(row.Data)
 		if err != nil {
 			return rtn, err

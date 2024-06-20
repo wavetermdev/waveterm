@@ -21,17 +21,23 @@ export const BlockService = new BlockServiceType()
 
 // clientservice.ClientService (client)
 class ClientServiceType {
+    FocusWindow(arg2: string): Promise<void> {
+        return WOS.callBackendService("client", "FocusWindow", Array.from(arguments))
+    }
     GetClientData(): Promise<Client> {
         return WOS.callBackendService("client", "GetClientData", Array.from(arguments))
     }
     GetTab(arg1: string): Promise<Tab> {
         return WOS.callBackendService("client", "GetTab", Array.from(arguments))
     }
-    GetWindow(arg1: string): Promise<Window> {
+    GetWindow(arg1: string): Promise<WaveWindow> {
         return WOS.callBackendService("client", "GetWindow", Array.from(arguments))
     }
     GetWorkspace(arg1: string): Promise<Workspace> {
         return WOS.callBackendService("client", "GetWorkspace", Array.from(arguments))
+    }
+    MakeWindow(): Promise<WaveWindow> {
+        return WOS.callBackendService("client", "MakeWindow", Array.from(arguments))
     }
 }
 
@@ -57,11 +63,6 @@ class ObjectServiceType {
     // @returns tabId (and object updates)
     AddTabToWorkspace(tabName: string, activateTab: boolean): Promise<string> {
         return WOS.callBackendService("object", "AddTabToWorkspace", Array.from(arguments))
-    }
-
-    // @returns object updates
-    CloseTab(tabId: string): Promise<void> {
-        return WOS.callBackendService("object", "CloseTab", Array.from(arguments))
     }
 
     // @returns blockId (and object updates)
@@ -109,6 +110,14 @@ export const ObjectService = new ObjectServiceType()
 
 // windowservice.WindowService (window)
 class WindowServiceType {
+    // @returns object updates
+    CloseTab(arg3: string): Promise<void> {
+        return WOS.callBackendService("window", "CloseTab", Array.from(arguments))
+    }
+    CloseWindow(arg2: string): Promise<void> {
+        return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
+    }
+
     // @returns object updates
     SetWindowPosAndSize(arg2: string, arg3: Point, arg4: WinSize): Promise<void> {
         return WOS.callBackendService("window", "SetWindowPosAndSize", Array.from(arguments))

@@ -31,7 +31,7 @@ declare global {
 
     type BlockCommand = {
         command: string;
-    } & ( BlockAppendIJsonCommand | ResolveIdsCommand | BlockInputCommand | BlockSetViewCommand | BlockSetMetaCommand | BlockGetMetaCommand | BlockMessageCommand | BlockAppendFileCommand );
+    } & ( BlockSetMetaCommand | BlockGetMetaCommand | BlockMessageCommand | BlockAppendFileCommand | BlockAppendIJsonCommand | ResolveIdsCommand | BlockInputCommand | BlockSetViewCommand );
 
     // wstore.BlockDef
     type BlockDef = {
@@ -84,6 +84,7 @@ declare global {
     // wstore.Client
     type Client = WaveObj & {
         mainwindowid: string;
+        windowids: string[];
         meta: MetaType;
     };
 
@@ -253,6 +254,18 @@ declare global {
         obj?: WaveObj;
     };
 
+    // wstore.Window
+    type WaveWindow = WaveObj & {
+        workspaceid: string;
+        activetabid: string;
+        activeblockid?: string;
+        activeblockmap: {[key: string]: string};
+        pos: Point;
+        winsize: WinSize;
+        lastfocusts: number;
+        meta: MetaType;
+    };
+
     // service.WebCallType
     type WebCallType = {
         service: string;
@@ -273,18 +286,6 @@ declare global {
     type WinSize = {
         width: number;
         height: number;
-    };
-
-    // wstore.Window
-    type WaveWindow = WaveObj & {
-        workspaceid: string;
-        activetabid: string;
-        activeblockid?: string;
-        activeblockmap: {[key: string]: string};
-        pos: Point;
-        winsize: WinSize;
-        lastfocusts: number;
-        meta: MetaType;
     };
 
     // wstore.Workspace

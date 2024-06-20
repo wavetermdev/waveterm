@@ -101,7 +101,11 @@ func TypeToTSType(t reflect.Type, tsTypesMap map[reflect.Type]string) (string, [
 		}
 		return fmt.Sprintf("{[key: string]: %s}", elemType), subTypes
 	case reflect.Struct:
-		return t.Name(), []reflect.Type{t}
+		name := t.Name()
+		if tsRename := tsRenameMap[name]; tsRename != "" {
+			name = tsRename
+		}
+		return name, []reflect.Type{t}
 	case reflect.Ptr:
 		return TypeToTSType(t.Elem(), tsTypesMap)
 	case reflect.Interface:

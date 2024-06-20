@@ -740,3 +740,25 @@ func DoMapStucture(out any, input any) error {
 	}
 	return decoder.Decode(input)
 }
+
+func SliceIdx[T comparable](arr []T, elem T) int {
+	for idx, e := range arr {
+		if e == elem {
+			return idx
+		}
+	}
+	return -1
+}
+
+func MoveSliceIdxToFront[T any](arr []T, idx int) []T {
+	// create and return a new slice with idx moved to the front
+	if idx == 0 || idx >= len(arr) {
+		// make a copy still
+		return append([]T(nil), arr...)
+	}
+	rtn := make([]T, 0, len(arr))
+	rtn = append(rtn, arr[idx])
+	rtn = append(rtn, arr[0:idx]...)
+	rtn = append(rtn, arr[idx+1:]...)
+	return rtn
+}

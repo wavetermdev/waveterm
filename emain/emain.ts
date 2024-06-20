@@ -21,12 +21,14 @@ const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8190";
 const ProdServerEndpoint = "http://127.0.0.1:1719";
 
-type WaveBrowserWindow = Electron.BrowserWindow & { waveWindowId: string };
+type WaveBrowserWindow = Electron.BrowserWindow & { waveWindowId: string; readyPromise: Promise<void> };
 
 let waveSrvReadyResolve = (value: boolean) => {};
 let waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
     waveSrvReadyResolve = resolve;
 });
+let globalIsQuitting = false;
+let globalIsStarting = true;
 
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 electronApp.setName(isDev ? "NextWave (Dev)" : "NextWave");
@@ -74,6 +76,11 @@ function getWaveSrvCwd(): string {
     return getWaveHomeDir();
 }
 
+function getWindowForEvent(event: Electron.IpcMainEvent): Electron.BrowserWindow {
+    const windowId = event.sender.id;
+    return electron.BrowserWindow.fromId(windowId);
+}
+
 function runWaveSrv(): Promise<boolean> {
     let pResolve: (value: boolean) => void;
     let pReject: (reason?: any) => void;
@@ -99,6 +106,9 @@ function runWaveSrv(): Promise<boolean> {
         env: envCopy,
     });
     proc.on("exit", (e) => {
+        if (globalIsQuitting) {
+            return;
+        }
         console.log("wavesrv exited, shutting down");
         electronApp.quit();
     });
@@ -189,31 +199,21 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function createWindow(client: Client, waveWindow: WaveWindow): WaveBrowserWindow {
-    const primaryDisplay = electron.screen.getPrimaryDisplay();
-    let winHeight = waveWindow.winsize.height;
-    let winWidth = waveWindow.winsize.width;
-    if (winHeight > primaryDisplay.workAreaSize.height) {
-        winHeight = primaryDisplay.workAreaSize.height;
-    }
-    if (winWidth > primaryDisplay.workAreaSize.width) {
-        winWidth = primaryDisplay.workAreaSize.width;
-    }
-    let winX = waveWindow.pos.x;
-    let winY = waveWindow.pos.y;
-    if (winX + winWidth > primaryDisplay.workAreaSize.width) {
-        winX = Math.floor((primaryDisplay.workAreaSize.width - winWidth) / 2);
-    }
-    if (winY + winHeight > primaryDisplay.workAreaSize.height) {
-        winY = Math.floor((primaryDisplay.workAreaSize.height - winHeight) / 2);
-    }
+function createBrowserWindow(client: Client, waveWindow: WaveWindow): WaveBrowserWindow {
+    let winBounds = {
+        x: waveWindow.pos.x,
+        y: waveWindow.pos.y,
+        width: waveWindow.winsize.width,
+        height: waveWindow.winsize.height,
+    };
+    winBounds = ensureBoundsAreVisible(winBounds);
     const bwin = new electron.BrowserWindow({
-        x: winX,
-        y: winY,
         titleBarStyle: "hiddenInset",
-        width: winWidth,
-        height: winHeight,
-        minWidth: 500,
+        x: winBounds.x,
+        y: winBounds.y,
+        width: winBounds.width,
+        height: winBounds.height,
+        minWidth: 400,
         minHeight: 300,
         icon:
             unamePlatform == "linux"
@@ -227,10 +227,11 @@ function createWindow(client: Client, waveWindow: WaveWindow): WaveBrowserWindow
         backgroundColor: "#000000",
     });
     (bwin as any).waveWindowId = waveWindow.oid;
-    const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
-    win.once("ready-to-show", () => {
-        win.show();
+    let readyResolve: (value: void) => void;
+    (bwin as any).readyPromise = new Promise((resolve, _) => {
+        readyResolve = resolve;
     });
+    const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     // const indexHtml = isDev ? "index-dev.html" : "index.html";
     let usp = new URLSearchParams();
     usp.set("clientid", client.oid);
@@ -243,7 +244,9 @@ function createWindow(client: Client, waveWindow: WaveWindow): WaveBrowserWindow
         console.log("running as file");
         win.loadFile(path.join(getElectronAppBasePath(), "frontend", indexHtml), { search: usp.toString() });
     }
-
+    win.once("ready-to-show", () => {
+        readyResolve();
+    });
     win.webContents.on("will-navigate", shNavHandler);
     win.webContents.on("will-frame-navigate", shFrameNavHandler);
     win.on(
@@ -254,6 +257,33 @@ function createWindow(client: Client, waveWindow: WaveWindow): WaveBrowserWindow
         "move",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
     );
+    win.on("focus", () => {
+        if (globalIsStarting) {
+            return;
+        }
+        console.log("focus", waveWindow.oid);
+        services.ClientService.FocusWindow(waveWindow.oid);
+    });
+    win.on("close", (e) => {
+        if (globalIsQuitting) {
+            return;
+        }
+        const choice = electron.dialog.showMessageBoxSync(win, {
+            type: "question",
+            buttons: ["Cancel", "Yes"],
+            title: "Confirm",
+            message: "Are you sure you want to close this window (all tabs and blocks will be deleted)?",
+        });
+        if (choice === 0) {
+            e.preventDefault();
+        }
+    });
+    win.on("closed", () => {
+        if (globalIsQuitting) {
+            return;
+        }
+        services.WindowService.CloseWindow(waveWindow.oid);
+    });
     win.webContents.on("zoom-changed", (e) => {
         win.webContents.send("zoom-changed");
     });
@@ -266,6 +296,86 @@ function createWindow(client: Client, waveWindow: WaveWindow): WaveBrowserWindow
         return { action: "deny" };
     });
     return win;
+}
+
+function isWindowFullyVisible(bounds: electron.Rectangle): boolean {
+    const displays = electron.screen.getAllDisplays();
+
+    // Helper function to check if a point is inside any display
+    function isPointInDisplay(x, y) {
+        for (let display of displays) {
+            const { x: dx, y: dy, width, height } = display.bounds;
+            if (x >= dx && x < dx + width && y >= dy && y < dy + height) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Check all corners of the window
+    const topLeft = isPointInDisplay(bounds.x, bounds.y);
+    const topRight = isPointInDisplay(bounds.x + bounds.width, bounds.y);
+    const bottomLeft = isPointInDisplay(bounds.x, bounds.y + bounds.height);
+    const bottomRight = isPointInDisplay(bounds.x + bounds.width, bounds.y + bounds.height);
+
+    return topLeft && topRight && bottomLeft && bottomRight;
+}
+
+function findDisplayWithMostArea(bounds: electron.Rectangle): electron.Display {
+    const displays = electron.screen.getAllDisplays();
+    let maxArea = 0;
+    let bestDisplay = null;
+
+    for (let display of displays) {
+        const { x, y, width, height } = display.bounds;
+        const overlapX = Math.max(0, Math.min(bounds.x + bounds.width, x + width) - Math.max(bounds.x, x));
+        const overlapY = Math.max(0, Math.min(bounds.y + bounds.height, y + height) - Math.max(bounds.y, y));
+        const overlapArea = overlapX * overlapY;
+
+        if (overlapArea > maxArea) {
+            maxArea = overlapArea;
+            bestDisplay = display;
+        }
+    }
+
+    return bestDisplay;
+}
+
+function adjustBoundsToFitDisplay(bounds: electron.Rectangle, display: electron.Display): electron.Rectangle {
+    const { x: dx, y: dy, width: dWidth, height: dHeight } = display.workArea;
+    let { x, y, width, height } = bounds;
+
+    // Adjust width and height to fit within the display's work area
+    width = Math.min(width, dWidth);
+    height = Math.min(height, dHeight);
+
+    // Adjust x to ensure the window fits within the display
+    if (x < dx) {
+        x = dx;
+    } else if (x + width > dx + dWidth) {
+        x = dx + dWidth - width;
+    }
+
+    // Adjust y to ensure the window fits within the display
+    if (y < dy) {
+        y = dy;
+    } else if (y + height > dy + dHeight) {
+        y = dy + dHeight - height;
+    }
+    return { x, y, width, height };
+}
+
+function ensureBoundsAreVisible(bounds: electron.Rectangle): electron.Rectangle {
+    if (!isWindowFullyVisible(bounds)) {
+        let targetDisplay = findDisplayWithMostArea(bounds);
+
+        if (!targetDisplay) {
+            targetDisplay = electron.screen.getPrimaryDisplay();
+        }
+
+        return adjustBoundsToFitDisplay(bounds, targetDisplay);
+    }
+    return bounds;
 }
 
 electron.ipcMain.on("isDev", (event) => {
@@ -287,7 +397,13 @@ electron.ipcMain.on("getCursorPoint", (event) => {
     event.returnValue = retVal;
 });
 
-electron.ipcMain.on("openNewWindow", (event) => {});
+async function createNewWaveWindow() {
+    let clientData = await services.ClientService.GetClientData();
+    const newWindow = await services.ClientService.MakeWindow();
+    createBrowserWindow(clientData, newWindow);
+}
+
+electron.ipcMain.on("openNewWindow", createNewWaveWindow);
 
 electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
     if (opts == null) {
@@ -337,7 +453,45 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
     return electron.Menu.buildFromTemplate(menuItems);
 }
 
-(async () => {
+function makeAppMenu() {
+    let fileMenu: Electron.MenuItemConstructorOptions[] = [];
+    fileMenu.push({
+        label: "New Window",
+        click: createNewWaveWindow,
+    });
+    fileMenu.push({
+        label: "Close Window",
+        click: () => {
+            electron.BrowserWindow.getFocusedWindow()?.close();
+        },
+    });
+    const menuTemplate: Electron.MenuItemConstructorOptions[] = [
+        {
+            role: "appMenu",
+        },
+        {
+            role: "fileMenu",
+            submenu: fileMenu,
+        },
+        {
+            role: "editMenu",
+        },
+        {
+            role: "viewMenu",
+        },
+        {
+            role: "windowMenu",
+        },
+    ];
+    const menu = electron.Menu.buildFromTemplate(menuTemplate);
+    electron.Menu.setApplicationMenu(menu);
+}
+
+electron.app.on("before-quit", () => {
+    globalIsQuitting = true;
+});
+
+async function appMain() {
     const startTs = Date.now();
     const instanceLock = electronApp.requestSingleInstanceLock();
     if (!instanceLock) {
@@ -349,6 +503,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
     if (!fs.existsSync(waveHomeDir)) {
         fs.mkdirSync(waveHomeDir);
     }
+    makeAppMenu();
     try {
         await runWaveSrv();
     } catch (e) {
@@ -358,17 +513,30 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
 
     console.log("get client data");
-    let clientData = (await services.ClientService.GetClientData().catch((e) => console.log(e))) as Client;
+    let clientData = await services.ClientService.GetClientData();
     console.log("client data ready");
-    let windowData: WaveWindow = (await services.ObjectService.GetObject(
-        "window:" + clientData.mainwindowid
-    )) as WaveWindow;
     await electronApp.whenReady();
-    createWindow(clientData, windowData);
+    let wins: WaveBrowserWindow[] = [];
+    for (let windowId of clientData.windowids.slice().reverse()) {
+        let windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+        const win = createBrowserWindow(clientData, windowData);
+        wins.push(win);
+    }
+    for (let win of wins) {
+        await win.readyPromise;
+        console.log("show", win.waveWindowId);
+        win.show();
+    }
+    globalIsStarting = false;
 
     electronApp.on("activate", () => {
         if (electron.BrowserWindow.getAllWindows().length === 0) {
-            createWindow(clientData, windowData);
+            createNewWaveWindow();
         }
     });
-})();
+}
+
+appMain().catch((e) => {
+    console.log("appMain error", e);
+    electronApp.quit();
+});

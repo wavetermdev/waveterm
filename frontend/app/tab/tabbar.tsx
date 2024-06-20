@@ -313,7 +313,7 @@ const TabBar = ({ workspace }: TabBarProps) => {
     };
 
     const handleCloseTab = (tabId: string) => {
-        services.ObjectService.CloseTab(tabId);
+        services.WindowService.CloseTab(tabId);
         deleteLayoutStateAtomForTab(tabId);
     };
 

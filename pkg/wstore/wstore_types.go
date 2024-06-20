@@ -115,7 +115,8 @@ func (update *WaveObjUpdate) UnmarshalJSON(data []byte) error {
 type Client struct {
 	OID          string         `json:"oid"`
 	Version      int            `json:"version"`
-	MainWindowId string         `json:"mainwindowid"`
+	MainWindowId string         `json:"mainwindowid"` // deprecated
+	WindowIds    []string       `json:"windowids"`
 	Meta         map[string]any `json:"meta"`
 }
 

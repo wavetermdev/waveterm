@@ -27,6 +27,8 @@ function matchViewportSize() {
     document.body.style.height = window.visualViewport.height + "px";
 }
 
+document.title = `The Next Wave (${windowId.substring(0, 8)})`;
+
 matchViewportSize();
 
 document.addEventListener("DOMContentLoaded", async () => {
