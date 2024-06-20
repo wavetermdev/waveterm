@@ -322,6 +322,7 @@ const DisplayNode = <T,>({
     ready,
 }: DisplayNodeProps<T>) => {
     const tileNodeRef = useRef<HTMLDivElement>(null);
+    const dragHandleRef = useRef<HTMLDivElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
     const hasImagePreviewSetRef = useRef(false);
 
@@ -369,8 +370,10 @@ const DisplayNode = <T,>({
 
     // Register the tile item as a draggable component
     useEffect(() => {
-        drag(tileNodeRef);
-    }, [tileNodeRef]);
+        if (dragHandleRef.current) {
+            drag(dragHandleRef);
+        }
+    }, [ready]);
 
     const onClose = useCallback(() => {
         onLeafClose(layoutNode);
@@ -380,7 +383,7 @@ const DisplayNode = <T,>({
         return (
             layoutNode.data && (
                 <div key="leaf" className="tile-leaf">
-                    {renderContent(layoutNode.data, ready, onClose)}
+                    {renderContent(layoutNode.data, ready, onClose, dragHandleRef)}
                 </div>
             )
         );

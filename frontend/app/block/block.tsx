@@ -22,6 +22,7 @@ const HoverTimeoutMs = 100;
 interface BlockProps {
     blockId: string;
     onClose?: () => void;
+    dragHandleRef?: React.RefObject<HTMLDivElement>;
 }
 
 function getBlockHeaderText(blockData: Block): string {
@@ -31,11 +32,17 @@ function getBlockHeaderText(blockData: Block): string {
     return `${blockData?.view} [${blockData.oid.substring(0, 8)}]`;
 }
 
-const FramelessBlockHeader = ({ blockId, onClose }: BlockProps) => {
+interface FramelessBlockHeaderProps {
+    blockId: string;
+    onClose?: () => void;
+    dragHandleRef?: React.RefObject<HTMLDivElement>;
+}
+
+const FramelessBlockHeader = ({ blockId, onClose, dragHandleRef }: FramelessBlockHeaderProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
 
     return (
-        <div key="header" className="block-header">
+        <div key="header" className="block-header" ref={dragHandleRef}>
             <div className="block-header-text text-fixed">{getBlockHeaderText(blockData)}</div>
             {onClose && (
                 <div className="close-button" onClick={onClose}>
@@ -57,9 +64,18 @@ interface BlockFrameProps {
     preview: boolean;
     children?: React.ReactNode;
     blockRef?: React.RefObject<HTMLDivElement>;
+    dragHandleRef?: React.RefObject<HTMLDivElement>;
 }
 
-const BlockFrame_Tech = ({ blockId, onClose, onClick, preview, blockRef, children }: BlockFrameProps) => {
+const BlockFrame_Tech = ({
+    blockId,
+    onClose,
+    onClick,
+    preview,
+    blockRef,
+    dragHandleRef,
+    children,
+}: BlockFrameProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
         return jotai.atom((get) => {
@@ -82,7 +98,9 @@ const BlockFrame_Tech = ({ blockId, onClose, onClick, preview, blockRef, childre
             onClick={onClick}
             ref={blockRef}
         >
-            <div className="block-frame-tech-header">{getBlockHeaderText(blockData)}</div>
+            <div className="block-frame-tech-header" ref={dragHandleRef}>
+                {getBlockHeaderText(blockData)}
+            </div>
             <div className="block-frame-tech-close" onClick={onClose}>
                 <i className="fa fa-solid fa-xmark fa-fw	" />
             </div>
@@ -91,7 +109,15 @@ const BlockFrame_Tech = ({ blockId, onClose, onClick, preview, blockRef, childre
     );
 };
 
-const BlockFrame_Frameless = ({ blockId, onClose, onClick, preview, blockRef, children }: BlockFrameProps) => {
+const BlockFrame_Frameless = ({
+    blockId,
+    onClose,
+    onClick,
+    preview,
+    blockRef,
+    dragHandleRef,
+    children,
+}: BlockFrameProps) => {
     const localBlockRef = React.useRef<HTMLDivElement>(null);
     const [showHeader, setShowHeader] = React.useState(preview ? true : false);
     const hoverState = React.useRef(hoverStateOff);
@@ -150,7 +176,7 @@ const BlockFrame_Frameless = ({ blockId, onClose, onClick, preview, blockRef, ch
                 className={clsx("block-header-animation-wrap", showHeader ? "is-showing" : null)}
                 onMouseLeave={mouseLeaveHandler}
             >
-                <FramelessBlockHeader blockId={blockId} onClose={onClose} />
+                <FramelessBlockHeader blockId={blockId} onClose={onClose} dragHandleRef={dragHandleRef} />
             </div>
             {preview ? <div className="block-frame-preview" /> : children}
         </div>
@@ -184,7 +210,7 @@ function setBlockFocus(blockId: string) {
     WOS.setObjectValue(winData, globalStore.set, true);
 }
 
-const Block = ({ blockId, onClose }: BlockProps) => {
+const Block = ({ blockId, onClose, dragHandleRef }: BlockProps) => {
     let blockElem: JSX.Element = null;
     const focusElemRef = React.useRef<HTMLInputElement>(null);
     const blockRef = React.useRef<HTMLDivElement>(null);
@@ -222,6 +248,7 @@ const Block = ({ blockId, onClose }: BlockProps) => {
             preview={false}
             onClick={() => setBlockClicked(true)}
             blockRef={blockRef}
+            dragHandleRef={dragHandleRef}
         >
             <div key="focuselem" className="block-focuselem">
                 <input type="text" value="" ref={focusElemRef} onChange={() => {}} />
