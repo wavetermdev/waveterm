@@ -4,6 +4,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -15,8 +16,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/wavetermdev/thenextwave/pkg/cmdqueue"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
-	"github.com/wavetermdev/thenextwave/pkg/service/blockservice"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
@@ -25,6 +26,8 @@ const wsReadWaitTimeout = 15 * time.Second
 const wsWriteWaitTimeout = 10 * time.Second
 const wsPingPeriodTickTime = 10 * time.Second
 const wsInitialPingTime = 1 * time.Second
+
+const DefaultCommandTimeout = 2 * time.Second
 
 func RunWebSocketServer() {
 	gr := mux.NewRouter()
@@ -99,13 +102,23 @@ func processWSCommand(jmsg map[string]any, outputCh chan any) {
 			Command:  wshutil.BlockCommand_Input,
 			TermSize: &cmd.TermSize,
 		}
-		blockservice.BlockServiceInstance.SendCommand(cmd.BlockId, blockCmd)
+		ctx, cancelFn := context.WithTimeout(context.Background(), DefaultCommandTimeout)
+		defer cancelFn()
+		_, err = cmdqueue.RunCmd(ctx, blockCmd, wshutil.CmdContextType{BlockId: cmd.BlockId})
+		if err != nil {
+			log.Printf("error running command %q: %v\n", blockCmd.Command, err)
+		}
 	case *webcmd.BlockInputWSCommand:
 		blockCmd := &wshutil.BlockInputCommand{
 			Command:     wshutil.BlockCommand_Input,
 			InputData64: cmd.InputData64,
 		}
-		blockservice.BlockServiceInstance.SendCommand(cmd.BlockId, blockCmd)
+		ctx, cancelFn := context.WithTimeout(context.Background(), DefaultCommandTimeout)
+		defer cancelFn()
+		_, err = cmdqueue.RunCmd(ctx, blockCmd, wshutil.CmdContextType{BlockId: cmd.BlockId})
+		if err != nil {
+			log.Printf("error running command %q: %v\n", blockCmd.Command, err)
+		}
 	}
 }
 

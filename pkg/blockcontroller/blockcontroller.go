@@ -34,6 +34,11 @@ const (
 	BlockFile_Html = "html" // used for alt html layout
 )
 
+const (
+	DefaultTermMaxFileSize = 256 * 1024
+	DefaultHtmlMaxFileSize = 256 * 1024
+)
+
 const DefaultTimeout = 2 * time.Second
 
 var globalLock = &sync.Mutex{}
@@ -45,8 +50,11 @@ type BlockInputUnion struct {
 	TermSize  *shellexec.TermSize `json:"termsize,omitempty"`
 }
 
+type RunCmdFnType = func(ctx context.Context, cmd wshutil.BlockCommand, cmdCtx wshutil.CmdContextType) (wshutil.ResponseDataType, error)
+
 type BlockController struct {
 	Lock            *sync.Mutex
+	TabId           string
 	BlockId         string
 	BlockDef        *wstore.BlockDef
 	InputCh         chan wshutil.BlockCommand
@@ -54,6 +62,7 @@ type BlockController struct {
 	CreatedHtmlFile bool
 	ShellProc       *shellexec.ShellProc
 	ShellInputCh    chan *BlockInputUnion
+	RunCmdFn        RunCmdFnType
 }
 
 func (bc *BlockController) WithLock(f func()) {
@@ -101,10 +110,7 @@ func (bc *BlockController) Close() {
 	}
 }
 
-const DefaultTermMaxFileSize = 256 * 1024
-const DefaultHtmlMaxFileSize = 256 * 1024
-
-func handleAppendBlockFile(blockId string, blockFile string, data []byte) error {
+func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
 	err := filestore.WFS.AppendData(ctx, blockId, blockFile, data)
@@ -119,32 +125,6 @@ func handleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 			FileName: blockFile,
 			FileOp:   eventbus.FileOp_Append,
 			Data64:   base64.StdEncoding.EncodeToString(data),
-		},
-	})
-	return nil
-}
-
-func handleAppendIJsonFile(blockId string, blockFile string, cmd map[string]any, tryCreate bool) error {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	if blockFile == BlockFile_Html && tryCreate {
-		err := filestore.WFS.MakeFile(ctx, blockId, blockFile, nil, filestore.FileOptsType{MaxSize: DefaultHtmlMaxFileSize, IJson: true})
-		if err != nil && err != filestore.ErrAlreadyExists {
-			return fmt.Errorf("error creating blockfile[html]: %w", err)
-		}
-	}
-	err := filestore.WFS.AppendIJson(ctx, blockId, blockFile, cmd)
-	if err != nil {
-		return fmt.Errorf("error appending to blockfile(ijson): %w", err)
-	}
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "blockfile",
-		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
-		Data: &eventbus.WSFileEventData{
-			ZoneId:   blockId,
-			FileName: blockFile,
-			FileOp:   eventbus.FileOp_Append,
-			Data64:   base64.StdEncoding.EncodeToString([]byte("{}")),
 		},
 	})
 	return nil
@@ -165,114 +145,12 @@ func (bc *BlockController) resetTerminalState() {
 	}
 }
 
-func resolveSimpleId(ctx context.Context, simpleId string) (*waveobj.ORef, error) {
-	if strings.Contains(simpleId, ":") {
-		rtn, err := waveobj.ParseORef(simpleId)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing simple id: %w", err)
-		}
-		return &rtn, nil
-	}
-	return wstore.DBResolveEasyOID(ctx, simpleId)
-}
-
-func staticHandleGetMeta(ctx context.Context, cmd *wshutil.BlockGetMetaCommand) (map[string]any, error) {
-	oref, err := waveobj.ParseORef(cmd.ORef)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing oref: %w", err)
-	}
-	obj, err := wstore.DBGetORef(ctx, oref)
-	if err != nil {
-		return nil, fmt.Errorf("error getting object: %w", err)
-	}
-	if obj == nil {
-		return nil, fmt.Errorf("object not found: %s", oref)
-	}
-	return waveobj.GetMeta(obj), nil
-}
-
-func staticHandleSetMeta(ctx context.Context, cmd *wshutil.BlockSetMetaCommand, curBlockId string) (map[string]any, error) {
-	var oref *waveobj.ORef
-	if cmd.ORef != "" {
-		orefVal, err := waveobj.ParseORef(cmd.ORef)
-		if err != nil {
-			return nil, fmt.Errorf("error parsing oref: %w", err)
-		}
-		oref = &orefVal
-	} else {
-		orefVal := waveobj.MakeORef(wstore.OType_Block, curBlockId)
-		oref = &orefVal
-	}
-	log.Printf("SETMETA: %s | %v\n", oref, cmd.Meta)
-	obj, err := wstore.DBGetORef(ctx, *oref)
-	if err != nil {
-		return nil, fmt.Errorf("error getting object: %w", err)
-	}
-	if obj == nil {
-		return nil, nil
-	}
-	meta := waveobj.GetMeta(obj)
-	if meta == nil {
-		meta = make(map[string]any)
-	}
-	for k, v := range cmd.Meta {
-		if v == nil {
-			delete(meta, k)
-			continue
-		}
-		meta[k] = v
-	}
-	waveobj.SetMeta(obj, meta)
-	err = wstore.DBUpdate(ctx, obj)
-	if err != nil {
-		return nil, fmt.Errorf("error updating block: %w", err)
-	}
-	// send a waveobj:update event
-	updatedBlock, err := wstore.DBGetORef(ctx, *oref)
-	if err != nil {
-		return nil, fmt.Errorf("error getting object (2): %w", err)
-	}
-	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "waveobj:update",
-		ORef:      oref.String(),
-		Data: wstore.WaveObjUpdate{
-			UpdateType: wstore.UpdateType_Update,
-			OType:      updatedBlock.GetOType(),
-			OID:        waveobj.GetOID(updatedBlock),
-			Obj:        updatedBlock,
-		},
-	})
-	return nil, nil
-}
-
-func staticHandleResolveIds(ctx context.Context, cmd *wshutil.ResolveIdsCommand) (map[string]any, error) {
-	rtn := make(map[string]any)
-	for _, simpleId := range cmd.Ids {
-		oref, err := resolveSimpleId(ctx, simpleId)
-		if err != nil || oref == nil {
-			continue
-		}
-		rtn[simpleId] = oref.String()
-	}
-	return rtn, nil
-}
-
 func (bc *BlockController) waveOSCMessageHandler(ctx context.Context, cmd wshutil.BlockCommand, respFn wshutil.ResponseFnType) (wshutil.ResponseDataType, error) {
 	if strings.HasPrefix(cmd.GetCommand(), "controller:") {
 		bc.InputCh <- cmd
 		return nil, nil
 	}
-	switch cmd.GetCommand() {
-	case wshutil.BlockCommand_GetMeta:
-		return staticHandleGetMeta(ctx, cmd.(*wshutil.BlockGetMetaCommand))
-	case wshutil.Command_ResolveIds:
-		return staticHandleResolveIds(ctx, cmd.(*wshutil.ResolveIdsCommand))
-	case wshutil.Command_CreateBlock:
-		return nil, nil
-	}
-
-	ProcessStaticCommand(bc.BlockId, cmd)
-	return nil, nil
+	return bc.RunCmdFn(ctx, cmd, wshutil.CmdContextType{BlockId: bc.BlockId, TabId: bc.TabId})
 }
 
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
@@ -317,7 +195,7 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 		for {
 			nr, err := ptyBuffer.Read(buf)
 			if nr > 0 {
-				err := handleAppendBlockFile(bc.BlockId, BlockFile_Main, buf[:nr])
+				err := HandleAppendBlockFile(bc.BlockId, BlockFile_Main, buf[:nr])
 				if err != nil {
 					log.Printf("error appending to blockfile: %v\n", err)
 				}
@@ -411,7 +289,7 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 	}
 }
 
-func StartBlockController(ctx context.Context, blockId string) error {
+func StartBlockController(ctx context.Context, tabId string, blockId string, runCmdFn RunCmdFnType) error {
 	blockData, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
@@ -430,10 +308,12 @@ func StartBlockController(ctx context.Context, blockId string) error {
 		return nil
 	}
 	bc := &BlockController{
-		Lock:    &sync.Mutex{},
-		BlockId: blockId,
-		Status:  "init",
-		InputCh: make(chan wshutil.BlockCommand),
+		Lock:     &sync.Mutex{},
+		TabId:    tabId,
+		BlockId:  blockId,
+		Status:   "init",
+		InputCh:  make(chan wshutil.BlockCommand),
+		RunCmdFn: runCmdFn,
 	}
 	blockControllerMap[blockId] = bc
 	go bc.Run(blockData)
@@ -453,67 +333,4 @@ func GetBlockController(blockId string) *BlockController {
 	globalLock.Lock()
 	defer globalLock.Unlock()
 	return blockControllerMap[blockId]
-}
-
-func ProcessStaticCommand(blockId string, cmdGen wshutil.BlockCommand) error {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	switch cmd := cmdGen.(type) {
-	case *wshutil.BlockSetViewCommand:
-		log.Printf("SETVIEW: %s | %q\n", blockId, cmd.View)
-		block, err := wstore.DBGet[*wstore.Block](ctx, blockId)
-		if err != nil {
-			return fmt.Errorf("error getting block: %w", err)
-		}
-		block.View = cmd.View
-		err = wstore.DBUpdate(ctx, block)
-		if err != nil {
-			return fmt.Errorf("error updating block: %w", err)
-		}
-		// send a waveobj:update event
-		updatedBlock, err := wstore.DBGet[*wstore.Block](ctx, blockId)
-		if err != nil {
-			return fmt.Errorf("error getting block: %w", err)
-		}
-		eventbus.SendEvent(eventbus.WSEventType{
-			EventType: "waveobj:update",
-			ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
-			Data: wstore.WaveObjUpdate{
-				UpdateType: wstore.UpdateType_Update,
-				OType:      wstore.OType_Block,
-				OID:        blockId,
-				Obj:        updatedBlock,
-			},
-		})
-		return nil
-	case *wshutil.BlockSetMetaCommand:
-		_, err := staticHandleSetMeta(ctx, cmd, blockId)
-		if err != nil {
-			return err
-		}
-		return nil
-
-	case *wshutil.BlockMessageCommand:
-		log.Printf("MESSAGE: %s | %q\n", blockId, cmd.Message)
-		return nil
-
-	case *wshutil.BlockAppendFileCommand:
-		log.Printf("APPENDFILE: %s | %q | len:%d\n", blockId, cmd.FileName, len(cmd.Data))
-		err := handleAppendBlockFile(blockId, cmd.FileName, cmd.Data)
-		if err != nil {
-			return fmt.Errorf("error appending blockfile: %w", err)
-		}
-		return nil
-
-	case *wshutil.BlockAppendIJsonCommand:
-		log.Printf("APPENDIJSON: %s | %q\n", blockId, cmd.FileName)
-		err := handleAppendIJsonFile(blockId, cmd.FileName, cmd.Data, true)
-		if err != nil {
-			return fmt.Errorf("error appending blockfile(ijson): %w", err)
-		}
-		return nil
-
-	default:
-		return fmt.Errorf("unknown command type %T", cmdGen)
-	}
 }

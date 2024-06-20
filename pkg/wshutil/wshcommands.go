@@ -52,12 +52,21 @@ func CommandTypeUnionMeta() tsgenmeta.TypeUnionMeta {
 	}
 }
 
+type CmdContextType struct {
+	BlockId string
+	TabId   string
+}
+
 type baseCommand struct {
 	Command string `json:"command"`
 }
 
 type BlockCommand interface {
 	GetCommand() string
+}
+
+type BlockControllerCommand interface {
+	GetBlockId() string
 }
 
 type BlockCommandWrapper struct {
@@ -86,6 +95,7 @@ func ParseCmdMap(cmdMap map[string]any) (BlockCommand, error) {
 }
 
 type BlockInputCommand struct {
+	BlockId     string              `json:"blockid"`
 	Command     string              `json:"command" tstype:"\"controller:input\""`
 	InputData64 string              `json:"inputdata64,omitempty"`
 	SigName     string              `json:"signame,omitempty"`
@@ -94,6 +104,10 @@ type BlockInputCommand struct {
 
 func (ic *BlockInputCommand) GetCommand() string {
 	return BlockCommand_Input
+}
+
+func (ic *BlockInputCommand) GetBlockId() string {
+	return ic.BlockId
 }
 
 type ResolveIdsCommand struct {
@@ -164,6 +178,7 @@ func (bwc *BlockAppendIJsonCommand) GetCommand() string {
 
 type CreateBlockCommand struct {
 	Command  string              `json:"command" tstype:"\"createblock\""`
+	TabId    string              `json:"tabid"`
 	BlockDef *wstore.BlockDef    `json:"blockdef"`
 	RtOpts   *wstore.RuntimeOpts `json:"rtopts,omitempty"`
 }
