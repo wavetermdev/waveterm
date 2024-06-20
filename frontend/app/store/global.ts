@@ -76,7 +76,6 @@ const atoms = {
     settingsConfigAtom: settingsConfigAtom,
     tabAtom: tabAtom,
 };
-(window as any).globalAtoms = atoms;
 
 // key is "eventType" or "eventType|oref"
 const eventSubjects = new Map<string, SubjectWithRef<WSEventType>>();
