@@ -45,11 +45,20 @@ export const ClientService = new ClientServiceType()
 
 // fileservice.FileService (file)
 class FileServiceType {
+    AddWidget(arg1: WidgetsConfigType): Promise<void> {
+        return WOS.callBackendService("file", "AddWidget", Array.from(arguments))
+    }
+    GetSettingsConfig(): Promise<any> {
+        return WOS.callBackendService("file", "GetSettingsConfig", Array.from(arguments))
+    }
     GetWaveFile(arg1: string, arg2: string): Promise<any> {
         return WOS.callBackendService("file", "GetWaveFile", Array.from(arguments))
     }
     ReadFile(arg1: string): Promise<FullFile> {
         return WOS.callBackendService("file", "ReadFile", Array.from(arguments))
+    }
+    RemoveWidget(arg1: number): Promise<void> {
+        return WOS.callBackendService("file", "RemoveWidget", Array.from(arguments))
     }
     StatFile(arg1: string): Promise<FileInfo> {
         return WOS.callBackendService("file", "StatFile", Array.from(arguments))

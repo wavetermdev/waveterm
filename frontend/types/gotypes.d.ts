@@ -282,6 +282,12 @@ declare global {
         updates?: WaveObjUpdate[];
     };
 
+    // wconfig.WidgetsConfigType
+    type WidgetsConfigType = {
+        icon: string;
+        blockdef: BlockDef;
+    };
+
     // wstore.WinSize
     type WinSize = {
         width: number;

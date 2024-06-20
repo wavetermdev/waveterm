@@ -4,12 +4,16 @@
 import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
 import { atoms, createBlock } from "@/store/global";
+import * as services from "@/store/services";
 import * as jotai from "jotai";
+import * as React from "react";
 import { CenteredDiv } from "../element/quickelems";
 
 import "./workspace.less";
 
 function Widgets() {
+    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
+    const newWidgetModalVisible = React.useState(false);
     async function clickTerminal() {
         const termBlockDef = {
             controller: "shell",
@@ -18,26 +22,22 @@ function Widgets() {
         createBlock(termBlockDef);
     }
 
-    async function clickPreview(fileName: string) {
-        const markdownDef = {
-            view: "preview",
-            meta: { file: fileName },
-        };
-        createBlock(markdownDef);
-    }
-
-    async function clickPlot() {
-        const plotDef: BlockDef = {
-            view: "plot",
-        };
-        createBlock(plotDef);
-    }
-
     async function clickEdit() {
         const editDef: BlockDef = {
             view: "codeedit",
         };
         createBlock(editDef);
+    }
+    async function handleWidgetSelect(blockDef: BlockDef) {
+        createBlock(blockDef);
+    }
+
+    async function handleCreateWidget(newWidget: WidgetsConfigType) {
+        await services.FileService.AddWidget(newWidget);
+    }
+
+    async function handleRemoveWidget(idx: number) {
+        await services.FileService.RmWidget(idx);
     }
 
     return (
@@ -45,24 +45,14 @@ function Widgets() {
             <div className="widget" onClick={() => clickTerminal()}>
                 <i className="fa fa-solid fa-square-terminal fa-fw" />
             </div>
-            <div className="widget" onClick={() => clickPreview("~/work/wails/thenextwave/README.md")}>
-                <i className="fa fa-solid fa-files fa-fw" />
-            </div>
-            <div className="widget" onClick={() => clickPreview("~/work/wails/thenextwave/go.mod")}>
-                <i className="fa fa-solid fa-files fa-fw" />
-            </div>
-            <div className="widget" onClick={() => clickPreview("~/work/wails/thenextwave/build/appicon.png")}>
-                <i className="fa fa-solid fa-files fa-fw" />
-            </div>
-            <div className="widget" onClick={() => clickPreview("~")}>
-                <i className="fa fa-solid fa-files fa-fw" />
-            </div>
-            <div className="widget" onClick={() => clickPlot()}>
-                <i className="fa fa-solid fa-chart-simple fa-fw" />
-            </div>
             <div className="widget" onClick={() => clickEdit()}>
                 <i className="fa-sharp fa-solid fa-pen-to-square"></i>
             </div>
+            {settingsConfig.widgets.map((data, idx) => (
+                <div className="widget" onClick={() => handleWidgetSelect(data.blockdef)} key={`widget-${idx}`}>
+                    <i className={data.icon}></i>
+                </div>
+            ))}
             <div className="widget no-hover">
                 <i className="fa fa-solid fa-plus fa-fw" />
             </div>

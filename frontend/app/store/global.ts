@@ -56,6 +56,7 @@ const workspaceAtom: jotai.Atom<Workspace> = jotai.atom((get) => {
     }
     return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
 });
+const settingsConfigAtom = jotai.atom(null) as jotai.PrimitiveAtom<SettingsConfigType>;
 const tabAtom: jotai.Atom<Tab> = jotai.atom((get) => {
     const windowData = get(windowDataAtom);
     if (windowData == null) {
@@ -72,6 +73,7 @@ const atoms = {
     client: clientAtom,
     waveWindow: windowDataAtom,
     workspace: workspaceAtom,
+    settingsConfigAtom: settingsConfigAtom,
     tabAtom: tabAtom,
 };
 
@@ -171,6 +173,13 @@ let globalWS: WSControl = null;
 function handleWSEventMessage(msg: WSEventType) {
     if (msg.eventtype == null) {
         console.log("unsupported event", msg);
+        return;
+    }
+    if (msg.eventtype == "config") {
+        const data: WatcherUpdate = msg.data;
+        globalStore.set(settingsConfigAtom, data.update);
+
+        console.log("config", data);
         return;
     }
     if (msg.eventtype == "blockfile") {

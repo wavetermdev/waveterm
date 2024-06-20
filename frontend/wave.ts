@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore, globalWS, initWS } from "@/store/global";
+import { atoms, globalStore, globalWS, initWS } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as React from "react";
@@ -37,6 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", clientId));
     const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", windowId));
     await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
+    globalStore.set(atoms.settingsConfigAtom, await services.FileService.GetSettingsConfig());
     services.ObjectService.SetActiveTab(waveWindow.activetabid); // no need to wait
     const reactElem = React.createElement(App, null, null);
     const elem = document.getElementById("main");

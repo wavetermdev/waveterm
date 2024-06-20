@@ -19,6 +19,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -34,6 +35,10 @@ func doShutdown(reason string) {
 		defer cancelFn()
 		// TODO deal with flush in progress
 		filestore.WFS.FlushCache(ctx)
+		watcher := wconfig.GetWatcher()
+		if watcher != nil {
+			watcher.Close()
+		}
 		time.Sleep(200 * time.Millisecond)
 		os.Exit(0)
 	})
@@ -59,6 +64,13 @@ func stdinReadWatch() {
 			doShutdown(fmt.Sprintf("stdin closed/error (%v)", err))
 			break
 		}
+	}
+}
+
+func configWatcher() {
+	watcher := wconfig.GetWatcher()
+	if watcher != nil {
+		watcher.Start()
 	}
 }
 
@@ -106,6 +118,7 @@ func main() {
 	}
 	installShutdownSignalHandlers()
 	go stdinReadWatch()
+	configWatcher()
 
 	go web.RunWebSocketServer()
 	go func() {

@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 )
 
 const MaxFileSize = 10 * 1024 * 1024 // 10M
@@ -116,4 +117,19 @@ func (fs *FileService) GetWaveFile(id string, path string) (any, error) {
 		return nil, fmt.Errorf("error getting file: %w", err)
 	}
 	return file, nil
+}
+
+func (fs *FileService) GetSettingsConfig() interface{} {
+	watcher := wconfig.GetWatcher()
+	return watcher.GetSettingsConfig()
+}
+
+func (fs *FileService) AddWidget(newWidget wconfig.WidgetsConfigType) error {
+	watcher := wconfig.GetWatcher()
+	return watcher.AddWidget(newWidget)
+}
+
+func (fs *FileService) RemoveWidget(idx uint) error {
+	watcher := wconfig.GetWatcher()
+	return watcher.RmWidget(idx)
 }
