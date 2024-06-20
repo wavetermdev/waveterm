@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -95,6 +96,15 @@ func (svc *WindowService) CloseWindow(ctx context.Context, windowId string) erro
 	err = wstore.DBDelete(ctx, wstore.OType_Window, windowId)
 	if err != nil {
 		return fmt.Errorf("error deleting window: %w", err)
+	}
+	client, err := wstore.DBGetSingleton[*wstore.Client](ctx)
+	if err != nil {
+		return fmt.Errorf("error getting client: %w", err)
+	}
+	utilfn.RemoveElemFromSlice(client.WindowIds, windowId)
+	err = wstore.DBUpdate(ctx, client)
+	if err != nil {
+		return fmt.Errorf("error updating client: %w", err)
 	}
 	return nil
 }

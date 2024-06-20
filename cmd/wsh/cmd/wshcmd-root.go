@@ -41,7 +41,9 @@ var RpcClient *wshutil.WshRpc
 func doShutdown(reason string, exitCode int) {
 	shutdownOnce.Do(func() {
 		defer os.Exit(exitCode)
-		log.Printf("shutting down: %s\r\n", reason)
+		if reason != "" {
+			log.Printf("shutting down: %s\r\n", reason)
+		}
 		if usingHtmlMode {
 			cmd := &wshutil.BlockSetMetaCommand{
 				Command: wshutil.BlockCommand_SetMeta,
@@ -157,6 +159,7 @@ func resolveSimpleId(id string) (string, error) {
 
 // Execute executes the root command.
 func Execute() error {
+	defer doShutdown("", 0)
 	setupRpcClient(nil)
 	return rootCmd.Execute()
 }

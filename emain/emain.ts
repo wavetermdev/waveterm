@@ -519,6 +519,12 @@ async function appMain() {
     let wins: WaveBrowserWindow[] = [];
     for (let windowId of clientData.windowids.slice().reverse()) {
         let windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+        if (windowData == null) {
+            services.WindowService.CloseWindow(windowId).catch((e) => {
+                /* ignore */
+            });
+            continue;
+        }
         const win = createBrowserWindow(clientData, windowData);
         wins.push(win);
     }

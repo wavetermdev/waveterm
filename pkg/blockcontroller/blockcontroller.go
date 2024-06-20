@@ -267,6 +267,8 @@ func (bc *BlockController) waveOSCMessageHandler(ctx context.Context, cmd wshuti
 		return staticHandleGetMeta(ctx, cmd.(*wshutil.BlockGetMetaCommand))
 	case wshutil.Command_ResolveIds:
 		return staticHandleResolveIds(ctx, cmd.(*wshutil.ResolveIdsCommand))
+	case wshutil.Command_CreateBlock:
+		return nil, nil
 	}
 
 	ProcessStaticCommand(bc.BlockId, cmd)

@@ -750,6 +750,16 @@ func SliceIdx[T comparable](arr []T, elem T) int {
 	return -1
 }
 
+func RemoveElemFromSlice[T comparable](arr []T, elem T) []T {
+	rtn := make([]T, 0, len(arr))
+	for _, e := range arr {
+		if e != elem {
+			rtn = append(rtn, e)
+		}
+	}
+	return rtn
+}
+
 func MoveSliceIdxToFront[T any](arr []T, idx int) []T {
 	// create and return a new slice with idx moved to the front
 	if idx == 0 || idx >= len(arr) {

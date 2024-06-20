@@ -11,6 +11,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/ijson"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
+	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
 const CommandKey = "command"
@@ -24,6 +25,7 @@ const (
 	BlockCommand_AppendBlockFile = "blockfile:append"
 	BlockCommand_AppendIJson     = "blockfile:appendijson"
 	Command_ResolveIds           = "resolveids"
+	Command_CreateBlock          = "createblock"
 )
 
 var CommandToTypeMap = map[string]reflect.Type{
@@ -35,6 +37,7 @@ var CommandToTypeMap = map[string]reflect.Type{
 	BlockCommand_AppendBlockFile: reflect.TypeOf(BlockAppendFileCommand{}),
 	BlockCommand_AppendIJson:     reflect.TypeOf(BlockAppendIJsonCommand{}),
 	Command_ResolveIds:           reflect.TypeOf(ResolveIdsCommand{}),
+	Command_CreateBlock:          reflect.TypeOf(CreateBlockCommand{}),
 }
 
 func CommandTypeUnionMeta() tsgenmeta.TypeUnionMeta {
@@ -157,4 +160,14 @@ type BlockAppendIJsonCommand struct {
 
 func (bwc *BlockAppendIJsonCommand) GetCommand() string {
 	return BlockCommand_AppendIJson
+}
+
+type CreateBlockCommand struct {
+	Command  string              `json:"command" tstype:"\"createblock\""`
+	BlockDef *wstore.BlockDef    `json:"blockdef"`
+	RtOpts   *wstore.RuntimeOpts `json:"rtopts,omitempty"`
+}
+
+func (cbc *CreateBlockCommand) GetCommand() string {
+	return Command_CreateBlock
 }
