@@ -5,6 +5,7 @@ import { TabBar } from "@/app/tab/tabbar";
 import { TabContent } from "@/app/tab/tabcontent";
 import { atoms, createBlock } from "@/store/global";
 import * as services from "@/store/services";
+import * as util from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
 import { CenteredDiv } from "../element/quickelems";
@@ -22,9 +23,12 @@ function Widgets() {
         createBlock(termBlockDef);
     }
 
-    async function clickEdit() {
+    async function clickHome() {
         const editDef: BlockDef = {
-            view: "codeedit",
+            view: "preview",
+            meta: {
+                file: "~",
+            },
         };
         createBlock(editDef);
     }
@@ -37,20 +41,35 @@ function Widgets() {
     }
 
     async function handleRemoveWidget(idx: number) {
-        await services.FileService.RmWidget(idx);
+        await services.FileService.RemoveWidget(idx);
     }
 
     return (
         <div className="workspace-widgets">
             <div className="widget" onClick={() => clickTerminal()}>
-                <i className="fa fa-solid fa-square-terminal fa-fw" />
+                <div className="widget-icon">
+                    <i className="fa fa-solid fa-square-terminal fa-fw" />
+                </div>
+                <div className="widget-label">terminal</div>
             </div>
-            <div className="widget" onClick={() => clickEdit()}>
-                <i className="fa-sharp fa-solid fa-pen-to-square"></i>
+            <div className="widget" onClick={() => clickHome()}>
+                <div className="widget-icon">
+                    <i className="fa-sharp fa-solid fa-house"></i>
+                </div>
+                <div className="widget-label">home</div>
             </div>
             {settingsConfig.widgets.map((data, idx) => (
-                <div className="widget" onClick={() => handleWidgetSelect(data.blockdef)} key={`widget-${idx}`}>
-                    <i className={data.icon}></i>
+                <div
+                    className="widget"
+                    style={{ color: data.color }}
+                    onClick={() => handleWidgetSelect(data.blockdef)}
+                    key={`widget-${idx}`}
+                    title={data.description || data.label}
+                >
+                    <div className="widget-icon">
+                        <i className={data.icon}></i>
+                    </div>
+                    {!util.isBlank(data.label) ? <div className="widget-label">{data.label}</div> : null}
                 </div>
             ))}
             <div className="widget no-hover">

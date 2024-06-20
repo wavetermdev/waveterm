@@ -12,8 +12,11 @@ const settingsFile = "settings.json"
 var settingsAbsPath = filepath.Join(configDirAbsPath, settingsFile)
 
 type WidgetsConfigType struct {
-	Icon     string          `json:"icon"`
-	BlockDef wstore.BlockDef `json:"blockdef"`
+	Icon        string          `json:"icon"`
+	Color       string          `json:"color,omitempty"`
+	Label       string          `json:"label,omitempty"`
+	Description string          `json:"description,omitempty"`
+	BlockDef    wstore.BlockDef `json:"blockdef"`
 }
 
 type SettingsConfigType struct {

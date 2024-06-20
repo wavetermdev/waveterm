@@ -31,7 +31,7 @@ declare global {
 
     type BlockCommand = {
         command: string;
-    } & ( BlockSetMetaCommand | BlockGetMetaCommand | BlockMessageCommand | BlockAppendFileCommand | BlockAppendIJsonCommand | ResolveIdsCommand | BlockInputCommand | BlockSetViewCommand );
+    } & ( ResolveIdsCommand | BlockSetViewCommand | BlockSetMetaCommand | BlockGetMetaCommand | BlockMessageCommand | BlockInputCommand | BlockAppendFileCommand | BlockAppendIJsonCommand | CreateBlockCommand );
 
     // wstore.BlockDef
     type BlockDef = {
@@ -86,6 +86,13 @@ declare global {
         mainwindowid: string;
         windowids: string[];
         meta: MetaType;
+    };
+
+    // wshutil.CreateBlockCommand
+    type CreateBlockCommand = {
+        command: "createblock";
+        blockdef: BlockDef;
+        rtopts?: RuntimeOpts;
     };
 
     // wstore.FileDef
@@ -168,6 +175,11 @@ declare global {
         termsize: TermSize;
     };
 
+    // wconfig.SettingsConfigType
+    type SettingsConfigType = {
+        widgets: WidgetsConfigType[];
+    };
+
     // wstore.StickerClickOptsType
     type StickerClickOptsType = {
         sendinput?: string;
@@ -228,6 +240,13 @@ declare global {
         data64: string;
     };
 
+    // wconfig.WatcherUpdate
+    type WatcherUpdate = {
+        file: string;
+        update: SettingsConfigType;
+        error: string;
+    };
+
     // filestore.WaveFile
     type WaveFile = {
         zoneid: string;
@@ -285,6 +304,9 @@ declare global {
     // wconfig.WidgetsConfigType
     type WidgetsConfigType = {
         icon: string;
+        color?: string;
+        label?: string;
+        description?: string;
         blockdef: BlockDef;
     };
 

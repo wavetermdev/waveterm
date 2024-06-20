@@ -18,23 +18,34 @@
     .workspace-widgets {
         display: flex;
         flex-direction: column;
-        width: 40px;
+        width: 50px;
         overflow: hidden;
         background-color: var(--panel-bg-color);
         border-left: 1px solid var(--border-color);
 
         .widget {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             width: 100%;
-            padding: 10px 2px 10px 0;
+            padding: 8px 2px 8px 0;
             color: var(--secondary-text-color);
             font-size: 20px;
+            overflow: hidden;
+
             &:hover:not(.no-hover) {
                 background-color: var(--highlight-bg-color);
                 cursor: pointer;
-                color: white;
+                color: white !important;
+            }
+
+            .widget-icon {
+            }
+
+            .widget-label {
+                font-size: 10px;
+                margin-top: 3px;
             }
         }
     }

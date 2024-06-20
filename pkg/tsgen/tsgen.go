@@ -15,10 +15,32 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
+
+// add extra types to generate here
+var ExtraTypes = []any{
+	waveobj.ORef{},
+	(*waveobj.WaveObj)(nil),
+	map[string]any{},
+	service.WebCallType{},
+	service.WebReturnType{},
+	wstore.UIContext{},
+	eventbus.WSEventType{},
+	eventbus.WSFileEventData{},
+	filestore.WaveFile{},
+	wconfig.SettingsConfigType{},
+	wconfig.WatcherUpdate{},
+}
+
+// add extra type unions to generate here
+var TypeUnions = []tsgenmeta.TypeUnionMeta{
+	wshutil.CommandTypeUnionMeta(),
+	webcmd.WSCommandTypeUnionMeta(),
+}
 
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
 var errorRType = reflect.TypeOf((*error)(nil)).Elem()
@@ -359,17 +381,12 @@ func GenerateServiceClass(serviceName string, serviceObj any, tsTypesMap map[ref
 }
 
 func GenerateWaveObjTypes(tsTypesMap map[reflect.Type]string) {
-	GenerateTSTypeUnion(wshutil.CommandTypeUnionMeta(), tsTypesMap)
-	GenerateTSTypeUnion(webcmd.WSCommandTypeUnionMeta(), tsTypesMap)
-	GenerateTSType(reflect.TypeOf(waveobj.ORef{}), tsTypesMap)
-	GenerateTSType(reflect.TypeOf((*waveobj.WaveObj)(nil)).Elem(), tsTypesMap)
-	GenerateTSType(reflect.TypeOf(map[string]any{}), tsTypesMap)
-	GenerateTSType(reflect.TypeOf(service.WebCallType{}), tsTypesMap)
-	GenerateTSType(reflect.TypeOf(service.WebReturnType{}), tsTypesMap)
-	GenerateTSType(reflect.TypeOf(wstore.UIContext{}), tsTypesMap)
-	GenerateTSType(reflect.TypeOf(eventbus.WSEventType{}), tsTypesMap)
-	GenerateTSType(reflect.TypeOf(eventbus.WSFileEventData{}), tsTypesMap)
-	GenerateTSType(reflect.TypeOf(filestore.WaveFile{}), tsTypesMap)
+	for _, typeUnion := range TypeUnions {
+		GenerateTSTypeUnion(typeUnion, tsTypesMap)
+	}
+	for _, extraType := range ExtraTypes {
+		GenerateTSType(reflect.TypeOf(extraType), tsTypesMap)
+	}
 	for _, rtype := range wstore.AllWaveObjTypes() {
 		GenerateTSType(rtype, tsTypesMap)
 	}
