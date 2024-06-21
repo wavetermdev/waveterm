@@ -56,6 +56,8 @@ const TabBar = ({ workspace }: TabBarProps) => {
         ref: { current: null },
         tabStartX: 0,
         tabIndex: 0,
+        initialOffsetX: null,
+        totalScrollOffset: null,
         dragged: false,
     });
     const osInstanceRef = useRef<OverlayScrollbars>(null);
@@ -240,30 +242,45 @@ const TabBar = ({ workspace }: TabBarProps) => {
     const handleMouseMove = (event: MouseEvent) => {
         const { tabId, ref, tabStartX } = draggingTabDataRef.current;
 
-        let currentX = event.clientX - ref.current.getBoundingClientRect().width / 2;
+        let initialOffsetX = draggingTabDataRef.current.initialOffsetX;
+        let totalScrollOffset = draggingTabDataRef.current.totalScrollOffset;
+        if (initialOffsetX === null) {
+            initialOffsetX = event.clientX - tabStartX;
+            draggingTabDataRef.current.initialOffsetX = initialOffsetX;
+        }
+        let currentX = event.clientX - initialOffsetX - totalScrollOffset;
         let tabBarRectWidth = tabBarRef.current.getBoundingClientRect().width;
         const dragDirection = getDragDirection(currentX);
 
         // Scroll the tab bar if the dragged tab overflows the container bounds
         if (scrollable) {
             const { viewport } = osInstanceRef.current.elements();
-            const { overflowAmount } = osInstanceRef.current.state();
-            const { scrollOffsetElement } = osInstanceRef.current.elements();
+            const currentScrollLeft = viewport.scrollLeft;
 
             if (event.clientX <= 0) {
-                viewport.scrollLeft = 0;
+                viewport.scrollLeft = Math.max(0, currentScrollLeft - 5); // Scroll left
+                if (viewport.scrollLeft !== currentScrollLeft) {
+                    // Only adjust if the scroll actually changed
+                    draggingTabDataRef.current.totalScrollOffset += currentScrollLeft - viewport.scrollLeft;
+                }
             } else if (event.clientX >= tabBarRectWidth) {
-                viewport.scrollLeft = tabBarRectWidth;
-            }
-
-            if (scrollOffsetElement.scrollLeft > 0) {
-                currentX += overflowAmount.x;
+                viewport.scrollLeft = Math.min(viewport.scrollWidth, currentScrollLeft + 5); // Scroll right
+                if (viewport.scrollLeft !== currentScrollLeft) {
+                    // Only adjust if the scroll actually changed
+                    draggingTabDataRef.current.totalScrollOffset -= viewport.scrollLeft - currentScrollLeft;
+                }
             }
         }
 
+        // Re-calculate currentX after potential scroll adjustment
+        initialOffsetX = draggingTabDataRef.current.initialOffsetX;
+        totalScrollOffset = draggingTabDataRef.current.totalScrollOffset;
+        currentX = event.clientX - initialOffsetX - totalScrollOffset;
+
+        setDraggingTab((prev) => (prev !== tabId ? tabId : prev));
+
         // Check if the tab has moved 5 pixels
-        if (Math.abs(currentX - tabStartX) >= 5) {
-            setDraggingTab((prev) => (prev !== tabId ? tabId : prev));
+        if (Math.abs(currentX - tabStartX) >= 50) {
             draggingTabDataRef.current.dragged = true;
         }
 
@@ -345,6 +362,14 @@ const TabBar = ({ workspace }: TabBarProps) => {
                 // Update workspace tab ids
                 services.ObjectService.UpdateWorkspaceTabIds(workspace.oid, tabIds);
             }, 300);
+        } else {
+            // Reset styles
+            tabRefs.current.forEach((ref) => {
+                ref.current.style.zIndex = "0";
+                ref.current.classList.remove("animate");
+            });
+            // Reset dragging state
+            setDraggingTab(null);
         }
 
         document.removeEventListener("mouseup", handleMouseUp);
@@ -353,7 +378,9 @@ const TabBar = ({ workspace }: TabBarProps) => {
     };
 
     const handleDragStart = useCallback(
-        (name: string, ref: React.RefObject<HTMLDivElement>) => {
+        (event: React.MouseEvent<HTMLDivElement, MouseEvent>, name: string, ref: React.RefObject<HTMLDivElement>) => {
+            if (event.button !== 0) return;
+
             const tabIndex = tabIds.indexOf(name);
             const tabStartX = dragStartPositions[tabIndex]; // Starting X position of the tab
 
@@ -363,6 +390,8 @@ const TabBar = ({ workspace }: TabBarProps) => {
                     ref,
                     tabStartX,
                     tabIndex,
+                    initialOffsetX: null,
+                    totalScrollOffset: 0,
                     dragged: false,
                 };
 
@@ -428,7 +457,7 @@ const TabBar = ({ workspace }: TabBarProps) => {
                             id={tabId}
                             onSelect={() => handleSelectTab(tabId)}
                             active={activetabid === tabId}
-                            onDragStart={() => handleDragStart(tabId, tabRefs.current[index])}
+                            onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
                             onClose={() => handleCloseTab(tabId)}
                             onLoaded={() => handleTabLoaded(tabId)}
                             isBeforeActive={isBeforeActive(tabId)}

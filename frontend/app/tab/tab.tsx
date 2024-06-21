@@ -15,7 +15,7 @@ interface TabProps {
     isDragging: boolean;
     onSelect: () => void;
     onClose: () => void;
-    onDragStart: () => void;
+    onDragStart: (event: MouseEvent) => void;
     onLoaded: () => void;
 }
 
