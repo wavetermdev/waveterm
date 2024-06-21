@@ -108,6 +108,19 @@ function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
     return <CenteredDiv>Preview Not Supported</CenteredDiv>;
 }
 
+function CodeEditPreview({
+    contentAtom,
+    filename,
+    readonly,
+}: {
+    contentAtom: jotai.Atom<Promise<string>>;
+    filename: string;
+    readonly: boolean;
+}) {
+    const fileContent = jotai.useAtomValue(contentAtom);
+    return <CodeEdit readonly={true} text={fileContent} filename={filename} />;
+}
+
 function PreviewView({ blockId }: { blockId: string }) {
     const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
     const fileNameAtom: jotai.WritableAtom<string, [string], void> = useBlockCache(blockId, "preview:filename", () =>
@@ -161,7 +174,6 @@ function PreviewView({ blockId }: { blockId: string }) {
     }
     let fileName = jotai.useAtomValue(fileNameAtom);
     const fileInfo = jotai.useAtomValue(statFileAtom);
-    const fileContent = jotai.useAtomValue(fileContentAtom);
 
     // handle streaming files here
     let specializedView: React.ReactNode;
@@ -197,7 +209,7 @@ function PreviewView({ blockId }: { blockId: string }) {
             (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
     ) {
         blockIcon = "file-code";
-        specializedView = specializedView = <CodeEdit readonly={true} text={fileContent} filename={fileName} />;
+        specializedView = <CodeEditPreview readonly={true} contentAtom={fileContentAtom} filename={fileName} />;
     } else if (mimeType === "directory") {
         blockIcon = "folder";
         if (fileName == "~" || fileName == "~/") {
