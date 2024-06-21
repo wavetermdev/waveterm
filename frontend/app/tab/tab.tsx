@@ -4,7 +4,7 @@
 import { Button } from "@/element/button";
 import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 import "./tab.less";
 
@@ -16,12 +16,22 @@ interface TabProps {
     onSelect: () => void;
     onClose: () => void;
     onDragStart: () => void;
+    onLoaded: () => void;
 }
 
 const Tab = React.forwardRef<HTMLDivElement, TabProps>(
-    ({ id, active, isBeforeActive, isDragging, onSelect, onClose, onDragStart }, ref) => {
+    ({ id, active, isBeforeActive, isDragging, onLoaded, onSelect, onClose, onDragStart }, ref) => {
         const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", id));
         const name = tabData?.name ?? "...";
+
+        const loadedRef = useRef(false);
+
+        useEffect(() => {
+            if (!loadedRef.current) {
+                onLoaded();
+                loadedRef.current = true;
+            }
+        }, [onLoaded]);
 
         return (
             <div

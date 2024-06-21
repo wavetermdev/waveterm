@@ -31,7 +31,7 @@ declare global {
 
     type BlockCommand = {
         command: string;
-    } & ( ResolveIdsCommand | BlockSetViewCommand | BlockSetMetaCommand | BlockGetMetaCommand | BlockMessageCommand | BlockInputCommand | BlockAppendFileCommand | BlockAppendIJsonCommand | CreateBlockCommand );
+	} & ( ResolveIdsCommand | BlockSetViewCommand | BlockSetMetaCommand | BlockGetMetaCommand | BlockMessageCommand | BlockInputCommand | BlockAppendFileCommand | BlockAppendIJsonCommand | CreateBlockCommand );
 
     // wstore.BlockDef
     type BlockDef = {

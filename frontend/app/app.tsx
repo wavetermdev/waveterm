@@ -9,8 +9,10 @@ import { Provider } from "jotai";
 
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import "./app.less";
 import { CenteredDiv } from "./element/quickelems";
+
+import "overlayscrollbars/overlayscrollbars.css";
+import "./app.less";
 
 const App = () => {
     return (

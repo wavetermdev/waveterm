@@ -10,7 +10,6 @@
         position: relative; // Needed for absolute positioning of child tabs
         min-height: 34px; // Adjust as necessary to fit the height of tabs
         width: calc(100vw - 36px); // 36 is the width of add tab button
-        overflow: hidden;
     }
 
     .add-tab-btn {
@@ -20,13 +19,24 @@
         position: absolute;
         top: 50%;
         transform: translateY(-50%); // overridden in js
-        border-radius: 100%;
         font-size: 14px;
         text-align: center;
-        height: 32px;
         user-select: none;
         display: flex;
         align-items: center;
         justify-content: center;
+        background-color: var(--main-bg-color);
+    }
+
+    // Customize scrollbar styles
+    .os-theme-dark,
+    .os-theme-light {
+        box-sizing: border-box;
+        --os-size: 3px;
+        --os-padding-perpendicular: 0px;
+        --os-padding-axis: 0px;
+        --os-track-border-radius: 3px;
+        --os-handle-interactive-area-offset: 0px;
+        --os-handle-border-radius: 3px;
     }
 }

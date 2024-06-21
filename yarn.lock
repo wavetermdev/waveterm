@@ -10322,6 +10322,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"overlayscrollbars@npm:^2.8.3":
+  version: 2.8.3
+  resolution: "overlayscrollbars@npm:2.8.3"
+  checksum: 10c0/1f0713e981ce27e0cd9261a6a0acfe080bd44c21c9f6cbb9c3df582c155d11a0c949553d7ea4e01a107d784d527c5cf3465ab6979affca9e430d450968b763f6
+  languageName: node
+  linkType: hard
+
 "p-cancelable@npm:^2.0.0":
   version: 2.1.1
   resolution: "p-cancelable@npm:2.1.1"
@@ -12303,6 +12310,7 @@ __metadata:
     jotai: "npm:^2.8.0"
     less: "npm:^4.2.0"
     monaco-editor: "npm:^0.49.0"
+    overlayscrollbars: "npm:^2.8.3"
     prettier: "npm:^3.2.5"
     prettier-plugin-jsdoc: "npm:^1.3.0"
     prettier-plugin-organize-imports: "npm:^3.2.4"
