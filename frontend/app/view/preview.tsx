@@ -121,6 +121,33 @@ function CodeEditPreview({
     return <CodeEdit readonly={true} text={fileContent} filename={filename} />;
 }
 
+function iconForFile(mimeType: string, fileName: string): string {
+    if (mimeType == "application/pdf") {
+        return "file-pdf";
+    } else if (mimeType.startsWith("image/")) {
+        return "image";
+    } else if (mimeType.startsWith("video/")) {
+        return "film";
+    } else if (mimeType.startsWith("audio/")) {
+        return "headphones";
+    } else if (mimeType.startsWith("text/markdown")) {
+        return "file-lines";
+    } else if (
+        mimeType.startsWith("text/") ||
+        (mimeType.startsWith("application/") &&
+            (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
+    ) {
+        return "file-code";
+    } else if (mimeType === "directory") {
+        if (fileName == "~" || fileName == "~/") {
+            return "home";
+        }
+        return "folder";
+    } else {
+        return "file";
+    }
+}
+
 function PreviewView({ blockId }: { blockId: string }) {
     const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
     const fileNameAtom: jotai.WritableAtom<string, [string], void> = useBlockCache(blockId, "preview:filename", () =>
@@ -177,22 +204,13 @@ function PreviewView({ blockId }: { blockId: string }) {
 
     // handle streaming files here
     let specializedView: React.ReactNode;
-    let blockIcon = "file";
+    let blockIcon = iconForFile(mimeType, fileName);
     if (
         mimeType == "application/pdf" ||
         mimeType.startsWith("video/") ||
         mimeType.startsWith("audio/") ||
         mimeType.startsWith("image/")
     ) {
-        if (mimeType == "application/pdf") {
-            blockIcon = "file-pdf";
-        } else if (mimeType.startsWith("image/")) {
-            blockIcon = "image";
-        } else if (mimeType.startsWith("video/")) {
-            blockIcon = "film";
-        } else if (mimeType.startsWith("audio/")) {
-            blockIcon = "headphones";
-        }
         specializedView = <StreamingPreview fileInfo={fileInfo} />;
     } else if (fileInfo == null) {
         specializedView = (
@@ -201,20 +219,14 @@ function PreviewView({ blockId }: { blockId: string }) {
     } else if (fileInfo.size > MaxFileSize) {
         specializedView = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
     } else if (mimeType === "text/markdown") {
-        blockIcon = "file-lines";
         specializedView = <MarkdownPreview contentAtom={fileContentAtom} />;
     } else if (
         mimeType.startsWith("text/") ||
         (mimeType.startsWith("application/") &&
             (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
     ) {
-        blockIcon = "file-code";
         specializedView = <CodeEditPreview readonly={true} contentAtom={fileContentAtom} filename={fileName} />;
     } else if (mimeType === "directory") {
-        blockIcon = "folder";
-        if (fileName == "~" || fileName == "~/") {
-            blockIcon = "home";
-        }
         specializedView = <DirectoryPreview contentAtom={fileContentAtom} fileNameAtom={fileNameAtom} />;
     } else {
         specializedView = (
