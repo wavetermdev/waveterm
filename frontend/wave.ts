@@ -25,14 +25,7 @@ initWS();
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
 
-function matchViewportSize() {
-    document.body.style.width = window.visualViewport.width + "px";
-    document.body.style.height = window.visualViewport.height + "px";
-}
-
 document.title = `The Next Wave (${windowId.substring(0, 8)})`;
-
-matchViewportSize();
 
 document.addEventListener("DOMContentLoaded", async () => {
     console.log("DOMContentLoaded");
@@ -49,6 +42,4 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log("Wave First Render");
         root.render(reactElem);
     });
-    const viewport = window.visualViewport;
-    viewport.addEventListener("resize", matchViewportSize);
 });
