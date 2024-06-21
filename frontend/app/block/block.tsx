@@ -42,7 +42,6 @@ function processTitleString(titleString: string): React.ReactNode[] {
         lastPart.push(before);
         lastIdx = match.index + match[0].length;
         const [_, isClosing, tagName, tagParam] = match;
-        console.log("match", match);
         if (tagName == "icon" && !isClosing) {
             if (tagParam == null) {
                 continue;
@@ -92,13 +91,12 @@ function processTitleString(titleString: string): React.ReactNode[] {
     return partsStack[0];
 }
 
-function getBlockHeaderText(blockData: Block): React.ReactNode {
+function getBlockHeaderText(blockIcon: string, blockData: Block): React.ReactNode {
     if (!blockData) {
         return "no block data";
     }
-    let blockIcon: React.ReactNode = null;
-    if (!util.isBlank(blockData?.meta?.["icon"])) {
-        const iconName = blockData.meta.icon;
+    let blockIconElem: React.ReactNode = null;
+    if (!util.isBlank(blockIcon)) {
         let iconColor = blockData.meta["icon:color"];
         if (iconColor && !iconColor.match(colorRegex)) {
             iconColor = null;
@@ -107,23 +105,25 @@ function getBlockHeaderText(blockData: Block): React.ReactNode {
         if (!util.isBlank(iconColor)) {
             iconStyle = { color: iconColor };
         }
-        if (iconName.match(/^[a-z0-9-]+$/)) {
-            blockIcon = <i style={iconStyle} className={`block-frame-icon fa fa-solid fa-${blockData.meta.icon}`} />;
+        if (blockIcon.match(/^[a-z0-9-]+$/)) {
+            blockIconElem = (
+                <i key="icon" style={iconStyle} className={`block-frame-icon fa fa-solid fa-${blockIcon}`} />
+            );
         }
     }
     if (!util.isBlank(blockData?.meta?.title)) {
         try {
             const rtn = processTitleString(blockData.meta.title) ?? [];
-            if (blockIcon) {
-                rtn.unshift(blockIcon);
+            if (blockIconElem) {
+                rtn.unshift(blockIconElem);
             }
             return rtn;
         } catch (e) {
             console.error("error processing title", blockData.meta.title, e);
-            return [blockIcon, blockData.meta.title];
+            return [blockIconElem, blockData.meta.title];
         }
     }
-    return [blockIcon, `${blockData?.view} [${blockData.oid.substring(0, 8)}]`];
+    return [blockIconElem, `${blockData?.view} [${blockData.oid.substring(0, 8)}]`];
 }
 
 interface FramelessBlockHeaderProps {
@@ -137,7 +137,7 @@ const FramelessBlockHeader = ({ blockId, onClose, dragHandleRef }: FramelessBloc
 
     return (
         <div key="header" className="block-header" ref={dragHandleRef}>
-            <div className="block-header-text text-fixed">{getBlockHeaderText(blockData)}</div>
+            <div className="block-header-text text-fixed">{getBlockHeaderText(null, blockData)}</div>
             {onClose && (
                 <div className="close-button" onClick={onClose}>
                     <i className="fa fa-solid fa-xmark-large" />
@@ -178,6 +178,8 @@ const BlockFrame_Tech = ({
         });
     });
     let isFocused = jotai.useAtomValue(isFocusedAtom);
+    const blockIcon = useBlockIcon(blockId);
+
     if (preview) {
         isFocused = true;
     }
@@ -209,7 +211,7 @@ const BlockFrame_Tech = ({
             style={style}
         >
             <div className="block-frame-tech-header" ref={dragHandleRef} onContextMenu={handleContextMenu}>
-                {getBlockHeaderText(blockData)}
+                {getBlockHeaderText(blockIcon, blockData)}
             </div>
             <div className={clsx("block-frame-tech-close")} onClick={onClose}>
                 <i className="fa fa-solid fa-xmark fa-fw" />
@@ -314,6 +316,42 @@ const BlockFrame = (props: BlockFrameProps) => {
     }
     return <FrameElem {...props} />;
 };
+
+function blockViewToIcon(view: string): string {
+    console.log("blockViewToIcon", view);
+    if (view == "term") {
+        return "square-terminal";
+    }
+    if (view == "preview") {
+        return "file";
+    }
+    return null;
+}
+
+function useBlockIcon(blockId: string): string {
+    const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
+        return jotai.atom<string>(null);
+    });
+    const blockIconAtom = useBlockAtom<string>(blockId, "blockicon", () => {
+        return jotai.atom((get) => {
+            console.log("atom-blockicon", blockId);
+            const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
+            const blockData = get(blockAtom);
+            const metaIcon = blockData?.meta?.icon;
+            if (!util.isBlank(metaIcon)) {
+                console.log("atom-blockicon-meta", metaIcon);
+                return metaIcon;
+            }
+            const overrideVal = get(blockIconOverrideAtom);
+            if (overrideVal != null) {
+                return overrideVal;
+            }
+            return blockViewToIcon(blockData?.view);
+        });
+    });
+    const blockIcon = jotai.useAtomValue(blockIconAtom);
+    return blockIcon;
+}
 
 const Block = ({ blockId, onClose, dragHandleRef }: BlockProps) => {
     let blockElem: JSX.Element = null;

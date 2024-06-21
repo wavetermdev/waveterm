@@ -53,7 +53,6 @@ func parseMetaSets(metaSets []string) (map[string]interface{}, error) {
 				meta[fields[0]] = setVal
 			}
 		}
-		meta[fields[0]] = fields[1]
 	}
 	return meta, nil
 }

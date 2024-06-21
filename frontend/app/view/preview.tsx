@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Markdown } from "@/element/markdown";
-import { getBackendHostPort, useBlockAtom, useBlockCache } from "@/store/global";
+import { getBackendHostPort, globalStore, useBlockAtom, useBlockCache } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
@@ -165,12 +165,16 @@ function PreviewView({ blockId }: { blockId: string }) {
 
     // handle streaming files here
     let specializedView: React.ReactNode;
+    let blockIcon = "file";
     if (
         mimeType == "application/pdf" ||
         mimeType.startsWith("video/") ||
         mimeType.startsWith("audio/") ||
         mimeType.startsWith("image/")
     ) {
+        if (mimeType.startsWith("image/")) {
+            blockIcon = "image";
+        }
         specializedView = <StreamingPreview fileInfo={fileInfo} />;
     } else if (fileInfo == null) {
         specializedView = (
@@ -179,14 +183,20 @@ function PreviewView({ blockId }: { blockId: string }) {
     } else if (fileInfo.size > MaxFileSize) {
         specializedView = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
     } else if (mimeType === "text/markdown") {
+        blockIcon = "file-lines";
         specializedView = <MarkdownPreview contentAtom={fileContentAtom} />;
     } else if (
         mimeType.startsWith("text/") ||
         (mimeType.startsWith("application/") &&
             (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
     ) {
+        blockIcon = "file-code";
         specializedView = specializedView = <CodeEdit readonly={true} text={fileContent} filename={fileName} />;
     } else if (mimeType === "directory") {
+        blockIcon = "folder";
+        if (fileName == "~" || fileName == "~/") {
+            blockIcon = "home";
+        }
         specializedView = <DirectoryPreview contentAtom={fileContentAtom} fileNameAtom={fileNameAtom} />;
     } else {
         specializedView = (
@@ -195,6 +205,12 @@ function PreviewView({ blockId }: { blockId: string }) {
             </div>
         );
     }
+    setTimeout(() => {
+        const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
+            return jotai.atom<string>(null);
+        });
+        globalStore.set(blockIconOverrideAtom, blockIcon);
+    }, 10);
 
     return (
         <div className="full-preview">
