@@ -10,6 +10,7 @@ import { CenteredDiv } from "@/element/quickelems";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { atoms, setBlockFocus, useBlockAtom } from "@/store/global";
 import * as WOS from "@/store/wos";
+import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -24,10 +25,78 @@ interface BlockProps {
     onClose?: () => void;
     dragHandleRef?: React.RefObject<HTMLDivElement>;
 }
+function processTextString(iconString: string): React.ReactNode {
+    if (iconString == null) {
+        return null;
+    }
+    const tagRegex = /<(\/)?([a-z]+)(?::([#a-z0-9-]+))?>/g;
+    let lastIdx = 0;
+    let match;
+    let partsStack = [[]];
+    while ((match = tagRegex.exec(iconString)) != null) {
+        const lastPart = partsStack[partsStack.length - 1];
+        const before = iconString.substring(lastIdx, match.index);
+        lastPart.push(before);
+        lastIdx = match.index + match[0].length;
+        const [_, isClosing, tagName, tagParam] = match;
+        console.log("match", match);
+        if (tagName == "icon" && !isClosing) {
+            if (tagParam == null) {
+                continue;
+            }
+            if (!tagParam.match(/^[a-z0-9-]+$/)) {
+                continue;
+            }
+            lastPart.push(<i key={match.index} className={`fa fa-solid fa-${tagParam}`} />);
+            continue;
+        }
+        if (tagName == "c" || tagName == "color") {
+            if (tagParam == null) {
+                continue;
+            }
+            if (isClosing) {
+                if (partsStack.length <= 1) {
+                    continue;
+                }
+                partsStack.pop();
+                continue;
+            }
+            let children = [];
+            const rtag = React.createElement("span", { key: match.index, style: { color: tagParam } }, children);
+            lastPart.push(rtag);
+            partsStack.push(children);
+            continue;
+        }
+        if (tagName == "i" || tagName == "b") {
+            if (isClosing) {
+                if (partsStack.length <= 1) {
+                    continue;
+                }
+                partsStack.pop();
+                continue;
+            }
+            let children = [];
+            const rtag = React.createElement(tagName, { key: match.index }, children);
+            lastPart.push(rtag);
+            partsStack.push(children);
+            continue;
+        }
+    }
+    partsStack[partsStack.length - 1].push(iconString.substring(lastIdx));
+    return partsStack[0];
+}
 
-function getBlockHeaderText(blockData: Block): string {
+function getBlockHeaderText(blockData: Block): React.ReactNode {
     if (!blockData) {
         return "no block data";
+    }
+    if (!util.isBlank(blockData?.meta?.title)) {
+        try {
+            return processTextString(blockData.meta.title);
+        } catch (e) {
+            console.error("error processing title", blockData.meta.title, e);
+            return blockData.meta.title;
+        }
     }
     return `${blockData?.view} [${blockData.oid.substring(0, 8)}]`;
 }
@@ -95,6 +164,13 @@ const BlockFrame_Tech = ({
         });
         ContextMenuModel.showContextMenu(menu, e);
     }
+    let style: React.CSSProperties = {};
+    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
+        style.borderColor = blockData.meta["frame:bordercolor"];
+    }
+    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
+        style.borderColor = blockData.meta["frame:bordercolor:focused"];
+    }
     return (
         <div
             className={clsx(
@@ -105,6 +181,7 @@ const BlockFrame_Tech = ({
             )}
             onClick={onClick}
             ref={blockRef}
+            style={style}
         >
             <div className="block-frame-tech-header" ref={dragHandleRef} onContextMenu={handleContextMenu}>
                 {getBlockHeaderText(blockData)}

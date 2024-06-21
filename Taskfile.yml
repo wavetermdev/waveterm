@@ -23,12 +23,14 @@ tasks:
             - WAVETERM_DEV=1 yarn dev
         deps:
             - build:server
+            - build:wsh
 
     electron:start:
         cmds:
             - WAVETERM_DEV=1 yarn start
         deps:
             - build:server
+            - build:wsh
 
     build:server:
         cmds:
@@ -38,6 +40,17 @@ tasks:
             - "pkg/**/*.go"
         generates:
             - dist/bin/wavesrv{{exeExt}}
+        deps:
+            - go:mod:tidy
+
+    build:wsh:
+        cmds:
+            - go build -o dist/bin/wsh{{exeExt}} cmd/wsh/main-wsh.go
+        sources:
+            - "cmd/wsh/**/*.go"
+            - "pkg/**/*.go"
+        generates:
+            - dist/bin/wsh{{exeExt}}
         deps:
             - go:mod:tidy
 

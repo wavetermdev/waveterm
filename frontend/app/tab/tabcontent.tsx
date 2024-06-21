@@ -60,6 +60,10 @@ const TabContent = ({ tabId }: { tabId: string }) => {
         );
     }
 
+    if (tabData?.blockids?.length == 0) {
+        return <div className="tabcontent tabcontent-empty"></div>;
+    }
+
     return (
         <div className="tabcontent">
             <TileLayout

@@ -164,6 +164,10 @@ func handleWaveFile(w http.ResponseWriter, r *http.Request) {
 
 func handleStreamFile(w http.ResponseWriter, r *http.Request) {
 	fileName := r.URL.Query().Get("path")
+	if fileName == "" {
+		http.Error(w, "path is required", http.StatusBadRequest)
+		return
+	}
 	fileName = wavebase.ExpandHomeDir(fileName)
 	http.ServeFile(w, r, fileName)
 }
