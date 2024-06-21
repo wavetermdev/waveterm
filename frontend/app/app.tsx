@@ -16,6 +16,7 @@ import { CenteredDiv } from "./element/quickelems";
 
 import "overlayscrollbars/overlayscrollbars.css";
 import "./app.less";
+import "./term.less";
 
 const App = () => {
     let Provider = jotai.Provider;
