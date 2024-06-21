@@ -64,6 +64,7 @@ const TabContent = ({ tabId }: { tabId: string }) => {
         <div className="tabcontent">
             <TileLayout
                 key={tabId}
+                tabId={tabId}
                 renderContent={renderBlock}
                 renderPreview={renderPreview}
                 layoutTreeStateAtom={layoutStateAtom}

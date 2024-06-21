@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as keyutil from "@/util/keyutil";
 import * as electron from "electron";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -37,6 +38,7 @@ let unameArch: string = process.arch;
 if (unameArch == "x64") {
     unameArch = "amd64";
 }
+keyutil.setKeyUtilPlatform(unamePlatform);
 
 function getBaseHostPort(): string {
     if (isDev) {
@@ -384,6 +386,10 @@ electron.ipcMain.on("isDev", (event) => {
 
 electron.ipcMain.on("isDevServer", (event) => {
     event.returnValue = isDevServer;
+});
+
+electron.ipcMain.on("getPlatform", (event) => {
+    event.returnValue = unamePlatform;
 });
 
 electron.ipcMain.on("getCursorPoint", (event) => {

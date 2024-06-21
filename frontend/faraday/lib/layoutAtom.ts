@@ -14,6 +14,9 @@ import {
     WritableLayoutTreeStateAtom,
 } from "./model.js";
 
+// map from tabId => layout transforms (sizes and positions of the nodes)
+let globalLayoutTransformsMap = new Map<string, Record<string, React.CSSProperties>>();
+
 /**
  * Creates a new layout tree state wrapped as an atom.
  * @param rootNode The root node for the tree.
@@ -126,3 +129,5 @@ export function deleteLayoutStateAtomForTab(tabId: string) {
         tabLayoutAtomCache.delete(tabId);
     }
 }
+
+export { globalLayoutTransformsMap };

@@ -8,10 +8,9 @@ import { TerminalView } from "@/app/view/term/term";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { atoms, globalStore, useBlockAtom } from "@/store/global";
+import { atoms, setBlockFocus, useBlockAtom } from "@/store/global";
 import * as WOS from "@/store/wos";
 import clsx from "clsx";
-import { produce } from "immer";
 import * as jotai from "jotai";
 import * as React from "react";
 
@@ -207,17 +206,6 @@ const BlockFrame = (props: BlockFrameProps) => {
     }
     return <BlockFrame_Tech {...props} />;
 };
-
-function setBlockFocus(blockId: string) {
-    let winData = globalStore.get(atoms.waveWindow);
-    if (winData.activeblockid === blockId) {
-        return;
-    }
-    winData = produce(winData, (draft) => {
-        draft.activeblockid = blockId;
-    });
-    WOS.setObjectValue(winData, globalStore.set, true);
-}
 
 const Block = ({ blockId, onClose, dragHandleRef }: BlockProps) => {
     let blockElem: JSX.Element = null;

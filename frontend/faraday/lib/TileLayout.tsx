@@ -19,7 +19,7 @@ import React, {
 import { DropTargetMonitor, useDrag, useDragLayer, useDrop } from "react-dnd";
 import { debounce, throttle } from "throttle-debounce";
 import { useDevicePixelRatio } from "use-device-pixel-ratio";
-import { useLayoutTreeStateReducerAtom } from "./layoutAtom";
+import { globalLayoutTransformsMap, useLayoutTreeStateReducerAtom } from "./layoutAtom";
 import { findNode } from "./layoutNode";
 import {
     ContentRenderer,
@@ -61,6 +61,11 @@ export interface TileLayoutProps<T> {
     className?: string;
 
     /**
+     * tabId this TileLayout is associated with
+     */
+    tabId: string;
+
+    /**
      * A callback for getting the cursor point in reference to the current window. This removes Electron as a runtime dependency, allowing for better integration with Storybook.
      * @returns The cursor position relative to the current window.
      */
@@ -72,6 +77,7 @@ const DragPreviewHeight = 300;
 
 export const TileLayout = <T,>({
     layoutTreeStateAtom,
+    tabId,
     className,
     renderContent,
     renderPreview,
@@ -117,7 +123,12 @@ export const TileLayout = <T,>({
         [nodeRefs, setNodeRefs]
     );
     const [overlayTransform, setOverlayTransform] = useState<CSSProperties>();
-    const [layoutLeafTransforms, setLayoutLeafTransforms] = useState<Record<string, CSSProperties>>({});
+    const [layoutLeafTransforms, setLayoutLeafTransformsRaw] = useState<Record<string, CSSProperties>>({});
+
+    const setLayoutLeafTransforms = (transforms: Record<string, CSSProperties>) => {
+        globalLayoutTransformsMap.set(tabId, transforms);
+        setLayoutLeafTransformsRaw(transforms);
+    };
 
     const { activeDrag, dragClientOffset } = useDragLayer((monitor) => ({
         activeDrag: monitor.isDragging(),

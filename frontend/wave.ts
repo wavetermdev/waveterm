@@ -1,9 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, globalStore, globalWS, initWS } from "@/store/global";
+import { atoms, getApi, globalStore, globalWS, initWS } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
+import * as keyutil from "@/util/keyutil";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/app";
@@ -15,6 +16,8 @@ let clientId = urlParams.get("clientid");
 
 console.log("Wave Starting");
 console.log("clientid", clientId, "windowid", windowId);
+
+keyutil.setKeyUtilPlatform(getApi().getPlatform());
 
 loadFonts();
 initWS();

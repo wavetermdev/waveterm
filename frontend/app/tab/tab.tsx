@@ -1,4 +1,5 @@
 import { Button } from "@/element/button";
+import { ContextMenuModel } from "@/store/contextmenu";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
@@ -12,7 +13,7 @@ interface TabProps {
     isBeforeActive: boolean;
     isDragging: boolean;
     onSelect: () => void;
-    onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+    onClose: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
 }
@@ -41,8 +42,10 @@ const Tab = forwardRef<HTMLDivElement, TabProps>(
             };
         }, []);
 
-        const handleDoubleClick = (event) => {
-            event.stopPropagation();
+        const handleDoubleClick = (event?: React.MouseEvent<any, any>) => {
+            if (event != null) {
+                event.stopPropagation();
+            }
             setIsEditable(true);
             editableTimeoutRef.current = setTimeout(() => {
                 if (editableRef.current) {
@@ -102,12 +105,33 @@ const Tab = forwardRef<HTMLDivElement, TabProps>(
             event.stopPropagation();
         };
 
+        function handleContextMenu(e: React.MouseEvent<HTMLElement>) {
+            let menu: ContextMenuItem[] = [];
+            menu.push({
+                label: "Edit Name",
+                click: () => {
+                    handleDoubleClick(null);
+                },
+            });
+            menu.push({
+                type: "separator",
+            });
+            menu.push({
+                label: "Close",
+                click: () => {
+                    onClose(e);
+                },
+            });
+            ContextMenuModel.showContextMenu(menu, e);
+        }
+
         return (
             <div
                 ref={ref}
                 className={clsx("tab", { active, isDragging, "before-active": isBeforeActive })}
                 onMouseDown={onDragStart}
                 onClick={onSelect}
+                onContextMenu={handleContextMenu}
                 data-tab-id={id}
             >
                 <div

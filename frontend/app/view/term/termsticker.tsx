@@ -98,7 +98,11 @@ function TermSticker({ sticker, config }: { sticker: StickerType; config: Sticke
             console.log("clickHandler", sticker.clickcmd, sticker.clickblockdef);
             if (sticker.clickcmd) {
                 const b64data = btoa(sticker.clickcmd);
-                const inputCmd: BlockInputCommand = { command: "controller:input", inputdata64: b64data };
+                const inputCmd: BlockInputCommand = {
+                    command: "controller:input",
+                    inputdata64: b64data,
+                    blockid: config.blockId,
+                };
                 services.BlockService.SendCommand(config.blockId, inputCmd);
             }
             if (sticker.clickblockdef) {

@@ -188,7 +188,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             return false;
         }
         const b64data = btoa(asciiVal);
-        const inputCmd: BlockInputCommand = { command: "controller:input", inputdata64: b64data };
+        const inputCmd: BlockInputCommand = { command: "controller:input", inputdata64: b64data, blockid: blockId };
         services.BlockService.SendCommand(blockId, inputCmd);
         return true;
     };

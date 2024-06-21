@@ -6,6 +6,7 @@ let { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("api", {
     isDev: () => ipcRenderer.sendSync("isDev"),
     isDevServer: () => ipcRenderer.sendSync("isDevServer"),
+    getPlatform: () => ipcRenderer.sendSync("getPlatform"),
     getCursorPoint: () => ipcRenderer.sendSync("getCursorPoint"),
     openNewWindow: () => ipcRenderer.send("openNewWindow"),
     contextEditMenu: (position, opts) => ipcRenderer.send("context-editmenu", position, opts),

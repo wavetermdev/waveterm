@@ -5,6 +5,7 @@ import { LayoutTreeActionType, LayoutTreeInsertNodeAction, newLayoutNode } from 
 import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { layoutTreeStateReducer } from "@/faraday/lib/layoutState";
 
+import { produce } from "immer";
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
 import * as services from "./services";
@@ -64,6 +65,13 @@ const tabAtom: jotai.Atom<Tab> = jotai.atom((get) => {
     }
     return WOS.getObjectValue(WOS.makeORef("tab", windowData.activetabid), get);
 });
+const activeTabIdAtom: jotai.Atom<string> = jotai.atom((get) => {
+    const windowData = get(windowDataAtom);
+    if (windowData == null) {
+        return null;
+    }
+    return windowData.activetabid;
+});
 
 const atoms = {
     // initialized in wave.ts (will not be null inside of application)
@@ -75,6 +83,7 @@ const atoms = {
     workspace: workspaceAtom,
     settingsConfigAtom: settingsConfigAtom,
     tabAtom: tabAtom,
+    activeTabId: activeTabIdAtom,
 };
 
 // key is "eventType" or "eventType|oref"
@@ -285,6 +294,17 @@ async function fetchWaveFile(
     return { data: new Uint8Array(data), fileInfo };
 }
 
+function setBlockFocus(blockId: string) {
+    let winData = globalStore.get(atoms.waveWindow);
+    if (winData.activeblockid === blockId) {
+        return;
+    }
+    winData = produce(winData, (draft) => {
+        draft.activeblockid = blockId;
+    });
+    WOS.setObjectValue(winData, globalStore.set, true);
+}
+
 export {
     WOS,
     atoms,
@@ -299,6 +319,7 @@ export {
     globalWS,
     initWS,
     sendWSCommand,
+    setBlockFocus,
     useBlockAtom,
     useBlockCache,
 };
