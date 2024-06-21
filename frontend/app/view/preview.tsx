@@ -172,8 +172,14 @@ function PreviewView({ blockId }: { blockId: string }) {
         mimeType.startsWith("audio/") ||
         mimeType.startsWith("image/")
     ) {
-        if (mimeType.startsWith("image/")) {
+        if (mimeType == "application/pdf") {
+            blockIcon = "file-pdf";
+        } else if (mimeType.startsWith("image/")) {
             blockIcon = "image";
+        } else if (mimeType.startsWith("video/")) {
+            blockIcon = "film";
+        } else if (mimeType.startsWith("audio/")) {
+            blockIcon = "headphones";
         }
         specializedView = <StreamingPreview fileInfo={fileInfo} />;
     } else if (fileInfo == null) {
@@ -208,7 +214,7 @@ function PreviewView({ blockId }: { blockId: string }) {
     setTimeout(() => {
         const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
             return jotai.atom<string>(null);
-        });
+        }) as jotai.PrimitiveAtom<string>;
         globalStore.set(blockIconOverrideAtom, blockIcon);
     }, 10);
 
