@@ -151,6 +151,23 @@ function useBlockCache<T>(blockId: string, name: string, makeFn: () => T): T {
     return value as T;
 }
 
+const settingsAtomCache = new Map<string, jotai.Atom<any>>();
+
+function useSettingsAtom<T>(name: string, settingsFn: (settings: SettingsConfigType) => T): jotai.Atom<T> {
+    let atom = settingsAtomCache.get(name);
+    if (atom == null) {
+        atom = jotai.atom((get) => {
+            const settings = get(settingsConfigAtom);
+            if (settings == null) {
+                return null;
+            }
+            return settingsFn(settings);
+        }) as jotai.Atom<T>;
+        settingsAtomCache.set(name, atom);
+    }
+    return atom as jotai.Atom<T>;
+}
+
 const blockAtomCache = new Map<string, Map<string, jotai.Atom<any>>>();
 
 function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom<T>): jotai.Atom<T> {
@@ -322,4 +339,5 @@ export {
     setBlockFocus,
     useBlockAtom,
     useBlockCache,
+    useSettingsAtom,
 };

@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WOS, atoms, globalStore, sendWSCommand, useBlockAtom } from "@/store/global";
+import { WOS, atoms, globalStore, sendWSCommand, useBlockAtom, useSettingsAtom } from "@/store/global";
 import * as services from "@/store/services";
 import { FitAddon } from "@xterm/addon-fit";
 import type { ITheme } from "@xterm/xterm";
@@ -151,12 +151,16 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             return winData.activeblockid === blockId;
         });
     });
+    const termSettingsAtom = useSettingsAtom<TerminalConfigType>("term", (settings: SettingsConfigType) => {
+        return settings?.term;
+    });
+    const termSettings = jotai.useAtomValue(termSettingsAtom);
     const isFocused = jotai.useAtomValue(isFocusedAtom);
     React.useEffect(() => {
         const termWrap = new TermWrap(blockId, connectElemRef.current, {
             theme: getThemeFromCSSVars(connectElemRef.current),
-            fontSize: 12,
-            fontFamily: "Hack",
+            fontSize: termSettings?.fontsize ?? 12,
+            fontFamily: termSettings?.fontfamily ?? "Hack",
             drawBoldTextInBrightColors: false,
             fontWeight: "normal",
             fontWeightBold: "bold",

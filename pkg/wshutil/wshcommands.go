@@ -11,6 +11,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/ijson"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -42,7 +43,9 @@ var CommandToTypeMap = map[string]reflect.Type{
 
 func CommandTypeUnionMeta() tsgenmeta.TypeUnionMeta {
 	var rtypes []reflect.Type
-	for _, rtype := range CommandToTypeMap {
+	orderedKeys := utilfn.GetOrderedMapKeys(CommandToTypeMap)
+	for _, typeKey := range orderedKeys {
+		rtype := CommandToTypeMap[typeKey]
 		rtypes = append(rtypes, rtype)
 	}
 	return tsgenmeta.TypeUnionMeta{

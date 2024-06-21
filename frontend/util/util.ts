@@ -32,4 +32,43 @@ function base64ToArray(b64: string): Uint8Array {
     return rtnArr;
 }
 
-export { base64ToArray, base64ToString, isBlank, stringToBase64 };
+// works for json-like objects (arrays, objects, strings, numbers, booleans)
+function jsonDeepEqual(v1: any, v2: any): boolean {
+    if (v1 === v2) {
+        return true;
+    }
+    if (typeof v1 !== typeof v2) {
+        return false;
+    }
+    if ((v1 == null && v2 != null) || (v1 != null && v2 == null)) {
+        return false;
+    }
+    if (typeof v1 === "object") {
+        if (Array.isArray(v1) && Array.isArray(v2)) {
+            if (v1.length !== v2.length) {
+                return false;
+            }
+            for (let i = 0; i < v1.length; i++) {
+                if (!jsonDeepEqual(v1[i], v2[i])) {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            const keys1 = Object.keys(v1);
+            const keys2 = Object.keys(v2);
+            if (keys1.length !== keys2.length) {
+                return false;
+            }
+            for (let key of keys1) {
+                if (!jsonDeepEqual(v1[key], v2[key])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+export { base64ToArray, base64ToString, isBlank, jsonDeepEqual, stringToBase64 };

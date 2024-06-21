@@ -19,8 +19,14 @@ type WidgetsConfigType struct {
 	BlockDef    wstore.BlockDef `json:"blockdef"`
 }
 
+type TerminalConfigType struct {
+	FontSize   int    `json:"fontsize,omitempty"`
+	FontFamily string `json:"fontfamily,omitempty"`
+}
+
 type SettingsConfigType struct {
 	Widgets []WidgetsConfigType `json:"widgets"`
+	Term    TerminalConfigType  `json:"term"`
 }
 
 func getSettingsConfigDefaults() SettingsConfigType {

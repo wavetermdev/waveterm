@@ -31,7 +31,7 @@ declare global {
 
     type BlockCommand = {
         command: string;
-    } & ( CreateBlockCommand | BlockInputCommand | BlockAppendFileCommand | ResolveIdsCommand | BlockMessageCommand | BlockAppendIJsonCommand | BlockSetViewCommand | BlockSetMetaCommand | BlockGetMetaCommand );
+    } & ( BlockAppendFileCommand | BlockAppendIJsonCommand | BlockInputCommand | CreateBlockCommand | BlockGetMetaCommand | BlockMessageCommand | ResolveIdsCommand | BlockSetMetaCommand | BlockSetViewCommand );
 
     // wstore.BlockDef
     type BlockDef = {
@@ -180,6 +180,7 @@ declare global {
     // wconfig.SettingsConfigType
     type SettingsConfigType = {
         widgets: WidgetsConfigType[];
+        term: TerminalConfigType;
     };
 
     // wstore.StickerClickOptsType
@@ -215,6 +216,12 @@ declare global {
     type TermSize = {
         rows: number;
         cols: number;
+    };
+
+    // wconfig.TerminalConfigType
+    type TerminalConfigType = {
+        fontsize?: number;
+        fontfamily?: string;
     };
 
     // wstore.UIContext
