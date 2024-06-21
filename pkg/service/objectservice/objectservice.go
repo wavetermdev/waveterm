@@ -155,6 +155,23 @@ func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string)
 	return updates, nil
 }
 
+func (svc *ObjectService) UpdateTabName_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		ArgNames: []string{"uiContext", "tabId", "name"},
+	}
+}
+
+func (svc *ObjectService) UpdateTabName(uiContext wstore.UIContext, tabId, name string) (wstore.UpdatesRtnType, error) {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	ctx = wstore.ContextWithUpdates(ctx)
+	err := wstore.UpdateTabName(ctx, tabId, name)
+	if err != nil {
+		return nil, fmt.Errorf("error updating tab name: %w", err)
+	}
+	return wstore.ContextGetUpdatesRtn(ctx), nil
+}
+
 func (svc *ObjectService) CreateBlock_Meta() tsgenmeta.MethodMeta {
 	return tsgenmeta.MethodMeta{
 		ArgNames:   []string{"uiContext", "blockDef", "rtOpts"},

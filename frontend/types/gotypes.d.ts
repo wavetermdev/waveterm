@@ -31,7 +31,7 @@ declare global {
 
     type BlockCommand = {
         command: string;
-	} & ( ResolveIdsCommand | BlockSetViewCommand | BlockSetMetaCommand | BlockGetMetaCommand | BlockMessageCommand | BlockInputCommand | BlockAppendFileCommand | BlockAppendIJsonCommand | CreateBlockCommand );
+    } & ( CreateBlockCommand | BlockInputCommand | BlockAppendFileCommand | ResolveIdsCommand | BlockMessageCommand | BlockAppendIJsonCommand | BlockSetViewCommand | BlockSetMetaCommand | BlockGetMetaCommand );
 
     // wstore.BlockDef
     type BlockDef = {
@@ -49,6 +49,7 @@ declare global {
 
     // wshutil.BlockInputCommand
     type BlockInputCommand = {
+        blockid: string;
         command: "controller:input";
         inputdata64?: string;
         signame?: string;
@@ -91,6 +92,7 @@ declare global {
     // wshutil.CreateBlockCommand
     type CreateBlockCommand = {
         command: "createblock";
+        tabid: string;
         blockdef: BlockDef;
         rtopts?: RuntimeOpts;
     };

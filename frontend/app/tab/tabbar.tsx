@@ -425,7 +425,8 @@ const TabBar = ({ workspace }: TabBarProps) => {
         }, 30);
     };
 
-    const handleCloseTab = (tabId: string) => {
+    const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, tabId: string) => {
+        event.stopPropagation();
         services.WindowService.CloseTab(tabId);
         deleteLayoutStateAtomForTab(tabId);
     };
@@ -458,7 +459,7 @@ const TabBar = ({ workspace }: TabBarProps) => {
                             onSelect={() => handleSelectTab(tabId)}
                             active={activetabid === tabId}
                             onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
-                            onClose={() => handleCloseTab(tabId)}
+                            onClose={(event) => handleCloseTab(event, tabId)}
                             onLoaded={() => handleTabLoaded(tabId)}
                             isBeforeActive={isBeforeActive(tabId)}
                             isDragging={draggingTab === tabId}

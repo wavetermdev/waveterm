@@ -12,7 +12,7 @@ class BlockServiceType {
     }
 
     // send command to block
-    SendCommand(blockid: string, cmd: BlockCommand): Promise<void> {
+    SendCommand(cmd: string, arg3: BlockCommand): Promise<void> {
         return WOS.callBackendService("block", "SendCommand", Array.from(arguments))
     }
 }
@@ -107,6 +107,11 @@ class ObjectServiceType {
     // @returns object updates
     UpdateObjectMeta(oref: string, meta: MetaType): Promise<void> {
         return WOS.callBackendService("object", "UpdateObjectMeta", Array.from(arguments))
+    }
+
+    // @returns object updates
+    UpdateTabName(tabId: string, name: string): Promise<void> {
+        return WOS.callBackendService("object", "UpdateTabName", Array.from(arguments))
     }
 
     // @returns object updates

@@ -211,6 +211,20 @@ func SetActiveTab(ctx context.Context, windowId string, tabId string) error {
 	})
 }
 
+func UpdateTabName(ctx context.Context, tabId, name string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		tab, _ := DBGet[*Tab](tx.Context(), tabId)
+		if tab == nil {
+			return fmt.Errorf("tab not found: %q", tabId)
+		}
+		if tabId != "" {
+			tab.Name = name
+			DBUpdate(tx.Context(), tab)
+		}
+		return nil
+	})
+}
+
 func CreateBlock(ctx context.Context, tabId string, blockDef *BlockDef, rtOpts *RuntimeOpts) (*Block, error) {
 	return WithTxRtn(ctx, func(tx *TxWrap) (*Block, error) {
 		tab, _ := DBGet[*Tab](tx.Context(), tabId)
