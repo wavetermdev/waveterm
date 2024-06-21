@@ -76,6 +76,7 @@
         "remark-gfm": "^4.0.0",
         "rxjs": "^7.8.1",
         "throttle-debounce": "^5.0.0",
+        "use-device-pixel-ratio": "^1.1.2",
         "uuid": "^9.0.1"
     },
     "packageManager": "yarn@4.3.0"

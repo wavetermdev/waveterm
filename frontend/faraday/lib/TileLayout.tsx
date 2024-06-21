@@ -1,7 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getApi } from "@/app/store/global";
 import useResizeObserver from "@react-hook/resize-observer";
 import clsx from "clsx";
 import { toPng } from "html-to-image";
@@ -19,6 +18,7 @@ import React, {
 } from "react";
 import { DropTargetMonitor, useDrag, useDragLayer, useDrop } from "react-dnd";
 import { debounce, throttle } from "throttle-debounce";
+import { useDevicePixelRatio } from "use-device-pixel-ratio";
 import { useLayoutTreeStateReducerAtom } from "./layoutAtom";
 import { findNode } from "./layoutNode";
 import {
@@ -59,6 +59,12 @@ export interface TileLayoutProps<T> {
      * The class name to use for the top-level div of the tile layout.
      */
     className?: string;
+
+    /**
+     * A callback for getting the cursor point in reference to the current window. This removes Electron as a runtime dependency, allowing for better integration with Storybook.
+     * @returns The cursor position relative to the current window.
+     */
+    getCursorPoint?: () => Point;
 }
 
 const DragPreviewWidth = 300;
@@ -70,6 +76,7 @@ export const TileLayout = <T,>({
     renderContent,
     renderPreview,
     onNodeDelete,
+    getCursorPoint,
 }: TileLayoutProps<T>) => {
     const overlayContainerRef = useRef<HTMLDivElement>(null);
     const displayContainerRef = useRef<HTMLDivElement>(null);
@@ -121,7 +128,7 @@ export const TileLayout = <T,>({
     // because that conflicts with the DnD layer.
     useEffect(
         debounce(100, () => {
-            const cursorPoint = getApi().getCursorPoint();
+            const cursorPoint = getCursorPoint?.() ?? dragClientOffset;
             if (cursorPoint && displayContainerRef.current) {
                 const displayContainerRect = displayContainerRef.current.getBoundingClientRect();
                 const normalizedX = cursorPoint.x - displayContainerRect.x;
@@ -324,9 +331,9 @@ const DisplayNode = <T,>({
     const tileNodeRef = useRef<HTMLDivElement>(null);
     const dragHandleRef = useRef<HTMLDivElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
-    const hasImagePreviewSetRef = useRef(false);
 
-    // Register the node as a draggable item.
+    const devicePixelRatio = useDevicePixelRatio();
+
     const [{ isDragging }, drag, dragPreview] = useDrag(
         () => ({
             type: dragItemType,
@@ -338,42 +345,55 @@ const DisplayNode = <T,>({
         [layoutNode]
     );
 
-    const previewElement = renderPreview?.(layoutNode.data);
-    const previewWidth = DragPreviewWidth;
-    const previewHeight = DragPreviewHeight;
-    const previewTransform = `scale(${1 / window.devicePixelRatio})`;
+    const [previewElementGeneration, setPreviewElementGeneration] = useState(0);
+    const previewElement = useMemo(() => {
+        setPreviewElementGeneration(previewElementGeneration + 1);
+        return (
+            <div key="preview" className="tile-preview-container">
+                <div
+                    className="tile-preview"
+                    ref={previewRef}
+                    style={{
+                        width: DragPreviewWidth,
+                        height: DragPreviewHeight,
+                        transform: `scale(${1 / devicePixelRatio})`,
+                    }}
+                >
+                    {renderPreview?.(layoutNode.data)}
+                </div>
+            </div>
+        );
+    }, [renderPreview, devicePixelRatio]);
+
     const [previewImage, setPreviewImage] = useState<HTMLImageElement>(null);
-    // we set the drag preview on load to be the HTML element
-    // later, on pointerenter, we generate a static png preview to use instead (for performance)
-    useEffect(() => {
-        if (!hasImagePreviewSetRef.current) {
-            dragPreview(previewRef.current);
-        }
-    }, []);
+    const [previewImageGeneration, setPreviewImageGeneration] = useState(0);
     const generatePreviewImage = useCallback(() => {
-        let offsetX = (DragPreviewWidth * window.devicePixelRatio - DragPreviewWidth) / 2 + 10;
-        let offsetY = (DragPreviewHeight * window.devicePixelRatio - DragPreviewHeight) / 2 + 10;
-        if (previewImage != null) {
+        const offsetX = (DragPreviewWidth * devicePixelRatio - DragPreviewWidth) / 2 + 10;
+        const offsetY = (DragPreviewHeight * devicePixelRatio - DragPreviewHeight) / 2 + 10;
+        if (previewImage !== null && previewElementGeneration === previewImageGeneration) {
             dragPreview(previewImage, { offsetY, offsetX });
         } else if (previewRef.current) {
+            setPreviewImageGeneration(previewElementGeneration);
             toPng(previewRef.current).then((url) => {
                 const img = new Image();
                 img.src = url;
-                img.onload = () => {
-                    hasImagePreviewSetRef.current = true;
-                    setPreviewImage(img);
-                    dragPreview(img, { offsetY, offsetX });
-                };
+                setPreviewImage(img);
+                dragPreview(img, { offsetY, offsetX });
             });
         }
-    }, [previewRef, previewImage, dragPreview]);
+    }, [
+        dragPreview,
+        previewRef.current,
+        previewElementGeneration,
+        previewImageGeneration,
+        previewImage,
+        devicePixelRatio,
+    ]);
 
     // Register the tile item as a draggable component
     useEffect(() => {
-        if (dragHandleRef.current) {
-            drag(dragHandleRef);
-        }
-    }, [ready]);
+        drag(dragHandleRef);
+    }, [drag, dragHandleRef.current]);
 
     const onClose = useCallback(() => {
         onLeafClose(layoutNode);
@@ -402,19 +422,7 @@ const DisplayNode = <T,>({
             onPointerEnter={generatePreviewImage}
         >
             {leafContent}
-            <div key="preview" className="tile-preview-container">
-                <div
-                    className="tile-preview"
-                    ref={previewRef}
-                    style={{
-                        width: previewWidth,
-                        height: previewHeight,
-                        transform: previewTransform,
-                    }}
-                >
-                    {previewElement}
-                </div>
-            </div>
+            {previewElement}
         </div>
     );
 };

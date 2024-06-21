@@ -10,6 +10,7 @@ import { TileLayout } from "@/faraday/index";
 import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { useAtomValue } from "jotai";
 import { useCallback, useMemo } from "react";
+import { getApi } from "../store/global";
 import "./tabcontent.less";
 
 const TabContent = ({ tabId }: { tabId: string }) => {
@@ -27,7 +28,6 @@ const TabContent = ({ tabId }: { tabId: string }) => {
             onClose: () => void,
             dragHandleRef: React.RefObject<HTMLDivElement>
         ) => {
-            // console.log("renderBlock", tabData);
             if (!tabData.blockId || !ready) {
                 return null;
             }
@@ -37,13 +37,15 @@ const TabContent = ({ tabId }: { tabId: string }) => {
     );
 
     const renderPreview = useCallback((tabData: TabLayoutData) => {
-        console.log("renderPreview", tabData);
         return <BlockFrame blockId={tabData.blockId} preview={true} />;
     }, []);
 
     const onNodeDelete = useCallback((data: TabLayoutData) => {
-        console.log("onNodeDelete", data);
         return services.ObjectService.DeleteBlock(data.blockId);
+    }, []);
+
+    const getCursorPoint = useCallback(() => {
+        return getApi().getCursorPoint();
     }, []);
 
     if (tabLoading) {
@@ -66,6 +68,7 @@ const TabContent = ({ tabId }: { tabId: string }) => {
                 renderPreview={renderPreview}
                 layoutTreeStateAtom={layoutStateAtom}
                 onNodeDelete={onNodeDelete}
+                getCursorPoint={getCursorPoint}
             />
         </div>
     );

@@ -26,7 +26,16 @@ const meta = {
                 name: "Hello world!",
             })
         ),
-        renderContent: renderTestData,
+        renderContent: (
+            data: TestData,
+            _ready: boolean,
+            _onClose: () => void,
+            dragHandleRef: React.RefObject<HTMLDivElement>
+        ) => (
+            <div ref={dragHandleRef} className="test-content" style={{ width: "100%", height: "100%" }}>
+                {renderTestData(data)}
+            </div>
+        ),
         renderPreview: renderTestData,
     },
     component: TileLayout<TestData>,
