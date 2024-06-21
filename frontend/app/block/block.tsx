@@ -97,7 +97,7 @@ function getBlockHeaderText(blockIcon: string, blockData: Block): React.ReactNod
     }
     let blockIconElem: React.ReactNode = null;
     if (!util.isBlank(blockIcon)) {
-        let iconColor = blockData.meta["icon:color"];
+        let iconColor = blockData?.meta?.["icon:color"];
         if (iconColor && !iconColor.match(colorRegex)) {
             iconColor = null;
         }
