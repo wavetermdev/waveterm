@@ -25,17 +25,20 @@ interface BlockProps {
     onClose?: () => void;
     dragHandleRef?: React.RefObject<HTMLDivElement>;
 }
-function processTextString(iconString: string): React.ReactNode {
-    if (iconString == null) {
+
+const colorRegex = /^((#[0-9a-f]{6,8})|([a-z]+))$/;
+
+function processTitleString(titleString: string): React.ReactNode[] {
+    if (titleString == null) {
         return null;
     }
     const tagRegex = /<(\/)?([a-z]+)(?::([#a-z0-9-]+))?>/g;
     let lastIdx = 0;
     let match;
     let partsStack = [[]];
-    while ((match = tagRegex.exec(iconString)) != null) {
+    while ((match = tagRegex.exec(titleString)) != null) {
         const lastPart = partsStack[partsStack.length - 1];
-        const before = iconString.substring(lastIdx, match.index);
+        const before = titleString.substring(lastIdx, match.index);
         lastPart.push(before);
         lastIdx = match.index + match[0].length;
         const [_, isClosing, tagName, tagParam] = match;
@@ -51,14 +54,17 @@ function processTextString(iconString: string): React.ReactNode {
             continue;
         }
         if (tagName == "c" || tagName == "color") {
-            if (tagParam == null) {
-                continue;
-            }
             if (isClosing) {
                 if (partsStack.length <= 1) {
                     continue;
                 }
                 partsStack.pop();
+                continue;
+            }
+            if (tagParam == null) {
+                continue;
+            }
+            if (!tagParam.match(colorRegex)) {
                 continue;
             }
             let children = [];
@@ -82,7 +88,7 @@ function processTextString(iconString: string): React.ReactNode {
             continue;
         }
     }
-    partsStack[partsStack.length - 1].push(iconString.substring(lastIdx));
+    partsStack[partsStack.length - 1].push(titleString.substring(lastIdx));
     return partsStack[0];
 }
 
@@ -90,15 +96,34 @@ function getBlockHeaderText(blockData: Block): React.ReactNode {
     if (!blockData) {
         return "no block data";
     }
-    if (!util.isBlank(blockData?.meta?.title)) {
-        try {
-            return processTextString(blockData.meta.title);
-        } catch (e) {
-            console.error("error processing title", blockData.meta.title, e);
-            return blockData.meta.title;
+    let blockIcon: React.ReactNode = null;
+    if (!util.isBlank(blockData?.meta?.["icon"])) {
+        const iconName = blockData.meta.icon;
+        let iconColor = blockData.meta["icon:color"];
+        if (iconColor && !iconColor.match(colorRegex)) {
+            iconColor = null;
+        }
+        let iconStyle = null;
+        if (!util.isBlank(iconColor)) {
+            iconStyle = { color: iconColor };
+        }
+        if (iconName.match(/^[a-z0-9-]+$/)) {
+            blockIcon = <i style={iconStyle} className={`block-frame-icon fa fa-solid fa-${blockData.meta.icon}`} />;
         }
     }
-    return `${blockData?.view} [${blockData.oid.substring(0, 8)}]`;
+    if (!util.isBlank(blockData?.meta?.title)) {
+        try {
+            const rtn = processTitleString(blockData.meta.title) ?? [];
+            if (blockIcon) {
+                rtn.unshift(blockIcon);
+            }
+            return rtn;
+        } catch (e) {
+            console.error("error processing title", blockData.meta.title, e);
+            return [blockIcon, blockData.meta.title];
+        }
+    }
+    return [blockIcon, `${blockData?.view} [${blockData.oid.substring(0, 8)}]`];
 }
 
 interface FramelessBlockHeaderProps {
@@ -276,12 +301,18 @@ const BlockFrame = (props: BlockFrameProps) => {
     if (!blockId || !blockData) {
         return null;
     }
+    let FrameElem = BlockFrame_Tech;
     // if 0 or 1 blocks, use frameless, otherwise use tech
     const numBlocks = tabData?.blockids?.length ?? 0;
     if (numBlocks <= 1) {
-        return <BlockFrame_Frameless {...props} />;
+        FrameElem = BlockFrame_Frameless;
     }
-    return <BlockFrame_Tech {...props} />;
+    if (blockData?.meta?.["frame"] === "tech") {
+        FrameElem = BlockFrame_Tech;
+    } else if (blockData?.meta?.["frame"] === "frameless") {
+        FrameElem = BlockFrame_Frameless;
+    }
+    return <FrameElem {...props} />;
 };
 
 const Block = ({ blockId, onClose, dragHandleRef }: BlockProps) => {

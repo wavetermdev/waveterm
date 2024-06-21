@@ -54,6 +54,7 @@ type RunCmdFnType = func(ctx context.Context, cmd wshutil.BlockCommand, cmdCtx w
 
 type BlockController struct {
 	Lock            *sync.Mutex
+	ControllerType  string
 	TabId           string
 	BlockId         string
 	BlockDef        *wstore.BlockDef
@@ -308,12 +309,13 @@ func StartBlockController(ctx context.Context, tabId string, blockId string, run
 		return nil
 	}
 	bc := &BlockController{
-		Lock:     &sync.Mutex{},
-		TabId:    tabId,
-		BlockId:  blockId,
-		Status:   "init",
-		InputCh:  make(chan wshutil.BlockCommand),
-		RunCmdFn: runCmdFn,
+		Lock:           &sync.Mutex{},
+		ControllerType: blockData.Controller,
+		TabId:          tabId,
+		BlockId:        blockId,
+		Status:         "init",
+		InputCh:        make(chan wshutil.BlockCommand),
+		RunCmdFn:       runCmdFn,
 	}
 	blockControllerMap[blockId] = bc
 	go bc.Run(blockData)

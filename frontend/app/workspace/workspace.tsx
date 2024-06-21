@@ -12,11 +12,13 @@ import { CenteredDiv } from "../element/quickelems";
 
 import "./workspace.less";
 
+const iconRegex = /^[a-z0-9-]+$/;
+
 function Widgets() {
     const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
     const newWidgetModalVisible = React.useState(false);
     async function clickTerminal() {
-        const termBlockDef = {
+        const termBlockDef: BlockDef = {
             controller: "shell",
             view: "term",
         };
@@ -44,6 +46,20 @@ function Widgets() {
         await services.FileService.RemoveWidget(idx);
     }
 
+    function isIconValid(icon: string): boolean {
+        if (util.isBlank(icon)) {
+            return false;
+        }
+        return icon.match(iconRegex) != null;
+    }
+
+    function getIconClass(icon: string): string {
+        if (!isIconValid(icon)) {
+            return "fa fa-solid fa-question fa-fw";
+        }
+        return `fa fa-solid fa-${icon} fa-fw`;
+    }
+
     return (
         <div className="workspace-widgets">
             <div className="widget" onClick={() => clickTerminal()}>
@@ -54,20 +70,19 @@ function Widgets() {
             </div>
             <div className="widget" onClick={() => clickHome()}>
                 <div className="widget-icon">
-                    <i className="fa-sharp fa-solid fa-house"></i>
+                    <i className="fa-sharp fa-solid fa-home"></i>
                 </div>
                 <div className="widget-label">home</div>
             </div>
             {settingsConfig.widgets.map((data, idx) => (
                 <div
                     className="widget"
-                    style={{ color: data.color }}
                     onClick={() => handleWidgetSelect(data.blockdef)}
                     key={`widget-${idx}`}
                     title={data.description || data.label}
                 >
-                    <div className="widget-icon">
-                        <i className={data.icon}></i>
+                    <div className="widget-icon" style={{ color: data.color }}>
+                        <i className={getIconClass(data.icon)}></i>
                     </div>
                     {!util.isBlank(data.label) ? <div className="widget-label">{data.label}</div> : null}
                 </div>
