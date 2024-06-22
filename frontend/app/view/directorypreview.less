@@ -1,4 +1,5 @@
 .dir-table {
+    --col-size-size: 0.2rem;
     overflow: auto;
     width: 100%;
     border-radius: 3px;
@@ -9,7 +10,7 @@
             padding: 4px 0;
             background-color: var(--panel-bg-color);
 
-            .dir-table-head-cell {
+            .dir-table-head-cell:not(:first-child) {
                 position: relative;
                 padding: 2px 4px;
                 font-weight: bold;

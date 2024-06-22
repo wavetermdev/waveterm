@@ -126,6 +126,13 @@ func determineLang() string {
 		strOut := string(out)
 		truncOut := strings.Split(strOut, "@")[0]
 		return strings.TrimSpace(truncOut) + ".UTF-8"
+	} else if runtime.GOOS == "win32" {
+		out, err := exec.CommandContext(ctx, "Get-Culture", "|", "select", "-exp", "Name").CombinedOutput()
+		if err != nil {
+			log.Printf("error executing 'Get-Culture | select -exp Name': %v\n", err)
+			return ""
+		}
+		return strings.TrimSpace(string(out)) + ".UTF-8"
 	} else {
 		// this is specifically to get the wavesrv LANG so waveshell
 		// on a remote uses the same LANG
@@ -138,6 +145,14 @@ func DetermineLang() string {
 		osLang = determineLang()
 	})
 	return osLang
+}
+
+func DetermineLocale() string {
+	truncated := strings.Split(DetermineLang(), ".")[0]
+	if truncated == "" {
+		return "C"
+	}
+	return strings.Replace(truncated, "_", "-", -1)
 }
 
 func AcquireWaveLock() (*filemutex.FileMutex, error) {

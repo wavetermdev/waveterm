@@ -28,6 +28,7 @@ type FileInfo struct {
 	NotFound bool        `json:"notfound,omitempty"`
 	Size     int64       `json:"size"`
 	Mode     os.FileMode `json:"mode"`
+	ModeStr  string      `json:"modestr"`
 	ModTime  int64       `json:"modtime"`
 	IsDir    bool        `json:"isdir,omitempty"`
 	MimeType string      `json:"mimetype,omitempty"`
@@ -52,6 +53,7 @@ func (fs *FileService) StatFile(path string) (*FileInfo, error) {
 		Path:     cleanedPath,
 		Size:     finfo.Size(),
 		Mode:     finfo.Mode(),
+		ModeStr:  finfo.Mode().String(),
 		ModTime:  finfo.ModTime().UnixMilli(),
 		IsDir:    finfo.IsDir(),
 		MimeType: mimeType,
@@ -75,16 +77,27 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 			return nil, fmt.Errorf("unable to parse directory %s", finfo.Path)
 		}
 
+		if len(innerFilesEntries) > 1000 {
+			innerFilesEntries = innerFilesEntries[:1001]
+		}
 		var innerFilesInfo []FileInfo
 		for _, innerFileEntry := range innerFilesEntries {
 			innerFileInfoInt, _ := innerFileEntry.Info()
+			mimeType := utilfn.DetectMimeType(filepath.Join(finfo.Path, innerFileInfoInt.Name()))
+			var fileSize int64
+			if mimeType == "directory" {
+				fileSize = -1
+			} else {
+				fileSize = innerFileInfoInt.Size()
+			}
 			innerFileInfo := FileInfo{
 				Path:     innerFileInfoInt.Name(),
-				Size:     innerFileInfoInt.Size(),
+				Size:     fileSize,
 				Mode:     innerFileInfoInt.Mode(),
+				ModeStr:  innerFileInfoInt.Mode().String(),
 				ModTime:  innerFileInfoInt.ModTime().UnixMilli(),
 				IsDir:    innerFileInfoInt.IsDir(),
-				MimeType: "",
+				MimeType: mimeType,
 			}
 			innerFilesInfo = append(innerFilesInfo, innerFileInfo)
 		}

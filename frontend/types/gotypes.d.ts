@@ -97,6 +97,16 @@ declare global {
         rtopts?: RuntimeOpts;
     };
 
+	type DateTimeConfigType = {
+		locale: string;
+		format: DateTimeFormatConfigType;
+	}
+
+	type DateTimeFormatConfigType = {
+		dateStyle: "full" | "long" | "medium" | "short";
+		timeStyle: "full" | "long" | "medium" | "short";
+	}
+
     // wstore.FileDef
     type FileDef = {
         filetype?: string;
@@ -112,6 +122,7 @@ declare global {
         notfound?: boolean;
         size: number;
         mode: number;
+		modestr: string;
         modtime: number;
         isdir?: boolean;
         mimetype?: string;
@@ -146,6 +157,11 @@ declare global {
         ReturnDesc: string;
     };
 
+	//wconfig.MimeTypeConfigType
+	type MimeTypeConfigType = {
+		icon: string;
+	}
+
     // waveobj.ORef
     type ORef = {
         otype: string;
@@ -179,6 +195,8 @@ declare global {
 
     // wconfig.SettingsConfigType
     type SettingsConfigType = {
+		datetime: DateTimeConfigType;
+		mimetypes: {[key:string]: MimeTypeConfigType}
         widgets: WidgetsConfigType[];
         term: TerminalConfigType;
     };

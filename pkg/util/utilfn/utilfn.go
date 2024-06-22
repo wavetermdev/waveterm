@@ -637,6 +637,16 @@ func DetectMimeType(path string) string {
 	if stats.IsDir() {
 		return "directory"
 	}
+	if stats.Mode()&os.ModeNamedPipe == os.ModeNamedPipe {
+		return "pipe"
+	}
+	charDevice := os.ModeDevice | os.ModeCharDevice
+	if stats.Mode()&charDevice == charDevice {
+		return "character-special"
+	}
+	if stats.Mode()&os.ModeDevice == os.ModeDevice {
+		return "block-special"
+	}
 	fd, err := os.Open(path)
 	if err != nil {
 		return ""
