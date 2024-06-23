@@ -4,21 +4,25 @@
 .tab-bar-wrapper {
     position: relative;
     border-bottom: 1px solid var(--border-color);
-    -webkit-user-select: none;
+    user-select: none;
+    display: flex;
 
     .tab-bar {
         position: relative; // Needed for absolute positioning of child tabs
-        min-height: 34px; // Adjust as necessary to fit the height of tabs
-        width: calc(100vw - 36px); // 36 is the width of add tab button
+        margin-left: 100px;
+        height: 34px;
+        // 36 is the width of add tab button
+        // 100 is offset from the left, for macOS window controls and dragging
+        // 50 right offset for dragging
+        // minus 1px for last tab right border
+        width: calc(100vw - 185px);
     }
 
     .add-tab-btn {
         width: 36px;
-        height: 34px;
+        height: 100%;
         cursor: pointer;
         position: absolute;
-        top: 50%;
-        transform: translateY(-50%); // overridden in js
         font-size: 14px;
         text-align: center;
         user-select: none;
@@ -28,15 +32,24 @@
         background-color: var(--main-bg-color);
     }
 
+    .window-drag {
+        position: absolute;
+        height: 100%;
+
+        &.left {
+            width: 100px;
+        }
+    }
+
     // Customize scrollbar styles
     .os-theme-dark,
     .os-theme-light {
         box-sizing: border-box;
-        --os-size: 3px;
+        --os-size: 2px;
         --os-padding-perpendicular: 0px;
         --os-padding-axis: 0px;
-        --os-track-border-radius: 3px;
+        --os-track-border-radius: 2px;
         --os-handle-interactive-area-offset: 0px;
-        --os-handle-border-radius: 3px;
+        --os-handle-border-radius: 2px;
     }
 }

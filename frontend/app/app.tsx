@@ -192,7 +192,6 @@ const AppInner = () => {
     if (client == null || windowData == null) {
         return (
             <div className="mainapp">
-                <div className="titlebar"></div>
                 <CenteredDiv>invalid configuration, client or window was not loaded</CenteredDiv>
             </div>
         );
@@ -243,7 +242,6 @@ const AppInner = () => {
     return (
         <div className="mainapp" onContextMenu={handleContextMenu}>
             <DndProvider backend={HTML5Backend}>
-                <div className="titlebar"></div>
                 <Workspace />
             </DndProvider>
         </div>

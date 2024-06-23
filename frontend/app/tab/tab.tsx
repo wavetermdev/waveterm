@@ -1,5 +1,7 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
 import { Button } from "@/element/button";
-import { ContextMenuModel } from "@/store/contextmenu";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
@@ -10,16 +12,17 @@ import "./tab.less";
 interface TabProps {
     id: string;
     active: boolean;
+    isFirst: boolean;
     isBeforeActive: boolean;
     isDragging: boolean;
     onSelect: () => void;
-    onClose: (event: React.MouseEvent<HTMLElement, MouseEvent>) => void;
+    onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
 }
 
 const Tab = forwardRef<HTMLDivElement, TabProps>(
-    ({ id, active, isBeforeActive, isDragging, onLoaded, onSelect, onClose, onDragStart }, ref) => {
+    ({ id, active, isFirst, isBeforeActive, isDragging, onLoaded, onSelect, onClose, onDragStart }, ref) => {
         const [tabData, tabLoading] = WOS.useWaveObjectValue<Tab>(WOS.makeORef("tab", id));
         const [originalName, setOriginalName] = useState("");
         const [isEditable, setIsEditable] = useState(false);
@@ -42,10 +45,8 @@ const Tab = forwardRef<HTMLDivElement, TabProps>(
             };
         }, []);
 
-        const handleDoubleClick = (event?: React.MouseEvent<any, any>) => {
-            if (event != null) {
-                event.stopPropagation();
-            }
+        const handleDoubleClick = (event) => {
+            event.stopPropagation();
             setIsEditable(true);
             editableTimeoutRef.current = setTimeout(() => {
                 if (editableRef.current) {
@@ -105,35 +106,15 @@ const Tab = forwardRef<HTMLDivElement, TabProps>(
             event.stopPropagation();
         };
 
-        function handleContextMenu(e: React.MouseEvent<HTMLElement>) {
-            let menu: ContextMenuItem[] = [];
-            menu.push({
-                label: "Edit Name",
-                click: () => {
-                    handleDoubleClick(null);
-                },
-            });
-            menu.push({
-                type: "separator",
-            });
-            menu.push({
-                label: "Close",
-                click: () => {
-                    onClose(e);
-                },
-            });
-            ContextMenuModel.showContextMenu(menu, e);
-        }
-
         return (
             <div
                 ref={ref}
                 className={clsx("tab", { active, isDragging, "before-active": isBeforeActive })}
                 onMouseDown={onDragStart}
                 onClick={onSelect}
-                onContextMenu={handleContextMenu}
                 data-tab-id={id}
             >
+                {isFirst && <div className="vertical-line first" />}
                 <div
                     ref={editableRef}
                     className={clsx("name", { focused: isEditable })}

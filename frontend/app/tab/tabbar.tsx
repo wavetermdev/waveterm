@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { debounce } from "@/faraday/lib/utils";
 import { atoms } from "@/store/global";
@@ -41,8 +42,8 @@ const TabBar = ({ workspace }: TabBarProps) => {
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
     const [tabsLoaded, setTabsLoaded] = useState({});
-    const [scrollable, setScrollable] = useState(false);
-    const [tabWidth, setTabWidth] = useState(TAB_DEFAULT_WIDTH);
+    // const [scrollable, setScrollable] = useState(false);
+    // const [tabWidth, setTabWidth] = useState(TAB_DEFAULT_WIDTH);
 
     const tabBarRef = useRef<HTMLDivElement>(null);
     const tabsWrapperRef = useRef<HTMLDivElement>(null);
@@ -61,6 +62,9 @@ const TabBar = ({ workspace }: TabBarProps) => {
         dragged: false,
     });
     const osInstanceRef = useRef<OverlayScrollbars>(null);
+    const draggerRightRef = useRef<HTMLDivElement>(null);
+    const tabWidthRef = useRef<number>(TAB_DEFAULT_WIDTH);
+    const scrollableRef = useRef<boolean>(false);
 
     const windowData = useAtomValue(atoms.waveWindow);
     const { activetabid } = windowData;
@@ -105,18 +109,21 @@ const TabBar = ({ workspace }: TabBarProps) => {
         setDragStartPositions(newStartPositions);
     }, []);
 
-    const debouncedSetTabWidth = debounce((width) => setTabWidth(width), 100);
-    const debouncedSetScrollable = debounce((scrollable) => setScrollable(scrollable), 100);
+    // const debouncedSetTabWidth = debounce((width) => setTabWidth(width), 100);
+    // const debouncedSetScrollable = debounce((scrollable) => setScrollable(scrollable), 100);
     const debouncedUpdateTabPositions = debounce(() => updateTabPositions(), 100);
 
     const handleResizeTabs = useCallback(() => {
         const tabBar = tabBarRef.current;
         if (tabBar === null) return;
 
-        const tabBarWidth = tabBar.getBoundingClientRect().width;
+        const tabBarRect = tabBar.getBoundingClientRect();
+        const tabBarWidth = tabBarRect.width;
         const numberOfTabs = tabIds.length;
         const totalDefaultTabWidth = numberOfTabs * TAB_DEFAULT_WIDTH;
         const minTotalTabWidth = numberOfTabs * TAB_MIN_WIDTH;
+        const tabWidth = tabWidthRef.current;
+        const scrollable = scrollableRef.current;
         let newTabWidth = tabWidth;
         let newScrollable = scrollable;
 
@@ -144,11 +151,11 @@ const TabBar = ({ workspace }: TabBarProps) => {
 
         // Update the state with the new tab width if it has changed
         if (newTabWidth !== tabWidth) {
-            debouncedSetTabWidth(newTabWidth);
+            tabWidthRef.current = newTabWidth;
         }
         // Update the state with the new scrollable state if it has changed
         if (newScrollable !== scrollable) {
-            debouncedSetScrollable(newScrollable);
+            scrollableRef.current = newScrollable;
         }
         // Initialize/destroy overlay scrollbars
         if (newScrollable) {
@@ -159,21 +166,29 @@ const TabBar = ({ workspace }: TabBarProps) => {
             }
         }
 
-        // Update the position of the Add Tab button if needed
+        // Update Add Tab button position if needed
         const addButton = addBtnRef.current;
         const lastTabRef = tabRefs.current[tabRefs.current.length - 1];
         if (addButton && lastTabRef && lastTabRef.current) {
             const lastTabRect = lastTabRef.current.getBoundingClientRect();
             addButton.style.position = "absolute";
             if (newScrollable) {
-                addButton.style.transform = `translateX(${document.documentElement.clientWidth - addButton.offsetWidth}px) translateY(-50%)`;
+                addButton.style.transform = `translateX(${tabBarRect.left + tabBarWidth + 1}px)`;
             } else {
-                addButton.style.transform = `translateX(${lastTabRect.right + 1}px) translateY(-50%)`;
+                addButton.style.transform = `translateX(${lastTabRect.right + 1}px)`;
             }
+        }
+        // Update dragger right position if needed
+        const draggerRight = draggerRightRef.current;
+        if (draggerRight && addButton) {
+            const addButtonRect = addButton.getBoundingClientRect();
+            const targetPos = addButtonRect.left + addButtonRect.width;
+            draggerRight.style.transform = `translateX(${targetPos}px)`;
+            draggerRight.style.width = `${document.documentElement.offsetWidth - targetPos}px`;
         }
 
         debouncedUpdateTabPositions();
-    }, [tabIds, tabWidth, scrollable]);
+    }, [tabIds]);
 
     useEffect(() => {
         window.addEventListener("resize", () => handleResizeTabs());
@@ -219,6 +234,7 @@ const TabBar = ({ workspace }: TabBarProps) => {
 
     const getNewTabIndex = (currentX: number, tabIndex: number, dragDirection: string) => {
         let newTabIndex = tabIndex;
+        const tabWidth = tabWidthRef.current;
         if (dragDirection === "+") {
             // Dragging to the right
             for (let i = tabIndex + 1; i < tabIds.length; i++) {
@@ -250,21 +266,26 @@ const TabBar = ({ workspace }: TabBarProps) => {
         }
         let currentX = event.clientX - initialOffsetX - totalScrollOffset;
         let tabBarRectWidth = tabBarRef.current.getBoundingClientRect().width;
+        // for macos, it's offset to make space for the window buttons
+        const tabBarRectLeftOffset = tabBarRef.current.getBoundingClientRect().left;
+        const incrementDecrement = tabBarRectLeftOffset * 0.05;
         const dragDirection = getDragDirection(currentX);
+        const scrollable = scrollableRef.current;
+        const tabWidth = tabWidthRef.current;
 
         // Scroll the tab bar if the dragged tab overflows the container bounds
         if (scrollable) {
             const { viewport } = osInstanceRef.current.elements();
             const currentScrollLeft = viewport.scrollLeft;
 
-            if (event.clientX <= 0) {
-                viewport.scrollLeft = Math.max(0, currentScrollLeft - 5); // Scroll left
+            if (event.clientX <= tabBarRectLeftOffset) {
+                viewport.scrollLeft = Math.max(0, currentScrollLeft - incrementDecrement); // Scroll left
                 if (viewport.scrollLeft !== currentScrollLeft) {
                     // Only adjust if the scroll actually changed
                     draggingTabDataRef.current.totalScrollOffset += currentScrollLeft - viewport.scrollLeft;
                 }
-            } else if (event.clientX >= tabBarRectWidth) {
-                viewport.scrollLeft = Math.min(viewport.scrollWidth, currentScrollLeft + 5); // Scroll right
+            } else if (event.clientX >= tabBarRectWidth + tabBarRectLeftOffset) {
+                viewport.scrollLeft = Math.min(viewport.scrollWidth, currentScrollLeft + incrementDecrement); // Scroll right
                 if (viewport.scrollLeft !== currentScrollLeft) {
                     // Only adjust if the scroll actually changed
                     draggingTabDataRef.current.totalScrollOffset -= viewport.scrollLeft - currentScrollLeft;
@@ -343,6 +364,7 @@ const TabBar = ({ workspace }: TabBarProps) => {
 
         // Update the final position of the dragged tab
         const draggingTab = tabIds[tabIndex];
+        const tabWidth = tabWidthRef.current;
         const finalLeftPosition = tabIndex * tabWidth;
         const ref = tabRefs.current.find((ref) => ref.current.dataset.tabId === draggingTab);
         if (ref.current) {
@@ -418,14 +440,14 @@ const TabBar = ({ workspace }: TabBarProps) => {
         services.ObjectService.AddTabToWorkspace(newTabName, true);
 
         scrollToNewTabTimeoutIdRef.current = setTimeout(() => {
-            if (scrollable) {
+            if (scrollableRef.current) {
                 const { viewport } = osInstanceRef.current.elements();
-                viewport.scrollLeft = tabIds.length * tabWidth;
+                viewport.scrollLeft = tabIds.length * tabWidthRef.current;
             }
         }, 30);
     };
 
-    const handleCloseTab = (event: React.MouseEvent<HTMLElement, MouseEvent>, tabId: string) => {
+    const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, tabId: string) => {
         event.stopPropagation();
         services.WindowService.CloseTab(tabId);
         deleteLayoutStateAtomForTab(tabId);
@@ -445,10 +467,11 @@ const TabBar = ({ workspace }: TabBarProps) => {
         return tabIds.indexOf(tabId) === tabIds.indexOf(activetabid) - 1;
     };
 
-    const tabsWrapperWidth = tabIds.length * tabWidth;
+    const tabsWrapperWidth = tabIds.length * tabWidthRef.current;
 
     return (
         <div className="tab-bar-wrapper">
+            <WindowDrag className="left" />
             <div className="tab-bar" ref={tabBarRef} data-overlayscrollbars-initialize>
                 <div className="tabs-wrapper" ref={tabsWrapperRef} style={{ width: tabsWrapperWidth }}>
                     {tabIds.map((tabId, index) => (
@@ -456,6 +479,7 @@ const TabBar = ({ workspace }: TabBarProps) => {
                             key={tabId}
                             ref={tabRefs.current[index]}
                             id={tabId}
+                            isFirst={index === 0}
                             onSelect={() => handleSelectTab(tabId)}
                             active={activetabid === tabId}
                             onDragStart={(event) => handleDragStart(event, tabId, tabRefs.current[index])}
@@ -470,6 +494,7 @@ const TabBar = ({ workspace }: TabBarProps) => {
             <div ref={addBtnRef} className="add-tab-btn" onClick={handleAddTab}>
                 <i className="fa fa-solid fa-plus fa-fw" />
             </div>
+            <WindowDrag ref={draggerRightRef} className="right" />
         </div>
     );
 };
