@@ -3,10 +3,10 @@ steps:
       - command: focus-application
         name: Electron
       - command: click-text
-        text: Settings
-      - command: click-text
-        text: Get Started
+        text: Get Started   
         anchor: I accept
+      - command: click-text
+        text: Settings
       - command: click-text
         text: 16px
       - command: click-text
