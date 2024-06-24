@@ -8,9 +8,9 @@ steps:
       - command: click-text
         text: Settings
       - command: click-text
-        text: 16px
-      - command: click-text
         text: 13px
+      - command: click-text
+        text: 12px
       - command: click-text
         text: Dark
       - command: click-text
