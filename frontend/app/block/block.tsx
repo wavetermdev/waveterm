@@ -131,6 +131,30 @@ function getBlockHeaderText(blockIcon: string, blockData: Block, settings: Setti
     return [blockIconElem, viewString + blockIdStr];
 }
 
+function handleHeaderContextMenu(e: React.MouseEvent<HTMLDivElement>, onClose: () => void) {
+    e.preventDefault();
+    e.stopPropagation();
+    let menu: ContextMenuItem[] = [];
+    menu.push({
+        label: "Focus Block",
+        click: () => {
+            alert("Not Implemented");
+        },
+    });
+    menu.push({
+        label: "Move to New Window",
+        click: () => {
+            alert("Not Implemented");
+        },
+    });
+    menu.push({ type: "separator" });
+    menu.push({
+        label: "Close Block",
+        click: onClose,
+    });
+    ContextMenuModel.showContextMenu(menu, e);
+}
+
 interface FramelessBlockHeaderProps {
     blockId: string;
     onClose?: () => void;
@@ -190,14 +214,6 @@ const BlockFrame_Tech = ({
     if (preview) {
         isFocused = true;
     }
-    function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
-        let menu: ContextMenuItem[] = [];
-        menu.push({
-            label: "Close",
-            click: onClose,
-        });
-        ContextMenuModel.showContextMenu(menu, e);
-    }
     let style: React.CSSProperties = {};
     if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
         style.borderColor = blockData.meta["frame:bordercolor"];
@@ -217,7 +233,11 @@ const BlockFrame_Tech = ({
             ref={blockRef}
             style={style}
         >
-            <div className="block-frame-tech-header" ref={dragHandleRef} onContextMenu={handleContextMenu}>
+            <div
+                className="block-frame-tech-header"
+                ref={dragHandleRef}
+                onContextMenu={(e) => handleHeaderContextMenu(e, onClose)}
+            >
                 {getBlockHeaderText(blockIcon, blockData, settingsConfig)}
             </div>
             <div className={clsx("block-frame-tech-close")} onClick={onClose}>
