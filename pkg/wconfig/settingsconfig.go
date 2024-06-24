@@ -42,11 +42,16 @@ type MimeTypeConfigType struct {
 	Icon string `json:"icon"`
 }
 
+type BlockHeaderOpts struct {
+	ShowBlockIds bool `json:"showblockids"`
+}
+
 type SettingsConfigType struct {
-	MimeTypes map[string]MimeTypeConfigType `json:"mimetypes"`
-	DateTime  DateTimeConfigType            `json:"datetime"`
-	Term      TerminalConfigType            `json:"term"`
-	Widgets   []WidgetsConfigType           `json:"widgets"`
+	MimeTypes   map[string]MimeTypeConfigType `json:"mimetypes"`
+	DateTime    DateTimeConfigType            `json:"datetime"`
+	Term        TerminalConfigType            `json:"term"`
+	Widgets     []WidgetsConfigType           `json:"widgets"`
+	BlockHeader BlockHeaderOpts               `json:"blockheader"`
 }
 
 func getSettingsConfigDefaults() SettingsConfigType {

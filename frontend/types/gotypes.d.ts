@@ -54,6 +54,11 @@ declare global {
         oref: string;
     };
 
+    // wconfig.BlockHeaderOpts
+    type BlockHeaderOpts = {
+        showblockids: boolean;
+    };
+
     // wshutil.BlockInputCommand
     type BlockInputCommand = {
         blockid: string;
@@ -214,6 +219,7 @@ declare global {
         datetime: DateTimeConfigType;
         term: TerminalConfigType;
         widgets: WidgetsConfigType[];
+        blockheader: BlockHeaderOpts;
     };
 
     // wstore.StickerClickOptsType

@@ -92,9 +92,13 @@ function processTitleString(titleString: string): React.ReactNode[] {
     return partsStack[0];
 }
 
-function getBlockHeaderText(blockIcon: string, blockData: Block): React.ReactNode {
+function getBlockHeaderText(blockIcon: string, blockData: Block, settings: SettingsConfigType): React.ReactNode {
     if (!blockData) {
         return "no block data";
+    }
+    let blockIdStr = "";
+    if (settings?.blockheader?.showblockids) {
+        blockIdStr = ` [${blockData.oid.substring(0, 8)}]`;
     }
     let blockIconElem: React.ReactNode = null;
     if (!util.isBlank(blockIcon)) {
@@ -114,20 +118,17 @@ function getBlockHeaderText(blockIcon: string, blockData: Block): React.ReactNod
     if (!util.isBlank(blockData?.meta?.title)) {
         try {
             const rtn = processTitleString(blockData.meta.title) ?? [];
-            if (blockIconElem) {
-                rtn.unshift(blockIconElem);
-            }
-            return rtn;
+            return [blockIconElem, ...rtn, blockIdStr == "" ? null : blockIdStr];
         } catch (e) {
             console.error("error processing title", blockData.meta.title, e);
-            return [blockIconElem, blockData.meta.title];
+            return [blockIconElem, blockData.meta.title + blockIdStr];
         }
     }
     let viewString = blockData?.view;
     if (blockData.controller == "cmd") {
         viewString = "cmd";
     }
-    return [blockIconElem, `${viewString} [${blockData.oid.substring(0, 8)}]`];
+    return [blockIconElem, viewString + blockIdStr];
 }
 
 interface FramelessBlockHeaderProps {
@@ -138,10 +139,11 @@ interface FramelessBlockHeaderProps {
 
 const FramelessBlockHeader = ({ blockId, onClose, dragHandleRef }: FramelessBlockHeaderProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
 
     return (
         <div key="header" className="block-header" ref={dragHandleRef}>
-            <div className="block-header-text text-fixed">{getBlockHeaderText(null, blockData)}</div>
+            <div className="block-header-text text-fixed">{getBlockHeaderText(null, blockData, settingsConfig)}</div>
             {onClose && (
                 <div className="close-button" onClick={onClose}>
                     <i className="fa fa-solid fa-xmark-large" />
@@ -175,6 +177,7 @@ const BlockFrame_Tech = ({
     children,
 }: BlockFrameProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
     const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
         return jotai.atom((get) => {
             const winData = get(atoms.waveWindow);
@@ -215,7 +218,7 @@ const BlockFrame_Tech = ({
             style={style}
         >
             <div className="block-frame-tech-header" ref={dragHandleRef} onContextMenu={handleContextMenu}>
-                {getBlockHeaderText(blockIcon, blockData)}
+                {getBlockHeaderText(blockIcon, blockData, settingsConfig)}
             </div>
             <div className={clsx("block-frame-tech-close")} onClick={onClose}>
                 <i className="fa fa-solid fa-xmark fa-fw" />
