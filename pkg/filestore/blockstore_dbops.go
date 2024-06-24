@@ -6,19 +6,19 @@ package filestore
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"os"
 
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/dbutil"
 )
 
-var ErrAlreadyExists = fmt.Errorf("file already exists")
-
+// can return fs.ErrExist
 func dbInsertFile(ctx context.Context, file *WaveFile) error {
 	// will fail if file already exists
 	return WithTx(ctx, func(tx *TxWrap) error {
 		query := "SELECT zoneid FROM db_wave_file WHERE zoneid = ? AND name = ?"
 		if tx.Exists(query, file.ZoneId, file.Name) {
-			return ErrAlreadyExists
+			return fs.ErrExist
 		}
 		query = "INSERT INTO db_wave_file (zoneid, name, size, createdts, modts, opts, meta) VALUES (?, ?, ?, ?, ?, ?, ?)"
 		tx.Exec(query, file.ZoneId, file.Name, file.Size, file.CreatedTs, file.ModTs, dbutil.QuickJson(file.Opts), dbutil.QuickJson(file.Meta))

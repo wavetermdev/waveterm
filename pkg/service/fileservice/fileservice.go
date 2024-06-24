@@ -76,9 +76,8 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 		if err != nil {
 			return nil, fmt.Errorf("unable to parse directory %s", finfo.Path)
 		}
-
 		if len(innerFilesEntries) > 1000 {
-			innerFilesEntries = innerFilesEntries[:1001]
+			innerFilesEntries = innerFilesEntries[:1000]
 		}
 		var innerFilesInfo []FileInfo
 		for _, innerFileEntry := range innerFilesEntries {

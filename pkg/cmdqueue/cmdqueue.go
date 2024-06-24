@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"io/fs"
 	"log"
 	"runtime/debug"
 	"strings"
@@ -226,7 +227,7 @@ func handleAppendIJsonFile(blockId string, blockFile string, cmd map[string]any,
 	defer cancelFn()
 	if blockFile == blockcontroller.BlockFile_Html && tryCreate {
 		err := filestore.WFS.MakeFile(ctx, blockId, blockFile, nil, filestore.FileOptsType{MaxSize: blockcontroller.DefaultHtmlMaxFileSize, IJson: true})
-		if err != nil && err != filestore.ErrAlreadyExists {
+		if err != nil && err != fs.ErrExist {
 			return fmt.Errorf("error creating blockfile[html]: %w", err)
 		}
 	}

@@ -1,8 +1,17 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { WOS, atoms, globalStore, sendWSCommand, useBlockAtom, useSettingsAtom } from "@/store/global";
+import {
+    WOS,
+    atoms,
+    getEventORefSubject,
+    globalStore,
+    sendWSCommand,
+    useBlockAtom,
+    useSettingsAtom,
+} from "@/store/global";
 import * as services from "@/store/services";
+import * as keyutil from "@/util/keyutil";
 import { FitAddon } from "@xterm/addon-fit";
 import type { ITheme } from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
@@ -142,7 +151,10 @@ function setBlockFocus(blockId: string) {
 const TerminalView = ({ blockId }: { blockId: string }) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<TermWrap>(null);
-    const initialLoadRef = React.useRef<InitialLoadDataType>({ loaded: false, heldData: [] });
+    const shellProcStatusRef = React.useRef<string>(null);
+    const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
+        return jotai.atom<string>(null);
+    }) as jotai.PrimitiveAtom<string>;
     const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
@@ -157,14 +169,38 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     const termSettings = jotai.useAtomValue(termSettingsAtom);
     const isFocused = jotai.useAtomValue(isFocusedAtom);
     React.useEffect(() => {
-        const termWrap = new TermWrap(blockId, connectElemRef.current, {
-            theme: getThemeFromCSSVars(connectElemRef.current),
-            fontSize: termSettings?.fontsize ?? 12,
-            fontFamily: termSettings?.fontfamily ?? "Hack",
-            drawBoldTextInBrightColors: false,
-            fontWeight: "normal",
-            fontWeightBold: "bold",
-        });
+        function handleTerminalKeydown(event: KeyboardEvent) {
+            const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
+            if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
+                event.preventDefault();
+                event.stopPropagation();
+                const metaCmd: BlockSetMetaCommand = { command: "setmeta", meta: { "term:mode": "html" } };
+                services.BlockService.SendCommand(this.blockId, metaCmd);
+                return false;
+            }
+            if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
+                // restart
+                const restartCmd: BlockRestartCommand = { command: "controller:restart", blockid: blockId };
+                services.BlockService.SendCommand(blockId, restartCmd);
+                return false;
+            }
+        }
+
+        const termWrap = new TermWrap(
+            blockId,
+            connectElemRef.current,
+            {
+                theme: getThemeFromCSSVars(connectElemRef.current),
+                fontSize: termSettings?.fontsize ?? 12,
+                fontFamily: termSettings?.fontfamily ?? "Hack",
+                drawBoldTextInBrightColors: false,
+                fontWeight: "normal",
+                fontWeightBold: "bold",
+            },
+            {
+                keydownHandler: handleTerminalKeydown,
+            }
+        );
         (window as any).term = termWrap;
         termRef.current = termWrap;
         termWrap.addFocusListener(() => {
@@ -181,7 +217,8 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     }, []);
 
     const handleHtmlKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        if (event.code === "Escape" && event.metaKey) {
+        const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
             // reset term:mode
             const metaCmd: BlockSetMetaCommand = { command: "setmeta", meta: { "term:mode": null } };
             services.BlockService.SendCommand(blockId, metaCmd);
@@ -209,6 +246,32 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         if (isFocused && termMode == "html") {
             htmlElemFocusRef.current?.focus();
         }
+    });
+
+    React.useEffect(() => {
+        function updateShellProcStatus(status: string) {
+            if (status == null) {
+                return;
+            }
+            shellProcStatusRef.current = status;
+            if (status == "running") {
+                termRef.current?.setIsRunning(true);
+                globalStore.set(blockIconOverrideAtom, "square-terminal");
+            } else {
+                termRef.current?.setIsRunning(false);
+                globalStore.set(blockIconOverrideAtom, "regular@square-terminal");
+            }
+        }
+        const initialRTStatus = services.BlockService.GetControllerStatus(blockId);
+        initialRTStatus.then((rts) => {
+            updateShellProcStatus(rts?.shellprocstatus);
+        });
+        const bcSubject = getEventORefSubject("blockcontroller:status", WOS.makeORef("block", blockId));
+        bcSubject.subscribe((data: WSEventType) => {
+            let bcRTS: BlockControllerRuntimeStatus = data.data;
+            updateShellProcStatus(bcRTS?.shellprocstatus);
+        });
+        return undefined;
     });
 
     let stickerConfig = {

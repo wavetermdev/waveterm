@@ -216,7 +216,6 @@ function handleWSEventMessage(msg: WSEventType) {
         }
         return;
     }
-
     // we send to two subjects just eventType and eventType|oref
     // we don't use getORefSubject here because we don't want to create a new subject
     const eventSubject = eventSubjects.get(msg.eventtype);

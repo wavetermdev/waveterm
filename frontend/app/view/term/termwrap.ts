@@ -22,11 +22,14 @@ export class TermWrap {
     loaded: boolean;
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
+    isRunning: boolean;
+    keydownHandler: (e: KeyboardEvent) => void;
 
     constructor(
         blockId: string,
         connectElem: HTMLDivElement,
-        options?: TermTypes.ITerminalOptions & TermTypes.ITerminalInitOnlyOptions
+        options: TermTypes.ITerminalOptions & TermTypes.ITerminalInitOnlyOptions,
+        waveOptions: { keydownHandler?: (e: KeyboardEvent) => void }
     ) {
         this.blockId = blockId;
         this.ptyOffset = 0;
@@ -43,10 +46,12 @@ export class TermWrap {
         this.handleResize_debounced = debounce(50, this.handleResize.bind(this));
         this.terminal.open(this.connectElem);
         this.handleResize();
+        this.isRunning = true;
+        this.keydownHandler = waveOptions.keydownHandler;
     }
 
     async initTerminal() {
-        this.connectElem.addEventListener("keydown", this.keydownListener.bind(this), true);
+        this.connectElem.addEventListener("keydown", this.keydownHandler, true);
         this.terminal.onData(this.handleTermData.bind(this));
         this.mainFileSubject = getFileSubject(this.blockId, "main");
         this.mainFileSubject.subscribe(this.handleNewFileSubjectData.bind(this));
@@ -56,6 +61,10 @@ export class TermWrap {
             this.loaded = true;
         }
         this.runProcessIdleTimeout();
+    }
+
+    setIsRunning(isRunning: boolean) {
+        this.isRunning = isRunning;
     }
 
     dispose() {
@@ -69,7 +78,11 @@ export class TermWrap {
             const wsCmd: BlockInputWSCommand = { wscommand: "blockinput", blockid: this.blockId, inputdata64: b64data };
             sendWSCommand(wsCmd);
         } else {
-            const inputCmd: BlockInputCommand = { command: "controller:input", inputdata64: b64data };
+            const inputCmd: BlockInputCommand = {
+                command: "controller:input",
+                blockid: this.blockId,
+                inputdata64: b64data,
+            };
             services.BlockService.SendCommand(this.blockId, inputCmd);
         }
     }
@@ -78,26 +91,20 @@ export class TermWrap {
         this.terminal.textarea.addEventListener("focus", focusFn);
     }
 
-    keydownListener(ev: KeyboardEvent) {
-        if (ev.code == "Escape" && ev.metaKey) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            const metaCmd: BlockSetMetaCommand = { command: "setmeta", meta: { "term:mode": "html" } };
-            services.BlockService.SendCommand(this.blockId, metaCmd);
-            return false;
-        }
-    }
-
     handleNewFileSubjectData(msg: WSFileEventData) {
-        if (msg.fileop != "append") {
+        if (msg.fileop == "truncate") {
+            this.terminal.clear();
+            this.heldData = [];
+        } else if (msg.fileop == "append") {
+            const decodedData = base64ToArray(msg.data64);
+            if (this.loaded) {
+                this.doTerminalWrite(decodedData, null);
+            } else {
+                this.heldData.push(decodedData);
+            }
+        } else {
             console.log("bad fileop for terminal", msg);
             return;
-        }
-        const decodedData = base64ToArray(msg.data64);
-        if (this.loaded) {
-            this.doTerminalWrite(decodedData, null);
-        } else {
-            this.heldData.push(decodedData);
         }
     }
 

@@ -31,7 +31,14 @@ declare global {
 
     type BlockCommand = {
         command: string;
-    } & ( BlockAppendFileCommand | BlockAppendIJsonCommand | BlockInputCommand | CreateBlockCommand | BlockGetMetaCommand | BlockMessageCommand | ResolveIdsCommand | BlockSetMetaCommand | BlockSetViewCommand );
+    } & ( BlockAppendFileCommand | BlockAppendIJsonCommand | BlockInputCommand | BlockRestartCommand | CreateBlockCommand | BlockGetMetaCommand | BlockMessageCommand | ResolveIdsCommand | BlockSetMetaCommand | BlockSetViewCommand );
+
+    // blockcontroller.BlockControllerRuntimeStatus
+    type BlockControllerRuntimeStatus = {
+        blockid: string;
+        status: string;
+        shellprocstatus?: string;
+    };
 
     // wstore.BlockDef
     type BlockDef = {
@@ -69,6 +76,12 @@ declare global {
         message: string;
     };
 
+    // wshutil.BlockRestartCommand
+    type BlockRestartCommand = {
+        command: "controller:restart";
+        blockid: string;
+    };
+
     // wshutil.BlockSetMetaCommand
     type BlockSetMetaCommand = {
         command: "setmeta";
@@ -97,15 +110,17 @@ declare global {
         rtopts?: RuntimeOpts;
     };
 
-	type DateTimeConfigType = {
-		locale: string;
-		format: DateTimeFormatConfigType;
-	}
+    // wconfig.DateTimeConfigType
+    type DateTimeConfigType = {
+        locale: string;
+        format: DateTimeFormatConfigType;
+    };
 
-	type DateTimeFormatConfigType = {
-		dateStyle: "full" | "long" | "medium" | "short";
-		timeStyle: "full" | "long" | "medium" | "short";
-	}
+    // wconfig.DateTimeFormatConfigType
+    type DateTimeFormatConfigType = {
+        dateStyle: number;
+        timeStyle: number;
+    };
 
     // wstore.FileDef
     type FileDef = {
@@ -122,7 +137,7 @@ declare global {
         notfound?: boolean;
         size: number;
         mode: number;
-		modestr: string;
+        modestr: string;
         modtime: number;
         isdir?: boolean;
         mimetype?: string;
@@ -157,10 +172,10 @@ declare global {
         ReturnDesc: string;
     };
 
-	//wconfig.MimeTypeConfigType
-	type MimeTypeConfigType = {
-		icon: string;
-	}
+    // wconfig.MimeTypeConfigType
+    type MimeTypeConfigType = {
+        icon: string;
+    };
 
     // waveobj.ORef
     type ORef = {
@@ -195,10 +210,10 @@ declare global {
 
     // wconfig.SettingsConfigType
     type SettingsConfigType = {
-		datetime: DateTimeConfigType;
-		mimetypes: {[key:string]: MimeTypeConfigType}
-        widgets: WidgetsConfigType[];
+        mimetypes: {[key: string]: MimeTypeConfigType};
+        datetime: DateTimeConfigType;
         term: TerminalConfigType;
+        widgets: WidgetsConfigType[];
     };
 
     // wstore.StickerClickOptsType

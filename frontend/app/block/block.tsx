@@ -32,7 +32,7 @@ function processTitleString(titleString: string): React.ReactNode[] {
     if (titleString == null) {
         return null;
     }
-    const tagRegex = /<(\/)?([a-z]+)(?::([#a-z0-9-]+))?>/g;
+    const tagRegex = /<(\/)?([a-z]+)(?::([#a-z0-9@-]+))?>/g;
     let lastIdx = 0;
     let match;
     let partsStack = [[]];
@@ -46,10 +46,11 @@ function processTitleString(titleString: string): React.ReactNode[] {
             if (tagParam == null) {
                 continue;
             }
-            if (!tagParam.match(/^[a-z0-9-]+$/)) {
+            const iconClass = util.makeIconClass(tagParam, false);
+            if (iconClass == null) {
                 continue;
             }
-            lastPart.push(<i key={match.index} className={`fa fa-solid fa-${tagParam}`} />);
+            lastPart.push(<i key={match.index} className={iconClass} />);
             continue;
         }
         if (tagName == "c" || tagName == "color") {
@@ -105,10 +106,9 @@ function getBlockHeaderText(blockIcon: string, blockData: Block): React.ReactNod
         if (!util.isBlank(iconColor)) {
             iconStyle = { color: iconColor };
         }
-        if (blockIcon.match(/^[a-z0-9-]+$/)) {
-            blockIconElem = (
-                <i key="icon" style={iconStyle} className={`block-frame-icon fa fa-solid fa-${blockIcon}`} />
-            );
+        const iconClass = util.makeIconClass(blockIcon, false);
+        if (iconClass != null) {
+            blockIconElem = <i key="icon" style={iconStyle} className={clsx(`block-frame-icon`, iconClass)} />;
         }
     }
     if (!util.isBlank(blockData?.meta?.title)) {
@@ -123,7 +123,11 @@ function getBlockHeaderText(blockIcon: string, blockData: Block): React.ReactNod
             return [blockIconElem, blockData.meta.title];
         }
     }
-    return [blockIconElem, `${blockData?.view} [${blockData.oid.substring(0, 8)}]`];
+    let viewString = blockData?.view;
+    if (blockData.controller == "cmd") {
+        viewString = "cmd";
+    }
+    return [blockIconElem, `${viewString} [${blockData.oid.substring(0, 8)}]`];
 }
 
 interface FramelessBlockHeaderProps {

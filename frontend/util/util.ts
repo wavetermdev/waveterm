@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0s
 
 import base64 from "base64-js";
+import clsx from "clsx";
 
 function isBlank(str: string): boolean {
     return str == null || str == "";
@@ -71,4 +72,21 @@ function jsonDeepEqual(v1: any, v2: any): boolean {
     return false;
 }
 
-export { base64ToArray, base64ToString, isBlank, jsonDeepEqual, stringToBase64 };
+function makeIconClass(icon: string, fw: boolean): string {
+    if (icon == null) {
+        return null;
+    }
+    if (icon.match(/^(solid@)?[a-z0-9-]+$/)) {
+        // strip off "solid@" prefix if it exists
+        icon = icon.replace(/^solid@/, "");
+        return clsx(`fa fa-sharp fa-solid fa-${icon}`, fw ? "fa-fw" : null);
+    }
+    if (icon.match(/^regular@[a-z0-9-]+$/)) {
+        // strip off the "regular@" prefix if it exists
+        icon = icon.replace(/^regular@/, "");
+        return clsx(`fa fa-sharp fa-regular fa-${icon}`, fw ? "fa-fw" : null);
+    }
+    return null;
+}
+
+export { base64ToArray, base64ToString, isBlank, jsonDeepEqual, makeIconClass, stringToBase64 };

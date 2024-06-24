@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"strings"
 	"sync"
@@ -19,6 +20,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
+	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
@@ -32,6 +34,12 @@ const (
 const (
 	BlockFile_Main = "main" // used for main pty output
 	BlockFile_Html = "html" // used for alt html layout
+)
+
+const (
+	Status_Init    = "init"
+	Status_Running = "running"
+	Status_Done    = "done"
 )
 
 const (
@@ -63,13 +71,30 @@ type BlockController struct {
 	CreatedHtmlFile bool
 	ShellProc       *shellexec.ShellProc
 	ShellInputCh    chan *BlockInputUnion
+	ShellProcStatus string
 	RunCmdFn        RunCmdFnType
+}
+
+type BlockControllerRuntimeStatus struct {
+	BlockId         string `json:"blockid"`
+	Status          string `json:"status"`
+	ShellProcStatus string `json:"shellprocstatus,omitempty"`
 }
 
 func (bc *BlockController) WithLock(f func()) {
 	bc.Lock.Lock()
 	defer bc.Lock.Unlock()
 	f()
+}
+
+func (bc *BlockController) GetRuntimeStatus() *BlockControllerRuntimeStatus {
+	var rtn BlockControllerRuntimeStatus
+	bc.WithLock(func() {
+		rtn.BlockId = bc.BlockId
+		rtn.Status = bc.Status
+		rtn.ShellProcStatus = bc.ShellProcStatus
+	})
+	return &rtn
 }
 
 func jsonDeepCopy(val map[string]any) (map[string]any, error) {
@@ -85,16 +110,6 @@ func jsonDeepCopy(val map[string]any) (map[string]any, error) {
 	return rtn, nil
 }
 
-func (bc *BlockController) setShellProc(shellProc *shellexec.ShellProc) error {
-	bc.Lock.Lock()
-	defer bc.Lock.Unlock()
-	if bc.ShellProc != nil {
-		return fmt.Errorf("shell process already running")
-	}
-	bc.ShellProc = shellProc
-	return nil
-}
-
 func (bc *BlockController) getShellProc() *shellexec.ShellProc {
 	bc.Lock.Lock()
 	defer bc.Lock.Unlock()
@@ -105,10 +120,42 @@ type RunShellOpts struct {
 	TermSize shellexec.TermSize `json:"termsize,omitempty"`
 }
 
-func (bc *BlockController) Close() {
-	if bc.getShellProc() != nil {
-		bc.ShellProc.Close()
+func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
+	var sendUpdate bool
+	bc.WithLock(func() {
+		sendUpdate = updateFn()
+	})
+	if sendUpdate {
+		log.Printf("sending blockcontroller update %#v\n", bc.GetRuntimeStatus())
+		go eventbus.SendEvent(eventbus.WSEventType{
+			EventType: "blockcontroller:status",
+			ORef:      waveobj.MakeORef(wstore.OType_Block, bc.BlockId).String(),
+			Data:      bc.GetRuntimeStatus(),
+		})
 	}
+}
+
+func HandleTruncateBlockFile(blockId string, blockFile string) error {
+	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
+	defer cancelFn()
+	err := filestore.WFS.WriteFile(ctx, blockId, blockFile, nil)
+	if err == fs.ErrNotExist {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("error truncating blockfile: %w", err)
+	}
+	eventbus.SendEvent(eventbus.WSEventType{
+		EventType: "blockfile",
+		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
+		Data: &eventbus.WSFileEventData{
+			ZoneId:   blockId,
+			FileName: blockFile,
+			FileOp:   eventbus.FileOp_Truncate,
+		},
+	})
+	return nil
+
 }
 
 func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error {
@@ -134,6 +181,19 @@ func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 func (bc *BlockController) resetTerminalState() {
 	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
 	defer cancelFn()
+	var shouldTruncate bool
+	blockData, getBlockDataErr := wstore.DBMustGet[*wstore.Block](ctx, bc.BlockId)
+	if getBlockDataErr == nil {
+		shouldTruncate = getBoolFromMeta(blockData.Meta, wstore.MetaKey_CmdClearOnRestart, false)
+	}
+	if shouldTruncate {
+		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Main)
+		if err != nil {
+			log.Printf("error truncating main blockfile: %v\n", err)
+		}
+		return
+	}
+	// controller type = "shell"
 	var buf bytes.Buffer
 	// buf.WriteString("\x1b[?1049l") // disable alternative buffer
 	buf.WriteString("\x1b[0m")     // reset attributes
@@ -154,30 +214,86 @@ func (bc *BlockController) waveOSCMessageHandler(ctx context.Context, cmd wshuti
 	return bc.RunCmdFn(ctx, cmd, wshutil.CmdContextType{BlockId: bc.BlockId, TabId: bc.TabId})
 }
 
-func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
+func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[string]any) error {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancelFn()
 	err := filestore.WFS.MakeFile(ctx, bc.BlockId, "main", nil, filestore.FileOptsType{MaxSize: DefaultTermMaxFileSize, Circular: true})
-	if err != nil && err != filestore.ErrAlreadyExists {
+	if err != nil && err != fs.ErrExist {
+		err = fs.ErrExist
 		return fmt.Errorf("error creating blockfile: %w", err)
 	}
-	if err == filestore.ErrAlreadyExists {
+	if err == fs.ErrExist {
 		// reset the terminal state
 		bc.resetTerminalState()
 	}
+	err = nil
 	if bc.getShellProc() != nil {
 		return nil
 	}
-	shellProc, err := shellexec.StartShellProc(rc.TermSize)
+	var shellProcErr error
+	bc.WithLock(func() {
+		if bc.ShellProc != nil {
+			shellProcErr = fmt.Errorf("shell process already running")
+			return
+		}
+	})
+	if shellProcErr != nil {
+		return shellProcErr
+	}
+	var cmdStr string
+	var cmdOpts shellexec.CommandOptsType
+	if bc.ControllerType == BlockController_Shell {
+		cmdOpts = shellexec.CommandOptsType{Interactive: true, Login: true}
+	} else if bc.ControllerType == BlockController_Cmd {
+		if _, ok := blockMeta["cmd"].(string); ok {
+			cmdStr = blockMeta["cmd"].(string)
+		} else {
+			return fmt.Errorf("missing cmd in block meta")
+		}
+		if _, ok := blockMeta["cwd"].(string); ok {
+			cmdOpts.Cwd = blockMeta["cwd"].(string)
+			if cmdOpts.Cwd != "" {
+				cmdOpts.Cwd = wavebase.ExpandHomeDir(cmdOpts.Cwd)
+			}
+		}
+		if _, ok := blockMeta["cmd:interactive"]; ok {
+			if blockMeta["cmd:interactive"].(bool) {
+				cmdOpts.Interactive = true
+			}
+		}
+		if _, ok := blockMeta["cmd:login"]; ok {
+			if blockMeta["cmd:login"].(bool) {
+				cmdOpts.Login = true
+			}
+		}
+		if _, ok := blockMeta["cmd:env"].(map[string]any); ok {
+			cmdEnv := blockMeta["cmd:env"].(map[string]any)
+			cmdOpts.Env = make(map[string]string)
+			for k, v := range cmdEnv {
+				if v == nil {
+					continue
+				}
+				if _, ok := v.(string); ok {
+					cmdOpts.Env[k] = v.(string)
+				}
+				if _, ok := v.(float64); ok {
+					cmdOpts.Env[k] = fmt.Sprintf("%v", v)
+				}
+			}
+		}
+	} else {
+		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
+	}
+	shellProc, err := shellexec.StartShellProc(rc.TermSize, cmdStr, cmdOpts)
 	if err != nil {
 		return err
 	}
-	err = bc.setShellProc(shellProc)
-	if err != nil {
-		bc.ShellProc.Close()
-		return err
-	}
+	bc.UpdateControllerAndSendUpdate(func() bool {
+		bc.ShellProc = shellProc
+		bc.ShellProcStatus = Status_Running
+		return true
+	})
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
 	messageCh := make(chan wshutil.RpcMessage, 32)
@@ -186,6 +302,8 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {
+			log.Printf("[shellproc] pty-read loop done\n")
+
 			// needs synchronization
 			bc.ShellProc.Close()
 			close(bc.ShellInputCh)
@@ -211,6 +329,9 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 		}
 	}()
 	go func() {
+		defer func() {
+			log.Printf("[shellproc] shellInputCh loop done\n")
+		}()
 		// handles input from the shellInputCh, sent to pty
 		for ic := range shellInputCh {
 			if len(ic.InputData) > 0 {
@@ -232,37 +353,71 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts) error {
 			shellInputCh <- &BlockInputUnion{InputData: out}
 		}
 	}()
+	go func() {
+		// wait for the shell to finish
+		defer func() {
+			bc.UpdateControllerAndSendUpdate(func() bool {
+				bc.ShellProcStatus = Status_Done
+				return true
+			})
+			log.Printf("[shellproc] shell process wait loop done\n")
+		}()
+		waitErr := shellProc.Cmd.Wait()
+		shellProc.SetWaitErrorAndSignalDone(waitErr)
+		exitCode := shellexec.ExitCodeFromWaitErr(waitErr)
+		termMsg := fmt.Sprintf("\r\nprocess finished with exit code = %d\r\n\r\n", exitCode)
+		HandleAppendBlockFile(bc.BlockId, BlockFile_Main, []byte(termMsg))
+	}()
 	return nil
 }
 
-func (bc *BlockController) Run(bdata *wstore.Block) {
+func getBoolFromMeta(meta map[string]any, key string, def bool) bool {
+	ival, found := meta[key]
+	if !found || ival == nil {
+		return def
+	}
+	if val, ok := ival.(bool); ok {
+		return val
+	}
+	return def
+}
+
+func (bc *BlockController) run(bdata *wstore.Block, blockMeta map[string]any) {
 	defer func() {
-		bc.WithLock(func() {
-			// if the controller had an error status, don't change it
-			if bc.Status == "running" {
-				bc.Status = "done"
+		bc.UpdateControllerAndSendUpdate(func() bool {
+			if bc.Status == Status_Running {
+				bc.Status = Status_Done
+				return true
 			}
-		})
-		eventbus.SendEvent(eventbus.WSEventType{
-			EventType: "block:done",
-			ORef:      waveobj.MakeORef(wstore.OType_Block, bc.BlockId).String(),
-			Data:      nil,
+			return false
 		})
 		globalLock.Lock()
 		defer globalLock.Unlock()
 		delete(blockControllerMap, bc.BlockId)
 	}()
-	bc.WithLock(func() {
-		bc.Status = "running"
+	bc.UpdateControllerAndSendUpdate(func() bool {
+		bc.Status = Status_Running
+		return true
 	})
-
-	// only controller is "shell" for now
-	go func() {
-		err := bc.DoRunShellCommand(&RunShellOpts{TermSize: bdata.RuntimeOpts.TermSize})
+	if bdata.Controller != BlockController_Shell && bdata.Controller != BlockController_Cmd {
+		log.Printf("unknown controller %q\n", bdata.Controller)
+		return
+	}
+	if getBoolFromMeta(blockMeta, wstore.MetaKey_CmdClearOnStart, false) {
+		err := HandleTruncateBlockFile(bc.BlockId, BlockFile_Main)
 		if err != nil {
-			log.Printf("error running shell: %v\n", err)
+			log.Printf("error truncating main blockfile: %v\n", err)
 		}
-	}()
+	}
+	runOnStart := getBoolFromMeta(blockMeta, wstore.MetaKey_CmdRunOnStart, true)
+	if runOnStart {
+		go func() {
+			err := bc.DoRunShellCommand(&RunShellOpts{TermSize: bdata.RuntimeOpts.TermSize}, bdata.Meta)
+			if err != nil {
+				log.Printf("error running shell: %v\n", err)
+			}
+		}()
+	}
 
 	for genCmd := range bc.InputCh {
 		switch cmd := genCmd.(type) {
@@ -284,6 +439,14 @@ func (bc *BlockController) Run(bdata *wstore.Block) {
 				inputUnion.InputData = inputBuf[:nw]
 			}
 			bc.ShellInputCh <- inputUnion
+		case *wshutil.BlockRestartCommand:
+			// TODO: if shell command is already running
+			// we probably want to kill it off, wait, and then restart it
+			err := bc.DoRunShellCommand(&RunShellOpts{TermSize: bdata.RuntimeOpts.TermSize}, bdata.Meta)
+			if err != nil {
+				log.Printf("error running shell command: %v\n", err)
+			}
+
 		default:
 			log.Printf("unknown command type %T\n", cmd)
 		}
@@ -299,7 +462,7 @@ func StartBlockController(ctx context.Context, tabId string, blockId string, run
 		// nothing to start
 		return nil
 	}
-	if blockData.Controller != BlockController_Shell {
+	if blockData.Controller != BlockController_Shell && blockData.Controller != BlockController_Cmd {
 		return fmt.Errorf("unknown controller %q", blockData.Controller)
 	}
 	globalLock.Lock()
@@ -309,16 +472,17 @@ func StartBlockController(ctx context.Context, tabId string, blockId string, run
 		return nil
 	}
 	bc := &BlockController{
-		Lock:           &sync.Mutex{},
-		ControllerType: blockData.Controller,
-		TabId:          tabId,
-		BlockId:        blockId,
-		Status:         "init",
-		InputCh:        make(chan wshutil.BlockCommand),
-		RunCmdFn:       runCmdFn,
+		Lock:            &sync.Mutex{},
+		ControllerType:  blockData.Controller,
+		TabId:           tabId,
+		BlockId:         blockId,
+		Status:          Status_Init,
+		InputCh:         make(chan wshutil.BlockCommand),
+		RunCmdFn:        runCmdFn,
+		ShellProcStatus: Status_Init,
 	}
 	blockControllerMap[blockId] = bc
-	go bc.Run(blockData)
+	go bc.run(blockData, blockData.Meta)
 	return nil
 }
 
@@ -327,7 +491,9 @@ func StopBlockController(blockId string) {
 	if bc == nil {
 		return
 	}
-	bc.Close()
+	if bc.getShellProc() != nil {
+		bc.ShellProc.Close()
+	}
 	close(bc.InputCh)
 }
 

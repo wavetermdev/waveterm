@@ -12,6 +12,26 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
+// well known meta keys
+const (
+	MetaKey_Title                    = "title"
+	MetaKey_File                     = "file"
+	MetaKey_Url                      = "url"
+	MetaKey_Icon                     = "icon"
+	MetaKey_IconColor                = "icon:color"
+	MetaKey_Frame                    = "frame"
+	MetaKey_FrameBorderColor         = "frame:bordercolor"
+	MetaKey_FrameBorderColor_Focused = "frame:bordercolor:focused"
+	MetaKey_Cmd                      = "cmd"
+	MetaKey_CmdInteractive           = "cmd:interactive"
+	MetaKey_CmdLogin                 = "cmd:login"
+	MetaKey_CmdRunOnStart            = "cmd:runonstart"
+	MetaKey_CmdClearOnStart          = "cmd:clearonstart"
+	MetaKey_CmdClearOnRestart        = "cmd:clearonrestart"
+	MetaKey_CmdEnv                   = "env"
+	MetaKey_CmdCwd                   = "cwd"
+)
+
 type UIContext struct {
 	WindowId    string `json:"windowid"`
 	ActiveTabId string `json:"activetabid"`

@@ -23,6 +23,7 @@ const (
 	BlockCommand_SetMeta         = "setmeta"
 	BlockCommand_GetMeta         = "getmeta"
 	BlockCommand_Input           = "controller:input"
+	BlockCommand_Restart         = "controller:restart"
 	BlockCommand_AppendBlockFile = "blockfile:append"
 	BlockCommand_AppendIJson     = "blockfile:appendijson"
 	Command_ResolveIds           = "resolveids"
@@ -31,6 +32,7 @@ const (
 
 var CommandToTypeMap = map[string]reflect.Type{
 	BlockCommand_Input:           reflect.TypeOf(BlockInputCommand{}),
+	BlockCommand_Restart:         reflect.TypeOf(BlockRestartCommand{}),
 	BlockCommand_SetView:         reflect.TypeOf(BlockSetViewCommand{}),
 	BlockCommand_SetMeta:         reflect.TypeOf(BlockSetMetaCommand{}),
 	BlockCommand_GetMeta:         reflect.TypeOf(BlockGetMetaCommand{}),
@@ -95,6 +97,19 @@ func ParseCmdMap(cmdMap map[string]any) (BlockCommand, error) {
 		return nil, fmt.Errorf("error unmarshalling command: %w", err)
 	}
 	return cmd.(BlockCommand), nil
+}
+
+type BlockRestartCommand struct {
+	Command string `json:"command" tstype:"\"controller:restart\""`
+	BlockId string `json:"blockid"`
+}
+
+func (rc *BlockRestartCommand) GetCommand() string {
+	return BlockCommand_Restart
+}
+
+func (rc *BlockRestartCommand) GetBlockId() string {
+	return rc.BlockId
 }
 
 type BlockInputCommand struct {

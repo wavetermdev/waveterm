@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"sync"
 	"syscall"
 
 	"github.com/creack/pty"
@@ -22,17 +23,63 @@ type TermSize struct {
 	Cols int `json:"cols"`
 }
 
+type CommandOptsType struct {
+	Interactive bool              `json:"interactive,omitempty"`
+	Login       bool              `json:"login,omitempty"`
+	Cwd         string            `json:"cwd,omitempty"`
+	Env         map[string]string `json:"env,omitempty"`
+}
+
 type ShellProc struct {
-	Cmd *exec.Cmd
-	Pty *os.File
+	Cmd       *exec.Cmd
+	Pty       *os.File
+	CloseOnce *sync.Once
+	DoneCh    chan any // closed after proc.Wait() returns
+	WaitErr   error    // WaitErr is synchronized by DoneCh (written before DoneCh is closed) and CloseOnce
 }
 
 func (sp *ShellProc) Close() {
 	sp.Cmd.Process.Kill()
 	go func() {
-		sp.Cmd.Process.Wait()
+		_, waitErr := sp.Cmd.Process.Wait()
+		sp.SetWaitErrorAndSignalDone(waitErr)
 		sp.Pty.Close()
 	}()
+}
+
+func (sp *ShellProc) SetWaitErrorAndSignalDone(waitErr error) {
+	sp.CloseOnce.Do(func() {
+		sp.WaitErr = waitErr
+		close(sp.DoneCh)
+	})
+}
+
+func (sp *ShellProc) Wait() error {
+	<-sp.DoneCh
+	return sp.WaitErr
+}
+
+// returns (done, waitError)
+func (sp *ShellProc) WaitNB() (bool, error) {
+	select {
+	case <-sp.DoneCh:
+		return true, sp.WaitErr
+	default:
+		return false, nil
+	}
+}
+
+func ExitCodeFromWaitErr(err error) int {
+	if err == nil {
+		return 0
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok {
+		if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
+			return status.ExitStatus()
+		}
+	}
+	return -1
+
 }
 
 func setBoolConditionally(rval reflect.Value, field string, value bool) {
@@ -47,11 +94,40 @@ func setSysProcAttrs(cmd *exec.Cmd) {
 	setBoolConditionally(rval, "Setctty", true)
 }
 
-func StartShellProc(termSize TermSize) (*ShellProc, error) {
-	shellPath := shellutil.DetectLocalShellPath()
-	ecmd := exec.Command(shellPath, "-i", "-l")
+func checkCwd(cwd string) error {
+	if cwd == "" {
+		return fmt.Errorf("cwd is empty")
+	}
+	if _, err := os.Stat(cwd); err != nil {
+		return fmt.Errorf("error statting cwd %q: %w", cwd, err)
+	}
+	return nil
+}
+
+func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (*ShellProc, error) {
+	var ecmd *exec.Cmd
+	var shellOpts []string
+	if cmdOpts.Login {
+		shellOpts = append(shellOpts, "-l")
+	}
+	if cmdOpts.Interactive {
+		shellOpts = append(shellOpts, "-i")
+	}
+	if cmdStr == "" {
+		shellPath := shellutil.DetectLocalShellPath()
+		ecmd = exec.Command(shellPath, shellOpts...)
+	} else {
+		shellPath := shellutil.DetectLocalShellPath()
+		shellOpts = append(shellOpts, "-c", cmdStr)
+		ecmd = exec.Command(shellPath, shellOpts...)
+	}
 	ecmd.Env = os.Environ()
-	ecmd.Dir = wavebase.GetHomeDir()
+	if cmdOpts.Cwd != "" {
+		ecmd.Dir = cmdOpts.Cwd
+	}
+	if cwdErr := checkCwd(ecmd.Dir); cwdErr != nil {
+		ecmd.Dir = wavebase.GetHomeDir()
+	}
 	envToAdd := shellutil.WaveshellEnvVars(shellutil.DefaultTermType)
 	if os.Getenv("LANG") == "" {
 		envToAdd["LANG"] = wavebase.DetermineLang()
@@ -80,7 +156,7 @@ func StartShellProc(termSize TermSize) (*ShellProc, error) {
 		cmdPty.Close()
 		return nil, err
 	}
-	return &ShellProc{Cmd: ecmd, Pty: cmdPty}, nil
+	return &ShellProc{Cmd: ecmd, Pty: cmdPty, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize TermSize) ([]byte, error) {

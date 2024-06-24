@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/cmdqueue"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
@@ -26,6 +27,17 @@ func (bs *BlockService) SendCommand_Meta() tsgenmeta.MethodMeta {
 		Desc:     "send command to block",
 		ArgNames: []string{"blockid", "cmd"},
 	}
+}
+
+func (bs *BlockService) GetControllerStatus(ctx context.Context, blockId string) (*blockcontroller.BlockControllerRuntimeStatus, error) {
+	bc := blockcontroller.GetBlockController(blockId)
+	if bc == nil {
+		return &blockcontroller.BlockControllerRuntimeStatus{
+			BlockId: blockId,
+			Status:  "stopped",
+		}, nil
+	}
+	return bc.GetRuntimeStatus(), nil
 }
 
 func (bs *BlockService) SendCommand(uiContext wstore.UIContext, blockId string, cmd wshutil.BlockCommand) error {
