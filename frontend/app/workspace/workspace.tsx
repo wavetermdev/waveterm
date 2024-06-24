@@ -98,7 +98,6 @@ function WorkspaceElem() {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
     const activeTabId = windowData?.activetabid;
     const ws = jotai.useAtomValue(atoms.workspace);
-    console.log("ws", ws);
     return (
         <div className="workspace">
             <TabBar workspace={ws} />

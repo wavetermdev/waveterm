@@ -8,8 +8,10 @@ import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
+import { useRef } from "react";
 import { CenteredDiv } from "../element/quickelems";
 import { CodeEdit } from "./codeedit";
+import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
 
 import "./view.less";
@@ -121,6 +123,21 @@ function CodeEditPreview({
     return <CodeEdit readonly={true} text={fileContent} filename={filename} />;
 }
 
+function CSVViewPreview({
+    parentRef,
+    contentAtom,
+    filename,
+    readonly,
+}: {
+    parentRef: React.MutableRefObject<HTMLDivElement>;
+    contentAtom: jotai.Atom<Promise<string>>;
+    filename: string;
+    readonly: boolean;
+}) {
+    const fileContent = jotai.useAtomValue(contentAtom);
+    return <CSVView parentRef={parentRef} readonly={true} content={fileContent} filename={filename} />;
+}
+
 function iconForFile(mimeType: string, fileName: string): string {
     if (mimeType == "application/pdf") {
         return "file-pdf";
@@ -149,6 +166,7 @@ function iconForFile(mimeType: string, fileName: string): string {
 }
 
 function PreviewView({ blockId }: { blockId: string }) {
+    const ref = useRef<HTMLDivElement>(null);
     const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
     const fileNameAtom: jotai.WritableAtom<string, [string], void> = useBlockCache(blockId, "preview:filename", () =>
         jotai.atom<string, [string], void>(
@@ -220,6 +238,10 @@ function PreviewView({ blockId }: { blockId: string }) {
         specializedView = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
     } else if (mimeType === "text/markdown") {
         specializedView = <MarkdownPreview contentAtom={fileContentAtom} />;
+    } else if (mimeType === "text/csv") {
+        specializedView = (
+            <CSVViewPreview parentRef={ref} contentAtom={fileContentAtom} filename={fileName} readonly={true} />
+        );
     } else if (
         mimeType.startsWith("text/") ||
         (mimeType.startsWith("application/") &&
@@ -243,7 +265,7 @@ function PreviewView({ blockId }: { blockId: string }) {
     }, 10);
 
     return (
-        <div className="full-preview">
+        <div ref={ref} className="full-preview">
             <DirNav cwdAtom={fileNameAtom} />
             {specializedView}
         </div>
