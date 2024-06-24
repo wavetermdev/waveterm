@@ -1,4 +1,4 @@
-name: TestDriver.ai Regression Testing
+name: TestDriver.ai Regression Testing - Waveterm
 on:
     push:
         branches:
