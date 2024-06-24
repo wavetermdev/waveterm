@@ -62,5 +62,3 @@ Find more information in our [Contributions Guide](CONTRIBUTING.md), which inclu
 ## License
 
 Wave Terminal is licensed under the Apache-2.0 License. For more information on our dependencies, see [here](./acknowledgements/README.md).
-
-
