@@ -6,9 +6,12 @@ package windowservice
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
+	"github.com/wavetermdev/thenextwave/pkg/eventbus"
+	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
@@ -69,6 +72,70 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext wstore.UIConte
 		}
 		wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
 	}
+	return wstore.ContextGetUpdatesRtn(ctx), nil
+}
+
+func (svc *WindowService) MoveBlockToNewWindow_Meta() tsgenmeta.MethodMeta {
+	return tsgenmeta.MethodMeta{
+		Desc:     "move block to new window",
+		ArgNames: []string{"ctx", "currentTabId", "blockId"},
+	}
+}
+
+func (svc *WindowService) MoveBlockToNewWindow(ctx context.Context, currentTabId string, blockId string) (wstore.UpdatesRtnType, error) {
+	log.Printf("MoveBlockToNewWindow(%s, %s)", currentTabId, blockId)
+	ctx = wstore.ContextWithUpdates(ctx)
+	curWindowId, err := wstore.DBFindWindowForTabId(ctx, currentTabId)
+	if err != nil {
+		return nil, fmt.Errorf("error finding window for current-tab: %w", err)
+	}
+	tab, err := wstore.DBMustGet[*wstore.Tab](ctx, currentTabId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting tab: %w", err)
+	}
+	log.Printf("tab.BlockIds[%s]: %v", tab.OID, tab.BlockIds)
+	var foundBlock bool
+	for _, tabBlockId := range tab.BlockIds {
+		if tabBlockId == blockId {
+			foundBlock = true
+			break
+		}
+	}
+	if !foundBlock {
+		return nil, fmt.Errorf("block not found in current tab")
+	}
+	newWindow, err := wstore.CreateWindow(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error creating window: %w", err)
+	}
+	err = wstore.MoveBlockToTab(ctx, currentTabId, newWindow.ActiveTabId, blockId)
+	if err != nil {
+		return nil, fmt.Errorf("error moving block to tab: %w", err)
+	}
+	eventbus.SendEventToElectron(eventbus.WSEventType{
+		EventType: eventbus.WSEvent_ElectronNewWindow,
+		Data:      newWindow.OID,
+	})
+	windowCreated := eventbus.BusyWaitForWindowId(newWindow.OID, 2*time.Second)
+	if !windowCreated {
+		return nil, fmt.Errorf("new window not created")
+	}
+	eventbus.SendEventToWindow(curWindowId, eventbus.WSEventType{
+		EventType: eventbus.WSEvent_LayoutAction,
+		Data: eventbus.WSLayoutActionData{
+			ActionType: eventbus.WSLayoutActionType_Remove,
+			TabId:      currentTabId,
+			BlockId:    blockId,
+		},
+	})
+	eventbus.SendEventToWindow(newWindow.OID, eventbus.WSEventType{
+		EventType: eventbus.WSEvent_LayoutAction,
+		Data: eventbus.WSLayoutActionData{
+			ActionType: eventbus.WSLayoutActionType_Insert,
+			TabId:      newWindow.ActiveTabId,
+			BlockId:    blockId,
+		},
+	})
 	return wstore.ContextGetUpdatesRtn(ctx), nil
 }
 

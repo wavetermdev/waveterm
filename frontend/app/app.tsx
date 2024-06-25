@@ -3,11 +3,11 @@
 
 import { Workspace } from "@/app/workspace/workspace";
 import { getLayoutStateAtomForTab, globalLayoutTransformsMap } from "@/faraday/lib/layoutAtom";
-import type { LayoutTreeState } from "@/faraday/lib/model";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { WOS, atoms, globalStore, setBlockFocus } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
+import * as layoututil from "@/util/layoututil";
 import * as util from "@/util/util";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -95,18 +95,6 @@ function switchTab(offset: number) {
     services.ObjectService.SetActiveTab(newActiveTabId);
 }
 
-function findLeafIdFromBlockId(layoutTree: LayoutTreeState<TabLayoutData>, blockId: string): string {
-    if (layoutTree?.leafs == null) {
-        return null;
-    }
-    for (let leaf of layoutTree.leafs) {
-        if (leaf.data.blockId == blockId) {
-            return leaf.id;
-        }
-    }
-    return null;
-}
-
 var transformRegexp = /translate\(\s*([0-9.]+)px\s*,\s*([0-9.]+)px\)/;
 
 function parseFloatFromCSS(s: string | number): number {
@@ -174,7 +162,7 @@ function switchBlock(tabId: string, offsetX: number, offsetY: number) {
     }
     const layoutTreeState = globalStore.get(getLayoutStateAtomForTab(tabId, tabAtom));
     const curBlockId = globalStore.get(atoms.waveWindow).activeblockid;
-    const curBlockLeafId = findLeafIdFromBlockId(layoutTreeState, curBlockId);
+    const curBlockLeafId = layoututil.findLeafIdFromBlockId(layoutTreeState, curBlockId);
     if (curBlockLeafId == null) {
         return;
     }

@@ -138,6 +138,12 @@ class WindowServiceType {
         return WOS.callBackendService("window", "CloseWindow", Array.from(arguments))
     }
 
+    // move block to new window
+    // @returns object updates
+    MoveBlockToNewWindow(currentTabId: string, blockId: string): Promise<void> {
+        return WOS.callBackendService("window", "MoveBlockToNewWindow", Array.from(arguments))
+    }
+
     // @returns object updates
     SetWindowPosAndSize(arg2: string, arg3: Point, arg4: WinSize): Promise<void> {
         return WOS.callBackendService("window", "SetWindowPosAndSize", Array.from(arguments))

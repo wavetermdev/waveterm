@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
@@ -393,6 +394,28 @@ func CreateWindow(ctx context.Context) (*Window, error) {
 		return nil, fmt.Errorf("error updating client: %w", err)
 	}
 	return DBMustGet[*Window](ctx, windowId)
+}
+
+func MoveBlockToTab(ctx context.Context, currentTabId string, newTabId string, blockId string) error {
+	return WithTx(ctx, func(tx *TxWrap) error {
+		currentTab, _ := DBGet[*Tab](tx.Context(), currentTabId)
+		if currentTab == nil {
+			return fmt.Errorf("current tab not found: %q", currentTabId)
+		}
+		newTab, _ := DBGet[*Tab](tx.Context(), newTabId)
+		if newTab == nil {
+			return fmt.Errorf("new tab not found: %q", newTabId)
+		}
+		blockIdx := findStringInSlice(currentTab.BlockIds, blockId)
+		if blockIdx == -1 {
+			return fmt.Errorf("block not found in current tab: %q", blockId)
+		}
+		currentTab.BlockIds = utilfn.RemoveElemFromSlice(currentTab.BlockIds, blockId)
+		newTab.BlockIds = append(newTab.BlockIds, blockId)
+		DBUpdate(tx.Context(), currentTab)
+		DBUpdate(tx.Context(), newTab)
+		return nil
+	})
 }
 
 func CreateClient(ctx context.Context) (*Client, error) {

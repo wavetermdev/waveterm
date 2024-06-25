@@ -139,9 +139,35 @@ function runWaveSrv(): Promise<boolean> {
             waveSrvReadyResolve(true);
             return;
         }
+        if (line.startsWith("WAVESRV-EVENT:")) {
+            const evtJson = line.slice("WAVESRV-EVENT:".length);
+            try {
+                const evtMsg: WSEventType = JSON.parse(evtJson);
+                handleWSEvent(evtMsg);
+            } catch (e) {
+                console.log("error handling WAVESRV-EVENT", e);
+            }
+            return;
+        }
         console.log(line);
     });
     return rtnPromise;
+}
+
+async function handleWSEvent(evtMsg: WSEventType) {
+    if (evtMsg.eventtype == "electron:newwindow") {
+        let windowId: string = evtMsg.data;
+        let windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+        if (windowData == null) {
+            return;
+        }
+        let clientData = await services.ClientService.GetClientData();
+        const newWin = createBrowserWindow(clientData.oid, windowData);
+        await newWin.readyPromise;
+        newWin.show();
+    } else {
+        console.log("unhandled electron ws eventtype", evtMsg.eventtype);
+    }
 }
 
 async function mainResizeHandler(_: any, windowId: string, win: WaveBrowserWindow) {
@@ -201,7 +227,9 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     console.log("frame navigation canceled");
 }
 
-function createBrowserWindow(client: Client, waveWindow: WaveWindow): WaveBrowserWindow {
+// note, this does not *show* the window.
+// to show, await win.readyPromise and then win.show()
+function createBrowserWindow(clientId: string, waveWindow: WaveWindow): WaveBrowserWindow {
     let winBounds = {
         x: waveWindow.pos.x,
         y: waveWindow.pos.y,
@@ -236,7 +264,7 @@ function createBrowserWindow(client: Client, waveWindow: WaveWindow): WaveBrowse
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
     // const indexHtml = isDev ? "index-dev.html" : "index.html";
     let usp = new URLSearchParams();
-    usp.set("clientid", client.oid);
+    usp.set("clientid", clientId);
     usp.set("windowid", waveWindow.oid);
     const indexHtml = "index.html";
     if (isDevServer) {
@@ -406,7 +434,7 @@ electron.ipcMain.on("getCursorPoint", (event) => {
 async function createNewWaveWindow() {
     let clientData = await services.ClientService.GetClientData();
     const newWindow = await services.ClientService.MakeWindow();
-    createBrowserWindow(clientData, newWindow);
+    createBrowserWindow(clientData.oid, newWindow);
 }
 
 electron.ipcMain.on("openNewWindow", createNewWaveWindow);
@@ -512,7 +540,7 @@ async function appMain() {
             });
             continue;
         }
-        const win = createBrowserWindow(clientData, windowData);
+        const win = createBrowserWindow(clientData.oid, windowData);
         wins.push(win);
     }
     for (let win of wins) {

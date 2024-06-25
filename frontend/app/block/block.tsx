@@ -8,7 +8,8 @@ import { TerminalView } from "@/app/view/term/term";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { atoms, setBlockFocus, useBlockAtom } from "@/store/global";
+import { atoms, globalStore, setBlockFocus, useBlockAtom } from "@/store/global";
+import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
 import clsx from "clsx";
@@ -144,7 +145,12 @@ function handleHeaderContextMenu(e: React.MouseEvent<HTMLDivElement>, blockData:
     menu.push({
         label: "Move to New Window",
         click: () => {
-            alert("Not Implemented");
+            let currentTabId = globalStore.get(atoms.activeTabId);
+            try {
+                services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
+            } catch (e) {
+                console.error("error moving block to new window", e);
+            }
         },
     });
     menu.push({ type: "separator" });
@@ -173,7 +179,12 @@ const FramelessBlockHeader = ({ blockId, onClose, dragHandleRef }: FramelessBloc
     const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
 
     return (
-        <div key="header" className="block-header" ref={dragHandleRef}>
+        <div
+            key="header"
+            className="block-header"
+            ref={dragHandleRef}
+            onContextMenu={(e) => handleHeaderContextMenu(e, blockData, onClose)}
+        >
             <div className="block-header-text text-fixed">{getBlockHeaderText(null, blockData, settingsConfig)}</div>
             {onClose && (
                 <div className="close-button" onClick={onClose}>

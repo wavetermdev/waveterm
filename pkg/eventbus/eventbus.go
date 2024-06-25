@@ -4,7 +4,12 @@
 package eventbus
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
@@ -15,6 +20,7 @@ const (
 	WSEvent_Config                = "config"
 	WSEvent_BlockControllerStatus = "blockcontroller:status"
 	WSEvent_LayoutAction          = "layoutaction"
+	WSEvent_ElectronNewWindow     = "electron:newwindow"
 )
 
 type WSEventType struct {
@@ -40,6 +46,11 @@ type WindowWatchData struct {
 	WaveWindowId string
 	WatchedORefs map[waveobj.ORef]bool
 }
+
+const (
+	WSLayoutActionType_Insert = "insert"
+	WSLayoutActionType_Remove = "delete"
+)
 
 type WSLayoutActionData struct {
 	TabId      string `json:"tabid"`
@@ -78,6 +89,21 @@ func getWindowWatchesForWindowId(windowId string) []*WindowWatchData {
 	return watches
 }
 
+// TODO fix busy wait -- but we need to wait until a new window connects back with a websocket
+// returns true if the window is connected
+func BusyWaitForWindowId(windowId string, timeout time.Duration) bool {
+	endTime := time.Now().Add(timeout)
+	for {
+		if len(getWindowWatchesForWindowId(windowId)) > 0 {
+			return true
+		}
+		if time.Now().After(endTime) {
+			return false
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
 func getAllWatches() []*WindowWatchData {
 	globalLock.Lock()
 	defer globalLock.Unlock()
@@ -100,4 +126,15 @@ func SendEvent(event WSEventType) {
 	for _, wdata := range wwdArr {
 		wdata.WindowWSCh <- event
 	}
+}
+
+func SendEventToElectron(event WSEventType) {
+	barr, err := json.Marshal(event)
+	if err != nil {
+		log.Printf("cannot marshal electron message: %v\n", err)
+		return
+	}
+	// send to electron
+	log.Printf("sending event to electron: %q\n", event.EventType)
+	fmt.Fprintf(os.Stderr, "\nWAVESRV-EVENT:%s\n", string(barr))
 }

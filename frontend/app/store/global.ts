@@ -5,6 +5,7 @@ import { LayoutTreeAction, LayoutTreeActionType, LayoutTreeInsertNodeAction, new
 import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { layoutTreeStateReducer } from "@/faraday/lib/layoutState";
 
+import * as layoututil from "@/util/layoututil";
 import { produce } from "immer";
 import * as jotai from "jotai";
 import * as rxjs from "rxjs";
@@ -217,7 +218,8 @@ function handleWSEventMessage(msg: WSEventType) {
         return;
     }
     if (msg.eventtype == "layoutaction") {
-        const layoutAction: WSLayoutAction = msg.data;
+        console.log("got wslayoutaction", msg);
+        const layoutAction: WSLayoutActionData = msg.data;
         if (layoutAction.actiontype == LayoutTreeActionType.InsertNode) {
             const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
                 type: LayoutTreeActionType.InsertNode,
@@ -226,6 +228,18 @@ function handleWSEventMessage(msg: WSEventType) {
                 }),
             };
             runLayoutAction(layoutAction.tabid, insertNodeAction);
+        } else if (layoutAction.actiontype == LayoutTreeActionType.DeleteNode) {
+            const layoutStateAtom = getLayoutStateAtomForTab(
+                layoutAction.tabid,
+                WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", layoutAction.tabid))
+            );
+            const curState = globalStore.get(layoutStateAtom);
+            const leafId = layoututil.findLeafIdFromBlockId(curState, layoutAction.blockid);
+            const deleteNodeAction = {
+                type: LayoutTreeActionType.DeleteNode,
+                nodeId: leafId,
+            };
+            runLayoutAction(layoutAction.tabid, deleteNodeAction);
         } else {
             console.log("unsupported layout action", layoutAction);
         }

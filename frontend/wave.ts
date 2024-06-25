@@ -20,7 +20,6 @@ console.log("clientid", clientId, "windowid", windowId);
 keyutil.setKeyUtilPlatform(getApi().getPlatform());
 
 loadFonts();
-initWS();
 (window as any).globalWS = globalWS;
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
@@ -33,6 +32,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const client = await WOS.loadAndPinWaveObject<Client>(WOS.makeORef("client", clientId));
     const waveWindow = await WOS.loadAndPinWaveObject<WaveWindow>(WOS.makeORef("window", windowId));
     await WOS.loadAndPinWaveObject<Workspace>(WOS.makeORef("workspace", waveWindow.workspaceid));
+    const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", waveWindow.activetabid));
+    WOS.loadAndPinWaveObject<LayoutNode>(WOS.makeORef("layout", initialTab.layoutNode));
+    initWS();
     globalStore.set(atoms.settingsConfigAtom, await services.FileService.GetSettingsConfig());
     services.ObjectService.SetActiveTab(waveWindow.activetabid); // no need to wait
     const reactElem = React.createElement(App, null, null);
