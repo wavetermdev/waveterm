@@ -9,6 +9,14 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 )
 
+const (
+	WSEvent_WaveObjUpdate         = "waveobj:update"
+	WSEvent_BlockFile             = "blockfile"
+	WSEvent_Config                = "config"
+	WSEvent_BlockControllerStatus = "blockcontroller:status"
+	WSEvent_LayoutAction          = "layoutaction"
+)
+
 type WSEventType struct {
 	EventType string `json:"eventtype"`
 	ORef      string `json:"oref,omitempty"`
@@ -31,6 +39,12 @@ type WindowWatchData struct {
 	WindowWSCh   chan any
 	WaveWindowId string
 	WatchedORefs map[waveobj.ORef]bool
+}
+
+type WSLayoutActionData struct {
+	TabId      string `json:"tabid"`
+	ActionType string `json:"actiontype"`
+	BlockId    string `json:"blockid"`
 }
 
 var globalLock = &sync.Mutex{}

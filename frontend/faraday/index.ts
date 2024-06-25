@@ -15,7 +15,7 @@ import type {
     WritableLayoutNodeAtom,
     WritableLayoutTreeStateAtom,
 } from "./lib/model";
-import { LayoutTreeActionType } from "./lib/model";
+import { LayoutTreeAction, LayoutTreeActionType } from "./lib/model";
 
 export {
     LayoutTreeActionType,
@@ -27,6 +27,7 @@ export {
 };
 export type {
     LayoutNode,
+    LayoutTreeAction,
     LayoutTreeCommitPendingAction,
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,

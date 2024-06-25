@@ -31,6 +31,7 @@ var ExtraTypes = []any{
 	wstore.UIContext{},
 	eventbus.WSEventType{},
 	eventbus.WSFileEventData{},
+	eventbus.WSLayoutActionData{},
 	filestore.WaveFile{},
 	wconfig.SettingsConfigType{},
 	wconfig.WatcherUpdate{},

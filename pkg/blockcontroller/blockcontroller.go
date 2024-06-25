@@ -128,7 +128,7 @@ func (bc *BlockController) UpdateControllerAndSendUpdate(updateFn func() bool) {
 	if sendUpdate {
 		log.Printf("sending blockcontroller update %#v\n", bc.GetRuntimeStatus())
 		go eventbus.SendEvent(eventbus.WSEventType{
-			EventType: "blockcontroller:status",
+			EventType: eventbus.WSEvent_BlockControllerStatus,
 			ORef:      waveobj.MakeORef(wstore.OType_Block, bc.BlockId).String(),
 			Data:      bc.GetRuntimeStatus(),
 		})
@@ -146,7 +146,7 @@ func HandleTruncateBlockFile(blockId string, blockFile string) error {
 		return fmt.Errorf("error truncating blockfile: %w", err)
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "blockfile",
+		EventType: eventbus.WSEvent_BlockFile,
 		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
 		Data: &eventbus.WSFileEventData{
 			ZoneId:   blockId,
@@ -166,7 +166,7 @@ func HandleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 		return fmt.Errorf("error appending to blockfile: %w", err)
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "blockfile",
+		EventType: eventbus.WSEvent_BlockFile,
 		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
 		Data: &eventbus.WSFileEventData{
 			ZoneId:   blockId,

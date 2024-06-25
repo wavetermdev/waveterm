@@ -160,7 +160,7 @@ func (w *Watcher) Close() {
 func (w *Watcher) broadcast(message WatcherUpdate) {
 	// send to frontend
 	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "config",
+		EventType: eventbus.WSEvent_Config,
 		Data:      message,
 	})
 

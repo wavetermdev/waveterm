@@ -288,6 +288,13 @@ declare global {
         data64: string;
     };
 
+    // eventbus.WSLayoutAction
+    type WSLayoutAction = {
+        tabid: string;
+        actiontype: string;
+        blockid: string;
+    };
+
     // wconfig.WatcherUpdate
     type WatcherUpdate = {
         file: string;

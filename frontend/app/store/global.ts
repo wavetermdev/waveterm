@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { LayoutTreeActionType, LayoutTreeInsertNodeAction, newLayoutNode } from "@/faraday/index";
+import { LayoutTreeAction, LayoutTreeActionType, LayoutTreeInsertNodeAction, newLayoutNode } from "@/faraday/index";
 import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { layoutTreeStateReducer } from "@/faraday/lib/layoutState";
 
@@ -216,6 +216,21 @@ function handleWSEventMessage(msg: WSEventType) {
         }
         return;
     }
+    if (msg.eventtype == "layoutaction") {
+        const layoutAction: WSLayoutAction = msg.data;
+        if (layoutAction.actiontype == LayoutTreeActionType.InsertNode) {
+            const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
+                type: LayoutTreeActionType.InsertNode,
+                node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, {
+                    blockId: layoutAction.blockid,
+                }),
+            };
+            runLayoutAction(layoutAction.tabid, insertNodeAction);
+        } else {
+            console.log("unsupported layout action", layoutAction);
+        }
+        return;
+    }
     // we send to two subjects just eventType and eventType|oref
     // we don't use getORefSubject here because we don't want to create a new subject
     const eventSubject = eventSubjects.get(msg.eventtype);
@@ -263,6 +278,12 @@ function getApi(): ElectronApi {
     return (window as any).api;
 }
 
+function runLayoutAction(tabId: string, action: LayoutTreeAction) {
+    const layoutStateAtom = getLayoutStateAtomForTab(tabId, WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", tabId)));
+    const curState = globalStore.get(layoutStateAtom);
+    globalStore.set(layoutStateAtom, layoutTreeStateReducer(curState, action));
+}
+
 async function createBlock(blockDef: BlockDef) {
     const rtOpts: RuntimeOpts = { termsize: { rows: 25, cols: 80 } };
     const blockId = await services.ObjectService.CreateBlock(blockDef, rtOpts);
@@ -271,12 +292,7 @@ async function createBlock(blockDef: BlockDef) {
         node: newLayoutNode<TabLayoutData>(undefined, undefined, undefined, { blockId }),
     };
     const activeTabId = globalStore.get(atoms.uiContext).activetabid;
-    const layoutStateAtom = getLayoutStateAtomForTab(
-        activeTabId,
-        WOS.getWaveObjectAtom<Tab>(WOS.makeORef("tab", activeTabId))
-    );
-    const curState = globalStore.get(layoutStateAtom);
-    globalStore.set(layoutStateAtom, layoutTreeStateReducer(curState, insertNodeAction));
+    runLayoutAction(activeTabId, insertNodeAction);
 }
 
 // when file is not found, returns {data: null, fileInfo: null}

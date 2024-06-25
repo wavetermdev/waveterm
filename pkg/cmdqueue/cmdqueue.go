@@ -98,7 +98,7 @@ func handleSetView(ctx context.Context, cmd *wshutil.BlockSetViewCommand, cmdCtx
 		return nil, fmt.Errorf("error getting block: %w", err)
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "waveobj:update",
+		EventType: eventbus.WSEvent_WaveObjUpdate,
 		ORef:      waveobj.MakeORef(wstore.OType_Block, cmdCtx.BlockId).String(),
 		Data: wstore.WaveObjUpdate{
 			UpdateType: wstore.UpdateType_Update,
@@ -190,7 +190,7 @@ func handleSetMeta(ctx context.Context, cmd *wshutil.BlockSetMetaCommand, cmdCtx
 		return nil, fmt.Errorf("error getting object (2): %w", err)
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "waveobj:update",
+		EventType: eventbus.WSEvent_WaveObjUpdate,
 		ORef:      oref.String(),
 		Data: wstore.WaveObjUpdate{
 			UpdateType: wstore.UpdateType_Update,
@@ -210,7 +210,7 @@ func handleAppendBlockFile(blockId string, blockFile string, data []byte) error 
 		return fmt.Errorf("error appending to blockfile: %w", err)
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "blockfile",
+		EventType: eventbus.WSEvent_BlockFile,
 		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
 		Data: &eventbus.WSFileEventData{
 			ZoneId:   blockId,
@@ -236,7 +236,7 @@ func handleAppendIJsonFile(blockId string, blockFile string, cmd map[string]any,
 		return fmt.Errorf("error appending to blockfile(ijson): %w", err)
 	}
 	eventbus.SendEvent(eventbus.WSEventType{
-		EventType: "blockfile",
+		EventType: eventbus.WSEvent_BlockFile,
 		ORef:      waveobj.MakeORef(wstore.OType_Block, blockId).String(),
 		Data: &eventbus.WSFileEventData{
 			ZoneId:   blockId,
@@ -248,14 +248,23 @@ func handleAppendIJsonFile(blockId string, blockFile string, cmd map[string]any,
 	return nil
 }
 
+func sendWStoreUpdatesToEventBus(updates wstore.UpdatesRtnType) {
+	for _, update := range updates {
+		eventbus.SendEvent(eventbus.WSEventType{
+			EventType: eventbus.WSEvent_WaveObjUpdate,
+			ORef:      waveobj.MakeORef(update.OType, update.OID).String(),
+			Data:      update,
+		})
+	}
+}
+
 func handleCreateBlock(ctx context.Context, cmd *wshutil.CreateBlockCommand, cmdCtx wshutil.CmdContextType) (map[string]any, error) {
+	ctx = wstore.ContextWithUpdates(ctx)
 	tabId := cmdCtx.TabId
 	if cmd.TabId != "" {
 		tabId = cmd.TabId
 	}
-	log.Printf("handleCreateBlock %s %v\n", tabId, cmd.BlockDef)
 	blockData, err := wstore.CreateBlock(ctx, tabId, cmd.BlockDef, cmd.RtOpts)
-	log.Printf("blockData: %v err:%v\n", blockData, err)
 	if err != nil {
 		return nil, fmt.Errorf("error creating block: %w", err)
 	}
@@ -265,5 +274,22 @@ func handleCreateBlock(ctx context.Context, cmd *wshutil.CreateBlockCommand, cmd
 			return nil, fmt.Errorf("error starting block controller: %w", err)
 		}
 	}
+	updates := wstore.ContextGetUpdatesRtn(ctx)
+	sendWStoreUpdatesToEventBus(updates)
+	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
+	if err != nil {
+		return nil, fmt.Errorf("error finding window for tab: %w", err)
+	}
+	if windowId == "" {
+		return nil, fmt.Errorf("no window found for tab")
+	}
+	eventbus.SendEventToWindow(windowId, eventbus.WSEventType{
+		EventType: eventbus.WSEvent_LayoutAction,
+		Data: &eventbus.WSLayoutActionData{
+			ActionType: "insert",
+			TabId:      tabId,
+			BlockId:    blockData.OID,
+		},
+	})
 	return map[string]any{"blockId": blockData.OID}, nil
 }
