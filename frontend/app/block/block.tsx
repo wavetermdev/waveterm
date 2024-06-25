@@ -131,7 +131,7 @@ function getBlockHeaderText(blockIcon: string, blockData: Block, settings: Setti
     return [blockIconElem, viewString + blockIdStr];
 }
 
-function handleHeaderContextMenu(e: React.MouseEvent<HTMLDivElement>, onClose: () => void) {
+function handleHeaderContextMenu(e: React.MouseEvent<HTMLDivElement>, blockData: Block, onClose: () => void) {
     e.preventDefault();
     e.stopPropagation();
     let menu: ContextMenuItem[] = [];
@@ -145,6 +145,13 @@ function handleHeaderContextMenu(e: React.MouseEvent<HTMLDivElement>, onClose: (
         label: "Move to New Window",
         click: () => {
             alert("Not Implemented");
+        },
+    });
+    menu.push({ type: "separator" });
+    menu.push({
+        label: "Copy BlockId",
+        click: () => {
+            navigator.clipboard.writeText(blockData.oid);
         },
     });
     menu.push({ type: "separator" });
@@ -236,7 +243,7 @@ const BlockFrame_Tech = ({
             <div
                 className="block-frame-tech-header"
                 ref={dragHandleRef}
-                onContextMenu={(e) => handleHeaderContextMenu(e, onClose)}
+                onContextMenu={(e) => handleHeaderContextMenu(e, blockData, onClose)}
             >
                 {getBlockHeaderText(blockIcon, blockData, settingsConfig)}
             </div>

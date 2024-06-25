@@ -411,25 +411,6 @@ async function createNewWaveWindow() {
 
 electron.ipcMain.on("openNewWindow", createNewWaveWindow);
 
-electron.ipcMain.on("context-editmenu", (_, { x, y }, opts) => {
-    if (opts == null) {
-        opts = {};
-    }
-    console.log("context-editmenu");
-    const menu = new electron.Menu();
-    if (!opts.onlyPaste) {
-        if (opts.showCut) {
-            const menuItem = new electron.MenuItem({ label: "Cut", role: "cut" });
-            menu.append(menuItem);
-        }
-        const menuItem = new electron.MenuItem({ label: "Copy", role: "copy" });
-        menu.append(menuItem);
-    }
-    const menuItem = new electron.MenuItem({ label: "Paste", role: "paste" });
-    menu.append(menuItem);
-    menu.popup({ x, y });
-});
-
 electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuItem[], { x, y }) => {
     if (menuDefArr == null || menuDefArr.length == 0) {
         return;

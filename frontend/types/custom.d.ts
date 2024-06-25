@@ -6,11 +6,6 @@ declare global {
         blockId: string;
     };
 
-    type ContextMenuOpts = {
-        showCut?: boolean;
-        onlyPaste?: boolean;
-    };
-
     type Bounds = {
         x: number;
         y: number;
@@ -37,7 +32,6 @@ declare global {
 
         getPlatform: () => NodeJS.Platform;
 
-        contextEditMenu: (position: { x: number; y: number }, opts: ContextMenuOpts) => void;
         showContextMenu: (menu: ElectronContextMenuItem[], position: { x: number; y: number }) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
     };

@@ -4,7 +4,8 @@
 import { Workspace } from "@/app/workspace/workspace";
 import { getLayoutStateAtomForTab, globalLayoutTransformsMap } from "@/faraday/lib/layoutAtom";
 import type { LayoutTreeState } from "@/faraday/lib/model";
-import { WOS, atoms, getApi, globalStore, setBlockFocus } from "@/store/global";
+import { ContextMenuModel } from "@/store/contextmenu";
+import { WOS, atoms, globalStore, setBlockFocus } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
@@ -27,27 +28,52 @@ const App = () => {
     );
 };
 
-function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
-    let isInNonTermInput = false;
-    const activeElem = document.activeElement;
-    if (activeElem != null && activeElem.nodeName == "TEXTAREA") {
-        if (!activeElem.classList.contains("xterm-helper-textarea")) {
-            isInNonTermInput = true;
-        }
-    }
-    if (activeElem != null && activeElem.nodeName == "INPUT" && activeElem.getAttribute("type") == "text") {
-        isInNonTermInput = true;
-    }
-    const opts: ContextMenuOpts = {};
-    if (isInNonTermInput) {
-        opts.showCut = true;
-    }
+function isContentEditableBeingEdited() {
+    const activeElement = document.activeElement;
+    return (
+        activeElement &&
+        activeElement.getAttribute("contenteditable") !== null &&
+        activeElement.getAttribute("contenteditable") !== "false"
+    );
+}
+
+function canEnablePaste() {
+    const activeElement = document.activeElement;
+    return activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA" || isContentEditableBeingEdited();
+}
+
+function canEnableCopy() {
     const sel = window.getSelection();
-    if (!util.isBlank(sel?.toString()) || isInNonTermInput) {
-        getApi().contextEditMenu({ x: e.clientX, y: e.clientY }, opts);
-    } else {
-        getApi().contextEditMenu({ x: e.clientX, y: e.clientY }, { onlyPaste: true });
+    return !util.isBlank(sel?.toString());
+}
+
+function canEnableCut() {
+    const sel = window.getSelection();
+    if (document.activeElement?.classList.contains("xterm-helper-textarea")) {
+        return false;
     }
+    return !util.isBlank(sel?.toString()) && canEnablePaste();
+}
+
+function handleContextMenu(e: React.MouseEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const canPaste = canEnablePaste();
+    const canCopy = canEnableCopy();
+    const canCut = canEnableCut();
+    if (!canPaste && !canCopy && !canCut) {
+        return;
+    }
+    let menu: ContextMenuItem[] = [];
+    if (canCut) {
+        menu.push({ label: "Cut", role: "cut" });
+    }
+    if (canCopy) {
+        menu.push({ label: "Copy", role: "copy" });
+    }
+    if (canPaste) {
+        menu.push({ label: "Paste", role: "paste" });
+    }
+    ContextMenuModel.showContextMenu(menu, e);
 }
 
 function switchTab(offset: number) {
