@@ -283,18 +283,20 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     };
 
     function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-        e.preventDefault();
-        e.stopPropagation();
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(e);
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:Shift:v")) {
             const p = navigator.clipboard.readText();
             p.then((text) => {
                 termRef.current?.handleTermData(text);
             });
+            e.preventDefault();
+            e.stopPropagation();
             return true;
         } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:Shift:c")) {
             const sel = termRef.current?.terminal.getSelection();
             navigator.clipboard.writeText(sel);
+            e.preventDefault();
+            e.stopPropagation();
             return true;
         }
     }
