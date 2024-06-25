@@ -14,6 +14,9 @@
                 position: relative;
                 padding: 2px 4px;
                 font-weight: bold;
+                display: flex;
+                justify-content: space-between;
+                overflow: hidden;
                 .dir-table-head-resize {
                     position: absolute;
                     top: 0;
@@ -25,6 +28,12 @@
                     touch-action: none;
                     width: 2px;
                     background: linear-gradient(var(--border-color), var(--border-color)) no-repeat center/2px 100%;
+                }
+
+                .dir-table-head-direction {
+                    color: var(--grey-text-color);
+                    margin-right: 0.2rem;
+                    margin-top: 0.2rem;
                 }
 
                 &:last-child {

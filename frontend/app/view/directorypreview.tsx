@@ -2,10 +2,18 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as util from "@/util/util";
-import { Table, createColumnHelper, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
+import {
+    Table,
+    createColumnHelper,
+    flexRender,
+    getCoreRowModel,
+    getSortedRowModel,
+    useReactTable,
+} from "@tanstack/react-table";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import React from "react";
+import { ContextMenuModel } from "../store/contextmenu";
 import { atoms } from "../store/global";
 
 import "./directorypreview.less";
@@ -32,7 +40,7 @@ const displaySuffixes = {
 
 function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): string {
     if (bytes < 0) {
-        return "";
+        return "-";
     }
     const units = si ? ["kB", "MB", "GB", "TB"] : ["KiB", "MiB", "GiB", "TiB"];
     const divisor = si ? 1000 : 1024;
@@ -50,7 +58,7 @@ function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): st
 
 function getSpecificUnit(bytes: number, suffix: string): string {
     if (bytes < 0) {
-        return "";
+        return "-";
     }
 
     const divisors = new Map([
@@ -96,6 +104,36 @@ function getIconClass(icon: string): string {
     return `fa fa-solid fa-${icon} fa-fw`;
 }
 
+function getSortIcon(sortType: string | boolean): React.ReactNode {
+    switch (sortType) {
+        case "asc":
+            return <i className="fa-solid fa-chevron-up dir-table-head-direction"></i>;
+        case "desc":
+            return <i className="fa-solid fa-chevron-down dir-table-head-direction"></i>;
+        default:
+            return null;
+    }
+}
+
+function handleFileContextMenu(e: React.MouseEvent<HTMLDivElement>, path: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    let menu: ContextMenuItem[] = [];
+    menu.push({
+        label: "Open in New Block",
+        click: () => {
+            alert("Not Implemented");
+        },
+    });
+    menu.push({
+        label: "Delete File",
+        click: () => {
+            alert("Not Implemented");
+        },
+    });
+    ContextMenuModel.showContextMenu(menu, e);
+}
+
 function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
     let settings = jotai.useAtomValue(atoms.settingsConfigAtom);
     const getIconFromMimeType = React.useCallback(
@@ -107,7 +145,7 @@ function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
                 }
                 mimeType = mimeType.slice(0, -1);
             }
-            return "fa fa-solid fa-question fa-fw";
+            return "fa fa-solid fa-file fa-fw";
         },
         [settings.mimetypes]
     );
@@ -118,30 +156,36 @@ function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
                 header: () => <span></span>,
                 id: "logo",
                 size: 25,
+                enableSorting: false,
             }),
             columnHelper.accessor("path", {
                 cell: (info) => info.getValue(),
                 header: () => <span>Name</span>,
+                sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("modestr", {
                 cell: (info) => info.getValue(),
                 header: () => <span>Permissions</span>,
                 size: 91,
+                sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("modtime", {
                 cell: (info) =>
                     getLastModifiedTime(info.getValue(), settings.datetime.locale, settings.datetime.format),
                 header: () => <span>Last Modified</span>,
                 size: 185,
+                sortingFn: "datetime",
             }),
             columnHelper.accessor("size", {
                 cell: (info) => getBestUnit(info.getValue()),
                 header: () => <span>Size</span>,
                 size: 55,
+                sortingFn: "auto",
             }),
             columnHelper.accessor("mimetype", {
                 cell: (info) => info.getValue(),
                 header: () => <span>Type</span>,
+                sortingFn: "alphanumeric",
             }),
         ],
         [settings]
@@ -151,7 +195,18 @@ function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
         data,
         columns,
         columnResizeMode: "onChange",
+        getSortedRowModel: getSortedRowModel(),
         getCoreRowModel: getCoreRowModel(),
+        initialState: {
+            sorting: [
+                {
+                    id: "path",
+                    desc: false,
+                },
+            ],
+        },
+        enableMultiSort: false,
+        enableSortingRemoval: false,
     });
 
     const columnSizeVars = React.useMemo(() => {
@@ -175,10 +230,12 @@ function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
                                 className="dir-table-head-cell"
                                 key={header.id}
                                 style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
+                                onClick={() => header.column.toggleSorting()}
                             >
                                 {header.isPlaceholder
                                     ? null
                                     : flexRender(header.column.columnDef.header, header.getContext())}
+                                {getSortIcon(header.column.getIsSorted())}
                                 <div
                                     className="dir-table-head-resize"
                                     onMouseDown={header.getResizeHandler()}
@@ -217,6 +274,7 @@ function TableBody({ table, cwd, setFileName }: TableBodyProps) {
                         const fullPath = cwd.concat("/", newFileName);
                         setFileName(fullPath);
                     }}
+                    onContextMenu={(e) => handleFileContextMenu(e, cwd.concat("/", row.getValue("path") as string))}
                 >
                     {row.getVisibleCells().map((cell) => {
                         return (
