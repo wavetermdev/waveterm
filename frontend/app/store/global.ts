@@ -218,7 +218,6 @@ function handleWSEventMessage(msg: WSEventType) {
         return;
     }
     if (msg.eventtype == "layoutaction") {
-        console.log("got wslayoutaction", msg);
         const layoutAction: WSLayoutActionData = msg.data;
         if (layoutAction.actiontype == LayoutTreeActionType.InsertNode) {
             const insertNodeAction: LayoutTreeInsertNodeAction<TabLayoutData> = {
