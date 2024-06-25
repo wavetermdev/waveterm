@@ -447,8 +447,8 @@ const TabBar = ({ workspace }: TabBarProps) => {
         }, 30);
     };
 
-    const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>, tabId: string) => {
-        event.stopPropagation();
+    const handleCloseTab = (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null, tabId: string) => {
+        event?.stopPropagation();
         services.WindowService.CloseTab(tabId);
         deleteLayoutStateAtomForTab(tabId);
     };

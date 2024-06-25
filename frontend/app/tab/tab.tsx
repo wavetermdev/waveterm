@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/element/button";
+import { ContextMenuModel } from "@/store/contextmenu";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import { clsx } from "clsx";
@@ -16,7 +17,7 @@ interface TabProps {
     isBeforeActive: boolean;
     isDragging: boolean;
     onSelect: () => void;
-    onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
+    onClose: (event: React.MouseEvent<HTMLButtonElement, MouseEvent> | null) => void;
     onDragStart: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
     onLoaded: () => void;
 }
@@ -106,12 +107,20 @@ const Tab = forwardRef<HTMLDivElement, TabProps>(
             event.stopPropagation();
         };
 
+        function handleContextMenu(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+            e.preventDefault();
+            let menu: ContextMenuItem[] = [];
+            menu.push({ label: "Close Tab", click: () => onClose(null) });
+            ContextMenuModel.showContextMenu(menu, e);
+        }
+
         return (
             <div
                 ref={ref}
                 className={clsx("tab", { active, isDragging, "before-active": isBeforeActive })}
                 onMouseDown={onDragStart}
                 onClick={onSelect}
+                onContextMenu={handleContextMenu}
                 data-tab-id={id}
             >
                 {isFirst && <div className="vertical-line first" />}
