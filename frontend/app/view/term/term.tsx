@@ -282,8 +282,28 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         blockId: blockId,
     };
 
+    function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+        e.preventDefault();
+        e.stopPropagation();
+        const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(e);
+        if (keyutil.checkKeyPressed(waveEvent, "Cmd:Shift:v")) {
+            const p = navigator.clipboard.readText();
+            p.then((text) => {
+                termRef.current?.handleTermData(text);
+            });
+            return true;
+        } else if (keyutil.checkKeyPressed(waveEvent, "Cmd:Shift:c")) {
+            const sel = termRef.current?.terminal.getSelection();
+            navigator.clipboard.writeText(sel);
+            return true;
+        }
+    }
+
     return (
-        <div className={clsx("view-term", "term-mode-" + termMode, isFocused ? "is-focused" : null)}>
+        <div
+            className={clsx("view-term", "term-mode-" + termMode, isFocused ? "is-focused" : null)}
+            onKeyDown={handleKeyDown}
+        >
             <TermStickers config={stickerConfig} />
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
             <div

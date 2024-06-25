@@ -110,6 +110,8 @@ const Tab = forwardRef<HTMLDivElement, TabProps>(
         function handleContextMenu(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
             e.preventDefault();
             let menu: ContextMenuItem[] = [];
+            menu.push({ label: "Copy TabId", click: () => navigator.clipboard.writeText(id) });
+            menu.push({ type: "separator" });
             menu.push({ label: "Close Tab", click: () => onClose(null) });
             ContextMenuModel.showContextMenu(menu, e);
         }
