@@ -2,18 +2,24 @@ steps:
   - step:
       - command: focus-application
         name: Electron
-      - command: click-text
+      - command: hover-text
         text: Get Started   
-        anchor: I accept
-      - command: click-text
+        action: click
+      - command: hover-text
         text: Settings
-      - command: click-text
+        action: click
+      - command: hover-text
         text: 13px
-      - command: click-text
+        action: click
+      - command: hover-text
         text: 12px
-      - command: click-text
+        action: click
+      - command: hover-text
         text: Dark
-      - command: click-text
+        action: click
+      - command: hover-text
         text: Light
-      - command: click-text
+        action: click
+      - command: hover-text
         text: workspace-1
+        action: click

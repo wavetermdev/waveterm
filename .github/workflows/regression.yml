@@ -23,7 +23,7 @@ jobs:
       - uses: dashcamio/testdriver@main
         id: testdriver
         with:
-          version: v3.3.9
+          version: v3.5.6
           key: ${{secrets.DASHCAM_API_KEY}}
           prerun: |
             cd ~/actions-runner/_work/testdriver/testdriver/
