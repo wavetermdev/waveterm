@@ -131,6 +131,11 @@ func (fs *FileService) GetWaveFile(id string, path string) (any, error) {
 	return file, nil
 }
 
+func (fs *FileService) DeleteFile(path string) error {
+	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
+	return os.Remove(cleanedPath)
+}
+
 func (fs *FileService) GetSettingsConfig() interface{} {
 	watcher := wconfig.GetWatcher()
 	return watcher.GetSettingsConfig()

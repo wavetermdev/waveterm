@@ -288,8 +288,8 @@ declare global {
         data64: string;
     };
 
-    // eventbus.WSLayoutAction
-    type WSLayoutAction = {
+    // eventbus.WSLayoutActionData
+    type WSLayoutActionData = {
         tabid: string;
         actiontype: string;
         blockid: string;

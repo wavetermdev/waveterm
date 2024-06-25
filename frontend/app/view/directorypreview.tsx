@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import * as services from "@/store/services";
 import * as util from "@/util/util";
 import {
     Table,
@@ -14,7 +15,7 @@ import clsx from "clsx";
 import * as jotai from "jotai";
 import React from "react";
 import { ContextMenuModel } from "../store/contextmenu";
-import { atoms } from "../store/global";
+import { atoms, createBlock } from "../store/global";
 
 import "./directorypreview.less";
 
@@ -121,14 +122,18 @@ function handleFileContextMenu(e: React.MouseEvent<HTMLDivElement>, path: string
     let menu: ContextMenuItem[] = [];
     menu.push({
         label: "Open in New Block",
-        click: () => {
-            alert("Not Implemented");
+        click: async () => {
+            const blockDef = {
+                view: "preview",
+                meta: { file: path },
+            };
+            await createBlock(blockDef);
         },
     });
     menu.push({
         label: "Delete File",
-        click: () => {
-            alert("Not Implemented");
+        click: async () => {
+            await services.FileService.DeleteFile(path).catch((e) => console.log(e)); //todo these errors need a popup
         },
     });
     ContextMenuModel.showContextMenu(menu, e);
@@ -262,6 +267,8 @@ interface TableBodyProps {
 }
 
 function TableBody({ table, cwd, setFileName }: TableBodyProps) {
+    let [refresh, setRefresh] = React.useState(false);
+
     return (
         <div className="dir-table-body">
             {table.getRowModel().rows.map((row) => (

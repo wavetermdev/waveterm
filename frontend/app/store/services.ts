@@ -51,6 +51,9 @@ class FileServiceType {
     AddWidget(arg1: WidgetsConfigType): Promise<void> {
         return WOS.callBackendService("file", "AddWidget", Array.from(arguments))
     }
+    DeleteFile(arg1: string): Promise<void> {
+        return WOS.callBackendService("file", "DeleteFile", Array.from(arguments))
+    }
     GetSettingsConfig(): Promise<any> {
         return WOS.callBackendService("file", "GetSettingsConfig", Array.from(arguments))
     }
