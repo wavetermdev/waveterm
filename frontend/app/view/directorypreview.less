@@ -50,11 +50,15 @@
             display: flex;
             border-radius: 3px;
 
+            &.focused {
+                background-color: var(--accent-color);
+            }
+
             &:focus {
                 background-color: var(--accent-color);
             }
 
-            &:hover:not(:focus) {
+            &:hover:not(:focus):not(.focused) {
                 background-color: var(--highlight-bg-color);
             }
 
@@ -75,6 +79,24 @@
                     color: var(--secondary-text-color);
                 }
             }
+        }
+    }
+}
+
+.dir-table-search-line {
+    display: flex;
+    gap: 0.7rem;
+
+    .dir-table-search-box {
+        background-color: var(--panel-bg-color);
+        margin-bottom: 0.5rem;
+        border: none;
+        width: 15rem;
+        color: var(--main-text-color);
+        border-radius: 4px;
+
+        &:focus {
+            outline-color: var(--accent-color);
         }
     }
 }

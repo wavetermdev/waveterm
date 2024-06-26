@@ -22,6 +22,9 @@ import "./directorypreview.less";
 interface DirectoryTableProps {
     data: FileInfo[];
     cwd: string;
+    focusIndex: number;
+    enter: boolean;
+    setFocusIndex: (_: number) => void;
     setFileName: (_: string) => void;
 }
 
@@ -151,7 +154,7 @@ function cleanMimetype(input: string): string {
     return truncated.trim();
 }
 
-function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
+function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileName }: DirectoryTableProps) {
     let settings = jotai.useAtomValue(atoms.settingsConfigAtom);
     const getIconFromMimeType = React.useCallback(
         (mimeType: string): string => {
@@ -279,9 +282,23 @@ function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
                 ))}
             </div>
             {table.getState().columnSizingInfo.isResizingColumn ? (
-                <MemoizedTableBody table={table} cwd={cwd} setFileName={setFileName} />
+                <MemoizedTableBody
+                    table={table}
+                    cwd={cwd}
+                    focusIndex={focusIndex}
+                    enter={enter}
+                    setFileName={setFileName}
+                    setFocusIndex={setFocusIndex}
+                />
             ) : (
-                <TableBody table={table} cwd={cwd} setFileName={setFileName} />
+                <TableBody
+                    table={table}
+                    cwd={cwd}
+                    focusIndex={focusIndex}
+                    enter={enter}
+                    setFileName={setFileName}
+                    setFocusIndex={setFocusIndex}
+                />
             )}
         </div>
     );
@@ -290,24 +307,37 @@ function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
 interface TableBodyProps {
     table: Table<FileInfo>;
     cwd: string;
+    focusIndex: number;
+    enter: boolean;
+    setFocusIndex: (_: number) => void;
     setFileName: (_: string) => void;
 }
 
-function TableBody({ table, cwd, setFileName }: TableBodyProps) {
+function TableBody({ table, cwd, focusIndex, enter, setFocusIndex, setFileName }: TableBodyProps) {
     let [refresh, setRefresh] = React.useState(false);
 
+    React.useEffect(() => {
+        const selected = (table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null;
+        if (selected != null) {
+            console.log("yipee");
+            const fullPath = cwd.concat("/", selected);
+            setFileName(fullPath);
+        }
+    }, [enter]);
+
+    table.getRow;
     return (
         <div className="dir-table-body">
-            {table.getRowModel().rows.map((row) => (
+            {table.getRowModel().rows.map((row, idx) => (
                 <div
-                    className="dir-table-body-row"
+                    className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
                     key={row.id}
-                    tabIndex={0}
                     onDoubleClick={() => {
                         const newFileName = row.getValue("path") as string;
                         const fullPath = cwd.concat("/", newFileName);
                         setFileName(fullPath);
                     }}
+                    onClick={() => setFocusIndex(idx)}
                     onContextMenu={(e) => handleFileContextMenu(e, cwd.concat("/", row.getValue("path") as string))}
                 >
                     {row.getVisibleCells().map((cell) => {
@@ -333,15 +363,98 @@ const MemoizedTableBody = React.memo(
 ) as typeof TableBody;
 
 interface DirectoryPreviewProps {
-    contentAtom: jotai.Atom<Promise<string>>;
     fileNameAtom: jotai.WritableAtom<string, [string], void>;
 }
 
-function DirectoryPreview({ contentAtom, fileNameAtom }: DirectoryPreviewProps) {
-    const contentText = jotai.useAtomValue(contentAtom);
-    let content: FileInfo[] = JSON.parse(contentText);
+function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
+    const [searchText, setSearchText] = React.useState("");
+    let [focusIndex, setFocusIndex] = React.useState(0);
+    const [content, setContent] = React.useState<FileInfo[]>([]);
     let [fileName, setFileName] = jotai.useAtom(fileNameAtom);
-    return <DirectoryTable data={content} cwd={fileName} setFileName={setFileName} />;
+    const [enter, setEnter] = React.useState(false);
+
+    React.useEffect(() => {
+        const getContent = async () => {
+            const file = await services.FileService.ReadFile(fileName);
+            const serializedContent = util.base64ToString(file?.data64);
+            let content: FileInfo[] = JSON.parse(serializedContent);
+            let filtered = content.filter((fileInfo) => {
+                return fileInfo.path.toLowerCase().includes(searchText);
+            });
+            setContent(filtered);
+        };
+        getContent();
+    }, [fileName, searchText]);
+
+    const handleKeyDown = React.useCallback(
+        (e) => {
+            switch (e.key) {
+                case "Escape":
+                    //todo: escape block focus
+                    break;
+                case "ArrowUp":
+                    e.preventDefault();
+                    setFocusIndex((idx) => Math.max(idx - 1, 0));
+                    break;
+                case "ArrowDown":
+                    e.preventDefault();
+                    setFocusIndex((idx) => Math.min(idx + 1, content.length - 1));
+                    break;
+                case "Enter":
+                    e.preventDefault();
+                    console.log("enter thinks focus Index is ", focusIndex);
+                    let newFileName = content[focusIndex].path;
+                    console.log(
+                        "enter thinks contents are",
+                        content.slice(0, focusIndex + 1).map((fi) => fi.path)
+                    );
+                    setEnter((current) => !current);
+                    /*
+                    const fullPath = fileName.concat("/", newFileName);
+                    setFileName(fullPath);
+					*/
+                    break;
+                default:
+            }
+        },
+        [content, focusIndex, setEnter]
+    );
+
+    React.useEffect(() => {
+        console.log(focusIndex);
+    }, [focusIndex]);
+
+    React.useEffect(() => {
+        document.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [handleKeyDown]);
+
+    return (
+        <>
+            <div className="dir-table-search-line">
+                <label>Search:</label>
+
+                <input
+                    type="text"
+                    className="dir-table-search-box"
+                    onChange={(e) => setSearchText(e.target.value.toLowerCase())}
+                    maxLength={400}
+                    autoFocus={true}
+                />
+            </div>
+            <DirectoryTable
+                data={content}
+                cwd={fileName}
+                focusIndex={focusIndex}
+                enter={enter}
+                setFileName={setFileName}
+                setFocusIndex={setFocusIndex}
+            />
+        </>
+    );
 }
 
 export { DirectoryPreview };

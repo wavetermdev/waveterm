@@ -251,7 +251,7 @@ function PreviewView({ blockId }: { blockId: string }) {
     ) {
         specializedView = <CodeEditPreview readonly={true} contentAtom={fileContentAtom} filename={fileName} />;
     } else if (mimeType === "directory") {
-        specializedView = <DirectoryPreview contentAtom={fileContentAtom} fileNameAtom={fileNameAtom} />;
+        specializedView = <DirectoryPreview fileNameAtom={fileNameAtom} />;
     } else {
         specializedView = (
             <div className="view-preview">
