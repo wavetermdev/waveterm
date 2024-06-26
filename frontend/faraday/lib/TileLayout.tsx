@@ -63,7 +63,7 @@ export interface TileLayoutContents<T> {
     /**
      * tabId this TileLayout is associated with
      */
-    tabId: string;
+    tabId?: string;
 }
 
 export interface TileLayoutProps<T> {
@@ -87,7 +87,7 @@ export interface TileLayoutProps<T> {
 const DragPreviewWidth = 300;
 const DragPreviewHeight = 300;
 
-export const TileLayout = React.memo(<T,>({ layoutTreeStateAtom, contents, getCursorPoint }: TileLayoutProps<T>) => {
+function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint }: TileLayoutProps<T>) {
     const overlayContainerRef = useRef<HTMLDivElement>(null);
     const displayContainerRef = useRef<HTMLDivElement>(null);
 
@@ -293,7 +293,9 @@ export const TileLayout = React.memo(<T,>({ layoutTreeStateAtom, contents, getCu
             </div>
         </Suspense>
     );
-});
+}
+
+export const TileLayout = React.memo(TileLayoutComponent) as typeof TileLayoutComponent;
 
 interface DisplayNodesWrapperProps<T> {
     /**

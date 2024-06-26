@@ -8,7 +8,7 @@ import { TileLayout } from "./TileLayout.jsx";
 import { useState } from "react";
 import { newLayoutTreeStateAtom, useLayoutTreeStateReducerAtom } from "./layoutAtom.js";
 import { newLayoutNode } from "./layoutNode.js";
-import { LayoutTreeActionType, LayoutTreeInsertNodeAction } from "./model.js";
+import { LayoutTreeActionType, LayoutTreeInsertNodeAction, WritableLayoutTreeStateAtom } from "./model.js";
 import "./tilelayout.stories.less";
 import { FlexDirection } from "./utils.js";
 
@@ -26,17 +26,20 @@ const meta = {
                 name: "Hello world!",
             })
         ),
-        renderContent: (
-            data: TestData,
-            _ready: boolean,
-            _onClose: () => void,
-            dragHandleRef: React.RefObject<HTMLDivElement>
-        ) => (
-            <div ref={dragHandleRef} className="test-content" style={{ width: "100%", height: "100%" }}>
-                {renderTestData(data)}
-            </div>
-        ),
-        renderPreview: renderTestData,
+        contents: {
+            renderContent: (
+                data: TestData,
+                _ready: boolean,
+                _onClose: () => void,
+                dragHandleRef: React.RefObject<HTMLDivElement>
+            ) => (
+                <div ref={dragHandleRef} className="test-content" style={{ width: "100%", height: "100%" }}>
+                    {renderTestData(data)}
+                </div>
+            ),
+            renderPreview: renderTestData,
+            tabId: "",
+        },
     },
     component: TileLayout<TestData>,
     // This component will have an automatically generated Autodocs entry: https://storybook.js.org/docs/writing-docs/autodocs
@@ -114,7 +117,10 @@ export const AddNode: Story = {
                 <div>
                     <button onClick={dispatchAddNode}>Add node</button>
                 </div>
-                <TileLayout layoutTreeStateAtom={addNodeAtom} renderContent={renderTestData} />
+                <TileLayout
+                    layoutTreeStateAtom={addNodeAtom as WritableLayoutTreeStateAtom<TestData>}
+                    contents={meta.args.contents}
+                />
             </div>
         );
     },

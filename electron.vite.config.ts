@@ -5,7 +5,6 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import tsconfigPaths from "vite-tsconfig-paths";
-import path from "path";
 
 export default defineConfig({
     main: {
@@ -19,11 +18,11 @@ export default defineConfig({
             outDir: "dist/main",
         },
         plugins: [tsconfigPaths()],
-		resolve: {
-			alias: {
-				"@": path.resolve(__dirname, "./frontend"),
-			},
-		}
+        resolve: {
+            alias: {
+                "@": "frontend",
+            },
+        },
     },
     preload: {
         root: ".",
