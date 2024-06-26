@@ -158,37 +158,40 @@ function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
         () => [
             columnHelper.accessor("mimetype", {
                 cell: (info) => <i className={getIconFromMimeType(info.getValue() ?? "")}></i>,
-                header: () => <span></span>,
+                header: () => <span>Type</span>,
                 id: "logo",
                 size: 25,
                 enableSorting: false,
             }),
             columnHelper.accessor("path", {
-                cell: (info) => info.getValue(),
+                cell: (info) => <span className="dir-table-path">{info.getValue()}</span>,
                 header: () => <span>Name</span>,
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("modestr", {
-                cell: (info) => info.getValue(),
+                cell: (info) => <span className="dir-table-modestr">{info.getValue()}</span>,
                 header: () => <span>Permissions</span>,
                 size: 91,
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("modtime", {
-                cell: (info) =>
-                    getLastModifiedTime(info.getValue(), settings.datetime.locale, settings.datetime.format),
+                cell: (info) => (
+                    <span className="dir-table-lastmod">
+                        {getLastModifiedTime(info.getValue(), settings.datetime.locale, settings.datetime.format)}
+                    </span>
+                ),
                 header: () => <span>Last Modified</span>,
                 size: 185,
                 sortingFn: "datetime",
             }),
             columnHelper.accessor("size", {
-                cell: (info) => getBestUnit(info.getValue()),
+                cell: (info) => <span className="dir-table-size">{getBestUnit(info.getValue())}</span>,
                 header: () => <span>Size</span>,
                 size: 55,
                 sortingFn: "auto",
             }),
             columnHelper.accessor("mimetype", {
-                cell: (info) => info.getValue(),
+                cell: (info) => <span className="dir-table-type">{info.getValue()}</span>,
                 header: () => <span>Type</span>,
                 sortingFn: "alphanumeric",
             }),

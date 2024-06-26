@@ -37,11 +37,11 @@ import {
 import "./tilelayout.less";
 import { Dimensions, FlexDirection, setTransform as createTransform, determineDropDirection } from "./utils";
 
-export interface TileLayoutProps<T> {
-    /**
-     * The atom containing the layout tree state.
-     */
-    layoutTreeStateAtom: WritableLayoutTreeStateAtom<T>;
+/**
+ * contains callbacks and information about the contents (or styling) of of the TileLayout
+ * nothing in here is specific to the TileLayout itself
+ */
+export interface TileLayoutContents<T> {
     /**
      * A callback that accepts the data from the leaf node and displays the leaf contents to the user.
      */
@@ -64,6 +64,18 @@ export interface TileLayoutProps<T> {
      * tabId this TileLayout is associated with
      */
     tabId: string;
+}
+
+export interface TileLayoutProps<T> {
+    /**
+     * The atom containing the layout tree state.
+     */
+    layoutTreeStateAtom: WritableLayoutTreeStateAtom<T>;
+
+    /**
+     * callbacks and information about the contents (or styling) of the TileLayout or contents
+     */
+    contents: TileLayoutContents<T>;
 
     /**
      * A callback for getting the cursor point in reference to the current window. This removes Electron as a runtime dependency, allowing for better integration with Storybook.
@@ -75,15 +87,7 @@ export interface TileLayoutProps<T> {
 const DragPreviewWidth = 300;
 const DragPreviewHeight = 300;
 
-export const TileLayout = <T,>({
-    layoutTreeStateAtom,
-    tabId,
-    className,
-    renderContent,
-    renderPreview,
-    onNodeDelete,
-    getCursorPoint,
-}: TileLayoutProps<T>) => {
+export const TileLayout = React.memo(<T,>({ layoutTreeStateAtom, contents, getCursorPoint }: TileLayoutProps<T>) => {
     const overlayContainerRef = useRef<HTMLDivElement>(null);
     const displayContainerRef = useRef<HTMLDivElement>(null);
 
@@ -126,7 +130,7 @@ export const TileLayout = <T,>({
     const [layoutLeafTransforms, setLayoutLeafTransformsRaw] = useState<Record<string, CSSProperties>>({});
 
     const setLayoutLeafTransforms = (transforms: Record<string, CSSProperties>) => {
-        globalLayoutTransformsMap.set(tabId, transforms);
+        globalLayoutTransformsMap.set(contents.tabId, transforms);
         setLayoutLeafTransformsRaw(transforms);
     };
 
@@ -247,30 +251,23 @@ export const TileLayout = <T,>({
             // console.log("calling dispatch", deleteAction);
             dispatch(deleteAction);
             // console.log("calling onNodeDelete", node);
-            await onNodeDelete?.(node.data);
+            await contents.onNodeDelete?.(node.data);
             // console.log("node deleted");
         },
-        [onNodeDelete, dispatch]
+        [contents.onNodeDelete, dispatch]
     );
 
     return (
         <Suspense>
-            <div className={clsx("tile-layout", className, { animate })} onPointerOut={onPointerLeave}>
+            <div className={clsx("tile-layout", contents.className, { animate })} onPointerOut={onPointerLeave}>
                 <div key="display" ref={displayContainerRef} className="display-container">
-                    {layoutLeafTransforms &&
-                        layoutTreeState.leafs.map((leaf) => {
-                            return (
-                                <DisplayNode
-                                    key={leaf.id}
-                                    layoutNode={leaf}
-                                    renderContent={renderContent}
-                                    renderPreview={renderPreview}
-                                    transform={layoutLeafTransforms[leaf.id]}
-                                    onLeafClose={onLeafClose}
-                                    ready={animate}
-                                />
-                            );
-                        })}
+                    <DisplayNodesWrapper
+                        contents={contents}
+                        ready={animate}
+                        onLeafClose={onLeafClose}
+                        layoutTreeState={layoutTreeState}
+                        layoutLeafTransforms={layoutLeafTransforms}
+                    />
                 </div>
                 <Placeholder
                     key="placeholder"
@@ -296,21 +293,63 @@ export const TileLayout = <T,>({
             </div>
         </Suspense>
     );
-};
+});
+
+interface DisplayNodesWrapperProps<T> {
+    /**
+     * The layout tree state.
+     */
+    layoutTreeState: LayoutTreeState<T>;
+    /**
+     * contains callbacks and information about the contents (or styling) of of the TileLayout
+     */
+    contents: TileLayoutContents<T>;
+    /**
+     * A callback that is called when a leaf node gets closed.
+     * @param node The node that is closed.
+     */
+    onLeafClose: (node: LayoutNode<T>) => void;
+    /**
+     * A series of CSS properties used to display a leaf node with the correct dimensions and position, as determined from its corresponding OverlayNode.
+     */
+    layoutLeafTransforms: Record<string, CSSProperties>;
+    /**
+     * Determines whether the leaf nodes are ready to be displayed to the user.
+     */
+    ready: boolean;
+}
+
+const DisplayNodesWrapper = React.memo(
+    <T,>({ layoutTreeState, contents, onLeafClose, layoutLeafTransforms, ready }: DisplayNodesWrapperProps<T>) => {
+        if (!layoutLeafTransforms) {
+            return null;
+        }
+        return layoutTreeState.leafs.map((leaf) => {
+            return (
+                <DisplayNode
+                    key={leaf.id}
+                    layoutNode={leaf}
+                    contents={contents}
+                    transform={layoutLeafTransforms[leaf.id]}
+                    onLeafClose={onLeafClose}
+                    ready={ready}
+                />
+            );
+        });
+    }
+);
 
 interface DisplayNodeProps<T> {
     /**
      * The leaf node object, containing the data needed to display the leaf contents to the user.
      */
     layoutNode: LayoutNode<T>;
+
     /**
-     * A callback that accepts the data from the leaf node and displays the leaf contents to the user.
+     * contains callbacks and information about the contents (or styling) of of the TileLayout
      */
-    renderContent: ContentRenderer<T>;
-    /**
-     * A callback that accepts the data from the leaf node and returns a preview that can be shown when the user drags a node.
-     */
-    renderPreview?: PreviewRenderer<T>;
+    contents: TileLayoutContents<T>;
+
     /**
      * A callback that is called when a leaf node gets closed.
      * @param node The node that is closed.
@@ -331,14 +370,7 @@ const dragItemType = "TILE_ITEM";
 /**
  * The draggable and displayable portion of a leaf node in a layout tree.
  */
-const DisplayNode = <T,>({
-    layoutNode,
-    renderContent,
-    renderPreview,
-    transform,
-    onLeafClose,
-    ready,
-}: DisplayNodeProps<T>) => {
+const DisplayNode = React.memo(<T,>({ layoutNode, contents, transform, onLeafClose, ready }: DisplayNodeProps<T>) => {
     const tileNodeRef = useRef<HTMLDivElement>(null);
     const dragHandleRef = useRef<HTMLDivElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
@@ -370,11 +402,11 @@ const DisplayNode = <T,>({
                         transform: `scale(${1 / devicePixelRatio})`,
                     }}
                 >
-                    {renderPreview?.(layoutNode.data)}
+                    {contents.renderPreview?.(layoutNode.data)}
                 </div>
             </div>
         );
-    }, [renderPreview, devicePixelRatio]);
+    }, [contents.renderPreview, devicePixelRatio]);
 
     const [previewImage, setPreviewImage] = useState<HTMLImageElement>(null);
     const [previewImageGeneration, setPreviewImageGeneration] = useState(0);
@@ -414,7 +446,7 @@ const DisplayNode = <T,>({
         return (
             layoutNode.data && (
                 <div key="leaf" className="tile-leaf">
-                    {renderContent(layoutNode.data, ready, onClose, dragHandleRef)}
+                    {contents.renderContent(layoutNode.data, ready, onClose, dragHandleRef)}
                 </div>
             )
         );
@@ -436,7 +468,7 @@ const DisplayNode = <T,>({
             {previewElement}
         </div>
     );
-};
+});
 
 interface OverlayNodeProps<T> {
     /**

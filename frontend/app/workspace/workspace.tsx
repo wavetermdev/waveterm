@@ -14,7 +14,7 @@ import "./workspace.less";
 
 const iconRegex = /^[a-z0-9-]+$/;
 
-function Widgets() {
+const Widgets = React.memo(() => {
     const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
     const newWidgetModalVisible = React.useState(false);
     async function clickTerminal() {
@@ -92,27 +92,27 @@ function Widgets() {
             </div>
         </div>
     );
-}
+});
 
-function WorkspaceElem() {
+const WorkspaceElem = React.memo(() => {
     const windowData = jotai.useAtomValue(atoms.waveWindow);
     const activeTabId = windowData?.activetabid;
     const ws = jotai.useAtomValue(atoms.workspace);
     return (
         <div className="workspace">
-            <TabBar workspace={ws} />
+            <TabBar key={ws.oid} workspace={ws} />
             <div className="workspace-tabcontent">
                 {activeTabId == "" ? (
                     <CenteredDiv>No Active Tab</CenteredDiv>
                 ) : (
                     <>
-                        <TabContent key={windowData.workspaceid} tabId={activeTabId} />
+                        <TabContent key={activeTabId} tabId={activeTabId} />
                         <Widgets />
                     </>
                 )}
             </div>
         </div>
     );
-}
+});
 
 export { WorkspaceElem as Workspace };

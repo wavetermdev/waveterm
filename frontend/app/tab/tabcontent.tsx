@@ -4,16 +4,17 @@
 import { Block, BlockFrame } from "@/app/block/block";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
+import * as React from "react";
 
 import { CenteredDiv, CenteredLoadingDiv } from "@/element/quickelems";
 import { TileLayout } from "@/faraday/index";
 import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { useAtomValue } from "jotai";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { getApi } from "../store/global";
 import "./tabcontent.less";
 
-const TabContent = ({ tabId }: { tabId: string }) => {
+const TabContent = React.memo(({ tabId }: { tabId: string }) => {
     const oref = useMemo(() => WOS.makeORef("tab", tabId), [tabId]);
     const loadingAtom = useMemo(() => WOS.getWaveObjectLoadingAtom(oref), [oref]);
     const tabLoading = useAtomValue(loadingAtom);
@@ -21,31 +22,40 @@ const TabContent = ({ tabId }: { tabId: string }) => {
     const layoutStateAtom = useMemo(() => getLayoutStateAtomForTab(tabId, tabAtom), [tabAtom, tabId]);
     const tabData = useAtomValue(tabAtom);
 
-    const renderBlock = useCallback(
-        (
+    const tileLayoutContents = useMemo(() => {
+        function renderBlock(
             tabData: TabLayoutData,
             ready: boolean,
             onClose: () => void,
             dragHandleRef: React.RefObject<HTMLDivElement>
-        ) => {
+        ) {
             if (!tabData.blockId || !ready) {
                 return null;
             }
-            return <Block blockId={tabData.blockId} onClose={onClose} dragHandleRef={dragHandleRef} />;
-        },
-        []
-    );
+            return (
+                <Block
+                    key={tabData.blockId}
+                    blockId={tabData.blockId}
+                    onClose={onClose}
+                    dragHandleRef={dragHandleRef}
+                />
+            );
+        }
 
-    const renderPreview = useCallback((tabData: TabLayoutData) => {
-        return <BlockFrame blockId={tabData.blockId} preview={true} />;
-    }, []);
+        function renderPreview(tabData: TabLayoutData) {
+            return <BlockFrame key={tabData.blockId} blockId={tabData.blockId} preview={true} />;
+        }
 
-    const onNodeDelete = useCallback((data: TabLayoutData) => {
-        return services.ObjectService.DeleteBlock(data.blockId);
-    }, []);
+        function onNodeDelete(data: TabLayoutData) {
+            return services.ObjectService.DeleteBlock(data.blockId);
+        }
 
-    const getCursorPoint = useCallback(() => {
-        return getApi().getCursorPoint();
+        return {
+            renderContent: renderBlock,
+            renderPreview: renderPreview,
+            tabId: tabId,
+            onNodeDelete: onNodeDelete,
+        };
     }, []);
 
     if (tabLoading) {
@@ -68,15 +78,12 @@ const TabContent = ({ tabId }: { tabId: string }) => {
         <div className="tabcontent">
             <TileLayout
                 key={tabId}
-                tabId={tabId}
-                renderContent={renderBlock}
-                renderPreview={renderPreview}
+                contents={tileLayoutContents}
                 layoutTreeStateAtom={layoutStateAtom}
-                onNodeDelete={onNodeDelete}
-                getCursorPoint={getCursorPoint}
+                getCursorPoint={getApi().getCursorPoint}
             />
         </div>
     );
-};
+});
 
 export { TabContent };

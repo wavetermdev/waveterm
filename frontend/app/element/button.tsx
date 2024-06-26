@@ -6,7 +6,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     className?: string;
 }
 
-const Button: React.FC<ButtonProps> = ({ className = "primary", children, disabled, ...props }) => {
+const Button: React.FC<ButtonProps> = React.memo(({ className = "primary", children, disabled, ...props }) => {
     const hasIcon = React.Children.toArray(children).some(
         (child) => React.isValidElement(child) && (child as React.ReactElement).type === "svg"
     );
@@ -23,6 +23,6 @@ const Button: React.FC<ButtonProps> = ({ className = "primary", children, disabl
             {children}
         </button>
     );
-};
+});
 
 export { Button };

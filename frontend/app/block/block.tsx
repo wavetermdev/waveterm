@@ -174,7 +174,7 @@ interface FramelessBlockHeaderProps {
     dragHandleRef?: React.RefObject<HTMLDivElement>;
 }
 
-const FramelessBlockHeader = ({ blockId, onClose, dragHandleRef }: FramelessBlockHeaderProps) => {
+const FramelessBlockHeader = React.memo(({ blockId, onClose, dragHandleRef }: FramelessBlockHeaderProps) => {
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
 
@@ -193,7 +193,7 @@ const FramelessBlockHeader = ({ blockId, onClose, dragHandleRef }: FramelessBloc
             )}
         </div>
     );
-};
+});
 
 const hoverStateOff = "off";
 const hoverStatePending = "pending";
@@ -209,62 +209,56 @@ interface BlockFrameProps {
     dragHandleRef?: React.RefObject<HTMLDivElement>;
 }
 
-const BlockFrame_Tech = ({
-    blockId,
-    onClose,
-    onClick,
-    preview,
-    blockRef,
-    dragHandleRef,
-    children,
-}: BlockFrameProps) => {
-    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
-    const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
-        return jotai.atom((get) => {
-            const winData = get(atoms.waveWindow);
-            return winData.activeblockid === blockId;
+const BlockFrame_Tech = React.memo(
+    ({ blockId, onClose, onClick, preview, blockRef, dragHandleRef, children }: BlockFrameProps) => {
+        const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+        const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
+        const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
+            return jotai.atom((get) => {
+                const winData = get(atoms.waveWindow);
+                return winData.activeblockid === blockId;
+            });
         });
-    });
-    let isFocused = jotai.useAtomValue(isFocusedAtom);
-    const blockIcon = useBlockIcon(blockId);
+        let isFocused = jotai.useAtomValue(isFocusedAtom);
+        const blockIcon = useBlockIcon(blockId);
 
-    if (preview) {
-        isFocused = true;
-    }
-    let style: React.CSSProperties = {};
-    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
-        style.borderColor = blockData.meta["frame:bordercolor"];
-    }
-    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
-        style.borderColor = blockData.meta["frame:bordercolor:focused"];
-    }
-    return (
-        <div
-            className={clsx(
-                "block",
-                "block-frame-tech",
-                isFocused ? "block-focused" : null,
-                preview ? "block-preview" : null
-            )}
-            onClick={onClick}
-            ref={blockRef}
-            style={style}
-        >
+        if (preview) {
+            isFocused = true;
+        }
+        let style: React.CSSProperties = {};
+        if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
+            style.borderColor = blockData.meta["frame:bordercolor"];
+        }
+        if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
+            style.borderColor = blockData.meta["frame:bordercolor:focused"];
+        }
+        return (
             <div
-                className="block-frame-tech-header"
-                ref={dragHandleRef}
-                onContextMenu={(e) => handleHeaderContextMenu(e, blockData, onClose)}
+                className={clsx(
+                    "block",
+                    "block-frame-tech",
+                    isFocused ? "block-focused" : null,
+                    preview ? "block-preview" : null
+                )}
+                onClick={onClick}
+                ref={blockRef}
+                style={style}
             >
-                {getBlockHeaderText(blockIcon, blockData, settingsConfig)}
+                <div
+                    className="block-frame-tech-header"
+                    ref={dragHandleRef}
+                    onContextMenu={(e) => handleHeaderContextMenu(e, blockData, onClose)}
+                >
+                    {getBlockHeaderText(blockIcon, blockData, settingsConfig)}
+                </div>
+                <div className={clsx("block-frame-tech-close")} onClick={onClose}>
+                    <i className="fa fa-solid fa-xmark fa-fw" />
+                </div>
+                {preview ? <div className="block-frame-preview" /> : children}
             </div>
-            <div className={clsx("block-frame-tech-close")} onClick={onClose}>
-                <i className="fa fa-solid fa-xmark fa-fw" />
-            </div>
-            {preview ? <div className="block-frame-preview" /> : children}
-        </div>
-    );
-};
+        );
+    }
+);
 
 const BlockFrame_Frameless = ({
     blockId,
@@ -340,7 +334,7 @@ const BlockFrame_Frameless = ({
     );
 };
 
-const BlockFrame = (props: BlockFrameProps) => {
+const BlockFrame = React.memo((props: BlockFrameProps) => {
     const blockId = props.blockId;
     const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const tabData = jotai.useAtomValue(atoms.tabAtom);
@@ -360,7 +354,7 @@ const BlockFrame = (props: BlockFrameProps) => {
         FrameElem = BlockFrame_Frameless;
     }
     return <FrameElem {...props} />;
-};
+});
 
 function blockViewToIcon(view: string): string {
     console.log("blockViewToIcon", view);
@@ -398,7 +392,16 @@ function useBlockIcon(blockId: string): string {
     return blockIcon;
 }
 
-const Block = ({ blockId, onClose, dragHandleRef }: BlockProps) => {
+const wm = new WeakMap();
+let wmCounter = 0;
+function getObjectId(obj: any): number {
+    if (!wm.has(obj)) {
+        wm.set(obj, wmCounter++);
+    }
+    return wm.get(obj);
+}
+
+const Block = React.memo(({ blockId, onClose, dragHandleRef }: BlockProps) => {
     let blockElem: JSX.Element = null;
     const focusElemRef = React.useRef<HTMLInputElement>(null);
     const blockRef = React.useRef<HTMLDivElement>(null);
@@ -417,24 +420,29 @@ const Block = ({ blockId, onClose, dragHandleRef }: BlockProps) => {
         setBlockFocus(blockId);
     }, [blockClicked]);
 
+    const setBlockClickedTrue = React.useCallback(() => {
+        setBlockClicked(true);
+    }, []);
+
     if (!blockId || !blockData) return null;
     if (blockDataLoading) {
         blockElem = <CenteredDiv>Loading...</CenteredDiv>;
     } else if (blockData.view === "term") {
-        blockElem = <TerminalView blockId={blockId} />;
+        blockElem = <TerminalView key={blockId} blockId={blockId} />;
     } else if (blockData.view === "preview") {
-        blockElem = <PreviewView blockId={blockId} />;
+        blockElem = <PreviewView key={blockId} blockId={blockId} />;
     } else if (blockData.view === "plot") {
-        blockElem = <PlotView />;
+        blockElem = <PlotView key={blockId} />;
     } else if (blockData.view === "codeedit") {
-        blockElem = <CodeEdit text={null} filename={null} />;
+        blockElem = <CodeEdit key={blockId} text={null} filename={null} />;
     }
     return (
         <BlockFrame
+            key={blockId}
             blockId={blockId}
             onClose={onClose}
             preview={false}
-            onClick={() => setBlockClicked(true)}
+            onClick={setBlockClickedTrue}
             blockRef={blockRef}
             dragHandleRef={dragHandleRef}
         >
@@ -448,6 +456,6 @@ const Block = ({ blockId, onClose, dragHandleRef }: BlockProps) => {
             </div>
         </BlockFrame>
     );
-};
+});
 
 export { Block, BlockFrame };

@@ -37,7 +37,7 @@ interface TabBarProps {
     workspace: Workspace;
 }
 
-const TabBar = ({ workspace }: TabBarProps) => {
+const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const [tabIds, setTabIds] = useState<string[]>([]);
     const [dragStartPositions, setDragStartPositions] = useState<number[]>([]);
     const [draggingTab, setDraggingTab] = useState<string>();
@@ -497,6 +497,6 @@ const TabBar = ({ workspace }: TabBarProps) => {
             <WindowDrag ref={draggerRightRef} className="right" />
         </div>
     );
-};
+});
 
 export { TabBar };
