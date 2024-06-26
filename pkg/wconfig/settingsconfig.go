@@ -39,7 +39,8 @@ type DateTimeFormatConfigType struct {
 }
 
 type MimeTypeConfigType struct {
-	Icon string `json:"icon"`
+	Icon  string `json:"icon"`
+	Color string `json:"color"`
 }
 
 type BlockHeaderOpts struct {
@@ -67,7 +68,7 @@ func getSettingsConfigDefaults() SettingsConfigType {
 			"audio":            {Icon: "file-audio"},
 			"application/pdf":  {Icon: "file-pdf"},
 			"application/json": {Icon: "file-lines"},
-			"directory":        {Icon: "folder"},
+			"directory":        {Icon: "folder", Color: "#2e62d2"},
 			"font":             {Icon: "book-font"},
 			"image":            {Icon: "file-image"},
 			"text":             {Icon: "file-lines"},

@@ -180,6 +180,7 @@ declare global {
     // wconfig.MimeTypeConfigType
     type MimeTypeConfigType = {
         icon: string;
+        color: string;
     };
 
     // waveobj.ORef

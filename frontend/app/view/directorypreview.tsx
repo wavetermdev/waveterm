@@ -15,7 +15,7 @@ import clsx from "clsx";
 import * as jotai from "jotai";
 import React from "react";
 import { ContextMenuModel } from "../store/contextmenu";
-import { atoms, createBlock } from "../store/global";
+import { atoms, createBlock, getApi } from "../store/global";
 
 import "./directorypreview.less";
 
@@ -52,6 +52,7 @@ function getBestUnit(bytes: number, si: boolean = false, sigfig: number = 3): st
     while (currentValue > divisor && idx < units.length - 1) {
         currentUnit = units[idx];
         currentValue /= divisor;
+        idx += 1;
     }
 
     return `${parseFloat(currentValue.toPrecision(sigfig))}${displaySuffixes[currentUnit]}`;
@@ -136,7 +137,18 @@ function handleFileContextMenu(e: React.MouseEvent<HTMLDivElement>, path: string
             await services.FileService.DeleteFile(path).catch((e) => console.log(e)); //todo these errors need a popup
         },
     });
+    menu.push({
+        label: "Download File",
+        click: async () => {
+            getApi().downloadFile(path);
+        },
+    });
     ContextMenuModel.showContextMenu(menu, e);
+}
+
+function cleanMimetype(input: string): string {
+    const truncated = input.split(";")[0];
+    return truncated.trim();
 }
 
 function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
@@ -154,11 +166,23 @@ function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
         },
         [settings.mimetypes]
     );
+    const getIconColor = React.useCallback(
+        (mimeType: string): string => {
+            let iconColor = settings.mimetypes[mimeType]?.color ?? "inherit";
+            return iconColor;
+        },
+        [settings.mimetypes]
+    );
     const columns = React.useMemo(
         () => [
             columnHelper.accessor("mimetype", {
-                cell: (info) => <i className={getIconFromMimeType(info.getValue() ?? "")}></i>,
-                header: () => <span>Type</span>,
+                cell: (info) => (
+                    <i
+                        className={getIconFromMimeType(info.getValue() ?? "")}
+                        style={{ color: getIconColor(info.getValue() ?? "") }}
+                    ></i>
+                ),
+                header: () => <span></span>,
                 id: "logo",
                 size: 25,
                 enableSorting: false,
@@ -191,7 +215,7 @@ function DirectoryTable({ data, cwd, setFileName }: DirectoryTableProps) {
                 sortingFn: "auto",
             }),
             columnHelper.accessor("mimetype", {
-                cell: (info) => <span className="dir-table-type">{info.getValue()}</span>,
+                cell: (info) => <span className="dir-table-type">{cleanMimetype(info.getValue() ?? "")}</span>,
                 header: () => <span>Type</span>,
                 sortingFn: "alphanumeric",
             }),

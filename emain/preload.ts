@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld("api", {
     openNewWindow: () => ipcRenderer.send("openNewWindow"),
     showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
     onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", callback),
+    downloadFile: (filePath) => ipcRenderer.send("download", { filePath }),
 });

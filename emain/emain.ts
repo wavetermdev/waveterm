@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getBackendHostPort } from "@/app/store/global";
 import * as keyutil from "@/util/keyutil";
 import * as electron from "electron";
 import fs from "fs";
@@ -419,6 +420,13 @@ electron.ipcMain.on("isDevServer", (event) => {
 
 electron.ipcMain.on("getPlatform", (event) => {
     event.returnValue = unamePlatform;
+});
+
+electron.ipcMain.on("download", (event, payload) => {
+    const window = electron.BrowserWindow.fromWebContents(event.sender);
+    const baseName = payload.filePath.split(/[\\/]/).pop();
+    const streamingUrl = getBackendHostPort() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
+    window.webContents.downloadURL(streamingUrl);
 });
 
 electron.ipcMain.on("getCursorPoint", (event) => {
