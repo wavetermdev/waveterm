@@ -251,6 +251,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow): WaveBrow
                 : undefined,
         webPreferences: {
             preload: path.join(getElectronAppBasePath(), "preload", "index.cjs"),
+            webviewTag: true,
         },
         show: false,
         autoHideMenuBar: true,

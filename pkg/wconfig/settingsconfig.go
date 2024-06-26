@@ -81,19 +81,30 @@ func getSettingsConfigDefaults() SettingsConfigType {
 			"text/rust":        {Icon: "rust fa-brands"},
 			"text/scss":        {Icon: "sass fa-brands"},
 			"video":            {Icon: "file-video"},
+			"text/csv":         {Icon: "file-csv"},
 		},
 		Widgets: []WidgetsConfigType{
 			{
-				Icon: "files",
+				Icon:  "files",
+				Label: "files",
 				BlockDef: wstore.BlockDef{
 					View: "preview",
 					Meta: map[string]any{"file": wavebase.GetHomeDir()},
 				},
 			},
 			{
-				Icon: "chart-simple",
+				Icon:  "chart-simple",
+				Label: "chart",
 				BlockDef: wstore.BlockDef{
 					View: "plot",
+				},
+			},
+			{
+				Icon:  "globe",
+				Label: "web",
+				BlockDef: wstore.BlockDef{
+					View: "web",
+					Meta: map[string]any{"url": "https://waveterm.dev/"},
 				},
 			},
 		},

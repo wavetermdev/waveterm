@@ -149,6 +149,8 @@ function iconForFile(mimeType: string, fileName: string): string {
         return "headphones";
     } else if (mimeType.startsWith("text/markdown")) {
         return "file-lines";
+    } else if (mimeType == "text/csv") {
+        return "file-csv";
     } else if (
         mimeType.startsWith("text/") ||
         (mimeType.startsWith("application/") &&

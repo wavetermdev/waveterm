@@ -61,7 +61,7 @@ declare global {
 
     // wshutil.BlockInputCommand
     type BlockInputCommand = {
-        blockid: string;
+        blockid?: string;
         command: "controller:input";
         inputdata64?: string;
         signame?: string;

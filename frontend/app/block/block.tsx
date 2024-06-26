@@ -5,6 +5,7 @@ import { CodeEdit } from "@/app/view/codeedit";
 import { PlotView } from "@/app/view/plotview";
 import { PreviewView } from "@/app/view/preview";
 import { TerminalView } from "@/app/view/term/term";
+import { WebView } from "@/app/view/webview";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { ContextMenuModel } from "@/store/contextmenu";
@@ -221,7 +222,6 @@ const BlockFrame_Tech = React.memo(
         });
         let isFocused = jotai.useAtomValue(isFocusedAtom);
         const blockIcon = useBlockIcon(blockId);
-
         if (preview) {
             isFocused = true;
         }
@@ -364,6 +364,9 @@ function blockViewToIcon(view: string): string {
     if (view == "preview") {
         return "file";
     }
+    if (view == "web") {
+        return "globe";
+    }
     return null;
 }
 
@@ -435,6 +438,8 @@ const Block = React.memo(({ blockId, onClose, dragHandleRef }: BlockProps) => {
         blockElem = <PlotView key={blockId} />;
     } else if (blockData.view === "codeedit") {
         blockElem = <CodeEdit key={blockId} text={null} filename={null} />;
+    } else if (blockData.view === "web") {
+        blockElem = <WebView key={blockId} parentRef={blockRef} initialUrl={blockData.meta.url} />;
     }
     return (
         <BlockFrame

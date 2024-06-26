@@ -34,6 +34,8 @@ declare global {
 
         showContextMenu: (menu: ElectronContextMenuItem[], position: { x: number; y: number }) => void;
         onContextMenuClick: (callback: (id: string) => void) => void;
+        onNavigate: (callback: (url: string) => void) => void;
+        onIframeNavigate: (callback: (url: string) => void) => void;
     };
 
     type ElectronContextMenuItem = {

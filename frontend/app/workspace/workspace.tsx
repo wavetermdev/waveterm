@@ -34,6 +34,15 @@ const Widgets = React.memo(() => {
         };
         createBlock(editDef);
     }
+    async function clickWeb() {
+        const editDef: BlockDef = {
+            view: "web",
+            meta: {
+                url: "https://waveterm.dev/",
+            },
+        };
+        createBlock(editDef);
+    }
     async function handleWidgetSelect(blockDef: BlockDef) {
         createBlock(blockDef);
     }
