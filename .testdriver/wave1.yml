@@ -1,0 +1,29 @@
+steps:
+  - step:
+      - command: focus-application
+        name: Electron
+      - command: hover-text
+        description: Get Started
+        action: click
+      - command: hover-text
+        description: Settings
+        action: click
+      - command: hover-text
+        description: 13px
+        action: click
+      - command: hover-text
+        description: 12px
+        action: click
+      - command: hover-text
+        description: Dark
+        action: click
+      - command: hover-text
+        description: Light
+        action: click
+      - command: hover-text
+        description: workspace-1
+        action: click
+  - step:
+      - command: assert
+        description: the terminal is white
+
