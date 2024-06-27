@@ -210,55 +210,63 @@ interface BlockFrameProps {
     dragHandleRef?: React.RefObject<HTMLDivElement>;
 }
 
-const BlockFrame_Tech = React.memo(
-    ({ blockId, onClose, onClick, preview, blockRef, dragHandleRef, children }: BlockFrameProps) => {
-        const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
-        const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
-        const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
-            return jotai.atom((get) => {
-                const winData = get(atoms.waveWindow);
-                return winData.activeblockid === blockId;
-            });
+const BlockFrame_Tech_Component = ({
+    blockId,
+    onClose,
+    onClick,
+    preview,
+    blockRef,
+    dragHandleRef,
+    children,
+}: BlockFrameProps) => {
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
+    const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
+        return jotai.atom((get) => {
+            const winData = get(atoms.waveWindow);
+            return winData.activeblockid === blockId;
         });
-        let isFocused = jotai.useAtomValue(isFocusedAtom);
-        const blockIcon = useBlockIcon(blockId);
-        if (preview) {
-            isFocused = true;
-        }
-        let style: React.CSSProperties = {};
-        if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
-            style.borderColor = blockData.meta["frame:bordercolor"];
-        }
-        if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
-            style.borderColor = blockData.meta["frame:bordercolor:focused"];
-        }
-        return (
-            <div
-                className={clsx(
-                    "block",
-                    "block-frame-tech",
-                    isFocused ? "block-focused" : null,
-                    preview ? "block-preview" : null
-                )}
-                onClick={onClick}
-                ref={blockRef}
-                style={style}
-            >
-                <div
-                    className="block-frame-tech-header"
-                    ref={dragHandleRef}
-                    onContextMenu={(e) => handleHeaderContextMenu(e, blockData, onClose)}
-                >
-                    {getBlockHeaderText(blockIcon, blockData, settingsConfig)}
-                </div>
-                <div className={clsx("block-frame-tech-close")} onClick={onClose}>
-                    <i className="fa fa-solid fa-xmark fa-fw" />
-                </div>
-                {preview ? <div className="block-frame-preview" /> : children}
-            </div>
-        );
+    });
+    let isFocused = jotai.useAtomValue(isFocusedAtom);
+    const blockIcon = useBlockIcon(blockId);
+    if (preview) {
+        isFocused = true;
     }
-);
+    let style: React.CSSProperties = {};
+    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
+        style.borderColor = blockData.meta["frame:bordercolor"];
+    }
+    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
+        style.borderColor = blockData.meta["frame:bordercolor:focused"];
+    }
+    return (
+        <div
+            className={clsx(
+                "block",
+                "block-frame-tech",
+                isFocused ? "block-focused" : null,
+                preview ? "block-preview" : null
+            )}
+            onClick={onClick}
+            ref={blockRef}
+            style={style}
+        >
+            <div
+                className="block-frame-tech-header"
+                ref={dragHandleRef}
+                onContextMenu={(e) => handleHeaderContextMenu(e, blockData, onClose)}
+            >
+                {getBlockHeaderText(blockIcon, blockData, settingsConfig)}
+            </div>
+            <div className={clsx("block-frame-tech-close")} onClick={onClose}>
+                <i className="fa fa-solid fa-xmark fa-fw" />
+            </div>
+            {preview ? <div className="block-frame-preview" /> : children}
+        </div>
+    );
+};
+
+const BlockFrame_Tech = React.memo(BlockFrame_Tech_Component) as typeof BlockFrame_Tech_Component;
 
 const BlockFrame_Frameless = ({
     blockId,
@@ -343,15 +351,18 @@ const BlockFrame = React.memo((props: BlockFrameProps) => {
         return null;
     }
     let FrameElem = BlockFrame_Tech;
-    // if 0 or 1 blocks, use frameless, otherwise use tech
-    const numBlocks = tabData?.blockids?.length ?? 0;
-    if (numBlocks <= 1) {
-        FrameElem = BlockFrame_Frameless;
-    }
-    if (blockData?.meta?.["frame"] === "tech") {
-        FrameElem = BlockFrame_Tech;
-    } else if (blockData?.meta?.["frame"] === "frameless") {
-        FrameElem = BlockFrame_Frameless;
+    // Preview should always render as the full tech frame
+    if (!props.preview) {
+        // if 0 or 1 blocks, use frameless, otherwise use tech
+        const numBlocks = tabData?.blockids?.length ?? 0;
+        if (numBlocks <= 1) {
+            FrameElem = BlockFrame_Frameless;
+        }
+        if (blockData?.meta?.["frame"] === "tech") {
+            FrameElem = BlockFrame_Tech;
+        } else if (blockData?.meta?.["frame"] === "frameless") {
+            FrameElem = BlockFrame_Frameless;
+        }
     }
     return <FrameElem {...props} />;
 });
