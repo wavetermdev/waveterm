@@ -51,11 +51,31 @@
             border-radius: 3px;
 
             &.focused {
-                background-color: var(--accent-color);
+                background-color: rgb(from var(--accent-color) r g b / 0.7);
+                color: var(--main-text-color);
+
+                .dir-table-body-cell {
+                    .dir-table-lastmod,
+                    .dir-table-modestr,
+                    .dir-table-size,
+                    .dir-table-type {
+                        color: var(--main-text-color);
+                    }
+                }
             }
 
             &:focus {
-                background-color: var(--accent-color);
+                background-color: rgb(from var(--accent-color) r g b / 0.7);
+                color: var(--main-text-color);
+
+                .dir-table-body-cell {
+                    .dir-table-lastmod,
+                    .dir-table-modestr,
+                    .dir-table-size,
+                    .dir-table-type {
+                        color: var(--main-text-color);
+                    }
+                }
             }
 
             &:hover:not(:focus):not(.focused) {

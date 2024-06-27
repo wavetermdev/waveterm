@@ -68,7 +68,7 @@ func getSettingsConfigDefaults() SettingsConfigType {
 			"audio":            {Icon: "file-audio"},
 			"application/pdf":  {Icon: "file-pdf"},
 			"application/json": {Icon: "file-lines"},
-			"directory":        {Icon: "folder", Color: "#2e62d2"},
+			"directory":        {Icon: "folder", Color: "var(--term-bright-blue)"},
 			"font":             {Icon: "book-font"},
 			"image":            {Icon: "file-image"},
 			"text":             {Icon: "file-lines"},

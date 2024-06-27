@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -25,6 +26,7 @@ type FileService struct{}
 
 type FileInfo struct {
 	Path     string      `json:"path"` // cleaned path
+	Name     string      `json:"name"`
 	NotFound bool        `json:"notfound,omitempty"`
 	Size     int64       `json:"size"`
 	Mode     os.FileMode `json:"mode"`
@@ -51,6 +53,7 @@ func (fs *FileService) StatFile(path string) (*FileInfo, error) {
 	mimeType := utilfn.DetectMimeType(cleanedPath)
 	return &FileInfo{
 		Path:     cleanedPath,
+		Name:     finfo.Name(),
 		Size:     finfo.Size(),
 		Mode:     finfo.Mode(),
 		ModeStr:  finfo.Mode().String(),
@@ -80,6 +83,13 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 			innerFilesEntries = innerFilesEntries[:1000]
 		}
 		var innerFilesInfo []FileInfo
+		parent := filepath.Dir(finfo.Path)
+		parentFileInfo, err := fs.StatFile(parent)
+		if err == nil && parent != finfo.Path {
+			log.Printf("adding parent")
+			parentFileInfo.Name = ".."
+			innerFilesInfo = append(innerFilesInfo, *parentFileInfo)
+		}
 		for _, innerFileEntry := range innerFilesEntries {
 			innerFileInfoInt, _ := innerFileEntry.Info()
 			mimeType := utilfn.DetectMimeType(filepath.Join(finfo.Path, innerFileInfoInt.Name()))
@@ -90,7 +100,8 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 				fileSize = innerFileInfoInt.Size()
 			}
 			innerFileInfo := FileInfo{
-				Path:     innerFileInfoInt.Name(),
+				Path:     filepath.Join(finfo.Path, innerFileInfoInt.Name()),
+				Name:     innerFileInfoInt.Name(),
 				Size:     fileSize,
 				Mode:     innerFileInfoInt.Mode(),
 				ModeStr:  innerFileInfoInt.Mode().String(),

@@ -1,8 +1,6 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { getBackendHostPort } from "@/app/store/global";
-import * as keyutil from "@/util/keyutil";
 import * as electron from "electron";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -10,7 +8,9 @@ import os from "os";
 import * as path from "path";
 import * as readline from "readline";
 import { debounce } from "throttle-debounce";
+import { getBackendHostPort } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
+import * as keyutil from "../frontend/util/keyutil";
 
 const electronApp = electron.app;
 const isDev = process.env.WAVETERM_DEV;

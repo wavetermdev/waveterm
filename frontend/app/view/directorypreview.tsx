@@ -26,6 +26,7 @@ interface DirectoryTableProps {
     enter: boolean;
     setFocusIndex: (_: number) => void;
     setFileName: (_: string) => void;
+    setSearch: (_: string) => void;
 }
 
 const columnHelper = createColumnHelper<FileInfo>();
@@ -154,7 +155,7 @@ function cleanMimetype(input: string): string {
     return truncated.trim();
 }
 
-function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileName }: DirectoryTableProps) {
+function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileName, setSearch }: DirectoryTableProps) {
     let settings = jotai.useAtomValue(atoms.settingsConfigAtom);
     const getIconFromMimeType = React.useCallback(
         (mimeType: string): string => {
@@ -190,8 +191,8 @@ function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileNa
                 size: 25,
                 enableSorting: false,
             }),
-            columnHelper.accessor("path", {
-                cell: (info) => <span className="dir-table-path">{info.getValue()}</span>,
+            columnHelper.accessor("name", {
+                cell: (info) => <span className="dir-table-name">{info.getValue()}</span>,
                 header: () => <span>Name</span>,
                 sortingFn: "alphanumeric",
             }),
@@ -222,6 +223,7 @@ function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileNa
                 header: () => <span>Type</span>,
                 sortingFn: "alphanumeric",
             }),
+            columnHelper.accessor("path", {}),
         ],
         [settings]
     );
@@ -232,13 +234,17 @@ function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileNa
         columnResizeMode: "onChange",
         getSortedRowModel: getSortedRowModel(),
         getCoreRowModel: getCoreRowModel(),
+
         initialState: {
             sorting: [
                 {
-                    id: "path",
+                    id: "name",
                     desc: false,
                 },
             ],
+            columnVisibility: {
+                path: false,
+            },
         },
         enableMultiSort: false,
         enableSortingRemoval: false,
@@ -289,6 +295,7 @@ function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileNa
                     enter={enter}
                     setFileName={setFileName}
                     setFocusIndex={setFocusIndex}
+                    setSearch={setSearch}
                 />
             ) : (
                 <TableBody
@@ -298,6 +305,7 @@ function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileNa
                     enter={enter}
                     setFileName={setFileName}
                     setFocusIndex={setFocusIndex}
+                    setSearch={setSearch}
                 />
             )}
         </div>
@@ -311,16 +319,17 @@ interface TableBodyProps {
     enter: boolean;
     setFocusIndex: (_: number) => void;
     setFileName: (_: string) => void;
+    setSearch: (_: string) => void;
 }
 
-function TableBody({ table, cwd, focusIndex, enter, setFocusIndex, setFileName }: TableBodyProps) {
+function TableBody({ table, cwd, focusIndex, enter, setFocusIndex, setFileName, setSearch }: TableBodyProps) {
     let [refresh, setRefresh] = React.useState(false);
 
     React.useEffect(() => {
         const selected = (table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null;
         if (selected != null) {
-            const fullPath = cwd.concat("/", selected);
-            setFileName(fullPath);
+            setFileName(selected);
+            setSearch("");
         }
     }, [enter]);
 
@@ -333,11 +342,11 @@ function TableBody({ table, cwd, focusIndex, enter, setFocusIndex, setFileName }
                     key={row.id}
                     onDoubleClick={() => {
                         const newFileName = row.getValue("path") as string;
-                        const fullPath = cwd.concat("/", newFileName);
-                        setFileName(fullPath);
+                        setFileName(newFileName);
+                        setSearch("");
                     }}
                     onClick={() => setFocusIndex(idx)}
-                    onContextMenu={(e) => handleFileContextMenu(e, cwd.concat("/", row.getValue("path") as string))}
+                    onContextMenu={(e) => handleFileContextMenu(e, row.getValue("path") as string)}
                 >
                     {row.getVisibleCells().map((cell) => {
                         return (
@@ -378,7 +387,7 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
             const serializedContent = util.base64ToString(file?.data64);
             let content: FileInfo[] = JSON.parse(serializedContent);
             let filtered = content.filter((fileInfo) => {
-                return fileInfo.path.toLowerCase().includes(searchText);
+                return fileInfo.name.toLowerCase().includes(searchText);
             });
             setContent(filtered);
         };
@@ -432,6 +441,7 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
                     onChange={(e) => setSearchText(e.target.value.toLowerCase())}
                     maxLength={400}
                     autoFocus={true}
+                    value={searchText}
                 />
             </div>
             <DirectoryTable
@@ -441,6 +451,7 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
                 enter={enter}
                 setFileName={setFileName}
                 setFocusIndex={setFocusIndex}
+                setSearch={setSearchText}
             />
         </>
     );

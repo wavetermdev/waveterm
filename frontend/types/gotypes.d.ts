@@ -61,7 +61,7 @@ declare global {
 
     // wshutil.BlockInputCommand
     type BlockInputCommand = {
-        blockid?: string;
+        blockid: string;
         command: "controller:input";
         inputdata64?: string;
         signame?: string;
@@ -139,6 +139,7 @@ declare global {
     // fileservice.FileInfo
     type FileInfo = {
         path: string;
+        name: string;
         notfound?: boolean;
         size: number;
         mode: number;
