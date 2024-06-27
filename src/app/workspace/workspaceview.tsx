@@ -11,7 +11,7 @@ import { If } from "tsx-control-statements/components";
 import { GlobalModel, GlobalCommandRunner } from "@/models";
 import { CmdInput } from "./cmdinput/cmdinput";
 import { ScreenView } from "./screen/screenview";
-import { ScreenTabs } from "./screen/tabs";
+import { ScreenTabs } from "./screen/tabs2";
 import { ErrorBoundary } from "@/common/error/errorboundary";
 import { boundMethod } from "autobind-decorator";
 import type { Screen } from "@/models";
