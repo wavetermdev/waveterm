@@ -27,6 +27,7 @@ import (
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/sstore"
 	"github.com/wavetermdev/waveterm/wavesrv/pkg/userinput"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
@@ -65,7 +66,7 @@ func createDummySigner() ([]ssh.Signer, error) {
 // they were successes. An error in this function prevents any other
 // keys from being attempted. But if there's an error because of a dummy
 // file, the library can still try again with a new key.
-func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, passphrase string) func() ([]ssh.Signer, error) {
+func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, passphrase string, authSockSignersExt []ssh.Signer, agentClient agent.ExtendedAgent) func() ([]ssh.Signer, error) {
 	var identityFiles []string
 	existingKeys := make(map[string][]byte)
 
@@ -83,7 +84,19 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 	// require pointer to modify list in closure
 	identityFilesPtr := &identityFiles
 
+	var authSockSigners []ssh.Signer
+	authSockSigners = append(authSockSigners, authSockSignersExt...)
+	authSockSignersPtr := &authSockSigners
+
 	return func() ([]ssh.Signer, error) {
+		// try auth sock
+		if len(*authSockSignersPtr) != 0 {
+			authSockSigner := (*authSockSignersPtr)[0]
+			*authSockSignersPtr = (*authSockSignersPtr)[1:]
+			return []ssh.Signer{authSockSigner}, nil
+		}
+
+		// try manual identity files
 		if len(*identityFilesPtr) == 0 {
 			return nil, fmt.Errorf("no identity files remaining")
 		}
@@ -95,6 +108,25 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 			// skip this key and try with the next
 			return createDummySigner()
 		}
+
+		unencryptedPrivateKey, err := ssh.ParseRawPrivateKey(privateKey)
+		if _, ok := err.(*ssh.PassphraseMissingError); !ok {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		if err == nil {
+			signer, err := ssh.NewSignerFromKey(unencryptedPrivateKey)
+			if err == nil {
+				if sshKeywords.AddKeysToAgent && agentClient != nil {
+					agentClient.Add(agent.AddedKey{
+						PrivateKey: unencryptedPrivateKey,
+					})
+				}
+				return []ssh.Signer{signer}, err
+			}
+
+		}
+
 		signer, err := ssh.ParsePrivateKey(privateKey)
 		if err == nil {
 			return []ssh.Signer{signer}, err
@@ -104,14 +136,34 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 			return createDummySigner()
 		}
 
-		signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
-		if err == nil {
-			return []ssh.Signer{signer}, err
-		}
+		unencryptedPrivateKey, err = ssh.ParseRawPrivateKeyWithPassphrase(privateKey, []byte(passphrase))
 		if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
 			// skip this key and try with the next
 			return createDummySigner()
 		}
+		if err == nil {
+			signer, err := ssh.NewSignerFromKey(unencryptedPrivateKey)
+			if err == nil {
+				if sshKeywords.AddKeysToAgent && agentClient != nil {
+					agentClient.Add(agent.AddedKey{
+						PrivateKey: unencryptedPrivateKey,
+					})
+				}
+				return []ssh.Signer{signer}, err
+			}
+		}
+
+		/*
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(passphrase))
+			if err == nil {
+				log.Printf("with passphrase %v\n", signer.PublicKey().Marshal())
+				return []ssh.Signer{signer}, err
+			}
+			if err != x509.IncorrectPasswordError && err.Error() != "bcrypt_pbkdf: empty password" {
+				// skip this key and try with the next
+				return createDummySigner()
+			}
+		*/
 
 		// batch mode deactivates user input
 		if sshKeywords.BatchMode {
@@ -132,12 +184,33 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 			// trying keys
 			return nil, UserInputCancelError{Err: err}
 		}
-		signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
+
+		unencryptedPrivateKey, err = ssh.ParseRawPrivateKeyWithPassphrase(privateKey, []byte([]byte(response.Text)))
 		if err != nil {
 			// skip this key and try with the next
 			return createDummySigner()
 		}
+		signer, err = ssh.NewSignerFromKey(unencryptedPrivateKey)
+		if err != nil {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		if sshKeywords.AddKeysToAgent && agentClient != nil {
+			agentClient.Add(agent.AddedKey{
+				PrivateKey: unencryptedPrivateKey,
+			})
+		}
 		return []ssh.Signer{signer}, err
+
+		/*
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
+			if err != nil {
+				// skip this key and try with the next
+				return createDummySigner()
+			}
+			log.Printf("with passphrase %v\n", signer.PublicKey().Marshal())
+			return []ssh.Signer{signer}, err
+		*/
 	}
 }
 
@@ -526,8 +599,8 @@ func DialContext(ctx context.Context, network string, addr string, config *ssh.C
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
-func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDisplayName string) (*ssh.Client, error) {
-	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost)
+func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDisplayName string, sshAuthSock string) (*ssh.Client, error) {
+	sshConfigKeywords, err := findSshConfigKeywords(opts.SSHHost, sshAuthSock)
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +610,17 @@ func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDispla
 		return nil, err
 	}
 
-	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, opts.SSHPassword))
+	conn, err := net.Dial("unix", sshKeywords.IdentityAgent)
+	var authSockSigners []ssh.Signer
+	var agentClient agent.ExtendedAgent
+	if err != nil {
+		log.Printf("Failed to open Identity Agent Socket: %v", err)
+	} else {
+		agentClient = agent.NewClient(conn)
+		authSockSigners, _ = agentClient.Signers()
+	}
+
+	publicKeyCallback := ssh.PublicKeysCallback(createPublicKeyCallback(connCtx, sshKeywords, opts.SSHPassword, authSockSigners, agentClient))
 	keyboardInteractive := ssh.KeyboardInteractive(createCombinedKbdInteractiveChallenge(connCtx, opts.SSHPassword, remoteDisplayName))
 	passwordCallback := ssh.PasswordCallback(createCombinedPasswordCallbackPrompt(connCtx, opts.SSHPassword, remoteDisplayName))
 
@@ -552,7 +635,7 @@ func ConnectToClient(connCtx context.Context, opts *sstore.SSHOpts, remoteDispla
 
 	// exclude gssapi-with-mic and hostbased until implemented
 	authMethodMap := map[string]ssh.AuthMethod{
-		"publickey":            ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)),
+		"publickey":            ssh.RetryableAuthMethod(publicKeyCallback, len(sshKeywords.IdentityFile)+len(authSockSigners)),
 		"keyboard-interactive": ssh.RetryableAuthMethod(keyboardInteractive, attemptsAllowed),
 		"password":             ssh.RetryableAuthMethod(passwordCallback, attemptsAllowed),
 	}
@@ -600,6 +683,8 @@ type SshKeywords struct {
 	PasswordAuthentication       bool
 	KbdInteractiveAuthentication bool
 	PreferredAuthentications     []string
+	AddKeysToAgent               bool
+	IdentityAgent                string
 }
 
 func combineSshKeywords(opts *sstore.SSHOpts, configKeywords *SshKeywords) (*SshKeywords, error) {
@@ -649,6 +734,8 @@ func combineSshKeywords(opts *sstore.SSHOpts, configKeywords *SshKeywords) (*Ssh
 	sshKeywords.PasswordAuthentication = configKeywords.PasswordAuthentication
 	sshKeywords.KbdInteractiveAuthentication = configKeywords.KbdInteractiveAuthentication
 	sshKeywords.PreferredAuthentications = configKeywords.PreferredAuthentications
+	sshKeywords.AddKeysToAgent = configKeywords.AddKeysToAgent
+	sshKeywords.IdentityAgent = configKeywords.IdentityAgent
 
 	return sshKeywords, nil
 }
@@ -656,7 +743,7 @@ func combineSshKeywords(opts *sstore.SSHOpts, configKeywords *SshKeywords) (*Ssh
 // note that a `var == "yes"` will default to false
 // but `var != "no"` will default to true
 // when given unexpected strings
-func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
+func findSshConfigKeywords(hostPattern string, sshAuthSock string) (*SshKeywords, error) {
 	ssh_config.ReloadConfigs()
 	sshKeywords := &SshKeywords{}
 	var err error
@@ -710,6 +797,22 @@ func findSshConfigKeywords(hostPattern string) (*SshKeywords, error) {
 		return nil, err
 	}
 	sshKeywords.PreferredAuthentications = strings.Split(preferredAuthenticationsRaw, ",")
+
+	addKeysToAgentRaw, err := ssh_config.GetStrict(hostPattern, "AddKeysToAgent")
+	if err != nil {
+		return nil, err
+	}
+	sshKeywords.AddKeysToAgent = (strings.ToLower(addKeysToAgentRaw) == "yes")
+
+	identityAgentRaw, err := ssh_config.GetStrict(hostPattern, "IdentityAgent")
+	if err != nil {
+		return nil, err
+	}
+	if identityAgentRaw == "" {
+		sshKeywords.IdentityAgent = sshAuthSock
+	} else {
+		sshKeywords.IdentityAgent = identityAgentRaw
+	}
 
 	return sshKeywords, nil
 }

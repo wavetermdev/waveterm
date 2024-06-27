@@ -1314,14 +1314,15 @@ func (wsh *WaveshellProc) RunInstall(autoInstall bool) {
 		wsh.WriteToPtyBuffer("*error: cannot install on a local remote\n")
 		return
 	}
-	_, err = shellapi.MakeShellApi(packet.ShellType_bash)
+	sapi, err := shellapi.MakeShellApi(wsh.GetShellType())
 	if err != nil {
 		wsh.WriteToPtyBuffer("*error: %v\n", err)
 		return
 	}
 	if wsh.Client == nil {
 		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
-		client, err := ConnectToClient(makeClientCtx, remoteCopy.SSHOpts, remoteDisplayName)
+		sshAuthSock, _ := exec.CommandContext(makeClientCtx, sapi.GetLocalShellPath(), "-c", "echo \"${SSH_AUTH_SOCK}\"").CombinedOutput()
+		client, err := ConnectToClient(makeClientCtx, remoteCopy.SSHOpts, remoteDisplayName, strings.TrimSpace(string(sshAuthSock)))
 		if err != nil {
 			statusErr := fmt.Errorf("ssh cannot connect to client: %w", err)
 			wsh.setInstallErrorStatus(statusErr)
@@ -1614,7 +1615,8 @@ func (wsh *WaveshellProc) createWaveshellSession(clientCtx context.Context, remo
 		wsSession = shexec.CmdWrap{Cmd: ecmd}
 	} else if wsh.Client == nil {
 		remoteDisplayName := fmt.Sprintf("%s [%s]", remoteCopy.RemoteAlias, remoteCopy.RemoteCanonicalName)
-		client, err := ConnectToClient(clientCtx, remoteCopy.SSHOpts, remoteDisplayName)
+		sshAuthSock, _ := exec.CommandContext(clientCtx, sapi.GetLocalShellPath(), "-c", "echo \"${SSH_AUTH_SOCK}\"").CombinedOutput()
+		client, err := ConnectToClient(clientCtx, remoteCopy.SSHOpts, remoteDisplayName, strings.TrimSpace(string(sshAuthSock)))
 		if err != nil {
 			return nil, fmt.Errorf("ssh cannot connect to client: %w", err)
 		}
