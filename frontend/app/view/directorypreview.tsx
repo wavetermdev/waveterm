@@ -319,7 +319,6 @@ function TableBody({ table, cwd, focusIndex, enter, setFocusIndex, setFileName }
     React.useEffect(() => {
         const selected = (table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null;
         if (selected != null) {
-            console.log("yipee");
             const fullPath = cwd.concat("/", selected);
             setFileName(fullPath);
         }
@@ -402,12 +401,6 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
                     break;
                 case "Enter":
                     e.preventDefault();
-                    console.log("enter thinks focus Index is ", focusIndex);
-                    let newFileName = content[focusIndex].path;
-                    console.log(
-                        "enter thinks contents are",
-                        content.slice(0, focusIndex + 1).map((fi) => fi.path)
-                    );
                     setEnter((current) => !current);
                     /*
                     const fullPath = fileName.concat("/", newFileName);
@@ -419,10 +412,6 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
         },
         [content, focusIndex, setEnter]
     );
-
-    React.useEffect(() => {
-        console.log(focusIndex);
-    }, [focusIndex]);
 
     React.useEffect(() => {
         document.addEventListener("keydown", handleKeyDown);
