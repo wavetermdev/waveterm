@@ -11,6 +11,7 @@ import { debounce } from "throttle-debounce";
 import { getBackendHostPort } from "../frontend/app/store/global";
 import * as services from "../frontend/app/store/services";
 import * as keyutil from "../frontend/util/keyutil";
+import { fireAndForget } from "../frontend/util/util";
 
 const electronApp = electron.app;
 const isDev = process.env.WAVETERM_DEV;
@@ -460,10 +461,11 @@ electron.ipcMain.on("getCursorPoint", (event) => {
 async function createNewWaveWindow() {
     let clientData = await services.ClientService.GetClientData();
     const newWindow = await services.ClientService.MakeWindow();
-    createBrowserWindow(clientData.oid, newWindow);
+    const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow);
+    newBrowserWindow.show();
 }
 
-electron.ipcMain.on("openNewWindow", createNewWaveWindow);
+electron.ipcMain.on("openNewWindow", () => fireAndForget(createNewWaveWindow));
 
 electron.ipcMain.on("contextmenu-show", (event, menuDefArr: ElectronContextMenuItem[], { x, y }) => {
     if (menuDefArr == null || menuDefArr.length == 0) {
@@ -498,10 +500,11 @@ function makeAppMenu() {
     let fileMenu: Electron.MenuItemConstructorOptions[] = [];
     fileMenu.push({
         label: "New Window",
-        click: createNewWaveWindow,
+        accelerator: "CommandOrControl+N",
+        click: () => fireAndForget(createNewWaveWindow),
     });
     fileMenu.push({
-        label: "Close Window",
+        role: "close",
         click: () => {
             electron.BrowserWindow.getFocusedWindow()?.close();
         },

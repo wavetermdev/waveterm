@@ -89,4 +89,14 @@ function makeIconClass(icon: string, fw: boolean): string {
     return null;
 }
 
-export { base64ToArray, base64ToString, isBlank, jsonDeepEqual, makeIconClass, stringToBase64 };
+/**
+ * A wrapper function for running a promise and catching any errors
+ * @param f The promise to run
+ */
+function fireAndForget(f: () => Promise<any>) {
+    f().catch((e) => {
+        console.log("fireAndForget error", e);
+    });
+}
+
+export { base64ToArray, base64ToString, fireAndForget, isBlank, jsonDeepEqual, makeIconClass, stringToBase64 };
