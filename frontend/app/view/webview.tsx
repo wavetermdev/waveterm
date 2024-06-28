@@ -17,12 +17,14 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
     const [url, setUrl] = useState(initialUrl);
     const [inputUrl, setInputUrl] = useState(initialUrl); // Separate state for the input field
     const [webViewHeight, setWebViewHeight] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
 
     const webviewRef = useRef<WebviewTag>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     const historyStack = useRef<string[]>([]);
     const historyIndex = useRef<number>(-1);
+    const recentUrls = useRef<{ [key: string]: number }>({});
 
     const getWebViewHeight = () => {
         const inputHeight = inputRef.current?.getBoundingClientRect().height;
@@ -44,11 +46,12 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
             const normalizedLastUrl = normalizeUrl(historyStack.current[historyIndex.current]);
 
             if (normalizedLastUrl !== normalizedNewUrl) {
-                setUrl(newUrl);
-                setInputUrl(newUrl); // Update input field as well
+                setUrl(normalizedNewUrl);
+                setInputUrl(normalizedNewUrl); // Update input field as well
                 historyIndex.current += 1;
                 historyStack.current = historyStack.current.slice(0, historyIndex.current);
-                historyStack.current.push(newUrl);
+                historyStack.current.push(normalizedNewUrl);
+                updateRecentUrls(normalizedNewUrl);
             }
         };
 
@@ -59,6 +62,8 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
 
             webview.addEventListener("did-navigate", navigateListener);
             webview.addEventListener("did-navigate-in-page", navigateListener);
+            webview.addEventListener("did-start-loading", () => setIsLoading(true));
+            webview.addEventListener("did-stop-loading", () => setIsLoading(false));
 
             // Handle new-window event
             webview.addEventListener("new-window", (event: any) => {
@@ -102,6 +107,11 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
                     inputRef.current.focus();
                     inputRef.current.select();
                 }
+            } else if ((event.ctrlKey || event.metaKey) && event.key === "r") {
+                event.preventDefault();
+                if (webviewRef.current) {
+                    webviewRef.current.reload();
+                }
             }
         };
 
@@ -135,7 +145,11 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
     }, []);
 
     const ensureUrlScheme = (url: string) => {
-        if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url)) {
+        if (/^(localhost|(\d{1,3}\.){3}\d{1,3})(:\d+)?/.test(url)) {
+            // If the URL starts with localhost or an IP address (with optional port)
+            return `http://${url}`;
+        } else if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(url)) {
+            // If the URL doesn't start with a protocol
             return `https://${url}`;
         }
         return url;
@@ -147,11 +161,25 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
             if (parsedUrl.hostname.startsWith("www.")) {
                 parsedUrl.hostname = parsedUrl.hostname.slice(4);
             }
-            parsedUrl.pathname = parsedUrl.pathname.replace(/\/+$/, ""); // Remove trailing slashes
-            parsedUrl.search = ""; // Remove query parameters
+
+            // Ensure pathname ends with a trailing slash
+            if (!parsedUrl.pathname.endsWith("/")) {
+                parsedUrl.pathname += "/";
+            }
+
+            // Ensure hash fragments end with a trailing slash
+            if (parsedUrl.hash && !parsedUrl.hash.endsWith("/")) {
+                parsedUrl.hash += "/";
+            }
+
+            // Ensure search parameters end with a trailing slash
+            if (parsedUrl.search && !parsedUrl.search.endsWith("/")) {
+                parsedUrl.search += "/";
+            }
+
             return parsedUrl.href;
         } catch (e) {
-            return url.replace(/\/+$/, ""); // Fallback for invalid URLs
+            return url.replace(/\/+$/, "") + "/";
         }
     };
 
@@ -161,20 +189,24 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
         const normalizedLastUrl = normalizeUrl(historyStack.current[historyIndex.current]);
 
         if (normalizedLastUrl !== normalizedFinalUrl) {
-            setUrl(finalUrl);
-            setInputUrl(finalUrl);
+            setUrl(normalizedFinalUrl);
+            setInputUrl(normalizedFinalUrl);
             historyIndex.current += 1;
             historyStack.current = historyStack.current.slice(0, historyIndex.current);
-            historyStack.current.push(finalUrl);
+            historyStack.current.push(normalizedFinalUrl);
             if (webviewRef.current) {
-                webviewRef.current.src = finalUrl;
+                webviewRef.current.src = normalizedFinalUrl;
             }
+            updateRecentUrls(normalizedFinalUrl);
         }
     };
 
     const handleBack = () => {
         if (historyIndex.current > 0) {
-            historyIndex.current -= 1;
+            do {
+                historyIndex.current -= 1;
+            } while (historyIndex.current > 0 && isRecentUrl(historyStack.current[historyIndex.current]));
+
             const prevUrl = historyStack.current[historyIndex.current];
             setUrl(prevUrl);
             setInputUrl(prevUrl);
@@ -186,12 +218,28 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
 
     const handleForward = () => {
         if (historyIndex.current < historyStack.current.length - 1) {
-            historyIndex.current += 1;
+            do {
+                historyIndex.current += 1;
+            } while (
+                historyIndex.current < historyStack.current.length - 1 &&
+                isRecentUrl(historyStack.current[historyIndex.current])
+            );
+
             const nextUrl = historyStack.current[historyIndex.current];
             setUrl(nextUrl);
             setInputUrl(nextUrl);
             if (webviewRef.current) {
                 webviewRef.current.src = nextUrl;
+            }
+        }
+    };
+
+    const handleRefresh = () => {
+        if (webviewRef.current) {
+            if (isLoading) {
+                webviewRef.current.stop();
+            } else {
+                webviewRef.current.reload();
             }
         }
     };
@@ -210,6 +258,22 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
         event.target.select();
     };
 
+    const updateRecentUrls = (url: string) => {
+        if (recentUrls.current[url]) {
+            recentUrls.current[url]++;
+        } else {
+            recentUrls.current[url] = 1;
+        }
+        // Clean up old entries after a certain threshold
+        if (Object.keys(recentUrls.current).length > 50) {
+            recentUrls.current = {};
+        }
+    };
+
+    const isRecentUrl = (url: string) => {
+        return recentUrls.current[url] > 1;
+    };
+
     return (
         <div className="webview-wrapper">
             <div className="toolbar">
@@ -223,6 +287,9 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
                         disabled={historyIndex.current >= historyStack.current.length - 1}
                     >
                         <i className="fa-sharp fa-regular fa-arrow-right"></i>
+                    </Button>
+                    <Button onClick={handleRefresh} className="secondary ghost refresh">
+                        <i className={`fa-sharp fa-regular ${isLoading ? "fa-xmark" : "fa-rotate-right"}`}></i>
                     </Button>
                 </div>
                 <div className="url-input-wrapper">
