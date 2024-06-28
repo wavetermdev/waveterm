@@ -37,6 +37,7 @@ declare global {
         onNavigate: (callback: (url: string) => void) => void;
         onIframeNavigate: (callback: (url: string) => void) => void;
         downloadFile: (path: string) => void;
+        openExternal: (url: string) => void;
     };
 
     type ElectronContextMenuItem = {

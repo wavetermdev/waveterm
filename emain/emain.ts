@@ -281,6 +281,12 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow): WaveBrow
     });
     win.webContents.on("will-navigate", shNavHandler);
     win.webContents.on("will-frame-navigate", shFrameNavHandler);
+    win.webContents.on("did-attach-webview", (event, wc) => {
+        wc.setWindowOpenHandler((details) => {
+            win.webContents.send("webview-new-window", wc.id, details);
+            return { action: "deny" };
+        });
+    });
     win.on(
         "resize",
         debounce(400, (e) => mainResizeHandler(e, waveWindow.oid, win))
@@ -418,8 +424,19 @@ electron.ipcMain.on("isDevServer", (event) => {
     event.returnValue = isDevServer;
 });
 
-electron.ipcMain.on("getPlatform", (event) => {
+electron.ipcMain.on("getPlatform", (event, url) => {
     event.returnValue = unamePlatform;
+});
+
+// Listen for the open-external event from the renderer process
+electron.ipcMain.on("open-external", (event, url) => {
+    if (url && typeof url === "string") {
+        electron.shell.openExternal(url).catch((err) => {
+            console.error(`Failed to open URL ${url}:`, err);
+        });
+    } else {
+        console.error("Invalid URL received in open-external event:", url);
+    }
 });
 
 electron.ipcMain.on("download", (event, payload) => {
@@ -535,7 +552,6 @@ async function appMain() {
     }
     const ready = await waveSrvReady;
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
-
     console.log("get client data");
     let clientData = await services.ClientService.GetClientData();
     console.log("client data ready");

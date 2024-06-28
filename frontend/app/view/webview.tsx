@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { getApi } from "@/app/store/global";
 import { WebviewTag } from "electron";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -23,10 +24,15 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
     const historyStack = useRef<string[]>([]);
     const historyIndex = useRef<number>(-1);
 
-    useEffect(() => {
-        const inputHeight = inputRef.current?.getBoundingClientRect().height + 25;
+    const getWebViewHeight = () => {
+        const inputHeight = inputRef.current?.getBoundingClientRect().height;
         const parentHeight = parentRef.current?.getBoundingClientRect().height;
-        setWebViewHeight(parentHeight - inputHeight);
+        return parentHeight - (inputHeight + 35);
+    };
+
+    useEffect(() => {
+        const webviewHeight = getWebViewHeight();
+        setWebViewHeight(webviewHeight);
 
         historyStack.current.push(initialUrl);
         historyIndex.current = 0;
@@ -57,8 +63,8 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
             // Handle new-window event
             webview.addEventListener("new-window", (event: any) => {
                 event.preventDefault();
-                const newUrl = event.url;
-                webview.src = newUrl;
+                const newUrl = event.detail.url;
+                getApi().openExternal(newUrl);
             });
 
             // Suppress errors
@@ -100,21 +106,31 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
         };
 
         const handleResize = () => {
-            const parentHeight = parentRef.current?.getBoundingClientRect().height;
-            setWebViewHeight(parentHeight);
+            const webviewHeight = getWebViewHeight();
+            setWebViewHeight(webviewHeight);
         };
 
         const parentElement = parentRef.current;
         if (parentElement) {
             parentElement.addEventListener("keydown", handleKeyDown);
         }
-        window.addEventListener("resize", handleResize);
+
+        // Use ResizeObserver to observe changes in the height of parentRef
+        const resizeObserver = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+                if (entry.target === parentElement) {
+                    handleResize();
+                }
+            }
+        });
+
+        resizeObserver.observe(parentElement);
 
         return () => {
             if (parentElement) {
                 parentElement.removeEventListener("keydown", handleKeyDown);
             }
-            window.removeEventListener("resize", handleResize);
+            resizeObserver.disconnect();
         };
     }, []);
 
@@ -221,7 +237,13 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
                     />
                 </div>
             </div>
-            <webview className="webview" ref={webviewRef} src={url} style={{ height: webViewHeight }}></webview>
+            <webview
+                id="webview"
+                className="webview"
+                ref={webviewRef}
+                src={url}
+                style={{ height: webViewHeight }}
+            ></webview>
         </div>
     );
 };
