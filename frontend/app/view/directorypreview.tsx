@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { Button } from "@/element/button";
 import * as services from "@/store/services";
 import * as util from "@/util/util";
 import {
@@ -12,6 +13,7 @@ import {
     useReactTable,
 } from "@tanstack/react-table";
 import clsx from "clsx";
+import dayjs from "dayjs";
 import * as jotai from "jotai";
 import React from "react";
 import { ContextMenuModel } from "../store/contextmenu";
@@ -21,12 +23,12 @@ import "./directorypreview.less";
 
 interface DirectoryTableProps {
     data: FileInfo[];
-    cwd: string;
     focusIndex: number;
-    enter: boolean;
     setFocusIndex: (_: number) => void;
     setFileName: (_: string) => void;
     setSearch: (_: string) => void;
+    setSelectedPath: (_: string) => void;
+    setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const columnHelper = createColumnHelper<FileInfo>();
@@ -83,15 +85,17 @@ function getSpecificUnit(bytes: number, suffix: string): string {
     return `${bytes / divisor} ${displaySuffixes[suffix]}`;
 }
 
-function getLastModifiedTime(
-    unixMillis: number,
-    locale: Intl.LocalesArgument,
-    options: DateTimeFormatConfigType
-): string {
-    if (locale === "C") {
-        locale = "lookup";
+function getLastModifiedTime(unixMillis: number): string {
+    let fileDatetime = dayjs(new Date(unixMillis));
+    let nowDatetime = dayjs(new Date());
+
+    if (nowDatetime.year() != fileDatetime.year()) {
+        return dayjs(fileDatetime).format("M/D/YY");
+    } else if (nowDatetime.month() != fileDatetime.month()) {
+        return dayjs(fileDatetime).format("MMM D");
+    } else {
+        return dayjs(fileDatetime).format("h:mm A");
     }
-    return new Date(unixMillis).toLocaleString(locale, options); //todo use config
 }
 
 const iconRegex = /^[a-z0-9- ]+$/;
@@ -121,41 +125,23 @@ function getSortIcon(sortType: string | boolean): React.ReactNode {
     }
 }
 
-function handleFileContextMenu(e: React.MouseEvent<HTMLDivElement>, path: string) {
-    e.preventDefault();
-    e.stopPropagation();
-    let menu: ContextMenuItem[] = [];
-    menu.push({
-        label: "Open in New Block",
-        click: async () => {
-            const blockDef = {
-                view: "preview",
-                meta: { file: path },
-            };
-            await createBlock(blockDef);
-        },
-    });
-    menu.push({
-        label: "Delete File",
-        click: async () => {
-            await services.FileService.DeleteFile(path).catch((e) => console.log(e)); //todo these errors need a popup
-        },
-    });
-    menu.push({
-        label: "Download File",
-        click: async () => {
-            getApi().downloadFile(path);
-        },
-    });
-    ContextMenuModel.showContextMenu(menu, e);
-}
-
 function cleanMimetype(input: string): string {
+    if (input == "") {
+        return "-";
+    }
     const truncated = input.split(";")[0];
     return truncated.trim();
 }
 
-function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileName, setSearch }: DirectoryTableProps) {
+function DirectoryTable({
+    data,
+    focusIndex,
+    setFocusIndex,
+    setFileName,
+    setSearch,
+    setSelectedPath,
+    setRefresh,
+}: DirectoryTableProps) {
     let settings = jotai.useAtomValue(atoms.settingsConfigAtom);
     const getIconFromMimeType = React.useCallback(
         (mimeType: string): string => {
@@ -198,16 +184,12 @@ function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileNa
             }),
             columnHelper.accessor("modestr", {
                 cell: (info) => <span className="dir-table-modestr">{info.getValue()}</span>,
-                header: () => <span>Permissions</span>,
+                header: () => <span>Perm</span>,
                 size: 91,
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("modtime", {
-                cell: (info) => (
-                    <span className="dir-table-lastmod">
-                        {getLastModifiedTime(info.getValue(), settings.datetime.locale, settings.datetime.format)}
-                    </span>
-                ),
+                cell: (info) => <span className="dir-table-lastmod">{getLastModifiedTime(info.getValue())}</span>,
                 header: () => <span>Last Modified</span>,
                 size: 185,
                 sortingFn: "datetime",
@@ -290,22 +272,22 @@ function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileNa
             {table.getState().columnSizingInfo.isResizingColumn ? (
                 <MemoizedTableBody
                     table={table}
-                    cwd={cwd}
                     focusIndex={focusIndex}
-                    enter={enter}
                     setFileName={setFileName}
                     setFocusIndex={setFocusIndex}
                     setSearch={setSearch}
+                    setSelectedPath={setSelectedPath}
+                    setRefresh={setRefresh}
                 />
             ) : (
                 <TableBody
                     table={table}
-                    cwd={cwd}
                     focusIndex={focusIndex}
-                    enter={enter}
                     setFileName={setFileName}
                     setFocusIndex={setFocusIndex}
                     setSearch={setSearch}
+                    setSelectedPath={setSelectedPath}
+                    setRefresh={setRefresh}
                 />
             )}
         </div>
@@ -314,26 +296,60 @@ function DirectoryTable({ data, cwd, focusIndex, enter, setFocusIndex, setFileNa
 
 interface TableBodyProps {
     table: Table<FileInfo>;
-    cwd: string;
     focusIndex: number;
-    enter: boolean;
     setFocusIndex: (_: number) => void;
     setFileName: (_: string) => void;
     setSearch: (_: string) => void;
+    setSelectedPath: (_: string) => void;
+    setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-function TableBody({ table, cwd, focusIndex, enter, setFocusIndex, setFileName, setSearch }: TableBodyProps) {
-    let [refresh, setRefresh] = React.useState(false);
-
+function TableBody({
+    table,
+    focusIndex,
+    setFocusIndex,
+    setFileName,
+    setSearch,
+    setSelectedPath,
+    setRefresh,
+}: TableBodyProps) {
     React.useEffect(() => {
-        const selected = (table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null;
-        if (selected != null) {
-            setFileName(selected);
-            setSearch("");
-        }
-    }, [enter]);
+        setSelectedPath((table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null);
+    }, [table, focusIndex]);
 
-    table.getRow;
+    const handleFileContextMenu = React.useCallback(
+        (e: React.MouseEvent<HTMLDivElement>, path: string) => {
+            e.preventDefault();
+            e.stopPropagation();
+            let menu: ContextMenuItem[] = [];
+            menu.push({
+                label: "Open in New Block",
+                click: async () => {
+                    const blockDef = {
+                        view: "preview",
+                        meta: { file: path },
+                    };
+                    await createBlock(blockDef);
+                },
+            });
+            menu.push({
+                label: "Delete File",
+                click: async () => {
+                    await services.FileService.DeleteFile(path).catch((e) => console.log(e)); //todo these errors need a popup
+                    setRefresh((current) => !current);
+                },
+            });
+            menu.push({
+                label: "Download File",
+                click: async () => {
+                    getApi().downloadFile(path);
+                },
+            });
+            ContextMenuModel.showContextMenu(menu, e);
+        },
+        [setRefresh]
+    );
+
     return (
         <div className="dir-table-body">
             {table.getRowModel().rows.map((row, idx) => (
@@ -376,10 +392,12 @@ interface DirectoryPreviewProps {
 
 function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
     const [searchText, setSearchText] = React.useState("");
-    let [focusIndex, setFocusIndex] = React.useState(0);
+    const [focusIndex, setFocusIndex] = React.useState(0);
     const [content, setContent] = React.useState<FileInfo[]>([]);
-    let [fileName, setFileName] = jotai.useAtom(fileNameAtom);
-    const [enter, setEnter] = React.useState(false);
+    const [fileName, setFileName] = jotai.useAtom(fileNameAtom);
+    const [hideHiddenFiles, setHideHiddenFiles] = React.useState(true);
+    const [selectedPath, setSelectedPath] = React.useState("");
+    const [refresh, setRefresh] = React.useState(false);
 
     React.useEffect(() => {
         const getContent = async () => {
@@ -387,12 +405,15 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
             const serializedContent = util.base64ToString(file?.data64);
             let content: FileInfo[] = JSON.parse(serializedContent);
             let filtered = content.filter((fileInfo) => {
+                if (hideHiddenFiles && fileInfo.name.startsWith(".")) {
+                    return false;
+                }
                 return fileInfo.name.toLowerCase().includes(searchText);
             });
             setContent(filtered);
         };
         getContent();
-    }, [fileName, searchText]);
+    }, [fileName, searchText, hideHiddenFiles, refresh]);
 
     const handleKeyDown = React.useCallback(
         (e) => {
@@ -410,16 +431,13 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
                     break;
                 case "Enter":
                     e.preventDefault();
-                    setEnter((current) => !current);
-                    /*
-                    const fullPath = fileName.concat("/", newFileName);
-                    setFileName(fullPath);
-					*/
+                    setFileName(selectedPath);
+                    setSearchText("");
                     break;
                 default:
             }
         },
-        [content, focusIndex, setEnter]
+        [content, focusIndex, selectedPath]
     );
 
     React.useEffect(() => {
@@ -443,15 +461,23 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
                     autoFocus={true}
                     value={searchText}
                 />
+                <Button onClick={() => setHideHiddenFiles((current) => !current)}>
+                    Hidden Files:&nbsp;
+                    {!hideHiddenFiles && <i className={"fa-sharp fa-solid fa-eye-slash"} />}
+                    {hideHiddenFiles && <i className={"fa-sharp fa-solid fa-eye"} />}
+                </Button>
+                <Button onClick={() => setRefresh((current) => !current)}>
+                    <i className="fa-solid fa-arrows-rotate" />
+                </Button>
             </div>
             <DirectoryTable
                 data={content}
-                cwd={fileName}
                 focusIndex={focusIndex}
-                enter={enter}
                 setFileName={setFileName}
                 setFocusIndex={setFocusIndex}
                 setSearch={setSearchText}
+                setSelectedPath={setSelectedPath}
+                setRefresh={setRefresh}
             />
         </>
     );

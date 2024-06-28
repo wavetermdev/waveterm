@@ -27,17 +27,6 @@ type TerminalConfigType struct {
 	FontFamily string `json:"fontfamily,omitempty"`
 }
 
-type DateTimeConfigType struct {
-	Locale string                   `json:"locale"`
-	Format DateTimeFormatConfigType `json:"format"`
-}
-
-type DateTimeFormatConfigType struct {
-	DateStyle DateTimeStyle `json:"dateStyle"`
-	TimeStyle DateTimeStyle `json:"timeStyle"`
-	//TimeZone  string `json:"timeZone"` TODO: need a universal way to obtain this before adding it
-}
-
 type MimeTypeConfigType struct {
 	Icon  string `json:"icon"`
 	Color string `json:"color"`
@@ -49,7 +38,6 @@ type BlockHeaderOpts struct {
 
 type SettingsConfigType struct {
 	MimeTypes   map[string]MimeTypeConfigType `json:"mimetypes"`
-	DateTime    DateTimeConfigType            `json:"datetime"`
 	Term        TerminalConfigType            `json:"term"`
 	Widgets     []WidgetsConfigType           `json:"widgets"`
 	BlockHeader BlockHeaderOpts               `json:"blockheader"`
@@ -57,13 +45,6 @@ type SettingsConfigType struct {
 
 func getSettingsConfigDefaults() SettingsConfigType {
 	return SettingsConfigType{
-		DateTime: DateTimeConfigType{
-			Locale: wavebase.DetermineLocale(),
-			Format: DateTimeFormatConfigType{
-				DateStyle: DateTimeStyleMedium,
-				TimeStyle: DateTimeStyleMedium,
-			},
-		},
 		MimeTypes: map[string]MimeTypeConfigType{
 			"audio":            {Icon: "file-audio"},
 			"application/pdf":  {Icon: "file-pdf"},
