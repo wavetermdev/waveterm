@@ -12,6 +12,19 @@ function setKeyUtilPlatform(platform: NodeJS.Platform) {
     PLATFORM = platform;
 }
 
+function keydownWrapper(
+    fn: (waveEvent: WaveKeyboardEvent) => boolean
+): (event: KeyboardEvent | React.KeyboardEvent) => void {
+    return (event: KeyboardEvent | React.KeyboardEvent) => {
+        const waveEvent = adaptFromReactOrNativeKeyEvent(event);
+        const rtnVal = fn(waveEvent);
+        if (rtnVal) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+    };
+}
+
 function parseKey(key: string): { key: string; type: string } {
     let regexMatch = key.match(KeyTypeCodeRegex);
     if (regexMatch != null && regexMatch.length > 1) {
@@ -142,6 +155,7 @@ export {
     adaptFromElectronKeyEvent,
     adaptFromReactOrNativeKeyEvent,
     checkKeyPressed,
+    keydownWrapper,
     parseKeyDescription,
     setKeyUtilPlatform,
 };

@@ -210,15 +210,8 @@ const AppInner = () => {
             </div>
         );
     }
-    function handleKeyDown(ev: KeyboardEvent) {
-        let waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(ev);
-        const rtn = handleKeyDownInternal(waveEvent);
-        if (rtn) {
-            ev.preventDefault();
-            ev.stopPropagation();
-        }
-    }
-    function handleKeyDownInternal(waveEvent: WaveKeyboardEvent): boolean {
+
+    function handleKeyDown(waveEvent: WaveKeyboardEvent): boolean {
         // global key handler for now (refactor later)
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:]")) {
             switchTab(1);
@@ -247,7 +240,7 @@ const AppInner = () => {
         return false;
     }
     React.useEffect(() => {
-        const staticKeyDownHandler = handleKeyDown;
+        const staticKeyDownHandler = keyutil.keydownWrapper(handleKeyDown);
         document.addEventListener("keydown", staticKeyDownHandler);
         return () => {
             document.removeEventListener("keydown", staticKeyDownHandler);

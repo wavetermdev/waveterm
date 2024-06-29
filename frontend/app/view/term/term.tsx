@@ -213,6 +213,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         termWrap.initTerminal();
         return () => {
             termWrap.dispose();
+            rszObs.disconnect();
         };
     }, []);
 
