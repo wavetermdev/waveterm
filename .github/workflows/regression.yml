@@ -1,4 +1,4 @@
-name: TestDriver.ai Regression Testing
+name: TestDriver.ai Regression Testing - Waveterm
 on:
     push:
         branches:
@@ -14,53 +14,37 @@ permissions:
     contents: read # To allow the action to read repository contents
     pull-requests: write # To allow the action to create/update pull request comments
 
+
 jobs:
-    test:
-        name: TestDriver
-        runs-on: ubuntu-latest
-        steps:
-            - uses: dashcamio/testdriver@main
-              id: testdriver
-              with:
-                version: v2.12.12
-                prerun: |
-                      rm ~/Desktop/WITH-LOVE-FROM-AMERICA.txt
-                      cd ~/actions-runner/_work/testdriver/testdriver/
-                      brew install go
-                      brew tap scripthaus-dev/scripthaus
-                      brew install corepack
-                      brew install scripthaus
-                      corepack enable
-                      yarn install
-                      scripthaus run build-backend
-                      echo "Yarn"
-                      yarn
-                      echo "Rebuild"
-                      scripthaus run electron-rebuild
-                      echo "Webpack"
-                      scripthaus run webpack-build
-                      echo "Starting Electron"
-                      scripthaus run electron 1>/dev/null 2>&1 &
-                      echo "Electron Done"
-                      exit
-                prompt: |
-                      1. wait 10 seconds
-                      1. click "Get Started"
-                      1. validate that overlapping text does not appear in the application
-                      1. focus the Wave input with the keyboard shorcut Command + I
-                      1. type 'ls' into the input
-                      1. press return
-                      1. validate Wave shows the result of 'ls'
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            - uses: peter-evans/create-or-update-comment@v4
-              if: ${{always()}}
-              with:
-                  issue-number: ${{ github.event.pull_request.number }}
-                  body: |
-                      ## TestDriver Summary
-                      ${{ steps.testdriver.outputs.markdown }}
-                      ${{ steps.testdriver.outputs.summary }}
-                  reactions: |
-                      +1
-                      -1
+  test:
+    name: "TestDriver"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dashcamio/testdriver@main
+        id: testdriver
+        with:
+          version: v3.5.6
+          key: ${{secrets.DASHCAM_API}}
+          prerun: |
+            cd ~/actions-runner/_work/testdriver/testdriver/
+            brew install go
+            brew tap scripthaus-dev/scripthaus
+            brew install corepack
+            brew install scripthaus
+            corepack enable
+            yarn install
+            scripthaus run build-backend
+            echo "Yarn"
+            yarn
+            echo "Rebuild"
+            scripthaus run electron-rebuild
+            echo "Webpack"
+            scripthaus run webpack-build
+            echo "Starting Electron"
+            scripthaus run electron 1>/dev/null 2>&1 &
+            echo "Electron Done"
+            cd /Users/ec2-user/Downloads/td/
+            npm rebuild
+            exit       
+          prompt: |
+            1. /run /Users/ec2-user/actions-runner/_work/testdriver/testdriver/.testdriver/wave1.yml
