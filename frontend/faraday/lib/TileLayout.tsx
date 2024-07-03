@@ -565,7 +565,7 @@ const OverlayNode = <T,>({
                 return nodeRefs;
             });
         };
-    }, [overlayRef]);
+    }, [overlayRef, layoutNode.id]);
 
     function onPointerOverLeaf(event: React.PointerEvent<HTMLDivElement>) {
         event.stopPropagation();
@@ -718,40 +718,43 @@ const ResizeHandle = <T,>({ parentNode, index, dispatch, nodeRefsAtom, siblingSi
 
     // Calculates the new size of the two nodes on either side of the handle, based on the position of the cursor
     const handlePointerMove = useCallback(
-        (clientX: number, clientY: number) => {
-            const parentIsRow = parentNode.flexDirection === FlexDirection.Row;
-            const combinedStart = parentIsRow ? combinedNodesRect.left : combinedNodesRect.top;
-            const combinedEnd = parentIsRow
-                ? combinedNodesRect.left + combinedNodesRect.width
-                : combinedNodesRect.top + combinedNodesRect.height;
-            const clientPoint = parentIsRow ? clientX : clientY;
-            // console.log("handlePointerMove", parentNode, index, clientX, clientY, parentRect, combinedNodesRect);
-            if (clientPoint > combinedStart + 10 && clientPoint < combinedEnd - 10) {
-                const halfGap = gapSize / 2;
-                const sizeNode1 = clientPoint - combinedStart - halfGap;
-                const sizeNode2 = combinedEnd - clientPoint + halfGap;
-                const resizeAction: LayoutTreeResizeNodeAction = {
-                    type: LayoutTreeActionType.ResizeNode,
-                    resizeOperations: [
-                        {
-                            nodeId: parentNode.children![index].id,
-                            size: parseFloat((sizeNode1 * pixelToSizeRatio).toPrecision(5)),
-                        },
-                        {
-                            nodeId: parentNode.children![index + 1].id,
-                            size: parseFloat((sizeNode2 * pixelToSizeRatio).toPrecision(5)),
-                        },
-                    ],
-                };
-                const setPendingAction: LayoutTreeSetPendingAction = {
-                    type: LayoutTreeActionType.SetPendingAction,
-                    action: resizeAction,
-                };
+        throttle(10, (event: React.PointerEvent<HTMLDivElement>) => {
+            if (trackingPointer === event.pointerId) {
+                const { clientX, clientY } = event;
+                const parentIsRow = parentNode.flexDirection === FlexDirection.Row;
+                const combinedStart = parentIsRow ? combinedNodesRect.left : combinedNodesRect.top;
+                const combinedEnd = parentIsRow
+                    ? combinedNodesRect.left + combinedNodesRect.width
+                    : combinedNodesRect.top + combinedNodesRect.height;
+                const clientPoint = parentIsRow ? clientX : clientY;
+                // console.log("handlePointerMove", parentNode, index, clientX, clientY, parentRect, combinedNodesRect);
+                if (clientPoint > combinedStart + 10 && clientPoint < combinedEnd - 10) {
+                    const halfGap = gapSize / 2;
+                    const sizeNode1 = clientPoint - combinedStart - halfGap;
+                    const sizeNode2 = combinedEnd - clientPoint + halfGap;
+                    const resizeAction: LayoutTreeResizeNodeAction = {
+                        type: LayoutTreeActionType.ResizeNode,
+                        resizeOperations: [
+                            {
+                                nodeId: parentNode.children![index].id,
+                                size: parseFloat((sizeNode1 * pixelToSizeRatio).toPrecision(5)),
+                            },
+                            {
+                                nodeId: parentNode.children![index + 1].id,
+                                size: parseFloat((sizeNode2 * pixelToSizeRatio).toPrecision(5)),
+                            },
+                        ],
+                    };
+                    const setPendingAction: LayoutTreeSetPendingAction = {
+                        type: LayoutTreeActionType.SetPendingAction,
+                        action: resizeAction,
+                    };
 
-                dispatch(setPendingAction);
+                    dispatch(setPendingAction);
+                }
             }
-        },
-        [dispatch, parentNode, parentRect, combinedNodesRect, pixelToSizeRatio, gapSize]
+        }),
+        [dispatch, trackingPointer, parentNode, parentRect, combinedNodesRect, pixelToSizeRatio, gapSize]
     );
 
     // We want to use pointer capture so the operation continues even if the pointer leaves the bounds of the handle
@@ -773,16 +776,6 @@ const ResizeHandle = <T,>({ parentNode, index, dispatch, nodeRefsAtom, siblingSi
         [dispatch]
     );
 
-    // Only track pointer moves if we have a captured pointer.
-    const onPointerMove = useCallback(
-        throttle(10, (event: React.PointerEvent<HTMLDivElement>) => {
-            if (trackingPointer === event.pointerId) {
-                handlePointerMove(event.clientX, event.clientY);
-            }
-        }),
-        [trackingPointer, handlePointerMove]
-    );
-
     // Don't render if we are dealing with the last child of a parent
     if (index + 1 >= parentNode.children!.length) {
         return;
@@ -795,7 +788,7 @@ const ResizeHandle = <T,>({ parentNode, index, dispatch, nodeRefsAtom, siblingSi
             onPointerDown={onPointerDown}
             onGotPointerCapture={onPointerCapture}
             onLostPointerCapture={onPointerRelease}
-            onPointerMove={onPointerMove}
+            onPointerMove={handlePointerMove}
             onPointerEnter={startResize}
         >
             <div className="line" />
