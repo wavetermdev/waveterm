@@ -10,7 +10,6 @@ import { newLayoutTreeStateAtom, useLayoutTreeStateReducerAtom } from "./layoutA
 import { newLayoutNode } from "./layoutNode.js";
 import { LayoutTreeActionType, LayoutTreeInsertNodeAction, WritableLayoutTreeStateAtom } from "./model.js";
 import "./tilelayout.stories.less";
-import { FlexDirection } from "./utils.js";
 
 interface TestData {
     name: string;
@@ -22,7 +21,7 @@ const meta = {
     title: "TileLayout",
     args: {
         layoutTreeStateAtom: newLayoutTreeStateAtom<TestData>(
-            newLayoutNode(FlexDirection.Row, undefined, undefined, {
+            newLayoutNode(undefined, undefined, undefined, {
                 name: "Hello world!",
             })
         ),
@@ -52,7 +51,7 @@ type Story = StoryObj<typeof meta>;
 export const Basic: Story = {
     args: {
         layoutTreeStateAtom: newLayoutTreeStateAtom<TestData>(
-            newLayoutNode(FlexDirection.Row, undefined, undefined, { name: "Hello world!" })
+            newLayoutNode(undefined, undefined, undefined, { name: "Hello world!" })
         ),
     },
 };
@@ -60,31 +59,31 @@ export const Basic: Story = {
 export const More: Story = {
     args: {
         layoutTreeStateAtom: newLayoutTreeStateAtom<TestData>(
-            newLayoutNode(FlexDirection.Row, undefined, [
-                newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world1!" }),
-                newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world2!" }),
-                newLayoutNode(FlexDirection.Column, undefined, [
-                    newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world3!" }),
-                    newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world4!" }),
+            newLayoutNode(undefined, undefined, [
+                newLayoutNode(undefined, undefined, undefined, { name: "Hello world1!" }),
+                newLayoutNode(undefined, undefined, undefined, { name: "Hello world2!" }),
+                newLayoutNode(undefined, undefined, [
+                    newLayoutNode(undefined, undefined, undefined, { name: "Hello world3!" }),
+                    newLayoutNode(undefined, undefined, undefined, { name: "Hello world4!" }),
                 ]),
             ])
         ),
     },
 };
 
-const evenMoreRootNode = newLayoutNode<TestData>(FlexDirection.Row, undefined, [
-    newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world1!" }),
-    newLayoutNode(FlexDirection.Column, undefined, [
-        newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world2!" }),
-        newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world3!" }),
+const evenMoreRootNode = newLayoutNode<TestData>(undefined, undefined, [
+    newLayoutNode(undefined, undefined, undefined, { name: "Hello world1!" }),
+    newLayoutNode(undefined, undefined, [
+        newLayoutNode(undefined, undefined, undefined, { name: "Hello world2!" }),
+        newLayoutNode(undefined, undefined, undefined, { name: "Hello world3!" }),
     ]),
-    newLayoutNode(FlexDirection.Column, undefined, [
-        newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world4!" }),
-        newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world5!" }),
-        newLayoutNode(FlexDirection.Column, undefined, [
-            newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world6!" }),
-            newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world7!" }),
-            newLayoutNode(FlexDirection.Column, undefined, undefined, { name: "Hello world8!" }),
+    newLayoutNode(undefined, undefined, [
+        newLayoutNode(undefined, undefined, undefined, { name: "Hello world4!" }),
+        newLayoutNode(undefined, undefined, undefined, { name: "Hello world5!" }),
+        newLayoutNode(undefined, undefined, [
+            newLayoutNode(undefined, undefined, undefined, { name: "Hello world6!" }),
+            newLayoutNode(undefined, undefined, undefined, { name: "Hello world7!" }),
+            newLayoutNode(undefined, undefined, undefined, { name: "Hello world8!" }),
         ]),
     ]),
 ]);
@@ -102,7 +101,7 @@ export const AddNode: Story = {
         const [, dispatch] = useLayoutTreeStateReducerAtom(addNodeAtom);
         const [numAddedNodes, setNumAddedNodes] = useState(0);
         const dispatchAddNode = () => {
-            const newNode = newLayoutNode(FlexDirection.Column, undefined, undefined, {
+            const newNode = newLayoutNode(undefined, undefined, undefined, {
                 name: "New Node" + numAddedNodes,
             });
             const insertNodeAction: LayoutTreeInsertNodeAction<TestData> = {

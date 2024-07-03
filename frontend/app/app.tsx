@@ -161,7 +161,7 @@ function switchBlock(tabId: string, offsetX: number, offsetY: number) {
         return;
     }
     const layoutTreeState = globalStore.get(getLayoutStateAtomForTab(tabId, tabAtom));
-    const curBlockId = globalStore.get(atoms.waveWindow).activeblockid;
+    const curBlockId = globalStore.get(atoms.waveWindow)?.activeblockid;
     const curBlockLeafId = layoututil.findLeafIdFromBlockId(layoutTreeState, curBlockId);
     if (curBlockLeafId == null) {
         return;

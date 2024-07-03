@@ -341,6 +341,9 @@ async function fetchWaveFile(
 
 function setBlockFocus(blockId: string) {
     let winData = globalStore.get(atoms.waveWindow);
+    if (winData == null) {
+        return;
+    }
     if (winData.activeblockid === blockId) {
         return;
     }

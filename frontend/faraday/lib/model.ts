@@ -33,11 +33,12 @@ export type MoveOperation<T> = {
  * Types of actions that modify the layout tree.
  */
 export enum LayoutTreeActionType {
-    ComputeMove = "compute",
+    ComputeMove = "computemove",
     Move = "move",
     Swap = "swap",
-    CommitPendingAction = "commit",
-    ClearPendingAction = "clear",
+    SetPendingAction = "setpending",
+    CommitPendingAction = "commitpending",
+    ClearPendingAction = "clearpending",
     ResizeNode = "resize",
     InsertNode = "insert",
     DeleteNode = "delete",
@@ -79,24 +80,17 @@ export interface LayoutTreeMoveNodeAction<T> extends LayoutTreeAction, MoveOpera
  *
  * @template T The type of data associated with the nodes of the tree.
  */
-export interface LayoutTreeSwapNodeAction<T> extends LayoutTreeAction {
+export interface LayoutTreeSwapNodeAction extends LayoutTreeAction {
     type: LayoutTreeActionType.Swap;
 
     /**
      * The node that node2 will replace.
      */
-    node1: LayoutNode<T>;
+    node1Id: string;
     /**
      * The node that node1 will replace.
      */
-    node2: LayoutNode<T>;
-}
-
-/**
- * Action for committing a pending action to the layout tree.
- */
-export interface LayoutTreeCommitPendingAction extends LayoutTreeAction {
-    type: LayoutTreeActionType.CommitPendingAction;
+    node2Id: string;
 }
 
 /**
@@ -118,10 +112,55 @@ export interface LayoutTreeDeleteNodeAction extends LayoutTreeAction {
 }
 
 /**
+ * Action for setting the pendingAction field of the layout tree state.
+ */
+export interface LayoutTreeSetPendingAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.SetPendingAction;
+
+    /**
+     * The new value for the pending action field.
+     */
+    action: LayoutTreeAction;
+}
+
+/**
+ * Action for committing the action in the pendingAction field of the layout tree state.
+ */
+export interface LayoutTreeCommitPendingAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.CommitPendingAction;
+}
+
+/**
  * Action for clearing the pendingAction field from the layout tree state.
  */
 export interface LayoutTreeClearPendingAction extends LayoutTreeAction {
     type: LayoutTreeActionType.ClearPendingAction;
+}
+
+/**
+ * An operation to resize a node.
+ */
+export interface ResizeNodeOperation {
+    /**
+     * The id of the node to resize.
+     */
+    nodeId: string;
+    /**
+     * The new size for the node.
+     */
+    size: number;
+}
+
+/**
+ * Action for resizing a node from the layout tree.
+ */
+export interface LayoutTreeResizeNodeAction extends LayoutTreeAction {
+    type: LayoutTreeActionType.ResizeNode;
+
+    /**
+     * A list of node ids to update and their respective new sizes.
+     */
+    resizeOperations: ResizeNodeOperation[];
 }
 
 /**
@@ -145,7 +184,7 @@ export interface LayoutNode<T> {
     data?: T;
     children?: LayoutNode<T>[];
     flexDirection: FlexDirection;
-    size?: number;
+    size: number;
 }
 
 /**
@@ -170,3 +209,5 @@ export type PreviewRenderer<T> = (data: T) => React.ReactElement;
 export interface LayoutNodeWaveObj<T> extends WaveObj {
     node: LayoutNode<T>;
 }
+
+export const DefaultNodeSize = 10;

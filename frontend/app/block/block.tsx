@@ -224,7 +224,7 @@ const BlockFrame_Tech_Component = ({
     const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
         return jotai.atom((get) => {
             const winData = get(atoms.waveWindow);
-            return winData.activeblockid === blockId;
+            return winData?.activeblockid === blockId;
         });
     });
     let isFocused = jotai.useAtomValue(isFocusedAtom);

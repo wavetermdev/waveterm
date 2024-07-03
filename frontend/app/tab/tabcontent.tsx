@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Block, BlockFrame } from "@/app/block/block";
+import { getApi } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as React from "react";
@@ -11,7 +12,6 @@ import { TileLayout } from "@/faraday/index";
 import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
-import { getApi } from "../store/global";
 import "./tabcontent.less";
 
 const TabContent = React.memo(({ tabId }: { tabId: string }) => {

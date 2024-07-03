@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { LayoutNode } from "./model";
+import { DefaultNodeSize, LayoutNode } from "./model";
 import { FlexDirection, getCrypto, reverseFlexDirection } from "./utils";
 
 const crypto = getCrypto();
@@ -24,7 +24,7 @@ export function newLayoutNode<T>(
     const newNode: LayoutNode<T> = {
         id: crypto.randomUUID(),
         flexDirection: flexDirection ?? FlexDirection.Row,
-        size,
+        size: size ?? DefaultNodeSize,
         children,
         data,
     };
@@ -182,14 +182,14 @@ function balanceNodeHelper<T>(node: LayoutNode<T>, leafs: LayoutNode<T>[]): Layo
         leafs.push(node);
         return node;
     }
-    if (node.children.length === 0) return;
+    if (node.children.length == 0) return;
     if (!validateNode(node)) throw new Error("Invalid node");
     node.children = node.children
         .flatMap((child) => {
             if (child.flexDirection === node.flexDirection) {
                 child.flexDirection = reverseFlexDirection(node.flexDirection);
             }
-            if (child.children?.length === 1 && child.children[0].children) {
+            if (child.children?.length == 1 && child.children[0].children) {
                 return child.children[0].children;
             }
             return child;
@@ -198,7 +198,7 @@ function balanceNodeHelper<T>(node: LayoutNode<T>, leafs: LayoutNode<T>[]): Layo
             return balanceNodeHelper(child, leafs);
         })
         .filter((v) => v);
-    if (node.children.length === 1 && !node.children[0].children) {
+    if (node.children.length == 1 && !node.children[0].children) {
         node.data = node.children[0].data;
         node.id = node.children[0].id;
         node.children = undefined;

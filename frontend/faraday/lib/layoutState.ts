@@ -11,6 +11,7 @@ import {
     removeChild,
 } from "./layoutNode";
 import {
+    DefaultNodeSize,
     LayoutNode,
     LayoutTreeAction,
     LayoutTreeActionType,
@@ -18,6 +19,8 @@ import {
     LayoutTreeDeleteNodeAction,
     LayoutTreeInsertNodeAction,
     LayoutTreeMoveNodeAction,
+    LayoutTreeResizeNodeAction,
+    LayoutTreeSetPendingAction,
     LayoutTreeState,
     LayoutTreeSwapNodeAction,
     MoveOperation,
@@ -70,8 +73,11 @@ function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, act
         case LayoutTreeActionType.ComputeMove:
             computeMoveNode(layoutTreeState, action as LayoutTreeComputeMoveNodeAction<T>);
             break;
+        case LayoutTreeActionType.SetPendingAction:
+            setPendingAction(layoutTreeState, action as LayoutTreeSetPendingAction);
+            break;
         case LayoutTreeActionType.ClearPendingAction:
-            clearPendingAction(layoutTreeState);
+            layoutTreeState.pendingAction = undefined;
             break;
         case LayoutTreeActionType.CommitPendingAction:
             if (!layoutTreeState?.pendingAction) {
@@ -79,6 +85,7 @@ function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, act
                 break;
             }
             layoutTreeStateReducerInner(layoutTreeState, layoutTreeState.pendingAction);
+            layoutTreeState.pendingAction = undefined;
             break;
         case LayoutTreeActionType.Move:
             moveNode(layoutTreeState, action as LayoutTreeMoveNodeAction<T>);
@@ -93,7 +100,11 @@ function layoutTreeStateReducerInner<T>(layoutTreeState: LayoutTreeState<T>, act
             layoutTreeState.generation++;
             break;
         case LayoutTreeActionType.Swap:
-            swapNode(layoutTreeState, action as LayoutTreeSwapNodeAction<T>);
+            swapNode(layoutTreeState, action as LayoutTreeSwapNodeAction);
+            layoutTreeState.generation++;
+            break;
+        case LayoutTreeActionType.ResizeNode:
+            resizeNode(layoutTreeState, action as LayoutTreeResizeNodeAction);
             layoutTreeState.generation++;
             break;
         default: {
@@ -260,10 +271,10 @@ function computeMoveNode<T>(
         case DropDirection.Center:
             // console.log("center drop", rootNode, node, nodeToMove);
             if (node.id !== rootNode.id && nodeToMove.id !== rootNode.id) {
-                const swapAction: LayoutTreeSwapNodeAction<T> = {
+                const swapAction: LayoutTreeSwapNodeAction = {
                     type: LayoutTreeActionType.Swap,
-                    node1: node,
-                    node2: nodeToMove,
+                    node1Id: node.id,
+                    node2Id: nodeToMove.id,
                 };
                 // console.log("swapAction", swapAction);
                 layoutTreeState.pendingAction = swapAction;
@@ -287,8 +298,12 @@ function computeMoveNode<T>(
         } as LayoutTreeMoveNodeAction<T>;
 }
 
-function clearPendingAction(layoutTreeState: LayoutTreeState<any>) {
-    layoutTreeState.pendingAction = undefined;
+function setPendingAction(layoutTreeState: LayoutTreeState<any>, action: LayoutTreeSetPendingAction) {
+    if (action.action === undefined) {
+        console.error("setPendingAction: invalid pending action passed to function");
+        return;
+    }
+    layoutTreeState.pendingAction = action.action;
 }
 
 function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMoveNodeAction<T>) {
@@ -313,10 +328,15 @@ function moveNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeMove
 
     // If moving under the same parent, we need to make sure that we are removing the child from its old position, not its new one.
     // If the new index is before the old index, we need to start our search for the node to delete after the new index position.
-    if (oldParent && parent && oldParent.id === parent.id) {
-        const curIndexInParent = parent.children!.indexOf(node);
-        if (curIndexInParent >= action.index) {
-            startingIndex = action.index + 1;
+    // If a node is being moved under the same parent, it can keep its size. Otherwise, it should get reset.
+    if (oldParent && parent) {
+        if (oldParent.id === parent.id) {
+            const curIndexInParent = parent.children!.indexOf(node);
+            if (curIndexInParent >= action.index) {
+                startingIndex = action.index + 1;
+            }
+        } else {
+            node.size = DefaultNodeSize;
         }
     }
 
@@ -360,28 +380,37 @@ function insertNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeIn
     layoutTreeState.leafs = leafs;
 }
 
-function swapNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeSwapNodeAction<T>) {
+function swapNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeSwapNodeAction) {
     console.log("swapNode", layoutTreeState, action);
-    if (!action.node1 || !action.node2) {
+
+    if (!action.node1Id || !action.node2Id) {
         console.error("invalid swapNode action, both node1 and node2 must be defined");
         return;
     }
-    if (action.node1.id === layoutTreeState.rootNode.id || action.node2.id === layoutTreeState.rootNode.id) {
+
+    if (action.node1Id === layoutTreeState.rootNode.id || action.node2Id === layoutTreeState.rootNode.id) {
         console.error("invalid swapNode action, the root node cannot be swapped");
         return;
     }
-    if (action.node1.id === action.node2.id) {
+    if (action.node1Id === action.node2Id) {
         console.error("invalid swapNode action, node1 and node2 are equal");
         return;
     }
 
-    const parentNode1 = findParent(layoutTreeState.rootNode, action.node1.id);
-    const parentNode2 = findParent(layoutTreeState.rootNode, action.node2.id);
-    const parentNode1Index = parentNode1.children!.findIndex((child) => child.id === action.node1.id);
-    const parentNode2Index = parentNode2.children!.findIndex((child) => child.id === action.node2.id);
+    const parentNode1 = findParent(layoutTreeState.rootNode, action.node1Id);
+    const parentNode2 = findParent(layoutTreeState.rootNode, action.node2Id);
+    const parentNode1Index = parentNode1.children!.findIndex((child) => child.id === action.node1Id);
+    const parentNode2Index = parentNode2.children!.findIndex((child) => child.id === action.node2Id);
 
-    parentNode1.children[parentNode1Index] = action.node2;
-    parentNode2.children[parentNode2Index] = action.node1;
+    const node1 = parentNode1.children![parentNode1Index];
+    const node2 = parentNode2.children![parentNode2Index];
+
+    const node1Size = node1.size;
+    node1.size = node2.size;
+    node2.size = node1Size;
+
+    parentNode1.children[parentNode1Index] = node2;
+    parentNode2.children[parentNode2Index] = node1;
 
     const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
     layoutTreeState.rootNode = newRootNode;
@@ -414,4 +443,19 @@ function deleteNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeDe
     const { node: newRootNode, leafs } = balanceNode(layoutTreeState.rootNode);
     layoutTreeState.rootNode = newRootNode;
     layoutTreeState.leafs = leafs;
+}
+
+function resizeNode<T>(layoutTreeState: LayoutTreeState<T>, action: LayoutTreeResizeNodeAction) {
+    console.log("resizeNode", layoutTreeState, action);
+    if (!action.resizeOperations) {
+        console.error("invalid resizeNode operation. nodeSizes array must be defined.");
+    }
+    for (const resize of action.resizeOperations) {
+        if (!resize.nodeId || resize.size < 0 || resize.size > 100) {
+            console.error("invalid resizeNode operation. nodeId must be defined and size must be between 0 and 100");
+            return;
+        }
+        const node = findNode(layoutTreeState.rootNode, resize.nodeId);
+        node.size = resize.size;
+    }
 }

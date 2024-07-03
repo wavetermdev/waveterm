@@ -142,6 +142,9 @@ const IJSONConst = {
 
 function setBlockFocus(blockId: string) {
     let winData = globalStore.get(atoms.waveWindow);
+    if (winData == null) {
+        return;
+    }
     winData = produce(winData, (draft) => {
         draft.activeblockid = blockId;
     });
@@ -160,7 +163,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
         return jotai.atom((get) => {
             const winData = get(atoms.waveWindow);
-            return winData.activeblockid === blockId;
+            return winData?.activeblockid === blockId;
         });
     });
     const termSettingsAtom = useSettingsAtom<TerminalConfigType>("term", (settings: SettingsConfigType) => {
@@ -240,6 +243,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         termMode = "term";
     }
 
+    // set initial focus
     React.useEffect(() => {
         if (isFocused && termMode == "term") {
             termRef.current?.terminal.focus();
@@ -247,8 +251,9 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         if (isFocused && termMode == "html") {
             htmlElemFocusRef.current?.focus();
         }
-    });
+    }, []);
 
+    // set intitial controller status, and then subscribe for updates
     React.useEffect(() => {
         function updateShellProcStatus(status: string) {
             if (status == null) {
@@ -268,12 +273,12 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             updateShellProcStatus(rts?.shellprocstatus);
         });
         const bcSubject = getEventORefSubject("blockcontroller:status", WOS.makeORef("block", blockId));
-        bcSubject.subscribe((data: WSEventType) => {
+        const sub = bcSubject.subscribe((data: WSEventType) => {
             let bcRTS: BlockControllerRuntimeStatus = data.data;
             updateShellProcStatus(bcRTS?.shellprocstatus);
         });
-        return undefined;
-    });
+        return () => sub.unsubscribe();
+    }, []);
 
     let stickerConfig = {
         charWidth: 8,

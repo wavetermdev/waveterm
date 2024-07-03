@@ -4,11 +4,12 @@
 import useResizeObserver from "@react-hook/resize-observer";
 import clsx from "clsx";
 import { toPng } from "html-to-image";
+import { PrimitiveAtom, atom, useAtom, useAtomValue, useSetAtom, useStore } from "jotai";
 import React, {
     CSSProperties,
     ReactNode,
-    RefObject,
     Suspense,
+    memo,
     useCallback,
     useEffect,
     useLayoutEffect,
@@ -19,8 +20,9 @@ import React, {
 import { DropTargetMonitor, useDrag, useDragLayer, useDrop } from "react-dnd";
 import { debounce, throttle } from "throttle-debounce";
 import { useDevicePixelRatio } from "use-device-pixel-ratio";
-import { globalLayoutTransformsMap, useLayoutTreeStateReducerAtom } from "./layoutAtom";
+import { globalLayoutTransformsMap } from "./layoutAtom";
 import { findNode } from "./layoutNode";
+import { layoutTreeStateReducer } from "./layoutState";
 import {
     ContentRenderer,
     LayoutNode,
@@ -29,11 +31,14 @@ import {
     LayoutTreeComputeMoveNodeAction,
     LayoutTreeDeleteNodeAction,
     LayoutTreeMoveNodeAction,
+    LayoutTreeResizeNodeAction,
+    LayoutTreeSetPendingAction,
     LayoutTreeState,
     LayoutTreeSwapNodeAction,
     PreviewRenderer,
     WritableLayoutTreeStateAtom,
 } from "./model";
+import { NodeRefMap } from "./nodeRefMap";
 import "./tilelayout.less";
 import { Dimensions, FlexDirection, setTransform as createTransform, determineDropDirection } from "./utils";
 
@@ -59,6 +64,12 @@ export interface TileLayoutContents<T> {
      * The class name to use for the top-level div of the tile layout.
      */
     className?: string;
+
+    /**
+     * A callback for getting the cursor point in reference to the current window. This removes Electron as a runtime dependency, allowing for better integration with Storybook.
+     * @returns The cursor position relative to the current window.
+     */
+    getCursorPoint?: () => Point;
 
     /**
      * tabId this TileLayout is associated with
@@ -90,42 +101,24 @@ const DragPreviewHeight = 300;
 function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint }: TileLayoutProps<T>) {
     const overlayContainerRef = useRef<HTMLDivElement>(null);
     const displayContainerRef = useRef<HTMLDivElement>(null);
-
-    const [layoutTreeState, dispatch] = useLayoutTreeStateReducerAtom(layoutTreeStateAtom);
-    const [nodeRefs, setNodeRefs] = useState<Map<string, RefObject<HTMLDivElement>>>(new Map());
-    const [nodeRefsGen, setNodeRefsGen] = useState<number>(0);
-
-    // useEffect(() => {
-    //     console.log("layoutTreeState changed", layoutTreeState);
-    // }, [layoutTreeState]);
-
-    const setRef = useCallback(
-        (id: string, ref: RefObject<HTMLDivElement>) => {
-            setNodeRefs((prev) => {
-                // console.log("setRef", id, ref);
-                prev.set(id, ref);
-                return prev;
-            });
-            setNodeRefsGen((prev) => prev + 1);
+    const jotaiStore = useStore();
+    const layoutTreeState = useAtomValue(layoutTreeStateAtom);
+    const [nodeRefsAtom] = useState<PrimitiveAtom<NodeRefMap>>(atom(new NodeRefMap()));
+    const nodeRefs = useAtomValue(nodeRefsAtom);
+    const dispatch = useCallback(
+        (action: LayoutTreeAction) => {
+            const currentState = jotaiStore.get(layoutTreeStateAtom);
+            jotaiStore.set(layoutTreeStateAtom, layoutTreeStateReducer(currentState, action));
         },
-        [setNodeRefs]
+        [layoutTreeStateAtom, jotaiStore]
     );
+    const [showOverlayAtom] = useState<PrimitiveAtom<boolean>>(atom(false));
+    const [showOverlay, setShowOverlay] = useAtom(showOverlayAtom);
 
-    const deleteRef = useCallback(
-        (id: string) => {
-            // console.log("deleteRef", id);
-            if (nodeRefs.has(id)) {
-                setNodeRefs((prev) => {
-                    prev.delete(id);
-                    return prev;
-                });
-                setNodeRefsGen((prev) => prev + 1);
-            } else {
-                console.log("deleteRef id not found", id);
-            }
-        },
-        [nodeRefs, setNodeRefs]
-    );
+    function onPointerOver() {
+        setShowOverlay(true);
+    }
+
     const [overlayTransform, setOverlayTransform] = useState<CSSProperties>();
     const [layoutLeafTransforms, setLayoutLeafTransformsRaw] = useState<Record<string, CSSProperties>>({});
 
@@ -166,6 +159,8 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
      */
     const updateTransforms = useCallback(
         debounce(30, () => {
+            // TODO: janky way of preventing updates while a node resize is underway
+            if (layoutTreeState.pendingAction?.type === LayoutTreeActionType.ResizeNode) return;
             if (overlayContainerRef.current && displayContainerRef.current) {
                 const displayBoundingRect = displayContainerRef.current.getBoundingClientRect();
                 // console.log("displayBoundingRect", displayBoundingRect);
@@ -206,7 +201,7 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                 setOverlayTransform(
                     createTransform(
                         {
-                            top: activeDrag ? 0 : newOverlayOffset,
+                            top: activeDrag || showOverlay ? 0 : newOverlayOffset,
                             left: 0,
                             width: overlayBoundingRect.width,
                             height: overlayBoundingRect.height,
@@ -216,7 +211,7 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                 );
             }
         }),
-        [activeDrag, overlayContainerRef, displayContainerRef, layoutTreeState.leafs, nodeRefsGen]
+        [activeDrag, showOverlay, overlayContainerRef, displayContainerRef, layoutTreeState.leafs, nodeRefs.generation]
     );
 
     // Update the transforms whenever we drag something and whenever the layout updates.
@@ -225,12 +220,6 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
     }, [updateTransforms]);
 
     useResizeObserver(overlayContainerRef, () => updateTransforms());
-
-    const onPointerLeave = useCallback(() => {
-        if (activeDrag) {
-            dispatch({ type: LayoutTreeActionType.ClearPendingAction });
-        }
-    }, [activeDrag, dispatch]);
 
     // Ensure that we don't see any jostling in the layout when we're rendering it the first time.
     // `animate` will be disabled until after the transforms have all applied the first time.
@@ -259,7 +248,7 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
 
     return (
         <Suspense>
-            <div className={clsx("tile-layout", contents.className, { animate })} onPointerOut={onPointerLeave}>
+            <div className={clsx("tile-layout", contents.className, { animate })} onPointerOver={onPointerOver}>
                 <div key="display" ref={displayContainerRef} className="display-container">
                     <DisplayNodesWrapper
                         contents={contents}
@@ -273,7 +262,7 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                     key="placeholder"
                     layoutTreeState={layoutTreeState}
                     overlayContainerRef={overlayContainerRef}
-                    nodeRefs={nodeRefs}
+                    nodeRefsAtom={nodeRefsAtom}
                     style={{ top: 10000, ...overlayTransform }}
                 />
                 <div
@@ -286,8 +275,9 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                         layoutNode={layoutTreeState.rootNode}
                         layoutTreeState={layoutTreeState}
                         dispatch={dispatch}
-                        setRef={setRef}
-                        deleteRef={deleteRef}
+                        nodeRefsAtom={nodeRefsAtom}
+                        showOverlayAtom={showOverlayAtom}
+                        siblingSize={layoutTreeState.rootNode?.size}
                     />
                 </div>
             </div>
@@ -295,7 +285,7 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
     );
 }
 
-export const TileLayout = React.memo(TileLayoutComponent) as typeof TileLayoutComponent;
+export const TileLayout = memo(TileLayoutComponent) as typeof TileLayoutComponent;
 
 interface DisplayNodesWrapperProps<T> {
     /**
@@ -321,7 +311,7 @@ interface DisplayNodesWrapperProps<T> {
     ready: boolean;
 }
 
-const DisplayNodesWrapper = React.memo(
+const DisplayNodesWrapper = memo(
     <T,>({ layoutTreeState, contents, onLeafClose, layoutLeafTransforms, ready }: DisplayNodesWrapperProps<T>) => {
         if (!layoutLeafTransforms) {
             return null;
@@ -372,7 +362,7 @@ const dragItemType = "TILE_ITEM";
 /**
  * The draggable and displayable portion of a leaf node in a layout tree.
  */
-const DisplayNode = React.memo(<T,>({ layoutNode, contents, transform, onLeafClose, ready }: DisplayNodeProps<T>) => {
+const DisplayNode = memo(<T,>({ layoutNode, contents, transform, onLeafClose, ready }: DisplayNodeProps<T>) => {
     const tileNodeRef = useRef<HTMLDivElement>(null);
     const dragHandleRef = useRef<HTMLDivElement>(null);
     const previewRef = useRef<HTMLDivElement>(null);
@@ -460,11 +450,10 @@ const DisplayNode = React.memo(<T,>({ layoutNode, contents, transform, onLeafClo
             ref={tileNodeRef}
             id={layoutNode.id}
             style={{
-                flexDirection: layoutNode.flexDirection,
-                flexBasis: layoutNode.size,
                 ...transform,
             }}
             onPointerEnter={generatePreviewImage}
+            onPointerOver={(event) => event.stopPropagation()}
         >
             {leafContent}
             {previewElement}
@@ -486,26 +475,35 @@ interface OverlayNodeProps<T> {
      * @param action The action to perform.
      */
     dispatch: (action: LayoutTreeAction) => void;
-    /**
-     * A callback to update the RefObject mapping corresponding to the layout node. Used to inform the TileLayout of changes to the OverlayNode's position and size.
-     * @param id The id of the layout node being mounted.
-     * @param ref The reference to the mounted overlay node.
-     */
-    setRef: (id: string, ref: RefObject<HTMLDivElement>) => void;
-    /**
-     * A callback to remove the RefObject mapping corresponding to the layout node when it gets unmounted.
-     * @param id The id of the layout node being unmounted.
-     */
-    deleteRef: (id: string) => void;
+
+    nodeRefsAtom: PrimitiveAtom<NodeRefMap>;
+
+    showOverlayAtom: PrimitiveAtom<boolean>;
+
+    showResizeOverlay?: boolean;
+
+    siblingSize: number;
 }
 
 /**
  * An overlay representing the true flexbox layout of the LayoutTreeState. This holds the drop targets for moving around nodes and is used to calculate the
  * dimensions of the corresponding DisplayNode for each LayoutTreeState leaf.
  */
-const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, deleteRef }: OverlayNodeProps<T>) => {
+const OverlayNode = <T,>({
+    layoutNode,
+    layoutTreeState,
+    dispatch,
+    nodeRefsAtom,
+    showOverlayAtom,
+    showResizeOverlay,
+    siblingSize,
+}: OverlayNodeProps<T>) => {
     const overlayRef = useRef<HTMLDivElement>(null);
     const leafRef = useRef<HTMLDivElement>(null);
+
+    const setShowOverlay = useSetAtom(showOverlayAtom);
+
+    const setNodeRefs = useSetAtom(nodeRefsAtom);
 
     const [, drop] = useDrop(
         () => ({
@@ -555,30 +553,79 @@ const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, delete
         const layoutNodeId = layoutNode?.id;
         if (overlayRef?.current) {
             drop(overlayRef);
-            setRef(layoutNodeId, overlayRef);
+            setNodeRefs((nodeRefs) => {
+                nodeRefs.set(layoutNodeId, overlayRef);
+                return nodeRefs;
+            });
         }
 
         return () => {
-            deleteRef(layoutNodeId);
+            setNodeRefs((nodeRefs) => {
+                nodeRefs.delete(layoutNodeId);
+                return nodeRefs;
+            });
         };
     }, [overlayRef]);
 
+    function onPointerOverLeaf(event: React.PointerEvent<HTMLDivElement>) {
+        event.stopPropagation();
+        setShowOverlay(false);
+    }
+
+    const [resizeOnCurrentNode, setResizeOnCurrentNode] = useState(false);
+    const [pendingSize, setPendingSize] = useState<number>(undefined);
+
+    useLayoutEffect(() => {
+        if (showResizeOverlay) {
+            setResizeOnCurrentNode(false);
+            setPendingSize(undefined);
+            return;
+        }
+        if (layoutTreeState.pendingAction?.type === LayoutTreeActionType.ResizeNode) {
+            const resizeAction = layoutTreeState.pendingAction as LayoutTreeResizeNodeAction;
+            const resizeOperation = resizeAction?.resizeOperations?.find(
+                (operation) => operation.nodeId === layoutNode.id
+            );
+            if (resizeOperation) {
+                setResizeOnCurrentNode(true);
+                setPendingSize(resizeOperation.size);
+                return;
+            }
+        }
+        setResizeOnCurrentNode(false);
+        setPendingSize(undefined);
+    }, [showResizeOverlay, layoutTreeState.pendingAction]);
+
     const generateChildren = () => {
         if (Array.isArray(layoutNode.children)) {
-            return layoutNode.children.map((childItem) => {
-                return (
-                    <OverlayNode
-                        key={childItem.id}
-                        layoutNode={childItem}
-                        layoutTreeState={layoutTreeState}
-                        dispatch={dispatch}
-                        setRef={setRef}
-                        deleteRef={deleteRef}
-                    />
-                );
-            });
+            const totalSize = layoutNode.children.reduce((partialSum, child) => partialSum + child.size, 0);
+            return layoutNode.children
+                .map((childItem, i) => {
+                    return [
+                        <OverlayNode
+                            key={childItem.id}
+                            layoutNode={childItem}
+                            layoutTreeState={layoutTreeState}
+                            dispatch={dispatch}
+                            nodeRefsAtom={nodeRefsAtom}
+                            showOverlayAtom={showOverlayAtom}
+                            showResizeOverlay={resizeOnCurrentNode || showResizeOverlay}
+                            siblingSize={totalSize}
+                        />,
+                        <ResizeHandle
+                            key={`resize-${layoutNode.id}-${i}`}
+                            parentNode={layoutNode}
+                            index={i}
+                            dispatch={dispatch}
+                            nodeRefsAtom={nodeRefsAtom}
+                            siblingSize={totalSize}
+                        />,
+                    ];
+                })
+                .flat()
+                .slice(0, -1);
         } else {
-            return [<div ref={leafRef} key="leaf" className="overlay-leaf"></div>];
+            return [<div ref={leafRef} key="leaf" className="overlay-leaf" onPointerOver={onPointerOverLeaf}></div>];
         }
     };
 
@@ -586,17 +633,172 @@ const OverlayNode = <T,>({ layoutNode, layoutTreeState, dispatch, setRef, delete
         return null;
     }
 
+    const sizePercentage = ((pendingSize ?? layoutNode.size) / siblingSize) * 100;
+
     return (
         <div
             ref={overlayRef}
-            className="overlay-node"
+            className={clsx("overlay-node", { resizing: resizeOnCurrentNode || showResizeOverlay })}
             id={layoutNode.id}
             style={{
-                flexBasis: layoutNode.size,
+                flexBasis: `${sizePercentage.toPrecision(5)}%`,
                 flexDirection: layoutNode.flexDirection,
             }}
         >
             {generateChildren()}
+        </div>
+    );
+};
+
+interface ResizeHandleProps<T> {
+    parentNode: LayoutNode<T>;
+    index: number;
+    dispatch: (action: LayoutTreeAction) => void;
+    nodeRefsAtom: PrimitiveAtom<NodeRefMap>;
+    siblingSize: number;
+}
+
+const ResizeHandle = <T,>({ parentNode, index, dispatch, nodeRefsAtom, siblingSize }: ResizeHandleProps<T>) => {
+    const resizeHandleRef = useRef<HTMLDivElement>(null);
+
+    // The pointer currently captured, or undefined.
+    const [trackingPointer, setTrackingPointer] = useState<number>(undefined);
+    const nodeRefs = useAtomValue(nodeRefsAtom);
+
+    // Cached values set in startResize
+    const [parentRect, setParentRect] = useState<Dimensions>();
+    const [combinedNodesRect, setCombinedNodesRect] = useState<Dimensions>();
+    const [gapSize, setGapSize] = useState(0);
+    const [pixelToSizeRatio, setPixelToSizeRatio] = useState(0);
+
+    // Precompute some values that will be needed by the handlePointerMove function
+    const startResize = useCallback(
+        throttle(30, () => {
+            const parentRef = nodeRefs.get(parentNode.id);
+            const node1Ref = nodeRefs.get(parentNode.children![index].id);
+            const node2Ref = nodeRefs.get(parentNode.children![index + 1].id);
+            if (parentRef?.current && node1Ref?.current && node2Ref?.current) {
+                const parentIsRow = parentNode.flexDirection === FlexDirection.Row;
+                const parentRectNew = parentRef.current.getBoundingClientRect();
+                setParentRect(parentRectNew);
+                const node1Rect = node1Ref.current.getBoundingClientRect();
+                const node2Rect = node2Ref.current.getBoundingClientRect();
+                const gapSize = parentIsRow
+                    ? node2Rect.left - (node1Rect.left + node1Rect.width)
+                    : node2Rect.top - (node1Rect.top + node1Rect.height);
+                setGapSize(gapSize);
+                const parentPixelsMinusGap =
+                    (parentIsRow ? parentRectNew.width : parentRectNew.height) -
+                    (gapSize * parentNode.children!.length - 1);
+                const newPixelToSizeRatio = siblingSize / parentPixelsMinusGap;
+                // console.log("newPixelToSizeRatio", newPixelToSizeRatio, siblingSize, parentPixelsMinusGap);
+                setPixelToSizeRatio(newPixelToSizeRatio);
+                const newCombinedNodesRect: Dimensions = {
+                    top: node1Rect.top,
+                    left: node1Rect.left,
+                    height: parentIsRow ? node1Rect.height : node1Rect.height + node2Rect.height + gapSize,
+                    width: parentIsRow ? node1Rect.width + node2Rect.width + gapSize : node1Rect.width,
+                };
+                setCombinedNodesRect(newCombinedNodesRect);
+                // console.log(
+                //     "startResize",
+                //     parentNode,
+                //     index,
+                //     parentIsRow,
+                //     gapSize,
+                //     parentRectNew,
+                //     node1Rect,
+                //     node2Rect,
+                //     newCombinedNodesRect
+                // );
+            }
+        }),
+        [parentNode, nodeRefs]
+    );
+
+    // Calculates the new size of the two nodes on either side of the handle, based on the position of the cursor
+    const handlePointerMove = useCallback(
+        (clientX: number, clientY: number) => {
+            const parentIsRow = parentNode.flexDirection === FlexDirection.Row;
+            const combinedStart = parentIsRow ? combinedNodesRect.left : combinedNodesRect.top;
+            const combinedEnd = parentIsRow
+                ? combinedNodesRect.left + combinedNodesRect.width
+                : combinedNodesRect.top + combinedNodesRect.height;
+            const clientPoint = parentIsRow ? clientX : clientY;
+            // console.log("handlePointerMove", parentNode, index, clientX, clientY, parentRect, combinedNodesRect);
+            if (clientPoint > combinedStart + 10 && clientPoint < combinedEnd - 10) {
+                const halfGap = gapSize / 2;
+                const sizeNode1 = clientPoint - combinedStart - halfGap;
+                const sizeNode2 = combinedEnd - clientPoint + halfGap;
+                const resizeAction: LayoutTreeResizeNodeAction = {
+                    type: LayoutTreeActionType.ResizeNode,
+                    resizeOperations: [
+                        {
+                            nodeId: parentNode.children![index].id,
+                            size: parseFloat((sizeNode1 * pixelToSizeRatio).toPrecision(5)),
+                        },
+                        {
+                            nodeId: parentNode.children![index + 1].id,
+                            size: parseFloat((sizeNode2 * pixelToSizeRatio).toPrecision(5)),
+                        },
+                    ],
+                };
+                const setPendingAction: LayoutTreeSetPendingAction = {
+                    type: LayoutTreeActionType.SetPendingAction,
+                    action: resizeAction,
+                };
+
+                dispatch(setPendingAction);
+            }
+        },
+        [dispatch, parentNode, parentRect, combinedNodesRect, pixelToSizeRatio, gapSize]
+    );
+
+    // We want to use pointer capture so the operation continues even if the pointer leaves the bounds of the handle
+    function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+        resizeHandleRef.current?.setPointerCapture(event.pointerId);
+    }
+
+    // This indicates that we're ready to start tracking the resize operation via the pointer
+    function onPointerCapture(event: React.PointerEvent<HTMLDivElement>) {
+        setTrackingPointer(event.pointerId);
+    }
+
+    // We want to wait a bit before committing the pending resize operation in case some events haven't arrived yet.
+    const onPointerRelease = useCallback(
+        debounce(30, (event: React.PointerEvent<HTMLDivElement>) => {
+            setTrackingPointer(undefined);
+            dispatch({ type: LayoutTreeActionType.CommitPendingAction });
+        }),
+        [dispatch]
+    );
+
+    // Only track pointer moves if we have a captured pointer.
+    const onPointerMove = useCallback(
+        throttle(10, (event: React.PointerEvent<HTMLDivElement>) => {
+            if (trackingPointer === event.pointerId) {
+                handlePointerMove(event.clientX, event.clientY);
+            }
+        }),
+        [trackingPointer, handlePointerMove]
+    );
+
+    // Don't render if we are dealing with the last child of a parent
+    if (index + 1 >= parentNode.children!.length) {
+        return;
+    }
+
+    return (
+        <div
+            ref={resizeHandleRef}
+            className={clsx("resize-handle", `flex-${parentNode.flexDirection}`)}
+            onPointerDown={onPointerDown}
+            onGotPointerCapture={onPointerCapture}
+            onLostPointerCapture={onPointerRelease}
+            onPointerMove={onPointerMove}
+            onPointerEnter={startResize}
+        >
+            <div className="line" />
         </div>
     );
 };
@@ -613,7 +815,7 @@ interface PlaceholderProps<T> {
     /**
      * The mapping of all layout nodes to their corresponding mounted overlay node.
      */
-    nodeRefs: Map<string, React.RefObject<HTMLElement>>;
+    nodeRefsAtom: PrimitiveAtom<NodeRefMap>;
     /**
      * Any styling to apply to the placeholder container div.
      */
@@ -623,8 +825,10 @@ interface PlaceholderProps<T> {
 /**
  * An overlay to preview pending actions on the layout tree.
  */
-const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style }: PlaceholderProps<T>) => {
+const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefsAtom, style }: PlaceholderProps<T>) => {
     const [placeholderOverlay, setPlaceholderOverlay] = useState<ReactNode>(null);
+
+    const nodeRefs = useAtomValue(nodeRefsAtom);
 
     useEffect(() => {
         let newPlaceholderOverlay: ReactNode;
@@ -698,10 +902,10 @@ const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style
                     break;
                 }
                 case LayoutTreeActionType.Swap: {
-                    const action = layoutTreeState.pendingAction as LayoutTreeSwapNodeAction<T>;
+                    const action = layoutTreeState.pendingAction as LayoutTreeSwapNodeAction;
                     // console.log("placeholder for swap", action);
-                    const targetNode = action.node1;
-                    const targetRef = nodeRefs.get(targetNode?.id);
+                    const targetNodeId = action.node1Id;
+                    const targetRef = nodeRefs.get(targetNodeId);
                     if (targetRef?.current) {
                         const overlayBoundingRect = overlayContainerRef.current.getBoundingClientRect();
                         const targetBoundingRect = targetRef.current.getBoundingClientRect();
@@ -723,7 +927,7 @@ const Placeholder = <T,>({ layoutTreeState, overlayContainerRef, nodeRefs, style
             }
         }
         setPlaceholderOverlay(newPlaceholderOverlay);
-    }, [layoutTreeState, nodeRefs, overlayContainerRef]);
+    }, [layoutTreeState.pendingAction, nodeRefs, overlayContainerRef]);
 
     return (
         <div className="placeholder-container" style={style}>
