@@ -87,5 +87,5 @@
         "use-device-pixel-ratio": "^1.1.2",
         "uuid": "^9.0.1"
     },
-    "packageManager": "yarn@4.3.0"
+    "packageManager": "yarn@4.3.1"
 }
