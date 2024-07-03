@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .markdown {
-    color: var(--main-text-color);
+    color: var(--app-text-color);
     font-family: var(--markdown-font);
     font-size: 14px;
     overflow-wrap: break-word;
@@ -12,13 +12,13 @@
     }
 
     .title {
-        color: var(--main-text-color);
+        color: var(--app-text-color);
         margin-top: 16px;
         margin-bottom: 8px;
     }
 
     strong {
-        color: var(--main-text-color);
+        color: var(--app-text-color);
     }
 
     a {
@@ -27,7 +27,7 @@
 
     table {
         tr th {
-            color: var(--main-text-color);
+            color: var(--app-text-color);
         }
     }
 
@@ -45,30 +45,74 @@
     blockquote {
         margin: 4px 10px 4px 10px;
         border-radius: 3px;
-        background-color: var(--panel-bg-color);
+        background-color: var(--markdown-bg-color);
         padding: 2px 4px 2px 6px;
     }
 
-    pre {
-        background-color: var(--panel-bg-color);
-        margin: 4px 10px 4px 10px;
-        padding: 0.7em;
+    pre.codeblock {
+        background-color: var(--markdown-bg-color);
+        margin: 4px 10px;
+        padding: 0.4em 0.7em;
         border-radius: 4px;
+        position: relative;
 
         code {
-            background-color: transparent;
-            padding: 0;
-            line-height: normal;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: auto;
+            overflow: hidden;
+        }
+
+        .codeblock-actions {
+            display: none;
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            border-radius: 4px;
+            align-items: center;
+            justify-content: flex-end;
+            padding-left: 4px;
+            padding-right: 4px;
+            background-color: var(--line-actions-bg-color);
+            backdrop-filter: blur(8px);
+
+            i {
+                color: var(--line-actions-inactive-color);
+                margin-left: 4px;
+
+                &:first-child {
+                    margin-left: 0px;
+                }
+
+                &:hover {
+                    color: var(--line-actions-active-color);
+                }
+
+                &.fa-check {
+                    color: var(--app-success-color);
+                }
+
+                &.fa-square-terminal {
+                    cursor: pointer;
+                }
+            }
+        }
+
+        &:hover .codeblock-actions {
+            display: flex;
         }
     }
 
     code {
-        font: var(--fixed-font);
-        color: var(--main-text-color);
+        color: var(--app-text-color);
+        background-color: var(--markdown-bg-color);
+        font-family: var(--termfontfamily);
         border-radius: 4px;
-        background-color: var(--panel-bg-color);
-        padding: 0.15em 0.5em;
-        line-height: 1.5;
+    }
+
+    pre.selected {
+        outline: 2px solid var(--markdown-outline-color);
     }
 
     .title {
@@ -98,6 +142,10 @@
     .title.is-6 {
         font-size: 0.85em;
     }
+}
+
+.markdown.content {
+    line-height: 1.5;
 }
 
 .markdown > *:first-child {

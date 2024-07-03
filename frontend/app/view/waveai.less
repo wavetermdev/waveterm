@@ -1,0 +1,93 @@
+// Copyright 2024, Command Line Inc.
+// SPDX-License-Identifier: Apache-2.0
+
+.waveai {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+
+    > .scrollable {
+        flex-flow: column nowrap;
+        flex: 1;
+        margin-bottom: 0;
+        overflow-y: auto;
+
+        .chat-window {
+            display: flex;
+            // margin-bottom: 5px;
+            flex-direction: column;
+            height: 100%;
+
+            // This is the filler that will push the chat messages to the bottom until the chat window is full
+            .filler {
+                flex: 1 1 auto;
+            }
+
+            > * {
+                cursor: default;
+                user-select: none;
+            }
+        }
+
+        .chat-msg {
+            padding: 10px;
+            display: flex;
+            align-items: flex-start;
+
+            .chat-msg-header {
+                display: flex;
+                margin-bottom: 2px;
+
+                i {
+                    margin-top: 2px;
+                    margin-right: 0.5em;
+                }
+            }
+        }
+
+        .chat-msg-assistant {
+            color: var(--app-text-color);
+
+            pre {
+                white-space: pre-wrap;
+                word-break: break-word;
+                max-width: 100%;
+                overflow-x: auto;
+                margin-left: 0;
+            }
+        }
+
+        .chat-msg-error {
+            color: var(--cmdinput-text-error);
+            font-family: var(--markdown-font);
+            font-size: 14px;
+        }
+
+        .typing-indicator {
+            margin-top: 4px;
+        }
+    }
+
+    .waveai-input-wrapper {
+        padding: 16px 15px 7px;
+        flex: 0 0 auto;
+        border-top: 1px solid var(--app-border-color);
+
+        .waveai-input {
+            color: var(--app-text-primary-color);
+            background-color: var(--cmdinput-textarea-bg);
+            resize: none;
+            width: 100%;
+            border: transparent;
+            outline: none;
+            overflow: auto;
+            overflow-wrap: anywhere;
+            font-family: var(--termfontfamily);
+            font-weight: normal;
+            line-height: var(--termlineheight);
+            height: 21px;
+        }
+    }
+}

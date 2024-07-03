@@ -89,6 +89,13 @@ func getSettingsConfigDefaults() SettingsConfigType {
 					Meta: map[string]any{"url": "https://waveterm.dev/"},
 				},
 			},
+			{
+				Icon:  "sparkles",
+				Label: "waveai",
+				BlockDef: wstore.BlockDef{
+					View: "waveai",
+				},
+			},
 		},
 	}
 }

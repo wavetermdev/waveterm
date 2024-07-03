@@ -4,7 +4,7 @@
 import { Button } from "@/app/element/button";
 import { getApi } from "@/app/store/global";
 import { WebviewTag } from "electron";
-import React, { useEffect, useRef, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 
 import "./webview.less";
 
@@ -13,7 +13,7 @@ interface WebViewProps {
     initialUrl: string;
 }
 
-const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
+const WebView = memo(({ parentRef, initialUrl }: WebViewProps) => {
     const [url, setUrl] = useState(initialUrl);
     const [inputUrl, setInputUrl] = useState(initialUrl); // Separate state for the input field
     const [webViewHeight, setWebViewHeight] = useState(0);
@@ -313,6 +313,6 @@ const WebView = ({ parentRef, initialUrl }: WebViewProps) => {
             ></webview>
         </div>
     );
-};
+});
 
 export { WebView };

@@ -5,6 +5,7 @@ import { CodeEdit } from "@/app/view/codeedit";
 import { PlotView } from "@/app/view/plotview";
 import { PreviewView } from "@/app/view/preview";
 import { TerminalView } from "@/app/view/term/term";
+import { WaveAi } from "@/app/view/waveai";
 import { WebView } from "@/app/view/webview";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
@@ -378,6 +379,9 @@ function blockViewToIcon(view: string): string {
     if (view == "web") {
         return "globe";
     }
+    if (view == "waveai") {
+        return "sparkles";
+    }
     return null;
 }
 
@@ -451,6 +455,8 @@ const Block = React.memo(({ blockId, onClose, dragHandleRef }: BlockProps) => {
         blockElem = <CodeEdit key={blockId} text={null} filename={null} />;
     } else if (blockData.view === "web") {
         blockElem = <WebView key={blockId} parentRef={blockRef} initialUrl={blockData.meta.url} />;
+    } else if (blockData.view === "waveai") {
+        blockElem = <WaveAi key={blockId} parentRef={blockRef} />;
     }
     return (
         <BlockFrame

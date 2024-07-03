@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 :root {
+    /* base fonts */
+    --markdown-font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji";
+
     --main-text-color: #f7f7f7;
     --title-font-size: 18px;
     --secondary-text-color: rgb(195, 200, 194);
@@ -31,8 +35,29 @@
     --zindex-termstickers: 20;
 
     /* scrollbar colors */
+    --app-text-primary-color: rgb(255, 255, 255);
     --scrollbar-background-color: var(--app-bg-color);
     --scrollbar-thumb-color: rgba(255, 255, 255, 0.3);
     --scrollbar-thumb-hover-color: rgba(255, 255, 255, 0.5);
     --scrollbar-thumb-active-color: rgba(255, 255, 255, 0.6);
+
+    /* global colors */
+    --app-text-color: rgb(211, 215, 207);
+    --app-border-color: rgb(51, 51, 51);
+    --app-panel-bg-color-dev: rgb(21, 23, 48);
+    --app-panel-bg-color: rgba(21, 23, 21, 1);
+    --app-accent-color: rgb(88, 193, 66);
+
+    /* global status colors */
+    --app-success-color: rgb(78, 154, 6);
+
+    /* form element colors */
+    --form-element-primary-color: var(--app-accent-color);
+
+    /* markdown colors */
+    --markdown-bg-color: rgb(35, 35, 35);
+    --markdown-outline-color: var(--form-element-primary-color);
+
+    /* cmdinput colors */
+    --cmdinput-text-error-color: var(--term-red);
 }
