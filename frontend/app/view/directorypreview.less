@@ -1,122 +1,179 @@
-.dir-table {
-    --col-size-size: 0.2rem;
-    overflow: auto;
+.dir-table-container {
     width: 100%;
-    border-radius: 3px;
-    .dir-table-head {
-        .dir-table-head-row {
-            display: flex;
-            border-bottom: 2px solid var(--border-color);
-            padding: 4px 0;
-            background-color: var(--panel-bg-color);
-
-            .dir-table-head-cell:not(:first-child) {
-                position: relative;
-                padding: 2px 4px;
-                font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    .dir-table {
+        height: 100%;
+        --col-size-size: 0.2rem;
+        border-radius: 3px;
+        display: flex;
+        flex-direction: column;
+        .dir-table-head {
+            .dir-table-head-row {
                 display: flex;
-                justify-content: space-between;
-                overflow: hidden;
-                .dir-table-head-resize {
-                    position: absolute;
-                    top: 0;
-                    right: 0;
-                    height: 100%;
-                    cursor: col-resize;
-                    user-select: none;
-                    -webkit-user-select: none;
-                    touch-action: none;
-                    width: 2px;
-                    background: linear-gradient(var(--border-color), var(--border-color)) no-repeat center/2px 100%;
-                }
+                border-bottom: 2px solid var(--border-color);
+                padding: 4px 0;
+                background-color: var(--panel-bg-color);
 
-                .dir-table-head-direction {
-                    color: var(--grey-text-color);
-                    margin-right: 0.2rem;
-                    margin-top: 0.2rem;
-                }
-
-                &:last-child {
+                .dir-table-head-cell:not(:first-child) {
+                    position: relative;
+                    padding: 2px 4px;
+                    font-weight: bold;
+                    display: flex;
+                    justify-content: space-between;
+                    overflow: hidden;
                     .dir-table-head-resize {
-                        width: 0;
+                        position: absolute;
+                        top: 0;
+                        right: 0;
+                        height: 100%;
+                        cursor: col-resize;
+                        user-select: none;
+                        -webkit-user-select: none;
+                        touch-action: none;
+                        width: 4px;
+                        background: linear-gradient(var(--border-color), var(--border-color)) no-repeat center/2px 100%;
+                    }
+
+                    .dir-table-head-direction {
+                        color: var(--grey-text-color);
+                        margin-right: 0.2rem;
+                        margin-top: 0.2rem;
+                    }
+
+                    &:last-child {
+                        .dir-table-head-resize {
+                            width: 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        .dir-table-body {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            .dir-table-body-search-display {
+                display: flex;
+                border-radius: 3px;
+                padding: 0.25rem 0.5rem;
+                background-color: var(--warning-color);
+
+                .search-display-close-button {
+                    margin-left: auto;
+                }
+            }
+
+            .dir-table-body-scroll-box {
+                position: relative;
+                overflow-y: auto;
+                .dummy {
+                    position: absolute;
+                    visibility: hidden;
+                }
+                .dir-table-body-row {
+                    display: flex;
+                    border-radius: 3px;
+
+                    &.focused {
+                        background-color: rgb(from var(--accent-color) r g b / 0.7);
+                        color: var(--main-text-color);
+
+                        .dir-table-body-cell {
+                            .dir-table-lastmod,
+                            .dir-table-modestr,
+                            .dir-table-size,
+                            .dir-table-type {
+                                color: var(--main-text-color);
+                            }
+                        }
+                    }
+
+                    &:focus {
+                        background-color: rgb(from var(--accent-color) r g b / 0.7);
+                        color: var(--main-text-color);
+
+                        .dir-table-body-cell {
+                            .dir-table-lastmod,
+                            .dir-table-modestr,
+                            .dir-table-size,
+                            .dir-table-type {
+                                color: var(--main-text-color);
+                            }
+                        }
+                    }
+
+                    &:hover:not(:focus):not(.focused) {
+                        background-color: var(--highlight-bg-color);
+                    }
+
+                    .dir-table-body-cell {
+                        overflow: hidden;
+                        white-space: nowrap;
+                        padding: 0.25rem;
+                        cursor: default;
+
+                        &.col-size {
+                            text-align: right;
+                        }
+
+                        .dir-table-lastmod,
+                        .dir-table-modestr,
+                        .dir-table-size,
+                        .dir-table-type {
+                            color: var(--secondary-text-color);
+                        }
                     }
                 }
             }
         }
     }
 
-    .dir-table-body {
-        .dir-table-body-row {
-            display: flex;
-            border-radius: 3px;
+    .dir-table-search-line {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.7rem;
 
-            &.focused {
-                background-color: rgb(from var(--accent-color) r g b / 0.7);
-                color: var(--main-text-color);
-
-                .dir-table-body-cell {
-                    .dir-table-lastmod,
-                    .dir-table-modestr,
-                    .dir-table-size,
-                    .dir-table-type {
-                        color: var(--main-text-color);
-                    }
-                }
-            }
-
-            &:focus {
-                background-color: rgb(from var(--accent-color) r g b / 0.7);
-                color: var(--main-text-color);
-
-                .dir-table-body-cell {
-                    .dir-table-lastmod,
-                    .dir-table-modestr,
-                    .dir-table-size,
-                    .dir-table-type {
-                        color: var(--main-text-color);
-                    }
-                }
-            }
-
-            &:hover:not(:focus):not(.focused) {
-                background-color: var(--highlight-bg-color);
-            }
-
-            .dir-table-body-cell {
-                overflow: hidden;
-                white-space: nowrap;
-                padding: 0.25rem;
-                cursor: default;
-
-                &.col-size {
-                    text-align: right;
-                }
-
-                .dir-table-lastmod,
-                .dir-table-modestr,
-                .dir-table-size,
-                .dir-table-type {
-                    color: var(--secondary-text-color);
-                }
-            }
+        .dir-table-search-box {
+            width: 0;
+            height: 0;
+            opacity: 0;
+            padding: 0;
+            border: none;
+            pointer-events: none;
         }
     }
 }
 
-.dir-table-search-line {
+.dir-table-button {
+    background-color: transparent;
     display: flex;
-    gap: 0.7rem;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    padding: 0.2rem;
+    border-radius: 6px;
 
-    .dir-table-search-box {
-        background-color: var(--panel-bg-color);
-        margin-bottom: 0.5rem;
+    input {
+        width: 0;
+        height: 0;
+        opacity: 0;
+        padding: 0;
         border: none;
-        width: 15rem;
-        color: var(--main-text-color);
-        border-radius: 4px;
+        pointer-events: none;
+    }
 
-        &:focus {
-            outline-color: var(--accent-color);
-        }
+    &:hover {
+        background-color: var(--highlight-bg-color);
+    }
+
+    &:focus {
+        background-color: var(--highlight-bg-color);
+    }
+
+    &:focus-within {
+        background-color: var(--highlight-bg-color);
     }
 }

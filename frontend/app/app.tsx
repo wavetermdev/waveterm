@@ -95,7 +95,7 @@ function switchTab(offset: number) {
     services.ObjectService.SetActiveTab(newActiveTabId);
 }
 
-var transformRegexp = /translate\(\s*([0-9.]+)px\s*,\s*([0-9.]+)px\)/;
+var transformRegexp = /translate3d\(\s*([0-9.]+)px\s*,\s*([0-9.]+)px,\s*0\)/;
 
 function parseFloatFromCSS(s: string | number): number {
     if (typeof s == "number") {

@@ -205,6 +205,7 @@ interface BlockFrameProps {
     blockId: string;
     onClose?: () => void;
     onClick?: () => void;
+    onFocusCapture?: React.FocusEventHandler<HTMLDivElement>;
     preview: boolean;
     children?: React.ReactNode;
     blockRef?: React.RefObject<HTMLDivElement>;
@@ -215,6 +216,7 @@ const BlockFrame_Tech_Component = ({
     blockId,
     onClose,
     onClick,
+    onFocusCapture,
     preview,
     blockRef,
     dragHandleRef,
@@ -249,6 +251,7 @@ const BlockFrame_Tech_Component = ({
                 preview ? "block-preview" : null
             )}
             onClick={onClick}
+            onFocusCapture={onFocusCapture}
             ref={blockRef}
             style={style}
         >
@@ -425,6 +428,18 @@ const Block = React.memo(({ blockId, onClose, dragHandleRef }: BlockProps) => {
     const blockRef = React.useRef<HTMLDivElement>(null);
     const [blockClicked, setBlockClicked] = React.useState(false);
     const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const [focusedChild, setFocusedChild] = React.useState(null);
+    const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
+        return jotai.atom((get) => {
+            const winData = get(atoms.waveWindow);
+            return winData.activeblockid === blockId;
+        });
+    });
+    let isFocused = jotai.useAtomValue(isFocusedAtom);
+
+    React.useLayoutEffect(() => {
+        setBlockClicked(isFocused);
+    }, [isFocused]);
 
     React.useLayoutEffect(() => {
         if (!blockClicked) {
@@ -433,14 +448,49 @@ const Block = React.memo(({ blockId, onClose, dragHandleRef }: BlockProps) => {
         setBlockClicked(false);
         const focusWithin = blockRef.current?.contains(document.activeElement);
         if (!focusWithin) {
-            focusElemRef.current?.focus();
+            setFocusTarget();
         }
         setBlockFocus(blockId);
     }, [blockClicked]);
 
+    React.useLayoutEffect(() => {
+        if (focusedChild == null) {
+            return;
+        }
+        setBlockFocus(blockId);
+    }, [focusedChild, blockId]);
+
+    // treat the block as clicked on creation
     const setBlockClickedTrue = React.useCallback(() => {
         setBlockClicked(true);
     }, []);
+
+    const determineFocusedChild = React.useCallback(
+        (event: React.FocusEvent<HTMLDivElement, Element>) => {
+            setFocusedChild(event.target);
+        },
+        [setFocusedChild]
+    );
+
+    const getFocusableChildren = React.useCallback(() => {
+        if (blockRef.current == null) {
+            return [];
+        }
+        return Array.from(
+            blockRef.current.querySelectorAll(
+                'a[href], area[href], input:not([disabled]), select:not([disabled]), button:not([disabled]), [tabindex="0"]'
+            )
+        ).filter((elem) => elem.id != `${blockId}-dummy-focus`);
+    }, [blockRef.current]);
+
+    const setFocusTarget = React.useCallback(() => {
+        const focusableChildren = getFocusableChildren();
+        if (focusableChildren.length == 0) {
+            focusElemRef.current.focus({ preventScroll: true });
+        } else {
+            (focusableChildren[0] as HTMLElement).focus({ preventScroll: true });
+        }
+    }, [focusElemRef.current, getFocusableChildren]);
 
     if (!blockId || !blockData) return null;
     if (blockDataLoading) {
@@ -458,6 +508,7 @@ const Block = React.memo(({ blockId, onClose, dragHandleRef }: BlockProps) => {
     } else if (blockData.view === "waveai") {
         blockElem = <WaveAi key={blockId} parentRef={blockRef} />;
     }
+
     return (
         <BlockFrame
             key={blockId}
@@ -467,9 +518,17 @@ const Block = React.memo(({ blockId, onClose, dragHandleRef }: BlockProps) => {
             onClick={setBlockClickedTrue}
             blockRef={blockRef}
             dragHandleRef={dragHandleRef}
+            onFocusCapture={(e) => determineFocusedChild(e)}
         >
             <div key="focuselem" className="block-focuselem">
-                <input type="text" value="" ref={focusElemRef} onChange={() => {}} />
+                <input
+                    type="text"
+                    value=""
+                    ref={focusElemRef}
+                    id={`${blockId}-dummy-focus`}
+                    onChange={() => {}}
+                    disabled={getFocusableChildren().length > 0}
+                />
             </div>
             <div key="content" className="block-content">
                 <ErrorBoundary>

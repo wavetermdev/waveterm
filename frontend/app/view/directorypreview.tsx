@@ -1,10 +1,11 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Button } from "@/element/button";
 import * as services from "@/store/services";
+import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import {
+    Row,
     Table,
     createColumnHelper,
     flexRender,
@@ -23,6 +24,7 @@ import "./directorypreview.less";
 
 interface DirectoryTableProps {
     data: FileInfo[];
+    search: string;
     focusIndex: number;
     setFocusIndex: (_: number) => void;
     setFileName: (_: string) => void;
@@ -94,7 +96,7 @@ function getLastModifiedTime(unixMillis: number): string {
     } else if (nowDatetime.month() != fileDatetime.month()) {
         return dayjs(fileDatetime).format("MMM D");
     } else {
-        return dayjs(fileDatetime).format("h:mm A");
+        return dayjs(fileDatetime).format("MMM D h:mm A");
     }
 }
 
@@ -135,6 +137,7 @@ function cleanMimetype(input: string): string {
 
 function DirectoryTable({
     data,
+    search,
     focusIndex,
     setFocusIndex,
     setFileName,
@@ -227,11 +230,28 @@ function DirectoryTable({
             columnVisibility: {
                 path: false,
             },
+            rowPinning: {
+                top: [],
+                bottom: [],
+            },
         },
         enableMultiSort: false,
         enableSortingRemoval: false,
     });
 
+    React.useEffect(() => {
+        setSelectedPath((table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null);
+    }, [table, focusIndex, data]);
+
+    React.useEffect(() => {
+        let rows = table.getRowModel()?.flatRows;
+        for (const row of rows) {
+            if (row.getValue("name") == "..") {
+                row.pin("top");
+                return;
+            }
+        }
+    }, [data]);
     const columnSizeVars = React.useMemo(() => {
         const headers = table.getFlatHeaders();
         const colSizes: { [key: string]: number } = {};
@@ -271,7 +291,9 @@ function DirectoryTable({
             </div>
             {table.getState().columnSizingInfo.isResizingColumn ? (
                 <MemoizedTableBody
+                    data={data}
                     table={table}
+                    search={search}
                     focusIndex={focusIndex}
                     setFileName={setFileName}
                     setFocusIndex={setFocusIndex}
@@ -281,7 +303,9 @@ function DirectoryTable({
                 />
             ) : (
                 <TableBody
+                    data={data}
                     table={table}
+                    search={search}
                     focusIndex={focusIndex}
                     setFileName={setFileName}
                     setFocusIndex={setFocusIndex}
@@ -295,7 +319,9 @@ function DirectoryTable({
 }
 
 interface TableBodyProps {
+    data: Array<FileInfo>;
     table: Table<FileInfo>;
+    search: string;
     focusIndex: number;
     setFocusIndex: (_: number) => void;
     setFileName: (_: string) => void;
@@ -305,7 +331,9 @@ interface TableBodyProps {
 }
 
 function TableBody({
+    data,
     table,
+    search,
     focusIndex,
     setFocusIndex,
     setFileName,
@@ -313,9 +341,36 @@ function TableBody({
     setSelectedPath,
     setRefresh,
 }: TableBodyProps) {
+    const dummyLineRef = React.useRef<HTMLDivElement>(null);
+    const parentRef = React.useRef<HTMLDivElement>(null);
+    const warningBoxRef = React.useRef<HTMLDivElement>(null);
+    const [bodyHeight, setBodyHeight] = React.useState(0);
+    const [containerHeight, setContainerHeight] = React.useState(0);
+
     React.useEffect(() => {
-        setSelectedPath((table.getSortedRowModel()?.flatRows[focusIndex]?.getValue("path") as string) ?? null);
-    }, [table, focusIndex]);
+        if (parentRef.current == null) {
+            return;
+        }
+        const resizeObserver = new ResizeObserver(() => {
+            setContainerHeight(parentRef.current.getBoundingClientRect().height); // 17 is height of breadcrumb
+        });
+        resizeObserver.observe(parentRef.current);
+
+        return () => resizeObserver.disconnect();
+    }, []);
+
+    React.useEffect(() => {
+        if (dummyLineRef.current && data && parentRef.current) {
+            const rowHeight = dummyLineRef.current.offsetHeight;
+            const fullTBodyHeight = rowHeight * data.length;
+            const warningBoxHeight = warningBoxRef.current?.offsetHeight ?? 0;
+            const maxHeight = containerHeight - 1; // i don't know why, but the -1 makes the resize work
+            const maxHeightLessHeader = maxHeight - warningBoxHeight;
+            const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
+
+            setBodyHeight(tbodyHeight);
+        }
+    }, [data, containerHeight]);
 
     const handleFileContextMenu = React.useCallback(
         (e: React.MouseEvent<HTMLDivElement>, path: string) => {
@@ -350,33 +405,53 @@ function TableBody({
         [setRefresh]
     );
 
+    const displayRow = React.useCallback(
+        (row: Row<FileInfo>, idx: number) => (
+            <div
+                className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
+                key={row.id}
+                onDoubleClick={() => {
+                    const newFileName = row.getValue("path") as string;
+                    setFileName(newFileName);
+                    setSearch("");
+                }}
+                onClick={() => setFocusIndex(idx)}
+                onContextMenu={(e) => handleFileContextMenu(e, row.getValue("path") as string)}
+            >
+                {row.getVisibleCells().map((cell) => {
+                    return (
+                        <div
+                            className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
+                            key={cell.id}
+                            style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
+                        >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </div>
+                    );
+                })}
+            </div>
+        ),
+        [setSearch, setFileName, handleFileContextMenu, setFocusIndex, focusIndex]
+    );
+
     return (
-        <div className="dir-table-body">
-            {table.getRowModel().rows.map((row, idx) => (
-                <div
-                    className={clsx("dir-table-body-row", { focused: focusIndex === idx })}
-                    key={row.id}
-                    onDoubleClick={() => {
-                        const newFileName = row.getValue("path") as string;
-                        setFileName(newFileName);
-                        setSearch("");
-                    }}
-                    onClick={() => setFocusIndex(idx)}
-                    onContextMenu={(e) => handleFileContextMenu(e, row.getValue("path") as string)}
-                >
-                    {row.getVisibleCells().map((cell) => {
-                        return (
-                            <div
-                                className={clsx("dir-table-body-cell", "col-" + cell.column.id)}
-                                key={cell.id}
-                                style={{ width: `calc(var(--col-${cell.column.id}-size) * 1px)` }}
-                            >
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </div>
-                        );
-                    })}
+        <div className="dir-table-body" ref={parentRef}>
+            {search == "" || (
+                <div className="dir-table-body-search-display" ref={warningBoxRef}>
+                    <span>Searching for "{search}"</span>
+                    <div className="search-display-close-button dir-table-button" onClick={() => setSearch("")}>
+                        <i className="fa-solid fa-xmark" />
+                        <input type="text" value={search} onChange={() => {}}></input>
+                    </div>
                 </div>
-            ))}
+            )}
+            <div className="dir-table-body-scroll-box" style={{ height: bodyHeight }}>
+                <div className="dummy dir-table-body-row" ref={dummyLineRef}>
+                    <div className="dir-table-body-cell">dummy-data</div>
+                </div>
+                {table.getTopRows().map(displayRow)}
+                {table.getCenterRows().map((row, idx) => displayRow(row, idx + table.getTopRows().length))}
+            </div>
         </div>
     );
 }
@@ -405,7 +480,7 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
             const serializedContent = util.base64ToString(file?.data64);
             let content: FileInfo[] = JSON.parse(serializedContent);
             let filtered = content.filter((fileInfo) => {
-                if (hideHiddenFiles && fileInfo.name.startsWith(".")) {
+                if (hideHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
                     return false;
                 }
                 return fileInfo.name.toLowerCase().includes(searchText);
@@ -416,62 +491,60 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
     }, [fileName, searchText, hideHiddenFiles, refresh]);
 
     const handleKeyDown = React.useCallback(
-        (e) => {
-            switch (e.key) {
-                case "Escape":
-                    //todo: escape block focus
-                    break;
-                case "ArrowUp":
-                    e.preventDefault();
-                    setFocusIndex((idx) => Math.max(idx - 1, 0));
-                    break;
-                case "ArrowDown":
-                    e.preventDefault();
-                    setFocusIndex((idx) => Math.min(idx + 1, content.length - 1));
-                    break;
-                case "Enter":
-                    e.preventDefault();
-                    setFileName(selectedPath);
-                    setSearchText("");
-                    break;
-                default:
+        (waveEvent: WaveKeyboardEvent): boolean => {
+            if (keyutil.checkKeyPressed(waveEvent, "Escape")) {
+                setSearchText("");
+                return;
+            }
+            if (keyutil.checkKeyPressed(waveEvent, "ArrowUp")) {
+                setFocusIndex((idx) => Math.max(idx - 1, 0));
+                return true;
+            }
+            if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
+                setFocusIndex((idx) => Math.min(idx + 1, content.length - 1));
+                return true;
+            }
+            if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+                setFileName(selectedPath);
+                setSearchText("");
+                return true;
             }
         },
         [content, focusIndex, selectedPath]
     );
 
-    React.useEffect(() => {
-        document.addEventListener("keydown", handleKeyDown);
-
-        return () => {
-            document.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [handleKeyDown]);
-
     return (
-        <>
+        <div
+            className="dir-table-container"
+            onChangeCapture={(e) => {
+                const event = e as React.ChangeEvent<HTMLInputElement>;
+                setSearchText(event.target.value.toLowerCase());
+            }}
+            onKeyDownCapture={(e) => keyutil.keydownWrapper(handleKeyDown)(e)}
+            onFocusCapture={() => document.getSelection().collapseToEnd()}
+        >
             <div className="dir-table-search-line">
-                <label>Search:</label>
-
                 <input
                     type="text"
                     className="dir-table-search-box"
-                    onChange={(e) => setSearchText(e.target.value.toLowerCase())}
+                    onChange={() => {}} //for nuisance warnings
                     maxLength={400}
                     autoFocus={true}
                     value={searchText}
                 />
-                <Button onClick={() => setHideHiddenFiles((current) => !current)}>
-                    Hidden Files:&nbsp;
+                <div onClick={() => setHideHiddenFiles((current) => !current)} className="dir-table-button">
                     {!hideHiddenFiles && <i className={"fa-sharp fa-solid fa-eye-slash"} />}
                     {hideHiddenFiles && <i className={"fa-sharp fa-solid fa-eye"} />}
-                </Button>
-                <Button onClick={() => setRefresh((current) => !current)}>
+                    <input type="text" value={searchText} onChange={() => {}}></input>
+                </div>
+                <div onClick={() => setRefresh((current) => !current)} className="dir-table-button">
                     <i className="fa-solid fa-arrows-rotate" />
-                </Button>
+                    <input type="text" value={searchText} onChange={() => {}}></input>
+                </div>
             </div>
             <DirectoryTable
                 data={content}
+                search={searchText}
                 focusIndex={focusIndex}
                 setFileName={setFileName}
                 setFocusIndex={setFocusIndex}
@@ -479,7 +552,7 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
                 setSelectedPath={setSelectedPath}
                 setRefresh={setRefresh}
             />
-        </>
+        </div>
     );
 }
 
