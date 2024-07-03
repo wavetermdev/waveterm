@@ -83,7 +83,7 @@ const Widgets = React.memo(() => {
                 </div>
                 <div className="widget-label">home</div>
             </div>
-            {settingsConfig.widgets.map((data, idx) => (
+            {settingsConfig?.widgets?.map((data, idx) => (
                 <div
                     className="widget"
                     onClick={() => handleWidgetSelect(data.blockdef)}

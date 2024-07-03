@@ -35,7 +35,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const initialTab = await WOS.loadAndPinWaveObject<Tab>(WOS.makeORef("tab", waveWindow.activetabid));
     WOS.loadAndPinWaveObject<LayoutNode>(WOS.makeORef("layout", initialTab.layoutNode));
     initWS();
-    globalStore.set(atoms.settingsConfigAtom, await services.FileService.GetSettingsConfig());
+    const settings = await services.FileService.GetSettingsConfig();
+    console.log("settings", settings);
+    globalStore.set(atoms.settingsConfigAtom, settings);
     services.ObjectService.SetActiveTab(waveWindow.activetabid); // no need to wait
     const reactElem = React.createElement(App, null, null);
     const elem = document.getElementById("main");
