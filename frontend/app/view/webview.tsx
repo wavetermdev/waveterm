@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
+import { useParentHeight } from "@/app/hook/useParentHeight";
 import { getApi } from "@/app/store/global";
 import { WebviewTag } from "electron";
 import React, { memo, useEffect, useRef, useState } from "react";
@@ -16,26 +17,19 @@ interface WebViewProps {
 const WebView = memo(({ parentRef, initialUrl }: WebViewProps) => {
     const [url, setUrl] = useState(initialUrl);
     const [inputUrl, setInputUrl] = useState(initialUrl); // Separate state for the input field
-    const [webViewHeight, setWebViewHeight] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
 
     const webviewRef = useRef<WebviewTag>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-
     const historyStack = useRef<string[]>([]);
     const historyIndex = useRef<number>(-1);
     const recentUrls = useRef<{ [key: string]: number }>({});
 
-    const getWebViewHeight = () => {
-        const inputHeight = inputRef.current?.getBoundingClientRect().height;
-        const parentHeight = parentRef.current?.getBoundingClientRect().height;
-        return parentHeight - (inputHeight + 35);
-    };
+    const parentHeight = useParentHeight(parentRef);
+    const inputHeight = inputRef.current?.getBoundingClientRect().height || 0;
+    const webViewHeight = parentHeight - (inputHeight + 35);
 
     useEffect(() => {
-        const webviewHeight = getWebViewHeight();
-        setWebViewHeight(webviewHeight);
-
         historyStack.current.push(initialUrl);
         historyIndex.current = 0;
 
@@ -99,6 +93,10 @@ const WebView = memo(({ parentRef, initialUrl }: WebViewProps) => {
         }
     }, [initialUrl]);
 
+    // useEffect(() => {
+    //     setWebViewHeight(getWebViewHeight());
+    // }, [parentHeight, getWebViewHeight]);
+
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if ((event.ctrlKey || event.metaKey) && event.key === "l") {
@@ -115,34 +113,17 @@ const WebView = memo(({ parentRef, initialUrl }: WebViewProps) => {
             }
         };
 
-        const handleResize = () => {
-            const webviewHeight = getWebViewHeight();
-            setWebViewHeight(webviewHeight);
-        };
-
         const parentElement = parentRef.current;
         if (parentElement) {
             parentElement.addEventListener("keydown", handleKeyDown);
         }
 
-        // Use ResizeObserver to observe changes in the height of parentRef
-        const resizeObserver = new ResizeObserver((entries) => {
-            for (let entry of entries) {
-                if (entry.target === parentElement) {
-                    handleResize();
-                }
-            }
-        });
-
-        resizeObserver.observe(parentElement);
-
         return () => {
             if (parentElement) {
                 parentElement.removeEventListener("keydown", handleKeyDown);
             }
-            resizeObserver.disconnect();
         };
-    }, []);
+    }, [parentRef]);
 
     const ensureUrlScheme = (url: string) => {
         if (/^(localhost|(\d{1,3}\.){3}\d{1,3})(:\d+)?/.test(url)) {
