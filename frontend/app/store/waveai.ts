@@ -9,7 +9,8 @@ interface ChatMessageType {
     user: string;
     text: string;
     isAssistant: boolean;
-    error?: string;
+    isUpdating?: boolean;
+    isError?: string;
 }
 
 const defaultMessage: ChatMessageType = {
@@ -27,11 +28,11 @@ const addMessageAtom = atom(null, (get, set, message: ChatMessageType) => {
     set(messagesAtom, [...messages, message]);
 });
 
-const updateLastMessageAtom = atom(null, (get, set, text: string) => {
+const updateLastMessageAtom = atom(null, (get, set, text: string, isUpdating: boolean) => {
     const messages = get(messagesAtom);
     const lastMessage = messages[messages.length - 1];
-    if (lastMessage.isAssistant && !lastMessage.error) {
-        const updatedMessage = { ...lastMessage, text: lastMessage.text + text };
+    if (lastMessage.isAssistant && !lastMessage.isError) {
+        const updatedMessage = { ...lastMessage, text: lastMessage.text + text, isUpdating };
         set(messagesAtom, [...messages.slice(0, -1), updatedMessage]);
     }
 });
@@ -64,10 +65,11 @@ You can run this script by saving it to a file, for example, \`hello.sh\`, and t
         const intervalId = setInterval(() => {
             if (currentPart < parts.length) {
                 const part = parts[currentPart] + " ";
-                set(updateLastMessageAtom, part);
+                set(updateLastMessageAtom, part, true);
                 currentPart++;
             } else {
                 clearInterval(intervalId);
+                set(updateLastMessageAtom, "", false);
             }
         }, 100);
     }, 1500);

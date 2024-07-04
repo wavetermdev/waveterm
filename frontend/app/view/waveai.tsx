@@ -7,7 +7,7 @@ import { getApi } from "@/app/store/global";
 import { ChatMessageType, useWaveAi } from "@/app/store/waveai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import tinycolor from "tinycolor2";
 
 import "./waveai.less";
@@ -20,7 +20,7 @@ interface ChatItemProps {
 }
 
 const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
-    const { isAssistant, text, error } = chatItem;
+    const { isAssistant, text, isError } = chatItem;
     const senderClassName = isAssistant ? "chat-msg-assistant" : "chat-msg-user";
     const msgClassName = `chat-msg ${senderClassName}`;
     const cssVar = getApi().isDev ? "--app-panel-bg-color-dev" : "--app-panel-bg-color";
@@ -33,8 +33,8 @@ const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
 
     const renderContent = (): React.JSX.Element => {
         if (isAssistant) {
-            if (error) {
-                return renderError(error);
+            if (isError) {
+                return renderError(isError);
             }
             return text ? (
                 <>
@@ -74,60 +74,90 @@ interface ChatWindowProps {
     messages: ChatMessageType[];
 }
 
-const ChatWindow = forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages }, ref) => {
-    const osRef = useRef<OverlayScrollbarsComponentRef>(null);
+const ChatWindow = React.memo(
+    forwardRef<OverlayScrollbarsComponentRef, ChatWindowProps>(({ chatWindowRef, messages }, ref) => {
+        const [isUserScrolling, setIsUserScrolling] = useState(false);
 
-    useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
+        const osRef = useRef<OverlayScrollbarsComponentRef>(null);
+        const prevMessagesRef = useRef<ChatMessageType[]>(messages);
 
-    useEffect(() => {
-        if (osRef.current && osRef.current.osInstance()) {
-            const { viewport } = osRef.current.osInstance().elements();
+        useImperativeHandle(ref, () => osRef.current as OverlayScrollbarsComponentRef);
+
+        useEffect(() => {
+            const prevMessages = prevMessagesRef.current;
+            if (osRef.current && osRef.current.osInstance()) {
+                const { viewport } = osRef.current.osInstance().elements();
+
+                if (prevMessages.length !== messages.length || !isUserScrolling) {
+                    setIsUserScrolling(false);
+                    viewport.scrollTo({
+                        behavior: "auto",
+                        top: chatWindowRef.current?.scrollHeight || 0,
+                    });
+                }
+
+                prevMessagesRef.current = messages;
+            }
+        }, [messages, isUserScrolling]);
+
+        useEffect(() => {
+            if (osRef.current && osRef.current.osInstance()) {
+                const { viewport } = osRef.current.osInstance().elements();
+
+                const handleUserScroll = () => {
+                    setIsUserScrolling(true);
+                };
+
+                viewport.addEventListener("wheel", handleUserScroll, { passive: true });
+                viewport.addEventListener("touchmove", handleUserScroll, { passive: true });
+
+                return () => {
+                    viewport.removeEventListener("wheel", handleUserScroll);
+                    viewport.removeEventListener("touchmove", handleUserScroll);
+                };
+            }
+        }, []);
+
+        useEffect(() => {
+            return () => {
+                if (osRef.current && osRef.current.osInstance()) {
+                    osRef.current.osInstance().destroy();
+                }
+            };
+        }, []);
+
+        const handleScrollbarInitialized = (instance: OverlayScrollbars) => {
+            const { viewport } = instance.elements();
             viewport.scrollTo({
                 behavior: "auto",
                 top: chatWindowRef.current?.scrollHeight || 0,
             });
-        }
-    }, [messages]);
-
-    useEffect(() => {
-        return () => {
-            if (osRef.current && osRef.current.osInstance()) {
-                osRef.current.osInstance().destroy();
-            }
         };
-    }, []);
 
-    const handleScrollbarInitialized = (instance: OverlayScrollbars) => {
-        const { viewport } = instance.elements();
-        viewport.scrollTo({
-            behavior: "auto",
-            top: chatWindowRef.current?.scrollHeight || 0,
-        });
-    };
-
-    return (
-        <OverlayScrollbarsComponent
-            ref={osRef}
-            className="scrollable"
-            options={{ scrollbars: { autoHide: "leave" } }}
-            events={{ initialized: handleScrollbarInitialized }}
-        >
-            <div ref={chatWindowRef} className="chat-window">
-                <div className="filler"></div>
-                {messages.map((chitem, idx) => (
-                    <ChatItem key={idx} chatItem={chitem} itemCount={idx + 1} />
-                ))}
-            </div>
-        </OverlayScrollbarsComponent>
-    );
-});
+        return (
+            <OverlayScrollbarsComponent
+                ref={osRef}
+                className="scrollable"
+                options={{ scrollbars: { autoHide: "leave" } }}
+                events={{ initialized: handleScrollbarInitialized }}
+            >
+                <div ref={chatWindowRef} className="chat-window">
+                    <div className="filler"></div>
+                    {messages.map((chitem, idx) => (
+                        <ChatItem key={idx} chatItem={chitem} itemCount={idx + 1} />
+                    ))}
+                </div>
+            </OverlayScrollbarsComponent>
+        );
+    })
+);
 
 interface ChatInputProps {
     value: string;
+    termFontSize: number;
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     onMouseDown: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
-    termFontSize: number;
 }
 
 const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
@@ -189,10 +219,12 @@ const WaveAi = React.memo(({ parentRef }: WaveAiProps) => {
     const chatWindowRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<OverlayScrollbarsComponentRef>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const submitTimeoutRef = useRef<NodeJS.Timeout>(null);
 
     const [value, setValue] = useState("");
     const [waveAiHeight, setWaveAiHeight] = useState(0);
     const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const termFontSize: number = 14;
 
@@ -218,12 +250,26 @@ const WaveAi = React.memo(({ parentRef }: WaveAiProps) => {
 
         return () => {
             resizeObserver.disconnect();
+            if (submitTimeoutRef.current) {
+                clearTimeout(submitTimeoutRef.current);
+            }
         };
     }, []);
 
-    const submit = (messageStr: string) => {
-        sendMessage(messageStr);
-    };
+    const submit = useCallback(
+        (messageStr: string) => {
+            if (!isSubmitting) {
+                setIsSubmitting(true);
+                sendMessage(messageStr);
+
+                clearTimeout(submitTimeoutRef.current);
+                submitTimeoutRef.current = setTimeout(() => {
+                    setIsSubmitting(false);
+                }, 500);
+            }
+        },
+        [isSubmitting, sendMessage, setValue]
+    );
 
     const handleTextAreaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setValue(e.target.value);
@@ -260,11 +306,14 @@ const WaveAi = React.memo(({ parentRef }: WaveAiProps) => {
         setSelectedBlockIdx(null);
     };
 
-    const handleEnterKeyPressed = () => {
+    const handleEnterKeyPressed = useCallback(() => {
+        const isCurrentlyUpdating = messages.some((message) => message.isUpdating);
+        if (isCurrentlyUpdating || value === "") return;
+
         submit(value);
         setValue("");
         setSelectedBlockIdx(null);
-    };
+    }, [messages, value]);
 
     const handleContainerClick = (event: React.MouseEvent<HTMLDivElement>) => {
         inputRef.current?.focus();
