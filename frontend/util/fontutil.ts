@@ -6,6 +6,7 @@ let isLatoFontLoaded = false;
 let isHackFontLoaded = false;
 let isBaseFontsLoaded = false;
 let isFiraCodeLoaded = false;
+let isInterFontLoaded = false;
 
 function addToFontFaceSet(fontFaceSet: FontFaceSet, fontFace: FontFace) {
     // any cast to work around typing issue
@@ -106,6 +107,19 @@ function loadHackFont() {
     hackBoldItalic.load();
 }
 
+function loadInterFont() {
+    if (isInterFontLoaded) {
+        return;
+    }
+    isInterFontLoaded = true;
+    const interFont = new FontFace("Inter", "url('fonts/inter-variable.woff2')", {
+        style: "normal",
+        weight: "400",
+    });
+    addToFontFaceSet(document.fonts, interFont);
+    interFont.load();
+}
+
 function loadBaseFonts() {
     if (isBaseFontsLoaded) {
         return;
@@ -121,7 +135,7 @@ function loadBaseFonts() {
 
 function loadFonts() {
     loadBaseFonts();
-    loadLatoFont();
+    loadInterFont();
     loadJetBrainsMonoFont();
     loadHackFont();
     loadFiraCodeFont();
