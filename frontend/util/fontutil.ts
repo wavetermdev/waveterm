@@ -4,6 +4,7 @@
 let isJetBrainsMonoLoaded = false;
 let isLatoFontLoaded = false;
 let isHackFontLoaded = false;
+let isHackNerdFontLoaded = false;
 let isBaseFontsLoaded = false;
 let isFiraCodeLoaded = false;
 let isInterFontLoaded = false;
@@ -76,6 +77,37 @@ function loadFiraCodeFont() {
     firaCodeBold.load();
 }
 
+function loadHackNerdFont() {
+    if (isHackNerdFontLoaded) {
+        return;
+    }
+    isHackFontLoaded = true;
+    const hackRegular = new FontFace("Hack", "url('fonts/hacknerdmono-regular.ttf')", {
+        style: "normal",
+        weight: "400",
+    });
+    const hackBold = new FontFace("Hack", "url('fonts/hacknerdmono-bold.ttf')", {
+        style: "normal",
+        weight: "700",
+    });
+    const hackItalic = new FontFace("Hack", "url('fonts/hacknerdmono-italic.ttf')", {
+        style: "italic",
+        weight: "400",
+    });
+    const hackBoldItalic = new FontFace("Hack", "url('fonts/hacknerdmono-bolditalic.ttf')", {
+        style: "italic",
+        weight: "700",
+    });
+    addToFontFaceSet(document.fonts, hackRegular);
+    addToFontFaceSet(document.fonts, hackBold);
+    addToFontFaceSet(document.fonts, hackItalic);
+    addToFontFaceSet(document.fonts, hackBoldItalic);
+    hackRegular.load();
+    hackBold.load();
+    hackItalic.load();
+    hackBoldItalic.load();
+}
+
 function loadHackFont() {
     if (isHackFontLoaded) {
         return;
@@ -137,7 +169,7 @@ function loadFonts() {
     loadBaseFonts();
     loadInterFont();
     loadJetBrainsMonoFont();
-    loadHackFont();
+    loadHackNerdFont();
     loadFiraCodeFont();
 }
 
