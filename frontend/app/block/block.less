@@ -11,6 +11,8 @@
     overflow: hidden;
     min-height: 0;
     position: relative;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
 
     .block-frame-icon {
         margin-right: 0.5em;
@@ -53,6 +55,88 @@
         }
     }
 
+    &.block-frame-default {
+        border: 2px solid transparent;
+
+        &.block-focused {
+            border: 2px solid var(--accent-color);
+
+            &.block-no-highlight,
+            &.block-preview {
+                border: 2px solid transparent;
+            }
+        }
+
+        .block-frame-default-header {
+            display: flex;
+            height: 26px;
+            padding-left: 6px;
+            align-items: center;
+            gap: 8px;
+            align-self: stretch;
+            font: var(--header-font);
+            background-color: #262626;
+            border-radius: 8px 8px 0 0;
+
+            .block-frame-default-header-iconview {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: var(--main-text-color);
+
+                .block-frame-view-icon {
+                    font-size: var(--header-icon-size);
+                    opacity: 0.5;
+                    width: var(--header-icon-width);
+                    i {
+                        margin-right: 0;
+                    }
+                }
+
+                .block-frame-view-type {
+                    line-height: 12px;
+                    font-weight: 700;
+                }
+
+                .block-frame-blockid {
+                    opacity: 0.5;
+                }
+            }
+
+            .block-frame-end-icons {
+                display: flex;
+                align-items: center;
+
+                .block-frame-settings {
+                    display: flex;
+                    width: 24px;
+                    padding: 6px;
+                    justify-content: center;
+                    align-items: center;
+                    opacity: 0.5;
+
+                    &:hover {
+                        opacity: 1;
+                    }
+                }
+
+                .block-frame-default-close {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    opacity: 0.5;
+                    font-size: 11px;
+                    width: 24px;
+                    padding: 4px 6px;
+
+                    &:hover {
+                        opacity: 1;
+                    }
+                }
+            }
+        }
+    }
+
     &.block-frame-tech {
         border: 2px solid var(--border-color);
         border-radius: 7px;
@@ -61,6 +145,11 @@
         height: calc(100% - 8px);
         width: 100%;
         overflow: visible;
+
+        .block-header-icon {
+            font-size: 14px;
+            padding: 0 0;
+        }
 
         &.block-preview {
             background-color: var(--main-bg-color);

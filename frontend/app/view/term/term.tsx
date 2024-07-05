@@ -262,10 +262,10 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             shellProcStatusRef.current = status;
             if (status == "running") {
                 termRef.current?.setIsRunning(true);
-                globalStore.set(blockIconOverrideAtom, "square-terminal");
+                globalStore.set(blockIconOverrideAtom, "terminal");
             } else {
                 termRef.current?.setIsRunning(false);
-                globalStore.set(blockIconOverrideAtom, "regular@square-terminal");
+                globalStore.set(blockIconOverrideAtom, "regular@terminal");
             }
         }
         const initialRTStatus = services.BlockService.GetControllerStatus(blockId);

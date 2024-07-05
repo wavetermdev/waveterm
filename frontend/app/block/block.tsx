@@ -95,6 +95,26 @@ function processTitleString(titleString: string): React.ReactNode[] {
     return partsStack[0];
 }
 
+function getBlockHeaderIcon(blockIcon: string, blockData: Block): React.ReactNode {
+    let blockIconElem: React.ReactNode = null;
+    if (util.isBlank(blockIcon)) {
+        blockIcon = "square";
+    }
+    let iconColor = blockData?.meta?.["icon:color"];
+    if (iconColor && !iconColor.match(colorRegex)) {
+        iconColor = null;
+    }
+    let iconStyle = null;
+    if (!util.isBlank(iconColor)) {
+        iconStyle = { color: iconColor };
+    }
+    const iconClass = util.makeIconClass(blockIcon, true);
+    if (iconClass != null) {
+        blockIconElem = <i key="icon" style={iconStyle} className={clsx(`block-frame-icon`, iconClass)} />;
+    }
+    return blockIconElem;
+}
+
 function getBlockHeaderText(blockIcon: string, blockData: Block, settings: SettingsConfigType): React.ReactNode {
     if (!blockData) {
         return "no block data";
@@ -103,21 +123,7 @@ function getBlockHeaderText(blockIcon: string, blockData: Block, settings: Setti
     if (settings?.blockheader?.showblockids) {
         blockIdStr = ` [${blockData.oid.substring(0, 8)}]`;
     }
-    let blockIconElem: React.ReactNode = null;
-    if (!util.isBlank(blockIcon)) {
-        let iconColor = blockData?.meta?.["icon:color"];
-        if (iconColor && !iconColor.match(colorRegex)) {
-            iconColor = null;
-        }
-        let iconStyle = null;
-        if (!util.isBlank(iconColor)) {
-            iconStyle = { color: iconColor };
-        }
-        const iconClass = util.makeIconClass(blockIcon, false);
-        if (iconClass != null) {
-            blockIconElem = <i key="icon" style={iconStyle} className={clsx(`block-frame-icon`, iconClass)} />;
-        }
-    }
+    let blockIconElem = getBlockHeaderIcon(blockIcon, blockData);
     if (!util.isBlank(blockData?.meta?.title)) {
         try {
             const rtn = processTitleString(blockData.meta.title) ?? [];
@@ -207,6 +213,7 @@ interface BlockFrameProps {
     onClick?: () => void;
     onFocusCapture?: React.FocusEventHandler<HTMLDivElement>;
     preview: boolean;
+    numBlocksInTab?: number;
     children?: React.ReactNode;
     blockRef?: React.RefObject<HTMLDivElement>;
     dragHandleRef?: React.RefObject<HTMLDivElement>;
@@ -271,6 +278,117 @@ const BlockFrame_Tech_Component = ({
 };
 
 const BlockFrame_Tech = React.memo(BlockFrame_Tech_Component) as typeof BlockFrame_Tech_Component;
+
+const BlockFrame_Default_Component = ({
+    blockId,
+    onClose,
+    onClick,
+    preview,
+    blockRef,
+    dragHandleRef,
+    numBlocksInTab,
+    onFocusCapture,
+    children,
+}: BlockFrameProps) => {
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const settingsConfig = jotai.useAtomValue(atoms.settingsConfigAtom);
+    const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
+        return jotai.atom((get) => {
+            const winData = get(atoms.waveWindow);
+            return winData?.activeblockid === blockId;
+        });
+    });
+    let isFocused = jotai.useAtomValue(isFocusedAtom);
+    const blockIcon = useBlockIcon(blockId);
+    if (preview) {
+        isFocused = true;
+    }
+    let style: React.CSSProperties = {};
+    if (!isFocused && blockData?.meta?.["frame:bordercolor"]) {
+        style.borderColor = blockData.meta["frame:bordercolor"];
+    }
+    if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
+        style.borderColor = blockData.meta["frame:bordercolor:focused"];
+    }
+    let handleSettings = (e: React.MouseEvent<any>) => {
+        let menuItems: ContextMenuItem[] = [];
+        menuItems.push({
+            label: "Focus Block",
+            click: () => {
+                alert("Not Implemented");
+            },
+        });
+        menuItems.push({ label: "Minimize" });
+        menuItems.push({ type: "separator" });
+        menuItems.push({
+            label: "Move to New Window",
+            click: () => {
+                let currentTabId = globalStore.get(atoms.activeTabId);
+                try {
+                    services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
+                } catch (e) {
+                    console.error("error moving block to new window", e);
+                }
+            },
+        });
+        menuItems.push({ type: "separator" });
+        menuItems.push({
+            label: "Copy BlockId",
+            click: () => {
+                navigator.clipboard.writeText(blockData.oid);
+            },
+        });
+        menuItems.push({ type: "separator" });
+        menuItems.push({ label: "Close", click: onClose });
+        ContextMenuModel.showContextMenu(menuItems, e);
+    };
+    if (preview) {
+        handleSettings = null;
+    }
+
+    return (
+        <div
+            className={clsx(
+                "block",
+                "block-frame-default",
+                isFocused ? "block-focused" : null,
+                preview ? "block-preview" : null,
+                numBlocksInTab == 1 ? "block-no-highlight" : null
+            )}
+            onClick={onClick}
+            onFocusCapture={onFocusCapture}
+            ref={blockRef}
+            style={style}
+        >
+            <div
+                className="block-frame-default-header"
+                ref={dragHandleRef}
+                onContextMenu={(e) => handleHeaderContextMenu(e, blockData, onClose)}
+            >
+                <div className="block-frame-default-header-iconview">
+                    <div className="block-frame-view-icon">{getBlockHeaderIcon(blockIcon, blockData)}</div>
+                    <div className="block-frame-view-type">{blockViewToName(blockData?.view)}</div>
+                    {settingsConfig?.blockheader?.showblockids && (
+                        <div className="block-frame-blockid">[{blockId.substring(0, 8)}]</div>
+                    )}
+                </div>
+                <div className="flex-spacer"></div>
+                <div className="block-frame-end-icons">
+                    <div className="block-frame-settings" onClick={handleSettings}>
+                        <i className="fa fa-solid fa-cog fa-fw" />
+                    </div>
+                    <div className={clsx("block-frame-default-close")} onClick={onClose}>
+                        <i className="fa fa-solid fa-xmark-large fa-fw" />
+                    </div>
+                </div>
+            </div>
+
+            {preview ? <div className="block-frame-preview" /> : children}
+        </div>
+    );
+};
+
+const BlockFrame_Default = React.memo(BlockFrame_Default_Component) as typeof BlockFrame_Default_Component;
 
 const BlockFrame_Frameless = ({
     blockId,
@@ -354,27 +472,27 @@ const BlockFrame = React.memo((props: BlockFrameProps) => {
     if (!blockId || !blockData) {
         return null;
     }
-    let FrameElem = BlockFrame_Tech;
+    let FrameElem = BlockFrame_Default;
+    const numBlocks = tabData?.blockids?.length ?? 0;
     // Preview should always render as the full tech frame
     if (!props.preview) {
         // if 0 or 1 blocks, use frameless, otherwise use tech
-        const numBlocks = tabData?.blockids?.length ?? 0;
-        if (numBlocks <= 1) {
-            FrameElem = BlockFrame_Frameless;
-        }
+        // if (numBlocks <= 1) {
+        //     FrameElem = BlockFrame_Frameless;
+        // }
         if (blockData?.meta?.["frame"] === "tech") {
             FrameElem = BlockFrame_Tech;
         } else if (blockData?.meta?.["frame"] === "frameless") {
             FrameElem = BlockFrame_Frameless;
         }
     }
-    return <FrameElem {...props} />;
+    return <FrameElem {...props} numBlocksInTab={numBlocks} />;
 });
 
 function blockViewToIcon(view: string): string {
     console.log("blockViewToIcon", view);
     if (view == "term") {
-        return "square-terminal";
+        return "terminal";
     }
     if (view == "preview") {
         return "file";
@@ -386,6 +504,22 @@ function blockViewToIcon(view: string): string {
         return "sparkles";
     }
     return null;
+}
+
+function blockViewToName(view: string): string {
+    if (view == "term") {
+        return "Terminal";
+    }
+    if (view == "preview") {
+        return "Preview";
+    }
+    if (view == "web") {
+        return "Web";
+    }
+    if (view == "waveai") {
+        return "WaveAI";
+    }
+    return view;
 }
 
 function useBlockIcon(blockId: string): string {
