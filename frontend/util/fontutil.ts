@@ -146,7 +146,7 @@ function loadInterFont() {
     isInterFontLoaded = true;
     const interFont = new FontFace("Inter", "url('fonts/inter-variable.woff2')", {
         style: "normal",
-        weight: "400",
+        weight: "100 900",
     });
     addToFontFaceSet(document.fonts, interFont);
     interFont.load();
