@@ -271,14 +271,16 @@ function TileLayoutComponent<T>({ layoutTreeStateAtom, contents, getCursorPoint 
                     className="overlay-container"
                     style={{ top: 10000, ...overlayTransform }}
                 >
-                    <OverlayNode
-                        layoutNode={layoutTreeState.rootNode}
-                        layoutTreeState={layoutTreeState}
-                        dispatch={dispatch}
-                        nodeRefsAtom={nodeRefsAtom}
-                        showOverlayAtom={showOverlayAtom}
-                        siblingSize={layoutTreeState.rootNode?.size}
-                    />
+                    {!layoutTreeState?.rootNode ? null : (
+                        <OverlayNode
+                            layoutNode={layoutTreeState.rootNode}
+                            layoutTreeState={layoutTreeState}
+                            dispatch={dispatch}
+                            nodeRefsAtom={nodeRefsAtom}
+                            showOverlayAtom={showOverlayAtom}
+                            siblingSize={layoutTreeState.rootNode?.size}
+                        />
+                    )}
                 </div>
             </div>
         </Suspense>
@@ -565,7 +567,7 @@ const OverlayNode = <T,>({
                 return nodeRefs;
             });
         };
-    }, [overlayRef, layoutNode.id]);
+    }, [overlayRef, layoutNode?.id]);
 
     function onPointerOverLeaf(event: React.PointerEvent<HTMLDivElement>) {
         event.stopPropagation();
