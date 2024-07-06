@@ -3,6 +3,7 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
+import { useParentHeight } from "@/app/hook/useParentHeight";
 import { getApi } from "@/app/store/global";
 import { ChatMessageType, useWaveAi } from "@/app/store/waveai";
 import type { OverlayScrollbars } from "overlayscrollbars";
@@ -222,34 +223,15 @@ const WaveAi = React.memo(({ parentRef }: WaveAiProps) => {
     const submitTimeoutRef = useRef<NodeJS.Timeout>(null);
 
     const [value, setValue] = useState("");
-    const [waveAiHeight, setWaveAiHeight] = useState(0);
     const [selectedBlockIdx, setSelectedBlockIdx] = useState<number | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const termFontSize: number = 14;
+    const parentHeight = useParentHeight(parentRef);
+    const waveAiHeight = parentHeight - 27;
 
     useEffect(() => {
-        const parentElement = parentRef.current;
-        setWaveAiHeight(parentElement?.getBoundingClientRect().height);
-
-        // Use ResizeObserver to observe changes in the height of parentRef
-        const handleResize = () => {
-            const webviewHeight = parentElement?.getBoundingClientRect().height;
-            setWaveAiHeight(webviewHeight);
-        };
-
-        const resizeObserver = new ResizeObserver((entries) => {
-            for (let entry of entries) {
-                if (entry.target === parentElement) {
-                    handleResize();
-                }
-            }
-        });
-
-        resizeObserver.observe(parentElement);
-
         return () => {
-            resizeObserver.disconnect();
             if (submitTimeoutRef.current) {
                 clearTimeout(submitTimeoutRef.current);
             }
@@ -417,7 +399,7 @@ const WaveAi = React.memo(({ parentRef }: WaveAiProps) => {
     };
 
     return (
-        <div ref={waveaiRef} className="waveai" onClick={handleContainerClick} style={{ height: waveAiHeight - 27 }}>
+        <div ref={waveaiRef} className="waveai" onClick={handleContainerClick} style={{ height: waveAiHeight }}>
             <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} messages={messages} />
             <div className="waveai-input-wrapper">
                 <ChatInput

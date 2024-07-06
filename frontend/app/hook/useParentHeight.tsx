@@ -4,7 +4,7 @@
 import debounce from "lodash.debounce";
 import { useCallback, useEffect, useState } from "react";
 
-const useParentHeight = (ref: React.RefObject<HTMLElement>) => {
+const useParentHeight = (ref: React.RefObject<HTMLElement>, delay = 0) => {
     const [height, setHeight] = useState<number | null>(null);
 
     const updateHeight = useCallback(() => {
@@ -14,25 +14,27 @@ const useParentHeight = (ref: React.RefObject<HTMLElement>) => {
         }
     }, []);
 
-    const debouncedUpdateHeight = useCallback(debounce(updateHeight, 100), [updateHeight]);
+    const fUpdateHeight = useCallback(delay > 0 ? debounce(updateHeight, delay) : updateHeight, [updateHeight, delay]);
 
     useEffect(() => {
         const resizeObserver = new ResizeObserver(() => {
-            debouncedUpdateHeight();
+            fUpdateHeight();
         });
 
         if (ref.current) {
             resizeObserver.observe(ref.current);
-            updateHeight();
+            fUpdateHeight();
         }
 
         return () => {
             if (ref.current) {
                 resizeObserver.unobserve(ref.current);
             }
-            debouncedUpdateHeight.cancel();
+            if (delay > 0) {
+                fUpdateHeight.cancel();
+            }
         };
-    }, [debouncedUpdateHeight, updateHeight]);
+    }, [fUpdateHeight]);
 
     return height;
 };
