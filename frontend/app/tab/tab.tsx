@@ -127,7 +127,7 @@ const Tab = React.memo(
                     onContextMenu={handleContextMenu}
                     data-tab-id={id}
                 >
-                    {isFirst && <div className="vertical-line first" />}
+                    {/* {isFirst && <div className="vertical-line first" />}
                     <div
                         ref={editableRef}
                         className={clsx("name", { focused: isEditable })}
@@ -143,7 +143,28 @@ const Tab = React.memo(
                     {active && <div className="mask" />}
                     <Button className="secondary ghost close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
                         <i className="fa fa-solid fa-xmark" />
-                    </Button>
+                    </Button> */}
+                    <div className="tab-inner">
+                        <div
+                            ref={editableRef}
+                            className={clsx("name", { focused: isEditable })}
+                            contentEditable={isEditable}
+                            onDoubleClick={handleDoubleClick}
+                            onBlur={handleBlur}
+                            onKeyDown={handleKeyDown}
+                            suppressContentEditableWarning={true}
+                        >
+                            {tabData?.name}
+                        </div>
+                        {active && <div className="mask" />}
+                        <Button
+                            className="secondary ghost close"
+                            onClick={onClose}
+                            onMouseDown={handleMouseDownOnClose}
+                        >
+                            <i className="fa fa-solid fa-xmark" />
+                        </Button>
+                    </div>
                 </div>
             );
         }

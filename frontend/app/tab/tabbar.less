@@ -10,7 +10,7 @@
     .tab-bar {
         position: relative; // Needed for absolute positioning of child tabs
         margin-left: 100px;
-        height: 34px;
+        height: 38px;
         // 36 is the width of add tab button
         // 100 is offset from the left, for macOS window controls and dragging
         // 50 right offset for dragging
@@ -30,6 +30,15 @@
         align-items: center;
         justify-content: center;
         background-color: var(--main-bg-color);
+        opacity: 0.5;
+
+        &:hover {
+            opacity: 1;
+        }
+
+        i {
+            font-size: 11px;
+        }
     }
 
     .window-drag {

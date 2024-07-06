@@ -2,17 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .tab {
-    cursor: pointer;
     width: 130px;
     height: 100%;
     position: absolute;
     box-sizing: border-box;
-    cursor: pointer;
     font-weight: bold;
     color: var(--secondary-text-color);
-    white-space: nowrap;
-    border-top: 2px solid transparent;
-    background-color: rgba(0, 8, 3, 0);
+    padding: 4px 3px;
+
+    .tab-inner {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        white-space: nowrap;
+        border-radius: 6px;
+        background: rgba(255, 255, 255, 0.05);
+    }
 
     &.animate {
         transition:
@@ -21,8 +26,13 @@
     }
 
     &.active {
-        border-top: 2px solid var(--tab-green);
-        background-color: var(--tab-green);
+        .tab-inner {
+            background: radial-gradient(
+                133.33% 73.57% at 50% 100%,
+                rgba(118, 255, 53, 0.3) 0%,
+                rgba(255, 255, 255, 0.1) 100%
+            );
+        }
     }
 
     .name {
@@ -30,8 +40,11 @@
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        -webkit-user-select: none;
+        user-select: none;
         z-index: 3;
+        font-size: 11px;
+        font-style: normal;
+        font-weight: 500;
 
         &.focused {
             outline: none;
@@ -71,10 +84,11 @@
         z-index: 3;
         transform: translateY(-50%);
         right: 5px;
+        opacity: 0.5;
 
         &:hover {
-            border: 1px solid var(--border-color);
-            border-radius: 2px;
+            opacity: 1;
+            cursor: pointer;
         }
 
         i {
@@ -82,7 +96,7 @@
         }
     }
 
-    &:hover .close {
+    &.active:hover .close {
         visibility: visible;
     }
 
@@ -92,25 +106,25 @@
         }
     }
 
-    &.active {
-        .mask {
-            position: absolute;
-            height: 100%;
-            width: 100%;
-            top: 0;
-            left: 0;
-            z-index: 2;
-            background-image: linear-gradient(
-                to top,
-                rgba(0, 0, 0, 0.9) 20%,
-                rgba(0, 0, 0, 0.8) 60%,
-                rgba(0, 0, 0, 0.7) 100%
-            );
-            pointer-events: none;
-        }
-    }
+    // &.active {
+    //     .mask {
+    //         position: absolute;
+    //         height: 100%;
+    //         width: 100%;
+    //         top: 0;
+    //         left: 0;
+    //         z-index: 2;
+    //         background-image: linear-gradient(
+    //             to top,
+    //             rgba(0, 0, 0, 0.9) 20%,
+    //             rgba(0, 0, 0, 0.8) 60%,
+    //             rgba(0, 0, 0, 0.7) 100%
+    //         );
+    //         pointer-events: none;
+    //     }
+    // }
 
     &.isDragging:not(.active) {
-        background-color: rgba(0, 8, 3, 1);
+        // background-color: rgba(0, 8, 3, 1);
     }
 }
