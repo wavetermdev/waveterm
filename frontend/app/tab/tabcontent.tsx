@@ -1,7 +1,7 @@
 // Copyright 2023, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { Block, BlockFrame } from "@/app/block/block";
+import { Block } from "@/app/block/block";
 import { getApi } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
@@ -32,18 +32,15 @@ const TabContent = React.memo(({ tabId }: { tabId: string }) => {
             if (!tabData.blockId || !ready) {
                 return null;
             }
-            return (
-                <Block
-                    key={tabData.blockId}
-                    blockId={tabData.blockId}
-                    onClose={onClose}
-                    dragHandleRef={dragHandleRef}
-                />
-            );
+            const layoutModel = {
+                onClose: onClose,
+                dragHandleRef: dragHandleRef,
+            };
+            return <Block key={tabData.blockId} blockId={tabData.blockId} layoutModel={layoutModel} preview={false} />;
         }
 
         function renderPreview(tabData: TabLayoutData) {
-            return <BlockFrame key={tabData.blockId} blockId={tabData.blockId} preview={true} />;
+            return <Block key={tabData.blockId} blockId={tabData.blockId} layoutModel={null} preview={true} />;
         }
 
         function onNodeDelete(data: TabLayoutData) {

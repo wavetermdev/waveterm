@@ -4,17 +4,20 @@
 import { Button } from "@/app/element/button";
 import { useParentHeight } from "@/app/hook/useParentHeight";
 import { getApi } from "@/app/store/global";
+import { WOS } from "@/store/global";
 import { WebviewTag } from "electron";
-import React, { memo, useEffect, useRef, useState } from "react";
+import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import "./webview.less";
 
 interface WebViewProps {
+    blockId: string;
     parentRef: React.MutableRefObject<HTMLDivElement>;
-    initialUrl: string;
 }
 
-const WebView = memo(({ parentRef, initialUrl }: WebViewProps) => {
+const WebView = memo(({ blockId, parentRef }: WebViewProps) => {
+    const blockData = WOS.useWaveObjectValueWithSuspense<Block>(WOS.makeORef("block", blockId));
+    const initialUrl = useMemo(() => blockData?.meta?.url, []);
     const [url, setUrl] = useState(initialUrl);
     const [inputUrl, setInputUrl] = useState(initialUrl); // Separate state for the input field
     const [isLoading, setIsLoading] = useState(false);

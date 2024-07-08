@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import type * as jotai from "jotai";
 import type * as rxjs from "rxjs";
 
 declare global {
@@ -114,6 +115,24 @@ declare global {
     }
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
+
+    interface ViewModel {
+        viewIcon: jotai.Atom<string>;
+        viewName: jotai.Atom<string>;
+        viewText: jotai.Atom<string>;
+        hasBackButton: jotai.Atom<boolean>;
+        hasForwardButton: jotai.Atom<boolean>;
+        hasSearch: jotai.Atom<boolean>;
+
+        onBack?: () => void;
+        onForward?: () => void;
+        onSearchChange?: (text: string) => void;
+        onSearch?: (text: string) => void;
+        getSettingsMenuItems?: () => ContextMenuItem[];
+    }
+
+    // jotai doesn't export this type :/
+    type Loadable<T> = { state: "loading" } | { state: "hasData"; data: T } | { state: "hasError"; error: unknown };
 }
 
 export {};

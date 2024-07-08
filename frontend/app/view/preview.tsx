@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Markdown } from "@/element/markdown";
-import { getBackendHostPort, globalStore, useBlockAtom, useBlockCache } from "@/store/global";
+import { getBackendHostPort, getObjectId, globalStore, useBlockAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
+import { loadable } from "jotai/utils";
 import { useRef } from "react";
 import { CenteredDiv } from "../element/quickelems";
 import { CodeEdit } from "./codeedit";
@@ -17,6 +18,113 @@ import { DirectoryPreview } from "./directorypreview";
 import "./view.less";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
+const MaxCSVSize = 1024 * 1024 * 1; // 1MB
+
+export class PreviewModel implements ViewModel {
+    blockId: string;
+    blockAtom: jotai.Atom<Block>;
+    viewIcon: jotai.Atom<string>;
+    viewName: jotai.Atom<string>;
+    viewText: jotai.Atom<string>;
+    hasBackButton: jotai.Atom<boolean>;
+    hasForwardButton: jotai.Atom<boolean>;
+    hasSearch: jotai.Atom<boolean>;
+
+    fileName: jotai.WritableAtom<string, [string], void>;
+    statFile: jotai.Atom<Promise<FileInfo>>;
+    fullFile: jotai.Atom<Promise<FullFile>>;
+    fileMimeType: jotai.Atom<Promise<string>>;
+    fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
+    fileContent: jotai.Atom<Promise<string>>;
+
+    setPreviewFileName(fileName: string) {
+        services.ObjectService.UpdateObjectMeta(`block:${this.blockId}`, { file: fileName });
+    }
+
+    constructor(blockId: string) {
+        this.blockId = blockId;
+        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.viewIcon = jotai.atom((get) => {
+            let blockData = get(this.blockAtom);
+            if (blockData?.meta?.icon) {
+                return blockData.meta.icon;
+            }
+            const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
+            const fileName = get(this.fileName);
+            return iconForFile(mimeType, fileName);
+        });
+        this.viewName = jotai.atom("Preview");
+        this.viewText = jotai.atom((get) => {
+            return get(this.fileName);
+        });
+        this.hasBackButton = jotai.atom(true);
+        this.hasForwardButton = jotai.atom((get) => {
+            const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
+            if (mimeType == "directory") {
+                return true;
+            }
+            return false;
+        });
+        this.hasSearch = jotai.atom(false);
+
+        this.fileName = jotai.atom<string, [string], void>(
+            (get) => {
+                return get(this.blockAtom)?.meta?.file;
+            },
+            (get, set, update) => {
+                services.ObjectService.UpdateObjectMeta(`block:${blockId}`, { file: update });
+            }
+        );
+        this.statFile = jotai.atom<Promise<FileInfo>>(async (get) => {
+            const fileName = get(this.fileName);
+            if (fileName == null) {
+                return null;
+            }
+            // const statFile = await FileService.StatFile(fileName);
+            console.log("PreviewModel calling StatFile", fileName);
+            const statFile = await services.FileService.StatFile(fileName);
+            return statFile;
+        });
+        this.fullFile = jotai.atom<Promise<FullFile>>(async (get) => {
+            const fileName = get(this.fileName);
+            if (fileName == null) {
+                return null;
+            }
+            // const file = await FileService.ReadFile(fileName);
+            const file = await services.FileService.ReadFile(fileName);
+            return file;
+        });
+        this.fileMimeType = jotai.atom<Promise<string>>(async (get) => {
+            const fileInfo = await get(this.statFile);
+            return fileInfo?.mimetype;
+        });
+        this.fileMimeTypeLoadable = loadable(this.fileMimeType);
+        this.fileContent = jotai.atom<Promise<string>>(async (get) => {
+            const fullFile = await get(this.fullFile);
+            return util.base64ToString(fullFile?.data64);
+        });
+
+        this.onBack = this.onBack.bind(this);
+    }
+
+    onBack() {
+        const fileName = globalStore.get(this.fileName);
+        if (fileName == null) {
+            return;
+        }
+        const splitPath = fileName.split("/");
+        console.log("splitPath-1", splitPath);
+        splitPath.pop();
+        console.log("splitPath-2", splitPath);
+        const newPath = splitPath.join("/");
+        globalStore.set(this.fileName, newPath);
+    }
+}
+
+function makePreviewModel(blockId: string): PreviewModel {
+    const previewModel = new PreviewModel(blockId);
+    return previewModel;
+}
 
 function DirNav({ cwdAtom }: { cwdAtom: jotai.WritableAtom<string, [string], void> }) {
     const [cwd, setCwd] = jotai.useAtom(cwdAtom);
@@ -139,6 +247,9 @@ function CSVViewPreview({
 }
 
 function iconForFile(mimeType: string, fileName: string): string {
+    if (mimeType == null) {
+        mimeType = "unknown";
+    }
     if (mimeType == "application/pdf") {
         return "file-pdf";
     } else if (mimeType.startsWith("image/")) {
@@ -153,6 +264,7 @@ function iconForFile(mimeType: string, fileName: string): string {
         return "file-csv";
     } else if (
         mimeType.startsWith("text/") ||
+        mimeType == "application/sql" ||
         (mimeType.startsWith("application/") &&
             (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
     ) {
@@ -161,60 +273,21 @@ function iconForFile(mimeType: string, fileName: string): string {
         if (fileName == "~" || fileName == "~/") {
             return "home";
         }
-        return "folder";
+        return "folder-open";
     } else {
         return "file";
     }
 }
 
-function PreviewView({ blockId }: { blockId: string }) {
+function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel }) {
+    console.log("render previewview", getObjectId(model));
     const ref = useRef<HTMLDivElement>(null);
     const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
-    const fileNameAtom: jotai.WritableAtom<string, [string], void> = useBlockCache(blockId, "preview:filename", () =>
-        jotai.atom<string, [string], void>(
-            (get) => {
-                return get(blockAtom)?.meta?.file;
-            },
-            (get, set, update) => {
-                const blockId = get(blockAtom)?.oid;
-                services.ObjectService.UpdateObjectMeta(`block:${blockId}`, { file: update });
-            }
-        )
-    );
-    const statFileAtom = useBlockAtom(blockId, "preview:statfile", () =>
-        jotai.atom<Promise<FileInfo>>(async (get) => {
-            const fileName = get(fileNameAtom);
-            if (fileName == null) {
-                return null;
-            }
-            // const statFile = await FileService.StatFile(fileName);
-            const statFile = await services.FileService.StatFile(fileName);
-            return statFile;
-        })
-    );
-    const fullFileAtom = useBlockAtom(blockId, "preview:fullfile", () =>
-        jotai.atom<Promise<FullFile>>(async (get) => {
-            const fileName = get(fileNameAtom);
-            if (fileName == null) {
-                return null;
-            }
-            // const file = await FileService.ReadFile(fileName);
-            const file = await services.FileService.ReadFile(fileName);
-            return file;
-        })
-    );
-    const fileMimeTypeAtom = useBlockAtom(blockId, "preview:mimetype", () =>
-        jotai.atom<Promise<string>>(async (get) => {
-            const fileInfo = await get(statFileAtom);
-            return fileInfo?.mimetype;
-        })
-    );
-    const fileContentAtom = useBlockAtom(blockId, "preview:filecontent", () =>
-        jotai.atom<Promise<string>>(async (get) => {
-            const fullFile = await get(fullFileAtom);
-            return util.base64ToString(fullFile?.data64);
-        })
-    );
+    const fileNameAtom = model.fileName;
+    const statFileAtom = model.statFile;
+    const fullFileAtom = model.fullFile;
+    const fileMimeTypeAtom = model.fileMimeType;
+    const fileContentAtom = model.fileContent;
     let mimeType = jotai.useAtomValue(fileMimeTypeAtom);
     if (mimeType == null) {
         mimeType = "";
@@ -241,11 +314,16 @@ function PreviewView({ blockId }: { blockId: string }) {
     } else if (mimeType === "text/markdown") {
         specializedView = <MarkdownPreview contentAtom={fileContentAtom} />;
     } else if (mimeType === "text/csv") {
-        specializedView = (
-            <CSVViewPreview parentRef={ref} contentAtom={fileContentAtom} filename={fileName} readonly={true} />
-        );
+        if (fileInfo.size > MaxCSVSize) {
+            specializedView = <CenteredDiv>CSV File Too Large to Preview (1MB Max)</CenteredDiv>;
+        } else {
+            specializedView = (
+                <CSVViewPreview parentRef={ref} contentAtom={fileContentAtom} filename={fileName} readonly={true} />
+            );
+        }
     } else if (
         mimeType.startsWith("text/") ||
+        mimeType == "application/sql" ||
         (mimeType.startsWith("application/") &&
             (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
     ) {
@@ -274,4 +352,4 @@ function PreviewView({ blockId }: { blockId: string }) {
     );
 }
 
-export { PreviewView };
+export { PreviewView, makePreviewModel };

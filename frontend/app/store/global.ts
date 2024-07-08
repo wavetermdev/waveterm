@@ -353,6 +353,15 @@ function setBlockFocus(blockId: string) {
     WOS.setObjectValue(winData, globalStore.set, true);
 }
 
+const objectIdWeakMap = new WeakMap();
+let objectIdCounter = 0;
+function getObjectId(obj: any): number {
+    if (!objectIdWeakMap.has(obj)) {
+        objectIdWeakMap.set(obj, objectIdCounter++);
+    }
+    return objectIdWeakMap.get(obj);
+}
+
 export {
     WOS,
     atoms,
@@ -363,6 +372,7 @@ export {
     getEventORefSubject,
     getEventSubject,
     getFileSubject,
+    getObjectId,
     globalStore,
     globalWS,
     initWS,

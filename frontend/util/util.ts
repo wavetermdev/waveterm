@@ -99,4 +99,68 @@ function fireAndForget(f: () => Promise<any>) {
     });
 }
 
-export { base64ToArray, base64ToString, fireAndForget, isBlank, jsonDeepEqual, makeIconClass, stringToBase64 };
+const promiseWeakMap = new WeakMap<Promise<any>, ResolvedValue<any>>();
+
+type ResolvedValue<T> = {
+    pending: boolean;
+    error: any;
+    value: T;
+};
+
+// returns the value, pending state, and error of a promise
+function getPromiseState<T>(promise: Promise<T>): [T, boolean, any] {
+    if (promise == null) {
+        return [null, false, null];
+    }
+    if (promiseWeakMap.has(promise)) {
+        const value = promiseWeakMap.get(promise);
+        return [value.value, value.pending, value.error];
+    }
+    const value: ResolvedValue<T> = {
+        pending: true,
+        error: null,
+        value: null,
+    };
+    promise.then(
+        (result) => {
+            value.pending = false;
+            value.error = null;
+            value.value = result;
+        },
+        (error) => {
+            value.pending = false;
+            value.error = error;
+        }
+    );
+    promiseWeakMap.set(promise, value);
+    return [value.value, value.pending, value.error];
+}
+
+// returns the value of a promise, or a default value if the promise is still pending (or had an error)
+function getPromiseValue<T>(promise: Promise<T>, def: T): T {
+    const [value, pending, error] = getPromiseState(promise);
+    if (pending || error) {
+        return def;
+    }
+    return value;
+}
+
+function jotaiLoadableValue<T>(value: Loadable<T>, def: T): T {
+    if (value.state === "hasData") {
+        return value.data;
+    }
+    return def;
+}
+
+export {
+    base64ToArray,
+    base64ToString,
+    fireAndForget,
+    getPromiseState,
+    getPromiseValue,
+    isBlank,
+    jotaiLoadableValue,
+    jsonDeepEqual,
+    makeIconClass,
+    stringToBase64,
+};

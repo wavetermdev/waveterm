@@ -56,7 +56,7 @@ func getSettingsConfigDefaults() SettingsConfigType {
 			"text/css":         {Icon: "css3-alt fa-brands"},
 			"text/javascript":  {Icon: "js fa-brands"},
 			"text/typescript":  {Icon: "js fa-brands"},
-			"text/golang":      {Icon: "go fa-brands"},
+			"text/golang":      {Icon: "golang fa-brands"},
 			"text/html":        {Icon: "html5 fa-brands"},
 			"text/less":        {Icon: "less fa-brands"},
 			"text/markdown":    {Icon: "markdown fa-brands"},

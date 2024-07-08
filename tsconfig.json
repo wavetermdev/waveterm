@@ -19,6 +19,7 @@
             "@/util/*": ["frontend/util/*"],
             "@/faraday/*": ["frontend/faraday/*"],
             "@/store/*": ["frontend/app/store/*"],
+            "@/view/*": ["frontend/app/view/*"],
             "@/element/*": ["frontend/app/element/*"],
             "@/bindings/*": ["frontend/bindings/github.com/wavetermdev/thenextwave/pkg/service/*"],
             "@/gopkg/*": ["frontend/bindings/github.com/wavetermdev/thenextwave/pkg/*"],

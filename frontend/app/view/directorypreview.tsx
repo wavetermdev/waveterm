@@ -466,6 +466,7 @@ interface DirectoryPreviewProps {
 }
 
 function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
+    console.log("DirectoryPreview render");
     const [searchText, setSearchText] = React.useState("");
     const [focusIndex, setFocusIndex] = React.useState(0);
     const [content, setContent] = React.useState<FileInfo[]>([]);
