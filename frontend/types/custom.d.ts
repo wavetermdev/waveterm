@@ -116,12 +116,19 @@ declare global {
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
+    type IconButtonDecl = {
+        icon: string;
+        title?: string;
+        click: () => void;
+    };
+
     interface ViewModel {
         viewIcon: jotai.Atom<string>;
         viewName: jotai.Atom<string>;
         viewText: jotai.Atom<string>;
-        hasBackButton: jotai.Atom<boolean>;
-        hasForwardButton: jotai.Atom<boolean>;
+        preIconButton: jotai.Atom<IconButtonDecl>;
+        endIconButtons: jotai.Atom<IconButtonDecl[]>;
+
         hasSearch: jotai.Atom<boolean>;
 
         onBack?: () => void;

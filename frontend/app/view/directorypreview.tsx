@@ -4,6 +4,7 @@
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
+import type { PreviewModel } from "@/view/preview";
 import {
     Row,
     Table,
@@ -30,7 +31,7 @@ interface DirectoryTableProps {
     setFileName: (_: string) => void;
     setSearch: (_: string) => void;
     setSelectedPath: (_: string) => void;
-    setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
+    setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const columnHelper = createColumnHelper<FileInfo>();
@@ -143,7 +144,7 @@ function DirectoryTable({
     setFileName,
     setSearch,
     setSelectedPath,
-    setRefresh,
+    setRefreshVersion,
 }: DirectoryTableProps) {
     let settings = jotai.useAtomValue(atoms.settingsConfigAtom);
     const getIconFromMimeType = React.useCallback(
@@ -299,7 +300,7 @@ function DirectoryTable({
                     setFocusIndex={setFocusIndex}
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
-                    setRefresh={setRefresh}
+                    setRefreshVersion={setRefreshVersion}
                 />
             ) : (
                 <TableBody
@@ -311,7 +312,7 @@ function DirectoryTable({
                     setFocusIndex={setFocusIndex}
                     setSearch={setSearch}
                     setSelectedPath={setSelectedPath}
-                    setRefresh={setRefresh}
+                    setRefreshVersion={setRefreshVersion}
                 />
             )}
         </div>
@@ -327,7 +328,7 @@ interface TableBodyProps {
     setFileName: (_: string) => void;
     setSearch: (_: string) => void;
     setSelectedPath: (_: string) => void;
-    setRefresh: React.Dispatch<React.SetStateAction<boolean>>;
+    setRefreshVersion: React.Dispatch<React.SetStateAction<number>>;
 }
 
 function TableBody({
@@ -339,7 +340,7 @@ function TableBody({
     setFileName,
     setSearch,
     setSelectedPath,
-    setRefresh,
+    setRefreshVersion,
 }: TableBodyProps) {
     const dummyLineRef = React.useRef<HTMLDivElement>(null);
     const parentRef = React.useRef<HTMLDivElement>(null);
@@ -391,7 +392,7 @@ function TableBody({
                 label: "Delete File",
                 click: async () => {
                     await services.FileService.DeleteFile(path).catch((e) => console.log(e)); //todo these errors need a popup
-                    setRefresh((current) => !current);
+                    setRefreshVersion((current) => current + 1);
                 },
             });
             menu.push({
@@ -402,7 +403,7 @@ function TableBody({
             });
             ContextMenuModel.showContextMenu(menu, e);
         },
-        [setRefresh]
+        [setRefreshVersion]
     );
 
     const displayRow = React.useCallback(
@@ -463,17 +464,26 @@ const MemoizedTableBody = React.memo(
 
 interface DirectoryPreviewProps {
     fileNameAtom: jotai.WritableAtom<string, [string], void>;
+    model: PreviewModel;
 }
 
-function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
-    console.log("DirectoryPreview render");
+function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
     const [searchText, setSearchText] = React.useState("");
     const [focusIndex, setFocusIndex] = React.useState(0);
     const [content, setContent] = React.useState<FileInfo[]>([]);
     const [fileName, setFileName] = jotai.useAtom(fileNameAtom);
-    const [hideHiddenFiles, setHideHiddenFiles] = React.useState(true);
+    const [hideHiddenFiles, setHideHiddenFiles] = jotai.useAtom(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = React.useState("");
-    const [refresh, setRefresh] = React.useState(false);
+    const [refreshVersion, setRefreshVersion] = React.useState(0);
+
+    React.useEffect(() => {
+        model.refreshCallback = () => {
+            setRefreshVersion((refreshVersion) => refreshVersion + 1);
+        };
+        return () => {
+            model.refreshCallback = null;
+        };
+    }, [setRefreshVersion]);
 
     React.useEffect(() => {
         const getContent = async () => {
@@ -489,7 +499,7 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
             setContent(filtered);
         };
         getContent();
-    }, [fileName, searchText, hideHiddenFiles, refresh]);
+    }, [fileName, searchText, hideHiddenFiles, refreshVersion]);
 
     const handleKeyDown = React.useCallback(
         (waveEvent: WaveKeyboardEvent): boolean => {
@@ -533,15 +543,6 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
                     autoFocus={true}
                     value={searchText}
                 />
-                <div onClick={() => setHideHiddenFiles((current) => !current)} className="dir-table-button">
-                    {!hideHiddenFiles && <i className={"fa-sharp fa-solid fa-eye-slash"} />}
-                    {hideHiddenFiles && <i className={"fa-sharp fa-solid fa-eye"} />}
-                    <input type="text" value={searchText} onChange={() => {}}></input>
-                </div>
-                <div onClick={() => setRefresh((current) => !current)} className="dir-table-button">
-                    <i className="fa-solid fa-arrows-rotate" />
-                    <input type="text" value={searchText} onChange={() => {}}></input>
-                </div>
             </div>
             <DirectoryTable
                 data={content}
@@ -551,7 +552,7 @@ function DirectoryPreview({ fileNameAtom }: DirectoryPreviewProps) {
                 setFocusIndex={setFocusIndex}
                 setSearch={setSearchText}
                 setSelectedPath={setSelectedPath}
-                setRefresh={setRefresh}
+                setRefreshVersion={setRefreshVersion}
             />
         </div>
     );

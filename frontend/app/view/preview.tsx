@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Markdown } from "@/element/markdown";
-import { getBackendHostPort, getObjectId, globalStore, useBlockAtom } from "@/store/global";
+import { getBackendHostPort, globalStore, useBlockAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
@@ -26,8 +26,8 @@ export class PreviewModel implements ViewModel {
     viewIcon: jotai.Atom<string>;
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<string>;
-    hasBackButton: jotai.Atom<boolean>;
-    hasForwardButton: jotai.Atom<boolean>;
+    preIconButton: jotai.Atom<IconButtonDecl>;
+    endIconButtons: jotai.Atom<IconButtonDecl[]>;
     hasSearch: jotai.Atom<boolean>;
 
     fileName: jotai.WritableAtom<string, [string], void>;
@@ -37,12 +37,16 @@ export class PreviewModel implements ViewModel {
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
     fileContent: jotai.Atom<Promise<string>>;
 
+    showHiddenFiles: jotai.PrimitiveAtom<boolean>;
+    refreshCallback: () => void;
+
     setPreviewFileName(fileName: string) {
         services.ObjectService.UpdateObjectMeta(`block:${this.blockId}`, { file: fileName });
     }
 
     constructor(blockId: string) {
         this.blockId = blockId;
+        this.showHiddenFiles = jotai.atom(true);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = jotai.atom((get) => {
             let blockData = get(this.blockAtom);
@@ -57,13 +61,34 @@ export class PreviewModel implements ViewModel {
         this.viewText = jotai.atom((get) => {
             return get(this.fileName);
         });
-        this.hasBackButton = jotai.atom(true);
-        this.hasForwardButton = jotai.atom((get) => {
+        this.preIconButton = jotai.atom((get) => {
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             if (mimeType == "directory") {
-                return true;
+                return null;
             }
-            return false;
+            return {
+                icon: "chevron-left",
+                click: this.onBack.bind(this),
+            };
+        });
+        this.endIconButtons = jotai.atom((get) => {
+            const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
+            if (mimeType == "directory") {
+                let showHiddenFiles = get(this.showHiddenFiles);
+                return [
+                    {
+                        icon: showHiddenFiles ? "eye" : "eye-slash",
+                        click: () => {
+                            globalStore.set(this.showHiddenFiles, (prev) => !prev);
+                        },
+                    },
+                    {
+                        icon: "arrows-rotate",
+                        click: () => this.refreshCallback?.(),
+                    },
+                ];
+            }
+            return null;
         });
         this.hasSearch = jotai.atom(false);
 
@@ -310,7 +335,6 @@ function iconForFile(mimeType: string, fileName: string): string {
 }
 
 function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel }) {
-    console.log("render previewview", getObjectId(model));
     const ref = useRef<HTMLDivElement>(null);
     const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
     const fileNameAtom = model.fileName;
@@ -359,7 +383,7 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     ) {
         specializedView = <CodeEditPreview readonly={true} contentAtom={fileContentAtom} filename={fileName} />;
     } else if (mimeType === "directory") {
-        specializedView = <DirectoryPreview fileNameAtom={fileNameAtom} />;
+        specializedView = <DirectoryPreview fileNameAtom={fileNameAtom} model={model} />;
     } else {
         specializedView = (
             <div className="view-preview">

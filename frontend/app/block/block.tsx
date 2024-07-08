@@ -230,8 +230,8 @@ const BlockFrame_Default_Component = ({
     let isFocused = jotai.useAtomValue(isFocusedAtom);
     const viewIcon = jotai.useAtomValue(viewModel.viewIcon);
     const viewText = jotai.useAtomValue(viewModel.viewText);
-    const hasBackButton = jotai.useAtomValue(viewModel.hasBackButton);
-    const hasForwardButton = jotai.useAtomValue(viewModel.hasForwardButton);
+    const preIconButton = jotai.useAtomValue(viewModel.preIconButton);
+    const endIconButtons = jotai.useAtomValue(viewModel.endIconButtons);
     if (preview) {
         isFocused = true;
     }
@@ -242,6 +242,43 @@ const BlockFrame_Default_Component = ({
     if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
         style.borderColor = blockData.meta["frame:bordercolor:focused"];
     }
+    let preIconButtonElem: JSX.Element = null;
+    if (preIconButton) {
+        preIconButtonElem = (
+            <div className="block-frame-preicon-button" title={preIconButton.title} onClick={preIconButton.click}>
+                <i className={util.makeIconClass(preIconButton.icon, true)} />
+            </div>
+        );
+    }
+    let endIconsElem: JSX.Element[] = [];
+    if (endIconButtons && endIconButtons.length > 0) {
+        for (let idx = 0; idx < endIconButtons.length; idx++) {
+            const button = endIconButtons[idx];
+            endIconsElem.push(
+                <div key={idx} className="block-frame-endicon-button" title={button.title} onClick={button.click}>
+                    <i className={util.makeIconClass(button.icon, true)} />
+                </div>
+            );
+        }
+    }
+    endIconsElem.push(
+        <div
+            key="settings"
+            className="block-frame-endicon-button block-frame-settings"
+            onClick={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
+        >
+            <i className="fa fa-solid fa-cog fa-fw" />
+        </div>
+    );
+    endIconsElem.push(
+        <div
+            key="close"
+            className={clsx("block-frame-endicon-button block-frame-default-close")}
+            onClick={layoutModel?.onClose}
+        >
+            <i className="fa fa-solid fa-xmark-large fa-fw" />
+        </div>
+    );
     return (
         <div
             className={clsx(
@@ -262,11 +299,7 @@ const BlockFrame_Default_Component = ({
                 onContextMenu={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
             >
                 <div className="block-frame-default-header-iconview">
-                    {hasBackButton && !hasForwardButton && (
-                        <div className="block-frame-back-button" onClick={viewModel.onBack}>
-                            <i className="fa fa-solid fa-chevron-left fa-fw" />
-                        </div>
-                    )}
+                    {preIconButtonElem}
                     <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>
                     <div className="block-frame-view-type">{blockViewToName(blockData?.view)}</div>
                     {settingsConfig?.blockheader?.showblockids && (
@@ -275,19 +308,8 @@ const BlockFrame_Default_Component = ({
                 </div>
                 {util.isBlank(viewText) ? null : <div className="block-frame-text">{viewText}</div>}
                 <div className="flex-spacer"></div>
-                <div className="block-frame-end-icons">
-                    <div
-                        className="block-frame-settings"
-                        onClick={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
-                    >
-                        <i className="fa fa-solid fa-cog fa-fw" />
-                    </div>
-                    <div className={clsx("block-frame-default-close")} onClick={layoutModel?.onClose}>
-                        <i className="fa fa-solid fa-xmark-large fa-fw" />
-                    </div>
-                </div>
+                <div className="block-frame-end-icons">{endIconsElem}</div>
             </div>
-
             {preview ? <div className="block-frame-preview" /> : children}
         </div>
     );
@@ -412,8 +434,8 @@ function makeDefaultViewModel(blockId: string): ViewModel {
             const blockData = get(blockDataAtom);
             return blockData?.meta?.title;
         }),
-        hasBackButton: jotai.atom(false),
-        hasForwardButton: jotai.atom(false),
+        preIconButton: jotai.atom(null),
+        endIconButtons: jotai.atom(null),
         hasSearch: jotai.atom(false),
     };
     return viewModel;
