@@ -158,12 +158,23 @@ function getBlockHeaderText(blockIcon: string, blockData: Block, settings: Setti
     return [blockIconElem, viewString + blockIdStr];
 }
 
-function handleHeaderContextMenu(e: React.MouseEvent<HTMLDivElement>, blockData: Block, onClose: () => void) {
+function handleHeaderContextMenu(
+    e: React.MouseEvent<HTMLDivElement>,
+    blockData: Block,
+    viewModel: ViewModel,
+    onClose: () => void
+) {
     e.preventDefault();
     e.stopPropagation();
     let menu: ContextMenuItem[] = [];
     menu.push({
         label: "Focus Block",
+        click: () => {
+            alert("Not Implemented");
+        },
+    });
+    menu.push({
+        label: "Minimize",
         click: () => {
             alert("Not Implemented");
         },
@@ -186,6 +197,11 @@ function handleHeaderContextMenu(e: React.MouseEvent<HTMLDivElement>, blockData:
             navigator.clipboard.writeText(blockData.oid);
         },
     });
+    const extraItems = viewModel?.getSettingsMenuItems?.();
+    if (extraItems && extraItems.length > 0) {
+        menu.push({ type: "separator" });
+        menu.push(...extraItems);
+    }
     menu.push({ type: "separator" });
     menu.push({
         label: "Close Block",
@@ -226,42 +242,6 @@ const BlockFrame_Default_Component = ({
     if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
         style.borderColor = blockData.meta["frame:bordercolor:focused"];
     }
-    let handleSettings = (e: React.MouseEvent<any>) => {
-        let menuItems: ContextMenuItem[] = [];
-        menuItems.push({
-            label: "Focus Block",
-            click: () => {
-                alert("Not Implemented");
-            },
-        });
-        menuItems.push({ label: "Minimize" });
-        menuItems.push({ type: "separator" });
-        menuItems.push({
-            label: "Move to New Window",
-            click: () => {
-                let currentTabId = globalStore.get(atoms.activeTabId);
-                try {
-                    services.WindowService.MoveBlockToNewWindow(currentTabId, blockData.oid);
-                } catch (e) {
-                    console.error("error moving block to new window", e);
-                }
-            },
-        });
-        menuItems.push({ type: "separator" });
-        menuItems.push({
-            label: "Copy BlockId",
-            click: () => {
-                navigator.clipboard.writeText(blockData.oid);
-            },
-        });
-        menuItems.push({ type: "separator" });
-        menuItems.push({ label: "Close", click: layoutModel?.onClose });
-        ContextMenuModel.showContextMenu(menuItems, e);
-    };
-    if (preview) {
-        handleSettings = null;
-    }
-
     return (
         <div
             className={clsx(
@@ -279,7 +259,7 @@ const BlockFrame_Default_Component = ({
             <div
                 className="block-frame-default-header"
                 ref={layoutModel?.dragHandleRef}
-                onContextMenu={(e) => handleHeaderContextMenu(e, blockData, layoutModel?.onClose)}
+                onContextMenu={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
             >
                 <div className="block-frame-default-header-iconview">
                     {hasBackButton && !hasForwardButton && (
@@ -296,7 +276,10 @@ const BlockFrame_Default_Component = ({
                 {util.isBlank(viewText) ? null : <div className="block-frame-text">{viewText}</div>}
                 <div className="flex-spacer"></div>
                 <div className="block-frame-end-icons">
-                    <div className="block-frame-settings" onClick={handleSettings}>
+                    <div
+                        className="block-frame-settings"
+                        onClick={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
+                    >
                         <i className="fa fa-solid fa-cog fa-fw" />
                     </div>
                     <div className={clsx("block-frame-default-close")} onClick={layoutModel?.onClose}>

@@ -119,6 +119,36 @@ export class PreviewModel implements ViewModel {
         const newPath = splitPath.join("/");
         globalStore.set(this.fileName, newPath);
     }
+
+    getSettingsMenuItems(): ContextMenuItem[] {
+        const menuItems: ContextMenuItem[] = [];
+        menuItems.push({
+            label: "Copy Full Path",
+            click: () => {
+                const fileName = globalStore.get(this.fileName);
+                if (fileName == null) {
+                    return;
+                }
+                navigator.clipboard.writeText(fileName);
+            },
+        });
+        menuItems.push({
+            label: "Copy File Name",
+            click: () => {
+                let fileName = globalStore.get(this.fileName);
+                if (fileName == null) {
+                    return;
+                }
+                if (fileName.endsWith("/")) {
+                    fileName = fileName.substring(0, fileName.length - 1);
+                }
+                const splitPath = fileName.split("/");
+                const baseName = splitPath[splitPath.length - 1];
+                navigator.clipboard.writeText(baseName);
+            },
+        });
+        return menuItems;
+    }
 }
 
 function makePreviewModel(blockId: string): PreviewModel {
