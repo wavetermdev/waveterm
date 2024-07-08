@@ -1,49 +1,64 @@
 .dir-table-container {
-    width: 100%;
     display: flex;
     flex-direction: column;
     height: 100%;
+    overflow-x: hidden;
     .dir-table {
         height: 100%;
         --col-size-size: 0.2rem;
         border-radius: 3px;
         display: flex;
         flex-direction: column;
+        font-family: Inter;
         .dir-table-head {
             .dir-table-head-row {
                 display: flex;
-                border-bottom: 2px solid var(--border-color);
-                padding: 4px 0;
+                border-bottom: 1px solid var(--border-color);
+                padding: 4px 6px;
                 background-color: var(--panel-bg-color);
+                align-items: center;
+                font-size: 0.75rem;
 
                 .dir-table-head-cell:not(:first-child) {
                     position: relative;
-                    padding: 2px 4px;
-                    font-weight: bold;
                     display: flex;
-                    justify-content: space-between;
+                    white-space: nowrap;
                     overflow: hidden;
-                    .dir-table-head-resize {
-                        position: absolute;
-                        top: 0;
-                        right: 0;
-                        height: 100%;
-                        cursor: col-resize;
-                        user-select: none;
-                        -webkit-user-select: none;
-                        touch-action: none;
-                        width: 4px;
-                        background: linear-gradient(var(--border-color), var(--border-color)) no-repeat center/2px 100%;
+
+                    .dir-table-head-cell-content {
+                        padding: 2px 4px;
+                        display: flex;
+                        gap: 0.3rem;
+                        flex: 1 1 auto;
+                        overflow-x: hidden;
+
+                        .dir-table-head-direction {
+                            margin-right: 0.2rem;
+                            margin-top: 0.2rem;
+                        }
+
+                        .dir-table-head-size {
+                            width: 100%;
+                            text-align: right;
+                        }
                     }
 
-                    .dir-table-head-direction {
-                        color: var(--grey-text-color);
-                        margin-right: 0.2rem;
-                        margin-top: 0.2rem;
+                    .dir-table-head-resize-box {
+                        width: 12px;
+                        display: flex;
+                        justify-content: center;
+                        flex: 0 0 auto;
+                        .dir-table-head-resize {
+                            cursor: col-resize;
+                            user-select: none;
+                            -webkit-user-select: none;
+                            touch-action: none;
+                            width: 4px;
+                        }
                     }
 
                     &:last-child {
-                        .dir-table-head-resize {
+                        .dir-table-head-resize-box {
                             width: 0;
                         }
                     }
@@ -75,10 +90,13 @@
                 }
                 .dir-table-body-row {
                     display: flex;
-                    border-radius: 3px;
+                    align-items: center;
+                    align-self: stretch;
+                    border-radius: 6px;
+                    gap: 12px;
 
                     &.focused {
-                        background-color: rgb(from var(--accent-color) r g b / 0.7);
+                        background-color: rgb(from var(--accent-color) r g b / 0.5);
                         color: var(--main-text-color);
 
                         .dir-table-body-cell {
@@ -92,7 +110,7 @@
                     }
 
                     &:focus {
-                        background-color: rgb(from var(--accent-color) r g b / 0.7);
+                        background-color: rgb(from var(--accent-color) r g b / 0.5);
                         color: var(--main-text-color);
 
                         .dir-table-body-cell {
@@ -114,6 +132,7 @@
                         white-space: nowrap;
                         padding: 0.25rem;
                         cursor: default;
+                        font-size: 0.8125rem;
 
                         &.col-size {
                             text-align: right;
@@ -124,6 +143,14 @@
                         .dir-table-size,
                         .dir-table-type {
                             color: var(--secondary-text-color);
+                        }
+
+                        .dir-table-modestr {
+                            font-family: Hack;
+                        }
+
+                        .dir-table-name {
+                            font-weight: 500;
                         }
                     }
                 }

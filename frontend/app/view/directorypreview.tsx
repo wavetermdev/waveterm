@@ -188,7 +188,7 @@ function DirectoryTable({
             }),
             columnHelper.accessor("modestr", {
                 cell: (info) => <span className="dir-table-modestr">{info.getValue()}</span>,
-                header: () => <span>Perm</span>,
+                header: () => <span>Permissions</span>,
                 size: 91,
                 sortingFn: "alphanumeric",
             }),
@@ -200,7 +200,7 @@ function DirectoryTable({
             }),
             columnHelper.accessor("size", {
                 cell: (info) => <span className="dir-table-size">{getBestUnit(info.getValue())}</span>,
-                header: () => <span>Size</span>,
+                header: () => <span className="dir-table-head-size">Size</span>,
                 size: 55,
                 sortingFn: "auto",
             }),
@@ -270,21 +270,25 @@ function DirectoryTable({
                 {table.getHeaderGroups().map((headerGroup) => (
                     <div className="dir-table-head-row" key={headerGroup.id}>
                         {headerGroup.headers.map((header) => (
-                            <div
-                                className="dir-table-head-cell"
-                                key={header.id}
-                                style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
-                                onClick={() => header.column.toggleSorting()}
-                            >
-                                {header.isPlaceholder
-                                    ? null
-                                    : flexRender(header.column.columnDef.header, header.getContext())}
-                                {getSortIcon(header.column.getIsSorted())}
+                            <div className="dir-table-head-cell">
                                 <div
-                                    className="dir-table-head-resize"
-                                    onMouseDown={header.getResizeHandler()}
-                                    onTouchStart={header.getResizeHandler()}
-                                />
+                                    className="dir-table-head-cell-content"
+                                    key={header.id}
+                                    style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
+                                    onClick={() => header.column.toggleSorting()}
+                                >
+                                    {header.isPlaceholder
+                                        ? null
+                                        : flexRender(header.column.columnDef.header, header.getContext())}
+                                    {getSortIcon(header.column.getIsSorted())}
+                                </div>
+                                <div className="dir-table-head-resize-box">
+                                    <div
+                                        className="dir-table-head-resize"
+                                        onMouseDown={header.getResizeHandler()}
+                                        onTouchStart={header.getResizeHandler()}
+                                    />
+                                </div>
                             </div>
                         ))}
                     </div>
