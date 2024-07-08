@@ -127,23 +127,7 @@ const Tab = React.memo(
                     onContextMenu={handleContextMenu}
                     data-tab-id={id}
                 >
-                    {/* {isFirst && <div className="vertical-line first" />}
-                    <div
-                        ref={editableRef}
-                        className={clsx("name", { focused: isEditable })}
-                        contentEditable={isEditable}
-                        onDoubleClick={handleDoubleClick}
-                        onBlur={handleBlur}
-                        onKeyDown={handleKeyDown}
-                        suppressContentEditableWarning={true}
-                    >
-                        {tabData?.name}
-                    </div>
-                    {!isDragging && <div className="vertical-line" />}
-                    {active && <div className="mask" />}
-                    <Button className="secondary ghost close" onClick={onClose} onMouseDown={handleMouseDownOnClose}>
-                        <i className="fa fa-solid fa-xmark" />
-                    </Button> */}
+                    {active && <div className="base-bg" />}
                     <div className="tab-inner">
                         <div
                             ref={editableRef}
