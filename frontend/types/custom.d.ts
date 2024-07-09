@@ -116,20 +116,27 @@ declare global {
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
-    type IconButtonDecl = {
+    type HeaderElem = HeaderIconButton | HeaderText;
+
+    type HeaderIconButton = {
+        elemtype: "iconbutton";
         icon: string;
         title?: string;
-        click: () => void;
+        click?: (e: React.MouseEvent<any>) => void;
+        longClick?: (e: React.MouseEvent<any>) => void;
+    };
+
+    type HeaderText = {
+        elemtype: "text";
+        text: string;
     };
 
     interface ViewModel {
-        viewIcon: jotai.Atom<string>;
-        viewName: jotai.Atom<string>;
-        viewText: jotai.Atom<string>;
-        preIconButton: jotai.Atom<IconButtonDecl>;
-        endIconButtons: jotai.Atom<IconButtonDecl[]>;
-
-        hasSearch: jotai.Atom<boolean>;
+        viewIcon?: jotai.Atom<string | HeaderIconButton>;
+        viewName?: jotai.Atom<string>;
+        viewText?: jotai.Atom<string | HeaderElem[]>;
+        preIconButton?: jotai.Atom<HeaderIconButton>;
+        endIconButtons?: jotai.Atom<HeaderIconButton[]>;
 
         onBack?: () => void;
         onForward?: () => void;

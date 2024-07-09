@@ -476,9 +476,9 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
     const [focusIndex, setFocusIndex] = React.useState(0);
     const [content, setContent] = React.useState<FileInfo[]>([]);
     const [fileName, setFileName] = jotai.useAtom(fileNameAtom);
-    const [hideHiddenFiles, setHideHiddenFiles] = jotai.useAtom(model.showHiddenFiles);
+    const hideHiddenFiles = jotai.useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = React.useState("");
-    const [refreshVersion, setRefreshVersion] = React.useState(0);
+    const [refreshVersion, setRefreshVersion] = jotai.useAtom(model.refreshVersion);
 
     React.useEffect(() => {
         model.refreshCallback = () => {

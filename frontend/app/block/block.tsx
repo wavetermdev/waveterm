@@ -1,6 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useLongClick } from "@/app/hook/useLongClick";
+import { CodeEdit } from "@/app/view/codeedit/codeedit";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { ContextMenuModel } from "@/store/contextmenu";
@@ -8,7 +10,6 @@ import { atoms, globalStore, setBlockFocus, useBlockAtom } from "@/store/global"
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
-import { CodeEdit } from "@/view/codeedit";
 import { PlotView } from "@/view/plotview";
 import { PreviewView, makePreviewModel } from "@/view/preview";
 import { TerminalView } from "@/view/term/term";
@@ -210,6 +211,16 @@ function handleHeaderContextMenu(
     ContextMenuModel.showContextMenu(menu, e);
 }
 
+const IconButton = React.memo(({ decl, className }: { decl: HeaderIconButton; className?: string }) => {
+    const buttonRef = React.useRef<HTMLDivElement>(null);
+    useLongClick(buttonRef, decl.click, decl.longClick);
+    return (
+        <div ref={buttonRef} className={clsx(className)} title={decl.title}>
+            <i className={util.makeIconClass(decl.icon, true)} />
+        </div>
+    );
+});
+
 const BlockFrame_Default_Component = ({
     blockId,
     layoutModel,
@@ -228,10 +239,10 @@ const BlockFrame_Default_Component = ({
         });
     });
     let isFocused = jotai.useAtomValue(isFocusedAtom);
-    const viewIcon = jotai.useAtomValue(viewModel.viewIcon);
-    const viewText = jotai.useAtomValue(viewModel.viewText);
-    const preIconButton = jotai.useAtomValue(viewModel.preIconButton);
-    const endIconButtons = jotai.useAtomValue(viewModel.endIconButtons);
+    const viewIconUnion = util.useAtomValueSafe(viewModel.viewIcon) ?? "square";
+    const headerTextUnion = util.useAtomValueSafe(viewModel.viewText);
+    const preIconButton = util.useAtomValueSafe(viewModel.preIconButton);
+    const endIconButtons = util.useAtomValueSafe(viewModel.endIconButtons);
     if (preview) {
         isFocused = true;
     }
@@ -242,43 +253,65 @@ const BlockFrame_Default_Component = ({
     if (isFocused && blockData?.meta?.["frame:bordercolor:focused"]) {
         style.borderColor = blockData.meta["frame:bordercolor:focused"];
     }
+    let viewIconElem: JSX.Element = null;
+    if (viewIconUnion == null || typeof viewIconUnion === "string") {
+        const viewIcon = viewIconUnion as string;
+        viewIconElem = <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>;
+    } else {
+        viewIconElem = <IconButton decl={viewIconUnion} className="block-frame-view-icon" />;
+    }
     let preIconButtonElem: JSX.Element = null;
     if (preIconButton) {
-        preIconButtonElem = (
-            <div className="block-frame-preicon-button" title={preIconButton.title} onClick={preIconButton.click}>
-                <i className={util.makeIconClass(preIconButton.icon, true)} />
-            </div>
-        );
+        preIconButtonElem = <IconButton decl={preIconButton} className="block-frame-preicon-button" />;
     }
     let endIconsElem: JSX.Element[] = [];
     if (endIconButtons && endIconButtons.length > 0) {
         for (let idx = 0; idx < endIconButtons.length; idx++) {
             const button = endIconButtons[idx];
-            endIconsElem.push(
-                <div key={idx} className="block-frame-endicon-button" title={button.title} onClick={button.click}>
-                    <i className={util.makeIconClass(button.icon, true)} />
+            endIconsElem.push(<IconButton key={idx} decl={button} className="block-frame-endicon-button" />);
+        }
+    }
+    const settingsDecl: HeaderIconButton = {
+        elemtype: "iconbutton",
+        icon: "cog",
+        title: "Settings",
+        click: (e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose),
+    };
+    endIconsElem.push(
+        <IconButton key="settings" decl={settingsDecl} className="block-frame-endicon-button block-frame-settings" />
+    );
+    const closeDecl: HeaderIconButton = {
+        elemtype: "iconbutton",
+        icon: "xmark-large",
+        title: "Close",
+        click: layoutModel?.onClose,
+    };
+    endIconsElem.push(
+        <IconButton key="close" decl={closeDecl} className="block-frame-endicon-button block-frame-default-close" />
+    );
+    let headerTextElems: JSX.Element[] = [];
+    if (typeof headerTextUnion === "string") {
+        if (!util.isBlank(headerTextUnion)) {
+            headerTextElems.push(
+                <div key="text" className="block-frame-text">
+                    {headerTextUnion}
                 </div>
             );
         }
+    } else if (Array.isArray(headerTextUnion)) {
+        for (let idx = 0; idx < headerTextUnion.length; idx++) {
+            const elem = headerTextUnion[idx];
+            if (elem.elemtype == "iconbutton") {
+                headerTextElems.push(<IconButton key={idx} decl={elem} className="block-frame-header-iconbutton" />);
+            } else if (elem.elemtype == "text") {
+                headerTextElems.push(
+                    <div key={idx} className="block-frame-text">
+                        {elem.text}
+                    </div>
+                );
+            }
+        }
     }
-    endIconsElem.push(
-        <div
-            key="settings"
-            className="block-frame-endicon-button block-frame-settings"
-            onClick={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
-        >
-            <i className="fa fa-solid fa-cog fa-fw" />
-        </div>
-    );
-    endIconsElem.push(
-        <div
-            key="close"
-            className={clsx("block-frame-endicon-button block-frame-default-close")}
-            onClick={layoutModel?.onClose}
-        >
-            <i className="fa fa-solid fa-xmark-large fa-fw" />
-        </div>
-    );
     return (
         <div
             className={clsx(
@@ -300,15 +333,15 @@ const BlockFrame_Default_Component = ({
                     ref={layoutModel?.dragHandleRef}
                     onContextMenu={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
                 >
+                    {preIconButtonElem}
                     <div className="block-frame-default-header-iconview">
-                        {preIconButtonElem}
-                        <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>
+                        {viewIconElem}
                         <div className="block-frame-view-type">{blockViewToName(blockData?.view)}</div>
                         {settingsConfig?.blockheader?.showblockids && (
                             <div className="block-frame-blockid">[{blockId.substring(0, 8)}]</div>
                         )}
                     </div>
-                    {util.isBlank(viewText) ? null : <div className="block-frame-text">{viewText}</div>}
+                    {headerTextElems}
                     <div className="flex-spacer"></div>
                     <div className="block-frame-end-icons">{endIconsElem}</div>
                 </div>
@@ -322,7 +355,7 @@ const BlockFrame_Default = React.memo(BlockFrame_Default_Component) as typeof Bl
 
 const BlockFrame = React.memo((props: BlockFrameProps) => {
     const blockId = props.blockId;
-    const [blockData, blockDataLoading] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
+    const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const tabData = jotai.useAtomValue(atoms.tabAtom);
 
     if (!blockId || !blockData) {
@@ -439,7 +472,6 @@ function makeDefaultViewModel(blockId: string): ViewModel {
         }),
         preIconButton: jotai.atom(null),
         endIconButtons: jotai.atom(null),
-        hasSearch: jotai.atom(false),
     };
     return viewModel;
 }

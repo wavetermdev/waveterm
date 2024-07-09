@@ -1,7 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { atoms, getApi, globalStore, globalWS, initWS } from "@/store/global";
+import { atoms, getApi, globalStore, globalWS, initWS, setPlatform } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as keyutil from "@/util/keyutil";
@@ -17,7 +17,9 @@ let clientId = urlParams.get("clientid");
 console.log("Wave Starting");
 console.log("clientid", clientId, "windowid", windowId);
 
-keyutil.setKeyUtilPlatform(getApi().getPlatform());
+let platform = getApi().getPlatform();
+setPlatform(platform);
+keyutil.setKeyUtilPlatform(platform);
 
 loadFonts();
 (window as any).globalWS = globalWS;

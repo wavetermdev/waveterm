@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { ContextMenuModel } from "@/app/store/contextmenu";
 import { Markdown } from "@/element/markdown";
 import { getBackendHostPort, globalStore, useBlockAtom } from "@/store/global";
 import * as services from "@/store/services";
@@ -11,10 +12,9 @@ import * as jotai from "jotai";
 import { loadable } from "jotai/utils";
 import { useRef } from "react";
 import { CenteredDiv } from "../element/quickelems";
-import { CodeEdit } from "./codeedit";
+import { CodeEdit } from "./codeedit/codeedit";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
-
 import "./view.less";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
@@ -23,12 +23,11 @@ const MaxCSVSize = 1024 * 1024 * 1; // 1MB
 export class PreviewModel implements ViewModel {
     blockId: string;
     blockAtom: jotai.Atom<Block>;
-    viewIcon: jotai.Atom<string>;
+    viewIcon: jotai.Atom<string | HeaderIconButton>;
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<string>;
-    preIconButton: jotai.Atom<IconButtonDecl>;
-    endIconButtons: jotai.Atom<IconButtonDecl[]>;
-    hasSearch: jotai.Atom<boolean>;
+    preIconButton: jotai.Atom<HeaderIconButton>;
+    endIconButtons: jotai.Atom<HeaderIconButton[]>;
 
     fileName: jotai.WritableAtom<string, [string], void>;
     statFile: jotai.Atom<Promise<FileInfo>>;
@@ -38,6 +37,7 @@ export class PreviewModel implements ViewModel {
     fileContent: jotai.Atom<Promise<string>>;
 
     showHiddenFiles: jotai.PrimitiveAtom<boolean>;
+    refreshVersion: jotai.PrimitiveAtom<number>;
     refreshCallback: () => void;
 
     setPreviewFileName(fileName: string) {
@@ -47,6 +47,7 @@ export class PreviewModel implements ViewModel {
     constructor(blockId: string) {
         this.blockId = blockId;
         this.showHiddenFiles = jotai.atom(true);
+        this.refreshVersion = jotai.atom(0);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = jotai.atom((get) => {
             let blockData = get(this.blockAtom);
@@ -54,6 +55,30 @@ export class PreviewModel implements ViewModel {
                 return blockData.meta.icon;
             }
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
+            if (mimeType == "directory") {
+                return {
+                    elemtype: "iconbutton",
+                    icon: "folder-open",
+                    longClick: (e: React.MouseEvent<any>) => {
+                        let menuItems: ContextMenuItem[] = [];
+                        menuItems.push({ label: "Go to Home", click: () => globalStore.set(this.fileName, "~") });
+                        menuItems.push({
+                            label: "Go to Desktop",
+                            click: () => globalStore.set(this.fileName, "~/Desktop"),
+                        });
+                        menuItems.push({
+                            label: "Go to Downloads",
+                            click: () => globalStore.set(this.fileName, "~/Downloads"),
+                        });
+                        menuItems.push({
+                            label: "Go to Documents",
+                            click: () => globalStore.set(this.fileName, "~/Documents"),
+                        });
+                        menuItems.push({ label: "Go to Root", click: () => globalStore.set(this.fileName, "/") });
+                        ContextMenuModel.showContextMenu(menuItems, e);
+                    },
+                };
+            }
             const fileName = get(this.fileName);
             return iconForFile(mimeType, fileName);
         });
@@ -67,6 +92,7 @@ export class PreviewModel implements ViewModel {
                 return null;
             }
             return {
+                elemtype: "iconbutton",
                 icon: "chevron-left",
                 click: this.onBack.bind(this),
             };
@@ -77,12 +103,14 @@ export class PreviewModel implements ViewModel {
                 let showHiddenFiles = get(this.showHiddenFiles);
                 return [
                     {
+                        elemtype: "iconbutton",
                         icon: showHiddenFiles ? "eye" : "eye-slash",
                         click: () => {
                             globalStore.set(this.showHiddenFiles, (prev) => !prev);
                         },
                     },
                     {
+                        elemtype: "iconbutton",
                         icon: "arrows-rotate",
                         click: () => this.refreshCallback?.(),
                     },
@@ -90,7 +118,6 @@ export class PreviewModel implements ViewModel {
             }
             return null;
         });
-        this.hasSearch = jotai.atom(false);
 
         this.fileName = jotai.atom<string, [string], void>(
             (get) => {

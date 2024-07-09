@@ -1,14 +1,14 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { fetchWaveFile, getFileSubject, sendWSCommand } from "@/store/global";
+import { PLATFORM, fetchWaveFile, getFileSubject, sendWSCommand } from "@/store/global";
 import * as services from "@/store/services";
 import { base64ToArray } from "@/util/util";
-import { FitAddon } from "@xterm/addon-fit";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import * as TermTypes from "@xterm/xterm";
 import { Terminal } from "@xterm/xterm";
 import { debounce } from "throttle-debounce";
+import { FitAddon } from "./fitaddon";
 
 export class TermWrap {
     blockId: string;
@@ -18,7 +18,7 @@ export class TermWrap {
     connectElem: HTMLDivElement;
     fitAddon: FitAddon;
     serializeAddon: SerializeAddon;
-    mainFileSubject: SubjectWithRef<Uint8Array>;
+    mainFileSubject: SubjectWithRef<WSFileEventData>;
     loaded: boolean;
     heldData: Uint8Array[];
     handleResize_debounced: () => void;
@@ -36,6 +36,7 @@ export class TermWrap {
         this.dataBytesProcessed = 0;
         this.terminal = new Terminal(options);
         this.fitAddon = new FitAddon();
+        this.fitAddon.noScrollbar = PLATFORM == "darwin";
         this.serializeAddon = new SerializeAddon();
         this.terminal.loadAddon(this.fitAddon);
         this.terminal.loadAddon(this.serializeAddon);

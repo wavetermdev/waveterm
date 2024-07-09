@@ -13,6 +13,12 @@ import * as services from "./services";
 import * as WOS from "./wos";
 import { WSControl } from "./ws";
 
+let PLATFORM: NodeJS.Platform = "darwin";
+
+function setPlatform(platform: NodeJS.Platform) {
+    PLATFORM = platform;
+}
+
 // TODO remove the window dependency completely
 //   we should have the initialization be more orderly -- proceed directly from wave.ts instead of on its own.
 const globalStore = jotai.createStore();
@@ -363,6 +369,7 @@ function getObjectId(obj: any): number {
 }
 
 export {
+    PLATFORM,
     WOS,
     atoms,
     createBlock,
@@ -378,6 +385,7 @@ export {
     initWS,
     sendWSCommand,
     setBlockFocus,
+    setPlatform,
     useBlockAtom,
     useBlockCache,
     useSettingsAtom,
