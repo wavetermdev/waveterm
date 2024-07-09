@@ -3,6 +3,7 @@
 
 import base64 from "base64-js";
 import clsx from "clsx";
+import * as jotai from "jotai";
 
 function isBlank(str: string): boolean {
     return str == null || str == "";
@@ -152,6 +153,15 @@ function jotaiLoadableValue<T>(value: Loadable<T>, def: T): T {
     return def;
 }
 
+const NullAtom = jotai.atom(null);
+
+function useAtomValueSafe<T>(atom: jotai.Atom<T>): T {
+    if (atom == null) {
+        return jotai.useAtomValue(NullAtom) as T;
+    }
+    return jotai.useAtomValue(atom);
+}
+
 export {
     base64ToArray,
     base64ToString,
@@ -163,4 +173,5 @@ export {
     jsonDeepEqual,
     makeIconClass,
     stringToBase64,
+    useAtomValueSafe,
 };
