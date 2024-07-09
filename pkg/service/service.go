@@ -205,7 +205,7 @@ func convertSpecialForReturn(argType reflect.Type, nativeArg any) (any, error) {
 
 func convertArgument(argType reflect.Type, jsonArg any) (any, error) {
 	if jsonArg == nil {
-		return nil, nil
+		return reflect.Zero(argType).Interface(), nil
 	}
 	if isSpecialWaveArgType(argType) {
 		return convertSpecial(argType, jsonArg)

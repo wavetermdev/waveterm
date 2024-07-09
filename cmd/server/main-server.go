@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"strconv"
@@ -123,6 +124,16 @@ func main() {
 	webListener, err := web.MakeTCPListener()
 	if err != nil {
 		log.Printf("error creating web listener: %v\n", err)
+		return
+	}
+	var unixListener net.Listener
+	if runtime.GOOS != "windows" {
+		var err error
+		unixListener, err = web.MakeUnixListener()
+		if err != nil {
+			log.Printf("error creating unix listener: %v\n", err)
+			return
+		}
 	}
 	go func() {
 		pidStr := os.Getenv(ReadySignalPidVarName)
@@ -134,6 +145,7 @@ func main() {
 			}
 		}
 	}()
+	go web.RunWebServer(unixListener)
 	web.RunWebServer(webListener) // blocking
 	runtime.KeepAlive(waveLock)
 }

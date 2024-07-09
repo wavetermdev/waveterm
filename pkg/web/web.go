@@ -12,6 +12,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"strconv"
 	"time"
@@ -221,6 +222,18 @@ func MakeTCPListener() (net.Listener, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating listener at %v: %v", serverAddr, err)
 	}
+	log.Printf("Server listening on %s\n", serverAddr)
+	return rtn, nil
+}
+
+func MakeUnixListener() (net.Listener, error) {
+	serverAddr := wavebase.GetWaveHomeDir() + "/wave.sock"
+	os.Remove(serverAddr) // ignore error
+	rtn, err := net.Listen("unix", serverAddr)
+	if err != nil {
+		return nil, fmt.Errorf("error creating listener at %v: %v", serverAddr, err)
+	}
+	os.Chmod(serverAddr, 0700)
 	log.Printf("Server listening on %s\n", serverAddr)
 	return rtn, nil
 }

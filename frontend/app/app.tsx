@@ -90,8 +90,9 @@ function switchTab(offset: number) {
     if (tabIdx == -1) {
         return;
     }
-    tabIdx = (tabIdx + offset) % ws.tabids.length;
-    const newActiveTabId = ws.tabids[tabIdx];
+    const newTabIdx = (tabIdx + offset + ws.tabids.length) % ws.tabids.length;
+    const newActiveTabId = ws.tabids[newTabIdx];
+    console.log("switching tabs", tabIdx, newTabIdx, activeTabId, newActiveTabId, ws.tabids);
     services.ObjectService.SetActiveTab(newActiveTabId);
 }
 
