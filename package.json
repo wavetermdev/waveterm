@@ -31,7 +31,7 @@
         "dayjs": "^1.11.3",
         "dompurify": "^3.0.2",
         "electron-squirrel-startup": "^1.0.0",
-        "electron-updater": "^6.1.8",
+        "electron-updater": "^6.2.1",
         "framer-motion": "^10.16.16",
         "lexical": "0.14.5",
         "mobx": "6.12",
