@@ -399,7 +399,7 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     }, 10);
 
     return (
-        <div ref={ref} className="full-preview">
+        <div ref={ref} className="full-preview scrollbar-hide-until-hover">
             <DirNav cwdAtom={fileNameAtom} />
             {specializedView}
         </div>

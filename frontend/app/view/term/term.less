@@ -107,4 +107,28 @@
             }
         }
     }
+
+    .terminal {
+        *::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+
+        *::-webkit-scrollbar-track {
+            background-color: var(--scrollbar-background-color);
+        }
+
+        *::-webkit-scrollbar-thumb {
+            display: none;
+            background-color: var(--scrollbar-thumb-color);
+            border-radius: 4px;
+            margin: 0 1px 0 1px;
+        }
+
+        &:hover {
+            *::-webkit-scrollbar-thumb {
+                display: block;
+            }
+        }
+    }
 }

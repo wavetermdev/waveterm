@@ -293,24 +293,27 @@ const BlockFrame_Default_Component = ({
             ref={blockModel?.blockRef}
             style={style}
         >
-            <div
-                className="block-frame-default-header"
-                ref={layoutModel?.dragHandleRef}
-                onContextMenu={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
-            >
-                <div className="block-frame-default-header-iconview">
-                    {preIconButtonElem}
-                    <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>
-                    <div className="block-frame-view-type">{blockViewToName(blockData?.view)}</div>
-                    {settingsConfig?.blockheader?.showblockids && (
-                        <div className="block-frame-blockid">[{blockId.substring(0, 8)}]</div>
-                    )}
+            <div className="block-mask"></div>
+            <div className="block-frame-default-inner">
+                <div
+                    className="block-frame-default-header"
+                    ref={layoutModel?.dragHandleRef}
+                    onContextMenu={(e) => handleHeaderContextMenu(e, blockData, viewModel, layoutModel?.onClose)}
+                >
+                    <div className="block-frame-default-header-iconview">
+                        {preIconButtonElem}
+                        <div className="block-frame-view-icon">{getBlockHeaderIcon(viewIcon, blockData)}</div>
+                        <div className="block-frame-view-type">{blockViewToName(blockData?.view)}</div>
+                        {settingsConfig?.blockheader?.showblockids && (
+                            <div className="block-frame-blockid">[{blockId.substring(0, 8)}]</div>
+                        )}
+                    </div>
+                    {util.isBlank(viewText) ? null : <div className="block-frame-text">{viewText}</div>}
+                    <div className="flex-spacer"></div>
+                    <div className="block-frame-end-icons">{endIconsElem}</div>
                 </div>
-                {util.isBlank(viewText) ? null : <div className="block-frame-text">{viewText}</div>}
-                <div className="flex-spacer"></div>
-                <div className="block-frame-end-icons">{endIconsElem}</div>
+                {preview ? <div className="block-frame-preview" /> : children}
             </div>
-            {preview ? <div className="block-frame-preview" /> : children}
         </div>
     );
 };
