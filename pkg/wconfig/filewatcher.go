@@ -142,8 +142,6 @@ func (w *Watcher) sendInitialValues() error {
 	}
 
 	w.settingsData = message.Update
-
-	log.Printf("watcher: initial values: %s -> %v", filename, content)
 	return nil
 }
 

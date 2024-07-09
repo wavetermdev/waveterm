@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"strconv"
@@ -211,29 +212,36 @@ func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 	}
 }
 
+func MakeTCPListener() (net.Listener, error) {
+	serverAddr := MainServerAddr
+	if wavebase.IsDevMode() {
+		serverAddr = MainServerDevAddr
+	}
+	rtn, err := net.Listen("tcp", serverAddr)
+	if err != nil {
+		return nil, fmt.Errorf("error creating listener at %v: %v", serverAddr, err)
+	}
+	log.Printf("Server listening on %s\n", serverAddr)
+	return rtn, nil
+}
+
 // blocking
-// TODO: create listener separately and use http.Serve, so we can signal SIGUSR1 in a better way
-func RunWebServer() {
+func RunWebServer(listener net.Listener) {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
-	serverAddr := MainServerAddr
 	var allowedOrigins handlers.CORSOption
 	if wavebase.IsDevMode() {
-		log.Println("isDevMode")
-		serverAddr = MainServerDevAddr
 		allowedOrigins = handlers.AllowedOrigins([]string{"*"})
 	}
 	server := &http.Server{
-		Addr:           serverAddr,
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
 		Handler:        handlers.CORS(allowedOrigins)(http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")),
 	}
-	log.Printf("Running main server on %s\n", serverAddr)
-	err := server.ListenAndServe()
+	err := server.Serve(listener)
 	if err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}

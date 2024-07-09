@@ -9,9 +9,9 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strconv"
 
 	"runtime"
-	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -119,10 +119,12 @@ func main() {
 	installShutdownSignalHandlers()
 	go stdinReadWatch()
 	configWatcher()
-
 	go web.RunWebSocketServer()
+	webListener, err := web.MakeTCPListener()
+	if err != nil {
+		log.Printf("error creating web listener: %v\n", err)
+	}
 	go func() {
-		time.Sleep(30 * time.Millisecond)
 		pidStr := os.Getenv(ReadySignalPidVarName)
 		if pidStr != "" {
 			_, err := strconv.Atoi(pidStr)
@@ -132,6 +134,6 @@ func main() {
 			}
 		}
 	}()
-	web.RunWebServer() // blocking
+	web.RunWebServer(webListener) // blocking
 	runtime.KeepAlive(waveLock)
 }
