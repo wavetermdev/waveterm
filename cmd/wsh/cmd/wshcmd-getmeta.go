@@ -16,7 +16,7 @@ import (
 var getMetaCmd = &cobra.Command{
 	Use:   "getmeta",
 	Short: "get metadata for an entity",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.RangeArgs(1, 2),
 	Run:   getMetaRun,
 }
 
@@ -51,13 +51,31 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 		log.Printf("error getting metadata: %v\r\n", err)
 		return
 	}
-	outArr, err := json.MarshalIndent(resp, "", "  ")
-	if err != nil {
-		log.Printf("error formatting metadata: %v\r\n", err)
-		return
+	if resp == nil {
+		resp = make(map[string]any)
 	}
-	outStr := string(outArr)
-	outStr = strings.ReplaceAll(outStr, "\n", "\r\n")
-	fmt.Print(outStr)
-	fmt.Print("\r\n")
+	if len(args) > 1 {
+		val, ok := resp[args[1]]
+		if !ok {
+			return
+		}
+		outBArr, err := json.MarshalIndent(val, "", "  ")
+		if err != nil {
+			log.Printf("error formatting metadata: %v\r\n", err)
+		}
+		outStr := string(outBArr)
+		outStr = strings.ReplaceAll(outStr, "\n", "\r\n")
+		fmt.Print(outStr)
+		fmt.Print("\r\n")
+	} else {
+		outBArr, err := json.MarshalIndent(resp, "", "  ")
+		if err != nil {
+			log.Printf("error formatting metadata: %v\r\n", err)
+			return
+		}
+		outStr := string(outBArr)
+		outStr = strings.ReplaceAll(outStr, "\n", "\r\n")
+		fmt.Print(outStr)
+		fmt.Print("\r\n")
+	}
 }
