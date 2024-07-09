@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Button } from "@/app/element/button";
-import { useParentHeight } from "@/app/hook/useParentHeight";
 import { getApi } from "@/app/store/global";
-import { WOS } from "@/store/global";
+import { WOS, useBlockAtom } from "@/store/global";
+import * as services from "@/store/services";
 import { WebviewTag } from "electron";
+import * as jotai from "jotai";
 import React, { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import "./webview.less";
@@ -15,11 +16,23 @@ interface WebViewProps {
     parentRef: React.MutableRefObject<HTMLDivElement>;
 }
 
+function setBlockUrl(blockId: string, url: string) {
+    services.ObjectService.UpdateObjectMeta(WOS.makeORef("block", blockId), { url: url });
+}
+
 const WebView = memo(({ blockId, parentRef }: WebViewProps) => {
+    const blockAtom = WOS.getWaveObjectAtom<Block>(WOS.makeORef("block", blockId));
     const blockData = WOS.useWaveObjectValueWithSuspense<Block>(WOS.makeORef("block", blockId));
+    const urlAtom = useBlockAtom<string>(blockId, "webview:url", () => {
+        return jotai.atom((get) => {
+            const blockData = get(blockAtom);
+            return blockData?.meta?.url;
+        });
+    });
+    const realUrl = jotai.useAtomValue(urlAtom);
+    const [lastRealUrl, setLastRealUrl] = useState(realUrl);
     const initialUrl = useMemo(() => blockData?.meta?.url, []);
-    const [url, setUrl] = useState(initialUrl);
-    const [inputUrl, setInputUrl] = useState(initialUrl); // Separate state for the input field
+    const [inputUrl, setInputUrl] = useState(realUrl); // Separate state for the input field
     const [isLoading, setIsLoading] = useState(false);
 
     const webviewRef = useRef<WebviewTag>(null);
@@ -28,9 +41,12 @@ const WebView = memo(({ blockId, parentRef }: WebViewProps) => {
     const historyIndex = useRef<number>(-1);
     const recentUrls = useRef<{ [key: string]: number }>({});
 
-    const parentHeight = useParentHeight(parentRef);
-    const inputHeight = inputRef.current?.getBoundingClientRect().height || 0;
-    const webViewHeight = parentHeight - (inputHeight + 35);
+    useEffect(() => {
+        if (realUrl !== lastRealUrl) {
+            setLastRealUrl(realUrl);
+            setInputUrl(realUrl);
+        }
+    }, [realUrl, lastRealUrl]);
 
     useEffect(() => {
         historyStack.current.push(initialUrl);
@@ -43,7 +59,7 @@ const WebView = memo(({ blockId, parentRef }: WebViewProps) => {
             const normalizedLastUrl = normalizeUrl(historyStack.current[historyIndex.current]);
 
             if (normalizedLastUrl !== normalizedNewUrl) {
-                setUrl(normalizedNewUrl);
+                setBlockUrl(blockId, normalizedNewUrl);
                 setInputUrl(normalizedNewUrl); // Update input field as well
                 historyIndex.current += 1;
                 historyStack.current = historyStack.current.slice(0, historyIndex.current);
@@ -95,10 +111,6 @@ const WebView = memo(({ blockId, parentRef }: WebViewProps) => {
             };
         }
     }, [initialUrl]);
-
-    // useEffect(() => {
-    //     setWebViewHeight(getWebViewHeight());
-    // }, [parentHeight, getWebViewHeight]);
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -173,7 +185,7 @@ const WebView = memo(({ blockId, parentRef }: WebViewProps) => {
         const normalizedLastUrl = normalizeUrl(historyStack.current[historyIndex.current]);
 
         if (normalizedLastUrl !== normalizedFinalUrl) {
-            setUrl(normalizedFinalUrl);
+            setBlockUrl(blockId, normalizedFinalUrl);
             setInputUrl(normalizedFinalUrl);
             historyIndex.current += 1;
             historyStack.current = historyStack.current.slice(0, historyIndex.current);
@@ -192,7 +204,7 @@ const WebView = memo(({ blockId, parentRef }: WebViewProps) => {
             } while (historyIndex.current > 0 && isRecentUrl(historyStack.current[historyIndex.current]));
 
             const prevUrl = historyStack.current[historyIndex.current];
-            setUrl(prevUrl);
+            setBlockUrl(blockId, prevUrl);
             setInputUrl(prevUrl);
             if (webviewRef.current) {
                 webviewRef.current.src = prevUrl;
@@ -210,7 +222,7 @@ const WebView = memo(({ blockId, parentRef }: WebViewProps) => {
             );
 
             const nextUrl = historyStack.current[historyIndex.current];
-            setUrl(nextUrl);
+            setBlockUrl(blockId, nextUrl);
             setInputUrl(nextUrl);
             if (webviewRef.current) {
                 webviewRef.current.src = nextUrl;
@@ -288,13 +300,7 @@ const WebView = memo(({ blockId, parentRef }: WebViewProps) => {
                     />
                 </div>
             </div>
-            <webview
-                id="webview"
-                className="webview"
-                ref={webviewRef}
-                src={url}
-                style={{ height: webViewHeight }}
-            ></webview>
+            <webview id="webview" className="webview" ref={webviewRef} src={realUrl}></webview>
         </div>
     );
 });
