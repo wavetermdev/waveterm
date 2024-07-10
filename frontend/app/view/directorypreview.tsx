@@ -183,7 +183,7 @@ function DirectoryTable({
             }),
             columnHelper.accessor("name", {
                 cell: (info) => <span className="dir-table-name">{info.getValue()}</span>,
-                header: () => <span>Name</span>,
+                header: () => <span className="dir-table-head-name">Name</span>,
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("modestr", {
@@ -206,7 +206,7 @@ function DirectoryTable({
             }),
             columnHelper.accessor("mimetype", {
                 cell: (info) => <span className="dir-table-type">{cleanMimetype(info.getValue() ?? "")}</span>,
-                header: () => <span>Type</span>,
+                header: () => <span className="dir-table-head-type">Type</span>,
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("path", {}),
@@ -270,11 +270,13 @@ function DirectoryTable({
                 {table.getHeaderGroups().map((headerGroup) => (
                     <div className="dir-table-head-row" key={headerGroup.id}>
                         {headerGroup.headers.map((header) => (
-                            <div className="dir-table-head-cell">
+                            <div
+                                className="dir-table-head-cell"
+                                key={header.id}
+                                style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
+                            >
                                 <div
                                     className="dir-table-head-cell-content"
-                                    key={header.id}
-                                    style={{ width: `calc(var(--header-${header.id}-size) * 1px)` }}
                                     onClick={() => header.column.toggleSorting()}
                                 >
                                     {header.isPlaceholder
@@ -474,7 +476,8 @@ interface DirectoryPreviewProps {
 function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
     const [searchText, setSearchText] = React.useState("");
     const [focusIndex, setFocusIndex] = React.useState(0);
-    const [content, setContent] = React.useState<FileInfo[]>([]);
+    const [unfilteredData, setUnfilteredData] = React.useState<FileInfo[]>([]);
+    const [filteredData, setFilteredData] = React.useState<FileInfo[]>([]);
     const [fileName, setFileName] = jotai.useAtom(fileNameAtom);
     const hideHiddenFiles = jotai.useAtomValue(model.showHiddenFiles);
     const [selectedPath, setSelectedPath] = React.useState("");
@@ -494,16 +497,20 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
             const file = await services.FileService.ReadFile(fileName);
             const serializedContent = util.base64ToString(file?.data64);
             let content: FileInfo[] = JSON.parse(serializedContent);
-            let filtered = content.filter((fileInfo) => {
-                if (hideHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
-                    return false;
-                }
-                return fileInfo.name.toLowerCase().includes(searchText);
-            });
-            setContent(filtered);
+            setUnfilteredData(content);
         };
         getContent();
-    }, [fileName, searchText, hideHiddenFiles, refreshVersion]);
+    }, [fileName, refreshVersion]);
+
+    React.useEffect(() => {
+        let filtered = unfilteredData.filter((fileInfo) => {
+            if (hideHiddenFiles && fileInfo.name.startsWith(".") && fileInfo.name != "..") {
+                return false;
+            }
+            return fileInfo.name.toLowerCase().includes(searchText);
+        });
+        setFilteredData(filtered);
+    }, [unfilteredData, hideHiddenFiles, searchText]);
 
     const handleKeyDown = React.useCallback(
         (waveEvent: WaveKeyboardEvent): boolean => {
@@ -516,17 +523,26 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 return true;
             }
             if (keyutil.checkKeyPressed(waveEvent, "ArrowDown")) {
-                setFocusIndex((idx) => Math.min(idx + 1, content.length - 1));
+                setFocusIndex((idx) => Math.min(idx + 1, filteredData.length - 1));
                 return true;
             }
             if (keyutil.checkKeyPressed(waveEvent, "Enter")) {
+                if (filteredData.length == 0) {
+                    return;
+                }
                 setFileName(selectedPath);
                 setSearchText("");
                 return true;
             }
         },
-        [content, focusIndex, selectedPath]
+        [filteredData, setFocusIndex, selectedPath]
     );
+
+    React.useEffect(() => {
+        if (filteredData.length != 0 && focusIndex > filteredData.length - 1) {
+            setFocusIndex(filteredData.length - 1);
+        }
+    }, [filteredData]);
 
     return (
         <div
@@ -549,7 +565,7 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 />
             </div>
             <DirectoryTable
-                data={content}
+                data={filteredData}
                 search={searchText}
                 focusIndex={focusIndex}
                 setFileName={setFileName}

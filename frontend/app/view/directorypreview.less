@@ -4,7 +4,9 @@
     height: 100%;
     overflow-x: hidden;
     .dir-table {
+        overflow-x: hidden;
         height: 100%;
+        min-width: 600px;
         --col-size-size: 0.2rem;
         border-radius: 3px;
         display: flex;
@@ -16,9 +18,11 @@
                 border-bottom: 1px solid var(--border-color);
                 padding: 4px 6px;
                 background-color: var(--panel-bg-color);
-                align-items: center;
                 font-size: 0.75rem;
 
+                .dir-table-head-cell {
+                    flex: 0 0 auto;
+                }
                 .dir-table-head-cell:not(:first-child) {
                     position: relative;
                     display: flex;
@@ -31,13 +35,15 @@
                         gap: 0.3rem;
                         flex: 1 1 auto;
                         overflow-x: hidden;
+                        letter-spacing: -0.12px;
 
                         .dir-table-head-direction {
                             margin-right: 0.2rem;
                             margin-top: 0.2rem;
                         }
 
-                        .dir-table-head-size {
+                        .dir-table-head-size,
+                        .dir-table-head-type {
                             width: 100%;
                             text-align: right;
                         }
@@ -59,9 +65,11 @@
 
                     &:last-child {
                         .dir-table-head-resize-box {
-                            width: 0;
                         }
                     }
+                }
+
+                .dir-table-head-cell:has(.dir-table-head-cell-content .dir-table-head-name) {
                 }
             }
         }
@@ -91,9 +99,8 @@
                 .dir-table-body-row {
                     display: flex;
                     align-items: center;
-                    align-self: stretch;
                     border-radius: 6px;
-                    gap: 12px;
+                    padding: 0 6px;
 
                     &.focused {
                         background-color: rgb(from var(--accent-color) r g b / 0.5);
@@ -133,6 +140,10 @@
                         padding: 0.25rem;
                         cursor: default;
                         font-size: 0.8125rem;
+                        flex: 0 0 auto;
+
+                        &:has(.dir-table-name) {
+                        }
 
                         &.col-size {
                             text-align: right;
@@ -143,12 +154,20 @@
                         .dir-table-size,
                         .dir-table-type {
                             color: var(--secondary-text-color);
+                            margin-right: 12px;
+                        }
+
+                        .dir-table-type {
+                            float: right;
                         }
 
                         .dir-table-modestr {
                             font-family: Hack;
                         }
 
+                        &:has(.dir-table-name) {
+                            text-overflow: ellipsis;
+                        }
                         .dir-table-name {
                             font-weight: 500;
                         }
