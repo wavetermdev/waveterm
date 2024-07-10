@@ -447,7 +447,7 @@ function getViewElemAndModel(
     } else if (blockView === "web") {
         viewElem = <WebView key={blockId} blockId={blockId} parentRef={blockRef} />;
     } else if (blockView === "waveai") {
-        viewElem = <WaveAi key={blockId} parentRef={blockRef} />;
+        viewElem = <WaveAi key={blockId} />;
     }
     if (viewModel == null) {
         viewModel = makeDefaultViewModel(blockId);

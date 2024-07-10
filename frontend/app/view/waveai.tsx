@@ -3,7 +3,6 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
-import { useParentHeight } from "@/app/hook/useParentHeight";
 import { getApi } from "@/app/store/global";
 import { ChatMessageType, useWaveAi } from "@/app/store/waveai";
 import type { OverlayScrollbars } from "overlayscrollbars";
@@ -210,11 +209,7 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
     }
 );
 
-interface WaveAiProps {
-    parentRef: React.MutableRefObject<HTMLDivElement>;
-}
-
-const WaveAi = React.memo(({ parentRef }: WaveAiProps) => {
+const WaveAi = () => {
     const { messages, sendMessage } = useWaveAi();
     const waveaiRef = useRef<HTMLDivElement>(null);
     const chatWindowRef = useRef<HTMLDivElement>(null);
@@ -227,8 +222,6 @@ const WaveAi = React.memo(({ parentRef }: WaveAiProps) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const termFontSize: number = 14;
-    const parentHeight = useParentHeight(parentRef);
-    const waveAiHeight = parentHeight - 27;
 
     useEffect(() => {
         return () => {
@@ -399,7 +392,7 @@ const WaveAi = React.memo(({ parentRef }: WaveAiProps) => {
     };
 
     return (
-        <div ref={waveaiRef} className="waveai" onClick={handleContainerClick} style={{ height: waveAiHeight }}>
+        <div ref={waveaiRef} className="waveai" onClick={handleContainerClick}>
             <ChatWindow ref={osRef} chatWindowRef={chatWindowRef} messages={messages} />
             <div className="waveai-input-wrapper">
                 <ChatInput
@@ -413,6 +406,6 @@ const WaveAi = React.memo(({ parentRef }: WaveAiProps) => {
             </div>
         </div>
     );
-});
+};
 
 export { WaveAi };
