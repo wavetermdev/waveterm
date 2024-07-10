@@ -65,6 +65,7 @@
 
 .view-nav {
     display: flex;
+    flex-shrink: 0;
     padding: 0.2rem 0 0.2rem 0;
 
     .view-nav-item {
@@ -85,4 +86,9 @@
             font-weight: bold;
         }
     }
+}
+
+.full-preview-content {
+    flex-grow: 1;
+    overflow-y: hidden;
 }

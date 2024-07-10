@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { useHeight } from "@/app/hook/useHeight";
 import { useTableNav } from "@table-nav/react";
 import {
     createColumnHelper,
@@ -42,14 +43,17 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
     const headerRef = useRef<HTMLTableRowElement | null>(null);
     const probeRef = useRef<HTMLTableRowElement | null>(null);
     const tbodyRef = useRef<HTMLTableSectionElement | null>(null);
+
     const [state, setState] = useState<State>({
         content,
         showReadonly: true,
         tbodyHeight: 0,
     });
+
     const [tableLoaded, setTableLoaded] = useState(false);
-    const [maxHeight, setMaxHeight] = useState(0);
+
     const { listeners } = useTableNav();
+    const parentHeight = useHeight(parentRef);
 
     const cacheKey = `${filename}`;
     csvCacheRef.current.set(cacheKey, content);
@@ -114,13 +118,12 @@ const CSVView = ({ parentRef, filename, content }: CSVViewProps) => {
             const rowHeight = probeRef.current.offsetHeight;
             const fullTBodyHeight = rowHeight * parsedData.length;
             const headerHeight = headerRef.current.offsetHeight;
-            const maxHeight = parentRef.current.getBoundingClientRect().height - 32; // 32 is the border plus the breadcrumb height
-            const maxHeightLessHeader = maxHeight - headerHeight;
-            const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight);
+            const maxHeightLessHeader = parentHeight - headerHeight;
+            const tbodyHeight = Math.min(maxHeightLessHeader, fullTBodyHeight) - 3; // 3 for the borders
 
             setState((prevState) => ({ ...prevState, tbodyHeight }));
         }
-    }, [maxHeight, parsedData]);
+    }, [parentHeight, parsedData]);
 
     // Makes sure rows are rendered before setting the renderer as loaded
     useEffect(() => {

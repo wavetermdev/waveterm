@@ -1,15 +1,18 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
 import debounce from "lodash.debounce";
 import { useCallback, useEffect, useState } from "react";
 
-const useParentHeight = (ref: React.RefObject<HTMLElement>, delay = 0) => {
+const useHeight = (ref: React.RefObject<HTMLElement>, delay = 0) => {
     const [height, setHeight] = useState<number | null>(null);
 
     const updateHeight = useCallback(() => {
         if (ref.current) {
-            const parentHeight = ref.current.getBoundingClientRect().height || 0;
+            const element = ref.current;
+            const style = window.getComputedStyle(element);
+            const paddingTop = parseFloat(style.paddingTop);
+            const paddingBottom = parseFloat(style.paddingBottom);
+            const marginTop = parseFloat(style.marginTop);
+            const marginBottom = parseFloat(style.marginBottom);
+            const parentHeight = element.clientHeight - paddingTop - paddingBottom - marginTop - marginBottom;
             setHeight(parentHeight);
         }
     }, []);
@@ -39,4 +42,4 @@ const useParentHeight = (ref: React.RefObject<HTMLElement>, delay = 0) => {
     return height;
 };
 
-export { useParentHeight };
+export { useHeight };

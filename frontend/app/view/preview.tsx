@@ -362,7 +362,7 @@ function iconForFile(mimeType: string, fileName: string): string {
 }
 
 function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel }) {
-    const ref = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
     const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
     const fileNameAtom = model.fileName;
     const statFileAtom = model.statFile;
@@ -399,7 +399,12 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
             specializedView = <CenteredDiv>CSV File Too Large to Preview (1MB Max)</CenteredDiv>;
         } else {
             specializedView = (
-                <CSVViewPreview parentRef={ref} contentAtom={fileContentAtom} filename={fileName} readonly={true} />
+                <CSVViewPreview
+                    parentRef={contentRef}
+                    contentAtom={fileContentAtom}
+                    filename={fileName}
+                    readonly={true}
+                />
             );
         }
     } else if (
@@ -426,9 +431,11 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     }, 10);
 
     return (
-        <div ref={ref} className="full-preview scrollbar-hide-until-hover">
+        <div className="full-preview scrollbar-hide-until-hover">
             <DirNav cwdAtom={fileNameAtom} />
-            {specializedView}
+            <div ref={contentRef} className="full-preview-content">
+                {specializedView}
+            </div>
         </div>
     );
 }
