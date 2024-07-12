@@ -127,7 +127,6 @@ const Tab = React.memo(
                     onContextMenu={handleContextMenu}
                     data-tab-id={id}
                 >
-                    {active && <div className="base-bg" />}
                     <div className="tab-inner">
                         <div
                             ref={editableRef}
@@ -140,7 +139,6 @@ const Tab = React.memo(
                         >
                             {tabData?.name}
                         </div>
-                        {active && <div className="mask" />}
                         <Button
                             className="secondary ghost close"
                             onClick={onClose}

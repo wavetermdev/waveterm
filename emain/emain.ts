@@ -23,6 +23,7 @@ const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
 const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8190";
 const ProdServerEndpoint = "http://127.0.0.1:1719";
+electron.nativeTheme.themeSource = "dark";
 
 type WaveBrowserWindow = Electron.BrowserWindow & { waveWindowId: string; readyPromise: Promise<void> };
 
@@ -257,7 +258,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow): WaveBrow
         },
         show: false,
         autoHideMenuBar: true,
-        backgroundColor: "#000000",
+        vibrancy: "sidebar",
     });
     (bwin as any).waveWindowId = waveWindow.oid;
     let readyResolve: (value: void) => void;
