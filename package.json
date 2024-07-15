@@ -58,6 +58,7 @@
         "@table-nav/core": "^0.0.7",
         "@table-nav/react": "^0.0.7",
         "@tanstack/react-table": "^8.17.3",
+        "@types/electron": "^1.6.10",
         "@xterm/addon-fit": "^0.10.0",
         "@xterm/addon-serialize": "^0.13.0",
         "@xterm/xterm": "^5.5.0",

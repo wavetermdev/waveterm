@@ -4151,6 +4151,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/electron@npm:^1.6.10":
+  version: 1.6.10
+  resolution: "@types/electron@npm:1.6.10"
+  dependencies:
+    electron: "npm:*"
+  checksum: 10c0/d9d7facf29280dbfcecca287c453c5dc51f3d10cbfd63ea7e78670d37acf51aabc6e5e2ef1fe5f48d67e7862fa9f590bb6ef703901eb62599837a14b4278b0e1
+  languageName: node
+  linkType: hard
+
 "@types/emscripten@npm:^1.39.6":
   version: 1.39.12
   resolution: "@types/emscripten@npm:1.39.12"
@@ -6503,6 +6512,19 @@ __metadata:
   bin:
     electron-vite: bin/electron-vite.js
   checksum: 10c0/9fe6043a8507697d6a1ff7c7d199da6057660b9d0536e3cc3fc5f8e7bdc5bb5be16b07135304b5c50912bff3c93d675558eeeaebbe9b21d0bc16469f0ed077bd
+  languageName: node
+  linkType: hard
+
+"electron@npm:*":
+  version: 31.2.0
+  resolution: "electron@npm:31.2.0"
+  dependencies:
+    "@electron/get": "npm:^2.0.0"
+    "@types/node": "npm:^20.9.0"
+    extract-zip: "npm:^2.0.1"
+  bin:
+    electron: cli.js
+  checksum: 10c0/559f94b4d51d4f3dfdaf4fa9a2443834b98c13402f193f5df2e8c10335cb8a2e8b1e6c6eed8499a04be0db28b52d1ddb190217e6122fb9d20cad27c6b42a9f2b
   languageName: node
   linkType: hard
 
@@ -12448,6 +12470,7 @@ __metadata:
     "@table-nav/core": "npm:^0.0.7"
     "@table-nav/react": "npm:^0.0.7"
     "@tanstack/react-table": "npm:^8.17.3"
+    "@types/electron": "npm:^1.6.10"
     "@types/node": "npm:^20.12.12"
     "@types/papaparse": "npm:^5"
     "@types/react": "npm:^18.3.2"

@@ -117,6 +117,77 @@
                     opacity: 0.7;
                 }
 
+                .block-frame-textelems-wrapper {
+                    display: flex;
+                    flex-grow: 1;
+                    gap: 8px;
+                    height: 20px;
+                    align-items: center;
+
+                    .block-frame-header-iconbutton {
+                        cursor: pointer;
+                        opacity: 0.5;
+
+                        &:hover {
+                            opacity: 1;
+                        }
+
+                        &.disabled {
+                            opacity: 0.5;
+
+                            &:hover {
+                                opacity: 0.5;
+                            }
+                        }
+                    }
+
+                    .block-frame-div {
+                        display: flex;
+                        width: 100%;
+                        height: 100%;
+                        justify-content: space-between;
+                        border-radius: 3px;
+                        align-items: center;
+                        padding-left: 7px;
+                        background: rgba(255, 255, 255, 0.1);
+
+                        &.hovered {
+                            background: rgba(255, 255, 255, 0.2);
+                            cursor: text;
+                            transition: background 0.2s ease;
+                        }
+
+                        &.focused {
+                            outline: 2px solid rgba(88, 193, 66, 0.5);
+                            background: #181818;
+                        }
+
+                        .input-wrapper {
+                            flex-grow: 1;
+
+                            input {
+                                background-color: transparent;
+                                outline: none;
+                                border: none;
+                                color: var(--app-text-color);
+                                width: 100%;
+                                white-space: nowrap;
+                                overflow: hidden;
+                                text-overflow: ellipsis;
+                                box-sizing: border-box;
+                            }
+                        }
+
+                        .block-frame-header-iconbutton {
+                            height: 100%;
+                            width: 27px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                    }
+                }
+
                 .block-frame-end-icons {
                     display: flex;
                     align-items: center;

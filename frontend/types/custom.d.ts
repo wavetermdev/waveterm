@@ -116,11 +116,12 @@ declare global {
 
     type SubjectWithRef<T> = rxjs.Subject<T> & { refCount: number; release: () => void };
 
-    type HeaderElem = HeaderIconButton | HeaderText;
+    type HeaderElem = HeaderIconButton | HeaderText | HeaderInput | HeaderDiv;
 
     type HeaderIconButton = {
         elemtype: "iconbutton";
         icon: string;
+        className?: string;
         title?: string;
         click?: (e: React.MouseEvent<any>) => void;
         longClick?: (e: React.MouseEvent<any>) => void;
@@ -129,6 +130,25 @@ declare global {
     type HeaderText = {
         elemtype: "text";
         text: string;
+    };
+
+    type HeaderInput = {
+        elemtype: "input";
+        value: string;
+        className?: string;
+        ref?: React.MutableRefObject<HTMLInputElement>;
+        onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+        onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+        onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
+        onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
+    };
+
+    type HeaderDiv = {
+        elemtype: "div";
+        className?: string;
+        children: HeaderElem[];
+        onMouseOver?: (e: React.MouseEvent<any>) => void;
+        onMouseOut?: (e: React.MouseEvent<any>) => void;
     };
 
     interface ViewModel {

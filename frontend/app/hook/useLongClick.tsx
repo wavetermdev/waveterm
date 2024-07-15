@@ -25,8 +25,8 @@ export const useLongClick = (ref, onClick, onLongClick, ms = 300) => {
     const handleClick = useCallback(
         (e: React.MouseEvent<any>) => {
             if (longClickTriggered) {
-                event.preventDefault();
-                event.stopPropagation();
+                e.preventDefault();
+                e.stopPropagation();
                 return;
             }
             onClick?.(e);

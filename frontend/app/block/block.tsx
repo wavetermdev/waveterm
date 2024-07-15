@@ -14,7 +14,7 @@ import { PlotView } from "@/view/plotview";
 import { PreviewView, makePreviewModel } from "@/view/preview";
 import { TerminalView } from "@/view/term/term";
 import { WaveAi } from "@/view/waveai";
-import { WebView } from "@/view/webview";
+import { WebView, makeWebViewModel } from "@/view/webview";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -221,6 +221,23 @@ const IconButton = React.memo(({ decl, className }: { decl: HeaderIconButton; cl
     );
 });
 
+const Input = React.memo(({ decl, className }: { decl: HeaderInput; className: string }) => {
+    const { value, ref, onChange, onKeyDown, onFocus, onBlur } = decl;
+    return (
+        <div className="input-wrapper">
+            <input
+                ref={ref}
+                className={className}
+                value={value}
+                onChange={(e) => onChange(e)}
+                onKeyDown={(e) => onKeyDown(e)}
+                onFocus={(e) => onFocus(e)}
+                onBlur={(e) => onBlur(e)}
+            />
+        </div>
+    );
+});
+
 const BlockFrame_Default_Component = ({
     blockId,
     layoutModel,
@@ -289,7 +306,54 @@ const BlockFrame_Default_Component = ({
     endIconsElem.push(
         <IconButton key="close" decl={closeDecl} className="block-frame-endicon-button block-frame-default-close" />
     );
-    let headerTextElems: JSX.Element[] = [];
+
+    function renderHeaderElements(headerTextUnion: HeaderElem[]): JSX.Element[] {
+        const headerTextElems: JSX.Element[] = [];
+
+        function renderElement(elem: HeaderElem, key: number): JSX.Element {
+            if (elem.elemtype == "iconbutton") {
+                return (
+                    <IconButton
+                        key={key}
+                        decl={elem}
+                        className={clsx("block-frame-header-iconbutton", elem.className)}
+                    />
+                );
+            } else if (elem.elemtype == "input") {
+                return <Input key={key} decl={elem} className={clsx("block-frame-input", elem.className)} />;
+            } else if (elem.elemtype == "text") {
+                return (
+                    <div key={key} className="block-frame-text">
+                        {elem.text}
+                    </div>
+                );
+            } else if (elem.elemtype == "div") {
+                return (
+                    <div
+                        key={key}
+                        className={clsx("block-frame-div", elem.className)}
+                        onMouseOver={elem.onMouseOver}
+                        onMouseOut={elem.onMouseOut}
+                    >
+                        {elem.children.map((child, childIdx) => renderElement(child, childIdx))}
+                    </div>
+                );
+            }
+            return null;
+        }
+
+        for (let idx = 0; idx < headerTextUnion.length; idx++) {
+            const elem = headerTextUnion[idx];
+            const renderedElement = renderElement(elem, idx);
+            if (renderedElement) {
+                headerTextElems.push(renderedElement);
+            }
+        }
+
+        return headerTextElems;
+    }
+
+    const headerTextElems: JSX.Element[] = [];
     if (typeof headerTextUnion === "string") {
         if (!util.isBlank(headerTextUnion)) {
             headerTextElems.push(
@@ -299,19 +363,9 @@ const BlockFrame_Default_Component = ({
             );
         }
     } else if (Array.isArray(headerTextUnion)) {
-        for (let idx = 0; idx < headerTextUnion.length; idx++) {
-            const elem = headerTextUnion[idx];
-            if (elem.elemtype == "iconbutton") {
-                headerTextElems.push(<IconButton key={idx} decl={elem} className="block-frame-header-iconbutton" />);
-            } else if (elem.elemtype == "text") {
-                headerTextElems.push(
-                    <div key={idx} className="block-frame-text">
-                        {elem.text}
-                    </div>
-                );
-            }
-        }
+        headerTextElems.push(...renderHeaderElements(headerTextUnion));
     }
+
     return (
         <div
             className={clsx(
@@ -341,8 +395,7 @@ const BlockFrame_Default_Component = ({
                             <div className="block-frame-blockid">[{blockId.substring(0, 8)}]</div>
                         )}
                     </div>
-                    {headerTextElems}
-                    <div className="flex-spacer"></div>
+                    <div className="block-frame-textelems-wrapper">{headerTextElems}</div>
                     <div className="block-frame-end-icons">{endIconsElem}</div>
                 </div>
                 {preview ? <div className="block-frame-preview" /> : children}
@@ -445,7 +498,9 @@ function getViewElemAndModel(
     } else if (blockView === "codeedit") {
         viewElem = <CodeEdit key={blockId} text={null} filename={null} />;
     } else if (blockView === "web") {
-        viewElem = <WebView key={blockId} blockId={blockId} parentRef={blockRef} />;
+        const webviewModel = makeWebViewModel(blockId);
+        viewElem = <WebView key={blockId} parentRef={blockRef} model={webviewModel} />;
+        viewModel = webviewModel;
     } else if (blockView === "waveai") {
         viewElem = <WaveAi key={blockId} />;
     }
@@ -559,9 +614,12 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
         if (focusableChildren.length == 0) {
             focusElemRef.current.focus({ preventScroll: true });
         } else {
-            (focusableChildren[0] as HTMLElement).focus({ preventScroll: true });
+            const firstFocusableChild = focusableChildren[0] as HTMLElement;
+            if (!firstFocusableChild.classList.contains("url-input")) {
+                firstFocusableChild.focus({ preventScroll: true });
+            }
         }
-    }, [focusElemRef.current, getFocusableChildren]);
+    }, [getFocusableChildren]);
 
     let { viewElem, viewModel } = React.useMemo(
         () => getViewElemAndModel(blockId, blockData?.view, blockRef),
