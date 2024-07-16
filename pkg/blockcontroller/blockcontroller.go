@@ -285,9 +285,20 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	} else {
 		return fmt.Errorf("unknown controller type %q", bc.ControllerType)
 	}
-	shellProc, err := shellexec.StartShellProc(rc.TermSize, cmdStr, cmdOpts)
-	if err != nil {
-		return err
+	// pty buffer equivalent for ssh? i think if i have the ecmd or session i can manage it with output
+	// pty write needs stdin, so if i provide that, i might be able to write that way
+	// need a way to handle setsize???
+	var shellProc *shellexec.ShellProc
+	if remoteName, ok := blockMeta["connection"].(string); ok && remoteName != "" {
+		shellProc, err = shellexec.StartRemoteShellProc(rc.TermSize, cmdStr, cmdOpts, remoteName)
+		if err != nil {
+			return err
+		}
+	} else {
+		shellProc, err = shellexec.StartShellProc(rc.TermSize, cmdStr, cmdOpts)
+		if err != nil {
+			return err
+		}
 	}
 	bc.UpdateControllerAndSendUpdate(func() bool {
 		bc.ShellProc = shellProc

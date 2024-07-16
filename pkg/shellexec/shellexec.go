@@ -5,17 +5,24 @@ package shellexec
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
 	"github.com/creack/pty"
+	"github.com/wavetermdev/thenextwave/pkg/remote"
 	"github.com/wavetermdev/thenextwave/pkg/util/shellutil"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
+	"golang.org/x/term"
 )
 
 type TermSize struct {
@@ -31,7 +38,7 @@ type CommandOptsType struct {
 }
 
 type ShellProc struct {
-	Cmd       *exec.Cmd
+	Cmd       ConnInterface
 	Pty       *os.File
 	CloseOnce *sync.Once
 	DoneCh    chan any // closed after proc.Wait() returns
@@ -39,9 +46,9 @@ type ShellProc struct {
 }
 
 func (sp *ShellProc) Close() {
-	sp.Cmd.Process.Kill()
+	sp.Cmd.Kill()
 	go func() {
-		_, waitErr := sp.Cmd.Process.Wait()
+		waitErr := sp.Cmd.Wait()
 		sp.SetWaitErrorAndSignalDone(waitErr)
 		sp.Pty.Close()
 	}()
@@ -104,6 +111,81 @@ func checkCwd(cwd string) error {
 	return nil
 }
 
+var userHostRe = regexp.MustCompile(`^([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
+
+func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType, remoteName string) (*ShellProc, error) {
+	ctx, cancelFunc := context.WithCancel(context.Background())
+	defer cancelFunc()
+
+	var shellPath string
+	if cmdStr == "" {
+		shellPath = "/bin/bash"
+	} else {
+		shellPath = cmdStr
+	}
+
+	var shellOpts []string
+	if cmdOpts.Login {
+		shellOpts = append(shellOpts, "-l")
+	}
+	if cmdOpts.Interactive {
+		shellOpts = append(shellOpts, "-i")
+	}
+	cmdCombined := fmt.Sprintf("%s %s", shellPath, strings.Join(shellOpts, " "))
+	log.Print(cmdCombined)
+	m := userHostRe.FindStringSubmatch(remoteName)
+	if m == nil {
+		return nil, fmt.Errorf("invalid format of user@host argument")
+	}
+	remoteUser, remoteHost, remotePortStr := m[1], m[2], m[3]
+	remoteUser = strings.Trim(remoteUser, "@")
+	var remotePort int
+	if remotePortStr != "" {
+		var err error
+		remotePort, err = strconv.Atoi(remotePortStr)
+		if err != nil {
+			return nil, fmt.Errorf("invalid port specified on user@host argument")
+		}
+	}
+
+	client, err := remote.ConnectToClient(ctx, &remote.SSHOpts{SSHHost: remoteHost, SSHUser: remoteUser, SSHPort: remotePort}) //todo specify or remove opts
+	if err != nil {
+		return nil, err
+	}
+	session, err := client.NewSession()
+	if err != nil {
+		return nil, err
+	}
+	// todo: connect pty output, etc
+	// redirect to fake pty???
+
+	cmdPty, cmdTty, err := pty.Open()
+	if err != nil {
+		return nil, fmt.Errorf("opening new pty: %w", err)
+	}
+	term.MakeRaw(int(cmdTty.Fd()))
+	if termSize.Rows == 0 || termSize.Cols == 0 {
+		termSize.Rows = shellutil.DefaultTermRows
+		termSize.Cols = shellutil.DefaultTermCols
+	}
+	if termSize.Rows <= 0 || termSize.Cols <= 0 {
+		return nil, fmt.Errorf("invalid term size: %v", termSize)
+	}
+	pty.Setsize(cmdPty, &pty.Winsize{Rows: uint16(termSize.Rows), Cols: uint16(termSize.Cols)})
+	session.Stdin = cmdTty
+	session.Stdout = cmdTty
+	session.Stderr = cmdTty
+	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
+
+	sessionWrap := SessionWrap{session, cmdCombined, cmdTty}
+	err = sessionWrap.Start()
+	if err != nil {
+		cmdPty.Close()
+		return nil, err
+	}
+	return &ShellProc{Cmd: sessionWrap, Pty: cmdPty, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+}
+
 func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (*ShellProc, error) {
 	var ecmd *exec.Cmd
 	var shellOpts []string
@@ -156,7 +238,7 @@ func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (
 		cmdPty.Close()
 		return nil, err
 	}
-	return &ShellProc{Cmd: ecmd, Pty: cmdPty, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
+	return &ShellProc{Cmd: CmdWrap{ecmd}, Pty: cmdPty, CloseOnce: &sync.Once{}, DoneCh: make(chan any)}, nil
 }
 
 func RunSimpleCmdInPty(ecmd *exec.Cmd, termSize TermSize) ([]byte, error) {
