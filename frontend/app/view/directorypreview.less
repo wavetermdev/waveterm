@@ -2,9 +2,8 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow-x: hidden;
     .dir-table {
-        overflow-x: hidden;
+        overflow-x: auto;
         height: 100%;
         min-width: 600px;
         --col-size-size: 0.2rem;
@@ -42,10 +41,8 @@
                             margin-top: 0.2rem;
                         }
 
-                        .dir-table-head-size,
-                        .dir-table-head-type {
-                            width: 100%;
-                            text-align: right;
+                        .dir-table-head-size {
+                            align-self: flex-end;
                         }
                     }
 
@@ -92,7 +89,7 @@
             .dir-table-body-scroll-box {
                 position: relative;
                 overflow-y: auto;
-                overflow-x: hidden;
+                overflow-x: auto;
                 .dummy {
                     position: absolute;
                     visibility: hidden;
@@ -156,10 +153,6 @@
                         .dir-table-type {
                             color: var(--secondary-text-color);
                             margin-right: 12px;
-                        }
-
-                        .dir-table-type {
-                            float: right;
                         }
 
                         .dir-table-modestr {

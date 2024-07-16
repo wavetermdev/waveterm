@@ -6,6 +6,7 @@ import * as keyutil from "@/util/keyutil";
 import * as util from "@/util/util";
 import type { PreviewModel } from "@/view/preview";
 import {
+    Column,
     Row,
     Table,
     createColumnHelper,
@@ -88,17 +89,23 @@ function getSpecificUnit(bytes: number, suffix: string): string {
     return `${bytes / divisor} ${displaySuffixes[suffix]}`;
 }
 
-function getLastModifiedTime(unixMillis: number): string {
+function getLastModifiedTime(unixMillis: number, column: Column<FileInfo, number>): string {
     let fileDatetime = dayjs(new Date(unixMillis));
     let nowDatetime = dayjs(new Date());
 
-    if (nowDatetime.year() != fileDatetime.year()) {
-        return dayjs(fileDatetime).format("M/D/YY");
-    } else if (nowDatetime.month() != fileDatetime.month()) {
-        return dayjs(fileDatetime).format("MMM D");
+    let datePortion: string;
+    if (nowDatetime.isSame(fileDatetime, "date")) {
+        datePortion = "Today";
+    } else if (nowDatetime.subtract(1, "day").isSame(fileDatetime, "date")) {
+        datePortion = "Yesterday";
     } else {
-        return dayjs(fileDatetime).format("MMM D h:mm A");
+        datePortion = dayjs(fileDatetime).format("M/D/YY");
     }
+
+    if (column.getSize() > 120) {
+        return `${datePortion}, ${dayjs(fileDatetime).format("h:mm A")}`;
+    }
+    return datePortion;
 }
 
 const iconRegex = /^[a-z0-9- ]+$/;
@@ -185,28 +192,37 @@ function DirectoryTable({
                 cell: (info) => <span className="dir-table-name">{info.getValue()}</span>,
                 header: () => <span className="dir-table-head-name">Name</span>,
                 sortingFn: "alphanumeric",
+                size: 200,
+                minSize: 90,
             }),
             columnHelper.accessor("modestr", {
                 cell: (info) => <span className="dir-table-modestr">{info.getValue()}</span>,
                 header: () => <span>Permissions</span>,
                 size: 91,
+                minSize: 90,
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("modtime", {
-                cell: (info) => <span className="dir-table-lastmod">{getLastModifiedTime(info.getValue())}</span>,
+                cell: (info) => (
+                    <span className="dir-table-lastmod">{getLastModifiedTime(info.getValue(), info.column)}</span>
+                ),
                 header: () => <span>Last Modified</span>,
-                size: 185,
+                size: 91,
+                minSize: 65,
                 sortingFn: "datetime",
             }),
             columnHelper.accessor("size", {
                 cell: (info) => <span className="dir-table-size">{getBestUnit(info.getValue())}</span>,
                 header: () => <span className="dir-table-head-size">Size</span>,
                 size: 55,
+                minSize: 50,
                 sortingFn: "auto",
             }),
             columnHelper.accessor("mimetype", {
                 cell: (info) => <span className="dir-table-type">{cleanMimetype(info.getValue() ?? "")}</span>,
                 header: () => <span className="dir-table-head-type">Type</span>,
+                size: 67,
+                minSize: 67,
                 sortingFn: "alphanumeric",
             }),
             columnHelper.accessor("path", {}),
