@@ -197,7 +197,7 @@ function DirectoryTable({
             }),
             columnHelper.accessor("modestr", {
                 cell: (info) => <span className="dir-table-modestr">{info.getValue()}</span>,
-                header: () => <span>Permissions</span>,
+                header: () => <span>Perm</span>,
                 size: 91,
                 minSize: 90,
                 sortingFn: "alphanumeric",

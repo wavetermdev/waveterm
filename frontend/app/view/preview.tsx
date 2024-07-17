@@ -20,6 +20,16 @@ import "./view.less";
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
 
+function isTextFile(mimeType: string): boolean {
+    return (
+        mimeType.startsWith("text/") ||
+        mimeType == "application/sql" ||
+        (mimeType.startsWith("application/") &&
+            (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml"))) ||
+        mimeType == "application/pem-certificate-chain"
+    );
+}
+
 export class PreviewModel implements ViewModel {
     blockId: string;
     blockAtom: jotai.Atom<Block>;
@@ -407,12 +417,7 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
                 />
             );
         }
-    } else if (
-        mimeType.startsWith("text/") ||
-        mimeType == "application/sql" ||
-        (mimeType.startsWith("application/") &&
-            (mimeType.includes("json") || mimeType.includes("yaml") || mimeType.includes("toml")))
-    ) {
+    } else if (isTextFile(mimeType)) {
         specializedView = <CodeEditPreview readonly={true} contentAtom={fileContentAtom} filename={fileName} />;
     } else if (mimeType === "directory") {
         specializedView = <DirectoryPreview fileNameAtom={fileNameAtom} model={model} />;
@@ -432,7 +437,6 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
 
     return (
         <div className="full-preview scrollbar-hide-until-hover">
-            <DirNav cwdAtom={fileNameAtom} />
             <div ref={contentRef} className="full-preview-content">
                 {specializedView}
             </div>
