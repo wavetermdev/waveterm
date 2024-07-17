@@ -13,10 +13,12 @@ tasks:
     generate:
         cmds:
             - go run cmd/generate/main-generate.go
+            - go run cmd/generatewshclient/main-generatewshclient.go
         sources:
             - "cmd/generate/*.go"
             - "pkg/service/**/*.go"
             - "pkg/wstore/*.go"
+            - "pkg/wshrpc/**/*.go"
 
     electron:dev:
         cmds:

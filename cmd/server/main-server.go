@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"strconv"
@@ -17,11 +16,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshserver"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -78,6 +79,8 @@ func configWatcher() {
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	log.SetPrefix("[wavesrv] ")
+	blockcontroller.WshServerFactoryFn = wshserver.MakeWshServer
+	web.WshServerFactoryFn = wshserver.MakeWshServer
 
 	err := service.ValidateServiceMap()
 	if err != nil {
@@ -118,6 +121,7 @@ func main() {
 		return
 	}
 	installShutdownSignalHandlers()
+
 	go stdinReadWatch()
 	configWatcher()
 	go web.RunWebSocketServer()
@@ -126,14 +130,10 @@ func main() {
 		log.Printf("error creating web listener: %v\n", err)
 		return
 	}
-	var unixListener net.Listener
-	if runtime.GOOS != "windows" {
-		var err error
-		unixListener, err = web.MakeUnixListener()
-		if err != nil {
-			log.Printf("error creating unix listener: %v\n", err)
-			return
-		}
+	unixListener, err := web.MakeUnixListener()
+	if err != nil {
+		log.Printf("error creating unix listener: %v\n", err)
+		return
 	}
 	go func() {
 		pidStr := os.Getenv(ReadySignalPidVarName)

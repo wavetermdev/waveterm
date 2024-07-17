@@ -420,7 +420,6 @@ const BlockFrame = React.memo((props: BlockFrameProps) => {
 });
 
 function blockViewToIcon(view: string): string {
-    console.log("blockViewToIcon", view);
     if (view == "term") {
         return "terminal";
     }

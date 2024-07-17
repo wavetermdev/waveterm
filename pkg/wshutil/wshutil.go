@@ -5,10 +5,8 @@ package wshutil
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"reflect"
 )
 
 // these should both be 5 characters
@@ -49,22 +47,9 @@ func makeOscPrefix(oscNum string) []byte {
 	return output
 }
 
-func EncodeWaveReq(cmd BlockCommand) ([]byte, error) {
-	req := &RpcRequest{Command: cmd}
-	return EncodeWaveOSCMessage(req)
-}
-
-func EncodeWaveOSCMessage(msg RpcMessage) ([]byte, error) {
-	return EncodeWaveOSCMessageEx(WaveOSC, msg)
-}
-
-func EncodeWaveOSCMessageEx(oscNum string, msg RpcMessage) ([]byte, error) {
-	if msg == nil {
-		return nil, fmt.Errorf("nil message")
-	}
-	barr, err := json.Marshal(msg)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling message to json: %w", err)
+func EncodeWaveOSCBytes(oscNum string, barr []byte) []byte {
+	if len(oscNum) != 5 {
+		panic("oscNum must be 5 characters")
 	}
 	hasControlChars := false
 	for _, b := range barr {
@@ -80,7 +65,7 @@ func EncodeWaveOSCMessageEx(oscNum string, msg RpcMessage) ([]byte, error) {
 		copyOscPrefix(output, oscNum)
 		copy(output[oscPrefixLen(oscNum):], barr)
 		output[len(output)-1] = BEL
-		return output, nil
+		return output
 	}
 
 	var buf bytes.Buffer
@@ -96,38 +81,16 @@ func EncodeWaveOSCMessageEx(oscNum string, msg RpcMessage) ([]byte, error) {
 		}
 	}
 	buf.WriteByte(BEL)
-	return buf.Bytes(), nil
+	return buf.Bytes()
 }
 
-func decodeWaveOSCMessage(data []byte) (BlockCommand, error) {
-	var baseCmd baseCommand
-	err := json.Unmarshal(data, &baseCmd)
+func EncodeWaveOSCMessageEx(oscNum string, msg *RpcMessage) ([]byte, error) {
+	if msg == nil {
+		return nil, fmt.Errorf("nil message")
+	}
+	barr, err := json.Marshal(msg)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling json: %w", err)
+		return nil, fmt.Errorf("error marshalling message to json: %w", err)
 	}
-	rtnCmd := reflect.New(CommandToTypeMap[baseCmd.Command]).Interface()
-	err = json.Unmarshal(data, rtnCmd)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling json: %w", err)
-	}
-	return rtnCmd.(BlockCommand), nil
-}
-
-// data does not contain the escape sequence, just the innards
-// this function implements the switch between JSON and base64-JSON
-func DecodeWaveOSCMessage(data []byte) (BlockCommand, error) {
-	if len(data) == 0 {
-		return nil, fmt.Errorf("empty data")
-	}
-	if data[0] != '{' {
-		// decode base64
-		rtnLen := base64.StdEncoding.DecodedLen(len(data))
-		rtn := make([]byte, rtnLen)
-		nw, err := base64.StdEncoding.Decode(rtn, data)
-		if err != nil {
-			return nil, fmt.Errorf("error decoding base64: %w", err)
-		}
-		return decodeWaveOSCMessage(rtn[:nw])
-	}
-	return decodeWaveOSCMessage(data)
+	return EncodeWaveOSCBytes(oscNum, barr), nil
 }

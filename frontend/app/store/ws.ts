@@ -3,18 +3,8 @@
 
 import * as jotai from "jotai";
 import { sprintf } from "sprintf-js";
-import { v4 as uuidv4 } from "uuid";
 
 const MaxWebSocketSendSize = 1024 * 1024; // 1MB
-
-type RpcEntry = {
-    reqId: string;
-    startTs: number;
-    method: string;
-    resolve: (any) => void;
-    reject: (any) => void;
-    promise: Promise<any>;
-};
 
 type JotaiStore = {
     get: <Value>(atom: jotai.Atom<Value>) => Value;
@@ -35,7 +25,6 @@ class WSControl {
     authKey: string;
     baseHostPort: string;
     lastReconnectTime: number = 0;
-    rpcMap: Map<string, RpcEntry> = new Map(); // reqId -> RpcEntry
     jotaiStore: JotaiStore;
 
     constructor(
@@ -169,10 +158,6 @@ class WSControl {
             this.reconnectTimes = 0;
             return;
         }
-        if (eventData.type == "rpcresp") {
-            this.handleRpcResp(eventData);
-            return;
-        }
         if (this.messageCallback) {
             try {
                 this.messageCallback(eventData);
@@ -189,60 +174,20 @@ class WSControl {
         this.wsConn.send(JSON.stringify({ type: "ping", stime: Date.now() }));
     }
 
-    handleRpcResp(data: any) {
-        let reqId = data.reqid;
-        let rpcEntry = this.rpcMap.get(reqId);
-        if (rpcEntry == null) {
-            console.log("rpcresp for unknown reqid", reqId);
-            return;
-        }
-        this.rpcMap.delete(reqId);
-        console.log("rpcresp", rpcEntry.method, Math.round(performance.now() - rpcEntry.startTs) + "ms");
-        if (data.error != null) {
-            rpcEntry.reject(data.error);
-        } else {
-            rpcEntry.resolve(data.data);
-        }
-    }
-
-    doRpc(method: string, params: any[]): Promise<any> {
-        if (!this.isOpen()) {
-            return Promise.reject("not connected");
-        }
-        let reqId = uuidv4();
-        let req = { type: "rpc", method: method, params: params, reqid: reqId };
-        let rpcEntry: RpcEntry = {
-            method: method,
-            startTs: performance.now(),
-            reqId: reqId,
-            resolve: null,
-            reject: null,
-            promise: null,
-        };
-        let rpcPromise = new Promise((resolve, reject) => {
-            rpcEntry.resolve = resolve;
-            rpcEntry.reject = reject;
-        });
-        rpcEntry.promise = rpcPromise;
-        this.rpcMap.set(reqId, rpcEntry);
-        this.wsConn.send(JSON.stringify(req));
-        return rpcPromise;
-    }
-
-    sendMessage(data: any) {
+    sendMessage(data: WSCommandType) {
         if (!this.isOpen()) {
             return;
         }
         let msg = JSON.stringify(data);
         const byteSize = new Blob([msg]).size;
         if (byteSize > MaxWebSocketSendSize) {
-            console.log("ws message too large", byteSize, data.type, msg.substring(0, 100));
+            console.log("ws message too large", byteSize, data.wscommand, msg.substring(0, 100));
             return;
         }
         this.wsConn.send(msg);
     }
 
-    pushMessage(data: any) {
+    pushMessage(data: WSCommandType) {
         if (!this.isOpen()) {
             this.msgQueue.push(data);
             return;

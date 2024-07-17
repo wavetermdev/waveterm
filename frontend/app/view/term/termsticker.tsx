@@ -1,8 +1,8 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WshServer } from "@/app/store/wshserver";
 import { createBlock, getBackendHostPort } from "@/store/global";
-import * as services from "@/store/services";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -98,12 +98,7 @@ function TermSticker({ sticker, config }: { sticker: StickerType; config: Sticke
             console.log("clickHandler", sticker.clickcmd, sticker.clickblockdef);
             if (sticker.clickcmd) {
                 const b64data = btoa(sticker.clickcmd);
-                const inputCmd: BlockInputCommand = {
-                    command: "controller:input",
-                    inputdata64: b64data,
-                    blockid: config.blockId,
-                };
-                services.BlockService.SendCommand(config.blockId, inputCmd);
+                WshServer.BlockInputCommand({ blockid: config.blockId, inputdata64: b64data });
             }
             if (sticker.clickblockdef) {
                 createBlock(sticker.clickblockdef);

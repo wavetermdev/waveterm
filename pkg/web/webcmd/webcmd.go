@@ -10,11 +10,13 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/shellexec"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
 const (
 	WSCommand_SetBlockTermSize = "setblocktermsize"
 	WSCommand_BlockInput       = "blockinput"
+	WSCommand_Rpc              = "rpc"
 )
 
 type WSCommandType interface {
@@ -28,8 +30,18 @@ func WSCommandTypeUnionMeta() tsgenmeta.TypeUnionMeta {
 		Types: []reflect.Type{
 			reflect.TypeOf(SetBlockTermSizeWSCommand{}),
 			reflect.TypeOf(BlockInputWSCommand{}),
+			reflect.TypeOf(WSRpcCommand{}),
 		},
 	}
+}
+
+type WSRpcCommand struct {
+	WSCommand string              `json:"wscommand" tstype:"\"rpc\""`
+	Message   *wshutil.RpcMessage `json:"message"`
+}
+
+func (cmd *WSRpcCommand) GetWSCommand() string {
+	return cmd.WSCommand
 }
 
 type SetBlockTermSizeWSCommand struct {
@@ -70,6 +82,13 @@ func ParseWSCommandMap(cmdMap map[string]any) (WSCommandType, error) {
 		err := utilfn.DoMapStucture(&cmd, cmdMap)
 		if err != nil {
 			return nil, fmt.Errorf("error decoding BlockInputWSCommand: %w", err)
+		}
+		return &cmd, nil
+	case WSCommand_Rpc:
+		var cmd WSRpcCommand
+		err := utilfn.DoMapStucture(&cmd, cmdMap)
+		if err != nil {
+			return nil, fmt.Errorf("error decoding WSRpcCommand: %w", err)
 		}
 		return &cmd, nil
 	default:

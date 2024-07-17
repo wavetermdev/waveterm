@@ -3,8 +3,10 @@
 
 // WaveObjectStore
 
+import { sendRpcCommand } from "@/app/store/wshrpc";
 import * as jotai from "jotai";
 import * as React from "react";
+import { v4 as uuidv4 } from "uuid";
 import { atoms, getBackendHostPort, globalStore } from "./global";
 import * as services from "./services";
 
@@ -100,6 +102,50 @@ function callBackendService(service: string, method: string, args: any[], noUICo
             console.log("Call", methodName, Date.now() - startTs + "ms");
             return respData.data;
         });
+    return prtn;
+}
+
+function callWshServerRpc(
+    command: string,
+    data: any,
+    meta: WshServerCommandMeta,
+    opts: WshRpcCommandOpts
+): Promise<any> {
+    let msg: RpcMessage = {
+        command: command,
+        data: data,
+    };
+    if (!opts?.noresponse) {
+        msg.reqid = uuidv4();
+    }
+    if (opts?.timeout) {
+        msg.timeout = opts.timeout;
+    }
+    if (meta.commandtype != "call") {
+        throw new Error("unimplemented wshserver commandtype " + meta.commandtype);
+    }
+    const rpcGen = sendRpcCommand(msg);
+    if (rpcGen == null) {
+        return null;
+    }
+    let resolveFn: (value: any) => void;
+    let rejectFn: (reason?: any) => void;
+    const prtn = new Promise((resolve, reject) => {
+        resolveFn = resolve;
+        rejectFn = reject;
+    });
+    const respMsg = rpcGen.next(true); // pass true to force termination of rpc after 1 response (not streaing)
+    respMsg.then((msg: IteratorResult<RpcMessage, void>) => {
+        if (msg.value == null) {
+            resolveFn(null);
+        }
+        let respMsg: RpcMessage = msg.value as RpcMessage;
+        if (respMsg.error != null) {
+            rejectFn(new Error(respMsg.error));
+            return;
+        }
+        resolveFn(respMsg.data);
+    });
     return prtn;
 }
 
@@ -320,6 +366,7 @@ function setObjectValue<T extends WaveObj>(value: T, setFn?: jotai.Setter, pushT
 
 export {
     callBackendService,
+    callWshServerRpc,
     cleanWaveObjectCache,
     clearWaveObjectCache,
     getObjectValue,

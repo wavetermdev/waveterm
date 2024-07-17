@@ -1,20 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import {
-    WOS,
-    atoms,
-    getEventORefSubject,
-    globalStore,
-    sendWSCommand,
-    useBlockAtom,
-    useSettingsAtom,
-} from "@/store/global";
+import { WOS, atoms, getEventORefSubject, globalStore, useBlockAtom, useSettingsAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import { FitAddon } from "@xterm/addon-fit";
 import type { ITheme } from "@xterm/xterm";
-import { Terminal } from "@xterm/xterm";
 import clsx from "clsx";
 import { produce } from "immer";
 import * as jotai from "jotai";
@@ -23,6 +13,7 @@ import { IJsonView } from "./ijson";
 import { TermStickers } from "./termsticker";
 import { TermWrap } from "./termwrap";
 
+import { WshServer } from "@/app/store/wshserver";
 import "public/xterm.css";
 import "./term.less";
 
@@ -52,23 +43,6 @@ function getThemeFromCSSVars(el: Element): ITheme {
     theme.cursor = elemStyle.getPropertyValue("--term-selection-background");
     theme.cursorAccent = elemStyle.getPropertyValue("--term-cursor-accent");
     return theme;
-}
-
-function handleResize(fitAddon: FitAddon, blockId: string, term: Terminal) {
-    if (term == null) {
-        return;
-    }
-    const oldRows = term.rows;
-    const oldCols = term.cols;
-    fitAddon.fit();
-    if (oldRows !== term.rows || oldCols !== term.cols) {
-        const wsCommand: SetBlockTermSizeWSCommand = {
-            wscommand: "setblocktermsize",
-            blockid: blockId,
-            termsize: { rows: term.rows, cols: term.cols },
-        };
-        sendWSCommand(wsCommand);
-    }
 }
 
 const keyMap = {
@@ -177,14 +151,12 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
                 event.preventDefault();
                 event.stopPropagation();
-                const metaCmd: BlockSetMetaCommand = { command: "setmeta", meta: { "term:mode": "html" } };
-                services.BlockService.SendCommand(this.blockId, metaCmd);
+                WshServer.SetMetaCommand({ oref: WOS.makeORef("block", blockId), meta: { "term:mode": null } });
                 return false;
             }
             if (shellProcStatusRef.current != "running" && keyutil.checkKeyPressed(waveEvent, "Enter")) {
                 // restart
-                const restartCmd: BlockRestartCommand = { command: "controller:restart", blockid: blockId };
-                services.BlockService.SendCommand(blockId, restartCmd);
+                WshServer.BlockRestartCommand({ blockid: blockId });
                 return false;
             }
         }
@@ -224,8 +196,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
         if (keyutil.checkKeyPressed(waveEvent, "Cmd:Escape")) {
             // reset term:mode
-            const metaCmd: BlockSetMetaCommand = { command: "setmeta", meta: { "term:mode": null } };
-            services.BlockService.SendCommand(blockId, metaCmd);
+            WshServer.SetMetaCommand({ oref: WOS.makeORef("block", blockId), meta: { "term:mode": null } });
             return false;
         }
         const asciiVal = keyboardEventToASCII(event);
@@ -233,8 +204,7 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
             return false;
         }
         const b64data = btoa(asciiVal);
-        const inputCmd: BlockInputCommand = { command: "controller:input", inputdata64: b64data, blockid: blockId };
-        services.BlockService.SendCommand(blockId, inputCmd);
+        WshServer.BlockInputCommand({ blockid: blockId, inputdata64: b64data });
         return true;
     };
 

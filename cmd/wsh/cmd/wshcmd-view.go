@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -44,8 +44,7 @@ func viewRun(cmd *cobra.Command, args []string) {
 		log.Printf("error getting file info: %v\n", err)
 	}
 	setTermRawMode()
-	viewWshCmd := &wshutil.CreateBlockCommand{
-		Command: wshutil.Command_CreateBlock,
+	viewWshCmd := &wshrpc.CommandCreateBlockData{
 		BlockDef: &wstore.BlockDef{
 			View: "preview",
 			Meta: map[string]interface{}{
@@ -53,7 +52,7 @@ func viewRun(cmd *cobra.Command, args []string) {
 			},
 		},
 	}
-	_, err = RpcClient.SendRpcRequest(viewWshCmd, 2000)
+	_, err = RpcClient.SendRpcRequest(wshrpc.Command_CreateBlock, viewWshCmd, 2000)
 	if err != nil {
 		log.Printf("error running view command: %v\r\n", err)
 		return

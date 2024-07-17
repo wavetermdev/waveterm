@@ -12,7 +12,6 @@ import (
 	"io"
 	"io/fs"
 	"log"
-	"strings"
 	"sync"
 	"time"
 
@@ -25,6 +24,9 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
+
+// set by main-server.go (for dependency inversion)
+var WshServerFactoryFn func(inputCh chan []byte, outputCh chan []byte, initialCtx wshutil.RpcContext) = nil
 
 const (
 	BlockController_Shell = "shell"
@@ -58,21 +60,18 @@ type BlockInputUnion struct {
 	TermSize  *shellexec.TermSize `json:"termsize,omitempty"`
 }
 
-type RunCmdFnType = func(ctx context.Context, cmd wshutil.BlockCommand, cmdCtx wshutil.CmdContextType) (wshutil.ResponseDataType, error)
-
 type BlockController struct {
 	Lock            *sync.Mutex
 	ControllerType  string
 	TabId           string
 	BlockId         string
 	BlockDef        *wstore.BlockDef
-	InputCh         chan wshutil.BlockCommand
 	Status          string
 	CreatedHtmlFile bool
 	ShellProc       *shellexec.ShellProc
 	ShellInputCh    chan *BlockInputUnion
 	ShellProcStatus string
-	RunCmdFn        RunCmdFnType
+	StopCh          chan bool
 }
 
 type BlockControllerRuntimeStatus struct {
@@ -206,14 +205,6 @@ func (bc *BlockController) resetTerminalState() {
 	}
 }
 
-func (bc *BlockController) waveOSCMessageHandler(ctx context.Context, cmd wshutil.BlockCommand, respFn wshutil.ResponseFnType) (wshutil.ResponseDataType, error) {
-	if strings.HasPrefix(cmd.GetCommand(), "controller:") {
-		bc.InputCh <- cmd
-		return nil, nil
-	}
-	return bc.RunCmdFn(ctx, cmd, wshutil.CmdContextType{BlockId: bc.BlockId, TabId: bc.TabId})
-}
-
 func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[string]any) error {
 	// create a circular blockfile for the output
 	ctx, cancelFn := context.WithTimeout(context.Background(), 2*time.Second)
@@ -307,9 +298,10 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	})
 	shellInputCh := make(chan *BlockInputUnion, 32)
 	bc.ShellInputCh = shellInputCh
-	messageCh := make(chan wshutil.RpcMessage, 32)
+	messageCh := make(chan []byte, 32)
 	ptyBuffer := wshutil.MakePtyBuffer(wshutil.WaveOSCPrefix, bc.ShellProc.Pty, messageCh)
-	_, outputCh := wshutil.MakeWshRpc(wshutil.WaveServerOSC, messageCh, bc.waveOSCMessageHandler)
+	outputCh := make(chan []byte, 32)
+	WshServerFactoryFn(messageCh, outputCh, wshutil.RpcContext{BlockId: bc.BlockId, TabId: bc.TabId})
 	go func() {
 		// handles regular output from the pty (goes to the blockfile and xterm)
 		defer func() {
@@ -360,8 +352,9 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 	}()
 	go func() {
 		// handles outputCh -> shellInputCh
-		for out := range outputCh {
-			shellInputCh <- &BlockInputUnion{InputData: out}
+		for msg := range outputCh {
+			encodedMsg := wshutil.EncodeWaveOSCBytes(wshutil.WaveServerOSC, msg)
+			shellInputCh <- &BlockInputUnion{InputData: encodedMsg}
 		}
 	}()
 	go func() {
@@ -429,42 +422,33 @@ func (bc *BlockController) run(bdata *wstore.Block, blockMeta map[string]any) {
 			}
 		}()
 	}
-
-	for genCmd := range bc.InputCh {
-		switch cmd := genCmd.(type) {
-		case *wshutil.BlockInputCommand:
-			if bc.ShellInputCh == nil {
-				continue
-			}
-			inputUnion := &BlockInputUnion{
-				SigName:  cmd.SigName,
-				TermSize: cmd.TermSize,
-			}
-			if len(cmd.InputData64) > 0 {
-				inputBuf := make([]byte, base64.StdEncoding.DecodedLen(len(cmd.InputData64)))
-				nw, err := base64.StdEncoding.Decode(inputBuf, []byte(cmd.InputData64))
-				if err != nil {
-					log.Printf("error decoding input data: %v\n", err)
-					continue
-				}
-				inputUnion.InputData = inputBuf[:nw]
-			}
-			bc.ShellInputCh <- inputUnion
-		case *wshutil.BlockRestartCommand:
-			// TODO: if shell command is already running
-			// we probably want to kill it off, wait, and then restart it
-			err := bc.DoRunShellCommand(&RunShellOpts{TermSize: bdata.RuntimeOpts.TermSize}, bdata.Meta)
-			if err != nil {
-				log.Printf("error running shell command: %v\n", err)
-			}
-
-		default:
-			log.Printf("unknown command type %T\n", cmd)
-		}
-	}
+	<-bc.StopCh
 }
 
-func StartBlockController(ctx context.Context, tabId string, blockId string, runCmdFn RunCmdFnType) error {
+func (bc *BlockController) SendInput(inputUnion *BlockInputUnion) error {
+	if bc.ShellInputCh == nil {
+		return fmt.Errorf("no shell input chan")
+	}
+	bc.ShellInputCh <- inputUnion
+	return nil
+}
+
+func (bc *BlockController) RestartController() error {
+	// TODO: if shell command is already running
+	// we probably want to kill it off, wait, and then restart it
+	bdata, err := wstore.DBMustGet[*wstore.Block](context.Background(), bc.BlockId)
+	if err != nil {
+		return fmt.Errorf("error getting block: %w", err)
+	}
+	err = bc.DoRunShellCommand(&RunShellOpts{TermSize: bdata.RuntimeOpts.TermSize}, bdata.Meta)
+	if err != nil {
+		log.Printf("error running shell command: %v\n", err)
+	}
+	return nil
+}
+
+func StartBlockController(ctx context.Context, tabId string, blockId string) error {
+	log.Printf("start blockcontroller %q\n", blockId)
 	blockData, err := wstore.DBMustGet[*wstore.Block](ctx, blockId)
 	if err != nil {
 		return fmt.Errorf("error getting block: %w", err)
@@ -488,9 +472,8 @@ func StartBlockController(ctx context.Context, tabId string, blockId string, run
 		TabId:           tabId,
 		BlockId:         blockId,
 		Status:          Status_Init,
-		InputCh:         make(chan wshutil.BlockCommand),
-		RunCmdFn:        runCmdFn,
 		ShellProcStatus: Status_Init,
+		StopCh:          make(chan bool),
 	}
 	blockControllerMap[blockId] = bc
 	go bc.run(blockData, blockData.Meta)
@@ -505,7 +488,7 @@ func StopBlockController(blockId string) {
 	if bc.getShellProc() != nil {
 		bc.ShellProc.Close()
 	}
-	close(bc.InputCh)
+	close(bc.StopCh)
 }
 
 func GetBlockController(blockId string) *BlockController {

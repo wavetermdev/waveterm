@@ -21,6 +21,7 @@ const (
 	WSEvent_BlockControllerStatus = "blockcontroller:status"
 	WSEvent_LayoutAction          = "layoutaction"
 	WSEvent_ElectronNewWindow     = "electron:newwindow"
+	WSEvent_Rpc                   = "rpc"
 )
 
 type WSEventType struct {

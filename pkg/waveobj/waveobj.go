@@ -27,12 +27,36 @@ const (
 )
 
 type ORef struct {
+	// special JSON marshalling to string
 	OType string `json:"otype" mapstructure:"otype"`
 	OID   string `json:"oid" mapstructure:"oid"`
 }
 
 func (oref ORef) String() string {
 	return fmt.Sprintf("%s:%s", oref.OType, oref.OID)
+}
+
+func (oref ORef) MarshalJSON() ([]byte, error) {
+	return json.Marshal(oref.String())
+}
+
+func (oref ORef) IsEmpty() bool {
+	// either being empty is not valid
+	return oref.OType == "" || oref.OID == ""
+}
+
+func (oref *ORef) UnmarshalJSON(data []byte) error {
+	var orefStr string
+	err := json.Unmarshal(data, &orefStr)
+	if err != nil {
+		return err
+	}
+	parsed, err := ParseORef(orefStr)
+	if err != nil {
+		return err
+	}
+	*oref = parsed
+	return nil
 }
 
 func MakeORef(otype string, oid string) ORef {

@@ -13,14 +13,9 @@ class BlockServiceType {
     SaveTerminalState(arg2: string, arg3: string, arg4: string, arg5: number): Promise<void> {
         return WOS.callBackendService("block", "SaveTerminalState", Array.from(arguments))
     }
-
-    // send command to block
-    SendCommand(cmd: string, arg3: BlockCommand): Promise<void> {
-        return WOS.callBackendService("block", "SendCommand", Array.from(arguments))
-    }
 }
 
-export const BlockService = new BlockServiceType()
+export const BlockService = new BlockServiceType();
 
 // clientservice.ClientService (client)
 class ClientServiceType {
@@ -44,7 +39,7 @@ class ClientServiceType {
     }
 }
 
-export const ClientService = new ClientServiceType()
+export const ClientService = new ClientServiceType();
 
 // fileservice.FileService (file)
 class FileServiceType {
@@ -71,7 +66,7 @@ class FileServiceType {
     }
 }
 
-export const FileService = new FileServiceType()
+export const FileService = new FileServiceType();
 
 // objectservice.ObjectService (object)
 class ObjectServiceType {
@@ -126,7 +121,7 @@ class ObjectServiceType {
     }
 }
 
-export const ObjectService = new ObjectServiceType()
+export const ObjectService = new ObjectServiceType();
 
 // windowservice.WindowService (window)
 class WindowServiceType {
@@ -150,5 +145,5 @@ class WindowServiceType {
     }
 }
 
-export const WindowService = new WindowServiceType()
+export const WindowService = new WindowServiceType();
 

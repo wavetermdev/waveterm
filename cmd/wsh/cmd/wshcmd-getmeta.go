@@ -10,7 +10,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
 )
 
 var getMetaCmd = &cobra.Command{
@@ -42,17 +43,10 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 		fmt.Printf("error resolving oref: %v\r\n", err)
 		return
 	}
-	getMetaWshCmd := &wshutil.BlockGetMetaCommand{
-		Command: wshutil.BlockCommand_SetMeta,
-		ORef:    fullORef,
-	}
-	resp, err := RpcClient.SendRpcRequest(getMetaWshCmd, 2000)
+	resp, err := wshclient.GetMetaCommand(RpcClient, wshrpc.CommandGetMetaData{ORef: *fullORef}, &wshrpc.WshRpcCommandOpts{Timeout: 2000})
 	if err != nil {
 		log.Printf("error getting metadata: %v\r\n", err)
 		return
-	}
-	if resp == nil {
-		resp = make(map[string]any)
 	}
 	if len(args) > 1 {
 		val, ok := resp[args[1]]

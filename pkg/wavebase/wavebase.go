@@ -25,6 +25,7 @@ const DefaultWaveHome = "~/.w2"
 const WaveHomeVarName = "WAVETERM_HOME"
 const WaveDevVarName = "WAVETERM_DEV"
 const WaveLockFile = "waveterm.lock"
+const DomainSocketBaseName = "wave.sock"
 
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
@@ -62,6 +63,10 @@ func ReplaceHomeDir(pathStr string) string {
 		return "~" + pathStr[len(homeDir):]
 	}
 	return pathStr
+}
+
+func GetDomainSocketName() string {
+	return filepath.Join(GetWaveHomeDir(), DomainSocketBaseName)
 }
 
 func GetWaveHomeDir() string {

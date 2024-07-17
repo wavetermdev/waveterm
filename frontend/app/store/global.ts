@@ -5,6 +5,7 @@ import { LayoutTreeAction, LayoutTreeActionType, LayoutTreeInsertNodeAction, new
 import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { layoutTreeStateReducer } from "@/faraday/lib/layoutState";
 
+import { handleIncomingRpcMessage } from "@/app/store/wshrpc";
 import * as layoututil from "@/util/layoututil";
 import { produce } from "immer";
 import * as jotai from "jotai";
@@ -27,8 +28,8 @@ let globalClientId: string = null;
 if (typeof window !== "undefined") {
     // this if statement allows us to use the code in nodejs as well
     const urlParams = new URLSearchParams(window.location.search);
-    globalWindowId = urlParams.get("windowid") || "74eba2d0-22fc-4221-82ad-d028dd496342";
-    globalClientId = urlParams.get("clientid") || "f4bc1713-a364-41b3-a5c4-b000ba10d622";
+    globalWindowId = urlParams.get("windowid");
+    globalClientId = urlParams.get("clientid");
 }
 const windowIdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string>;
 const clientIdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string>;
@@ -221,6 +222,11 @@ function handleWSEventMessage(msg: WSEventType) {
         if (fileSubject != null) {
             fileSubject.next(fileData);
         }
+        return;
+    }
+    if (msg.eventtype == "rpc") {
+        const rpcMsg: RpcMessage = msg.data;
+        handleIncomingRpcMessage(rpcMsg);
         return;
     }
     if (msg.eventtype == "layoutaction") {

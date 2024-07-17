@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
-	"github.com/wavetermdev/thenextwave/pkg/cmdqueue"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
@@ -137,7 +136,7 @@ func (svc *ObjectService) SetActiveTab(uiContext wstore.UIContext, tabId string)
 		return nil, fmt.Errorf("error getting tab: %w", err)
 	}
 	for _, blockId := range tab.BlockIds {
-		blockErr := blockcontroller.StartBlockController(ctx, tabId, blockId, cmdqueue.RunCmd)
+		blockErr := blockcontroller.StartBlockController(ctx, tabId, blockId)
 		if blockErr != nil {
 			// we don't want to fail the set active tab operation if a block controller fails to start
 			log.Printf("error starting block controller (blockid:%s): %v", blockId, blockErr)
@@ -191,7 +190,7 @@ func (svc *ObjectService) CreateBlock(uiContext wstore.UIContext, blockDef *wsto
 		return "", nil, fmt.Errorf("error creating block: %w", err)
 	}
 	if blockData.Controller != "" {
-		err = blockcontroller.StartBlockController(ctx, uiContext.ActiveTabId, blockData.OID, cmdqueue.RunCmd)
+		err = blockcontroller.StartBlockController(ctx, uiContext.ActiveTabId, blockData.OID)
 		if err != nil {
 			return "", nil, fmt.Errorf("error starting block controller: %w", err)
 		}

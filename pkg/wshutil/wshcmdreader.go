@@ -5,10 +5,8 @@ package wshutil
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"sync"
 )
 
@@ -28,13 +26,13 @@ type PtyBuffer struct {
 	EscSeqBuf   []byte
 	OSCPrefix   string
 	InputReader io.Reader
-	MessageCh   chan RpcMessage
+	MessageCh   chan []byte
 	AtEOF       bool
 	Err         error
 }
 
 // closes messageCh when input is closed (or error)
-func MakePtyBuffer(oscPrefix string, input io.Reader, messageCh chan RpcMessage) *PtyBuffer {
+func MakePtyBuffer(oscPrefix string, input io.Reader, messageCh chan []byte) *PtyBuffer {
 	if len(oscPrefix) != WaveOSCPrefixLen {
 		panic(fmt.Sprintf("invalid OSC prefix length: %d", len(oscPrefix)))
 	}
@@ -67,17 +65,7 @@ func (b *PtyBuffer) setEOF() {
 }
 
 func (b *PtyBuffer) processWaveEscSeq(escSeq []byte) {
-	var helper RpcMessageUnmarshalHelper
-	err := json.Unmarshal(escSeq, &helper)
-	if err != nil {
-		log.Printf("error unmarshalling Wave OSC sequence data: %v\n", err)
-		return
-	}
-	if helper.Req != nil {
-		b.MessageCh <- helper.Req
-	} else {
-		b.MessageCh <- helper.Res
-	}
+	b.MessageCh <- escSeq
 }
 
 func (b *PtyBuffer) run() {

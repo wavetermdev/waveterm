@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WshServer } from "@/app/store/wshserver";
 import { PLATFORM, fetchWaveFile, getFileSubject, sendWSCommand } from "@/store/global";
 import * as services from "@/store/services";
 import { base64ToArray } from "@/util/util";
@@ -75,17 +76,7 @@ export class TermWrap {
 
     handleTermData(data: string) {
         const b64data = btoa(data);
-        if (b64data.length < 512) {
-            const wsCmd: BlockInputWSCommand = { wscommand: "blockinput", blockid: this.blockId, inputdata64: b64data };
-            sendWSCommand(wsCmd);
-        } else {
-            const inputCmd: BlockInputCommand = {
-                command: "controller:input",
-                blockid: this.blockId,
-                inputdata64: b64data,
-            };
-            services.BlockService.SendCommand(this.blockId, inputCmd);
-        }
+        WshServer.BlockInputCommand({ blockid: this.blockId, inputdata64: b64data });
     }
 
     addFocusListener(focusFn: () => void) {

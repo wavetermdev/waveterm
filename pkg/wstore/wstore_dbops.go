@@ -54,6 +54,10 @@ func genericCastWithErr[T any](v any, err error) (T, error) {
 		var zeroVal T
 		return zeroVal, err
 	}
+	if v == nil {
+		var zeroVal T
+		return zeroVal, nil
+	}
 	return v.(T), err
 }
 

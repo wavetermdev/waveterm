@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
-	"github.com/wavetermdev/thenextwave/pkg/cmdqueue"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -38,13 +36,6 @@ func (bs *BlockService) GetControllerStatus(ctx context.Context, blockId string)
 		}, nil
 	}
 	return bc.GetRuntimeStatus(), nil
-}
-
-func (bs *BlockService) SendCommand(uiContext wstore.UIContext, blockId string, cmd wshutil.BlockCommand) error {
-	ctx, cancelFn := context.WithTimeout(context.Background(), DefaultTimeout)
-	defer cancelFn()
-	_, err := cmdqueue.RunCmd(ctx, cmd, wshutil.CmdContextType{BlockId: blockId, TabId: uiContext.ActiveTabId})
-	return err
 }
 
 func (bs *BlockService) SaveTerminalState(ctx context.Context, blockId string, state string, stateType string, ptyOffset int64) error {

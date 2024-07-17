@@ -4,7 +4,6 @@
 package web
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -16,11 +15,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
-	"github.com/wavetermdev/thenextwave/pkg/cmdqueue"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
+	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
+
+// set by main-server.go (for dependency inversion)
+var WshServerFactoryFn func(inputCh chan []byte, outputCh chan []byte, initialCtx wshutil.RpcContext) = nil
 
 const wsReadWaitTimeout = 15 * time.Second
 const wsWriteWaitTimeout = 10 * time.Second
@@ -76,7 +78,7 @@ func getStringFromMap(jmsg map[string]any, key string) string {
 	return ""
 }
 
-func processWSCommand(jmsg map[string]any, outputCh chan any) {
+func processWSCommand(jmsg map[string]any, outputCh chan any, rpcInputCh chan []byte) {
 	var rtnErr error
 	defer func() {
 		r := recover()
@@ -98,34 +100,57 @@ func processWSCommand(jmsg map[string]any, outputCh chan any) {
 	}
 	switch cmd := wsCommand.(type) {
 	case *webcmd.SetBlockTermSizeWSCommand:
-		blockCmd := &wshutil.BlockInputCommand{
-			Command:  wshutil.BlockCommand_Input,
+		data := wshrpc.CommandBlockInputData{
+			BlockId:  cmd.BlockId,
 			TermSize: &cmd.TermSize,
 		}
-		ctx, cancelFn := context.WithTimeout(context.Background(), DefaultCommandTimeout)
-		defer cancelFn()
-		_, err = cmdqueue.RunCmd(ctx, blockCmd, wshutil.CmdContextType{BlockId: cmd.BlockId})
-		if err != nil {
-			log.Printf("error running command %q: %v\n", blockCmd.Command, err)
+		rpcMsg := wshutil.RpcMessage{
+			Command: wshrpc.Command_BlockInput,
+			Data:    data,
 		}
+		msgBytes, err := json.Marshal(rpcMsg)
+		if err != nil {
+			// this really should never fail since we just unmarshalled this value
+			log.Printf("error marshalling rpc message: %v\n", err)
+			return
+		}
+		rpcInputCh <- msgBytes
+
 	case *webcmd.BlockInputWSCommand:
-		blockCmd := &wshutil.BlockInputCommand{
-			Command:     wshutil.BlockCommand_Input,
+		data := wshrpc.CommandBlockInputData{
+			BlockId:     cmd.BlockId,
 			InputData64: cmd.InputData64,
 		}
-		ctx, cancelFn := context.WithTimeout(context.Background(), DefaultCommandTimeout)
-		defer cancelFn()
-		_, err = cmdqueue.RunCmd(ctx, blockCmd, wshutil.CmdContextType{BlockId: cmd.BlockId})
-		if err != nil {
-			log.Printf("error running command %q: %v\n", blockCmd.Command, err)
+		rpcMsg := wshutil.RpcMessage{
+			Command: wshrpc.Command_BlockInput,
+			Data:    data,
 		}
+		msgBytes, err := json.Marshal(rpcMsg)
+		if err != nil {
+			// this really should never fail since we just unmarshalled this value
+			log.Printf("error marshalling rpc message: %v\n", err)
+			return
+		}
+		rpcInputCh <- msgBytes
+
+	case *webcmd.WSRpcCommand:
+		rpcMsg := cmd.Message
+		if rpcMsg == nil {
+			return
+		}
+		msgBytes, err := json.Marshal(rpcMsg)
+		if err != nil {
+			// this really should never fail since we just unmarshalled this value
+			return
+		}
+		rpcInputCh <- msgBytes
 	}
 }
 
-func processMessage(jmsg map[string]any, outputCh chan any) {
+func processMessage(jmsg map[string]any, outputCh chan any, rpcInputCh chan []byte) {
 	wsCommand := getStringFromMap(jmsg, "wscommand")
 	if wsCommand != "" {
-		processWSCommand(jmsg, outputCh)
+		processWSCommand(jmsg, outputCh, rpcInputCh)
 		return
 	}
 	msgType := getMessageType(jmsg)
@@ -151,7 +176,7 @@ func processMessage(jmsg map[string]any, outputCh chan any) {
 	rtnErr = fmt.Errorf("unknown method %q", method)
 }
 
-func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any) {
+func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any, rpcInputCh chan []byte) {
 	readWait := wsReadWaitTimeout
 	conn.SetReadLimit(64 * 1024)
 	conn.SetReadDeadline(time.Now().Add(readWait))
@@ -180,7 +205,7 @@ func ReadLoop(conn *websocket.Conn, outputCh chan any, closeCh chan any) {
 			outputCh <- pongMessage
 			continue
 		}
-		go processMessage(jmsg, outputCh)
+		go processMessage(jmsg, outputCh, rpcInputCh)
 	}
 }
 
@@ -253,14 +278,28 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 	log.Printf("New websocket connection: windowid:%s connid:%s\n", windowId, wsConnId)
 	outputCh := make(chan any, 100)
 	closeCh := make(chan any)
+	rpcInputCh := make(chan []byte, 32)
+	rpcOutputCh := make(chan []byte, 32)
 	eventbus.RegisterWSChannel(wsConnId, windowId, outputCh)
 	defer eventbus.UnregisterWSChannel(wsConnId)
+	WshServerFactoryFn(rpcInputCh, rpcOutputCh, wshutil.RpcContext{WindowId: windowId})
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
+		// no waitgroup add here
+		// move values from rpcOutputCh to outputCh
+		for msgBytes := range rpcOutputCh {
+			rpcWSMsg := map[string]any{
+				"eventtype": "rpc", // TODO don't hard code this (but def is in eventbus)
+				"data":      json.RawMessage(msgBytes),
+			}
+			outputCh <- rpcWSMsg
+		}
+	}()
+	go func() {
 		// read loop
 		defer wg.Done()
-		ReadLoop(conn, outputCh, closeCh)
+		ReadLoop(conn, outputCh, closeCh, rpcInputCh)
 	}()
 	go func() {
 		// write loop
@@ -268,5 +307,6 @@ func HandleWsInternal(w http.ResponseWriter, r *http.Request) error {
 		WriteLoop(conn, outputCh, closeCh)
 	}()
 	wg.Wait()
+	close(rpcInputCh)
 	return nil
 }

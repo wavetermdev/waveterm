@@ -18,7 +18,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
-	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -39,8 +38,8 @@ var waveObjMapRType = reflect.TypeOf(map[string]waveobj.WaveObj{})
 var methodMetaRType = reflect.TypeOf(tsgenmeta.MethodMeta{})
 var waveObjUpdateRType = reflect.TypeOf(wstore.WaveObjUpdate{})
 var uiContextRType = reflect.TypeOf((*wstore.UIContext)(nil)).Elem()
-var blockCommandRType = reflect.TypeOf((*wshutil.BlockCommand)(nil)).Elem()
 var wsCommandRType = reflect.TypeOf((*webcmd.WSCommandType)(nil)).Elem()
+var orefRType = reflect.TypeOf((*waveobj.ORef)(nil)).Elem()
 
 type WebCallType struct {
 	Service   string            `json:"service"`
@@ -96,18 +95,7 @@ func convertComplex(argType reflect.Type, jsonArg any) (any, error) {
 }
 
 func isSpecialWaveArgType(argType reflect.Type) bool {
-	return argType == waveObjRType || argType == waveObjSliceRType || argType == waveObjMapRType || argType == blockCommandRType || argType == wsCommandRType
-}
-
-func convertBlockCommand(argType reflect.Type, jsonArg any) (any, error) {
-	if _, ok := jsonArg.(map[string]any); !ok {
-		return nil, fmt.Errorf("cannot convert %T to %s", jsonArg, argType)
-	}
-	cmd, err := wshutil.ParseCmdMap(jsonArg.(map[string]any))
-	if err != nil {
-		return nil, fmt.Errorf("error parsing command map: %w", err)
-	}
-	return cmd, nil
+	return argType == waveObjRType || argType == waveObjSliceRType || argType == waveObjMapRType || argType == wsCommandRType
 }
 
 func convertWSCommand(argType reflect.Type, jsonArg any) (any, error) {
@@ -123,8 +111,15 @@ func convertWSCommand(argType reflect.Type, jsonArg any) (any, error) {
 
 func convertSpecial(argType reflect.Type, jsonArg any) (any, error) {
 	jsonType := reflect.TypeOf(jsonArg)
-	if argType == blockCommandRType {
-		return convertBlockCommand(argType, jsonArg)
+	if argType == orefRType {
+		if jsonType.Kind() != reflect.String {
+			return nil, fmt.Errorf("cannot convert %T to %s", jsonArg, argType)
+		}
+		oref, err := waveobj.ParseORef(jsonArg.(string))
+		if err != nil {
+			return nil, fmt.Errorf("invalid oref string: %v", err)
+		}
+		return oref, nil
 	} else if argType == wsCommandRType {
 		return convertWSCommand(argType, jsonArg)
 	} else if argType == waveObjRType {

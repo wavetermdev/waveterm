@@ -91,7 +91,11 @@ func (fs *FileService) ReadFile(path string) (*FullFile, error) {
 			innerFilesInfo = append(innerFilesInfo, *parentFileInfo)
 		}
 		for _, innerFileEntry := range innerFilesEntries {
-			innerFileInfoInt, _ := innerFileEntry.Info()
+			innerFileInfoInt, err := innerFileEntry.Info()
+			if err != nil {
+				log.Printf("unable to get file info for (innerFileInfo) %s: %v", innerFileEntry.Name(), err)
+				continue
+			}
 			mimeType := utilfn.DetectMimeType(filepath.Join(finfo.Path, innerFileInfoInt.Name()))
 			var fileSize int64
 			if mimeType == "directory" {

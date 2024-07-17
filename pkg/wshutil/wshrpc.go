@@ -9,217 +9,204 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
 )
 
 const DefaultTimeoutMs = 5000
 const RespChSize = 32
-const DefaultOutputChSize = 32
+const DefaultMessageChSize = 32
 
-type ResponseDataType = map[string]any
-type ResponseFnType = func(ResponseDataType) error
-type CommandHandlerFnType = func(context.Context, BlockCommand, ResponseFnType) (ResponseDataType, error)
+const (
+	RpcType_Call             = "call"             // single response (regular rpc)
+	RpcType_ResponseStream   = "responsestream"   // stream of responses (streaming rpc)
+	RpcType_StreamingRequest = "streamingrequest" // streaming request
+	RpcType_Complex          = "complex"          // streaming request/response
+)
 
-type RpcMessage interface {
-	IsRpcRequest() bool
+type ResponseFnType = func(any) error
+type CommandHandlerFnType = func(*RpcResponseHandler)
+
+type wshRpcContextKey struct{}
+
+func withWshRpcContext(ctx context.Context, wshRpc *WshRpc) context.Context {
+	return context.WithValue(ctx, wshRpcContextKey{}, wshRpc)
+}
+
+func GetWshRpcFromContext(ctx context.Context) *WshRpc {
+	rtn := ctx.Value(wshRpcContextKey{})
+	if rtn == nil {
+		return nil
+	}
+	return rtn.(*WshRpc)
+}
+
+type RpcMessage struct {
+	Command  string `json:"command,omitempty"`
+	ReqId    string `json:"reqid,omitempty"`
+	ResId    string `json:"resid,omitempty"`
+	Timeout  int    `json:"timeout,omitempty"`
+	Cont     bool   `json:"cont,omitempty"`
+	Error    string `json:"error,omitempty"`
+	DataType string `json:"datatype,omitempty"`
+	Data     any    `json:"data,omitempty"`
+}
+
+func (r *RpcMessage) IsRpcRequest() bool {
+	return r.Command != "" || r.ReqId != ""
+}
+
+func (r *RpcMessage) Validate() error {
+	if r.Command != "" {
+		if r.ResId != "" {
+			return fmt.Errorf("command packets may not have resid set")
+		}
+		if r.Error != "" {
+			return fmt.Errorf("command packets may not have error set")
+		}
+		if r.DataType != "" {
+			return fmt.Errorf("command packets may not have datatype set")
+		}
+		return nil
+	}
+	if r.ReqId != "" {
+		if r.ResId == "" {
+			return fmt.Errorf("request packets must have resid set")
+		}
+		if r.Timeout != 0 {
+			return fmt.Errorf("non-command request packets may not have timeout set")
+		}
+		return nil
+	}
+	if r.ResId != "" {
+		if r.Command != "" {
+			return fmt.Errorf("response packets may not have command set")
+		}
+		if r.ReqId == "" {
+			return fmt.Errorf("response packets must have reqid set")
+		}
+		if r.Timeout != 0 {
+			return fmt.Errorf("response packets may not have timeout set")
+		}
+		return nil
+	}
+	return fmt.Errorf("invalid packet: must have command, reqid, or resid set")
+}
+
+type RpcContext struct {
+	BlockId  string `json:"blockid,omitempty"`
+	TabId    string `json:"tabid,omitempty"`
+	WindowId string `json:"windowid,omitempty"`
 }
 
 type WshRpc struct {
-	Lock      *sync.Mutex
-	InputCh   chan RpcMessage
-	OutputCh  chan []byte
-	OSCEsc    string // either 23198 or 23199
-	RpcMap    map[string]*rpcData
-	HandlerFn CommandHandlerFnType
-}
-
-type RpcRequest struct {
-	ReqId     string
-	TimeoutMs int
-	Command   BlockCommand
-}
-
-func (r *RpcRequest) IsRpcRequest() bool {
-	return true
-}
-
-func (r *RpcRequest) MarshalJSON() ([]byte, error) {
-	if r == nil {
-		return []byte("null"), nil
-	}
-	rtn := make(map[string]any)
-	utilfn.DoMapStucture(&rtn, r.Command)
-	rtn["command"] = r.Command.GetCommand()
-	if r.ReqId != "" {
-		rtn["reqid"] = r.ReqId
-	} else {
-		delete(rtn, "reqid")
-	}
-	if r.TimeoutMs != 0 {
-		rtn["timeoutms"] = float64(r.TimeoutMs)
-	} else {
-		delete(rtn, "timeoutms")
-	}
-	return json.Marshal(rtn)
-}
-
-type RpcResponse struct {
-	ResId string         `json:"resid"`
-	Error string         `json:"error,omitempty"`
-	Cont  bool           `json:"cont,omitempty"`
-	Data  map[string]any `json:"data,omitempty"`
-}
-
-func (r *RpcResponse) IsRpcRequest() bool {
-	return false
-}
-
-func (r *RpcResponse) MarshalJSON() ([]byte, error) {
-	rtn := make(map[string]any)
-	// rest goes first (since other fields will overwrite)
-	for k, v := range r.Data {
-		rtn[k] = v
-	}
-	rtn["resid"] = r.ResId
-	if r.Error != "" {
-		rtn["error"] = r.Error
-	} else {
-		delete(rtn, "error")
-	}
-	if r.Cont {
-		rtn["cont"] = true
-	} else {
-		delete(rtn, "cont")
-	}
-	return json.Marshal(rtn)
+	Lock       *sync.Mutex
+	InputCh    chan []byte
+	OutputCh   chan []byte
+	RpcContext *atomic.Pointer[RpcContext]
+	RpcMap     map[string]*rpcData
+	HandlerFn  CommandHandlerFnType
 }
 
 type rpcData struct {
-	ResCh    chan *RpcResponse
-	Ctx      context.Context
-	CancelFn context.CancelFunc
+	ResCh chan *RpcMessage
+	Ctx   context.Context
 }
 
 // oscEsc is the OSC escape sequence to use for *sending* messages
 // closes outputCh when inputCh is closed/done
-func MakeWshRpc(oscEsc string, inputCh chan RpcMessage, commandHandlerFn CommandHandlerFnType) (*WshRpc, chan []byte) {
-	if len(oscEsc) != 5 {
-		panic("oscEsc must be 5 characters")
-	}
-	outputCh := make(chan []byte, DefaultOutputChSize)
+func MakeWshRpc(inputCh chan []byte, outputCh chan []byte, rpcCtx RpcContext, commandHandlerFn CommandHandlerFnType) *WshRpc {
 	rtn := &WshRpc{
-		Lock:      &sync.Mutex{},
-		InputCh:   inputCh,
-		OutputCh:  outputCh,
-		OSCEsc:    oscEsc,
-		RpcMap:    make(map[string]*rpcData),
-		HandlerFn: commandHandlerFn,
+		Lock:       &sync.Mutex{},
+		InputCh:    inputCh,
+		OutputCh:   outputCh,
+		RpcMap:     make(map[string]*rpcData),
+		RpcContext: &atomic.Pointer[RpcContext]{},
+		HandlerFn:  commandHandlerFn,
 	}
+	rtn.RpcContext.Store(&rpcCtx)
 	go rtn.runServer()
-	return rtn, outputCh
+	return rtn
 }
 
-func (w *WshRpc) handleRequest(req *RpcRequest) {
+func (w *WshRpc) GetRpcContext() RpcContext {
+	rtnPtr := w.RpcContext.Load()
+	return *rtnPtr
+}
+
+func (w *WshRpc) SetRpcContext(ctx RpcContext) {
+	w.RpcContext.Store(&ctx)
+}
+
+func (w *WshRpc) handleRequest(req *RpcMessage) {
+	var respHandler *RpcResponseHandler
 	defer func() {
 		if r := recover(); r != nil {
-			errResp := &RpcResponse{
-				ResId: req.ReqId,
-				Error: fmt.Sprintf("panic: %v", r),
+			log.Printf("panic in handleRequest: %v\n", r)
+			debug.PrintStack()
+			if respHandler != nil {
+				respHandler.SendResponseError(fmt.Errorf("panic: %v", r))
 			}
-			barr, err := EncodeWaveOSCMessageEx(w.OSCEsc, errResp)
-			if err != nil {
-				return
-			}
-			w.OutputCh <- barr
 		}
 	}()
-	respFn := func(resp ResponseDataType) error {
-		if req.ReqId == "" {
-			// request is not expecting a response
-			return nil
-		}
-		respMsg := &RpcResponse{
-			ResId: req.ReqId,
-			Cont:  true,
-			Data:  resp,
-		}
-		barr, err := EncodeWaveOSCMessageEx(w.OSCEsc, respMsg)
-		if err != nil {
-			return fmt.Errorf("error marshalling response to json: %w", err)
-		}
-		w.OutputCh <- barr
-		return nil
-	}
-	timeoutMs := req.TimeoutMs
+	timeoutMs := req.Timeout
 	if timeoutMs <= 0 {
 		timeoutMs = DefaultTimeoutMs
 	}
 	ctx, cancelFn := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
+	ctx = withWshRpcContext(ctx, w)
 	defer cancelFn()
-	respData, err := w.HandlerFn(ctx, req.Command, respFn)
-	log.Printf("handler for %q returned resp: %v\n", req.Command.GetCommand(), respData)
-	if req.ReqId == "" {
-		// no response expected
-		if err != nil {
-			log.Printf("error handling request (no response): %v\n", err)
-		}
-		return
+	respHandler = &RpcResponseHandler{
+		w:           w,
+		ctx:         ctx,
+		reqId:       req.ReqId,
+		command:     req.Command,
+		commandData: req.Data,
+		done:        &atomic.Bool{},
+		rpcCtx:      w.GetRpcContext(),
 	}
-	if err != nil {
-		errResp := &RpcResponse{
-			ResId: req.ReqId,
-			Error: err.Error(),
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("panic in handleRequest: %v\n", r)
+			debug.PrintStack()
+			respHandler.SendResponseError(fmt.Errorf("panic: %v", r))
 		}
-		barr, err := EncodeWaveOSCMessageEx(w.OSCEsc, errResp)
-		if err != nil {
-			return
-		}
-		w.OutputCh <- barr
-		return
+		respHandler.finalize()
+	}()
+	if w.HandlerFn != nil {
+		w.HandlerFn(respHandler)
 	}
-	respMsg := &RpcResponse{
-		ResId: req.ReqId,
-		Data:  respData,
-	}
-	barr, err := EncodeWaveOSCMessageEx(w.OSCEsc, respMsg)
-	if err != nil {
-		respMsg := &RpcResponse{
-			ResId: req.ReqId,
-			Error: err.Error(),
-		}
-		barr, _ = EncodeWaveOSCMessageEx(w.OSCEsc, respMsg)
-	}
-	w.OutputCh <- barr
 }
 
 func (w *WshRpc) runServer() {
 	defer close(w.OutputCh)
-	for msg := range w.InputCh {
+	for msgBytes := range w.InputCh {
+		var msg RpcMessage
+		err := json.Unmarshal(msgBytes, &msg)
+		if err != nil {
+			log.Printf("wshrpc received bad message: %v\n", err)
+			continue
+		}
 		if msg.IsRpcRequest() {
-			if w.HandlerFn == nil {
-				continue
-			}
-			req := msg.(*RpcRequest)
-			w.handleRequest(req)
+			w.handleRequest(&msg)
 		} else {
-			resp := msg.(*RpcResponse)
-			respCh := w.getResponseCh(resp.ResId)
+			respCh := w.getResponseCh(msg.ResId)
 			if respCh == nil {
 				continue
 			}
-			respCh <- resp
-			if !resp.Cont {
-				w.unregisterRpc(resp.ResId, nil)
+			respCh <- &msg
+			if !msg.Cont {
+				w.unregisterRpc(msg.ResId, nil)
 			}
 		}
 	}
 }
 
-func (w *WshRpc) getResponseCh(resId string) chan *RpcResponse {
+func (w *WshRpc) getResponseCh(resId string) chan *RpcMessage {
 	if resId == "" {
 		return nil
 	}
@@ -238,28 +225,13 @@ func (w *WshRpc) SetHandler(handler CommandHandlerFnType) {
 	w.HandlerFn = handler
 }
 
-// no response
-func (w *WshRpc) SendCommand(cmd BlockCommand) error {
-	barr, err := EncodeWaveOSCMessageEx(w.OSCEsc, &RpcRequest{Command: cmd})
-	if err != nil {
-		return fmt.Errorf("error marshalling request to json: %w", err)
-	}
-	w.OutputCh <- barr
-	return nil
-}
-
-func (w *WshRpc) registerRpc(reqId string, timeoutMs int) chan *RpcResponse {
+func (w *WshRpc) registerRpc(ctx context.Context, reqId string) chan *RpcMessage {
 	w.Lock.Lock()
 	defer w.Lock.Unlock()
-	if timeoutMs <= 0 {
-		timeoutMs = DefaultTimeoutMs
-	}
-	ctx, cancelFn := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
-	rpcCh := make(chan *RpcResponse, RespChSize)
+	rpcCh := make(chan *RpcMessage, RespChSize)
 	w.RpcMap[reqId] = &rpcData{
-		ResCh:    rpcCh,
-		Ctx:      ctx,
-		CancelFn: cancelFn,
+		ResCh: rpcCh,
+		Ctx:   ctx,
 	}
 	go func() {
 		<-ctx.Done()
@@ -272,59 +244,178 @@ func (w *WshRpc) unregisterRpc(reqId string, err error) {
 	w.Lock.Lock()
 	defer w.Lock.Unlock()
 	rd := w.RpcMap[reqId]
-	if rd != nil {
-		if err != nil {
-			errResp := &RpcResponse{
-				ResId: reqId,
-				Error: err.Error(),
-			}
-			rd.ResCh <- errResp
+	if rd == nil {
+		return
+	}
+	if err != nil {
+		errResp := &RpcMessage{
+			ResId: reqId,
+			Error: err.Error(),
 		}
-		close(rd.ResCh)
-		rd.CancelFn()
+		rd.ResCh <- errResp
 	}
 	delete(w.RpcMap, reqId)
+	close(rd.ResCh)
+}
+
+// no response
+func (w *WshRpc) SendCommand(command string, data any) error {
+	handler, err := w.SendComplexRequest(command, data, false, 0)
+	if err != nil {
+		return err
+	}
+	handler.finalize()
+	return nil
 }
 
 // single response
-func (w *WshRpc) SendRpcRequest(cmd BlockCommand, timeoutMs int) (map[string]any, error) {
-	if timeoutMs < 0 {
-		return nil, fmt.Errorf("timeout must be >= 0")
-	}
-	req := &RpcRequest{
-		Command:   cmd,
-		ReqId:     uuid.New().String(),
-		TimeoutMs: timeoutMs,
-	}
-	barr, err := EncodeWaveOSCMessageEx(w.OSCEsc, req)
+func (w *WshRpc) SendRpcRequest(command string, data any, timeoutMs int) (any, error) {
+	handler, err := w.SendComplexRequest(command, data, true, timeoutMs)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling request to ANSI esc: %w", err)
+		return nil, err
 	}
-	rpcCh := w.registerRpc(req.ReqId, timeoutMs)
-	defer w.unregisterRpc(req.ReqId, nil)
-	w.OutputCh <- barr
-	resp := <-rpcCh
+	defer handler.finalize()
+	return handler.NextResponse()
+}
+
+type RpcRequestHandler struct {
+	w        *WshRpc
+	ctx      context.Context
+	cancelFn func()
+	reqId    string
+	respCh   chan *RpcMessage
+}
+
+func (handler *RpcRequestHandler) Context() context.Context {
+	return handler.ctx
+}
+
+func (handler *RpcRequestHandler) ResponseDone() bool {
+	select {
+	case _, more := <-handler.respCh:
+		return !more
+	default:
+		return false
+	}
+}
+
+func (handler *RpcRequestHandler) NextResponse() (any, error) {
+	resp := <-handler.respCh
 	if resp.Error != "" {
 		return nil, errors.New(resp.Error)
 	}
 	return resp.Data, nil
 }
 
-// streaming response
-func (w *WshRpc) SendRpcRequestEx(cmd BlockCommand, timeoutMs int) (chan *RpcResponse, error) {
-	if timeoutMs < 0 {
-		return nil, fmt.Errorf("timeout must be >= 0")
+func (handler *RpcRequestHandler) finalize() {
+	if handler.cancelFn != nil {
+		handler.cancelFn()
 	}
-	req := &RpcRequest{
-		Command:   cmd,
-		ReqId:     uuid.New().String(),
-		TimeoutMs: timeoutMs,
+	if handler.reqId != "" {
+		handler.w.unregisterRpc(handler.reqId, nil)
 	}
-	barr, err := EncodeWaveOSCMessageEx(w.OSCEsc, req)
+}
+
+type RpcResponseHandler struct {
+	w           *WshRpc
+	ctx         context.Context
+	reqId       string
+	command     string
+	commandData any
+	rpcCtx      RpcContext
+	done        *atomic.Bool
+}
+
+func (handler *RpcResponseHandler) Context() context.Context {
+	return handler.ctx
+}
+
+func (handler *RpcResponseHandler) GetCommand() string {
+	return handler.command
+}
+
+func (handler *RpcResponseHandler) GetCommandRawData() any {
+	return handler.commandData
+}
+
+func (handler *RpcResponseHandler) GetRpcContext() RpcContext {
+	return handler.rpcCtx
+}
+
+func (handler *RpcResponseHandler) SendResponse(data any, done bool) error {
+	if handler.reqId == "" {
+		return nil // no response expected
+	}
+	if handler.done.Load() {
+		return fmt.Errorf("request already done, cannot send additional response")
+	}
+	if done {
+		handler.done.Store(true)
+	}
+	msg := &RpcMessage{
+		ResId: handler.reqId,
+		Data:  data,
+		Cont:  !done,
+	}
+	barr, err := json.Marshal(msg)
 	if err != nil {
-		return nil, fmt.Errorf("error marshalling request to json: %w", err)
+		return err
 	}
-	rpcCh := w.registerRpc(req.ReqId, timeoutMs)
+	handler.w.OutputCh <- barr
+	return nil
+}
+
+func (handler *RpcResponseHandler) SendResponseError(err error) {
+	if handler.reqId == "" || handler.done.Load() {
+		return
+	}
+	handler.done.Store(true)
+	msg := &RpcMessage{
+		ResId: handler.reqId,
+		Error: err.Error(),
+	}
+	barr, _ := json.Marshal(msg) // will never fail
+	handler.w.OutputCh <- barr
+}
+
+func (handler *RpcResponseHandler) finalize() {
+	if handler.reqId == "" || handler.done.Load() {
+		return
+	}
+	handler.done.Store(true)
+	handler.SendResponse(nil, true)
+}
+
+func (handler *RpcResponseHandler) IsDone() bool {
+	return handler.done.Load()
+}
+
+func (w *WshRpc) SendComplexRequest(command string, data any, expectsResponse bool, timeoutMs int) (*RpcRequestHandler, error) {
+	if command == "" {
+		return nil, fmt.Errorf("command cannot be empty")
+	}
+	handler := &RpcRequestHandler{
+		w: w,
+	}
+	if timeoutMs < 0 {
+		handler.ctx = context.Background()
+	} else {
+		handler.ctx, handler.cancelFn = context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
+	}
+	if expectsResponse {
+		handler.reqId = uuid.New().String()
+	}
+	req := &RpcMessage{
+		Command: command,
+		ReqId:   handler.reqId,
+		Data:    data,
+		Timeout: timeoutMs,
+	}
+	barr, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+	handler.respCh = w.registerRpc(handler.ctx, handler.reqId)
 	w.OutputCh <- barr
-	return rpcCh, nil
+	return handler, nil
 }

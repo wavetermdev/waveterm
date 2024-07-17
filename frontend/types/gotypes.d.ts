@@ -107,24 +107,79 @@ declare global {
         meta: MetaType;
     };
 
+    // wshrpc.CommandAppendFileData
+    type CommandAppendFileData = {
+        zoneid: string;
+        filename: string;
+        data64: string;
+    };
+
+    // wshrpc.CommandAppendIJsonData
+    type CommandAppendIJsonData = {
+        zoneid: string;
+        filename: string;
+        data: MetaType;
+    };
+
+    // wshrpc.CommandBlockInputData
+    type CommandBlockInputData = {
+        blockid: string;
+        inputdata64?: string;
+        signame?: string;
+        termsize?: TermSize;
+    };
+
+    // wshrpc.CommandBlockRestartData
+    type CommandBlockRestartData = {
+        blockid: string;
+    };
+
+    // wshrpc.CommandBlockSetViewData
+    type CommandBlockSetViewData = {
+        blockid: string;
+        view: string;
+    };
+
+    // wshrpc.CommandCreateBlockData
+    type CommandCreateBlockData = {
+        tabid: string;
+        blockdef: BlockDef;
+        rtopts: RuntimeOpts;
+    };
+
+    // wshrpc.CommandGetMetaData
+    type CommandGetMetaData = {
+        oref: ORef;
+    };
+
+    // wshrpc.CommandMessageData
+    type CommandMessageData = {
+        oref: ORef;
+        message: string;
+    };
+
+    // wshrpc.CommandResolveIdsData
+    type CommandResolveIdsData = {
+        ids: string[];
+    };
+
+    // wshrpc.CommandResolveIdsRtnData
+    type CommandResolveIdsRtnData = {
+        resolvedids: {[key: string]: ORef};
+    };
+
+    // wshrpc.CommandSetMetaData
+    type CommandSetMetaData = {
+        oref: ORef;
+        meta: MetaType;
+    };
+
     // wshutil.CreateBlockCommand
     type CreateBlockCommand = {
         command: "createblock";
         tabid: string;
         blockdef: BlockDef;
         rtopts?: RuntimeOpts;
-    };
-
-    // wconfig.DateTimeConfigType
-    type DateTimeConfigType = {
-        locale: string;
-        format: DateTimeFormatConfigType;
-    };
-
-    // wconfig.DateTimeFormatConfigType
-    type DateTimeFormatConfigType = {
-        dateStyle: number;
-        timeStyle: number;
     };
 
     // wstore.FileDef
@@ -185,10 +240,7 @@ declare global {
     };
 
     // waveobj.ORef
-    type ORef = {
-        otype: string;
-        oid: string;
-    };
+    type ORef = string;
 
     // wstore.Point
     type Point = {
@@ -200,6 +252,18 @@ declare global {
     type ResolveIdsCommand = {
         command: "resolveids";
         ids: string[];
+    };
+
+    // wshutil.RpcMessage
+    type RpcMessage = {
+        command?: string;
+        reqid?: string;
+        resid?: string;
+        timeout?: number;
+        cont?: boolean;
+        error?: string;
+        datatype?: string;
+        data?: any;
     };
 
     // wstore.RuntimeOpts
@@ -218,7 +282,6 @@ declare global {
     // wconfig.SettingsConfigType
     type SettingsConfigType = {
         mimetypes: {[key: string]: MimeTypeConfigType};
-        datetime: DateTimeConfigType;
         term: TerminalConfigType;
         widgets: WidgetsConfigType[];
         blockheader: BlockHeaderOpts;
@@ -273,7 +336,7 @@ declare global {
 
     type WSCommandType = {
         wscommand: string;
-    } & ( SetBlockTermSizeWSCommand | BlockInputWSCommand );
+    } & ( SetBlockTermSizeWSCommand | BlockInputWSCommand | WSRpcCommand );
 
     // eventbus.WSEventType
     type WSEventType = {
@@ -295,6 +358,12 @@ declare global {
         tabid: string;
         actiontype: string;
         blockid: string;
+    };
+
+    // webcmd.WSRpcCommand
+    type WSRpcCommand = {
+        wscommand: "rpc";
+        message: RpcMessage;
     };
 
     // wconfig.WatcherUpdate
@@ -378,6 +447,17 @@ declare global {
         name: string;
         tabids: string[];
         meta: MetaType;
+    };
+
+    // wshrpc.WshRpcCommandOpts
+    type WshRpcCommandOpts = {
+        timeout: number;
+        noresponse: boolean;
+    };
+
+    // wshrpc.WshServerCommandMeta
+    type WshServerCommandMeta = {
+        commandtype: string;
     };
 
 }
