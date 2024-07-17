@@ -3,7 +3,6 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
-import { getApi } from "@/app/store/global";
 import { ChatMessageType, useWaveAi } from "@/app/store/waveai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
@@ -12,7 +11,7 @@ import tinycolor from "tinycolor2";
 
 import "./waveai.less";
 
-const outline = "2px solid var(--markdown-outline-color)";
+const outline = "2px solid var(--accent-color)";
 
 interface ChatItemProps {
     chatItem: ChatMessageType;
@@ -23,7 +22,7 @@ const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
     const { isAssistant, text, isError } = chatItem;
     const senderClassName = isAssistant ? "chat-msg-assistant" : "chat-msg-user";
     const msgClassName = `chat-msg ${senderClassName}`;
-    const cssVar = getApi().isDev ? "--app-panel-bg-color-dev" : "--app-panel-bg-color";
+    const cssVar = "--panel-bg-color";
     const panelBgColor = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
     const color = tinycolor(panelBgColor);
     const newColor = color.isValid() ? tinycolor(panelBgColor).darken(6).toString() : "none";
