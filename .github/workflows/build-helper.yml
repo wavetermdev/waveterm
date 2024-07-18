@@ -1,7 +1,7 @@
 name: "Build Helper"
 on: workflow_dispatch
 env:
-    GO_VERSION: "1.22.0"
+    GO_VERSION: "1.22.5"
     NODE_VERSION: "21.5.0"
 jobs:
     runbuild:
@@ -11,22 +11,15 @@ jobs:
                     - platform: "darwin"
                       arch: "universal"
                       runner: "macos-latest-xlarge"
-                      task: "build-package"
                     - platform: "linux"
                       arch: "amd64"
                       runner: "ubuntu-latest"
-                      scripthaus: "build-package-linux"
-                    - platform: "linux"
-                      arch: "arm64"
-                      runner: "ubuntu-latest"
-                      scripthaus: "build-package-linux"
+                    # - platform: "windows"
+                    #   arch: "amd64"
+                    #   runner: "windows-latest"
         runs-on: ${{ matrix.runner }}
         steps:
             - uses: actions/checkout@v4
-            - uses: actions/checkout@v4
-              with:
-                  repository: scripthaus-dev/scripthaus
-                  path: scripthaus
             - name: Install Linux Build Dependencies (Linux only)
               if: matrix.platform == 'linux'
               run: |
@@ -36,16 +29,7 @@ jobs:
               with:
                   go-version: ${{env.GO_VERSION}}
                   cache-dependency-path: |
-                      wavesrv/go.sum
-                      waveshell/go.sum
-                      scripthaus/go.sum
-            - name: Install Scripthaus
-              run: |
-                  go work use ./scripthaus;
-                  cd scripthaus;
-                  go get ./...;
-                  CGO_ENABLED=1 go build -o scripthaus cmd/main.go
-                  echo $PWD >> $GITHUB_PATH
+                      go.sum
             - uses: actions/setup-node@v4
               with:
                   node-version: ${{env.NODE_VERSION}}
@@ -53,23 +37,25 @@ jobs:
               run: |
                   corepack enable
                   yarn install
+            - name: Install Task
+              uses: arduino/setup-task@v2
+              with:
+                  version: 3.x
+                  repo-token: ${{ secrets.GITHUB_TOKEN }}
             - name: Set Version
               id: set-version
-              run: |
-                  VERSION=$(node -e 'console.log(require("./version.js"))')
-                  echo "WAVETERM_VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+              run: echo "WAVETERM_VERSION=$(node "./version.cjs")" >> "$GITHUB_OUTPUT"
             - name: Build ${{ matrix.platform }}/${{ matrix.arch }}
-              run: scripthaus run ${{ matrix.scripthaus }}
+              run: task package
               env:
-                  GOARCH: ${{ matrix.arch }}
                   CSC_LINK: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE}}
                   CSC_KEY_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_CERTIFICATE_PWD }}
                   APPLE_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_APPLE_ID }}
                   APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_PWD }}
                   APPLE_TEAM_ID: ${{ matrix.platform == 'darwin' && secrets.PROD_MACOS_NOTARIZATION_TEAM_ID }}
             - name: Upload to S3 staging
-              run: aws s3 cp make/ s3://waveterm-github-artifacts/staging/${{ steps.set-version.outputs.WAVETERM_VERSION }}/ --recursive --exclude "*/*" --exclude "builder-*.yml"
+              run: aws s3 cp make/ s3://waveterm-github-artifacts/staging-w2/${{ steps.set-version.outputs.WAVETERM_VERSION }}/ --recursive --exclude "*/*" --exclude "builder-*.yml"
               env:
-                  AWS_ACCESS_KEY_ID: "${{ secrets.S3_USERID }}"
-                  AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_SECRETKEY }}"
+                  AWS_ACCESS_KEY_ID: "${{ secrets.S3_KEY_ID }}"
+                  AWS_SECRET_ACCESS_KEY: "${{ secrets.S3_KEY_SECRET }}"
                   AWS_DEFAULT_REGION: us-west-2

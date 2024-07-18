@@ -4,30 +4,14 @@
 version: "3"
 
 vars:
-    APP_NAME: "NextWave"
+    APP_NAME: "TheNextWave"
     BIN_DIR: "bin"
     VERSION:
         sh: node version.cjs
 
 tasks:
-
-    package:dev:
-        cmds:
-            - yarn build:dev && yarn electron-builder -c electron-builder.config.cjs -p never
-        deps:
-            - generate
-            - build:server
-            - build:wsh
-
-    package:prod:
-        cmds:
-            - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
-        deps:
-            - generate
-            - build:server
-            - build:wsh
-
     electron:dev:
+        desc: Run the Electron application directly.
         cmds:
             - WAVETERM_DEV=1 yarn dev
         deps:
@@ -36,6 +20,7 @@ tasks:
             - build:wsh
 
     electron:start:
+        desc: Run the Electron application via the Vite dev server (enables hot reloading).
         cmds:
             - WAVETERM_DEV=1 yarn start
         deps:
@@ -43,7 +28,17 @@ tasks:
             - build:server
             - build:wsh
 
+    package:
+        desc: Package the application for the current platform.
+        cmds:
+            - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
+        deps:
+            - generate
+            - build:server
+            - build:wsh
+
     generate:
+        desc: Generate Typescript bindings for the Go backend.
         cmds:
             - go run cmd/generate/main-generate.go
             - go run cmd/generatewshclient/main-generatewshclient.go
@@ -52,22 +47,46 @@ tasks:
             - "pkg/service/**/*.go"
             - "pkg/wstore/*.go"
             - "pkg/wshrpc/**/*.go"
+        generates:
+            - frontend/types/gotypes.d.ts
+            - pkg/wshrpc/wshclient/wshclient.go
 
     build:server:
+        desc: Build the wavesrv component.
         deps:
+            - build:server:darwin
+            - build:server:other
+
+    build:server:darwin:
+        desc: Build the wavesrv component for Darwin platforms (generates artifacts for both arm64 and amd64).
+        status:
+          - exit {{if eq OS "darwin"}}1{{else}}0{{end}}
+        cmds:
             - task: build:server:internal
               vars:
                 GOARCH: arm64
             - task: build:server:internal
               vars:
                 GOARCH: amd64
+
+    build:server:other:
+        desc: Build the wavesrv component for non-Darwin platforms (only generates artifacts for the current architecture).
+        status:
+          - exit {{if eq OS "darwin"}}0{{else}}1{{end}}
+        cmds:
+            - task: build:server:internal
+              vars:
+                GOARCH:
+                    sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
+                GO_LDFLAGS: -linkmode 'external' -extldflags=-static
+            
     
     build:server:internal:
         requires:
             vars:
                 - GOARCH
         cmds:
-            - CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{.GOARCH}}{{exeExt}} cmd/server/main-server.go
+            - CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "{{.GO_LDFLAGS}} -X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{.GOARCH}}{{exeExt}} cmd/server/main-server.go
         sources:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
@@ -78,6 +97,7 @@ tasks:
         internal: true
 
     build:wsh:
+        desc: Build the wsh component for all possible targets.
         deps:
             - task: build:wsh:internal
               vars:
@@ -106,8 +126,6 @@ tasks:
 
     build:wsh:internal:
         vars:
-            GO_LDFLAGS:
-                sh: echo "-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
             EXT: 
                 sh: echo {{if eq .GOOS "windows"}}.exe{{end}}
         requires:
@@ -121,13 +139,13 @@ tasks:
         generates:
             - dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}}
         cmds:
-            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{.GO_LDFLAGS}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
+            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         deps:
             - go:mod:tidy
         internal: true
 
     go:mod:tidy:
-        summary: Runs `go mod tidy`
+        desc: Runs `go mod tidy`
         internal: true
         generates:
             - go.sum
