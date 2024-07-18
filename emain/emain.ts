@@ -305,7 +305,7 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow): WaveBrow
         },
         show: false,
         autoHideMenuBar: true,
-        vibrancy: "sidebar",
+        backgroundColor: "#000000",
     });
     (bwin as any).waveWindowId = waveWindow.oid;
     let readyResolve: (value: void) => void;
