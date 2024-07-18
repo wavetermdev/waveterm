@@ -6,7 +6,7 @@ import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { layoutTreeStateReducer } from "@/faraday/lib/layoutState";
 
 import { handleIncomingRpcMessage } from "@/app/store/wshrpc";
-import { getServerWebEndpoint, getServerWSEndpoint } from "@/util/endpoints";
+import { getWSServerEndpoint, getWebServerEndpoint } from "@/util/endpoints";
 import * as layoututil from "@/util/layoututil";
 import { produce } from "immer";
 import * as jotai from "jotai";
@@ -270,7 +270,7 @@ function handleWSMessage(msg: any) {
 }
 
 function initWS() {
-    globalWS = new WSControl(getServerWSEndpoint(), globalStore, globalWindowId, "", (msg) => {
+    globalWS = new WSControl(getWSServerEndpoint(), globalStore, globalWindowId, "", (msg) => {
         handleWSMessage(msg);
     });
     globalWS.connectNow("initWS");
@@ -324,7 +324,7 @@ async function fetchWaveFile(
     if (offset != null) {
         usp.set("offset", offset.toString());
     }
-    const resp = await fetch(getServerWebEndpoint() + "/wave/file?" + usp.toString());
+    const resp = await fetch(getWebServerEndpoint() + "/wave/file?" + usp.toString());
     if (!resp.ok) {
         if (resp.status === 404) {
             return { data: null, fileInfo: null };
@@ -367,6 +367,8 @@ function getObjectId(obj: any): number {
 }
 
 export {
+    PLATFORM,
+    WOS,
     atoms,
     createBlock,
     fetchWaveFile,
@@ -378,12 +380,10 @@ export {
     globalStore,
     globalWS,
     initWS,
-    PLATFORM,
     sendWSCommand,
     setBlockFocus,
     setPlatform,
     useBlockAtom,
     useBlockCache,
     useSettingsAtom,
-    WOS,
 };

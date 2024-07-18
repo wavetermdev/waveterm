@@ -3,7 +3,7 @@
 
 import { WshServer } from "@/app/store/wshserver";
 import { createBlock } from "@/store/global";
-import { getServerWebEndpoint } from "@/util/endpoints";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import * as React from "react";
@@ -117,7 +117,7 @@ function TermSticker({ sticker, config }: { sticker: StickerType; config: Sticke
         if (sticker.imgsrc == null) {
             return null;
         }
-        const streamingUrl = getServerWebEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(sticker.imgsrc);
+        const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(sticker.imgsrc);
         return (
             <div className="term-sticker term-sticker-image" style={style} onClick={clickHandler}>
                 <img src={streamingUrl} />

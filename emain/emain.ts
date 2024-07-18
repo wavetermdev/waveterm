@@ -14,7 +14,7 @@ import * as services from "../frontend/app/store/services";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 
-import { getServerWebEndpoint, WebServerEndpointVarName, WSServerEndpointVarName } from "@/util/endpoints";
+import { getWebServerEndpoint, WebServerEndpointVarName, WSServerEndpointVarName } from "@/util/endpoints";
 import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
 import { sprintf } from "sprintf-js";
 const electronApp = electron.app;
@@ -268,7 +268,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     }
     if (
         event.frame.name == "pdfview" &&
-        (url.startsWith("blob:file:///") || url.startsWith(getServerWebEndpoint() + "/wave/stream-file?"))
+        (url.startsWith("blob:file:///") || url.startsWith(getWebServerEndpoint() + "/wave/stream-file?"))
     ) {
         // allowed
         return;
@@ -480,7 +480,7 @@ electron.ipcMain.on("open-external", (event, url) => {
 
 electron.ipcMain.on("download", (event, payload) => {
     const window = electron.BrowserWindow.fromWebContents(event.sender);
-    const streamingUrl = getServerWebEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
+    const streamingUrl = getWebServerEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
     window.webContents.downloadURL(streamingUrl);
 });
 

@@ -4,7 +4,7 @@
 // WaveObjectStore
 
 import { sendRpcCommand } from "@/app/store/wshrpc";
-import { getServerWebEndpoint } from "@/util/endpoints";
+import { getWebServerEndpoint } from "@/util/endpoints";
 import * as jotai from "jotai";
 import * as React from "react";
 import { v4 as uuidv4 } from "uuid";
@@ -79,7 +79,7 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     const usp = new URLSearchParams();
     usp.set("service", service);
     usp.set("method", method);
-    const url = getServerWebEndpoint() + "/wave/service?" + usp.toString();
+    const url = getWebServerEndpoint() + "/wave/service?" + usp.toString();
     const fetchPromise = fetch(url, {
         method: "POST",
         body: JSON.stringify(waveCall),
