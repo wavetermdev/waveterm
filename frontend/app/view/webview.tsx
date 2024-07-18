@@ -4,9 +4,9 @@
 import { getApi } from "@/app/store/global";
 import { WOS, globalStore } from "@/store/global";
 import * as services from "@/store/services";
+import clsx from "clsx";
 import { WebviewTag } from "electron";
 import * as jotai from "jotai";
-
 import React, { memo, useEffect } from "react";
 
 import "./webview.less";
@@ -17,8 +17,6 @@ export class WebViewModel implements ViewModel {
     viewIcon: jotai.Atom<string | HeaderIconButton>;
     viewName: jotai.Atom<string>;
     viewText: jotai.Atom<HeaderElem[]>;
-    preIconButton: jotai.Atom<HeaderIconButton>;
-    endIconButtons: jotai.Atom<HeaderIconButton[]>;
     url: jotai.PrimitiveAtom<string>;
     urlInput: jotai.PrimitiveAtom<string>;
     urlInputFocused: jotai.PrimitiveAtom<boolean>;
@@ -77,7 +75,7 @@ export class WebViewModel implements ViewModel {
                 },
                 {
                     elemtype: "div",
-                    className: get(this.urlWrapperClassName),
+                    className: clsx("block-frame-div-url", get(this.urlWrapperClassName)),
                     onMouseOver: this.handleUrlWrapperMouseOver.bind(this),
                     onMouseOut: this.handleUrlWrapperMouseOut.bind(this),
                     children: [

@@ -61,6 +61,9 @@ class FileServiceType {
     RemoveWidget(arg1: number): Promise<void> {
         return WOS.callBackendService("file", "RemoveWidget", Array.from(arguments))
     }
+    SaveFile(arg1: string, arg2: string): Promise<void> {
+        return WOS.callBackendService("file", "SaveFile", Array.from(arguments))
+    }
     StatFile(arg1: string): Promise<FileInfo> {
         return WOS.callBackendService("file", "StatFile", Array.from(arguments))
     }

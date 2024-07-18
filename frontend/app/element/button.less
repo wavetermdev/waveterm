@@ -37,6 +37,11 @@
         background: var(--error-color);
     }
 
+    &.primary.warning {
+        background: #e6ba1e;
+        color: #000000;
+    }
+
     &.primary.outlined,
     &.primary.greyoutlined {
         background: none;
@@ -126,7 +131,16 @@
         opacity: 0.5;
     }
 
-    &.link-button {
+    &.link {
         cursor: pointer;
     }
+}
+
+.border-radius-4 {
+    border-radius: 4px;
+}
+
+.vertical-padding-3 {
+    padding-top: 3px;
+    padding-bottom: 3px;
 }

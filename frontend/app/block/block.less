@@ -149,7 +149,6 @@
                         border-radius: 3px;
                         align-items: center;
                         padding-left: 7px;
-                        background: rgba(255, 255, 255, 0.1);
 
                         &.hovered {
                             background: rgba(255, 255, 255, 0.2);
@@ -175,15 +174,30 @@
                                 overflow: hidden;
                                 text-overflow: ellipsis;
                                 box-sizing: border-box;
+                                opacity: 0.7;
+                                font-weight: 500;
                             }
                         }
 
+                        .button {
+                            margin-left: 3px;
+                        }
+
+                        // webview specific. for refresh button
                         .block-frame-header-iconbutton {
                             height: 100%;
                             width: 27px;
                             display: flex;
                             align-items: center;
                             justify-content: center;
+                        }
+                    }
+
+                    .block-frame-div-url {
+                        background: rgba(255, 255, 255, 0.1);
+
+                        input {
+                            opacity: 1;
                         }
                     }
                 }

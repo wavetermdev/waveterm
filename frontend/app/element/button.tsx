@@ -4,9 +4,10 @@ import "./button.less";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     className?: string;
+    children?: React.ReactNode;
 }
 
-const Button: React.FC<ButtonProps> = React.memo(({ className = "primary", children, disabled, ...props }) => {
+const Button = React.memo(({ className = "primary", children, disabled, ...props }: ButtonProps) => {
     const hasIcon = React.Children.toArray(children).some(
         (child) => React.isValidElement(child) && (child as React.ReactElement).type === "svg"
     );

@@ -1,6 +1,3 @@
-// Copyright 2024, Command Line Inc.
-// SPDX-License-Identifier: Apache-2.0
-
 package fileservice
 
 import (
@@ -39,6 +36,19 @@ type FileInfo struct {
 type FullFile struct {
 	Info   *FileInfo `json:"info"`
 	Data64 string    `json:"data64"` // base64 encoded
+}
+
+func (fs *FileService) SaveFile(path string, data64 string) error {
+	cleanedPath := filepath.Clean(wavebase.ExpandHomeDir(path))
+	data, err := base64.StdEncoding.DecodeString(data64)
+	if err != nil {
+		return fmt.Errorf("failed to decode base64 data: %w", err)
+	}
+	err = os.WriteFile(cleanedPath, data, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write file %q: %w", path, err)
+	}
+	return nil
 }
 
 func (fs *FileService) StatFile(path string) (*FileInfo, error) {

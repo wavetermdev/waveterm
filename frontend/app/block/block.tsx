@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useLongClick } from "@/app/hook/useLongClick";
-import { CodeEdit } from "@/app/view/codeedit/codeedit";
+import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
+import { Button } from "@/element/button";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
 import { ContextMenuModel } from "@/store/contextmenu";
@@ -222,11 +223,12 @@ const IconButton = React.memo(({ decl, className }: { decl: HeaderIconButton; cl
 });
 
 const Input = React.memo(({ decl, className }: { decl: HeaderInput; className: string }) => {
-    const { value, ref, onChange, onKeyDown, onFocus, onBlur } = decl;
+    const { value, ref, isDisabled, onChange, onKeyDown, onFocus, onBlur } = decl;
     return (
         <div className="input-wrapper">
             <input
                 ref={ref}
+                disabled={isDisabled}
                 className={className}
                 value={value}
                 onChange={(e) => onChange(e)}
@@ -326,6 +328,16 @@ const BlockFrame_Default_Component = ({
                     <div key={key} className="block-frame-text">
                         {elem.text}
                     </div>
+                );
+            } else if (elem.elemtype == "textbutton") {
+                return (
+                    <Button
+                        key={key}
+                        className={clsx("border-radius-4 vertical-padding-3", elem.className)}
+                        onClick={(e) => elem.onClick(e)}
+                    >
+                        {elem.text}
+                    </Button>
                 );
             } else if (elem.elemtype == "div") {
                 return (
@@ -495,7 +507,7 @@ function getViewElemAndModel(
     } else if (blockView === "plot") {
         viewElem = <PlotView key={blockId} />;
     } else if (blockView === "codeedit") {
-        viewElem = <CodeEdit key={blockId} text={null} filename={null} />;
+        viewElem = <CodeEditor key={blockId} text={null} filename={null} />;
     } else if (blockView === "web") {
         const webviewModel = makeWebViewModel(blockId);
         viewElem = <WebView key={blockId} parentRef={blockRef} model={webviewModel} />;

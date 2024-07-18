@@ -11,12 +11,13 @@ import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
 import { loadable } from "jotai/utils";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { CenteredDiv } from "../element/quickelems";
-import { CodeEdit } from "./codeedit/codeedit";
+import { CodeEditor } from "./codeeditor/codeeditor";
 import { CSVView } from "./csvview";
 import { DirectoryPreview } from "./directorypreview";
-import "./view.less";
+
+import "./preview.less";
 
 const MaxFileSize = 1024 * 1024 * 10; // 10MB
 const MaxCSVSize = 1024 * 1024 * 1; // 1MB
@@ -36,9 +37,11 @@ export class PreviewModel implements ViewModel {
     blockAtom: jotai.Atom<Block>;
     viewIcon: jotai.Atom<string | HeaderIconButton>;
     viewName: jotai.Atom<string>;
-    viewText: jotai.Atom<string>;
+    viewText: jotai.Atom<HeaderElem[]>;
     preIconButton: jotai.Atom<HeaderIconButton>;
     endIconButtons: jotai.Atom<HeaderIconButton[]>;
+    ceReadOnly: jotai.PrimitiveAtom<boolean>;
+    isCeView: jotai.PrimitiveAtom<boolean>;
 
     fileName: jotai.WritableAtom<string, [string], void>;
     statFile: jotai.Atom<Promise<FileInfo>>;
@@ -46,6 +49,7 @@ export class PreviewModel implements ViewModel {
     fileMimeType: jotai.Atom<Promise<string>>;
     fileMimeTypeLoadable: jotai.Atom<Loadable<string>>;
     fileContent: jotai.Atom<Promise<string>>;
+    newFileContent: jotai.PrimitiveAtom<string>;
 
     showHiddenFiles: jotai.PrimitiveAtom<boolean>;
     refreshVersion: jotai.PrimitiveAtom<number>;
@@ -59,6 +63,8 @@ export class PreviewModel implements ViewModel {
         this.blockId = blockId;
         this.showHiddenFiles = jotai.atom(true);
         this.refreshVersion = jotai.atom(0);
+        this.ceReadOnly = jotai.atom(true);
+        this.isCeView = jotai.atom(false);
         this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
         this.viewIcon = jotai.atom((get) => {
             let blockData = get(this.blockAtom);
@@ -95,8 +101,46 @@ export class PreviewModel implements ViewModel {
         });
         this.viewName = jotai.atom("Preview");
         this.viewText = jotai.atom((get) => {
-            return get(this.fileName);
+            const viewTextChildren: HeaderElem[] = [
+                {
+                    elemtype: "input",
+                    value: get(this.fileName),
+                    isDisabled: true,
+                },
+            ];
+            if (get(this.isCeView)) {
+                if (get(this.ceReadOnly) == false) {
+                    viewTextChildren.push(
+                        {
+                            elemtype: "textbutton",
+                            text: "Save",
+                            className: "primary warning",
+                            onClick: this.handleFileSave.bind(this),
+                        },
+                        {
+                            elemtype: "textbutton",
+                            text: "Cancel",
+                            className: "secondary",
+                            onClick: () => this.toggleCodeEditorReadOnly(true),
+                        }
+                    );
+                } else {
+                    viewTextChildren.push({
+                        elemtype: "textbutton",
+                        text: "Edit",
+                        className: "secondary",
+                        onClick: () => this.toggleCodeEditorReadOnly(false),
+                    });
+                }
+                return [
+                    {
+                        elemtype: "div",
+                        children: viewTextChildren,
+                    },
+                ] as HeaderElem[];
+            }
         });
+
         this.preIconButton = jotai.atom((get) => {
             const mimeType = util.jotaiLoadableValue(get(this.fileMimeTypeLoadable), "");
             if (mimeType == "directory") {
@@ -105,7 +149,7 @@ export class PreviewModel implements ViewModel {
             return {
                 elemtype: "iconbutton",
                 icon: "chevron-left",
-                click: this.onBack.bind(this),
+                click: this.handleBack.bind(this),
             };
         });
         this.endIconButtons = jotai.atom((get) => {
@@ -166,11 +210,12 @@ export class PreviewModel implements ViewModel {
             const fullFile = await get(this.fullFile);
             return util.base64ToString(fullFile?.data64);
         });
+        this.newFileContent = jotai.atom("");
 
-        this.onBack = this.onBack.bind(this);
+        this.handleBack = this.handleBack.bind(this);
     }
 
-    onBack() {
+    handleBack() {
         const fileName = globalStore.get(this.fileName);
         if (fileName == null) {
             return;
@@ -181,6 +226,21 @@ export class PreviewModel implements ViewModel {
         console.log("splitPath-2", splitPath);
         const newPath = splitPath.join("/");
         globalStore.set(this.fileName, newPath);
+    }
+
+    toggleCodeEditorReadOnly(readOnly: boolean) {
+        globalStore.set(this.ceReadOnly, readOnly);
+    }
+
+    async handleFileSave() {
+        const fileName = globalStore.get(this.fileName);
+        const newFileContent = globalStore.get(this.newFileContent);
+        try {
+            services.FileService.SaveFile(fileName, util.stringToBase64(newFileContent));
+            this.toggleCodeEditorReadOnly(true);
+        } catch (error) {
+            console.error("Error saving file:", error);
+        }
     }
 
     getSettingsMenuItems(): ContextMenuItem[] {
@@ -315,13 +375,34 @@ function CodeEditPreview({
     contentAtom,
     filename,
     readonly,
+    isCeViewAtom,
+    newFileContentAtom,
 }: {
     contentAtom: jotai.Atom<Promise<string>>;
     filename: string;
     readonly: boolean;
+    isCeViewAtom: jotai.PrimitiveAtom<boolean>;
+    newFileContentAtom: jotai.PrimitiveAtom<string>;
 }) {
     const fileContent = jotai.useAtomValue(contentAtom);
-    return <CodeEdit readonly={true} text={fileContent} filename={filename} />;
+    const setIsCeView = jotai.useSetAtom(isCeViewAtom);
+    const setNewFileContent = jotai.useSetAtom(newFileContentAtom);
+
+    useEffect(() => {
+        setIsCeView(true);
+        return () => {
+            setIsCeView(false);
+        };
+    }, [setIsCeView]);
+
+    return (
+        <CodeEditor
+            readonly={readonly}
+            text={fileContent}
+            filename={filename}
+            onChange={(text) => setNewFileContent(text)}
+        />
+    );
 }
 
 function CSVViewPreview({
@@ -374,67 +455,78 @@ function iconForFile(mimeType: string, fileName: string): string {
 
 function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel }) {
     const contentRef = useRef<HTMLDivElement>(null);
-    const blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
     const fileNameAtom = model.fileName;
     const statFileAtom = model.statFile;
-    const fullFileAtom = model.fullFile;
     const fileMimeTypeAtom = model.fileMimeType;
     const fileContentAtom = model.fileContent;
-    let mimeType = jotai.useAtomValue(fileMimeTypeAtom);
-    if (mimeType == null) {
-        mimeType = "";
-    }
-    let fileName = jotai.useAtomValue(fileNameAtom);
-    const fileInfo = jotai.useAtomValue(statFileAtom);
+    const newFileContentAtom = model.newFileContent;
+    const ceReadOnlyAtom = model.ceReadOnly;
+    const isCeViewAtom = model.isCeView;
 
-    // handle streaming files here
-    let specializedView: React.ReactNode;
+    const mimeType = jotai.useAtomValue(fileMimeTypeAtom) || "";
+    const fileName = jotai.useAtomValue(fileNameAtom);
+    const fileInfo = jotai.useAtomValue(statFileAtom);
+    const ceReadOnly = jotai.useAtomValue(ceReadOnlyAtom);
     let blockIcon = iconForFile(mimeType, fileName);
-    if (
-        mimeType == "application/pdf" ||
-        mimeType.startsWith("video/") ||
-        mimeType.startsWith("audio/") ||
-        mimeType.startsWith("image/")
-    ) {
-        specializedView = <StreamingPreview fileInfo={fileInfo} />;
-    } else if (fileInfo == null) {
-        specializedView = (
-            <CenteredDiv>File Not Found{util.isBlank(fileName) ? null : JSON.stringify(fileName)}</CenteredDiv>
-        );
-    } else if (fileInfo.size > MaxFileSize) {
-        specializedView = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
-    } else if (mimeType === "text/markdown") {
-        specializedView = <MarkdownPreview contentAtom={fileContentAtom} />;
-    } else if (mimeType === "text/csv") {
-        if (fileInfo.size > MaxCSVSize) {
-            specializedView = <CenteredDiv>CSV File Too Large to Preview (1MB Max)</CenteredDiv>;
-        } else {
-            specializedView = (
-                <CSVViewPreview
-                    parentRef={contentRef}
+
+    // ensure consistent hook calls
+    const specializedView = (() => {
+        let view: React.ReactNode = null;
+        blockIcon = iconForFile(mimeType, fileName);
+        if (
+            mimeType === "application/pdf" ||
+            mimeType.startsWith("video/") ||
+            mimeType.startsWith("audio/") ||
+            mimeType.startsWith("image/")
+        ) {
+            view = <StreamingPreview fileInfo={fileInfo} />;
+        } else if (!fileInfo) {
+            view = <CenteredDiv>File Not Found{util.isBlank(fileName) ? null : JSON.stringify(fileName)}</CenteredDiv>;
+        } else if (fileInfo.size > MaxFileSize) {
+            view = <CenteredDiv>File Too Large to Preview</CenteredDiv>;
+        } else if (mimeType === "text/markdown") {
+            view = <MarkdownPreview contentAtom={fileContentAtom} />;
+        } else if (mimeType === "text/csv") {
+            if (fileInfo.size > MaxCSVSize) {
+                view = <CenteredDiv>CSV File Too Large to Preview (1MB Max)</CenteredDiv>;
+            } else {
+                view = (
+                    <CSVViewPreview
+                        parentRef={contentRef}
+                        contentAtom={fileContentAtom}
+                        filename={fileName}
+                        readonly={true}
+                    />
+                );
+            }
+        } else if (isTextFile(mimeType)) {
+            view = (
+                <CodeEditPreview
+                    readonly={ceReadOnly}
                     contentAtom={fileContentAtom}
                     filename={fileName}
-                    readonly={true}
+                    isCeViewAtom={isCeViewAtom}
+                    newFileContentAtom={newFileContentAtom}
                 />
             );
+        } else if (mimeType === "directory") {
+            view = <DirectoryPreview fileNameAtom={fileNameAtom} model={model} />;
+        } else {
+            view = (
+                <div className="view-preview">
+                    <div>Preview ({mimeType})</div>
+                </div>
+            );
         }
-    } else if (isTextFile(mimeType)) {
-        specializedView = <CodeEditPreview readonly={true} contentAtom={fileContentAtom} filename={fileName} />;
-    } else if (mimeType === "directory") {
-        specializedView = <DirectoryPreview fileNameAtom={fileNameAtom} model={model} />;
-    } else {
-        specializedView = (
-            <div className="view-preview">
-                <div>Preview ({mimeType})</div>
-            </div>
-        );
-    }
-    setTimeout(() => {
+        return view;
+    })();
+
+    useEffect(() => {
         const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
             return jotai.atom<string>(null);
         }) as jotai.PrimitiveAtom<string>;
         globalStore.set(blockIconOverrideAtom, blockIcon);
-    }, 10);
+    }, [blockId, blockIcon]);
 
     return (
         <div className="full-preview scrollbar-hide-until-hover">
