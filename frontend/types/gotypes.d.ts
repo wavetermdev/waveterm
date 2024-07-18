@@ -15,24 +15,6 @@ declare global {
         meta: MetaType;
     };
 
-    // wshutil.BlockAppendFileCommand
-    type BlockAppendFileCommand = {
-        command: "blockfile:append";
-        filename: string;
-        data: number[];
-    };
-
-    // wshutil.BlockAppendIJsonCommand
-    type BlockAppendIJsonCommand = {
-        command: "blockfile:appendijson";
-        filename: string;
-        data: MetaType;
-    };
-
-    type BlockCommand = {
-        command: string;
-    } & ( BlockAppendFileCommand | BlockAppendIJsonCommand | BlockInputCommand | BlockRestartCommand | CreateBlockCommand | BlockGetMetaCommand | BlockMessageCommand | ResolveIdsCommand | BlockSetMetaCommand | BlockSetViewCommand );
-
     // blockcontroller.BlockControllerRuntimeStatus
     type BlockControllerRuntimeStatus = {
         blockid: string;
@@ -48,24 +30,9 @@ declare global {
         meta?: MetaType;
     };
 
-    // wshutil.BlockGetMetaCommand
-    type BlockGetMetaCommand = {
-        command: "getmeta";
-        oref: string;
-    };
-
     // wconfig.BlockHeaderOpts
     type BlockHeaderOpts = {
         showblockids: boolean;
-    };
-
-    // wshutil.BlockInputCommand
-    type BlockInputCommand = {
-        blockid: string;
-        command: "controller:input";
-        inputdata64?: string;
-        signame?: string;
-        termsize?: TermSize;
     };
 
     // webcmd.BlockInputWSCommand
@@ -73,31 +40,6 @@ declare global {
         wscommand: "blockinput";
         blockid: string;
         inputdata64: string;
-    };
-
-    // wshutil.BlockMessageCommand
-    type BlockMessageCommand = {
-        command: "message";
-        message: string;
-    };
-
-    // wshutil.BlockRestartCommand
-    type BlockRestartCommand = {
-        command: "controller:restart";
-        blockid: string;
-    };
-
-    // wshutil.BlockSetMetaCommand
-    type BlockSetMetaCommand = {
-        command: "setmeta";
-        oref?: string;
-        meta: MetaType;
-    };
-
-    // wshutil.BlockSetViewCommand
-    type BlockSetViewCommand = {
-        command: "setview";
-        view: string;
     };
 
     // wstore.Client
@@ -174,14 +116,6 @@ declare global {
         meta: MetaType;
     };
 
-    // wshutil.CreateBlockCommand
-    type CreateBlockCommand = {
-        command: "createblock";
-        tabid: string;
-        blockdef: BlockDef;
-        rtopts?: RuntimeOpts;
-    };
-
     // wstore.FileDef
     type FileDef = {
         filetype?: string;
@@ -246,12 +180,6 @@ declare global {
     type Point = {
         x: number;
         y: number;
-    };
-
-    // wshutil.ResolveIdsCommand
-    type ResolveIdsCommand = {
-        command: "resolveids";
-        ids: string[];
     };
 
     // wshutil.RpcMessage

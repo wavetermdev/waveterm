@@ -47,10 +47,6 @@ const HttpWriteTimeout = 21 * time.Second
 const HttpMaxHeaderBytes = 60000
 const HttpTimeoutDuration = 21 * time.Second
 
-const MainServerAddr = "127.0.0.1:1719"      // wavesrv,  P=16+1, S=19, PS=1719
-const WebSocketServerAddr = "127.0.0.1:1723" // wavesrv:websocket, P=16+1, W=23, PW=1723
-const MainServerDevAddr = "127.0.0.1:8190"
-const WebSocketServerDevAddr = "127.0.0.1:8191"
 const WSStateReconnectTime = 30 * time.Second
 const WSStatePacketChSize = 20
 
@@ -213,16 +209,13 @@ func WebFnWrap(opts WebFnOpts, fn WebFnType) WebFnType {
 	}
 }
 
-func MakeTCPListener() (net.Listener, error) {
-	serverAddr := MainServerAddr
-	if wavebase.IsDevMode() {
-		serverAddr = MainServerDevAddr
-	}
+func MakeTCPListener(serviceName string) (net.Listener, error) {
+	serverAddr := "127.0.0.1:"
 	rtn, err := net.Listen("tcp", serverAddr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating listener at %v: %v", serverAddr, err)
 	}
-	log.Printf("Server listening on %s\n", serverAddr)
+	log.Printf("Server [%s] listening on %s\n", serviceName, rtn.Addr())
 	return rtn, nil
 }
 
@@ -234,7 +227,7 @@ func MakeUnixListener() (net.Listener, error) {
 		return nil, fmt.Errorf("error creating listener at %v: %v", serverAddr, err)
 	}
 	os.Chmod(serverAddr, 0700)
-	log.Printf("Server listening on %s\n", serverAddr)
+	log.Printf("Server [unix-domain] listening on %s\n", serverAddr)
 	return rtn, nil
 }
 
@@ -244,15 +237,15 @@ func RunWebServer(listener net.Listener) {
 	gr.HandleFunc("/wave/stream-file", WebFnWrap(WebFnOpts{AllowCaching: true}, handleStreamFile))
 	gr.HandleFunc("/wave/file", WebFnWrap(WebFnOpts{AllowCaching: false}, handleWaveFile))
 	gr.HandleFunc("/wave/service", WebFnWrap(WebFnOpts{JsonErrors: true}, handleService))
-	var allowedOrigins handlers.CORSOption
+	handler := http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")
 	if wavebase.IsDevMode() {
-		allowedOrigins = handlers.AllowedOrigins([]string{"*"})
+		handler = handlers.CORS(handlers.AllowedOrigins([]string{"*"}))(handler)
 	}
 	server := &http.Server{
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
-		Handler:        handlers.CORS(allowedOrigins)(http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout")),
+		Handler:        handler,
 	}
 	err := server.Serve(listener)
 	if err != nil {

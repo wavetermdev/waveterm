@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { lazy } from "@/util/util";
 import {
     addChildAt,
     addIntermediateNode,
@@ -25,7 +26,7 @@ import {
     LayoutTreeSwapNodeAction,
     MoveOperation,
 } from "./model";
-import { DropDirection, FlexDirection, lazy } from "./utils";
+import { DropDirection, FlexDirection } from "./utils";
 
 /**
  * Initializes a layout tree state.

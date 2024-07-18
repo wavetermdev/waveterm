@@ -8,31 +8,33 @@ import os from "os";
 import * as path from "path";
 import * as readline from "readline";
 import { debounce } from "throttle-debounce";
-import { getBackendHostPort } from "../frontend/app/store/global";
+import * as util from "util";
+import winston from "winston";
 import * as services from "../frontend/app/store/services";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 
+import { getServerWebEndpoint, WebServerEndpointVarName, WSServerEndpointVarName } from "@/util/endpoints";
+import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
+import { sprintf } from "sprintf-js";
 const electronApp = electron.app;
-const isDev = process.env.WAVETERM_DEV;
-const isDevServer = !electronApp.isPackaged && process.env.ELECTRON_RENDERER_URL;
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
-const WaveDevVarName = "WAVETERM_DEV";
 const WaveSrvReadySignalPidVarName = "WAVETERM_READY_SIGNAL_PID";
 const AuthKeyFile = "waveterm.authkey";
-const DevServerEndpoint = "http://127.0.0.1:8190";
-const ProdServerEndpoint = "http://127.0.0.1:1719";
 electron.nativeTheme.themeSource = "dark";
 
 type WaveBrowserWindow = Electron.BrowserWindow & { waveWindowId: string; readyPromise: Promise<void> };
 
 let waveSrvReadyResolve = (value: boolean) => {};
-let waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
+const waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
     waveSrvReadyResolve = resolve;
 });
 let globalIsQuitting = false;
 let globalIsStarting = true;
+
+const isDev = !electron.app.isPackaged;
+const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
 
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
 electronApp.setName(isDev ? "NextWave (Dev)" : "NextWave");
@@ -43,16 +45,50 @@ if (unameArch == "x64") {
 }
 keyutil.setKeyUtilPlatform(unamePlatform);
 
-function getBaseHostPort(): string {
-    if (isDev) {
-        return DevServerEndpoint;
-    }
-    return ProdServerEndpoint;
-}
-
 // must match golang
 function getWaveHomeDir() {
-    return path.join(os.homedir(), ".w2");
+    return path.join(os.homedir(), isDev ? ".w2-dev" : ".w2");
+}
+
+const waveHome = getWaveHomeDir();
+
+const oldConsoleLog = console.log;
+
+const loggerTransports: winston.transport[] = [
+    new winston.transports.File({ filename: path.join(waveHome, "waveterm-app.log"), level: "info" }),
+];
+if (isDev) {
+    loggerTransports.push(new winston.transports.Console());
+}
+const loggerConfig = {
+    level: "info",
+    format: winston.format.combine(
+        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+        winston.format.printf((info) => `${info.timestamp} ${info.message}`)
+    ),
+    transports: loggerTransports,
+};
+const logger = winston.createLogger(loggerConfig);
+function log(...msg: any[]) {
+    try {
+        logger.info(util.format(...msg));
+    } catch (e) {
+        oldConsoleLog(...msg);
+    }
+}
+console.log = log;
+console.log(
+    sprintf(
+        "waveterm-app starting, WAVETERM_HOME=%s, electronpath=%s gopath=%s arch=%s/%s",
+        waveHome,
+        getElectronAppBasePath(),
+        getGoAppBasePath(),
+        unamePlatform,
+        unameArch
+    )
+);
+if (isDev) {
+    console.log("waveterm-app WAVETERM_DEV set");
 }
 
 function getElectronAppBasePath(): string {
@@ -60,20 +96,18 @@ function getElectronAppBasePath(): string {
 }
 
 function getGoAppBasePath(): string {
-    const appDir = getElectronAppBasePath();
-    if (appDir.endsWith(".asar")) {
-        return `${appDir}.unpacked`;
-    } else {
-        return appDir;
-    }
+    return getElectronAppBasePath().replace("app.asar", "app.asar.unpacked");
 }
 
+const wavesrvBinName = `wavesrv.${unameArch}`;
+
 function getWaveSrvPath(): string {
-    return path.join(getGoAppBasePath(), "bin", "wavesrv");
+    return path.join(getGoAppBasePath(), "bin", wavesrvBinName);
 }
 
 function getWaveSrvPathWin(): string {
-    const appPath = path.join(getGoAppBasePath(), "bin", "wavesrv.exe");
+    const winBinName = `${wavesrvBinName}.exe`;
+    const appPath = path.join(getGoAppBasePath(), "bin", winBinName);
     return `& "${appPath}"`;
 }
 
@@ -93,11 +127,16 @@ function runWaveSrv(): Promise<boolean> {
         pResolve = argResolve;
         pReject = argReject;
     });
+    if (isDev) {
+        process.env[WaveDevVarName] = "1";
+    }
+
+    if (isDevVite) {
+        process.env[WaveDevViteVarName] = "1";
+    }
+
     const envCopy = { ...process.env };
     envCopy[WaveAppPathVarName] = getGoAppBasePath();
-    if (isDev) {
-        envCopy[WaveDevVarName] = "1";
-    }
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
     let waveSrvCmd: string;
     if (process.platform === "win32") {
@@ -139,6 +178,14 @@ function runWaveSrv(): Promise<boolean> {
     });
     rlStderr.on("line", (line) => {
         if (line.includes("WAVESRV-ESTART")) {
+            const addrs = /ws:([a-z0-9.:]+) web:([a-z0-9.:]+)/gm.exec(line);
+            if (addrs == null) {
+                console.log("error parsing WAVESRV-ESTART line", line);
+                electron.app.quit();
+                return;
+            }
+            process.env[WSServerEndpointVarName] = addrs[1];
+            process.env[WebServerEndpointVarName] = addrs[2];
             waveSrvReadyResolve(true);
             return;
         }
@@ -159,12 +206,12 @@ function runWaveSrv(): Promise<boolean> {
 
 async function handleWSEvent(evtMsg: WSEventType) {
     if (evtMsg.eventtype == "electron:newwindow") {
-        let windowId: string = evtMsg.data;
-        let windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+        const windowId: string = evtMsg.data;
+        const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
         if (windowData == null) {
             return;
         }
-        let clientData = await services.ClientService.GetClientData();
+        const clientData = await services.ClientService.GetClientData();
         const newWin = createBrowserWindow(clientData.oid, windowData);
         await newWin.readyPromise;
         newWin.show();
@@ -221,7 +268,7 @@ function shFrameNavHandler(event: Electron.Event<Electron.WebContentsWillFrameNa
     }
     if (
         event.frame.name == "pdfview" &&
-        (url.startsWith("blob:file:///") || url.startsWith(getBaseHostPort() + "/wave/stream-file?"))
+        (url.startsWith("blob:file:///") || url.startsWith(getServerWebEndpoint() + "/wave/stream-file?"))
     ) {
         // allowed
         return;
@@ -266,12 +313,11 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow): WaveBrow
         readyResolve = resolve;
     });
     const win: WaveBrowserWindow = bwin as WaveBrowserWindow;
-    // const indexHtml = isDev ? "index-dev.html" : "index.html";
-    let usp = new URLSearchParams();
+    const usp = new URLSearchParams();
     usp.set("clientid", clientId);
     usp.set("windowid", waveWindow.oid);
     const indexHtml = "index.html";
-    if (isDevServer) {
+    if (isDevVite) {
         console.log("running as dev server");
         win.loadURL(`${process.env.ELECTRON_RENDERER_URL}/index.html?${usp.toString()}`);
     } else {
@@ -343,7 +389,7 @@ function isWindowFullyVisible(bounds: electron.Rectangle): boolean {
 
     // Helper function to check if a point is inside any display
     function isPointInDisplay(x, y) {
-        for (let display of displays) {
+        for (const display of displays) {
             const { x: dx, y: dy, width, height } = display.bounds;
             if (x >= dx && x < dx + width && y >= dy && y < dy + height) {
                 return true;
@@ -418,18 +464,9 @@ function ensureBoundsAreVisible(bounds: electron.Rectangle): electron.Rectangle 
     return bounds;
 }
 
-electron.ipcMain.on("isDev", (event) => {
-    event.returnValue = isDev;
-});
-
-electron.ipcMain.on("isDevServer", (event) => {
-    event.returnValue = isDevServer;
-});
-
 electron.ipcMain.on("getPlatform", (event, url) => {
     event.returnValue = unamePlatform;
 });
-
 // Listen for the open-external event from the renderer process
 electron.ipcMain.on("open-external", (event, url) => {
     if (url && typeof url === "string") {
@@ -443,8 +480,7 @@ electron.ipcMain.on("open-external", (event, url) => {
 
 electron.ipcMain.on("download", (event, payload) => {
     const window = electron.BrowserWindow.fromWebContents(event.sender);
-    const baseName = payload.filePath.split(/[\\/]/).pop();
-    const streamingUrl = getBackendHostPort() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
+    const streamingUrl = getServerWebEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(payload.filePath);
     window.webContents.downloadURL(streamingUrl);
 });
 
@@ -459,8 +495,12 @@ electron.ipcMain.on("getCursorPoint", (event) => {
     event.returnValue = retVal;
 });
 
+electron.ipcMain.on("getEnv", (event, varName) => {
+    event.returnValue = process.env[varName] ?? null;
+});
+
 async function createNewWaveWindow() {
-    let clientData = await services.ClientService.GetClientData();
+    const clientData = await services.ClientService.GetClientData();
     const newWindow = await services.ClientService.MakeWindow();
     const newBrowserWindow = createBrowserWindow(clientData.oid, newWindow);
     newBrowserWindow.show();
@@ -498,7 +538,7 @@ function convertMenuDefArrToMenu(menuDefArr: ElectronContextMenuItem[]): electro
 }
 
 function makeAppMenu() {
-    let fileMenu: Electron.MenuItemConstructorOptions[] = [];
+    const fileMenu: Electron.MenuItemConstructorOptions[] = [];
     fileMenu.push({
         label: "New Window",
         accelerator: "CommandOrControl+N",
@@ -557,12 +597,12 @@ async function appMain() {
     const ready = await waveSrvReady;
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
     console.log("get client data");
-    let clientData = await services.ClientService.GetClientData();
+    const clientData = await services.ClientService.GetClientData();
     console.log("client data ready");
     await electronApp.whenReady();
-    let wins: WaveBrowserWindow[] = [];
-    for (let windowId of clientData.windowids.slice().reverse()) {
-        let windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
+    const wins: WaveBrowserWindow[] = [];
+    for (const windowId of clientData.windowids.slice().reverse()) {
+        const windowData: WaveWindow = (await services.ObjectService.GetObject("window:" + windowId)) as WaveWindow;
         if (windowData == null) {
             services.WindowService.CloseWindow(windowId).catch((e) => {
                 /* ignore */
@@ -572,7 +612,7 @@ async function appMain() {
         const win = createBrowserWindow(clientData.oid, windowData);
         wins.push(win);
     }
-    for (let win of wins) {
+    for (const win of wins) {
         await win.readyPromise;
         console.log("show", win.waveWindowId);
         win.show();

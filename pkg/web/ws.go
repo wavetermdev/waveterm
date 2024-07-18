@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"runtime/debug"
 	"sync"
@@ -31,20 +32,18 @@ const wsInitialPingTime = 1 * time.Second
 
 const DefaultCommandTimeout = 2 * time.Second
 
-func RunWebSocketServer() {
+func RunWebSocketServer(listener net.Listener) {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/ws", HandleWs)
-	serverAddr := WebSocketServerDevAddr
 	server := &http.Server{
-		Addr:           serverAddr,
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
 		Handler:        gr,
 	}
 	server.SetKeepAlivesEnabled(false)
-	log.Printf("Running websocket server on %s\n", serverAddr)
-	err := server.ListenAndServe()
+	log.Printf("Running websocket server on %s\n", listener.Addr())
+	err := server.Serve(listener)
 	if err != nil {
 		log.Printf("[error] trying to run websocket server: %v\n", err)
 	}

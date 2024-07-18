@@ -162,15 +162,45 @@ function useAtomValueSafe<T>(atom: jotai.Atom<T>): T {
     return jotai.useAtomValue(atom);
 }
 
+/**
+ * Simple wrapper function that lazily evaluates the provided function and caches its result for future calls.
+ * @param callback The function to lazily run.
+ * @returns The result of the function.
+ */
+const lazy = <T extends (...args: any[]) => any>(callback: T) => {
+    let res: ReturnType<T>;
+    let processed = false;
+    return (...args: Parameters<T>): ReturnType<T> => {
+        if (processed) return res;
+        res = callback(...args);
+        processed = true;
+        return res;
+    };
+};
+
+/**
+ * Workaround for NodeJS compatibility. Will attempt to resolve the Crypto API from the browser and fallback to NodeJS if it isn't present.
+ * @returns The Crypto API.
+ */
+function getCrypto() {
+    try {
+        return window.crypto;
+    } catch {
+        return crypto;
+    }
+}
+
 export {
     base64ToArray,
     base64ToString,
     fireAndForget,
+    getCrypto,
     getPromiseState,
     getPromiseValue,
     isBlank,
     jotaiLoadableValue,
     jsonDeepEqual,
+    lazy,
     makeIconClass,
     stringToBase64,
     useAtomValueSafe,

@@ -10,6 +10,39 @@ vars:
         sh: node version.cjs
 
 tasks:
+
+    package:dev:
+        cmds:
+            - yarn build:dev && yarn electron-builder -c electron-builder.config.cjs -p never
+        deps:
+            - generate
+            - build:server
+            - build:wsh
+
+    package:prod:
+        cmds:
+            - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
+        deps:
+            - generate
+            - build:server
+            - build:wsh
+
+    electron:dev:
+        cmds:
+            - WAVETERM_DEV=1 yarn dev
+        deps:
+            - generate
+            - build:server
+            - build:wsh
+
+    electron:start:
+        cmds:
+            - WAVETERM_DEV=1 yarn start
+        deps:
+            - generate
+            - build:server
+            - build:wsh
+
     generate:
         cmds:
             - go run cmd/generate/main-generate.go
@@ -20,41 +53,78 @@ tasks:
             - "pkg/wstore/*.go"
             - "pkg/wshrpc/**/*.go"
 
-    electron:dev:
-        cmds:
-            - WAVETERM_DEV=1 yarn dev
-        deps:
-            - build:server
-            - build:wsh
-
-    electron:start:
-        cmds:
-            - WAVETERM_DEV=1 yarn start
-        deps:
-            - build:server
-            - build:wsh
-
     build:server:
+        deps:
+            - task: build:server:internal
+              vars:
+                GOARCH: arm64
+            - task: build:server:internal
+              vars:
+                GOARCH: amd64
+    
+    build:server:internal:
+        requires:
+            vars:
+                - GOARCH
         cmds:
-            - go build -o dist/bin/wavesrv{{exeExt}} cmd/server/main-server.go
+            - CGO_ENABLED=1 GOARCH={{.GOARCH}} go build -tags "osusergo,netgo,sqlite_omit_load_extension" -ldflags "-X main.BuildTime=$(date +'%Y%m%d%H%M') -X main.WaveVersion={{.VERSION}}" -o dist/bin/wavesrv.{{.GOARCH}}{{exeExt}} cmd/server/main-server.go
         sources:
             - "cmd/server/*.go"
             - "pkg/**/*.go"
         generates:
-            - dist/bin/wavesrv{{exeExt}}
+            - dist/bin/wavesrv.{{.GOARCH}}{{exeExt}}
         deps:
             - go:mod:tidy
+        internal: true
 
     build:wsh:
-        cmds:
-            - go build -o dist/bin/wsh{{exeExt}} cmd/wsh/main-wsh.go
+        deps:
+            - task: build:wsh:internal
+              vars:
+                GOOS: darwin
+                GOARCH: arm64
+            - task: build:wsh:internal
+              vars:
+                GOOS: darwin
+                GOARCH: amd64
+            - task: build:wsh:internal
+              vars:
+                GOOS: linux
+                GOARCH: arm64
+            - task: build:wsh:internal
+              vars:
+                GOOS: linux
+                GOARCH: amd64
+            - task: build:wsh:internal
+              vars:
+                GOOS: windows
+                GOARCH: amd64
+            - task: build:wsh:internal
+              vars:
+                GOOS: windows
+                GOARCH: arm64
+
+    build:wsh:internal:
+        vars:
+            GO_LDFLAGS:
+                sh: echo "-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')"
+            EXT: 
+                sh: echo {{if eq .GOOS "windows"}}.exe{{end}}
+        requires:
+            vars:
+                - GOOS
+                - GOARCH
+                - VERSION
         sources:
             - "cmd/wsh/**/*.go"
             - "pkg/**/*.go"
         generates:
-            - dist/bin/wsh{{exeExt}}
+            - dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}}
+        cmds:
+            - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="{{.GO_LDFLAGS}}" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         deps:
             - go:mod:tidy
+        internal: true
 
     go:mod:tidy:
         summary: Runs `go mod tidy`

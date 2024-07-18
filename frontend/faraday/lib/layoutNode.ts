@@ -1,8 +1,9 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getCrypto } from "@/util/util";
 import { DefaultNodeSize, LayoutNode } from "./model";
-import { FlexDirection, getCrypto, reverseFlexDirection } from "./utils";
+import { FlexDirection, reverseFlexDirection } from "./utils";
 
 const crypto = getCrypto();
 

@@ -6,6 +6,7 @@ import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { layoutTreeStateReducer } from "@/faraday/lib/layoutState";
 
 import { handleIncomingRpcMessage } from "@/app/store/wshrpc";
+import { getServerWebEndpoint, getServerWSEndpoint } from "@/util/endpoints";
 import * as layoututil from "@/util/layoututil";
 import { produce } from "immer";
 import * as jotai from "jotai";
@@ -193,15 +194,6 @@ function useBlockAtom<T>(blockId: string, name: string, makeFn: () => jotai.Atom
     return atom as jotai.Atom<T>;
 }
 
-function getBackendHostPort(): string {
-    // TODO deal with dev/production
-    return "http://127.0.0.1:8190";
-}
-
-function getBackendWSHostPort(): string {
-    return "ws://127.0.0.1:8191";
-}
-
 let globalWS: WSControl = null;
 
 function handleWSEventMessage(msg: WSEventType) {
@@ -278,7 +270,7 @@ function handleWSMessage(msg: any) {
 }
 
 function initWS() {
-    globalWS = new WSControl(getBackendWSHostPort(), globalStore, globalWindowId, "", (msg) => {
+    globalWS = new WSControl(getServerWSEndpoint(), globalStore, globalWindowId, "", (msg) => {
         handleWSMessage(msg);
     });
     globalWS.connectNow("initWS");
@@ -332,7 +324,7 @@ async function fetchWaveFile(
     if (offset != null) {
         usp.set("offset", offset.toString());
     }
-    const resp = await fetch(getBackendHostPort() + "/wave/file?" + usp.toString());
+    const resp = await fetch(getServerWebEndpoint() + "/wave/file?" + usp.toString());
     if (!resp.ok) {
         if (resp.status === 404) {
             return { data: null, fileInfo: null };
@@ -375,13 +367,10 @@ function getObjectId(obj: any): number {
 }
 
 export {
-    PLATFORM,
-    WOS,
     atoms,
     createBlock,
     fetchWaveFile,
     getApi,
-    getBackendHostPort,
     getEventORefSubject,
     getEventSubject,
     getFileSubject,
@@ -389,10 +378,12 @@ export {
     globalStore,
     globalWS,
     initWS,
+    PLATFORM,
     sendWSCommand,
     setBlockFocus,
     setPlatform,
     useBlockAtom,
     useBlockCache,
     useSettingsAtom,
+    WOS,
 };

@@ -1,7 +1,18 @@
 {
     "name": "thenextwave",
-    "private": true,
+    "author": {
+        "name": "Command Line Inc",
+        "email": "info@commandline.dev"
+    },
+    "productName": "TheNextWave",
+    "description": "An Open-Source, AI-Native, Terminal Built for Seamless Workflows",
+    "license": "Apache-2.0",
     "version": "0.0.0",
+    "homepage": "https://waveterm.dev",
+    "build": {
+        "appId": "dev.commandline.thenextwave"
+    },
+    "private": true,
     "main": "./dist/main/index.js",
     "type": "module",
     "scripts": {
@@ -12,7 +23,8 @@
         "storybook": "storybook dev -p 6006 --no-open",
         "build-storybook": "storybook build",
         "coverage": "vitest run --coverage",
-        "test": "vitest"
+        "test": "vitest",
+        "postinstall": "electron-builder install-app-deps"
     },
     "devDependencies": {
         "@chromatic-com/storybook": "^1.5.0",
@@ -27,11 +39,14 @@
         "@types/node": "^20.12.12",
         "@types/papaparse": "^5",
         "@types/react": "^18.3.2",
+        "@types/sprintf-js": "^1",
         "@types/throttle-debounce": "^5",
         "@types/tinycolor2": "^1",
         "@types/uuid": "^9.0.8",
         "@vitejs/plugin-react": "^4.3.0",
         "@vitest/coverage-istanbul": "^1.6.0",
+        "electron": "^31.1.0",
+        "electron-builder": "^24.13.3",
         "electron-vite": "^2.2.0",
         "eslint": "^9.2.0",
         "eslint-config-prettier": "^9.1.0",
@@ -65,7 +80,6 @@
         "base64-js": "^1.5.1",
         "clsx": "^2.1.1",
         "dayjs": "^1.11.11",
-        "electron": "^31.1.0",
         "html-to-image": "^1.11.11",
         "immer": "^10.1.1",
         "jotai": "^2.8.0",
@@ -83,10 +97,12 @@
         "rehype-raw": "^7.0.0",
         "remark-gfm": "^4.0.0",
         "rxjs": "^7.8.1",
+        "sprintf-js": "^1.1.3",
         "throttle-debounce": "^5.0.0",
         "tinycolor2": "^1.6.0",
         "use-device-pixel-ratio": "^1.1.2",
-        "uuid": "^9.0.1"
+        "uuid": "^9.0.1",
+        "winston": "^3.13.1"
     },
     "packageManager": "yarn@4.3.1"
 }

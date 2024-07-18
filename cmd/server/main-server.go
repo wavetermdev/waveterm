@@ -124,12 +124,17 @@ func main() {
 
 	go stdinReadWatch()
 	configWatcher()
-	go web.RunWebSocketServer()
-	webListener, err := web.MakeTCPListener()
+	webListener, err := web.MakeTCPListener("web")
 	if err != nil {
 		log.Printf("error creating web listener: %v\n", err)
 		return
 	}
+	wsListener, err := web.MakeTCPListener("websocket")
+	if err != nil {
+		log.Printf("error creating websocket listener: %v\n", err)
+		return
+	}
+	go web.RunWebSocketServer(wsListener)
 	unixListener, err := web.MakeUnixListener()
 	if err != nil {
 		log.Printf("error creating unix listener: %v\n", err)
@@ -141,7 +146,7 @@ func main() {
 			_, err := strconv.Atoi(pidStr)
 			if err == nil {
 				// use fmt instead of log here to make sure it goes directly to stderr
-				fmt.Fprintf(os.Stderr, "WAVESRV-ESTART\n")
+				fmt.Fprintf(os.Stderr, "WAVESRV-ESTART ws:%s web:%s\n", wsListener.Addr(), webListener.Addr())
 			}
 		}
 	}()

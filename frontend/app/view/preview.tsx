@@ -3,9 +3,10 @@
 
 import { ContextMenuModel } from "@/app/store/contextmenu";
 import { Markdown } from "@/element/markdown";
-import { getBackendHostPort, globalStore, useBlockAtom } from "@/store/global";
+import { globalStore, useBlockAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
+import { getServerWebEndpoint } from "@/util/endpoints";
 import * as util from "@/util/util";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -274,7 +275,7 @@ function MarkdownPreview({ contentAtom }: { contentAtom: jotai.Atom<Promise<stri
 
 function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
     const filePath = fileInfo.path;
-    const streamingUrl = getBackendHostPort() + "/wave/stream-file?path=" + encodeURIComponent(filePath);
+    const streamingUrl = getServerWebEndpoint() + "/wave/stream-file?path=" + encodeURIComponent(filePath);
     if (fileInfo.mimetype == "application/pdf") {
         return (
             <div className="view-preview view-preview-pdf">

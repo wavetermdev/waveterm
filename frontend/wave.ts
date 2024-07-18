@@ -12,13 +12,13 @@ import { App } from "./app/app";
 import { loadFonts } from "./util/fontutil";
 
 const urlParams = new URLSearchParams(window.location.search);
-let windowId = urlParams.get("windowid");
-let clientId = urlParams.get("clientid");
+const windowId = urlParams.get("windowid");
+const clientId = urlParams.get("clientid");
 
 console.log("Wave Starting");
 console.log("clientid", clientId, "windowid", windowId);
 
-let platform = getApi().getPlatform();
+const platform = getApi().getPlatform();
 setPlatform(platform);
 keyutil.setKeyUtilPlatform(platform);
 

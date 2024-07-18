@@ -3,7 +3,6 @@
 
 import { WindowDrag } from "@/element/windowdrag";
 import { deleteLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
-import { debounce } from "@/faraday/lib/utils";
 import { atoms } from "@/store/global";
 import * as services from "@/store/services";
 import { useAtomValue } from "jotai";
@@ -12,6 +11,7 @@ import React, { createRef, useCallback, useEffect, useRef, useState } from "reac
 
 import { Tab } from "./tab";
 
+import { debounce } from "throttle-debounce";
 import "./tabbar.less";
 
 const TAB_DEFAULT_WIDTH = 130;
@@ -111,7 +111,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
 
     // const debouncedSetTabWidth = debounce((width) => setTabWidth(width), 100);
     // const debouncedSetScrollable = debounce((scrollable) => setScrollable(scrollable), 100);
-    const debouncedUpdateTabPositions = debounce(() => updateTabPositions(), 100);
+    const debouncedUpdateTabPositions = debounce(100, () => updateTabPositions());
 
     const handleResizeTabs = useCallback(() => {
         const tabBar = tabBarRef.current;

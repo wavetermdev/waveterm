@@ -4,8 +4,6 @@
 let { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
-    isDev: () => ipcRenderer.sendSync("isDev"),
-    isDevServer: () => ipcRenderer.sendSync("isDevServer"),
     getPlatform: () => ipcRenderer.sendSync("getPlatform"),
     getCursorPoint: () => ipcRenderer.sendSync("getCursorPoint"),
     openNewWindow: () => ipcRenderer.send("openNewWindow"),
@@ -19,6 +17,7 @@ contextBridge.exposeInMainWorld("api", {
             console.error("Invalid URL passed to openExternal:", url);
         }
     },
+    getEnv: (varName) => ipcRenderer.sendSync("getEnv", varName),
 });
 
 // Custom event for "new-window"

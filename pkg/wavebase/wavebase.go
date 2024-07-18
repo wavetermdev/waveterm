@@ -22,6 +22,7 @@ import (
 
 const WaveVersion = "v0.1.0"
 const DefaultWaveHome = "~/.w2"
+const DevWaveHome = "~/.w2-dev"
 const WaveHomeVarName = "WAVETERM_HOME"
 const WaveDevVarName = "WAVETERM_DEV"
 const WaveLockFile = "waveterm.lock"
@@ -73,6 +74,9 @@ func GetWaveHomeDir() string {
 	homeVar := os.Getenv(WaveHomeVarName)
 	if homeVar != "" {
 		return ExpandHomeDir(homeVar)
+	}
+	if IsDevMode() {
+		return ExpandHomeDir(DevWaveHome)
 	}
 	return ExpandHomeDir(DefaultWaveHome)
 }

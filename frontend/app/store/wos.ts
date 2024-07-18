@@ -4,10 +4,11 @@
 // WaveObjectStore
 
 import { sendRpcCommand } from "@/app/store/wshrpc";
+import { getServerWebEndpoint } from "@/util/endpoints";
 import * as jotai from "jotai";
 import * as React from "react";
 import { v4 as uuidv4 } from "uuid";
-import { atoms, getBackendHostPort, globalStore } from "./global";
+import { atoms, globalStore } from "./global";
 import * as services from "./services";
 
 const IsElectron = true;
@@ -67,22 +68,23 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     if (!noUIContext) {
         uiContext = globalStore.get(atoms.uiContext);
     }
-    let waveCall: WebCallType = {
+    const waveCall: WebCallType = {
         service: service,
         method: method,
         args: args,
         uicontext: uiContext,
     };
     // usp is just for debugging (easier to filter URLs)
-    let methodName = service + "." + method;
-    let usp = new URLSearchParams();
+    const methodName = `${service}.${method}`;
+    const usp = new URLSearchParams();
     usp.set("service", service);
     usp.set("method", method);
-    let fetchPromise = fetch(getBackendHostPort() + "/wave/service?" + usp.toString(), {
+    const url = getServerWebEndpoint() + "/wave/service?" + usp.toString();
+    const fetchPromise = fetch(url, {
         method: "POST",
         body: JSON.stringify(waveCall),
     });
-    let prtn = fetchPromise
+    const prtn = fetchPromise
         .then((resp) => {
             if (!resp.ok) {
                 throw new Error(`call ${methodName} failed: ${resp.status} ${resp.statusText}`);
