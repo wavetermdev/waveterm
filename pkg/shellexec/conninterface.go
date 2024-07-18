@@ -15,6 +15,7 @@ type ConnInterface interface {
 	StdinPipe() (io.WriteCloser, error)
 	StdoutPipe() (io.ReadCloser, error)
 	StderrPipe() (io.ReadCloser, error)
+	SetSize(w int, h int) error
 }
 
 type CmdWrap struct {
@@ -50,6 +51,10 @@ func (cw CmdWrap) StdoutPipe() (io.ReadCloser, error) {
 
 func (cw CmdWrap) StderrPipe() (io.ReadCloser, error) {
 	return cw.Cmd.StderrPipe()
+}
+
+func (cw CmdWrap) SetSize(w int, h int) error {
+	return nil
 }
 
 type SessionWrap struct {
@@ -89,4 +94,8 @@ func (sw SessionWrap) StderrPipe() (io.ReadCloser, error) {
 		return nil, err
 	}
 	return io.NopCloser(stderrReader), nil
+}
+
+func (sw SessionWrap) SetSize(h int, w int) error {
+	return sw.Session.WindowChange(h, w)
 }

@@ -346,8 +346,11 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 				if err != nil {
 					log.Printf("error setting term size: %v\n", err)
 				}
+				err = bc.ShellProc.Cmd.SetSize(ic.TermSize.Rows, ic.TermSize.Cols)
+				if err != nil {
+					log.Printf("error setting remote SIGWINCH: %v\n", err)
+				}
 			}
-			// TODO signals
 		}
 	}()
 	go func() {
