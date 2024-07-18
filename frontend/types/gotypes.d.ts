@@ -262,6 +262,28 @@ declare global {
         activetabid: string;
     };
 
+    // userinput.UserInputRequest
+    type UserInputRequest = {
+        requestid: string;
+        querytext: string;
+        responsetype: string;
+        title: string;
+        markdown: boolean;
+        timeoutms: number;
+        checkboxmsg: string;
+        publictext: boolean;
+    };
+
+    // userinput.UserInputResponse
+    type UserInputResponse = {
+        type: string;
+        requestid: string;
+        text?: string;
+        confirm?: boolean;
+        errormsg?: string;
+        checkboxstat?: boolean;
+    };
+
     type WSCommandType = {
         wscommand: string;
     } & ( SetBlockTermSizeWSCommand | BlockInputWSCommand | WSRpcCommand );

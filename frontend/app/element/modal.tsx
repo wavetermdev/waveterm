@@ -70,7 +70,7 @@ interface WaveModalProps {
 
 function WaveModal({ title, description, onSubmit, onCancel, buttonLabel = "Ok", children }: WaveModalProps) {
     return (
-        <Modal id="text-box-modal" onClickOut={onCancel}>
+        <Modal onClickOut={onCancel}>
             <ModalHeader title={title} description={description} />
             <ModalContent>{children}</ModalContent>
             <ModalFooter>

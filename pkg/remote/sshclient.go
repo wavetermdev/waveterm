@@ -1,4 +1,4 @@
-// Copyright 2023-2024, Command Line Inc.
+// Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
 package remote
@@ -19,8 +19,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/kevinburke/ssh_config"
+	"github.com/wavetermdev/thenextwave/pkg/userinput"
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
@@ -115,28 +117,25 @@ func createPublicKeyCallback(connCtx context.Context, sshKeywords *SshKeywords, 
 			return createDummySigner()
 		}
 
-		return nil, fmt.Errorf("unimplemented: userinput createPublicKeyCallback") //todo
-		/*
-			request := &userinput.UserInputRequestType{
-				ResponseType: "text",
-				QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
-				Title:        "Publickey Auth + Passphrase",
-			}
-			ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
-			defer cancelFn()
-			response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
-			if err != nil {
-				// this is an error where we actually do want to stop
-				// trying keys
-				return nil, UserInputCancelError{Err: err}
-			}
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
-			if err != nil {
-				// skip this key and try with the next
-				return createDummySigner()
-			}
-			return []ssh.Signer{signer}, err
-		*/
+		request := &userinput.UserInputRequest{
+			ResponseType: "text",
+			QueryText:    fmt.Sprintf("Enter passphrase for the SSH key: %s", identityFile),
+			Title:        "Publickey Auth + Passphrase",
+		}
+		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
+		defer cancelFn()
+		response, err := userinput.GetUserInput(ctx, request)
+		if err != nil {
+			// this is an error where we actually do want to stop
+			// trying keys
+			return nil, UserInputCancelError{Err: err}
+		}
+		signer, err = ssh.ParsePrivateKeyWithPassphrase(privateKey, []byte(response.Text))
+		if err != nil {
+			// skip this key and try with the next
+			return createDummySigner()
+		}
+		return []ssh.Signer{signer}, err
 	}
 }
 
@@ -151,26 +150,23 @@ func createDefaultPasswordCallbackPrompt(password string) func() (secret string,
 
 func createInteractivePasswordCallbackPrompt(connCtx context.Context, remoteDisplayName string) func() (secret string, err error) {
 	return func() (secret string, err error) {
-		return "", fmt.Errorf("unimplemented: userinput createInteractivePasswordCallbackPrompt") //todo
-		/*
-			ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
-			defer cancelFn()
-			queryText := fmt.Sprintf(
-				"Password Authentication requested from connection  \n"+
-					"%s\n\n"+
-					"Password:", remoteDisplayName)
-			request := &userinput.UserInputRequestType{
-				ResponseType: "text",
-				QueryText:    queryText,
-				Markdown:     true,
-				Title:        "Password Authentication",
-			}
-			response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
-			if err != nil {
-				return "", err
-			}
-			return response.Text, nil
-		*/
+		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
+		defer cancelFn()
+		queryText := fmt.Sprintf(
+			"Password Authentication requested from connection  \n"+
+				"%s\n\n"+
+				"Password:", remoteDisplayName)
+		request := &userinput.UserInputRequest{
+			ResponseType: "text",
+			QueryText:    queryText,
+			Markdown:     true,
+			Title:        "Password Authentication",
+		}
+		response, err := userinput.GetUserInput(ctx, request)
+		if err != nil {
+			return "", err
+		}
+		return response.Text, nil
 	}
 }
 
@@ -219,27 +215,24 @@ func createInteractiveKbdInteractiveChallenge(connCtx context.Context, remoteNam
 func promptChallengeQuestion(connCtx context.Context, question string, echo bool, remoteName string) (answer string, err error) {
 	// limited to 15 seconds for some reason. this should be investigated more
 	// in the future
-	return "", fmt.Errorf("unimplemented: userinput promptChallengeQuestion") //todo
-	/*
-		ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
-		defer cancelFn()
-		queryText := fmt.Sprintf(
-			"Keyboard Interactive Authentication requested from connection  \n"+
-				"%s\n\n"+
-				"%s", remoteName, question)
-		request := &userinput.UserInputRequestType{
-			ResponseType: "text",
-			QueryText:    queryText,
-			Markdown:     true,
-			Title:        "Keyboard Interactive Authentication",
-			PublicText:   echo,
-		}
-			response, err := userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
-			if err != nil {
-				return "", err
-			}
-			return response.Text, nil
-	*/
+	ctx, cancelFn := context.WithTimeout(connCtx, 60*time.Second)
+	defer cancelFn()
+	queryText := fmt.Sprintf(
+		"Keyboard Interactive Authentication requested from connection  \n"+
+			"%s\n\n"+
+			"%s", remoteName, question)
+	request := &userinput.UserInputRequest{
+		ResponseType: "text",
+		QueryText:    queryText,
+		Markdown:     true,
+		Title:        "Keyboard Interactive Authentication",
+		PublicText:   echo,
+	}
+	response, err := userinput.GetUserInput(ctx, request)
+	if err != nil {
+		return "", err
+	}
+	return response.Text, nil
 }
 
 func createCombinedKbdInteractiveChallenge(connCtx context.Context, password string, remoteName string) ssh.KeyboardInteractiveChallenge {
@@ -263,11 +256,10 @@ func openKnownHostsForEdit(knownHostsFilename string) (*os.File, error) {
 	return os.OpenFile(knownHostsFilename, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 }
 
-/*
-func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerification func() (*userinput.UserInputResponsePacketType, error)) error {
+func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerification func() (*userinput.UserInputResponse, error)) error {
 	if getUserVerification == nil {
-		getUserVerification = func() (*userinput.UserInputResponsePacketType, error) {
-			return &userinput.UserInputResponsePacketType{
+		getUserVerification = func() (*userinput.UserInputResponse, error) {
+			return &userinput.UserInputResponse{
 				Type:    "confirm",
 				Confirm: true,
 			}, nil
@@ -303,10 +295,8 @@ func writeToKnownHosts(knownHostsFile string, newLine string, getUserVerificatio
 	}
 	return f.Close()
 }
-*/
 
-/* todo
-func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponsePacketType, error) {
+func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponse, error) {
 	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
 	queryText := fmt.Sprintf(
 		"The authenticity of host '%s (%s)' can't be established "+
@@ -316,22 +306,20 @@ func createUnknownKeyVerifier(knownHostsFile string, hostname string, remote str
 			"**Would you like to continue connecting?** If so, the key will be permanently "+
 			"added to the file %s "+
 			"to protect from future man-in-the-middle attacks.", hostname, remote, key.Type(), base64Key, knownHostsFile)
-	request := &userinput.UserInputRequestType{
+	request := &userinput.UserInputRequest{
 		ResponseType: "confirm",
 		QueryText:    queryText,
 		Markdown:     true,
 		Title:        "Known Hosts Key Missing",
 	}
-	return func() (*userinput.UserInputResponsePacketType, error) {
+	return func() (*userinput.UserInputResponse, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		return userinput.GetUserInput(ctx, request)
 	}
 }
-*/
 
-/*
-func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponsePacketType, error) {
+func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, remote string, key ssh.PublicKey) func() (*userinput.UserInputResponse, error) {
 	base64Key := base64.StdEncoding.EncodeToString(key.Marshal())
 	queryText := fmt.Sprintf(
 		"The authenticity of host '%s (%s)' can't be established "+
@@ -342,19 +330,18 @@ func createMissingKnownHostsVerifier(knownHostsFile string, hostname string, rem
 			"- %s will be created  \n"+
 			"- the key will be added to %s\n\n"+
 			"This will protect from future man-in-the-middle attacks.", hostname, remote, key.Type(), base64Key, knownHostsFile, knownHostsFile)
-	request := &userinput.UserInputRequestType{
+	request := &userinput.UserInputRequest{
 		ResponseType: "confirm",
 		QueryText:    queryText,
 		Markdown:     true,
 		Title:        "Known Hosts File Missing",
 	}
-	return func() (*userinput.UserInputResponsePacketType, error) {
+	return func() (*userinput.UserInputResponse, error) {
 		ctx, cancelFn := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancelFn()
-		return userinput.GetUserInput(ctx, scbus.MainRpcBus, request)
+		return userinput.GetUserInput(ctx, request)
 	}
 }
-*/
 
 func lineContainsMatch(line []byte, matches [][]byte) bool {
 	for _, match := range matches {
@@ -444,41 +431,38 @@ func createHostKeyCallback(opts *SSHOpts) (ssh.HostKeyCallback, error) {
 			// the key was not found
 
 			// try to write to a file that could be read
-			//err := fmt.Errorf("placeholder, should not be returned") // a null value here can cause problems with empty slice
-			return fmt.Errorf("unimplemented: waveHostKeyCallback key not found") //todo
-			/*
-					for _, filename := range knownHostsFiles {
-						newLine := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
-						getUserVerification := createUnknownKeyVerifier(filename, hostname, remote.String(), key)
-						err = writeToKnownHosts(filename, newLine, getUserVerification)
-						if err == nil {
-							break
-						}
-						if serr, ok := err.(UserInputCancelError); ok {
-							return serr
-						}
-					}
+			err := fmt.Errorf("placeholder, should not be returned") // a null value here can cause problems with empty slice
+			for _, filename := range knownHostsFiles {
+				newLine := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
+				getUserVerification := createUnknownKeyVerifier(filename, hostname, remote.String(), key)
+				err = writeToKnownHosts(filename, newLine, getUserVerification)
+				if err == nil {
+					break
+				}
+				if serr, ok := err.(UserInputCancelError); ok {
+					return serr
+				}
+			}
 
-				// try to write to a file that could not be read (file likely doesn't exist)
-				// should catch cases where there is no known_hosts file
-				if err != nil {
-						for _, filename := range unreadableFiles {
-							newLine := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
-							getUserVerification := createMissingKnownHostsVerifier(filename, hostname, remote.String(), key)
-							err = writeToKnownHosts(filename, newLine, getUserVerification)
-							if err == nil {
-								knownHostsFiles = []string{filename}
-								break
-							}
-							if serr, ok := err.(UserInputCancelError); ok {
-								return serr
-							}
-						}
+			// try to write to a file that could not be read (file likely doesn't exist)
+			// should catch cases where there is no known_hosts file
+			if err != nil {
+				for _, filename := range unreadableFiles {
+					newLine := knownhosts.Line([]string{knownhosts.Normalize(hostname)}, key)
+					getUserVerification := createMissingKnownHostsVerifier(filename, hostname, remote.String(), key)
+					err = writeToKnownHosts(filename, newLine, getUserVerification)
+					if err == nil {
+						knownHostsFiles = []string{filename}
+						break
+					}
+					if serr, ok := err.(UserInputCancelError); ok {
+						return serr
+					}
 				}
-				if err != nil {
-					return fmt.Errorf("unable to create new knownhost key: %e", err)
-				}
-			*/
+			}
+			if err != nil {
+				return fmt.Errorf("unable to create new knownhost key: %e", err)
+			}
 		} else {
 			// the key changed
 			correctKeyFingerprint := base64.StdEncoding.EncodeToString(key.Marshal())

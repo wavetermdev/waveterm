@@ -126,6 +126,15 @@ class ObjectServiceType {
 
 export const ObjectService = new ObjectServiceType();
 
+// userinputservice.UserInputService (userinput)
+class UserInputServiceType {
+    SendUserInputResponse(arg1: UserInputResponse): Promise<void> {
+        return WOS.callBackendService("userinput", "SendUserInputResponse", Array.from(arguments))
+    }
+}
+
+export const UserInputService = new UserInputServiceType();
+
 // windowservice.WindowService (window)
 class WindowServiceType {
     // @returns object updates

@@ -13,6 +13,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service/clientservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/fileservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/objectservice"
+	"github.com/wavetermdev/thenextwave/pkg/service/userinputservice"
 	"github.com/wavetermdev/thenextwave/pkg/service/windowservice"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
@@ -22,11 +23,12 @@ import (
 )
 
 var ServiceMap = map[string]any{
-	"block":  blockservice.BlockServiceInstance,
-	"object": &objectservice.ObjectService{},
-	"file":   &fileservice.FileService{},
-	"client": &clientservice.ClientService{},
-	"window": &windowservice.WindowService{},
+	"block":     blockservice.BlockServiceInstance,
+	"object":    &objectservice.ObjectService{},
+	"file":      &fileservice.FileService{},
+	"client":    &clientservice.ClientService{},
+	"window":    &windowservice.WindowService{},
+	"userinput": &userinputservice.UserInputService{},
 }
 
 var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()

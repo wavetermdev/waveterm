@@ -40,13 +40,13 @@ type WatcherUpdate struct {
 
 func readFileContents(filePath string, getDefaults func() SettingsConfigType) (*SettingsConfigType, error) {
 	if getDefaults == nil {
-		log.Printf("oopsie")
+		log.Printf("should not happen")
 		return nil, fmt.Errorf("watcher started without defaults")
 	}
 	content := getDefaults()
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		log.Printf("doopsie: %v", err)
+		log.Printf("could not read settings file: %v", err)
 		return nil, err
 	}
 	if err := json.Unmarshal(data, &content); err != nil {

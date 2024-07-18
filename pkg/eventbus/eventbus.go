@@ -18,6 +18,7 @@ const (
 	WSEvent_WaveObjUpdate         = "waveobj:update"
 	WSEvent_BlockFile             = "blockfile"
 	WSEvent_Config                = "config"
+	WSEvent_UserInput             = "userinput"
 	WSEvent_BlockControllerStatus = "blockcontroller:status"
 	WSEvent_LayoutAction          = "layoutaction"
 	WSEvent_ElectronNewWindow     = "electron:newwindow"

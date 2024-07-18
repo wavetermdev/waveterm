@@ -81,6 +81,7 @@ const activeTabIdAtom: jotai.Atom<string> = jotai.atom((get) => {
     }
     return windowData.activetabid;
 });
+const userInputAtom = jotai.atom([]) as jotai.PrimitiveAtom<Array<UserInputRequest>>;
 
 const atoms = {
     // initialized in wave.ts (will not be null inside of application)
@@ -93,6 +94,7 @@ const atoms = {
     settingsConfigAtom: settingsConfigAtom,
     tabAtom: tabAtom,
     activeTabId: activeTabIdAtom,
+    userInput: userInputAtom,
 };
 
 // key is "eventType" or "eventType|oref"
@@ -206,6 +208,13 @@ function handleWSEventMessage(msg: WSEventType) {
         globalStore.set(settingsConfigAtom, data.update);
 
         console.log("config", data);
+        return;
+    }
+    if (msg.eventtype == "userinput") {
+        // handle user input
+        const data: UserInputRequest = msg.data;
+        console.log(data);
+        globalStore.set(userInputAtom, (prev) => [...prev, data]);
         return;
     }
     if (msg.eventtype == "blockfile") {
