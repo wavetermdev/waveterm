@@ -13,7 +13,7 @@ tasks:
     electron:dev:
         desc: Run the Electron application directly.
         cmds:
-            - WAVETERM_DEV=1 yarn dev
+            - yarn dev
         deps:
             - generate
             - build:server
@@ -22,7 +22,7 @@ tasks:
     electron:start:
         desc: Run the Electron application via the Vite dev server (enables hot reloading).
         cmds:
-            - WAVETERM_DEV=1 yarn start
+            - yarn start
         deps:
             - generate
             - build:server
@@ -31,6 +31,8 @@ tasks:
     package:
         desc: Package the application for the current platform.
         cmds:
+            - cmd: rm -rf make
+              ignore_error: true
             - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
         deps:
             - generate
@@ -62,6 +64,8 @@ tasks:
         status:
           - exit {{if eq OS "darwin"}}1{{else}}0{{end}}
         cmds:
+            - cmd: rm dist/bin/wavesrv*
+              ignore_error: true
             - task: build:server:internal
               vars:
                 GOARCH: arm64
@@ -74,13 +78,14 @@ tasks:
         status:
           - exit {{if eq OS "darwin"}}0{{else}}1{{end}}
         cmds:
+            - cmd: rm dist/bin/wavesrv*
+              ignore_error: true
             - task: build:server:internal
               vars:
                 GOARCH:
                     sh: echo {{if eq "arm" ARCH}}arm64{{else}}{{ARCH}}{{end}}
                 GO_LDFLAGS: -linkmode 'external' -extldflags=-static
             
-    
     build:server:internal:
         requires:
             vars:
@@ -98,7 +103,9 @@ tasks:
 
     build:wsh:
         desc: Build the wsh component for all possible targets.
-        deps:
+        cmds:
+            - cmd: rm dist/bin/wsh*
+              ignore_error: true
             - task: build:wsh:internal
               vars:
                 GOOS: darwin

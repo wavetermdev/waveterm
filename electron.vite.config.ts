@@ -1,8 +1,10 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import react from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "electron-vite";
+import flow from "rollup-plugin-flow";
+import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -17,7 +19,7 @@ export default defineConfig({
             },
             outDir: "dist/main",
         },
-        plugins: [tsconfigPaths()],
+        plugins: [tsconfigPaths(), flow()],
         resolve: {
             alias: {
                 "@": "frontend",
@@ -38,7 +40,7 @@ export default defineConfig({
             },
             outDir: "dist/preload",
         },
-        plugins: [tsconfigPaths()],
+        plugins: [tsconfigPaths(), flow()],
     },
     renderer: {
         root: ".",
@@ -56,8 +58,10 @@ export default defineConfig({
             open: false,
         },
         plugins: [
-            react({}),
+            ViteImageOptimizer(),
             tsconfigPaths(),
+            react({}),
+            flow(),
             viteStaticCopy({
                 targets: [{ src: "node_modules/monaco-editor/min/vs/*", dest: "monaco" }],
             }),

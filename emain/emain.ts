@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
 import * as electron from "electron";
 import fs from "fs";
 import * as child_process from "node:child_process";
@@ -12,8 +13,7 @@ import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
 import * as services from "../frontend/app/store/services";
-import { getWebServerEndpoint, WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
-import { WaveDevVarName, WaveDevViteVarName } from "../frontend/util/isdev";
+import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 
@@ -35,9 +35,15 @@ let globalIsStarting = true;
 
 const isDev = !electron.app.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
+if (isDev) {
+    process.env[WaveDevVarName] = "1";
+}
+if (isDevVite) {
+    process.env[WaveDevViteVarName] = "1";
+}
 
 let waveSrvProc: child_process.ChildProcessWithoutNullStreams | null = null;
-electronApp.setName(isDev ? "NextWave (Dev)" : "NextWave");
+electronApp.setName(isDev ? "TheNextWave (Dev)" : "TheNextWave");
 const unamePlatform = process.platform;
 let unameArch: string = process.arch;
 if (unameArch == "x64") {
@@ -127,14 +133,6 @@ function runWaveSrv(): Promise<boolean> {
         pResolve = argResolve;
         pReject = argReject;
     });
-    if (isDev) {
-        process.env[WaveDevVarName] = "1";
-    }
-
-    if (isDevVite) {
-        process.env[WaveDevViteVarName] = "1";
-    }
-
     const envCopy = { ...process.env };
     envCopy[WaveAppPathVarName] = getGoAppBasePath();
     envCopy[WaveSrvReadySignalPidVarName] = process.pid.toString();
