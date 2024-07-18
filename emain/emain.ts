@@ -1,12 +1,15 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { getWebServerEndpoint, WebServerEndpointVarName, WSServerEndpointVarName } from "@/util/endpoints";
+import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
 import * as electron from "electron";
 import fs from "fs";
 import * as child_process from "node:child_process";
 import os from "os";
 import * as path from "path";
 import * as readline from "readline";
+import { sprintf } from "sprintf-js";
 import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
@@ -14,9 +17,6 @@ import * as services from "../frontend/app/store/services";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 
-import { getWebServerEndpoint, WebServerEndpointVarName, WSServerEndpointVarName } from "@/util/endpoints";
-import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
-import { sprintf } from "sprintf-js";
 const electronApp = electron.app;
 
 const WaveAppPathVarName = "WAVETERM_APP_PATH";
