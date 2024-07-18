@@ -46,9 +46,11 @@ tasks:
             - go run cmd/generatewshclient/main-generatewshclient.go
         sources:
             - "cmd/generate/*.go"
+            - "cmd/generatewshclient/*.go"
             - "pkg/service/**/*.go"
             - "pkg/wstore/*.go"
             - "pkg/wshrpc/**/*.go"
+            - "pkg/tsgen/**/*.go"
         generates:
             - frontend/types/gotypes.d.ts
             - pkg/wshrpc/wshclient/wshclient.go

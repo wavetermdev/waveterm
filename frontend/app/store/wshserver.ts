@@ -9,62 +9,57 @@ import * as WOS from "./wos";
 class WshServerType {
     // command "controller:input" [call]
 	BlockInputCommand(data: CommandBlockInputData, opts?: WshRpcCommandOpts): Promise<void> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("controller:input", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("controller:input", data, opts);
     }
 
     // command "controller:restart" [call]
 	BlockRestartCommand(data: CommandBlockRestartData, opts?: WshRpcCommandOpts): Promise<void> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("controller:restart", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("controller:restart", data, opts);
     }
 
     // command "createblock" [call]
 	CreateBlockCommand(data: CommandCreateBlockData, opts?: WshRpcCommandOpts): Promise<ORef> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("createblock", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("createblock", data, opts);
     }
 
     // command "file:append" [call]
 	AppendFileCommand(data: CommandAppendFileData, opts?: WshRpcCommandOpts): Promise<void> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("file:append", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("file:append", data, opts);
     }
 
     // command "file:appendijson" [call]
 	AppendIJsonCommand(data: CommandAppendIJsonData, opts?: WshRpcCommandOpts): Promise<void> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("file:appendijson", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("file:appendijson", data, opts);
     }
 
     // command "getmeta" [call]
 	GetMetaCommand(data: CommandGetMetaData, opts?: WshRpcCommandOpts): Promise<MetaType> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("getmeta", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("getmeta", data, opts);
     }
 
     // command "message" [call]
 	MessageCommand(data: CommandMessageData, opts?: WshRpcCommandOpts): Promise<void> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("message", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("message", data, opts);
     }
 
     // command "resolveids" [call]
 	ResolveIdsCommand(data: CommandResolveIdsData, opts?: WshRpcCommandOpts): Promise<CommandResolveIdsRtnData> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("resolveids", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("resolveids", data, opts);
     }
 
     // command "setmeta" [call]
 	SetMetaCommand(data: CommandSetMetaData, opts?: WshRpcCommandOpts): Promise<void> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("setmeta", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("setmeta", data, opts);
     }
 
     // command "setview" [call]
 	BlockSetViewCommand(data: CommandBlockSetViewData, opts?: WshRpcCommandOpts): Promise<void> {
-        const meta: WshServerCommandMeta = {commandtype: "call"};
-        return WOS.callWshServerRpc("setview", data, meta, opts);
+        return WOS.wshServerRpcHelper_call("setview", data, opts);
+    }
+
+    // command "streamtest" [responsestream]
+	RespStreamTest(opts?: WshRpcCommandOpts): AsyncGenerator<number, void, boolean> {
+        return WOS.wshServerRpcHelper_responsestream("streamtest", null, opts);
     }
 
 }

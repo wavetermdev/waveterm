@@ -12,7 +12,24 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
-func genMethod(fd *os.File, methodDecl *wshserver.WshServerMethodDecl) {
+func genMethod_ResponseStream(fd *os.File, methodDecl *wshserver.WshServerMethodDecl) {
+	fmt.Fprintf(fd, "// command %q, wshserver.%s\n", methodDecl.Command, methodDecl.MethodName)
+	var dataType string
+	dataVarName := "nil"
+	if methodDecl.CommandDataType != nil {
+		dataType = ", data " + methodDecl.CommandDataType.String()
+		dataVarName = "data"
+	}
+	respType := "any"
+	if methodDecl.DefaultResponseDataType != nil {
+		respType = methodDecl.DefaultResponseDataType.String()
+	}
+	fmt.Fprintf(fd, "func %s(w *wshutil.WshRpc%s, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[%s] {\n", methodDecl.MethodName, dataType, respType)
+	fmt.Fprintf(fd, "    return sendRpcRequestResponseStreamHelper[%s](w, %q, %s, opts)\n", respType, methodDecl.Command, dataVarName)
+	fmt.Fprintf(fd, "}\n\n")
+}
+
+func genMethod_Call(fd *os.File, methodDecl *wshserver.WshServerMethodDecl) {
 	fmt.Fprintf(fd, "// command %q, wshserver.%s\n", methodDecl.Command, methodDecl.MethodName)
 	var dataType string
 	dataVarName := "nil"
@@ -29,15 +46,11 @@ func genMethod(fd *os.File, methodDecl *wshserver.WshServerMethodDecl) {
 		tParamVal = methodDecl.DefaultResponseDataType.String()
 	}
 	fmt.Fprintf(fd, "func %s(w *wshutil.WshRpc%s, opts *wshrpc.WshRpcCommandOpts) %s {\n", methodDecl.MethodName, dataType, returnType)
-	if methodDecl.CommandType == wshutil.RpcType_Call {
-		fmt.Fprintf(fd, "    %s, err := sendRpcRequestHelper[%s](w, %q, %s, opts)\n", respName, tParamVal, methodDecl.Command, dataVarName)
-		if methodDecl.DefaultResponseDataType != nil {
-			fmt.Fprintf(fd, "    return resp, err\n")
-		} else {
-			fmt.Fprintf(fd, "    return err\n")
-		}
+	fmt.Fprintf(fd, "    %s, err := sendRpcRequestCallHelper[%s](w, %q, %s, opts)\n", respName, tParamVal, methodDecl.Command, dataVarName)
+	if methodDecl.DefaultResponseDataType != nil {
+		fmt.Fprintf(fd, "    return resp, err\n")
 	} else {
-		panic("unsupported command type " + methodDecl.CommandType)
+		fmt.Fprintf(fd, "    return err\n")
 	}
 	fmt.Fprintf(fd, "}\n\n")
 }
@@ -61,7 +74,13 @@ func main() {
 
 	for _, key := range utilfn.GetOrderedMapKeys(wshserver.WshServerCommandToDeclMap) {
 		methodDecl := wshserver.WshServerCommandToDeclMap[key]
-		genMethod(fd, methodDecl)
+		if methodDecl.CommandType == wshutil.RpcType_ResponseStream {
+			genMethod_ResponseStream(fd, methodDecl)
+		} else if methodDecl.CommandType == wshutil.RpcType_Call {
+			genMethod_Call(fd, methodDecl)
+		} else {
+			panic("unsupported command type " + methodDecl.CommandType)
+		}
 	}
 	fmt.Fprintf(fd, "\n")
 }

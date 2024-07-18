@@ -16,7 +16,7 @@ async function* rpcResponseGenerator(
     command: string,
     reqid: string,
     timeout: number
-): AsyncGenerator<RpcMessage, void, boolean> {
+): AsyncGenerator<any, void, boolean> {
     const msgQueue: RpcMessage[] = [];
     let signalFn: () => void;
     let signalPromise = new Promise<void>((resolve) => (signalFn = resolve));
@@ -39,11 +39,18 @@ async function* rpcResponseGenerator(
         command: command,
         msgFn: msgFn,
     });
+    yield null;
     try {
         while (true) {
             while (msgQueue.length > 0) {
                 const msg = msgQueue.shift()!;
-                const shouldTerminate = yield msg;
+                if (msg.error != null) {
+                    throw new Error(msg.error);
+                }
+                if (!msg.cont && msg.data == null) {
+                    return;
+                }
+                const shouldTerminate = yield msg.data;
                 if (shouldTerminate || !msg.cont) {
                     return;
                 }
@@ -64,7 +71,9 @@ function sendRpcCommand(msg: RpcMessage): AsyncGenerator<RpcMessage, void, boole
     if (msg.reqid == null) {
         return null;
     }
-    return rpcResponseGenerator(msg.command, msg.reqid, msg.timeout);
+    const rtnGen = rpcResponseGenerator(msg.command, msg.reqid, msg.timeout);
+    rtnGen.next(); // start the generator (run the initialization/registration logic, throw away the result)
+    return rtnGen;
 }
 
 function handleIncomingRpcMessage(msg: RpcMessage) {
@@ -83,6 +92,24 @@ function handleIncomingRpcMessage(msg: RpcMessage) {
         return;
     }
     entry.msgFn(msg);
+}
+
+async function consumeGenerator(gen: AsyncGenerator<any, any, any>) {
+    let idx = 0;
+    try {
+        for await (const msg of gen) {
+            console.log("gen", idx, msg);
+            idx++;
+        }
+        const result = await gen.return(undefined);
+        console.log("gen done", result.value);
+    } catch (e) {
+        console.log("gen error", e);
+    }
+}
+
+if (globalThis.window != null) {
+    globalThis["consumeGenerator"] = consumeGenerator;
 }
 
 export { handleIncomingRpcMessage, sendRpcCommand };

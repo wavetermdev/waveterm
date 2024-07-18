@@ -3,14 +3,14 @@
 
 package wshserver
 
+// this file contains the implementation of the wsh server methods
+
 import (
 	"context"
 	"encoding/base64"
 	"fmt"
 	"io/fs"
 	"log"
-	"net"
-	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -18,33 +18,19 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
-	"github.com/wavetermdev/thenextwave/pkg/util/utilfn"
-	"github.com/wavetermdev/thenextwave/pkg/wavebase"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
-const (
-	DefaultOutputChSize = 32
-	DefaultInputChSize  = 32
-)
-
-type WshServer struct{}
-
-var WshServerImpl = WshServer{}
-var contextRType = reflect.TypeOf((*context.Context)(nil)).Elem()
-
-type WshServerMethodDecl struct {
-	Command                 string
-	CommandType             string
-	MethodName              string
-	Method                  reflect.Value
-	CommandDataType         reflect.Type
-	DefaultResponseDataType reflect.Type
-	RequestDataTypes        []reflect.Type // for streaming requests
-	ResponseDataTypes       []reflect.Type // for streaming responses
+var RespStreamTest_MethodDecl = &WshServerMethodDecl{
+	Command:                 "streamtest",
+	CommandType:             wshutil.RpcType_ResponseStream,
+	MethodName:              "RespStreamTest",
+	Method:                  reflect.ValueOf(WshServerImpl.RespStreamTest),
+	CommandDataType:         nil,
+	DefaultResponseDataType: reflect.TypeOf((int)(0)),
 }
 
 var WshServerCommandToDeclMap = map[string]*WshServerMethodDecl{
@@ -58,35 +44,26 @@ var WshServerCommandToDeclMap = map[string]*WshServerMethodDecl{
 	wshrpc.Command_BlockInput:  GetWshServerMethod(wshrpc.Command_BlockInput, wshutil.RpcType_Call, "BlockInputCommand", WshServerImpl.BlockInputCommand),
 	wshrpc.Command_AppendFile:  GetWshServerMethod(wshrpc.Command_AppendFile, wshutil.RpcType_Call, "AppendFileCommand", WshServerImpl.AppendFileCommand),
 	wshrpc.Command_AppendIJson: GetWshServerMethod(wshrpc.Command_AppendIJson, wshutil.RpcType_Call, "AppendIJsonCommand", WshServerImpl.AppendIJsonCommand),
+	"streamtest":               RespStreamTest_MethodDecl,
 }
 
-func GetWshServerMethod(command string, commandType string, methodName string, methodFunc any) *WshServerMethodDecl {
-	methodVal := reflect.ValueOf(methodFunc)
-	methodType := methodVal.Type()
-	if methodType.Kind() != reflect.Func {
-		panic(fmt.Sprintf("methodVal must be a function got [%v]", methodType))
-	}
-	if methodType.In(0) != contextRType {
-		panic(fmt.Sprintf("methodVal must have a context as the first argument %v", methodType))
-	}
-	var defResponseType reflect.Type
-	if methodType.NumOut() > 1 {
-		defResponseType = methodType.Out(0)
-	}
-	rtn := &WshServerMethodDecl{
-		Command:                 command,
-		CommandType:             commandType,
-		MethodName:              methodName,
-		Method:                  methodVal,
-		CommandDataType:         methodType.In(1),
-		DefaultResponseDataType: defResponseType,
-	}
-	return rtn
-}
-
+// for testing
 func (ws *WshServer) MessageCommand(ctx context.Context, data wshrpc.CommandMessageData) error {
 	log.Printf("MESSAGE: %s | %q\n", data.ORef, data.Message)
 	return nil
+}
+
+// for testing
+func (ws *WshServer) RespStreamTest(ctx context.Context) chan wshrpc.RespOrErrorUnion[int] {
+	rtn := make(chan wshrpc.RespOrErrorUnion[int])
+	go func() {
+		for i := 1; i <= 5; i++ {
+			rtn <- wshrpc.RespOrErrorUnion[int]{Response: i}
+			time.Sleep(1 * time.Second)
+		}
+		close(rtn)
+	}()
+	return rtn
 }
 
 func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetMetaData) (wshrpc.MetaDataType, error) {
@@ -316,102 +293,4 @@ func (ws *WshServer) AppendIJsonCommand(ctx context.Context, data wshrpc.Command
 		},
 	})
 	return nil
-}
-
-func decodeRtnVals(rtnVals []reflect.Value) (any, error) {
-	switch len(rtnVals) {
-	case 0:
-		return nil, nil
-	case 1:
-		errIf := rtnVals[0].Interface()
-		if errIf == nil {
-			return nil, nil
-		}
-		return nil, errIf.(error)
-	case 2:
-		errIf := rtnVals[1].Interface()
-		if errIf == nil {
-			return rtnVals[0].Interface(), nil
-		}
-		return rtnVals[0].Interface(), errIf.(error)
-	default:
-		return nil, fmt.Errorf("too many return values: %d", len(rtnVals))
-	}
-}
-
-func mainWshServerHandler(handler *wshutil.RpcResponseHandler) {
-	command := handler.GetCommand()
-	methodDecl := WshServerCommandToDeclMap[command]
-	if methodDecl == nil {
-		handler.SendResponseError(fmt.Errorf("command %q not found", command))
-		return
-	}
-	var callParams []reflect.Value
-	callParams = append(callParams, reflect.ValueOf(handler.Context()))
-	if methodDecl.CommandDataType != nil {
-		commandData := reflect.New(methodDecl.CommandDataType).Interface()
-		err := utilfn.ReUnmarshal(commandData, handler.GetCommandRawData())
-		if err != nil {
-			handler.SendResponseError(fmt.Errorf("error re-marshalling command data: %w", err))
-			return
-		}
-		wshrpc.HackRpcContextIntoData(commandData, handler.GetRpcContext())
-		callParams = append(callParams, reflect.ValueOf(commandData).Elem())
-	}
-	rtnVals := methodDecl.Method.Call(callParams)
-	rtnData, rtnErr := decodeRtnVals(rtnVals)
-	if rtnErr != nil {
-		handler.SendResponseError(rtnErr)
-		return
-	} else {
-		handler.SendResponse(rtnData, true)
-	}
-}
-
-func MakeUnixListener(sockName string) (net.Listener, error) {
-	os.Remove(sockName) // ignore error
-	rtn, err := net.Listen("unix", sockName)
-	if err != nil {
-		return nil, fmt.Errorf("error creating listener at %v: %v", sockName, err)
-	}
-	os.Chmod(sockName, 0700)
-	log.Printf("Server listening on %s\n", sockName)
-	return rtn, nil
-}
-
-func runWshRpcWithStream(conn net.Conn) {
-	defer conn.Close()
-	inputCh := make(chan []byte, DefaultInputChSize)
-	outputCh := make(chan []byte, DefaultOutputChSize)
-	go wshutil.AdaptMsgChToStream(outputCh, conn)
-	go wshutil.AdaptStreamToMsgCh(conn, inputCh)
-	wshutil.MakeWshRpc(inputCh, outputCh, wshutil.RpcContext{}, mainWshServerHandler)
-}
-
-func RunWshRpcOverListener(listener net.Listener) {
-	go func() {
-		for {
-			conn, err := listener.Accept()
-			if err != nil {
-				log.Printf("error accepting connection: %v\n", err)
-				continue
-			}
-			go runWshRpcWithStream(conn)
-		}
-	}()
-}
-
-func RunDomainSocketWshServer() error {
-	sockName := wavebase.GetDomainSocketName()
-	listener, err := MakeUnixListener(sockName)
-	if err != nil {
-		return fmt.Errorf("error starging unix listener for wsh-server: %w", err)
-	}
-	defer listener.Close()
-	RunWshRpcOverListener(listener)
-	return nil
-}
-
-func MakeWshServer(inputCh chan []byte, outputCh chan []byte, initialCtx wshutil.RpcContext) {
-	wshutil.MakeWshRpc(inputCh, outputCh, initialCtx, mainWshServerHandler)
 }

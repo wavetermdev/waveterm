@@ -35,6 +35,11 @@ var DataTypeMap = map[string]reflect.Type{
 	"oref":          reflect.TypeOf(waveobj.ORef{}),
 }
 
+type RespOrErrorUnion[T any] struct {
+	Response T
+	Error    error
+}
+
 // for frontend
 type WshServerCommandMeta struct {
 	CommandType string `json:"commandtype"`

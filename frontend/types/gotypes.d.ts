@@ -189,6 +189,7 @@ declare global {
         resid?: string;
         timeout?: number;
         cont?: boolean;
+        cancel?: boolean;
         error?: string;
         datatype?: string;
         data?: any;

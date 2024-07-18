@@ -107,12 +107,27 @@ function callBackendService(service: string, method: string, args: any[], noUICo
     return prtn;
 }
 
-function callWshServerRpc(
+function wshServerRpcHelper_responsestream(
     command: string,
     data: any,
-    meta: WshServerCommandMeta,
     opts: WshRpcCommandOpts
-): Promise<any> {
+): AsyncGenerator<any, void, boolean> {
+    if (opts?.noresponse) {
+        throw new Error("noresponse not supported for responsestream calls");
+    }
+    let msg: RpcMessage = {
+        command: command,
+        data: data,
+        reqid: uuidv4(),
+    };
+    if (opts?.timeout) {
+        msg.timeout = opts.timeout;
+    }
+    const rpcGen = sendRpcCommand(msg);
+    return rpcGen;
+}
+
+function wshServerRpcHelper_call(command: string, data: any, opts: WshRpcCommandOpts): Promise<any> {
     let msg: RpcMessage = {
         command: command,
         data: data,
@@ -123,32 +138,14 @@ function callWshServerRpc(
     if (opts?.timeout) {
         msg.timeout = opts.timeout;
     }
-    if (meta.commandtype != "call") {
-        throw new Error("unimplemented wshserver commandtype " + meta.commandtype);
-    }
     const rpcGen = sendRpcCommand(msg);
     if (rpcGen == null) {
         return null;
     }
-    let resolveFn: (value: any) => void;
-    let rejectFn: (reason?: any) => void;
-    const prtn = new Promise((resolve, reject) => {
-        resolveFn = resolve;
-        rejectFn = reject;
+    const respMsgPromise = rpcGen.next(true); // pass true to force termination of rpc after 1 response (not streaming)
+    return respMsgPromise.then((msg: IteratorResult<any, void>) => {
+        return msg.value;
     });
-    const respMsg = rpcGen.next(true); // pass true to force termination of rpc after 1 response (not streaing)
-    respMsg.then((msg: IteratorResult<RpcMessage, void>) => {
-        if (msg.value == null) {
-            resolveFn(null);
-        }
-        let respMsg: RpcMessage = msg.value as RpcMessage;
-        if (respMsg.error != null) {
-            rejectFn(new Error(respMsg.error));
-            return;
-        }
-        resolveFn(respMsg.data);
-    });
-    return prtn;
 }
 
 const waveObjectValueCache = new Map<string, WaveObjectValue<any>>();
@@ -368,7 +365,6 @@ function setObjectValue<T extends WaveObj>(value: T, setFn?: jotai.Setter, pushT
 
 export {
     callBackendService,
-    callWshServerRpc,
     cleanWaveObjectCache,
     clearWaveObjectCache,
     getObjectValue,
@@ -383,4 +379,6 @@ export {
     useWaveObjectValue,
     useWaveObjectValueWithSuspense,
     waveObjectValueCache,
+    wshServerRpcHelper_call,
+    wshServerRpcHelper_responsestream,
 };

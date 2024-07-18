@@ -392,6 +392,38 @@ func GenerateServiceClass(serviceName string, serviceObj any, tsTypesMap map[ref
 }
 
 func GenerateWshServerMethod(methodDecl *wshserver.WshServerMethodDecl, tsTypesMap map[reflect.Type]string) string {
+	if methodDecl.CommandType == wshutil.RpcType_ResponseStream {
+		return GenerateWshServerMethod_ResponseStream(methodDecl, tsTypesMap)
+	} else if methodDecl.CommandType == wshutil.RpcType_Call {
+		return GenerateWshServerMethod_Call(methodDecl, tsTypesMap)
+	} else {
+		panic(fmt.Sprintf("cannot generate wshserver commandtype %q", methodDecl.CommandType))
+	}
+}
+
+func GenerateWshServerMethod_ResponseStream(methodDecl *wshserver.WshServerMethodDecl, tsTypesMap map[reflect.Type]string) string {
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("    // command %q [%s]\n", methodDecl.Command, methodDecl.CommandType))
+	respType := "any"
+	if methodDecl.DefaultResponseDataType != nil {
+		respType, _ = TypeToTSType(methodDecl.DefaultResponseDataType, tsTypesMap)
+	}
+	dataName := "null"
+	if methodDecl.CommandDataType != nil {
+		dataName = "data"
+	}
+	genRespType := fmt.Sprintf("AsyncGenerator<%s, void, boolean>", respType)
+	if methodDecl.CommandDataType != nil {
+		sb.WriteString(fmt.Sprintf("	%s(data: %s, opts?: WshRpcCommandOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), genRespType))
+	} else {
+		sb.WriteString(fmt.Sprintf("	%s(opts?: WshRpcCommandOpts): %s {\n", methodDecl.MethodName, genRespType))
+	}
+	sb.WriteString(fmt.Sprintf("        return WOS.wshServerRpcHelper_responsestream(%q, %s, opts);\n", methodDecl.Command, dataName))
+	sb.WriteString("    }\n")
+	return sb.String()
+}
+
+func GenerateWshServerMethod_Call(methodDecl *wshserver.WshServerMethodDecl, tsTypesMap map[reflect.Type]string) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("    // command %q [%s]\n", methodDecl.Command, methodDecl.CommandType))
 	rtnType := "Promise<void>"
@@ -399,14 +431,16 @@ func GenerateWshServerMethod(methodDecl *wshserver.WshServerMethodDecl, tsTypesM
 		rtnTypeName, _ := TypeToTSType(methodDecl.DefaultResponseDataType, tsTypesMap)
 		rtnType = fmt.Sprintf("Promise<%s>", rtnTypeName)
 	}
+	dataName := "null"
+	if methodDecl.CommandDataType != nil {
+		dataName = "data"
+	}
 	if methodDecl.CommandDataType != nil {
 		sb.WriteString(fmt.Sprintf("	%s(data: %s, opts?: WshRpcCommandOpts): %s {\n", methodDecl.MethodName, methodDecl.CommandDataType.Name(), rtnType))
 	} else {
 		sb.WriteString(fmt.Sprintf("	%s(opts?: WshRpcCommandOpts): %s {\n", methodDecl.MethodName, rtnType))
 	}
-	metaData := fmt.Sprintf("        const meta: WshServerCommandMeta = {commandtype: %q};\n", methodDecl.CommandType)
-	methodBody := fmt.Sprintf("        return WOS.callWshServerRpc(%q, data, meta, opts);\n", methodDecl.Command)
-	sb.WriteString(metaData)
+	methodBody := fmt.Sprintf("        return WOS.wshServerRpcHelper_call(%q, %s, opts);\n", methodDecl.Command, dataName)
 	sb.WriteString(methodBody)
 	sb.WriteString("    }\n")
 	return sb.String()

@@ -13,62 +13,67 @@ import (
 
 // command "controller:input", wshserver.BlockInputCommand
 func BlockInputCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockInputData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestHelper[any](w, "controller:input", data, opts)
+    _, err := sendRpcRequestCallHelper[any](w, "controller:input", data, opts)
     return err
 }
 
 // command "controller:restart", wshserver.BlockRestartCommand
 func BlockRestartCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockRestartData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestHelper[any](w, "controller:restart", data, opts)
+    _, err := sendRpcRequestCallHelper[any](w, "controller:restart", data, opts)
     return err
 }
 
 // command "createblock", wshserver.CreateBlockCommand
 func CreateBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateBlockData, opts *wshrpc.WshRpcCommandOpts) (*waveobj.ORef, error) {
-    resp, err := sendRpcRequestHelper[*waveobj.ORef](w, "createblock", data, opts)
+    resp, err := sendRpcRequestCallHelper[*waveobj.ORef](w, "createblock", data, opts)
     return resp, err
 }
 
 // command "file:append", wshserver.AppendFileCommand
 func AppendFileCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendFileData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestHelper[any](w, "file:append", data, opts)
+    _, err := sendRpcRequestCallHelper[any](w, "file:append", data, opts)
     return err
 }
 
 // command "file:appendijson", wshserver.AppendIJsonCommand
 func AppendIJsonCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendIJsonData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestHelper[any](w, "file:appendijson", data, opts)
+    _, err := sendRpcRequestCallHelper[any](w, "file:appendijson", data, opts)
     return err
 }
 
 // command "getmeta", wshserver.GetMetaCommand
 func GetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandGetMetaData, opts *wshrpc.WshRpcCommandOpts) (map[string]interface {}, error) {
-    resp, err := sendRpcRequestHelper[map[string]interface {}](w, "getmeta", data, opts)
+    resp, err := sendRpcRequestCallHelper[map[string]interface {}](w, "getmeta", data, opts)
     return resp, err
 }
 
 // command "message", wshserver.MessageCommand
 func MessageCommand(w *wshutil.WshRpc, data wshrpc.CommandMessageData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestHelper[any](w, "message", data, opts)
+    _, err := sendRpcRequestCallHelper[any](w, "message", data, opts)
     return err
 }
 
 // command "resolveids", wshserver.ResolveIdsCommand
 func ResolveIdsCommand(w *wshutil.WshRpc, data wshrpc.CommandResolveIdsData, opts *wshrpc.WshRpcCommandOpts) (wshrpc.CommandResolveIdsRtnData, error) {
-    resp, err := sendRpcRequestHelper[wshrpc.CommandResolveIdsRtnData](w, "resolveids", data, opts)
+    resp, err := sendRpcRequestCallHelper[wshrpc.CommandResolveIdsRtnData](w, "resolveids", data, opts)
     return resp, err
 }
 
 // command "setmeta", wshserver.SetMetaCommand
 func SetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandSetMetaData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestHelper[any](w, "setmeta", data, opts)
+    _, err := sendRpcRequestCallHelper[any](w, "setmeta", data, opts)
     return err
 }
 
 // command "setview", wshserver.BlockSetViewCommand
 func BlockSetViewCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockSetViewData, opts *wshrpc.WshRpcCommandOpts) error {
-    _, err := sendRpcRequestHelper[any](w, "setview", data, opts)
+    _, err := sendRpcRequestCallHelper[any](w, "setview", data, opts)
     return err
+}
+
+// command "streamtest", wshserver.RespStreamTest
+func RespStreamTest(w *wshutil.WshRpc, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[int] {
+    return sendRpcRequestResponseStreamHelper[int](w, "streamtest", nil, opts)
 }
 
 
