@@ -5,6 +5,12 @@
 
 declare global {
 
+    // wconfig.AutoUpdateOpts
+    type AutoUpdateOpts = {
+        enabled: boolean;
+        intervalms: number;
+    };
+
     // wstore.Block
     type Block = WaveObj & {
         blockdef: BlockDef;
@@ -214,6 +220,7 @@ declare global {
         term: TerminalConfigType;
         widgets: WidgetsConfigType[];
         blockheader: BlockHeaderOpts;
+        autoupdate: AutoUpdateOpts;
     };
 
     // wstore.StickerClickOptsType

@@ -161,7 +161,7 @@ func (fs *FileService) DeleteFile(path string) error {
 	return os.Remove(cleanedPath)
 }
 
-func (fs *FileService) GetSettingsConfig() interface{} {
+func (fs *FileService) GetSettingsConfig() wconfig.SettingsConfigType {
 	watcher := wconfig.GetWatcher()
 	return watcher.GetSettingsConfig()
 }

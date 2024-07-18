@@ -36,11 +36,17 @@ type BlockHeaderOpts struct {
 	ShowBlockIds bool `json:"showblockids"`
 }
 
+type AutoUpdateOpts struct {
+	Enabled    bool   `json:"enabled"`
+	IntervalMs uint32 `json:"intervalms"`
+}
+
 type SettingsConfigType struct {
 	MimeTypes   map[string]MimeTypeConfigType `json:"mimetypes"`
 	Term        TerminalConfigType            `json:"term"`
 	Widgets     []WidgetsConfigType           `json:"widgets"`
 	BlockHeader BlockHeaderOpts               `json:"blockheader"`
+	AutoUpdate  AutoUpdateOpts                `json:"autoupdate"`
 }
 
 func getSettingsConfigDefaults() SettingsConfigType {
@@ -96,6 +102,10 @@ func getSettingsConfigDefaults() SettingsConfigType {
 					View: "waveai",
 				},
 			},
+		},
+		AutoUpdate: AutoUpdateOpts{
+			Enabled:    true,
+			IntervalMs: 3600000,
 		},
 	}
 }

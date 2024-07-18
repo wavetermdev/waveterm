@@ -49,7 +49,7 @@ class FileServiceType {
     DeleteFile(arg1: string): Promise<void> {
         return WOS.callBackendService("file", "DeleteFile", Array.from(arguments))
     }
-    GetSettingsConfig(): Promise<any> {
+    GetSettingsConfig(): Promise<SettingsConfigType> {
         return WOS.callBackendService("file", "GetSettingsConfig", Array.from(arguments))
     }
     GetWaveFile(arg1: string, arg2: string): Promise<any> {

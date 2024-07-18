@@ -54,6 +54,8 @@ tasks:
         generates:
             - frontend/types/gotypes.d.ts
             - pkg/wshrpc/wshclient/wshclient.go
+            - frontend/app/store/services.ts
+            - frontend/app/store/wshserver.ts
 
     build:server:
         desc: Build the wavesrv component.
