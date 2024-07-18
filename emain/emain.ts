@@ -575,6 +575,28 @@ function makeAppMenu() {
 electron.app.on("before-quit", () => {
     globalIsQuitting = true;
 });
+process.on("SIGINT", () => {
+    console.log("Caught SIGINT, shutting down");
+    electron.app.quit();
+});
+process.on("SIGHUP", () => {
+    console.log("Caught SIGHUP, shutting down");
+    electron.app.quit();
+});
+process.on("SIGTERM", () => {
+    console.log("Caught SIGTERM, shutting down");
+    electron.app.quit();
+});
+let caughtException = false;
+process.on("uncaughtException", (error) => {
+    if (caughtException) {
+        return;
+    }
+    logger.error("Uncaught Exception, shutting down: ", error);
+    caughtException = true;
+    // Optionally, handle cleanup or exit the app
+    electron.app.quit();
+});
 
 async function appMain() {
     const startTs = Date.now();
