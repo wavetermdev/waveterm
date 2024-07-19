@@ -613,6 +613,11 @@ function makeAppMenu() {
     electron.Menu.setApplicationMenu(menu);
 }
 
+electron.app.on("window-all-closed", () => {
+    if (unamePlatform !== "darwin") {
+        electron.app.quit();
+    }
+});
 electron.app.on("before-quit", () => {
     globalIsQuitting = true;
 });
