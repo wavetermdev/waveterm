@@ -95,6 +95,11 @@ declare global {
         rtopts: RuntimeOpts;
     };
 
+    // wshrpc.CommandDeleteBlockData
+    type CommandDeleteBlockData = {
+        blockid: string;
+    };
+
     // wshrpc.CommandGetMetaData
     type CommandGetMetaData = {
         oref: ORef;

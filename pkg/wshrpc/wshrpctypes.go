@@ -25,6 +25,7 @@ const (
 	Command_AppendIJson = "file:appendijson"
 	Command_ResolveIds  = "resolveids"
 	Command_CreateBlock = "createblock"
+	Command_DeleteBlock = "deleteblock"
 )
 
 type MetaDataType = map[string]any
@@ -132,4 +133,8 @@ type CommandAppendIJsonData struct {
 	ZoneId   string        `json:"zoneid" wshcontext:"BlockId"`
 	FileName string        `json:"filename"`
 	Data     ijson.Command `json:"data"`
+}
+
+type CommandDeleteBlockData struct {
+	BlockId string `json:"blockid" wshcontext:"BlockId"`
 }

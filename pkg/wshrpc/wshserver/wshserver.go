@@ -44,6 +44,7 @@ var WshServerCommandToDeclMap = map[string]*WshServerMethodDecl{
 	wshrpc.Command_BlockInput:  GetWshServerMethod(wshrpc.Command_BlockInput, wshutil.RpcType_Call, "BlockInputCommand", WshServerImpl.BlockInputCommand),
 	wshrpc.Command_AppendFile:  GetWshServerMethod(wshrpc.Command_AppendFile, wshutil.RpcType_Call, "AppendFileCommand", WshServerImpl.AppendFileCommand),
 	wshrpc.Command_AppendIJson: GetWshServerMethod(wshrpc.Command_AppendIJson, wshutil.RpcType_Call, "AppendIJsonCommand", WshServerImpl.AppendIJsonCommand),
+	wshrpc.Command_DeleteBlock: GetWshServerMethod(wshrpc.Command_DeleteBlock, wshutil.RpcType_Call, "DeleteBlockCommand", WshServerImpl.DeleteBlockCommand),
 	"streamtest":               RespStreamTest_MethodDecl,
 }
 
@@ -292,5 +293,39 @@ func (ws *WshServer) AppendIJsonCommand(ctx context.Context, data wshrpc.Command
 			Data64:   base64.StdEncoding.EncodeToString([]byte("{}")),
 		},
 	})
+	return nil
+}
+
+func (ws *WshServer) DeleteBlockCommand(ctx context.Context, data wshrpc.CommandDeleteBlockData) error {
+	ctx = wstore.ContextWithUpdates(ctx)
+	tabId, err := wstore.DBFindTabForBlockId(ctx, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("error finding tab for block: %w", err)
+	}
+	if tabId == "" {
+		return fmt.Errorf("no tab found for block")
+	}
+	windowId, err := wstore.DBFindWindowForTabId(ctx, tabId)
+	if err != nil {
+		return fmt.Errorf("error finding window for tab: %w", err)
+	}
+	if windowId == "" {
+		return fmt.Errorf("no window found for tab")
+	}
+	err = wstore.DeleteBlock(ctx, tabId, data.BlockId)
+	if err != nil {
+		return fmt.Errorf("error deleting block: %w", err)
+	}
+	eventbus.SendEventToWindow(windowId, eventbus.WSEventType{
+		EventType: eventbus.WSEvent_LayoutAction,
+		Data: &eventbus.WSLayoutActionData{
+			ActionType: "delete",
+			TabId:      tabId,
+			BlockId:    data.BlockId,
+		},
+	})
+	blockcontroller.StopBlockController(data.BlockId)
+	updates := wstore.ContextGetUpdatesRtn(ctx)
+	sendWStoreUpdatesToEventBus(updates)
 	return nil
 }

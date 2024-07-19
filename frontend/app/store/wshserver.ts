@@ -22,6 +22,11 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("createblock", data, opts);
     }
 
+    // command "deleteblock" [call]
+	DeleteBlockCommand(data: CommandDeleteBlockData, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("deleteblock", data, opts);
+    }
+
     // command "file:append" [call]
 	AppendFileCommand(data: CommandAppendFileData, opts?: WshRpcCommandOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("file:append", data, opts);

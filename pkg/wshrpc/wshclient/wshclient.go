@@ -29,6 +29,12 @@ func CreateBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandCreateBlockData, o
     return resp, err
 }
 
+// command "deleteblock", wshserver.DeleteBlockCommand
+func DeleteBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "deleteblock", data, opts)
+    return err
+}
+
 // command "file:append", wshserver.AppendFileCommand
 func AppendFileCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendFileData, opts *wshrpc.WshRpcCommandOpts) error {
     _, err := sendRpcRequestCallHelper[any](w, "file:append", data, opts)

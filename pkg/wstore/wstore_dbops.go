@@ -267,3 +267,13 @@ func DBFindWindowForTabId(ctx context.Context, tabId string) (string, error) {
 		return tx.GetString(query, tabId), nil
 	})
 }
+
+func DBFindTabForBlockId(ctx context.Context, blockId string) (string, error) {
+	return WithTxRtn(ctx, func(tx *TxWrap) (string, error) {
+		query := `
+			SELECT t.oid 
+			FROM db_tab t, json_each(data->'blockids') je 
+			WHERE je.value = ?;`
+		return tx.GetString(query, blockId), nil
+	})
+}
