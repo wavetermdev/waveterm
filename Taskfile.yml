@@ -11,7 +11,7 @@ vars:
 
 tasks:
     electron:dev:
-        desc: Run the Electron application directly.
+        desc: Run the Electron application via the Vite dev server (enables hot reloading).
         cmds:
             - yarn dev
         deps:
@@ -20,7 +20,7 @@ tasks:
             - build:wsh
 
     electron:start:
-        desc: Run the Electron application via the Vite dev server (enables hot reloading).
+        desc: Run the Electron application directly.
         cmds:
             - yarn start
         deps:
