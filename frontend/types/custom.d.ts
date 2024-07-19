@@ -5,6 +5,19 @@ import type * as jotai from "jotai";
 import type * as rxjs from "rxjs";
 
 declare global {
+    type GlobalAtomsType = {
+        windowId: jotai.Atom<string>; // readonly
+        clientId: jotai.Atom<string>; // readonly
+        client: jotai.Atom<Client>; // driven from WOS
+        uiContext: jotai.Atom<UIContext>; // driven from windowId, activetabid, etc.
+        waveWindow: jotai.Atom<WaveWindow>; // driven from WOS
+        workspace: jotai.Atom<Workspace>; // driven from WOS
+        settingsConfigAtom: jotai.PrimitiveAtom<SettingsConfigType>; // driven from WOS, settings -- updated via WebSocket
+        tabAtom: jotai.Atom<Tab>; // driven from WOS
+        activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
+        userInput: jotai.PrimitiveAtom<Array<UserInputRequest>>;
+    };
+
     type TabLayoutData = {
         blockId: string;
     };

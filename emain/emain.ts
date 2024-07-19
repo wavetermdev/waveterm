@@ -1,6 +1,7 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { initGlobal } from "@/app/store/global";
 import { WaveDevVarName, WaveDevViteVarName } from "@/util/isdev";
 import * as electron from "electron";
 import { autoUpdater } from "electron-updater";
@@ -97,6 +98,8 @@ console.log(
 if (isDev) {
     console.log("waveterm-app WAVETERM_DEV set");
 }
+
+initGlobal({ windowId: null, clientId: null, platform: unamePlatform, environment: "electron" });
 
 function getElectronAppBasePath(): string {
     return path.dirname(__dirname);

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WshServer } from "@/app/store/wshserver";
-import { atoms, getApi, globalStore, globalWS, initWS, setPlatform } from "@/store/global";
+import { atoms, getApi, globalStore, globalWS, initGlobal, initWS } from "@/store/global";
 import * as services from "@/store/services";
 import * as WOS from "@/store/wos";
 import * as keyutil from "@/util/keyutil";
@@ -11,6 +11,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app/app";
 import { loadFonts } from "./util/fontutil";
 
+const platform = getApi().getPlatform();
 const urlParams = new URLSearchParams(window.location.search);
 const windowId = urlParams.get("windowid");
 const clientId = urlParams.get("clientid");
@@ -18,8 +19,8 @@ const clientId = urlParams.get("clientid");
 console.log("Wave Starting");
 console.log("clientid", clientId, "windowid", windowId);
 
-const platform = getApi().getPlatform();
-setPlatform(platform);
+initGlobal({ clientId, windowId, platform, environment: "renderer" });
+
 keyutil.setKeyUtilPlatform(platform);
 
 loadFonts();

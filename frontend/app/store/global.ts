@@ -16,86 +16,91 @@ import * as WOS from "./wos";
 import { WSControl } from "./ws";
 
 let PLATFORM: NodeJS.Platform = "darwin";
+const globalStore = jotai.createStore();
+let atoms: GlobalAtomsType;
+let globalEnvironment: "electron" | "renderer";
+
+type GlobalInitOptions = {
+    platform: NodeJS.Platform;
+    windowId: string;
+    clientId: string;
+    environment: "electron" | "renderer";
+};
+
+function initGlobal(initOpts: GlobalInitOptions) {
+    globalEnvironment = initOpts.environment;
+    setPlatform(initOpts.platform);
+    initGlobalAtoms(initOpts);
+}
 
 function setPlatform(platform: NodeJS.Platform) {
     PLATFORM = platform;
 }
 
-// TODO remove the window dependency completely
-//   we should have the initialization be more orderly -- proceed directly from wave.ts instead of on its own.
-const globalStore = jotai.createStore();
-let globalWindowId: string = null;
-let globalClientId: string = null;
-if (typeof window !== "undefined") {
-    // this if statement allows us to use the code in nodejs as well
-    const urlParams = new URLSearchParams(window.location.search);
-    globalWindowId = urlParams.get("windowid");
-    globalClientId = urlParams.get("clientid");
-}
-const windowIdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string>;
-const clientIdAtom = jotai.atom(null) as jotai.PrimitiveAtom<string>;
-globalStore.set(windowIdAtom, globalWindowId);
-globalStore.set(clientIdAtom, globalClientId);
-const uiContextAtom = jotai.atom((get) => {
-    const windowData = get(windowDataAtom);
-    const uiContext: UIContext = {
-        windowid: get(atoms.windowId),
-        activetabid: windowData?.activetabid,
-    };
-    return uiContext;
-}) as jotai.Atom<UIContext>;
-const clientAtom: jotai.Atom<Client> = jotai.atom((get) => {
-    const clientId = get(clientIdAtom);
-    if (clientId == null) {
-        return null;
-    }
-    return WOS.getObjectValue(WOS.makeORef("client", clientId), get);
-});
-const windowDataAtom: jotai.Atom<WaveWindow> = jotai.atom((get) => {
-    const windowId = get(windowIdAtom);
-    if (windowId == null) {
-        return null;
-    }
-    const rtn = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", windowId), get);
-    return rtn;
-});
-const workspaceAtom: jotai.Atom<Workspace> = jotai.atom((get) => {
-    const windowData = get(windowDataAtom);
-    if (windowData == null) {
-        return null;
-    }
-    return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
-});
-const settingsConfigAtom = jotai.atom(null) as jotai.PrimitiveAtom<SettingsConfigType>;
-const tabAtom: jotai.Atom<Tab> = jotai.atom((get) => {
-    const windowData = get(windowDataAtom);
-    if (windowData == null) {
-        return null;
-    }
-    return WOS.getObjectValue(WOS.makeORef("tab", windowData.activetabid), get);
-});
-const activeTabIdAtom: jotai.Atom<string> = jotai.atom((get) => {
-    const windowData = get(windowDataAtom);
-    if (windowData == null) {
-        return null;
-    }
-    return windowData.activetabid;
-});
-const userInputAtom = jotai.atom([]) as jotai.PrimitiveAtom<Array<UserInputRequest>>;
+function initGlobalAtoms(initOpts: GlobalInitOptions) {
+    const windowIdAtom = jotai.atom(initOpts.windowId) as jotai.PrimitiveAtom<string>;
+    const clientIdAtom = jotai.atom(initOpts.clientId) as jotai.PrimitiveAtom<string>;
+    const uiContextAtom = jotai.atom((get) => {
+        const windowData = get(windowDataAtom);
+        const uiContext: UIContext = {
+            windowid: get(atoms.windowId),
+            activetabid: windowData?.activetabid,
+        };
+        return uiContext;
+    }) as jotai.Atom<UIContext>;
 
-const atoms = {
-    // initialized in wave.ts (will not be null inside of application)
-    windowId: windowIdAtom,
-    clientId: clientIdAtom,
-    uiContext: uiContextAtom,
-    client: clientAtom,
-    waveWindow: windowDataAtom,
-    workspace: workspaceAtom,
-    settingsConfigAtom: settingsConfigAtom,
-    tabAtom: tabAtom,
-    activeTabId: activeTabIdAtom,
-    userInput: userInputAtom,
-};
+    const clientAtom: jotai.Atom<Client> = jotai.atom((get) => {
+        const clientId = get(clientIdAtom);
+        if (clientId == null) {
+            return null;
+        }
+        return WOS.getObjectValue(WOS.makeORef("client", clientId), get);
+    });
+    const windowDataAtom: jotai.Atom<WaveWindow> = jotai.atom((get) => {
+        const windowId = get(windowIdAtom);
+        if (windowId == null) {
+            return null;
+        }
+        const rtn = WOS.getObjectValue<WaveWindow>(WOS.makeORef("window", windowId), get);
+        return rtn;
+    });
+    const workspaceAtom: jotai.Atom<Workspace> = jotai.atom((get) => {
+        const windowData = get(windowDataAtom);
+        if (windowData == null) {
+            return null;
+        }
+        return WOS.getObjectValue(WOS.makeORef("workspace", windowData.workspaceid), get);
+    });
+    const settingsConfigAtom = jotai.atom(null) as jotai.PrimitiveAtom<SettingsConfigType>;
+    const tabAtom: jotai.Atom<Tab> = jotai.atom((get) => {
+        const windowData = get(windowDataAtom);
+        if (windowData == null) {
+            return null;
+        }
+        return WOS.getObjectValue(WOS.makeORef("tab", windowData.activetabid), get);
+    });
+    const activeTabIdAtom: jotai.Atom<string> = jotai.atom((get) => {
+        const windowData = get(windowDataAtom);
+        if (windowData == null) {
+            return null;
+        }
+        return windowData.activetabid;
+    });
+    const userInputAtom = jotai.atom([]) as jotai.PrimitiveAtom<Array<UserInputRequest>>;
+    atoms = {
+        // initialized in wave.ts (will not be null inside of application)
+        windowId: windowIdAtom,
+        clientId: clientIdAtom,
+        uiContext: uiContextAtom,
+        client: clientAtom,
+        waveWindow: windowDataAtom,
+        workspace: workspaceAtom,
+        settingsConfigAtom: settingsConfigAtom,
+        tabAtom: tabAtom,
+        activeTabId: activeTabIdAtom,
+        userInput: userInputAtom,
+    };
+}
 
 // key is "eventType" or "eventType|oref"
 const eventSubjects = new Map<string, SubjectWithRef<WSEventType>>();
@@ -168,7 +173,7 @@ function useSettingsAtom<T>(name: string, settingsFn: (settings: SettingsConfigT
     let atom = settingsAtomCache.get(name);
     if (atom == null) {
         atom = jotai.atom((get) => {
-            const settings = get(settingsConfigAtom);
+            const settings = get(atoms.settingsConfigAtom);
             if (settings == null) {
                 return null;
             }
@@ -205,7 +210,7 @@ function handleWSEventMessage(msg: WSEventType) {
     }
     if (msg.eventtype == "config") {
         const data: WatcherUpdate = msg.data;
-        globalStore.set(settingsConfigAtom, data.update);
+        globalStore.set(atoms.settingsConfigAtom, data.update);
 
         console.log("config", data);
         return;
@@ -214,7 +219,7 @@ function handleWSEventMessage(msg: WSEventType) {
         // handle user input
         const data: UserInputRequest = msg.data;
         console.log(data);
-        globalStore.set(userInputAtom, (prev) => [...prev, data]);
+        globalStore.set(atoms.userInput, (prev) => [...prev, data]);
         return;
     }
     if (msg.eventtype == "blockfile") {
@@ -279,7 +284,8 @@ function handleWSMessage(msg: any) {
 }
 
 function initWS() {
-    globalWS = new WSControl(getWSServerEndpoint(), globalStore, globalWindowId, "", (msg) => {
+    let windowId = globalStore.get(atoms.windowId);
+    globalWS = new WSControl(getWSServerEndpoint(), globalStore, windowId, "", (msg) => {
         handleWSMessage(msg);
     });
     globalWS.connectNow("initWS");
@@ -388,6 +394,7 @@ export {
     getObjectId,
     globalStore,
     globalWS,
+    initGlobal,
     initWS,
     sendWSCommand,
     setBlockFocus,
