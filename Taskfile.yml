@@ -15,7 +15,6 @@ tasks:
         cmds:
             - yarn dev
         deps:
-            - generate
             - build:server
             - build:wsh
 
@@ -24,7 +23,6 @@ tasks:
         cmds:
             - yarn start
         deps:
-            - generate
             - build:server
             - build:wsh
 
@@ -35,27 +33,8 @@ tasks:
               ignore_error: true
             - yarn build:prod && yarn electron-builder -c electron-builder.config.cjs -p never
         deps:
-            - generate
             - build:server
             - build:wsh
-
-    generate:
-        desc: Generate Typescript bindings for the Go backend.
-        cmds:
-            - go run cmd/generate/main-generate.go
-            - go run cmd/generatewshclient/main-generatewshclient.go
-        sources:
-            - "cmd/generate/*.go"
-            - "cmd/generatewshclient/*.go"
-            - "pkg/service/**/*.go"
-            - "pkg/wstore/*.go"
-            - "pkg/wshrpc/**/*.go"
-            - "pkg/tsgen/**/*.go"
-        generates:
-            - frontend/types/gotypes.d.ts
-            - pkg/wshrpc/wshclient/wshclient.go
-            - frontend/app/store/services.ts
-            - frontend/app/store/wshserver.ts
 
     build:server:
         desc: Build the wavesrv component.
@@ -102,6 +81,7 @@ tasks:
         generates:
             - dist/bin/wavesrv.{{.GOARCH}}{{exeExt}}
         deps:
+            - generate
             - go:mod:tidy
         internal: true
 
@@ -152,8 +132,27 @@ tasks:
         cmds:
             - (CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} go build -ldflags="-s -w -X main.BuildTime=$(date +'%Y%m%d%H%M')" -o dist/bin/wsh-{{.VERSION}}-{{.GOOS}}.{{.GOARCH}}{{.EXT}} cmd/wsh/main-wsh.go)
         deps:
+            - generate
             - go:mod:tidy
         internal: true
+
+    generate:
+        desc: Generate Typescript bindings for the Go backend.
+        cmds:
+            - go run cmd/generate/main-generate.go
+            - go run cmd/generatewshclient/main-generatewshclient.go
+        sources:
+            - "cmd/generate/*.go"
+            - "cmd/generatewshclient/*.go"
+            - "pkg/service/**/*.go"
+            - "pkg/wstore/*.go"
+            - "pkg/wshrpc/**/*.go"
+            - "pkg/tsgen/**/*.go"
+        generates:
+            - frontend/types/gotypes.d.ts
+            - pkg/wshrpc/wshclient/wshclient.go
+            - frontend/app/store/services.ts
+            - frontend/app/store/wshserver.ts
 
     go:mod:tidy:
         desc: Runs `go mod tidy`

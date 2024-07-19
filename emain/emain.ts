@@ -578,6 +578,13 @@ function makeAppMenu() {
             type: "separator",
         },
         {
+            label: "Toggle Menu Bar Visibility",
+            visible: unamePlatform != "darwin",
+            click: (_, window) => {
+                window.autoHideMenuBar = !window.autoHideMenuBar;
+            },
+        },
+        {
             role: "hide",
         },
         {
