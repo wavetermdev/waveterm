@@ -217,6 +217,15 @@ async function handleWSEvent(evtMsg: WSEventType) {
         const newWin = createBrowserWindow(clientData.oid, windowData);
         await newWin.readyPromise;
         newWin.show();
+    } else if (evtMsg.eventtype == "electron:closewindow") {
+        if (evtMsg.data === undefined) return;
+        const windows = electron.BrowserWindow.getAllWindows();
+        for (const window of windows) {
+            if ((window as any).waveWindowId === evtMsg.data) {
+                // Bypass the "Are you sure?" dialog, since this event is called when there's no more tabs for the window.
+                window.destroy();
+            }
+        }
     } else {
         console.log("unhandled electron ws eventtype", evtMsg.eventtype);
     }

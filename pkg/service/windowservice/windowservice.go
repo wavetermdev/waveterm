@@ -67,10 +67,13 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext wstore.UIConte
 		var newActiveTabId string
 		if len(ws.TabIds) > 0 {
 			newActiveTabId = ws.TabIds[0]
+			wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
 		} else {
-			newActiveTabId = ""
+			eventbus.SendEventToElectron(eventbus.WSEventType{
+				EventType: eventbus.WSEvent_ElectronCloseWindow,
+				Data:      uiContext.WindowId,
+			})
 		}
-		wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
 	}
 	return wstore.ContextGetUpdatesRtn(ctx), nil
 }

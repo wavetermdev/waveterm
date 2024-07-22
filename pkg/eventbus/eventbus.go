@@ -22,6 +22,7 @@ const (
 	WSEvent_BlockControllerStatus = "blockcontroller:status"
 	WSEvent_LayoutAction          = "layoutaction"
 	WSEvent_ElectronNewWindow     = "electron:newwindow"
+	WSEvent_ElectronCloseWindow   = "electron:closewindow"
 	WSEvent_Rpc                   = "rpc"
 )
 
