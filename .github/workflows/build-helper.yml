@@ -16,7 +16,7 @@ jobs:
                       runner: "ubuntu-latest"
                     - platform: "linux"
                       arch: "arm64"
-                      runner: ubuntu-22.04-arm64-4core
+                      runner: ubuntu-24.04-arm64-16core
                     # - platform: "windows"
                     #   arch: "amd64"
                     #   runner: "windows-latest"
