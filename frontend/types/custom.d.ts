@@ -173,6 +173,7 @@ declare global {
         onSearchChange?: (text: string) => void;
         onSearch?: (text: string) => void;
         getSettingsMenuItems?: () => ContextMenuItem[];
+        giveFocus?: () => boolean;
     }
 
     // jotai doesn't export this type :/

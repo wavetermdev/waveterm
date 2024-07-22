@@ -602,6 +602,11 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
         setBlockClicked(true);
     }, []);
 
+    let { viewElem, viewModel } = React.useMemo(
+        () => getViewElemAndModel(blockId, blockData?.view, blockRef),
+        [blockId, blockData?.view, blockRef]
+    );
+
     const determineFocusedChild = React.useCallback(
         (event: React.FocusEvent<HTMLDivElement, Element>) => {
             setFocusedChild(event.target);
@@ -609,33 +614,13 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
         [setFocusedChild]
     );
 
-    const getFocusableChildren = React.useCallback(() => {
-        if (blockRef.current == null) {
-            return [];
-        }
-        return Array.from(
-            blockRef.current.querySelectorAll(
-                'a[href], area[href], input:not([disabled]), select:not([disabled]), button:not([disabled]), [tabindex="0"]'
-            )
-        ).filter((elem) => elem.id != `${blockId}-dummy-focus`);
-    }, [blockRef.current]);
-
     const setFocusTarget = React.useCallback(() => {
-        const focusableChildren = getFocusableChildren();
-        if (focusableChildren.length == 0) {
-            focusElemRef.current.focus({ preventScroll: true });
-        } else {
-            const firstFocusableChild = focusableChildren[0] as HTMLElement;
-            if (!firstFocusableChild.classList.contains("url-input")) {
-                firstFocusableChild.focus({ preventScroll: true });
-            }
+        const ok = viewModel?.giveFocus?.();
+        if (ok) {
+            return;
         }
-    }, [getFocusableChildren]);
-
-    let { viewElem, viewModel } = React.useMemo(
-        () => getViewElemAndModel(blockId, blockData?.view, blockRef),
-        [blockId, blockData?.view, blockRef]
-    );
+        focusElemRef.current.focus({ preventScroll: true });
+    }, []);
 
     if (!blockId || !blockData) return null;
 
@@ -658,14 +643,7 @@ const BlockFull = React.memo(({ blockId, layoutModel }: BlockProps) => {
             viewModel={viewModel}
         >
             <div key="focuselem" className="block-focuselem">
-                <input
-                    type="text"
-                    value=""
-                    ref={focusElemRef}
-                    id={`${blockId}-dummy-focus`}
-                    onChange={() => {}}
-                    disabled={getFocusableChildren().length > 0}
-                />
+                <input type="text" value="" ref={focusElemRef} id={`${blockId}-dummy-focus`} onChange={() => {}} />
             </div>
             <div key="content" className="block-content">
                 <ErrorBoundary>

@@ -54,6 +54,7 @@ export class PreviewModel implements ViewModel {
     showHiddenFiles: jotai.PrimitiveAtom<boolean>;
     refreshVersion: jotai.PrimitiveAtom<number>;
     refreshCallback: () => void;
+    directoryInputElem: HTMLInputElement;
 
     setPreviewFileName(fileName: string) {
         services.ObjectService.UpdateObjectMeta(`block:${this.blockId}`, { file: fileName });
@@ -101,14 +102,14 @@ export class PreviewModel implements ViewModel {
         });
         this.viewName = jotai.atom("Preview");
         this.viewText = jotai.atom((get) => {
-            const viewTextChildren: HeaderElem[] = [
-                {
-                    elemtype: "input",
-                    value: get(this.fileName),
-                    isDisabled: true,
-                },
-            ];
             if (get(this.isCeView)) {
+                const viewTextChildren: HeaderElem[] = [
+                    {
+                        elemtype: "input",
+                        value: get(this.fileName),
+                        isDisabled: true,
+                    },
+                ];
                 if (get(this.ceReadOnly) == false) {
                     viewTextChildren.push(
                         {
@@ -138,6 +139,13 @@ export class PreviewModel implements ViewModel {
                         children: viewTextChildren,
                     },
                 ] as HeaderElem[];
+            } else {
+                return [
+                    {
+                        elemtype: "text",
+                        text: get(this.fileName),
+                    },
+                ];
             }
         });
 
@@ -271,6 +279,14 @@ export class PreviewModel implements ViewModel {
             },
         });
         return menuItems;
+    }
+
+    giveFocus(): boolean {
+        if (this.directoryInputElem) {
+            this.directoryInputElem.focus({ preventScroll: true });
+            return true;
+        }
+        return false;
     }
 }
 

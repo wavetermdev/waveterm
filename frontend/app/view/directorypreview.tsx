@@ -560,6 +560,14 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
         }
     }, [filteredData]);
 
+    const inputRef = React.useRef<HTMLInputElement>(null);
+    React.useEffect(() => {
+        model.directoryInputElem = inputRef.current;
+        return () => {
+            model.directoryInputElem = null;
+        };
+    }, []);
+
     return (
         <div
             className="dir-table-container"
@@ -574,9 +582,9 @@ function DirectoryPreview({ fileNameAtom, model }: DirectoryPreviewProps) {
                 <input
                     type="text"
                     className="dir-table-search-box"
+                    ref={inputRef}
                     onChange={() => {}} //for nuisance warnings
                     maxLength={400}
-                    autoFocus={true}
                     value={searchText}
                 />
             </div>

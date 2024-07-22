@@ -280,6 +280,13 @@ export class WebViewModel implements ViewModel {
     getUrl() {
         return this.historyStack[this.historyIndex];
     }
+
+    giveFocus(): boolean {
+        if (this.urlInputRef.current) {
+            this.urlInputRef.current.focus({ preventScroll: true });
+            return true;
+        }
+    }
 }
 
 function makeWebViewModel(blockId: string): WebViewModel {
