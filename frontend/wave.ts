@@ -28,6 +28,7 @@ loadFonts();
 (window as any).WOS = WOS;
 (window as any).globalStore = globalStore;
 (window as any).WshServer = WshServer;
+(window as any).isFullScreen = false;
 
 document.title = `The Next Wave (${windowId.substring(0, 8)})`;
 

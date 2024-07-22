@@ -69,6 +69,8 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
     const windowData = useAtomValue(atoms.waveWindow);
     const { activetabid } = windowData;
 
+    const isFullScreen = useAtomValue(atoms.isFullScreen);
+
     let prevDelta: number;
     let prevDragDirection: string;
 
@@ -145,7 +147,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         tabRefs.current.forEach((ref, index) => {
             if (ref.current) {
                 ref.current.style.width = `${newTabWidth}px`;
-                ref.current.style.transform = `translateX(${index * newTabWidth}px)`;
+                ref.current.style.transform = `translate3d(${index * newTabWidth}px,0,0)`;
             }
         });
 
@@ -173,9 +175,9 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
             const lastTabRect = lastTabRef.current.getBoundingClientRect();
             addButton.style.position = "absolute";
             if (newScrollable) {
-                addButton.style.transform = `translateX(${tabBarRect.left + tabBarWidth + 1}px)`;
+                addButton.style.transform = `translate3d(${tabBarRect.left + tabBarWidth + 1}px,0,0)`;
             } else {
-                addButton.style.transform = `translateX(${lastTabRect.right + 1}px)`;
+                addButton.style.transform = `translate3d(${lastTabRect.right + 1}px,0,0)`;
             }
         }
         // Update dragger right position if needed
@@ -183,12 +185,12 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         if (draggerRight && addButton) {
             const addButtonRect = addButton.getBoundingClientRect();
             const targetPos = addButtonRect.left + addButtonRect.width;
-            draggerRight.style.transform = `translateX(${targetPos}px)`;
+            draggerRight.style.transform = `translate3d(${targetPos}px,0,0)`;
             draggerRight.style.width = `${document.documentElement.offsetWidth - targetPos}px`;
         }
 
         debouncedUpdateTabPositions();
-    }, [tabIds]);
+    }, [tabIds, isFullScreen]);
 
     useEffect(() => {
         window.addEventListener("resize", () => handleResizeTabs());
@@ -324,7 +326,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
             currentX = Math.min(Math.max(currentX, minLeft), maxRight);
         }
 
-        ref.current!.style.transform = `translateX(${currentX}px)`;
+        ref.current!.style.transform = `translate3d(${currentX}px,0,0)`;
         ref.current!.style.zIndex = "100";
 
         const tabIndex = draggingTabDataRef.current.tabIndex;
@@ -350,7 +352,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
             tabIds.forEach((localTabId, index) => {
                 const ref = tabRefs.current.find((ref) => ref.current.dataset.tabId === localTabId);
                 if (ref.current && localTabId !== tabId) {
-                    ref.current.style.transform = `translateX(${index * tabWidth}px)`;
+                    ref.current.style.transform = `translate3d(${index * tabWidth}px,0,0)`;
                     ref.current.classList.add("animate");
                 }
             });
@@ -369,7 +371,7 @@ const TabBar = React.memo(({ workspace }: TabBarProps) => {
         const ref = tabRefs.current.find((ref) => ref.current.dataset.tabId === draggingTab);
         if (ref.current) {
             ref.current.classList.add("animate");
-            ref.current.style.transform = `translateX(${finalLeftPosition}px)`;
+            ref.current.style.transform = `translate3d(${finalLeftPosition}px,0,0)`;
         }
 
         if (dragged) {

@@ -2,14 +2,30 @@
 // SPDX-License-Identifier: Apache-2.0
 
 .tab-bar-wrapper {
+    --default-indent: 10px;
+    --darwin-not-fullscreen-indent: 74px;
+}
+
+.darwin:not(.fullscreen) .tab-bar-wrapper {
+    .tab-bar {
+        margin-left: var(--darwin-not-fullscreen-indent);
+    }
+
+    .window-drag.left {
+        width: var(--darwin-not-fullscreen-indent);
+    }
+}
+
+.tab-bar-wrapper {
     position: relative;
     // border-bottom: 1px solid var(--border-color);
     user-select: none;
     display: flex;
+    flex-direction: row;
 
     .tab-bar {
         position: relative; // Needed for absolute positioning of child tabs
-        margin-left: 100px;
+        margin-left: var(--default-indent);
         height: 33px;
         // 36 is the width of add tab button
         // 100 is offset from the left, for macOS window controls and dragging
@@ -19,10 +35,9 @@
     }
 
     .add-tab-btn {
-        width: 36px;
+        width: 22px;
         height: 100%;
         cursor: pointer;
-        position: absolute;
         font-size: 14px;
         text-align: center;
         user-select: none;
@@ -36,6 +51,8 @@
         }
 
         i {
+            overflow: hidden;
+            margin-top: 5px;
             font-size: 11px;
         }
     }
@@ -43,10 +60,6 @@
     .window-drag {
         position: absolute;
         height: 100%;
-
-        &.left {
-            width: 100px;
-        }
     }
 
     // Customize scrollbar styles

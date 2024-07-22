@@ -8,7 +8,7 @@ contextBridge.exposeInMainWorld("api", {
     getCursorPoint: () => ipcRenderer.sendSync("getCursorPoint"),
     openNewWindow: () => ipcRenderer.send("openNewWindow"),
     showContextMenu: (menu, position) => ipcRenderer.send("contextmenu-show", menu, position),
-    onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", callback),
+    onContextMenuClick: (callback) => ipcRenderer.on("contextmenu-click", (_event, id) => callback(id)),
     downloadFile: (filePath) => ipcRenderer.send("download", { filePath }),
     openExternal: (url) => {
         if (url && typeof url === "string") {
@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld("api", {
         }
     },
     getEnv: (varName) => ipcRenderer.sendSync("getEnv", varName),
+    onFullScreenChange: (callback) =>
+        ipcRenderer.on("fullscreen-change", (_event, isFullScreen) => callback(isFullScreen)),
 });
 
 // Custom event for "new-window"

@@ -15,7 +15,7 @@ import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
 import * as services from "../frontend/app/store/services";
-import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
+import { getWebServerEndpoint, WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 
@@ -35,7 +35,7 @@ const waveSrvReady: Promise<boolean> = new Promise((resolve, _) => {
 let globalIsQuitting = false;
 let globalIsStarting = true;
 
-const isDev = !electron.app.isPackaged;
+const isDev = !electronApp.isPackaged;
 const isDevVite = isDev && process.env.ELECTRON_RENDERER_URL;
 if (isDev) {
     process.env[WaveDevVarName] = "1";
@@ -183,7 +183,7 @@ function runWaveSrv(): Promise<boolean> {
             const addrs = /ws:([a-z0-9.:]+) web:([a-z0-9.:]+)/gm.exec(line);
             if (addrs == null) {
                 console.log("error parsing WAVESRV-ESTART line", line);
-                electron.app.quit();
+                electronApp.quit();
                 return;
             }
             process.env[WSServerEndpointVarName] = addrs[1];
@@ -352,6 +352,12 @@ function createBrowserWindow(clientId: string, waveWindow: WaveWindow): WaveBrow
         console.log("focus", waveWindow.oid);
         services.ClientService.FocusWindow(waveWindow.oid);
     });
+    win.on("enter-full-screen", async () => {
+        win.webContents.send("fullscreen-change", true);
+    });
+    win.on("leave-full-screen", async () => {
+        win.webContents.send("fullscreen-change", false);
+    });
     win.on("close", (e) => {
         if (globalIsQuitting) {
             return;
@@ -390,7 +396,7 @@ function isWindowFullyVisible(bounds: electron.Rectangle): boolean {
     const displays = electron.screen.getAllDisplays();
 
     // Helper function to check if a point is inside any display
-    function isPointInDisplay(x, y) {
+    function isPointInDisplay(x: number, y: number) {
         for (const display of displays) {
             const { x: dx, y: dy, width, height } = display.bounds;
             if (x >= dx && x < dx + width && y >= dy && y < dy + height) {
@@ -620,25 +626,25 @@ function makeAppMenu() {
     electron.Menu.setApplicationMenu(menu);
 }
 
-electron.app.on("window-all-closed", () => {
+electronApp.on("window-all-closed", () => {
     if (unamePlatform !== "darwin") {
-        electron.app.quit();
+        electronApp.quit();
     }
 });
-electron.app.on("before-quit", () => {
+electronApp.on("before-quit", () => {
     globalIsQuitting = true;
 });
 process.on("SIGINT", () => {
     console.log("Caught SIGINT, shutting down");
-    electron.app.quit();
+    electronApp.quit();
 });
 process.on("SIGHUP", () => {
     console.log("Caught SIGHUP, shutting down");
-    electron.app.quit();
+    electronApp.quit();
 });
 process.on("SIGTERM", () => {
     console.log("Caught SIGTERM, shutting down");
-    electron.app.quit();
+    electronApp.quit();
 });
 let caughtException = false;
 process.on("uncaughtException", (error) => {
@@ -648,7 +654,7 @@ process.on("uncaughtException", (error) => {
     logger.error("Uncaught Exception, shutting down: ", error);
     caughtException = true;
     // Optionally, handle cleanup or exit the app
-    electron.app.quit();
+    electronApp.quit();
 });
 
 // ====== AUTO-UPDATER ====== //

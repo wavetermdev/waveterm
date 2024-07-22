@@ -16,6 +16,7 @@ declare global {
         tabAtom: jotai.Atom<Tab>; // driven from WOS
         activeTabId: jotai.Atom<string>; // derrived from windowDataAtom
         userInput: jotai.PrimitiveAtom<Array<UserInputRequest>>;
+        isFullScreen: jotai.PrimitiveAtom<boolean>;
     };
 
     type TabLayoutData = {
@@ -41,6 +42,7 @@ declare global {
         onIframeNavigate: (callback: (url: string) => void) => void;
         downloadFile: (path: string) => void;
         openExternal: (url: string) => void;
+        onFullScreenChange: (callback: (isFullScreen: boolean) => void) => void;
     };
 
     type ElectronContextMenuItem = {

@@ -49,6 +49,16 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         return uiContext;
     }) as jotai.Atom<UIContext>;
 
+    const isFullScreenAtom = jotai.atom(false) as jotai.PrimitiveAtom<boolean>;
+    try {
+        getApi().onFullScreenChange((isFullScreen) => {
+            console.log("fullscreen change", isFullScreen);
+            globalStore.set(isFullScreenAtom, isFullScreen);
+        });
+    } catch (_) {
+        // do nothing
+    }
+
     const clientAtom: jotai.Atom<Client> = jotai.atom((get) => {
         const clientId = get(clientIdAtom);
         if (clientId == null) {
@@ -99,6 +109,7 @@ function initGlobalAtoms(initOpts: GlobalInitOptions) {
         tabAtom: tabAtom,
         activeTabId: activeTabIdAtom,
         userInput: userInputAtom,
+        isFullScreen: isFullScreenAtom,
     };
 }
 

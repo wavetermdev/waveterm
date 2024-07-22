@@ -4,7 +4,7 @@
 import { Workspace } from "@/app/workspace/workspace";
 import { getLayoutStateAtomForTab, globalLayoutTransformsMap } from "@/faraday/lib/layoutAtom";
 import { ContextMenuModel } from "@/store/contextmenu";
-import { WOS, atoms, globalStore, setBlockFocus } from "@/store/global";
+import { PLATFORM, WOS, atoms, globalStore, setBlockFocus } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as layoututil from "@/util/layoututil";
@@ -15,6 +15,7 @@ import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { CenteredDiv } from "./element/quickelems";
 
+import clsx from "clsx";
 import "overlayscrollbars/overlayscrollbars.css";
 import "./app.less";
 import "./term.less";
@@ -96,7 +97,7 @@ function switchTab(offset: number) {
     services.ObjectService.SetActiveTab(newActiveTabId);
 }
 
-var transformRegexp = /translate3d\(\s*([0-9.]+)px\s*,\s*([0-9.]+)px,\s*0\)/;
+const transformRegexp = /translate3d\(\s*([0-9.]+)px\s*,\s*([0-9.]+)px,\s*0\)/;
 
 function parseFloatFromCSS(s: string | number): number {
     if (typeof s == "number") {
@@ -247,8 +248,10 @@ const AppInner = () => {
             document.removeEventListener("keydown", staticKeyDownHandler);
         };
     }, []);
+
+    const isFullScreen = jotai.useAtomValue(atoms.isFullScreen);
     return (
-        <div className="mainapp" onContextMenu={handleContextMenu}>
+        <div className={clsx("mainapp", PLATFORM, { fullscreen: isFullScreen })} onContextMenu={handleContextMenu}>
             <DndProvider backend={HTML5Backend}>
                 <Workspace />
             </DndProvider>
