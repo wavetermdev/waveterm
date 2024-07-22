@@ -64,9 +64,8 @@ func (svc *WindowService) CloseTab(ctx context.Context, uiContext wstore.UIConte
 		if err != nil {
 			return nil, fmt.Errorf("error getting workspace: %w", err)
 		}
-		var newActiveTabId string
 		if len(ws.TabIds) > 0 {
-			newActiveTabId = ws.TabIds[0]
+			newActiveTabId := ws.TabIds[0]
 			wstore.SetActiveTab(ctx, uiContext.WindowId, newActiveTabId)
 		} else {
 			eventbus.SendEventToElectron(eventbus.WSEventType{
