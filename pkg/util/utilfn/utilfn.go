@@ -768,14 +768,24 @@ func SliceIdx[T comparable](arr []T, elem T) int {
 	return -1
 }
 
+// removes an element from a slice and modifies the original slice (the backing elements)
+// if it removes the last element from the slice, it will return nil so we free the original slice's backing memory
 func RemoveElemFromSlice[T comparable](arr []T, elem T) []T {
-	rtn := make([]T, 0, len(arr))
-	for _, e := range arr {
-		if e != elem {
-			rtn = append(rtn, e)
-		}
+	idx := SliceIdx(arr, elem)
+	if idx == -1 {
+		return arr
 	}
-	return rtn
+	if len(arr) == 1 {
+		return nil
+	}
+	return append(arr[:idx], arr[idx+1:]...)
+}
+
+func AddElemToSliceUniq[T comparable](arr []T, elem T) []T {
+	if SliceIdx(arr, elem) != -1 {
+		return arr
+	}
+	return append(arr, elem)
 }
 
 func MoveSliceIdxToFront[T any](arr []T, idx int) []T {
