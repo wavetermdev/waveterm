@@ -11,7 +11,7 @@ class ContextMenuModelType {
         getApi().onContextMenuClick(this.handleContextMenuClick.bind(this));
     }
 
-    handleContextMenuClick(e: any, id: string): void {
+    handleContextMenuClick(id: string): void {
         let handler = this.handlers.get(id);
         if (handler) {
             handler();
