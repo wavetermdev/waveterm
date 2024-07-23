@@ -18,7 +18,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/sawka/txwrap v0.2.0
-	github.com/spf13/cobra v1.8.0
+	github.com/spf13/cobra v1.8.1
 	github.com/wavetermdev/waveterm/wavesrv v0.0.0-20240508181017-d07068c09d94
 	golang.org/x/crypto v0.25.0
 	golang.org/x/term v0.22.0
