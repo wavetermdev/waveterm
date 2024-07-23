@@ -4,7 +4,7 @@
 import { WOS } from "@/app/store/global";
 import { Atom, Getter, PrimitiveAtom, WritableAtom, atom, useAtom } from "jotai";
 import { useCallback } from "react";
-import { layoutTreeStateReducer, newLayoutTreeState } from "./layoutState";
+import { layoutTreeStateReducer, newLayoutTreeState } from "./layoutState.js";
 import {
     LayoutNode,
     LayoutNodeWaveObj,

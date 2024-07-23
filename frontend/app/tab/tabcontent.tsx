@@ -8,8 +8,8 @@ import * as WOS from "@/store/wos";
 import * as React from "react";
 
 import { CenteredDiv, CenteredLoadingDiv } from "@/element/quickelems";
-import { TileLayout } from "@/faraday/index";
-import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
+import { TileLayout } from "frontend/layout/index";
+import { getLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
 import { useAtomValue } from "jotai";
 import { useMemo } from "react";
 import "./tabcontent.less";

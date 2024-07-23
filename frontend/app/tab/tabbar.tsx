@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { WindowDrag } from "@/element/windowdrag";
-import { deleteLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
 import { atoms } from "@/store/global";
 import * as services from "@/store/services";
+import { deleteLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
 import { useAtomValue } from "jotai";
 import { OverlayScrollbars } from "overlayscrollbars";
 import React, { createRef, useCallback, useEffect, useRef, useState } from "react";

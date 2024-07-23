@@ -1,9 +1,14 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { LayoutTreeAction, LayoutTreeActionType, LayoutTreeInsertNodeAction, newLayoutNode } from "@/faraday/index";
-import { getLayoutStateAtomForTab } from "@/faraday/lib/layoutAtom";
-import { layoutTreeStateReducer } from "@/faraday/lib/layoutState";
+import {
+    LayoutTreeAction,
+    LayoutTreeActionType,
+    LayoutTreeInsertNodeAction,
+    newLayoutNode,
+} from "frontend/layout/index";
+import { getLayoutStateAtomForTab } from "frontend/layout/lib/layoutAtom";
+import { layoutTreeStateReducer } from "frontend/layout/lib/layoutState";
 
 import { handleIncomingRpcMessage } from "@/app/store/wshrpc";
 import { getWSServerEndpoint, getWebServerEndpoint } from "@/util/endpoints";

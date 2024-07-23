@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { Workspace } from "@/app/workspace/workspace";
-import { getLayoutStateAtomForTab, globalLayoutTransformsMap } from "@/faraday/lib/layoutAtom";
 import { ContextMenuModel } from "@/store/contextmenu";
 import { PLATFORM, WOS, atoms, globalStore, setBlockFocus } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
 import * as layoututil from "@/util/layoututil";
 import * as util from "@/util/util";
+import { getLayoutStateAtomForTab, globalLayoutTransformsMap } from "frontend/layout/lib/layoutAtom";
 import * as jotai from "jotai";
 import * as React from "react";
 import { DndProvider } from "react-dnd";
