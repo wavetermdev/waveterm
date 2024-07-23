@@ -8304,9 +8304,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jotai@npm:^2.9.0":
-  version: 2.9.0
-  resolution: "jotai@npm:2.9.0"
+"jotai@npm:^2.9.1":
+  version: 2.9.1
+  resolution: "jotai@npm:2.9.1"
   peerDependencies:
     "@types/react": ">=17.0.0"
     react: ">=17.0.0"
@@ -8315,7 +8315,7 @@ __metadata:
       optional: true
     react:
       optional: true
-  checksum: 10c0/c5551fb90933bcbc28b11cdb4af681398a12f8eb39a4a49568ec6ce5062c2257dd84a85cbfd7ec7d970d56dfa5023d16a0ec7056bc2697fdf9b3ec94da67c9d1
+  checksum: 10c0/cf3eb74d3400098d65d24f8ded83535917624c8048e2f92a73de3189a2f697f5058542cc95bd1961ca22ef721a908db580daac659c16cc18173b80b3563e4d7c
   languageName: node
   linkType: hard
 
@@ -11792,7 +11792,7 @@ __metadata:
     eslint-config-prettier: "npm:^9.1.0"
     html-to-image: "npm:^1.11.11"
     immer: "npm:^10.1.1"
-    jotai: "npm:^2.9.0"
+    jotai: "npm:^2.9.1"
     less: "npm:^4.2.0"
     monaco-editor: "npm:^0.50.0"
     overlayscrollbars: "npm:^2.9.2"
