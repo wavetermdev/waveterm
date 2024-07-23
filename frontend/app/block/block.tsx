@@ -13,7 +13,7 @@ import * as WOS from "@/store/wos";
 import * as util from "@/util/util";
 import { PlotView } from "@/view/plotview";
 import { PreviewView, makePreviewModel } from "@/view/preview";
-import { TerminalView } from "@/view/term/term";
+import { TerminalView, makeTerminalModel } from "@/view/term/term";
 import { WaveAi } from "@/view/waveai";
 import { WebView, makeWebViewModel } from "@/view/webview";
 import clsx from "clsx";
@@ -499,7 +499,9 @@ function getViewElemAndModel(
     let viewElem: JSX.Element = null;
     let viewModel: ViewModel = null;
     if (blockView === "term") {
-        viewElem = <TerminalView key={blockId} blockId={blockId} />;
+        const termViewModel = makeTerminalModel(blockId);
+        viewElem = <TerminalView key={blockId} blockId={blockId} model={termViewModel} />;
+        viewModel = termViewModel;
     } else if (blockView === "preview") {
         const previewModel = makePreviewModel(blockId);
         viewElem = <PreviewView key={blockId} blockId={blockId} model={previewModel} />;

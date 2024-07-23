@@ -125,14 +125,53 @@ function setBlockFocus(blockId: string) {
     WOS.setObjectValue(winData, globalStore.set, true);
 }
 
-const TerminalView = ({ blockId }: { blockId: string }) => {
+class TermViewModel {
+    termRef: React.RefObject<TermWrap>;
+    blockAtom: jotai.Atom<Block>;
+    termMode: jotai.Atom<string>;
+    htmlElemFocusRef: React.RefObject<HTMLInputElement>;
+    blockId: string;
+
+    constructor(blockId: string) {
+        this.blockId = blockId;
+        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.termMode = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            return blockData?.meta?.["term:mode"] ?? "term";
+        });
+    }
+
+    giveFocus(): boolean {
+        let termMode = globalStore.get(this.termMode);
+        if (termMode == "term") {
+            if (this.termRef?.current?.terminal) {
+                this.termRef.current.terminal.focus();
+                return true;
+            }
+        } else {
+            if (this.htmlElemFocusRef?.current) {
+                this.htmlElemFocusRef.current.focus();
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+function makeTerminalModel(blockId: string): TermViewModel {
+    return new TermViewModel(blockId);
+}
+
+const TerminalView = ({ blockId, model }: { blockId: string; model: TermViewModel }) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<TermWrap>(null);
+    model.termRef = termRef;
     const shellProcStatusRef = React.useRef<string>(null);
     const blockIconOverrideAtom = useBlockAtom<string>(blockId, "blockicon:override", () => {
         return jotai.atom<string>(null);
     }) as jotai.PrimitiveAtom<string>;
     const htmlElemFocusRef = React.useRef<HTMLInputElement>(null);
+    model.htmlElemFocusRef = htmlElemFocusRef;
     const [blockData] = WOS.useWaveObjectValue<Block>(WOS.makeORef("block", blockId));
     const isFocusedAtom = useBlockAtom<boolean>(blockId, "isFocused", () => {
         return jotai.atom((get) => {
@@ -311,4 +350,4 @@ const TerminalView = ({ blockId }: { blockId: string }) => {
     );
 };
 
-export { TerminalView };
+export { TerminalView, makeTerminalModel };
