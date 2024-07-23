@@ -115,7 +115,7 @@ function wshServerRpcHelper_responsestream(
     if (opts?.noresponse) {
         throw new Error("noresponse not supported for responsestream calls");
     }
-    let msg: RpcMessage = {
+    const msg: RpcMessage = {
         command: command,
         data: data,
         reqid: uuidv4(),
@@ -128,7 +128,7 @@ function wshServerRpcHelper_responsestream(
 }
 
 function wshServerRpcHelper_call(command: string, data: any, opts: WshRpcCommandOpts): Promise<any> {
-    let msg: RpcMessage = {
+    const msg: RpcMessage = {
         command: command,
         data: data,
     };

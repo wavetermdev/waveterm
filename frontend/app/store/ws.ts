@@ -44,7 +44,7 @@ class WSControl {
     }
 
     log(str: string) {
-        let ts = Date.now();
+        const ts = Date.now();
         this.wsLog.push("[" + ts + "] " + str);
         if (this.wsLog.length > 50) {
             this.wsLog.splice(0, this.wsLog.length - 50);
@@ -86,7 +86,7 @@ class WSControl {
             this.log("cannot connect, giving up");
             return;
         }
-        let timeoutArr = [0, 0, 2, 5, 10, 10, 30, 60];
+        const timeoutArr = [0, 0, 2, 5, 10, 10, 30, 60];
         let timeout = 60;
         if (this.reconnectTimes < timeoutArr.length) {
             timeout = timeoutArr[this.reconnectTimes];
@@ -131,7 +131,7 @@ class WSControl {
         if (this.msgQueue.length == 0) {
             return;
         }
-        let msg = this.msgQueue.shift();
+        const msg = this.msgQueue.shift();
         this.sendMessage(msg);
         setTimeout(() => {
             this.runMsgQueue();
@@ -178,7 +178,7 @@ class WSControl {
         if (!this.isOpen()) {
             return;
         }
-        let msg = JSON.stringify(data);
+        const msg = JSON.stringify(data);
         const byteSize = new Blob([msg]).size;
         if (byteSize > MaxWebSocketSendSize) {
             console.log("ws message too large", byteSize, data.wscommand, msg.substring(0, 100));

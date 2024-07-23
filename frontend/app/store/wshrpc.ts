@@ -66,7 +66,7 @@ async function* rpcResponseGenerator(
 }
 
 function sendRpcCommand(msg: RpcMessage): AsyncGenerator<RpcMessage, void, boolean> {
-    let wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
+    const wsMsg: WSRpcCommand = { wscommand: "rpc", message: msg };
     globalWS.pushMessage(wsMsg);
     if (msg.reqid == null) {
         return null;

@@ -295,7 +295,7 @@ function handleWSMessage(msg: any) {
 }
 
 function initWS() {
-    let windowId = globalStore.get(atoms.windowId);
+    const windowId = globalStore.get(atoms.windowId);
     globalWS = new WSControl(getWSServerEndpoint(), globalStore, windowId, "", (msg) => {
         handleWSMessage(msg);
     });
@@ -344,7 +344,7 @@ async function fetchWaveFile(
     fileName: string,
     offset?: number
 ): Promise<{ data: Uint8Array; fileInfo: WaveFile }> {
-    let usp = new URLSearchParams();
+    const usp = new URLSearchParams();
     usp.set("zoneid", zoneId);
     usp.set("name", fileName);
     if (offset != null) {
@@ -360,11 +360,11 @@ async function fetchWaveFile(
     if (resp.status == 204) {
         return { data: null, fileInfo: null };
     }
-    let fileInfo64 = resp.headers.get("X-ZoneFileInfo");
+    const fileInfo64 = resp.headers.get("X-ZoneFileInfo");
     if (fileInfo64 == null) {
         throw new Error(`missing zone file info for ${zoneId}:${fileName}`);
     }
-    let fileInfo = JSON.parse(atob(fileInfo64));
+    const fileInfo = JSON.parse(atob(fileInfo64));
     const data = await resp.arrayBuffer();
     return { data: new Uint8Array(data), fileInfo };
 }
