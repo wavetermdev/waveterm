@@ -37,7 +37,7 @@
         "@storybook/react-vite": "^8.2.5",
         "@storybook/test": "^8.2.5",
         "@types/electron": "^1.6.10",
-        "@types/node": "^20.14.11",
+        "@types/node": "^20.14.12",
         "@types/papaparse": "^5",
         "@types/react": "^18.3.3",
         "@types/sprintf-js": "^1",
