@@ -245,3 +245,7 @@ function findNextInsertLocationHelper<T>(
         .sort((a, b) => Math.pow(a.depth, a.index + maxChildren) - Math.pow(b.depth, b.index + maxChildren));
     return insertLocs[0];
 }
+
+export function totalChildrenSize(node: LayoutNode<any>): number {
+    return parseFloat(node.children?.reduce((partialSum, child) => partialSum + child.size, 0).toPrecision(5));
+}

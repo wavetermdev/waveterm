@@ -21,7 +21,7 @@ import { DropTargetMonitor, useDrag, useDragLayer, useDrop } from "react-dnd";
 import { debounce, throttle } from "throttle-debounce";
 import { useDevicePixelRatio } from "use-device-pixel-ratio";
 import { globalLayoutTransformsMap } from "./layoutAtom";
-import { findNode } from "./layoutNode";
+import { findNode, totalChildrenSize } from "./layoutNode";
 import { layoutTreeStateReducer } from "./layoutState";
 import {
     ContentRenderer,
@@ -600,7 +600,7 @@ const OverlayNode = <T,>({
 
     const generateChildren = () => {
         if (Array.isArray(layoutNode.children)) {
-            const totalSize = layoutNode.children.reduce((partialSum, child) => partialSum + child.size, 0);
+            const totalSize = totalChildrenSize(layoutNode);
             return layoutNode.children
                 .map((childItem, i) => {
                     return [
@@ -620,7 +620,6 @@ const OverlayNode = <T,>({
                             index={i}
                             dispatch={dispatch}
                             nodeRefsAtom={nodeRefsAtom}
-                            siblingSize={totalSize}
                         />,
                     ];
                 })
@@ -657,10 +656,9 @@ interface ResizeHandleProps<T> {
     index: number;
     dispatch: (action: LayoutTreeAction) => void;
     nodeRefsAtom: PrimitiveAtom<NodeRefMap>;
-    siblingSize: number;
 }
 
-const ResizeHandle = <T,>({ parentNode, index, dispatch, nodeRefsAtom, siblingSize }: ResizeHandleProps<T>) => {
+const ResizeHandle = <T,>({ parentNode, index, dispatch, nodeRefsAtom }: ResizeHandleProps<T>) => {
     const resizeHandleRef = useRef<HTMLDivElement>(null);
 
     // The pointer currently captured, or undefined.
@@ -668,61 +666,59 @@ const ResizeHandle = <T,>({ parentNode, index, dispatch, nodeRefsAtom, siblingSi
     const nodeRefs = useAtomValue(nodeRefsAtom);
 
     // Cached values set in startResize
-    const [parentRect, setParentRect] = useState<Dimensions>();
     const [combinedNodesRect, setCombinedNodesRect] = useState<Dimensions>();
     const [gapSize, setGapSize] = useState(0);
     const [pixelToSizeRatio, setPixelToSizeRatio] = useState(0);
 
     // Precompute some values that will be needed by the handlePointerMove function
-    const startResize = useCallback(
-        throttle(30, () => {
-            const parentRef = nodeRefs.get(parentNode.id);
-            const node1Ref = nodeRefs.get(parentNode.children![index].id);
-            const node2Ref = nodeRefs.get(parentNode.children![index + 1].id);
-            if (parentRef?.current && node1Ref?.current && node2Ref?.current) {
-                const parentIsRow = parentNode.flexDirection === FlexDirection.Row;
-                const parentRectNew = parentRef.current.getBoundingClientRect();
-                setParentRect(parentRectNew);
-                const node1Rect = node1Ref.current.getBoundingClientRect();
-                const node2Rect = node2Ref.current.getBoundingClientRect();
-                const gapSize = parentIsRow
-                    ? node2Rect.left - (node1Rect.left + node1Rect.width)
-                    : node2Rect.top - (node1Rect.top + node1Rect.height);
-                setGapSize(gapSize);
-                const parentPixelsMinusGap =
-                    (parentIsRow ? parentRectNew.width : parentRectNew.height) -
-                    (gapSize * parentNode.children!.length - 1);
-                const newPixelToSizeRatio = siblingSize / parentPixelsMinusGap;
-                // console.log("newPixelToSizeRatio", newPixelToSizeRatio, siblingSize, parentPixelsMinusGap);
-                setPixelToSizeRatio(newPixelToSizeRatio);
-                const newCombinedNodesRect: Dimensions = {
-                    top: node1Rect.top,
-                    left: node1Rect.left,
-                    height: parentIsRow ? node1Rect.height : node1Rect.height + node2Rect.height + gapSize,
-                    width: parentIsRow ? node1Rect.width + node2Rect.width + gapSize : node1Rect.width,
-                };
-                setCombinedNodesRect(newCombinedNodesRect);
-                // console.log(
-                //     "startResize",
-                //     parentNode,
-                //     index,
-                //     parentIsRow,
-                //     gapSize,
-                //     parentRectNew,
-                //     node1Rect,
-                //     node2Rect,
-                //     newCombinedNodesRect
-                // );
-            }
-        }),
-        [parentNode, nodeRefs]
-    );
+    const startResize = () => {
+        const parentRef = nodeRefs.get(parentNode.id);
+        const node1Ref = nodeRefs.get(parentNode.children![index].id);
+        const node2Ref = nodeRefs.get(parentNode.children![index + 1].id);
+        if (parentRef?.current && node1Ref?.current && node2Ref?.current) {
+            const parentIsRow = parentNode.flexDirection === FlexDirection.Row;
+            const parentRectNew = parentRef.current.getBoundingClientRect();
+            const node1Rect = node1Ref.current.getBoundingClientRect();
+            const node2Rect = node2Ref.current.getBoundingClientRect();
+            const totalSiblingSize = totalChildrenSize(parentNode);
+            const gapSize = parentIsRow
+                ? node2Rect.left - (node1Rect.left + node1Rect.width)
+                : node2Rect.top - (node1Rect.top + node1Rect.height);
+            setGapSize(gapSize);
+            const parentPixelsMinusGap =
+                (parentIsRow ? parentRectNew.width : parentRectNew.height) -
+                (gapSize * parentNode.children!.length - 1);
+            const newPixelToSizeRatio = totalSiblingSize / parentPixelsMinusGap;
+            // console.log("newPixelToSizeRatio", newPixelToSizeRatio, siblingSize, parentPixelsMinusGap);
+            setPixelToSizeRatio(newPixelToSizeRatio);
+            const newCombinedNodesRect: Dimensions = {
+                top: node1Rect.top,
+                left: node1Rect.left,
+                height: parentIsRow ? node1Rect.height : node1Rect.height + node2Rect.height + gapSize,
+                width: parentIsRow ? node1Rect.width + node2Rect.width + gapSize : node1Rect.width,
+            };
+            setCombinedNodesRect(newCombinedNodesRect);
+            // console.log(
+            //     "startResize",
+            //     parentNode,
+            //     index,
+            //     parentIsRow,
+            //     gapSize,
+            //     parentRectNew,
+            //     node1Rect,
+            //     node2Rect,
+            //     newCombinedNodesRect,
+            //     newPixelToSizeRatio
+            // );
+        }
+    };
 
     // Calculates the new size of the two nodes on either side of the handle, based on the position of the cursor
     const handlePointerMove = useCallback(
         throttle(10, (event: React.PointerEvent<HTMLDivElement>) => {
             if (trackingPointer === event.pointerId) {
                 const { clientX, clientY } = event;
+                // console.log("handlePointerMove", [clientX, clientY], combinedNodesRect, pixelToSizeRatio);
                 const parentIsRow = parentNode.flexDirection === FlexDirection.Row;
                 const combinedStart = parentIsRow ? combinedNodesRect.left : combinedNodesRect.top;
                 const combinedEnd = parentIsRow
@@ -756,12 +752,13 @@ const ResizeHandle = <T,>({ parentNode, index, dispatch, nodeRefsAtom, siblingSi
                 }
             }
         }),
-        [dispatch, trackingPointer, parentNode, parentRect, combinedNodesRect, pixelToSizeRatio, gapSize]
+        [parentNode, trackingPointer, dispatch, gapSize, combinedNodesRect, pixelToSizeRatio, index]
     );
 
     // We want to use pointer capture so the operation continues even if the pointer leaves the bounds of the handle
     function onPointerDown(event: React.PointerEvent<HTMLDivElement>) {
         resizeHandleRef.current?.setPointerCapture(event.pointerId);
+        startResize();
     }
 
     // This indicates that we're ready to start tracking the resize operation via the pointer
@@ -791,7 +788,6 @@ const ResizeHandle = <T,>({ parentNode, index, dispatch, nodeRefsAtom, siblingSi
             onGotPointerCapture={onPointerCapture}
             onLostPointerCapture={onPointerRelease}
             onPointerMove={handlePointerMove}
-            onPointerEnter={startResize}
         >
             <div className="line" />
         </div>
