@@ -4865,16 +4865,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"builder-util-runtime@npm:9.2.3":
-  version: 9.2.3
-  resolution: "builder-util-runtime@npm:9.2.3"
-  dependencies:
-    debug: "npm:^4.3.4"
-    sax: "npm:^1.2.4"
-  checksum: 10c0/e166a29fcacefb6c76367acbb08e7328f9005d957314e3b14d849249f9053a4dcb5420a1ce3641f4b39b039a36036bc8c7c7b23a06b82b7757e29b172f805d47
-  languageName: node
-  linkType: hard
-
 "builder-util-runtime@npm:9.2.4":
   version: 9.2.4
   resolution: "builder-util-runtime@npm:9.2.4"
@@ -6113,11 +6103,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"electron-updater@npm:^6.1.8":
-  version: 6.1.8
-  resolution: "electron-updater@npm:6.1.8"
+"electron-updater@npm:^6.2.1":
+  version: 6.2.1
+  resolution: "electron-updater@npm:6.2.1"
   dependencies:
-    builder-util-runtime: "npm:9.2.3"
+    builder-util-runtime: "npm:9.2.4"
     fs-extra: "npm:^10.1.0"
     js-yaml: "npm:^4.1.0"
     lazy-val: "npm:^1.0.5"
@@ -6125,7 +6115,7 @@ __metadata:
     lodash.isequal: "npm:^4.5.0"
     semver: "npm:^7.3.8"
     tiny-typed-emitter: "npm:^2.1.0"
-  checksum: 10c0/e73db73cd46bbee46a118d22369fbd0c5beb854536cd78364d291f274c5b5711876a8951ad745f08974b55783ee7e5bc83d6912955d20db65cf455a1fd050822
+  checksum: 10c0/b376e13bf2b4675ca853c4164a4caf9454d0d41e797c0f8fd011d66693d4eb5ece020953f3d06c0a63d9d5077a9ae9e8447f26c602da317edb1521c4bd99e2f8
   languageName: node
   linkType: hard
 
@@ -11949,7 +11939,7 @@ __metadata:
     electron-builder: "npm:^24.13.3"
     electron-builder-squirrel-windows: "npm:^24.13.3"
     electron-squirrel-startup: "npm:^1.0.0"
-    electron-updater: "npm:^6.1.8"
+    electron-updater: "npm:^6.2.1"
     file-loader: "npm:^6.2.0"
     framer-motion: "npm:^10.16.16"
     http-server: "npm:^14.1.1"
