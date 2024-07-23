@@ -6,7 +6,7 @@ toolchain go1.22.1
 
 require (
 	github.com/alexflint/go-filemutex v1.3.0
-	github.com/creack/pty v1.1.18
+	github.com/creack/pty v1.1.21
 	github.com/fsnotify/fsnotify v1.7.0
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/google/uuid v1.6.0
