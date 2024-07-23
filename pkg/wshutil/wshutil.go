@@ -7,6 +7,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"os/signal"
+	"sync"
+	"sync/atomic"
+	"syscall"
+
+	"golang.org/x/term"
 )
 
 // these should both be 5 characters
@@ -93,4 +102,90 @@ func EncodeWaveOSCMessageEx(oscNum string, msg *RpcMessage) ([]byte, error) {
 		return nil, fmt.Errorf("error marshalling message to json: %w", err)
 	}
 	return EncodeWaveOSCBytes(oscNum, barr), nil
+}
+
+var termModeLock = sync.Mutex{}
+var termIsRaw bool
+var origTermState *term.State
+var shutdownSignalHandlersInstalled bool
+var shutdownOnce sync.Once
+var extraShutdownFunc atomic.Pointer[func()]
+
+func DoShutdown(reason string, exitCode int, quiet bool) {
+	shutdownOnce.Do(func() {
+		defer os.Exit(exitCode)
+		RestoreTermState()
+		extraFn := extraShutdownFunc.Load()
+		if extraFn != nil {
+			(*extraFn)()
+		}
+		if !quiet && reason != "" {
+			log.Printf("shutting down: %s\r\n", reason)
+		}
+	})
+}
+
+func installShutdownSignalHandlers(quiet bool) {
+	termModeLock.Lock()
+	defer termModeLock.Unlock()
+	if shutdownSignalHandlersInstalled {
+		return
+	}
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
+	go func() {
+		for sig := range sigCh {
+			DoShutdown(fmt.Sprintf("got signal %v", sig), 1, quiet)
+			break
+		}
+	}()
+}
+
+func SetTermRawModeAndInstallShutdownHandlers(quietShutdown bool) {
+	SetTermRawMode()
+	installShutdownSignalHandlers(quietShutdown)
+}
+
+func SetExtraShutdownFunc(fn func()) {
+	extraShutdownFunc.Store(&fn)
+}
+
+func SetTermRawMode() {
+	termModeLock.Lock()
+	defer termModeLock.Unlock()
+	if termIsRaw {
+		return
+	}
+	origState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error setting raw mode: %v\n", err)
+		return
+	}
+	origTermState = origState
+	termIsRaw = true
+}
+
+func RestoreTermState() {
+	termModeLock.Lock()
+	defer termModeLock.Unlock()
+	if !termIsRaw || origTermState == nil {
+		return
+	}
+	term.Restore(int(os.Stdin.Fd()), origTermState)
+	termIsRaw = false
+}
+
+// returns (wshRpc, wrappedStdin)
+func SetupTerminalRpcClient(handlerFn func(*RpcResponseHandler) bool) (*WshRpc, io.Reader) {
+	messageCh := make(chan []byte, 32)
+	outputCh := make(chan []byte, 32)
+	ptyBuf := MakePtyBuffer(WaveServerOSCPrefix, os.Stdin, messageCh)
+	rpcClient := MakeWshRpc(messageCh, outputCh, RpcContext{}, handlerFn)
+	go func() {
+		for msg := range outputCh {
+			barr := EncodeWaveOSCBytes(WaveOSC, msg)
+			os.Stdout.Write(barr)
+		}
+	}()
+	return rpcClient, ptyBuf
 }

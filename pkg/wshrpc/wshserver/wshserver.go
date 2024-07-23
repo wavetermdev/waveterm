@@ -45,6 +45,8 @@ var WshServerCommandToDeclMap = map[string]*WshServerMethodDecl{
 	wshrpc.Command_AppendFile:  GetWshServerMethod(wshrpc.Command_AppendFile, wshutil.RpcType_Call, "AppendFileCommand", WshServerImpl.AppendFileCommand),
 	wshrpc.Command_AppendIJson: GetWshServerMethod(wshrpc.Command_AppendIJson, wshutil.RpcType_Call, "AppendIJsonCommand", WshServerImpl.AppendIJsonCommand),
 	wshrpc.Command_DeleteBlock: GetWshServerMethod(wshrpc.Command_DeleteBlock, wshutil.RpcType_Call, "DeleteBlockCommand", WshServerImpl.DeleteBlockCommand),
+	wshrpc.Command_WriteFile:   GetWshServerMethod(wshrpc.Command_WriteFile, wshutil.RpcType_Call, "WriteFile", WshServerImpl.WriteFile),
+	wshrpc.Command_ReadFile:    GetWshServerMethod(wshrpc.Command_ReadFile, wshutil.RpcType_Call, "ReadFile", WshServerImpl.ReadFile),
 	"streamtest":               RespStreamTest_MethodDecl,
 }
 
@@ -80,11 +82,11 @@ func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetM
 }
 
 func (ws *WshServer) SetMetaCommand(ctx context.Context, data wshrpc.CommandSetMetaData) error {
+	log.Printf("SETMETA: %s | %v\n", data.ORef, data.Meta)
 	oref := data.ORef
 	if oref.IsEmpty() {
 		return fmt.Errorf("no oref")
 	}
-	log.Printf("SETMETA: %s | %v\n", oref, data.Meta)
 	obj, err := wstore.DBGetORef(ctx, oref)
 	if err != nil {
 		return fmt.Errorf("error getting object: %w", err)
@@ -249,7 +251,36 @@ func (ws *WshServer) BlockInputCommand(ctx context.Context, data wshrpc.CommandB
 	return bc.SendInput(inputUnion)
 }
 
-func (ws *WshServer) AppendFileCommand(ctx context.Context, data wshrpc.CommandAppendFileData) error {
+func (ws *WshServer) WriteFile(ctx context.Context, data wshrpc.CommandFileData) error {
+	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
+	if err != nil {
+		return fmt.Errorf("error decoding data64: %w", err)
+	}
+	err = filestore.WFS.WriteFile(ctx, data.ZoneId, data.FileName, dataBuf)
+	if err != nil {
+		return fmt.Errorf("error writing to blockfile: %w", err)
+	}
+	eventbus.SendEvent(eventbus.WSEventType{
+		EventType: eventbus.WSEvent_BlockFile,
+		ORef:      waveobj.MakeORef(wstore.OType_Block, data.ZoneId).String(),
+		Data: &eventbus.WSFileEventData{
+			ZoneId:   data.ZoneId,
+			FileName: data.FileName,
+			FileOp:   eventbus.FileOp_Invalidate,
+		},
+	})
+	return nil
+}
+
+func (ws *WshServer) ReadFile(ctx context.Context, data wshrpc.CommandFileData) (string, error) {
+	_, dataBuf, err := filestore.WFS.ReadFile(ctx, data.ZoneId, data.FileName)
+	if err != nil {
+		return "", fmt.Errorf("error reading blockfile: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(dataBuf), nil
+}
+
+func (ws *WshServer) AppendFileCommand(ctx context.Context, data wshrpc.CommandFileData) error {
 	dataBuf, err := base64.StdEncoding.DecodeString(data.Data64)
 	if err != nil {
 		return fmt.Errorf("error decoding data64: %w", err)

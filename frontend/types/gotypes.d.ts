@@ -55,13 +55,6 @@ declare global {
         meta: MetaType;
     };
 
-    // wshrpc.CommandAppendFileData
-    type CommandAppendFileData = {
-        zoneid: string;
-        filename: string;
-        data64: string;
-    };
-
     // wshrpc.CommandAppendIJsonData
     type CommandAppendIJsonData = {
         zoneid: string;
@@ -98,6 +91,13 @@ declare global {
     // wshrpc.CommandDeleteBlockData
     type CommandDeleteBlockData = {
         blockid: string;
+    };
+
+    // wshrpc.CommandFileData
+    type CommandFileData = {
+        zoneid: string;
+        filename: string;
+        data64?: string;
     };
 
     // wshrpc.CommandGetMetaData
@@ -295,6 +295,29 @@ declare global {
         confirm?: boolean;
         errormsg?: string;
         checkboxstat?: boolean;
+    };
+
+    // vdom.Elem
+    type VDomElem = {
+        id?: string;
+        tag: string;
+        props?: MetaType;
+        children?: VDomElem[];
+        text?: string;
+    };
+
+    // vdom.VDomFuncType
+    type VDomFuncType = {
+        #func: string;
+        #stopPropagation?: boolean;
+        #preventDefault?: boolean;
+        #keys?: string[];
+    };
+
+    // vdom.VDomRefType
+    type VDomRefType = {
+        #ref: string;
+        current: any;
     };
 
     type WSCommandType = {

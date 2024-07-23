@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wstore"
 )
 
@@ -43,7 +44,7 @@ func viewRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Printf("error getting file info: %v\n", err)
 	}
-	setTermRawMode()
+	wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 	viewWshCmd := &wshrpc.CommandCreateBlockData{
 		BlockDef: &wstore.BlockDef{
 			View: "preview",

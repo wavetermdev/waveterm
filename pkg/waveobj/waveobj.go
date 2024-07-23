@@ -33,6 +33,9 @@ type ORef struct {
 }
 
 func (oref ORef) String() string {
+	if oref.OType == "" || oref.OID == "" {
+		return ""
+	}
 	return fmt.Sprintf("%s:%s", oref.OType, oref.OID)
 }
 
@@ -50,6 +53,11 @@ func (oref *ORef) UnmarshalJSON(data []byte) error {
 	err := json.Unmarshal(data, &orefStr)
 	if err != nil {
 		return err
+	}
+	if len(orefStr) == 0 {
+		oref.OType = ""
+		oref.OID = ""
+		return nil
 	}
 	parsed, err := ParseORef(orefStr)
 	if err != nil {

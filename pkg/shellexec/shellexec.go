@@ -176,6 +176,11 @@ func StartRemoteShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsT
 	session.Stdin = cmdTty
 	session.Stdout = cmdTty
 	session.Stderr = cmdTty
+	for envKey, envVal := range cmdOpts.Env {
+		// note these might fail depending on server settings, but we still try
+		session.Setenv(envKey, envVal)
+	}
+
 	session.RequestPty("xterm-256color", termSize.Rows, termSize.Cols, nil)
 
 	sessionWrap := SessionWrap{session, cmdCombined, cmdTty}
@@ -216,6 +221,7 @@ func StartShellProc(termSize TermSize, cmdStr string, cmdOpts CommandOptsType) (
 		envToAdd["LANG"] = wavebase.DetermineLang()
 	}
 	shellutil.UpdateCmdEnv(ecmd, envToAdd)
+	shellutil.UpdateCmdEnv(ecmd, cmdOpts.Env)
 	cmdPty, cmdTty, err := pty.Open()
 	if err != nil {
 		return nil, fmt.Errorf("opening new pty: %w", err)

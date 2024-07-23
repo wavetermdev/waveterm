@@ -26,6 +26,8 @@ const (
 	Command_ResolveIds  = "resolveids"
 	Command_CreateBlock = "createblock"
 	Command_DeleteBlock = "deleteblock"
+	Command_WriteFile   = "file:write"
+	Command_ReadFile    = "file:read"
 )
 
 type MetaDataType = map[string]any
@@ -123,10 +125,10 @@ type CommandBlockInputData struct {
 	TermSize    *shellexec.TermSize `json:"termsize,omitempty"`
 }
 
-type CommandAppendFileData struct {
+type CommandFileData struct {
 	ZoneId   string `json:"zoneid" wshcontext:"BlockId"`
 	FileName string `json:"filename"`
-	Data64   string `json:"data64"`
+	Data64   string `json:"data64,omitempty"`
 }
 
 type CommandAppendIJsonData struct {

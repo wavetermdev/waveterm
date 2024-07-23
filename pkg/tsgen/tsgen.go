@@ -15,6 +15,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/service"
 	"github.com/wavetermdev/thenextwave/pkg/tsgen/tsgenmeta"
 	"github.com/wavetermdev/thenextwave/pkg/userinput"
+	"github.com/wavetermdev/thenextwave/pkg/vdom"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wconfig"
 	"github.com/wavetermdev/thenextwave/pkg/web/webcmd"
@@ -41,6 +42,9 @@ var ExtraTypes = []any{
 	wshutil.RpcMessage{},
 	wshrpc.WshServerCommandMeta{},
 	userinput.UserInputRequest{},
+	vdom.Elem{},
+	vdom.VDomFuncType{},
+	vdom.VDomRefType{},
 }
 
 // add extra type unions to generate here
@@ -149,6 +153,7 @@ func TypeToTSType(t reflect.Type, tsTypesMap map[reflect.Type]string) (string, [
 
 var tsRenameMap = map[string]string{
 	"Window": "WaveWindow",
+	"Elem":   "VDomElem",
 }
 
 func generateTSTypeInternal(rtype reflect.Type, tsTypesMap map[reflect.Type]string) (string, []reflect.Type) {

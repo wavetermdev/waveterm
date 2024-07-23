@@ -9,11 +9,11 @@ import clsx from "clsx";
 import { produce } from "immer";
 import * as jotai from "jotai";
 import * as React from "react";
-import { IJsonView } from "./ijson";
 import { TermStickers } from "./termsticker";
 import { TermWrap } from "./termwrap";
 
 import { WshServer } from "@/app/store/wshserver";
+import { VDomView } from "@/app/view/term/vdom";
 import "public/xterm.css";
 import "./term.less";
 
@@ -100,16 +100,24 @@ type InitialLoadDataType = {
     heldData: Uint8Array[];
 };
 
-const IJSONConst = {
+function vdomText(text: string): VDomElem {
+    return {
+        tag: "#text",
+        text: text,
+    };
+}
+
+const testVDom: VDomElem = {
+    id: "testid1",
     tag: "div",
     children: [
         {
             tag: "h1",
-            children: ["Hello World"],
+            children: [vdomText("Hello World")],
         },
         {
             tag: "p",
-            children: ["This is a paragraph"],
+            children: [vdomText("This is a paragraph (from VDOM)")],
         },
     ],
 };
@@ -343,7 +351,7 @@ const TerminalView = ({ blockId, model }: { blockId: string; model: TermViewMode
                     />
                 </div>
                 <div key="htmlElemContent" className="term-htmlelem-content">
-                    <IJsonView rootNode={IJSONConst} />
+                    <VDomView rootNode={testVDom} />
                 </div>
             </div>
         </div>

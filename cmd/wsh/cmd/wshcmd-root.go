@@ -8,11 +8,8 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/signal"
 	"regexp"
 	"strings"
-	"sync"
-	"syscall"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,7 +18,6 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
-	"golang.org/x/term"
 )
 
 var (
@@ -32,85 +28,37 @@ var (
 	}
 )
 
-var shutdownOnce sync.Once
-var origTermState *term.State
-var madeRaw bool
 var usingHtmlMode bool
-var shutdownSignalHandlersInstalled bool
 var WrappedStdin io.Reader
 var RpcClient *wshutil.WshRpc
 
-func doShutdown(reason string, exitCode int) {
-	shutdownOnce.Do(func() {
-		defer os.Exit(exitCode)
-		if reason != "" {
-			log.Printf("shutting down: %s\r\n", reason)
+func extraShutdownFn() {
+	if usingHtmlMode {
+		cmd := &wshrpc.CommandSetMetaData{
+			Meta: map[string]any{"term:mode": nil},
 		}
-		if usingHtmlMode {
-			cmd := &wshrpc.CommandSetMetaData{
-				Meta: map[string]any{"term:mode": nil},
-			}
-			RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd)
-			time.Sleep(10 * time.Millisecond)
-		}
-		if origTermState != nil {
-			term.Restore(int(os.Stdin.Fd()), origTermState)
-		}
-	})
+		RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd)
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 // returns the wrapped stdin and a new rpc client (that wraps the stdin input and stdout output)
 func setupRpcClient(handlerFn wshutil.CommandHandlerFnType) {
 	log.Printf("setup rpc client\r\n")
-	messageCh := make(chan []byte, 32)
-	outputCh := make(chan []byte, 32)
-	ptyBuf := wshutil.MakePtyBuffer(wshutil.WaveServerOSCPrefix, os.Stdin, messageCh)
-	rpcClient := wshutil.MakeWshRpc(messageCh, outputCh, wshutil.RpcContext{}, handlerFn)
-	go func() {
-		for msg := range outputCh {
-			barr := wshutil.EncodeWaveOSCBytes(wshutil.WaveOSC, msg)
-			os.Stdout.Write(barr)
-		}
-	}()
-	WrappedStdin = ptyBuf
-	RpcClient = rpcClient
-}
-
-func setTermRawMode() {
-	if madeRaw {
-		return
-	}
-	origState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error setting raw mode: %v\n", err)
-		return
-	}
-	origTermState = origState
-	madeRaw = true
+	RpcClient, WrappedStdin = wshutil.SetupTerminalRpcClient(handlerFn)
 }
 
 func setTermHtmlMode() {
-	installShutdownSignalHandlers()
-	setTermRawMode()
+	wshutil.SetExtraShutdownFunc(extraShutdownFn)
+	wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 	cmd := &wshrpc.CommandSetMetaData{
 		Meta: map[string]any{"term:mode": "html"},
 	}
-	RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd)
-	usingHtmlMode = true
-}
-
-func installShutdownSignalHandlers() {
-	if shutdownSignalHandlersInstalled {
-		return
+	err := RpcClient.SendCommand(wshrpc.Command_SetMeta, cmd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error setting html mode: %v\r\n", err)
 	}
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-	go func() {
-		for sig := range sigCh {
-			doShutdown(fmt.Sprintf("got signal %v", sig), 1)
-			break
-		}
-	}()
+	usingHtmlMode = true
 }
 
 var oidRe = regexp.MustCompile(`^[0-9a-f]{8}$`)
@@ -162,7 +110,7 @@ func resolveSimpleId(id string) (*waveobj.ORef, error) {
 
 // Execute executes the root command.
 func Execute() error {
-	defer doShutdown("", 0)
+	defer wshutil.DoShutdown("", 0, false)
 	setupRpcClient(nil)
 	return rootCmd.Execute()
 }

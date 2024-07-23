@@ -36,7 +36,7 @@ func DeleteBlockCommand(w *wshutil.WshRpc, data wshrpc.CommandDeleteBlockData, o
 }
 
 // command "file:append", wshserver.AppendFileCommand
-func AppendFileCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendFileData, opts *wshrpc.WshRpcCommandOpts) error {
+func AppendFileCommand(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.WshRpcCommandOpts) error {
     _, err := sendRpcRequestCallHelper[any](w, "file:append", data, opts)
     return err
 }
@@ -44,6 +44,18 @@ func AppendFileCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendFileData, opt
 // command "file:appendijson", wshserver.AppendIJsonCommand
 func AppendIJsonCommand(w *wshutil.WshRpc, data wshrpc.CommandAppendIJsonData, opts *wshrpc.WshRpcCommandOpts) error {
     _, err := sendRpcRequestCallHelper[any](w, "file:appendijson", data, opts)
+    return err
+}
+
+// command "file:read", wshserver.ReadFile
+func ReadFile(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.WshRpcCommandOpts) (string, error) {
+    resp, err := sendRpcRequestCallHelper[string](w, "file:read", data, opts)
+    return resp, err
+}
+
+// command "file:write", wshserver.WriteFile
+func WriteFile(w *wshutil.WshRpc, data wshrpc.CommandFileData, opts *wshrpc.WshRpcCommandOpts) error {
+    _, err := sendRpcRequestCallHelper[any](w, "file:write", data, opts)
     return err
 }
 

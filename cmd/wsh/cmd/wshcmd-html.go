@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
 func init() {
@@ -20,20 +21,20 @@ var htmlCmd = &cobra.Command{
 }
 
 func htmlRun(cmd *cobra.Command, args []string) {
-	defer doShutdown("normal exit", 0)
+	defer wshutil.DoShutdown("normal exit", 0, true)
 	setTermHtmlMode()
 	for {
 		var buf [1]byte
 		_, err := WrappedStdin.Read(buf[:])
 		if err != nil {
-			doShutdown(fmt.Sprintf("stdin closed/error (%v)", err), 1)
+			wshutil.DoShutdown(fmt.Sprintf("stdin closed/error (%v)", err), 1, true)
 		}
 		if buf[0] == 0x03 {
-			doShutdown("read Ctrl-C from stdin", 1)
+			wshutil.DoShutdown("read Ctrl-C from stdin", 1, true)
 			break
 		}
 		if buf[0] == 'x' {
-			doShutdown("read 'x' from stdin", 0)
+			wshutil.DoShutdown("read 'x' from stdin", 0, true)
 			break
 		}
 	}

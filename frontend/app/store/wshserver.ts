@@ -28,13 +28,23 @@ class WshServerType {
     }
 
     // command "file:append" [call]
-	AppendFileCommand(data: CommandAppendFileData, opts?: WshRpcCommandOpts): Promise<void> {
+	AppendFileCommand(data: CommandFileData, opts?: WshRpcCommandOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("file:append", data, opts);
     }
 
     // command "file:appendijson" [call]
 	AppendIJsonCommand(data: CommandAppendIJsonData, opts?: WshRpcCommandOpts): Promise<void> {
         return WOS.wshServerRpcHelper_call("file:appendijson", data, opts);
+    }
+
+    // command "file:read" [call]
+	ReadFile(data: CommandFileData, opts?: WshRpcCommandOpts): Promise<string> {
+        return WOS.wshServerRpcHelper_call("file:read", data, opts);
+    }
+
+    // command "file:write" [call]
+	WriteFile(data: CommandFileData, opts?: WshRpcCommandOpts): Promise<void> {
+        return WOS.wshServerRpcHelper_call("file:write", data, opts);
     }
 
     // command "getmeta" [call]

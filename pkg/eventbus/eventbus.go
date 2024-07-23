@@ -33,8 +33,9 @@ type WSEventType struct {
 }
 
 const (
-	FileOp_Append   = "append"
-	FileOp_Truncate = "truncate"
+	FileOp_Append     = "append"
+	FileOp_Truncate   = "truncate"
+	FileOp_Invalidate = "invalidate"
 )
 
 type WSFileEventData struct {

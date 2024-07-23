@@ -233,9 +233,14 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 		return shellProcErr
 	}
 	var cmdStr string
-	var cmdOpts shellexec.CommandOptsType
+	cmdOpts := shellexec.CommandOptsType{
+		Env: make(map[string]string),
+	}
+	// temporary for blockid (will switch to a JWT at some point)
+	cmdOpts.Env["LC_WAVETERM_BLOCKID"] = bc.BlockId
 	if bc.ControllerType == BlockController_Shell {
-		cmdOpts = shellexec.CommandOptsType{Interactive: true, Login: true}
+		cmdOpts.Interactive = true
+		cmdOpts.Login = true
 	} else if bc.ControllerType == BlockController_Cmd {
 		if _, ok := blockMeta["cmd"].(string); ok {
 			cmdStr = blockMeta["cmd"].(string)
@@ -260,7 +265,6 @@ func (bc *BlockController) DoRunShellCommand(rc *RunShellOpts, blockMeta map[str
 		}
 		if _, ok := blockMeta["cmd:env"].(map[string]any); ok {
 			cmdEnv := blockMeta["cmd:env"].(map[string]any)
-			cmdOpts.Env = make(map[string]string)
 			for k, v := range cmdEnv {
 				if v == nil {
 					continue

@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc/wshclient"
+	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 )
 
 var getMetaCmd = &cobra.Command{
@@ -37,7 +38,7 @@ func getMetaRun(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	setTermRawMode()
+	wshutil.SetTermRawModeAndInstallShutdownHandlers(true)
 	fullORef, err := resolveSimpleId(oref)
 	if err != nil {
 		fmt.Printf("error resolving oref: %v\r\n", err)
