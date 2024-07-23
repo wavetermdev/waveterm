@@ -12,16 +12,16 @@ class ContextMenuModelType {
     }
 
     handleContextMenuClick(id: string): void {
-        let handler = this.handlers.get(id);
+        const handler = this.handlers.get(id);
         if (handler) {
             handler();
         }
     }
 
     _convertAndRegisterMenu(menu: ContextMenuItem[]): ElectronContextMenuItem[] {
-        let electronMenuItems: ElectronContextMenuItem[] = [];
-        for (let item of menu) {
-            let electronItem: ElectronContextMenuItem = {
+        const electronMenuItems: ElectronContextMenuItem[] = [];
+        for (const item of menu) {
+            const electronItem: ElectronContextMenuItem = {
                 role: item.role,
                 type: item.type,
                 label: item.label,
