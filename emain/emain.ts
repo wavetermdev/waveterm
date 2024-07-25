@@ -612,6 +612,32 @@ function makeAppMenu() {
             role: "quit",
         },
     ];
+    const viewMenu: Electron.MenuItemConstructorOptions[] = [
+        {
+            role: "forceReload",
+        },
+        {
+            role: "toggleDevTools",
+        },
+        {
+            type: "separator",
+        },
+        {
+            role: "resetZoom",
+        },
+        {
+            role: "zoomIn",
+        },
+        {
+            role: "zoomOut",
+        },
+        {
+            type: "separator",
+        },
+        {
+            role: "togglefullscreen",
+        },
+    ];
     const menuTemplate: Electron.MenuItemConstructorOptions[] = [
         {
             role: "appMenu",
@@ -626,6 +652,7 @@ function makeAppMenu() {
         },
         {
             role: "viewMenu",
+            submenu: viewMenu,
         },
         {
             role: "windowMenu",

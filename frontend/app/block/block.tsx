@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useLongClick } from "@/app/hook/useLongClick";
-import { CodeEditor } from "@/app/view/codeeditor/codeeditor";
 import { Button } from "@/element/button";
 import { ErrorBoundary } from "@/element/errorboundary";
 import { CenteredDiv } from "@/element/quickelems";
@@ -331,11 +330,7 @@ const BlockFrame_Default_Component = ({
                 );
             } else if (elem.elemtype == "textbutton") {
                 return (
-                    <Button
-                        key={key}
-                        className={clsx("border-radius-4 vertical-padding-3", elem.className)}
-                        onClick={(e) => elem.onClick(e)}
-                    >
+                    <Button key={key} className={elem.className} onClick={(e) => elem.onClick(e)}>
                         {elem.text}
                     </Button>
                 );
@@ -509,8 +504,6 @@ function getViewElemAndModel(
         viewModel = previewModel;
     } else if (blockView === "plot") {
         viewElem = <PlotView key={blockId} />;
-    } else if (blockView === "codeedit") {
-        viewElem = <CodeEditor key={blockId} text={null} filename={null} />;
     } else if (blockView === "web") {
         const webviewModel = makeWebViewModel(blockId);
         viewElem = <WebView key={blockId} parentRef={blockRef} model={webviewModel} />;

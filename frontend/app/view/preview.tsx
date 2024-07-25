@@ -115,13 +115,13 @@ export class PreviewModel implements ViewModel {
                         {
                             elemtype: "textbutton",
                             text: "Save",
-                            className: "primary warning",
+                            className: "primary warning border-radius-4 vertical-padding-2 horizontal-padding-10",
                             onClick: this.handleFileSave.bind(this),
                         },
                         {
                             elemtype: "textbutton",
                             text: "Cancel",
-                            className: "secondary",
+                            className: "secondary border-radius-4 vertical-padding-2 horizontal-padding-10",
                             onClick: () => this.toggleCodeEditorReadOnly(true),
                         }
                     );
@@ -129,7 +129,7 @@ export class PreviewModel implements ViewModel {
                     viewTextChildren.push({
                         elemtype: "textbutton",
                         text: "Edit",
-                        className: "secondary",
+                        className: "secondary border-radius-4 vertical-padding-2 horizontal-padding-10",
                         onClick: () => this.toggleCodeEditorReadOnly(false),
                     });
                 }
@@ -388,17 +388,21 @@ function StreamingPreview({ fileInfo }: { fileInfo: FileInfo }) {
 }
 
 function CodeEditPreview({
+    parentRef,
     contentAtom,
     filename,
     readonly,
     isCeViewAtom,
     newFileContentAtom,
+    model,
 }: {
+    parentRef: React.MutableRefObject<HTMLDivElement>;
     contentAtom: jotai.Atom<Promise<string>>;
     filename: string;
     readonly: boolean;
     isCeViewAtom: jotai.PrimitiveAtom<boolean>;
     newFileContentAtom: jotai.PrimitiveAtom<string>;
+    model: PreviewModel;
 }) {
     const fileContent = jotai.useAtomValue(contentAtom);
     const setIsCeView = jotai.useSetAtom(isCeViewAtom);
@@ -413,10 +417,14 @@ function CodeEditPreview({
 
     return (
         <CodeEditor
+            parentRef={parentRef}
             readonly={readonly}
             text={fileContent}
             filename={filename}
             onChange={(text) => setNewFileContent(text)}
+            onSave={() => model.handleFileSave()}
+            onCancel={() => model.toggleCodeEditorReadOnly(true)}
+            onEdit={() => model.toggleCodeEditorReadOnly(false)}
         />
     );
 }
@@ -519,10 +527,12 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
             view = (
                 <CodeEditPreview
                     readonly={ceReadOnly}
+                    parentRef={contentRef}
                     contentAtom={fileContentAtom}
                     filename={fileName}
                     isCeViewAtom={isCeViewAtom}
                     newFileContentAtom={newFileContentAtom}
+                    model={model}
                 />
             );
         } else if (mimeType === "directory") {
@@ -553,4 +563,4 @@ function PreviewView({ blockId, model }: { blockId: string; model: PreviewModel 
     );
 }
 
-export { PreviewView, makePreviewModel };
+export { makePreviewModel, PreviewView };

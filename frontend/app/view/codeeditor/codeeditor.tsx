@@ -1,18 +1,17 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { globalStore } from "@/store/global";
+import { useHeight } from "@/app/hook/useHeight";
 import loader from "@monaco-editor/loader";
 import { Editor, Monaco } from "@monaco-editor/react";
-import * as jotai from "jotai";
 import type * as MonacoTypes from "monaco-editor/esm/vs/editor/editor.api";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
+import { adaptFromReactOrNativeKeyEvent, checkKeyPressed } from "@/util/keyutil";
 import "./codeeditor.less";
 
 // there is a global monaco variable (TODO get the correct TS type)
 declare var monaco: Monaco;
-let monacoLoadedAtom = jotai.atom(false);
 
 function loadMonaco() {
     loader.config({ paths: { vs: "monaco" } });
@@ -35,8 +34,6 @@ function loadMonaco() {
                     "editor.background": "#fefefe",
                 },
             });
-            globalStore.set(monacoLoadedAtom, true);
-            console.log("monaco loaded", monaco);
         })
         .catch((e) => {
             console.error("error loading monaco", e);
@@ -63,47 +60,72 @@ function defaultEditorOptions(): MonacoTypes.editor.IEditorOptions {
     return opts;
 }
 
-interface CodeEditProps {
-    readonly?: boolean;
+interface CodeEditorProps {
+    parentRef: React.MutableRefObject<HTMLDivElement>;
     text: string;
-    language?: string;
     filename: string;
+    readonly: boolean;
+    language?: string;
     onChange?: (text: string) => void;
+    onSave?: () => void;
+    onCancel?: () => void;
+    onEdit?: () => void;
 }
 
-export function CodeEditor({ readonly = false, text, language, filename, onChange }: CodeEditProps) {
-    const [divDims, setDivDims] = useState(null);
-    const monacoLoaded = jotai.useAtomValue(monacoLoadedAtom);
-
-    const monacoRef = useRef<MonacoTypes.editor.IStandaloneCodeEditor | null>(null);
+export function CodeEditor({
+    readonly = false,
+    parentRef,
+    text,
+    language,
+    filename,
+    onChange,
+    onSave,
+    onCancel,
+    onEdit,
+}: CodeEditorProps) {
     const divRef = useRef<HTMLDivElement>(null);
-    const monacoLoadedRef = useRef<boolean | null>(null);
 
+    const parentHeight = useHeight(parentRef);
     const theme = "wave-theme-dark";
 
     useEffect(() => {
-        if (!divRef.current) {
-            return;
+        function handleKeyDown(e: KeyboardEvent) {
+            const waveEvent = adaptFromReactOrNativeKeyEvent(e);
+            if (onSave) {
+                if (checkKeyPressed(waveEvent, "Cmd:s")) {
+                    e.preventDefault();
+                    onSave();
+                    return;
+                }
+            }
+            if (onCancel) {
+                if (checkKeyPressed(waveEvent, "Cmd:r")) {
+                    e.preventDefault();
+                    onCancel();
+                    return;
+                }
+            }
+            if (onEdit) {
+                if (checkKeyPressed(waveEvent, "Cmd:e")) {
+                    e.preventDefault();
+                    onEdit();
+                    return;
+                }
+            }
         }
-        const height = divRef.current.clientHeight;
-        const width = divRef.current.clientWidth;
-        setDivDims({ height, width });
-    }, []);
 
-    useEffect(() => {
-        if (monacoLoadedRef.current === null) {
-            monacoLoadedRef.current = monacoLoaded;
-        }
-    }, [monacoLoaded]);
+        const currentParentRef = parentRef.current;
+        currentParentRef.addEventListener("keydown", handleKeyDown);
 
-    function handleEditorMount(editor: MonacoTypes.editor.IStandaloneCodeEditor) {
-        monacoRef.current = editor;
-        const monacoModel = editor.getModel();
-        //monaco.editor.setModelLanguage(monacoModel, "text/markdown");
-    }
+        return () => {
+            currentParentRef.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [onSave, onCancel, onEdit]);
 
     function handleEditorChange(text: string, ev: MonacoTypes.editor.IModelContentChangedEvent) {
-        onChange(text);
+        if (onChange) {
+            onChange(text);
+        }
     }
 
     const editorOpts = defaultEditorOptions();
@@ -112,18 +134,15 @@ export function CodeEditor({ readonly = false, text, language, filename, onChang
     return (
         <div className="code-editor-wrapper">
             <div className="code-editor" ref={divRef}>
-                {divDims != null && monacoLoaded ? (
-                    <Editor
-                        theme={theme}
-                        height={divDims.height}
-                        value={text}
-                        onMount={handleEditorMount}
-                        options={editorOpts}
-                        onChange={handleEditorChange}
-                        path={filename}
-                        language={language}
-                    />
-                ) : null}
+                <Editor
+                    theme={theme}
+                    height={parentHeight}
+                    value={text}
+                    options={editorOpts}
+                    onChange={handleEditorChange}
+                    path={filename}
+                    language={language}
+                />
             </div>
         </div>
     );
