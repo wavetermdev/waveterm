@@ -38,6 +38,7 @@ var ExtraTypes = []any{
 	eventbus.WSLayoutActionData{},
 	filestore.WaveFile{},
 	wconfig.SettingsConfigType{},
+	wconfig.TermThemesConfigType{},
 	wconfig.WatcherUpdate{},
 	wshutil.RpcMessage{},
 	wshrpc.WshServerCommandMeta{},

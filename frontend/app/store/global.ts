@@ -225,10 +225,7 @@ function handleWSEventMessage(msg: WSEventType) {
         return;
     }
     if (msg.eventtype == "config") {
-        const data: WatcherUpdate = msg.data;
-        globalStore.set(atoms.settingsConfigAtom, data.update);
-
-        console.log("config", data);
+        globalStore.set(atoms.settingsConfigAtom, msg.data.settings);
         return;
     }
     if (msg.eventtype == "userinput") {

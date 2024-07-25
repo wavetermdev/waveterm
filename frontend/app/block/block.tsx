@@ -385,7 +385,8 @@ const BlockFrame_Default_Component = ({
                 "block-frame-default",
                 isFocused ? "block-focused" : null,
                 preview ? "block-preview" : null,
-                numBlocksInTab == 1 ? "block-no-highlight" : null
+                numBlocksInTab == 1 ? "block-no-highlight" : null,
+                "block-" + blockId
             )}
             onClick={blockModel?.onClick}
             onFocusCapture={blockModel?.onFocusCapture}

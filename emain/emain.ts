@@ -15,7 +15,7 @@ import { debounce } from "throttle-debounce";
 import * as util from "util";
 import winston from "winston";
 import * as services from "../frontend/app/store/services";
-import { getWebServerEndpoint, WebServerEndpointVarName, WSServerEndpointVarName } from "../frontend/util/endpoints";
+import { WSServerEndpointVarName, WebServerEndpointVarName, getWebServerEndpoint } from "../frontend/util/endpoints";
 import * as keyutil from "../frontend/util/keyutil";
 import { fireAndForget } from "../frontend/util/util";
 

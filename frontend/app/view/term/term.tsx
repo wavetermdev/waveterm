@@ -1,48 +1,34 @@
 // Copyright 2024, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+import { WshServer } from "@/app/store/wshserver";
+import { VDomView } from "@/app/view/term/vdom";
 import { WOS, atoms, getEventORefSubject, globalStore, useBlockAtom, useSettingsAtom } from "@/store/global";
 import * as services from "@/store/services";
 import * as keyutil from "@/util/keyutil";
-import type { ITheme } from "@xterm/xterm";
+import * as util from "@/util/util";
 import clsx from "clsx";
 import { produce } from "immer";
 import * as jotai from "jotai";
 import * as React from "react";
 import { TermStickers } from "./termsticker";
+import { TermThemeUpdater } from "./termtheme";
 import { TermWrap } from "./termwrap";
 
-import { WshServer } from "@/app/store/wshserver";
-import { VDomView } from "@/app/view/term/vdom";
 import "public/xterm.css";
-import "./term.less";
 
-function getThemeFromCSSVars(el: Element): ITheme {
-    const theme: ITheme = {};
-    const elemStyle = getComputedStyle(el);
-    theme.foreground = elemStyle.getPropertyValue("--term-foreground");
-    theme.background = elemStyle.getPropertyValue("--term-background");
-    theme.black = elemStyle.getPropertyValue("--term-black");
-    theme.red = elemStyle.getPropertyValue("--term-red");
-    theme.green = elemStyle.getPropertyValue("--term-green");
-    theme.yellow = elemStyle.getPropertyValue("--term-yellow");
-    theme.blue = elemStyle.getPropertyValue("--term-blue");
-    theme.magenta = elemStyle.getPropertyValue("--term-magenta");
-    theme.cyan = elemStyle.getPropertyValue("--term-cyan");
-    theme.white = elemStyle.getPropertyValue("--term-white");
-    theme.brightBlack = elemStyle.getPropertyValue("--term-bright-black");
-    theme.brightRed = elemStyle.getPropertyValue("--term-bright-red");
-    theme.brightGreen = elemStyle.getPropertyValue("--term-bright-green");
-    theme.brightYellow = elemStyle.getPropertyValue("--term-bright-yellow");
-    theme.brightBlue = elemStyle.getPropertyValue("--term-bright-blue");
-    theme.brightMagenta = elemStyle.getPropertyValue("--term-bright-magenta");
-    theme.brightCyan = elemStyle.getPropertyValue("--term-bright-cyan");
-    theme.brightWhite = elemStyle.getPropertyValue("--term-bright-white");
-    theme.selectionBackground = elemStyle.getPropertyValue("--term-selection-background");
-    theme.selectionInactiveBackground = elemStyle.getPropertyValue("--term-selection-background");
-    theme.cursor = elemStyle.getPropertyValue("--term-selection-background");
-    theme.cursorAccent = elemStyle.getPropertyValue("--term-cursor-accent");
-    return theme;
+function computeTheme(settings: SettingsConfigType, themeName: string) {
+    let defaultThemeName = "default-dark";
+    themeName = themeName ?? "default-dark";
+    const defaultTheme: TermThemeType = settings?.termthemes?.[defaultThemeName] || ({} as any);
+    const theme: TermThemeType = settings?.termthemes?.[themeName] || ({} as any);
+    const combinedTheme = { ...defaultTheme };
+    for (const key in theme) {
+        if (!util.isBlank(theme[key])) {
+            combinedTheme[key] = theme[key];
+        }
+    }
+    return combinedTheme;
 }
 
 const keyMap = {
@@ -172,7 +158,12 @@ function makeTerminalModel(blockId: string): TermViewModel {
     return new TermViewModel(blockId);
 }
 
-const TerminalView = ({ blockId, model }: { blockId: string; model: TermViewModel }) => {
+interface TerminalViewProps {
+    blockId: string;
+    model: TermViewModel;
+}
+
+const TerminalView = ({ blockId, model }: TerminalViewProps) => {
     const connectElemRef = React.useRef<HTMLDivElement>(null);
     const termRef = React.useRef<TermWrap>(null);
     model.termRef = termRef;
@@ -194,6 +185,7 @@ const TerminalView = ({ blockId, model }: { blockId: string; model: TermViewMode
     });
     const termSettings = jotai.useAtomValue(termSettingsAtom);
     const isFocused = jotai.useAtomValue(isFocusedAtom);
+
     React.useEffect(() => {
         function handleTerminalKeydown(event: KeyboardEvent) {
             const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
@@ -209,12 +201,13 @@ const TerminalView = ({ blockId, model }: { blockId: string; model: TermViewMode
                 return false;
             }
         }
-
+        const settings = globalStore.get(atoms.settingsConfigAtom);
+        const termTheme = computeTheme(settings, blockData?.meta?.termtheme);
         const termWrap = new TermWrap(
             blockId,
             connectElemRef.current,
             {
-                theme: getThemeFromCSSVars(connectElemRef.current),
+                theme: termTheme,
                 fontSize: termSettings?.fontsize ?? 12,
                 fontFamily: termSettings?.fontfamily ?? "Hack",
                 drawBoldTextInBrightColors: false,
@@ -239,7 +232,7 @@ const TerminalView = ({ blockId, model }: { blockId: string; model: TermViewMode
             termWrap.dispose();
             rszObs.disconnect();
         };
-    }, []);
+    }, [blockId, termSettings]);
 
     const handleHtmlKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         const waveEvent = keyutil.adaptFromReactOrNativeKeyEvent(event);
@@ -331,6 +324,7 @@ const TerminalView = ({ blockId, model }: { blockId: string; model: TermViewMode
             className={clsx("view-term", "term-mode-" + termMode, isFocused ? "is-focused" : null)}
             onKeyDown={handleKeyDown}
         >
+            <TermThemeUpdater blockId={blockId} termRef={termRef} />
             <TermStickers config={stickerConfig} />
             <div key="conntectElem" className="term-connectelem" ref={connectElemRef}></div>
             <div

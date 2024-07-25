@@ -157,7 +157,7 @@ function DirectoryTable({
     const getIconFromMimeType = React.useCallback(
         (mimeType: string): string => {
             while (mimeType.length > 0) {
-                let icon = settings.mimetypes[mimeType]?.icon ?? null;
+                let icon = settings.mimetypes?.[mimeType]?.icon ?? null;
                 if (isIconValid(icon)) {
                     return `fa fa-solid fa-${icon} fa-fw`;
                 }
@@ -169,7 +169,7 @@ function DirectoryTable({
     );
     const getIconColor = React.useCallback(
         (mimeType: string): string => {
-            let iconColor = settings.mimetypes[mimeType]?.color ?? "inherit";
+            let iconColor = settings.mimetypes?.[mimeType]?.color ?? "inherit";
             return iconColor;
         },
         [settings.mimetypes]

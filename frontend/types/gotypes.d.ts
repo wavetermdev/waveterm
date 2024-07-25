@@ -226,6 +226,7 @@ declare global {
         widgets: WidgetsConfigType[];
         blockheader: BlockHeaderOpts;
         autoupdate: AutoUpdateOpts;
+        termthemes: {[key: string]: TermThemeType};
     };
 
     // wstore.StickerClickOptsType
@@ -261,6 +262,32 @@ declare global {
     type TermSize = {
         rows: number;
         cols: number;
+    };
+
+    // wconfig.TermThemeType
+    type TermThemeType = {
+        black: string;
+        red: string;
+        green: string;
+        yellow: string;
+        blue: string;
+        magenta: string;
+        cyan: string;
+        white: string;
+        brightBlack: string;
+        brightRed: string;
+        brightGreen: string;
+        brightYellow: string;
+        brightBlue: string;
+        brightMagenta: string;
+        brightCyan: string;
+        brightWhite: string;
+        gray: string;
+        cmdtext: string;
+        foreground: string;
+        selectionBackground: string;
+        background: string;
+        cursorAccent: string;
     };
 
     // wconfig.TerminalConfigType
@@ -354,8 +381,7 @@ declare global {
 
     // wconfig.WatcherUpdate
     type WatcherUpdate = {
-        file: string;
-        update: SettingsConfigType;
+        settings: SettingsConfigType;
         error: string;
     };
 
