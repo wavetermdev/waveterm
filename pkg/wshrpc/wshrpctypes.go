@@ -15,19 +15,20 @@ import (
 )
 
 const (
-	Command_Message     = "message"
-	Command_SetView     = "setview"
-	Command_SetMeta     = "setmeta"
-	Command_GetMeta     = "getmeta"
-	Command_BlockInput  = "controller:input"
-	Command_Restart     = "controller:restart"
-	Command_AppendFile  = "file:append"
-	Command_AppendIJson = "file:appendijson"
-	Command_ResolveIds  = "resolveids"
-	Command_CreateBlock = "createblock"
-	Command_DeleteBlock = "deleteblock"
-	Command_WriteFile   = "file:write"
-	Command_ReadFile    = "file:read"
+	Command_Message      = "message"
+	Command_SetView      = "setview"
+	Command_SetMeta      = "setmeta"
+	Command_GetMeta      = "getmeta"
+	Command_BlockInput   = "controller:input"
+	Command_Restart      = "controller:restart"
+	Command_AppendFile   = "file:append"
+	Command_AppendIJson  = "file:appendijson"
+	Command_ResolveIds   = "resolveids"
+	Command_CreateBlock  = "createblock"
+	Command_DeleteBlock  = "deleteblock"
+	Command_WriteFile    = "file:write"
+	Command_ReadFile     = "file:read"
+	Command_StreamWaveAi = "stream:waveai"
 )
 
 type MetaDataType = map[string]any

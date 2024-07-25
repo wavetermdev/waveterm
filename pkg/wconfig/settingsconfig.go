@@ -4,6 +4,7 @@
 package wconfig
 
 import (
+	"os/user"
 	"path/filepath"
 
 	"github.com/wavetermdev/thenextwave/pkg/wavebase"
@@ -141,6 +142,13 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 			IntervalMs: 3600000,
 		}
 	}
+	var userName string
+	currentUser, err := user.Current()
+	if err != nil {
+		userName = "user"
+	} else {
+		userName = currentUser.Username
+	}
 	defaultWidgets := []WidgetsConfigType{
 		{
 			Icon:  "files",
@@ -170,6 +178,7 @@ func applyDefaultSettings(settings *SettingsConfigType) {
 			Label: "waveai",
 			BlockDef: wstore.BlockDef{
 				View: "waveai",
+				Meta: map[string]any{"name": userName, "baseurl": "", "apitoken": ""},
 			},
 		},
 	}

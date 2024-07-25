@@ -3,19 +3,168 @@
 
 import { Markdown } from "@/app/element/markdown";
 import { TypingIndicator } from "@/app/element/typingindicator";
-import { ChatMessageType, useWaveAi } from "@/app/store/waveai";
+import { WOS, atoms } from "@/store/global";
+import { WshServer } from "@/store/wshserver";
+import * as jotai from "jotai";
 import type { OverlayScrollbars } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, OverlayScrollbarsComponentRef } from "overlayscrollbars-react";
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import tinycolor from "tinycolor2";
+import { v4 as uuidv4 } from "uuid";
 
 import "./waveai.less";
 
+interface ChatMessageType {
+    id: string;
+    user: string;
+    text: string;
+    isAssistant: boolean;
+    isUpdating?: boolean;
+    isError?: string;
+}
+
 const outline = "2px solid var(--accent-color)";
+
+const defaultMessage: ChatMessageType = {
+    id: uuidv4(),
+    user: "assistant",
+    text: `<p>Hello, how may I help you with this command?<br>
+(Cmd-Shift-Space: open/close, Ctrl+L: clear chat buffer, Up/Down: select code blocks, Enter: to copy a selected code block to the command input)</p>`,
+    isAssistant: true,
+};
 
 interface ChatItemProps {
     chatItem: ChatMessageType;
     itemCount: number;
+}
+
+export class WaveAiModel implements ViewModel {
+    blockId: string;
+    blockAtom: jotai.Atom<Block>;
+    viewIcon?: jotai.Atom<string | HeaderIconButton>;
+    viewName?: jotai.Atom<string>;
+    viewText?: jotai.Atom<string | HeaderElem[]>;
+    preIconButton?: jotai.Atom<HeaderIconButton>;
+    endIconButtons?: jotai.Atom<HeaderIconButton[]>;
+    messagesAtom: jotai.PrimitiveAtom<Array<ChatMessageType>>;
+    addMessageAtom: jotai.WritableAtom<unknown, [message: ChatMessageType], void>;
+    updateLastMessageAtom: jotai.WritableAtom<unknown, [text: string, isUpdating: boolean], void>;
+    simulateAssistantResponseAtom: jotai.WritableAtom<unknown, [userMessage: ChatMessageType], void>;
+
+    constructor(blockId: string) {
+        this.blockId = blockId;
+        this.blockAtom = WOS.getWaveObjectAtom<Block>(`block:${blockId}`);
+        this.viewIcon = jotai.atom((get) => {
+            return "sparkles"; // should not be hardcoded
+        });
+        this.viewName = jotai.atom("Ai");
+        this.messagesAtom = jotai.atom([defaultMessage]);
+
+        this.addMessageAtom = jotai.atom(null, (get, set, message: ChatMessageType) => {
+            const messages = get(this.messagesAtom);
+            set(this.messagesAtom, [...messages, message]);
+        });
+
+        this.updateLastMessageAtom = jotai.atom(null, (get, set, text: string, isUpdating: boolean) => {
+            const messages = get(this.messagesAtom);
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage.isAssistant && !lastMessage.isError) {
+                const updatedMessage = { ...lastMessage, text: lastMessage.text + text, isUpdating };
+                set(this.messagesAtom, [...messages.slice(0, -1), updatedMessage]);
+            }
+        });
+        this.simulateAssistantResponseAtom = jotai.atom(null, (get, set, userMessage: ChatMessageType) => {
+            const typingMessage: ChatMessageType = {
+                id: uuidv4(),
+                user: "assistant",
+                text: "",
+                isAssistant: true,
+            };
+
+            // Add a typing indicator
+            set(this.addMessageAtom, typingMessage);
+
+            setTimeout(() => {
+                const parts = userMessage.text.split(" ");
+                let currentPart = 0;
+
+                const intervalId = setInterval(() => {
+                    if (currentPart < parts.length) {
+                        const part = parts[currentPart] + " ";
+                        set(this.updateLastMessageAtom, part, true);
+                        currentPart++;
+                    } else {
+                        clearInterval(intervalId);
+                        set(this.updateLastMessageAtom, "", false);
+                    }
+                }, 100);
+            }, 1500);
+        });
+    }
+
+    useWaveAi() {
+        const [messages] = jotai.useAtom(this.messagesAtom);
+        const [, addMessage] = jotai.useAtom(this.addMessageAtom);
+        const [, simulateResponse] = jotai.useAtom(this.simulateAssistantResponseAtom);
+        const metadata = jotai.useAtomValue(this.blockAtom).meta;
+        const clientId = jotai.useAtomValue(atoms.clientId);
+
+        const sendMessage = (text: string, user: string = "user") => {
+            const newMessage: ChatMessageType = {
+                id: uuidv4(),
+                user,
+                text,
+                isAssistant: false,
+            };
+            addMessage(newMessage);
+            // send message to backend and get response
+            const opts: OpenAIOptsType = {
+                model: "gpt-3.5-turbo",
+                apitoken: metadata?.apitoken as string,
+                maxtokens: 1000,
+                timeout: 10,
+                baseurl: metadata?.baseurl as string,
+            };
+            const prompt: Array<OpenAIPromptMessageType> = [
+                {
+                    role: "user",
+                    content: text,
+                    name: (metadata?.name as string) || "user",
+                },
+            ];
+            console.log("opts.apitoken:", opts.apitoken);
+            const beMsg: OpenAiStreamRequest = {
+                clientid: clientId,
+                opts: opts,
+                prompt: prompt,
+            };
+            const aiGen = WshServer.RespStreamWaveAi(beMsg);
+            let temp = async () => {
+                let fullMsg = "";
+                for await (const msg of aiGen) {
+                    fullMsg += msg.text ?? "";
+                }
+                const response: ChatMessageType = {
+                    id: newMessage.id,
+                    user: newMessage.user,
+                    text: fullMsg,
+                    isAssistant: true,
+                };
+                simulateResponse(response);
+            };
+            temp();
+        };
+
+        return {
+            messages,
+            sendMessage,
+        };
+    }
+}
+
+function makeWaveAiViewModel(blockId): WaveAiModel {
+    const waveAiModel = new WaveAiModel(blockId);
+    return waveAiModel;
 }
 
 const ChatItem = ({ chatItem, itemCount }: ChatItemProps) => {
@@ -208,8 +357,8 @@ const ChatInput = forwardRef<HTMLTextAreaElement, ChatInputProps>(
     }
 );
 
-const WaveAi = () => {
-    const { messages, sendMessage } = useWaveAi();
+const WaveAi = ({ model }: { model: WaveAiModel }) => {
+    const { messages, sendMessage } = model.useWaveAi();
     const waveaiRef = useRef<HTMLDivElement>(null);
     const chatWindowRef = useRef<HTMLDivElement>(null);
     const osRef = useRef<OverlayScrollbarsComponentRef>(null);
@@ -407,4 +556,4 @@ const WaveAi = () => {
     );
 };
 
-export { WaveAi };
+export { WaveAi, makeWaveAiViewModel };

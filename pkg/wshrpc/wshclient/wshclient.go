@@ -9,6 +9,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
+	"github.com/wavetermdev/thenextwave/pkg/waveai"
 )
 
 // command "controller:input", wshserver.BlockInputCommand
@@ -87,6 +88,11 @@ func SetMetaCommand(w *wshutil.WshRpc, data wshrpc.CommandSetMetaData, opts *wsh
 func BlockSetViewCommand(w *wshutil.WshRpc, data wshrpc.CommandBlockSetViewData, opts *wshrpc.WshRpcCommandOpts) error {
     _, err := sendRpcRequestCallHelper[any](w, "setview", data, opts)
     return err
+}
+
+// command "stream:waveai", wshserver.RespStreamWaveAi
+func RespStreamWaveAi(w *wshutil.WshRpc, data waveai.OpenAiStreamRequest, opts *wshrpc.WshRpcCommandOpts) chan wshrpc.RespOrErrorUnion[waveai.OpenAIPacketType] {
+    return sendRpcRequestResponseStreamHelper[waveai.OpenAIPacketType](w, "stream:waveai", data, opts)
 }
 
 // command "streamtest", wshserver.RespStreamTest

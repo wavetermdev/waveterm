@@ -70,6 +70,7 @@ func main() {
 	fmt.Fprintf(fd, "	\"github.com/wavetermdev/thenextwave/pkg/wshutil\"\n")
 	fmt.Fprintf(fd, "	\"github.com/wavetermdev/thenextwave/pkg/wshrpc\"\n")
 	fmt.Fprintf(fd, "	\"github.com/wavetermdev/thenextwave/pkg/waveobj\"\n")
+	fmt.Fprintf(fd, "	\"github.com/wavetermdev/thenextwave/pkg/waveai\"\n")
 	fmt.Fprintf(fd, ")\n\n")
 
 	for _, key := range utilfn.GetOrderedMapKeys(wshserver.WshServerCommandToDeclMap) {

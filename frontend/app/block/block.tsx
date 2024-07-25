@@ -14,7 +14,7 @@ import * as util from "@/util/util";
 import { PlotView } from "@/view/plotview";
 import { PreviewView, makePreviewModel } from "@/view/preview";
 import { TerminalView, makeTerminalModel } from "@/view/term/term";
-import { WaveAi } from "@/view/waveai";
+import { WaveAi, makeWaveAiViewModel } from "@/view/waveai";
 import { WebView, makeWebViewModel } from "@/view/webview";
 import clsx from "clsx";
 import * as jotai from "jotai";
@@ -516,7 +516,9 @@ function getViewElemAndModel(
         viewElem = <WebView key={blockId} parentRef={blockRef} model={webviewModel} />;
         viewModel = webviewModel;
     } else if (blockView === "waveai") {
-        viewElem = <WaveAi key={blockId} />;
+        const waveAiModel = makeWaveAiViewModel(blockId);
+        viewElem = <WaveAi key={blockId} model={waveAiModel} />;
+        viewModel = waveAiModel;
     }
     if (viewModel == null) {
         viewModel = makeDefaultViewModel(blockId);

@@ -187,6 +187,49 @@ declare global {
     // waveobj.ORef
     type ORef = string;
 
+    // waveai.OpenAIOptsType
+    type OpenAIOptsType = {
+        model: string;
+        apitoken: string;
+        baseurl?: string;
+        maxtokens?: number;
+        maxchoices?: number;
+        timeout?: number;
+    };
+
+    // waveai.OpenAIPacketType
+    type OpenAIPacketType = {
+        type: string;
+        model?: string;
+        created?: number;
+        finish_reason?: string;
+        usage?: OpenAIUsageType;
+        index?: number;
+        text?: string;
+        error?: string;
+    };
+
+    // waveai.OpenAIPromptMessageType
+    type OpenAIPromptMessageType = {
+        role: string;
+        content: string;
+        name?: string;
+    };
+
+    // waveai.OpenAIUsageType
+    type OpenAIUsageType = {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+    };
+
+    // waveai.OpenAiStreamRequest
+    type OpenAiStreamRequest = {
+        clientid?: string;
+        opts: OpenAIOptsType;
+        prompt: OpenAIPromptMessageType[];
+    };
+
     // wstore.Point
     type Point = {
         x: number;

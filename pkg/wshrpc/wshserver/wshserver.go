@@ -18,6 +18,7 @@ import (
 	"github.com/wavetermdev/thenextwave/pkg/blockcontroller"
 	"github.com/wavetermdev/thenextwave/pkg/eventbus"
 	"github.com/wavetermdev/thenextwave/pkg/filestore"
+	"github.com/wavetermdev/thenextwave/pkg/waveai"
 	"github.com/wavetermdev/thenextwave/pkg/waveobj"
 	"github.com/wavetermdev/thenextwave/pkg/wshrpc"
 	"github.com/wavetermdev/thenextwave/pkg/wshutil"
@@ -33,21 +34,31 @@ var RespStreamTest_MethodDecl = &WshServerMethodDecl{
 	DefaultResponseDataType: reflect.TypeOf((int)(0)),
 }
 
+var RespStreamWaveAi_MethodDecl = &WshServerMethodDecl{
+	Command:                 wshrpc.Command_StreamWaveAi,
+	CommandType:             wshutil.RpcType_ResponseStream,
+	MethodName:              "RespStreamWaveAi",
+	Method:                  reflect.ValueOf(WshServerImpl.RespStreamWaveAi),
+	CommandDataType:         reflect.TypeOf(waveai.OpenAiStreamRequest{}),
+	DefaultResponseDataType: reflect.TypeOf(waveai.OpenAIPacketType{}),
+}
+
 var WshServerCommandToDeclMap = map[string]*WshServerMethodDecl{
-	wshrpc.Command_Message:     GetWshServerMethod(wshrpc.Command_Message, wshutil.RpcType_Call, "MessageCommand", WshServerImpl.MessageCommand),
-	wshrpc.Command_SetView:     GetWshServerMethod(wshrpc.Command_SetView, wshutil.RpcType_Call, "BlockSetViewCommand", WshServerImpl.BlockSetViewCommand),
-	wshrpc.Command_SetMeta:     GetWshServerMethod(wshrpc.Command_SetMeta, wshutil.RpcType_Call, "SetMetaCommand", WshServerImpl.SetMetaCommand),
-	wshrpc.Command_GetMeta:     GetWshServerMethod(wshrpc.Command_GetMeta, wshutil.RpcType_Call, "GetMetaCommand", WshServerImpl.GetMetaCommand),
-	wshrpc.Command_ResolveIds:  GetWshServerMethod(wshrpc.Command_ResolveIds, wshutil.RpcType_Call, "ResolveIdsCommand", WshServerImpl.ResolveIdsCommand),
-	wshrpc.Command_CreateBlock: GetWshServerMethod(wshrpc.Command_CreateBlock, wshutil.RpcType_Call, "CreateBlockCommand", WshServerImpl.CreateBlockCommand),
-	wshrpc.Command_Restart:     GetWshServerMethod(wshrpc.Command_Restart, wshutil.RpcType_Call, "BlockRestartCommand", WshServerImpl.BlockRestartCommand),
-	wshrpc.Command_BlockInput:  GetWshServerMethod(wshrpc.Command_BlockInput, wshutil.RpcType_Call, "BlockInputCommand", WshServerImpl.BlockInputCommand),
-	wshrpc.Command_AppendFile:  GetWshServerMethod(wshrpc.Command_AppendFile, wshutil.RpcType_Call, "AppendFileCommand", WshServerImpl.AppendFileCommand),
-	wshrpc.Command_AppendIJson: GetWshServerMethod(wshrpc.Command_AppendIJson, wshutil.RpcType_Call, "AppendIJsonCommand", WshServerImpl.AppendIJsonCommand),
-	wshrpc.Command_DeleteBlock: GetWshServerMethod(wshrpc.Command_DeleteBlock, wshutil.RpcType_Call, "DeleteBlockCommand", WshServerImpl.DeleteBlockCommand),
-	wshrpc.Command_WriteFile:   GetWshServerMethod(wshrpc.Command_WriteFile, wshutil.RpcType_Call, "WriteFile", WshServerImpl.WriteFile),
-	wshrpc.Command_ReadFile:    GetWshServerMethod(wshrpc.Command_ReadFile, wshutil.RpcType_Call, "ReadFile", WshServerImpl.ReadFile),
-	"streamtest":               RespStreamTest_MethodDecl,
+	wshrpc.Command_Message:      GetWshServerMethod(wshrpc.Command_Message, wshutil.RpcType_Call, "MessageCommand", WshServerImpl.MessageCommand),
+	wshrpc.Command_SetView:      GetWshServerMethod(wshrpc.Command_SetView, wshutil.RpcType_Call, "BlockSetViewCommand", WshServerImpl.BlockSetViewCommand),
+	wshrpc.Command_SetMeta:      GetWshServerMethod(wshrpc.Command_SetMeta, wshutil.RpcType_Call, "SetMetaCommand", WshServerImpl.SetMetaCommand),
+	wshrpc.Command_GetMeta:      GetWshServerMethod(wshrpc.Command_GetMeta, wshutil.RpcType_Call, "GetMetaCommand", WshServerImpl.GetMetaCommand),
+	wshrpc.Command_ResolveIds:   GetWshServerMethod(wshrpc.Command_ResolveIds, wshutil.RpcType_Call, "ResolveIdsCommand", WshServerImpl.ResolveIdsCommand),
+	wshrpc.Command_CreateBlock:  GetWshServerMethod(wshrpc.Command_CreateBlock, wshutil.RpcType_Call, "CreateBlockCommand", WshServerImpl.CreateBlockCommand),
+	wshrpc.Command_Restart:      GetWshServerMethod(wshrpc.Command_Restart, wshutil.RpcType_Call, "BlockRestartCommand", WshServerImpl.BlockRestartCommand),
+	wshrpc.Command_BlockInput:   GetWshServerMethod(wshrpc.Command_BlockInput, wshutil.RpcType_Call, "BlockInputCommand", WshServerImpl.BlockInputCommand),
+	wshrpc.Command_AppendFile:   GetWshServerMethod(wshrpc.Command_AppendFile, wshutil.RpcType_Call, "AppendFileCommand", WshServerImpl.AppendFileCommand),
+	wshrpc.Command_AppendIJson:  GetWshServerMethod(wshrpc.Command_AppendIJson, wshutil.RpcType_Call, "AppendIJsonCommand", WshServerImpl.AppendIJsonCommand),
+	wshrpc.Command_DeleteBlock:  GetWshServerMethod(wshrpc.Command_DeleteBlock, wshutil.RpcType_Call, "DeleteBlockCommand", WshServerImpl.DeleteBlockCommand),
+	wshrpc.Command_WriteFile:    GetWshServerMethod(wshrpc.Command_WriteFile, wshutil.RpcType_Call, "WriteFile", WshServerImpl.WriteFile),
+	wshrpc.Command_ReadFile:     GetWshServerMethod(wshrpc.Command_ReadFile, wshutil.RpcType_Call, "ReadFile", WshServerImpl.ReadFile),
+	wshrpc.Command_StreamWaveAi: RespStreamWaveAi_MethodDecl,
+	"streamtest":                RespStreamTest_MethodDecl,
 }
 
 // for testing
@@ -67,6 +78,13 @@ func (ws *WshServer) RespStreamTest(ctx context.Context) chan wshrpc.RespOrError
 		close(rtn)
 	}()
 	return rtn
+}
+
+func (ws *WshServer) RespStreamWaveAi(ctx context.Context, request waveai.OpenAiStreamRequest) chan wshrpc.RespOrErrorUnion[waveai.OpenAIPacketType] {
+	if request.Opts.BaseURL == "" && request.Opts.APIToken == "" {
+		return waveai.RunCloudCompletionStream(ctx, request)
+	}
+	return waveai.RunLocalCompletionStream(ctx, request)
 }
 
 func (ws *WshServer) GetMetaCommand(ctx context.Context, data wshrpc.CommandGetMetaData) (wshrpc.MetaDataType, error) {

@@ -72,6 +72,11 @@ class WshServerType {
         return WOS.wshServerRpcHelper_call("setview", data, opts);
     }
 
+    // command "stream:waveai" [responsestream]
+	RespStreamWaveAi(data: OpenAiStreamRequest, opts?: WshRpcCommandOpts): AsyncGenerator<OpenAIPacketType, void, boolean> {
+        return WOS.wshServerRpcHelper_responsestream("stream:waveai", data, opts);
+    }
+
     // command "streamtest" [responsestream]
 	RespStreamTest(opts?: WshRpcCommandOpts): AsyncGenerator<number, void, boolean> {
         return WOS.wshServerRpcHelper_responsestream("streamtest", null, opts);
