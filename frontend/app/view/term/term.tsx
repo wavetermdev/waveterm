@@ -127,6 +127,8 @@ class TermViewModel {
     termMode: jotai.Atom<string>;
     htmlElemFocusRef: React.RefObject<HTMLInputElement>;
     blockId: string;
+    viewIcon: jotai.Atom<string>;
+    viewText: jotai.Atom<string>;
 
     constructor(blockId: string) {
         this.blockId = blockId;
@@ -134,6 +136,11 @@ class TermViewModel {
         this.termMode = jotai.atom((get) => {
             const blockData = get(this.blockAtom);
             return blockData?.meta?.["term:mode"] ?? "term";
+        });
+        this.viewIcon = jotai.atom("terminal");
+        this.viewText = jotai.atom((get) => {
+            const blockData = get(this.blockAtom);
+            return blockData?.meta?.title ?? "";
         });
     }
 
