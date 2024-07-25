@@ -112,10 +112,12 @@ const testVDom: VDomElem = {
     tag: "div",
     children: [
         {
+            id: "testh1",
             tag: "h1",
             children: [vdomText("Hello World")],
         },
         {
+            id: "testp",
             tag: "p",
             children: [vdomText("This is a paragraph (from VDOM)")],
         },
