@@ -6,6 +6,7 @@ require (
 	github.com/alexflint/go-filemutex v1.3.0
 	github.com/creack/pty v1.1.21
 	github.com/fsnotify/fsnotify v1.7.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2

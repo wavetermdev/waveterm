@@ -27,6 +27,7 @@ const WaveHomeVarName = "WAVETERM_HOME"
 const WaveDevVarName = "WAVETERM_DEV"
 const WaveLockFile = "waveterm.lock"
 const DomainSocketBaseName = "wave.sock"
+const JwtSecret = "waveterm" // TODO generate and store this
 
 var baseLock = &sync.Mutex{}
 var ensureDirCache = map[string]bool{}
@@ -175,5 +176,4 @@ func AcquireWaveLock() (*filemutex.FileMutex, error) {
 
 	err = m.TryLock()
 	return m, err
-
 }
