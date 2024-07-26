@@ -1,0 +1,55 @@
+name: Security Testing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+env:
+  GO_VERSION: '1.22.0'
+
+jobs:
+  SAST:
+    name: Perform SAST analysis (golangci-lint)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run SAST (golangci-lint)
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: "latest"
+          only-new-issues: true
+          args: --timeout=10m
+          skip-pkg-cache: true
+          skip-build-cache: true
+
+  SCA:
+    name: Perform SCA analysis (govulncheck)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Run SCA (govulncheck)
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-input: ${{ env.GO_VERSION }}
+          go-package: ./...
+          cache: false
