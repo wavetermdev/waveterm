@@ -21,7 +21,7 @@ const WaveAppPathVarName = "WAVETERM_APP_PATH";
 const WaveDevVarName = "WAVETERM_DEV";
 const AuthKeyFile = "waveterm.authkey";
 const DevServerEndpoint = "http://127.0.0.1:8090";
-const ProdServerEndpoint = "http://127.0.0.1:1619";
+const ProdServerEndpoint = "http://127.0.0.1";
 
 const isDev = process.env[WaveDevVarName] != null;
 const waveHome = getWaveHomeDir();
@@ -157,7 +157,11 @@ function getBaseHostPort(): string {
     if (isDev) {
         return DevServerEndpoint;
     }
-    return ProdServerEndpoint;
+
+    const waveHome = getWaveHomeDir();
+    const portFile = path.join(waveHome, "wavesrv.port");
+
+    return ProdServerEndpoint + ":" + fs.readFileSync(portFile, "utf8").trim();
 }
 
 function getWaveSrvPath(): string {

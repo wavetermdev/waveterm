@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"log"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -59,8 +60,8 @@ const HttpWriteTimeout = 21 * time.Second
 const HttpMaxHeaderBytes = 60000
 const HttpTimeoutDuration = 21 * time.Second
 
-const MainServerAddr = "127.0.0.1:1619"      // wavesrv,  P=16, S=19, PS=1619
-const WebSocketServerAddr = "127.0.0.1:1623" // wavesrv:websocket, P=16, W=23, PW=1623
+const MainServerHost = "127.0.0.1"      // wavesrv
+const WebSocketServerHost = "127.0.0.1" // wavesrv:websocket
 const MainServerDevAddr = "127.0.0.1:8090"
 const WebSocketServerDevAddr = "127.0.0.1:8091"
 const WSStateReconnectTime = 30 * time.Second
@@ -893,20 +894,30 @@ func AuthKeyWrap(fn WebFnType) WebFnType {
 func runWebSocketServer() {
 	gr := mux.NewRouter()
 	gr.HandleFunc("/ws", HandleWs)
-	serverAddr := WebSocketServerAddr
-	if scbase.IsDevMode() {
-		serverAddr = WebSocketServerDevAddr
+
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:0", WebSocketServerHost))
+	if err != nil {
+		log.Printf("[error] trying to start websocket server: %v\n", err)
+		return
 	}
+
+	homeDir := scbase.GetWaveHomeDir()
+
+	if err := os.WriteFile(filepath.Join(homeDir, "wavesrv.ws.port"), []byte(fmt.Sprintf("%d", l.Addr().(*net.TCPAddr).Port)), 0644); err != nil {
+		log.Printf("[error] writing wsport file: %v\n", err)
+		return
+	}
+
 	server := &http.Server{
-		Addr:           serverAddr,
+		Addr:           l.Addr().String(),
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
 		Handler:        gr,
 	}
 	server.SetKeepAlivesEnabled(false)
-	log.Printf("Running websocket server on %s\n", serverAddr)
-	err := server.ListenAndServe()
+	log.Printf("Running websocket server on %s\n", l.Addr().String())
+	err := server.Serve(l)
 	if err != nil {
 		log.Printf("[error] trying to run websocket server: %v\n", err)
 	}
@@ -1190,20 +1201,29 @@ func main() {
 	isDirHandler := http.HandlerFunc(configDirHandler)
 	gr.PathPrefix("/config/").Handler(ConfigHandlerCheckIsDir(isDirHandler, isFileHandler))
 
-	serverAddr := MainServerAddr
-	if scbase.IsDevMode() {
-		serverAddr = MainServerDevAddr
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:0", MainServerHost))
+	if err != nil {
+		log.Printf("ERROR: %v\n", err)
+		return
 	}
+
+	homeDir := scbase.GetWaveHomeDir()
+
+	if err := os.WriteFile(filepath.Join(homeDir, "wavesrv.port"), []byte(fmt.Sprintf("%d", os.Getpid())), 0644); err != nil {
+		log.Printf("error writing wavesrv.port: %v\n", err)
+		return
+	}
+
 	server := &http.Server{
-		Addr:           serverAddr,
+		Addr:           l.Addr().String(),
 		ReadTimeout:    HttpReadTimeout,
 		WriteTimeout:   HttpWriteTimeout,
 		MaxHeaderBytes: HttpMaxHeaderBytes,
 		Handler:        http.TimeoutHandler(gr, HttpTimeoutDuration, "Timeout"),
 	}
 	server.SetKeepAlivesEnabled(false)
-	log.Printf("Running main server on %s\n", serverAddr)
-	err = server.ListenAndServe()
+	log.Printf("Running main server on %s\n", l.Addr().String())
+	err = server.Serve(l)
 	if err != nil {
 		log.Printf("ERROR: %v\n", err)
 	}
