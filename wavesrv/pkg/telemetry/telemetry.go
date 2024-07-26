@@ -213,13 +213,14 @@ func atoiNoErr(str string) int {
 func UpdateFeActivityWrap(feActivity *scpacket.FeActivityPacketType) {
 	update := ActivityUpdate{}
 	for key, val := range feActivity.Activity {
-		if key == "aichat-open" {
+		switch key {
+		case "aichat-open":
 			update.FeAIChatOpen = val
-		} else if key == "history-open" {
+		case "history-open":
 			update.FeHistoryOpen = val
-		} else if key == "aicmdinfo-open" {
+		case "aicmdinfo-open":
 			update.FeAiCmdInfoOpen = val
-		} else {
+		default:
 			log.Printf("unknown feactivity key: %s\n", key)
 		}
 	}

@@ -44,7 +44,7 @@ const (
 	CmdParseTypeRaw        = "raw"
 )
 
-var CmdParseOverrides map[string]string = map[string]string{
+var CmdParseOverrides = map[string]string{
 	"setenv":  CmdParseTypePositional,
 	"unset":   CmdParseTypePositional,
 	"set":     CmdParseTypePositional,
@@ -298,10 +298,7 @@ func IsReturnStateCommand(cmdStr string) bool {
 	parser := syntax.NewParser(syntax.Variant(syntax.LangBash))
 	file, err := parser.Parse(cmdReader, "cmd")
 	if err != nil {
-		if checkSimpleRtnStateCmd(cmdStr) {
-			return true
-		}
-		return false
+		return checkSimpleRtnStateCmd(cmdStr)
 	}
 	for _, stmt := range file.Stmts {
 		if isRtnStateCmd(stmt.Cmd) {
@@ -383,7 +380,7 @@ func EvalBracketArgs(origCmdStr string) (map[string]string, string, error) {
 }
 
 func unescapeBackSlashes(s string) string {
-	if strings.Index(s, "\\") == -1 {
+	if !strings.Contains(s, "\\") {
 		return s
 	}
 	var newStr []rune

@@ -111,7 +111,7 @@ var ScreenCmds = []string{"run", "comment", "cd", "cr", "clear", "sw", "reset", 
 var NoHistCmds = []string{"_compgen", "line", "history", "_killserver"}
 var GlobalCmds = []string{"session", "screen", "remote", "set", "client", "telemetry", "bookmark", "bookmarks"}
 
-var SetVarNameMap map[string]string = map[string]string{
+var SetVarNameMap = map[string]string{
 	"tabcolor": "screen.tabcolor",
 	"tabicon":  "screen.tabicon",
 	"pterm":    "screen.pterm",
@@ -133,12 +133,11 @@ var SetVarScopes = []SetVarScope{
 }
 
 var userHostRe = regexp.MustCompile(`^(sudo@)?([a-zA-Z0-9][a-zA-Z0-9._@\\-]*@)?([a-z0-9][a-z0-9.-]*)(?::([0-9]+))?$`)
-var remoteAliasRe = regexp.MustCompile("^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
-var genericNameRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_ .()<>,/\"'\\[\\]{}=+$@!*-]*$")
-var rendererRe = regexp.MustCompile("^[a-zA-Z][a-zA-Z0-9_.:-]*$")
-var positionRe = regexp.MustCompile("^((S?\\+|E?-)?[0-9]+|(\\+|-|S|E))$")
-var wsRe = regexp.MustCompile("\\s+")
-var sigNameRe = regexp.MustCompile("^((SIG[A-Z0-9]+)|(\\d+))$")
+var remoteAliasRe = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
+var genericNameRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_ .()<>,/"'\\{}=+$@!*-]*$`)
+var rendererRe = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_.:-]*$`)
+var positionRe = regexp.MustCompile(`^((S?\\+|E?-)?[0-9]+|(\\+|-|S|E))$`)
+var sigNameRe = regexp.MustCompile(`^((SIG[A-Z0-9]+)|(\\d+))$`)
 
 type contextType string
 
@@ -353,13 +352,6 @@ func firstArg(pk *scpacket.FeCommandPacketType) string {
 		return ""
 	}
 	return pk.Args[0]
-}
-
-func argN(pk *scpacket.FeCommandPacketType, n int) string {
-	if len(pk.Args) <= n {
-		return ""
-	}
-	return pk.Args[n]
 }
 
 // will trim strings for whitespace
@@ -674,10 +666,10 @@ func RunCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.Up
 	cmd.RawCmdStr = pk.GetRawStr()
 	lineState := make(map[string]any)
 	if templateArg != "" {
-		lineState[sstore.LineState_Template] = templateArg
+		lineState[sstore.LineStateTemplate] = templateArg
 	}
 	if langArg != "" {
-		lineState[sstore.LineState_Lang] = langArg
+		lineState[sstore.LineStateLang] = langArg
 	}
 
 	// If we are running an ephemeral command, we don't want to add the line to the screen
@@ -771,7 +763,7 @@ func EvalCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.U
 	}
 	if !resolveBool(pk.Kwargs[KwArgNoHist], false) && pk.EphemeralOpts == nil {
 		// TODO should this be "pk" or "newPk" (2nd arg)
-		err := addToHistory(ctx, pk, historyContext, (newPk.MetaCmd != "run"), (rtnErr != nil))
+		err := addToHistory(ctx, pk, historyContext, newPk.MetaCmd != "run", rtnErr != nil)
 		if err != nil {
 			log.Printf("[error] adding to history: %v\n", err)
 			// fall through (non-fatal error)
@@ -963,7 +955,7 @@ func ScreenReorderCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	return update, nil
 }
 
-var screenAnchorRe = regexp.MustCompile("^(\\d+)(?::(-?\\d+))?$")
+var screenAnchorRe = regexp.MustCompile(`^(\\d+)(?::(-?\\d+))?$`)
 
 func ScreenSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen)
@@ -1096,7 +1088,7 @@ func ScreenCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus
 	return update, nil
 }
 
-var sidebarWidthRe = regexp.MustCompile("^\\d+(px|%)$")
+var sidebarWidthRe = regexp.MustCompile(`^\\d+(px|%)$`)
 
 func sidebarSetOpen(ctx context.Context, cmdStr string, screenId string, open bool, width string) (*sstore.ScreenType, error) {
 	if width != "" && !sidebarWidthRe.MatchString(width) {
@@ -1347,9 +1339,9 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remoteWsh
 		return
 	}
 	fileSizeBytes := fileStat.Size()
-	bytesWritten := int64(0)
-	lastFileTransferPercentage := float64(0)
-	fileTransferPercentage := float64(0)
+	var bytesWritten int64
+	var lastFileTransferPercentage float64
+	var fileTransferPercentage float64
 	writeStringToPty(ctx, cmd, fmt.Sprintf("Source File Size: %s\r\n", prettyPrintByteSize(fileSizeBytes)), &outputPos)
 	writeStringToPty(ctx, cmd, "[", &outputPos)
 	var buffer [server.MaxFileDataPacketSize]byte
@@ -1357,7 +1349,7 @@ func doCopyLocalFileToRemote(ctx context.Context, cmd *sstore.CmdType, remoteWsh
 	for {
 		dataPk := packet.MakeFileDataPacket(writePk.ReqId)
 		bytesRead, err := io.ReadFull(localFile, bufSlice)
-		if err == io.ErrUnexpectedEOF || err == io.EOF {
+		if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
 			dataPk.Eof = true
 		} else if err != nil {
 			dataErr := fmt.Sprintf("error reading file data: %v", err)
@@ -1458,9 +1450,9 @@ func doCopyRemoteFileToRemote(ctx context.Context, cmd *sstore.CmdType, sourceWs
 		writeStringToPty(ctx, cmd, fmt.Sprintf("Write ready packet error: %v\r\n", err), &outputPos)
 		return
 	}
-	bytesWritten := int64(0)
-	lastFilePercentageInt := int(0)
-	fileTransferPercentage := float64(0)
+	var bytesWritten int64
+	var lastFilePercentageInt int
+	var fileTransferPercentage float64
 	writeStringToPty(ctx, cmd, "[", &outputPos)
 	for {
 		dataPkIf, err := sourceStreamIter.Next(ctx)
@@ -1587,9 +1579,9 @@ func doCopyRemoteFileToLocal(ctx context.Context, cmd *sstore.CmdType, remoteWsh
 		return
 	}
 	defer localFile.Close()
-	bytesWritten := int64(0)
-	lastFileTransferPercentage := float64(0)
-	fileTransferPercentage := float64(0)
+	var bytesWritten int64
+	var lastFileTransferPercentage float64
+	var fileTransferPercentage float64
 	writeStringToPty(ctx, cmd, "[", &outputPos)
 	for {
 		dataPkIf, err := iter.Next(ctx)
@@ -1840,13 +1832,6 @@ func makeRemoteEditUpdate_new(err error) scbus.UpdatePacket {
 	return createRemoteViewRemoteEditUpdate(redit)
 }
 
-func makeRemoteEditErrorReturn_new(visual bool, err error) (scbus.UpdatePacket, error) {
-	if visual {
-		return makeRemoteEditUpdate_new(err), nil
-	}
-	return nil, err
-}
-
 func makeRemoteEditUpdate_edit(ids resolvedIds, err error) scbus.UpdatePacket {
 	redit := &sstore.RemoteEditType{
 		RemoteEdit: true,
@@ -1854,7 +1839,7 @@ func makeRemoteEditUpdate_edit(ids resolvedIds, err error) scbus.UpdatePacket {
 	redit.RemoteId = ids.Remote.RemotePtr.RemoteId
 	if ids.Remote.RemoteCopy.SSHOpts != nil {
 		redit.KeyStr = ids.Remote.RemoteCopy.SSHOpts.SSHIdentity
-		redit.HasPassword = (ids.Remote.RemoteCopy.SSHOpts.SSHPassword != "")
+		redit.HasPassword = ids.Remote.RemoteCopy.SSHOpts.SSHPassword != ""
 	}
 	if err != nil {
 		redit.ErrorStr = err.Error()
@@ -1967,13 +1952,13 @@ func parseRemoteEditArgs(isNew bool, pk *scpacket.FeCommandPacketType, isLocal b
 	}
 	var shellPref string
 	if isNew {
-		shellPref = sstore.ShellTypePref_Detect
+		shellPref = sstore.ShellTypePrefDetect
 	}
 	if pk.Kwargs["shellpref"] != "" {
 		shellPref = pk.Kwargs["shellpref"]
 	}
-	if shellPref != "" && shellPref != packet.ShellType_bash && shellPref != packet.ShellType_zsh && shellPref != sstore.ShellTypePref_Detect {
-		return nil, fmt.Errorf("invalid shellpref %q, must be %s", shellPref, formatStrs([]string{packet.ShellType_bash, packet.ShellType_zsh, sstore.ShellTypePref_Detect}, "or", false))
+	if shellPref != "" && shellPref != packet.ShellType_bash && shellPref != packet.ShellType_zsh && shellPref != sstore.ShellTypePrefDetect {
+		return nil, fmt.Errorf("invalid shellpref %q, must be %s", shellPref, formatStrs([]string{packet.ShellType_bash, packet.ShellType_zsh, sstore.ShellTypePrefDetect}, "or", false))
 	}
 	var connectMode string
 	if isNew {
@@ -2167,7 +2152,7 @@ func resolveSshConfigPatterns(configFiles []string) ([]string, error) {
 			// for each host, find the first good alias
 			for _, hostPattern := range host.Patterns {
 				hostPatternStr := hostPattern.String()
-				if strings.Index(hostPatternStr, "*") == -1 || alreadyUsed[hostPatternStr] == true {
+				if !strings.Contains(hostPatternStr, "*") || alreadyUsed[hostPatternStr] {
 					discoveredPatterns = append(discoveredPatterns, hostPatternStr)
 					alreadyUsed[hostPatternStr] = true
 					break
@@ -2290,7 +2275,7 @@ func NewHostInfo(hostName string) (*HostInfoType, error) {
 		connectMode = sstore.ConnectModeManual
 	}
 
-	shellPref := sstore.ShellTypePref_Detect
+	shellPref := sstore.ShellTypePrefDetect
 	if cfgWaveOptions["shellpref"] == "bash" {
 		shellPref = "bash"
 	} else if cfgWaveOptions["shellpref"] == "zsh" {
@@ -2415,7 +2400,7 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 				AutoInstall:         true,
 				SSHOpts:             sshOpts,
 				SSHConfigSrc:        sstore.SSHConfigSrcTypeImport,
-				ShellPref:           sstore.ShellTypePref_Detect,
+				ShellPref:           sstore.ShellTypePrefDetect,
 			}
 			err := remote.AddRemote(ctx, r, false)
 			if err != nil {
@@ -2449,6 +2434,10 @@ func RemoteConfigParseCommand(ctx context.Context, pk *scpacket.FeCommandPacketT
 
 func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, R_Session)
+	if err != nil {
+		return nil, err
+	}
+
 	screenArr, err := sstore.GetSessionScreens(ctx, ids.SessionId)
 	if err != nil {
 		return nil, fmt.Errorf("/screen:showall error getting screen list: %v", err)
@@ -2468,7 +2457,7 @@ func ScreenShowAllCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	}
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
-		InfoTitle: fmt.Sprintf("all screens for session"),
+		InfoTitle: "all screens for session",
 		InfoLines: splitLinesForInfo(buf.String()),
 	})
 	return update, nil
@@ -2605,7 +2594,6 @@ func writeErrorToPty(cmd *sstore.CmdType, errStr string, outputPos int64) {
 		return
 	}
 	scbus.MainUpdateBus.DoScreenUpdate(cmd.ScreenId, update)
-	return
 }
 
 func writePacketToPty(ctx context.Context, cmd *sstore.CmdType, pk packet.PacketType, outputPos *int64) error {
@@ -2673,7 +2661,6 @@ func doOpenAICompletion(cmd *sstore.CmdType, opts *sstore.OpenAIOptsType, prompt
 			return
 		}
 	}
-	return
 }
 
 func writePacketToUpdateBus(ctx context.Context, cmd *sstore.CmdType, pk *packet.OpenAICmdInfoChatMessage) {
@@ -2843,7 +2830,7 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 		case <-time.After(packetTimeout):
 			// timeout reading from channel
 			hadError = true
-			pk := openai.CreateErrorPacket(fmt.Sprintf("timeout waiting for server response"))
+			pk := openai.CreateErrorPacket("timeout waiting for server response")
 			err = writePacketToPty(ctx, cmd, pk, &outputPos)
 			if err != nil {
 				log.Printf("error writing response to ptybuffer: %v", err)
@@ -2868,7 +2855,6 @@ func doOpenAIStreamCompletion(cmd *sstore.CmdType, clientId string, opts *sstore
 			}
 		}
 	}
-	return
 }
 
 func BuildOpenAIPromptArrayWithContext(messages []*packet.OpenAICmdInfoChatMessage) []packet.OpenAIPromptMessageType {
@@ -3263,57 +3249,6 @@ func simpleCompMeta(ctx context.Context, prefix string, compCtx comp.CompContext
 	return &rtn, nil
 }
 
-func doMetaCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix string, forDisplay bool) ([]string, bool, error) {
-	ids, err := resolveUiIds(ctx, pk, 0) // best effort
-	var comps []string
-	var hasMore bool
-	if ids.Remote != nil && ids.Remote.RState.IsConnected() {
-		comps, hasMore, err = doCompGen(ctx, pk, prefix, "file", forDisplay)
-		if err != nil {
-			return nil, false, err
-		}
-	}
-	validCommands := getValidCommands()
-	for _, cmd := range validCommands {
-		if strings.HasPrefix(cmd, prefix) {
-			if forDisplay {
-				comps = append(comps, "^"+cmd)
-			} else {
-				comps = append(comps, cmd)
-			}
-		}
-	}
-	return comps, hasMore, nil
-}
-
-func doCompGen(ctx context.Context, pk *scpacket.FeCommandPacketType, prefix string, compType string, forDisplay bool) ([]string, bool, error) {
-	if compType == "metacommand" {
-		return doMetaCompGen(ctx, pk, prefix, forDisplay)
-	}
-	if !packet.IsValidCompGenType(compType) {
-		return nil, false, fmt.Errorf("/_compgen invalid type '%s'", compType)
-	}
-	ids, err := resolveUiIds(ctx, pk, R_Session|R_Screen|R_RemoteConnected)
-	if err != nil {
-		return nil, false, fmt.Errorf("/_compgen error: %w", err)
-	}
-	cgPacket := packet.MakeCompGenPacket()
-	cgPacket.ReqId = uuid.New().String()
-	cgPacket.CompType = compType
-	cgPacket.Prefix = prefix
-	cgPacket.Cwd = ids.Remote.FeState["cwd"]
-	resp, err := ids.Remote.Waveshell.PacketRpc(ctx, cgPacket)
-	if err != nil {
-		return nil, false, err
-	}
-	if err = resp.Err(); err != nil {
-		return nil, false, err
-	}
-	comps := utilfn.GetStrArr(resp.Data, "comps")
-	hasMore := utilfn.GetBool(resp.Data, "hasmore")
-	return comps, hasMore, nil
-}
-
 func CompFileDirCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	ids, err := resolveUiIds(ctx, pk, 0) // best-effort
 	if err != nil {
@@ -3433,16 +3368,6 @@ func maybeQuote(s string, quote bool) string {
 	return s
 }
 
-func mapToStrs(m map[string]bool) []string {
-	var rtn []string
-	for key, val := range m {
-		if val {
-			rtn = append(rtn, key)
-		}
-	}
-	return rtn
-}
-
 func formatStrs(strs []string, conj string, quote bool) string {
 	if len(strs) == 0 {
 		return "(none)"
@@ -3558,10 +3483,6 @@ func SessionEnsureOneCommand(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	return SessionOpenCommand(ctx, pk)
 }
 
-func makeExternLink(urlStr string) string {
-	return fmt.Sprintf(`https://extern?%s`, url.QueryEscape(urlStr))
-}
-
 func ScreenWebShareCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
 	return nil, fmt.Errorf("websharing is no longer available")
 }
@@ -3571,7 +3492,7 @@ func SessionDeleteCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	if err != nil {
 		return nil, err
 	}
-	sessionId := ""
+	var sessionId string
 	if len(pk.Args) >= 1 {
 		ritem, err := resolveSession(ctx, pk.Args[0], ids.SessionId)
 		if err != nil {
@@ -3599,7 +3520,7 @@ func SessionArchiveCommand(ctx context.Context, pk *scpacket.FeCommandPacketType
 	if err != nil {
 		return nil, err
 	}
-	sessionId := ""
+	var sessionId string
 	if len(pk.Args) >= 1 {
 		ritem, err := resolveSession(ctx, pk.Args[0], ids.SessionId)
 		if err != nil {
@@ -3800,7 +3721,7 @@ func SessionSetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if len(varsUpdated) == 0 {
 		return nil, fmt.Errorf("/session:set no updates, can set %s", formatStrs([]string{"name", "pos"}, "or", false))
 	}
-	bareSession, err := sstore.GetBareSessionById(ctx, ids.SessionId)
+	bareSession, _ := sstore.GetBareSessionById(ctx, ids.SessionId)
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(*bareSession, sstore.InfoMsgType{
 		InfoMsg:   fmt.Sprintf("session updated %s", formatStrs(varsUpdated, "and", false)),
@@ -3959,7 +3880,7 @@ func DebugRemoteInstanceCommand(ctx context.Context, pk *scpacket.FeCommandPacke
 			outputLines = append(outputLines, fmt.Sprintf("line %5d | err %v", line.LineNum, err))
 			continue
 		}
-		outputStr := ""
+		var outputStr string
 		if info.IsDiff {
 			outputStr = fmt.Sprintf("line %5d | diff %8s-%8s | size %8d", line.LineNum, info.BaseHash[0:8], info.DiffHash[0:8], info.StateSize)
 		} else {
@@ -4140,7 +4061,7 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.
 			return nil, fmt.Errorf("clearing screen (archiving): %v", err)
 		}
 		update.AddUpdate(sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("screen cleared (all lines archived)"),
+			InfoMsg:   "screen cleared (all lines archived)",
 			TimeoutMs: 2000,
 		})
 		return update, nil
@@ -4150,7 +4071,7 @@ func ClearCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.
 			return nil, fmt.Errorf("clearing screen: %v", err)
 		}
 		update.AddUpdate(sstore.InfoMsgType{
-			InfoMsg:   fmt.Sprintf("screen cleared"),
+			InfoMsg:   "screen cleared",
 			TimeoutMs: 2000,
 		})
 		return update, nil
@@ -4184,7 +4105,7 @@ var cmdFilterCd = regexp.MustCompile(`^cd(\s|$)`)
 
 func historyCmdFilter(hitem *history.HistoryItemType) bool {
 	cmdStr := hitem.CmdStr
-	if cmdStr == "" || strings.Index(cmdStr, ";") != -1 || strings.Index(cmdStr, "\n") != -1 {
+	if cmdStr == "" || strings.Contains(cmdStr, ";") || strings.Contains(cmdStr, "\n") {
 		return true
 	}
 	if cmdFilterLs.MatchString(cmdStr) {
@@ -4785,7 +4706,7 @@ func LineBookmarkCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 		}
 		newBmId = newBm.BookmarkId
 	}
-	bms, err := bookmarks.GetBookmarks(ctx, "")
+	bms, _ := bookmarks.GetBookmarks(ctx, "")
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(&MainViewUpdate{
 		MainView:      sstore.MainViewBookmarks,
@@ -4901,10 +4822,10 @@ func LineMinimizeCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	minVal := resolveBool(lineArg2, true)
 	lineState := make(map[string]any)
 	if minVal {
-		lineState[sstore.LineState_Min] = minVal
+		lineState[sstore.LineStateMin] = minVal
 	} else {
-		// Remove sstore.LineState_Min from lineState if it exists
-		delete(lineState, sstore.LineState_Min)
+		// Remove sstore.LineStateMin from lineState if it exists
+		delete(lineState, sstore.LineStateMin)
 	}
 	err = sstore.UpdateLineState(ctx, ids.ScreenId, lineId, lineState)
 	if err != nil {
@@ -5049,8 +4970,7 @@ func LineShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 }
 
 func SetCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbus.UpdatePacket, error) {
-	var setMap map[string]map[string]string
-	setMap = make(map[string]map[string]string)
+	setMap := make(map[string]map[string]string)
 	_, err := resolveUiIds(ctx, pk, 0) // best effort
 	if err != nil {
 		return nil, err
@@ -5227,18 +5147,18 @@ func CodeEditCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scb
 	}
 	// set the line state
 	lineState := make(map[string]any)
-	lineState[sstore.LineState_Source] = "file"
-	lineState[sstore.LineState_File] = pk.Args[0]
+	lineState[sstore.LineStateSource] = "file"
+	lineState[sstore.LineStateFile] = pk.Args[0]
 	if GetCmdStr(pk) == "codeview" {
-		lineState[sstore.LineState_Mode] = "view"
+		lineState[sstore.LineStateMode] = "view"
 	} else {
-		lineState[sstore.LineState_Mode] = "edit"
+		lineState[sstore.LineStateMode] = "edit"
 	}
 	if langArg != "" {
-		lineState[sstore.LineState_Lang] = langArg
+		lineState[sstore.LineStateLang] = langArg
 	}
 	if _, ok := pk.Kwargs[KwArgMinimap]; ok {
-		lineState[sstore.LineState_Minimap] = resolveBool(pk.Kwargs[KwArgMinimap], false)
+		lineState[sstore.LineStateMinimap] = resolveBool(pk.Kwargs[KwArgMinimap], false)
 	}
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), true, ids, cmd, "code", lineState)
 	if err != nil {
@@ -5269,8 +5189,8 @@ func CSVViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	}
 	// set the line state
 	lineState := make(map[string]any)
-	lineState[sstore.LineState_Source] = "file"
-	lineState[sstore.LineState_File] = pk.Args[0]
+	lineState[sstore.LineStateSource] = "file"
+	lineState[sstore.LineStateFile] = pk.Args[0]
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), true, ids, cmd, "csv", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -5301,8 +5221,8 @@ func ImageViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	}
 	// set the line state
 	lineState := make(map[string]any)
-	lineState[sstore.LineState_Source] = "file"
-	lineState[sstore.LineState_File] = filePath
+	lineState[sstore.LineStateSource] = "file"
+	lineState[sstore.LineStateFile] = filePath
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "image", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -5332,8 +5252,8 @@ func PdfViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (scbu
 	}
 	// set the line state
 	lineState := make(map[string]any)
-	lineState[sstore.LineState_Source] = "file"
-	lineState[sstore.LineState_File] = pk.Args[0]
+	lineState[sstore.LineStateSource] = "file"
+	lineState[sstore.LineStateFile] = pk.Args[0]
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "pdf", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -5384,8 +5304,8 @@ func MediaViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (sc
 	}
 	// set the line state
 	lineState := make(map[string]any)
-	lineState[sstore.LineState_FileUrl] = readFileUrl
-	lineState[sstore.LineState_File] = fileName
+	lineState[sstore.LineStateFileUrl] = readFileUrl
+	lineState[sstore.LineStateFile] = fileName
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "media", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -5415,8 +5335,8 @@ func MarkdownViewCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) 
 	}
 	// set the line state
 	lineState := make(map[string]any)
-	lineState[sstore.LineState_Source] = "file"
-	lineState[sstore.LineState_File] = pk.Args[0]
+	lineState[sstore.LineStateSource] = "file"
+	lineState[sstore.LineStateFile] = pk.Args[0]
 	update, err := addLineForCmd(ctx, "/"+GetCmdStr(pk), false, ids, cmd, "markdown", lineState)
 	if err != nil {
 		// TODO tricky error since the command was a success, but we can't show the output
@@ -5680,7 +5600,7 @@ func ClientSetGlobalShortcut(ctx context.Context, pk *scpacket.FeCommandPacketTy
 	}
 	clientOpts := clientData.ClientOpts
 	clientOpts.GlobalShortcut = newShortcut
-	clientOpts.GlobalShortcutEnabled = (newShortcut != "")
+	clientOpts.GlobalShortcutEnabled = newShortcut != ""
 	err = sstore.SetClientOpts(ctx, clientOpts)
 	if err != nil {
 		return nil, fmt.Errorf("error updating client data: %v", err)
@@ -6145,9 +6065,9 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	if aiBaseUrl == "" {
 		aiBaseUrl = "(openai default)"
 	}
-	aiTimeout := fmt.Sprintf("(default) %d", (OpenAIPacketTimeout / 1000))
+	aiTimeout := fmt.Sprintf("(default) %d", OpenAIPacketTimeout/1000)
 	if clientData.OpenAIOpts.Timeout != 0 {
-		aiTimeout = strconv.FormatFloat((float64(clientData.OpenAIOpts.Timeout) / 1000.0), 'f', -1, 64)
+		aiTimeout = strconv.FormatFloat(float64(clientData.OpenAIOpts.Timeout)/1000.0, 'f', -1, 64)
 	}
 	var buf bytes.Buffer
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "userid", clientData.UserId))
@@ -6169,7 +6089,7 @@ func ClientShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType) (s
 	buf.WriteString(fmt.Sprintf("  %-15s %ss\n", "aitimeout", aiTimeout))
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
-		InfoTitle: fmt.Sprintf("client info"),
+		InfoTitle: "client info",
 		InfoLines: splitLinesForInfo(buf.String()),
 	})
 
@@ -6260,7 +6180,7 @@ func TelemetryShowCommand(ctx context.Context, pk *scpacket.FeCommandPacketType)
 	buf.WriteString(fmt.Sprintf("  %-15s %s\n", "telemetry", boolToStr(clientData.ClientOpts.NoTelemetry, "off", "on")))
 	update := scbus.MakeUpdatePacket()
 	update.AddUpdate(sstore.InfoMsgType{
-		InfoTitle: fmt.Sprintf("telemetry info"),
+		InfoTitle: "telemetry info",
 		InfoLines: splitLinesForInfo(buf.String()),
 	})
 	return update, nil
@@ -6453,43 +6373,6 @@ type ColMeta struct {
 	Title   string
 	MinCols int
 	MaxCols int
-}
-
-func toInterfaceArr(sarr []string) []interface{} {
-	rtn := make([]interface{}, len(sarr))
-	for idx, s := range sarr {
-		rtn[idx] = s
-	}
-	return rtn
-}
-
-func formatTextTable(totalCols int, data [][]string, colMeta []ColMeta) []string {
-	numCols := len(colMeta)
-	maxColLen := make([]int, len(colMeta))
-	for i, cm := range colMeta {
-		maxColLen[i] = cm.MinCols
-	}
-	for _, row := range data {
-		for i := 0; i < numCols && i < len(row); i++ {
-			dlen := len(row[i])
-			if dlen > maxColLen[i] {
-				maxColLen[i] = dlen
-			}
-		}
-	}
-	fmtStr := ""
-	for idx, clen := range maxColLen {
-		if idx != 0 {
-			fmtStr += " "
-		}
-		fmtStr += fmt.Sprintf("%%%ds", clen)
-	}
-	var rtn []string
-	for _, row := range data {
-		sval := fmt.Sprintf(fmtStr, toInterfaceArr(row)...)
-		rtn = append(rtn, sval)
-	}
-	return rtn
 }
 
 func isValidInScope(scopeName string, varName string) bool {

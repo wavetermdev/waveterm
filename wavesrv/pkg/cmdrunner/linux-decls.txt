@@ -61,7 +61,7 @@ __git_ps1 ()
     [ -z "${ZSH_VERSION-}" ] || [[ -o PROMPT_SUBST ]] || ps1_expanded=no;
     [ -z "${BASH_VERSION-}" ] || shopt -q promptvars || ps1_expanded=no;
     local repo_info rev_parse_exit_code;
-    repo_info="$(git rev-parse --git-dir --is-inside-git-dir 		--is-bare-repository --is-inside-work-tree 		--short HEAD 2>/dev/null)";
+    repo_info="$(git rev-parse --git-dir --is-inside-git-dir        --is-bare-repository --is-inside-work-tree        --short HEAD 2>/dev/null)";
     rev_parse_exit_code="$?";
     if [ -z "$repo_info" ]; then
         return $exit;
@@ -142,18 +142,18 @@ __git_ps1 ()
                 if [ "$head" = "$b" ]; then
                     detached=yes;
                     b="$(
-				case "${GIT_PS1_DESCRIBE_STYLE-}" in
-				(contains)
-					git describe --contains HEAD ;;
-				(branch)
-					git describe --contains --all HEAD ;;
-				(tag)
-					git describe --tags HEAD ;;
-				(describe)
-					git describe HEAD ;;
-				(* | default)
-					git describe --tags --exact-match HEAD ;;
-				esac 2>/dev/null)" || b="$short_sha...";
+                case "${GIT_PS1_DESCRIBE_STYLE-}" in
+                (contains)
+                    git describe --contains HEAD ;;
+                (branch)
+                    git describe --contains --all HEAD ;;
+                (tag)
+                    git describe --tags HEAD ;;
+                (describe)
+                    git describe HEAD ;;
+                (* | default)
+                    git describe --tags --exact-match HEAD ;;
+                esac 2>/dev/null)" || b="$short_sha...";
                     b="($b)";
                 fi;
             fi;
@@ -301,7 +301,7 @@ __git_ps1_show_upstream ()
         ;;
         svn*)
             local -a svn_upstream;
-            svn_upstream=($(git log --first-parent -1 					--grep="^git-svn-id: \(${svn_url_pattern#??}\)" 2>/dev/null));
+            svn_upstream=($(git log --first-parent -1                    --grep="^git-svn-id: \(${svn_url_pattern#??}\)" 2>/dev/null));
             if [[ 0 -ne ${#svn_upstream[@]} ]]; then
                 svn_upstream=${svn_upstream[${#svn_upstream[@]} - 2]};
                 svn_upstream=${svn_upstream%@*};
@@ -323,7 +323,7 @@ __git_ps1_show_upstream ()
         ;;
     esac;
     if [[ -z "$legacy" ]]; then
-        count="$(git rev-list --count --left-right 				"$upstream"...HEAD 2>/dev/null)";
+        count="$(git rev-list --count --left-right                "$upstream"...HEAD 2>/dev/null)";
     else
         local commits;
         if commits="$(git rev-list --left-right "$upstream"...HEAD 2>/dev/null)"; then
@@ -339,7 +339,7 @@ __git_ps1_show_upstream ()
                     ;;
                 esac;
             done;
-            count="$behind	$ahead";
+            count="$behind    $ahead";
         else
             count="";
         fi;
@@ -349,13 +349,13 @@ __git_ps1_show_upstream ()
             "")
                 p=""
             ;;
-            "0	0")
+            "0    0")
                 p="="
             ;;
-            "0	"*)
+            "0    "*)
                 p=">"
             ;;
-            *"	0")
+            *"    0")
                 p="<"
             ;;
             *)
@@ -367,21 +367,21 @@ __git_ps1_show_upstream ()
             "")
                 p=""
             ;;
-            "0	0")
+            "0    0")
                 p=" u="
             ;;
-            "0	"*)
-                p=" u+${count#0	}"
+            "0    "*)
+                p=" u+${count#0    }"
             ;;
-            *"	0")
-                p=" u-${count%	0}"
+            *"    0")
+                p=" u-${count%    0}"
             ;;
             *)
-                p=" u+${count#*	}-${count%	*}"
+                p=" u+${count#*    }-${count%    *}"
             ;;
         esac;
         if [[ -n "$count" && -n "$name" ]]; then
-            __git_ps1_upstream_name=$(git rev-parse 				--abbrev-ref "$upstream" 2>/dev/null);
+            __git_ps1_upstream_name=$(git rev-parse                --abbrev-ref "$upstream" 2>/dev/null);
             if [ $pcmode = yes ] && [ $ps1_expanded = yes ]; then
                 p="$p \${__git_ps1_upstream_name}";
             else
@@ -404,11 +404,11 @@ __git_sequencer_status ()
         else
             if __git_eread "$g/sequencer/todo" todo; then
                 case "$todo" in 
-                    p[\ \	] | pick[\ \	]*)
+                    p[\ \    ] | pick[\ \    ]*)
                         r="|CHERRY-PICKING";
                         return 0
                     ;;
-                    revert[\ \	]*)
+                    revert[\ \    ]*)
                         r="|REVERTING";
                         return 0
                     ;;
@@ -457,7 +457,7 @@ __ltrim_colon_completions ()
 }
 __parse_options () 
 { 
-    local option option2 i IFS=' 	
+    local option option2 i IFS='
 ,/|';
     option=;
     local -a array=($1);
@@ -480,7 +480,7 @@ __parse_options ()
         esac;
     done;
     [[ -n $option ]] || return 0;
-    IFS=' 	
+    IFS='
 ';
     if [[ $option =~ (\[((no|dont)-?)\]). ]]; then
         option2=${option/"${BASH_REMATCH[1]}"/};
@@ -601,8 +601,7 @@ _apport-cli ()
     COMPREPLY=();
     cur=`_get_cword`;
     prev=${COMP_WORDS[COMP_CWORD-1]};
-    dashoptions='-h --help -f --file-bug -u --update-bug -s --symptom \
-                 -c --crash-file --save -v --version --tag -w --window';
+    dashoptions='-h --help -f --file-bug -u --update-bug -s --symptom-c --crash-file --save -v --version --tag -w --window';
     case "$prev" in 
         apport-cli)
             case "$cur" in 
@@ -1003,7 +1002,7 @@ _fstypes ()
 { 
     local fss;
     if [[ -e /proc/filesystems ]]; then
-        fss="$(cut -d'	' -f2 /proc/filesystems)
+        fss="$(cut -d'    ' -f2 /proc/filesystems)
              $(awk '! /\*/ { print $NF }' /etc/filesystems 2>/dev/null)";
     else
         fss="$(awk '/^[ \t]*[^#]/ { print $3 }' /etc/fstab 2>/dev/null)
@@ -1652,16 +1651,14 @@ _service ()
     else
         local sysvdirs;
         _sysvdirs;
-        COMPREPLY=($(compgen -W '`command sed -e "y/|/ /" \
-            -ne "s/^.*\(U\|msg_u\)sage.*{\(.*\)}.*$/\2/p" \
-            ${sysvdirs[0]}/${prev##*/} 2>/dev/null` start stop' -- "$cur"));
+        COMPREPLY=($(compgen -W '`command sed -e "y/|/ /"-ne "s/^.*\(U\|msg_u\)sage.*{\(.*\)}.*$/\2/p"${sysvdirs[0]}/${prev##*/} 2>/dev/null` start stop' -- "$cur"));
     fi
 }
 _services () 
 { 
     local sysvdirs;
     _sysvdirs;
-    local IFS=' 	
+    local IFS='
 ' reset=$(shopt -p nullglob);
     shopt -s nullglob;
     COMPREPLY=($(printf '%s\n' ${sysvdirs[0]}/!($_backup_glob|functions|README)));
@@ -1916,7 +1913,7 @@ _xinetd_services ()
 { 
     local xinetddir=/etc/xinetd.d;
     if [[ -d $xinetddir ]]; then
-        local IFS=' 	
+        local IFS='
 ' reset=$(shopt -p nullglob);
         shopt -s nullglob;
         local -a svcs=($(printf '%s\n' $xinetddir/!($_backup_glob)));

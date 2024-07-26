@@ -78,8 +78,8 @@ func expandLiteral(buf *bytes.Buffer, info *ExpandInfo, rawLit []rune) {
 		if lastDollar && (ch == '(' || ch == '[') {
 			info.HasSpecial = true
 		}
-		lastExtGlob = (ch == '?' || ch == '*' || ch == '+' || ch == '@' || ch == '!')
-		lastDollar = (ch == '$')
+		lastExtGlob = ch == '?' || ch == '*' || ch == '+' || ch == '@' || ch == '!'
+		lastDollar = ch == '$'
 		buf.WriteRune(ch)
 	}
 	if lastBackSlash {
@@ -124,7 +124,7 @@ func expandDQLiteral(buf *bytes.Buffer, info *ExpandInfo, rawVal []rune) {
 		if lastDollar && (ch == '(' || ch == '[') {
 			info.HasSpecial = true
 		}
-		lastDollar = (ch == '$')
+		lastDollar = ch == '$'
 		buf.WriteRune(ch)
 	}
 	// in a valid parsed DQ string, you cannot have a trailing backslash (because \" would not end the string)

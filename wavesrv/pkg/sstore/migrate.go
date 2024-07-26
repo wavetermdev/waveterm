@@ -206,24 +206,27 @@ func MigratePrintVersion() error {
 
 func MigrateCommandOpts(opts []string) error {
 	var err error
-	if opts[0] == "--migrate-up" {
+	switch opts[0] {
+	case "--migrate-up":
 		fmt.Printf("migrate-up %v\n", GetDBName())
 		time.Sleep(3 * time.Second)
 		err = MigrateUp(MaxMigration)
-	} else if opts[0] == "--migrate-down" {
+	case "--migrate-down":
 		fmt.Printf("migrate-down %v\n", GetDBName())
 		time.Sleep(3 * time.Second)
 		err = MigrateDown()
-	} else if opts[0] == "--migrate-goto" {
-		n, err := strconv.Atoi(opts[1])
+	case "--migrate-goto":
+		var n int
+		n, err = strconv.Atoi(opts[1])
 		if err == nil {
 			fmt.Printf("migrate-goto %v => %d\n", GetDBName(), n)
 			time.Sleep(3 * time.Second)
 			err = MigrateGoto(uint(n))
 		}
-	} else {
+	default:
 		err = fmt.Errorf("invalid migration command")
 	}
+
 	if err != nil && err.Error() == migrate.ErrNoChange.Error() {
 		err = nil
 	}

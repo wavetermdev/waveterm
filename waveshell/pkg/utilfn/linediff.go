@@ -87,7 +87,7 @@ func decodeDiff(diffBytes []byte) (LineDiffType, error) {
 		}
 		rtn.Lines[idx] = int(vi)
 	}
-	restOfInput := string(r.Bytes())
+	restOfInput := r.String()
 	rtn.NewData = strings.Split(restOfInput, "\n")
 	return rtn, nil
 }

@@ -313,9 +313,7 @@ func GetConnectUpdate(ctx context.Context) (*ConnectUpdate, error) {
 		}
 		query := `SELECT * FROM screen ORDER BY archived, screenidx, archivedts`
 		screens := dbutil.SelectMapsGen[*ScreenType](tx, query)
-		for _, screen := range screens {
-			update.Screens = append(update.Screens, screen)
-		}
+		update.Screens = append(update.Screens, screens...)
 		query = `SELECT * FROM remote_instance`
 		riArr := dbutil.SelectMapsGen[*RemoteInstance](tx, query)
 		for _, ri := range riArr {
@@ -510,7 +508,7 @@ func fmtUniqueName(name string, defaultFmtStr string, startIdx int, strs []strin
 	} else {
 		fmtStr = defaultFmtStr
 	}
-	if strings.Index(fmtStr, "%d") == -1 {
+	if !strings.Contains(fmtStr, "%d") {
 		panic("invalid fmtStr: " + fmtStr)
 	}
 	for {
@@ -632,17 +630,18 @@ func FindLineIdByArg(ctx context.Context, screenId string, lineArg string) (stri
 			query := `SELECT lineid FROM line WHERE screenid = ? AND linenum = ?`
 			lineId := tx.GetString(query, screenId, lineNum)
 			return lineId, nil
-		} else if len(lineArg) == 8 {
+		}
+
+		if len(lineArg) == 8 {
 			// prefix id string match
 			query := `SELECT lineid FROM line WHERE screenid = ? AND substr(lineid, 1, 8) = ?`
 			lineId := tx.GetString(query, screenId, lineArg)
 			return lineId, nil
-		} else {
-			// id match
-			query := `SELECT lineid FROM line WHERE screenid = ? AND lineid = ?`
-			lineId := tx.GetString(query, screenId, lineArg)
-			return lineId, nil
 		}
+		// id match
+		query := `SELECT lineid FROM line WHERE screenid = ? AND lineid = ?`
+		lineId := tx.GetString(query, screenId, lineArg)
+		return lineId, nil
 	})
 }
 
@@ -1142,7 +1141,7 @@ func GetRemoteStatePtr(ctx context.Context, sessionId string, screenId string, r
 		if ri == nil {
 			return nil
 		}
-		ssptr = &packet.ShellStatePtr{ri.StateBaseHash, ri.StateDiffHashArr}
+		ssptr = &packet.ShellStatePtr{BaseHash: ri.StateBaseHash, DiffHashArr: ri.StateDiffHashArr}
 		return nil
 	})
 	if txErr != nil {

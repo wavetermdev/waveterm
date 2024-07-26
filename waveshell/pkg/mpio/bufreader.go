@@ -126,7 +126,7 @@ func (r *FdReader) ReadLoop(wg *sync.WaitGroup) {
 			return // should not send data or error if we already closed the fd
 		}
 		if nr > 0 || err == io.EOF {
-			isOpen := r.WriteWait(buf[0:nr], (err == io.EOF))
+			isOpen := r.WriteWait(buf[0:nr], err == io.EOF)
 			if !isOpen {
 				return
 			}

@@ -62,7 +62,7 @@ const RpcIterChannelSize = 100
 const MaxInputDataSize = 1000
 const SudoTimeoutTime = 5 * time.Minute
 
-var envVarsToStrip map[string]bool = map[string]bool{
+var envVarsToStrip = map[string]bool{
 	"PROMPT":               true,
 	"PROMPT_VERSION":       true,
 	"MSHELL":               true,
@@ -483,42 +483,6 @@ func SendSignalToCmd(ctx context.Context, cmd *sstore.CmdType, sig string) error
 	return wsh.ServerProc.Input.SendPacket(sigPk)
 }
 
-func unquoteDQBashString(str string) (string, bool) {
-	if len(str) < 2 {
-		return str, false
-	}
-	if str[0] != '"' || str[len(str)-1] != '"' {
-		return str, false
-	}
-	rtn := make([]byte, 0, len(str)-2)
-	for idx := 1; idx < len(str)-1; idx++ {
-		ch := str[idx]
-		if ch == '"' {
-			return str, false
-		}
-		if ch == '\\' {
-			if idx == len(str)-2 {
-				return str, false
-			}
-			nextCh := str[idx+1]
-			if nextCh == '\n' {
-				idx++
-				continue
-			}
-			if nextCh == '$' || nextCh == '"' || nextCh == '\\' || nextCh == '`' {
-				idx++
-				rtn = append(rtn, nextCh)
-				continue
-			}
-			rtn = append(rtn, '\\')
-			continue
-		} else {
-			rtn = append(rtn, ch)
-		}
-	}
-	return string(rtn), true
-}
-
 func makeShortHost(host string) string {
 	dotIdx := strings.Index(host, ".")
 	if dotIdx == -1 {
@@ -554,7 +518,7 @@ func (wsh *WaveshellProc) tryAutoInstall() {
 func (wsh *WaveshellProc) GetShellPref() string {
 	wsh.Lock.Lock()
 	defer wsh.Lock.Unlock()
-	if wsh.Remote.ShellPref == sstore.ShellTypePref_Detect {
+	if wsh.Remote.ShellPref == sstore.ShellTypePrefDetect {
 		return wsh.InitPkShellType
 	}
 	if wsh.Remote.ShellPref == "" {
@@ -746,12 +710,6 @@ func SendRemoteInput(pk *scpacket.RemoteInputPacketType) error {
 	return nil
 }
 
-func (wsh *WaveshellProc) getClientDeadline() *time.Time {
-	wsh.Lock.Lock()
-	defer wsh.Lock.Unlock()
-	return wsh.MakeClientDeadline
-}
-
 func (wsh *WaveshellProc) resetClientDeadline() {
 	wsh.Lock.Lock()
 	defer wsh.Lock.Unlock()
@@ -764,38 +722,6 @@ func (wsh *WaveshellProc) resetClientDeadline() {
 	}
 	newDeadline := time.Now().Add(RemoteConnectTimeout)
 	wsh.MakeClientDeadline = &newDeadline
-}
-
-func (wsh *WaveshellProc) watchClientDeadlineTime() {
-	for {
-		time.Sleep(1 * time.Second)
-		status := wsh.GetStatus()
-		if status != StatusConnecting {
-			break
-		}
-		deadline := wsh.getClientDeadline()
-		if deadline == nil {
-			break
-		}
-		if time.Now().After(*deadline) {
-			wsh.Disconnect(false)
-			break
-		}
-		go wsh.NotifyRemoteUpdate()
-	}
-}
-
-func convertSSHOpts(opts *sstore.SSHOpts) shexec.SSHOpts {
-	if opts == nil || opts.Local {
-		opts = &sstore.SSHOpts{}
-	}
-	return shexec.SSHOpts{
-		SSHHost:     opts.SSHHost,
-		SSHOptsStr:  opts.SSHOptsStr,
-		SSHIdentity: opts.SSHIdentity,
-		SSHUser:     opts.SSHUser,
-		SSHPort:     opts.SSHPort,
-	}
 }
 
 func (wsh *WaveshellProc) addControllingTty(ecmd *exec.Cmd) (*os.File, error) {
@@ -918,7 +844,7 @@ func (wsh *WaveshellProc) writeToPtyBuffer_nolock(strFmt string, args ...interfa
 	if !strings.HasPrefix(realStr, "~") {
 		realStr = strings.ReplaceAll(realStr, "\n", "\r\n")
 		if !strings.HasSuffix(realStr, "\r\n") {
-			realStr = realStr + "\r\n"
+			realStr += "\r\n"
 		}
 		if strings.HasPrefix(realStr, "*") {
 			realStr = "\033[0m\033[31mwave>\033[0m " + realStr[1:]
@@ -1131,7 +1057,7 @@ func (wsh *WaveshellProc) WaitAndSendPasswordNew(pw string) {
 	}
 	wsh.SendPassword(response.Text)
 
-	//error out if requested again
+	// error out if requested again
 	go wsh.CheckPasswordRequested(ctx, requiresPassword)
 	select {
 	case <-ctx.Done():
@@ -1294,7 +1220,7 @@ func (wsh *WaveshellProc) RunInstall(autoInstall bool) {
 				return
 			}
 
-			//reload updated clientdata before sending
+			// reload updated clientdata before sending
 			clientData, err = sstore.EnsureClientData(makeClientCtx)
 			if err != nil {
 				wsh.WriteToPtyBuffer("*error, %s\n", err)
@@ -1575,16 +1501,6 @@ func stripScVarsFromStateDiff(stateDiff *packet.ShellStateDiff) *packet.ShellSta
 	return &rtn
 }
 
-func (wsh *WaveshellProc) getActiveShellTypes(ctx context.Context) ([]string, error) {
-	shellPref := wsh.GetShellPref()
-	rtn := []string{shellPref}
-	activeShells, err := sstore.GetRemoteActiveShells(ctx, wsh.RemoteId)
-	if err != nil {
-		return nil, err
-	}
-	return utilfn.CombineStrArrays(rtn, activeShells), nil
-}
-
 func (wsh *WaveshellProc) createWaveshellSession(clientCtx context.Context, remoteCopy sstore.RemoteType) (shexec.ConnInterface, error) {
 	wsh.WithLock(func() {
 		wsh.Err = nil
@@ -1754,31 +1670,6 @@ func (wsh *WaveshellProc) Launch(interactive bool) {
 	go wsh.ProcessPackets()
 	// wsh.initActiveShells()
 	go wsh.NotifyRemoteUpdate()
-}
-
-func (wsh *WaveshellProc) initActiveShells() {
-	gasCtx, cancelFn := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelFn()
-	activeShells, err := wsh.getActiveShellTypes(gasCtx)
-	if err != nil {
-		// we're not going to fail the connect for this error (it will be unusable, but technically connected)
-		wsh.WriteToPtyBuffer("*error getting active shells: %v\n", err)
-		return
-	}
-	var wg sync.WaitGroup
-	for _, shellTypeForVar := range activeShells {
-		wg.Add(1)
-		go func(shellType string) {
-			defer wg.Done()
-			reinitCtx, cancelFn := context.WithTimeout(context.Background(), 12*time.Second)
-			defer cancelFn()
-			_, err = wsh.ReInit(reinitCtx, base.CommandKey(""), shellType, nil, false)
-			if err != nil {
-				wsh.WriteToPtyBuffer("*error reiniting shell %q: %v\n", shellType, err)
-			}
-		}(shellTypeForVar)
-	}
-	wg.Wait()
 }
 
 func (wsh *WaveshellProc) IsConnected() bool {
@@ -2863,7 +2754,9 @@ func EvalPrompt(promptFmt string, vars map[string]string, state *packet.ShellSta
 		ch := promptRunes[i]
 		if ch == '\\' && i != len(promptRunes)-1 {
 			nextCh := promptRunes[i+1]
-			if nextCh == 'x' || nextCh == 'y' {
+
+			switch {
+			case nextCh == 'x', nextCh == 'y':
 				nr := getBracedStr(promptRunes[i+2:])
 				if nr > 0 {
 					escCode := string(promptRunes[i+1 : i+1+nr+1]) // start at "x" or "y", extend nr+1 runes
@@ -2875,7 +2768,7 @@ func EvalPrompt(promptFmt string, vars map[string]string, state *packet.ShellSta
 					buf.WriteRune(ch) // invalid escape, so just write ch and move on
 					continue
 				}
-			} else if isDigit(nextCh) {
+			case isDigit(nextCh):
 				if len(promptRunes) >= i+4 && isDigit(promptRunes[i+2]) && isDigit(promptRunes[i+3]) {
 					i += 3
 					escStr := evalPromptEsc(string(promptRunes[i+1:i+4]), vars, state)
@@ -2885,7 +2778,7 @@ func EvalPrompt(promptFmt string, vars map[string]string, state *packet.ShellSta
 					buf.WriteRune(ch) // invalid escape, so just write ch and move on
 					continue
 				}
-			} else {
+			default:
 				i += 1
 				escStr := evalPromptEsc(string(nextCh), vars, state)
 				buf.WriteString(escStr)
@@ -2978,59 +2871,6 @@ func evalPromptEsc(escCode string, vars map[string]string, state *packet.ShellSt
 
 	// we don't support date/time escapes (d, t, T, @), version escapes (v, V), cmd number (#, !), terminal device (l), jobs (j)
 	return "(" + escCode + ")"
-}
-
-func (wsh *WaveshellProc) getFullState(shellType string, stateDiff *packet.ShellStateDiff) (*packet.ShellState, error) {
-	baseState := wsh.StateMap.GetStateByHash(shellType, stateDiff.BaseHash)
-	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
-		sapi, err := shellapi.MakeShellApi(baseState.GetShellType())
-		newState, err := sapi.ApplyShellStateDiff(baseState, stateDiff)
-		if err != nil {
-			return nil, err
-		}
-		return newState, nil
-	} else {
-		fullState, err := sstore.GetFullState(context.Background(), packet.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
-		if err != nil {
-			return nil, err
-		}
-		sapi, err := shellapi.MakeShellApi(fullState.GetShellType())
-		if err != nil {
-			return nil, err
-		}
-		newState, err := sapi.ApplyShellStateDiff(fullState, stateDiff)
-		return newState, nil
-	}
-}
-
-// internal func, first tries the StateMap, otherwise will fallback on sstore.GetFullState
-func (wsh *WaveshellProc) getFeStateFromDiff(stateDiff *packet.ShellStateDiff) (map[string]string, error) {
-	baseState := wsh.StateMap.GetStateByHash(stateDiff.GetShellType(), stateDiff.BaseHash)
-	if baseState != nil && len(stateDiff.DiffHashArr) == 0 {
-		sapi, err := shellapi.MakeShellApi(baseState.GetShellType())
-		if err != nil {
-			return nil, err
-		}
-		newState, err := sapi.ApplyShellStateDiff(baseState, stateDiff)
-		if err != nil {
-			return nil, err
-		}
-		return sstore.FeStateFromShellState(newState), nil
-	} else {
-		fullState, err := sstore.GetFullState(context.Background(), packet.ShellStatePtr{BaseHash: stateDiff.BaseHash, DiffHashArr: stateDiff.DiffHashArr})
-		if err != nil {
-			return nil, err
-		}
-		sapi, err := shellapi.MakeShellApi(fullState.GetShellType())
-		if err != nil {
-			return nil, err
-		}
-		newState, err := sapi.ApplyShellStateDiff(fullState, stateDiff)
-		if err != nil {
-			return nil, err
-		}
-		return sstore.FeStateFromShellState(newState), nil
-	}
 }
 
 func (wsh *WaveshellProc) TryAutoConnect() error {

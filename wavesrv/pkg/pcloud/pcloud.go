@@ -29,7 +29,7 @@ import (
 const PCloudEndpoint = "https://api.waveterm.dev/central"
 const PCloudEndpointVarName = "PCLOUD_ENDPOINT"
 const APIVersion = 1
-const MaxPtyUpdateSize = (128 * 1024)
+const MaxPtyUpdateSize = 128 * 1024
 const MaxUpdatesPerReq = 10
 const MaxUpdatesToDeDup = 1000
 const MaxUpdateWriterErrors = 3
@@ -90,7 +90,7 @@ func makeAuthPostReq(ctx context.Context, apiUrl string, authInfo AuthInfo, data
 		dataReader = bytes.NewReader(byteArr)
 	}
 	fullUrl := GetEndpoint() + apiUrl
-	req, err := http.NewRequestWithContext(ctx, "POST", fullUrl, dataReader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullUrl, dataReader)
 	if err != nil {
 		return nil, fmt.Errorf("error creating %s request: %v", apiUrl, err)
 	}
@@ -114,7 +114,7 @@ func makeAnonPostReq(ctx context.Context, apiUrl string, data interface{}) (*htt
 		dataReader = bytes.NewReader(byteArr)
 	}
 	fullUrl := GetEndpoint() + apiUrl
-	req, err := http.NewRequestWithContext(ctx, "POST", fullUrl, dataReader)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fullUrl, dataReader)
 	if err != nil {
 		return nil, fmt.Errorf("error creating %s request: %v", apiUrl, err)
 	}
@@ -125,28 +125,28 @@ func makeAnonPostReq(ctx context.Context, apiUrl string, data interface{}) (*htt
 	return req, nil
 }
 
-func doRequest(req *http.Request, outputObj interface{}) (*http.Response, error) {
+func doRequest(req *http.Request, outputObj interface{}) error {
 	apiUrl := req.Header.Get("X-PromptAPIUrl")
 	log.Printf("[pcloud] sending request %s %v\n", req.Method, req.URL)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error contacting pcloud %q service: %v", apiUrl, err)
+		return fmt.Errorf("error contacting pcloud %q service: %v", apiUrl, err)
 	}
 	defer resp.Body.Close()
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return resp, fmt.Errorf("error reading %q response body: %v", apiUrl, err)
+		return fmt.Errorf("error reading %q response body: %v", apiUrl, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return resp, fmt.Errorf("error contacting pcloud %q service: %s", apiUrl, resp.Status)
+		return fmt.Errorf("error contacting pcloud %q service: %s", apiUrl, resp.Status)
 	}
 	if outputObj != nil && resp.Header.Get("Content-Type") == "application/json" {
 		err = json.Unmarshal(bodyBytes, outputObj)
 		if err != nil {
-			return resp, fmt.Errorf("error decoding json: %v", err)
+			return fmt.Errorf("error decoding json: %v", err)
 		}
 	}
-	return resp, nil
+	return nil
 }
 
 func SendTelemetry(ctx context.Context, force bool) error {
@@ -172,7 +172,7 @@ func SendTelemetry(ctx context.Context, force bool) error {
 	if err != nil {
 		return err
 	}
-	_, err = doRequest(req, nil)
+	err = doRequest(req, nil)
 	if err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func SendNoTelemetryUpdate(ctx context.Context, noTelemetryVal bool) error {
 	if err != nil {
 		return err
 	}
-	_, err = doRequest(req, nil)
+	err = doRequest(req, nil)
 	if err != nil {
 		return err
 	}
@@ -273,7 +273,7 @@ func makeWebShareUpdate(ctx context.Context, update *sstore.ScreenUpdateType) (*
 		if update.UpdateType == sstore.UpdateType_ScreenName {
 			rtn.SVal = screen.WebShareOpts.ShareName
 		} else if update.UpdateType == sstore.UpdateType_ScreenSelectedLine {
-			rtn.IVal = int64(screen.SelectedLine)
+			rtn.IVal = screen.SelectedLine
 		}
 
 	case sstore.UpdateType_LineNew:
@@ -425,7 +425,7 @@ func DoSyncWebUpdate(webUpdate *WebShareUpdateType) error {
 		return fmt.Errorf("cannot create auth-post-req for %s: %v", WebShareUpdateUrl, err)
 	}
 	var resp webShareResponseType
-	_, err = doRequest(req, &resp)
+	err = doRequest(req, &resp)
 	if err != nil {
 		return err
 	}
@@ -454,7 +454,7 @@ func DoWebUpdates(webUpdates []*WebShareUpdateType) error {
 		return fmt.Errorf("cannot create auth-post-req for %s: %v", WebShareUpdateUrl, err)
 	}
 	var resp webShareResponseType
-	_, err = doRequest(req, &resp)
+	err = doRequest(req, &resp)
 	if err != nil {
 		return err
 	}

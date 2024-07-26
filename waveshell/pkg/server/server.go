@@ -275,7 +275,7 @@ func (m *MServer) runMixedCompGen(compPk *packet.CompGenPacketType) {
 		comps = append(comps, file)
 	}
 	sort.Strings(comps) // resort
-	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": comps, "hasmore": (hasMoreFiles || hasMoreDirs)})
+	m.Sender.SendResponse(reqId, map[string]interface{}{"comps": comps, "hasmore": hasMoreFiles || hasMoreDirs})
 }
 
 func (m *MServer) runCompGen(compPk *packet.CompGenPacketType) {
@@ -369,23 +369,6 @@ func (m *MServer) MakeShellStatePacket(reqId string, shellType string, stdinData
 	return nil, nil
 }
 
-func makeTemp(path string, mode fs.FileMode) (*os.File, error) {
-	dirName := filepath.Dir(path)
-	baseName := filepath.Base(path)
-	baseTempName := baseName + ".tmp."
-	writeFd, err := os.CreateTemp(dirName, baseTempName)
-	if err != nil {
-		return nil, err
-	}
-	err = writeFd.Chmod(mode)
-	if err != nil {
-		writeFd.Close()
-		os.Remove(writeFd.Name())
-		return nil, fmt.Errorf("error setting tempfile permissions: %w", err)
-	}
-	return writeFd, nil
-}
-
 func checkFileWritable(path string) error {
 	finfo, err := os.Stat(path) // ok to follow symlinks
 	if errors.Is(err, fs.ErrNotExist) {
@@ -411,7 +394,7 @@ func checkFileWritable(path string) error {
 		if (finfo.Mode() & (fs.ModeNamedPipe | fs.ModeSocket | fs.ModeDevice)) != 0 {
 			return fmt.Errorf("writefile does not support special files (named pipes, sockets, devices): mode=%v", finfo.Mode())
 		}
-		writePerm := (finfo.Mode().Perm() & 0o222)
+		writePerm := finfo.Mode().Perm() & 0o222
 		if writePerm == 0 {
 			return fmt.Errorf("file is not writable, perms: %v", finfo.Mode().Perm())
 		}
@@ -657,7 +640,6 @@ func (m *MServer) streamFile(pk *packet.StreamFilePacketType) {
 		dataPk.Eof = true
 		m.Sender.SendPacket(dataPk)
 	}
-	return
 }
 
 func int64Min(v1 int64, v2 int64) int64 {

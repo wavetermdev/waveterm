@@ -1,1 +1,2 @@
-UPDATE screen SET sharemode = 'local' AND webshareopts = 'null';
+UPDATE screen
+SET sharemode = 'local' AND webshareopts = 'null';

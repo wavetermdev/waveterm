@@ -38,14 +38,15 @@ const WaveAppPathVarName = "WAVETERM_APP_PATH"
 const WaveAuthKeyFileName = "waveterm.authkey"
 const WaveshellVersion = "v0.7.0" // must match base.WaveshellVersion
 
-// initialized by InitialzeWaveAuthKey (called by main-server)
+// WaveAuthKey is initialized by InitialzeWaveAuthKey (called by main-server).
 var WaveAuthKey string
 
 var SessionDirCache = make(map[string]string)
 var ScreenDirCache = make(map[string]string)
 var BaseLock = &sync.Mutex{}
 
-// these are set by the main-server using build-time variables
+// these are set by the main-server using build-time variables.
+
 var BuildTime = "-"
 var WaveVersion = "-"
 
@@ -54,7 +55,7 @@ func IsDevMode() bool {
 	return pdev != ""
 }
 
-// must match js
+// GetWaveHomeDir must match js
 func GetWaveHomeDir() string {
 	scHome := os.Getenv(WaveHomeVarName)
 	if scHome == "" {
@@ -113,16 +114,12 @@ func WaveshellBinaryReader(version string, goos string, goarch string) (io.ReadC
 
 // also sets WaveAuthKey
 func createWaveAuthKeyFile(fileName string) error {
-	fd, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	if err != nil {
-		return err
-	}
-	defer fd.Close()
 	keyStr := GenWaveUUID()
-	_, err = fd.Write([]byte(keyStr))
-	if err != nil {
+
+	if err := os.WriteFile(fileName, []byte(keyStr), 0600); err != nil {
 		return err
 	}
+
 	WaveAuthKey = keyStr
 	return nil
 }

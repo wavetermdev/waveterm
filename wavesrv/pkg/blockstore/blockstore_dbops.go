@@ -26,7 +26,7 @@ type SingleConnDBGetter struct {
 	SingleConnLock *sync.Mutex
 }
 
-var dbWrap *SingleConnDBGetter = &SingleConnDBGetter{SingleConnLock: &sync.Mutex{}}
+var dbWrap = &SingleConnDBGetter{SingleConnLock: &sync.Mutex{}}
 
 type TxWrap = txwrap.TxWrap
 

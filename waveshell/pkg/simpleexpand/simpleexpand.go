@@ -79,8 +79,8 @@ func expandLiteral(buf *bytes.Buffer, info *SimpleExpandInfo, litVal string) {
 		if lastDollar && (ch == '(' || ch == '[') {
 			info.HasSpecial = true
 		}
-		lastExtGlob = (ch == '?' || ch == '*' || ch == '+' || ch == '@' || ch == '!')
-		lastDollar = (ch == '$')
+		lastExtGlob = ch == '?' || ch == '*' || ch == '+' || ch == '@' || ch == '!'
+		lastDollar = ch == '$'
 		buf.WriteRune(ch)
 	}
 	if lastBackSlash {
@@ -96,19 +96,14 @@ func expandLiteralPlus(buf *bytes.Buffer, info *SimpleExpandInfo, litVal string,
 
 func expandSQANSILiteral(buf *bytes.Buffer, litVal string) {
 	// no info specials
-	if strings.HasSuffix(litVal, "'") {
-		litVal = litVal[0 : len(litVal)-1]
-	}
+	litVal = strings.TrimSuffix(litVal, "'")
 	str, _, _ := expand.Format(nil, litVal, nil)
 	buf.WriteString(str)
 }
 
 func expandSQLiteral(buf *bytes.Buffer, litVal string) {
 	// no info specials
-	if strings.HasSuffix(litVal, "'") {
-		litVal = litVal[0 : len(litVal)-1]
-	}
-	buf.WriteString(litVal)
+	buf.WriteString(strings.TrimSuffix(litVal, "'"))
 }
 
 // will also work for partial double quoted strings
@@ -151,7 +146,7 @@ func expandDQLiteral(buf *bytes.Buffer, info *SimpleExpandInfo, litVal string) {
 		if lastDollar && (ch == '(' || ch == '[') {
 			info.HasSpecial = true
 		}
-		lastDollar = (ch == '$')
+		lastDollar = ch == '$'
 		buf.WriteRune(ch)
 	}
 	// in a valid parsed DQ string, you cannot have a trailing backslash (because \" would not end the string)
@@ -210,16 +205,18 @@ func SimpleExpandPartialWord(ectx SimpleExpandContext, partialWord string, multi
 	if partialWord == "" {
 		return "", info
 	}
-	if strings.HasPrefix(partialWord, "\"") {
+	switch {
+	case strings.HasPrefix(partialWord, "\""):
 		expandDQLiteral(&buf, &info, partialWord[1:])
-	} else if strings.HasPrefix(partialWord, "$\"") {
+	case strings.HasPrefix(partialWord, "$\""):
 		expandDQLiteral(&buf, &info, partialWord[2:])
-	} else if strings.HasPrefix(partialWord, "'") {
+	case strings.HasPrefix(partialWord, "'"):
 		expandSQLiteral(&buf, partialWord[1:])
-	} else if strings.HasPrefix(partialWord, "$'") {
+	case strings.HasPrefix(partialWord, "$'"):
 		expandSQANSILiteral(&buf, partialWord[2:])
-	} else {
+	default:
 		expandLiteralPlus(&buf, &info, partialWord, multiPart, ectx)
 	}
+
 	return buf.String(), info
 }

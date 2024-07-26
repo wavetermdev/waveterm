@@ -167,21 +167,22 @@ func ToDBMap(v DBMappable, useBytes bool) map[string]interface{} {
 		if dbName == "-" {
 			continue
 		}
-		if isByteArrayType(field.Type) {
+		switch {
+		case isByteArrayType(field.Type):
 			m[dbName] = fieldVal.Interface()
-		} else if field.Type.Kind() == reflect.Slice {
+		case field.Type.Kind() == reflect.Slice:
 			if useBytes {
 				m[dbName] = QuickJsonArrBytes(fieldVal.Interface())
 			} else {
 				m[dbName] = QuickJsonArr(fieldVal.Interface())
 			}
-		} else if isStructType(field.Type) || isStringMapType(field.Type) {
+		case isStructType(field.Type) || isStringMapType(field.Type):
 			if useBytes {
 				m[dbName] = QuickJsonBytes(fieldVal.Interface())
 			} else {
 				m[dbName] = QuickJson(fieldVal.Interface())
 			}
-		} else {
+		default:
 			m[dbName] = fieldVal.Interface()
 		}
 	}
@@ -211,26 +212,28 @@ func FromDBMap(v DBMappable, m map[string]interface{}) {
 		if dbName == "-" {
 			continue
 		}
-		if isByteArrayType(field.Type) {
+
+		switch {
+		case isByteArrayType(field.Type):
 			barrVal := fieldVal.Addr().Interface()
 			QuickSetBytes(barrVal.(*[]byte), m, dbName)
-		} else if field.Type.Kind() == reflect.Slice {
+		case field.Type.Kind() == reflect.Slice:
 			QuickSetJsonArr(fieldVal.Addr().Interface(), m, dbName)
-		} else if isStructType(field.Type) || isStringMapType(field.Type) {
+		case isStructType(field.Type) || isStringMapType(field.Type):
 			QuickSetJson(fieldVal.Addr().Interface(), m, dbName)
-		} else if field.Type.Kind() == reflect.String {
+		case field.Type.Kind() == reflect.String:
 			strVal := fieldVal.Addr().Interface()
 			QuickSetStr(strVal.(*string), m, dbName)
-		} else if field.Type.Kind() == reflect.Int64 {
+		case field.Type.Kind() == reflect.Int64:
 			intVal := fieldVal.Addr().Interface()
 			QuickSetInt64(intVal.(*int64), m, dbName)
-		} else if field.Type.Kind() == reflect.Int {
+		case field.Type.Kind() == reflect.Int:
 			intVal := fieldVal.Addr().Interface()
 			QuickSetInt(intVal.(*int), m, dbName)
-		} else if field.Type.Kind() == reflect.Bool {
+		case field.Type.Kind() == reflect.Bool:
 			boolVal := fieldVal.Addr().Interface()
 			QuickSetBool(boolVal.(*bool), m, dbName)
-		} else {
+		default:
 			panic(fmt.Sprintf("StructFromDBMap invalid field type %v in %T", fieldVal.Type(), v))
 		}
 	}

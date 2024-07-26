@@ -15,7 +15,7 @@ const (
 	DefaultEphemeralTimeoutDuration = DefaultEphemeralTimeoutMs * time.Millisecond // The default timeout for ephemeral commands as a time.Duration.
 )
 
-// Options specific to ephemeral commands (commands that are not saved to the history)
+// EphemeralRunOpts are options specific to ephemeral commands (commands that are not saved to the history).
 type EphemeralRunOpts struct {
 	Env             map[string]string `json:"env,omitempty"`         // Environment variables to set for the command.
 	OverrideCwd     string            `json:"overridecwd,omitempty"` // A directory to use as the current working directory. Defaults to the last set shell state.

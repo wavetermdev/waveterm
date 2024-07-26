@@ -443,15 +443,16 @@ func NullEncodeStr(s string) []byte {
 	}
 	var rtn []byte
 	for _, b := range strBytes {
-		if b == 0 {
+		switch b {
+		case 0:
 			rtn = append(rtn, nullEncodeEscByte, nullEncodeZeroByteEsc)
-		} else if b == nullEncodeEscByte {
+		case nullEncodeEscByte:
 			rtn = append(rtn, nullEncodeEscByte, nullEncodeEscByteEsc)
-		} else if b == nullEncodeSepByte {
+		case nullEncodeSepByte:
 			rtn = append(rtn, nullEncodeEscByte, nullEncodeSepByteEsc)
-		} else if b == nullEncodeEqByte {
+		case nullEncodeEqByte:
 			rtn = append(rtn, nullEncodeEscByte, nullEncodeEqByteEsc)
-		} else {
+		default:
 			rtn = append(rtn, b)
 		}
 	}
@@ -468,15 +469,16 @@ func NullDecodeStr(barr []byte) (string, error) {
 		if curByte == nullEncodeEscByte {
 			i++
 			nextByte := barr[i]
-			if nextByte == nullEncodeZeroByteEsc {
+			switch nextByte {
+			case nullEncodeZeroByteEsc:
 				rtn = append(rtn, 0)
-			} else if nextByte == nullEncodeEscByteEsc {
+			case nullEncodeEscByteEsc:
 				rtn = append(rtn, nullEncodeEscByte)
-			} else if nextByte == nullEncodeSepByteEsc {
+			case nullEncodeSepByteEsc:
 				rtn = append(rtn, nullEncodeSepByte)
-			} else if nextByte == nullEncodeEqByteEsc {
+			case nullEncodeEqByteEsc:
 				rtn = append(rtn, nullEncodeEqByte)
-			} else {
+			default:
 				// invalid encoding
 				return "", fmt.Errorf("invalid null encoding: %d", nextByte)
 			}
@@ -584,7 +586,7 @@ func CopyWithEndBytes(outputBuf *bytes.Buffer, reader io.Reader, endBytes []byte
 			obytes := outputBuf.Bytes()
 			if bytes.HasSuffix(obytes, endBytes) {
 				outputBuf.Truncate(len(obytes) - len(endBytes))
-				return (err == io.EOF), nil
+				return err == io.EOF, nil
 			}
 		}
 		if err == io.EOF {

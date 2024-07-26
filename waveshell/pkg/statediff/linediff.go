@@ -232,7 +232,7 @@ func (rtn *LineDiffType) Decode_v0(diffBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	restOfInput := string(r.Bytes())
+	restOfInput := r.String()
 	if len(restOfInput) > 0 {
 		rtn.NewData = strings.Split(restOfInput, "\n")
 	}

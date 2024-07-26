@@ -134,7 +134,9 @@ func (d *DeclareDeclType) Serialize() []byte {
 			d.Value,
 		}
 		return utilfn.EncodeStringArray(parts)
-	} else if d.IsZshDecl {
+	}
+
+	if d.IsZshDecl {
 		d.SortZshFlags()
 		parts := []string{
 			"z1",
@@ -145,15 +147,15 @@ func (d *DeclareDeclType) Serialize() []byte {
 			d.ZshEnvValue,
 		}
 		return utilfn.EncodeStringArray(parts)
-	} else {
-		parts := []string{
-			"b1",
-			d.Args,
-			d.Name,
-			d.Value,
-		}
-		return utilfn.EncodeStringArray(parts)
 	}
+
+	parts := []string{
+		"b1",
+		d.Args,
+		d.Name,
+		d.Value,
+	}
+	return utilfn.EncodeStringArray(parts)
 	// this is the v0 encoding (keeping here for reference since we still need to decode this)
 	// rtn := fmt.Sprintf("%s|%s=%s\x00", d.Args, d.Name, d.Value)
 	// return []byte(rtn)
@@ -184,7 +186,9 @@ func DeclsEqual(compareName bool, d1 *DeclareDeclType, d2 *DeclareDeclType) bool
 // envline should be valid
 func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 	esFirstVal := utilfn.EncodedStringArrayGetFirstVal(envLineBytes)
-	if esFirstVal == "z1" {
+
+	switch esFirstVal {
+	case "z1":
 		parts, err := utilfn.DecodeStringArray(envLineBytes)
 		if err != nil {
 			return nil
@@ -200,7 +204,7 @@ func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 			ZshBoundScalar: parts[4],
 			ZshEnvValue:    parts[5],
 		}
-	} else if esFirstVal == "b1" {
+	case "b1":
 		parts, err := utilfn.DecodeStringArray(envLineBytes)
 		if err != nil {
 			return nil
@@ -213,7 +217,7 @@ func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 			Name:  parts[2],
 			Value: parts[3],
 		}
-	} else if esFirstVal == "e1" {
+	case "e1":
 		parts, err := utilfn.DecodeStringArray(envLineBytes)
 		if err != nil {
 			return nil
@@ -227,10 +231,11 @@ func parseDeclLine(envLineBytes []byte) *DeclareDeclType {
 			Name:     parts[2],
 			Value:    parts[3],
 		}
-	} else if esFirstVal == "p1" {
+	case "p1":
 		// deprecated
 		return nil
 	}
+
 	// legacy decoding (v0) (not an encoded string array)
 	envLine := string(envLineBytes)
 	eqIdx := strings.Index(envLine, "=")

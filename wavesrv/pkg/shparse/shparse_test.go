@@ -53,13 +53,6 @@ func Test1(t *testing.T) {
 	testParse(t, "echo 'hello'abc$'\a'")
 }
 
-func lastWord(words []*WordType) *WordType {
-	if len(words) == 0 {
-		return nil
-	}
-	return words[len(words)-1]
-}
-
 func testExtend(t *testing.T, startStr string, extendStr string, complete bool, expStr string) {
 	startSP := utilfn.ParseToSP(startStr)
 	words := Tokenize(startSP.Str)

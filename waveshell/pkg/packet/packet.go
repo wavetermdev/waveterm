@@ -530,7 +530,7 @@ type CompGenPacketType struct {
 }
 
 func IsValidCompGenType(t string) bool {
-	return (t == "file" || t == "command" || t == "directory" || t == "variable")
+	return t == "file" || t == "command" || t == "directory" || t == "variable"
 }
 
 func (*CompGenPacketType) GetType() string {
@@ -1120,11 +1120,12 @@ func (e *SendError) Unwrap() error {
 func (e *SendError) Error() string {
 	if e.IsMarshalError {
 		return fmt.Sprintf("SendPacket marshal-error '%s' packet: %v", e.PacketType, e.Err)
-	} else if e.IsWriteError {
-		return fmt.Sprintf("SendPacket write-error packet[%s]: %v", e.PacketType, e.Err)
-	} else {
-		return e.Err.Error()
 	}
+	if e.IsWriteError {
+		return fmt.Sprintf("SendPacket write-error packet[%s]: %v", e.PacketType, e.Err)
+	}
+
+	return e.Err.Error()
 }
 
 func MarshalPacket(packet PacketType) ([]byte, error) {
@@ -1310,12 +1311,13 @@ type UnknownPacketReporter interface {
 type DefaultUPR struct{}
 
 func (DefaultUPR) UnknownPacket(pk PacketType) {
-	if pk.GetType() == RawPacketStr {
+	switch pk.GetType() {
+	case RawPacketStr:
 		rawPacket := pk.(*RawPacketType)
 		fmt.Fprintf(os.Stderr, "%s\n", rawPacket.Data)
-	} else if pk.GetType() == CmdStartPacketStr {
+	case CmdStartPacketStr:
 		return // do nothing
-	} else {
+	default:
 		wlog.Logf("[upr] invalid packet received '%s'", AsExtType(pk))
 	}
 }

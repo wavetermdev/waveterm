@@ -15,8 +15,8 @@ import (
 
 // global lock for all memory operations
 // memory ops are very fast, so this is not a bottleneck
-var MemLock *sync.Mutex = &sync.Mutex{}
-var ScreenMemStore map[string]*ScreenMemState = make(map[string]*ScreenMemState) // map of screenid -> ScreenMemState
+var MemLock = &sync.Mutex{}
+var ScreenMemStore = make(map[string]*ScreenMemState) // map of screenid -> ScreenMemState
 
 type StatusIndicatorLevel int
 
@@ -26,14 +26,6 @@ const (
 	StatusIndicatorLevel_Success
 	StatusIndicatorLevel_Error
 )
-
-func dumpScreenMemStore() {
-	MemLock.Lock()
-	defer MemLock.Unlock()
-	for k, v := range ScreenMemStore {
-		log.Printf("  ScreenMemStore[%s] = %+v\n", k, v)
-	}
-}
 
 type OpenAICmdInfoChatStore struct {
 	MessageCount int                                `json:"messagecount"`

@@ -136,7 +136,7 @@ func bashValidate(d *DeclareDeclType) error {
 	if len(d.Name) == 0 || !isValidBashIdentifier(d.Name) {
 		return fmt.Errorf("invalid shell variable name (invalid bash identifier)")
 	}
-	if strings.Index(d.Value, "\x00") >= 0 {
+	if strings.Contains(d.Value, "\x00") {
 		return fmt.Errorf("invalid shell variable value (cannot contain 0 byte)")
 	}
 	if !declareDeclArgsRe.MatchString(d.Args) {
@@ -181,9 +181,9 @@ func bashParseDeclareStmt(stmt *syntax.Stmt, src string) (*DeclareDeclType, erro
 		return nil, fmt.Errorf("invalid decl format")
 	}
 	if declAssign.Value != nil {
-		rtn.Value = string(src[declAssign.Value.Pos().Offset():declAssign.Value.End().Offset()])
+		rtn.Value = src[declAssign.Value.Pos().Offset():declAssign.Value.End().Offset()]
 	} else if declAssign.Array != nil {
-		rtn.Value = string(src[declAssign.Array.Pos().Offset():declAssign.Array.End().Offset()])
+		rtn.Value = src[declAssign.Array.Pos().Offset():declAssign.Array.End().Offset()]
 	} else {
 		return nil, fmt.Errorf("invalid decl, not plain value or array")
 	}
@@ -256,7 +256,7 @@ func parseBashShellStateOutput(outputBytes []byte) (*packet.ShellState, *packet.
 	} else {
 		cwdStr = strings.TrimSuffix(cwdStr, "\n")
 	}
-	rtn.Cwd = string(cwdStr)
+	rtn.Cwd = cwdStr
 	err := bashParseDeclareOutput(rtn, sections[BashSection_Vars], sections[BashSection_PVars])
 	if err != nil {
 		return nil, nil, err

@@ -150,7 +150,7 @@ func CreateCirFile(fileName string, maxSize int64) (*File, error) {
 		return nil, err
 	}
 	rtn := &File{OSFile: fd, Version: CurrentVersion, MaxSize: maxSize, StartPos: FilePosEmpty}
-	err = rtn.flock(nil, syscall.LOCK_EX) // pass nil context here for a fast fail if someone else is also creating the same file
+	err = rtn.flock(context.TODO(), syscall.LOCK_EX) // pass nil context here for a fast fail if someone else is also creating the same file
 	if err != nil {
 		return nil, fmt.Errorf("cannot lock file: %w", err)
 	}
@@ -216,14 +216,17 @@ func (f *File) readMeta() error {
 		return fmt.Errorf("invalid cbuf version[%d]", f.Version)
 	}
 	// possible incomplete write, fix start/end pos to be within filesize
-	if f.FileDataSize == 0 || (f.StartPos >= f.FileDataSize && f.EndPos >= f.FileDataSize) {
+
+	switch {
+	case f.FileDataSize == 0, f.StartPos >= f.FileDataSize && f.EndPos >= f.FileDataSize:
 		f.StartPos = FilePosEmpty
 		f.EndPos = 0
-	} else if f.StartPos >= f.FileDataSize {
+	case f.StartPos >= f.FileDataSize:
 		f.StartPos = 0
-	} else if f.EndPos >= f.FileDataSize {
+	case f.EndPos >= f.FileDataSize:
 		f.EndPos = f.FileDataSize - 1
 	}
+
 	if f.MaxSize <= 0 || f.FileOffset < 0 || (f.StartPos < 0 && f.StartPos != FilePosEmpty) || f.StartPos >= f.MaxSize || f.EndPos < 0 || f.EndPos >= f.MaxSize {
 		return fmt.Errorf("invalid cbuf metadata version[%d] filedatasize[%d] maxsize[%d] fileoffset[%d] startpos[%d] endpos[%d]", f.Version, f.FileDataSize, f.MaxSize, f.FileOffset, f.StartPos, f.EndPos)
 	}
@@ -290,7 +293,7 @@ func advanceChunks(chunks []fileChunk, offset int64) []fileChunk {
 	var rtn []fileChunk
 	for _, chunk := range chunks {
 		if offset >= chunk.Len {
-			offset = offset - chunk.Len
+			offset -= chunk.Len
 			continue
 		}
 		if offset == 0 {
@@ -465,7 +468,7 @@ func (f *File) WriteAt(ctx context.Context, buf []byte, writePos int64) error {
 	if writePos > f.FileOffset+currentSize {
 		// fill gap with zero bytes
 		posOffset := writePos - (f.FileOffset + currentSize)
-		err = f.ensureFreeSpace(int64(posOffset))
+		err = f.ensureFreeSpace(posOffset)
 		if err != nil {
 			return err
 		}

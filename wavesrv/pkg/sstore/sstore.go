@@ -40,20 +40,16 @@ const DBFileName = "waveterm.db"
 const DBWALFileName = "waveterm.db-wal"
 const DBFileNameBackup = "backup.waveterm.db"
 const DBWALFileNameBackup = "backup.waveterm.db-wal"
-const MaxWebShareLineCount = 50
-const MaxWebShareScreenCount = 3
 const MaxLineStateSize = 4 * 1024 // 4k for now, can raise if needed
 const DefaultSudoTimeout = 5
 
-const DefaultSessionName = "default"
 const LocalRemoteAlias = "local"
 
-const DefaultCwd = "~"
 const APITokenSentinel = "--apitoken--"
 
-// defined here and not in packet.go since this value should never
+// ShellTypePrefDetect is defined here and not in packet.go since this value should never
 // be passed to waveshell (it should always get resolved prior to sending a run packet)
-const ShellTypePref_Detect = "detect"
+const ShellTypePrefDetect = "detect"
 
 const (
 	LineTypeCmd    = "cmd"
@@ -62,14 +58,14 @@ const (
 )
 
 const (
-	LineState_Source   = "prompt:source"
-	LineState_File     = "prompt:file"
-	LineState_FileUrl  = "wave:fileurl"
-	LineState_Min      = "wave:min"
-	LineState_Template = "template"
-	LineState_Mode     = "mode"
-	LineState_Lang     = "lang"
-	LineState_Minimap  = "minimap"
+	LineStateSource   = "prompt:source"
+	LineStateFile     = "prompt:file"
+	LineStateFileUrl  = "wave:fileurl"
+	LineStateMin      = "wave:min"
+	LineStateTemplate = "template"
+	LineStateMode     = "mode"
+	LineStateLang     = "lang"
+	LineStateMinimap  = "minimap"
 )
 
 const (
@@ -486,7 +482,6 @@ func AddScreenUpdate(update *scbus.ModelUpdatePacketType, newScreen *ScreenType)
 	screenUpdates := scbus.GetUpdateItems[ScreenType](update)
 	for _, screenUpdate := range screenUpdates {
 		if screenUpdate.ScreenId == newScreen.ScreenId {
-			screenUpdate = newScreen
 			return
 		}
 	}
@@ -506,10 +501,6 @@ func (ScreenTombstoneType) UseDBMap() {}
 func (ScreenTombstoneType) GetType() string {
 	return "screentombstone"
 }
-
-const (
-	LayoutFull = "full"
-)
 
 type LayoutType struct {
 	Type   string `json:"type"`
@@ -1100,7 +1091,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		SSHOpts:             &SSHOpts{Local: true},
 		Local:               true,
 		SSHConfigSrc:        SSHConfigSrcTypeManual,
-		ShellPref:           ShellTypePref_Detect,
+		ShellPref:           ShellTypePrefDetect,
 	}
 	err = UpsertRemote(ctx, localRemote)
 	if err != nil {
@@ -1120,7 +1111,7 @@ func EnsureLocalRemote(ctx context.Context) error {
 		RemoteOpts:          &RemoteOptsType{Color: "red"},
 		Local:               true,
 		SSHConfigSrc:        SSHConfigSrcTypeManual,
-		ShellPref:           ShellTypePref_Detect,
+		ShellPref:           ShellTypePrefDetect,
 	}
 	err = UpsertRemote(ctx, sudoRemote)
 	if err != nil {

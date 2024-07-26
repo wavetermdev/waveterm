@@ -2,7 +2,7 @@ DROP TABLE client;
 DROP TABLE session;
 DROP TABLE window;
 DROP TABLE screen;
-DROP TABLE screen_window;    
+DROP TABLE screen_window;
 DROP TABLE remote_instance;
 DROP TABLE line;
 DROP TABLE remote;
