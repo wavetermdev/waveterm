@@ -21,7 +21,7 @@ import (
 // https://github.com/tiktoken-go/tokenizer
 
 const DefaultMaxTokens = 1000
-const DefaultModel = "gpt-3.5-turbo"
+const DefaultModel = "gpt-4o-mini"
 const DefaultStreamChanSize = 10
 
 const CloudWebsocketConnectTimeout = 1 * time.Minute

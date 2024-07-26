@@ -380,8 +380,8 @@ class ClientSettingsView extends React.Component<{ model: RemotesModel }, { hove
                         <div className="settings-label">AI Model</div>
                         <div className="settings-input">
                             <InlineSettingsTextEdit
-                                placeholder="gpt-3.5-turbo"
-                                text={isBlank(openAIOpts.model) ? "gpt-3.5-turbo" : openAIOpts.model}
+                                placeholder="gpt-4o-mini"
+                                text={isBlank(openAIOpts.model) ? "gpt-4o-mini" : openAIOpts.model}
                                 value={openAIOpts.model ?? ""}
                                 onChange={this.inlineUpdateOpenAIModel}
                                 maxLength={100}
