@@ -204,12 +204,12 @@ function switchBlock(tabId: string, offsetX: number, offsetY: number) {
 function AppSettingsUpdater() {
     const settings = jotai.useAtomValue(atoms.settingsConfigAtom);
     React.useEffect(() => {
-        let isTransparent = settings?.window?.transparent ?? false;
-        let opacity = util.boundNumber(settings?.window?.opacity ?? 0.8, 0, 1);
+        const isTransparentOrBlur = (settings?.window?.transparent || settings?.window?.blur) ?? false;
+        const opacity = util.boundNumber(settings?.window?.opacity ?? 0.8, 0, 1);
         let baseBgColor = settings?.window?.bgcolor;
         console.log("window settings", settings.window);
 
-        if (isTransparent) {
+        if (isTransparentOrBlur) {
             document.body.classList.add("is-transparent");
             const rootStyles = getComputedStyle(document.documentElement);
             if (baseBgColor == null) {

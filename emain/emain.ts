@@ -324,8 +324,20 @@ function createBrowserWindow(
         autoHideMenuBar: true,
     };
     const isTransparent = settings?.window?.transparent ?? false;
+    const isBlur = !isTransparent && (settings?.window?.blur ?? false);
     if (isTransparent) {
         winOpts.transparent = true;
+    } else if (isBlur) {
+        switch (unamePlatform) {
+            case "win32": {
+                winOpts.backgroundMaterial = "acrylic";
+                break;
+            }
+            case "darwin": {
+                winOpts.vibrancy = "fullscreen-ui";
+                break;
+            }
+        }
     } else {
         winOpts.backgroundColor = "#222222";
     }

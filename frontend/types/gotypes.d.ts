@@ -516,6 +516,7 @@ declare global {
     // wconfig.WindowSettingsType
     type WindowSettingsType = {
         transparent: boolean;
+        blur: boolean;
         opacity: number;
         bgcolor: string;
     };
